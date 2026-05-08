@@ -17,10 +17,10 @@ Before adding, verifying, rejecting, or product-approving claims, classify the c
 Use `pnpm verify:claim` to validate current claim verification records without changing files. To preview a metadata-only verification block update, run:
 
 ```bash
-pnpm verify:claim -- --claim <claim-id> --dimension <dimension> --status <status> --reason <text> --proof-ref <record-ref> --blocked-action <action>
+pnpm verify:claim -- --claim <claim-id> --dimension <dimension> --status <status> --reason <text> [--scope <scope>] [--output <level>] [--proof-ref <record-ref>] [--decision-ref <record-ref>] [--blocked-action <action>] [--apply]
 ```
 
-Repeat `--proof-ref`, `--decision-ref`, and `--blocked-action` as needed. The command is a dry run unless `--apply` is explicit; apply mode writes only the selected claim `verification` block after existing records and the proposed verification pass validation. It validates existing proof records but never installs packages, imports packages, reads keys or local config, calls live services, captures raw data, mutates product code, or executes proof gates.
+`--dimension` accepts `static`, `install`, `runtime`, or `product`. `--status` accepts `claimed`, `verified`, or `rejected` for non-product dimensions, and `claimed`, `approved`, or `rejected` for `product`. `--scope` (`sandbox` or `production`) applies to `install` and `runtime`. `--output` (`metadata-only`, `sample-output`, or `runtime-captured`) applies to `runtime`. The `product` dimension uses `--decision-ref`; non-product dimensions use `--proof-ref`. Repeat `--proof-ref`, `--decision-ref`, and `--blocked-action` as needed. The command is a dry run unless `--apply` is explicit; apply mode writes only the selected claim `verification` block after existing records and the proposed verification pass validation. It validates existing proof records but never installs packages, imports packages, reads keys or local config, calls live services, captures raw data, mutates product code, or executes proof gates.
 
 ## Evidence Model
 
@@ -51,6 +51,8 @@ Pack approval must say what scope is approved. Pack review for planning does not
 
 Before running install, import, config, runtime, or live service commands, ask for human approval and include:
 
+- which dimension is being proved (`install` or `runtime`) and the scope (`sandbox` or `production`);
+- for runtime, the requested output level (`metadata-only`, `sample-output`, or `runtime-captured`);
 - what evidence is missing;
 - why local evidence is insufficient;
 - the exact command class proposed;
@@ -58,6 +60,8 @@ Before running install, import, config, runtime, or live service commands, ask f
 - expected metadata-only output;
 - whether any local config source is needed, only if explicitly approved for this gate, with contents forbidden from capture;
 - forbidden captures/actions: credentials, local config contents, install logs, private package files, raw external data, live calls, generated clients, and product app code.
+
+Sandbox scope is the default for install and runtime gates; production scope requires a separate decision and stricter output policy.
 
 Default validation must not install packages, insert keys, import private packages, call live services, retain artifacts, or mutate real home config.
 
@@ -89,7 +93,7 @@ Each approved runtime proof evidence file, or a gate-section inside it, must rec
 Cleanup is part of proof success, not best-effort housekeeping.
 
 - If `temp_root_deleted` is not `true` and `cleanup_status` is not `succeeded`, the experiment outcome is `failed` or `blocked`.
-- A failed cleanup blocks dimension verification: claims may not mark `install`, `runtime`, or `product` complete from a run with failed cleanup.
+- A failed cleanup blocks dimension verification: claims may not mark the `install` or `runtime` dimension `verified`, or the `product` dimension `approved`, from a run with failed cleanup.
 - A failed cleanup also blocks pack capability publication for the affected scope.
 
 ### Schema Deferral
