@@ -59,15 +59,16 @@ Failed plan: `plans/260508-1545-vnstock-install-knowledge-encoding/` (status: bl
 - **Q3 (N=1 vs N≥2)**: capture as deferred meta-evidence. Apply heuristic informally.
 - **Q4 (truth-status)**: structural rule (claims-first scanning) + per-file `## Supersedes` link. User accepted the human-direct-browse hole ("trust the doc rule"). Defer claim-side status block + computed view.
 - **Q5 (recall)**: per-file `## Trigger` section + operator-guide pre-experiment scan rule. Defer validation-tool emission and plan-template integration.
+- **Q6 (capability-dir scan, added during plan review)**: complementary rule to Q4 E. Capability-dir scanning for *planning-context* discovery; claim-first scanning for *truth-status* discovery. Motivated by missed `unified-ui-snapshot/` evidence in initial Phase 3 draft. Adopted N=1 informally; promote to meta-claim if a second case confirms.
 
 ## Success Criteria
 
 - [ ] Phase 1 complete: skill and docs reference updates landed before any other work
 - [ ] `pnpm check` passes after edits
 - [ ] Install dimension verified for `vnstock-data` claim under sandbox scope
-- [ ] New experiment evidence file with `secret_injection_class` field AND `## Supersedes` section
-- [ ] Three new meta-evidence files exist with `## Trigger` sections
+- [ ] New experiment evidence file with `secret_injection_class` + `static_dimension_consistency` fields AND `## Supersedes` section
+- [ ] Four new meta-evidence files exist with `## Trigger` sections
 - [ ] Four existing meta-evidence files retrofitted with `## Trigger` sections
-- [ ] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2)
+- [ ] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2 with Q4 E + Q5 R2 + Q6 rules)
 - [ ] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` updated
 - [ ] Agent transcript review confirms zero literal API key value
