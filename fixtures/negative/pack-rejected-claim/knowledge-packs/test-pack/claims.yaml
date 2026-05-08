@@ -1,0 +1,5 @@
+claims:
+  - id: test-rejected-claim
+    record_ref: record:claim-rejected-fixture
+    text: A rejected claim in a pack.
+    status: reviewed

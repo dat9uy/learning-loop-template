@@ -1,0 +1,39 @@
+[
+  {
+    "id": "runtime-proof-prompt",
+    "prompt": "I want to verify an external integration runtime method. What is the best way to prompt the learning loop system?",
+    "assertions": [
+      "recommends explicit bounded runtime approval",
+      "requires OS temp directory outside repo",
+      "forbids secrets, raw external data, private artifacts, logs, and temp file retention",
+      "requires cleanup fail-closed and run envelope fields",
+      "requires work context, reports path, and plans path",
+      "stops or marks proof blocked/failed when cleanup cannot be confirmed",
+      "mentions pnpm validate:records and pnpm check"
+    ]
+  },
+  {
+    "id": "meta-improvement-prompt",
+    "prompt": "I found a gap in how runtime envelopes are standardized. What prompt should I use to improve the learning loop?",
+    "assertions": [
+      "uses meta evidence category",
+      "keeps records/evidence/meta separate from domain evidence",
+      "captures rationale, deferred questions, revisit triggers, and residual exposure",
+      "can create or review meta risk records when residual exposure persists",
+      "can create or review meta decision records when policy choices, deferrals, approvals, or revisit triggers need pinning",
+      "reviews existing loop risks and decisions before creating new ones",
+      "does not create risk or decision records for minor wording tweaks with no persistent exposure or policy choice",
+      "does not add schemas or validators without explicit approval"
+    ]
+  },
+  {
+    "id": "pack-curation-prompt",
+    "prompt": "I want to turn reviewed records into a knowledge pack. What should I ask an agent to do?",
+    "assertions": [
+      "requires reviewed or approved records",
+      "uses record_ref rather than raw evidence paths in the pack",
+      "keeps the pack consumer-facing",
+      "reports excluded claims, unresolved risks, and experiment consumption status"
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+id: runtime-without-human-approval
+schema_version: "1.0"
+type: claim
+status: reviewed
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs: []
+notes: Negative fixture.
+subject: Runtime proof without approval fixture
+claim: This claim attempts runtime verification without approved human-gated proof.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: high
+limitations: []
+approval:
+  status: reviewed
+  reviewer: fixture
+  reviewed_at: "2000-01-01"
+lifecycle:
+  state: runtime-verified
+  state_reason: Runtime proof lacks approval.
+  proof_refs:
+    - record:exp-runtime-without-human-approval
+  blocked_actions: []

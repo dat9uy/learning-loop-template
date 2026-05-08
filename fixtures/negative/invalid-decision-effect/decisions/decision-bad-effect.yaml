@@ -1,0 +1,18 @@
+id: decision-bad-effect
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs: []
+notes: Negative fixture.
+question: Should this fail?
+decision: Yes.
+rationale: Invalid decision_effect action.
+alternatives: []
+tradeoffs: []
+supersedes: []
+decision_effect:
+  action: invalid-action
+  scope: planning
+  affected_refs: []

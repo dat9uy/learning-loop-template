@@ -1,0 +1,24 @@
+id: disallowed-local-source
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs:
+  - local:docs/charter.md
+notes: Negative fixture.
+subject: Disallowed local source fixture
+claim: This fixture cites a local policy doc as active evidence.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: draft
+  reviewer: ""
+  reviewed_at: ""
+lifecycle:
+  state: imported-prior
+  state_reason: Fixture for local source boundary validation.
+  proof_refs: []
+  blocked_actions: []

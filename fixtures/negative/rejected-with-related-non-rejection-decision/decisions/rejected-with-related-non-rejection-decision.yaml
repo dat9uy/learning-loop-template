@@ -1,0 +1,15 @@
+id: decision-related-non-rejection
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs:
+  - record:rejected-with-related-non-rejection-decision
+notes: Negative fixture.
+question: Can a related non-rejection decision prove rejected state?
+decision: No; it references the claim but does not reject it.
+rationale: Rejection proof must be explicit, not inferred from any related decision.
+alternatives: []
+tradeoffs: []
+supersedes: []

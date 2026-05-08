@@ -1,0 +1,15 @@
+id: test-pack
+domain: test
+status: approved
+version: 0.1.0
+approval:
+  reviewer: ""
+  reviewed_at: ""
+  status: approved
+publication_gate:
+  claims:
+    min_assurance: static-verified
+    required_outcome: supports
+    scope: planning
+    reject_on:
+      - rejected

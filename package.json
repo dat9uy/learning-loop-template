@@ -1,0 +1,12 @@
+{
+  "name": "learning-loop-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate:records": "node tools/validate-records/validate-records.js",
+    "lifecycle:claim": "node tools/claim-lifecycle/lifecycle-claim.js",
+    "generate:docs": "node tools/generate-docs/generate-docs.js",
+    "check": "pnpm validate:records"
+  }
+}

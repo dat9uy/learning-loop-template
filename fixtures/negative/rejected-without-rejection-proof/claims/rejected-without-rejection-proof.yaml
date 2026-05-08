@@ -1,0 +1,24 @@
+id: rejected-without-rejection-proof
+schema_version: "1.0"
+type: claim
+status: rejected
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs: []
+notes: Negative fixture.
+subject: Rejected without rejection proof fixture
+claim: This claim uses unrelated experiment proof for rejected state.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: rejected
+  reviewer: fixture
+  reviewed_at: "2000-01-01"
+lifecycle:
+  state: rejected
+  state_reason: Rejection proof is not rejection-specific.
+  proof_refs:
+    - record:exp-rejected-without-rejection-proof
+  blocked_actions: []

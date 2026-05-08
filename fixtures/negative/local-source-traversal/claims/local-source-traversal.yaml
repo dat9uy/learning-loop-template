@@ -1,0 +1,24 @@
+id: local-source-traversal
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs:
+  - local:records/evidence/../../README.md
+notes: Negative fixture.
+subject: Local source traversal fixture
+claim: This fixture uses traversal to escape the evidence directory while staying in the repository.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: draft
+  reviewer: ""
+  reviewed_at: ""
+lifecycle:
+  state: imported-prior
+  state_reason: Fixture for local source traversal validation.
+  proof_refs: []
+  blocked_actions: []

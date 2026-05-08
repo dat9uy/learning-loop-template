@@ -1,0 +1,19 @@
+id: missing-local-source
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs:
+  - local:records/evidence/missing-file.md
+notes: Negative fixture.
+subject: Missing local source fixture
+claim: This fixture cites a missing local evidence file.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: draft
+  reviewer: ""
+  reviewed_at: ""

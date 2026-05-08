@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Claim Record",
+  "type": "object",
+  "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "subject", "claim", "scope", "evidence_refs", "confidence", "limitations", "approval", "lifecycle"],
+  "properties": {
+    "id": { "type": "string" },
+    "schema_version": { "type": "string" },
+    "type": { "const": "claim" },
+    "status": { "enum": ["draft", "reviewed", "approved", "rejected"] },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "source_refs": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "string" },
+    "subject": { "type": "string" },
+    "claim": { "type": "string" },
+    "scope": { "type": "string" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "approval": {
+      "type": "object",
+      "required": ["status", "reviewer", "reviewed_at"],
+      "properties": {
+        "status": { "enum": ["draft", "reviewed", "approved", "rejected"] },
+        "reviewer": { "type": "string" },
+        "reviewed_at": { "type": "string" }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "required": ["state", "state_reason", "proof_refs", "blocked_actions"],
+      "properties": {
+        "state": { "enum": ["imported-prior", "evidence-reviewed", "static-verified", "install-verified", "runtime-verified", "product-approved", "rejected"] },
+        "state_reason": { "type": "string" },
+        "proof_refs": { "type": "array", "items": { "type": "string" } },
+        "blocked_actions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

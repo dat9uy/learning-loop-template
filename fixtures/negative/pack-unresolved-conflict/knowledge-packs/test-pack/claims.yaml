@@ -1,0 +1,9 @@
+claims:
+  - id: test-conflict-a
+    record_ref: record:claim-conflict-fixture
+    text: First conflicting entry.
+    status: reviewed
+  - id: test-conflict-b
+    record_ref: record:claim-conflict-fixture
+    text: Second conflicting entry with different text.
+    status: reviewed

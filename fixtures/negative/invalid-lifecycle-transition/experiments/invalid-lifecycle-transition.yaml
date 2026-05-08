@@ -1,0 +1,28 @@
+id: exp-invalid-lifecycle-transition
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs: []
+notes: Negative fixture.
+goal: Prove skipped lifecycle transitions fail.
+hypothesis: Evidence-reviewed claims cannot skip directly to install-verified.
+knowledge_pack_ids: []
+method:
+  - Attempt invalid transition.
+success_metrics:
+  - Validator rejects the record.
+result: Expected failure.
+agent_outcome: blocked
+product_outcome: none
+observations: []
+promotion_review: []
+verification:
+  claim_refs:
+    - record:invalid-lifecycle-transition
+  from_state: evidence-reviewed
+  to_state: install-verified
+  output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
