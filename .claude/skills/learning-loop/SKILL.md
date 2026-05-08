@@ -9,7 +9,7 @@ description: Create prompts for this repo's learning-loop system. Use when askin
 
 Use this skill to turn a user intent into a ready-to-run prompt for this repo's learning-loop system.
 
-This skill handles prompt authoring, boundary setting, evidence policy, validation expectations, and self-improvement meta prompts. It does not execute runtime proofs, approve lifecycle promotion, modify records by itself, or build product code.
+This skill handles prompt authoring, boundary setting, evidence policy, validation expectations, and self-improvement meta prompts. It does not execute runtime proofs, approve product decisions, modify records by itself, or build product code.
 
 ## When to Use
 
@@ -34,7 +34,7 @@ Use when the user asks:
 2. Load `references/learning-loop-rules.md` for repo policy. If the prompt needs exact current wording, read the named `docs/` or `records/evidence/meta/` files before drafting.
 3. Identify approval level:
    - default: read-only or metadata-only prompt
-   - explicit approval required: install, runtime execution, live provider calls, copying local config, product code, lifecycle promotion
+   - explicit approval required: install, runtime execution, live provider calls, copying local config, product code, product approval decisions
 4. Draft the prompt with `references/prompt-blueprints.md`.
 5. If the task is about improving the loop itself, apply `references/meta-evidence-self-improvement.md`; include meta evidence, risk, and decision governance when residual exposure or a loop-level policy choice exists.
 6. Return a concise answer with:
@@ -51,7 +51,7 @@ Every generated prompt must state:
 - source allowlist and forbidden sources/actions
 - desired output artifacts and citation style
 - evidence capture policy
-- lifecycle/promotion limits
+- verification dimension and approval limits
 - validation commands
 - report format
 - stop conditions for unclear authority, secrets, raw data, or cleanup failure

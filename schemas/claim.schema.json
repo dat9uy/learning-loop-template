@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Claim Record",
   "type": "object",
-  "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "subject", "claim", "scope", "evidence_refs", "confidence", "limitations", "approval", "lifecycle"],
+  "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "subject", "claim", "scope", "evidence_refs", "confidence", "limitations", "approval", "verification"],
   "properties": {
     "id": { "type": "string" },
     "schema_version": { "type": "string" },
@@ -27,14 +27,55 @@
         "reviewed_at": { "type": "string" }
       }
     },
-    "lifecycle": {
+    "verification": {
       "type": "object",
-      "required": ["state", "state_reason", "proof_refs", "blocked_actions"],
       "properties": {
-        "state": { "enum": ["imported-prior", "evidence-reviewed", "static-verified", "install-verified", "runtime-verified", "product-approved", "rejected"] },
-        "state_reason": { "type": "string" },
-        "proof_refs": { "type": "array", "items": { "type": "string" } },
+        "static": { "$ref": "#/$defs/proof_dimension" },
+        "install": { "$ref": "#/$defs/scoped_proof_dimension" },
+        "runtime": { "$ref": "#/$defs/runtime_dimension" },
+        "product": { "$ref": "#/$defs/product_dimension" },
         "blocked_actions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "$defs": {
+    "proof_dimension": {
+      "type": "object",
+      "required": ["status", "proof_refs"],
+      "properties": {
+        "status": { "enum": ["claimed", "verified", "rejected"] },
+        "reason": { "type": "string" },
+        "proof_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "scoped_proof_dimension": {
+      "type": "object",
+      "required": ["status", "scope", "proof_refs"],
+      "properties": {
+        "status": { "enum": ["claimed", "verified", "rejected"] },
+        "scope": { "enum": ["sandbox", "production"] },
+        "reason": { "type": "string" },
+        "proof_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "runtime_dimension": {
+      "type": "object",
+      "required": ["status", "scope", "output", "proof_refs"],
+      "properties": {
+        "status": { "enum": ["claimed", "verified", "rejected"] },
+        "scope": { "enum": ["sandbox", "production"] },
+        "output": { "enum": ["metadata-only", "sample-output", "runtime-captured"] },
+        "reason": { "type": "string" },
+        "proof_refs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "product_dimension": {
+      "type": "object",
+      "required": ["status", "decision_refs"],
+      "properties": {
+        "status": { "enum": ["claimed", "approved", "rejected"] },
+        "reason": { "type": "string" },
+        "decision_refs": { "type": "array", "items": { "type": "string" } }
       }
     }
   }

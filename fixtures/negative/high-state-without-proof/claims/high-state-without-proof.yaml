@@ -6,7 +6,7 @@ created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs: []
 notes: Negative fixture.
-subject: High lifecycle state without proof fixture
+subject: High verification dimension without proof fixture
 claim: This claim attempts runtime verification without proof refs.
 scope: Validator negative testing.
 evidence_refs: []
@@ -16,8 +16,11 @@ approval:
   status: reviewed
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: runtime-verified
-  state_reason: Missing runtime proof.
-  proof_refs: []
+verification:
+  runtime:
+    status: verified
+    scope: sandbox
+    output: metadata-only
+    reason: Migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

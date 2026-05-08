@@ -10,7 +10,7 @@ The template starts empty. Add domain evidence, records, and packs only after re
 - `knowledge-packs/`: curated packs that experiments may consume after review.
 - `docs/`: project metadata and learning-loop policy.
 - `product/`: intentionally empty until an approved build experiment.
-- `tools/`: validators, lifecycle helpers, and optional doc generation.
+- `tools/`: validators, verification helpers, and optional doc generation.
 
 ## Commands
 
@@ -22,11 +22,11 @@ pnpm validate:records
 ## First Run
 
 1. Read `docs/handoff.md`.
-2. Review `docs/operator-guide.md` and `docs/claim-proof-lifecycle.md`.
+2. Review `docs/operator-guide.md` and `docs/claim-verification.md`.
 3. Add local evidence under `records/evidence/<scope>/`.
 4. Add records that cite local evidence or other records.
 5. Promote only through reviewed experiments and explicit decisions.
 
 ## Guardrails
 
-Do not copy application code, generated files, raw data, secrets, local config, private artifacts, or historical repo state into this template. External execution, package installation, live calls, lifecycle promotion, and product code all require explicit scoped approval.
+Do not copy application code, generated files, raw data, secrets, local config, private artifacts, or historical repo state into this template. External execution, package installation, live calls, product approval, and product code all require explicit scoped approval.

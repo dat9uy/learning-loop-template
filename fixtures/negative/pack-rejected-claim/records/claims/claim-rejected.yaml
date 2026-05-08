@@ -16,8 +16,9 @@ approval:
   status: reviewed
   reviewer: ""
   reviewed_at: ""
-lifecycle:
-  state: rejected
-  state_reason: Rejected for testing.
-  proof_refs: []
+verification:
+  static:
+    status: rejected
+    reason: Rejection migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

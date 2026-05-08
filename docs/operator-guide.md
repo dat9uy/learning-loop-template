@@ -8,19 +8,19 @@ Run default validation before changing records:
 pnpm check
 ```
 
-Use `records/` for the lifecycle/proof ledger, `records/evidence/` for evidence files, `knowledge-packs/` for final curated domain knowledge, and `docs/` for project metadata.
+Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, `knowledge-packs/` for final curated domain knowledge, and `docs/` for project metadata.
 
-## Claim Proof Lifecycle
+## Claim Verification
 
-Before adding, promoting, rejecting, or product-approving claims, classify the claim with `docs/claim-proof-lifecycle.md`. Proof plans must pass lifecycle validation before they run install, import, runtime, or product approval work.
+Before adding, verifying, rejecting, or product-approving claims, classify the claim with `docs/claim-verification.md`. Proof plans must pass verification validation before they run install, import, runtime, or product approval work.
 
-Use `pnpm lifecycle:claim` to validate current claim lifecycle records without changing files. To preview a metadata-only lifecycle block update, run:
+Use `pnpm verify:claim` to validate current claim verification records without changing files. To preview a metadata-only verification block update, run:
 
 ```bash
-pnpm lifecycle:claim -- --claim <claim-id> --state <state> --reason <text> --proof-ref <record-ref> --blocked-action <action>
+pnpm verify:claim -- --claim <claim-id> --dimension <dimension> --status <status> --reason <text> --proof-ref <record-ref> --blocked-action <action>
 ```
 
-Repeat `--proof-ref` and `--blocked-action` as needed. The command is a dry run unless `--apply` is explicit; apply mode writes only the selected claim `lifecycle` block after existing records and the proposed lifecycle pass validation. It validates existing proof records but never installs packages, imports packages, reads keys or local config, calls live services, captures raw data, mutates product code, or executes proof gates.
+Repeat `--proof-ref`, `--decision-ref`, and `--blocked-action` as needed. The command is a dry run unless `--apply` is explicit; apply mode writes only the selected claim `verification` block after existing records and the proposed verification pass validation. It validates existing proof records but never installs packages, imports packages, reads keys or local config, calls live services, captures raw data, mutates product code, or executes proof gates.
 
 ## Evidence Model
 
@@ -34,7 +34,7 @@ Do not use active `legacy:` refs. Historical source paths may appear only in evi
 ## Adding Or Updating A Pack
 
 1. Add or update safe local evidence under `records/evidence/<pack-id>/`.
-2. Update claim, experiment, or decision records to cite local evidence and the current lifecycle state.
+2. Update claim, experiment, or decision records to cite local evidence and the current verification dimensions.
 3. Update the knowledge-pack manifest and fact refs.
 4. Run:
 
@@ -89,7 +89,7 @@ Each approved runtime proof evidence file, or a gate-section inside it, must rec
 Cleanup is part of proof success, not best-effort housekeeping.
 
 - If `temp_root_deleted` is not `true` and `cleanup_status` is not `succeeded`, the experiment outcome is `failed` or `blocked`.
-- A failed cleanup blocks lifecycle promotion: claims may not move to `install-verified`, `runtime-verified`, or `product-approved` from a run with failed cleanup.
+- A failed cleanup blocks dimension verification: claims may not mark `install`, `runtime`, or `product` complete from a run with failed cleanup.
 - A failed cleanup also blocks pack capability publication for the affected scope.
 
 ### Schema Deferral
@@ -120,10 +120,10 @@ When the user asks for learning-loop work, the agent should:
 5. Identify missing decisions or approvals before risky work.
 6. Ask follow-up questions when authority, scope, output, storage, or blocked actions are unclear.
 7. Create/update records before pack changes.
-8. Plan experiments with explicit `claim_refs`, `risk_refs`, `source_refs`, assurance target, output policy, and approval status.
+8. Plan experiments with explicit `claim_refs`, `risk_refs`, `source_refs`, `verification.proves`, output policy, and approval status.
 9. Run only approved work.
 10. Link experiment results back to claims/risks.
-11. Derive claim assurance and pack eligibility.
+11. Derive claim assurance and pack eligibility from verification dimensions.
 12. Publish only gate-qualified facts/capabilities.
 13. Validate records with `pnpm validate:records` and `pnpm check`.
 
@@ -192,8 +192,8 @@ The loop can improve itself.
 Before answering or editing, verify:
 
 - Am I treating evidence as source, not proof?
-- Am I putting assurance only on experiments?
-- Am I deriving claim assurance instead of storing it?
+- Am I using `verification.proves` on experiments?
+- Am I deriving claim assurance from dimensions instead of storing it?
 - Am I using risks for cautions, not negative claims?
 - Am I requiring decisions for approval/acceptance/product permission?
 - Am I keeping pack files slim?

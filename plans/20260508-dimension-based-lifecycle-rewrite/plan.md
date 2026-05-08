@@ -1,7 +1,7 @@
 ---
 title: "Dimension-Based Claim Verification Lifecycle Rewrite"
 description: "Replace linear claim lifecycle states with independent per-dimension verification. Refresh learning-loop skill as first-class self-improving artifact."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [lifecycle, schema, skill, self-improvement]
@@ -24,12 +24,12 @@ The learning-loop skill is refreshed first as the primary self-improvement inter
 
 | Phase | Name | Status | Effort | Priority |
 |-------|------|--------|--------|----------|
-| 1 | [Design Schemas](./phase-01-design-schemas.md) | Pending | 2h | P1 |
-| 2 | [Rewrite Validation Tools](./phase-02-rewrite-validation-tools.md) | Pending | 4h | P1 |
-| 3 | [Refresh Learning-Loop Skill](./phase-03-refresh-learning-loop-skill.md) | Pending | 3h | P1 |
-| 4 | [Rewrite Documentation](./phase-04-rewrite-documentation.md) | Pending | 3h | P2 |
-| 5 | [Rewrite Fixtures and Validate](./phase-05-rewrite-fixtures-and-validate.md) | Pending | 3h | P1 |
-| 6 | [Meta-Evidence and Self-Improvement](./phase-06-meta-evidence-and-self-improvement.md) | Pending | 2h | P2 |
+| 1 | [Design Schemas](./phase-01-design-schemas.md) | Completed | 2h | P1 |
+| 2 | [Rewrite Validation Tools](./phase-02-rewrite-validation-tools.md) | Completed | 4h | P1 |
+| 3 | [Refresh Learning-Loop Skill](./phase-03-refresh-learning-loop-skill.md) | Completed | 3h | P1 |
+| 4 | [Rewrite Documentation](./phase-04-rewrite-documentation.md) | Completed | 3h | P2 |
+| 5 | [Rewrite Fixtures and Validate](./phase-05-rewrite-fixtures-and-validate.md) | Completed | 3h | P1 |
+| 6 | [Meta-Evidence and Self-Improvement](./phase-06-meta-evidence-and-self-improvement.md) | Completed | 2h | P2 |
 
 ## Dependencies
 
@@ -56,7 +56,7 @@ Phase 5 (Fixtures)
 
 ## Success Criteria
 
-- [ ] `pnpm check` passes with new fixtures
-- [ ] No references to old lifecycle states remain in codebase
-- [ ] Skill prompts reference dimensions, not linear states
-- [ ] Meta-evidence documents the architecture change as self-improvement
+- [x] `pnpm check` passes with new fixtures
+- [x] No references to old lifecycle states remain in active code/docs/fixtures/skill sources
+- [x] Skill prompts reference dimensions, not linear states
+- [x] Meta-evidence documents the architecture change as self-improvement

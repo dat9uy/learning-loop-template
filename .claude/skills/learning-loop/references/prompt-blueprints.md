@@ -33,7 +33,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - README.md
 - docs/operator-guide.md
-- docs/claim-proof-lifecycle.md
+- docs/claim-verification.md
 - [task-specific docs/records]
 
 Goal:
@@ -46,7 +46,7 @@ Forbidden sources/actions:
 - Do not copy implementation from historical repos.
 - Do not read secrets or private config unless separately approved.
 - Do not capture raw external data, private artifacts, caches, logs, or temp files.
-- Do not create product code or lifecycle promotion unless explicitly approved.
+- Do not create product code or product approval changes unless explicitly approved.
 
 Evidence policy:
 - Capture only [metadata/classes].
@@ -67,7 +67,7 @@ Report:
 - What remains blocked.
 - Any unresolved questions.
 
-Stop and ask before proceeding if the task requires authority beyond this prompt, secret/config access, raw data capture, temp artifact retention, or lifecycle promotion without approval.
+Stop and ask before proceeding if the task requires authority beyond this prompt, secret/config access, raw data capture, temp artifact retention, or product approval without a decision.
 ```
 
 ## Runtime or Install Proof Prompt
@@ -108,7 +108,7 @@ After running:
 - Update [experiment record]
 - Capture envelope fields: `run_id`, `temp_root_class`, `approval_gate`, `command_class`, `allowed_outputs`, `blocked_outputs`, `cleanup_status`, `temp_root_deleted`, `validation_status`.
 - Cleanup is part of proof success; failed cleanup blocks promotion.
-- If cleanup fails or deletion cannot be confirmed, mark the proof blocked/failed and do not promote lifecycle or pack capability.
+- If cleanup fails or deletion cannot be confirmed, mark the proof blocked/failed and do not verify the dimension or pack capability.
 - Run `pnpm validate:records` and `pnpm check`.
 - Report verified items, failed items, blocked items, and deletion confirmation.
 
@@ -124,11 +124,11 @@ Do not execute the experiment yet. Produce an experiment proposal that states:
 - claim_refs, risk_refs, source_refs, pack_refs if any
 - hypothesis and success criteria
 - allowed inputs and forbidden captures
-- assurance target
+- verification dimension target using `verification.proves`
 - required approvals
 - evidence files to create/update
 - validation commands
-- conditions that block promotion
+- conditions that block dimension verification or product approval
 
 Keep product code deferred unless the experiment explicitly approves a build surface.
 ```

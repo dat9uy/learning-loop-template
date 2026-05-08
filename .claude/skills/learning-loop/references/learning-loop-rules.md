@@ -7,7 +7,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `README.md` — repo lanes and standalone-operation guardrail.
 - `docs/handoff.md` — first-run handoff and approval boundaries.
 - `docs/operator-guide.md` — normal workflow, runtime artifact standard, validation.
-- `docs/claim-proof-lifecycle.md` — claim lifecycle and verification blocks.
+- `docs/claim-verification.md` — claim verification dimensions and proof blocks.
 - `docs/lab-model.md` — lab concepts and separation of concerns.
 - `docs/knowledge-pack-contract.md` — pack curation contract.
 
@@ -27,7 +27,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `knowledge-packs/`: curated consumer-facing packs.
 - `docs/`: project metadata and loop policy, not domain evidence dumps.
 - `product/`: empty until an approved build experiment.
-- `tools/`: validators and lifecycle helpers.
+- `tools/`: validators and verification helpers.
 
 ## Separation Rules
 
@@ -36,24 +36,21 @@ Keep separate:
 - source material vs evidence capsule
 - evidence vs proof
 - claim status vs experiment outcome
-- risk confidence vs assurance level
+- risk confidence vs derived verification assurance
 - decision basis vs decision effect
 - pack approval vs product approval
 - meta evidence vs domain evidence
 
-## Lifecycle Rules
+## Verification Rules
 
-Allowed claim lifecycle states include:
+Claims assert independent verification dimensions:
 
-- `imported-prior`
-- `evidence-reviewed`
-- `static-verified`
-- `install-verified`
-- `runtime-verified`
-- `product-approved`
-- `rejected`
+- `static`: status `claimed`, `verified`, or `rejected`; proof comes from experiments.
+- `install`: status `claimed`, `verified`, or `rejected`; scope is `sandbox` or `production`; proof comes from approved human-gated experiments.
+- `runtime`: status `claimed`, `verified`, or `rejected`; scope is `sandbox` or `production`; output is `metadata-only`, `sample-output`, or `runtime-captured`; proof comes from approved human-gated experiments.
+- `product`: status `claimed`, `approved`, or `rejected`; approval/rejection comes from decisions, not experiments.
 
-Do not prompt agents to promote claims directly to `product-approved`. Product approval requires an approved decision record and approved experiment scope.
+Experiments prove non-product dimensions with `verification.proves`. Product approval requires an approved decision record with product scope. Do not prompt agents to mark product approval directly from an experiment.
 
 ## Evidence and Citation Rules
 
@@ -97,4 +94,4 @@ pnpm validate:records
 pnpm check
 ```
 
-Lifecycle helper work should default to dry-run unless the user explicitly approves mutation.
+Verification helper work should default to dry-run unless the user explicitly approves mutation.

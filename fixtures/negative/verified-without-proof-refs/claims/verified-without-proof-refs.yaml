@@ -1,4 +1,4 @@
-id: invalid-lifecycle-transition
+id: verified-without-proof-refs
 schema_version: "1.0"
 type: claim
 status: reviewed
@@ -6,8 +6,8 @@ created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs: []
 notes: Negative fixture.
-subject: Invalid lifecycle transition fixture
-claim: This claim attempts an invalid lifecycle transition.
+subject: Evidence-reviewed without local evidence fixture
+claim: This claim attempts source-reviewed state without local evidence.
 scope: Validator negative testing.
 evidence_refs: []
 confidence: medium
@@ -16,9 +16,9 @@ approval:
   status: reviewed
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: install-verified
-  state_reason: Invalid transition attempts to skip static proof.
-  proof_refs:
-    - record:exp-invalid-lifecycle-transition
+verification:
+  static:
+    status: verified
+    reason: Migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

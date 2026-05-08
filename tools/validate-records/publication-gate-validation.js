@@ -5,7 +5,7 @@ import { deriveClaimAssurance, assuranceIndex } from "./derived-claim-assurance.
 
 const defaultGate = {
   claims: {
-    min_assurance: "static-verified",
+    min_assurance: "static",
     required_outcome: "supports",
     scope: "planning",
     reject_on: ["rejected", "unresolved-conflict", "expired"],
@@ -87,7 +87,7 @@ function entryMeetsGate(entry, claim, gate, recordsById, records) {
     errors.push("claim is rejected/blocked");
   }
 
-  const minAssurance = claimGate.min_assurance || "static-verified";
+  const minAssurance = claimGate.min_assurance || "static";
   if (derived.level !== "blocked" && assuranceIndex(derived.level) < assuranceIndex(minAssurance)) {
     errors.push(`claim assurance ${derived.level} is below gate minimum ${minAssurance}`);
   }

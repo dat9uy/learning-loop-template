@@ -1,4 +1,4 @@
-id: product-approved-unrelated-decision
+id: product-approval-unrelated-decision
 schema_version: "1.0"
 type: claim
 status: approved
@@ -16,9 +16,10 @@ approval:
   status: approved
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: product-approved
-  state_reason: Decision does not reference this claim.
-  proof_refs:
-    - record:decision-product-approved-unrelated
+verification:
+  product:
+    status: approved
+    reason: Product approval migrated from legacy fixture.
+    decision_refs:
+      - record:decision-product-approval-unrelated
   blocked_actions: []

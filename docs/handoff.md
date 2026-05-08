@@ -2,7 +2,7 @@
 
 ## Current State
 
-This is a blank learning-loop template. It has reusable docs, schemas, validators, lifecycle helpers, a blank knowledge-pack template, empty record folders, and no inherited evidence or history.
+This is a blank learning-loop template. It has reusable docs, schemas, validators, verification helpers, a blank knowledge-pack template, empty record folders, and no inherited evidence or history.
 
 ## Start Here
 
@@ -15,7 +15,7 @@ pnpm check
 2. Read the core docs:
    - `docs/lab-model.md`
    - `docs/operator-guide.md`
-   - `docs/claim-proof-lifecycle.md`
+   - `docs/claim-verification.md`
    - `docs/knowledge-pack-contract.md`
 3. Create evidence under `records/evidence/<scope>/` before adding claims or packs.
 4. Create or update claim, risk, experiment, and decision records that cite durable local evidence or `record:` refs.
@@ -31,7 +31,7 @@ pnpm check
 
 ## Approval Boundaries
 
-Default work is read-only or metadata-only. Ask before any external command, package installation, live service call, secret/config access, raw output capture, lifecycle promotion, or product implementation.
+Default work is read-only or metadata-only. Ask before any external command, package installation, live service call, secret/config access, raw output capture, product approval, or product implementation.
 
 ## Validation Commands
 

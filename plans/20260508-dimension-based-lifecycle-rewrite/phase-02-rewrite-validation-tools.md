@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Rewrite Validation Tools"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [1]

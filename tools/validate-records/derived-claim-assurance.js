@@ -1,8 +1,7 @@
 export const assuranceOrder = [
-  "evidence-reviewed",
-  "static-verified",
-  "install-verified",
-  "runtime-verified",
+  "static",
+  "install",
+  "runtime",
 ];
 
 export function assuranceIndex(level) {
@@ -14,61 +13,35 @@ export function higherAssurance(a, b) {
   return assuranceIndex(a) > assuranceIndex(b) ? a : b;
 }
 
-function experimentSupportsClaim(experiment, claim) {
+function experimentSupportsClaim(experiment, claim, dimension) {
   const verification = experiment.verification;
   if (!verification) return false;
-  const claimRefs = verification.claim_refs || [];
-  if (!claimRefs.includes(`record:${claim.id}`)) return false;
-  return verification.to_state !== "rejected";
+  if (!(verification.claim_refs || []).includes(`record:${claim.id}`)) return false;
+  return (verification.proves || []).some((proof) => proof.dimension === dimension);
 }
 
-function experimentAssuranceLevel(experiment) {
-  if (experiment.assurance_level) return experiment.assurance_level;
-  const verification = experiment.verification;
-  if (!verification) return null;
-  const state = verification.to_state;
-  if (["evidence-reviewed", "static-verified", "install-verified", "runtime-verified"].includes(state)) {
-    return state;
-  }
-  return null;
-}
-
-function isValidSupportingExperiment(experiment, claim, scopeFilter = null) {
-  if (!experimentSupportsClaim(experiment, claim)) return false;
-  const level = experimentAssuranceLevel(experiment);
-  if (!level) return false;
-  if (scopeFilter && experiment.scope && experiment.scope !== scopeFilter) return false;
-  const humanGated = ["install-verified", "runtime-verified"].includes(level);
+function isValidSupportingExperiment(experiment, claim, dimension) {
+  if (!["reviewed", "approved"].includes(experiment.status)) return false;
+  if (!experimentSupportsClaim(experiment, claim, dimension)) return false;
+  const humanGated = ["install", "runtime"].includes(dimension);
   if (humanGated) {
-    const approval = experiment.verification?.approval_status;
-    if (approval !== "approved") return false;
+    if (experiment.verification?.approval_status !== "approved") return false;
     if (experiment.status !== "approved") return false;
   }
   return true;
 }
 
-function hasRejectingExperiment(experiments, claim) {
-  return experiments.some((exp) => {
-    if (!["approved", "reviewed"].includes(exp.status)) return false;
-    const verification = exp.verification;
-    if (!verification) return false;
-    const claimRefs = verification.claim_refs || [];
-    return claimRefs.includes(`record:${claim.id}`) && verification.to_state === "rejected";
-  });
+function hasRejectedDimension(claim) {
+  return Object.values(claim.verification || {}).some((dimension) => (
+    dimension && typeof dimension === "object" && dimension.status === "rejected"
+  ));
 }
 
 function hasRejectingDecision(decisions, claim) {
   return decisions.some((decision) => {
     if (decision.status !== "approved") return false;
-    const lifecycle = decision.lifecycle_effect;
-    if (lifecycle && lifecycle.to_state === "rejected" && (lifecycle.claim_refs || []).includes(`record:${claim.id}`)) {
-      return true;
-    }
     const effect = decision.decision_effect;
-    if (effect && effect.action === "reject" && (effect.affected_refs || []).includes(`record:${claim.id}`)) {
-      return true;
-    }
-    return false;
+    return Boolean(effect?.action === "reject" && (effect.affected_refs || []).includes(`record:${claim.id}`));
   });
 }
 
@@ -76,19 +49,19 @@ export function deriveClaimAssurance(claim, records) {
   const experiments = records.filter((r) => r.type === "experiment");
   const decisions = records.filter((r) => r.type === "decision");
 
-  if (claim.lifecycle?.state === "rejected") {
-    return { level: "blocked", reason: "claim lifecycle state is rejected" };
-  }
-
-  if (hasRejectingExperiment(experiments, claim) || hasRejectingDecision(decisions, claim)) {
-    return { level: "blocked", reason: "rejected by experiment or decision" };
+  if (hasRejectedDimension(claim) || hasRejectingDecision(decisions, claim)) {
+    return { level: "blocked", reason: "claim has rejected verification dimension" };
   }
 
   let bestLevel = null;
-  for (const experiment of experiments) {
-    if (isValidSupportingExperiment(experiment, claim)) {
-      const level = experimentAssuranceLevel(experiment);
-      if (level) bestLevel = bestLevel ? higherAssurance(bestLevel, level) : level;
+  for (const dimension of assuranceOrder) {
+    const config = claim.verification?.[dimension];
+    if (config?.status === "verified") {
+      bestLevel = bestLevel ? higherAssurance(bestLevel, dimension) : dimension;
+      continue;
+    }
+    if (experiments.some((experiment) => isValidSupportingExperiment(experiment, claim, dimension))) {
+      bestLevel = bestLevel ? higherAssurance(bestLevel, dimension) : dimension;
     }
   }
 
@@ -98,7 +71,7 @@ export function deriveClaimAssurance(claim, records) {
     return { level: "none", reason: "no sources or supporting experiments" };
   }
 
-  return { level: bestLevel, reason: `derived from supporting experiments` };
+  return { level: bestLevel, reason: "derived from supporting verification dimensions" };
 }
 
 export function validateDerivedAssurance(records) {

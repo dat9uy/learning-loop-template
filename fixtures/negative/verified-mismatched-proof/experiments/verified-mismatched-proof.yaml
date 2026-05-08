@@ -1,4 +1,4 @@
-id: exp-product-approved-without-decision
+id: exp-verified-mismatched-proof
 schema_version: "1.0"
 type: experiment
 status: approved
@@ -6,11 +6,11 @@ created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs: []
 notes: Negative fixture.
-goal: Prove product approval requires a decision record.
-hypothesis: Experiment proof cannot approve product use.
+goal: Prove skipped verification transitions fail.
+hypothesis: Evidence-reviewed claims cannot skip directly to install.
 knowledge_pack_ids: []
 method:
-  - Attempt product approval through an experiment.
+  - Attempt invalid transition.
 success_metrics:
   - Validator rejects the record.
 result: Expected failure.
@@ -20,9 +20,10 @@ observations: []
 promotion_review: []
 verification:
   claim_refs:
-    - record:product-approved-without-decision
-  from_state: runtime-verified
-  to_state: product-approved
-  output_level: metadata-only
+    - record:verified-mismatched-proof
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
   requires_human_approval: true
   approval_status: approved

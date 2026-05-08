@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refresh Learning-Loop Skill"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]

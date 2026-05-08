@@ -26,7 +26,7 @@ files:
   - capabilities.yaml
 publication_gate:
   claims:
-    min_assurance: static-verified
+    min_assurance: static
     required_outcome: supports
     scope: planning
     reject_on:

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Design Schemas"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []

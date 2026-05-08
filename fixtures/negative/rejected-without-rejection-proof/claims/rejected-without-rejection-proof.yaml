@@ -16,9 +16,9 @@ approval:
   status: rejected
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: rejected
-  state_reason: Rejection proof is not rejection-specific.
-  proof_refs:
-    - record:exp-rejected-without-rejection-proof
+verification:
+  static:
+    status: rejected
+    reason: Rejection migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

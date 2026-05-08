@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join, normalize } from "node:path";
-import { validateClaimProofLifecycle } from "./claim-proof-lifecycle-rules.js";
+import { validateClaimVerification } from "./claim-verification-rules.js";
 
 function validatePrimitive(errors, path, value, schema) {
   if (schema.const !== undefined && value !== schema.const) errors.push(`${path} must be ${schema.const}`);
@@ -43,7 +43,7 @@ export function validateRecords(records, schemas, packStatuses, root, allowDisal
     validateExperimentPacks(record, errors, packStatuses);
   }
   validateRecordReferences(records, ids, errors);
-  errors.push(...validateClaimProofLifecycle(records));
+  errors.push(...validateClaimVerification(records));
   return errors;
 }
 

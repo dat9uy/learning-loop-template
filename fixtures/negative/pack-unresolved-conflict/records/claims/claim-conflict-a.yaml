@@ -16,8 +16,9 @@ approval:
   status: reviewed
   reviewer: ""
   reviewed_at: ""
-lifecycle:
-  state: evidence-reviewed
-  state_reason: Conflict test.
-  proof_refs: []
+verification:
+  static:
+    status: claimed
+    reason: Migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Rewrite Documentation"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [1]

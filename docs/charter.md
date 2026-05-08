@@ -18,7 +18,7 @@ The template does not contain a product stack, application scaffold, database, U
 
 ## Operating Rules
 
-1. Records preserve lifecycle, proof, and evidence metadata.
+1. Records preserve verification, proof, and evidence metadata.
 2. Knowledge packs provide final curated domain truth, not product requirements.
 3. Experiments may consume only reviewed or approved packs.
 4. Product output is a proposal or no-build decision unless a later plan approves implementation.
@@ -31,4 +31,4 @@ The template does not contain a product stack, application scaffold, database, U
 - `knowledge-packs/`: domain/provider pack files with approval metadata.
 - `docs/`: project metadata and learning-loop policy docs.
 - `product/`: empty placeholder until approved implementation.
-- `tools/`: validation and lifecycle scripts.
+- `tools/`: validation and verification scripts.

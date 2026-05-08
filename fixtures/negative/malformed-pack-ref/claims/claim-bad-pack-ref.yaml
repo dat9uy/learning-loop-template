@@ -17,8 +17,9 @@ approval:
   status: draft
   reviewer: ""
   reviewed_at: ""
-lifecycle:
-  state: imported-prior
-  state_reason: Fixture only.
-  proof_refs: []
+verification:
+  static:
+    status: claimed
+    reason: Migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

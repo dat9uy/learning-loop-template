@@ -16,9 +16,10 @@ approval:
   status: rejected
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: rejected
-  state_reason: Related decision lacks rejection lifecycle effect.
-  proof_refs:
-    - record:decision-related-non-rejection
+verification:
+  static:
+    status: rejected
+    reason: Rejection migrated from legacy fixture.
+    proof_refs:
+      - record:decision-related-non-rejection
   blocked_actions: []

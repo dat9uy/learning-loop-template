@@ -11,9 +11,9 @@ Records are human-edited source files under `records/`. They describe claims, ex
 | Evidence/source material | Captures where information came from and its limits. | Preserves durable context without pretending it is verified truth. |
 | Claim record | States a candidate assertion and links sources/experiments. | Gives the loop something precise to verify, reject, or qualify. |
 | Risk record | States conditional caution, severity, confidence, and mitigation. | Prevents weak/ambiguous knowledge from becoming unsafe capability. |
-| Experiment record | Records review, verification, runtime check, build test, or rejection. | Produces assurance and outcome; this is proof in the system. |
+| Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
 | Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
-| Derived claim assurance | Projects claim strength from linked experiments. | Avoids duplicated assurance ladders on claims. |
+| Derived claim assurance | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
 | Publication gate | Defines what is enough for a pack scope. | Keeps low-trust workbench material out of consumer packs. |
 | Knowledge pack | Exposes final facts and capabilities. | Gives consumers a clean interface without internal evidence clutter. |
 
@@ -22,7 +22,7 @@ Records are human-edited source files under `records/`. They describe claims, ex
 ```text
 records/evidence/ -> durable source material
 records ledger -> claims + risks + experiments + decisions
-derived claim assurance -> effective assurance from linked experiments and decisions
+derived claim assurance -> effective assurance from verification dimensions and decisions
 publication gates -> policy for pack scope and minimum assurance
 knowledge packs -> manifest + facts + capabilities
 generated views -> disabled until model settles
@@ -31,23 +31,23 @@ generated views -> disabled until model settles
 Short version:
 
 ```text
-records/evidence -> claims + risks + experiments -> derived assurance -> decisions/gates -> pack facts/capabilities
+records/evidence -> claims + risks + experiments -> dimensions -> decisions/gates -> pack facts/capabilities
 ```
 
 ## Philosophy Rules
 
 1. Source/evidence supports claims and grounds risks; it is not proof by itself.
-2. Proof is experiment outcome plus experiment assurance, not a separate entity.
-3. `assurance_level` belongs on experiments only.
-4. Source-only state stays implicit from `source_refs`; assurance starts at `evidence-reviewed`.
-5. Claim assurance is derived from `experiment_refs`; do not duplicate it on claims.
+2. Proof is experiment outcome plus the `verification.proves` dimension, not a separate entity.
+3. Experiments use `verification.proves`; claims store dimension status, not assurance.
+4. Source-only state stays implicit from `source_refs`; verification starts at `claimed`.
+5. Claim assurance is derived from valid verification dimensions; do not duplicate it elsewhere.
 6. Risk confidence is not claim assurance.
 7. Product approval is a decision effect, not an assurance level.
 8. Decisions approve boundaries; experiments produce outputs within those boundaries.
 9. Packs are final consumable truth/capabilities, not the workbench.
 10. Pack approval is scope-limited; it does not erase blocked actions.
 
-## Lifecycle Axes
+## Verification Axes
 
 Keep these axes separate:
 
@@ -57,8 +57,9 @@ Keep these axes separate:
 | Risk status | risks | Candidate/reviewed/active/mitigated/accepted/rejected caution state. |
 | Risk confidence | risks | Credibility/usefulness of a caution. |
 | Experiment outcome | experiments | Supports, rejects, or inconclusive. |
-| Experiment assurance | experiments | Canonical assurance reached by experiment. |
-| Derived claim assurance | claims | Effective assurance from valid linked experiments. |
+| Experiment proof | experiments | Dimension and scope proved by the experiment. |
+| Claim verification dimensions | claims | Independent static/install/runtime/product statuses. |
+| Derived claim assurance | claims | Effective assurance from valid dimensions and linked experiments. |
 | Pack publication gate | knowledge packs | Required assurance/scope for publishing facts/capabilities. |
 | Decision basis | decisions | Evidence/records/experiments/packs used as rationale. |
 | Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |

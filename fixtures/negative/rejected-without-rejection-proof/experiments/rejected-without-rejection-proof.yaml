@@ -21,8 +21,8 @@ promotion_review: []
 verification:
   claim_refs:
     - record:rejected-without-rejection-proof
-  from_state: imported-prior
-  to_state: static-verified
-  output_level: docs-only
+  proves:
+    - dimension: static
+      output_level: metadata-only
   requires_human_approval: false
   approval_status: not-required

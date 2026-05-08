@@ -8,7 +8,7 @@ source_refs:
   - local:records/evidence/test/test.md
 notes: Negative fixture.
 subject: Low assurance claim
-claim: This claim is only evidence-reviewed.
+claim: This claim is only source-reviewed.
 scope: test
 evidence_refs: []
 confidence: low
@@ -17,8 +17,9 @@ approval:
   status: reviewed
   reviewer: ""
   reviewed_at: ""
-lifecycle:
-  state: evidence-reviewed
-  state_reason: Only reviewed, not verified.
-  proof_refs: []
+verification:
+  static:
+    status: claimed
+    reason: Migrated from legacy fixture.
+    proof_refs: []
   blocked_actions: []

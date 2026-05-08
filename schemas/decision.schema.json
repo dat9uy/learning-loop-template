@@ -18,14 +18,6 @@
     "alternatives": { "type": "array", "items": { "type": "string" } },
     "tradeoffs": { "type": "array", "items": { "type": "string" } },
     "supersedes": { "type": "array", "items": { "type": "string" } },
-    "lifecycle_effect": {
-      "type": "object",
-      "required": ["claim_refs", "to_state"],
-      "properties": {
-        "claim_refs": { "type": "array", "items": { "type": "string" } },
-        "to_state": { "enum": ["product-approved", "rejected"] }
-      }
-    },
     "decision_effect": {
       "type": "object",
       "required": ["action", "scope", "affected_refs"],

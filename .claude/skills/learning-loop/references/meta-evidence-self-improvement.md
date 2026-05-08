@@ -13,6 +13,8 @@ Use meta flow for:
 - runtime envelope pattern changes
 - documentation boundaries for the learning loop itself
 - agent handoff/prompt standards
+- prompts or docs that refer to old claim state names instead of verification dimensions
+- prompts that conflate sandbox and production verification scope
 
 Do not use meta flow for domain evidence. Domain facts stay under their domain evidence scope, e.g. `records/evidence/<domain-or-source>/`.
 
@@ -96,5 +98,5 @@ Report:
 - Create or update a decision when the loop needs an explicit policy choice, deferral, approval, boundary, or revisit trigger.
 - Review existing loop risks and decisions first; update/link them instead of creating duplicates.
 - Record deferred questions with clear revisit triggers.
-- Fail closed for privacy, cleanup, authority, and lifecycle promotion uncertainty.
+- Fail closed for privacy, cleanup, authority, and verification/product approval uncertainty.
 - Keep docs domain-neutral; store domain evidence in records/evidence and packs.

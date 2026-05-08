@@ -16,9 +16,12 @@ approval:
   status: reviewed
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: runtime-verified
-  state_reason: Runtime proof lacks approval.
-  proof_refs:
-    - record:exp-runtime-without-human-approval
+verification:
+  runtime:
+    status: verified
+    scope: sandbox
+    output: metadata-only
+    reason: Migrated from legacy fixture.
+    proof_refs:
+      - record:exp-runtime-without-human-approval
   blocked_actions: []

@@ -22,7 +22,6 @@
     "product_outcome": { "type": "string" },
     "observations": { "type": "array" },
     "promotion_review": { "type": "array" },
-    "assurance_level": { "enum": ["evidence-reviewed", "static-verified", "install-verified", "runtime-verified"] },
     "scope": { "enum": ["planning", "install", "runtime", "product", "schema-improvement"] },
     "claim_refs": { "type": "array", "items": { "type": "string" } },
     "risk_refs": { "type": "array", "items": { "type": "string" } },
@@ -36,12 +35,21 @@
     },
     "verification": {
       "type": "object",
-      "required": ["claim_refs", "from_state", "to_state", "output_level", "requires_human_approval", "approval_status"],
+      "required": ["claim_refs", "proves", "requires_human_approval", "approval_status"],
       "properties": {
         "claim_refs": { "type": "array", "items": { "type": "string" } },
-        "from_state": { "enum": ["imported-prior", "evidence-reviewed", "static-verified", "install-verified", "runtime-verified", "product-approved", "rejected"] },
-        "to_state": { "enum": ["imported-prior", "evidence-reviewed", "static-verified", "install-verified", "runtime-verified", "product-approved", "rejected"] },
-        "output_level": { "enum": ["none", "docs-only", "metadata-only", "runtime-captured", "product-code"] },
+        "proves": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dimension", "output_level"],
+            "properties": {
+              "dimension": { "enum": ["static", "install", "runtime"] },
+              "scope": { "enum": ["sandbox", "production"] },
+              "output_level": { "enum": ["none", "docs-only", "metadata-only", "runtime-captured", "product-code"] }
+            }
+          }
+        },
         "requires_human_approval": { "type": "boolean" },
         "approval_status": { "enum": ["not-required", "requested", "approved", "rejected"] }
       }

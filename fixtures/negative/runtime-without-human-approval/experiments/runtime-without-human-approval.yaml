@@ -7,7 +7,7 @@ updated_at: "2000-01-01"
 source_refs: []
 notes: Negative fixture.
 goal: Prove runtime verification requires human approval.
-hypothesis: Runtime proof without approved human gating fails lifecycle validation.
+hypothesis: Runtime proof without approved human gating fails verification validation.
 knowledge_pack_ids: []
 method:
   - Attempt runtime proof without approval.
@@ -21,8 +21,9 @@ promotion_review: []
 verification:
   claim_refs:
     - record:runtime-without-human-approval
-  from_state: install-verified
-  to_state: runtime-verified
-  output_level: metadata-only
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: metadata-only
   requires_human_approval: false
   approval_status: requested

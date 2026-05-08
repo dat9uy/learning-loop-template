@@ -1,4 +1,4 @@
-id: evidence-reviewed-without-local-evidence
+id: verified-mismatched-proof
 schema_version: "1.0"
 type: claim
 status: reviewed
@@ -6,8 +6,8 @@ created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs: []
 notes: Negative fixture.
-subject: Evidence-reviewed without local evidence fixture
-claim: This claim attempts evidence-reviewed state without local evidence.
+subject: Invalid verification transition fixture
+claim: This claim attempts an invalid verification transition.
 scope: Validator negative testing.
 evidence_refs: []
 confidence: medium
@@ -16,8 +16,11 @@ approval:
   status: reviewed
   reviewer: fixture
   reviewed_at: "2000-01-01"
-lifecycle:
-  state: evidence-reviewed
-  state_reason: Missing local evidence.
-  proof_refs: []
+verification:
+  install:
+    status: verified
+    scope: production
+    reason: Migrated from legacy fixture.
+    proof_refs:
+      - record:exp-verified-mismatched-proof
   blocked_actions: []
