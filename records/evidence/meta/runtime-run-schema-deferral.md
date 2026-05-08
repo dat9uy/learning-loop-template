@@ -17,3 +17,9 @@ Track runtime experiment count and formalize a schema after at least three insta
 ## Deferral Note
 
 Update this file when additional runtime experiments run. Canonical adoption requires a decision record.
+
+## Trigger
+
+- Event class: next-runtime-experiment
+- Threshold: N=3 total runtime cases
+- Action when triggered: formalize envelope schema candidate. Open meta-experiment.

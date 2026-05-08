@@ -92,6 +92,7 @@ Report:
 
 ## Self-Improvement Decision Rules
 
+- Classify each gap by required sample count (see "Gap Classification by Sample Count" below). N=1 gaps close fast via principle adoption; N>=2 gaps defer until enough cases exist.
 - Prefer documenting a gap before adding a schema or validator.
 - Add tooling only after repeated evidence shows review burden or drift.
 - Create or update a risk when residual exposure remains after the current change.
@@ -100,3 +101,20 @@ Report:
 - Record deferred questions with clear revisit triggers.
 - Fail closed for privacy, cleanup, authority, and verification/product approval uncertainty.
 - Keep docs domain-neutral; store domain evidence in records/evidence and packs.
+
+## Gap Classification by Sample Count
+
+Meta-evidence gaps split into two classes based on what the gap requires to close:
+
+- **N=1 closeable** - gaps where the missing item is a *principle* a single case can prove. Close via meta-claim -> meta-decision (no meta-experiment needed). Example: process-side artifact ambiguity (one case shows knowledge pack is the agent-facing artifact).
+- **N>=2 deferred** - gaps where the missing item is a *schema or template*. One case is not enough to abstract the shape. Defer canonization until at least N=2 (preferably N=3) cases exist. Example: capability-schema-gap, runtime envelope schema.
+
+When opening or reviewing a meta-evidence file, classify it. Apply this informally first; promote the classification rule to a meta-claim only after a second loop iteration validates it.
+
+## Worked Example
+
+For a complete example of meta-process improvement debate captured as a brainstorm report - Q1-Q5 cascade, deferred-meta-evidence pattern with `## Trigger` recall mechanism, structural prevention via doc rules - see:
+
+`plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`
+
+This report covers: secret-injection class for runtime gates, N=1 vs N>=2 classification, evidence truth-status communication via claims-first scanning, and recall mechanism for deferred meta-evidence. It is the canonical example for future meta-process brainstorms.

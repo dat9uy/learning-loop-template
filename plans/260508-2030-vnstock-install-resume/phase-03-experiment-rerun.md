@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Experiment Rerun"
-status: pending
+status: blocked
 priority: P1
 effort: "1.5h"
 dependencies: [2]
@@ -15,7 +15,7 @@ Rerun the install experiment for `vnstock-data` using the env-var-driven install
 
 ## Requirements
 
-- Functional: new evidence file at `records/evidence/vnstock-data/experiment-install-<UTC>.md` with `validation_status: supports`, envelope fields `secret_injection_class: api-key-via-shell-env-var` and `static_dimension_consistency: matches-snapshot | diverges-from-snapshot`, and `## Supersedes` section linking to `installer-prior-notes.md`. Existing experiment-install-20260508T101723Z.md remains unchanged (read-only input, archived disproof).
+- Functional: new evidence file at `records/evidence/vnstock-data/experiment-install-<UTC>.md` with `validation_status: passed`, `claim_support: supports`, envelope fields `secret_injection_class: api-key-via-shell-env-var` and `static_dimension_consistency: matches-snapshot | diverges-from-snapshot`, and `## Supersedes` section linking to `installer-prior-notes.md`. Existing experiment-install-20260508T101723Z.md remains unchanged (read-only input, archived disproof).
 - Non-functional: agent transcript contains zero literal API key value. Substrate (temp dir, venv) is disposable. Approval gate per Runtime Validation Request Protocol must be obtained before any network/import action.
 
 ## Architecture
@@ -136,7 +136,8 @@ record_type: evidence
 capability: vnstock-data
 dimension: install
 scope: sandbox
-validation_status: supports
+validation_status: passed
+claim_support: supports
 secret_injection_class: api-key-via-shell-env-var
 static_dimension_consistency: matches-snapshot
 created: "<UTC ISO 8601>"
@@ -184,13 +185,13 @@ Before closing the phase, scan agent transcript (output buffer + saved evidence 
 
 ### 3.7 Validate
 
-Run `pnpm validate:records` and `pnpm check`. Both must pass. Validator should accept the new envelope including the new `secret_injection_class` and `static_dimension_consistency` fields if Phase 2 added them as allowed fields; if validator rejects, treat that as Phase 2 incompleteness and patch the schema before proceeding.
+Run `pnpm validate:records` and `pnpm check`. Both must pass. Validator acceptance must be tested before marking Phase 3 complete. `secret_injection_class`, `static_dimension_consistency`, and `claim_support` are evidence-envelope fields in markdown/frontmatter, not schema-backed fields from Phase 2. If validators reject them, stop and resolve the schema/policy mismatch before proceeding.
 
 ## Success Criteria
 
 - [ ] Operator-side env-var injection completed; agent inherits but never reads the value
 - [ ] Approval gate obtained before network/import action
-- [ ] New evidence file created with `validation_status: supports`, `secret_injection_class: api-key-via-shell-env-var`, `static_dimension_consistency: <matches|diverges>-snapshot`, and `## Supersedes` section
+- [ ] New evidence file created with `validation_status: passed`, `claim_support: supports`, `secret_injection_class: api-key-via-shell-env-var`, `static_dimension_consistency: <matches|diverges>-snapshot`, and `## Supersedes` section
 - [ ] Static Dimension Consistency block records actual runtime entry-class shape vs snapshot
 - [ ] Prior `experiment-install-20260508T101723Z.md` unmodified
 - [ ] `installer-prior-notes.md` not deleted (Q4 rule: trust the claims-first scan; superseded files stay on disk)
@@ -206,6 +207,6 @@ Run `pnpm validate:records` and `pnpm check`. Both must pass. Validator should a
 | Approval gate skipped under "small-step" reasoning | high | Protocol is non-negotiable; if missed, phase is invalid and must rerun |
 | `pip install vnstock_data` fails (subscriber-only package, not on public PyPI, version pinning) | medium | Capture log; if package-side, file as new disproof evidence and stop — do not workaround silently |
 | Snapshot diverges from runtime (e.g., Reference renamed in newer release) | medium | Record divergence in `static_dimension_consistency: diverges-from-snapshot`; the snapshot's own caveat says runtime wins; this becomes input for next plan iteration |
-| `secret_injection_class` or `static_dimension_consistency` field rejected by validator | medium | Phase 2 must add fields to allowed envelope schema; if rejected, patch validator first |
+| `secret_injection_class`, `static_dimension_consistency`, or `claim_support` field rejected by validator | medium | Stop and resolve the schema/policy mismatch before proceeding |
 | `Reference()` constructor requires arguments not in snapshot examples | low | Snapshot examples consistently show `Reference()` no-arg; if it errors, capture the error and treat as divergence input |
 | UTC timestamp collision with prior file | very low | New run is hours/days later; format ensures uniqueness |

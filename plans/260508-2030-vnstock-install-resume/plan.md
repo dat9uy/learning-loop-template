@@ -1,7 +1,7 @@
 ---
 title: "vnstock Install Resume"
 description: "Continuation plan that resumes the failed vnstock install knowledge encoding plan with corrected env-var-driven installer contract and locks the meta-process improvement pattern (Q1-Q5 cascade) into the learning-loop skill and operator guide."
-status: pending
+status: blocked
 priority: P1
 branch: "main"
 tags: [vnstock, install, knowledge-pack, meta-process, continuation]
@@ -22,9 +22,9 @@ Resume the install experiment blocked in `plans/260508-1545-vnstock-install-know
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Skill and Docs Reference](./phase-01-skill-and-docs-reference.md) | Pending |
-| 2 | [Procedural Setup](./phase-02-procedural-setup.md) | Pending |
-| 3 | [Experiment Rerun](./phase-03-experiment-rerun.md) | Pending |
+| 1 | [Skill and Docs Reference](./phase-01-skill-and-docs-reference.md) | Complete |
+| 2 | [Procedural Setup](./phase-02-procedural-setup.md) | Complete |
+| 3 | [Experiment Rerun](./phase-03-experiment-rerun.md) | Blocked: `VNSTOCK_API_KEY` not present in inherited agent environment |
 | 4 | [Pack Verification](./phase-04-pack-verification.md) | Pending |
 
 ## Dependencies
@@ -63,12 +63,12 @@ Failed plan: `plans/260508-1545-vnstock-install-knowledge-encoding/` (status: bl
 
 ## Success Criteria
 
-- [ ] Phase 1 complete: skill and docs reference updates landed before any other work
-- [ ] `pnpm check` passes after edits
+- [x] Phase 1 complete: skill and docs reference updates landed before any other work
+- [x] `pnpm check` passes after edits
 - [ ] Install dimension verified for `vnstock-data` claim under sandbox scope
 - [ ] New experiment evidence file with `secret_injection_class` + `static_dimension_consistency` fields AND `## Supersedes` section
-- [ ] Four new meta-evidence files exist with `## Trigger` sections
-- [ ] Four existing meta-evidence files retrofitted with `## Trigger` sections
-- [ ] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2 with Q4 E + Q5 R2 + Q6 rules)
-- [ ] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` updated
+- [x] Four new meta-evidence files exist with `## Trigger` sections
+- [x] Four existing meta-evidence files retrofitted with `## Trigger` sections
+- [x] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2 with Q4 E + Q5 R2 + Q6 rules)
+- [x] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` updated
 - [ ] Agent transcript review confirms zero literal API key value

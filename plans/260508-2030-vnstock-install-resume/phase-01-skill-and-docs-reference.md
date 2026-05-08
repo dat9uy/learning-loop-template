@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Skill and Docs Reference"
-status: pending
+status: complete
 priority: P1
 effort: "30m"
 dependencies: []
@@ -82,11 +82,11 @@ docs/operator-guide.md
 
 ## Success Criteria
 
-- [ ] Skill reference file has new "Gap Classification by Sample Count" section
-- [ ] Skill reference file has new "Worked Example" section pointing to brainstorm report
-- [ ] Skill reference file's "Self-Improvement Decision Rules" cross-references the new sections
-- [ ] Operator guide Self-Improvement Flow subsection has the worked-example pointer
-- [ ] `pnpm check` passes
+- [x] Skill reference file has new "Gap Classification by Sample Count" section
+- [x] Skill reference file has new "Worked Example" section pointing to brainstorm report
+- [x] Skill reference file's "Self-Improvement Decision Rules" cross-references the new sections
+- [x] Operator guide Self-Improvement Flow subsection has the worked-example pointer
+- [x] `pnpm check` passes
 
 ## Risk Assessment
 

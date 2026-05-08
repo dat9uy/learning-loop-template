@@ -24,3 +24,9 @@ Create an install experiment template that separates:
 ## Deferral Note
 
 Do not adopt a canonical template from this single failed case. Validate the shape against additional install experiments first.
+
+## Trigger
+
+- Event class: next-install-experiment
+- Threshold: N=2
+- Action when triggered: compare envelope shapes. If repeated fields appear, draft template candidate.

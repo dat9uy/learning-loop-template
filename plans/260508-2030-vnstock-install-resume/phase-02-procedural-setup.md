@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Procedural Setup"
-status: pending
+status: complete
 priority: P1
 effort: "1h15m"
 dependencies: [1]
@@ -135,11 +135,11 @@ Run `pnpm validate:records` and `pnpm check`. Both must pass.
 
 ## Success Criteria
 
-- [ ] Four new meta-evidence files exist with all required sections including `## Trigger`
-- [ ] Four existing meta-evidence files have backfilled `## Trigger` sections matching the table above
-- [ ] Operator guide Agent Intake Flow step 2 patched with Q4 E + Q5 R2 + Q6 rules
-- [ ] `pnpm check` passes
-- [ ] `pnpm validate:records` passes
+- [x] Four new meta-evidence files exist with all required sections including `## Trigger`
+- [x] Four existing meta-evidence files have backfilled `## Trigger` sections matching the table above
+- [x] Operator guide Agent Intake Flow step 2 patched with Q4 E + Q5 R2 + Q6 rules
+- [x] `pnpm check` passes
+- [x] `pnpm validate:records` passes
 
 ## Risk Assessment
 

@@ -17,3 +17,9 @@ Define a capability schema only after a verified pack exists. Candidate fields s
 ## Deferral Note
 
 Do not change canonical docs or schemas in this session. Adoption requires a future meta claim, experiment, and decision.
+
+## Trigger
+
+- Event class: next-pack-creation
+- Threshold: N>=3 packs verified
+- Action when triggered: draft capability schema candidate fields. Open meta-experiment to validate against verified packs.

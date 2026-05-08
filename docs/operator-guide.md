@@ -112,7 +112,7 @@ When the user asks for learning-loop work, the agent should:
    - intentional skip of required knowledge;
    - external/user-provided decision;
    - self-improvement request.
-2. Locate relevant evidence, records, decisions, experiments, and pack files.
+2. Locate relevant claims, experiments, and decisions first. Evidence files are referenced via `record_ref`, never browsed standalone for truth-status discovery (Q4 E rule). Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class and read each matched file; apply guidance and increment any sample-count thresholds (Q5 R2 rule). After claim-first orientation but before drafting experiment steps, list `records/evidence/<capability>/` end-to-end for files or subdirectories not referenced by the active claim verification block; read relevant text evidence files, skip raw/binary/generated/private artifacts unless explicitly approved, and list relevant files in the plan's "Read for context". Capability-dir scanning is for planning-context discovery; truth-status of any discovered file is still determined per the claims-first rule above (Q6 rule).
 3. Extract candidate claims and risks.
 4. Classify required verification:
    - source review;
@@ -190,6 +190,8 @@ The loop can improve itself.
 - An experiment produces runtime output under that decision boundary.
 - Self-improvement experiments may propose schema/doc changes.
 - Canonical adoption requires explicit decision approval.
+
+For a worked example of meta-process improvement debate (multi-question cascade, deferred-meta-evidence pattern, `## Trigger` recall mechanism), see `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`.
 
 ## Agent Anti-Confusion Checklist
 

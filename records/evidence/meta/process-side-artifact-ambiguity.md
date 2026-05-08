@@ -52,6 +52,12 @@ Update `docs/knowledge-pack-contract.md` to add:
 
 Canonical adoption requires a decision record. This evidence seeds that decision. Do not modify docs until the self-improvement decision is approved.
 
+## Trigger
+
+- Event class: next-agent-intake-flow-review
+- Threshold: N=1 (closeable)
+- Action when triggered: promote to meta-claim. Update operator guide step 2 to state pack is agent-facing artifact.
+
 ## Source
 
 - Brainstorm report: `plans/reports/260508-1545-vnstock-install-knowledge-encoding.md`
