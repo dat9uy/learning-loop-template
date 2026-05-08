@@ -5,7 +5,8 @@ status: blocked
 priority: P1
 branch: "main"
 tags: [vnstock, install, knowledge-pack, meta-process, continuation]
-blockedBy: []
+blockedBy:
+  - "Vendor device-limit gate blocked vnstock_data package installation during Phase 3 rerun"
 blocks: []
 created: "2026-05-08T16:10:19.658Z"
 createdBy: "ck:plan"
@@ -24,8 +25,8 @@ Resume the install experiment blocked in `plans/260508-1545-vnstock-install-know
 |-------|------|--------|
 | 1 | [Skill and Docs Reference](./phase-01-skill-and-docs-reference.md) | Complete |
 | 2 | [Procedural Setup](./phase-02-procedural-setup.md) | Complete |
-| 3 | [Experiment Rerun](./phase-03-experiment-rerun.md) | Blocked: `VNSTOCK_API_KEY` not present in inherited agent environment |
-| 4 | [Pack Verification](./phase-04-pack-verification.md) | Pending |
+| 3 | [Experiment Rerun](./phase-03-experiment-rerun.md) | Blocked (env-var key path confirmed; vendor device-limit gate blocked package install/import) |
+| 4 | [Pack Verification](./phase-04-pack-verification.md) | Blocked (depends on successful install evidence; current Phase 3 evidence does not support install) |
 
 ## Dependencies
 
@@ -66,9 +67,9 @@ Failed plan: `plans/260508-1545-vnstock-install-knowledge-encoding/` (status: bl
 - [x] Phase 1 complete: skill and docs reference updates landed before any other work
 - [x] `pnpm check` passes after edits
 - [ ] Install dimension verified for `vnstock-data` claim under sandbox scope
-- [ ] New experiment evidence file with `secret_injection_class` + `static_dimension_consistency` fields AND `## Supersedes` section
+- [x] New experiment evidence file with `secret_injection_class` + `static_dimension_consistency` fields AND `## Supersedes` section
 - [x] Four new meta-evidence files exist with `## Trigger` sections
 - [x] Four existing meta-evidence files retrofitted with `## Trigger` sections
 - [x] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2 with Q4 E + Q5 R2 + Q6 rules)
 - [x] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` updated
-- [ ] Agent transcript review confirms zero literal API key value
+- [x] Agent transcript review confirms zero literal API key value in agent/tool output; temp-local config files containing the key were deleted with substrate

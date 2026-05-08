@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Pack Verification"
-status: pending
+status: blocked
 priority: P1
 effort: "45m"
 dependencies: [3]
@@ -11,26 +11,31 @@ dependencies: [3]
 
 ## Overview
 
-Promote the `vnstock-data` knowledge pack from draft to verified now that the install dimension has supporting evidence under sandbox scope. Update the claim's install-dimension verification record to cite the new evidence file. Run final validators and confirm transcript audit. This phase produces the agent-facing artifact (per `process-side-artifact-ambiguity.md` meta-evidence) that future agents will consume when asked about vnstock-data capability.
+Pack verification is blocked. Phase 3 produced failed evidence, not supporting install evidence: `records/evidence/vnstock-data/experiment-install-20260508T171112Z.md` records a vendor device-limit stop before `vnstock_data` import verification. Do not promote the `vnstock-data` knowledge pack or mark the install dimension verified until a later rerun produces `validation_status: passed` and `claim_support: supports`.
 
 ## Requirements
 
-- Functional: claim file's install-dimension verification block updated with `record_ref` to the new evidence; pack `capabilities.yaml` (or equivalent) marked verified for install dimension under sandbox scope; `pnpm check` and `pnpm validate:records` pass; final transcript audit confirms zero literal API key.
+- Functional: no claim or pack promotion from the failed Phase 3 evidence. A future rerun must first produce supporting install evidence, then this phase can be revised to update the claim verification block and pack manifest.
 - Non-functional: no schema additions (Phase 2 + Phase 3 already covered new fields). No changes to runtime/static/product dimensions — those remain unverified or out-of-scope.
 
 ## Architecture
 
 ```
+records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+└── validation_status: failed
+└── claim_support: does-not-support
+└── blocker: vendor device-limit gate
+
 records/claims/vnstock-data.md (or equivalent)
 └── verification block
     └── install:
         scope: sandbox
-        status: verified
-        evidence: record_ref → records/evidence/vnstock-data/experiment-install-<UTC>.md
+        status: remains unverified / not promoted from failed evidence
+        evidence: no supporting Phase 3 record_ref yet
 
 knowledge-packs/vnstock-data/
 └── capabilities.yaml (or pack manifest)
-    └── install: verified (sandbox)
+    └── install: remains unverified / blocked
 
 Phase 2 meta-evidence trigger fires:
 └── install-experiment-template-gap.md
@@ -61,21 +66,17 @@ ls knowledge-packs/ | grep -i vnstock
 
 Read both files end-to-end before editing.
 
-### 4.2 Update claim verification block
+### 4.2 Block claim verification update
 
-In the claim file, locate the install-dimension verification entry. Update:
-- `status` → `verified`
-- `scope` → `sandbox` (do not claim production)
-- `evidence` (or `record_ref`) → path to Phase 3 evidence file
-- preserve any existing fields (date, validator, etc.)
+Do not set the install dimension to `verified` from `experiment-install-20260508T171112Z.md`.
 
-If the claim still cites `installer-prior-notes.md` directly, remove that citation — the new evidence's `## Supersedes` section is the authoritative pointer (per Q4 E rule). The `installer-prior-notes.md` file itself stays on disk untouched.
+If updating the claim file, only record the failed evidence as a blocking/disproof reference if the repository has an established field for failed proof records. Do not remove historical references solely to make promotion possible. The `installer-prior-notes.md` file itself stays on disk untouched.
 
-### 4.3 Promote pack manifest
+### 4.3 Block pack manifest promotion
 
-In the pack manifest (`capabilities.yaml` or equivalent), update install-dimension entry to verified-under-sandbox. If the manifest schema is informal (per `capability-schema-gap.md` meta-evidence), use the same field shape as any existing verified capability in the repo; if no such precedent exists, mirror the claim file's verification block format and note the choice in the commit message.
+Do not update install-dimension entry to verified-under-sandbox from failed evidence.
 
-Do NOT promote runtime, static, or product dimensions. Those remain at their prior status.
+Runtime, static, and product dimensions also remain at their prior status.
 
 ### 4.4 Run validators
 
@@ -86,7 +87,7 @@ pnpm check
 
 Both must pass. If either fails, fix and rerun before declaring the phase complete. Common failure modes: stale frontmatter, broken record_ref, missing required field on the new envelope.
 
-If a `pnpm verify:claim` (or similar dimension-specific verification command) exists, run it for the install dimension of vnstock-data:
+If a `pnpm verify:claim` command is used, it must preserve the install dimension as unverified or rejected/blocked per the repository's established semantics. Do not run an apply command that marks install verified.
 
 ```bash
 pnpm verify:claim vnstock-data --dimension install --scope sandbox
@@ -111,17 +112,17 @@ This step is optional within Phase 4; if skipped, leave the trigger for the next
 
 Create a focused commit covering:
 - new evidence file (Phase 3)
-- claim verification update
-- pack manifest update
+- plan updates showing Phase 3 and Phase 4 blocked
+- any claim/pack updates only if they preserve the blocked/unverified status
 - any optional addendum from 4.6
 
 Conventional commit format. No AI references. Include "transcript audit: 0 occurrences" in the body.
 
 ## Success Criteria
 
-- [ ] Claim file install-dimension block: `status: verified`, `scope: sandbox`, evidence record_ref points to Phase 3 file
-- [ ] Pack manifest: install dimension marked verified under sandbox
-- [ ] `installer-prior-notes.md` citation removed from claim (file itself unchanged on disk)
+- [ ] Claim file install-dimension block remains unverified/blocked; no failed evidence is used as support
+- [ ] Pack manifest install dimension remains unverified/blocked
+- [ ] `installer-prior-notes.md` file unchanged on disk
 - [ ] `pnpm validate:records` passes
 - [ ] `pnpm check` passes
 - [ ] `pnpm verify:claim` passes (if command exists)
