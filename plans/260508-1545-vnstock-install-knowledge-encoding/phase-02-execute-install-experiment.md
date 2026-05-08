@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Execute Install Experiment"
-status: pending
+status: blocked
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -97,16 +97,22 @@ records/evidence/vnstock-data/
 
 ## Success Criteria
 
-- [ ] Human approval obtained before execution
+- [x] Human approval obtained before execution
 - [ ] Temp venv created outside repo
-- [ ] Installer `.run` file downloads successfully
+- [x] Installer `.run` file downloads successfully
 - [ ] Installer options inspected and verified (`--non-interactive`, `--api-key`, `--venv-path`, `--language`)
 - [ ] Installer executes successfully with `--non-interactive`
 - [ ] `import vnstock` succeeds in installer-created venv
-- [ ] Metadata captured (allowed outputs only)
-- [ ] Temp directory deleted
-- [ ] Evidence envelope written with all required fields
-- [ ] No credentials, config contents, or raw data captured
+- [x] Metadata captured (allowed outputs only)
+- [x] Temp directory deleted
+- [x] Evidence envelope written with all required fields
+- [x] No credentials, config contents, or raw data captured
+
+## Blocker
+
+The current installer did not match the planned noninteractive contract. Archive-level options were not exposed, extracted entrypoint execution required environment-variable configuration, and the install proof did not complete. See `records/evidence/vnstock-data/experiment-install-20260508T101723Z.md`.
+
+Validation success means the blocked experiment record and evidence envelope satisfy current repository rules. It does not mean the draft knowledge pack is ready for publication.
 
 ## Risk Assessment
 

@@ -1,0 +1,28 @@
+id: vnstock-data
+domain: vnstock
+status: draft
+version: 0.1.0
+summary: Draft vnstock install knowledge pack. Publication is blocked until sandbox install verification succeeds.
+approval:
+  reviewer: ""
+  reviewed_at: ""
+  status: draft
+pack_ref: pack:vnstock-data
+files:
+  - manifest.yaml
+  - facts.yaml
+  - capabilities.yaml
+publication_gate:
+  claims:
+    min_assurance: install
+    required_outcome: supports
+    scope: sandbox
+    reject_on:
+      - rejected
+      - unresolved-conflict
+      - expired
+  risks:
+    exposure: reviewed-actionable-scope-relevant
+  decisions:
+    required_effect: approve
+    scope: install

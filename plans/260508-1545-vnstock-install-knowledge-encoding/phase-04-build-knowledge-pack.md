@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Build Knowledge Pack"
-status: pending
+status: blocked
 priority: P1
 effort: "30m"
 dependencies: [3]
@@ -108,12 +108,18 @@ knowledge-packs/
 
 ## Success Criteria
 
-- [ ] Manifest created with correct publication gate
-- [ ] Facts cite `record_ref` not evidence refs
+- [x] Manifest created with correct publication gate
+- [x] Facts cite `record_ref` not evidence refs
 - [ ] Capabilities describe agent-runnable methods
 - [ ] Pack status is approved
-- [ ] `pnpm validate:records` passes
+- [x] `pnpm validate:records` passes
 - [ ] `pnpm check` passes
+
+## Blocker
+
+The pack remains `draft` with empty facts and capabilities because publishing an approved install capability would overstate the failed experiment.
+
+Current validators permit an empty draft pack. Passing validation is not publication readiness.
 
 ## Risk Assessment
 

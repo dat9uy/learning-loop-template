@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Setup Records"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: []
@@ -63,10 +63,10 @@ records/
 
 ## Success Criteria
 
-- [ ] Risk record created and validates
-- [ ] Claim record created and validates
-- [ ] `pnpm validate:records` passes
-- [ ] Claim `install` dimension is `claimed` (not verified yet — experiment in phase 2 will prove it)
+- [x] Risk record created and validates
+- [x] Claim record created and validates
+- [x] `pnpm validate:records` passes
+- [x] Claim `install` dimension is `claimed` (not verified yet — experiment in phase 2 will prove it)
 
 ## Risk Assessment
 

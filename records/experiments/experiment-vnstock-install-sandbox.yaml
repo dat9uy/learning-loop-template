@@ -1,0 +1,71 @@
+id: experiment-vnstock-install-sandbox
+schema_version: "1.0"
+type: experiment
+status: reviewed
+created_at: "2026-05-08"
+updated_at: "2026-05-08"
+source_refs:
+  - local:records/evidence/vnstock-data/installer-prior-notes.md
+  - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
+scope: install
+output_level: metadata-only
+goal: Verify vnstock can be installed and imported in sandbox
+hypothesis: vnstock installs successfully by downloading and executing the official Makeself .run installer in a temp directory
+knowledge_pack_ids: []
+method:
+  - download-installer
+  - inspect-installer-options
+  - extract-makeself-archive
+  - execute-installer
+  - verify-import
+success_metrics:
+  - install-exit-code-zero
+  - import-succeeds
+  - metadata-captured
+result: does-not-support
+agent_outcome: install not verified
+product_outcome: none
+observations:
+  - Archive download and Makeself integrity check succeeded.
+  - Archive wrapper did not expose the planned noninteractive application options.
+  - Extracted Python installer expects VNSTOCK_API_KEY from the environment.
+  - Prior note about pre-existing API key at ~/.vnstock/user.json was not supported by the current installer.
+promotion_review:
+  - Do not promote install claim to verified.
+  - Do not publish an approved knowledge pack until a corrected install path is proven.
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - import-verification
+    - module-symbol-list
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
+approval:
+  required: true
+  status: approved
+  gate: install-import
+  output_level: metadata-only
+  approved_command_class: download-installer-run + makeself-exec + temp-venv-install
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs

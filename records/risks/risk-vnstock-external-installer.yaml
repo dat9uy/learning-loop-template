@@ -1,0 +1,22 @@
+id: risk-vnstock-external-installer
+schema_version: "1.0"
+type: risk
+status: active
+created_at: "2026-05-08"
+updated_at: "2026-05-08"
+source_refs:
+  - local:records/evidence/vnstock-data/installer-prior-notes.md
+risk_statement: External Makeself .run installer download from vnstocks.com during vnstock install
+category: security
+severity: medium
+likelihood: high
+confidence: high
+mitigation:
+  blocked_actions:
+    - credential-capture
+    - raw-data-export
+    - live-provider-calls
+  required_gates:
+    - human-approval
+    - temp-directory
+    - metadata-only-output

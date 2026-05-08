@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Validate and Capture Meta Evidence"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: [4]
@@ -67,11 +67,15 @@ records/evidence/meta/
 
 ## Success Criteria
 
-- [ ] `pnpm check` passes
-- [ ] End-to-end chain verified manually
-- [ ] All 4 meta evidence files exist
-- [ ] Meta evidence files cite the vnstock experiment as source
-- [ ] No canonical docs/schema changes made (deferred to self-improvement cycle)
+- [x] `pnpm check` passes
+- [x] End-to-end chain verified manually
+- [x] All 4 meta evidence files exist
+- [x] Meta evidence files cite the vnstock experiment as source
+- [x] No canonical docs/schema changes made (deferred to self-improvement cycle)
+
+## Outcome
+
+Final validation covers the truthful blocked state rather than the originally expected approved install chain.
 
 ## Risk Assessment
 

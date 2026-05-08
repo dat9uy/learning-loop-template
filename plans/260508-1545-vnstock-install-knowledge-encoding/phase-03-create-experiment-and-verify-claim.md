@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Create Experiment and Verify Claim"
-status: pending
+status: blocked
 priority: P1
 effort: "30m"
 dependencies: [2]
@@ -71,13 +71,17 @@ records/
 
 ## Success Criteria
 
-- [ ] Experiment record created and validates
+- [x] Experiment record created and validates
 - [ ] Experiment has `verification.proves` with dimension install, scope sandbox
 - [ ] Experiment has `requires_human_approval: true` and `approval_status: approved`
 - [ ] Claim updated: install.status = verified
 - [ ] Claim install.proof_refs includes experiment record
-- [ ] `pnpm validate:records` passes
+- [x] `pnpm validate:records` passes
 - [ ] Validation confirms matching experiment proves dimension (per `claim-verification-rules.js`)
+
+## Blocker
+
+The experiment result was `does-not-support`, so the claim was intentionally left at `install.status: claimed` and no proof refs were attached.
 
 ## Risk Assessment
 

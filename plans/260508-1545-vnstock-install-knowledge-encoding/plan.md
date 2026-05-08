@@ -1,7 +1,7 @@
 ---
 title: "vnstock Install Knowledge Encoding"
-description: "Encode verified vnstock install method into the learning loop via claim, experiment, and knowledge pack. Capture meta-observations for future loop improvement."
-status: pending
+description: "Capture the blocked vnstock install experiment outcome in the learning loop via claim, experiment, and draft knowledge-pack records. Preserve meta-observations for future loop improvement."
+status: blocked
 priority: P1
 branch: "main"
 tags: [vnstock, install, knowledge-pack, experiment]
@@ -16,7 +16,7 @@ source: skill
 
 ## Overview
 
-Encode the verified vnstock install method so future cleared-context agents can install without re-exploring, and the learning loop treats this as settled knowledge. Non-standard install (download Makeself .run installer from vnstocks.com, execute with --non-interactive, installer reads pre-existing API key from ~/.vnstock/user.json) requires an approved install experiment in a temp directory with metadata-only output.
+Encode the vnstock install investigation so future cleared-context agents have an accurate record of the blocked outcome instead of a false verified chain. The attempted non-standard install path (download Makeself .run installer from vnstocks.com, execute with --non-interactive, installer reads pre-existing API key from ~/.vnstock/user.json) was not fully verified; the install experiment remains the source of truth.
 
 Meta-loop improvements are deferred (Option A). Observations are captured as evidence during implementation for a future self-improvement cycle.
 
@@ -24,11 +24,11 @@ Meta-loop improvements are deferred (Option A). Observations are captured as evi
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Setup Records](./phase-01-setup-records.md) | Pending |
-| 2 | [Execute Install Experiment](./phase-02-execute-install-experiment.md) | Pending |
-| 3 | [Create Experiment and Verify Claim](./phase-03-create-experiment-and-verify-claim.md) | Pending |
-| 4 | [Build Knowledge Pack](./phase-04-build-knowledge-pack.md) | Pending |
-| 5 | [Validate and Capture Meta Evidence](./phase-05-validate-and-capture-meta-evidence.md) | Pending |
+| 1 | [Setup Records](./phase-01-setup-records.md) | Completed |
+| 2 | [Execute Install Experiment](./phase-02-execute-install-experiment.md) | Blocked |
+| 3 | [Create Experiment and Verify Claim](./phase-03-create-experiment-and-verify-claim.md) | Blocked |
+| 4 | [Build Knowledge Pack](./phase-04-build-knowledge-pack.md) | Blocked |
+| 5 | [Validate and Capture Meta Evidence](./phase-05-validate-and-capture-meta-evidence.md) | Completed |
 
 ## Dependencies
 
@@ -55,13 +55,18 @@ Phase 4 (Build Pack)
 
 ## Success Criteria
 
-- [ ] `pnpm validate:records` passes with all new records
-- [ ] Install experiment executed with approved human gate
-- [ ] Temp directory created and deleted
-- [ ] Evidence envelope captures allowed metadata only
-- [ ] Knowledge pack `vnstock-data` created with manifest, facts, capabilities
-- [ ] Future agent reading pack knows install steps without re-exploring
-- [ ] Meta evidence files created in `records/evidence/meta/`
+- [x] `pnpm validate:records` passes with all new records
+- [x] Install experiment executed with approved human gate
+- [x] Temp directory created and deleted
+- [x] Evidence envelope captures allowed metadata only
+- [x] Blocked outcome recorded in phase files and evidence
+- [x] Validation success limited to record/schema checks, not publication readiness
+- [x] Meta evidence files created in `records/evidence/meta/`
+- [ ] Future agent reading pack can treat the install as verified
+
+## Blocked Outcome
+
+The install experiment disproved the planned verified chain. The current installer did not expose the expected archive-level noninteractive flags and did not read the API key from the prior `~/.vnstock/user.json` assumption. The pack is therefore intentionally left as a draft until a corrected install procedure is proven.
 
 ## Source
 
