@@ -1,7 +1,7 @@
 ---
 title: "vnstock Install Resume"
 description: "Continuation plan that resumes the failed vnstock install knowledge encoding plan with corrected env-var-driven installer contract and locks the meta-process improvement pattern (Q1-Q5 cascade) into the learning-loop skill and operator guide."
-status: blocked
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, install, knowledge-pack, meta-process, continuation]
@@ -73,3 +73,9 @@ Failed plan: `plans/260508-1545-vnstock-install-knowledge-encoding/` (status: bl
 - [x] `docs/operator-guide.md` patched in two subsections (Self-Improvement Flow + Agent Intake Flow step 2 with Q4 E + Q5 R2 + Q6 rules)
 - [x] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` updated
 - [x] Agent transcript review confirms zero literal API key value in agent/tool output; temp-local config files containing the key were deleted with substrate
+
+## Reviews
+
+- [Review 2026-05-09 — record-layer gaps and follow-up scope](../reports/review-20260509-vnstock-resume-record-layer-gaps.md): retrospective on Phase 3's blocked experimental outcome. Surfaces 11 gaps, 9 decisions, 14 open items. Defines anti-patterns for the next-context agent. The follow-up investigation (operator claim, 2-sandbox falsification, record-layer migration) lives in a new plan, not this one.
+
+Plan-level `status: completed` reflects `ck:project-management` lifecycle (work was performed and reviewed). Experiment-level outcome remains `blocked` (vendor device-limit gate stopped package install before import verification); this is captured in `blockedBy` above and in the per-phase status fields. Plan-status and experiment-status are orthogonal axes; do not conflate them.
