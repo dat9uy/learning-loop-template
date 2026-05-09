@@ -21,6 +21,10 @@ pnpm check
 4. Create or update claim, risk, experiment, and decision records that cite durable local evidence or `record:` refs.
 5. Curate `knowledge-packs/_template/` into a real pack only after the supporting records are reviewed.
 
+## Capability Runtime Experiments
+
+To test whether a library's API returns usable data before product implementation, create standalone feasibility scripts under `product/capabilities/<scope>/`. These scripts are runtime experiment substrate. See `docs/operator-guide.md` → "Capability Runtime Experiment" for the full protocol.
+
 ## Empty By Design
 
 - `records/` contains only directory keepers.

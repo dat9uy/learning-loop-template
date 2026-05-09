@@ -80,6 +80,8 @@ Runtime proof alone never approves product use.
 
 Runtime dimensions declare output as `metadata-only`, `sample-output`, or `runtime-captured`. Proof records must keep durable evidence curated and safe. Temporary install/runtime substrate stays outside the repo and must be deleted after metadata capture.
 
+**Exception: Capability scripts.** Standalone feasibility scripts under `product/capabilities/<scope>/` are durable executable substrate. They are not temp files; they are reusable probes that test API-return-data runtime and share the product's environment. Experiment records may cite them directly as proof substrate. Capability output (sample data, schema shapes) is captured into the experiment's evidence envelope, not committed as raw data.
+
 ## Forbidden Shortcuts
 
 Verification never approves these by implication:

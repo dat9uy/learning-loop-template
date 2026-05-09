@@ -31,8 +31,10 @@ generated views -> disabled until model settles
 Short version:
 
 ```text
-records/evidence -> claims + risks + experiments -> dimensions -> decisions/gates -> pack facts/capabilities
+records/evidence -> claims + risks + experiments -> dimensions -> capability scripts (product/capabilities/) -> decisions/gates -> pack facts/capabilities
 ```
+
+Capability scripts are standalone feasibility probes that test API-return-data runtime. They live in `product/` before product approval because they are not product implementations.
 
 ## Philosophy Rules
 

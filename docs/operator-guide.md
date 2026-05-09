@@ -145,6 +145,19 @@ When user asks to build product/API/tool from a pack or library:
 - Required decisions approve product/build scope, output policy, and blocked actions.
 - Pack capabilities must say what consumers may design, generate, run, call, store, and deploy.
 
+### Capability Runtime Experiment
+
+When user asks to create capabilities (standalone feasibility scripts) for a library or SDK:
+
+- Capabilities are standalone scripts under `product/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
+- Capabilities are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
+- Capabilities verify the `runtime` dimension of a claim. The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
+- The capability scripts are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
+- Capabilities may live in `product/` before product approval because they are feasibility probes, not product implementations.
+- **Environment model:** Capabilities share a persistent dependency environment with the future product. The environment root is `product/` (language-specific: `product/node_modules/` for TS/JS, `product/.venv/` for Python, `product/vendor/` for Go, etc.). Capability scripts run against this environment, not a disposable temp install. Future product code (e.g., a service under `product/src/`) uses the same environment and the same library installation.
+- This shared environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device.
+- Required experiment steps: create capability scripts, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update claim `runtime` dimension to `verified`.
+
 ### Intentional Skip Pattern
 
 When user wants to skip a required claim:
