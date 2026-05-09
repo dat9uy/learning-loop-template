@@ -25,3 +25,7 @@ Q4 E governs truth-status discovery: orient through claims, not standalone evide
 ## Deferral
 
 Adopt informally now. Promote to a meta-claim if a second capability experiment confirms the rule's value.
+
+## Superseded By
+
+- `docs/operator-guide.md` Agent Intake Flow step 2 (commit `4e42853`) - The Q6 capability-directory scan rule has been canonized at the operator-guide level ahead of the original N=2 deferral plan. This evidence remains as the rationale and motivating-case source.

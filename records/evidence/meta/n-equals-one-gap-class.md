@@ -25,3 +25,7 @@ Meta-evidence gaps split by sample-count requirement. Some gaps are single-insta
 ## Deferral
 
 This remains a heuristic. Promote it to a meta-claim only if a second loop iteration confirms the split holds.
+
+## Superseded By
+
+- `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` "Gap Classification by Sample Count" (commit `4e42853`) - The N=1 vs N>=2 classification rule has been canonized in the learning-loop skill reference. This evidence remains as the rationale and example source. Promotion to a meta-claim is still pending second-loop confirmation per the original deferral.

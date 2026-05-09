@@ -31,3 +31,10 @@ Evidence files do not self-advertise truth status. `records/evidence/vnstock-dat
 ## Deferral
 
 The structural rule is claim-first scanning plus `## Supersedes` in disproving evidence. A schema or tooling choice is premature until repeated disproof cases or a direct-browse failure prove the need.
+
+## Superseded By
+
+- `docs/operator-guide.md` Agent Intake Flow step 2 (commit `4e42853`) - Claims-first scanning for evidence truth-status is canon at the operator-guide level.
+- `records/evidence/vnstock-data/experiment-install-20260508T171112Z.md` `## Supersedes` block - The disproving-evidence pattern is in active use for vnstock-data installer-prior-notes.
+
+Partial only. The schema-vs-tooling debate remains deferred. `tools/list-verified/list-verified.sh` (commit `bfc9b2f`) is one run away from being a candidate computed-view: it surfaces verified-claim and supporting-evidence joins via yq frontmatter parsing but does not emit disproof or falsification state. Extending it to include disproof is gated by the original trigger above: N=2 disproof events or N=1 direct-browse failure. Currently 1 disproof event exists (`installer-prior-notes` superseded by `experiment-install-20260508T171112Z`); a second disproof event or one direct-browse failure unlocks the extension.

@@ -62,3 +62,7 @@ Canonical adoption requires a decision record. This evidence seeds that decision
 
 - Brainstorm report: `plans/reports/260508-1545-vnstock-install-knowledge-encoding.md`
 - Original evidence: `records/evidence/vnstock-data/installer-prior-notes.md`
+
+## Status Update
+
+Proposed operator-guide and knowledge-pack-contract updates are deferred. Knowledge-pack abstraction is currently out of active plan; next loop effort is converting verified claims into product-scope. Revisit this evidence when pack work re-enters the roadmap, or when a second cleared-context agent intake exposes the same ambiguity (re-meeting the original N=1 trigger).
