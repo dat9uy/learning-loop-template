@@ -2,7 +2,7 @@
 
 ## Current State
 
-This is a blank learning-loop template. It has reusable docs, schemas, validators, verification helpers, a blank knowledge-pack template, empty record folders, and no inherited evidence or history.
+This learning-loop template is active with vnstock_data as the first domain. It has reusable docs, schemas, validators, verification helpers, a knowledge-pack template, and populated record folders with evidence, claims, experiments, decisions, and risks.
 
 ## Start Here
 
@@ -19,19 +19,34 @@ pnpm check
    - `docs/knowledge-pack-contract.md`
 3. Create evidence under `records/evidence/<scope>/` before adding claims or packs.
 4. Create or update claim, risk, experiment, and decision records that cite durable local evidence or `record:` refs.
-5. Curate `knowledge-packs/_template/` into a real pack only after the supporting records are reviewed.
+5. Curate `knowledge-packs/<pack-id>/` only after the supporting records are reviewed.
 
 ## Capability Runtime Experiments
 
 To test whether a library's API returns usable data before product implementation, create standalone feasibility scripts under `product/capabilities/<scope>/`. These scripts are runtime experiment substrate. See `docs/operator-guide.md` → "Capability Runtime Experiment" for the full protocol.
 
+## Active Content
+
+| Directory | State |
+|-----------|-------|
+| `records/claims/` | Active claims (install sandbox, device limit mechanism) |
+| `records/experiments/` | Approved experiments (install, capabilities runtime) |
+| `records/decisions/` | Active decisions (convention adoption, device clearance) |
+| `records/risks/` | Active risks (external installer) |
+| `records/evidence/vnstock-data/` | Evidence capsules for vnstock domain |
+| `knowledge-packs/vnstock-data/` | Draft pack manifest |
+| `product/capabilities/vnstock-data/` | Capability feasibility scripts |
+| `plans/` | Active plans including capability runtime execution |
+| `docs/journals/` | Session journal entries |
+
 ## Empty By Design
 
-- `records/` contains only directory keepers.
-- `records/evidence/meta/` exists for loop self-improvement evidence but contains no evidence files.
-- `knowledge-packs/` contains only `_template`.
-- `product/` contains only a placeholder README.
-- `plans/`, `plans/reports/`, and `docs/journals/` are empty workflow folders.
+- `records/backlog-items/` contains only directory keepers.
+- `records/capabilities/` contains only directory keepers.
+- `records/observations/` contains only directory keepers.
+- `records/validation-gates/` contains only directory keepers.
+- `knowledge-packs/_template/` is the blank pack template.
+- `plans/templates/` is empty.
 
 ## Approval Boundaries
 
@@ -43,8 +58,3 @@ Default work is read-only or metadata-only. Ask before any external command, pac
 pnpm validate:records
 pnpm check
 ```
-
-## Unresolved Questions
-
-- Which first domain or source should seed the blank ledger?
-- What approval scope applies to the first evidence or experiment run?
