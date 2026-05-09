@@ -8,6 +8,7 @@ source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+  - record:experiment-vnstock-capabilities-20260509T174957Z
 notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance"
 subject: vnstock Python package
 claim: vnstock may be installable and importable in a sandbox environment by downloading and executing the official Makeself .run installer, but the planned noninteractive install path was not verified
@@ -39,8 +40,8 @@ verification:
   runtime:
     status: claimed
     scope: sandbox
-    output: metadata-only
-    reason: Runtime capture is limited to import metadata and top-level symbols.
+    output: runtime-captured
+    reason: Capability runtime experiment staged (experiment-vnstock-capabilities-20260509T174957Z). Execution pending on registered device.
     proof_refs: []
   product:
     status: claimed
