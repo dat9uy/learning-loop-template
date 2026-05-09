@@ -3,7 +3,7 @@ title: Review — vnstock Resume Plan Record-Layer Gaps
 date: 2026-05-09
 source: `/problem-solving` + `/ck:predict` discussion of `plans/260508-2030-vnstock-install-resume/phase-03-experiment-rerun.md` blocked outcome
 input: user observation that Phase 3 produced evidence MD only, not the "experiment YAML + evidence" pair expected
-status: review draft, decisions captured, open items deferred to a follow-up plan
+status: review v2 (post-discussion 2026-05-09); 6/6 questions resolved (Q5 by deferral); open items deferred to a follow-up plan
 ---
 
 # Review: vnstock Resume Plan Record-Layer Gaps
@@ -24,7 +24,7 @@ If you are starting a fresh-context session and have been pointed at this report
 
 - **G1–G11** — Gaps surfaced during this review. Each is a known deficiency in the loop's current state.
 - **D1–D9** — Decisions reached during the discussion. Agreements about *intent*. NOT yet reflected in repo state (see "State of the Repo at Report Authorship").
-- **O1–O14** — Open items deferred from this review to a follow-up plan. Tagged `[blocking]` or `[non-blocking]` for sequencing.
+- **O1–O15** — Open items deferred from this review to a follow-up plan. Tagged `[blocking]` or `[non-blocking]` for sequencing. `[resolved]` means the item was closed during post-review continuation.
 - **4a/4b/4c**, **7a/7b/7c** — Branchable outcomes for sequenced steps. Consult the relevant section to disambiguate.
 
 ## Origin
@@ -91,6 +91,8 @@ Naive fix (per-claim manifest in `records/experiments/` alongside per-run YAMLs)
 ### G4. `attempt_refs` field missing from claim verification block
 
 Claim verification block has `proof_refs` ("things that prove dimension X verified"). No field for "things tried for dimension X regardless of outcome". Failed runs have nowhere clean to surface from the claim. Either extend the claim schema with `attempt_refs`, or accept a semantic stretch and stuff failed runs into `proof_refs` while keeping the dimension status `claimed`.
+
+Resolved-interim (R-Q1): use the claim's existing top-level `evidence_refs` for failed/blocked runs. Per-dimension `proof_refs` stays `[]` while `status: claimed`. The `attempt_refs` schema extension is still the right long-run shape but defers to the next schema-touch event.
 
 ### G5. Evidence-MD as fallback vs experiment-YAML as target — transition path undefined
 
@@ -166,20 +168,21 @@ Marked **[blocking]** if rerun #3 cannot proceed without it; **[non-blocking]** 
 
 | ID | Item | Class |
 |----|------|-------|
-| O1 | Pick `attempt_refs` schema extension (clean) vs `proof_refs` semantic stretch (zero schema). | [blocking] for recording rerun #2 in claim |
-| O2 | Author the device-clearance decision YAML. Operator-confirmed external clearance is a hard prerequisite for both O14 (the 2-sandbox experiment) and any rerun #3. Not contingent. | [blocking] |
+| O1 | Pick `attempt_refs` schema extension (clean) vs `proof_refs` semantic stretch (zero schema). Resolved (R-Q1): defer schema extension; use top-level `evidence_refs` for run-2 in the interim. | [non-blocking; activate at next schema-touch] |
+| O2 | Author the device-clearance decision YAML. Operator-confirmed external clearance is a hard prerequisite for both O14 (the 2-sandbox experiment) and any rerun #3. Not contingent. When authored, also patch `claim-vnstock-install-sandbox.yaml`'s `notes` field with a forward pointer to the decision (R-Q2). | [blocking] |
 | O3 | Patch resume-plan phase-3 to require "create per-run experiment YAML alongside evidence MD". | [blocking] for rerun #3 |
-| O4 | Author per-run experiment YAMLs for the existing two evidence MDs (run-1 101723Z, run-2 171112Z). | [blocking] for D1/D2 to take effect |
+| O4 | Author per-run experiment YAMLs for the existing two evidence MDs (run-1 101723Z, run-2 171112Z). Per R-Q4, both YAMLs use `result: inconclusive` with a sibling free-text `result_reason` (run-1: "flag-contract-misframed"; run-2: "blocked-by-vendor-device-limit"). | [blocking] for D1/D2 to take effect |
 | O5 | Rename existing `experiment-vnstock-install-sandbox.yaml` to `-20260508T101723Z` form, update `id`, scope `source_refs` to run-1 only. | [blocking] |
 | O6 | Update claim's `evidence_refs` to include run-2 evidence MD. | [blocking] |
-| O7 | Design meta-process for evidence-MD → experiment-YAML conversion sweeps. | [non-blocking] |
+| O7 | Design meta-process for evidence-MD → experiment-YAML conversion sweeps. Per R-Q3, one workflow with two named modes: "Migration" (original capture had a hypothesis; verbatim copy) and "Structuring" (post-hoc; mark fields as such, pin `status: draft` until operator review). | [non-blocking] |
 | O8 | Add "External Operator Actions Between Reruns" docs subsection. | [non-blocking; promote at N=2] |
 | O9 | Trigger rule for "extract durable vendor-property facts at install-verified moment". | [non-blocking; activates only after install verifies] |
 | O10 | Phase success-criteria template: split "process steps performed" from "hypothesis confirmed". | [non-blocking] |
 | O11 | Add "abandoned" or "parked" status pathway for indefinitely-blocked claims/packs. | [non-blocking; activate if rerun #3 also fails] |
-| O12 | Decide whether `## Trigger` convention extends to decision YAMLs (for the device-clearance decision specifically). | [non-blocking; affects discoverability for rerun #3] |
+| O12 | Decide whether `## Trigger` convention extends to decision YAMLs (for the device-clearance decision specifically). Resolved (R-Q2): no. Decision records are pure YAML; use a one-line forward pointer in the claim's `notes` field instead (see O2). Generalized "claim → active decisions" link convention deferred to meta self-improvement plan. | [resolved] |
 | O13 | Capture operator's device-limit-mechanism claim as `records/claims/claim-vnstock-device-limit-mechanism.yaml`. Status `claimed` until O14 runs. | [blocking] for O14 to have a target |
-| O14 | Run the 2-sandbox falsification experiment back-to-back, *after* O2 clearance is confirmed and *after* the current resume plan is closed out. Clean fingerprints, no prior vnstock history, no inter-run temporal spacing. Produces two evidence MDs and two per-run experiment YAMLs (per D1). Outcome distinguishes per-fingerprint from account+OS-global metering. Also serves as the natural N=2 case for `install-experiment-template-gap.md`. | [blocking] for rerun #3 mechanism choice |
+| O14 | Run the 2-sandbox falsification experiment back-to-back, *after* O2 clearance is confirmed and *after* the current resume plan is closed out. Clean fingerprints, no prior vnstock history, no inter-run temporal spacing. Produces two evidence MDs and two per-run experiment YAMLs (per D1). Outcome distinguishes per-fingerprint from account+OS-global metering. Also serves as the natural N=2 case for `install-experiment-template-gap.md`. Per R-Q6, run as a cascade: default = fresh Docker containers (cheapest); escalate sandbox-2 to a fresh VM only if container-level result is ambiguous; escalate to fresh hardware only if VM-level still ambiguous (operator decision). If sandbox-1 hits the gate at container level, abort the cascade — clearance did not propagate. | [blocking] for rerun #3 mechanism choice |
+| O15 | Add convention to `docs/operator-guide.md` for `experiment.result`: use `supports` \| `does-not-support` \| `inconclusive`, with a sibling free-text `result_reason` for disambiguation. Per R-Q4, codify the convention before any schema enum constraint. Promote to schema enum only after N≥3 distinct experiments use the convention without strain. | [non-blocking; lands in meta self-improvement plan] |
 
 ---
 
@@ -194,15 +197,16 @@ Hard NOs derived from the decisions and gaps above. If tempted to do any of thes
 - Do NOT convert the existing run-2 evidence MD (`experiment-install-20260508T171112Z.md`) into a structured experiment YAML ad-hoc. Per D7+D8, evidence-MD-as-fallback is correct degraded-mode logging; the conversion sweep is a meta-process not yet designed (O7). Authoring per-run experiment YAMLs from the existing evidence MDs is allowed only inside the new follow-up plan, with the conversion treated as one-time migration documented in that plan's phase notes.
 - Do NOT perform the external device-clearance action on `vnstocks.com` from the agent. Per D6, this is operator-only; the decision YAML documents the operator's action, not the agent's.
 - Do NOT begin O14 (the 2-sandbox experiment) before all three prerequisites are met: O2 (clearance decision authored), operator-confirmed clearance executed externally, and the resume plan closed out.
-- Do NOT bundle O7, O8, O10, O12 into the next investigation plan. They belong in a separate self-improvement plan per Recommended Next Step 10.
+- Do NOT bundle O7, O8, O10, O15 into the next investigation plan. They belong in a separate self-improvement plan per Recommended Next Step 10. (O12 was resolved during post-review continuation; see R-Q2.)
 - Do NOT broaden the operator's claim (O13) into a generalized vendor-quota meta-claim before O14 produces N=2 evidence. The claim stays vnstock-specific (per the user's explicit direction).
+- Do NOT enum-constrain the `experiment.result` field in the upcoming follow-up plan. Per R-Q4, the convention (`supports` \| `does-not-support` \| `inconclusive`, with sibling `result_reason`) lives in operator-guide first; schema enum waits for N≥3.
 
 ---
 
 ## Recommended Next Steps (sequenced)
 
 1. **Close out the current resume plan.** Per D9, set plan-level frontmatter to `status: completed` (ck:project-management lifecycle: work was performed and reviewed). Per-phase `status: blocked` fields stay as-is — they record experimental outcome, not plan lifecycle. Do not bolt new work onto this plan; commit the terminal state and move on. All open items below belong in a new plan.
-2. Author a new follow-up plan. Scope: post-mortem record-layer fixes (O1, O3–O6) plus the device-limit investigation (O2, O13, O14). Keep small.
+2. Author a new follow-up plan. Scope: post-mortem record-layer fixes (O1 [non-blocking; include if cheap, else defer to meta self-improvement plan with O15], O3–O6) plus the device-limit investigation (O2, O13, O14). Keep small.
 3. Author O13 (operator claim record) under `records/claims/`. Status `claimed`. The 2-sandbox experiment will verify, refine, or disprove it.
 4. Author O2 (device-clearance decision YAML). Documents scope, agent role (none), blocked actions, and expected effect on the experiment that follows.
 5. Operator performs external clearance on `vnstocks.com/account?section=devices`. Confirms in-band that the prior on-host device has been removed. Agent does not perform the action and does not observe credentials.
@@ -213,7 +217,7 @@ Hard NOs derived from the decisions and gaps above. If tempted to do any of thes
    - 7c. Sandbox 1 hits gate immediately → clearance did not propagate. Do not run sandbox 2. Pivot to a vendor-mechanism evidence-gathering subplan before rerun #3 (wrong device removed, vendor cache lag, or hidden state).
 8. If rerun #3 succeeds (any path that reaches it): claim install dimension flips to `verified`. *Then* trigger O9 to extract durable vnstock facts (per-OS device-limit property, installer URL class, env-var contract, clearance-required-or-not) into a vnstock-scoped evidence note and queue pack promotion.
 9. If rerun #3 still fails for a new reason: capture as a new evidence MD, evaluate O11 (parking pathway), treat as fresh investigation.
-10. O7, O8, O10, O12 land in a separate self-improvement plan with their own approval. Not bundled with the investigation plan.
+10. O7, O8, O10, O15 land in a separate self-improvement plan with their own approval. Not bundled with the investigation plan. (O12 resolved post-review; see R-Q2.)
 
 ---
 
@@ -225,11 +229,52 @@ The discussion also confirmed the value of the `## Supersedes` mechanism (run-2 
 
 ---
 
+## Resolutions (post-review continuation, 2026-05-09)
+
+After the initial review, the operator and assistant resolved the six unresolved questions in a follow-up discussion. Five received concrete answers (R-Q1 through R-Q4, R-Q6); Q5 was resolved as a deliberate deferral (R-Q5) because it depends on a foundational scope decision that has not yet been made.
+
+### R-Q1. attempt_refs schema extension vs proof_refs semantic stretch
+
+Resolved: neither, as originally framed. Use the claim's existing top-level `evidence_refs` field for failed/blocked runs in the interim. Per-dimension `proof_refs` stays `[]` while `status: claimed`. The per-dimension `attempt_refs` schema extension is still the right long-run shape but defers to the next schema-touch event.
+
+Why: `claim.schema.json` already permits arbitrary refs at top-level `evidence_refs`. That field's semantic accommodates failed runs without abusing `proof_refs`'s "things that prove" meaning. Drops O1 from blocking to non-blocking; resolves G4 cleanly without schema thrash.
+
+### R-Q2. ## Trigger section on the device-clearance decision YAML
+
+Resolved: no. The `## Trigger` convention is for `records/evidence/meta/*.md` markdown files; decision records are pure YAML with no narrative sections. The discoverability concern is real but solved differently: when authoring the decision YAML, also patch `claim-vnstock-install-sandbox.yaml`'s `notes` field with a one-line forward pointer (`"Active operator decision: record:decision-<UTC>-vnstock-vendor-device-limit-clearance"`).
+
+Why: Q4 E rule starts the future agent at the claim. The forward-traversal claim→decision gap is real, but extending the `## Trigger` markdown convention into YAML-land is the wrong fix. Existing `notes` field, used once per active decision, fires immediately for this case. A generalized "claim → active decisions" link convention belongs in the meta self-improvement plan, not bolted on now.
+
+### R-Q3. Evidence-MD → experiment-YAML conversion: one process or two?
+
+Resolved: one workflow with two named modes — "Migration" (original capture had a hypothesis; conversion is verbatim) and "Structuring" (original capture lacked hypothesis; post-hoc structure required). Mode is a single up-front check on the original evidence MD; both modes share the output schema and the audit linkage (`source_refs` → original MD); modes differ in whether `hypothesis` and `success_metrics` are reconstructed verbatim or marked post-hoc and pinned at `status: draft` until operator review.
+
+Why: the two cases share file-touching machinery and audit shape. KISS prefers one workflow; honesty prefers a visible mode flag in the resulting YAML. Two separate workflows duplicate machinery without buying clarity.
+
+### R-Q4. `result: blocked` enum value distinct from `does-not-support`?
+
+Resolved: don't add a schema enum yet. `experiment.schema.json` line 20 leaves `result` as unconstrained `string`; the literal question presumes an enum that doesn't exist. Adopt a *convention* in operator-guide: `supports` | `does-not-support` | `inconclusive`, with a sibling free-text field `result_reason` for disambiguation. Promote to a schema enum only after N≥3 distinct experiments use the convention without strain.
+
+Why: `inconclusive` covers the necessary semantic gap (blocked-by-gate, indeterminate-on-merits, ran-out-of-disk, operator-interrupted) without proliferating special-purpose values. Convention before schema avoids early ossification. Both run-1 and run-2 retroactively earn `result: inconclusive` with distinct `result_reason` values.
+
+### R-Q5. Knowledge-pack publication preconditions and grade split
+
+Resolved: defer. No pack-grade split (`capability-claims` vs `facts-only`) is introduced; no precondition rule (install-verified or otherwise) is codified; G9 stays as an open gap; O11 stays as-is.
+
+Why: the question depends on a foundational scope decision that has not yet been made — whether "facts" and "capabilities" are concepts that belong to the learning-loop layer or to a separate product/scope layer (yet to be defined). With that scope decision not concrete, any pack-grade convention introduced now would be speculative structure that ossifies and needs unwinding later. The operator's instinct: avoid putting logic there until the underlying model is concrete.
+
+Re-open trigger: the first time a concrete pack publication candidate forces a publish-or-not decision, AND the learning-loop-vs-product scope decision for "facts" / "capabilities" is on the table. Until both conditions are met, leave the pack layer untouched in this dimension.
+
+Side-effects (deliberate non-actions): G9 ("Pack work has no exit path if install never verifies") stays as an open gap. O11 ("abandoned/parked status pathway") stays in its original `[non-blocking; activate if rerun #3 also fails]` class. Operator-guide gains no pack-grade convention.
+
+### R-Q6. "Clean OS fingerprint" definition for the 2-sandbox experiment
+
+Resolved: cascade, cheapest first. Default to fresh Docker containers (different host, different image hash, no prior vnstock layer). Define explicit escalation rules: if container-level results are ambiguous, re-run sandbox-2 in a fresh VM. If VM-level still ambiguous, escalate to fresh hardware (operator decision; effectively a question of whether the cascade is worth a second physical machine). If sandbox-1 hits the gate at container level, abort the cascade — clearance did not propagate.
+
+Why: vendor mechanism is undocumented; brute-forcing every fingerprint level burns time and hardware. Container-level isolation defeats cookie/session/most-process-state vectors; if vendor enforces below that level, the cascade exposes it without burning hardware up front. Escalation rules belong in the O14 plan, not in this report.
+
+---
+
 ## Unresolved Questions
 
-- Is `attempt_refs` worth a schema extension now, or should the resume plan accept the `proof_refs` semantic stretch as an interim and revisit at the next schema-touch event?
-- Should the decision-clearance YAML for vendor device removal carry a `## Trigger` section so a future cleared-context agent finds it before rerun #3, or is the claim's `evidence_refs` traversal enough?
-- Is the meta-process for evidence-MD → experiment-YAML conversion (O7) one process or two — separate workflows for "agent ran an experiment but logged to MD by mistake" vs "agent legitimately captured an unstructured observation that later gets structured"?
-- Does the `experiment.schema.json` need a `result: blocked` enum value distinct from `does-not-support`? Run-2 was blocked by an external gate, not disproven on the merits, but the schema currently has no way to express that distinction.
-- If install never verifies under sandbox scope, can a knowledge pack still be published with capabilities limited to static and import-not-attempted dimensions, or is sandbox-install-verified a hard precondition for any pack publication?
-- For the 2-sandbox falsification (O14), what counts as a "clean OS fingerprint" from the vendor's perspective — fresh container, fresh VM, fresh kernel, or fresh hardware? The vendor's mechanism is not documented. The experiment may need to start with the cheapest clean substrate (container) and escalate only if the gate fires there too.
+(None after post-review continuation 2026-05-09. The original Q5 was resolved by deferral; see R-Q5 above for the re-open trigger.)
