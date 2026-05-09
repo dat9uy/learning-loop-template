@@ -1,7 +1,7 @@
 ---
 title: "vnstock device-limit investigation + record-layer migration"
 description: "Post-mortem record-layer fixes for the vnstock install resume plan (per-run experiment YAMLs, claim updates) plus the device-limit mechanism investigation (operator claim, clearance decision, 2-sandbox falsification). Follows the review report's Recommended Next Steps 2-9."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, install, record-layer, device-limit, investigation]
@@ -22,9 +22,9 @@ Post-mortem record-layer fixes (O4, O5, O6) plus the device-limit mechanism inve
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Record-layer migration](./phase-01-record-layer-migration.md) | Pending |
-| 2 | [Investigation setup](./phase-02-investigation-setup.md) | Pending |
-| 3 | [2-sandbox falsification](./phase-03-2-sandbox-falsification.md) | Pending |
+| 1 | [Record-layer migration](./phase-01-record-layer-migration.md) | Completed |
+| 2 | [Investigation setup](./phase-02-investigation-setup.md) | Completed |
+| 3 | [2-sandbox falsification](./phase-03-2-sandbox-falsification.md) | Completed |
 
 ## Dependencies
 
@@ -51,14 +51,22 @@ Closed plan: `plans/260508-2030-vnstock-install-resume/` (status: completed). Do
 
 ## Success Criteria
 
-- [ ] Per-run experiment YAMLs exist for runs 1 and 2 (O4)
-- [ ] Existing experiment YAML renamed to timestamped form, scoped to run-1 (O5)
-- [ ] Claim `evidence_refs` includes run-2 evidence (O6)
-- [ ] Device-clearance decision YAML authored (O2)
-- [ ] Operator claim (device-limit mechanism) authored (O13)
-- [ ] Operator-confirmed external clearance completed
-- [ ] 2-sandbox falsification executed with evidence captured (O14)
-- [ ] Branch outcome documented (7a, 7b, or 7c)
+- [x] Per-run experiment YAMLs exist for runs 1 and 2 (O4)
+- [x] Existing experiment YAML renamed to timestamped form, scoped to run-1 (O5)
+- [x] Claim `evidence_refs` includes run-2 evidence (O6)
+- [x] Device-clearance decision YAML authored (O2)
+- [x] Operator claim (device-limit mechanism) authored (O13)
+- [x] Operator-confirmed external clearance completed
+- [x] 2-sandbox falsification executed with evidence captured (O14)
+- [x] Branch outcome documented (7a, 7b, or 7c)
+
+## Current Status
+
+- Phase 1 completed 2026-05-09.
+- Phase 2 completed after operator confirmed external clearance in-band.
+- Phase 3 completed 2026-05-09 after `VNSTOCK_API_KEY` became present in the inherited agent environment.
+- Outcome branch: 7b. Sandbox 1 registered and installed under the reported bronze tier with 1/1 Linux devices used; sandbox 2 immediately hit the account+OS-global device limit.
+- Latest validation: `pnpm validate:records` passed for record syntax/reference integrity.
 
 ## Reviews
 

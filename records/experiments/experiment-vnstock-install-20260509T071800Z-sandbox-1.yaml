@@ -1,0 +1,87 @@
+id: experiment-vnstock-install-20260509T071800Z-sandbox-1
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-09"
+updated_at: "2026-05-09"
+source_refs:
+  - local:records/evidence/vnstock-data/experiment-install-20260509T071800Z-sandbox-1.md
+scope: install
+output_level: metadata-only
+goal: Test whether a fresh Linux Docker sandbox can install vnstock_data after operator device clearance.
+hypothesis: The first clean Linux sandbox should register and install if clearance propagated and at least one Linux device slot is available.
+knowledge_pack_ids: []
+method:
+  - verify-api-key-env-present-without-printing
+  - run-fresh-docker-container
+  - download-installer
+  - extract-makeself-archive
+  - execute-installer-entrypoint-with-env-vars
+  - audit-temp-files-for-secret-material
+success_metrics:
+  - env-var-api-key-path-accepted
+  - device-registration-succeeds
+  - install-summary-reports-vnstock-data-success
+  - metadata-captured
+  - temp-root-cleaned-with-container
+result: supports
+result_reason: sandbox-1-registered-and-installed-vnstock-data
+agent_outcome: install path verified for first fresh Linux sandbox after clearance
+product_outcome: none
+observations:
+  - The official installer hash matched prior runs.
+  - Fresh Docker substrate required uv plus pandas in the disposable runner before installer device packages verified.
+  - Device registration succeeded and reported bronze tier with 1/1 devices used.
+  - vnstock_data installation summary reported success.
+  - Installer wrote API key material inside temp-local substrate, deleted with the container.
+promotion_review:
+  - Use together with sandbox-2 result; do not infer unlimited per-fingerprint metering from this run alone.
+  - Treat installer venv path behavior as observed current behavior: package venv was under HOME/.venv.
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+  - record:claim-vnstock-device-limit-mechanism
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+    - record:claim-vnstock-device-limit-mechanism
+  proves:
+    - dimension: static
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+risk_refs:
+  - record:risk-vnstock-external-installer
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - vendor-device-limit-message
+    - sanitized-installer-status-lines
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
+approval:
+  required: true
+  status: approved
+  gate: device-limit-falsification
+  output_level: metadata-only
+  approved_command_class: fresh-docker-run + download-installer-run + env-var-driven-temp-install
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs

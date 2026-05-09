@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "2-sandbox falsification"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [2]
@@ -64,11 +64,33 @@ Escalation (if container ambiguous):
 
 ## Success Criteria
 
-- [ ] Two evidence MDs exist with distinct timestamps
-- [ ] Two per-run experiment YAMLs exist with `result` per R-Q4 convention
-- [ ] Outcome branch (7a/7b/7c) documented in this phase's review section
-- [ ] No other vnstock activity occurred between the two sandbox runs
-- [ ] If 7c: abort documented, pivot subplan referenced
+- [x] Two evidence MDs exist with distinct timestamps
+- [x] Two per-run experiment YAMLs exist with `result` per R-Q4 convention
+- [x] Outcome branch (7a/7b/7c) documented in this phase's review section
+- [x] No other vnstock activity occurred between the two sandbox runs
+- [x] If 7c: abort documented, pivot subplan referenced (not applicable; 7b observed)
+
+## Historical Pre-Flight Block
+
+- Blocked earlier on 2026-05-09 during runtime pre-flight because `VNSTOCK_API_KEY` was not present in the inherited agent environment.
+- Completed operator action: prior on-host device removed at `vnstocks.com/account?section=devices`.
+- Completed in-band confirmation: operator confirmed external device clearance completed.
+- Required runtime condition: relaunch or invoke the agent from the same shell that exports `VNSTOCK_API_KEY`, without printing or pasting the key.
+- Agent must not perform clearance, log into vendor account, capture credentials, or capture account device list.
+
+## Review
+
+- Completed 2026-05-09 after `VNSTOCK_API_KEY` became present in the inherited agent environment.
+- Evidence:
+  - `records/evidence/vnstock-data/experiment-install-20260509T071800Z-sandbox-1.md`
+  - `records/evidence/vnstock-data/experiment-install-20260509T071900Z-sandbox-2.md`
+- Experiment records:
+  - `records/experiments/experiment-vnstock-install-20260509T071800Z-sandbox-1.yaml`
+  - `records/experiments/experiment-vnstock-install-20260509T071900Z-sandbox-2.yaml`
+- Outcome branch: **7b**, refined to current subscription state. Sandbox 1 registered and installed under the reported `bronze` tier with `1/1` Linux devices used. Sandbox 2, run immediately after sandbox 1 in a second fresh Docker container, hit `Device limit exceeded: Your bronze plan allows 1 device(s) per OS. You have 1 registered.`
+- Mechanism isolated: account+OS-global device metering for Linux, not unlimited per-fingerprint metering.
+- Container substrate finding: current installer required `uv` and import-verifiable dependencies for `vnai`/`vnii`; preinstalling `pandas` in the disposable runner was required before the experiment could reach vendor registration in Docker.
+- Follow-up implication: further clean-fingerprint reruns require external device clearance or a subscription/device-slot change. VM escalation is not required for this branch because the two-container result was decisive.
 
 ## Risk Assessment
 

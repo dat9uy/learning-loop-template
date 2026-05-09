@@ -1,0 +1,40 @@
+id: decision-20260509T070411Z-vnstock-vendor-device-limit-clearance
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-09"
+updated_at: "2026-05-09"
+source_refs:
+  - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+notes: Operator-side account action only; agent does not perform or observe external clearance.
+question: Should the operator clear prior vnstock devices before running the 2-sandbox device-limit falsification experiment?
+decision: Operator must clear stale vnstock devices externally before the next install verification run.
+rationale: The run-2 installer evidence reached vendor authentication but stopped at a device-limit gate; clearing stale devices is the minimum scoped mitigation before testing the mechanism.
+alternatives:
+  - Retry immediately without clearance and expect the same gate.
+  - Upgrade subscription before isolating the current limit mechanism.
+  - Abandon install verification and keep the package claim unverified.
+tradeoffs:
+  - External clearance is manual and cannot be directly verified by the agent.
+  - The follow-up experiment still may show account-and-OS-global metering after clearance.
+  - Keeping the action operator-owned avoids exposing credentials or account controls to the agent.
+supersedes: []
+decision_effect:
+  action: mitigate-risk
+  scope: install
+  affected_refs:
+    - record:claim-vnstock-install-sandbox
+    - record:claim-vnstock-device-limit-mechanism
+  boundaries:
+    allowed_actions:
+      - operator-performs-clearance
+      - operator-confirms-clearance-in-band
+      - agent-runs-post-clearance-sandbox-install-experiment-after-confirmation
+    blocked_actions:
+      - agent-performs-clearance
+      - agent-logs-into-vendor-account
+      - agent-captures-credentials
+      - agent-captures-account-device-list
+    required_gates:
+      - operator-confirms-external-device-clearance
+      - pnpm check

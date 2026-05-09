@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Record-layer migration"
-status: pending
+status: completed
 priority: P1
 effort: "45m"
 dependencies: []
@@ -51,10 +51,15 @@ records/claims/claim-vnstock-install-sandbox.yaml
 
 ## Success Criteria
 
-- [ ] `records/experiments/experiment-vnstock-install-20260508T101723Z.yaml` exists with run-1-scoped `id` and `source_refs`
-- [ ] `records/experiments/experiment-vnstock-install-20260508T171112Z.yaml` exists with run-2 evidence and `result: inconclusive`
-- [ ] Claim `evidence_refs` includes both run-1 and run-2 evidence
-- [ ] No in-place edits to the original `experiment-vnstock-install-sandbox.yaml` (renamed, not mutated)
+- [x] `records/experiments/experiment-vnstock-install-20260508T101723Z.yaml` exists with run-1-scoped `id` and `source_refs`
+- [x] `records/experiments/experiment-vnstock-install-20260508T171112Z.yaml` exists with run-2 evidence and `result: inconclusive`
+- [x] Claim `evidence_refs` includes both run-1 and run-2 evidence
+- [x] No in-place edits to the original `experiment-vnstock-install-sandbox.yaml` (renamed, not mutated)
+
+## Completion Notes
+
+- Completed 2026-05-09.
+- Validation: `pnpm check` passed.
 
 ## Risk Assessment
 

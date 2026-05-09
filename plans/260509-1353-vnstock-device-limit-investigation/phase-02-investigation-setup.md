@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Investigation setup"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [1]
@@ -52,10 +52,16 @@ records/claims/claim-vnstock-install-sandbox.yaml
 
 ## Success Criteria
 
-- [ ] Operator claim record exists under `records/claims/`
-- [ ] Decision record exists under `records/decisions/`
-- [ ] Claim `notes` field has forward pointer to decision
-- [ ] Operator confirms external clearance completed (in-band confirmation)
+- [x] Operator claim record exists under `records/claims/`
+- [x] Decision record exists under `records/decisions/`
+- [x] Claim `notes` field has forward pointer to decision
+- [x] Operator confirms external clearance completed (in-band confirmation)
+
+## Status Notes
+
+- Record setup completed 2026-05-09.
+- Operator confirmed external device clearance in-band on 2026-05-09.
+- Validation: `pnpm check` passed.
 
 ## Risk Assessment
 
