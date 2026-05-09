@@ -8,7 +8,7 @@ source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
-notes: Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance
+notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance"
 subject: vnstock Python package
 claim: vnstock may be installable and importable in a sandbox environment by downloading and executing the official Makeself .run installer, but the planned noninteractive install path was not verified
 scope: sandbox
