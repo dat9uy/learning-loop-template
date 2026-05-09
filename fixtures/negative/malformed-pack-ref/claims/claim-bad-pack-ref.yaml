@@ -5,7 +5,7 @@ status: draft
 created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs:
-  - pack:
+  - "pack:"
 notes: Negative fixture.
 subject: Malformed pack ref
 claim: This fixture has a malformed pack reference.

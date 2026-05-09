@@ -37,6 +37,7 @@ function runNegativeFixtures(packStatuses) {
     ["product-unrelated-decision", "product approved decision proof must reference claim"],
     ["rejected-without-rejection-proof", "static rejected status requires proof refs"],
     ["rejected-with-related-non-rejection-decision", "static rejected status requires matching experiment proof ref"],
+    ["invalid-plain-scalar", "Invalid plain scalar (YAML 1.2)"],
     ["invalid-risk-status", "status must be one of"],
     ["malformed-pack-ref", "malformed pack reference"],
     ["invalid-output-capture", "output_capture must be object"],
@@ -44,7 +45,16 @@ function runNegativeFixtures(packStatuses) {
   ];
   const errors = [];
   for (const [fixture, expected] of cases) {
-    const records = loadRecords(root, join(root, "fixtures", "negative", fixture));
+    let records;
+    try {
+      records = loadRecords(root, join(root, "fixtures", "negative", fixture));
+    } catch (parseError) {
+      if (parseError.message.includes(expected)) {
+        continue;
+      }
+      errors.push(`${fixture} failed with unexpected parse error: ${parseError.message}`);
+      continue;
+    }
     const result = validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures);
     if (!result.some((error) => error.includes(expected))) {
       errors.push(`${fixture} did not fail with expected message: ${expected}`);

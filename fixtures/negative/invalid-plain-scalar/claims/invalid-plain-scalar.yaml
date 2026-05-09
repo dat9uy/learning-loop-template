@@ -1,0 +1,36 @@
+id: invalid-plain-scalar
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2000-01-01"
+updated_at: "2000-01-01"
+source_refs: []
+notes: This has an invalid colon: because it is unquoted
+subject: Invalid plain scalar fixture
+claim: This fixture tests YAML 1.2 strictness.
+scope: Validator negative testing.
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: draft
+  reviewer: ""
+  reviewed_at: ""
+verification:
+  static:
+    status: claimed
+    reason: Testing plain scalar validation.
+    proof_refs: []
+  install:
+    status: claimed
+    reason: Testing plain scalar validation.
+    proof_refs: []
+  runtime:
+    status: claimed
+    reason: Testing plain scalar validation.
+    proof_refs: []
+  product:
+    status: claimed
+    reason: No product adoption decision has been made.
+    decision_refs: []
+  blocked_actions: []

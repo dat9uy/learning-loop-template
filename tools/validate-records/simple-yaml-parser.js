@@ -13,6 +13,13 @@ export function parseValue(value) {
     const inner = trimmed.slice(1, -1).trim();
     return inner ? inner.split(",").map((item) => parseValue(item.trim())) : [];
   }
+  // YAML 1.2 plain scalar strictness: colon must not be followed/preceded by whitespace or at end
+  if (/[ \t]:|:[ \t]|:$/.test(trimmed)) {
+    throw new Error(
+      `Invalid plain scalar (YAML 1.2): unquoted value contains ':' followed by whitespace, ` +
+        `whitespace before ':', or ends with ':'. Quote the value. Value: ${trimmed}`
+    );
+  }
   return trimmed;
 }
 
