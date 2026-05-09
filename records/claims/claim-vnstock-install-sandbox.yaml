@@ -3,7 +3,7 @@ schema_version: "1.0"
 type: claim
 status: approved
 created_at: "2026-05-08"
-updated_at: "2026-05-08"
+updated_at: "2026-05-09"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
@@ -31,10 +31,11 @@ verification:
     reason: Prior notes identify the installer class and expected install flow.
     proof_refs: []
   install:
-    status: claimed
+    status: verified
     scope: sandbox
-    reason: Planned install proof failed; a corrected install procedure still needs verification.
-    proof_refs: []
+    reason: Sandbox 1 (post-clearance, fresh Docker fingerprint) registered and installed vnstock_data end-to-end via the env-var-driven installer path.
+    proof_refs:
+      - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
   runtime:
     status: claimed
     scope: sandbox

@@ -3,7 +3,7 @@ title: Review — vnstock Resume Plan Record-Layer Gaps
 date: 2026-05-09
 source: `/problem-solving` + `/ck:predict` discussion of `plans/260508-2030-vnstock-install-resume/phase-03-experiment-rerun.md` blocked outcome
 input: user observation that Phase 3 produced evidence MD only, not the "experiment YAML + evidence" pair expected
-status: review v2 (post-discussion 2026-05-09); 6/6 questions resolved (Q5 by deferral); open items deferred to a follow-up plan
+status: review v3 (post-execution 2026-05-09); 6/6 questions resolved; investigation plan completed (branch 7b); blocking open items resolved; new observations surfaced for operator review
 ---
 
 # Review: vnstock Resume Plan Record-Layer Gaps
@@ -17,8 +17,9 @@ If you are starting a fresh-context session and have been pointed at this report
 3. Read `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`. Q1–Q6 from that brainstorm are already decided; do not re-debate.
 4. Read `records/evidence/vnstock-data/experiment-install-20260508T101723Z.md` (run #1) and `records/evidence/vnstock-data/experiment-install-20260508T171112Z.md` (run #2). Per D1, these are the two evidence files the per-run YAML migration covers.
 5. Read `docs/operator-guide.md` Agent Intake Flow + Runtime Validation Request Protocol. The flow has not changed; do not re-derive it.
-6. Read the "Anti-Patterns" section below before drafting any tool call.
-7. Only then start step 1 of "Recommended Next Steps".
+6. Read `plans/260509-1353-vnstock-device-limit-investigation/plan.md` and its `phase-03-2-sandbox-falsification.md` review section, plus `experiment-install-20260509T071800Z-sandbox-1.md` and `experiment-install-20260509T071900Z-sandbox-2.md`. Branch 7b is the executed outcome (account+OS-global metering at 1 Linux device under bronze tier).
+7. Read the "Anti-Patterns" section below before drafting any tool call. Note: anti-patterns were authored before execution; the Post-Execution Status section identifies which still apply.
+8. Only then start step 1 of "Recommended Next Steps", consulting the Post-Execution Status section to skip what is already done.
 
 ## ID Conventions
 
@@ -70,7 +71,7 @@ Outcomes (post-clearance interpretation):
 
 This experiment is also the first natural N=2 case for the install dimension. It would feed `install-experiment-template-gap.md`'s N=2 trigger and let the next loop iteration draft a real install-experiment template.
 
-**Follow-up obligation:** capture the claim as `records/claims/claim-vnstock-device-limit-mechanism.yaml` (or similar) with `verification: claimed` until the 2-sandbox experiment runs. Do not let the hypothesis live only in this report.
+**Follow-up obligation [resolved 2026-05-09]:** captured as `records/claims/claim-vnstock-device-limit-mechanism.yaml` initially at `verification: claimed`; static and install dimensions flipped to `verified` after O14 (branch 7b).
 
 ---
 
@@ -169,19 +170,19 @@ Marked **[blocking]** if rerun #3 cannot proceed without it; **[non-blocking]** 
 | ID | Item | Class |
 |----|------|-------|
 | O1 | Pick `attempt_refs` schema extension (clean) vs `proof_refs` semantic stretch (zero schema). Resolved (R-Q1): defer schema extension; use top-level `evidence_refs` for run-2 in the interim. | [non-blocking; activate at next schema-touch] |
-| O2 | Author the device-clearance decision YAML. Operator-confirmed external clearance is a hard prerequisite for both O14 (the 2-sandbox experiment) and any rerun #3. Not contingent. When authored, also patch `claim-vnstock-install-sandbox.yaml`'s `notes` field with a forward pointer to the decision (R-Q2). | [blocking] |
-| O3 | Patch resume-plan phase-3 to require "create per-run experiment YAML alongside evidence MD". | [blocking] for rerun #3 |
-| O4 | Author per-run experiment YAMLs for the existing two evidence MDs (run-1 101723Z, run-2 171112Z). Per R-Q4, both YAMLs use `result: inconclusive` with a sibling free-text `result_reason` (run-1: "flag-contract-misframed"; run-2: "blocked-by-vendor-device-limit"). | [blocking] for D1/D2 to take effect |
-| O5 | Rename existing `experiment-vnstock-install-sandbox.yaml` to `-20260508T101723Z` form, update `id`, scope `source_refs` to run-1 only. | [blocking] |
-| O6 | Update claim's `evidence_refs` to include run-2 evidence MD. | [blocking] |
+| O2 | Author the device-clearance decision YAML. Operator-confirmed external clearance is a hard prerequisite for both O14 (the 2-sandbox experiment) and any rerun #3. Not contingent. When authored, also patch `claim-vnstock-install-sandbox.yaml`'s `notes` field with a forward pointer to the decision (R-Q2). | [blocking; resolved 2026-05-09] |
+| O3 | Patch resume-plan phase-3 to require "create per-run experiment YAML alongside evidence MD". | [blocking] for rerun #3; resolved 2026-05-09 by D9 / Step 1 (predecessor plan closed at lifecycle layer; per-run YAML output enforced by new investigation plan, not retrofitted) |
+| O4 | Author per-run experiment YAMLs for the existing two evidence MDs (run-1 101723Z, run-2 171112Z). Per R-Q4, both YAMLs use `result: inconclusive` with a sibling free-text `result_reason` (run-1: "flag-contract-misframed"; run-2: "blocked-by-vendor-device-limit"). | [blocking] for D1/D2; resolved 2026-05-09 (run-1 retained `does-not-support` from prior frozen artifact; run-2 authored as `inconclusive`) |
+| O5 | Rename existing `experiment-vnstock-install-sandbox.yaml` to `-20260508T101723Z` form, update `id`, scope `source_refs` to run-1 only. | [blocking; resolved 2026-05-09] |
+| O6 | Update claim's `evidence_refs` to include run-2 evidence MD. | [blocking; resolved 2026-05-09] |
 | O7 | Design meta-process for evidence-MD → experiment-YAML conversion sweeps. Per R-Q3, one workflow with two named modes: "Migration" (original capture had a hypothesis; verbatim copy) and "Structuring" (post-hoc; mark fields as such, pin `status: draft` until operator review). | [non-blocking] |
 | O8 | Add "External Operator Actions Between Reruns" docs subsection. | [non-blocking; promote at N=2] |
-| O9 | Trigger rule for "extract durable vendor-property facts at install-verified moment". | [non-blocking; activates only after install verifies] |
+| O9 | Trigger rule for "extract durable vendor-property facts at install-verified moment". | [non-blocking; install verified 2026-05-09 but extraction deferred per operator on the same scope-unset reasoning as R-Q5 (fact/capability layer not yet decided)] |
 | O10 | Phase success-criteria template: split "process steps performed" from "hypothesis confirmed". | [non-blocking] |
 | O11 | Add "abandoned" or "parked" status pathway for indefinitely-blocked claims/packs. | [non-blocking; activate if rerun #3 also fails] |
 | O12 | Decide whether `## Trigger` convention extends to decision YAMLs (for the device-clearance decision specifically). Resolved (R-Q2): no. Decision records are pure YAML; use a one-line forward pointer in the claim's `notes` field instead (see O2). Generalized "claim → active decisions" link convention deferred to meta self-improvement plan. | [resolved] |
-| O13 | Capture operator's device-limit-mechanism claim as `records/claims/claim-vnstock-device-limit-mechanism.yaml`. Status `claimed` until O14 runs. | [blocking] for O14 to have a target |
-| O14 | Run the 2-sandbox falsification experiment back-to-back, *after* O2 clearance is confirmed and *after* the current resume plan is closed out. Clean fingerprints, no prior vnstock history, no inter-run temporal spacing. Produces two evidence MDs and two per-run experiment YAMLs (per D1). Outcome distinguishes per-fingerprint from account+OS-global metering. Also serves as the natural N=2 case for `install-experiment-template-gap.md`. Per R-Q6, run as a cascade: default = fresh Docker containers (cheapest); escalate sandbox-2 to a fresh VM only if container-level result is ambiguous; escalate to fresh hardware only if VM-level still ambiguous (operator decision). If sandbox-1 hits the gate at container level, abort the cascade — clearance did not propagate. | [blocking] for rerun #3 mechanism choice |
+| O13 | Capture operator's device-limit-mechanism claim as `records/claims/claim-vnstock-device-limit-mechanism.yaml`. Status `claimed` until O14 runs. | [blocking] for O14; resolved 2026-05-09 (claimed → verified for static + install dimensions after O14) |
+| O14 | Run the 2-sandbox falsification experiment back-to-back, *after* O2 clearance is confirmed and *after* the current resume plan is closed out. Clean fingerprints, no prior vnstock history, no inter-run temporal spacing. Produces two evidence MDs and two per-run experiment YAMLs (per D1). Outcome distinguishes per-fingerprint from account+OS-global metering. Also serves as the natural N=2 case for `install-experiment-template-gap.md`. Per R-Q6, run as a cascade: default = fresh Docker containers (cheapest); escalate sandbox-2 to a fresh VM only if container-level result is ambiguous; escalate to fresh hardware only if VM-level still ambiguous (operator decision). If sandbox-1 hits the gate at container level, abort the cascade — clearance did not propagate. | [blocking] for rerun #3 mechanism choice; resolved 2026-05-09; branch 7b confirmed (Docker container substrate decisive; no VM/hardware escalation needed) |
 | O15 | Add convention to `docs/operator-guide.md` for `experiment.result`: use `supports` \| `does-not-support` \| `inconclusive`, with a sibling free-text `result_reason` for disambiguation. Per R-Q4, codify the convention before any schema enum constraint. Promote to schema enum only after N≥3 distinct experiments use the convention without strain. | [non-blocking; lands in meta self-improvement plan] |
 
 ---
@@ -275,6 +276,51 @@ Why: vendor mechanism is undocumented; brute-forcing every fingerprint level bur
 
 ---
 
+## Post-Execution Status (2026-05-09)
+
+The follow-up plan (`plans/260509-1353-vnstock-device-limit-investigation/plan.md`, status `completed`) executed Recommended Next Steps 2–7 and resolved blocking open items. The predecessor plan (`plans/260508-2030-vnstock-install-resume/`) was closed out earlier same day per Step 1 / D9. This section overlays the original "State of the Repo at Report Authorship" snapshot.
+
+### Resolved Open Items
+
+- **O2** [resolved 2026-05-09]: `records/decisions/decision-20260509T070411Z-vnstock-vendor-device-limit-clearance.yaml` authored. Operator confirmed external clearance in-band same day.
+- **O3** [resolved 2026-05-09 by D9 / Step 1, not by phase patch]: predecessor resume plan closed out at the lifecycle layer; phase-3 was not patched in place. Per-run YAML output is enforced by the new investigation plan, not retrofitted.
+- **O4** [resolved 2026-05-09]: per-run experiment YAMLs authored — `experiment-vnstock-install-20260508T101723Z.yaml` (run-1) and `experiment-vnstock-install-20260508T171112Z.yaml` (run-2, `result: inconclusive`, `result_reason: blocked-by-vendor-device-limit`). Run-1 retained its frozen `result: does-not-support` value rather than being rewritten to `inconclusive` — a divergence from R-Q4 that the operator may want to reconcile.
+- **O5** [resolved 2026-05-09]: legacy `experiment-vnstock-install-sandbox.yaml` renamed to the run-1 timestamped form; `id` and `source_refs` scoped to run-1; no in-place mutation of run-1 content.
+- **O6** [resolved 2026-05-09]: `claim-vnstock-install-sandbox.yaml` `evidence_refs` now includes the run-2 evidence MD; `notes` field carries the forward pointer to the device-clearance decision (R-Q2 pattern). `evidence_refs` was extended again post-O14 to also reference the two sandbox evidence MDs.
+- **O13** [resolved 2026-05-09]: `records/claims/claim-vnstock-device-limit-mechanism.yaml` authored at `status: claimed` initially. Static and install dimensions flipped to `verified` after O14.
+- **O14** [resolved 2026-05-09; branch 7b]: 2-sandbox falsification ran in two fresh Docker containers back-to-back. Sandbox 1 (`experiment-install-20260509T071800Z-sandbox-1`) registered and installed vnstock_data under `bronze` tier with `1/1` Linux devices used. Sandbox 2 (`experiment-install-20260509T071900Z-sandbox-2`), run immediately after, hit the device-limit gate (`bronze plan allows 1 device(s) per OS`); installer continued past registration but vnstock_data could not be downloaded because the device was not registered. VM/hardware escalation was not required: the container-level result was decisive.
+
+### Branch 7b Mechanism Findings
+
+- Account-and-OS-global device metering for Linux under the observed `bronze` tier subscription state. NOT unlimited per-fingerprint metering.
+- Effective device cap on this account is `1` Linux device, not the `2` referenced in the original brainstorm Golden-tier mention.
+- Sandbox 1 demonstrated a successful end-to-end install of vnstock_data on a clean Docker fingerprint after operator clearance. Therefore: the `claim-vnstock-device-limit-mechanism` claim is `install: verified` for the mechanism question; `claim-vnstock-install-sandbox` `install` dimension remains `claimed` (see observations below for the pending promotion question).
+
+### Observations from Execution
+
+Factual notes surfaced during execution. None is a formal record yet; see Next Actions for which are queued for handling.
+
+- **Install-claim promotion executed**: `claim-vnstock-install-sandbox.yaml` `install` dimension `claimed → verified` 2026-05-09; `proof_refs` cites `experiment-vnstock-install-20260509T071800Z-sandbox-1`. O9 trigger fired (durable-facts extraction) but extraction is not done.
+- **Recurring-clearance implication**: 7b means each future clean-fingerprint rerun needs either external operator clearance or a subscription/device-slot change. No record authored.
+- **Container substrate dependency**: the disposable Docker runner required `uv` and `pandas` preinstalled for the vendor's `vnai`/`vnii` device packages to verify before reaching the registration step. Captured only in the sandbox evidence MDs and experiment YAMLs.
+- **Tier/cap reconciliation gap**: vendor reported `bronze` and `1 device per OS` for this account during O14. Original brainstorm (`plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`) referenced `Golden = 2 devices/OS`. The two are inconsistent.
+- **R-Q4 convention drift on run-1 YAML**: under R-Q4, run-1 would carry `result: inconclusive` with `result_reason: flag-contract-misframed`; the renamed file kept the prior frozen `result: does-not-support`. No validator fails on this.
+
+### Next Actions (next session)
+
+Single source of truth for what is done, deferred, and pending operator decision. Steps 1–7 done. Step 8 install promoted ✅. Step 9 N/A (rerun #3 not re-attempted post-clearance; only fires if a future rerun fails for a new reason). Step 10 = item B below.
+
+| Item | Lean | Trigger / Re-open status |
+|------|------|--------------------------|
+| **B — Step 10: author meta self-improvement plan (O7, O8, O10, O15)** | Author now with O7 marked design-only | Foundations clear; 3/4 triggers concrete (O15=R-Q4; O10=success-criteria template; O8 has N=2 via device-clearance decision); O7 has no backlog. Trade-off: one more plan to track vs four one-off drifts. |
+| **C — accept R-Q4 drift on run-1 YAML** | Accept divergence; codify "conventions apply prospectively unless an explicit migration runs" inside B's operator-guide edit | Run-1 was authored before R-Q4. Trade-off: one historical YAML at off-convention vs violating D1 immutability for cosmetic alignment. |
+| **F — patch tier/cap mismatch in brainstorm doc** | One-line inline correction in `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md` citing sandbox-1 evidence as authoritative | Trade-off: small inline fix vs leaving the doc inconsistent with verified evidence. |
+| **D — recurring-clearance vs subscription class** | Defer per `feedback-defer-on-unset-scope` | No concrete rerun scheduled; vendor-state tracker record class undefined. Re-open when a concrete rerun is scheduled. |
+| **E — container substrate dependency** | Defer per same memory rule | Only N=1 containerized experiment so far; "experimental-environment" record class undefined. Re-open when N≥2 or scope is decided. |
+| **O9 — durable-fact extraction + pack promotion queue** | Defer per same memory rule (extends R-Q5) | Fact/capability layer scope not decided. Re-open when R-Q5 scope decision lands. |
+
+---
+
 ## Unresolved Questions
 
-(None after post-review continuation 2026-05-09. The original Q5 was resolved by deferral; see R-Q5 above for the re-open trigger.)
+(None at the question-resolution layer: Q1–Q6 all resolved, Q5 by deferral; see R-Q5 above for re-open trigger. Six items pending in Post-Execution Status → Next Actions table; each carries its own re-open trigger inline.)
