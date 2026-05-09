@@ -1,7 +1,7 @@
 ---
 title: "Meta Self-Improvement: Conventions And Skill Helper"
 description: "Codify the experiment.result convention, prospective-application rule, evidence-MD to experiment-YAML conversion workflow, learning-loop skill migration helper, and phase success-criteria template. Pair the convention with two decision YAMLs."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, conventions, skill, self-improvement, learning-loop]
@@ -26,10 +26,10 @@ The plan covers M2 (conversion workflow), M3 (skill helper), M5 (phase success c
 
 | Phase | Name | Status | Effort | Priority |
 |-------|------|--------|--------|----------|
-| 1 | [Operator-Guide Convention And Decision Records](./phase-01-operator-guide-convention-and-decision-records.md) | Pending | 2h | P1 |
-| 2 | [Evidence To Experiment Conversion Workflow](./phase-02-evidence-to-experiment-conversion-workflow.md) | Pending | 1h | P2 |
-| 3 | [Learning-Loop Skill Helper](./phase-03-learning-loop-skill-helper.md) | Pending | 1.5h | P2 |
-| 4 | [Phase Success Criteria Template](./phase-04-phase-success-criteria-template.md) | Pending | 1h | P2 |
+| 1 | [Operator-Guide Convention And Decision Records](./phase-01-operator-guide-convention-and-decision-records.md) | Completed | 2h | P1 |
+| 2 | [Evidence To Experiment Conversion Workflow](./phase-02-evidence-to-experiment-conversion-workflow.md) | Completed | 1h | P2 |
+| 3 | [Learning-Loop Skill Helper](./phase-03-learning-loop-skill-helper.md) | Completed | 1.5h | P2 |
+| 4 | [Phase Success Criteria Template](./phase-04-phase-success-criteria-template.md) | Completed | 1h | P2 |
 
 ## Dependencies
 
@@ -60,8 +60,8 @@ No edits to: `records/claims/`, `records/evidence/`, `records/experiments/`, `re
 
 Two decision YAMLs are authored alongside the operator-guide convention:
 
-- `decision-20260509T192448Z-experiment-result-convention.yaml` — codifies `experiment.result: supports | does-not-support | inconclusive` plus `result_reason`. Cites the next-steps report and the review report's R-Q4 resolution. Schema-enum hardening is explicitly blocked until N >= 3 distinct experiments use the convention without strain (M7's deferral folded in).
-- `decision-20260509T192449Z-prospective-convention-application.yaml` — codifies the rule that new conventions apply prospectively unless an explicit migration is approved. Cites the run-1 vnstock install YAML drift as the precipitating case.
+- `decision-20260509T192448Z-experiment-result-convention.yaml` — codifies `experiment.result: supports | does-not-support | inconclusive` plus `result_reason`. It uses validator-allowed evidence refs and cites the next-steps/review reports in `notes`. Schema-enum hardening is explicitly blocked until N >= 3 distinct experiments use the convention without strain (M7's deferral folded in).
+- `decision-20260509T192449Z-prospective-convention-application.yaml` — codifies the rule that new conventions apply prospectively unless an explicit migration is approved. It uses validator-allowed evidence refs and cites the run-1 vnstock install YAML drift as the precipitating case.
 
 These are authored as part of Phase 1, not as separate phases. If Phase 4 (M5) needs its own decision when codified, that is added inside Phase 4.
 
@@ -106,15 +106,21 @@ These are authored as part of Phase 1, not as separate phases. If Phase 4 (M5) n
 
 ## Success Criteria
 
-- [ ] `docs/operator-guide.md` has new sections: "Experiment Result Convention" (with "Convention Application" subsection), "Evidence-MD to Experiment-YAML Conversion", "Phase Success Criteria".
-- [ ] `records/decisions/decision-20260509T192448Z-experiment-result-convention.yaml` exists and validates.
-- [ ] `records/decisions/decision-20260509T192449Z-prospective-convention-application.yaml` exists and validates.
-- [ ] `.claude/skills/learning-loop/SKILL.md` recognizes "evidence-to-experiment migration" as a task class.
-- [ ] `.claude/skills/learning-loop/references/prompt-blueprints.md` has an "Evidence-to-Experiment Migration Prompt" blueprint.
-- [ ] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` has Migration / Structuring mode rules.
-- [ ] `pnpm validate:records` passes after Phase 1.
-- [ ] `pnpm check` passes after Phase 1.
-- [ ] Out-of-scope items remain untouched (no record/evidence/schema/pack edits).
+- [x] `docs/operator-guide.md` has new sections: "Experiment Result Convention" (with "Convention Application" subsection), "Evidence-MD to Experiment-YAML Conversion", "Phase Success Criteria".
+- [x] `records/decisions/decision-20260509T192448Z-experiment-result-convention.yaml` exists and validates.
+- [x] `records/decisions/decision-20260509T192449Z-prospective-convention-application.yaml` exists and validates.
+- [x] `.claude/skills/learning-loop/SKILL.md` recognizes "evidence-to-experiment migration" as a task class.
+- [x] `.claude/skills/learning-loop/references/prompt-blueprints.md` has an "Evidence-to-Experiment Migration Prompt" blueprint.
+- [x] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` has Migration / Structuring mode rules.
+- [x] `pnpm validate:records` passes after Phase 1.
+- [x] `pnpm check` passes after Phase 1.
+- [x] Out-of-scope items remain untouched (no record/evidence/schema/pack edits).
+
+## Completion Notes
+
+- Completed on 2026-05-09.
+- Validation passed: `pnpm validate:records` (`Validated 12 records.`) and `pnpm check`.
+- Implementation adjusted the planned decision `source_refs` because the validator disallows `local:plans/reports/...`; report citations were preserved in `notes`, while `source_refs` point to durable evidence records.
 
 ## Risk Assessment
 

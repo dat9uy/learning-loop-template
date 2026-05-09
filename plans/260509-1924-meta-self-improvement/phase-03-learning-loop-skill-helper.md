@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Learning-Loop Skill Helper"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: ["phase-02"]
@@ -121,23 +121,23 @@ All three updates reference the operator-guide section landed in Phase 2.
 
 ## Todo List
 
-- [ ] Confirm Phase 2 has landed (operator-guide has the conversion workflow section).
-- [ ] Update SKILL.md classification + When-to-Use trigger.
-- [ ] Add migration prompt blueprint to prompt-blueprints.md.
-- [ ] Add Migration Rules section to meta-evidence-self-improvement.md.
-- [ ] Verify cross-references.
-- [ ] Operator sanity-read.
-- [ ] Report process completion.
+- [x] Confirm Phase 2 has landed (operator-guide has the conversion workflow section).
+- [x] Update SKILL.md classification + When-to-Use trigger.
+- [x] Add migration prompt blueprint to prompt-blueprints.md.
+- [x] Add Migration Rules section to meta-evidence-self-improvement.md.
+- [x] Verify cross-references.
+- [x] Operator sanity-read.
+- [x] Report process completion.
 
 ## Success Criteria
 
-- [ ] `.claude/skills/learning-loop/SKILL.md` lists "evidence-to-experiment migration" in the Workflow classify step.
-- [ ] `.claude/skills/learning-loop/SKILL.md` includes a When-to-Use trigger line for migration.
-- [ ] `.claude/skills/learning-loop/references/prompt-blueprints.md` has a complete "Evidence-to-Experiment Migration Prompt" blueprint.
-- [ ] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` has an "Evidence-to-Experiment Migration Rules" section.
-- [ ] All three files cross-reference operator-guide's conversion workflow (Phase 2 output).
-- [ ] No autonomous record mutation; helper produces prompt/checklist only.
-- [ ] No edits to global skills at `~/.claude/skills/`.
+- [x] `.claude/skills/learning-loop/SKILL.md` lists "evidence-to-experiment migration" in the Workflow classify step.
+- [x] `.claude/skills/learning-loop/SKILL.md` includes a When-to-Use trigger line for migration.
+- [x] `.claude/skills/learning-loop/references/prompt-blueprints.md` has a complete "Evidence-to-Experiment Migration Prompt" blueprint.
+- [x] `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` has an "Evidence-to-Experiment Migration Rules" section.
+- [x] All three files cross-reference operator-guide's conversion workflow (Phase 2 output).
+- [x] No autonomous record mutation; helper produces prompt/checklist only.
+- [x] No edits to global skills at `~/.claude/skills/`.
 
 ## Risk Assessment
 

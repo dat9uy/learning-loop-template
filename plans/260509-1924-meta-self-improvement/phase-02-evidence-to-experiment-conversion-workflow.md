@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Evidence To Experiment Conversion Workflow"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: []
@@ -80,18 +80,18 @@ The doc text references Phase 1's `experiment.result` convention so Migration mo
 
 ## Todo List
 
-- [ ] Confirm/coordinate Phase 1 insertion point.
-- [ ] Add "Evidence-MD to Experiment-YAML Conversion" section with Migration, Structuring, and Shared Rules subsections.
-- [ ] Verify cross-references to "Experiment Result Convention" (Phase 1) and the learning-loop skill (Phase 3 surface).
-- [ ] Operator sanity-read.
-- [ ] Report process completion.
+- [x] Confirm/coordinate Phase 1 insertion point.
+- [x] Add "Evidence-MD to Experiment-YAML Conversion" section with Migration, Structuring, and Shared Rules subsections.
+- [x] Verify cross-references to "Experiment Result Convention" (Phase 1) and the learning-loop skill (Phase 3 surface).
+- [x] Operator sanity-read.
+- [x] Report process completion.
 
 ## Success Criteria
 
-- [ ] `docs/operator-guide.md` contains the "Evidence-MD to Experiment-YAML Conversion" section with Migration, Structuring, and Shared Rules subsections.
-- [ ] The section references the "Experiment Result Convention" from Phase 1.
-- [ ] The section references the `learning-loop` skill at `.claude/skills/learning-loop/`.
-- [ ] No edits to records, evidence, experiments, schemas, or skill files.
+- [x] `docs/operator-guide.md` contains the "Evidence-MD to Experiment-YAML Conversion" section with Migration, Structuring, and Shared Rules subsections.
+- [x] The section references the "Experiment Result Convention" from Phase 1.
+- [x] The section references the `learning-loop` skill at `.claude/skills/learning-loop/`.
+- [x] No edits to records, evidence, experiments, schemas, or skill files beyond the Phase 1 decision records.
 
 ## Risk Assessment
 

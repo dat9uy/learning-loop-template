@@ -102,6 +102,16 @@ Report:
 - Fail closed for privacy, cleanup, authority, and verification/product approval uncertainty.
 - Keep docs domain-neutral; store domain evidence in records/evidence and packs.
 
+## Evidence-to-Experiment Migration Rules
+
+When the loop has an evidence-MD that should have been an experiment-YAML, defer ad-hoc conversion. Author or join an explicit migration plan that uses the Migration / Structuring modes documented in `docs/operator-guide.md` ("Evidence-MD to Experiment-YAML Conversion").
+
+- Migration mode: verbatim conversion when the original evidence captured a hypothesis + success metrics + decisive outcome.
+- Structuring mode: post-hoc reconstruction; pinned at `status: draft` until operator review.
+- Either mode preserves the original evidence MD.
+- The skill produces a prompt/checklist (see `references/prompt-blueprints.md` -> "Evidence-to-Experiment Migration Prompt"); it does not mutate records autonomously.
+- Defer any executable migration script until repeated migrations prove the need (N >= 3 distinct migrations).
+
 ## Gap Classification by Sample Count
 
 Meta-evidence gaps split into two classes based on what the gap requires to close:

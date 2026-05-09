@@ -1,0 +1,37 @@
+id: decision-20260509T192448Z-experiment-result-convention
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-09"
+updated_at: "2026-05-09"
+source_refs:
+  - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
+  - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+notes: Meta loop convention; not domain evidence. Scoped by plans/reports/review-20260509-vnstock-resume-record-layer-gaps.md and plans/reports/next-steps-20260509-vnstock-product-and-meta.md.
+question: How should experiments report their outcome?
+decision: Use `result: supports | does-not-support | inconclusive` with sibling free-text `result_reason`. Codify as convention in operator-guide; do not enum-constrain the schema yet.
+rationale: `inconclusive` covers the necessary semantic gap (blocked-by-gate, indeterminate-on-merits, ran-out-of-disk, operator-interrupted) without proliferating special-purpose values. Convention before schema avoids early ossification while N is still small.
+alternatives:
+  - Add a fourth literal value `blocked` distinct from `does-not-support` and `inconclusive`.
+  - Enum-constrain immediately in `experiment.schema.json`.
+  - Leave the field unconstrained and undocumented.
+tradeoffs:
+  - One historical experiment (run-1 vnstock install) keeps result value `does-not-support` against the new convention; accepted as historical drift per the prospective-application decision.
+  - Convention discoverability depends on operator-guide reading; agents must consult it.
+  - Schema enum is a future change once N >= 3 experiments use the convention.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: schema-improvement
+  affected_refs:
+    - local:docs/operator-guide.md
+  boundaries:
+    allowed_actions:
+      - Use `supports`, `does-not-support`, or `inconclusive` for new experiment YAMLs.
+      - Pair with `result_reason` when ambiguous.
+    blocked_actions:
+      - Adding a schema enum constraint to `experiment.schema.json` before N >= 3 distinct experiments use the convention.
+      - Rewriting historical experiment YAMLs solely for cosmetic alignment.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check

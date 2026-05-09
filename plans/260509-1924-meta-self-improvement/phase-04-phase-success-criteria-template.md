@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Phase Success Criteria Template"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: ["phase-01"]
@@ -74,19 +74,19 @@ The section explicitly invokes D9 from the review report: plan-level lifecycle s
 
 ## Todo List
 
-- [ ] Confirm Phase 1 has landed.
-- [ ] Add "Phase Success Criteria" section with Process Steps, Experiment Outcome, Reporting, Lifecycle Status Orthogonality subsections.
-- [ ] Verify cross-references to "Experiment Result Convention" (Phase 1).
-- [ ] Operator sanity-read.
-- [ ] Report process completion.
+- [x] Confirm Phase 1 has landed.
+- [x] Add "Phase Success Criteria" section with Process Steps, Experiment Outcome, Reporting, Lifecycle Status Orthogonality subsections.
+- [x] Verify cross-references to "Experiment Result Convention" (Phase 1).
+- [x] Operator sanity-read.
+- [x] Report process completion.
 
 ## Success Criteria
 
-- [ ] `docs/operator-guide.md` contains the "Phase Success Criteria" section with all four subsections.
-- [ ] The section references "Experiment Result Convention" by exact title.
-- [ ] The section invokes the orthogonality rule (D9) for plan lifecycle vs experiment outcome.
-- [ ] No edits to global rules.
-- [ ] No new template file unless operator explicitly prefers it (defer in-phase if surfaced).
+- [x] `docs/operator-guide.md` contains the "Phase Success Criteria" section with all four subsections.
+- [x] The section references "Experiment Result Convention" by exact title.
+- [x] The section invokes the orthogonality rule (D9) for plan lifecycle vs experiment outcome.
+- [x] No edits to global rules.
+- [x] No new template file unless operator explicitly prefers it (defer in-phase if surfaced).
 
 ## Risk Assessment
 

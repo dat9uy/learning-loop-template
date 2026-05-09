@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Operator-Guide Convention And Decision Records"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -150,24 +150,24 @@ Decision YAML schema fields used (per existing decisions in repo): `id`, `schema
 
 ## Todo List
 
-- [ ] Read operator-guide.md and confirm insertion point.
-- [ ] Add "Experiment Result Convention" section with "Convention Application" subsection.
-- [ ] Author decision-20260509T192448Z-experiment-result-convention.yaml.
-- [ ] Author decision-20260509T192449Z-prospective-convention-application.yaml.
-- [ ] Run `pnpm validate:records`; pass.
-- [ ] Run `pnpm check`; pass.
-- [ ] Report process completion and validation outcome.
+- [x] Read operator-guide.md and confirm insertion point.
+- [x] Add "Experiment Result Convention" section with "Convention Application" subsection.
+- [x] Author decision-20260509T192448Z-experiment-result-convention.yaml.
+- [x] Author decision-20260509T192449Z-prospective-convention-application.yaml.
+- [x] Run `pnpm validate:records`; pass.
+- [x] Run `pnpm check`; pass.
+- [x] Report process completion and validation outcome.
 
 ## Success Criteria
 
-- [ ] `docs/operator-guide.md` contains the "Experiment Result Convention" section with the three values, `result_reason` clause, and "Convention Application" subsection that references both decision YAMLs by record ID.
-- [ ] Both decision YAMLs exist at the specified paths with the specified IDs.
-- [ ] Each decision YAML cites the next-steps report and the review report in `source_refs`.
-- [ ] The first decision YAML's `blocked_actions` includes the schema-enum-deferral clause.
-- [ ] The second decision YAML cites the first via `record:` ref in `source_refs`.
-- [ ] `pnpm validate:records` passes.
-- [ ] `pnpm check` passes.
-- [ ] No edits to records other than the two new decision YAMLs.
+- [x] `docs/operator-guide.md` contains the "Experiment Result Convention" section with the three values, `result_reason` clause, and "Convention Application" subsection that references both decision YAMLs by record ID.
+- [x] Both decision YAMLs exist at the specified paths with the specified IDs.
+- [x] Each decision YAML cites the next-steps report and the review report in `notes` because validator rules disallow `local:plans/reports/...` in `source_refs`.
+- [x] The first decision YAML's `blocked_actions` includes the schema-enum-deferral clause.
+- [x] The second decision YAML cites the first via `record:` ref in `source_refs`.
+- [x] `pnpm validate:records` passes.
+- [x] `pnpm check` passes.
+- [x] No edits to records other than the two new decision YAMLs.
 
 ## Risk Assessment
 

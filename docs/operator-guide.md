@@ -193,6 +193,83 @@ The loop can improve itself.
 
 For a worked example of meta-process improvement debate (multi-question cascade, deferred-meta-evidence pattern, `## Trigger` recall mechanism), see `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`.
 
+## Experiment Result Convention
+
+Experiment YAMLs use `result` as one of:
+
+- `supports` - outcome supports the hypothesis.
+- `does-not-support` - outcome contradicts the hypothesis.
+- `inconclusive` - outcome did not produce a clear answer (vendor gate, env failure, operator interrupt, indeterminate result).
+
+Pair with sibling `result_reason` (free text) for disambiguation, especially for `inconclusive`.
+
+The convention is not enforced by `experiment.schema.json` - `result` remains an unconstrained `string`. Schema enum hardening is deferred until at least three distinct experiments use the convention without semantic strain (per `record:decision-20260509T192448Z-experiment-result-convention`).
+
+### Convention Application
+
+New conventions apply prospectively unless an explicit migration is approved. A historical experiment authored before a convention lands does not need to be rewritten for cosmetic alignment; per-experiment immutability beats convention uniformity. Convert only when the operator approves a migration plan that documents the conversion mode (Migration / Structuring; see "Evidence-MD to Experiment-YAML Conversion").
+
+See `record:decision-20260509T192449Z-prospective-convention-application` for the policy decision.
+
+## Evidence-MD to Experiment-YAML Conversion
+
+When converting an evidence MD into a structured experiment YAML, classify the source MD up front. Both modes share the experiment YAML output schema and the audit linkage (`source_refs` -> the original evidence MD); modes differ in whether `hypothesis` and `success_metrics` are reconstructed verbatim or marked post-hoc.
+
+### Mode: Migration
+
+The original evidence MD captured a hypothesis, success metrics, and a decisive outcome. The conversion is verbatim:
+
+- `hypothesis`, `success_metrics`, and `result` carry over without reinterpretation.
+- `source_refs` lists the original evidence MD using `local:records/evidence/...`.
+- `result_reason` (if needed) cites the same passage that justified the original outcome.
+- The output YAML status is `reviewed` if the original was operator-reviewed; otherwise `draft`.
+- `result` follows the convention from "Experiment Result Convention".
+
+### Mode: Structuring
+
+The original evidence MD lacked a clean hypothesis or success metrics. Reconstruction is post-hoc:
+
+- `hypothesis` and `success_metrics` are reconstructed from the evidence narrative; mark them as post-hoc in `notes`.
+- `result` is `inconclusive` unless the evidence is decisive on its own; never `supports` or `does-not-support` without operator confirmation.
+- The output YAML is pinned at `status: draft` until operator review.
+
+### Shared Rules
+
+- Both modes preserve the original evidence MD unchanged.
+- Both modes link `source_refs` back to the original evidence MD.
+- Conversion runs only after the operator approves an explicit migration plan; no ad-hoc conversion.
+- Run `pnpm validate:records` and `pnpm check` after each approved batch.
+- For prompt/checklist support, see the `learning-loop` skill (`evidence-to-experiment migration` task class) at `.claude/skills/learning-loop/`.
+
+## Phase Success Criteria
+
+A plan phase has two orthogonal axes that must be tracked separately to avoid the "mostly checked off" failure mode where process boxes appear complete despite a blocked or inconclusive experimental result.
+
+### Process Steps
+
+A list of agent actions required to perform the phase: read inputs, author records, run validation, etc. Each step is a checkbox. `[x]` means the step was performed and reviewed. Process completion is independent of experimental outcome.
+
+### Experiment Outcome
+
+The phase's experimental result, using the convention from "Experiment Result Convention":
+
+- `supports`
+- `does-not-support`
+- `inconclusive`
+
+Plus a `Blocker / result reason` line if the outcome is `does-not-support` or `inconclusive`.
+
+### Reporting
+
+A phase summary must state both axes explicitly. Examples:
+
+- "Process: 9/9 steps complete. Experiment: `inconclusive` (vendor device-limit gate)."
+- "Process: 6/6 steps complete. Experiment: `supports` (sandbox-1 reached `from vnstock_data import Reference`)."
+
+### Lifecycle Status Orthogonality
+
+Plan-level lifecycle status (`pending`, `in-progress`, `completed`) follows project-management conventions and tracks process. Experiment outcome lives in evidence/experiment records. The two are orthogonal: a plan can be `completed` while its underlying experiment is `blocked` or `inconclusive`. Do not block plan close-out on an external gate that prevents experimental verification.
+
 ## Agent Anti-Confusion Checklist
 
 Before answering or editing, verify:

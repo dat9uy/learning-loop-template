@@ -20,6 +20,7 @@ Use when the user asks:
 - "How should I ask another agent to run this learning-loop task?"
 - "Write a safe prompt for runtime proof, install proof, or metadata-only verification."
 - "Use self-improvement flow / meta evidence to close a loop gap."
+- "Migrate evidence MDs to per-run experiment YAMLs."
 
 ## Workflow
 
@@ -31,6 +32,7 @@ Use when the user asks:
    - knowledge-pack curation
    - runtime/install proof
    - self-improvement/meta-evidence
+   - evidence-to-experiment migration
 2. Load `references/learning-loop-rules.md` for repo policy. If the prompt needs exact current wording, read the named `docs/` or `records/evidence/meta/` files before drafting.
 3. Identify approval level:
    - default: read-only or metadata-only prompt

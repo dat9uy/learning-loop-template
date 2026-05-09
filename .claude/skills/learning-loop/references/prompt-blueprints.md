@@ -140,3 +140,54 @@ Curate or review a knowledge pack for [scope].
 
 Use only reviewed/approved records and cite `record_ref`; do not cite raw evidence paths from the pack. Keep the pack slim and consumer-facing. Report excluded claims, unresolved risks, and whether the pack can be consumed by experiments.
 ```
+
+## Evidence-to-Experiment Migration Prompt
+
+Use when an explicit migration of one or more evidence MDs to per-run experiment YAMLs is approved by the operator.
+
+```text
+Migrate the following evidence MD(s) to per-run experiment YAML(s):
+
+[list of evidence MD paths, one per line]
+
+Work context: [absolute path to this repo]
+Reports: [absolute path to this repo]/plans/reports/
+Plans: [absolute path to this repo]/plans/
+
+Read first:
+- docs/operator-guide.md (Evidence-MD to Experiment-YAML Conversion).
+- docs/operator-guide.md (Experiment Result Convention).
+- The evidence MD(s) listed above.
+- Existing per-run experiment YAMLs in records/experiments/ for reference.
+
+For each evidence MD:
+
+1. Classify mode:
+   - Migration: original captured a hypothesis + success metrics + decisive outcome.
+   - Structuring: original lacked a clean hypothesis; post-hoc reconstruction required.
+   - No migration: evidence is not experimental in nature; do not produce a YAML.
+
+2. Output a YAML that:
+   - Preserves the original evidence MD unchanged.
+   - Links source_refs back to local:records/evidence/...
+   - Uses status: reviewed for Migration mode (if operator-reviewed) or draft for Structuring mode.
+   - Sets `result` per the operator-guide convention (`supports`, `does-not-support`, or `inconclusive`).
+   - Pairs `result_reason` (free text) when ambiguous.
+   - Notes "post-hoc structuring" in `notes` for Structuring mode.
+
+3. Do not commit the YAML; surface for operator review.
+
+Forbidden:
+- Do not modify the original evidence MD.
+- Do not invent hypothesis content for Structuring mode without flagging post-hoc.
+- Do not skip operator review for Structuring outputs.
+- Do not create new schema fields.
+- Do not edit records other than the new experiment YAMLs (and only with operator approval).
+
+Validation:
+- Run pnpm validate:records.
+- Run pnpm check.
+
+Report:
+- For each evidence MD: classified mode, proposed YAML path, key fields, any unresolved questions.
+```
