@@ -270,6 +270,31 @@ A phase summary must state both axes explicitly. Examples:
 
 Plan-level lifecycle status (`pending`, `in-progress`, `completed`) follows project-management conventions and tracks process. Experiment outcome lives in evidence/experiment records. The two are orthogonal: a plan can be `completed` while its underlying experiment is `blocked` or `inconclusive`. Do not block plan close-out on an external gate that prevents experimental verification.
 
+## Rule Origins
+
+Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm that produced them. Agent Intake Flow step 2 carries the canonical wording; this section is documentary. If the two diverge, step 2 wins.
+
+### Q4 E - Claims-first scanning for evidence truth-status
+
+- Prior ambiguity: a disproved evidence file (`installer-prior-notes.md` claimed installer reads `~/.vnstock/user.json`) sat on disk with no signal; future agents could re-adopt the disproven claim by direct browse.
+- Alternatives considered: status field in frontmatter (rejected), `## Status` markdown body (crosses source/proof line), claim-side status block (deferred N>=2), per-file `## Supersedes` link in disproving evidence (adopted as Q4 D), computed validation view (deferred N>=2).
+- Chosen: structural prevention. Evidence is referenced via claims, never browsed standalone for truth-status discovery.
+- Origin: `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md` (Q4).
+
+### Q5 R2 - Pre-experiment scan of `records/evidence/meta/`
+
+- Prior ambiguity: deferred meta-evidence files had no recall mechanism; N>=2 triggers could fire silently months later under a different agent.
+- Alternatives considered: in-file counter (compliance failure), validation tool extension (premature), plan-template extension (premature), separate `_pending` index (drift risk).
+- Chosen: doc rule. Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class; read each matched file and apply guidance.
+- Origin: same brainstorm (Q5). Pairs with Q4 D's `## Supersedes` convention.
+
+### Q6 - Capability-directory scan after claims-first orientation
+
+- Prior ambiguity: claims-first scanning surfaced cited evidence but missed uncited files in the same capability directory. The `unified-ui-snapshot/` directory was nearly missed during vnstock plan drafting.
+- Alternative considered: rely on claims to cite everything (rejected; claims drift, capability dirs hold reference docs that aren't claim-cited).
+- Chosen: after claims-first orientation, list `records/evidence/<capability>/` end-to-end. Read relevant text evidence, skip raw/binary/generated/private artifacts and `## Superseded By` files unless forensic context is needed.
+- Origin: `records/evidence/meta/capability-dir-scan-rule.md` (commit `e0a1c0f`). Not part of the original Q1-Q5 cascade; added later when the gap surfaced during planning.
+
 ## Agent Anti-Confusion Checklist
 
 Before answering or editing, verify:
