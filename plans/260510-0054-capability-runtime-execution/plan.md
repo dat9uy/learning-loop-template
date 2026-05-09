@@ -1,7 +1,7 @@
 ---
 title: "vnstock-data capability runtime execution"
 description: "Set up shared environment, install vnstock_data, execute capability scripts, and update learning-loop records."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [vnstock, capabilities, runtime]
@@ -22,10 +22,10 @@ Execute the approved capability runtime experiment for vnstock_data. Set up a pe
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Environment Setup](./phase-01-environment-setup.md) | Pending |
-| 2 | [Library Installation](./phase-02-library-installation.md) | Pending |
-| 3 | [Capability Execution](./phase-03-capability-execution.md) | Pending |
-| 4 | [Record Update](./phase-04-record-update.md) | Pending |
+| 1 | [Environment Setup](./phase-01-environment-setup.md) | Completed |
+| 2 | [Library Installation](./phase-02-library-installation.md) | Completed |
+| 3 | [Capability Execution](./phase-03-capability-execution.md) | Completed |
+| 4 | [Record Update](./phase-04-record-update.md) | Completed |
 
 ## Dependencies
 

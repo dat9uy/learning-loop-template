@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Environment Setup"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: []
@@ -44,9 +44,9 @@ product/
 
 ## Success Criteria
 
-- [ ] `product/pyproject.toml` exists with project name and Python version requirement.
-- [ ] `product/.venv/` exists and activates successfully.
-- [ ] `product/.venv/bin/python -c "import sys; print(sys.executable)"` points inside `product/.venv`.
+- [x] `product/pyproject.toml` exists with project name and Python version requirement.
+- [x] `product/.venv/` exists and activates successfully.
+- [x] `product/.venv/bin/python -c "import sys; print(sys.executable)"` points inside `product/.venv`.
 
 ## Risk Assessment
 

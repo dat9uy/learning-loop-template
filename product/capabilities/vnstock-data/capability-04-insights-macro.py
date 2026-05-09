@@ -20,13 +20,13 @@ losers = ins.ranking().loser()
 print(losers.head())
 
 # %% GDP data
-print("\n=== GDP (quarterly) ===")
-gdp = mac.economy().gdp(period="quarter")
+print("\n=== GDP (yearly) ===")
+gdp = mac.economy().gdp(period="year")
 print(gdp.tail())
 
 # %% CPI data
-print("\n=== CPI (quarterly) ===")
-cpi = mac.economy().cpi(period="quarter")
+print("\n=== CPI (yearly) ===")
+cpi = mac.economy().cpi(period="year")
 print(cpi.tail())
 
 # %% Exchange rate

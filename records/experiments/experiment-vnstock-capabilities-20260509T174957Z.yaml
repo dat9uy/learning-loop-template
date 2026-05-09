@@ -3,9 +3,10 @@ schema_version: "1.0"
 type: experiment
 status: approved
 created_at: "2026-05-09"
-updated_at: "2026-05-09"
+updated_at: "2026-05-10"
 source_refs:
   - record:claim-vnstock-install-sandbox
+  - local:records/evidence/vnstock-data/capability-runtime-output.md
 scope: runtime
 output_level: runtime-captured
 goal: Test whether vnstock_data's Unified UI APIs return usable data via standalone capability scripts in the shared persistent environment.
@@ -28,19 +29,21 @@ success_metrics:
   - insights-layer-returns-ranking-dataframe
   - macro-layer-returns-economic-indicators
   - sample-output-captured-for-each-domain
-result: inconclusive
-result_reason: Capability scripts created and approved but not yet executed against live endpoints. Execution pending on registered device.
-agent_outcome: capability scripts authored and staged in product/capabilities/vnstock-data/
+result: supports
+result_reason: All five capability scripts executed against live endpoints in the shared product environment after updating GDP/CPI calls from unsupported quarterly period to supported yearly period.
+agent_outcome: Verified Reference, Market, Fundamental, Insights, and Macro runtime surfaces via metadata-only captured output in records/evidence/vnstock-data/capability-runtime-output.md.
 product_outcome: none
 observations:
   - Capability scripts are standalone and segmented for interactive or whole-script execution.
   - Scripts share the persistent environment at product/ with future product code.
   - Minimal API calls per script to respect rate limits and vendor constraints.
   - Capability files: product/capabilities/vnstock-data/capability-00-discovery.py, capability-01-reference.py, capability-02-market.py, capability-03-fundamental.py, capability-04-insights-macro.py, README.md
+  - Runtime execution completed in product/.venv with vnstock_data package metadata version 3.1.7.
+  - Macro GDP/CPI API accepted period="year" and rejected the originally staged period="quarter".
+  - Reference search for the tested symbol returned an empty DataFrame with the expected schema.
 promotion_review:
-  - Execute capabilities on the registered device only (device limit = 1 Linux install).
   - Do not commit raw data or credentials.
-  - Update claim runtime dimension to verified only after successful execution and output capture.
+  - Runtime output capture is limited to schema shape, row counts, and column names.
 claim_refs:
   - record:claim-vnstock-install-sandbox
 verification:

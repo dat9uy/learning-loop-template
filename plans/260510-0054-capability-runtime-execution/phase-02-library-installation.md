@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Library Installation"
-status: pending
+status: completed
 priority: P1
 effort: "45m"
 dependencies: [1]
@@ -42,9 +42,9 @@ The vendor installer is a Makeself `.run` archive downloaded from `vnstocks.com`
 
 ## Success Criteria
 
-- [ ] `vnstock_data` imports successfully from `product/.venv/bin/python`.
-- [ ] Version string prints without error.
-- [ ] No credentials or install logs remain in the repo.
+- [x] `vnstock_data` imports successfully from `product/.venv/bin/python`.
+- [x] Version string prints without error.
+- [x] No credentials or install logs remain in the repo.
 
 ## Risk Assessment
 

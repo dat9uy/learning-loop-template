@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Record Update"
-status: pending
+status: completed
 priority: P2
 effort: "20m"
 dependencies: [3]
@@ -39,10 +39,10 @@ Update the learning-loop ledger to reflect successful capability execution. Mark
 
 ## Success Criteria
 
-- [ ] Experiment record shows `result: supports`.
-- [ ] Claim record shows `runtime: verified` with proof ref to experiment.
-- [ ] `pnpm check` passes with 0 errors.
-- [ ] Evidence envelope is complete and follows output policy.
+- [x] Experiment record shows `result: supports`.
+- [x] Claim record shows `runtime: verified` with proof ref to experiment.
+- [x] `pnpm check` passes with 0 errors.
+- [x] Evidence envelope is complete and follows output policy.
 
 ## Risk Assessment
 

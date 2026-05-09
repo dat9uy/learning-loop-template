@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Capability Execution"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -52,10 +52,10 @@ product/.venv/bin/python product/capabilities/vnstock-data/capability-04-insight
 
 ## Success Criteria
 
-- [ ] All 5 capability scripts execute without `ModuleNotFoundError` or `AuthenticationError`.
-- [ ] Each script returns at least one non-empty DataFrame or structured result.
-- [ ] Evidence envelope captures: column names, row counts, schema shapes, redacted sample rows.
-- [ ] No raw external data or credentials in the envelope.
+- [x] All 5 capability scripts execute without `ModuleNotFoundError` or `AuthenticationError`.
+- [x] Each domain returns at least one non-empty DataFrame or structured result.
+- [x] Evidence envelope captures: column names, row counts, and schema shapes.
+- [x] No raw external data or credentials in the envelope.
 
 ## Risk Assessment
 

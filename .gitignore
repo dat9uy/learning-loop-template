@@ -1,3 +1,9 @@
 node_modules/
 .DS_Store
 *.log
+.venv/
+__pycache__/
+*.egg-info/
+product/.cache/
+product/.local/
+product/.vnstock/

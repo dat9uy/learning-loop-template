@@ -3,11 +3,12 @@ schema_version: "1.0"
 type: claim
 status: approved
 created_at: "2026-05-08"
-updated_at: "2026-05-09"
+updated_at: "2026-05-10"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+  - local:records/evidence/vnstock-data/capability-runtime-output.md
   - record:experiment-vnstock-capabilities-20260509T174957Z
 notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance"
 subject: vnstock Python package
@@ -38,11 +39,12 @@ verification:
     proof_refs:
       - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
   runtime:
-    status: claimed
+    status: verified
     scope: sandbox
     output: runtime-captured
-    reason: Capability runtime experiment staged (experiment-vnstock-capabilities-20260509T174957Z). Execution pending on registered device.
-    proof_refs: []
+    reason: The approved capability runtime experiment executed live Reference, Market, Fundamental, Insights, and Macro calls from the shared product environment with metadata-only output capture.
+    proof_refs:
+      - record:experiment-vnstock-capabilities-20260509T174957Z
   product:
     status: claimed
     reason: No product adoption decision has been made.
