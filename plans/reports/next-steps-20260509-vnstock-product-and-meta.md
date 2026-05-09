@@ -2,14 +2,20 @@
 title: Next Steps — vnstock Product-Level and Meta-Level Work
 date: 2026-05-09
 source: `ck:problem-solving` follow-up on `plans/reports/review-20260509-vnstock-resume-record-layer-gaps.md`
-status: recommendation report
+status: superseded 2026-05-09 evening
+superseded_by: `plans/reports/next-steps-20260509-r-q5-fact-capability-scope-split.md`
 inputs:
   - `plans/reports/review-20260509-vnstock-resume-record-layer-gaps.md`
   - `plans/260509-1353-vnstock-device-limit-investigation/plan.md`
+  - `plans/260509-1924-meta-self-improvement/plan.md`
   - `records/claims/claim-vnstock-install-sandbox.yaml`
   - `records/claims/claim-vnstock-device-limit-mechanism.yaml`
+  - `records/decisions/decision-20260509T192448Z-experiment-result-convention.yaml`
+  - `records/decisions/decision-20260509T192449Z-prospective-convention-application.yaml`
   - `knowledge-packs/vnstock-data/manifest.yaml`
 ---
+
+> **Superseded by:** `plans/reports/next-steps-20260509-r-q5-fact-capability-scope-split.md` (2026-05-09 evening). The operator proposed a concrete R-Q5 resolution (facts in learning-loop layer, capabilities in product scope), invalidating this report's deferred-R-Q5 framing for product-track recommendations. Meta-track closeout summary, P4 sweep no-op finding, and authoritative tier/cap statement are inherited into the superseding report's "Inherited from the Superseded Report" section. This report is retained for forensic context.
 
 # Next Steps: vnstock Product-Level and Meta-Level Work
 
@@ -21,6 +27,23 @@ The vnstock record-layer recovery and device-limit investigation are complete. T
 2. **Meta-level:** author the self-improvement plan deferred by the review report's Step 10, so future experiments do not repeat the same record-layer drift.
 
 Do not combine these tracks into one plan. They have different approval surfaces. Product work can touch knowledge-pack publication, vendor account state, subscription/device limits, and possibly future runtime use. Meta work should touch conventions, templates, docs, and validation posture.
+
+## Status Update (2026-05-09 evening)
+
+**Meta track: closed.** Plan `plans/260509-1924-meta-self-improvement` shipped four phases on 2026-05-09:
+
+- M6 (Phase 1) — `experiment.result` convention + paired decisions in `docs/operator-guide.md` and `records/decisions/decision-20260509T192448Z-experiment-result-convention.yaml`, `records/decisions/decision-20260509T192449Z-prospective-convention-application.yaml`.
+- M2 (Phase 2) — Evidence-MD to Experiment-YAML Conversion section landed in `docs/operator-guide.md` (Migration / Structuring modes).
+- M3 (Phase 3) — `learning-loop` skill helper updates: `SKILL.md`, `references/prompt-blueprints.md`, `references/meta-evidence-self-improvement.md`.
+- M5 (Phase 4) — Phase Success Criteria template in `docs/operator-guide.md`.
+- M4 — deferred per N=1 (re-open trigger: a second operator-side mutation between reruns).
+- M7 — absorbed into Phase 1 decision YAML's `blocked_actions` clause; no separate work.
+
+`pnpm validate:records` and `pnpm check` passed on the closing run.
+
+**Product track: untouched.** P1–P5 still pending. P1 still requires an operator decision on product target.
+
+**P4 sweep: no live targets.** Re-grepped on 2026-05-09 evening. The brainstorm `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md` does not actually contain a `Golden` / `2 devices/OS` *assertion* — it is a meta-process Q1–Q5 brainstorm and never asserted tier/cap (verified by `grep -i golden|tier|2 device` returning zero hits in the file's only commit `e87ffa2`). The only literal `Golden = 2 devices/OS` text lives in `records/evidence/vnstock-data/experiment-install-20260508T171112Z.md` line 72 as a forensic capture of vendor output ("Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành") and in `plans/reports/review-20260509-vnstock-resume-record-layer-gaps.md` as recall/contrast (G7 context, lines 49/108/296/306). Per P4's own rule ("Historical discussions that *recall* the prior hypothesis ... are not stale; only artifacts that *assert* the wrong tier/cap need superseding"), neither qualifies. **The supersede sweep is currently a no-op.** P4 step 3 (optional evidence note capturing the operator's vendor-website confirmation) remains available if the operator wants a distinct observation point, but it is not record hygiene; it is new evidence capture.
 
 ## Problem-Solving Lens
 
@@ -44,12 +67,12 @@ Completed:
 
 Still unresolved:
 
-- `knowledge-packs/vnstock-data/` remains draft and empty.
+- `knowledge-packs/vnstock-data/` remains draft and empty (`facts: []`, `capabilities: []`).
 - The fact/capability publication model is intentionally unresolved per R-Q5.
 - Durable-fact extraction from the install/device-limit findings is not done.
-- Meta Step 10 is not implemented: O7, O8, O10, and O15 still need a self-improvement plan.
-- The run-1 experiment YAML still carries the pre-R-Q4 `result: does-not-support` value. This should be accepted as historical drift unless an explicit migration is approved.
-- Authoritative tier/cap: operator confirmed via `vnstocks.com/account?section=devices` on 2026-05-09 that the active subscription is `bronze` with `1 Linux device` cap. Sandbox-1 evidence corroborates. Conflicting artifacts (e.g., the older brainstorm report's Golden-tier / `2 devices/OS` framing) must be superseded (see P4).
+- ~~Meta Step 10 is not implemented: O7, O8, O10, and O15 still need a self-improvement plan.~~ **Resolved 2026-05-09:** plan `260509-1924-meta-self-improvement` shipped M2/M3/M5/M6; M4 deferred (N=1); M7 absorbed.
+- The run-1 experiment YAML still carries the pre-R-Q4 `result: does-not-support` value. This is now formally accepted as historical drift per `record:decision-20260509T192449Z-prospective-convention-application` (no migration approved).
+- Authoritative tier/cap: operator confirmed via `vnstocks.com/account?section=devices` on 2026-05-09 that the active subscription is `bronze` with `1 Linux device` cap. Sandbox-1 evidence corroborates. Conflicting artifacts (e.g., the older brainstorm report's Golden-tier / `2 devices/OS` framing) must be superseded (see P4) — but per the Status Update above, no live assertion-level targets currently exist.
 
 ## Product-Level Next Steps
 
@@ -111,7 +134,9 @@ Branch 7b means every future Linux clean-fingerprint rerun consumes the single o
 
 ## Meta-Level Next Steps
 
-### M1. Author the Step 10 self-improvement plan now
+> **Track status (2026-05-09 evening): closed.** All meta items below are resolved or formally deferred. See "Status Update" near the top for the closeout summary. Items kept in this section as reference/history; do not re-open without a new trigger event.
+
+### M1. Author the Step 10 self-improvement plan now [DONE]
 
 Create a new plan scoped only to the deferred meta work from the review report:
 
@@ -124,7 +149,7 @@ This plan should not rerun vnstock experiments and should not publish the knowle
 
 Note: M1 is the act of calling `ck:plan` with the spec below; M2–M7 are the actual phases of the resulting plan. See "Meta Plan Scoping" for ordering, output paths, decision-record output, and explicit out-of-scope items.
 
-### M2. Codify conversion as one workflow with two modes
+### M2. Codify conversion as one workflow with two modes [DONE]
 
 Document the evidence-MD to experiment-YAML sweep as one workflow:
 
@@ -133,7 +158,7 @@ Document the evidence-MD to experiment-YAML sweep as one workflow:
 
 This prevents future agents from treating every evidence-MD as either permanently unstructured or freely convertible.
 
-### M3. Add a non-mutating migration helper to the learning-loop skill
+### M3. Add a non-mutating migration helper to the learning-loop skill [DONE]
 
 Add a helper to `.claude/skills/learning-loop/` that lets future agents produce a safe migration prompt or checklist when an explicit migration is approved.
 
@@ -155,7 +180,7 @@ The helper should not mutate records automatically. It should generate a bounded
 
 Defer an executable script until repeated migrations prove the need. One helper prompt/checklist is enough for the current gap.
 
-### M4. Document operator-side external actions
+### M4. Document operator-side external actions [DEFERRED]
 
 Add an operator-guide subsection for actions like vendor device clearance:
 
@@ -168,7 +193,7 @@ N count check: the device-clearance decision is N=1 of "External Operator Action
 
 Lean: defer M4 until a second concrete operator-action-between-reruns case lands (e.g., a future vendor-side change like a subscription upgrade or a repeated clearance). The pattern is not load-bearing for any current blocker; one decision YAML already captures the sole instance. Re-open trigger: a second operator-side mutation between reruns is recorded.
 
-### M5. Fix phase success criteria semantics
+### M5. Fix phase success criteria semantics [DONE]
 
 Update phase templates/docs so a phase can show:
 
@@ -180,7 +205,7 @@ This avoids the misleading "mostly checked off" phase when the experimental resu
 
 Edit target: phase templates live in `~/.claude/rules/documentation-management.md` (global, out-of-repo). Lean: land this convention as a project-local subsection in `docs/operator-guide.md` rather than editing the global rules file. The plan may instead create a dedicated `docs/phase-template.md` if the operator prefers; pick one in planning.
 
-### M6. Adopt R-Q4 prospectively
+### M6. Adopt R-Q4 prospectively [DONE]
 
 Add the `experiment.result` convention to `docs/operator-guide.md` before adding schema enforcement:
 
@@ -191,7 +216,7 @@ Add the `experiment.result` convention to `docs/operator-guide.md` before adding
 
 Also codify: **new conventions apply prospectively unless an explicit migration is approved**. That resolves the run-1 YAML drift without mutating a frozen historical experiment just for cosmetic alignment.
 
-### M7. Defer validator/schema hardening
+### M7. Defer validator/schema hardening [DONE — absorbed]
 
 Do not add a schema enum for `experiment.result` yet. Promote the convention to validation only after at least three distinct experiments use it without semantic strain.
 
@@ -262,8 +287,10 @@ If M4 lands (not deferred), pair it with `decision-<UTC>-external-operator-actio
 
 ## Recommended Sequence
 
-1. Call `ck:plan` with the "Meta Plan Scoping" spec above to author the meta self-improvement plan covering M2–M7. (M1 is the act of calling `ck:plan`, not a phase.)
-2. Run the supersede sweep for artifacts that contradict the bronze / 1 Linux device authoritative state (per P4).
+> **Step 1 done; Step 2 found to be a no-op; Steps 3–5 still open.**
+
+1. ~~Call `ck:plan` with the "Meta Plan Scoping" spec above to author the meta self-improvement plan covering M2–M7.~~ **Done 2026-05-09:** plan `260509-1924-meta-self-improvement` shipped and validated.
+2. ~~Run the supersede sweep for artifacts that contradict the bronze / 1 Linux device authoritative state (per P4).~~ **No-op 2026-05-09:** see Status Update; no live assertion-level targets exist. P4 step 3 (optional vendor-website evidence note) remains available but is new evidence capture, not record hygiene.
 3. Ask for a product decision: Install-only pack vs Facts-only note vs Runtime/product adoption.
 4. Execute the chosen product path in a separate plan.
 5. Re-open recurring-clearance machinery only when another vnstock rerun is scheduled.
@@ -292,3 +319,9 @@ Resolved during this update (2026-05-09):
 
 - **Decision-record output for the meta plan: yes.** The plan authors decision YAMLs paired with the M6 docs edit (`decision-<UTC>-experiment-result-convention.yaml` and `decision-<UTC>-prospective-convention-application.yaml`); pair an M4 decision YAML if M4 lands. See "Meta Plan Scoping" → "Decision-record output (YES)".
 - **Authoritative tier/cap for the vnstocks account:** `bronze`, `1 Linux device`, operator-confirmed via vendor website on 2026-05-09. Conflicting artifacts must be superseded (see P4).
+
+Resolved during the 2026-05-09 evening update (post meta-plan close):
+
+- **Decision 2 (meta scope) is now moot.** The meta plan landed as docs/skill/decision-YAML only with no validation/reporting changes — i.e., the operator's "lean" answer was followed.
+- **P4 sweep has no live assertion-level targets.** Only forensic vendor-output captures and recall references exist. Optional new evidence note (P4 step 3) is the only remaining product-record action and is itself optional, not required.
+- **Product-target decision (P1) is still required and is the only blocker for any product-track work.**

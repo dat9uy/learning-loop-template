@@ -2,7 +2,7 @@ id: vnstock-data
 domain: vnstock
 status: draft
 version: 0.1.0
-summary: Draft vnstock install knowledge pack. Publication is blocked until sandbox install verification succeeds.
+summary: Placeholder. Pack is not a publication target; facts live in records/, capabilities deferred to a future product-build experiment.
 approval:
   reviewer: ""
   reviewed_at: ""
@@ -10,8 +10,6 @@ approval:
 pack_ref: pack:vnstock-data
 files:
   - manifest.yaml
-  - facts.yaml
-  - capabilities.yaml
 publication_gate:
   claims:
     min_assurance: install
