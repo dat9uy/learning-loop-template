@@ -1,7 +1,7 @@
 id: claim-vnstock-device-limit-mechanism
 schema_version: "1.0"
 type: claim
-status: reviewed
+status: approved
 created_at: "2026-05-09"
 updated_at: "2026-05-09"
 source_refs:
@@ -16,12 +16,13 @@ evidence_refs:
   - local:records/evidence/vnstock-data/experiment-install-20260509T071800Z-sandbox-1.md
   - local:records/evidence/vnstock-data/experiment-install-20260509T071900Z-sandbox-2.md
 confidence: medium
+notes: "Operator confirmed device management UI at https://vnstocks.com/account?section=devices on 2026-05-09; sandbox-2 installer output cited this URL as the vendor-provided resolution path."
 limitations:
   - Mechanism is inferred from sanitized vendor installer output, not vendor documentation.
   - Evidence isolates account-and-OS-global metering for fresh Linux Docker sandboxes under the observed bronze tier state; it does not prove behavior for other OS families, tiers, or future vendor policy.
   - Agent did not and must not perform external account device clearance.
 approval:
-  status: reviewed
+  status: approved
   reviewer: operator
   reviewed_at: "2026-05-09"
 verification:
