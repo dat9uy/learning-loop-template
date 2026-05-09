@@ -33,7 +33,7 @@ The vendor installer is a Makeself `.run` archive downloaded from `vnstocks.com`
 ## Implementation Steps
 
 1. **Credential check**: Verify `VNSTOCK_API_KEY` is available as an environment variable. If not, ask operator.
-2. **Device limit check**: Check the vendor device management UI (`https://vnstocks.com/account?section=devices`) to confirm a Linux slot is available.
+2. **Device limit check**: Ask the operator to check the vendor device management UI (`https://vnstocks.com/account?section=devices`) and confirm a Linux device slot is available. The agent cannot access authenticated vendor UIs.
 3. **Download installer**: Download the official Makeself `.run` installer to a temp directory.
 4. **Execute installer**: Run the installer with the API key env var, targeting `product/.venv/`.
 5. **Verify import**: Run `product/.venv/bin/python -c "import vnstock_data; print(vnstock_data.__version__)"`.
