@@ -26,4 +26,4 @@ Use VS Code with the Jupyter extension:
 
 ## Environment Note
 
-These scripts assume `vnstock_data` is installed in the same environment as the product (e.g., a shared `.venv` or `uv` project). The device-limit mechanism (see `records/claims/claim-vnstock-device-limit-mechanism.yaml`) means only one Linux installation per account is permitted. Run these capabilities on the registered device.
+These scripts assume `vnstock_data` is installed in `product/api/.venv`. Bootstrap that environment from the repo root with `pnpm bootstrap:api`; the command runs `uv sync` and then an explicit vendor installer stage requiring `VNSTOCK_API_KEY`. The device-limit mechanism (see `records/claims/claim-vnstock-device-limit-mechanism.yaml`) means only one Linux installation per account is permitted. Run these capabilities on the registered device.

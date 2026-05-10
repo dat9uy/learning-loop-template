@@ -168,6 +168,16 @@ When user asks to create capability scripts (standalone feasibility scripts) for
 
 Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` and `knowledge-packs` local source roots.
 
+### API Stack Bootstrap
+
+Bootstrap the Python API stack from the repo root with:
+
+```bash
+pnpm bootstrap:api
+```
+
+The command runs two explicit stages: `uv sync` installs public dependencies in `product/api/.venv`, then `product/api/scripts/install-vnstock.sh` runs the SHA-pinned vnstock vendor installer with `product/api` as `HOME`. Stage 2 requires an operator-provided `VNSTOCK_API_KEY`, may consume a vendor device slot, and must not be run from package install hooks.
+
 ### Intentional Skip Pattern
 
 When user wants to skip a required claim:
