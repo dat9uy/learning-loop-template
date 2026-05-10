@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Post-Migration Records"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [5]

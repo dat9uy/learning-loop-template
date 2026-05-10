@@ -1,7 +1,7 @@
 ---
 title: "Capabilities Stack Migration"
 description: "Relocate capability scripts under per-stack homes. Extend validator allowlist to permit capability records to cite local capability code via a glob pattern. Land before any product-build plan."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [capabilities, stack, migration, schema, validator]
@@ -28,12 +28,12 @@ This plan scopes the standalone migration: relocate capabilities, name the per-s
 
 | Phase | Name | Status | Type |
 |-------|------|--------|------|
-| 1 | [Pre-Migration Records](./phase-01-pre-migration-records.md) | Pending | loop |
-| 2 | [Validator and Schema](./phase-02-validator-and-schema.md) | Pending | code |
-| 3 | [Fixture Tests](./phase-03-fixture-tests.md) | Pending | code |
-| 4 | [Filesystem Migration](./phase-04-filesystem-migration.md) | Pending | code + shell |
-| 5 | [Doc and Skill Harmonize](./phase-05-doc-and-skill-harmonize.md) | Pending | loop + code |
-| 6 | [Post-Migration Records](./phase-06-post-migration-records.md) | Pending | loop |
+| 1 | [Pre-Migration Records](./phase-01-pre-migration-records.md) | Completed | loop |
+| 2 | [Validator and Schema](./phase-02-validator-and-schema.md) | Completed | code |
+| 3 | [Fixture Tests](./phase-03-fixture-tests.md) | Completed | code |
+| 4 | [Filesystem Migration](./phase-04-filesystem-migration.md) | Completed | code + shell |
+| 5 | [Doc and Skill Harmonize](./phase-05-doc-and-skill-harmonize.md) | Completed | loop + code |
+| 6 | [Post-Migration Records](./phase-06-post-migration-records.md) | Completed | loop |
 
 ## Dependencies
 

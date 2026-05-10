@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Fixture Tests"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [2]

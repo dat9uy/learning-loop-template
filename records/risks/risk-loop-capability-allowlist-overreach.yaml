@@ -1,0 +1,21 @@
+id: risk-loop-capability-allowlist-overreach
+schema_version: "1.0"
+type: risk
+status: active
+created_at: "2026-05-10T16:00:00Z"
+updated_at: "2026-05-10T16:00:00Z"
+source_refs:
+  - local:records/evidence/meta/capability-allowlist-deferred-axes.md
+risk_statement: Future record types could accidentally inherit the widened capability-record source reference allowlist and cite product code outside the intended default-deny boundary.
+category: scope-boundary
+severity: medium
+likelihood: low
+confidence: medium
+claim_refs:
+  - record:claim-loop-capabilities-stack-allowlist
+mitigation:
+  blocked_actions:
+    - Do not widen default local source roots beyond records/evidence and knowledge-packs.
+  required_gates:
+    - Keep the allowlist table keyed by record type.
+    - Require fixtures proving non-capability records reject product paths.

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parseYaml } from "./simple-yaml-parser.js";
 
-export const recordDirs = ["claims", "experiments", "decisions", "risks"];
+export const recordDirs = ["claims", "experiments", "decisions", "risks", "capabilities"];
 
 function sortedYamlFiles(dir) {
   if (!existsSync(dir)) return [];

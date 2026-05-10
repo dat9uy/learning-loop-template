@@ -1,0 +1,32 @@
+id: claim-loop-capabilities-stack-allowlist
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-10T16:00:00Z"
+updated_at: "2026-05-10T16:00:00Z"
+source_refs:
+  - local:records/evidence/meta/capability-allowlist-deferred-axes.md
+subject: capability-record source reference allowlist
+claim: Capability records can cite local capability script code under product/*/capabilities while other record types remain default-denied from product paths.
+scope: loop validator source_refs
+evidence_refs:
+  - local:records/evidence/meta/capability-allowlist-deferred-axes.md
+confidence: medium
+limitations:
+  - Stack manifest enforcement stays a review convention.
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-10T16:00:00Z"
+verification:
+  static:
+    status: verified
+    proof_refs:
+      - record:experiment-loop-capabilities-stack-allowlist-20260510T160000Z
+  runtime:
+    status: verified
+    scope: sandbox
+    output: metadata-only
+    reason: Runtime fixture proof was captured after migration validation.
+    proof_refs:
+      - record:experiment-loop-capabilities-stack-allowlist-20260510T160000Z

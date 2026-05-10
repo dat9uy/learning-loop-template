@@ -1,0 +1,22 @@
+id: fixture-non-capability-source-in-product
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2026-05-10T16:00:00Z"
+updated_at: "2026-05-10T16:00:00Z"
+source_refs:
+  - local:product/api/capabilities/vnstock-data/capability-01-reference.py
+subject: fixture
+claim: Product paths stay blocked for non-capability records.
+scope: validator-fixture
+evidence_refs: []
+confidence: low
+limitations: []
+approval:
+  status: draft
+  reviewer: none
+  reviewed_at: "2026-05-10T16:00:00Z"
+verification:
+  static:
+    status: claimed
+    proof_refs: []

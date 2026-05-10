@@ -26,7 +26,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `records/evidence/meta/`: loop self-improvement evidence when needed.
 - `knowledge-packs/`: curated consumer-facing packs.
 - `docs/`: project metadata and loop policy, not domain evidence dumps.
-- `product/`: empty until an approved build experiment.
+- `product/`: per-stack workspace; capability scripts may live under `product/<stack>/capabilities/`, while application code appears only after an approved build experiment.
 - `tools/`: validators and verification helpers.
 
 ## Separation Rules
@@ -56,6 +56,7 @@ Experiments prove non-product dimensions with `verification.proves`. Product app
 
 - Active records and packs cite local evidence or records, not old repo paths.
 - Use `local:records/evidence/...` for durable evidence files.
+- Use `local:product/<stack>/capabilities/...` only for capability records.
 - Use `record:<id>` for records.
 - Use `pack:<id>` for packs.
 - Knowledge packs cite `record_ref`, not raw evidence paths.

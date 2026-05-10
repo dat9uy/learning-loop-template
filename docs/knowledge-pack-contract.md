@@ -51,7 +51,7 @@ publication_gate:
 - `manifest.yaml` owns pack id, domain, status, version, consumption scope, refs, and publication gates.
 - `facts.yaml` contains gate-qualified pack-facing truth.
 - `capabilities.yaml` describes what consumers may do within approved scope.
-- Capability runtime experiments (`product/capabilities/<scope>/`) test pack feasibility before product build. They are not pack files but may inform pack capability declarations.
+- Capability Runtime Experiments (`product/<stack>/capabilities/<scope>/`) test pack feasibility before product build. They are not pack files but may inform pack capability declarations.
 
 ## Reference Rules
 

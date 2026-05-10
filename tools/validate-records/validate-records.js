@@ -11,7 +11,7 @@ import { validateUseCaseFixtures } from "./use-case-fixture-validation.js";
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
 const schemas = Object.fromEntries(
-  ["claim", "experiment", "decision", "risk"].map((type) => [
+  ["claim", "experiment", "decision", "risk", "capability"].map((type) => [
     type,
     JSON.parse(readFileSync(join(root, "schemas", `${type}.schema.json`), "utf8")),
   ]),
@@ -23,6 +23,9 @@ function runNegativeFixtures(packStatuses) {
     ["unapproved-pack", "experiment consumes unreviewed pack"],
     ["disallowed-legacy-source", "disallowed legacy source"],
     ["disallowed-local-source", "local source must stay under records/evidence or knowledge-packs"],
+    ["capability-source-outside-allowlist", "local source must stay under records/evidence, knowledge-packs, product/*/capabilities"],
+    ["non-capability-source-in-product", "local source must stay under records/evidence or knowledge-packs"],
+    ["capability-source-glob-traversal", "local source must stay under records/evidence, knowledge-packs, product/*/capabilities"],
     ["local-source-traversal", "local source must stay under records/evidence or knowledge-packs"],
     ["missing-local-source", "missing local source"],
     ["unsupported-source-ref", "unsupported source reference"],

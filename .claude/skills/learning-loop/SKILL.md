@@ -31,6 +31,7 @@ Use when the user asks:
    - experiment planning or proof run
    - knowledge-pack curation
    - runtime/install proof
+   - product-build prompt
    - self-improvement/meta-evidence
    - evidence-to-experiment migration
 2. Load `references/learning-loop-rules.md` for repo policy. If the prompt needs exact current wording, read the named `docs/` or `records/evidence/meta/` files before drafting.
@@ -66,4 +67,5 @@ Refuse or rewrite prompts that ask agents to exfiltrate secrets, expose config c
 
 - `references/learning-loop-rules.md` — condensed repo rules from `docs/` and meta evidence.
 - `references/prompt-blueprints.md` — reusable prompt skeletons.
+- `references/prompt-blueprints-product-build.md` — product-build prompt skeletons.
 - `references/meta-evidence-self-improvement.md` — self-improvement and `meta` evidence rules.

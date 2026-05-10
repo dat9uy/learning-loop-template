@@ -23,7 +23,7 @@ pnpm check
 
 ## Capability Runtime Experiments
 
-To test whether a library's API returns usable data before product implementation, create standalone feasibility scripts under `product/capabilities/<scope>/`. These scripts are runtime experiment substrate. See `docs/operator-guide.md` → "Capability Runtime Experiment" for the full protocol.
+To test whether a library's API returns usable data before product implementation, create standalone feasibility scripts under `product/<stack>/capabilities/<scope>/`. These scripts are runtime experiment substrate. See `docs/operator-guide.md` → "Capability Runtime Experiment" for the full protocol. Frozen records before 2026-05-10 may mention the old path and remain unchanged by policy.
 
 ## Active Content
 
@@ -35,7 +35,7 @@ To test whether a library's API returns usable data before product implementatio
 | `records/risks/` | Active risks (external installer) |
 | `records/evidence/vnstock-data/` | Evidence capsules for vnstock domain |
 | `knowledge-packs/vnstock-data/` | Draft pack manifest |
-| `product/capabilities/vnstock-data/` | Capability feasibility scripts |
+| `product/api/capabilities/vnstock-data/` | Python capability feasibility scripts |
 | `plans/` | Active plans including capability runtime execution |
 | `docs/journals/` | Session journal entries |
 

@@ -27,6 +27,7 @@ pnpm verify:claim -- --claim <claim-id> --dimension <dimension> --status <status
 Put durable evidence capsules under `records/evidence/<scope>/`. Active `source_refs` should use:
 
 - `local:records/evidence/...` for local evidence files;
+- `local:product/<stack>/capabilities/...` for capability records only;
 - `record:<id>` for internal record evidence.
 
 Do not use active `legacy:` refs. Historical source paths may appear only in evidence-doc prose under `Original Source Summary`.
@@ -147,16 +148,25 @@ When user asks to build product/API/tool from a pack or library:
 
 ### Capability Runtime Experiment
 
-When user asks to create capabilities (standalone feasibility scripts) for a library or SDK:
+When user asks to create capability scripts (standalone feasibility scripts) for a library or SDK:
 
-- Capabilities are standalone scripts under `product/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
-- Capabilities are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
-- Capabilities verify the `runtime` dimension of a claim. The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
+- Capability scripts are standalone scripts under `product/<stack>/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
+- Capability scripts are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
+- Capability scripts verify the `runtime` dimension of a claim. The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
 - The capability scripts are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
-- Capabilities may live in `product/` before product approval because they are feasibility probes, not product implementations.
-- **Environment model:** Capabilities share a persistent dependency environment with the future product. The environment root is `product/` (language-specific: `product/node_modules/` for TS/JS, `product/.venv/` for Python, `product/vendor/` for Go, etc.). Capability scripts run against this environment, not a disposable temp install. Future product code (e.g., a service under `product/src/`) uses the same environment and the same library installation.
-- This shared environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device.
+- Capability scripts may live in `product/<stack>/` before product approval because they are feasibility probes, not product implementations.
+- **Environment model:** Capability scripts share a persistent dependency environment with their stack. The environment root is `product/<stack>/` (language-specific: `product/web/node_modules/` for TS/JS, `product/api/.venv/` for Python, `product/<stack>/vendor/` for Go, etc.). Capability scripts run against this environment, not a disposable temp install. Future product code in the same stack uses the same environment and the same library installation.
+- This per-stack environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device while avoiding cross-runtime coupling.
 - Required experiment steps: create capability scripts, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update claim `runtime` dimension to `verified`.
+
+### Stacks and Capability Locations
+
+| Stack | Manifest | Capability script root |
+|---|---|---|
+| Python API | `product/api/pyproject.toml` | `product/api/capabilities/` |
+| TypeScript web | `product/web/package.json` when introduced | `product/web/capabilities/` |
+
+Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` and `knowledge-packs` local source roots.
 
 ### Intentional Skip Pattern
 

@@ -4,6 +4,6 @@ node_modules/
 .venv/
 __pycache__/
 *.egg-info/
-product/.cache/
-product/.local/
-product/.vnstock/
+product/*/.cache/
+product/*/.local/
+product/*/.vnstock/

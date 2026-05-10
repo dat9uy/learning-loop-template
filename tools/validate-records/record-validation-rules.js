@@ -47,7 +47,10 @@ export function validateRecords(records, schemas, packStatuses, root, allowDisal
   return errors;
 }
 
-const allowedRecordLocalRoots = ["records/evidence", "knowledge-packs"];
+const recordLocalRoots = {
+  default: ["records/evidence", "knowledge-packs"],
+  capability: ["records/evidence", "knowledge-packs", "product/*/capabilities"],
+};
 
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {
   for (const sourceRef of record.source_refs || []) {
@@ -57,7 +60,7 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
       continue;
     }
     if (sourceRef.startsWith("local:")) {
-      validateLocalRef(record.__file, sourceRef, root, errors);
+      validateLocalRef(record, sourceRef, root, errors);
       continue;
     }
     if (sourceRef.startsWith("record:")) {
@@ -99,19 +102,46 @@ export function validateLocalPath(label, relativeRef, root, errors) {
 export function validateAllowedLocalPath(label, relativeRef, root, allowedRoots, allowedDescription, errors) {
   const realPath = validateLocalPath(label, relativeRef, root, errors);
   if (!realPath) return;
-  const allowedPaths = allowedRoots.map((allowedRoot) => realPathFor(root, allowedRoot));
-  if (!allowedPaths.some((allowedPath) => isInside(realPath, allowedPath))) {
+  const rootPath = normalize(realpathSync(root));
+  const realRelativeSegs = realPath.slice(rootPath.length + 1).split("/");
+  const allowed = expandAllowedRoots(allowedRoots, root);
+  if (!allowed.some((allowedRoot) => matchAllowedRoot(realPath, realRelativeSegs, allowedRoot))) {
     errors.push(`${label}: local source must stay under ${allowedDescription} ${relativeRef}`);
   }
 }
 
-export function validateLocalRef(label, ref, root, errors) {
+function expandAllowedRoots(patterns, root) {
+  return patterns.map((pattern) => {
+    if (!pattern.includes("*")) return { kind: "exact", path: realPathFor(root, pattern) };
+    return { kind: "glob", segments: pattern.split("/") };
+  });
+}
+
+function matchAllowedRoot(realPath, realRelativeSegs, allowedRoot) {
+  if (allowedRoot.kind === "exact") return isInside(realPath, allowedRoot.path);
+  if (realRelativeSegs.length < allowedRoot.segments.length) return false;
+  return allowedRoot.segments.every((patternSegment, index) => {
+    const realSegment = realRelativeSegs[index];
+    if (patternSegment !== "*") return patternSegment === realSegment;
+    return Boolean(realSegment) && realSegment !== "." && realSegment !== "..";
+  });
+}
+
+function allowedDescriptionFor(allowedRoots) {
+  if (allowedRoots.length === 2 && allowedRoots[0] === "records/evidence" && allowedRoots[1] === "knowledge-packs") {
+    return "records/evidence or knowledge-packs";
+  }
+  return allowedRoots.join(", ");
+}
+
+export function validateLocalRef(record, ref, root, errors) {
+  const allowedRoots = recordLocalRoots[record.type] || recordLocalRoots.default;
   validateAllowedLocalPath(
-    label,
+    record.__file,
     ref.slice("local:".length),
     root,
-    allowedRecordLocalRoots,
-    "records/evidence or knowledge-packs",
+    allowedRoots,
+    allowedDescriptionFor(allowedRoots),
     errors,
   );
 }

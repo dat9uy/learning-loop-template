@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Capability Record",
+  "type": "object",
+  "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "stack", "surface", "maps"],
+  "properties": {
+    "id": { "type": "string" },
+    "schema_version": { "type": "string" },
+    "type": { "const": "capability" },
+    "status": { "enum": ["draft", "approved", "rejected", "superseded"] },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "source_refs": { "type": "array", "items": { "type": "string" } },
+    "stack": { "type": "string" },
+    "surface": { "type": "string" },
+    "maps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source"],
+        "properties": {
+          "source": { "type": "string" },
+          "route_class": { "type": "string" },
+          "view_class": { "type": "string" },
+          "response_class": { "type": "string" }
+        }
+      }
+    },
+    "supersedes": { "type": "array", "items": { "type": "string" } }
+  }
+}
