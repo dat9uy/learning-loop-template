@@ -8,6 +8,6 @@ The installer script is explicit operator action only. It requires `VNSTOCK_API_
 
 Living docs now point operators to `pnpm bootstrap:api` and state the vendor stage requires explicit approval and may consume a device slot. Plan status is synced: phases 1-3 complete; phase 4 static validation complete; runtime proof and decision approval remain pending.
 
-Validation passed: `bash -n product/api/scripts/install-vnstock.sh`, `uv sync` for public deps, `pnpm validate:records`, and `pnpm check`. Runtime bootstrap was not run; `.venv` was not deleted; `.vnstock` contents were not read.
+Validation passed: `bash -n product/api/scripts/install-vnstock.sh`, `uv sync` for public deps, `pnpm validate:records`, and `pnpm check`. Runtime bootstrap was later approved by the operator, `product/api/.venv` was deleted and recreated, `pnpm bootstrap:api` passed, and `vnstock_data==3.1.7` imported successfully. `.vnstock` contents were not read.
 
 Unresolved questions: none.

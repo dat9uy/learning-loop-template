@@ -1,11 +1,12 @@
 id: decision-20260510T170623Z-vnstock-installer-bootstrap
 schema_version: "1.0"
 type: decision
-status: draft
+status: approved
 created_at: "2026-05-10T17:06:23Z"
-updated_at: "2026-05-10T17:06:23Z"
+updated_at: "2026-05-10T17:09:08Z"
 source_refs:
   - local:records/evidence/loop/vnstock-installer-bootstrap.md
+  - local:records/evidence/loop/vnstock-installer-bootstrap-runtime.md
   - local:records/evidence/loop/capabilities-stack-migration.md
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260509T071800Z-sandbox-1.md
@@ -13,7 +14,7 @@ source_refs:
   - record:claim-vnstock-device-limit-mechanism
   - record:decision-20260510T160000Z-capabilities-stack-migration
   - record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance
-notes: Draft follows plans/reports/brainstorm-260510-1706-vnstock-installer-bootstrap.md. Corrects only the install-topology tradeoff bullet inside decision-20260510T160000Z-capabilities-stack-migration; the per-stack layout decision is not superseded. Operator approves after a fresh pnpm bootstrap:api run on a clean .venv produces runtime evidence and the bootstrap script lands.
+notes: Approved after the bootstrap script landed and runtime-20260510-1709-vnstock-bootstrap recreated product/api/.venv from a deleted venv, verified the pinned installer SHA, completed pnpm bootstrap:api, and passed product/api/.venv/bin/python import vnstock_data. Corrects only the install-topology tradeoff bullet inside decision-20260510T160000Z-capabilities-stack-migration; the per-stack layout decision is not superseded.
 question: How should vnstock_data install be separated from the public-deps uv sync flow under product/api/ so that the venv is reproducible from a fresh clone, without misrepresenting vnstock_data as a uv-resolvable artifact?
 decision: Adopt a two-stage bootstrap. Stage 1 runs uv sync over public deps only (pandas, requests, uv); the optional vendor extra is removed from product/api/pyproject.toml. Stage 2 runs product/api/scripts/install-vnstock.sh which downloads the Makeself installer, verifies SHA-256 against a pinned value, and executes it with HOME set to the realpath of product/api so the installer-created $HOME/.venv resolves to the venv stage 1 created. The script is idempotent via a pre-flight import vnstock_data short-circuit. Both stages chain through a single root command pnpm bootstrap:api.
 rationale: vnstock_data ships as a Makeself self-extracting .run archive that creates its own venv, registers the executing device against the vendor account, then internally downloads and extracts the package. There is no vendor-published wheel; uv has no artifact class for an installer-archive dependency, so separation must happen at the bootstrap layer and not inside uv's resolver. The current vendor extra is misleading config because it advertises a resolution path uv cannot satisfy, and the resulting venv stands only because someone hand-copied vnstock_data files from a pre-migration .venv which is not reproducible from the repo. The two-stage flow keeps each stage reproducible inside its own contract, with public deps via uv.lock deterministic and the vendor stage deterministic given a pinned installer SHA, the same vendor URL class, and a registered device slot.

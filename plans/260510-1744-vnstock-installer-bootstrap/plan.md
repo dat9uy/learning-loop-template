@@ -1,7 +1,7 @@
 ---
 title: "vnstock Installer Bootstrap"
 description: "Replace the non-resolvable vnstock_data vendor extra with a reproducible two-stage bootstrap for product/api before product code is written."
-status: in-progress
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, installer, bootstrap, api, reproducibility]
@@ -18,7 +18,7 @@ source: skill
 
 Plan the implementation for `plans/reports/brainstorm-260510-1706-vnstock-installer-bootstrap.md`. The current `product/api/pyproject.toml` advertises `vnstock_data==3.1.7` as a uv-resolvable `vendor` extra, but the observed artifact is a vendor Makeself installer, not a public wheel.
 
-Progress: phases 1-3 complete, phase 4 static validation complete, runtime bootstrap proof and decision approval still pending operator approval plus `VNSTOCK_API_KEY`.
+Progress: all phases complete. Static validation passed, the operator-approved clean `product/api/.venv` bootstrap passed, runtime evidence was recorded, and the bootstrap decision is approved.
 
 The target is a two-stage operator bootstrap: public dependencies via `uv sync`, then a SHA-pinned `product/api/scripts/install-vnstock.sh` run through `pnpm bootstrap:api`. No FastAPI, TanStack, route, database, or product app code belongs in this plan.
 
@@ -29,7 +29,7 @@ The target is a two-stage operator bootstrap: public dependencies via `uv sync`,
 | 1 | [Record Preflight](./phase-01-record-preflight.md) | Completed |
 | 2 | [Bootstrap Script And Manifest Wiring](./phase-02-bootstrap-script-and-manifest-wiring.md) | Completed |
 | 3 | [Docs Harmonize](./phase-03-docs-harmonize.md) | Completed |
-| 4 | [Validation And Approval Evidence](./phase-04-validation-and-approval-evidence.md) | In Progress |
+| 4 | [Validation And Approval Evidence](./phase-04-validation-and-approval-evidence.md) | Completed |
 
 ## Dependencies
 

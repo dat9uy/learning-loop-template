@@ -55,11 +55,16 @@ chmod +x "${installer_path}"
 
 API_HOME="$(realpath "${API_ROOT}")"
 printf 'Installer SHA-256 verified. Running vendor installer with product/api as HOME.\n'
-HOME="${API_HOME}" \
-VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock/user.json" \
-VNSTOCK_VENV_TYPE="venv" \
-VNSTOCK_LANGUAGE="python" \
-bash "${installer_path}"
+(
+  cd "${tmp_dir}"
+  HOME="${API_HOME}" \
+  PATH="${API_HOME}/.venv/bin:${PATH}" \
+  VIRTUAL_ENV="${API_HOME}/.venv" \
+  VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock/user.json" \
+  VNSTOCK_VENV_TYPE="venv" \
+  VNSTOCK_LANGUAGE="python" \
+  bash "${installer_path}"
+)
 
 if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   printf 'vnstock_data import check passed.\n'

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Validation And Approval Evidence"
-status: in-progress
+status: completed
 priority: P1
 effort: "1.5h plus operator gate"
 dependencies: [2, 3]
@@ -18,7 +18,7 @@ dependencies: [2, 3]
 
 ## Overview
 
-Static validation is complete. The clean bootstrap, runtime evidence capture, and decision approval remain gated on explicit operator approval plus `VNSTOCK_API_KEY`. Capture durable evidence without credentials, private artifacts, raw data, local config contents, or install logs.
+Static validation is complete. The operator-approved clean bootstrap also passed, runtime evidence was captured at `records/evidence/loop/vnstock-installer-bootstrap-runtime.md`, and the bootstrap decision is approved. Durable evidence excludes credentials, private artifacts, raw data, local config contents, and install logs.
 
 ## Requirements
 
@@ -65,10 +65,10 @@ human runtime gate:
 ## Success Criteria
 
 - [x] Static validation passes before runtime gate.
-- [ ] Runtime proof is skipped unless explicit operator approval is granted.
-- [ ] Evidence captures metadata only and excludes secrets, config contents, installer logs, private package files, and raw provider data.
-- [ ] Draft decision is approved only after successful clean bootstrap proof.
-- [ ] Final `pnpm validate:records` and `pnpm check` pass.
+- [x] Runtime proof is skipped unless explicit operator approval is granted.
+- [x] Evidence captures metadata only and excludes secrets, config contents, installer logs, private package files, and raw provider data.
+- [x] Draft decision is approved only after successful clean bootstrap proof.
+- [x] Final `pnpm validate:records` and `pnpm check` pass.
 
 ## Risk Assessment
 
