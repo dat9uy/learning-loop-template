@@ -16,9 +16,21 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
 }
 
+normalize_vnstock_config() {
+  local config_file="${API_ROOT}/.vnstock/user.json"
+  if [[ -d "${config_file}" && -f "${config_file}/user.json" ]]; then
+    local backup_dir="${API_ROOT}/.vnstock/user-json-dir.backup.$(date +%Y%m%d%H%M%S)"
+    mv "${config_file}" "${backup_dir}"
+    cp "${backup_dir}/user.json" "${config_file}"
+    printf 'Normalized vnstock user config from nested installer directory.\n'
+  fi
+}
+
 if [[ ! -x "${PYTHON_BIN}" ]]; then
   fail "missing ${PYTHON_BIN}; run uv sync from product/api first"
 fi
+
+normalize_vnstock_config
 
 if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   printf 'vnstock_data already imports from product/api/.venv; skipping installer.\n'
@@ -65,6 +77,8 @@ printf 'Installer SHA-256 verified. Running vendor installer with product/api as
   VNSTOCK_LANGUAGE="python" \
   bash "${installer_path}"
 )
+
+normalize_vnstock_config
 
 if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   printf 'vnstock_data import check passed.\n'
