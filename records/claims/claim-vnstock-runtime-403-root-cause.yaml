@@ -1,0 +1,80 @@
+id: claim-vnstock-runtime-403-root-cause
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2026-05-11"
+updated_at: "2026-05-11"
+source_refs:
+  - local:plans/reports/pm-260511-0224-fastapi-reference-runtime-blocker-diagnostic.md
+  - local:plans/reports/pm-260511-0259-vnstock-installer-deep-dive.md
+  - local:docs/vendor-vnstock-installer.md
+  - local:product/api/.vnstock/user-json-dir.backup.20260511025552/vnstock_installer.log
+  - local:product/api/.vnstock/cli_installer.log
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/listing.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/user_agent.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock/core/utils/user_agent.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock/explorer/vci/const.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/const.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/env.py
+notes: "Source-read of vnstock_data 3.1.3 + vnstock 4.0.2 + vnai performed on 2026-05-11. Prior diagnostic's URL double-slash hypothesis falsified by source. Two distinct root causes identified."
+subject: "vnstock_data VCI runtime 403 + IsADirectoryError on import"
+claim: |
+  The FastAPI reference runtime failure has TWO independent root causes, both falsifying parts of the prior diagnostic:
+
+  1. **Runtime 403 from VietCap**: `vnstock_data.explorer.vci.listing.Listing` uses `vnstock_data.core.utils.user_agent.get_headers`, which does NOT inject the `Device-Id` HTTP header or `device_id` cookie. `vnstock.core.utils.user_agent.get_headers` (PyPI vnstock 4.0.2) DOES inject them at lines 290-299 of that module. When VietCap's API began enforcing the Device-Id, every VCI request routed via vnstock_data started returning 403, while requests via vnstock continued to work. The prior diagnostic's "URL trailing-slash bug" claim is **false**: source shows `_TRADING_URL = 'https://trading.vietcap.com.vn/api'` with no trailing slash, and the final URL `https://trading.vietcap.com.vn/api/price/symbols/getAll` is well-formed.
+
+  2. **IsADirectoryError on import**: `vnstock_data.core.utils.env.idv()` reads `PROJECT_DIR / 'user.json'` where `PROJECT_DIR = Path.home() / '.vnstock'`. With our wrapper's `HOME=API_HOME`, the runtime expects `${API_HOME}/.vnstock/user.json` to be a FILE. The installer wrote that path as a DIRECTORY because our wrapper sets `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json`, and the installer treats `VNSTOCK_CONFIG_PATH` as the **directory** to write `api_key.json`, `device.id`, `user.json`, and `user_install.json` into. The correct wrapper setting is `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock`. This is a **wrapper-side misconfiguration**, not a vendor bug.
+
+  Implications:
+  - The runtime auth side does not gate VCI requests via `api_key.json`; that file is only used by `vnai` for license/telemetry to vnstocks.com. Orphaning it in the backup directory does not contribute to the 403.
+  - The `normalize_vnstock_config` workaround is unnecessary if the env var is fixed. The same fix removes the post-install patching, simplifying the wrapper.
+  - Fixing #2 alone leaves #1 unresolved. Fixing #1 alone leaves the import broken. Both must be addressed.
+
+  Recommended fix path:
+  - Change `VNSTOCK_CONFIG_PATH` in `product/api/scripts/install-vnstock.sh` to point at the directory (`${API_HOME}/.vnstock`), and remove `normalize_vnstock_config`.
+  - For VCI: either monkey-patch `vnstock_data.core.utils.user_agent.get_headers` to delegate to vnstock's, OR patch the installed `vnstock_data/core/utils/user_agent.py` to add Device-Id injection for VCI source, OR replace `vnstock_data.Listing` usage with `vnstock.Listing` (PyPI) for the affected endpoints.
+scope: sandbox
+evidence_refs:
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/user_agent.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock/core/utils/user_agent.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/env.py
+  - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/const.py
+  - local:plans/reports/pm-260511-0259-vnstock-installer-deep-dive.md
+confidence: high
+limitations:
+  - Claim is from static source-read only; not yet confirmed by a controlled runtime experiment with header diff
+  - `vnstock_data` version drift: tarball filename 3.1.7, dist-info METADATA 3.1.3, source `__version__` 3.0.0 — claim refers to the source actually installed (dist-info 3.1.3)
+  - VietCap server-side behavior is inferred; we have not contacted vendor to confirm Device-Id requirement timeline
+  - Fix paths listed are unverified; only the URL bug falsification and the env-var contract are observed facts
+approval:
+  status: draft
+  reviewer: operator
+  reviewed_at: "2026-05-11"
+verification:
+  static:
+    status: verified
+    reason: "Source-read of installed packages confirms (a) Device-Id header is injected by vnstock.get_headers but not by vnstock_data.get_headers; (b) idv() resolves to Path.home()/.vnstock/user.json without consulting VNSTOCK_CONFIG_PATH; (c) _TRADING_URL has no trailing slash."
+    proof_refs:
+      - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/user_agent.py
+      - venv:product/api/.venv/lib/python3.12/site-packages/vnstock/core/utils/user_agent.py
+      - venv:product/api/.venv/lib/python3.12/site-packages/vnstock_data/core/utils/env.py
+      - venv:product/api/.venv/lib/python3.12/site-packages/vnstock/explorer/vci/const.py
+  install:
+    status: claimed
+    scope: sandbox
+    reason: "Wrapper-config fix not yet applied or tested. Hypothesis: setting VNSTOCK_CONFIG_PATH to the .vnstock directory eliminates the IsADirectoryError without need for normalize_vnstock_config."
+    proof_refs: []
+  runtime:
+    status: claimed
+    scope: sandbox
+    output: metadata-only
+    reason: "Device-Id header injection fix not yet applied. Hypothesis: any of the listed fixes for #1 makes /reference/equity capability return 200 JSON instead of 403."
+    proof_refs: []
+  product:
+    status: claimed
+    reason: "Blocker resolution required before product slice (FastAPI Reference Build) can ship; awaits successful runtime experiment."
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
+  blocked_actions:
+    - live-provider-calls
+    - production-deployment
