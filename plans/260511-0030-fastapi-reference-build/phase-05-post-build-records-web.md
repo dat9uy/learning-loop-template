@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Post-Build Records Web"
-status: pending
+status: blocked
 priority: P1
 effort: "1.5h"
 dependencies: [4]
@@ -100,13 +100,13 @@ Stop and ask if:
 - [x] Web outputs read and tests confirmed passing.
 - [x] Render metadata captured.
 - [x] Evidence MD written with envelope fields.
-- [x] Experiment filled with observations and result.
-- [x] Surface claim runtime flipped to verified.
+- [x] Experiment filled with blocked observation and result.
+- [ ] Surface claim runtime flipped to verified.
 - [x] Capability-record integrity check passed.
 - [x] `pnpm validate:records` and `pnpm check` pass.
 
 ### Experiment Outcome
-- `supports` — both routes render correctly; tests pass; capability records are consistent.
+- `blocked` — route/component smoke tests pass, but runtime promotion depends on API metadata evidence, which is blocked by the live Reference provider JSON decode failure.
 
 ## Risk Assessment
 - Risk: Capability-record integrity check reveals dangling refs. Mitigation: loop phase 01 must have authored correctly; this check catches drift before close-out.

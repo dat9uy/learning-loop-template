@@ -1,0 +1,38 @@
+id: claim-product-fastapi-reference
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-11"
+updated_at: "2026-05-11"
+source_refs:
+  - record:claim-vnstock-install-sandbox
+  - local:records/evidence/vnstock-data/capability-runtime-output.md
+subject: FastAPI REST surface for vnstock_data Reference
+claim: The verified Reference surfaces may be exposed as HTTP endpoints.
+scope: product
+_evidence_note: metadata-only source evidence; no raw external data retained
+evidence_refs:
+  - record:capability-fastapi-reference-rest
+confidence: medium
+limitations:
+  - Product surface is limited to Reference equity list, company info, and symbol search endpoints.
+  - Live provider calls remain blocked outside approved metadata-only runtime checks.
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-11"
+verification:
+  runtime:
+    status: claimed
+    scope: sandbox
+    output: metadata-only
+    reason: Product endpoint runtime proof pending phase 03.
+    proof_refs: []
+  product:
+    status: claimed
+    reason: Product surface awaits scoped approval linkage.
+    decision_refs: []
+  blocked_actions:
+    - credential-capture
+    - raw-data-export
+    - live-provider-calls-outside-approved-gates

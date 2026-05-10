@@ -1,0 +1,42 @@
+id: experiment-product-build-tanstack-reference-20260511T003000Z
+schema_version: "1.0"
+type: experiment
+status: reviewed
+created_at: "2026-05-11"
+updated_at: "2026-05-11"
+source_refs:
+  - record:claim-product-tanstack-reference-view
+goal: Verify TanStack Reference route rendering with fixture-backed smoke tests.
+hypothesis: The FastAPI Reference response shape can be rendered by two TanStack route views without live backend calls in web tests.
+knowledge_pack_ids: []
+method:
+  - Ran fixture-backed web smoke tests.
+  - Captured route, component, assertion, and fixture checksum metadata.
+  - Performed read-only capability record integrity check; API claim remained unverified because live endpoint metadata blocked.
+success_metrics:
+  - Web smoke tests pass with recorded fixture.
+  - Render evidence includes route, component, assertion, and fixture checksum metadata.
+result: blocked
+agent_outcome: Web smoke tests passed; final promotion blocked by API runtime evidence blocker.
+product_outcome: blocked
+observations:
+  - route: /reference/equity
+    component: EquityTable
+    assertions: passed
+  - route: /reference/company/$symbol
+    component: CompanyDetail
+    assertions: passed
+  - fixture_sha256: 8b7bcbcc8bae99bceb01d490959ac476c9db3dd6894f4559bfb95cd35c24f9ad
+promotion_review: []
+scope: product
+claim_refs:
+  - record:claim-product-tanstack-reference-view
+output_level: metadata-only
+output_capture:
+  allowed_outputs:
+    - metadata
+    - schema-shape
+  blocked_outputs:
+    - live-backend-calls
+    - raw-external-data
+    - credentials

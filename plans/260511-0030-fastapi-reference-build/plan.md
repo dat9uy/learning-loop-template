@@ -1,7 +1,7 @@
 ---
 title: "FastAPI Reference Build"
 description: "First product-build experiment: FastAPI backend + TanStack Start frontend wrapping vnstock_data Reference surfaces. Uses phase-gated orchestration with external skills."
-status: pending
+status: blocked
 priority: P1
 branch: "main"
 tags: [product-build, fastapi, tanstack, vnstock, reference]
@@ -24,11 +24,15 @@ Uses Approach 1 (phase-gated orchestration) from brainstorm report. No wrapper s
 
 | Phase | Name | Status | Type |
 |-------|------|--------|------|
-| 1 | [Pre-Build Records](./phase-01-pre-build-records.md) | Pending | loop |
-| 2 | [FastAPI Reference Implementation](./phase-02-fastapi-reference-implementation.md) | Pending | skill |
-| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Pending | loop |
-| 4 | [TanStack Reference Implementation](./phase-04-tanstack-reference-implementation.md) | Pending | skill |
-| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Pending | loop |
+| 1 | [Pre-Build Records](./phase-01-pre-build-records.md) | Completed | loop |
+| 2 | [FastAPI Reference Implementation](./phase-02-fastapi-reference-implementation.md) | Completed | skill |
+| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Blocked (live Reference provider JSON decode failure) | loop |
+| 4 | [TanStack Reference Implementation](./phase-04-tanstack-reference-implementation.md) | Completed | skill |
+| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Blocked (depends on verified API runtime evidence) | loop |
+
+## Current Status
+
+Blocked at runtime close-out. Product/API code, web code, records, mocked API tests, fixture-backed web tests, web build, and record validation pass. Runtime promotion is blocked because the live metadata-only `vnstock_data.Reference().equity.list()` check fails with a provider JSON decode error in the current environment. Direct execution of `product/api/capabilities/vnstock-data/capability-01-reference.py` now fails at the same call.
 
 ## Dependencies
 

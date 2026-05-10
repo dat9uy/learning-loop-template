@@ -46,9 +46,10 @@ verification:
     proof_refs:
       - record:experiment-vnstock-capabilities-20260509T174957Z
   product:
-    status: claimed
-    reason: No product adoption decision has been made.
-    decision_refs: []
+    status: approved
+    reason: Scoped Reference product slice approved by decision record.
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
   blocked_actions:
     - live-provider-calls
     - credential-capture

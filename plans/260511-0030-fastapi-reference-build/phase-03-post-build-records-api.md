@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Post-Build Records API"
-status: pending
+status: blocked
 priority: P1
 effort: "1.5h"
 dependencies: [2]
@@ -93,12 +93,12 @@ Stop and ask if:
 - [x] Tests read and confirmed passing.
 - [x] Live metadata check executed with approval.
 - [x] Evidence MD written with envelope fields.
-- [x] Experiment filled with observations and result.
-- [x] Surface claim runtime flipped to verified.
+- [x] Experiment filled with blocked observation and result.
+- [ ] Surface claim runtime flipped to verified.
 - [x] `pnpm validate:records` and `pnpm check` pass.
 
 ### Experiment Outcome
-- `supports` — all 3 endpoints return expected metadata; tests pass; cleanup confirmed.
+- `blocked` — mocked endpoint tests pass, but live metadata-only runtime evidence is blocked by provider JSON decode failure at `Reference().equity.list()`. Direct execution of the Reference capability script now fails at the same call.
 
 ## Risk Assessment
 - Risk: Live metadata check captures raw data. Mitigation: output policy enforced in prompt; operator review of evidence MD.

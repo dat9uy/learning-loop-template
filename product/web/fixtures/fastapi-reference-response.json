@@ -1,0 +1,17 @@
+{
+  "equity": {
+    "columns": ["symbol", "org_name"],
+    "row_count": 2,
+    "rows": [
+      {"symbol": "AAA", "org_name": "Sanitized Organization A"},
+      {"symbol": "BBB", "org_name": "Sanitized Organization B"}
+    ]
+  },
+  "company": {
+    "columns": ["symbol", "name", "sector", "profile", "listing_date", "issued_share"],
+    "row_count": 1,
+    "rows": [
+      {"symbol": "AAA", "name": "Sanitized Entity", "sector": "Sanitized Sector", "profile": "Sanitized profile", "listing_date": "2000-01-01", "issued_share": 1}
+    ]
+  }
+}
