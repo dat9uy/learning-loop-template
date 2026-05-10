@@ -2,7 +2,7 @@
 
 ## Record Ledger
 
-Records are human-edited source files under `records/`. They describe claims, experiments, decisions, and risks in a small typed format. Evidence files live under `records/evidence/` and are cited by records and packs.
+Records are human-edited source files under `records/`. They describe claims, experiments, decisions, risks, and capability records in a small typed format. Evidence files live under `records/evidence/` and are cited by records.
 
 ## Entity Roles
 
@@ -13,28 +13,27 @@ Records are human-edited source files under `records/`. They describe claims, ex
 | Risk record | States conditional caution, severity, confidence, and mitigation. | Prevents weak/ambiguous knowledge from becoming unsafe capability. |
 | Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
 | Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
+| Capability record | Maps verified library surfaces (claims) to product surfaces (`route_class`, `view_class`). | Binds upstream verification to the build target without smuggling implementation detail. |
+| Capability script | Standalone feasibility probe under `product/<stack>/capabilities/<scope>/`. | Tests API-return-data runtime; substrate for the runtime-verification experiment, not product code. |
 | Derived claim assurance | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
-| Publication gate | Defines what is enough for a pack scope. | Keeps low-trust workbench material out of consumer packs. |
-| Knowledge pack | Exposes final facts and capabilities. | Gives consumers a clean interface without internal evidence clutter. |
 
 ## Core Hierarchy
 
 ```text
-records/evidence/ -> durable source material
-records ledger -> claims + risks + experiments + decisions
+records/evidence/      -> durable source material
+records ledger         -> claims + risks + experiments + decisions + capability records
+capability scripts     -> product/<stack>/capabilities/ (runtime-verification substrate)
 derived claim assurance -> effective assurance from verification dimensions and decisions
-publication gates -> policy for pack scope and minimum assurance
-knowledge packs -> manifest + facts + capabilities
-generated views -> disabled until model settles
+generated views        -> disabled until model settles
 ```
 
 Short version:
 
 ```text
-records/evidence -> claims + risks + experiments -> dimensions -> capability scripts (product/<stack>/capabilities/) -> decisions/gates -> pack facts/capabilities
+records/evidence -> claims + risks + experiments -> dimensions -> capability scripts (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
 ```
 
-Capability scripts are standalone feasibility probes that test API-return-data runtime. They live in `product/` before product approval because they are not product implementations.
+Capability scripts are standalone feasibility probes that test API-return-data runtime. They live in `product/<stack>/capabilities/` before product approval because they are not product implementations. Capability records are the YAML ledger entries that bind verified library surfaces to product surfaces; they are authored only during a product-build plan.
 
 ## Philosophy Rules
 
@@ -46,8 +45,8 @@ Capability scripts are standalone feasibility probes that test API-return-data r
 6. Risk confidence is not claim assurance.
 7. Product approval is a decision effect, not an assurance level.
 8. Decisions approve boundaries; experiments produce outputs within those boundaries.
-9. Packs are final consumable truth/capabilities, not the workbench.
-10. Pack approval is scope-limited; it does not erase blocked actions.
+9. Capability records cite claims and capability-script paths; they do not embed raw evidence.
+10. Capability records are bound by the per-record-type allowlist: only capability records may cite `local:product/*/capabilities/...`.
 
 ## Verification Axes
 
@@ -55,22 +54,17 @@ Keep these axes separate:
 
 | Axis | Applies to | Meaning |
 |---|---|---|
-| Record status | claims, experiments, decisions | Editorial/review state. |
+| Record status | claims, experiments, decisions, capability records | Editorial/review state. |
 | Risk status | risks | Candidate/reviewed/active/mitigated/accepted/rejected caution state. |
 | Risk confidence | risks | Credibility/usefulness of a caution. |
 | Experiment outcome | experiments | Supports, rejects, or inconclusive. |
 | Experiment proof | experiments | Dimension and scope proved by the experiment. |
 | Claim verification dimensions | claims | Independent static/install/runtime/product statuses. |
 | Derived claim assurance | claims | Effective assurance from valid dimensions and linked experiments. |
-| Pack publication gate | knowledge packs | Required assurance/scope for publishing facts/capabilities. |
-| Decision basis | decisions | Evidence/records/experiments/packs used as rationale. |
+| Decision basis | decisions | Evidence/records/experiments used as rationale. |
 | Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |
-| Pack approval | decisions + manifest | Whether consumers may use pack for approved scope. |
-
-## Knowledge Packs
-
-Knowledge packs are curated bundles of domain facts and capabilities. They can be consumed by experiments only after review or approval.
+| Capability map | capability records | Mapping of verified library surfaces to product surfaces. |
 
 ## Product Generation Loop
 
-The loop reads the record ledger and eligible knowledge packs, then emits a proposal or no-build decision. It does not create product code in this template.
+The loop reads the record ledger (claims, experiments, decisions, capability records) and emits a proposal or a no-build decision. Capability records are the technical bridge between a verified library claim and a product surface; they make the build target machine-checkable without committing to product implementation. The loop does not create product code in this template.

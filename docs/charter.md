@@ -8,27 +8,27 @@ Generate product proposals from structured knowledge, reviewed experiments, and 
 
 The template contains:
 
-- a small typed record ledger;
-- dedicated evidence files under records;
-- curated knowledge packs;
+- a small typed record ledger (claims, risks, experiments, decisions, capability records);
+- dedicated evidence files under `records/evidence/`;
+- per-stack scaffolding under `product/<stack>/` (stack manifest + capability scripts + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
 - guardrails for provenance and review.
 
-The template does not contain a product stack, application scaffold, database, UI, or runtime integration.
+The template does not contain product application code (no FastAPI source, no UI source, no database, no live runtime integration). Capability scripts under `product/<stack>/capabilities/` are feasibility probes, not product code.
 
 ## Operating Rules
 
 1. Records preserve verification, proof, and evidence metadata.
-2. Knowledge packs provide final curated domain truth, not product requirements.
-3. Experiments may consume only reviewed or approved packs.
-4. Product output is a proposal or no-build decision unless a later plan approves implementation.
-5. Existing projects are provenance sources, not design sources.
-6. Product stack choices remain recommendations until a build experiment is approved.
+2. Experiments may consume only reviewed evidence and approved upstream records.
+3. Product output is a proposal or no-build decision unless a later plan approves implementation.
+4. Existing projects are provenance sources, not design sources.
+5. Product stack choices remain recommendations until a build experiment is approved.
 
 ## Initial Folder Ownership
 
-- `records/`: source YAML-profile records plus dedicated evidence files.
-- `knowledge-packs/`: domain/provider pack files with approval metadata.
+- `records/`: source YAML records (claims, risks, experiments, decisions, capability records) plus dedicated evidence files.
 - `docs/`: project metadata and learning-loop policy docs.
-- `product/`: empty placeholder until approved implementation.
+- `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
+- `plans/`: active and historical plans + brainstorm reports.
+- `knowledge-packs/`: latent. Pack publication is not part of the current product line; existing draft manifests stay as placeholders until a future decision reactivates the pack lane.

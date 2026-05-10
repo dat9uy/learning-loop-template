@@ -8,7 +8,7 @@ Run default validation before changing records:
 pnpm check
 ```
 
-Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, `knowledge-packs/` for final curated domain knowledge, and `docs/` for project metadata.
+Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, and `docs/` for project metadata. The `knowledge-packs/` lane is latent in the current product line; existing draft manifests stay as placeholders.
 
 ## Claim Verification
 
@@ -32,11 +32,11 @@ Put durable evidence capsules under `records/evidence/<scope>/`. Active `source_
 
 Do not use active `legacy:` refs. Historical source paths may appear only in evidence-doc prose under `Original Source Summary`.
 
-## Adding Or Updating A Pack
+## Adding Or Updating Records
 
-1. Add or update safe local evidence under `records/evidence/<pack-id>/`.
+1. Add or update safe local evidence under `records/evidence/<scope>/`.
 2. Update claim, experiment, or decision records to cite local evidence and the current verification dimensions.
-3. Update the knowledge-pack manifest and fact refs.
+3. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json` (fields: `stack`, `surface`, `maps[]`).
 4. Run:
 
 ```bash
@@ -46,7 +46,7 @@ pnpm check
 
 ## Approval Flow
 
-Pack approval must say what scope is approved. Pack review for planning does not approve runtime access, external integration, commercial use, persistent storage, arbitrary criteria, or product code.
+Decisions approve scope explicitly. A decision record's `decision_effect` names the action, scope, affected refs, allowed actions, blocked actions, and required gates. Review for planning does not approve runtime access, external integration, commercial use, persistent storage, arbitrary criteria, or product code; those require their own scoped decisions.
 
 ## Runtime Validation Request Protocol
 
@@ -71,7 +71,7 @@ Default validation must not install packages, insert keys, import private packag
 Runtime proof experiments split into two layers:
 
 - Executable substrate is a disposable OS temp directory outside the repo, e.g. `/tmp/learning-loop-run-<run_id>`. The repo never holds executable substrate.
-- Durable proof is a curated evidence envelope inside `records/evidence/<pack>/`. The envelope cites the run, not the temp files.
+- Durable proof is a curated evidence envelope inside `records/evidence/<scope>/`. The envelope cites the run, not the temp files.
 
 The repo is the evidence ledger. The OS temp directory is executable substrate. Runtime temp files are not durable proof and must never be retained, committed, or referenced as lasting evidence.
 
@@ -95,7 +95,7 @@ Cleanup is part of proof success, not best-effort housekeeping.
 
 - If `temp_root_deleted` is not `true` and `cleanup_status` is not `succeeded`, the experiment outcome is `failed` or `blocked`.
 - A failed cleanup blocks dimension verification: claims may not mark the `install` or `runtime` dimension `verified`, or the `product` dimension `approved`, from a run with failed cleanup.
-- A failed cleanup also blocks pack capability publication for the affected scope.
+- A failed cleanup also blocks downstream capability-record publication for the affected scope.
 
 ### Schema Deferral
 
@@ -124,19 +124,19 @@ When the user asks for learning-loop work, the agent should:
    - schema/operator self-improvement.
 5. Identify missing decisions or approvals before risky work.
 6. Ask follow-up questions when authority, scope, output, storage, or blocked actions are unclear.
-7. Create/update records before pack changes.
+7. Create/update records before downstream artifacts.
 8. Plan experiments with explicit `claim_refs`, `risk_refs`, `source_refs`, `verification.proves`, output policy, and approval status.
 9. Run only approved work.
 10. Link experiment results back to claims/risks.
-11. Derive claim assurance and pack eligibility from verification dimensions.
-12. Publish only gate-qualified facts/capabilities.
+11. Derive claim assurance from verification dimensions.
+12. Publish capability records only after their `record_ref` claims are verified for the relevant dimension.
 13. Validate records with `pnpm validate:records` and `pnpm check`.
 
 ## Operator Cards
 
 ### Product Build Request
 
-When user asks to build product/API/tool from a pack or library:
+When user asks to build product/API/tool on top of a verified library:
 
 - Do not jump directly to implementation.
 - Expand request into claims, risks, experiments, and decisions.
@@ -144,7 +144,7 @@ When user asks to build product/API/tool from a pack or library:
 - Required risks usually include entitlement ambiguity, scope creep, data capture, false assurance, operational limits.
 - Required experiments usually include evidence review, static verification, approved install verification, approved runtime/output verification.
 - Required decisions approve product/build scope, output policy, and blocked actions.
-- Pack capabilities must say what consumers may design, generate, run, call, store, and deploy.
+- Capability records must state the verified library surfaces (via `record_ref` to surface claims) and the product surfaces they map to (`route_class`, `view_class`, `response_class`).
 
 ### Capability Runtime Experiment
 
@@ -166,7 +166,7 @@ When user asks to create capability scripts (standalone feasibility scripts) for
 | Python API | `product/api/pyproject.toml` | `product/api/capabilities/` |
 | TypeScript web | `product/web/package.json` when introduced | `product/web/capabilities/` |
 
-Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` and `knowledge-packs` local source roots.
+Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root. The `knowledge-packs/` root remains in the validator's per-record-type allowlist tables for backward compatibility but is not used by the current product line.
 
 ### API Stack Bootstrap
 
@@ -195,7 +195,7 @@ When user wants to skip a required claim:
 When user asks whether everything in an evidence doc can execute technically:
 
 - Treat as verification request, not direct execution.
-- Build a claim extraction matrix: `doc section -> claim -> verification class -> experiment -> pack eligibility`.
+- Build a claim extraction matrix: `doc section -> claim -> verification class -> experiment -> capability-record eligibility`.
 - Separate execution classes: symbol exists, import succeeds, method callable, sample call returns output, output schema matches expectation, business behavior is correct.
 - Classify snippets as illustrative-only, static-verifiable, import-verifiable, runtime-verifiable with sample output, or blocked pending approval.
 - Ask approval before install/runtime/live execution.
@@ -337,14 +337,14 @@ Before answering or editing, verify:
 - Am I deriving claim assurance from dimensions instead of storing it?
 - Am I using risks for cautions, not negative claims?
 - Am I requiring decisions for approval/acceptance/product permission?
-- Am I keeping pack files slim?
+- Am I keeping capability records slim and faithful to their cited claims?
 - Am I blocking runtime/product/live/output actions until approved?
 - Am I preserving unresolved knowledge as risk instead of ignoring it?
 
 ## Generated Docs
 
-Generated docs are optional derived views. Records, evidence, and decisions remain source of truth. After record or pack changes, run `pnpm check`.
+Generated docs are optional derived views. Records, evidence, and decisions remain source of truth. After record changes, run `pnpm check`.
 
 ## Current Next Step
 
-Choose the first domain/source and create a scoped evidence or experiment request before adding pack facts or product code.
+Choose the first domain/source and create a scoped evidence or experiment request before authoring capability records or product code.

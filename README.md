@@ -1,31 +1,46 @@
 # Learning Loop Template
 
-A blank, product-agnostic template for turning structured evidence, records, decisions, and curated knowledge packs into proposal-only product ideas.
-
-The template starts empty. Add domain evidence, records, and packs only after review. Product code appears only after an approved experiment chooses a surface and validation path.
+Product-agnostic scaffold for evidence → records → decisions → proposal-only product ideas. Domain content is added under review; product code only after an approved build experiment.
 
 ## Lanes
 
-- `records/`: claim, risk, experiment, decision, and evidence ledger.
-- `knowledge-packs/`: curated packs that experiments may consume after review.
-- `docs/`: project metadata and learning-loop policy.
-- `product/`: intentionally empty until an approved build experiment.
-- `tools/`: validators, verification helpers, and optional doc generation.
+| Path | Purpose |
+|---|---|
+| `records/` | claim / risk / experiment / decision / capability / evidence ledger |
+| `product/<stack>/` | per-stack capability scripts (and, post-approval, product code) |
+| `docs/` | policy + operator guides |
+| `tools/` | validators + verification helpers |
+| `plans/` | active and historical plans + brainstorm reports |
+| `knowledge-packs/` | latent (not used in current product line; draft placeholder retained) |
 
-## Commands
+## Documentation Index
+
+| Doc | When to read |
+|---|---|
+| `docs/handoff.md` | First run / current state / capability-term glossary |
+| `docs/charter.md` | Scope + operating rules |
+| `docs/operator-guide.md` | Day-to-day intake, bootstrap, runtime, agent flow |
+| `docs/lab-model.md` | Entity roles + verification axes |
+| `docs/claim-verification.md` | Dimension semantics |
+| `docs/red-team-review.md` | Review classifications |
+| `docs/journals/` | Session journals |
+
+## Quick Commands
 
 ```bash
-pnpm check
-pnpm validate:records
+pnpm check                # validate records (alias of validate:records)
+pnpm validate:records     # JSON-schema + cross-ref validation
+pnpm bootstrap:api        # provision product/api/.venv (uv sync + SHA-pinned vnstock installer)
 ```
 
-## First Run
+`pnpm bootstrap:api` is operator-gated: it consumes a vendor device slot and requires `VNSTOCK_API_KEY`. See `docs/operator-guide.md` → "API Stack Bootstrap".
 
-1. Read `docs/handoff.md`.
-2. Review `docs/operator-guide.md` and `docs/claim-verification.md`.
-3. Add local evidence under `records/evidence/<scope>/`.
-4. Add records that cite local evidence or other records.
-5. Promote only through reviewed experiments and explicit decisions.
+## Where to Start
+
+- **New here** → `docs/handoff.md`
+- **Operator** → `docs/operator-guide.md`
+- **Authoring a capability record** → `docs/operator-guide.md` "Capability Runtime Experiment" + `schemas/capability.schema.json`
+- **Building product on top of a verified library** → `plans/reports/brainstorm-260511-0030-external-skills-integration.md`
 
 ## Guardrails
 

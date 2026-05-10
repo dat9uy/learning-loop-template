@@ -10,7 +10,7 @@ The template favors evidence and approval discipline before build speed. The sma
 
 Classification: non-blocker.
 
-The record ledger and knowledge-pack contract make inputs explicit enough to evaluate agent behavior. More metrics can wait until repeated experiments create querying pressure.
+The record ledger and capability-record contract make inputs explicit enough to evaluate agent behavior. More metrics can wait until repeated experiments create querying pressure.
 
 ## Security And Provenance Reviewer
 
