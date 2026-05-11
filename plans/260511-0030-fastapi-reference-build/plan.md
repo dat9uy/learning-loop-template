@@ -5,7 +5,7 @@ status: blocked
 priority: P1
 branch: "main"
 tags: [product-build, fastapi, tanstack, vnstock, reference]
-blockedBy: []
+blockedBy: [260511-0544-vnstock-runtime-blocker-fix]
 blocks: []
 created: "2026-05-11T00:30:00Z"
 createdBy: "ck:plan"
