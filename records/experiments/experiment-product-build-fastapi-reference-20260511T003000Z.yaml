@@ -1,9 +1,9 @@
 id: experiment-product-build-fastapi-reference-20260511T003000Z
 schema_version: "1.0"
 type: experiment
-status: reviewed
+status: approved
 created_at: "2026-05-11"
-updated_at: "2026-05-11"
+updated_at: "2026-05-11T18:07:00+07:00"
 source_refs:
   - record:claim-product-fastapi-reference
 goal: Verify the FastAPI Reference product surface with metadata-only endpoint evidence.
@@ -17,18 +17,53 @@ success_metrics:
   - Preflight import succeeds.
   - Pytest endpoint suite passes.
   - Metadata-only endpoint evidence includes route, status, columns, and row count.
-result: blocked
-agent_outcome: API tests passed; live metadata check blocked by provider JSON decode failure.
-product_outcome: blocked
+result: supports
+agent_outcome: API unit tests and live VCI smoke tests passed after phase 2b re-routed search to the equity catalog.
+product_outcome: supports
 observations:
   - route: /reference/equity
     status: blocked
     sanitized_exception_class: provider-json-decode-failure
+  - run_id: product-api-20260511T180700+0700
+    status: supports
+    context: post runtime-fix and post phase 2b
+    endpoints:
+      - route: /reference/equity
+        status_code: 200
+        columns:
+          - symbol
+          - org_name
+        row_count: 1742
+      - route: /reference/company/{symbol}
+        status_code: 200
+        columns:
+          - symbol
+          - name
+          - sector
+          - profile
+          - listing_date
+          - issued_share
+        row_count: 1
+      - route: /reference/search
+        status_code: 200
+        columns:
+          - symbol
+          - org_name
+        row_count: 5
 promotion_review: []
 scope: product
 claim_refs:
   - record:claim-product-fastapi-reference
 output_level: metadata-only
+verification:
+  claim_refs:
+    - record:claim-product-fastapi-reference
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
 output_capture:
   allowed_outputs:
     - metadata

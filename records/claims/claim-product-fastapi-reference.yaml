@@ -23,11 +23,13 @@ approval:
   reviewed_at: "2026-05-11"
 verification:
   runtime:
-    status: claimed
+    status: verified
     scope: sandbox
     output: metadata-only
-    reason: Product endpoint runtime proof pending phase 03.
-    proof_refs: []
+    reason: Product endpoint runtime proof passed after runtime fix and phase 2b search re-route.
+    proof_refs:
+      - record:experiment-product-build-fastapi-reference-20260511T003000Z
+      - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
   product:
     status: claimed
     reason: Product surface awaits scoped approval linkage.

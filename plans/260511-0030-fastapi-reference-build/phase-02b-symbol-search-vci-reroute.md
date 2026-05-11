@@ -1,7 +1,7 @@
 ---
 phase: "2b"
 title: "Symbol-Search VCI Re-route"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -117,12 +117,12 @@ Stop conditions:
 ## Success Criteria
 
 ### Process Steps
-- [ ] Pre-flight import + vendor_compat check passed.
-- [ ] `search_symbol` re-implemented as filter over `Reference().equity.list()`.
-- [ ] Response shape (`SymbolSearchResponse`) unchanged.
-- [ ] `test_reference.py` mocks updated, all unit tests pass.
-- [ ] Optional live smoke test passes for `q=VIC` (returns row containing `VIC`).
-- [ ] `pnpm validate:records` and `pnpm check` pass.
+- [x] Pre-flight import + vendor_compat check passed.
+- [x] `search_symbol` re-implemented as filter over `Reference().equity.list()`.
+- [x] Response shape (`SymbolSearchResponse`) unchanged.
+- [x] `test_reference.py` mocks updated, all unit tests pass.
+- [x] Optional live smoke test passes for `q=VIC` (returns row containing `VIC`).
+- [x] `pnpm validate:records` and `pnpm check` pass.
 
 ### Experiment Outcome
 - Skill phase outcome will be captured in phase 3's experiment record (no separate experiment for 2b — see plan.md → Decision 4).

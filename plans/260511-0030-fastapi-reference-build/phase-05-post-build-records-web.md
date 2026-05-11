@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Post-Build Records Web"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [4, 3]
@@ -119,14 +119,14 @@ Stop and ask if:
 ## Success Criteria
 
 ### Process Steps (Resumption Run)
-- [ ] Phase 3 completed and `claim-product-fastapi-reference.verification.runtime.status == "verified"` confirmed.
-- [ ] Web outputs re-read and smoke tests re-run, confirmed passing.
-- [ ] Render metadata captured (post phase 2b — search route now exercises VN data via the re-routed API).
-- [ ] Evidence MD appended with re-run section (envelope fields + render metadata).
-- [ ] Existing experiment YAML updated: observation appended, `result` flipped `blocked` → `supports`, `updated_at` bumped.
-- [ ] Surface claim runtime flipped to `verified` with `proof_refs` cross-citing both `experiment-product-build-tanstack-reference-20260511T003000Z` and `claim-product-fastapi-reference`.
-- [ ] Capability-record integrity check passed.
-- [ ] `pnpm validate:records` and `pnpm check` pass.
+- [x] Phase 3 completed and `claim-product-fastapi-reference.verification.runtime.status == "verified"` confirmed.
+- [x] Web outputs re-read and smoke tests re-run, confirmed passing.
+- [x] Render metadata captured (post phase 2b — search route now exercises VN data via the re-routed API).
+- [x] Evidence MD appended with re-run section (envelope fields + render metadata).
+- [x] Existing experiment YAML updated: observation appended, `result` flipped `blocked` → `supports`, `updated_at` bumped.
+- [x] Surface claim runtime flipped to `verified` with `proof_refs` cross-citing both `experiment-product-build-tanstack-reference-20260511T003000Z` and `claim-product-fastapi-reference`.
+- [x] Capability-record integrity check passed.
+- [x] `pnpm validate:records` and `pnpm check` pass.
 
 ### Prior Run (Blocked — Audit Trail)
 Earlier run completed initial steps with the blocker present. Those artifacts remain on disk:

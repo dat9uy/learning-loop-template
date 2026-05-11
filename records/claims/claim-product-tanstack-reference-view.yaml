@@ -22,11 +22,13 @@ approval:
   reviewed_at: "2026-05-11"
 verification:
   runtime:
-    status: claimed
+    status: verified
     scope: sandbox
     output: metadata-only
-    reason: Render proof pending phase 05.
-    proof_refs: []
+    reason: Fixture-backed route render proof passed after FastAPI runtime claim was verified.
+    proof_refs:
+      - record:experiment-product-build-tanstack-reference-20260511T003000Z
+      - record:claim-product-fastapi-reference
   product:
     status: claimed
     reason: Product render surface awaits scoped approval linkage.

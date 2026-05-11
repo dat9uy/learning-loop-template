@@ -7,3 +7,4 @@ __pycache__/
 product/*/.cache/
 product/*/.local/
 product/*/.vnstock/
+product/*/dist/

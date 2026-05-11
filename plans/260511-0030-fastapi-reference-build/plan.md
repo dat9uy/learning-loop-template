@@ -1,7 +1,7 @@
 ---
 title: "FastAPI Reference Build"
 description: "First product-build experiment: FastAPI backend + TanStack Start frontend wrapping vnstock_data Reference surfaces. Uses phase-gated orchestration with external skills."
-status: in-progress
+status: completed
 priority: P1
 branch: "main"
 tags: [product-build, fastapi, tanstack, vnstock, reference]
@@ -26,14 +26,14 @@ Uses Approach 1 (phase-gated orchestration) from brainstorm report. No wrapper s
 |-------|------|--------|------|
 | 1 | [Pre-Build Records](./phase-01-pre-build-records.md) | Completed | loop |
 | 2 | [FastAPI Reference Implementation](./phase-02-fastapi-reference-implementation.md) | Completed | skill |
-| 2b | [Symbol-Search VCI Re-route](./phase-02b-symbol-search-vci-reroute.md) | Pending | skill |
-| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Pending (post 2b) | loop |
+| 2b | [Symbol-Search VCI Re-route](./phase-02b-symbol-search-vci-reroute.md) | Completed | skill |
+| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Completed | loop |
 | 4 | [TanStack Reference Implementation](./phase-04-tanstack-reference-implementation.md) | Completed | skill |
-| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Pending (post 3) | loop |
+| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Completed | loop |
 
 ## Current Status
 
-Runtime blocker resolved by `plans/260511-0544-vnstock-runtime-blocker-fix/` (completed). Mocked API tests, fixture-backed web tests, opt-in live VCI smoke tests, and live Reference route handler check all pass. Symbol-search endpoint flagged as needing data-source re-route — see Resumption Context → Decision 1. Execution order from here: phase 2b → phase 3 → phase 5.
+Completed. Runtime blocker resolved by `plans/260511-0544-vnstock-runtime-blocker-fix/`, `/reference/search` re-routed to the VCI-backed equity catalog in phase 2b, API and web proof records closed in phases 3 and 5, and validation passes.
 
 ## Resumption Context (2026-05-11 17:51 ICT)
 

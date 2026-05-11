@@ -28,6 +28,13 @@ def test_vci_equity_list_returns_dataframe() -> None:
 
 
 @pytest.mark.network
+def test_vci_equity_list_contains_vic_for_reference_search() -> None:
+    result = Reference().equity.list()
+    assert "symbol" in result.columns
+    assert result["symbol"].astype("string").str.contains("VIC", case=False, na=False, regex=False).any()
+
+
+@pytest.mark.network
 def test_vci_company_info_returns_dataframe() -> None:
     result = Reference().company("VIC").info()
 

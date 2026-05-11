@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Post-Build Records API"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [2, "2b"]
@@ -114,13 +114,13 @@ Stop and ask if:
 ## Success Criteria
 
 ### Process Steps (Resumption Run)
-- [ ] Phase 2b completed and merged.
-- [ ] Tests re-run and confirmed passing (unit + live smoke).
-- [ ] Live metadata check executed post-fix with operator approval.
-- [ ] Evidence MD appended with re-run section (envelope fields + per-endpoint metadata for all 3 endpoints, including search returning non-empty VN results).
-- [ ] Existing experiment YAML updated: observation appended, `result` flipped `blocked` → `supports`, `updated_at` bumped.
-- [ ] Surface claim runtime flipped to `verified` with `proof_refs` cross-citing both `experiment-product-build-fastapi-reference-20260511T003000Z` and `experiment-vnstock-runtime-403-fix-20260511T143500Z`.
-- [ ] `pnpm validate:records` and `pnpm check` pass.
+- [x] Phase 2b completed and merged.
+- [x] Tests re-run and confirmed passing (unit + live smoke).
+- [x] Live metadata check executed post-fix with operator approval.
+- [x] Evidence MD appended with re-run section (envelope fields + per-endpoint metadata for all 3 endpoints, including search returning non-empty VN results).
+- [x] Existing experiment YAML updated: observation appended, `result` flipped `blocked` → `supports`, `updated_at` bumped.
+- [x] Surface claim runtime flipped to `verified` with `proof_refs` cross-citing both `experiment-product-build-fastapi-reference-20260511T003000Z` and `experiment-vnstock-runtime-403-fix-20260511T143500Z`.
+- [x] `pnpm validate:records` and `pnpm check` pass.
 
 ### Prior Run (Blocked — Audit Trail)
 Earlier run completed steps 1–5 with the blocker present. Those artifacts remain on disk:

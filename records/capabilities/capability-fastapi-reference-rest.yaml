@@ -16,7 +16,7 @@ maps:
   - source: vnstock_data.Reference.company(symbol).info
     route_class: GET /reference/company/{symbol}
     response_class: CompanyInfoResponse
-  - source: vnstock_data.Reference.search.symbol
+  - source: vnstock_data.Reference.equity.list filtered by symbol/org_name
     route_class: GET /reference/search
     response_class: SymbolSearchResponse
 supersedes: []

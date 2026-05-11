@@ -37,8 +37,18 @@ def company_info(symbol: str = Path(..., min_length=1, max_length=20, pattern=r"
     return CompanyInfoResponse(columns=columns, rows=rows, row_count=len(rows))
 
 
-@router.get("/search", response_model=SymbolSearchResponse)
+@router.get("/search", response_model=SymbolSearchResponse, response_model_exclude_none=True)
 def search_symbol(q: str = Query(..., min_length=1), limit: int = Query(5, ge=1, le=50)) -> SymbolSearchResponse:
     _ensure_live_reference_gate()
-    columns, rows = _records_from_frame(Reference().search.symbol(q, limit=limit))
+    catalog = Reference().equity.list()
+    match_columns = [column for column in ("symbol", "org_name", "organ_name", "name") if column in catalog.columns]
+    if not match_columns:
+        columns, _ = _records_from_frame(catalog.head(0))
+        return SymbolSearchResponse(columns=columns, rows=[], row_count=0)
+
+    matches = pd.Series(False, index=catalog.index)
+    for column in match_columns:
+        matches = matches | catalog[column].astype("string").str.contains(q, case=False, na=False, regex=False)
+
+    columns, rows = _records_from_frame(catalog.loc[matches].head(limit))
     return SymbolSearchResponse(columns=columns, rows=rows, row_count=len(rows))

@@ -29,6 +29,7 @@ class FakeEquity:
         return pd.DataFrame([
             {"symbol": "AAA", "org_name": "Sanitized Organization A"},
             {"symbol": "BBB", "org_name": float("nan")},
+            {"symbol": "VIC", "org_name": "Vingroup"},
         ])
 
 
@@ -46,15 +47,9 @@ class FakeCompanyResource:
         ])
 
 
-class FakeSearch:
-    def symbol(self, query, limit=5):
-        return pd.DataFrame(columns=["symbol", "code", "name", "description", "type", "country_code", "pip_value", "price_scale"])
-
-
 class FakeReference:
     def __init__(self):
         self.equity = FakeEquity()
-        self.search = FakeSearch()
 
     def company(self, symbol):
         return FakeCompanyResource()
@@ -85,7 +80,7 @@ def test_equity_endpoint_returns_reference_schema(monkeypatch):
     approve_live_reference(monkeypatch)
     payload = reference_router.list_equity().model_dump()
     assert payload["columns"] == ["symbol", "org_name"]
-    assert payload["row_count"] == 2
+    assert payload["row_count"] == 3
     assert set(payload["rows"][0]) >= {"symbol", "org_name"}
     assert payload["rows"][1]["org_name"] is None
 
@@ -99,6 +94,30 @@ def test_company_endpoint_returns_reference_schema(monkeypatch):
 
 def test_search_endpoint_returns_reference_schema(monkeypatch):
     approve_live_reference(monkeypatch)
-    payload = reference_router.search_symbol("AAA", limit=5).model_dump()
-    assert payload["columns"] == ["symbol", "code", "name", "description", "type", "country_code", "pip_value", "price_scale"]
+    payload = reference_router.search_symbol("sanitized", limit=5).model_dump()
+    assert payload["columns"] == ["symbol", "org_name"]
+    assert payload["row_count"] == 1
+    assert payload["rows"][0]["symbol"] == "AAA"
+
+
+def test_search_endpoint_filters_symbol_and_respects_limit(monkeypatch):
+    approve_live_reference(monkeypatch)
+    payload = reference_router.search_symbol("VI", limit=1).model_dump()
+    assert payload["row_count"] == 1
+    assert payload["rows"][0]["symbol"] == "VIC"
+
+
+def test_search_endpoint_returns_empty_when_no_catalog_match(monkeypatch):
+    approve_live_reference(monkeypatch)
+    payload = reference_router.search_symbol("ZZZ", limit=5).model_dump()
     assert payload["row_count"] == 0
+    assert payload["rows"] == []
+
+
+def test_search_http_response_rows_match_columns(monkeypatch):
+    approve_live_reference(monkeypatch)
+    route = next(route for route in reference_router.router.routes if getattr(route, "path", "") == "/reference/search")
+    payload = reference_router.search_symbol("VI", limit=1).model_dump(exclude_none=True)
+    assert route.response_model_exclude_none is True
+    assert payload["columns"] == ["symbol", "org_name"]
+    assert set(payload["rows"][0]) == set(payload["columns"])
