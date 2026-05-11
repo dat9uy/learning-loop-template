@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Operator Walkthrough and Records"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1]
@@ -156,27 +156,27 @@ Stop conditions:
 
 ## Todo List
 
-- [ ] Read schemas + existing product claims.
-- [ ] Pre-experiment scan of `records/evidence/meta/`.
-- [ ] Run `pnpm dev:api` + `pnpm dev:web` (operator action).
-- [ ] Walk the documented click-path.
-- [ ] Author walkthrough evidence file.
-- [ ] Author experiment record.
-- [ ] Author tripwire meta-evidence file.
-- [ ] `pnpm validate:records` passes.
-- [ ] `pnpm check` passes.
+- [x] Read schemas + existing product claims.
+- [x] Pre-experiment scan of `records/evidence/meta/`.
+- [x] Run `pnpm dev:api` + `pnpm dev:web` (operator action).
+- [x] Walk the documented click-path.
+- [x] Author walkthrough evidence file.
+- [x] Author experiment record.
+- [x] Author tripwire meta-evidence file.
+- [x] `pnpm validate:records` passes.
+- [x] `pnpm check` passes.
 
 ## Success Criteria
 
 ### Process Steps
-- [ ] Schemas and product claims read.
-- [ ] Meta-evidence pre-scan completed.
-- [ ] Walkthrough evidence file authored with schema-shape-only observations.
-- [ ] Experiment record validates against `experiment.schema.json`.
-- [ ] Tripwire file present at `records/evidence/meta/product-shape-verification-class.md` with `## Trigger`, current sample count, and Do Not block.
-- [ ] No product code modified.
-- [ ] No existing record modified.
-- [ ] `pnpm validate:records` + `pnpm check` pass.
+- [x] Schemas and product claims read.
+- [x] Meta-evidence pre-scan completed.
+- [x] Walkthrough evidence file authored with schema-shape-only observations.
+- [x] Experiment record validates against `experiment.schema.json`.
+- [x] Tripwire file present at `records/evidence/meta/product-shape-verification-class.md` with `## Trigger`, current sample count, and Do Not block.
+- [x] No product code modified.
+- [x] No existing record modified.
+- [x] `pnpm validate:records` + `pnpm check` pass.
 
 ### Experiment Outcome
 - `supports` — click-path completes, all nav links work, search returns rows for "ACB" or comparable VN ticker.

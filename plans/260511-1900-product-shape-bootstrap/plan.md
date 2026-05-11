@@ -1,7 +1,7 @@
 ---
 title: "Product Shape Bootstrap"
 description: "Add dev scripts + landing route + symbol-search UI + nav links so operator can run the FastAPI Reference Build end-to-end and inspect the product shape. Records-light: one walkthrough experiment, one tripwire meta-evidence file."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [product-build, dx, operator-walkthrough, records-light, follow-up]
@@ -24,8 +24,8 @@ Adopts Approach B (records-light) from `plans/reports/brainstorm-260511-1900-pro
 
 | Phase | Name | Status | Type |
 |-------|------|--------|------|
-| 1 | [Bootstrap and UI Surfaces](./phase-01-bootstrap-and-ui-surfaces.md) | Pending | skill |
-| 2 | [Operator Walkthrough and Records](./phase-02-operator-walkthrough-and-records.md) | Pending | loop |
+| 1 | [Bootstrap and UI Surfaces](./phase-01-bootstrap-and-ui-surfaces.md) | Completed | skill |
+| 2 | [Operator Walkthrough and Records](./phase-02-operator-walkthrough-and-records.md) | Completed | loop |
 
 ## Dependencies
 

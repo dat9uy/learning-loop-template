@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Bootstrap and UI Surfaces"
-status: pending
+status: completed
 priority: P2
 effort: "2-3h"
 dependencies: []
@@ -179,30 +179,30 @@ Stop conditions:
 
 ## Todo List
 
-- [ ] Read brainstorm + plan + existing source files.
-- [ ] Pre-flight vnstock import check.
-- [ ] Add root `dev:api` + `dev:web` scripts.
-- [ ] Add `vite` dev script to web `package.json`.
-- [ ] Add `fetchSearchSymbols` helper.
-- [ ] Create `SearchBox` component.
-- [ ] Create `/` index route + register in router.
-- [ ] Add `<Link>` to `EquityTable` symbol cells.
-- [ ] Write `product/api/README.md`.
-- [ ] Write `product/web/README.md`.
-- [ ] Smoke-run dev servers + curl `/health` and `/`.
-- [ ] Web test suite passes.
-- [ ] `pnpm validate:records` + `pnpm check` pass.
+- [x] Read brainstorm + plan + existing source files.
+- [x] Pre-flight vnstock import check.
+- [x] Add root `dev:api` + `dev:web` scripts.
+- [x] Add `vite` dev script to web `package.json`.
+- [x] Add `fetchSearchSymbols` helper.
+- [x] Create `SearchBox` component.
+- [x] Create `/` index route + register in router.
+- [x] Add `<Link>` to `EquityTable` symbol cells.
+- [x] Write `product/api/README.md`.
+- [x] Write `product/web/README.md`.
+- [x] Smoke-run dev servers + curl `/health` and `/`.
+- [x] Web test suite passes.
+- [x] `pnpm validate:records` + `pnpm check` pass.
 
 ## Success Criteria
 
 ### Process Steps
-- [ ] All required input files read.
-- [ ] Dev scripts added at root and in web stack.
-- [ ] `fetchSearchSymbols` helper, `SearchBox` component, `/` route shipped.
-- [ ] `EquityTable` symbol cells link to company detail.
-- [ ] READMEs document run commands.
-- [ ] Web smoke tests pass.
-- [ ] `pnpm validate:records` + `pnpm check` pass — confirms no record edits.
+- [x] All required input files read.
+- [x] Dev scripts added at root and in web stack.
+- [x] `fetchSearchSymbols` helper, `SearchBox` component, `/` route shipped.
+- [x] `EquityTable` symbol cells link to company detail.
+- [x] READMEs document run commands.
+- [x] Web smoke tests pass.
+- [x] `pnpm validate:records` + `pnpm check` pass — confirms no record edits.
 
 ### Experiment Outcome
 - `supports` — dev servers boot, routes render, web tests pass, no record files modified.
