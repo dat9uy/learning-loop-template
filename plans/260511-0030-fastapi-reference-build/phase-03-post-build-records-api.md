@@ -1,17 +1,19 @@
 ---
 phase: 3
 title: "Post-Build Records API"
-status: blocked
+status: pending
 priority: P1
 effort: "1.5h"
-dependencies: [2]
+dependencies: [2, "2b"]
 ---
 
 # Phase 3: Post-Build Records API
 
 ## Overview
 
-Close the loop for the API build: run tests against live capability substrate, capture metadata-only evidence, fill the experiment, flip the surface claim runtime dimension to verified, and record evidence.
+Close the loop for the API build: re-run tests against the post-fix live capability substrate, capture metadata-only evidence, update the experiment, flip the surface claim runtime dimension to verified with cross-cited proof, and record evidence.
+
+**Carry-over context (see `plan.md` → Resumption Context):** the initial run was `blocked` by the vnstock runtime 403; that blocker is resolved (`plans/260511-0544-vnstock-runtime-blocker-fix/` completed). Phase 2b re-routes `/reference/search` to a VCI-backed catalog so all three endpoints are now expected to return real VN data. This phase REUSES the existing experiment YAML — append observation, flip `result: blocked` → `supports` — rather than minting a new record.
 
 ## Requirements
 
@@ -38,40 +40,61 @@ Close the loop for the API build: run tests against live capability substrate, c
    - No raw row values, no credentials.
 5. Write evidence MD: `records/evidence/product-build/fastapi-reference-endpoints.md`.
    - Include envelope fields: `run_id`, `temp_root_class`, `approval_gate`, `command_class`, `allowed_outputs`, `blocked_outputs`, `cleanup_status`, `temp_root_deleted`, `validation_status`.
-6. Fill experiment YAML:
-   - `method`: list of steps performed
-   - `observations`: per-endpoint metadata
-   - `result`: `supports`
-   - `status`: `reviewed` or `approved`
-7. Update `claim-product-fastapi-reference.yaml`:
-   - `verification.runtime.status`: `verified`
-   - `proof_refs`: `record:experiment-product-build-fastapi-reference-<ts>`
+6. Update existing experiment YAML `records/experiments/experiment-product-build-fastapi-reference-20260511T003000Z.yaml` (do NOT mint a new one — see `plan.md` → Decision 4):
+   - Append a dated observation summarizing the re-run (post-fix, post-2b).
+   - Per-endpoint metadata in `observations`.
+   - Flip `result: blocked` → `result: supports`.
+   - Bump `updated_at` to the re-run date.
+   - `status`: `reviewed` or `approved`.
+7. Update `records/claims/claim-product-fastapi-reference.yaml`:
+   - `verification.runtime.status`: `verified`.
+   - `proof_refs`: cite **both** of the following (see `plan.md` → Decision 3 — cross-citing is mandatory so the runtime-fix dependency is traceable):
+     - `record:experiment-product-build-fastapi-reference-20260511T003000Z`
+     - `record:experiment-vnstock-runtime-403-fix-20260511T143500Z`
 8. Run `pnpm validate:records` and `pnpm check`.
 
 ## Pre-Drafted Prompt
 
 ```text
-Task: Close the API build loop.
+Task: Close the API build loop (resumption run, post runtime-fix and post phase 2b).
 
 Work context: /home/datguy/codingProjects/learning-loop-template
+
+Carry-over context (authoritative — see plan.md → Resumption Context):
+- Initial run was blocked by vnstock runtime 403. Blocker resolved by
+  plans/260511-0544-vnstock-runtime-blocker-fix/ (completed).
+- Phase 2b re-routed /reference/search from Dukascopy to a VCI-backed filter over
+  Reference().equity.list(). All three endpoints now hit live VN data.
+- REUSE existing experiment YAML — append observation, flip result blocked → supports.
+  Do NOT mint a new experiment record.
+- proof_refs in the surface claim MUST cross-cite the upstream unblocker.
 
 Read first:
 - product/api/src/routers/reference.py
 - product/api/tests/test_reference.py
+- product/api/tests/test_vci_smoke.py
 - records/capabilities/capability-fastapi-reference-rest.yaml
 - records/claims/claim-product-fastapi-reference.yaml
-- records/experiments/experiment-product-build-fastapi-reference-<ts>.yaml
+- records/experiments/experiment-product-build-fastapi-reference-20260511T003000Z.yaml
+- records/experiments/experiment-vnstock-runtime-403-fix-20260511T143500Z.yaml
+- records/evidence/vnstock-data/runtime-403-fix-20260511.md
 
 Goal:
-- Run tests, capture metadata-only endpoint evidence, fill experiment, flip claim runtime to verified.
+- Run tests, capture metadata-only endpoint evidence for all 3 endpoints (equity, company, search),
+  update existing experiment, flip claim runtime to verified with cross-cited proof_refs.
 
 Allowed actions:
 - Run pytest against product/api/tests/.
 - Run live metadata check with operator approval (metadata-only output).
-- Create evidence under records/evidence/product-build/.
-- Modify experiment and claim records.
+- Run VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 product/api/.venv/bin/pytest -m network for live VCI.
+- Modify records/evidence/product-build/fastapi-reference-endpoints.md (append re-run section).
+- Modify records/experiments/experiment-product-build-fastapi-reference-20260511T003000Z.yaml
+  (append observation, flip result, bump updated_at).
+- Modify records/claims/claim-product-fastapi-reference.yaml (verification.runtime.status,
+  proof_refs cross-citing both experiments above).
 
 Forbidden actions:
+- Do NOT mint a new experiment record (reuse the existing one — Decision 4 in plan.md).
 - Do NOT capture raw external data, credentials, or config contents.
 - Do NOT retain temp artifacts.
 - Do NOT modify capability records or frozen historical records.
@@ -85,20 +108,29 @@ Stop and ask if:
 - Tests fail.
 - Live metadata check requires output beyond metadata-only.
 - Cleanup cannot be confirmed.
+- Symbol-search still returns empty for VN tickers (means phase 2b is incomplete — escalate).
 ```
 
 ## Success Criteria
 
-### Process Steps
-- [x] Tests read and confirmed passing.
-- [x] Live metadata check executed with approval.
-- [x] Evidence MD written with envelope fields.
-- [x] Experiment filled with blocked observation and result.
-- [ ] Surface claim runtime flipped to verified.
-- [x] `pnpm validate:records` and `pnpm check` pass.
+### Process Steps (Resumption Run)
+- [ ] Phase 2b completed and merged.
+- [ ] Tests re-run and confirmed passing (unit + live smoke).
+- [ ] Live metadata check executed post-fix with operator approval.
+- [ ] Evidence MD appended with re-run section (envelope fields + per-endpoint metadata for all 3 endpoints, including search returning non-empty VN results).
+- [ ] Existing experiment YAML updated: observation appended, `result` flipped `blocked` → `supports`, `updated_at` bumped.
+- [ ] Surface claim runtime flipped to `verified` with `proof_refs` cross-citing both `experiment-product-build-fastapi-reference-20260511T003000Z` and `experiment-vnstock-runtime-403-fix-20260511T143500Z`.
+- [ ] `pnpm validate:records` and `pnpm check` pass.
 
-### Experiment Outcome
-- `blocked` — mocked endpoint tests pass, but live metadata-only runtime evidence is blocked by provider JSON decode failure at `Reference().equity.list()`. Direct execution of the Reference capability script now fails at the same call.
+### Prior Run (Blocked — Audit Trail)
+Earlier run completed steps 1–5 with the blocker present. Those artifacts remain on disk:
+- `records/experiments/experiment-product-build-fastapi-reference-20260511T003000Z.yaml` (`result: blocked`)
+- `records/evidence/product-build/fastapi-reference-endpoints.md`
+
+Treat these as the starting state, not a reset point.
+
+### Experiment Outcome (target)
+- `supports` — all 3 endpoints (equity list, company info, re-routed search) return real VN data; per-endpoint metadata captured; cross-cited proof refs traceable to the runtime fix.
 
 ## Risk Assessment
 - Risk: Live metadata check captures raw data. Mitigation: output policy enforced in prompt; operator review of evidence MD.
