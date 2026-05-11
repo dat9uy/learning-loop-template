@@ -1,0 +1,92 @@
+id: experiment-product-dev-gate-removal-260512T0007Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-12T00:07:00+07:00"
+updated_at: "2026-05-12T00:07:00+07:00"
+source_refs:
+  - record:claim-product-fastapi-reference
+  - record:claim-product-tanstack-reference-view
+goal: Verify that operator walkthrough of FastAPI Reference product surfaces works without requiring VNSTOCK_REFERENCE_LIVE_GATE environment variable.
+hypothesis: The VNSTOCK_REFERENCE_LIVE_GATE check is verification-phase safety debt that now blocks product inspection without adding meaningful protection; removing it lets the operator walkthrough work out-of-the-box.
+knowledge_pack_ids: []
+method:
+  - Started local FastAPI and Vite dev servers without VNSTOCK_REFERENCE_LIVE_GATE set.
+  - Opened root route and verified landing page renders.
+  - Followed equity list link and verified /reference/equity returns 200 with data.
+  - Submitted a symbol search from root route and verified /reference/search returns 200 with results.
+  - Followed a search result link to company detail and verified /reference/company/{symbol} returns 200.
+success_metrics:
+  - /reference/equity returns HTTP 200 without env var.
+  - /reference/search returns HTTP 200 without env var.
+  - /reference/company/{symbol} returns HTTP 200 without env var.
+  - No raw provider values, credentials, config contents, or install logs retained.
+result: supports
+agent_outcome: Removed _ensure_live_reference_gate() and its three call sites from reference.py; all reference endpoints now serve data without env-var gate. Dev-server smoke checks pass.
+product_outcome: supports
+observations:
+  - route: /
+    status_code: 200
+    component:
+      - LandingPage
+      - SearchBox
+    navigation: root route rendered
+  - route: /reference/equity
+    status_code: 200
+    component: EquityTable
+    columns:
+      - symbol
+      - org_name
+    row_count: 1742
+    gate_required: false
+  - route: /reference/search
+    status_code: 200
+    component: SearchBox
+    columns:
+      - symbol
+      - org_name
+    row_count: 1
+    query: VCI
+    gate_required: false
+  - route: /reference/company/VCI
+    status_code: 200
+    component: CompanyDetail
+    columns:
+      - symbol
+      - name
+      - sector
+      - profile
+      - listing_date
+      - issued_share
+    row_count: 1
+    gate_required: false
+promotion_review: []
+scope: product
+claim_refs:
+  - record:claim-product-fastapi-reference
+  - record:claim-product-tanstack-reference-view
+output_level: metadata-only
+verification:
+  claim_refs:
+    - record:claim-product-fastapi-reference
+    - record:claim-product-tanstack-reference-view
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+output_capture:
+  allowed_outputs:
+    - metadata
+    - schema-shape
+    - counts
+    - redacted-labels
+  blocked_outputs:
+    - raw-data-capture
+    - credential-capture
+    - cell-values
+    - identifiers
+    - install-logs
+    - screenshots
+notes: The VNSTOCK_REFERENCE_LIVE_GATE check was verification-phase safety scaffolding. Runtime dimension is already verified (see claim-vnstock-runtime-403-root-cause). Smoke-test suite retains its own VNSTOCK_SMOKE_TEST_ALLOW_LIVE gate for CI isolation. Product dev scripts no longer need env-var boilerplate.

@@ -30,9 +30,10 @@ verification:
       - record:experiment-product-build-tanstack-reference-20260511T003000Z
       - record:claim-product-fastapi-reference
   product:
-    status: claimed
-    reason: Product render surface awaits scoped approval linkage.
-    decision_refs: []
+    status: approved
+    reason: Product render surface approved by decision-20260511T003000Z-product-approval-vnstock-reference-slice. Operator walkthrough and gate-removal experiments confirm navigation and rendering.
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
   blocked_actions:
     - live-backend-calls-in-web-tests
     - credential-capture

@@ -31,9 +31,10 @@ verification:
       - record:experiment-product-build-fastapi-reference-20260511T003000Z
       - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
   product:
-    status: claimed
-    reason: Product surface awaits scoped approval linkage.
-    decision_refs: []
+    status: approved
+    reason: Product surface approved by decision-20260511T003000Z-product-approval-vnstock-reference-slice. Operator walkthrough and gate-removal experiments confirm end-to-end functionality.
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
   blocked_actions:
     - credential-capture
     - raw-data-export
