@@ -20,3 +20,9 @@ export async function fetchCompanyInfo(symbol: string): Promise<DataFrameEnvelop
   if (!response.ok) throw new Error(`Reference company request failed: ${response.status}`)
   return response.json()
 }
+
+export async function fetchSearchSymbols(q: string): Promise<DataFrameEnvelope<EquityRow>> {
+  const response = await fetch(`${apiBaseUrl}/reference/search?q=${encodeURIComponent(q)}`)
+  if (!response.ok) throw new Error(`Reference search request failed: ${response.status}`)
+  return response.json()
+}

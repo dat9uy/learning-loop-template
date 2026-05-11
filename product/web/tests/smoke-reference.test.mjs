@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterContextProvider } from '@tanstack/react-router'
 import { createServer } from 'vite'
 
 const fixture = JSON.parse(readFileSync(new URL('../fixtures/fastapi-reference-response.json', import.meta.url), 'utf8'))
@@ -10,6 +12,19 @@ const equityRouteSource = readFileSync(new URL('../src/routes/reference/equity.t
 const companyRouteSource = readFileSync(new URL('../src/routes/reference/company.$symbol.tsx', import.meta.url), 'utf8')
 const equityComponentSource = readFileSync(new URL('../src/components/EquityTable.tsx', import.meta.url), 'utf8')
 const companyComponentSource = readFileSync(new URL('../src/components/CompanyDetail.tsx', import.meta.url), 'utf8')
+
+function createTestRouter() {
+  const rootRoute = createRootRoute()
+  const companyRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/reference/company/$symbol',
+  })
+
+  return createRouter({
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    routeTree: rootRoute.addChildren([companyRoute]),
+  })
+}
 
 test('equity route fixture exposes expected table headers', () => {
   assert.deepEqual(fixture.equity.columns, ['symbol', 'org_name'])
@@ -37,11 +52,18 @@ test('reference components render fixture-backed output', async () => {
   try {
     const { EquityTable } = await server.ssrLoadModule('/src/components/EquityTable.tsx')
     const { CompanyDetail } = await server.ssrLoadModule('/src/components/CompanyDetail.tsx')
-    const equityHtml = renderToStaticMarkup(EquityTable({ data: fixture.equity }))
+    const equityHtml = renderToStaticMarkup(
+      React.createElement(
+        RouterContextProvider,
+        { router: createTestRouter() },
+        React.createElement(EquityTable, { data: fixture.equity }),
+      ),
+    )
     const companyHtml = renderToStaticMarkup(CompanyDetail({ data: fixture.company }))
 
     assert.match(equityHtml, /<table>/)
     assert.match(equityHtml, /symbol/)
+    assert.match(equityHtml, /href="\/reference\/company\//)
     assert.match(companyHtml, /<dl>/)
     assert.match(companyHtml, /listing_date/)
   } finally {

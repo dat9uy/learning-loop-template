@@ -1,4 +1,6 @@
+import { Link } from '@tanstack/react-router'
 import type { DataFrameEnvelope, EquityRow } from '../lib/reference-client'
+import { companyRoutePath } from '../routes/reference/company.$symbol'
 
 export function EquityTable({ data }: { data: DataFrameEnvelope<EquityRow> }) {
   return (
@@ -11,7 +13,18 @@ export function EquityTable({ data }: { data: DataFrameEnvelope<EquityRow> }) {
         <tbody>
           {data.rows.map((row, index) => (
             <tr key={`${row.symbol ?? 'row'}-${index}`}>
-              {data.columns.map((column) => <td key={column}>{String(row[column as keyof EquityRow] ?? '')}</td>)}
+              {data.columns.map((column) => {
+                const value = String(row[column as keyof EquityRow] ?? '')
+                return (
+                  <td key={column}>
+                    {column === 'symbol' && row.symbol ? (
+                      <Link to={companyRoutePath} params={{ symbol: row.symbol }}>{value}</Link>
+                    ) : (
+                      value
+                    )}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>
