@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Runtime experiment and claim promotion"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1, 2, 3]
@@ -99,14 +99,14 @@ Proof artifacts:
 
 ## Todo List
 
-- [ ] Capture install log proof
-- [ ] Capture smoke test proof
-- [ ] Capture header-dump proof
-- [ ] Write evidence MD
-- [ ] Update claim YAML verification dimensions
-- [ ] Run `pnpm validate:records` + `pnpm check`
-- [ ] Unblock FastAPI Reference Build phases 3/5
-- [ ] Remove /tmp staging
+- [x] Capture install log proof
+- [x] Capture smoke test proof
+- [x] Capture header-dump proof
+- [x] Write evidence MD
+- [x] Update claim YAML verification dimensions
+- [x] Run `pnpm validate:records` + `pnpm check`
+- [x] Unblock FastAPI Reference Build phases 3/5
+- [x] Remove /tmp staging
 - [ ] Commit per-phase as described
 
 ## Success Criteria

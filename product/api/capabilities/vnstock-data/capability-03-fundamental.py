@@ -4,6 +4,16 @@
 # Run cell-by-cell: VS Code "Jupyter: Run Current Cell" (Interactive Python)
 
 # %% Imports
+import logging
+import sys
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from vendor_compat import ensure_vci_device_id
+
+ensure_vci_device_id()
+
 from vnstock_data import Fundamental
 
 fun = Fundamental()

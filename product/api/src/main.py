@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# MUST stay before routers that may import vnstock_data.
+from . import vendor_compat  # noqa: F401
 from .routers.reference import router as reference_router
 
 

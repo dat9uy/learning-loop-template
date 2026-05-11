@@ -1,0 +1,62 @@
+id: experiment-vnstock-runtime-403-fix-20260511T143500Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-11"
+updated_at: "2026-05-11"
+source_refs:
+  - local:records/evidence/vnstock-data/runtime-403-fix-20260511.md
+goal: Verify the wrapper env-var fix and VCI Device-Id compat patch unblock vnstock_data runtime calls.
+hypothesis: If VNSTOCK_CONFIG_PATH points at .vnstock root and VCI headers include Device-Id, import and live VCI calls should succeed.
+knowledge_pack_ids: []
+method:
+  - Run installer wrapper from product/api and verify import skip path exits 0.
+  - Verify .vnstock/user.json is a file and Device-Id config exists at top level.
+  - Import vendor_compat before vnstock_data call sites and check VCI headers include Device-Id.
+  - Run opt-in live VCI smoke tests for listing, company, and quote surfaces.
+  - Run live FastAPI Reference route handler close-out with metadata-only output.
+success_metrics:
+  - vnstock_data imports successfully.
+  - VCI get_headers returns Device-Id after compat import.
+  - Live VCI smoke tests pass.
+  - FastAPI Reference route handler returns metadata-only equity response.
+result: supports
+agent_outcome: Runtime blocker fixed for install and VCI live-call dimensions.
+product_outcome: FastAPI Reference runtime close-out can resume; product claim remains pending downstream records close-out.
+observations:
+  - Installed vnstock_data preloads several VCI modules during import, so direct module rebinding is required.
+  - Reference symbol search uses a Dukascopy path and returned empty data; smoke coverage uses Market quote for the VCI quote path instead.
+  - Live equity list included NaN org_name values; product route now converts pandas nulls to None before response validation.
+promotion_review:
+  - Promote install and runtime dimensions on claim-vnstock-runtime-403-root-cause.
+  - Keep product dimension claimed until FastAPI Reference Build records close-out completes.
+scope: runtime
+claim_refs:
+  - record:claim-vnstock-runtime-403-root-cause
+output_level: runtime-captured
+verification:
+  claim_refs:
+    - record:claim-vnstock-runtime-403-root-cause
+  proves:
+    - dimension: static
+      output_level: metadata-only
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+    - dimension: runtime
+      scope: sandbox
+      output_level: runtime-captured
+  requires_human_approval: true
+  approval_status: approved
+output_capture:
+  allowed_outputs:
+    - metadata
+    - schema-shape
+    - row-counts
+    - sanitized-command-output
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-device-id
+    - full-dataframe-values

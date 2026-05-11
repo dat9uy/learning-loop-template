@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement vendor compat patch"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -170,11 +170,11 @@ def ensure_vci_device_id() -> None:
 
 ## Todo List
 
-- [ ] Enumerate every `vnstock_data` module that imports `get_headers` (grep via /tmp staging)
-- [ ] Create vendor_compat package + patch logic
-- [ ] Wire compat import into FastAPI main.py
-- [ ] Wire compat import into all five capability scripts
-- [ ] Manual verify: patched `get_headers` for VCI includes Device-Id
+- [x] Enumerate every `vnstock_data` module that imports `get_headers` (grep via /tmp staging)
+- [x] Create vendor_compat package + patch logic
+- [x] Wire compat import into FastAPI main.py
+- [x] Wire compat import into all five capability scripts
+- [x] Manual verify: patched `get_headers` for VCI includes Device-Id
 
 ## Success Criteria
 

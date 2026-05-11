@@ -16,21 +16,31 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"
 }
 
-normalize_vnstock_config() {
-  local config_file="${API_ROOT}/.vnstock/user.json"
-  if [[ -d "${config_file}" && -f "${config_file}/user.json" ]]; then
-    local backup_dir="${API_ROOT}/.vnstock/user-json-dir.backup.$(date +%Y%m%d%H%M%S)"
-    mv "${config_file}" "${backup_dir}"
-    cp "${backup_dir}/user.json" "${config_file}"
-    printf 'Normalized vnstock user config from nested installer directory.\n'
+migrate_stale_vnstock_backups() {
+  local config_dir="${API_ROOT}/.vnstock"
+  shopt -s nullglob
+  local backup_dirs=("${config_dir}"/user-json-dir.backup.*)
+  if (( ${#backup_dirs[@]} == 0 )); then
+    shopt -u nullglob
+    return
   fi
+
+  local latest_backup="${backup_dirs[${#backup_dirs[@]}-1]}"
+  local filename
+  for filename in api_key.json device.id; do
+    if [[ ! -f "${config_dir}/${filename}" && -f "${latest_backup}/${filename}" ]]; then
+      cp "${latest_backup}/${filename}" "${config_dir}/${filename}"
+      chmod 600 "${config_dir}/${filename}"
+    fi
+  done
+  shopt -u nullglob
 }
 
 if [[ ! -x "${PYTHON_BIN}" ]]; then
   fail "missing ${PYTHON_BIN}; run uv sync from product/api first"
 fi
 
-normalize_vnstock_config
+migrate_stale_vnstock_backups
 
 if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   printf 'vnstock_data already imports from product/api/.venv; skipping installer.\n'
@@ -72,13 +82,11 @@ printf 'Installer SHA-256 verified. Running vendor installer with product/api as
   HOME="${API_HOME}" \
   PATH="${API_HOME}/.venv/bin:${PATH}" \
   VIRTUAL_ENV="${API_HOME}/.venv" \
-  VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock/user.json" \
+  VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock" \
   VNSTOCK_VENV_TYPE="venv" \
   VNSTOCK_LANGUAGE="python" \
   bash "${installer_path}"
 )
-
-normalize_vnstock_config
 
 if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   printf 'vnstock_data import check passed.\n'

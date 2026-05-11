@@ -19,7 +19,7 @@ def _ensure_live_reference_gate() -> None:
 
 
 def _records_from_frame(frame: pd.DataFrame) -> tuple[list[str], list[dict[str, Any]]]:
-    safe = frame.where(pd.notnull(frame), None)
+    safe = frame.astype(object).where(pd.notnull(frame), None)
     return list(safe.columns), safe.to_dict(orient="records")
 
 

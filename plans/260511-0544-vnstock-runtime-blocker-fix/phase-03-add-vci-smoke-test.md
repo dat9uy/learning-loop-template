@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Add VCI smoke test"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1, 2]
@@ -77,12 +77,12 @@ Add `product/api/tests/test_vci_smoke.py` that imports `vendor_compat`, then cal
 
 ## Todo List
 
-- [ ] Register `network` marker in pyproject.toml
-- [ ] Write smoke test file with env-var gate
-- [ ] Validate locally with live network (set env var)
-- [ ] Validate default run skips smoke tests (no env var)
-- [ ] Adjust assertions to match actual column names / return shapes
-- [ ] (Optional) Wire `pnpm smoke:vci`
+- [x] Register `network` marker in pyproject.toml
+- [x] Write smoke test file with env-var gate
+- [x] Validate locally with live network (set env var)
+- [x] Validate default run skips smoke tests (no env var)
+- [x] Adjust assertions to match actual column names / return shapes
+- [x] (Optional) Wire `pnpm smoke:vci`
 
 ## Related Code Files
 

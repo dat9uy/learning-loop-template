@@ -1,11 +1,11 @@
 ---
 title: "FastAPI Reference Build"
 description: "First product-build experiment: FastAPI backend + TanStack Start frontend wrapping vnstock_data Reference surfaces. Uses phase-gated orchestration with external skills."
-status: blocked
+status: pending
 priority: P1
 branch: "main"
 tags: [product-build, fastapi, tanstack, vnstock, reference]
-blockedBy: [260511-0544-vnstock-runtime-blocker-fix]
+blockedBy: []
 blocks: []
 created: "2026-05-11T00:30:00Z"
 createdBy: "ck:plan"
@@ -26,13 +26,13 @@ Uses Approach 1 (phase-gated orchestration) from brainstorm report. No wrapper s
 |-------|------|--------|------|
 | 1 | [Pre-Build Records](./phase-01-pre-build-records.md) | Completed | loop |
 | 2 | [FastAPI Reference Implementation](./phase-02-fastapi-reference-implementation.md) | Completed | skill |
-| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Blocked (live Reference provider JSON decode failure) | loop |
+| 3 | [Post-Build Records API](./phase-03-post-build-records-api.md) | Blocked | loop |
 | 4 | [TanStack Reference Implementation](./phase-04-tanstack-reference-implementation.md) | Completed | skill |
-| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Blocked (depends on verified API runtime evidence) | loop |
+| 5 | [Post-Build Records Web](./phase-05-post-build-records-web.md) | Blocked | loop |
 
 ## Current Status
 
-Blocked at runtime close-out. Product/API code, web code, records, mocked API tests, fixture-backed web tests, web build, and record validation pass. Runtime promotion is blocked because the live metadata-only `vnstock_data.Reference().equity.list()` check fails with a provider JSON decode error in the current environment. Direct execution of `product/api/capabilities/vnstock-data/capability-01-reference.py` now fails at the same call.
+Runtime blocker resolved by `plans/260511-0544-vnstock-runtime-blocker-fix/`. Product/API code, web code, mocked API tests, fixture-backed web tests, and live Reference route handler check now pass. Phase 3 and phase 5 remain blocked until records close-out resumes.
 
 ## Dependencies
 

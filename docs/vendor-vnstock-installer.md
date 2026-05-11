@@ -20,10 +20,10 @@ scope: "Observable behavior of `vnstock-cli-installer.run` as invoked by `produc
 
 Reference for operators and future debug sessions. The vendor `vnstock-cli-installer.run` is a private bash self-extractor that bootstraps `vnstock_data` (not on PyPI) into `product/api/.venv`. This doc describes what it does, what contracts it assumes, what is broken, and what changing the install would/would not fix.
 
-> **Revised bottom line (2026-05-11, post source-read).** The blocker has TWO independent causes, both narrower than the prior diagnostic claimed:
+> **Revised bottom line (2026-05-11, post source-read).** The blocker had TWO independent causes, both narrower than the prior diagnostic claimed:
 > 1. **Runtime 403** — `vnstock_data`'s `get_headers` for VCI does NOT inject the `Device-Id` header / `device_id` cookie that VietCap now enforces. `vnstock` (PyPI) DOES inject them. The "URL trailing-slash bug" claim in the original diagnostic is **false** — source shows `_TRADING_URL = '…/api'` with no trailing slash.
 > 2. **IsADirectoryError on import** — caused by **our wrapper** setting `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json` when the installer treats this env var as the directory to write into. Setting it to `${API_HOME}/.vnstock` (no `/user.json` suffix) lines the installer's output paths up with what the runtime expects via `Path.home()/'.vnstock'/'user.json'`.
-> Neither cause is a vendor runtime bug in code paths the previous diagnostic identified. See `records/claims/claim-vnstock-runtime-403-root-cause.yaml`.
+> Both causes were fixed in the 2026-05-11 runtime blocker repair. See `records/claims/claim-vnstock-runtime-403-root-cause.yaml` and `records/evidence/vnstock-data/runtime-403-fix-20260511.md`.
 
 ## Two-Stage Architecture
 
@@ -138,7 +138,7 @@ This runs once before checking import (in case of stale state) and once after th
 | **A** (wrapper) | `install-vnstock.sh` | `VNSTOCK_CONFIG_PATH` set one path-segment too deep (`.vnstock/user.json` instead of `.vnstock`) | causes installer to write into a directory the runtime expects to be a file; sole cause of historical IsADirectoryError |
 | ~~B~~ | runtime (`vnstock_data.env.idv`) | ~~Reads `VNSTOCK_CONFIG_PATH` as a file~~ | **FALSIFIED by source-read** — runtime never reads `VNSTOCK_CONFIG_PATH`; uses `Path.home()/'.vnstock'` |
 | ~~C~~ | runtime (`vnstock`/`vnstock_data` VCI URL) | ~~Trailing-slash → 403~~ | **FALSIFIED by source-read** — `_TRADING_URL` has no trailing slash; URL is well-formed |
-| **C'** (vendor) | `vnstock_data/core/utils/user_agent.py:get_headers` | Does not inject `Device-Id` header / `device_id` cookie for VCI; `vnstock/core/utils/user_agent.py:get_headers` does | **active runtime blocker** — every VCI call from vnstock_data returns 403 |
+| **C'** (vendor) | `vnstock_data/core/utils/user_agent.py:get_headers` | Does not inject `Device-Id` header / `device_id` cookie for VCI; `vnstock/core/utils/user_agent.py:get_headers` does | **historical runtime blocker** — fixed by the 2026-05-11 compat patch |
 | D | inner installer / packaging | Three-way version drift: tarball filename `3.1.7`, dist-info `3.1.3`, source `__version__` `3.0.0` | confusing; no functional impact |
 | E | inner installer | Logs import-check failure then reports "Installation completed: 1 successful" | hides A in CI/automation |
 
@@ -167,12 +167,12 @@ The "1 device" bronze limit is not strictly enforced server-side in observation.
 | **Route through `vnstock.Listing` (PyPI)** instead of `vnstock_data.Listing` for affected endpoints | — | **✓** | — | medium; may lose features `vnstock_data` adds |
 | Switch to alternate data source (TCBS, HOSE direct) | n/a | n/a | n/a | high; rewrites capability scope |
 
-The blocker (C') is **not addressable by changing install method**. It is addressable by patching `vnstock_data.get_headers`, monkey-patching at startup, or routing the call through `vnstock` directly. The env-var fix and the C' fix are independent and both needed.
+Before the 2026-05-11 fix, the blocker (C') was **not addressable by changing install method**. It was addressable by patching `vnstock_data.get_headers`, monkey-patching at startup, or routing the call through `vnstock` directly. The env-var fix and the C' fix were independent and both needed.
 
 ## Recommendation Summary
 
 1. **Fix wrapper env var**: change `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json` → `${API_HOME}/.vnstock` in `install-vnstock.sh`. Delete `normalize_vnstock_config`. One-line change resolves bug A without workarounds.
-2. **Address bug C' (Device-Id)**: prefer the monkey-patch approach (replace `vnstock_data.core.utils.user_agent.get_headers` with `vnstock.core.utils.user_agent.get_headers` at module import time). Lives in our wrapper, not the venv; survives reinstalls; reversible.
+2. **Address bug C' (Device-Id)**: this was resolved by the 2026-05-11 compat patch (replace `vnstock_data.core.utils.user_agent.get_headers` with `vnstock.core.utils.user_agent.get_headers` at module import time). The recommendation is kept here for historical context only.
 3. Keep bug E (deceptive installer success) on the watch-list. Wrapper's secondary `import vnstock_data` check already compensates.
 4. Add a smoke test that calls VietCap symbol list and asserts JSON 200 (not 403). Runs at end of `pnpm bootstrap:api`. Regression detector for future Device-Id schema changes by VietCap.
 5. Revise prior "1 install ≈ 1 slot consumed" guidance — observation does not support strict enforcement.
@@ -186,3 +186,17 @@ The blocker (C') is **not addressable by changing install method**. It is addres
 5. Do `relay_config.json` / `usage_metrics.json` phone home? Worth inspecting before declaring install reproducible offline.
 6. Server-side slot accounting: is the observed `devices=2/1` a race or a bug? Should we expect throttling later?
 7. Once the env-var fix is applied, do `id/`, `data/`, `config/` runtime sub-directories still self-materialise correctly? Source-read suggests yes (`vnai/scope/profile.py:36-37` does `mkdir(parents=True, exist_ok=True)`), but unverified.
+
+## VCI get_headers Import Sites
+
+Captured during runtime blocker fix on 2026-05-11 from the installed `vnstock_data` package. These modules bind `get_headers` locally, so the compat patch must rebind already-loaded modules as well as patch `vnstock_data.core.utils.user_agent`.
+
+```text
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/company.py:40
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/quote.py:28
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/listing.py:25
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/trading.py:52
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/financial.py:34
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/screener.py:22
+product/api/.venv/lib/python3.12/site-packages/vnstock_data/explorer/vci/event.py:9
+```

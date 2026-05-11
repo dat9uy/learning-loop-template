@@ -1,7 +1,7 @@
 ---
 title: "vnstock Runtime Blocker Fix — Env-var + Device-Id Monkey-patch"
 description: "Apply the wrapper config-path fix and the Device-Id compat patch identified by the 2026-05-11 source-read. Unblocks FastAPI Reference Build runtime close-out."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, runtime-fix, monkey-patch, blocker-resolution]
@@ -27,10 +27,10 @@ Plan applies both fixes, adds a regression-detector smoke test, and promotes the
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Apply wrapper env-var fix](./phase-01-apply-wrapper-env-var-fix.md) | Pending |
-| 2 | [Implement vendor compat patch](./phase-02-implement-vendor-compat-patch.md) | Pending |
-| 3 | [Add VCI smoke test](./phase-03-add-vci-smoke-test.md) | Pending |
-| 4 | [Runtime experiment and claim promotion](./phase-04-runtime-experiment-and-claim-promotion.md) | Pending |
+| 1 | [Apply wrapper env-var fix](./phase-01-apply-wrapper-env-var-fix.md) | Completed |
+| 2 | [Implement vendor compat patch](./phase-02-implement-vendor-compat-patch.md) | Completed |
+| 3 | [Add VCI smoke test](./phase-03-add-vci-smoke-test.md) | Completed |
+| 4 | [Runtime experiment and claim promotion](./phase-04-runtime-experiment-and-claim-promotion.md) | Completed |
 
 ## Dependencies
 

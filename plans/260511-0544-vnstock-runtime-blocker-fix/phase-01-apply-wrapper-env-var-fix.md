@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Apply wrapper env-var fix"
-status: pending
+status: completed
 priority: P1
 effort: "0.5h"
 dependencies: []
@@ -45,12 +45,12 @@ Per source-read (`docs/vendor-vnstock-installer.md`):
 
 ## Todo List
 
-- [ ] Edit env var in install-vnstock.sh
-- [ ] Delete normalize_vnstock_config helper + invocations
-- [ ] Migrate api_key.json / device.id from backup dirs if missing at top level
-- [ ] Clean any stale `.vnstock/user.json/` directory state
-- [ ] Re-run installer, expect clean exit
-- [ ] Verify `import vnstock_data` succeeds with no normalization log line
+- [x] Edit env var in install-vnstock.sh
+- [x] Delete normalize_vnstock_config helper + invocations
+- [x] Migrate api_key.json / device.id from backup dirs if missing at top level
+- [x] Clean any stale `.vnstock/user.json/` directory state
+- [x] Re-run installer, expect clean exit
+- [x] Verify `import vnstock_data` succeeds with no normalization log line
 
 ## Success Criteria
 
