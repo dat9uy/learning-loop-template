@@ -8,6 +8,7 @@ import { loadPackStatuses, loadRecords } from "./record-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
 import { validatePublicationGates } from "./publication-gate-validation.js";
 import { validateUseCaseFixtures } from "./use-case-fixture-validation.js";
+import { RecordParseError } from "./yaml-parse-wrapper.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
@@ -41,7 +42,7 @@ function runNegativeFixtures(packStatuses) {
     ["product-unrelated-decision", "product approved decision proof must reference claim"],
     ["rejected-without-rejection-proof", "static rejected status requires proof refs"],
     ["rejected-with-related-non-rejection-decision", "static rejected status requires matching experiment proof ref"],
-    ["invalid-plain-scalar", "Nested mappings are not allowed in compact mappings"],
+    ["invalid-plain-scalar", { kind: "yaml-syntax" }],
     ["invalid-risk-status", "status must be one of"],
     ["malformed-pack-ref", "malformed pack reference"],
     ["invalid-output-capture", "output_capture must be object"],
@@ -53,10 +54,17 @@ function runNegativeFixtures(packStatuses) {
     try {
       records = loadRecords(root, join(root, "fixtures", "negative", fixture));
     } catch (parseError) {
-      if (parseError.message.includes(expected)) {
+      if (typeof expected === "string" && parseError.message.includes(expected)) {
+        continue;
+      }
+      if (typeof expected === "object" && parseError instanceof RecordParseError && parseError.kind === expected.kind) {
         continue;
       }
       errors.push(`${fixture} failed with unexpected parse error: ${parseError.message}`);
+      continue;
+    }
+    if (typeof expected === "object") {
+      errors.push(`${fixture} did not fail with expected parse error kind: ${expected.kind}`);
       continue;
     }
     const result = validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures);

@@ -13,7 +13,8 @@
     "verify:claim": "node tools/claim-verification/verify-claim.js",
     "generate:docs": "node tools/generate-docs/generate-docs.js",
     "list:verified": "bash tools/list-verified/list-verified.sh",
-    "check": "pnpm validate:records"
+    "test": "node --test tools/**/*.test.js",
+    "check": "pnpm validate:records && pnpm test"
   },
   "dependencies": {
     "yaml": "^2.8.4"

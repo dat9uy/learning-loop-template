@@ -33,7 +33,6 @@ Impact was narrow but real: authors can now use readable YAML features like bloc
 
 Docs impact: none. Operator-facing commands and policy unchanged.
 
-## Unresolved Questions
+## Resolution
 
-- Should the manual `verify-claim` scalar smoke become a committed test script in a follow-up?
-- Should negative YAML fixtures stop depending on upstream parser wording and move to project-owned error wrappers?
+- `plans/260512-1501-yaml-parser-wording-decoupling/` resolves both follow-ups: negative YAML fixtures now match project-owned parse error kinds, and `verify-claim` scalar rules have a committed regression test.

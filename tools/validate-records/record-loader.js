@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import { parse as parseYaml } from "yaml";
+import { parseRecordYaml } from "./yaml-parse-wrapper.js";
 
 export const recordDirs = ["claims", "experiments", "decisions", "risks", "capabilities"];
 
@@ -13,7 +13,7 @@ export function loadRecords(root, baseDir = join(root, "records")) {
   const records = [];
   for (const dirName of recordDirs) {
     for (const filePath of sortedYamlFiles(join(baseDir, dirName))) {
-      const record = parseYaml(readFileSync(filePath, "utf8"));
+      const record = parseRecordYaml(readFileSync(filePath, "utf8"), filePath);
       record.__file = relative(root, filePath);
       records.push(record);
     }
@@ -27,7 +27,7 @@ export function loadPackStatuses(root) {
   for (const name of readdirSync(packsRoot).sort()) {
     const manifest = join(packsRoot, name, "manifest.yaml");
     if (!existsSync(manifest)) continue;
-    const parsed = parseYaml(readFileSync(manifest, "utf8"));
+    const parsed = parseRecordYaml(readFileSync(manifest, "utf8"), manifest);
     statuses.set(parsed.id, parsed.approval?.status || parsed.status || "draft");
   }
   return statuses;
