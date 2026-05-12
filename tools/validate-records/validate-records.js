@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateDerivedAssurance } from "./derived-claim-assurance.js";
+import { validateFilenameConventions } from "./filename-convention-validation.js";
 import { validatePackSources } from "./pack-source-validation.js";
 import { loadPackStatuses, loadRecords } from "./record-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
@@ -115,11 +116,16 @@ function main() {
   errors.push(...runNegativePackFixtures(recordIds));
   errors.push(...runNegativePublicationGateFixtures());
   errors.push(...validateUseCaseFixtures(root));
+  const warnings = validateFilenameConventions(records);
+
   if (errors.length) {
     console.error(errors.map((error) => `- ${error}`).join("\n"));
     process.exit(1);
   }
   console.log(`Validated ${records.length} records.`);
+  if (warnings.length) {
+    console.error(warnings.map((warning) => `Warning: ${warning}`).join("\n"));
+  }
 }
 
 main();
