@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { verificationDimensions } from "../validate-records/claim-verification-rules.js";
 import { loadPackStatuses, loadRecords } from "../validate-records/record-loader.js";
 import { validateRecords } from "../validate-records/record-validation-rules.js";
-import { parseValue } from "../validate-records/simple-yaml-parser.js";
+import { parse as parseValue } from "yaml";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -77,11 +77,17 @@ function requireUpdateArgs(args) {
   if (!verificationDimensions.has(args.dimension)) fail(`Unsupported verification dimension: ${args.dimension}`);
 }
 
-function assertWritablePlainString(label, value) {
+export function assertWritablePlainString(label, value) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`${label} must be a non-empty string`);
   if (value !== value.trim()) throw new Error(`${label} must not start or end with whitespace`);
   if (/[\r\n]/.test(value)) throw new Error(`${label} must be single-line`);
-  if (parseValue(value) !== value) throw new Error(`${label} must avoid YAML-special scalar syntax`);
+  let parsedValue;
+  try {
+    parsedValue = parseValue(value);
+  } catch {
+    throw new Error(`${label} must avoid YAML-special scalar syntax`);
+  }
+  if (parsedValue !== value) throw new Error(`${label} must avoid YAML-special scalar syntax`);
   if (value.includes(": ")) throw new Error(`${label} must not include ': '`);
   if (value.includes("#")) throw new Error(`${label} must not include '#'`);
 }
@@ -192,4 +198,4 @@ function main() {
   console.log(`Applied verification update to ${claim.__file}.`);
 }
 
-main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) main();

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, basename } from "node:path";
-import { parseYaml } from "./simple-yaml-parser.js";
+import { parse as parseYaml } from "yaml";
 
 const allowedPackFiles = new Set(["manifest.yaml", "facts.yaml", "capabilities.yaml"]);
 

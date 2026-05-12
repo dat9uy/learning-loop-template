@@ -14,5 +14,8 @@
     "generate:docs": "node tools/generate-docs/generate-docs.js",
     "list:verified": "bash tools/list-verified/list-verified.sh",
     "check": "pnpm validate:records"
+  },
+  "dependencies": {
+    "yaml": "^2.8.4"
   }
 }

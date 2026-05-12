@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import { parseYaml } from "./simple-yaml-parser.js";
+import { parse as parseYaml } from "yaml";
 import { deriveClaimAssurance, assuranceIndex } from "./derived-claim-assurance.js";
 
 const defaultGate = {

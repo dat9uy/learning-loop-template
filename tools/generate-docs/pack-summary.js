@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { parseYaml } from "../validate-records/simple-yaml-parser.js";
+import { parse as parseYaml } from "yaml";
 
 export function loadPacks(root) {
   const packsRoot = join(root, "knowledge-packs");

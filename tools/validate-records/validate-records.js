@@ -41,7 +41,7 @@ function runNegativeFixtures(packStatuses) {
     ["product-unrelated-decision", "product approved decision proof must reference claim"],
     ["rejected-without-rejection-proof", "static rejected status requires proof refs"],
     ["rejected-with-related-non-rejection-decision", "static rejected status requires matching experiment proof ref"],
-    ["invalid-plain-scalar", "Invalid plain scalar (YAML 1.2)"],
+    ["invalid-plain-scalar", "Nested mappings are not allowed in compact mappings"],
     ["invalid-risk-status", "status must be one of"],
     ["malformed-pack-ref", "malformed pack reference"],
     ["invalid-output-capture", "output_capture must be object"],
