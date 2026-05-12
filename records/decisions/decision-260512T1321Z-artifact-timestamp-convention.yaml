@@ -2,8 +2,8 @@ id: decision-260512T1321Z-artifact-timestamp-convention
 schema_version: "1.0"
 type: decision
 status: draft
-created_at: "2026-05-12T13:21:00+07:00"
-updated_at: "2026-05-12T13:21:00+07:00"
+created_at: "2026-05-12T06:21:00Z"
+updated_at: "2026-05-12T06:21:00Z"
 source_refs:
   - record:decision-20260509T192449Z-prospective-convention-application
   - record:decision-260512T0046Z-loop-meta-evidence-gap-revisit
