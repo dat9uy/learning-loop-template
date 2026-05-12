@@ -10,6 +10,41 @@ pnpm check
 
 Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, and `docs/` for project metadata. The `knowledge-packs/` lane is latent in the current product line; existing draft manifests stay as placeholders.
 
+## Record Naming Conventions
+
+Artifact filenames use a unified timestamp convention.
+
+### Timestamp Format
+
+```
+YYMMDDTmmZ
+```
+
+- `YY` = 2-digit year (26 for 2026)
+- `MM` = 2-digit month
+- `DD` = 2-digit day
+- `T` = literal separator
+- `HH` = 2-digit hour UTC
+- `MM` = 2-digit minute UTC
+- `Z` = literal Z for UTC
+
+Total: 13 characters, fixed length, lexicographically sortable.
+
+### Artifact Patterns
+
+| Artifact | Directory | Pattern | Timestamped? |
+|---|---|---|---|
+| Decision | `records/decisions/` | `decision-YYMMDDTmmZ-<slug>.yaml` | Yes |
+| Experiment | `records/experiments/` | `experiment-<scope>-YYMMDDTmmZ-<slug>.yaml` | Yes |
+| Risk | `records/risks/` | `risk-YYMMDDTmmZ-<slug>.yaml` | Yes |
+| Domain Evidence (run) | `records/evidence/<domain>/` | `<type>-YYMMDDTmmZ[-<variant>].md` | Yes |
+| Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No |
+| Capability | `records/capabilities/` | `capability-<stack>-<slug>.yaml` | No |
+| Meta Evidence | `records/evidence/meta/` | `<descriptive-kebab-slug>.md` | No |
+
+The `id` field inside every YAML record must match the filename stem (filename without extension).
+New conventions apply prospectively; historical records keep their original names.
+
 ## Claim Verification
 
 Before adding, verifying, rejecting, or product-approving claims, classify the claim with `docs/claim-verification.md`. Proof plans must pass verification validation before they run install, import, runtime, or product approval work.
