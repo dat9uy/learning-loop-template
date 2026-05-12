@@ -2,8 +2,8 @@ id: exp-bad-output-capture
 schema_version: "1.0"
 type: experiment
 status: draft
-created_at: "2000-01-01"
-updated_at: "2000-01-01"
+created_at: "2000-01-01T00:00:00Z"
+updated_at: "2000-01-01T00:00:00Z"
 source_refs: []
 notes: Negative fixture.
 goal: Test bad output capture.

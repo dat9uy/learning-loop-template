@@ -2,8 +2,8 @@ id: capability-fastapi-reference-rest
 schema_version: "1.0"
 type: capability
 status: approved
-created_at: "2026-05-11"
-updated_at: "2026-05-11"
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
 source_refs:
   - record:claim-product-fastapi-reference
   - local:product/api/capabilities/vnstock-data/capability-01-reference.py

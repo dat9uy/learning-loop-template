@@ -2,8 +2,8 @@ id: experiment-operator-product-shape-walkthrough-260511T1900Z
 schema_version: "1.0"
 type: experiment
 status: approved
-created_at: "2026-05-11T19:00:00+07:00"
-updated_at: "2026-05-11T19:00:00+07:00"
+created_at: "2026-05-11T12:00:00Z"
+updated_at: "2026-05-11T12:00:00Z"
 source_refs:
   - local:records/evidence/product/operator-shape-walkthrough/walkthrough-260511T1900Z.md
   - record:claim-product-fastapi-reference

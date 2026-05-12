@@ -2,8 +2,8 @@ id: experiment-vnstock-runtime-403-fix-20260511T143500Z
 schema_version: "1.0"
 type: experiment
 status: approved
-created_at: "2026-05-11"
-updated_at: "2026-05-11"
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
 source_refs:
   - local:records/evidence/vnstock-data/runtime-403-fix-20260511.md
 goal: Verify the wrapper env-var fix and VCI Device-Id compat patch unblock vnstock_data runtime calls.

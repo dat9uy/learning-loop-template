@@ -2,8 +2,8 @@ id: experiment-meta-install-template-candidate-260512T0046Z
 schema_version: "1.0"
 type: experiment
 status: draft
-created_at: "2026-05-12T00:46:00+07:00"
-updated_at: "2026-05-12T00:46:00+07:00"
+created_at: "2026-05-11T17:46:00Z"
+updated_at: "2026-05-11T17:46:00Z"
 source_refs:
   - local:records/evidence/meta/install-experiment-template-candidate.md
   - local:records/evidence/meta/install-experiment-template-gap.md

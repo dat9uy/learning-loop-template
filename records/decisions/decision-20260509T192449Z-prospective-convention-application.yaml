@@ -2,8 +2,8 @@ id: decision-20260509T192449Z-prospective-convention-application
 schema_version: "1.0"
 type: decision
 status: approved
-created_at: "2026-05-09"
-updated_at: "2026-05-09"
+created_at: "2026-05-09T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
 source_refs:
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md

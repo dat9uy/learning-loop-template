@@ -1,40 +1,53 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join, normalize } from "node:path";
+import Ajv2020 from "ajv/dist/2020.js";
 import { validateClaimVerification } from "./claim-verification-rules.js";
 
-function validatePrimitive(errors, path, value, schema) {
-  if (schema.const !== undefined && value !== schema.const) errors.push(`${path} must be ${schema.const}`);
-  if (schema.enum && !schema.enum.includes(value)) errors.push(`${path} must be one of ${schema.enum.join(", ")}`);
-  if (schema.type === "string" && typeof value !== "string") errors.push(`${path} must be string`);
-  if (schema.type === "boolean" && typeof value !== "boolean") errors.push(`${path} must be boolean`);
-  if (schema.type === "array" && !Array.isArray(value)) errors.push(`${path} must be array`);
-  if (schema.type === "array" && Array.isArray(value) && schema.items?.type) {
-    value.forEach((item, index) => validatePrimitive(errors, `${path}[${index}]`, item, schema.items));
+const compiledValidatorsBySchemas = new WeakMap();
+
+function getCompiledValidators(schemas) {
+  const cached = compiledValidatorsBySchemas.get(schemas);
+  if (cached) return cached;
+  const ajv = new Ajv2020({ strict: true, allErrors: true });
+  const compiledValidators = {};
+  for (const [type, schema] of Object.entries(schemas)) {
+    compiledValidators[type] = ajv.compile(schema);
   }
-  if (schema.type === "object" && (typeof value !== "object" || value === null || Array.isArray(value))) errors.push(`${path} must be object`);
+  compiledValidatorsBySchemas.set(schemas, compiledValidators);
+  return compiledValidators;
 }
 
-export function validateSchema(record, schema, path = record.id || "record") {
-  const errors = [];
-  for (const key of schema.required || []) {
-    if (record[key] === undefined) errors.push(`${path}.${key} is required`);
-  }
-  for (const [key, childSchema] of Object.entries(schema.properties || {})) {
-    if (record[key] === undefined) continue;
-    validatePrimitive(errors, `${path}.${key}`, record[key], childSchema);
-    if (childSchema.type === "object" && childSchema.properties) {
-      errors.push(...validateSchema(record[key], childSchema, `${path}.${key}`));
+function stripInternalFields(record) {
+  const { __file, ...rest } = record;
+  return rest;
+}
+
+function formatAjvError(error) {
+  const location = error.instancePath || "/";
+  return `${location} ${error.keyword}: ${error.message}`;
+}
+
+function validateRecordAgainstSchema(record, validator) {
+  if (validator(stripInternalFields(record))) return [];
+  return (validator.errors || []).map(formatAjvError);
+}
+
+function validateRecordSchemas(records, schemas, errors) {
+  const validators = getCompiledValidators(schemas);
+  for (const record of records) {
+    if (!schemas[record.type]) {
+      errors.push(`${record.__file}: unknown type ${record.type}`);
+      continue;
     }
+    errors.push(...validateRecordAgainstSchema(record, validators[record.type]).map((error) => `${record.__file}: ${error}`));
   }
-  return errors;
 }
 
 export function validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures = false) {
   const errors = [];
   const ids = new Map();
+  validateRecordSchemas(records, schemas, errors);
   for (const record of records) {
-    if (!schemas[record.type]) errors.push(`${record.__file}: unknown type ${record.type}`);
-    else errors.push(...validateSchema(record, schemas[record.type]).map((error) => `${record.__file}: ${error}`));
     if (ids.has(record.id)) errors.push(`${record.__file}: duplicate id ${record.id}`);
     ids.set(record.id, record.__file);
   }

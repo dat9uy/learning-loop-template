@@ -31,8 +31,8 @@ function runNegativeFixtures(packStatuses) {
     ["local-source-traversal", "local source must stay under records/evidence or knowledge-packs"],
     ["missing-local-source", "missing local source"],
     ["unsupported-source-ref", "unsupported source reference"],
-    ["malformed-array", "source_refs[0] must be string"],
-    ["missing-dimensions", "verification is required"],
+    ["malformed-array", "/source_refs/0 type: must be string"],
+    ["missing-dimensions", "/ required: must have required property 'verification'"],
     ["unsupported-dimension-status", "static status must be one of claimed, verified, rejected"],
     ["high-state-without-proof", "runtime verified status requires proof refs"],
     ["runtime-without-human-approval", "runtime verification requires approved human approval"],
@@ -43,10 +43,11 @@ function runNegativeFixtures(packStatuses) {
     ["rejected-without-rejection-proof", "static rejected status requires proof refs"],
     ["rejected-with-related-non-rejection-decision", "static rejected status requires matching experiment proof ref"],
     ["invalid-plain-scalar", { kind: "yaml-syntax" }],
-    ["invalid-risk-status", "status must be one of"],
+    ["invalid-risk-status", "/status enum: must be equal to one of the allowed values"],
     ["malformed-pack-ref", "malformed pack reference"],
-    ["invalid-output-capture", "output_capture must be object"],
-    ["invalid-decision-effect", "decision_effect.action must be one of"],
+    ["invalid-output-capture", "/output_capture type: must be object"],
+    ["invalid-decision-effect", "/decision_effect/action enum: must be equal to one of the allowed values"],
+    ["bad-timestamp", "/created_at pattern: must match pattern"],
   ];
   const errors = [];
   for (const [fixture, expected] of cases) {

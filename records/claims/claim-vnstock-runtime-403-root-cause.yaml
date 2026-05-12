@@ -2,8 +2,8 @@ id: claim-vnstock-runtime-403-root-cause
 schema_version: "1.0"
 type: claim
 status: reviewed
-created_at: "2026-05-11"
-updated_at: "2026-05-11"
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
 source_refs:
   - local:records/evidence/vnstock-data/runtime-403-fix-20260511.md
 notes: "Source-read and runtime experiment performed on 2026-05-11. Prior diagnostic's URL double-slash hypothesis falsified by source. Wrapper config-path bug and missing VCI Device-Id header both verified."
@@ -21,7 +21,7 @@ limitations:
 approval:
   status: reviewed
   reviewer: operator
-  reviewed_at: "2026-05-11"
+  reviewed_at: "2026-05-11T00:00:00Z"
 verification:
   static:
     status: verified
@@ -44,6 +44,7 @@ verification:
   product:
     status: claimed
     reason: "Blocker resolution required before product slice (FastAPI Reference Build) can ship; awaits successful runtime experiment."
+    decision_refs: []
   blocked_actions:
     - live-provider-calls
     - production-deployment

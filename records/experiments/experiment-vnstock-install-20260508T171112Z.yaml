@@ -2,8 +2,8 @@ id: experiment-vnstock-install-20260508T171112Z
 schema_version: "1.0"
 type: experiment
 status: reviewed
-created_at: "2026-05-08"
-updated_at: "2026-05-09"
+created_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
 source_refs:
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
 scope: install

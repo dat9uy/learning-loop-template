@@ -17,6 +17,7 @@
     "check": "pnpm validate:records && pnpm test"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "yaml": "^2.8.4"
   }
 }

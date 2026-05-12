@@ -8,8 +8,8 @@
     "schema_version": { "type": "string" },
     "type": { "const": "claim" },
     "status": { "enum": ["draft", "reviewed", "approved", "rejected"] },
-    "created_at": { "type": "string" },
-    "updated_at": { "type": "string" },
+    "created_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
+    "updated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
     "source_refs": { "type": "array", "items": { "type": "string" } },
     "notes": { "type": "string" },
     "subject": { "type": "string" },
@@ -24,7 +24,7 @@
       "properties": {
         "status": { "enum": ["draft", "reviewed", "approved", "rejected"] },
         "reviewer": { "type": "string" },
-        "reviewed_at": { "type": "string" }
+        "reviewed_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" }
       }
     },
     "verification": {

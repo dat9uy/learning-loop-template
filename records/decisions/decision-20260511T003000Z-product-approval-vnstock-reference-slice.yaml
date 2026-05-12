@@ -2,8 +2,8 @@ id: decision-20260511T003000Z-product-approval-vnstock-reference-slice
 schema_version: "1.0"
 type: decision
 status: approved
-created_at: "2026-05-11"
-updated_at: "2026-05-11"
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
 source_refs:
   - record:claim-vnstock-install-sandbox
   - record:experiment-vnstock-capabilities-20260509T174957Z

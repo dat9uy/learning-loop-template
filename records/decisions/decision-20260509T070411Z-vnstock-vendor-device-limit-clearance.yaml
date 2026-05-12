@@ -2,8 +2,8 @@ id: decision-20260509T070411Z-vnstock-vendor-device-limit-clearance
 schema_version: "1.0"
 type: decision
 status: approved
-created_at: "2026-05-09"
-updated_at: "2026-05-09"
+created_at: "2026-05-09T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
 source_refs:
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
 notes: Operator-side account action only; agent does not perform or observe external clearance.
