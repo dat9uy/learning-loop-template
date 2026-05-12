@@ -61,8 +61,14 @@ export function validateRecords(records, schemas, packStatuses, root, allowDisal
 }
 
 const recordLocalRoots = {
-  default: ["records/evidence", "knowledge-packs"],
-  capability: ["records/evidence", "knowledge-packs", "product/*/capabilities"],
+  default: {
+    roots: ["records/evidence", "knowledge-packs"],
+    description: "records/evidence or knowledge-packs",
+  },
+  capability: {
+    roots: ["records/evidence", "knowledge-packs", "product/*/capabilities"],
+    description: "records/evidence, knowledge-packs, product/*/capabilities",
+  },
 };
 
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {
@@ -140,21 +146,14 @@ function matchAllowedRoot(realPath, realRelativeSegs, allowedRoot) {
   });
 }
 
-function allowedDescriptionFor(allowedRoots) {
-  if (allowedRoots.length === 2 && allowedRoots[0] === "records/evidence" && allowedRoots[1] === "knowledge-packs") {
-    return "records/evidence or knowledge-packs";
-  }
-  return allowedRoots.join(", ");
-}
-
 export function validateLocalRef(record, ref, root, errors) {
-  const allowedRoots = recordLocalRoots[record.type] || recordLocalRoots.default;
+  const config = recordLocalRoots[record.type] || recordLocalRoots.default;
   validateAllowedLocalPath(
     record.__file,
     ref.slice("local:".length),
     root,
-    allowedRoots,
-    allowedDescriptionFor(allowedRoots),
+    config.roots,
+    config.description,
     errors,
   );
 }

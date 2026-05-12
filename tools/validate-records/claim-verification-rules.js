@@ -120,10 +120,7 @@ function validateExperimentProves(experiment, byId, errors) {
 }
 
 function dimensionEntries(claim) {
-  const verification = claim.verification || {};
-  return [...verificationDimensions]
-    .filter((dimension) => verification[dimension] !== undefined)
-    .map((dimension) => [dimension, verification[dimension]]);
+  return Object.entries(claim.verification || {}).filter(([key]) => verificationDimensions.has(key));
 }
 
 function validateProofRefsForStatus(claim, dimension, config, proofRecords, errors) {

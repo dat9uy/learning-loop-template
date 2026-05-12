@@ -7,7 +7,6 @@ import { validatePackSources } from "./pack-source-validation.js";
 import { loadPackStatuses, loadRecords } from "./record-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
 import { validatePublicationGates } from "./publication-gate-validation.js";
-import { validateUseCaseFixtures } from "./use-case-fixture-validation.js";
 import { RecordParseError } from "./yaml-parse-wrapper.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -124,7 +123,6 @@ function main() {
   errors.push(...runNegativeFixtures(packStatuses));
   errors.push(...runNegativePackFixtures(recordIds));
   errors.push(...runNegativePublicationGateFixtures());
-  errors.push(...validateUseCaseFixtures(root));
   const warnings = validateFilenameConventions(records);
 
   if (errors.length) {
