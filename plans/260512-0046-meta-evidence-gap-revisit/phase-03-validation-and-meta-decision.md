@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Validation And Meta-Decision"
-status: pending
+status: completed
 priority: P2
 effort: "45m"
 dependencies: ["1", "2"]
@@ -91,19 +91,19 @@ Pin:
 
 ## Todo List
 
-- [ ] Run `pnpm validate:records` (Phase 1 + 2 artifacts)
-- [ ] Fix any validation errors and re-run until exit 0
-- [ ] Run `pnpm check` (sanity check)
-- [ ] Draft `records/decisions/decision-260512T0046Z-loop-meta-evidence-gap-revisit.yaml` at `status: draft`
-- [ ] Re-run `pnpm validate:records` after meta-decision lands
+- [x] Run `pnpm validate:records` (Phase 1 + 2 artifacts)
+- [x] Fix any validation errors and re-run until exit 0
+- [x] Run `pnpm check` (sanity check)
+- [x] Draft `records/decisions/decision-260512T0046Z-loop-meta-evidence-gap-revisit.yaml` at `status: draft`
+- [x] Re-run `pnpm validate:records` after meta-decision lands
 
 ## Success Criteria
 
-- [ ] `pnpm validate:records` exits 0 after all Phase 1 + 2 + 3 edits
-- [ ] `pnpm check` exits 0
-- [ ] Meta-decision YAML exists at `records/decisions/decision-260512T0046Z-loop-meta-evidence-gap-revisit.yaml` with `status: draft`
-- [ ] Meta-decision `source_refs` covers every artifact this plan touched
-- [ ] Meta-decision `boundaries.blocked_actions` explicitly excludes parser-swap from scope
+- [x] `pnpm validate:records` exits 0 after all Phase 1 + 2 + 3 edits (33 records)
+- [x] `pnpm check` exits 0
+- [x] Meta-decision YAML exists at `records/decisions/decision-260512T0046Z-loop-meta-evidence-gap-revisit.yaml` with `status: draft`
+- [x] Meta-decision `source_refs` covers every artifact this plan touched (within local-ref allowlist; brainstorm + plan paths cited in `notes` and `affected_refs`)
+- [x] Meta-decision `boundaries.blocked_actions` explicitly excludes parser-swap from scope
 
 ## Risk Assessment
 

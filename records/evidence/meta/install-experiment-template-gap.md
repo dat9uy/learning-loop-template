@@ -25,8 +25,22 @@ Create an install experiment template that separates:
 
 Do not adopt a canonical template from this single failed case. Validate the shape against additional install experiments first.
 
+## Resolution
+
+Status (2026-05-12): original trigger threshold (N=2 install experiments) has been **consumed**. Four vnstock install experiments accumulated under `records/evidence/vnstock-data/`; three of them (`experiment-install-20260508T171112Z.md`, `experiment-install-20260509T071800Z-sandbox-1.md`, `experiment-install-20260509T071900Z-sandbox-2.md`) converge on a stable 7-section body envelope plus 11-key YAML frontmatter. The fourth (`experiment-install-20260508T101723Z.md`) predates the convention and is classified as legacy outlier.
+
+Per `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md` Gap Classification by Sample Count (N>=2 class), the resolution path is meta-experiment + draft template candidate, gated by a follow-up decision before canonization.
+
+Artifacts produced under brainstorm `plans/reports/brainstorm-260512-0046-install-template-and-capability-schema-gap-revisit.md` and plan `plans/260512-0046-meta-evidence-gap-revisit/`:
+
+- Template candidate: `records/evidence/meta/install-experiment-template-candidate.md` (draft; not yet canonical)
+- Meta-experiment: `records/experiments/experiment-meta-install-template-candidate-260512T0046Z.yaml` (status: draft)
+
+The candidate is not promoted to canonical in this resolution step. Promotion requires the new trigger below to fire and the meta-experiment to pass.
+
 ## Trigger
 
-- Event class: next-install-experiment
-- Threshold: N=2
-- Action when triggered: compare envelope shapes. If repeated fields appear, draft template candidate.
+- Event class: next-non-vnstock-install-experiment
+- Threshold: N=1
+- Action when triggered: compare the new install experiment's envelope shape against the template candidate. If it fits without forcing new required sections, promote the candidate via a follow-up decision (possible new home: `docs/templates/install-experiment-template.md` or successor location chosen at promotion time). If it does not fit, revise the candidate to capture the new required structure and re-run the meta-experiment.
+- Historical note: the prior trigger (event class `next-install-experiment`, threshold `N=2`) was consumed by the four vnstock install experiments and is preserved above as `## Resolution` rather than rewritten in-place.

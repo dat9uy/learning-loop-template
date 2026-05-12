@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Gap 1 Artifacts"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: []
@@ -115,19 +115,19 @@ records/experiments/
 
 ## Todo List
 
-- [ ] Re-read 4 install evidence MDs (confirm convergence)
-- [ ] Write `records/evidence/meta/install-experiment-template-candidate.md`
-- [ ] Write `records/experiments/experiment-meta-install-template-candidate-260512T0046Z.yaml`
-- [ ] Update `records/evidence/meta/install-experiment-template-gap.md` (add `## Resolution`, reframe `## Trigger`)
+- [x] Re-read 4 install evidence MDs (confirm convergence)
+- [x] Write `records/evidence/meta/install-experiment-template-candidate.md`
+- [x] Write `records/experiments/experiment-meta-install-template-candidate-260512T0046Z.yaml`
+- [x] Update `records/evidence/meta/install-experiment-template-gap.md` (add `## Resolution`, reframe `## Trigger`)
 
 ## Success Criteria
 
-- [ ] Candidate MD exists and contains the canonical 7-section envelope plus the 4 optional sections with inclusion guidance
-- [ ] Meta-experiment YAML exists, `status: draft`, `scope: meta`, links the candidate + 4 evidence MDs + Gap 1 MD + brainstorm in `source_refs`
-- [ ] Gap 1 MD `## Resolution` section exists and links the new artifacts
-- [ ] Gap 1 MD `## Trigger` reframed to next-non-vnstock-install-experiment / N=1
-- [ ] No vnstock domain content leaks into the candidate template body (placeholders only)
-- [ ] All files pass `pnpm validate:records` (deferred to Phase 3)
+- [x] Candidate MD exists and contains the canonical 7-section envelope plus the 4 optional sections with inclusion guidance
+- [x] Meta-experiment YAML exists, `status: draft`, `scope: schema-improvement` (meta deviation noted in `notes`), links the candidate + 4 evidence MDs + Gap 1 MD in `source_refs`; brainstorm cited in `notes` (out of allowlist)
+- [x] Gap 1 MD `## Resolution` section exists and links the new artifacts
+- [x] Gap 1 MD `## Trigger` reframed to next-non-vnstock-install-experiment / N=1
+- [x] No vnstock domain content leaks into the candidate template body (placeholders only)
+- [x] All files pass `pnpm validate:records` (verified in Phase 3)
 
 ## Risk Assessment
 

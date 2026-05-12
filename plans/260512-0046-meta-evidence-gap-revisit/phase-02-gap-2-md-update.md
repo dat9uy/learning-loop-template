@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Gap 2 MD Update"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: []
@@ -85,18 +85,18 @@ Existing sections preserved verbatim:
 
 ## Todo List
 
-- [ ] Re-read Gap 2 MD + capability schema (confirm field disposition)
-- [ ] Insert `## Partial Supersession` section
-- [ ] Update `## Trigger` block with current count
+- [x] Re-read Gap 2 MD + capability schema (confirm field disposition)
+- [x] Insert `## Partial Supersession` section
+- [x] Update `## Trigger` block with current count
 
 ## Success Criteria
 
-- [ ] `## Partial Supersession` section present with field-disposition table
-- [ ] Structural-drift paragraph cites `decision-20260510T160000Z-capabilities-stack-migration`
-- [ ] `## Trigger` block states current population count + N>=3 gap
-- [ ] Schema file unchanged
-- [ ] Approved capability records unchanged
-- [ ] File passes `pnpm validate:records` (deferred to Phase 3)
+- [x] `## Partial Supersession` section present with field-disposition table
+- [x] Structural-drift paragraph cites `decision-20260510T160000Z-capabilities-stack-migration`
+- [x] `## Trigger` block states current population count + N>=3 gap
+- [x] Schema file unchanged
+- [x] Approved capability records unchanged
+- [x] File passes `pnpm validate:records` (verified in Phase 3)
 
 ## Risk Assessment
 
