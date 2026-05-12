@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Retirement Decision Record"
-status: pending
+status: complete
 priority: P1
 effort: "30m"
 dependencies: []
@@ -63,12 +63,12 @@ Two new files, one commit, ledger-only.
 
 ## Todo List
 
-- [ ] Compute current UTC `YYMMDDTmmZ` once and reuse for filename + `created_at` + `updated_at` + commit-2 message.
-- [ ] Author `records/decisions/decision-{YYMMDDTmmZ}-knowledge-pack-retirement.yaml` (status approved, action supersede, supersedes 174640Z, full enumeration in decision_effect including skill-docs in affected_refs + allowed_actions, explicit blocked_action for editing 174640Z).
-- [ ] Author `records/evidence/loop/knowledge-pack-retirement.md` (Context, Disposition Pair, Session Actions, Files Touched, Audit Trail, Outcome).
-- [ ] Run `pnpm check`; confirm exit 0 and validated-record count +1.
-- [ ] Stage exactly the two new files and commit `feat(ledger): record knowledge-pack lane retirement decision`.
-- [ ] Confirm git diff for commit 1 contains exactly two new files and zero modifications.
+- [x] Compute current UTC `YYMMDDTmmZ` once and reuse for filename + `created_at` + `updated_at` + commit-2 message.
+- [x] Author `records/decisions/decision-{YYMMDDTmmZ}-knowledge-pack-retirement.yaml` (status approved, action supersede, supersedes 174640Z, full enumeration in decision_effect including skill-docs in affected_refs + allowed_actions, explicit blocked_action for editing 174640Z).
+- [x] Author `records/evidence/loop/knowledge-pack-retirement.md` (Context, Disposition Pair, Session Actions, Files Touched, Audit Trail, Outcome).
+- [x] Run `pnpm check`; confirm exit 0 and validated-record count +1.
+- [x] Stage exactly the two new files and commit `feat(ledger): record knowledge-pack lane retirement decision`.
+- [x] Confirm git diff for commit 1 contains exactly two new files and zero modifications.
 
 ## Success Criteria
 

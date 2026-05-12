@@ -1,7 +1,0 @@
-claims:
-  - id: bad-pack.nested-source-allowlist
-    record_ref: record:claim-template-example-capability
-    text: This fixture uses nested source_allowlist in a pack claim.
-    status: draft
-    source_allowlist:
-      - records/evidence/bad-pack/source.md

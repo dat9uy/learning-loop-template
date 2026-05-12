@@ -10,7 +10,6 @@ scope: install
 output_level: metadata-only
 goal: Verify vnstock can be installed and imported in sandbox through the env-var-driven installer path
 hypothesis: vnstock installs successfully when the official installer receives VNSTOCK_API_KEY and temp-local config and venv paths through environment variables
-knowledge_pack_ids: []
 method:
   - verify-api-key-env-present-without-printing
   - download-installer

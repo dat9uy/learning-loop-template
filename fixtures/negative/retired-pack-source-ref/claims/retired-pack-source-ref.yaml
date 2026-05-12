@@ -1,14 +1,14 @@
-id: claim-bad-pack-ref
+id: retired-pack-source-ref
 schema_version: "1.0"
 type: claim
 status: draft
 created_at: "2000-01-01"
 updated_at: "2000-01-01"
 source_refs:
-  - "pack:"
+  - pack:retired-pack
 notes: Negative fixture.
-subject: Malformed pack ref
-claim: This fixture has a malformed pack reference.
+subject: Retired pack source ref fixture
+claim: This fixture cites a retired pack source ref.
 scope: Validator negative testing.
 evidence_refs: []
 confidence: low
@@ -17,9 +17,3 @@ approval:
   status: draft
   reviewer: ""
   reviewed_at: ""
-verification:
-  static:
-    status: claimed
-    reason: Migrated from legacy fixture.
-    proof_refs: []
-  blocked_actions: []

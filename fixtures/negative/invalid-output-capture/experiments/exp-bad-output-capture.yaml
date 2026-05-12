@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture.
 goal: Test bad output capture.
 hypothesis: Bad output capture shape should fail.
-knowledge_pack_ids: []
 method: []
 success_metrics: []
 result: ""

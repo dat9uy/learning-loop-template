@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Validator Code Retirement"
-status: pending
+status: complete
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -82,14 +82,14 @@ Delete the three pack-specific modules and surgically drop pack plumbing from fo
 
 ## Todo List
 
-- [ ] Delete `tools/validate-records/pack-source-validation.js`.
-- [ ] Delete `tools/validate-records/publication-gate-validation.js`.
-- [ ] Delete `tools/generate-docs/pack-summary.js`.
-- [ ] Edit `tools/validate-records/validate-records.js` per plan (imports, cases, two functions, main() calls, signatures).
-- [ ] Edit `tools/validate-records/record-validation-rules.js` per plan (pack: branch, allowlist tokens + descriptions, validateExperimentPacks, signature).
-- [ ] Edit `tools/validate-records/record-loader.js` — delete `loadPackStatuses`.
-- [ ] Edit `tools/generate-docs/generated-doc-content.js` — drop loadPacks import + call, drop `packs` param + Eligible Knowledge Packs section, delete `renderCapabilities` entirely, simplify Evidence rendering in `renderProposal`.
-- [ ] Confirm no remaining references to `pack`, `loadPacks`, `loadPackStatuses`, `validatePackSources`, `validatePublicationGates`, `validateExperimentPacks`, `packStatuses`, `knowledge_pack_ids` inside `tools/`.
+- [x] Delete `tools/validate-records/pack-source-validation.js`.
+- [x] Delete `tools/validate-records/publication-gate-validation.js`.
+- [x] Delete `tools/generate-docs/pack-summary.js`.
+- [x] Edit `tools/validate-records/validate-records.js` per plan (imports, cases, two functions, main() calls, signatures).
+- [x] Edit `tools/validate-records/record-validation-rules.js` per plan (pack: branch, allowlist tokens + descriptions, validateExperimentPacks, signature).
+- [x] Edit `tools/validate-records/record-loader.js` — delete `loadPackStatuses`.
+- [x] Edit `tools/generate-docs/generated-doc-content.js` — drop loadPacks import + call, drop `packs` param + Eligible Knowledge Packs section, delete `renderCapabilities` entirely, simplify Evidence rendering in `renderProposal`.
+- [x] Confirm no remaining references to `pack`, `loadPacks`, `loadPackStatuses`, `validatePackSources`, `validatePublicationGates`, `validateExperimentPacks`, `packStatuses`, `knowledge_pack_ids` inside `tools/`.
 
 ## Success Criteria
 

@@ -1,6 +1,0 @@
-claims:
-  - id: bad-pack.malformed-source-refs
-    record_ref: record:claim-template-example-capability
-    text: This fixture uses a malformed pack source_refs value.
-    status: draft
-    source_refs: local:docs/evidence/bad-pack/source.md

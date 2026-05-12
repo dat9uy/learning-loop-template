@@ -10,7 +10,6 @@ scope: install
 output_level: metadata-only
 goal: Verify vnstock can be installed and imported in sandbox
 hypothesis: vnstock installs successfully by downloading and executing the official Makeself .run installer in a temp directory
-knowledge_pack_ids: []
 method:
   - download-installer
   - inspect-installer-options

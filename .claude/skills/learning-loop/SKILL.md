@@ -1,6 +1,6 @@
 ---
 name: learning-loop
-description: Create prompts for this repo's learning-loop system. Use when asking how to prompt agents for evidence, records, experiments, runtime proofs, packs, or meta self-improvement.
+description: Create prompts for this repo's learning-loop system. Use when asking how to prompt agents for evidence, records, experiments, runtime proofs, or meta self-improvement.
 ---
 
 # Learning Loop
@@ -16,7 +16,7 @@ This skill handles prompt authoring, boundary setting, evidence policy, validati
 Use when the user asks:
 
 - "I want to do X. What is best way to prompt learning loop?"
-- "Draft a handoff prompt for evidence / claims / experiment / pack work."
+- "Draft a handoff prompt for evidence / claims / experiment work."
 - "How should I ask another agent to run this learning-loop task?"
 - "Write a safe prompt for runtime proof, install proof, or metadata-only verification."
 - "Use self-improvement flow / meta evidence to close a loop gap."
@@ -29,7 +29,6 @@ Use when the user asks:
    - evidence review or evidence capsule update
    - claim/risk/decision record update
    - experiment planning or proof run
-   - knowledge-pack curation
    - runtime/install proof
    - product-build prompt
    - self-improvement/meta-evidence

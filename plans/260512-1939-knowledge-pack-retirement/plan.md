@@ -1,7 +1,7 @@
 ---
 title: "Knowledge-Pack Lane Retirement"
 description: "Full retirement of the knowledge-packs/ lane as a concept. Supersedes the draft deferral decision (20260510T174640Z, status: draft, action: defer) with full retirement: delete pack-source-validation.js, publication-gate-validation.js, pack-summary.js; drop pack: from the source-ref URI pattern in all 5 record schemas; drop knowledge_pack_ids from the experiment schema; drop the field from 14 frozen experiment records (all empty arrays); delete knowledge-packs/ directory; delete 11 pack-related negative fixtures; drop pack mentions from README/charter/operator-guide/red-team-review. Absorbs Cascades 6+7 from the validate-records simplification scout report by deletion (stricter form of the proposed schematization). Two commits: ledger-only decision + evidence first, then atomic retirement bundle."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [tooling, validator, schema, ajv, posture-shift, retirement, phase-b, ledger]
@@ -67,10 +67,10 @@ Out (each its own future plan if pursued):
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Retirement Decision Record](./phase-01-retirement-decision-record.md) | Pending |
-| 2 | [Validator Code Retirement](./phase-02-validator-code-retirement.md) | Pending |
-| 3 | [Schemas + Records + Fixtures + Tree Removal](./phase-03-schemas-records-fixtures-tree-removal.md) | Pending |
-| 4 | [Operator Docs + Regression](./phase-04-operator-docs-regression.md) | Pending |
+| 1 | [Retirement Decision Record](./phase-01-retirement-decision-record.md) | Complete |
+| 2 | [Validator Code Retirement](./phase-02-validator-code-retirement.md) | Complete |
+| 3 | [Schemas + Records + Fixtures + Tree Removal](./phase-03-schemas-records-fixtures-tree-removal.md) | Complete |
+| 4 | [Operator Docs + Regression](./phase-04-operator-docs-regression.md) | Complete |
 
 ## Dependencies
 

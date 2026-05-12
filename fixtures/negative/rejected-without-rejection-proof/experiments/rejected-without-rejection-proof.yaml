@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture.
 goal: Prove rejected claims require rejection-specific proof.
 hypothesis: A non-rejection experiment must not prove rejected state.
-knowledge_pack_ids: []
 method:
   - Attempt non-rejection proof.
 success_metrics:

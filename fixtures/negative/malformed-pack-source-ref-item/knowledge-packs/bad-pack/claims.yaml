@@ -1,7 +1,0 @@
-claims:
-  - id: bad-pack.malformed-source-ref-item
-    record_ref: record:claim-template-example-capability
-    text: This fixture uses a non-string pack source_refs item.
-    status: draft
-    source_refs:
-      - 123

@@ -11,7 +11,6 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 | `docs/` | policy + operator guides |
 | `tools/` | validators + verification helpers |
 | `plans/` | active and historical plans + brainstorm reports |
-| `knowledge-packs/` | latent (not used in current product line; draft placeholder retained) |
 
 ## Documentation Index
 

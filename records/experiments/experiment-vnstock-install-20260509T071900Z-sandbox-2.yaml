@@ -10,7 +10,6 @@ scope: install
 output_level: metadata-only
 goal: Test whether a second fresh Linux Docker sandbox can install vnstock_data immediately after sandbox 1.
 hypothesis: If metering is per-fingerprint only, a second clean Linux sandbox should also register and install; if metering is account+OS-global, sandbox 2 should hit the device limit.
-knowledge_pack_ids: []
 method:
   - run-second-fresh-docker-container-immediately-after-sandbox-1
   - download-installer

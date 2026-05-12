@@ -25,15 +25,5 @@
       "does not create risk or decision records for minor wording tweaks with no persistent exposure or policy choice",
       "does not add schemas or validators without explicit approval"
     ]
-  },
-  {
-    "id": "pack-curation-prompt",
-    "prompt": "I want to turn reviewed records into a knowledge pack. What should I ask an agent to do?",
-    "assertions": [
-      "requires reviewed or approved records",
-      "uses record_ref rather than raw evidence paths in the pack",
-      "keeps the pack consumer-facing",
-      "reports excluded claims, unresolved risks, and experiment consumption status"
-    ]
   }
 ]

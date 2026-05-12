@@ -43,7 +43,7 @@ function validateRecordSchemas(records, schemas, errors) {
   }
 }
 
-export function validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures = false) {
+export function validateRecords(records, schemas, root, allowDisallowedFixtures = false) {
   const errors = [];
   const ids = new Map();
   validateRecordSchemas(records, schemas, errors);
@@ -53,7 +53,6 @@ export function validateRecords(records, schemas, packStatuses, root, allowDisal
   }
   for (const record of records) {
     validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures);
-    validateExperimentPacks(record, errors, packStatuses);
   }
   validateRecordReferences(records, ids, errors);
   errors.push(...validateClaimVerification(records));
@@ -62,12 +61,12 @@ export function validateRecords(records, schemas, packStatuses, root, allowDisal
 
 const recordLocalRoots = {
   default: {
-    roots: ["records/evidence", "knowledge-packs"],
-    description: "records/evidence or knowledge-packs",
+    roots: ["records/evidence"],
+    description: "records/evidence",
   },
   capability: {
-    roots: ["records/evidence", "knowledge-packs", "product/*/capabilities"],
-    description: "records/evidence, knowledge-packs, product/*/capabilities",
+    roots: ["records/evidence", "product/*/capabilities"],
+    description: "records/evidence, product/*/capabilities",
   },
 };
 
@@ -84,9 +83,6 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
     }
     if (sourceRef.startsWith("record:")) {
       if (!ids.has(sourceRef.slice("record:".length))) errors.push(`${record.__file}: missing record reference ${sourceRef}`);
-      continue;
-    }
-    if (sourceRef.startsWith("pack:")) {
       continue;
     }
   }
@@ -154,17 +150,6 @@ export function validateLocalRef(record, ref, root, errors) {
     config.description,
     errors,
   );
-}
-
-function validateExperimentPacks(record, errors, packStatuses) {
-  if (record.type !== "experiment") return;
-  for (const packId of record.knowledge_pack_ids || []) {
-    const status = packStatuses.get(packId);
-    if (!status) errors.push(`${record.__file}: unknown knowledge pack ${packId}`);
-    if (status && !["reviewed", "approved"].includes(status)) {
-      errors.push(`${record.__file}: experiment consumes unreviewed pack ${packId}`);
-    }
-  }
 }
 
 function validateRecordReferences(records, ids, errors) {

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Schemas + Records + Fixtures + Tree Removal"
-status: pending
+status: complete
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -104,14 +104,15 @@ Use `git rm -r` for each so deletions are staged.
 
 ## Todo List
 
-- [ ] Edit 5 schemas: drop `|pack` from `source_refs.items.pattern`.
-- [ ] Edit `experiment.schema.json`: drop `knowledge_pack_ids` from `required` + `properties`.
-- [ ] Edit 14 experiment record YAMLs to drop `knowledge_pack_ids: []`.
-- [ ] `git rm -r knowledge-packs/`.
-- [ ] `git rm -r fixtures/negative/{11-tree-list}`.
-- [ ] Confirm `grep -rEn "pack:[a-zA-Z0-9_-]+" records/ schemas/` returns no hits.
-- [ ] Confirm `find knowledge-packs/ 2>/dev/null` returns empty.
-- [ ] Confirm `ls fixtures/negative/ | grep -i pack` returns empty.
+- [x] Edit 5 schemas: drop `|pack` from `source_refs.items.pattern`.
+- [x] Edit `experiment.schema.json`: drop `knowledge_pack_ids` from `required` + `properties`.
+- [x] Edit 12 experiment record YAMLs to drop `knowledge_pack_ids: []` (actual current tree count).
+- [x] `git rm -r knowledge-packs/`.
+- [x] `git rm -r fixtures/negative/{11-tree-list}`.
+- [x] Add `fixtures/negative/retired-pack-source-ref/` to prove retired `pack:` source refs fail schema validation.
+- [x] Confirm `grep -rEn "pack:[a-zA-Z0-9_-]+" records/ schemas/` returns only preserved historical decision/evidence surfaces.
+- [x] Confirm `find knowledge-packs/ 2>/dev/null` returns empty.
+- [x] Confirm `ls fixtures/negative/ | grep -i pack` returns only `retired-pack-source-ref`.
 
 ## Success Criteria
 

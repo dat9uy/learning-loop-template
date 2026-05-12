@@ -8,7 +8,6 @@ source_refs:
   - record:claim-product-tanstack-reference-view
 goal: Verify TanStack Reference route rendering with fixture-backed smoke tests.
 hypothesis: The FastAPI Reference response shape can be rendered by two TanStack route views without live backend calls in web tests.
-knowledge_pack_ids: []
 method:
   - Ran fixture-backed web smoke tests.
   - Captured route, component, assertion, and fixture checksum metadata.

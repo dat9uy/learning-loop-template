@@ -31,4 +31,3 @@ The template does not contain product application code (no FastAPI source, no UI
 - `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
 - `plans/`: active and historical plans + brainstorm reports.
-- `knowledge-packs/`: latent. Pack publication is not part of the current product line; existing draft manifests stay as placeholders until a future decision reactivates the pack lane.

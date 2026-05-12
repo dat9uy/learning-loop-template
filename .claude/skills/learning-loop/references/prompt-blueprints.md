@@ -40,7 +40,7 @@ Goal:
 - [desired outcome]
 
 Allowed sources:
-- [local docs, records, evidence, packs]
+- [local docs, records, evidence]
 
 Forbidden sources/actions:
 - Do not copy implementation from historical repos.
@@ -108,7 +108,7 @@ After running:
 - Update [experiment record]
 - Capture envelope fields: `run_id`, `temp_root_class`, `approval_gate`, `command_class`, `allowed_outputs`, `blocked_outputs`, `cleanup_status`, `temp_root_deleted`, `validation_status`.
 - Cleanup is part of proof success; failed cleanup blocks promotion.
-- If cleanup fails or deletion cannot be confirmed, mark the proof blocked/failed and do not verify the dimension or pack capability.
+- If cleanup fails or deletion cannot be confirmed, mark the proof blocked/failed and do not verify the dimension.
 - Run `pnpm validate:records` and `pnpm check`.
 - Report verified items, failed items, blocked items, and deletion confirmation.
 
@@ -121,7 +121,7 @@ Stop and ask before reading/copying any private config file, exposing secrets, c
 Plan a learning-loop experiment for [goal].
 
 Do not execute the experiment yet. Produce an experiment proposal that states:
-- claim_refs, risk_refs, source_refs, pack_refs if any
+- claim_refs, risk_refs, source_refs
 - hypothesis and success criteria
 - allowed inputs and forbidden captures
 - verification dimension target using `verification.proves`
@@ -131,14 +131,6 @@ Do not execute the experiment yet. Produce an experiment proposal that states:
 - conditions that block dimension verification or product approval
 
 Keep product code deferred unless the experiment explicitly approves a build surface.
-```
-
-## Knowledge-Pack Prompt
-
-```text
-Curate or review a knowledge pack for [scope].
-
-Use only reviewed/approved records and cite `record_ref`; do not cite raw evidence paths from the pack. Keep the pack slim and consumer-facing. Report excluded claims, unresolved risks, and whether the pack can be consumed by experiments.
 ```
 
 ## Evidence-to-Experiment Migration Prompt

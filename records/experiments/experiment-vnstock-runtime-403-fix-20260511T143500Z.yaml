@@ -8,7 +8,6 @@ source_refs:
   - local:records/evidence/vnstock-data/runtime-403-fix-20260511.md
 goal: Verify the wrapper env-var fix and VCI Device-Id compat patch unblock vnstock_data runtime calls.
 hypothesis: If VNSTOCK_CONFIG_PATH points at .vnstock root and VCI headers include Device-Id, import and live VCI calls should succeed.
-knowledge_pack_ids: []
 method:
   - Run installer wrapper from product/api and verify import skip path exits 0.
   - Verify .vnstock/user.json is a file and Device-Id config exists at top level.

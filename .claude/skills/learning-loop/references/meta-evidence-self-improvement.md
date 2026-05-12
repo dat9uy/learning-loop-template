@@ -100,7 +100,7 @@ Report:
 - Review existing loop risks and decisions first; update/link them instead of creating duplicates.
 - Record deferred questions with clear revisit triggers.
 - Fail closed for privacy, cleanup, authority, and verification/product approval uncertainty.
-- Keep docs domain-neutral; store domain evidence in records/evidence and packs.
+- Keep docs domain-neutral; store domain evidence in records/evidence.
 
 ## Evidence-to-Experiment Migration Rules
 
@@ -116,7 +116,7 @@ When the loop has an evidence-MD that should have been an experiment-YAML, defer
 
 Meta-evidence gaps split into two classes based on what the gap requires to close:
 
-- **N=1 closeable** - gaps where the missing item is a *principle* a single case can prove. Close via meta-claim -> meta-decision (no meta-experiment needed). Example: process-side artifact ambiguity (one case shows knowledge pack is the agent-facing artifact).
+- **N=1 closeable** - gaps where the missing item is a *principle* a single case can prove. Close via meta-claim -> meta-decision (no meta-experiment needed). Example: process-side artifact ambiguity.
 - **N>=2 deferred** - gaps where the missing item is a *schema or template*. One case is not enough to abstract the shape. Defer canonization until at least N=2 (preferably N=3) cases exist. Example: capability-schema-gap, runtime envelope schema.
 
 When opening or reviewing a meta-evidence file, classify it. Apply this informally first; promote the classification rule to a meta-claim only after a second loop iteration validates it.

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Operator Docs + Regression"
-status: pending
+status: complete
 priority: P1
 effort: "45m"
 dependencies: [3]
@@ -52,6 +52,12 @@ Quiet the project-local learning-loop skill so future Claude sessions don't reac
   - Line 91 (Validation lead-in): rewrite `Default validation after records/packs/evidence changes:` to `Default validation after records and evidence changes:`
 
 After both files: grep `pack` inside `.claude/skills/learning-loop/`; expect zero matches.
+
+Additional active skill surfaces found during review and retired in the same bundle:
+- `.claude/skills/learning-loop/evals/evals.json`: remove the pack-curation eval case.
+- `.claude/skills/learning-loop/references/prompt-blueprints.md`: remove pack prompts and pack-specific fields.
+- `.claude/skills/learning-loop/references/prompt-blueprints-product-build.md`: rewrite product-build pre-read from records and knowledge packs to records and evidence.
+- `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md`: remove pack storage/example wording.
 
 Verify after every edit that no doc paragraph leaves a dangling `and`, comma-followed-by-period, or other grammatical artifact.
 
@@ -126,21 +132,22 @@ Run `/ck:journal` after commit 2. Capture: retirement framing, the audit (zero i
 
 ## Todo List
 
-- [ ] Edit `README.md` (drop knowledge-packs row).
-- [ ] Edit `docs/charter.md` (drop pack-latent bullet).
-- [ ] Edit `docs/operator-guide.md` line 11 (drop pack-lane clause).
-- [ ] Edit `docs/operator-guide.md` line 204 (drop pack-allowlist clause).
-- [ ] Edit `docs/red-team-review.md` line 24 (drop pack-publication clause).
-- [ ] Edit `.claude/skills/learning-loop/SKILL.md` (frontmatter description, When-to-Use bullet, classify list).
-- [ ] Edit `.claude/skills/learning-loop/references/learning-loop-rules.md` (Source Docs bullet, Repo Lanes bullet, Separation Rules bullet, Evidence-and-Citation rewrites + 3 drops, Validation lead-in).
-- [ ] `pnpm check` exit 0.
-- [ ] `pnpm validate:records` exit 0.
-- [ ] Audit grep across `tools/ schemas/ records/ fixtures/ docs/ README.md .claude/skills/learning-loop/` — only intended surfaces retain `pack`.
-- [ ] `grep -rn "pack" .claude/skills/learning-loop/` returns zero matches.
-- [ ] Code-reviewer DONE.
-- [ ] Commit 2 staged + landed with `refactor(validator): retire knowledge-pack lane per decision-{YYMMDDTmmZ}` (substitute the Phase-1 timestamp).
-- [ ] `/ck:journal` entry written.
-- [ ] Plan phases marked checked.
+- [x] Edit `README.md` (drop knowledge-packs row).
+- [x] Edit `docs/charter.md` (drop pack-latent bullet).
+- [x] Edit `docs/operator-guide.md` line 11 (drop pack-lane clause).
+- [x] Edit `docs/operator-guide.md` line 204 (drop pack-allowlist clause).
+- [x] Edit `docs/red-team-review.md` line 24 (drop pack-publication clause).
+- [x] Edit `.claude/skills/learning-loop/SKILL.md` (frontmatter description, When-to-Use bullet, classify list).
+- [x] Edit `.claude/skills/learning-loop/references/learning-loop-rules.md` (Source Docs bullet, Repo Lanes bullet, Separation Rules bullet, Evidence-and-Citation rewrites + 3 drops, Validation lead-in).
+- [x] Edit additional active skill surfaces found by grep (`evals.json`, `prompt-blueprints.md`, `prompt-blueprints-product-build.md`, `meta-evidence-self-improvement.md`).
+- [x] `pnpm check` exit 0.
+- [x] `pnpm validate:records` exit 0.
+- [x] Audit grep across `tools/ schemas/ records/ fixtures/ docs/ README.md .claude/skills/learning-loop/` — only intended surfaces retain `pack`.
+- [x] `grep -rn "pack" .claude/skills/learning-loop/` returns no active pack concept matches.
+- [x] Code-reviewer DONE_WITH_CONCERNS; addressed retirement-specific negative fixture gap; preserved historical record prose.
+- [x] Commit 2 staged + landed with `refactor(validator): retire knowledge-pack lane per decision-{YYMMDDTmmZ}` (substitute the Phase-1 timestamp).
+- [x] `/ck:journal` entry written.
+- [x] Plan phases marked checked.
 
 ## Success Criteria
 

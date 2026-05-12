@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture.
 goal: Prove runtime verification requires human approval.
 hypothesis: Runtime proof without approved human gating fails verification validation.
-knowledge_pack_ids: []
 method:
   - Attempt runtime proof without approval.
 success_metrics:

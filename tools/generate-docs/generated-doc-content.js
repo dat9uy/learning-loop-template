@@ -1,15 +1,12 @@
 import { list, section, writeDoc } from "./markdown-rendering.js";
-import { loadPacks } from "./pack-summary.js";
 
 function recordsOf(records, type) {
   return records.filter((record) => record.type === type);
 }
 
 export function renderGeneratedDocs(root, records) {
-  const packs = loadPacks(root);
   return {
-    "docs/generated/overview.md": renderOverview(records, packs),
-    "docs/generated/capabilities.md": renderCapabilities(packs),
+    "docs/generated/overview.md": renderOverview(records),
     "docs/generated/backlog.md": renderBacklog(records),
     "docs/generated/decisions.md": renderDecisions(records),
     "docs/generated/evidence-index.md": renderEvidenceIndex(records),
@@ -17,17 +14,11 @@ export function renderGeneratedDocs(root, records) {
   };
 }
 
-function renderOverview(records, packs) {
+function renderOverview(records) {
   return writeDoc("Learning Loop Overview", [
     section("Record Counts", list([`Claims: ${recordsOf(records, "claim").length}`, `Experiments: ${recordsOf(records, "experiment").length}`, `Decisions: ${recordsOf(records, "decision").length}`])),
-    section("Eligible Knowledge Packs", list(packs.filter((pack) => ["reviewed", "approved"].includes(pack.approval?.status || pack.status)).map((pack) => `${pack.id} (${pack.approval?.status || pack.status}) — ${pack.summary}`))),
     section("Current Product Status", "No product code exists. The current template supports proposal-only experiments."),
   ]);
-}
-
-function renderCapabilities(packs) {
-  const items = packs.flatMap((pack) => (pack.capabilities || []).map((capability) => `${pack.id}: ${capability.id} — ${capability.label}`));
-  return writeDoc("Capabilities", [section("Pack Capabilities", list(items))]);
 }
 
 function renderBacklog(records) {
@@ -59,7 +50,7 @@ function renderProposal(records) {
     section("Question", experiment.goal),
     section("Outcome", experiment.product_outcome),
     section("Result", experiment.result),
-    section("Evidence", list([...(experiment.knowledge_pack_ids || []).map((id) => `knowledge-pack:${id}`), ...(experiment.source_refs || [])])),
+    section("Evidence", list(experiment.source_refs || [])),
     section("No-Code Status", "No files under `product/` were created or modified by this proposal."),
   ]);
 }

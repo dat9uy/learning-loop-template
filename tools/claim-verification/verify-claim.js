@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verificationDimensions } from "../validate-records/claim-verification-rules.js";
-import { loadPackStatuses, loadRecords } from "../validate-records/record-loader.js";
+import { loadRecords } from "../validate-records/record-loader.js";
 import { validateRecords } from "../validate-records/record-validation-rules.js";
 import { parse as parseValue } from "yaml";
 
@@ -58,8 +58,8 @@ function loadSchemas() {
   );
 }
 
-function validateRecordSet(records, schemas, packStatuses) {
-  const errors = validateRecords(records, schemas, packStatuses, root);
+function validateRecordSet(records, schemas) {
+  const errors = validateRecords(records, schemas, root);
   if (errors.length) fail(errors.map((error) => `- ${error}`).join("\n"));
 }
 
@@ -165,9 +165,8 @@ function main() {
   }
 
   const schemas = loadSchemas();
-  const packStatuses = loadPackStatuses(root);
   const records = loadRecords(root);
-  validateRecordSet(records, schemas, packStatuses);
+  validateRecordSet(records, schemas);
 
   if (!hasUpdateArgs(args)) {
     console.log(`Validated ${records.length} records.`);
@@ -186,7 +185,7 @@ function main() {
   const updatedRecords = records.map((record) => (
     record.id === claim.id ? { ...record, verification } : record
   ));
-  validateRecordSet(updatedRecords, schemas, packStatuses);
+  validateRecordSet(updatedRecords, schemas);
   printProposal(claim, verification, args);
 
   if (!args.apply) return;
@@ -194,7 +193,7 @@ function main() {
   const filePath = join(root, claim.__file);
   const nextFileText = replaceVerificationBlock(readFileSync(filePath, "utf8"), verification);
   writeFileSync(filePath, nextFileText);
-  validateRecordSet(loadRecords(root), schemas, packStatuses);
+  validateRecordSet(loadRecords(root), schemas);
   console.log(`Applied verification update to ${claim.__file}.`);
 }
 

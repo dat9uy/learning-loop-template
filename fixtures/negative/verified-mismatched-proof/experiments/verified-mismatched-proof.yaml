@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture.
 goal: Prove skipped verification transitions fail.
 hypothesis: Evidence-reviewed claims cannot skip directly to install.
-knowledge_pack_ids: []
 method:
   - Attempt invalid transition.
 success_metrics:

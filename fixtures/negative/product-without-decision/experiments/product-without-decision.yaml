@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture.
 goal: Prove product approval requires a decision record.
 hypothesis: Experiment proof cannot approve product use.
-knowledge_pack_ids: []
 method:
   - Attempt product approval through an experiment.
 success_metrics:

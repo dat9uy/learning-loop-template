@@ -8,7 +8,6 @@ source_refs:
   - local:records/evidence/meta/capability-allowlist-deferred-axes.md
 goal: Verify capability-record source reference allowlisting for per-stack capability script paths.
 hypothesis: The validator admits product/*/capabilities local paths for capability records and rejects those paths for other record types.
-knowledge_pack_ids: []
 method:
   - Run pnpm validate:records --allow-disallowed-fixtures with positive and negative fixtures.
   - Run pnpm validate:records against the live ledger.

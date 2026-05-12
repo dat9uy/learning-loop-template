@@ -8,7 +8,6 @@ source_refs: []
 notes: Negative fixture for UTC-Z timestamp pattern enforcement.
 goal: Test timestamp pattern enforcement.
 hypothesis: AJV rejects non-UTC-Z timestamp values.
-knowledge_pack_ids: []
 method: []
 success_metrics: []
 result: ""

@@ -10,7 +10,6 @@ scope: install
 output_level: metadata-only
 goal: Test whether a fresh Linux Docker sandbox can install vnstock_data after operator device clearance.
 hypothesis: The first clean Linux sandbox should register and install if clearance propagated and at least one Linux device slot is available.
-knowledge_pack_ids: []
 method:
   - verify-api-key-env-present-without-printing
   - run-fresh-docker-container

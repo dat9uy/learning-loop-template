@@ -1,5 +1,0 @@
-claims:
-  - id: test-low-assurance
-    record_ref: record:claim-low-assurance-fixture
-    text: A low-assurance claim in a pack.
-    status: reviewed

@@ -8,7 +8,7 @@ Run default validation before changing records:
 pnpm check
 ```
 
-Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, and `docs/` for project metadata. The `knowledge-packs/` lane is latent in the current product line; existing draft manifests stay as placeholders.
+Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, and `docs/` for project metadata.
 
 ## Record Naming Conventions
 
@@ -201,7 +201,7 @@ When user asks to create capability scripts (standalone feasibility scripts) for
 | Python API | `product/api/pyproject.toml` | `product/api/capabilities/` |
 | TypeScript web | `product/web/package.json` when introduced | `product/web/capabilities/` |
 
-Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root. The `knowledge-packs/` root remains in the validator's per-record-type allowlist tables for backward compatibility but is not used by the current product line.
+Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root.
 
 ### API Stack Bootstrap
 

@@ -1,7 +1,0 @@
-claims:
-  - id: bad-pack.unsupported-source
-    record_ref: record:claim-template-example-capability
-    text: This fixture uses an unsupported active pack source ref.
-    status: draft
-    source_refs:
-      - docs/evidence/unprefixed-pack-source.md

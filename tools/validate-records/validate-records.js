@@ -3,10 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateDerivedAssurance } from "./derived-claim-assurance.js";
 import { validateFilenameConventions } from "./filename-convention-validation.js";
-import { validatePackSources } from "./pack-source-validation.js";
-import { loadPackStatuses, loadRecords } from "./record-loader.js";
+import { loadRecords } from "./record-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
-import { validatePublicationGates } from "./publication-gate-validation.js";
 import { RecordParseError } from "./yaml-parse-wrapper.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -18,16 +16,16 @@ const schemas = Object.fromEntries(
   ]),
 );
 
-function runNegativeFixtures(packStatuses) {
+function runNegativeFixtures() {
   const cases = [
     ["invalid-reference", "missing record reference"],
-    ["unapproved-pack", "experiment consumes unreviewed pack"],
+    ["retired-pack-source-ref", "/source_refs/0 pattern: must match pattern"],
     ["disallowed-legacy-source", "disallowed legacy source"],
-    ["disallowed-local-source", "local source must stay under records/evidence or knowledge-packs"],
-    ["capability-source-outside-allowlist", "local source must stay under records/evidence, knowledge-packs, product/*/capabilities"],
-    ["non-capability-source-in-product", "local source must stay under records/evidence or knowledge-packs"],
-    ["capability-source-glob-traversal", "local source must stay under records/evidence, knowledge-packs, product/*/capabilities"],
-    ["local-source-traversal", "local source must stay under records/evidence or knowledge-packs"],
+    ["disallowed-local-source", "local source must stay under records/evidence"],
+    ["capability-source-outside-allowlist", "local source must stay under records/evidence, product/*/capabilities"],
+    ["non-capability-source-in-product", "local source must stay under records/evidence"],
+    ["capability-source-glob-traversal", "local source must stay under records/evidence, product/*/capabilities"],
+    ["local-source-traversal", "local source must stay under records/evidence"],
     ["missing-local-source", "missing local source"],
     ["unsupported-source-ref", "/source_refs/0 pattern: must match pattern"],
     ["malformed-array", "/source_refs/0 type: must be string"],
@@ -43,7 +41,6 @@ function runNegativeFixtures(packStatuses) {
     ["rejected-with-related-non-rejection-decision", "static rejected status requires matching experiment proof ref"],
     ["invalid-plain-scalar", { kind: "yaml-syntax" }],
     ["invalid-risk-status", "/status enum: must be equal to one of the allowed values"],
-    ["malformed-pack-ref", "/source_refs/0 pattern: must match pattern"],
     ["invalid-output-capture", "/output_capture type: must be object"],
     ["invalid-decision-effect", "/decision_effect/action enum: must be equal to one of the allowed values"],
     ["bad-timestamp", "/created_at pattern: must match pattern"],
@@ -67,44 +64,7 @@ function runNegativeFixtures(packStatuses) {
       errors.push(`${fixture} did not fail with expected parse error kind: ${expected.kind}`);
       continue;
     }
-    const result = validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures);
-    if (!result.some((error) => error.includes(expected))) {
-      errors.push(`${fixture} did not fail with expected message: ${expected}`);
-    }
-  }
-  return errors;
-}
-
-function runNegativePublicationGateFixtures() {
-  const cases = [
-    ["pack-rejected-claim", "claim is rejected/blocked"],
-    ["pack-low-assurance", "claim assurance source-only is below gate minimum static"],
-    ["pack-missing-record-ref", "missing record_ref"],
-    ["pack-unresolved-conflict", "unresolved conflict between entries"],
-  ];
-  const errors = [];
-  for (const [fixture, expected] of cases) {
-    const fixtureRoot = join(root, "fixtures", "negative", fixture);
-    const records = loadRecords(fixtureRoot, join(fixtureRoot, "records"));
-    const result = validatePublicationGates(fixtureRoot, records, { transitional: false, packsRoot: join(fixtureRoot, "knowledge-packs") });
-    if (!result.some((error) => error.includes(expected))) {
-      errors.push(`${fixture} did not fail with expected message: ${expected}`);
-    }
-  }
-  return errors;
-}
-
-function runNegativePackFixtures(recordIds) {
-  const cases = [
-    ["unsupported-pack-source-ref", "knowledge pack source_refs must use record references"],
-    ["malformed-pack-source-refs", "source_refs must be array"],
-    ["malformed-pack-source-ref-item", "source_refs[0] must be string"],
-    ["source-allowlist-traversal", "source_allowlist is not allowed in knowledge packs"],
-    ["nested-pack-source-allowlist", "source_allowlist is not allowed in knowledge packs"],
-  ];
-  const errors = [];
-  for (const [fixture, expected] of cases) {
-    const result = validatePackSources(join(root, "fixtures", "negative", fixture), recordIds);
+    const result = validateRecords(records, schemas, root, allowDisallowedFixtures);
     if (!result.some((error) => error.includes(expected))) {
       errors.push(`${fixture} did not fail with expected message: ${expected}`);
     }
@@ -114,15 +74,9 @@ function runNegativePackFixtures(recordIds) {
 
 function main() {
   const records = loadRecords(root);
-  const packStatuses = loadPackStatuses(root);
-  const recordIds = new Set(records.map((record) => record.id));
-  const errors = validateRecords(records, schemas, packStatuses, root, allowDisallowedFixtures);
+  const errors = validateRecords(records, schemas, root, allowDisallowedFixtures);
   errors.push(...validateDerivedAssurance(records));
-  errors.push(...validatePublicationGates(root, records, { transitional: true }));
-  errors.push(...validatePackSources(root, recordIds));
-  errors.push(...runNegativeFixtures(packStatuses));
-  errors.push(...runNegativePackFixtures(recordIds));
-  errors.push(...runNegativePublicationGateFixtures());
+  errors.push(...runNegativeFixtures());
   const warnings = validateFilenameConventions(records);
 
   if (errors.length) {

@@ -20,15 +20,3 @@ export function loadRecords(root, baseDir = join(root, "records")) {
   }
   return records;
 }
-
-export function loadPackStatuses(root) {
-  const packsRoot = join(root, "knowledge-packs");
-  const statuses = new Map();
-  for (const name of readdirSync(packsRoot).sort()) {
-    const manifest = join(packsRoot, name, "manifest.yaml");
-    if (!existsSync(manifest)) continue;
-    const parsed = parseRecordYaml(readFileSync(manifest, "utf8"), manifest);
-    statuses.set(parsed.id, parsed.approval?.status || parsed.status || "draft");
-  }
-  return statuses;
-}

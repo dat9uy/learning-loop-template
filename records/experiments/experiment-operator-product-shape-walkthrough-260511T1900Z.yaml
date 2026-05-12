@@ -10,7 +10,6 @@ source_refs:
   - record:claim-product-tanstack-reference-view
 goal: Verify operator can inspect the FastAPI Reference and TanStack Reference product shape through local dev routes without manual URL editing.
 hypothesis: The bootstrap surfaces, search box, equity-to-company links, and search-result links let operator inspect product shape end-to-end without retaining raw provider data.
-knowledge_pack_ids: []
 method:
   - Started local FastAPI and Vite dev servers.
   - Opened root route and verified landing route shape.

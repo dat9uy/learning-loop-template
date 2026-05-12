@@ -9,7 +9,6 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `docs/operator-guide.md` — normal workflow, runtime artifact standard, validation.
 - `docs/claim-verification.md` — claim verification dimensions and proof blocks.
 - `docs/lab-model.md` — lab concepts and separation of concerns.
-- `docs/knowledge-pack-contract.md` — pack curation contract.
 
 ## Core Philosophy
 
@@ -24,7 +23,6 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `records/`: source-of-truth claims, risks, experiments, decisions, evidence.
 - `records/evidence/`: durable evidence capsules.
 - `records/evidence/meta/`: loop self-improvement evidence when needed.
-- `knowledge-packs/`: curated consumer-facing packs.
 - `docs/`: project metadata and loop policy, not domain evidence dumps.
 - `product/`: per-stack workspace; capability scripts may live under `product/<stack>/capabilities/`, while application code appears only after an approved build experiment.
 - `tools/`: validators and verification helpers.
@@ -38,7 +36,6 @@ Keep separate:
 - claim status vs experiment outcome
 - risk confidence vs derived verification assurance
 - decision basis vs decision effect
-- pack approval vs product approval
 - meta evidence vs domain evidence
 
 ## Verification Rules
@@ -54,13 +51,10 @@ Experiments prove non-product dimensions with `verification.proves`. Product app
 
 ## Evidence and Citation Rules
 
-- Active records and packs cite local evidence or records, not old repo paths.
+- Active records cite local evidence or records, not old repo paths.
 - Use `local:records/evidence/...` for durable evidence files.
 - Use `local:product/<stack>/capabilities/...` only for capability records.
 - Use `record:<id>` for records.
-- Use `pack:<id>` for packs.
-- Knowledge packs cite `record_ref`, not raw evidence paths.
-- Reviewed/approved packs may be consumed by experiments; unreviewed packs cannot.
 
 ## Runtime Artifact Standard
 
@@ -88,7 +82,7 @@ Prompts must forbid capture or retention of:
 
 ## Validation
 
-Default validation after records/packs/evidence changes:
+Default validation after records and evidence changes:
 
 ```bash
 pnpm validate:records

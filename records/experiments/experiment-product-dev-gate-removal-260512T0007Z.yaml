@@ -9,7 +9,6 @@ source_refs:
   - record:claim-product-tanstack-reference-view
 goal: Verify that operator walkthrough of FastAPI Reference product surfaces works without requiring VNSTOCK_REFERENCE_LIVE_GATE environment variable.
 hypothesis: The VNSTOCK_REFERENCE_LIVE_GATE check is verification-phase safety debt that now blocks product inspection without adding meaningful protection; removing it lets the operator walkthrough work out-of-the-box.
-knowledge_pack_ids: []
 method:
   - Started local FastAPI and Vite dev servers without VNSTOCK_REFERENCE_LIVE_GATE set.
   - Opened root route and verified landing page renders.

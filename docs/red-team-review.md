@@ -21,7 +21,7 @@ The template starts blank, requires local evidence citations, and blocks raw dat
 ## Fixes Applied
 
 - Generated docs remain optional and non-authoritative.
-- Negative fixtures validate unsafe references and pack publication failures.
+- Negative fixtures validate unsafe references.
 - Handoff states first-run boundaries instead of accumulated project state.
 
 ## Unresolved Questions

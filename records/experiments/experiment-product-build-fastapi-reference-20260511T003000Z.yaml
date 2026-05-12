@@ -8,7 +8,6 @@ source_refs:
   - record:claim-product-fastapi-reference
 goal: Verify the FastAPI Reference product surface with metadata-only endpoint evidence.
 hypothesis: The verified Reference surfaces can be exposed by three FastAPI endpoints without retaining raw external data.
-knowledge_pack_ids: []
 method:
   - Ran preflight import only.
   - Ran mocked FastAPI pytest suite.

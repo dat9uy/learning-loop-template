@@ -11,7 +11,6 @@ scope: runtime
 output_level: runtime-captured
 goal: Test whether vnstock_data's Unified UI APIs return usable data via standalone capability scripts in the shared persistent environment.
 hypothesis: The capability scripts can execute against the shared environment and return DataFrames with real Vietnamese stock data for all major domain layers (Reference, Market, Fundamental, Insights, Macro).
-knowledge_pack_ids: []
 method:
   - create-capability-scripts-per-domain-layer
   - execute-capability-00-discovery-import-and-api-tree

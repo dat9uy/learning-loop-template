@@ -1,4 +1,0 @@
-claims:
-  - id: test-missing-ref
-    text: A claim missing record_ref.
-    status: reviewed
