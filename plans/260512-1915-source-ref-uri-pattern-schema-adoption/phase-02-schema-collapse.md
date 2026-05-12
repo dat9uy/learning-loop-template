@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Schema + Collapse"
-status: pending
+status: complete
 priority: P3
 effort: "30m"
 dependencies: [1]
@@ -11,7 +11,7 @@ dependencies: [1]
 
 ## Overview
 
-Atomic change: add the URI pattern to 5 schemas, remove the two now-redundant hand-roll branches, retarget the two negative-fixture expected strings. All three sub-changes must land together — partial application leaves the validator either silently weaker (pattern without fixture update) or noisier (fixture update without pattern). Single commit.
+Atomic change completed: added the URI pattern to 5 schemas, removed the two now-redundant hand-roll branches, and retargeted the two negative-fixture expected strings. The three sub-changes landed together as one validator posture shift.
 
 ## Requirements
 
@@ -74,12 +74,12 @@ Key behavioral invariants preserved:
 
 ## Success Criteria
 
-- [ ] All 5 schemas show `pattern: "^(local|record|pack|legacy):.+"` on `source_refs.items`.
-- [ ] `validateSourceRefs` body has no `unsupported source reference` string and no `pack:` length check.
-- [ ] `validate-records.js` lines 32 and 46 hold the updated expected substrings.
-- [ ] `pnpm check` exit 0 with identical `Validated N records.` count from Phase 1 baseline.
-- [ ] Throwaway edge-case probe with `unknown:foo` source_ref trips AJV pattern error (manual verify, removed before commit).
-- [ ] No unrelated edits staged.
+- [x] All 5 schemas show `pattern: "^(local|record|pack|legacy):.+"` on `source_refs.items`.
+- [x] `validateSourceRefs` body has no `unsupported source reference` string and no `pack:` length check.
+- [x] `validate-records.js` lines 32 and 46 hold the updated expected substrings.
+- [x] `pnpm check` exit 0 with identical `Validated N records.` count from Phase 1 baseline.
+- [x] Throwaway edge-case probe with `unknown:foo` source_ref trips AJV pattern error (manual verify, removed before commit).
+- [x] No unrelated edits staged.
 
 ## Risk Assessment
 

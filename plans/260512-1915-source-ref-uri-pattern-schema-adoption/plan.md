@@ -1,7 +1,7 @@
 ---
 title: "Source-Ref URI Pattern Schema Adoption"
 description: "Phase B Cascade 5 of the validator simplification cascade. Move source_refs prefix grammar from hand-rolled validateSourceRefs into AJV schema pattern across the 5 record schemas. Removes the unsupported-prefix catchall and the pack: length check from record-validation-rules.js. Ledger checks (record:<id> exists, local:<path> realpath, legacy: fixture flag, pack: status lookup) stay hand-rolled because they encode learning-loop ledger semantics, not URI grammar. Posture shift: AJV now owns the source-ref URI scheme. One decision record + one commit."
-status: pending
+status: complete
 priority: P3
 branch: "main"
 tags: [tooling, validator, schema, ajv, posture-shift, phase-b]
@@ -45,10 +45,10 @@ Out (each its own future plan if pursued):
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Baseline](./phase-01-baseline.md) | Pending |
-| 2 | [Schema + Collapse](./phase-02-schema-collapse.md) | Pending |
-| 3 | [Decision Record](./phase-03-decision-record.md) | Pending |
-| 4 | [Regression](./phase-04-regression.md) | Pending |
+| 1 | [Baseline](./phase-01-baseline.md) | Complete |
+| 2 | [Schema + Collapse](./phase-02-schema-collapse.md) | Complete |
+| 3 | [Decision Record](./phase-03-decision-record.md) | Complete |
+| 4 | [Regression](./phase-04-regression.md) | Complete |
 
 ## Dependencies
 

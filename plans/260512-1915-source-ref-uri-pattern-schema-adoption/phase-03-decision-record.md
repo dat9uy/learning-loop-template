@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Decision Record"
-status: pending
+status: complete
 priority: P3
 effort: "20m"
 dependencies: [2]
@@ -11,7 +11,7 @@ dependencies: [2]
 
 ## Overview
 
-Author the ledger entry for this posture shift. Mirrors structure of the parent `decision-260512T0944Z-ajv-schema-validation-adoption.yaml` — same shape, narrower scope. Required because scout report classifies Cascade 5 as a posture shift, not a refactor.
+Authored the ledger entry for this posture shift. Mirrors structure of the parent `decision-260512T0944Z-ajv-schema-validation-adoption.yaml` with a narrower scope, matching the scout report classification.
 
 ## Requirements
 
@@ -88,11 +88,11 @@ Decision YAML loaded by `pnpm check` like any other record. Schema-validated aga
 
 ## Success Criteria
 
-- [ ] Decision YAML exists at the canonical path with valid UTC-Z timestamps.
-- [ ] YAML passes `pnpm check` (no schema errors, no ledger errors).
-- [ ] All required fields present per `schemas/decision.schema.json`.
-- [ ] References parent AJV decision via `source_refs`.
-- [ ] Filename pattern matches existing decisions (`decision-YYMMDDTHHMMZ-{slug}.yaml`).
+- [x] Decision YAML exists at the canonical path with valid UTC-Z timestamps.
+- [x] YAML passes `pnpm check` (no schema errors, no ledger errors).
+- [x] All required fields present per `schemas/decision.schema.json`.
+- [x] References parent AJV decision via `source_refs`.
+- [x] Filename pattern matches existing decisions (`decision-YYMMDDTHHMMZ-{slug}.yaml`).
 
 ## Risk Assessment
 

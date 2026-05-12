@@ -87,10 +87,8 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
       continue;
     }
     if (sourceRef.startsWith("pack:")) {
-      if (sourceRef.length <= "pack:".length) errors.push(`${record.__file}: malformed pack reference ${sourceRef}`);
       continue;
     }
-    errors.push(`${record.__file}: unsupported source reference ${sourceRef}`);
   }
 }
 

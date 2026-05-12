@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Baseline"
-status: pending
+status: complete
 priority: P3
 effort: "15m"
 dependencies: []
@@ -11,7 +11,7 @@ dependencies: []
 
 ## Overview
 
-Capture pre-change state so Phase 4 regression has a concrete diff target. Verify the two negative fixtures touched by this plan currently trip on the hand-roll path, not the AJV path.
+Captured the pre-change state so Phase 4 regression had a concrete diff target. Verified the two negative fixtures touched by this plan initially tripped on the hand-roll path, not the AJV path.
 
 ## Requirements
 
@@ -42,10 +42,10 @@ Read-only inventory. No code changes.
 
 ## Success Criteria
 
-- [ ] `pnpm check` exit 0 baselined.
-- [ ] LoC of `record-validation-rules.js` captured.
-- [ ] All 5 schemas confirmed to lack `pattern` on `source_refs.items`.
-- [ ] Both target fixtures confirmed to trip the hand-roll path today.
+- [x] `pnpm check` exit 0 baselined.
+- [x] LoC of `record-validation-rules.js` captured.
+- [x] All 5 schemas confirmed to lack `pattern` on `source_refs.items`.
+- [x] Both target fixtures confirmed to trip the hand-roll path today.
 
 ## Risk Assessment
 

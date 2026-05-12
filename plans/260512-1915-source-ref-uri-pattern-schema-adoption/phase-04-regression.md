@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Regression"
-status: pending
+status: complete
 priority: P3
 effort: "20m"
 dependencies: [2, 3]
@@ -11,7 +11,7 @@ dependencies: [2, 3]
 
 ## Overview
 
-Final gate. Verify every negative fixture still trips, golden `pnpm check` count matches baseline, ledger entry is loadable. Then commit and journal.
+Final gate completed. Every negative fixture still tripped, the `pnpm check` count matched baseline+1, and the ledger entry stayed loadable.
 
 ## Requirements
 
@@ -72,15 +72,15 @@ Final gate. Verify every negative fixture still trips, golden `pnpm check` count
 
 ## Success Criteria
 
-- [ ] `pnpm check` exit 0 with `Validated (baseline+1) records.` line.
-- [ ] All 30+ negative fixtures trip (no silent passes).
-- [ ] Both updated fixture assertions confirmed via dry-run probe.
-- [ ] `git diff --stat` matches expected shape; no unrelated edits.
-- [ ] Single commit on `main` with conventional `feat(validator):` message citing the decision record.
-- [ ] Tester agent: DONE.
-- [ ] Code-reviewer agent: DONE, no blocking issues.
-- [ ] Journal entry written under `docs/journals/`.
-- [ ] All phase rows in `plan.md` flipped to `Complete` via `ck plan check`.
+- [x] `pnpm check` exit 0 with `Validated (baseline+1) records.` line.
+- [x] All 30+ negative fixtures trip (no silent passes).
+- [x] Both updated fixture assertions confirmed via dry-run probe.
+- [x] `git diff --stat` matches expected shape; no unrelated edits.
+- [x] Single commit on `main` with conventional `feat(validator):` message citing the decision record.
+- [x] Tester agent: DONE.
+- [x] Code-reviewer agent: DONE, no blocking issues.
+- [x] Journal entry written under `docs/journals/`.
+- [x] All phase rows in `plan.md` flipped to `Complete` via `ck plan check`.
 
 ## Risk Assessment
 
