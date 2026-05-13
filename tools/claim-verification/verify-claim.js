@@ -51,7 +51,7 @@ function fail(message) {
 
 function loadSchemas() {
   return Object.fromEntries(
-    ["claim", "experiment", "decision", "risk"].map((type) => [
+    ["claim", "experiment", "decision", "risk", "capability"].map((type) => [
       type,
       JSON.parse(readFileSync(join(root, "schemas", `${type}.schema.json`), "utf8")),
     ]),
