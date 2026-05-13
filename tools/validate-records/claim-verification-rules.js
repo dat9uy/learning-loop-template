@@ -119,9 +119,7 @@ function validateExperimentProves(experiment, byId, errors) {
   }
 }
 
-function dimensionEntries(claim) {
-  return Object.entries(claim.verification || {}).filter(([key]) => verificationDimensions.has(key));
-}
+const dimensionEntries = (claim) => Object.entries(claim.verification || {}).filter(([key]) => verificationDimensions.has(key));
 
 function validateProofRefsForStatus(claim, dimension, config, proofRecords, errors) {
   const refs = config.proof_refs || [];

@@ -60,14 +60,8 @@ export function validateRecords(records, schemas, root, allowDisallowedFixtures 
 }
 
 const recordLocalRoots = {
-  default: {
-    roots: ["records/evidence"],
-    description: "records/evidence",
-  },
-  capability: {
-    roots: ["records/evidence", "product/*/capabilities"],
-    description: "records/evidence, product/*/capabilities",
-  },
+  default: ["records/evidence"],
+  capability: ["records/evidence", "product/*/capabilities"],
 };
 
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {
@@ -141,13 +135,13 @@ function matchAllowedRoot(realPath, realRelativeSegs, allowedRoot) {
 }
 
 export function validateLocalRef(record, ref, root, errors) {
-  const config = recordLocalRoots[record.type] || recordLocalRoots.default;
+  const roots = recordLocalRoots[record.type] || recordLocalRoots.default;
   validateAllowedLocalPath(
     record.__file,
     ref.slice("local:".length),
     root,
-    config.roots,
-    config.description,
+    roots,
+    roots.join(", "),
     errors,
   );
 }
