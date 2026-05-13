@@ -137,8 +137,13 @@ Net delta: ≈ −95 LoC across 3 files, 0 behavior change for `pnpm check`. No 
 - Pack-file schemas (absorbs Cascades 6 + 7 collateral).
 - Use-case-fixture schema (if use-cases revive).
 
-**Phase C — semantic unification (separate brainstorm needed):**
+**Phase C — semantic unification ✅ DONE:**
 - `experimentSupportsClaim` ↔ `experimentProvesDimension`.
+- Extracted shared helper `tools/validate-records/experiment-proof-match.js` exporting strict `experimentProvesDimension`.
+- `claim-verification-rules.js` imports from shared helper (deleted local duplicate).
+- `derived-claim-assurance.js` imports from shared helper (deleted loose `experimentSupportsClaim`); `isValidSupportingExperiment` now accepts `dimensionConfig` and passes it through.
+- Net: −1 function duplicate, single source of truth for cross-record experiment↔claim proof matching.
+- `pnpm check` passes (37 records, 3 tests).
 
 ## Unresolved Questions
 

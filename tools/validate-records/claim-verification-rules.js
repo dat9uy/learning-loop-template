@@ -1,3 +1,5 @@
+import { experimentProvesDimension } from "./experiment-proof-match.js";
+
 export const verificationDimensions = new Set(["static", "install", "runtime", "product"]);
 export const experimentDimensions = new Set(["static", "install", "runtime"]);
 export const proofStatuses = new Set(["claimed", "verified", "rejected"]);
@@ -37,20 +39,6 @@ function decisionApprovesProduct(record, claim, action) {
         )
       ),
   );
-}
-
-function experimentProvesDimension(experiment, claim, dimensionConfig, dimension) {
-  const verification = experiment.verification;
-  if (!verification || !(verification.claim_refs || []).includes(`record:${claim.id}`)) return false;
-  return (verification.proves || []).some((proof) => {
-    if (proof.dimension !== dimension) return false;
-    if (dimension === "install" && proof.scope !== dimensionConfig.scope) return false;
-    if (dimension === "runtime") {
-      if (proof.scope !== dimensionConfig.scope) return false;
-      if (proof.output_level !== dimensionConfig.output) return false;
-    }
-    return true;
-  });
 }
 
 function resolveRefs(record, refs, byId, errors, label) {

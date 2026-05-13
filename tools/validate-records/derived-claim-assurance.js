@@ -1,3 +1,5 @@
+import { experimentProvesDimension } from "./experiment-proof-match.js";
+
 export const assuranceOrder = [
   "static",
   "install",
@@ -13,16 +15,9 @@ export function higherAssurance(a, b) {
   return assuranceIndex(a) > assuranceIndex(b) ? a : b;
 }
 
-function experimentSupportsClaim(experiment, claim, dimension) {
-  const verification = experiment.verification;
-  if (!verification) return false;
-  if (!(verification.claim_refs || []).includes(`record:${claim.id}`)) return false;
-  return (verification.proves || []).some((proof) => proof.dimension === dimension);
-}
-
-function isValidSupportingExperiment(experiment, claim, dimension) {
+function isValidSupportingExperiment(experiment, claim, dimensionConfig, dimension) {
   if (!["reviewed", "approved"].includes(experiment.status)) return false;
-  if (!experimentSupportsClaim(experiment, claim, dimension)) return false;
+  if (!experimentProvesDimension(experiment, claim, dimensionConfig, dimension)) return false;
   const humanGated = ["install", "runtime"].includes(dimension);
   if (humanGated) {
     if (experiment.verification?.approval_status !== "approved") return false;
@@ -60,7 +55,7 @@ export function deriveClaimAssurance(claim, records) {
       bestLevel = bestLevel ? higherAssurance(bestLevel, dimension) : dimension;
       continue;
     }
-    if (experiments.some((experiment) => isValidSupportingExperiment(experiment, claim, dimension))) {
+    if (experiments.some((experiment) => isValidSupportingExperiment(experiment, claim, config, dimension))) {
       bestLevel = bestLevel ? higherAssurance(bestLevel, dimension) : dimension;
     }
   }
