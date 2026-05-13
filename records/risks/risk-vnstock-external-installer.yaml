@@ -3,9 +3,12 @@ schema_version: "1.0"
 type: risk
 status: active
 created_at: "2026-05-08T00:00:00Z"
-updated_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-13T21:30:42Z"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
+  - local:records/evidence/vnstock-data/vendor-installation-troubleshooting-guide.md
+  - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
+notes: "Vendor officially documents the Makeself installer path, Docker integration, and non-interactive mode. Risk severity unchanged because the installer is still an external binary without published checksums."
 risk_statement: External Makeself .run installer download from vnstocks.com during vnstock install
 category: security
 severity: medium

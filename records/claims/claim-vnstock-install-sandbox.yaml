@@ -3,26 +3,32 @@ schema_version: "1.0"
 type: claim
 status: approved
 created_at: "2026-05-08T00:00:00Z"
-updated_at: "2026-05-10T00:00:00Z"
+updated_at: "2026-05-13T21:30:42Z"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
   - local:records/evidence/vnstock-data/capability-runtime-output.md
+  - local:records/evidence/vnstock-data/vendor-installation-troubleshooting-guide.md
+  - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
   - record:experiment-vnstock-capabilities-20260509T174957Z
-notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance"
+notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance. Vendor official docs (2026-05-13) corroborate env-var-driven and non-interactive install paths; one-liner command and Dockerfile sample now referenced."
 subject: vnstock Python package
-claim: vnstock may be installable and importable in a sandbox environment by downloading and executing the official Makeself .run installer, but the planned noninteractive install path was not verified
+claim: vnstock may be installable and importable in a sandbox environment by downloading and executing the official Makeself .run installer; the env-var-driven noninteractive install path is verified in sandbox and corroborated by vendor documentation, while the exact archive-wrapper flag syntax remains partially discrepant
 scope: sandbox
 evidence_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T171112Z.md
+  - local:records/evidence/vnstock-data/vendor-installation-troubleshooting-guide.md
+  - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
 confidence: medium
 limitations:
   - Verification is limited to sandbox installation and metadata-only import checks.
   - Production use and live provider calls require separate approval.
   - The 2026-05-08 sandbox install experiment did not support the planned archive-wrapper flag and pre-existing config-file assumptions.
+  - Vendor docs confirm non-interactive mode via env vars and a `--quiet --accept -- --api-key` one-liner, but the exact Makeself archive-wrapper flag passthrough behavior has not been independently verified in our sandbox.
+  - Vendor Dockerfile pre-creates a venv at /opt/venv; our sandbox observed installer always creating $HOME/.venv regardless of VNSTOCK_VENV_PATH. This venv-path discrepancy remains unresolved.
 approval:
   status: approved
   reviewer: operator
