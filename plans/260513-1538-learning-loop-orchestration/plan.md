@@ -1,7 +1,7 @@
 ---
 title: "Learning-Loop Skill Orchestration Enhancement + Vnstock One-Liner Experiment"
 description: "Add full-lifecycle experiment orchestration capabilities to the learning-loop skill, then use the enhanced skill to execute the vnstock vendor one-liner experiment and update claims."
-status: active
+status: completed
 priority: P1
 branch: "main"
 tags: [learning-loop, skill, orchestration, vnstock, experiment]

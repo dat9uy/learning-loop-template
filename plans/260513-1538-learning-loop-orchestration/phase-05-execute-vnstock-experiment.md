@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Execute Vnstock One-Liner Experiment"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [4]
