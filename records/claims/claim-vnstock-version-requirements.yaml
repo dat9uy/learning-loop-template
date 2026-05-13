@@ -1,0 +1,65 @@
+id: claim-vnstock-version-requirements
+schema_version: "1.0"
+type: claim
+status: draft
+created_at: "2026-05-13T17:52:49Z"
+updated_at: "2026-05-13T17:52:49Z"
+source_refs:
+  - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
+  - local:records/evidence/vnstock-data/experiment-install-prepared-substrate-20260513T173104Z.md
+  - record:experiment-vnstock-install-prepared-substrate-20260513T173104Z
+notes: >
+  Draft claim created by operator based on vendor documentation and observed install behavior.
+  Vendor Dockerfile sample lists vnstock>=3.3.0 as a pre-install dependency, but our sandbox
+  observation shows vnstock 4.0.2 being resolved. The vnstock_data>=3 assertion is based on
+  vendor FAQ and troubleshooting guide references to sponsor package tiers.
+  This claim requires a future experiment that successfully installs sponsor packages
+  (i.e., clears device limit) to verify the vnstock_data version.
+subject: vnstock and vnstock_data Python package versions
+claim: >
+  A standard vendor installer run (non-interactive, with valid API key, under device limit)
+  produces vnstock>=4 and vnstock_data>=3. The free vnstock package resolves to 4.x,
+  and the sponsor-tier vnstock_data package resolves to 3.x or higher.
+scope: sandbox
+evidence_refs:
+  - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
+  - local:records/evidence/vnstock-data/vendor-installation-troubleshooting-guide.md
+  - local:records/evidence/vnstock-data/experiment-install-prepared-substrate-20260513T173104Z.md
+confidence: low
+limitations:
+  - vnstock_data version is unverified because device limit blocked sponsor package installation in all sandbox experiments.
+  - Vendor does not publish version manifests or checksums for the installer or its payload.
+  - Version resolution may change as the vendor publishes new releases.
+  - Claim is based on a single observation (vnstock 4.0.2) plus vendor doc inference; not statistically validated.
+approval:
+  status: draft
+  reviewer: operator
+  reviewed_at: "2026-05-13T17:52:49Z"
+verification:
+  static:
+    status: claimed
+    reason: >
+      Vendor Dockerfile sample references vnstock>=3.3.0; our sandbox observed 4.0.2.
+      Vendor FAQ distinguishes vnstock (free) from vnstock_data (sponsor) but does not
+      explicitly state version bounds for vnstock_data.
+    proof_refs: []
+  install:
+    status: claimed
+    scope: sandbox
+    reason: >
+      vnstock 4.0.2 was observed installed in the prepared substrate experiment.
+      vnstock_data version could not be determined because device limit blocked installation.
+    proof_refs: []
+  runtime:
+    status: claimed
+    scope: sandbox
+    output: metadata-only
+    reason: Runtime version verification requires successful sponsor package installation.
+    proof_refs: []
+  product:
+    status: claimed
+    reason: Not yet approved for product use.
+    decision_refs: []
+  blocked_actions:
+    - live-provider-calls
+    - raw-data-export
