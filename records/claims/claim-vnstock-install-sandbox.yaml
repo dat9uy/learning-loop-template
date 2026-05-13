@@ -3,7 +3,7 @@ schema_version: "1.0"
 type: claim
 status: approved
 created_at: "2026-05-08T00:00:00Z"
-updated_at: "2026-05-13T17:31:04Z"
+updated_at: "2026-05-13T18:26:21Z"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
@@ -24,13 +24,17 @@ evidence_refs:
   - local:records/evidence/vnstock-data/vendor-dockerfile-sample.md
   - local:records/evidence/vnstock-data/experiment-install-vendor-one-liner-20260513T213042Z.md
   - local:records/evidence/vnstock-data/experiment-install-prepared-substrate-20260513T173104Z.md
+  - local:records/evidence/vnstock-data/experiment-install-bootstrap-substrate-20260513T182621Z.md
 confidence: medium
 limitations:
   - Verification is limited to sandbox installation and metadata-only import checks.
   - Production use and live provider calls require separate approval.
-  - The vendor one-liner (`--quiet --accept -- --api-key`) requires `requests` to be pre-installed in the substrate; the vendor troubleshooting guide omits this prerequisite while the vendor Dockerfile sample includes it. The one-liner succeeds in prepared substrates (requests/vnai/pandas/numpy pre-installed) and reaches device registration.
+  - The vendor one-liner (`--quiet --accept -- --api-key`) requires `requests` to be pre-installed in the substrate; the vendor troubleshooting guide omits this prerequisite while the vendor Dockerfile sample includes it. The one-liner succeeds in prepared substrates (requests/pandas pre-installed) and reaches device registration.
   - The Makeself archive-wrapper flag passthrough has been independently verified in our sandbox.
-  - The installer unconditionally creates a venv at `/root/.venv` regardless of pre-created `/opt/venv` or PATH settings. The vendor Dockerfile assumption that `/opt/venv` will be used is incorrect; venv path override is not supported by the installer.
+  - "The installer unconditionally creates a venv at $HOME/.venv. When HOME is not overridden, this defaults to /root/.venv. When HOME is overridden (as in the bootstrap script), the installer respects it and creates .venv in the specified home directory."
+  - The vendor Dockerfile assumption that `/opt/venv` will be used is incorrect; venv path override via `PATH` or pre-created venvs is not supported by the installer.
+  - "The bootstrap script product/api/scripts/install-vnstock.sh is validated: the product .venv (requests + pandas) is a sufficient substrate, and the HOME override works as intended."
+  - "vnai does NOT need to be pre-installed in the substrate; the installer handles vnai/vnii installation itself."
 approval:
   status: approved
   reviewer: operator
