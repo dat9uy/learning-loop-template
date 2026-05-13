@@ -1,7 +1,7 @@
 id: experiment-vnstock-install-vendor-one-liner-20260513T213042Z
 schema_version: "1.0"
 type: experiment
-status: draft
+status: approved
 created_at: "2026-05-13T21:30:42Z"
 updated_at: "2026-05-13T21:30:42Z"
 source_refs:
@@ -40,10 +40,24 @@ success_metrics:
   - venv-location-determined-for-pre-created-case
   - temp-root-cleaned-with-container
   - metadata-captured
-result: pending
-agent_outcome: pending
+result: does-not-support
+result_reason: >
+  Hypothesis 1 (one-liner succeeds in fresh sandbox) is contradicted: the Makeself flag passthrough works,
+  but the inner installer fails immediately with ModuleNotFoundError: No module named 'requests'.
+  Hypothesis 2 (pre-created /opt/venv is respected) is inconclusive: the installer fails before reaching
+  venv creation, so venv path behavior cannot be determined.
+agent_outcome: >
+  The vendor one-liner syntax is correct, but the vendor documentation omits the prerequisite that
+  requests must be pre-installed. This is corroborated by the vendor Dockerfile sample which lists
+  requests>=2.31.0 in its pre-install dependency list. The experiment also observed an unexpected
+  installer SHA-256 change (vendor does not publish checksums).
 product_outcome: none
-observations: []
+observations:
+  - The Makeself wrapper correctly passes -- --api-key to the inner installer.
+  - The inner installer fails before venv creation with ModuleNotFoundError: No module named 'requests'.
+  - No device registration was attempted; device-limit gate was not reached.
+  - Pre-created /opt/venv did not cause the installer to use it (installer failed earlier).
+  - Installer SHA-256 changed from the previously pinned value.
 promotion_review:
   - If one-liner succeeds, update claim-vnstock-install-sandbox to remove the archive-wrapper flag limitation.
   - If pre-created /opt/venv is respected, update the two-stage bootstrap script to pre-create the venv at the target path.
@@ -54,6 +68,16 @@ claim_refs:
   - record:claim-vnstock-install-sandbox
 risk_refs:
   - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+
 output_capture:
   allowed_outputs:
     - package-metadata
