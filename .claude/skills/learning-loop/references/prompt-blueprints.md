@@ -133,6 +133,11 @@ Do not execute the experiment yet. Produce an experiment proposal that states:
 Keep product code deferred unless the experiment explicitly approves a build surface.
 ```
 
+## Full-Lifecycle Orchestration Prompts
+
+For chaining experiment execution, claim-evidence alignment review, and claim updates, see:
+`references/orchestration-patterns.md`
+
 ## Evidence-to-Experiment Migration Prompt
 
 Use when an explicit migration of one or more evidence MDs to per-run experiment YAMLs is approved by the operator.

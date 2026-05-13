@@ -13,6 +13,19 @@
     ]
   },
   {
+    "id": "orchestration-prompt",
+    "prompt": "I have a draft experiment and a claim. How do I run the experiment and update the claim if it succeeds?",
+    "assertions": [
+      "recommends reading claim and evidence first",
+      "produces an experiment plan or execution prompt",
+      "gates execution behind approval",
+      "captures results into experiment record",
+      "uses claim-evidence alignment review before update",
+      "constructs pnpm verify:claim command",
+      "runs pnpm validate:records and pnpm check"
+    ]
+  },
+  {
     "id": "meta-improvement-prompt",
     "prompt": "I found a gap in how runtime envelopes are standardized. What prompt should I use to improve the learning loop?",
     "assertions": [

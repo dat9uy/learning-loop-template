@@ -21,6 +21,7 @@ Use when the user asks:
 - "Write a safe prompt for runtime proof, install proof, or metadata-only verification."
 - "Use self-improvement flow / meta evidence to close a loop gap."
 - "Migrate evidence MDs to per-run experiment YAMLs."
+- "I have a draft experiment and a claim. How do I run the experiment and update the claim if it succeeds?"
 
 ## Workflow
 
@@ -33,6 +34,7 @@ Use when the user asks:
    - product-build prompt
    - self-improvement/meta-evidence
    - evidence-to-experiment migration
+   - full-lifecycle orchestration
 2. Load `references/learning-loop-rules.md` for repo policy. If the prompt needs exact current wording, read the named `docs/` or `records/evidence/meta/` files before drafting.
 3. Identify approval level:
    - default: read-only or metadata-only prompt
@@ -68,3 +70,4 @@ Refuse or rewrite prompts that ask agents to exfiltrate secrets, expose config c
 - `references/prompt-blueprints.md` — reusable prompt skeletons.
 - `references/prompt-blueprints-product-build.md` — product-build prompt skeletons.
 - `references/meta-evidence-self-improvement.md` — self-improvement and `meta` evidence rules.
+- `references/orchestration-patterns.md` — full-lifecycle experiment orchestration, claim update, and promotion rules.
