@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 title: "Artifact Timestamp Convention"
 priority: P2
 effort: "45m"
