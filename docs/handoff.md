@@ -32,7 +32,7 @@ pnpm check
 2. Read the core docs:
    - `docs/lab-model.md`
    - `docs/operator-guide.md`
-   - `docs/claim-verification.md`
+   - `docs/artifact-reference.md`
 3. Create evidence under `records/evidence/<scope>/` before adding claims.
 4. Create or update claim, risk, experiment, decision, and capability records that cite durable local evidence or `record:` refs.
 

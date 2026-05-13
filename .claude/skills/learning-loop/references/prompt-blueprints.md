@@ -33,7 +33,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - README.md
 - docs/operator-guide.md
-- docs/claim-verification.md
+- docs/artifact-reference.md
 - [task-specific docs/records]
 
 Goal:

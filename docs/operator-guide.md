@@ -47,7 +47,7 @@ New conventions apply prospectively; historical records keep their original name
 
 ## Claim Verification
 
-Before adding, verifying, rejecting, or product-approving claims, classify the claim with `docs/claim-verification.md`. Proof plans must pass verification validation before they run install, import, runtime, or product approval work.
+Before adding, verifying, rejecting, or product-approving claims, classify the claim with `docs/artifact-reference.md`. Proof plans must pass verification validation before they run install, import, runtime, or product approval work.
 
 Use `pnpm verify:claim` to validate current claim verification records without changing files. To preview a metadata-only verification block update, run:
 

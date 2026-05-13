@@ -9,7 +9,7 @@ Work context: /home/datguy/codingProjects/learning-loop-template
 
 Read first:
 - docs/operator-guide.md
-- docs/claim-verification.md
+- docs/artifact-reference.md
 - relevant records and evidence
 
 Goal:

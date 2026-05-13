@@ -80,4 +80,4 @@ Required fields:
 
 - `docs/lab-model.md` — entity roles and hierarchy
 - `docs/operator-guide.md` — evidence model and approval flow
-- `docs/claim-verification.md` — dimension semantics
+- `docs/artifact-reference.md` — dimension semantics

@@ -7,7 +7,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `README.md` — repo lanes and standalone-operation guardrail.
 - `docs/handoff.md` — first-run handoff and approval boundaries.
 - `docs/operator-guide.md` — normal workflow, runtime artifact standard, validation.
-- `docs/claim-verification.md` — claim verification dimensions and proof blocks.
+- `docs/artifact-reference.md` — claim verification dimensions and proof blocks.
 - `docs/lab-model.md` — lab concepts and separation of concerns.
 
 ## Core Philosophy

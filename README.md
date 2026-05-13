@@ -20,7 +20,7 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 | `docs/charter.md` | Scope + operating rules |
 | `docs/operator-guide.md` | Day-to-day intake, bootstrap, runtime, agent flow |
 | `docs/lab-model.md` | Entity roles + verification axes |
-| `docs/claim-verification.md` | Dimension semantics |
+| `docs/artifact-reference.md` | Dimension semantics |
 | `docs/red-team-review.md` | Review classifications |
 | `docs/journals/` | Session journals |
 
