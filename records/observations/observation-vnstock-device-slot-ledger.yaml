@@ -1,0 +1,113 @@
+id: observation-vnstock-device-slot-ledger
+capability: vnstock-data
+created_at: "2026-05-15T00:30:00Z"
+updated_at: "2026-05-15T00:30:00Z"
+notes: >
+  Ledger tracking all known device slot consumptions for the vnstock-data capability.
+  Purpose: given a device fingerprint from the vendor web UI, trace it back to the
+  experiment or action that created it.
+  
+  CRITICAL: Actual vendor tier is Bronze (limit 1). Installer falsely claims
+  "Golden, 2 devices". See claim-vnstock-device-limit-ui-inconsistency.
+  
+  Operator can clear slots multiple times. Agent must ask before consuming.
+ledger:
+  - timestamp: "2026-05-08T10:17:23Z"
+    experiment: experiment-vnstock-install-20260508T101723Z
+    fingerprint: unknown
+    action: first-install-discovery
+    slot_consumed: unknown
+    operator_cleared_after: true
+    notes: First experiment. Installer discovered as Makeself archive. Device limit status unknown.
+
+  - timestamp: "2026-05-08T17:11:12Z"
+    experiment: experiment-vnstock-install-20260508T171112Z
+    fingerprint: unknown
+    action: env-var-auth-test
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: First device-limit hit. Confirmed env-var auth. Slot consumed, later cleared by operator.
+
+  - timestamp: "2026-05-09T07:18:00Z"
+    experiment: experiment-vnstock-install-20260509T071800Z-sandbox-1
+    fingerprint: unknown
+    action: first-successful-full-install
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: First complete install with cleared slot. vnstock_data 3.0.0 installed. Sandbox-1.
+
+  - timestamp: "2026-05-09T07:19:00Z"
+    experiment: experiment-vnstock-install-20260509T071900Z-sandbox-2
+    fingerprint: unknown
+    action: second-container-device-stability-test
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Second container on same host. Different device ID. Hit device limit. Proved IDs are not deterministic.
+
+  - timestamp: "2026-05-13T17:31:04Z"
+    experiment: experiment-vnstock-install-prepared-substrate-20260513T173104Z
+    fingerprint: unknown
+    action: prepared-substrate-test
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Tested with vnai/pandas/numpy pre-installed. Hit device limit.
+
+  - timestamp: "2026-05-13T18:26:21Z"
+    experiment: experiment-vnstock-install-bootstrap-substrate-20260513T182621Z
+    fingerprint: unknown
+    action: bootstrap-equivalent-substrate-test
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Tested with requests+pandas only. HOME override confirmed. Hit device limit.
+
+  - timestamp: "2026-05-13T21:30:42Z"
+    experiment: experiment-vnstock-install-vendor-one-liner-20260513T213042Z
+    fingerprint: unknown
+    action: vendor-one-liner-test
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Tested vendor troubleshooting guide one-liner. Hit device limit.
+
+  - timestamp: "2026-05-14T14:08:11Z"
+    experiment: experiment-vnstock-install-full-20260514T140811Z
+    fingerprint: unknown
+    action: full-install-with-cleared-slot
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Full install succeeded. vnstock_data 3.0.0. Second container test hit limit immediately after.
+
+  - timestamp: "2026-05-14T14:08:11Z"
+    experiment: experiment-vnstock-product-bootstrap-20260514T140811Z
+    fingerprint: "product-api-existing-device"
+    action: product-idempotency-check
+    slot_consumed: false
+    operator_cleared_after: false
+    notes: Script skipped because vnstock_data already importable. No installer executed.
+
+  - timestamp: "2026-05-14T14:08:11Z"
+    experiment: experiment-vnstock-direct-pip-20260514T140811Z
+    fingerprint: N/A
+    action: direct-pip-bypass-test
+    slot_consumed: false
+    operator_cleared_after: false
+    notes: Tested vendor extra-index-url. No installer run. No slot consumed.
+
+  - timestamp: "2026-05-14T14:08:11Z"
+    experiment: experiment-vnstock-product-bootstrap-20260514T140811Z
+    fingerprint: "product-api-forced-reregister-attempt"
+    action: forced-re-register-via-rename
+    slot_consumed: true
+    operator_cleared_after: true
+    notes: Operator attempted forced re-registration by renaming vnstock_data. Installer consumed slot then timed out. Product restored from backup.
+
+  - timestamp: "2026-05-15T00:29:51Z"
+    experiment: experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z
+    fingerprint: "Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41"
+    action: bootstrap-script-critique-re-run
+    slot_consumed: true
+    operator_cleared_after: false
+    notes: >
+      Re-ran current install-vnstock.sh in clean sandbox after operator cleared all slots.
+      Device registration succeeded (visible in UI at 00:29:51). Sponsor package download failed.
+      Asymmetric failure: slot consumed despite "failure" message.
+      BACKGROUND TASK: bash-mwk3v66i

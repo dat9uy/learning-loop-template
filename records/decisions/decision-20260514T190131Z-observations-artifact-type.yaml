@@ -1,0 +1,122 @@
+id: decision-20260514T190131Z-observations-artifact-type
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: "2026-05-14T19:01:31Z"
+updated_at: "2026-05-14T19:01:31Z"
+source_refs:
+  - record:experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - record:risk-vnstock-external-installer
+notes: >
+  Draft decision triggered by the vnstock-data device slot tracking problem.
+  The learning loop currently has no structured way to record side effects,
+  external resource mutations, or state changes that outlive the experiment
+  that caused them. This decision proposes a new artifact type: observation.
+question: >
+  Should the learning loop introduce a formal "observation" artifact type
+  to track external resource consumption, side effects, and state mutations
+  that are caused by experiments but must be traceable independently?
+decision: >
+  DEFER formal implementation. ACCEPT the need for observation tracking.
+  Use ad-hoc YAML in records/observations/ as a prototype during the
+  vnstock script rewrite. Formalize the schema, validation, and skill
+  integration only after the prototype has proven its shape in practice.
+
+  The decision has three parts:
+  1. IMMEDIATE: Continue using records/observations/ for vnstock slot tracking
+  2. SHORT-TERM: After vnstock rewrite completes, design schema based on
+     actual usage patterns from the prototype
+  3. LONG-TERM: Integrate observations into validate-records, the learning-loop
+     skill, and agent workflows
+rationale: >
+  The vnstock experiments exposed a critical gap in the learning loop:
+  experiments consume external resources (device slots) but the experiment
+  record does not link the consumption to the external system's identifier
+  (vendor device ID, registration timestamp, OS fingerprint). A future agent
+  seeing a device in the vendor web UI cannot trace it to the experiment
+  that created it.
+
+  This is not vnstock-specific. Any experiment that:
+  - Provisions cloud infrastructure
+  - Creates accounts or API keys
+  - Consumes rate-limited quotas
+  - Registers hardware or devices
+  - Mutates external state
+  ...leaves side effects that future agents need to discover and account for.
+
+  Existing artifact types are insufficient:
+  - Experiments document hypotheses and methods, not side-effect identities
+  - Evidence captures raw output, not structured resource identifiers
+  - Claims make assertions, not factual state-change records
+  - Risks describe potential problems, not observed mutations
+  - Decisions record choices, not their material consequences
+
+  Observations fill the gap between "what we did" (experiment) and
+  "what changed in the world" (external state). They are time-ordered,
+  factual, and independently verifiable.
+
+  Why defer formalization:
+  - The learning loop is currently under load from the vnstock investigation
+  - Adding a new schema mid-stream risks half-baked design
+  - The prototype will reveal the correct shape better than speculation
+  - validate-records pipeline changes require careful testing
+alternatives:
+  - >
+    "Overload the experiment schema with a 'side_effects' block."
+    Rejected: side effects often outlive experiments and need independent
+    queryability. Coupling them to experiment lifecycle creates orphans
+    when experiments are archived or superseded.
+  - >
+    "Store observations in evidence markdown files only."
+    Rejected: markdown is human-readable but not machine-queryable.
+    Future agents need to grep by external_id, timestamp, or capability.
+    YAML provides structured indexing without sacrificing readability.
+  - >
+    "Use claim records for every observed mutation."
+    Rejected: claims are assertions to be verified, not factual records.
+    A claim "the vendor consumed a slot" is semantically different from
+    an observation "device Linux-abc registered at 00:29:51".
+  - >
+    "Implement formal schema, validation, and skill integration immediately."
+    Rejected: premature formalization. The prototype must prove the concept
+    before investing in pipeline changes. Risk of designing for hypothetical
+    use cases rather than real ones.
+tradeoffs:
+  - >
+    "Deferral means inconsistent tooling." The prototype YAML will not be
+    validated by pnpm validate:records, creating a second-class artifact.
+    Mitigation: keep prototype small, capability-scoped, and manually audited.
+  - >
+    "Ad-hoc format may require migration." If the prototype shape diverges
+    from the final schema, migration effort is required. Mitigation: document
+    the prototype as temporary and design the final schema with migration in mind.
+  - >
+    "Agents may not know to check observations." Without skill integration,
+    agents won't automatically query observations. Mitigation: add a prominent
+    note in the learning-loop skill and reference observations from experiment
+    records.
+  - >
+    "Operator burden increases." Tracking observations requires discipline.
+    Mitigation: make observation recording part of the experiment finalize step.
+supersedes: []
+decision_effect:
+  action: defer
+  scope: schema-improvement
+  affected_refs:
+    - local:records/observations/observation-vnstock-device-slot-ledger.yaml
+    - record:experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z
+  boundaries:
+    allowed_actions:
+      - create-prototype-observation-yaml
+      - reference-observations-from-experiments
+      - document-observation-patterns-in-journals
+    blocked_actions:
+      - modify-validate-records-pipeline
+      - create-observation-schema-json
+      - update-learning-loop-skill
+      - require-observations-in-experiment-records
+    required_gates:
+      - vnstock-rewrite-completed
+      - prototype-proven-in-practice
+      - operator-review-of-observation-shape

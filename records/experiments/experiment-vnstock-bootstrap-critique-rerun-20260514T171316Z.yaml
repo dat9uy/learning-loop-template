@@ -1,0 +1,142 @@
+id: experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-14T17:13:16Z"
+updated_at: "2026-05-14T17:13:16Z"
+source_refs:
+  - record:experiment-vnstock-install-bootstrap-substrate-20260513T182621Z
+  - record:claim-vnstock-install-sandbox
+  - record:risk-vnstock-external-installer
+notes: >
+  Continuation of the sandbox critique experiment documented in
+  docs/journals/260514-vnstock-bootstrap-script-critique-session.md.
+  The original run failed at device registration due to device limit exceeded.
+  Operator cleared all device slots before this run.
+  
+  CRITICAL FINDING: Despite operator clearing all slots and the web UI showing
+  only 1 device after the run, the installer still failed with device limit exceeded.
+  This reveals a discrepancy between the vendor's visible device count and its
+  internal limit enforcement.
+  
+  Slot state before run: 0/2 consumed (operator confirmed all cleared).
+  Slot state after run: 1/2 visible in web UI, but installer claims limit exceeded.
+goal: >
+  Re-run the current install-vnstock.sh in a clean sandbox (mimicking fresh clone)
+  with device slots cleared, to verify whether the script completes end-to-end
+  when device limit is not the blocker.
+hypothesis: >
+  If the vendor installer is run in a clean sandbox with requests + pandas
+  pre-installed in a venv, and device slots are available, the installer will:
+  (1) Download and verify the installer via SHA-256
+  (2) Install all 31+ dependencies into the venv
+  (3) Successfully authenticate the API key
+  (4) Successfully register a new device
+  (5) Install vnstock_data and make it importable
+  (6) The script will exit 0 with the import check passing
+method:
+  - "Start fresh python:3.11-slim container."
+  - "Install system deps: wget, build-essential, curl, ca-certificates."
+  - "Create /workspace and pre-install ONLY requests>=2.31.0 and pandas>=1.5.3 into .venv."
+  - "Mount product/api/scripts/install-vnstock.sh into container."
+  - "Run install-vnstock.sh from /workspace and capture exit code, stdout, stderr."
+  - "Verify vnstock_data is importable from the resulting venv."
+  - "Audit device slot consumption (ask operator to verify)."
+  - "Audit temp files for secret material; remove container."
+success_metrics:
+  - script-exits-zero
+  - vnstock-data-importable-after-run
+  - device-registration-succeeds
+  - venv-path-follows-HOME-override
+  - api-key-authenticates
+  - no-secrets-left-in-temp
+  - metadata-captured
+result: rejected
+result_reason: >
+  Hypothesis rejected. The installer proceeded through steps 2-5 successfully
+  (Python selection, venv reuse, 31 dependencies installed, API key authenticated),
+  but step 6 failed with device limit exceeded. Critically, the operator confirmed
+  all device slots were cleared before the run, and the post-run web UI shows only
+  1 device (the one created by this experiment).
+  
+  REFINED UNDERSTANDING (operator insight): The actual limit is 1 device (Bronze tier),
+  not 2 as the vendor message claims. The vendor mislabels the tier as "Golden".
+  More importantly, device REGISTRATION succeeded — the vendor server accepted the
+  new device (visible in UI at 00:29:51). What "failed" was only the sponsor
+  package (vnstock_data) download. From the vendor's perspective, this was a
+  successful device registration that then hit the package-install block.
+  Therefore: device.id creation DOES equal 1 slot consumed, even when the
+  installer reports failure.
+agent_outcome: >
+  The current bootstrap script is NOT production-ready. Even with cleared device
+  slots, the happy path fails because the actual vendor limit is 1 device (Bronze),
+  not 2 as claimed. The non-atomic install leaves 31 packages + config + device.id
+  in the venv after failure. Critically, every run that reaches step 6 consumes a
+  device slot regardless of final exit code, because registration succeeds before
+  the package-install block. The script rewrite (pre-flight checks, atomicity guard,
+  stale-device detection, actionable errors) is confirmed necessary. Operator
+  must be treated as secretary for slot state because agent cannot reliably
+  infer vendor-side registration success from installer exit code.
+product_outcome: >
+  product/api/scripts/install-vnstock.sh requires defensive rewrite before
+  production use. The vendor device-limit behavior is worse than previously
+  understood: (1) actual limit is 1 (Bronze), not 2 (Golden), (2) every
+  registration attempt consumes a slot even on "failure", (3) the vendor UI
+  shows the registered device but provides no visibility into the true limit.
+  Operator must manually audit and clear devices before each install attempt.
+  The rewrite must include a --force mode that expects to re-register and
+  warns about slot consumption.
+observations:
+  - Installer SHA-256 observed: fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2 (unchanged)
+  - Pre-installed packages in /workspace/.venv: requests, pandas only
+  - Installer used existing /workspace/.venv (did not create a separate one)
+  - Installer installed 31 dependencies successfully via uv
+  - vnai 2.4.8, vnii 0.2.1, vnstock 4.0.2 installed successfully
+  - API key authentication succeeded
+  - Device registration reached but failed with device-limit message
+  - device.id file was created despite device-limit failure
+  - vnstock_data was NOT installed (sponsor packages blocked)
+  - Script exit code: 1
+  - Post-run web UI shows exactly 1 device: Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41
+  - Device registration time: 15/5/2026 00:29:51 (matches experiment runtime)
+  - Vendor message claims 2-device-per-OS limit but enforces it at 1 visible device
+  - Config files written to /workspace/.vnstock (api_key.json, device.id, etc.)
+  - Container removed successfully
+promotion_review:
+  - Do not promote current install-vnstock.sh without rewrite
+  - Document vendor device-limit discrepancy as known risk
+  - Future experiment: test with host device also cleared to isolate fingerprinting behavior
+scope: install
+output_level: metadata-only
+claim_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+risk_refs:
+  - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-device-limit-ui-inconsistency
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - sanitized-installer-status-lines
+    - venv-path-observation
+    - device-registration-result
+    - device-limit-discrepancy
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
