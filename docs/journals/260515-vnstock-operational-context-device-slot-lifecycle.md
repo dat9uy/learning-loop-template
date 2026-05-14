@@ -12,6 +12,7 @@ Operator clarification on the true operational state of the vnstock integration.
 - The device was cleared from the vendor web UI along with all others
 - `product/api` currently "works" only because of vendor cache lag or tolerant API behavior
 - **There is no valid production device to protect**
+- **CRITICAL UPDATE (2026-05-15)**: A previously cleared device (`glibc2.43`) was reactivated in the vendor dashboard by an `import vnstock_data` call during the script rewrite. Vendor "clear" is a soft delete. After clearing, avoid ANY host-side import until the sacred production install.
 
 ### 2. Intended Lifecycle
 
@@ -44,8 +45,9 @@ Phase 5: Production device is sacred; never re-register without explicit operato
 
 1. **No need to protect an existing production device** — there isn't one
 2. **The `--force` flag is lower risk than assumed** — no valid device to invalidate
-3. **Sandbox experiments can test full install, re-register, and error paths freely**
+3. **Sandbox experiments can test full install, re-register, and error paths freely** — BUT host-side imports after clearing reactivate old devices
 4. **The only protected resource is operator time** — don't waste slots without recording why
+5. **Auth cache expiry is a hidden trigger**: `import vnstock_data` with stale cache phones home and restores soft-deleted devices
 
 ## Why So Many Experiments Were Necessary
 
@@ -61,6 +63,7 @@ The vendor's behavior has multiple opaque dimensions that had to be isolated exp
 | Full happy path | Cleared-slot full install | May 14 |
 | Tier/message lie | Re-run with cleared slots | May 15 |
 | Asymmetric failure semantics | Re-run observation | May 15 |
+| Soft-delete device reactivation | Idempotency import check during rewrite | May 15 |
 
 Without systematic sandbox isolation, these would have been impossible to distinguish. The vendor provides no API documentation, no version manifests, no query endpoint, and false error messages.
 

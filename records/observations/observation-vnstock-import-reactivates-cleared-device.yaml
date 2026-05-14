@@ -1,0 +1,61 @@
+id: observation-vnstock-import-reactivates-cleared-device
+capability: vnstock-data
+created_at: "2026-05-15T02:20:00+07:00"
+updated_at: "2026-05-15T02:20:00+07:00"
+source_action: script-rewrite-idempotency-check
+source_agent: ck:cook /ck:debug
+trigger_command: |
+  cd product/api && .venv/bin/python -c "import vnstock_data"
+observed_dashboard_change:
+  before: 1 device visible (Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41)
+  after: 2 devices visible
+    - Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41 (registered 15/5/2026 00:29:51)
+    - Linux-7.0.5-2-cachyos-x86_64-with-glibc2.43 (registered 28/4/2026 14:26:40, active 15/5/2026 02:20:25)
+root_cause: >
+  The `import vnstock_data` statement triggers vendor API authentication.
+  The local auth cache (`.vnstock/auth_state.json`) had expired (last auth 2026-05-11,
+  cache_ttl 60 minutes). The re-authentication call to the vendor backend matched the
+  host fingerprint (glibc 2.43, previously registered 2026-04-28) and RESTORED the
+  previously "cleared" device to the visible dashboard list.
+  
+  The vendor's web UI "clear device" action is a SOFT DELETE / HIDE. The device
+  registration persists on the vendor backend. Any subsequent authentication from the
+  same environment fingerprint reactivates it without consuming a new slot, but it
+  DOES count against the device limit again.
+key_findings:
+  - "Cleared" vendor devices are not truly deleted; they persist on the backend.
+  - Importing `vnstock_data` with an expired auth cache triggers re-authentication.
+  - Re-authentication can restore previously cleared devices to the visible list.
+  - This makes even "read-only" operations (import checks, idempotency tests) non-neutral
+    for device slot visibility when the auth cache is stale.
+  - The current host fingerprint is glibc2.43; the Docker sandbox fingerprint was glibc2.41.
+    These are treated as separate devices by the vendor.
+implications:
+  - The idempotency check in `install-vnstock.sh` (`python -c "import vnstock_data"`)
+    is NOT slot-safe if the auth cache has expired and a prior registration exists.
+  - After operator clears devices, ANY import of vnstock_data from a previously
+    registered host will immediately restore the old device.
+  - To truly "clear" a device, the operator must clear AND the agent must avoid
+    any vendor API interaction from that fingerprint until a fresh install is intended.
+  - The `--check-device` flag cannot rely on local `device.id` alone; the vendor
+    may have hidden-but-active registrations.
+mitigations_applied:
+  - Script rewrite added `--force` and `--yes-i-know` flags to prevent accidental
+    installer execution.
+  - No vendor installer `.run` file was executed during this session.
+mitigations_needed:
+  - Consider adding an auth-cache warning to `install-vnstock.sh`: if `.vnstock/auth_state.json`
+    exists but the device was operator-cleared, the script should warn that ANY vendor
+    interaction (even import checks) may restore the device.
+  - Operator should verify dashboard is truly empty (0 devices) before trusting a "clear".
+  - Future experiments should avoid importing `vnstock_data` from the host after clearing.
+slot_impact:
+  new_slot_consumed: false
+  existing_slot_reactivated: true
+  visible_device_count_change: 0 → 1 (for this fingerprint)
+  total_dashboard_devices_after: 2/1 (over limit)
+references:
+  - record:observation-vnstock-device-slot-ledger
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - docs/journals/260515-vnstock-operational-context-device-slot-lifecycle.md
+  - plan:plans/260515-vnstock-installer-rewrite/plan.md

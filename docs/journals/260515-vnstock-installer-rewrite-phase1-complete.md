@@ -33,5 +33,8 @@
 | Non-interactive force-block | PASS (requires `--yes-i-know`) |
 
 ## Current State
-- Phase 1 complete. Zero device slots consumed in the working environment.
+- Phase 1 complete.
+- **Post-completion finding (2026-05-15 ~02:20)**: The idempotency check (`.venv/bin/python -c "import vnstock_data"`) triggered vendor re-authentication because the auth cache had expired. The vendor restored a previously cleared device (`Linux-7.0.5-2-cachyos-x86_64-with-glibc2.43`) to the visible dashboard. **Zero installer runs occurred, but the host environment is no longer slot-neutral.**
+- Dashboard now shows **2 visible devices** against the 1-device Bronze limit.
+- Phase 2 requires operator to **clear ALL devices** and avoid host-side imports until validation begins.
 - Phase 2 (sandbox validation against live vendor API) pending operator clearance.

@@ -111,6 +111,7 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 | Bootstrap script SHA-256 is current | Vendor rotated installer; SHA was stale |
 | Device limit is 2 (Golden tier) | **Actual limit is 1 (Bronze tier)** — vendor message is false |
 | "Failed" install does not consume a slot | **Device registration succeeds before failure; slot is consumed** |
+| Cleared devices are permanently deleted | **Vendor clear is a soft delete; re-auth restores hidden devices** |
 
 ---
 
@@ -157,6 +158,7 @@ product/api/
 2. Vendor message lie: Why does the installer claim "Golden 2" when the account is Bronze 1? (Vendor bug/misconfiguration; not actionable by us.)
 3. Device invalidation lag: How long does the vendor API cache device validity after web UI release? (Operational risk, not experimental.)
 4. Installer timeout in existing venvs: Why does the vendor installer timeout when installing into existing venvs but succeed in fresh ones? (Vendor-side behavior, not controllable.)
+5. **Device reactivation via import (NEW 2026-05-15)**: Does deleting `auth_state.json` prevent restoration of cleared devices? Does the vendor use fingerprint alone or a token exchange? (High priority for Phase 2 error-path testing.)
 
 ---
 
@@ -164,6 +166,7 @@ product/api/
 
 - **Actual device limit: 1 (Bronze tier)**. The vendor message saying "Golden, 2 devices" is false.
 - **Every install attempt that reaches step 6 consumes a slot**, even if it reports "failure".
+- **Cleared devices are soft-deleted on the vendor backend. Re-authentication (e.g., `import vnstock_data` with expired auth cache) restores them to the visible dashboard.** After operator clears devices, avoid ANY host-side import of vnstock_data until the sacred production install.
 - product/api/scripts/install-vnstock.sh is the only viable install path. It was rewritten defensively on 2026-05-15 with atomicity guards, slot warnings, and pre/post-flight checks, but vendor device-limit semantics remain outside our control.
 - The script is idempotent by default — safe to run multiple times ONLY when vnstock_data is already importable. Use `--force` to re-register (invalidates any previous device).
 - The script requires VNSTOCK_API_KEY in environment.

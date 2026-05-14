@@ -1,7 +1,7 @@
 id: observation-vnstock-device-slot-ledger
 capability: vnstock-data
 created_at: "2026-05-15T00:30:00Z"
-updated_at: "2026-05-15T00:30:00Z"
+updated_at: "2026-05-15T02:20:00+07:00"
 notes: >
   Ledger tracking all known device slot consumptions for the vnstock-data capability.
   Purpose: given a device fingerprint from the vendor web UI, trace it back to the
@@ -111,3 +111,16 @@ ledger:
       Device registration succeeded (visible in UI at 00:29:51). Sponsor package download failed.
       Asymmetric failure: slot consumed despite "failure" message.
       BACKGROUND TASK: bash-mwk3v66i
+
+  - timestamp: "2026-05-15T02:20:00+07:00"
+    experiment: observation-vnstock-import-reactivates-cleared-device
+    fingerprint: "Linux-7.0.5-2-cachyos-x86_64-with-glibc2.43"
+    action: idempotency-import-triggered-reactivation
+    slot_consumed: false
+    operator_cleared_after: false
+    notes: >
+      During script rewrite idempotency check, `.venv/bin/python -c "import vnstock_data"`
+      triggered vendor re-authentication (auth cache expired since 2026-05-11).
+      Vendor backend restored previously cleared device to visible dashboard.
+      Key finding: vendor "clear" is a soft delete; re-auth restores hidden devices.
+      No installer executed. No new slot consumed, but visible count increased.
