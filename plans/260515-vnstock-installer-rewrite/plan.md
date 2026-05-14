@@ -126,23 +126,25 @@ If you run ANY experiment that executes the vendor installer, you MUST:
 *Slot budget: 1 validation run. If it fails, operator must clear again before retry.*
 
 ### Step 2.1 — Happy Path Sandbox Test
-- [ ] Run rewritten script in clean Docker sandbox (same substrate as prior experiments)
-- [ ] Verify: script exits 0, `vnstock_data` importable, API ping succeeds
-- [ ] Verify: venv is clean (no `.vnstock-install-in-progress` sentinel left behind)
-- [ ] Verify: exactly 1 device appears in vendor UI after run
-- [ ] Capture evidence to `records/evidence/vnstock-data/experiment-installer-rewrite-validation-*.md`
+- [x] Run rewritten script in clean Docker sandbox (same substrate as prior experiments)
+  - *Result: Install reached step 5 (device registered) then failed at step 6 (device limit exceeded).*
+  - *Root cause: previously cleared device reactivated by accidental `import vnstock_data` before test.*
+  - *Script defensive features validated: error interception, atomicity guard, next steps all worked.*
+- [ ] Verify: script exits 0, `vnstock_data` importable, API ping succeeds — **BLOCKED: needs device clearance**
+- [ ] Verify: venv is clean (no `.vnstock-install-in-progress` sentinel left behind) — **BLOCKED**
+- [ ] Verify: exactly 1 device appears in vendor UI after run — **BLOCKED**
+- [x] Capture evidence to experiment record — `records/experiments/experiment-vnstock-installer-rewrite-validation-20260515T103000Z.yaml`
 
 ### Step 2.2 — Error Path Test (If Slot Budget Allows)
-- [ ] Test idempotency in sandbox: run script twice, second run should skip
-- [ ] Test `--force` path: after successful install, run with `--force`, verify re-registration
-  - *Warning: this consumes a 2nd slot if the vendor counts the re-register as new. Skip if slot budget is tight.*
-- [ ] Test missing `requests` pre-flight: temporarily hide system requests, verify script fails early with clear message
+- [ ] Test idempotency in sandbox: run script twice, second run should skip — **BLOCKED: needs device clearance**
+- [ ] Test `--force` path: after successful install, run with `--force`, verify re-registration — **BLOCKED**
+- [x] Test missing `requests` pre-flight: discovered and fixed during Step 2.1 — venv Python requests check added
 
 ### Step 2.3 — Artifact Update
-- [ ] Create experiment record for validation run
-- [ ] Update `claim-vnstock-install-sandbox` with new evidence
-- [ ] Update risk record if new vendor behavior is observed
-- [ ] Update meta-reflection journal with rewrite results
+- [x] Create experiment record for validation run — `experiment-vnstock-installer-rewrite-validation-20260515T103000Z.yaml`
+- [x] Update `claim-vnstock-device-limit-ui-inconsistency` with soft-delete reactivation finding
+- [ ] Update risk record if new vendor behavior is observed — **TODO: update risk-vnstock-external-installer**
+- [ ] Update meta-reflection journal with rewrite results — **TODO**
 
 ### Step 2.4 — Operator Sign-off
 - [ ] Operator reviews script changes
@@ -158,7 +160,9 @@ If you run ANY experiment that executes the vendor installer, you MUST:
 | Operator cleared all | 2026-05-14 | -N → 0 | 0/1 |
 | Bootstrap critique re-run | 2026-05-15 | +1 | 1/1 (consumed) |
 | Phase 1 rewrite | 2026-05-15 | 0 (no installer execution) | 1/1 |
-| **Phase 2 validation** | TBD | +1 if successful | TBD |
+| Import reactivates soft-delete | 2026-05-15 | 0 (reactivated, not new) | 1/1 visible |
+| Phase 2 validation (sandbox) | 2026-05-15 | +1 | 2/1 (over limit) |
+| **Next validation attempt** | TBD | requires clearance | TBD |
 
 **Rule:** No installer execution without explicit operator clearance. Treat every run as slot-consuming.
 

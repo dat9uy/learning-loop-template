@@ -124,3 +124,20 @@ ledger:
       Vendor backend restored previously cleared device to visible dashboard.
       Key finding: vendor "clear" is a soft delete; re-auth restores hidden devices.
       No installer executed. No new slot consumed, but visible count increased.
+
+  - timestamp: "2026-05-15T10:30:00Z"
+    experiment: experiment-vnstock-installer-rewrite-validation-20260515T103000Z
+    fingerprint: "Docker-container-python3.11-slim-unknown"
+    action: installer-rewrite-validation-sandbox
+    slot_consumed: true
+    operator_cleared_after: false
+    notes: >
+      Phase 2 validation of rewritten install-vnstock.sh in clean Docker sandbox.
+      Script pre-flight passed, installer downloaded/verified, device registered in step 5.
+      Step 6 failed: device limit exceeded. Root cause: a previously cleared device had
+      been reactivated by an accidental `import vnstock_data` call before the test.
+      The reactivated device counts as occupied, blocking new registrations.
+      This confirms vendor "clear" is a soft delete; re-auth restores hidden devices.
+      Script defensive features validated: error interception, atomicity guard, next steps.
+      Script bug found and fixed: pre-flight only checked system Python for requests,
+      but run_installer prepends venv to PATH. Added venv Python requests check.

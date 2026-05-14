@@ -15,7 +15,11 @@ claim: >
   definition of "failure" is asymmetric: device registration succeeds and consumes
   a slot, while only the sponsor package download is blocked. The web UI correctly
   shows the registered device but does not reveal the true limit or warn that
-  a "failed" install still consumed a slot.
+  a "failed" install still consumed a slot. Furthermore, the vendor's "clear device"
+  operation is a soft delete: the device record is hidden from the UI but not purged
+  from the backend. If the same host/device fingerprint later re-authenticates
+  (e.g., via `import vnstock_data` with expired auth cache), the vendor restores
+  the hidden record, making it visible again and counting it as occupied.
 scope: sandbox
 evidence_refs:
   - local:records/evidence/vnstock-data/experiment-bootstrap-critique-rerun-20260514T171316Z.md

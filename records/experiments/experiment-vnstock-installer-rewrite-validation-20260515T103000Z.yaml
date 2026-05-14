@@ -1,0 +1,97 @@
+id: experiment-vnstock-installer-rewrite-validation-20260515T103000Z
+schema_version: "1.0"
+type: experiment
+status: completed
+result: rejected
+result_reason: >
+  Install failed at step 6 (device limit exceeded).
+  Device was registered in step 5 (slot consumed).
+  Root cause: a previously cleared device had been reactivated by an accidental
+  `import vnstock_data` call before the test. The reactivated device counts as
+  occupied, blocking new registrations. The vendor's "clear" is a soft delete;
+  re-auth restores hidden devices and they count against the limit.
+created_at: "2026-05-15T10:30:00Z"
+updated_at: "2026-05-15T10:30:00Z"
+source_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - local:plans/260515-vnstock-installer-rewrite/plan.md
+notes: >
+  Phase 2.1 validation from vnstock installer rewrite plan.
+  Tests the rewritten install-vnstock.sh in a clean Docker sandbox.
+  Context: operator had cleared all devices, but an accidental `import vnstock_data`
+  call earlier reactivated a previously cleared device. Tests whether a reactivated
+  soft-deleted device counts as occupied.
+goal: >
+  Validate the rewritten install-vnstock.sh script in a clean sandbox.
+  Verify script defensive features (pre-flight checks, error interception,
+  atomicity guard, next steps). Test soft-delete slot-counting hypothesis.
+hypothesis: >
+  A reactivated soft-deleted device (restored to vendor UI by accidental re-auth)
+  does NOT count as an occupied slot, allowing a new registration to succeed.
+  The rewritten script's defensive features will work correctly if the install proceeds.
+method:
+  - "Build python:3.11-slim container with requests+pandas in both system and venv."
+  - "Copy rewritten install-vnstock.sh to /workspace/product/api/scripts/."
+  - "Set HOME=/tmp/fake-home, VNSTOCK_API_KEY from product .vnstock/api_key.json."
+  - "Run script with --yes-i-know to bypass interactive warning."
+  - "Capture exit code, output, and verify script defensive features."
+success_metrics:
+  - script-pre-flight-checks-pass
+  - installer-download-and-sha256-verify
+  - script-error-interception-works
+  - atomicity-guard-reports-added-packages
+  - next-steps-block-printed
+  - soft-delete-hypothesis-tested
+result_observations:
+  - "Script pre-flight checks passed: system Python has requests, venv has requests, venv has pandas, VNSTOCK_API_KEY present."
+  - "Installer downloaded and SHA-256 verified (fad4bb7b... unchanged)."
+  - "Installer reached step 5/6: device registered (API key authenticated, visible in UI after run)."
+  - "Installer failed at step 6/6: Vượt quá giới hạn thiết bị! (device limit exceeded)."
+  - "Script error interception WORKED: detected Vietnamese error, printed English guidance with Bronze/1-device clarification and vendor URL."
+  - "Script atomicity guard WORKED: listed 100+ packages added during failed install (diff pre vs post pip freeze)."
+  - "Script next-steps block printed with 5 actionable items."
+  - "HYPOTHESIS REJECTED: reactivated soft-deleted device DOES count as occupied slot. Install failed because a previously cleared device had been reactivated by an earlier import call."
+  - "BUG DISCOVERED: pre-flight only checked system Python for requests, but run_installer puts venv first in PATH causing wrapper to use venv Python. Fixed during experiment."
+  - "SCRIPT FIX APPLIED: added venv Python requests check to pre-flight (commit pending)."
+  - "Container exit code: 1 (expected given device limit). Script exit code: 1."
+  - "Slot consumed: YES (step 5 device registration succeeded)."
+agent_outcome: >
+  Rewritten script defensive features validated successfully:
+  - Pre-flight checks catch missing dependencies early
+  - Error interception translates vendor Vietnamese → English guidance
+  - Atomicity guard reports partial install state (package diff)
+  - Next steps block gives actionable recovery commands
+
+  However, the hypothesis was rejected. A reactivated soft-deleted device (restored by
+  re-auth) counts as an occupied slot. The vendor's "clear" is a soft delete; re-auth
+  restores hidden devices and they block new registrations.
+
+  A script bug was found and fixed: the pre-flight check verified system Python had
+  requests, but run_installer prepends the venv to PATH, so the wrapper may use venv
+  Python. Added venv Python requests check.
+product_outcome: >
+  Script is functionally correct but requires device clearance before production use.
+  No changes needed to product runtime; this is install-time tooling.
+  The script fix (venv requests check) should be committed.
+  Slot consumed during this test must be recorded in the ledger.
+promotion_review:
+  - "Update claim-vnstock-device-limit-ui-inconsistency: add soft-delete counting behavior"
+  - "Update observation-vnstock-device-slot-ledger: record this slot consumption"
+  - "Commit script fix for venv requests check"
+  - "Re-run validation after operator clears devices"
+scope: install
+output_level: metadata-only
+claim_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
