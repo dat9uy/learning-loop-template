@@ -8,6 +8,54 @@
 
 ---
 
+## 🚨 Agent Onboarding — Read This First (Cleared Context)
+
+If you are a new agent with no session history, here is the minimum context to proceed safely:
+
+### The Vendor Lie
+The vnstock vendor installer's error message says **"Gói Golden... 2 thiết bị"** (Golden package, 2 devices per OS). **This is false.** The actual account tier is **Bronze with a 1-device limit**. Every experiment that ever hit "device limit exceeded" was hitting the **1-device ceiling**, not a 2-device limit. Do not search for invisible devices — they don't exist.
+
+### Asymmetric Failure Semantics
+The vendor's install process has **6 steps**. Steps 1-5 (download, verify, create venv, install deps, authenticate API key) can all succeed. Step 6 (download sponsor package `vnstock_data`) checks the device limit. **But device registration ALREADY succeeded in step 5.** This means:
+- The installer exits 1
+- `vnstock_data` is NOT installed
+- **A device slot WAS consumed** (new device appears in vendor web UI)
+- From the vendor's perspective, this was a successful registration that then hit a package block
+
+**Rule: Every run reaching step 6 costs 1 slot. There are no "free" failures.**
+
+### Current Operational State
+- **No production device exists.** `product/api/.vnstock/device.id` (`45fcf9df...`) is in a wrong/cleared state.
+- The product currently "works" only due to vendor cache lag or tolerant API behavior.
+- **Intended lifecycle:** Sandbox freely → Clear ALL devices → Rewrite script → ONE clean install → 1 sacred production device.
+- Operator can clear seats **multiple times**. You must ask before consuming.
+
+### Essential Reading (in order)
+1. `docs/journals/260514-vnstock-experiment-meta-reflection.md` — Complete six-day arc, corrected for the vendor lie
+2. `records/experiments/experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z.yaml` — Latest experiment (approved, result: rejected)
+3. `records/observations/observation-vnstock-device-slot-ledger.yaml` — Every slot consumption traced to its experiment
+4. `docs/journals/260515-vnstock-operational-context-device-slot-lifecycle.md` — Operator clarifications and sandbox freedom
+
+### Current Script Location
+`product/api/scripts/install-vnstock.sh` — Not production-ready. Known deficiencies:
+- Non-atomic (31 packages + config left in venv on failure)
+- No stale-device detection
+- No system Python `requests` check
+- No slot consumption warning
+- Passes through raw Vietnamese errors with no guidance
+- SHA-256 pin is brittle (vendor rotates installer)
+- No `--force` re-register mode
+
+### Tracking Obligation
+If you run ANY experiment that executes the vendor installer, you MUST:
+1. Ask the operator for clearance first (secretary contract)
+2. Record the consumption in `records/observations/observation-vnstock-device-slot-ledger.yaml`
+3. Update the experiment record with device fingerprint and registration time
+
+---
+
+---
+
 ## Phase 1: Rewrite (No Slot Consumed)
 
 *Prerequisite: None. No vendor installer execution in this phase.*
