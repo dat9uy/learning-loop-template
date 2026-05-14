@@ -20,7 +20,7 @@ Phase 1: Sandbox experiments freely
     ↓
 Phase 2: Clear ALL sandbox devices from web UI
     ↓
-Phase 3: Rewrite install-vnstock.sh defensively
+Phase 3: Rewrite install-vnstock.sh defensively ✓ (completed 2026-05-15)
     ↓
 Phase 4: ONE clean install → creates the single "production" device
     ↓

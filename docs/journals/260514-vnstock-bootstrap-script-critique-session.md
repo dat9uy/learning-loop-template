@@ -67,26 +67,26 @@ This consumed the **only** Bronze-tier slot, leaving no room for the sandbox cri
 
 ## Impact
 
-- The bootstrap script is **not production-ready** as-is. It is a hypothesis that has been partially validated but has critical gaps in atomicity, error handling, stale-state detection, and slot-awareness.
-- Device slot accounting is **manual and opaque**. The vendor provides no API to query slot usage, the web UI shows registered devices but the actual limit is 1 (not 2 as the installer claims), and the script does not track or report device registrations.
-- **Every install attempt that reaches device registration consumes a slot**, even if the final exit code is 1. The script must warn about this.
-- The `vendor_compat` runtime patch remains validated and necessary, but the install path that delivers it is fragile.
+- The bootstrap script's critical gaps (non-atomic install, stale-device detection, system Python check, slot awareness, and error messages) were identified in this session and **addressed in the 2026-05-15 rewrite**.
+- Device slot accounting remains **manual and opaque** — the vendor provides no API to query slot usage, and the web UI shows registered devices with an actual limit of 1 (not 2 as the installer claims). The rewritten script now warns about slot consumption and provides actionable error messages.
+- **Every install attempt that reaches device registration consumes a slot**, even if the final exit code is 1. The rewritten script includes a slot-consumption warning and `--yes-i-know` for non-interactive use.
+- The `vendor_compat` runtime patch remains validated and necessary. The install path that delivers it is now guarded by atomicity checks and post-flight verification.
 
 ---
 
-## Remaining Work
+## Completed Work
 
-1. **Rewrite `install-vnstock.sh`** as a defensive wrapper with:
+1. **Rewrote `install-vnstock.sh`** as a defensive wrapper (2026-05-15) with:
    - Pre-flight system Python `requests` check
-   - Post-flight API ping (not just import check)
-   - Atomicity guard (mark venv before install, rollback on failure)
-   - Stale-device detection and `--force` re-register option
+   - Post-flight API ping test (not just import check)
+   - Atomicity guard (snapshot, sentinel, cleanup trap)
+   - `--force`, `--yes-i-know`, and `--check-device` flags
    - Actionable error messages for device-limit failures
-   - **Slot consumption warning**: warn that every run reaching step 6 costs 1 slot
+   - **Slot consumption warning**: warns that every run reaching step 6 costs 1 slot
 
-2. **Device slot audit** — Operator must check the vnstocks web UI and clear any unexpected devices. **Actual limit is 1 (Bronze), not 2 (Golden).**
+2. **Device slot audit** — Operator cleared all unexpected devices. **Actual limit is 1 (Bronze), not 2 (Golden).**
 
-3. **Re-run sandbox critique** — After clearing slots, run the improved script in a clean sandbox to validate the fixes. **Only 1 slot is available, so test carefully.**
+3. **Sandbox critique of rewritten script** remains future work; the original deficiencies are addressed.
 
 ---
 

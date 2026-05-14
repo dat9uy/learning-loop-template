@@ -1,7 +1,7 @@
 ---
 title: "Vendor vnstock Installer — Behavior Reference"
 status: reference
-last_observed: "2026-05-11"
+last_observed: "2026-05-15"
 source_logs:
   - product/api/.vnstock/cli_installer.log
   - product/api/.vnstock/user-json-dir.backup.20260511025552/vnstock_installer.log
@@ -114,28 +114,17 @@ After a single install, with `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json
 
 Runtime files do **not** require the installer at all; they re-materialise on first import. This is useful: a wrapper that re-creates `id/` and `data/` from a checked-in template could bootstrap without ever running the installer for these directories.
 
-## Workarounds Already in `install-vnstock.sh`
+## Wrapper Current State (post-2026-05-15 rewrite)
 
-```sh
-normalize_vnstock_config() {
-  # If the installer wrote VNSTOCK_CONFIG_PATH as a directory containing user.json,
-  # back the dir up and replace with the inner user.json file.
-}
-```
+The `normalize_vnstock_config` workaround was removed in the rewrite. `VNSTOCK_CONFIG_PATH` is now set to `${API_HOME}/.vnstock` (no `/user.json` suffix), so the installer writes `api_key.json`, `device.id`, `user.json`, and `user_install.json` directly into `.vnstock/` where the runtime expects them.
 
-This runs once before checking import (in case of stale state) and once after the installer. It addresses bug A's symptom but **only for `user.json`**. The following installer outputs are orphaned in `user-json-dir.backup.<ts>/`:
-
-- `api_key.json` — needed by `vnai` at runtime; `vnai/scope/profile.py:38` reads `project_dir/'api_key.json'` where `project_dir = Path.home()/'.vnstock'`.
-- `device.id` — needed by `vnai` at runtime; `vnai/scope/profile.py:40, 133-135`.
-- `user_install.json` — install metadata; runtime impact unverified.
-
-**After source-read, the cleaner fix is to delete `normalize_vnstock_config` entirely and instead set `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock`** (no `/user.json` suffix). The installer then writes `api_key.json`, `device.id`, `user.json`, `user_install.json` directly into `.vnstock/`, where the runtime already looks via `Path.home()/'.vnstock'/...`. No post-install normalisation needed; no orphans.
+The script now includes `migrate_stale_vnstock_backups()`, which copies `api_key.json` and `device.id` from the most recent `user-json-dir.backup.*` into `.vnstock/` if they are missing. This is a one-time migration for legacy installs created before the env-var fix.
 
 ## Known Bugs (Vendor + Wrapper)
 
 | # | Layer | Description | Our exposure |
 |---|---|---|---|
-| **A** (wrapper) | `install-vnstock.sh` | `VNSTOCK_CONFIG_PATH` set one path-segment too deep (`.vnstock/user.json` instead of `.vnstock`) | causes installer to write into a directory the runtime expects to be a file; sole cause of historical IsADirectoryError |
+| **A** (wrapper) | `install-vnstock.sh` | `VNSTOCK_CONFIG_PATH` set one path-segment too deep (`.vnstock/user.json` instead of `.vnstock`) | **FIXED in 2026-05-15 rewrite** — now set to `.vnstock`; `normalize_vnstock_config` removed |
 | ~~B~~ | runtime (`vnstock_data.env.idv`) | ~~Reads `VNSTOCK_CONFIG_PATH` as a file~~ | **FALSIFIED by source-read** — runtime never reads `VNSTOCK_CONFIG_PATH`; uses `Path.home()/'.vnstock'` |
 | ~~C~~ | runtime (`vnstock`/`vnstock_data` VCI URL) | ~~Trailing-slash → 403~~ | **FALSIFIED by source-read** — `_TRADING_URL` has no trailing slash; URL is well-formed |
 | **C'** (vendor) | `vnstock_data/core/utils/user_agent.py:get_headers` | Does not inject `Device-Id` header / `device_id` cookie for VCI; `vnstock/core/utils/user_agent.py:get_headers` does | **historical runtime blocker** — fixed by the 2026-05-11 compat patch |
@@ -151,8 +140,10 @@ The original diagnostic merged A+B into one item and invented C. After source-re
 | 2026-05-11 00:07:34 | `devices=0/1` | first run since cache reset |
 | 2026-05-11 00:08:41 | `devices=2/1` | exceeds nominal limit |
 | 2026-05-11 01:46:17 | `devices=0/1` | counter appears to decay |
+| 2026-05-14 14:08:41 | `devices=1/1` | bronze tier, full install succeeded |
+| 2026-05-15 02:00:00 | `devices=1/1` | device limit exceeded with exactly 1 device visible |
 
-The "1 device" bronze limit is not strictly enforced server-side in observation. Re-running the installer is safer than the README implies; this revises the prior caution about slot consumption.
+**Revised finding (2026-05-15)**: The vendor message claiming "Golden... 2 devices" is false. The actual tier is **Bronze with a 1-device limit**. Device registration succeeds **before** the sponsor package download is attempted, so every run that reaches step 6 **consumes a slot** regardless of final exit code. The rewrite adds a slot-consumption warning to address this.
 
 ## Decision Matrix — Will Changing Install Fix It?
 
@@ -171,11 +162,11 @@ Before the 2026-05-11 fix, the blocker (C') was **not addressable by changing in
 
 ## Recommendation Summary
 
-1. **Fix wrapper env var**: change `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json` → `${API_HOME}/.vnstock` in `install-vnstock.sh`. Delete `normalize_vnstock_config`. One-line change resolves bug A without workarounds.
+1. **Fix wrapper env var**: **Applied in 2026-05-15 rewrite**. `VNSTOCK_CONFIG_PATH` is now `${API_HOME}/.vnstock` and `normalize_vnstock_config` was removed.
 2. **Address bug C' (Device-Id)**: this was resolved by the 2026-05-11 compat patch (replace `vnstock_data.core.utils.user_agent.get_headers` with `vnstock.core.utils.user_agent.get_headers` at module import time). The recommendation is kept here for historical context only.
-3. Keep bug E (deceptive installer success) on the watch-list. Wrapper's secondary `import vnstock_data` check already compensates.
-4. Add a smoke test that calls VietCap symbol list and asserts JSON 200 (not 403). Runs at end of `pnpm bootstrap:api`. Regression detector for future Device-Id schema changes by VietCap.
-5. Revise prior "1 install ≈ 1 slot consumed" guidance — observation does not support strict enforcement.
+3. Keep bug E (deceptive installer success) on the watch-list. The rewrite adds both an `import vnstock_data` check and an API ping test to compensate.
+4. Add a smoke test that calls VietCap symbol list and asserts JSON 200 (not 403). **Partially applied** — the rewrite adds a post-flight API ping (`vnstock_data.listing.all_symbols()`) inside the script itself.
+5. **Revised (2026-05-15)**: Every install attempt that reaches device registration consumes the single Bronze slot. The rewrite warns about this and provides `--yes-i-know` for non-interactive use.
 
 ## Unresolved Questions
 

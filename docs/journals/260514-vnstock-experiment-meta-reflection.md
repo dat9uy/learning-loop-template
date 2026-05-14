@@ -145,7 +145,7 @@ product/api/
     auth_state.json               # local auth cache (60 min TTL)
   src/vendor_compat/
     vnstock_device_id.py          # runtime patch: injects Device-Id for VCI
-  scripts/install-vnstock.sh      # bootstrap script (SHA-256 pinned, NOT production-ready)
+  scripts/install-vnstock.sh      # bootstrap script (SHA-256 pinned, rewritten with atomicity guard, slot warnings, and --force/--check-device flags)
   capabilities/vnstock-data/      # capability runtime scripts
 ```
 
@@ -164,8 +164,8 @@ product/api/
 
 - **Actual device limit: 1 (Bronze tier)**. The vendor message saying "Golden, 2 devices" is false.
 - **Every install attempt that reaches step 6 consumes a slot**, even if it reports "failure".
-- product/api/scripts/install-vnstock.sh is the only viable install path, but it is **not production-ready**.
-- The script is idempotent — safe to run multiple times ONLY when vnstock_data is already importable.
+- product/api/scripts/install-vnstock.sh is the only viable install path. It was rewritten defensively on 2026-05-15 with atomicity guards, slot warnings, and pre/post-flight checks, but vendor device-limit semantics remain outside our control.
+- The script is idempotent by default — safe to run multiple times ONLY when vnstock_data is already importable. Use `--force` to re-register (invalidates any previous device).
 - The script requires VNSTOCK_API_KEY in environment.
 - The script's SHA-256 pin may drift if the vendor updates the installer. Check before running.
 - vendor_compat is load-bearing — do not remove it.
