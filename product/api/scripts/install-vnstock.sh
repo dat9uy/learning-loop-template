@@ -123,7 +123,7 @@ require_command curl
 require_command sha256sum
 require_command realpath
 
-# System Python requests check (vendor wrapper uses system Python)
+# System Python requests check (vendor wrapper may fall back to system Python)
 SYSTEM_PYTHON=""
 if command -v python3 >/dev/null 2>&1; then
   SYSTEM_PYTHON="python3"
@@ -137,6 +137,11 @@ fi
 
 if ! "${SYSTEM_PYTHON}" -c "import requests" >/dev/null 2>&1; then
   fail "system Python '${SYSTEM_PYTHON}' is missing the 'requests' module; install it before running the vendor installer"
+fi
+
+# Venv Python requests check (run_installer puts venv first in PATH, so wrapper may use venv Python)
+if ! "${PYTHON_BIN}" -c "import requests" >/dev/null 2>&1; then
+  fail "venv Python '${PYTHON_BIN}' is missing the 'requests' module; run uv sync in product/api first"
 fi
 
 # --- Venv-dependent checks ---
