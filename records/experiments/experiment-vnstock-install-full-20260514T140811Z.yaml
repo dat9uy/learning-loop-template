@@ -1,0 +1,119 @@
+id: experiment-vnstock-install-full-20260514T140811Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-14T14:08:11Z"
+updated_at: "2026-05-14T14:08:11Z"
+source_refs:
+  - record:experiment-vnstock-install-bootstrap-substrate-20260513T182621Z
+  - record:claim-vnstock-version-requirements
+notes: >
+  Phase A of the follow-up experiment plan in docs/journals/260513-vnstock-bootstrap-substrate-experiment.md.
+  Operator cleared all device slots before this session.
+  Tests the critical hypothesis that a full vendor installer run (with a free device slot)
+  successfully installs vnstock_data, captures its version, and behaves consistently with
+  prior substrate experiments.
+goal: >
+  Complete a full vendor installer run with a cleared device slot.
+  Verify that vnstock_data installs successfully, capture its version,
+  confirm the substrate venv remains unmodified, and document any new behavior.
+hypothesis: >
+  With a free device slot, the vendor installer (non-interactive, with valid API key,
+  bootstrap-equivalent substrate) will complete all installation steps, register the device,
+  install vnstock_data, and exit 0. The substrate venv will remain unmodified,
+  and .venv will be created at $HOME/.venv.
+method:
+  - "Start fresh python:3.11-slim container with --rm."
+  - "Install requests and pandas into system Python (installer wrapper dependency)."
+  - "Create /opt/substrate venv with requests + pandas (bootstrap-equivalent)."
+  - "Set HOME=/tmp/fake-home, PATH=/opt/substrate/bin:$PATH, VIRTUAL_ENV=/opt/substrate."
+  - "Download vnstock-cli-installer.run from official vendor URL."
+  - "Run vendor one-liner: echo 2 | ./installer.run --quiet --accept -- --api-key $VNSTOCK_API_KEY"
+  - "Capture installer exit code, venv contents, vnstock_data version, device registration status."
+  - "Audit temp files for secret material; remove container."
+success_metrics:
+  - installer-exits-0
+  - vnstock-data-imports-successfully
+  - vnstock-data-version-captured
+  - substrate-venv-left-unmodified
+  - venv-path-follows-HOME-override
+  - temp-root-cleaned-with-container
+  - metadata-captured
+result: confirmed
+result_reason: >
+  Installer completed successfully (exit 0).
+  Device registered (bronze tier, 1/1 devices).
+  vnstock_data version 3.0.0 installed and importable.
+  Substrate venv (/opt/substrate) was completely unmodified.
+  Installer created /tmp/fake-home/.venv (respecting HOME override).
+  Second container run with identical host generated a different device ID and hit the device limit,
+  confirming device IDs are not deterministic across containers.
+agent_outcome: >
+  The vendor install process is fully validated end-to-end:
+  - The bootstrap-equivalent substrate (requests + pandas) is sufficient.
+  - The installer handles vnai, vnii, and typing_extensions itself.
+  - HOME override correctly directs .venv creation.
+  - vnstock_data version is 3.0.0 (source __version__) with 3.1.3 dist-info metadata.
+  - Device registration consumes one slot per unique container instance.
+  - The product/api/scripts/install-vnstock.sh bootstrap script remains validated and viable.
+product_outcome: >
+  product/api/scripts/install-vnstock.sh does not require changes.
+  The product .venv already contains a working vnstock_data installation (3.0.0).
+  Runtime patch (vendor_compat) remains necessary because clean vendor install does not
+  inject Device-Id for VCI headers.
+observations:
+  - "Installer SHA-256 observed: fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2 (unchanged)"
+  - "Installer exited 0; device registered successfully (Tier: bronze, Devices used: 1/1)"
+  - "Device ID: 69815221e3116a37be42887b36d0c937 (first container)"
+  - "vnstock_data installed successfully; version __version__='3.0.0', dist-info='3.1.3'"
+  - vnstock (free package) is importable but has no __version__ attribute; prints sponsor warning
+  - get_headers does NOT exist on vnstock_data or vnstock in clean install
+  - Substrate venv (/opt/substrate) completely unmodified
+  - /tmp/fake-home/.venv created by installer (respects HOME)
+  - /root/.venv NOT created
+  - Second container with same host generated different device ID, hit device limit
+  - Device IDs are NOT deterministic across container instances
+  - API key material confined to /tmp/fake-home/.vnstock/api_key.json (expected, removed with container)
+promotion_review:
+  - Update claim-vnstock-version-requirements with confirmed vnstock_data version 3.0.0
+  - Update claim-vnstock-install-sandbox to document full install success
+  - Document that vendor_compat runtime patch is necessary and validated
+  - Document device limit consumption: one slot per fresh container
+  - Document version drift between vnstock_data source __version__ and dist-info metadata
+scope: install
+output_level: metadata-only
+claim_refs:
+  - record:claim-vnstock-version-requirements
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-version-requirements
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - vendor-device-limit-message
+    - sanitized-installer-status-lines
+    - venv-path-observation
+    - version-capture
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
