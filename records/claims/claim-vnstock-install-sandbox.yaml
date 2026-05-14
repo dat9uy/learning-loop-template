@@ -3,7 +3,7 @@ schema_version: "1.0"
 type: claim
 status: approved
 created_at: "2026-05-08T00:00:00Z"
-updated_at: "2026-05-13T18:26:21Z"
+updated_at: "2026-05-14T14:08:11Z"
 source_refs:
   - local:records/evidence/vnstock-data/installer-prior-notes.md
   - local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
@@ -25,6 +25,9 @@ evidence_refs:
   - local:records/evidence/vnstock-data/experiment-install-vendor-one-liner-20260513T213042Z.md
   - local:records/evidence/vnstock-data/experiment-install-prepared-substrate-20260513T173104Z.md
   - local:records/evidence/vnstock-data/experiment-install-bootstrap-substrate-20260513T182621Z.md
+  - local:records/evidence/vnstock-data/experiment-install-full-20260514T140811Z.md
+  - local:records/evidence/vnstock-data/experiment-product-bootstrap-20260514T140811Z.md
+  - local:records/evidence/vnstock-data/experiment-direct-pip-20260514T140811Z.md
 confidence: medium
 limitations:
   - Verification is limited to sandbox installation and metadata-only import checks.
@@ -35,6 +38,10 @@ limitations:
   - The vendor Dockerfile assumption that `/opt/venv` will be used is incorrect; venv path override via `PATH` or pre-created venvs is not supported by the installer.
   - "The bootstrap script product/api/scripts/install-vnstock.sh is validated: the product .venv (requests + pandas) is a sufficient substrate, and the HOME override works as intended."
   - "vnai does NOT need to be pre-installed in the substrate; the installer handles vnai/vnii installation itself."
+  - "Full vendor install confirmed: with a free device slot, the installer exits 0 and installs vnstock_data 3.0.0."
+  - "Device IDs are not deterministic across container instances; each fresh container consumes a distinct device slot."
+  - "Direct pip install from the vendor index is not viable; the index is a web UI, not a PEP 503 simple index."
+  - "The product is already bootstrapped and the bootstrap script is idempotent (skips when vnstock_data is already importable)."
 approval:
   status: approved
   reviewer: operator
@@ -47,7 +54,7 @@ verification:
   install:
     status: verified
     scope: sandbox
-    reason: Sandbox install verified via prior experiment. Vendor one-liner flag passthrough independently verified, but one-liner fails in fresh sandbox due to undocumented requests prerequisite.
+    reason: Sandbox install fully verified. Vendor one-liner completes successfully with requests pre-installed and a free device slot. Installer exits 0, vnstock_data 3.0.0 installed. Bootstrap script idempotency confirmed in product.
     proof_refs:
       - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
   runtime:

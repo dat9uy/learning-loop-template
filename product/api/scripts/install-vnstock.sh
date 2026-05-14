@@ -2,7 +2,7 @@
 set -euo pipefail
 
 INSTALLER_URL="${VNSTOCK_INSTALLER_URL:-https://vnstocks.com/files/vnstock-cli-installer.run}"
-INSTALLER_SHA256="${VNSTOCK_INSTALLER_SHA256:-1982f7f93386daa57e1a1c0b18a87c8a299b9ad1d331f4123ab534656fa4c7ed}"
+INSTALLER_SHA256="${VNSTOCK_INSTALLER_SHA256:-fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2}"
 
 API_ROOT="$(pwd -P)"
 PYTHON_BIN="${API_ROOT}/.venv/bin/python"

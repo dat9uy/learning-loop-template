@@ -3,9 +3,11 @@ schema_version: "1.0"
 type: claim
 status: reviewed
 created_at: "2026-05-11T00:00:00Z"
-updated_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-14T14:08:11Z"
 source_refs:
   - local:records/evidence/vnstock-data/runtime-403-fix-20260511.md
+  - local:records/evidence/vnstock-data/experiment-install-full-20260514T140811Z.md
+  - local:records/evidence/vnstock-data/experiment-product-bootstrap-20260514T140811Z.md
 notes: "Source-read and runtime experiment performed on 2026-05-11. Prior diagnostic's URL double-slash hypothesis falsified by source. Wrapper config-path bug and missing VCI Device-Id header both verified."
 subject: "vnstock_data VCI runtime 403 + IsADirectoryError on import"
 claim: "FastAPI Reference runtime failure had two independent root causes: wrapper VNSTOCK_CONFIG_PATH pointed one segment too deep, and vnstock_data VCI headers lacked Device-Id. The wrapper now points at .vnstock root and vendor_compat injects Device-Id for VCI when upstream does not. Static source-read and live smoke tests verify install and runtime dimensions."
@@ -16,6 +18,7 @@ confidence: high
 limitations:
   - Header proof is metadata-only; raw generated Device-Id values are intentionally not retained.
   - vnstock_data version drift remains between tarball filename, dist-info metadata, and source __version__.
+  - Clean vendor install (no patches) does NOT provide get_headers or Device-Id injection; vendor_compat is necessary.
   - VietCap server-side behavior is inferred; we have not contacted vendor to confirm Device-Id requirement timeline
   - Product approval remains claimed until FastAPI Reference Build records close-out completes.
 approval:
@@ -25,7 +28,7 @@ approval:
 verification:
   static:
     status: verified
-    reason: "Source-read of installed packages confirms (a) Device-Id header is injected by vnstock.get_headers but not by vnstock_data.get_headers; (b) idv() resolves to Path.home()/.vnstock/user.json without consulting VNSTOCK_CONFIG_PATH; (c) _TRADING_URL has no trailing slash."
+    reason: "Source-read and clean-install experiment confirm (a) Device-Id header is NOT injected by vnstock_data.get_headers in a clean vendor install; (b) vnstock.get_headers is also absent in the clean install; (c) vendor_compat patches _vd_user_agent.get_headers to inject Device-Id; (d) idv() resolves to Path.home()/.vnstock/user.json without consulting VNSTOCK_CONFIG_PATH; (e) _TRADING_URL has no trailing slash."
     proof_refs:
       - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
   install:
