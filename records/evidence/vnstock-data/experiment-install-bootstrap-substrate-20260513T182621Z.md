@@ -102,6 +102,8 @@ installer_exit=1
 Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành.
 ```
 
+> **Retrospective note (2026-05-15)**: The "Golden... 2 devices" message is false. Actual limit is 1 (Bronze). See `claim-vnstock-device-limit-ui-inconsistency`.
+
 ## Confirmation / Disproof Notes
 
 - **Confirms** hypothesis 1: pre-installing only `requests` and `pandas` is sufficient for the installer to proceed. The installer itself installs `vnai`, `vnii`, and `typing_extensions`.

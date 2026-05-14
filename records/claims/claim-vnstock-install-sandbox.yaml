@@ -42,6 +42,7 @@ limitations:
   - "Device IDs are not deterministic across container instances; each fresh container consumes a distinct device slot."
   - "Direct pip install from the vendor index is not viable; the index is a web UI, not a PEP 503 simple index."
   - "The product is already bootstrapped and the bootstrap script is idempotent (skips when vnstock_data is already importable)."
+  - "RETROSPECTIVE (2026-05-15): The vendor installer falsely claims 'Golden package, 2 devices' in its error message. The actual tier is Bronze with a 1-device limit. Every experiment that hit device limit was hitting the 1-device ceiling. See claim-vnstock-device-limit-ui-inconsistency."
 approval:
   status: approved
   reviewer: operator

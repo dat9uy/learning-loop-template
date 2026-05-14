@@ -31,7 +31,7 @@ Executed the proposed bootstrap-substrate experiment from that journal's "Open Q
 - Substrate venv (`/opt/test-venv`) was completely unmodified — no packages added
 - `/root/.venv` was NOT created, disproving the "hardcoded to /root/.venv" conclusion from the prior experiment
 - The installer's venv path is actually `$HOME/.venv`, not strictly `/root/.venv`
-- Device-limit gate reached and failed as expected (Golden tier, 2-device limit)
+- Device-limit gate reached and failed as expected (installer claims 'Golden 2'; actual limit is 1 Bronze device — confirmed 2026-05-15)
 - `vnstock_data` not installed because device limit blocked sponsor package installation
 - API key material confined to `/tmp/fake-home/.vnstock/api_key.json` (container-local, removed with `--rm`)
 - No secret leakage outside the configured config path

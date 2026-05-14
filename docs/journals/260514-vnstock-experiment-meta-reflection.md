@@ -2,7 +2,9 @@
 
 ## Context
 
-This journal synthesizes the complete experiment history for vnstock_data installation, runtime behavior, and product integration across 8 journals, 12 experiment records, 15 evidence files, 4 claims, and 3 decisions (May 8–14, 2026). The purpose is to extract the narrative arc, surface the dead ends that consumed time, and document the ground-truth findings that replaced prior assumptions.
+This journal synthesizes the complete experiment history for vnstock_data installation, runtime behavior, and product integration across 8 journals, 13 experiment records, 16 evidence files, 5 claims, and 3 decisions (May 8–15, 2026). The purpose is to extract the narrative arc, surface the dead ends that consumed time, and document the ground-truth findings that replaced prior assumptions.
+
+**CRITICAL CORRECTION (2026-05-15):** The vendor installer's error message has been a source of confusion since day one. The message claims "Gói Golden... 2 thiết bị mỗi hệ điều hành" (Golden package, 2 devices per OS). This is **false**. The actual account tier is **Bronze** with a **1-device limit**. Every experiment that hit the device-limit gate was hitting a 1-device ceiling, not 2. The vendor mislabels the tier in the installer message. See `claim-vnstock-device-limit-ui-inconsistency` for the verified claim.
 
 ---
 
@@ -14,7 +16,9 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 
 **Second experiment** (experiment-vnstock-install-20260508T171112Z): Confirmed env-var auth works, but hit the device-limit gate before vnstock_data could install. This pattern — reach auth, fail at device limit — would repeat for every sandbox experiment until May 14.
 
-**Key dead end**: The prior notes claimed the installer read ~/.vnstock/user.json. This was empirically superseded by env-var behavior, but the old note was not removed immediately, creating confusion for subsequent agents.
+> **Retrospective note**: The device-limit message said "Golden... 2 devices". We now know the actual limit was 1 (Bronze) all along. The message was a red herring that caused us to search for a second invisible device that never existed.
+
+**Key dead end**: The prior notes claimed the installer read API key from ~/.vnstock/user.json. This was empirically superseded by env-var behavior, but the old note was not removed immediately, creating confusion for subsequent agents.
 
 ---
 
@@ -48,6 +52,8 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 
 **Bootstrap-equivalent substrate experiment** (experiment-vnstock-install-bootstrap-substrate-20260513T182621Z): Tested whether requests + pandas alone (matching the actual product .venv) is sufficient. Confirmed — the installer installs vnai and vnii itself. Tested HOME=/tmp/fake-home. Confirmed — .venv is created at $HOME/.venv, not hardcoded to /root/.venv.
 
+> **Retrospective note**: Both experiments hit device limit and reported "Golden... 2 devices". We now know they hit the Bronze 1-device limit. The message was false then and is false now.
+
 **Vendor one-liner experiment** (experiment-vnstock-install-vendor-one-liner-20260513T213042Z): Disproved the vendor troubleshooting guide's one-liner for fresh sandboxes. The one-liner requires requests in the system Python (undocumented prerequisite).
 
 **Open questions crystallized**:
@@ -65,6 +71,8 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 
 **Device ID stability test**: A second container on the same host generated a different device ID and hit the device limit. Device IDs are not deterministic across container instances.
 
+> **Retrospective note**: The second container hit the 1-device Bronze limit, not a 2-device Golden limit. The message has always been wrong.
+
 **Phase B — Direct pip install** (experiment-vnstock-direct-pip-20260514T140811Z): The vendor's https://vnstocks.com/api/simple is a Next.js web UI, not a PEP 503 package index. Direct pip bypass is permanently ruled out.
 
 **Phase C — Product bootstrap** (experiment-vnstock-product-bootstrap-20260514T140811Z): The actual bootstrap script correctly detects the existing installation and skips. The product is already bootstrapped and functional.
@@ -75,10 +83,24 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 
 ---
 
+## Phase 6: The Vendor Message Lie Revealed (May 15)
+
+**Bootstrap critique re-run** (experiment-vnstock-bootstrap-critique-rerun-20260514T171316Z): After operator cleared all device slots, the current bootstrap script was re-run in a clean sandbox. The installer proceeded through steps 2-5 successfully (31 dependencies installed, API authenticated), then failed at step 6 with device limit exceeded.
+
+**The web UI showed exactly 1 device** — the one created by this experiment. The vendor message still claimed "Golden... 2 devices".
+
+**Operator insight**: The actual tier is **Bronze (limit 1)**, not Golden (limit 2). The vendor installer message is false.
+
+**Asymmetric failure semantics**: Device **registration succeeds** before the sponsor package download is attempted. The vendor server accepts the new device (visible in UI). What "fails" is only the vnstock_data download. From the vendor's perspective, the device registration was successful; only the package install hit the block.
+
+**Implication**: Every run that reaches step 6 **consumes a device slot**, regardless of final exit code. A "failed" install still costs a slot.
+
+---
+
 ## What We Thought vs. What Is True
 
 | Assumption | Truth |
-|------------|-------|
+|---|---|
 | Installer reads ~/.vnstock/user.json for API key | Reads VNSTOCK_API_KEY env var |
 | Installer hardcodes /root/.venv | Respects $HOME/.venv |
 | vnai must be pre-installed in substrate | Installer handles it; requests + pandas sufficient |
@@ -87,6 +109,8 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 | Device IDs are stable across containers | Not deterministic; each fresh container consumes a slot |
 | vnstock_data version is 3.1.3 (dist-info) | Source __version__ is 3.0.0; drift unexplained |
 | Bootstrap script SHA-256 is current | Vendor rotated installer; SHA was stale |
+| Device limit is 2 (Golden tier) | **Actual limit is 1 (Bronze tier)** — vendor message is false |
+| "Failed" install does not consume a slot | **Device registration succeeds before failure; slot is consumed** |
 
 ---
 
@@ -98,27 +122,15 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 
 3. The vendor one-liner for fresh sandboxes: The vendor troubleshooting guide advertises a one-liner that fails in fresh containers because it omits the requests prerequisite.
 
-4. The Golden tier confusion: The device-limit error says Gói Golden... 2 thiết bị but successful registrations show bronze 1/1. Tier messaging is inconsistent or cached.
+4. **The Golden tier confusion (MAJOR)**: The device-limit error says "Gói Golden... 2 thiết bị" but successful registrations show bronze 1/1. We spent sessions searching for invisible devices, backup/restore ghosts, and cache lags. The truth is simpler: **the vendor message lies**. The actual tier is Bronze with limit 1. Every device-limit hit was the 1-device ceiling, not a mystery second device.
 
 5. Forced re-registration via bootstrap: Attempting to force a reinstall in the product venv hit the vendor installer's internal timeout. This approach does not work for existing venvs.
 
 ---
 
-## The State Problem
-
-The user released all devices in the web UI, yet API calls from the product venv still succeed. Possible explanations:
-
-- Vendor API backend has a cache lag relative to the web UI
-- The equity.list() endpoint does not strictly validate device ID
-- The auth_state local cache (60 min TTL) masks invalidation
-- The device was never actually in the web UI's deletion set
-
-Attempted resolution: Forced re-registration by renaming vnstock_data and running the bootstrap script. Blocked by vendor installer timeout. Product restored to functional state with old device ID.
-
----
-
 ## Current Architecture
 
+```
 product/api/
   .venv/                          # uv-managed; requests, pandas, fastapi, etc.
     lib/python3.12/site-packages/
@@ -133,15 +145,16 @@ product/api/
     auth_state.json               # local auth cache (60 min TTL)
   src/vendor_compat/
     vnstock_device_id.py          # runtime patch: injects Device-Id for VCI
-  scripts/install-vnstock.sh      # bootstrap script (SHA-256 pinned)
+  scripts/install-vnstock.sh      # bootstrap script (SHA-256 pinned, NOT production-ready)
   capabilities/vnstock-data/      # capability runtime scripts
+```
 
 ---
 
 ## Remaining Open Questions
 
 1. Version drift: Why does dist-info say 3.1.3 while __version__ says 3.0.0? (Low priority — does not affect functionality.)
-2. Tier discrepancy: Why does the limit error say Golden 2 while registration shows bronze 1/1? (Likely vendor UI inconsistency.)
+2. Vendor message lie: Why does the installer claim "Golden 2" when the account is Bronze 1? (Vendor bug/misconfiguration; not actionable by us.)
 3. Device invalidation lag: How long does the vendor API cache device validity after web UI release? (Operational risk, not experimental.)
 4. Installer timeout in existing venvs: Why does the vendor installer timeout when installing into existing venvs but succeed in fresh ones? (Vendor-side behavior, not controllable.)
 
@@ -149,20 +162,23 @@ product/api/
 
 ## What an Agent Should Know
 
-- product/api/scripts/install-vnstock.sh is the only viable install path.
-- The script is idempotent — safe to run multiple times.
+- **Actual device limit: 1 (Bronze tier)**. The vendor message saying "Golden, 2 devices" is false.
+- **Every install attempt that reaches step 6 consumes a slot**, even if it reports "failure".
+- product/api/scripts/install-vnstock.sh is the only viable install path, but it is **not production-ready**.
+- The script is idempotent — safe to run multiple times ONLY when vnstock_data is already importable.
 - The script requires VNSTOCK_API_KEY in environment.
 - The script's SHA-256 pin may drift if the vendor updates the installer. Check before running.
 - vendor_compat is load-bearing — do not remove it.
 - Device slots are consumed per unique container/hardware fingerprint.
 - pnpm bootstrap:api chains uv sync + the bootstrap script.
+- **Do not trust the vendor's device-limit message. Trust the web UI count and treat 1 as the limit.**
 
 ---
 
 ## Source
 
-- Journals: docs/journals/260508-vnstock-install-blocked-experiment.md through docs/journals/260513-vnstock-bootstrap-substrate-experiment.md
-- Experiments: records/experiments/experiment-vnstock-install-* (8 install records) + experiment-vnstock-runtime-403-fix-* + experiment-vnstock-capabilities-* + experiment-vnstock-direct-pip-* + experiment-vnstock-product-bootstrap-*
-- Evidence: records/evidence/vnstock-data/* (15 files)
-- Claims: records/claims/claim-vnstock-{install-sandbox,device-limit-mechanism,runtime-403-root-cause,version-requirements}.yaml
+- Journals: docs/journals/260508-vnstock-install-blocked-experiment.md through docs/journals/260514-vnstock-bootstrap-script-critique-session.md
+- Experiments: records/experiments/experiment-vnstock-install-* (8 install records) + experiment-vnstock-runtime-403-fix-* + experiment-vnstock-capabilities-* + experiment-vnstock-direct-pip-* + experiment-vnstock-product-bootstrap-* + experiment-vnstock-bootstrap-critique-rerun-*
+- Evidence: records/evidence/vnstock-data/* (16 files)
+- Claims: records/claims/claim-vnstock-{install-sandbox,device-limit-mechanism,runtime-403-root-cause,version-requirements,device-limit-ui-inconsistency}.yaml
 - Decisions: records/decisions/decision-20260509T070411Z-vnstock-vendor-device-limit-clearance.yaml, decision-20260510T170623Z-vnstock-installer-bootstrap.yaml, decision-20260511T003000Z-product-approval-vnstock-reference-slice.yaml

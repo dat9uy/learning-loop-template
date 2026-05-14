@@ -78,6 +78,8 @@ Hướng dẫn giải quyết:
 Sau khi xóa thiết bị, chạy lại lệnh cài đặt.
 ```
 
+> **Retrospective note (2026-05-15)**: The message "Gói Golden... 2 thiết bị" is false. The actual tier is Bronze with a 1-device limit. This experiment hit the 1-device ceiling. See `claim-vnstock-device-limit-ui-inconsistency` for the verified claim.
+
 The URL above came from installer output, not from external documentation or inference.
 
 ## Static Dimension Consistency

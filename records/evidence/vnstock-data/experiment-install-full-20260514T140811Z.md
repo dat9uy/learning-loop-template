@@ -107,6 +107,8 @@ This second run generated a **different device ID** and hit the device-limit gat
 Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành.
 ```
 
+> **Retrospective note (2026-05-15)**: The "Golden... 2 devices" message is false. Actual limit is 1 (Bronze). The second container hit the 1-device ceiling. See `claim-vnstock-device-limit-ui-inconsistency`.
+
 **Conclusion**: Device IDs are **not deterministic** across container instances.
 Each fresh container consumes a distinct device slot.
 

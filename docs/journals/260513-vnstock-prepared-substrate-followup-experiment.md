@@ -26,7 +26,7 @@ Executed the "Option A" follow-up experiment proposed in that journal.
 ## Key Observations
 
 - Installer SHA-256 unchanged: `fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2`
-- Device-limit gate reached and failed as expected (Golden tier, 2-device limit)
+- Device-limit gate reached and failed as expected (installer claims 'Golden 2'; actual limit is 1 Bronze device — confirmed 2026-05-15)
 - `vnstock_data` not installed in either venv because device limit blocked sponsor package installation
 - API key material confined to `/root/.vnstock/api_key.json` (container-local, removed with `--rm`)
 - No secret leakage in `/tmp` or other temp locations

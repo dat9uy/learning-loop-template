@@ -89,6 +89,8 @@ installer_exit=1
 Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành.
 ```
 
+> **Retrospective note (2026-05-15)**: The "Golden... 2 devices" message is false. Actual limit is 1 (Bronze). See `claim-vnstock-device-limit-ui-inconsistency`.
+
 ## Confirmation / Disproof Notes
 
 - **Confirms** hypothesis 1: pre-installing `requests`, `vnai`, `pandas`, `numpy` allows the one-liner to proceed past dependency checks all the way to device registration.
