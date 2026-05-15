@@ -112,6 +112,7 @@ This journal synthesizes the complete experiment history for vnstock_data instal
 | Device limit is 2 (Golden tier) | **Actual limit is 1 (Bronze tier)** — vendor message is false |
 | "Failed" install does not consume a slot | **Device registration succeeds before failure; slot is consumed** |
 | Cleared devices are permanently deleted | **Vendor clear is a soft delete; re-auth restores hidden devices** |
+| vnstock_data importability is venv-only | **Depends on $HOME/.vnstock — import checks must preserve HOME** |
 
 ---
 
@@ -152,6 +153,32 @@ product/api/
 
 ---
 
+## Phase 7: Bootstrap Script Rewrite (May 15)
+
+**Phase 1 — Defensive rewrite** (plan: `plans/260515-vnstock-installer-rewrite/plan.md`):
+Rewrote `install-vnstock.sh` with pre-flight checks (system Python requests, venv Python requests, pandas, curl, sha256sum), slot-aware warnings (`--yes-i-know` flag), atomicity guard (pre/post package diff, sentinel file), stale-device detection (`--force` re-registration, `--check-device` stub), actionable error messages (Vietnamese → English), and post-flight verification (import check + API ping).
+
+**Phase 2 — Validation** (experiment-vnstock-installer-rewrite-validation-20260515T201054Z):
+After operator cleared devices, the happy path was tested in a clean Docker sandbox. The installer exited 0, device registered (bronze, 1/1), and vnstock_data downloaded. However, the script's post-flight `import vnstock_data` check **failed** with a false-negative.
+
+**The HOME-dependent import discovery**:
+`vnstock_data` reads its authentication config from **`$HOME/.vnstock`** during **module import**. The installer wrote config to `API_HOME/.vnstock` (correct, because `HOME` was set in the installer's subshell). But the post-flight check ran with default `HOME=/root`, so `vnstock_data` could not find its config and raised an import error.
+
+This means:
+- Importability is NOT purely a function of the venv state. It depends on `HOME`.
+- Any containerized or CI/CD deployment that checks `import vnstock_data` must preserve `HOME`.
+- The idempotency check had the same latent bug (would fail in containers without `~/.vnstock`).
+
+**Fix applied**: All vnstock_data import checks in `install-vnstock.sh` now prefix with `HOME="${API_HOME}" VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock"`.
+
+**Vendor UI confirmation** (operator provided at 2026-05-16T02:44:53+07:00):
+- Exactly 1 device visible: `Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41`
+- Registration: 16/5/2026 03:11:33 (= 2026-05-15T20:11:33Z)
+- Activity: 16/5/2026 03:11:51 (= 2026-05-15T20:11:51Z)
+- This confirms only 1 slot was consumed during the entire validation session. The happy-path run and diagnostic re-run shared the same device fingerprint.
+
+**Error path validated**: A second diagnostic container on the same host hit the device limit at step 6. The script correctly intercepted the Vietnamese error, printed English guidance with Bronze/1-device clarification, ran the atomicity guard (100+ package diff), and printed the next-steps block.
+
 ## Remaining Open Questions
 
 1. Version drift: Why does dist-info say 3.1.3 while __version__ says 3.0.0? (Low priority — does not affect functionality.)
@@ -159,6 +186,7 @@ product/api/
 3. Device invalidation lag: How long does the vendor API cache device validity after web UI release? (Operational risk, not experimental.)
 4. Installer timeout in existing venvs: Why does the vendor installer timeout when installing into existing venvs but succeed in fresh ones? (Vendor-side behavior, not controllable.)
 5. **Device reactivation via import (NEW 2026-05-15)**: Does deleting `auth_state.json` prevent restoration of cleared devices? Does the vendor use fingerprint alone or a token exchange? (High priority for Phase 2 error-path testing.)
+6. **HOME-dependent import (NEW 2026-05-15)**: Does vnstock_data have other runtime dependencies on `HOME` or `VNSTOCK_CONFIG_PATH` that could break in systemd services, cron jobs, or containers without a proper HOME? (Operational risk for production deployments.)
 
 ---
 
@@ -168,6 +196,7 @@ product/api/
 - **Every install attempt that reaches step 6 consumes a slot**, even if it reports "failure".
 - **Cleared devices are soft-deleted on the vendor backend. Re-authentication (e.g., `import vnstock_data` with expired auth cache) restores them to the visible dashboard.** After operator clears devices, avoid ANY host-side import of vnstock_data until the sacred production install.
 - product/api/scripts/install-vnstock.sh is the only viable install path. It was rewritten defensively on 2026-05-15 with atomicity guards, slot warnings, and pre/post-flight checks, but vendor device-limit semantics remain outside our control.
+- **CRITICAL: vnstock_data import depends on `$HOME/.vnstock`**. Any script, test, or deployment that checks `import vnstock_data` must set `HOME` to the directory containing `.vnstock/`. The bootstrap script now does this automatically.
 - The script is idempotent by default — safe to run multiple times ONLY when vnstock_data is already importable. Use `--force` to re-register (invalidates any previous device).
 - The script requires VNSTOCK_API_KEY in environment.
 - The script's SHA-256 pin may drift if the vendor updates the installer. Check before running.
