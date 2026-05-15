@@ -5,6 +5,7 @@ INSTALLER_URL="${VNSTOCK_INSTALLER_URL:-https://vnstocks.com/files/vnstock-cli-i
 INSTALLER_SHA256="${VNSTOCK_INSTALLER_SHA256:-fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2}"
 
 API_ROOT="$(pwd -P)"
+API_HOME="$(realpath "${API_ROOT}")"
 PYTHON_BIN="${API_ROOT}/.venv/bin/python"
 
 FORCE=0
@@ -165,7 +166,7 @@ fi
 
 # Idempotency / force
 if [[ "${FORCE}" -eq 0 ]]; then
-  if "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
+  if HOME="${API_HOME}" VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock" "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
     printf 'vnstock_data already imports from product/api/.venv; skipping installer.\n'
     exit 0
   fi
@@ -256,7 +257,6 @@ fi
 
 chmod +x "${installer_path}"
 
-API_HOME="$(realpath "${API_ROOT}")"
 printf 'Installer SHA-256 verified. Running vendor installer with product/api as HOME.\n'
 
 # --- Run installer with output capture ---
@@ -273,14 +273,14 @@ if [[ "${installer_rc}" -ne 0 ]]; then
 fi
 
 # --- Post-flight verification ---
-if ! "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
+if ! HOME="${API_HOME}" VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock" "${PYTHON_BIN}" -c "import vnstock_data" >/dev/null 2>&1; then
   fail "vnstock_data did not import successfully after installer run"
 fi
 
 printf 'vnstock_data import check passed.\n'
 
 printf 'Running API ping test...\n'
-if ! "${PYTHON_BIN}" -c "
+if ! HOME="${API_HOME}" VNSTOCK_CONFIG_PATH="${API_HOME}/.vnstock" "${PYTHON_BIN}" -c "
 import vnstock_data
 try:
     vnstock_data.listing.all_symbols()
