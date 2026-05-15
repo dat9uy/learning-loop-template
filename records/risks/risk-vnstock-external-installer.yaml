@@ -40,3 +40,15 @@ mitigation:
     - temp-directory
     - metadata-only-output
     - device-slot-secretary-check
+new_findings:
+  - date: "2026-05-15T20:10:54Z"
+    finding: >
+      The vnstock_data package reads its authentication config from $HOME/.vnstock
+      during module import. This means importability is NOT purely a function of
+      the venv state — it depends on the HOME environment variable pointing to
+      the directory containing .vnstock/. Any bootstrap script or test that checks
+      `import vnstock_data` must preserve HOME to match the installer's config path.
+      Failure to do so produces false-negative import errors even after a successful
+      vendor install. This is a silent footgun for CI/CD and containerized deployments.
+    impact: high
+    mitigated_by: install-vnstock.sh now sets HOME=API_HOME for all post-flight checks

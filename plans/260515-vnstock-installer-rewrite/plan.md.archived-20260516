@@ -130,21 +130,29 @@ If you run ANY experiment that executes the vendor installer, you MUST:
   - *Result: Install reached step 5 (device registered) then failed at step 6 (device limit exceeded).*
   - *Root cause: previously cleared device reactivated by accidental `import vnstock_data` before test.*
   - *Script defensive features validated: error interception, atomicity guard, next steps all worked.*
-- [ ] Verify: script exits 0, `vnstock_data` importable, API ping succeeds — **BLOCKED: needs device clearance**
-- [ ] Verify: venv is clean (no `.vnstock-install-in-progress` sentinel left behind) — **BLOCKED**
-- [ ] Verify: exactly 1 device appears in vendor UI after run — **BLOCKED**
-- [x] Capture evidence to experiment record — `records/experiments/experiment-vnstock-installer-rewrite-validation-20260515T103000Z.yaml`
+- [x] Re-run after operator clearance (2026-05-15T20:10:54Z):
+  - *Result: Installer exited 0, device registered (bronze, 1/1), vnstock_data downloaded.*
+  - *Script post-flight import check FAILED — false negative due to HOME env var bug.*
+  - *Root cause: vnstock_data reads $HOME/.vnstock during import; post-flight check used default HOME=/root.*
+  - *Fix applied: all import checks now prefix with HOME=API_HOME.*
+- [ ] Verify: script exits 0, `vnstock_data` importable, API ping succeeds — **PENDING RE-RUN after fix**
+- [ ] Verify: venv is clean (no `.vnstock-install-in-progress` sentinel left behind) — **PENDING RE-RUN**
+- [ ] Verify: exactly 1 device appears in vendor UI after run — **PENDING RE-RUN**
+- [x] Capture evidence to experiment record — `records/experiments/experiment-vnstock-installer-rewrite-validation-20260515T201054Z.yaml`
 
 ### Step 2.2 — Error Path Test (If Slot Budget Allows)
-- [ ] Test idempotency in sandbox: run script twice, second run should skip — **BLOCKED: needs device clearance**
-- [ ] Test `--force` path: after successful install, run with `--force`, verify re-registration — **BLOCKED**
+- [ ] Test idempotency in sandbox: run script twice, second run should skip — **PENDING RE-RUN**
+- [ ] Test `--force` path: after successful install, run with `--force`, verify re-registration — **PENDING RE-RUN**
 - [x] Test missing `requests` pre-flight: discovered and fixed during Step 2.1 — venv Python requests check added
+- [x] Test error path on device limit: script correctly intercepts Vietnamese error, prints English guidance, runs atomicity guard, prints next steps (validated in diagnostic run)
 
 ### Step 2.3 — Artifact Update
 - [x] Create experiment record for validation run — `experiment-vnstock-installer-rewrite-validation-20260515T103000Z.yaml`
+- [x] Create experiment record for re-run — `experiment-vnstock-installer-rewrite-validation-20260515T201054Z.yaml`
 - [x] Update `claim-vnstock-device-limit-ui-inconsistency` with soft-delete reactivation finding
-- [ ] Update risk record if new vendor behavior is observed — **TODO: update risk-vnstock-external-installer**
-- [ ] Update meta-reflection journal with rewrite results — **TODO**
+- [x] Update risk record with HOME-dependent import finding — `risk-vnstock-external-installer`
+- [x] Update observation-vnstock-device-slot-ledger with this session's consumption
+- [x] Update meta-reflection journal with rewrite results — `docs/journals/260514-vnstock-experiment-meta-reflection.md`
 
 ### Step 2.4 — Operator Sign-off
 - [ ] Operator reviews script changes
@@ -162,6 +170,9 @@ If you run ANY experiment that executes the vendor installer, you MUST:
 | Phase 1 rewrite | 2026-05-15 | 0 (no installer execution) | 1/1 |
 | Import reactivates soft-delete | 2026-05-15 | 0 (reactivated, not new) | 1/1 visible |
 | Phase 2 validation (sandbox) | 2026-05-15 | +1 | 2/1 (over limit) |
+| Operator cleared all (2nd) | 2026-05-15 | -N → 0 | 0/1 |
+| Phase 2 re-run (happy path) | 2026-05-15 | +1 | 1/1 (consumed) |
+| Phase 2 diagnostic (same fingerprint) | 2026-05-15 | 0 (same device ID) | 1/1 |
 | **Next validation attempt** | TBD | requires clearance | TBD |
 
 **Rule:** No installer execution without explicit operator clearance. Treat every run as slot-consuming.

@@ -141,3 +141,36 @@ ledger:
       Script defensive features validated: error interception, atomicity guard, next steps.
       Script bug found and fixed: pre-flight only checked system Python for requests,
       but run_installer prepends venv to PATH. Added venv Python requests check.
+
+  - timestamp: "2026-05-15T20:10:54Z"
+    experiment: experiment-vnstock-installer-rewrite-validation-20260515T201054Z
+    fingerprint: "0637fff6c615f57b73e646206fdf774d"
+    action: phase-2-happy-path-validation-fixed-script
+    slot_consumed: true
+    operator_cleared_after: false
+    notes: >
+      Phase 2 happy path validation of rewritten install-vnstock.sh with bug fixes.
+      Operator cleared devices before run. Installer exited 0, device registered
+      (bronze tier, 1/1 devices used), vnstock_data downloaded and extracted.
+      Script post-flight import check FAILED due to HOME env var not preserved:
+      vnstock_data reads config from $HOME/.vnstock during import, but post-flight
+      check ran with default HOME=/root instead of API_HOME. Root cause identified
+      and fixed: all vnstock_data import checks now set HOME=API_HOME.
+      API ping test has same bug and was also fixed.
+      Slot consumed: 1 (happy path installer registration succeeded).
+      Idempotency and --force tests blocked pending device clearance.
+
+  - timestamp: "2026-05-15T20:13:00Z"
+    experiment: experiment-vnstock-installer-rewrite-validation-20260515T201054Z
+    fingerprint: "0637fff6c615f57b73e646206fdf774d"
+    action: phase-2-diagnostic-re-run-same-fingerprint
+    slot_consumed: false
+    operator_cleared_after: false
+    notes: >
+      Diagnostic container run on same host immediately after happy path.
+      Generated identical device fingerprint (same kernel/host). Installer reached
+      step 6 and failed with device limit exceeded. Vendor blocked sponsor package
+      download but did NOT create a new device (same ID). No additional slot consumed.
+      Confirmed script error interception, atomicity guard, and next steps all work.
+      Container state inspection showed no vnstock_data in site-packages (expected
+      since step 6 failed before package install).

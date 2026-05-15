@@ -1,0 +1,107 @@
+id: experiment-vnstock-installer-rewrite-validation-20260515T201054Z
+schema_version: "1.0"
+type: experiment
+status: completed
+result: partially-accepted
+result_reason: >
+  Happy path install succeeded (device registered, vnstock_data downloaded).
+  Script post-flight import check FAILED due to HOME env var bug, now fixed.
+  Error path validation succeeded (error interception, atomicity guard, next steps).
+  Idempotency and --force tests blocked pending device clearance.
+created_at: "2026-05-15T20:10:54Z"
+updated_at: "2026-05-15T20:13:00Z"
+source_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - local:plans/260515-vnstock-installer-rewrite/plan.md
+notes: >
+  Phase 2 validation of rewritten install-vnstock.sh after operator device clearance.
+  Two runs: (1) happy path in clean Docker container, (2) diagnostic re-run on same host.
+  Run 1: installer exited 0, device registered successfully, but script import check failed.
+  Run 2: same device fingerprint, installer blocked at step 6 (device limit), no new slot.
+goal: >
+  Validate the rewritten install-vnstock.sh script in a clean sandbox.
+  Verify happy path (exit 0, vnstock_data importable, API ping), idempotency skip,
+  and --force re-registration. Test script defensive features.
+hypothesis: >
+  The rewritten script will correctly install vnstock_data when a device slot is available,
+  skip on idempotency check when already installed, and re-register with --force.
+  Post-flight checks will confirm successful installation.
+method:
+  - "Build python:3.11-slim Docker container with requests in both system and venv."
+  - "Copy fixed install-vnstock.sh to /workspace/product/api/scripts/."
+  - "Run script with --yes-i-know from /workspace/product/api directory."
+  - "Capture exit code, output, and verify script defensive features."
+  - "Run diagnostic container on same host to inspect state and test error path."
+success_metrics:
+  - script-pre-flight-checks-pass
+  - installer-download-and-sha256-verify
+  - device-registration-succeeds
+  - vnstock_data-importable-after-install
+  - api-ping-succeeds
+  - idempotency-skip-works
+  - force-re-registration-works
+  - script-error-interception-works
+  - atomicity-guard-reports-added-packages
+  - next-steps-block-printed
+result_observations:
+  - "Script pre-flight checks passed: system Python has requests, venv has requests, venv has pandas, VNSTOCK_API_KEY present."
+  - "Installer downloaded and SHA-256 verified (fad4bb7b... unchanged)."
+  - "Installer reached step 5/6: API key authenticated."
+  - "Installer reached step 6/6: device registered successfully (Tier: bronze, Devices used: 1/1)."
+  - "Installer completed step 7/7: verification passed (numpy, pandas, requests, vnstock all OK)."
+  - "Vendor installer exited 0. vnstock_data download/extraction reported as ready."
+  - "SCRIPT BUG: post-flight import check failed. Root cause: vnstock_data reads $HOME/.vnstock during import."
+  - "Post-flight check ran with default HOME=/root, but installer wrote config to /workspace/product/api/.vnstock."
+  - "FIX APPLIED: all post-flight checks now prefix with HOME=API_HOME VNSTOCK_CONFIG_PATH=API_HOME/.vnstock."
+  - "API ping test had same bug and was fixed simultaneously."
+  - "Idempotency check had same latent bug (would fail in containers without ~/.vnstock). Fixed."
+  - "Run 2 (diagnostic, same host): installer blocked at step 6, device limit exceeded."
+  - "Run 2 did NOT consume new slot (same device fingerprint). Confirmed error interception works."
+  - "Operator UI audit (2026-05-16T02:44:53+07:00): exactly 1 device visible."
+  - "Device: Linux-7.0.5-2-cachyos-x86_64-with-glibc2.41, registered 16/5/2026 03:11:33, active 03:11:51."
+  - "Registration time matches diagnostic run (2026-05-15T20:11:33Z), confirming single slot consumption."
+  - "Run 2 atomicity guard listed 100+ packages added during failed install (diff pre vs post)."
+  - "Run 2 next-steps block printed with 5 actionable items."
+  - "Container exit code run 1: script exit 1 (due to failed import check, not installer)."
+  - "Container exit code run 2: script exit 1 (installer failed at step 6)."
+agent_outcome: >
+  Critical script bug discovered and fixed: vnstock_data import is HOME-dependent.
+  The vendor package reads its authentication config from $HOME/.vnstock during module import.
+  Our script wrote config to API_HOME/.vnstock but checked import with default HOME.
+  This caused false-negative post-flight failures in sandbox/containers.
+  Fix: prefix all vnstock_data import checks with HOME=API_HOME.
+  
+  Script defensive features validated on error path:
+  - Pre-flight checks catch missing dependencies early
+  - Error interception translates vendor Vietnamese -> English guidance
+  - Atomicity guard reports partial install state (package diff)
+  - Next steps block gives actionable recovery commands
+  
+  Happy path installer behavior confirmed: device registers, vnstock_data downloads.
+  Full end-to-end validation (idempotency + --force) blocked pending device clearance.
+product_outcome: >
+  Script bug fixed in product. install-vnstock.sh now preserves HOME for all post-flight checks.
+  No production impact (script is install-time tooling). One slot consumed during test.
+  Idempotency and --force tests deferred to next validation cycle after operator clearance.
+promotion_review:
+  - "Commit HOME env var fix for post-flight checks"
+  - "Re-run full Phase 2 validation (happy path + idempotency + --force) after operator clears devices"
+  - "Update observation-vnstock-device-slot-ledger with this session's consumption"
+  - "Create this experiment record"
+  - "Update risk-vnstock-external-installer with HOME-dependent import finding"
+scope: install
+output_level: metadata-only
+claim_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
