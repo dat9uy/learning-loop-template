@@ -1,16 +1,21 @@
 id: observation-vnstock-device-slot-ledger
-capability: vnstock-data
+schema_version: "1.0"
+type: observation
+status: active
 created_at: "2026-05-15T00:30:00Z"
 updated_at: "2026-05-15T02:20:00+07:00"
+source_refs: []
 notes: >
   Ledger tracking all known device slot consumptions for the vnstock-data capability.
   Purpose: given a device fingerprint from the vendor web UI, trace it back to the
   experiment or action that created it.
-  
+
   CRITICAL: Actual vendor tier is Bronze (limit 1). Installer falsely claims
   "Golden, 2 devices". See claim-vnstock-device-limit-ui-inconsistency.
-  
+
   Operator can clear slots multiple times. Agent must ask before consuming.
+
+capability: vnstock-data
 ledger:
   - timestamp: "2026-05-08T10:17:23Z"
     experiment: experiment-vnstock-install-20260508T101723Z

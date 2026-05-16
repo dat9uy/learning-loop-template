@@ -6,7 +6,7 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 
 | Path | Purpose |
 |---|---|
-| `records/` | claim / risk / experiment / decision / capability / evidence ledger |
+| `records/` | claim / risk / experiment / decision / capability / observation / evidence ledger |
 | `product/<stack>/` | per-stack capability scripts (and, post-approval, product code) |
 | `docs/` | policy + operator guides |
 | `tools/` | validators + verification helpers |
@@ -16,11 +16,10 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 
 | Doc | When to read |
 |---|---|
-| `docs/handoff.md` | First run / current state / capability-term glossary |
+| `docs/operator-guide.md` | First run / day-to-day intake, bootstrap, runtime, agent flow |
 | `docs/charter.md` | Scope + operating rules |
-| `docs/operator-guide.md` | Day-to-day intake, bootstrap, runtime, agent flow |
 | `docs/lab-model.md` | Entity roles + verification axes |
-| `docs/artifact-reference.md` | Dimension semantics |
+| `docs/artifact-reference.md` | Typed record schemas, dimension semantics, capability-term glossary |
 | `docs/red-team-review.md` | Review classifications |
 | `docs/journals/` | Session journals |
 
@@ -36,8 +35,8 @@ pnpm bootstrap:api        # provision product/api/.venv (uv sync + SHA-pinned vn
 
 ## Where to Start
 
-- **New here** → `docs/handoff.md`
-- **Operator** → `docs/operator-guide.md`
+- **New here** → `docs/operator-guide.md`
+- **Understanding record types** → `docs/artifact-reference.md`
 - **Authoring a capability record** → `docs/operator-guide.md` "Capability Runtime Experiment" + `schemas/capability.schema.json`
 - **Building product on top of a verified library** → `plans/reports/brainstorm-260511-0030-external-skills-integration.md`
 

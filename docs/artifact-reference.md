@@ -109,7 +109,7 @@ Schemas live in `schemas/*.schema.json` and are enforced by AJV. All schemas per
 |---|---|---|---|---|
 | `id` | string | yes | free | Must match filename stem |
 | `schema_version` | string | yes | free | e.g. `"1.0"` |
-| `type` | const | yes | `claim`, `experiment`, `decision`, `risk`, `capability` | Discriminator for schema selection |
+| `type` | const | yes | `claim`, `experiment`, `decision`, `risk`, `capability`, `observation` | Discriminator for schema selection |
 | `status` | enum | yes | per-type | see per-type tables |
 | `created_at` | string | yes | `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$` | ISO-8601 UTC |
 | `updated_at` | string | yes | same pattern | |
@@ -213,6 +213,23 @@ Schemas live in `schemas/*.schema.json` and are enforced by AJV. All schemas per
 | `maps[].response_class` | string | no | free |
 | `supersedes` | array | no | items: string |
 
+### Observation
+
+Observations capture factual state — device ledgers, resource budgets, behavioral findings. They do not participate in the claim↔experiment proof ledger.
+
+| Field | Type | Required | Allowed Values |
+|---|---|---|---|
+| `id` | string | yes | free |
+| `schema_version` | string | yes | free |
+| `type` | const | yes | `observation` |
+| `status` | enum | yes | `active`, `archived` |
+| `created_at` | string | yes | ISO-8601 pattern |
+| `updated_at` | string | yes | ISO-8601 pattern |
+| `source_refs` | array | yes | items: `^(local\|record\|legacy):.+` |
+| `notes` | string | no | free |
+
+Body fields are freeform — no `additionalProperties: false`. Observations may carry any additional fields relevant to their domain (e.g., `ledger[]`, `external_system`, `key_findings`).
+
 ---
 
 ## Cross-Record Reference Map
@@ -299,7 +316,20 @@ The following directories under `records/` do not have JSON schemas and are not 
 |---|---|---|
 | `records/evidence/` | Markdown evidence capsules | None (referenced by `local:` or `record:`) |
 | `records/backlog-items/` | Backlog items | None (empty) |
-| `records/observations/` | Observations | None (empty) |
 | `records/validation-gates/` | Validation gates | None (empty) |
 
 Evidence files are validated indirectly: any `local:` reference to them is checked for existence and allowed-root containment in Layer 2.
+
+---
+
+## Capability Term Glossary
+
+The word "capability" carries three distinct meanings in this repo. Always qualify in writing.
+
+| Term | Path | Created when | Role |
+|---|---|---|---|
+| **Capability script** | `product/<stack>/capabilities/<scope>/*.py` (e.g. `product/api/capabilities/vnstock-data/capability-01-reference.py`) | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment (`product/<stack>/`). |
+| **Capability record** | `records/capabilities/capability-*.yaml` | During pre-build phase 01 of a product-build plan. | Record-style YAML mapping verified library surfaces (claims) to product surfaces (route_class, view_class). Schema: `schemas/capability.schema.json`. Field shape: `stack`, `surface`, `maps[]`. |
+| **Capability Runtime Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Capability Runtime Experiment". The experiment record is the ledger entry; capability scripts are its execution substrate. |
+
+Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.

@@ -5,9 +5,8 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 ## Source Docs to Read
 
 - `README.md` — repo lanes and standalone-operation guardrail.
-- `docs/handoff.md` — first-run handoff and approval boundaries.
-- `docs/operator-guide.md` — normal workflow, runtime artifact standard, validation.
-- `docs/artifact-reference.md` — claim verification dimensions and proof blocks.
+- `docs/operator-guide.md` — first-run, normal workflow, runtime artifact standard, validation, approval boundaries.
+- `docs/artifact-reference.md` — typed record schemas, claim verification dimensions, proof blocks, capability-term glossary.
 - `docs/lab-model.md` — lab concepts and separation of concerns.
 - `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
 

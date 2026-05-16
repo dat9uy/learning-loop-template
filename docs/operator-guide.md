@@ -40,6 +40,7 @@ Total: 13 characters, fixed length, lexicographically sortable.
 | Domain Evidence (run) | `records/evidence/<domain>/` | `<type>-YYMMDDTmmZ[-<variant>].md` | Yes |
 | Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No |
 | Capability | `records/capabilities/` | `capability-<stack>-<slug>.yaml` | No |
+| Observation | `records/observations/` | `observation-<scope>-<slug>.yaml` | No |
 | Meta Evidence | `records/evidence/meta/` | `<descriptive-kebab-slug>.md` | No |
 
 The `id` field inside every YAML record must match the filename stem (filename without extension).
@@ -72,7 +73,8 @@ Do not use active `legacy:` refs. Historical source paths may appear only in evi
 1. Add or update safe local evidence under `records/evidence/<scope>/`.
 2. Update claim, experiment, or decision records to cite local evidence and the current verification dimensions.
 3. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json` (fields: `stack`, `surface`, `maps[]`).
-4. Run:
+4. For factual state captures (device ledgers, resource budgets, behavioral findings), author observation records under `records/observations/` per `schemas/observation.schema.json` (fields: `id`, `schema_version`, `type`, `status`, `created_at`, `updated_at`, `source_refs`).
+5. Run:
 
 ```bash
 pnpm validate:records
@@ -82,6 +84,39 @@ pnpm check
 ## Approval Flow
 
 Decisions approve scope explicitly. A decision record's `decision_effect` names the action, scope, affected refs, allowed actions, blocked actions, and required gates. Review for planning does not approve runtime access, external integration, commercial use, persistent storage, arbitrary criteria, or product code; those require their own scoped decisions.
+
+## Resource Budget & State-Machine
+
+External systems with irreversible operations (vendor APIs with device slots, production databases, rate-limited endpoints) need structural enforcement — not just agent memory. The learning-loop skill acts as gatekeeper: before producing a prompt for a budget-consuming action, it checks resource state and blocks when budget is exhausted.
+
+### When This Applies
+
+- Task involves an external system where actions cannot be undone (e.g., vendor device registration, production writes)
+- A resource budget observation exists under `records/observations/*-resource-budget.yaml`
+
+### How It Works
+
+1. **Budget observation** — `records/observations/<scope>-resource-budget.yaml` tracks `budget` (max), `current` (used), `last_verified`, and `validation_window`
+2. **Check tool** — `pnpm check:budget -- --system {system} --resource {resource}` returns JSON with current state
+3. **Skill gating** — learning-loop skill calls the tool before prompt generation:
+   - Budget exhausted → BLOCKED signal (no prompt produced)
+   - Validation window active → DEFERRED signal (no state-changing actions)
+   - Stale data (>7 days) → WARNING (ask operator to confirm)
+   - Budget available → constrained prompt with budget context embedded
+4. **Operator-only writes** — agent never mutates budget YAML; operator updates after each action
+
+### Key Rules
+
+- Plans with irreversible operations MUST declare a resource budget
+- ANY check failure on a budget-consuming action = STOP (not fix-and-retry)
+- After a budget-consuming action, agent reports result and waits for operator confirmation
+- Validation window: no state-changing actions between clearance and final report
+
+### Detailed References
+
+- Rules: `.claude/skills/learning-loop/references/resource-budget-rules.md`
+- Prompt templates: `.claude/skills/learning-loop/references/prompt-blueprints-state-gated.md`
+- Schema: `schemas/resource-budget.schema.json`
 
 ## Runtime Validation Request Protocol
 
@@ -145,6 +180,7 @@ When the user asks for learning-loop work, the agent should:
    - claim/risk setup;
    - verification experiment;
    - product/build request;
+   - observation capture;
    - intentional skip of required knowledge;
    - external/user-provided decision;
    - self-improvement request.
@@ -375,6 +411,7 @@ Before answering or editing, verify:
 - Am I keeping capability records slim and faithful to their cited claims?
 - Am I blocking runtime/product/live/output actions until approved?
 - Am I preserving unresolved knowledge as risk instead of ignoring it?
+- Am I recording factual state as observations, not claims?
 
 ## Generated Docs
 

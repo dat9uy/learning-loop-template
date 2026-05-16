@@ -1,7 +1,15 @@
 id: observation-vnstock-import-reactivates-cleared-device
-capability: vnstock-data
+schema_version: "1.0"
+type: observation
+status: active
 created_at: "2026-05-15T02:20:00+07:00"
 updated_at: "2026-05-15T02:20:00+07:00"
+source_refs:
+  - record:observation-vnstock-device-slot-ledger
+  - record:claim-vnstock-device-limit-ui-inconsistency
+notes: "Vendor soft-delete behavior: import triggers re-auth which restores cleared devices."
+
+capability: vnstock-data
 source_action: script-rewrite-idempotency-check
 source_agent: ck:cook /ck:debug
 trigger_command: |
@@ -17,7 +25,7 @@ root_cause: >
   cache_ttl 60 minutes). The re-authentication call to the vendor backend matched the
   host fingerprint (glibc 2.43, previously registered 2026-04-28) and RESTORED the
   previously "cleared" device to the visible dashboard list.
-  
+
   The vendor's web UI "clear device" action is a SOFT DELETE / HIDE. The device
   registration persists on the vendor backend. Any subsequent authentication from the
   same environment fingerprint reactivates it without consuming a new slot, but it
@@ -52,7 +60,7 @@ mitigations_needed:
 slot_impact:
   new_slot_consumed: false
   existing_slot_reactivated: true
-  visible_device_count_change: 0 → 1 (for this fingerprint)
+  visible_device_count_change: 0 -> 1 (for this fingerprint)
   total_dashboard_devices_after: 2/1 (over limit)
 references:
   - record:observation-vnstock-device-slot-ledger

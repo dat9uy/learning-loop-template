@@ -8,7 +8,7 @@ Generate product proposals from structured knowledge, reviewed experiments, and 
 
 The template contains:
 
-- a small typed record ledger (claims, risks, experiments, decisions, capability records);
+- a small typed record ledger (claims, risks, experiments, decisions, capability records, observations);
 - dedicated evidence files under `records/evidence/`;
 - per-stack scaffolding under `product/<stack>/` (stack manifest + capability scripts + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
@@ -26,7 +26,7 @@ The template does not contain product application code (no FastAPI source, no UI
 
 ## Initial Folder Ownership
 
-- `records/`: source YAML records (claims, risks, experiments, decisions, capability records) plus dedicated evidence files.
+- `records/`: source YAML records (claims, risks, experiments, decisions, capability records, observations) plus dedicated evidence files.
 - `docs/`: project metadata and learning-loop policy docs.
 - `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
