@@ -9,6 +9,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `docs/operator-guide.md` — normal workflow, runtime artifact standard, validation.
 - `docs/artifact-reference.md` — claim verification dimensions and proof blocks.
 - `docs/lab-model.md` — lab concepts and separation of concerns.
+- `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
 
 ## Core Philosophy
 

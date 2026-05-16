@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Validation + Retroactive Test"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [1, 2, 3]

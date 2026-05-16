@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resource Budget",
+  "type": "object",
+  "required": ["id", "external_system", "resource", "budget", "current", "last_verified", "verification_method", "validation_window"],
+  "properties": {
+    "id": { "type": "string" },
+    "external_system": { "type": "string" },
+    "resource": { "type": "string" },
+    "budget": { "type": "integer", "minimum": 1 },
+    "current": { "type": "integer", "minimum": 0 },
+    "last_verified": { "type": "string", "format": "date-time" },
+    "verification_method": { "type": "string" },
+    "operator_notes": { "type": "string" },
+    "validation_window": {
+      "type": "object",
+      "required": ["active", "opened_at", "closed_at", "reason"],
+      "properties": {
+        "active": { "type": "boolean" },
+        "opened_at": { "type": ["string", "null"], "format": "date-time" },
+        "closed_at": { "type": ["string", "null"], "format": "date-time" },
+        "reason": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

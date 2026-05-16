@@ -1,21 +1,21 @@
 ---
 title: "State-Machine Layer for Irreversible Operations"
-status: pending
+status: completed
 created: 2026-05-16
 brainstorm: plans/reports/brainstorm-20260516-state-machine-for-irreversible-operations.md
 phases:
   - id: 1
     title: "Rules + Budget Schema"
-    status: pending
+    status: completed
   - id: 2
     title: "Budget Checker Tool"
-    status: pending
+    status: completed
   - id: 3
     title: "Skill Workflow Enhancement"
-    status: pending
+    status: completed
   - id: 4
     title: "Validation + Retroactive Test"
-    status: pending
+    status: completed
 ---
 
 # State-Machine Layer for Irreversible Operations

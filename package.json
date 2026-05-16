@@ -14,10 +14,12 @@
     "generate:docs": "node tools/generate-docs/generate-docs.js",
     "list:verified": "bash tools/list-verified/list-verified.sh",
     "test": "node --test tools/**/*.test.js",
+    "check:budget": "node tools/check-budget/check-budget.js",
     "check": "pnpm validate:records && pnpm test"
   },
   "dependencies": {
     "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "yaml": "^2.8.4"
   }
 }

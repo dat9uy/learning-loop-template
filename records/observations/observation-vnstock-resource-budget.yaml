@@ -1,0 +1,13 @@
+id: observation-vnstock-resource-budget
+external_system: vnstock_vendor
+resource: device_slots
+budget: 1
+current: 0
+last_verified: "2026-05-16T04:00:00+07:00"
+verification_method: operator_manual_check
+operator_notes: "Operator cleared all devices on 2026-05-16. One slot available."
+validation_window:
+  active: false
+  opened_at: null
+  closed_at: null
+  reason: null
