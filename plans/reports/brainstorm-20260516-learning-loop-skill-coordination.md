@@ -1,134 +1,371 @@
-# Brainstorm: Learning-Loop Skill Coordination with Plan/Cook
+# Brainstorm: Learning-Loop as Universal Skill Coordinator
 
-**Date:** 2026-05-16
-**Status:** Open — design not finalized, continuing next session
-**Trigger:** User wants learning-loop to work in harmony with external skills (ck:plan, ck:cook)
-
----
-
-## Context
-
-### Session Part 1: vnstock Experiment Readiness
-
-Before the coordination discussion, we assessed readiness to restart the vnstock data experiment.
-
-**Findings:**
-- State-machine plan (`plans/260516-1200-state-machine-for-irreversible-operations/`) — all 4 phases completed
-- Budget: `vnstock_vendor/device_slots` = 1 budget, 0 used, not stale, validation window closed
-- `pnpm check:budget` returns exit 0 with `remaining: 1`
-- Skill SKILL.md wired with state-gated workflow, prompt blueprints and resource-budget rules in place
-- HOME fix already committed (`e5f263a`), venv requests fix committed (`af506ef`)
-
-**Blocker found:** `pnpm check` failed on 2 broken experiment records from the old `260515-vnstock-installer-rewrite` plan:
-- `experiment-vnstock-installer-rewrite-validation-20260515T103000Z.yaml`
-- `experiment-vnstock-installer-rewrite-validation-20260515T201054Z.yaml`
-
-Both had: missing `observations` field, invalid `status` enum, `source_refs` pointing to archived plan path.
-
-**Resolution:** User chose to delete both records. `pnpm check` passes after deletion (47 records validated, 9 tests pass, 0 failures).
-
-**Conclusion:** vnstock data experiment is ready to restart. Budget available, enforcement in place, validation clean.
+**Date:** 2026-05-16 (continued from Part 1)
+**Status:** Design proposal — awaiting approval
+**Trigger:** Generalize learning-loop coordination beyond ck:plan/ck:cook to ALL external skills
 
 ---
 
-### Session Part 2: Skill Coordination Problem
+## Problem (Reframed)
 
-**User's intent:** When running `/ck:plan Create a new plan for vnstock data experiment continuation`, the resulting plan should include learning-loop checkpoints. When running `/ck:cook plan.md`, cook should invoke learning-loop at those checkpoints.
+The previous session explored coordination between learning-loop and ck:plan/ck:cook. User's reframing:
 
-**Core issue:** Skills are isolated modules. `/ck:plan` doesn't read `learning-loop/SKILL.md`. `/ck:cook` follows plan steps but doesn't know to invoke specific skills unless the plan tells it to. Context clears between invocations.
+> "I want ALL external skill triggers to go through learning-loop. Not just plan and cook. How do we create a rigid process for all (future) external skills?"
 
-**Coordination flow desired:**
+**Why now:** The record system is mature (claims, experiments, evidence, decisions, risks, capabilities, observations). 88+ external skills exist. Almost every action in this repo creates/modifies artifacts. The cost of bypassing coordination is no longer theoretical.
+
+**Core question:** How does learning-loop become the mandatory gateway for any external skill interaction with this repo?
+
+---
+
+## Mechanism Evaluation
+
+### What skill-creator and agentize would say
+
+**skill-creator perspective:**
+- Learning-loop needs a stronger "When to Use" trigger that fires for ANY external skill interaction, not just irreversible ops
+- The skill needs to be restructured as a coordinator: input = target skill + intent, output = constraint-wrapped invocation
+- Progressive disclosure: metadata → SKILL.md → coordination rules → per-skill adapters
+
+**agentize perspective:**
+- If learning-loop is the coordinator, it needs a well-defined API surface
+- Coordination config should be declarative (JSON/YAML), not hardcoded in SKILL.md
+- The coordinator should be invocable both by Claude (following rules) and by hooks (enforcement layer)
+
+### Mechanism comparison
+
+| Mechanism | Enforcement | Context injection | Complexity | Can route skills |
+|-----------|-------------|-------------------|------------|-----------------|
+| PreToolUse hook on Skill tool | HARD (Claude can't bypass) | No (block/allow only) | Low | No (blocks, doesn't route) |
+| CLAUDE.md rules + trigger | Soft (Claude may skip) | Yes (full context) | Low | Yes |
+| Coordinator skill | Soft (Claude must choose) | Yes (full context) | Medium | Yes |
+| **Hybrid: hook + rules + coordinator** | **Hard** | **Yes** | **Medium** | **Yes** |
+
+**Verdict: Hybrid.** The hook provides the hard gate. CLAUDE.md rules tell Claude what to do when blocked. The coordinator skill provides the actual coordination logic.
+
+---
+
+## Design: Three-Layer Coordination
+
 ```
-User → /ck:plan → plan.md (includes learning-loop steps)
-User → /ck:cook plan.md → executes steps → invokes learning-loop at checkpoints
-```
+Layer 1: HOOK (hard gate)
+  PreToolUse hook on "Skill" tool
+  Reads .claude/coordination/skill-registry.json
+  If skill is registered → BLOCK with routing message
+  If skill is NOT registered → ALLOW (no coordination needed)
 
----
+Layer 2: CLAUDE.md RULES (routing)
+  Project CLAUDE.md says:
+  "When a skill call is blocked by the coordination hook,
+   invoke /ck:learning-loop with the original intent.
+   Do NOT retry the blocked skill directly."
 
-## Approaches Evaluated
-
-### Approach A: Trigger Rule in Learning-Loop (Initially Recommended)
-
-Add 'When to Use' trigger to learning-loop SKILL.md: "Also use when creating plans for tasks involving external systems with irreversible state."
-
-**How it works:**
-- Learning-loop intercepts at plan creation time
-- Calls `pnpm check:budget`
-- Generates plan with budget context in header + `## Required Skill Invocations` table
-- Cook reads table and invokes learning-loop at specified phases
-
-**User feedback:** "The plan should be created by ck:plan, we should not inject planning inside the learning-loop skill."
-
-**Verdict:** Rejected — learning-loop should be a checkpoint, not a planner.
-
-### Approach B: Convention in Plan Template
-
-Create `plans/templates/plan.md` with `## Required Skill Invocations` table. Development rules mandate this section for plans with irreversible operations.
-
-**Pros:** Explicit, visible in plan output, works even if plan skill doesn't know about learning-loop.
-**Cons:** Requires changes to plan template, cook skill, AND rules. More moving parts.
-
-**Verdict:** Not selected but pattern (declarative skill invocations in plans) is useful.
-
-### Approach C: Cook Intercepts via Rules
-
-Add rules to cook SKILL.md — cook detects external system references in plans and invokes learning-loop before state-changing steps.
-
-**Pros:** Cook is the executor, so it's the right gatekeeper. Budget check at execution time (most relevant).
-**Cons:** Fuzzy detection, might miss cases.
-
-**Verdict:** Not selected.
-
----
-
-## Revised Design (After User Feedback)
-
-User clarified: `/ck:plan` creates the plan. Learning-loop is a **checkpoint** called during planning/cooking, not the planner itself.
-
-**Revised flow:**
-```
-User: "/ck:plan Create a plan for vnstock data experiment continuation"
-  → ck:plan reads project rules (CLAUDE.md / development-rules.md)
-  → Rule says: plans with irreversible ops MUST include learning-loop checkpoints
-  → ck:plan includes "invoke learning-loop" steps in plan phases
-
-User: "/ck:cook plan.md"
-  → cook executes plan
-  → Hits "invoke learning-loop" step → calls learning-loop skill
-  → learning-loop checks budget, returns state-gated prompt
-  → cook continues with that context
+Layer 3: COORDINATOR SKILL (logic)
+  /ck:learning-loop receives: target skill + original args + intent
+  Checks: budget, validation windows, state gates
+  Reads: coordination config for target skill
+  Constructs: constraint prompt with allowlists/forbidlists
+  Invokes: target skill with constraints
+  Captures: output → routes to appropriate records
 ```
 
-**Proposed changes:**
-1. Project `CLAUDE.md` or `development-rules.md` — rule: plans with irreversible ops must include learning-loop skill invocation steps
-2. `learning-loop/SKILL.md` — update workflow: "when invoked as a checkpoint by a plan, check budget and return state-gated prompt or BLOCKED signal"
+### Flow diagram
 
-**User feedback:** Still needs adjustment. User said "Let me explain" but session ended before they could elaborate.
+```
+User: "/ck:backend-development Build FastAPI endpoints for vnstock"
+  │
+  ▼
+PreToolUse hook (Skill tool)
+  │ reads skill-registry.json
+  │ "backend-development" is registered → BLOCK
+  │ output: "BLOCKED: Route through learning-loop coordinator.
+  │          Invoke /ck:learning-loop with target=backend-development"
+  │
+  ▼
+Claude reads hook message
+  │ invokes /ck:learning-loop
+  │ args: "Coordinate backend-development: Build FastAPI endpoints for vnstock"
+  │
+  ▼
+Learning-loop coordinator
+  │ 1. Read coordination-config.json → backend-development rules
+  │ 2. Check budget (pnpm check:budget)
+  │ 3. Check validation windows
+  │ 4. Read target skill's coordination profile
+  │ 5. Build constraint prompt:
+  │    - write_allowlist: [product/api/src/, product/api/tests/]
+  │    - write_forbidlist: [records/, evidence/, docs/, plans/]
+  │    - read_requirelist: [records/claims/*, records/capabilities/*]
+  │    - gate_signals: [budget_check, validation_window]
+  │    - post_execution: [capture_evidence, update_experiment]
+  │ 6. Invoke backend-development with constraint prompt
+  │ 7. Capture output → route to records
+  │
+  ▼
+backend-development executes under constraints
+  │ writes to product/api/src/ only
+  │ cannot touch records/, evidence/, docs/
+  │
+  ▼
+Learning-loop post-execution
+  │ captures evidence
+  │ updates experiment record
+  │ returns result to user
+```
 
 ---
 
-## Open Questions
+## Configuration Design
 
-1. **Where should the coordination rule live?**
-   - Options: CLAUDE.md, development-rules.md, learning-loop SKILL.md, ck:plan SKILL.md, or somewhere else
-   - User rejected CLAUDE.md/development-rules.md in the revised design — needs clarification
+### 1. Skill Registry (`.claude/coordination/skill-registry.json`)
 
-2. **What mechanism should learning-loop use as a checkpoint?**
-   - Options: skill invocation in plan steps, hook, template section, or something else
-   - User said "wrong mechanism for checkpoint" — needs clarification
+Lists which skills require coordination. Skills NOT in this registry can be invoked directly.
 
-3. **Should the budget check happen at plan creation time or cook execution time?**
-   - Budget state may change between plan creation and execution
-   - Execution-time check is more relevant but requires cook to know about learning-loop
+```json
+{
+  "$schema": "./skill-registry.schema.json",
+  "version": "1.0",
+  "coordinator": "learning-loop",
+  "registered_skills": {
+    "backend-development": { "profile": "code-generation" },
+    "frontend-development": { "profile": "code-generation" },
+    "tanstack": { "profile": "code-generation" },
+    "cook": { "profile": "plan-execution" },
+    "deploy": { "profile": "external-system", "budget_system": "deployment" },
+    "fix": { "profile": "code-generation" },
+    "mcp-builder": { "profile": "code-generation" },
+    "web-frameworks": { "profile": "code-generation" },
+    "mobile-development": { "profile": "code-generation" }
+  },
+  "unregistered_skills_bypass": true
+}
+```
 
-4. **How does ck:plan discover the rule?**
-   - ck:plan is a global skill in `~/.claude/skills/`
-   - Project rules are in project-local CLAUDE.md
-   - ck:plan may not read project-specific rules unless told to
+Note: `test`, `code-review`, `scout`, `research`, `docs-seeker` are NOT registered — they are read-only and bypass the hook entirely.
 
-5. **Should this be a general pattern or learning-loop specific?**
-   - User chose "single skill coordination" but the pattern could generalize
-   - `## Required Skill Invocations` table is reusable for any skill coordination
+### 2. Coordination Config (`.claude/coordination/coordination-config.json`)
+
+Defines coordination rules per profile and per skill.
+
+```json
+{
+  "version": "1.0",
+  "profiles": {
+    "code-generation": {
+      "description": "Skills that write code files",
+      "write_allowlist": ["product/**", "tools/**"],
+      "write_forbidlist": ["records/**", "evidence/**", "docs/**", "plans/**", "schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md", "docs/artifact-reference.md"],
+      "post_execution": ["capture_observations"],
+      "gate_signals": ["validation_window"]
+    },
+    "plan-execution": {
+      "description": "Skills that execute plans",
+      "write_allowlist": ["product/**", "tools/**", "records/**", "evidence/**"],
+      "write_forbidlist": ["schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md", "docs/artifact-reference.md"],
+      "post_execution": ["validate_records", "capture_evidence"],
+      "gate_signals": ["budget_check", "validation_window"]
+    },
+    "external-system": {
+      "description": "Skills that interact with external systems",
+      "write_allowlist": ["product/**", "records/**", "evidence/**"],
+      "write_forbidlist": ["schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md"],
+      "post_execution": ["validate_records", "capture_evidence", "update_budget"],
+      "gate_signals": ["budget_check", "validation_window", "staleness_check"]
+    },
+    "validation": {
+      "description": "Skills that validate or review",
+      "write_allowlist": ["plans/reports/**"],
+      "write_forbidlist": ["records/**", "evidence/**", "product/**", "schemas/**"],
+      "read_requirelist": [],
+      "post_execution": [],
+      "gate_signals": []
+    }
+  },
+  "skill_overrides": {
+    "cook": {
+      "write_allowlist": ["product/**", "tools/**", "records/**", "evidence/**"],
+      "notes": "Cook needs record write access for plan-execution phases"
+    },
+    "deploy": {
+      "budget_system": "deployment",
+      "budget_resource": "deploy_slots",
+      "notes": "Deployment consumes external infrastructure resources"
+    }
+  }
+}
+```
+
+### 3. Hook Script (`.claude/coordination/hooks/skill-coordination-gate.cjs`)
+
+```javascript
+// PreToolUse hook for Skill tool
+// Reads skill-registry.json, blocks registered skills
+
+const fs = require('fs');
+const path = require('path');
+
+const REGISTRY_PATH = path.join(
+  process.env.CWD || process.cwd(),
+  '.claude/coordination/skill-registry.json'
+);
+
+function main() {
+  // Read tool input from stdin (Claude Code hook protocol)
+  const input = JSON.parse(fs.readFileSync('/dev/stdin', 'utf8'));
+
+  // Only gate Skill tool calls
+  if (input.tool !== 'Skill') {
+    process.exit(0); // allow
+  }
+
+  const skillName = input.input?.skill;
+  if (!skillName) {
+    process.exit(0); // allow — no skill name to check
+  }
+
+  // Check if registry exists
+  if (!fs.existsSync(REGISTRY_PATH)) {
+    process.exit(0); // allow — no registry means no coordination
+  }
+
+  const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
+  const registered = registry.registered_skills?.[skillName];
+
+  if (!registered) {
+    process.exit(0); // allow — skill not registered
+  }
+
+  // Block — skill must go through coordinator
+  const coordinator = registry.coordinator || 'learning-loop';
+  console.log(JSON.stringify({
+    decision: 'block',
+    reason: `Skill "${skillName}" requires coordination. Invoke /ck:${coordinator} with target=${skillName} and your original intent. The coordinator will check state and invoke the skill with proper constraints.`,
+    coordinator: coordinator,
+    target_skill: skillName,
+    profile: registered.profile
+  }));
+
+  process.exit(2); // block
+}
+
+main();
+```
+
+---
+
+## Learning-Loop SKILL.md Changes
+
+The skill needs to be restructured as a coordinator, not just a prompt author.
+
+### New "When to Use" triggers
+
+```markdown
+## When to Use
+
+Use when the user asks:
+- [existing triggers unchanged]
+
+Also use when:
+- A skill call was blocked by the coordination hook (you are now the coordinator)
+- Any external skill needs to interact with this repo's records, evidence, or state
+- Coordinating multiple skills that need to share context (e.g., backend + frontend)
+- Any task that involves creating or modifying artifacts in records/, evidence/, or docs/
+```
+
+### New workflow: Coordination Mode
+
+```markdown
+## Coordination Workflow
+
+When invoked as a coordinator (target skill specified):
+
+1. **Read coordination config**:
+   - `.claude/coordination/skill-registry.json` → target skill profile
+   - `.claude/coordination/coordination-config.json` → profile rules
+
+2. **Pre-execution gates**:
+   - If profile requires budget check → call `pnpm check:budget`
+   - If validation window active → return DEFERRED signal
+   - If budget exhausted → return BLOCKED signal
+
+3. **Build constraint prompt**:
+   - Compose from profile: write_allowlist, write_forbidlist, read_requirelist
+   - Apply skill_overrides if they exist
+   - Embed gate signals and post-execution requirements
+
+4. **Invoke target skill**:
+   - Pass constraint prompt as context to the target skill
+   - Target skill executes under constraints
+
+5. **Post-execution**:
+   - Run post_execution steps (validate_records, capture_evidence, etc.)
+   - Return result to user
+```
+
+---
+
+## Generic Pattern (Reusable Across Repos)
+
+The design is repo-agnostic at the infrastructure level:
+
+| Component | Location | Repo-specific? |
+|-----------|----------|----------------|
+| Hook script | `.claude/coordination/hooks/` | No — same script, reads local config |
+| Skill registry | `.claude/coordination/skill-registry.json` | Yes — lists this repo's registered skills |
+| Coordination config | `.claude/coordination/coordination-config.json` | Yes — profiles + rules for this repo |
+| Coordinator skill | `.claude/skills/learning-loop/` | Yes — but the coordination workflow is reusable |
+| CLAUDE.md rules | Project CLAUDE.md | Yes — routing instructions |
+
+**Another repo could adopt this by:**
+1. Creating `.claude/coordination/` with registry + config
+2. Adding the hook to project settings
+3. Creating their own coordinator skill (or using learning-loop if they have a record system)
+4. Adding routing rules to their CLAUDE.md
+
+---
+
+## Coordination Profiles
+
+Rather than configuring every skill individually, we use profiles:
+
+| Profile | Skills | Write access | Needs budget? | Post-execution |
+|---------|--------|-------------|---------------|----------------|
+| code-generation | backend-dev, frontend-dev, tanstack, fix, mcp-builder | product/** only | No | capture_observations |
+| plan-execution | cook | product/** + records/** | Conditional | validate_records, capture_evidence |
+| external-system | deploy | product/** + records/** | Yes | validate_records, capture_evidence, update_budget |
+| validation | test, code-review | plans/reports/** only | No | None |
+| research | research, docs-seeker, scout | None (read-only) | No | None |
+
+New skills get assigned a profile in the registry. No per-skill configuration needed unless they need overrides.
+
+---
+
+## Decisions Locked This Session
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Skill-to-skill invocation | Yes, skills can invoke other skills | Coordinator can programmatically invoke target skills. Full automation. |
+| Coordination scope | Only write-capable profiles | Read-only profiles (research, validation) skip coordination. No safety benefit from gating them. |
+| Hook location | Project-local (.claude/settings.json) | Only active in this repo. Other repos unaffected. Requires per-repo setup. |
+| Mechanism | Hybrid: hook + rules + coordinator skill | Hook provides hard gate, CLAUDE.md provides routing, learning-loop provides coordination logic. |
+| Config format | JSON | Machine-writable by hooks and scripts. YAML for human docs only. |
+| Coordinator | learning-loop skill (expanded) | Already has budget checks, gate signals, prompt blueprints. Natural home. |
+| Coordination profiles | code-generation, plan-execution, external-system | Three write-capable profiles. validation and research are read-only, skip coordination. |
+| Non-skill user gap | Accepted — no file-level enforcement | Non-skill users (no ck:* installed) follow CLAUDE.md rules as soft guidance. Hook only gates Skill tool calls. File-level write hooks deferred. |
+| Multi-skill coordination | Sequential via plan phases | Coordinator invokes skills sequentially. Shared context via plan files (existing pattern from brainstorm-260511-0030). |
+
+---
+
+## Open Questions (Reduced)
+
+1. **Multi-skill coordination:** When backend-development and frontend-development need shared context (e.g., API contract), does the coordinator run them sequentially with shared context, or does it need a higher-level orchestration? The existing phase-gated pattern (from brainstorm-260511-0030) handles this via plan phases — the coordinator could follow the same pattern.
+
+2. **Registry maintenance:** Who adds skills to the registry? Start with manual. Auto-detection from SKILL.md metadata is a future enhancement.
+
+3. **Coordination for non-artifact tasks:** `/ck:backend-development Build a quick prototype` — does this need coordination if no artifact tracking is desired? The profile system allows it (code-generation profile has no post-execution steps), but the hook still blocks. Should there be an escape hatch?
 
 ---
 
@@ -136,30 +373,11 @@ User: "/ck:cook plan.md"
 
 | Artifact | Path | Relevance |
 |----------|------|-----------|
-| State-machine plan | `plans/260516-1200-state-machine-for-irreversible-operations/plan.md` | Completed — budget enforcement ready |
-| Trigger journal | `docs/journals/260515-loop-harness-context-gate-discussion.md` | Documents the incident that motivated state-machine |
-| Learning-loop skill | `.claude/skills/learning-loop/SKILL.md` | Core skill that needs coordination |
-| Budget checker | `tools/check-budget/check-budget.js` | Tool that learning-loop calls |
-| Budget observation | `records/observations/observation-vnstock-resource-budget.yaml` | Current state: 1 slot, 0 used |
-| State-gated prompts | `.claude/skills/learning-loop/references/prompt-blueprints-state-gated.md` | Templates for budget-constrained tasks |
-| Resource budget rules | `.claude/skills/learning-loop/references/resource-budget-rules.md` | Hard constraints for irreversible ops |
-| Cook skill | `~/.claude/skills/cook/SKILL.md` | Plan executor that needs to invoke learning-loop |
-| Plan skill | `~/.claude/skills/ck-plan/SKILL.md` | Plan creator that needs to include learning-loop steps |
-
----
-
-## Next Session Action Items
-
-1. User explains their vision for how learning-loop should coordinate with plan/cook
-2. Finalize: where the rule lives, what mechanism learning-loop uses, budget check timing
-3. Design the concrete changes (files to modify, sections to add)
-4. Implement if agreed
-
----
-
-## Unresolved Questions
-
-- User's preferred mechanism for learning-loop as a checkpoint (not skill invocation in plan steps?)
-- Where the coordination rule should live (rejected CLAUDE.md and development-rules.md)
-- Whether budget check should happen at plan time or cook time
-- How ck:plan discovers project-specific coordination rules
+| Learning-loop skill | `.claude/skills/learning-loop/SKILL.md` | Becomes the coordinator |
+| Resource budget rules | `.claude/skills/learning-loop/references/resource-budget-rules.md` | Budget gating for external systems |
+| Orchestration patterns | `.claude/skills/learning-loop/references/orchestration-patterns.md` | Existing multi-phase coordination |
+| Global hooks config | `~/.claude/settings.json` | Where PreToolUse hooks are registered |
+| State-machine plan | `plans/260516-1200-state-machine-for-irreversible-operations/plan.md` | Budget enforcement (completed) |
+| Previous brainstorm | `plans/reports/brainstorm-260511-0030-external-skills-integration.md` | Phase-gated orchestration for product builds |
+| skill-creator skill | `~/.claude/skills/skill-creator/SKILL.md` | Patterns for skill structure |
+| agentize skill | `~/.claude/skills/agentize/SKILL.md` | Patterns for API surface design |
