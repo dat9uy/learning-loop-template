@@ -67,6 +67,41 @@ describe("matchConstraintPattern", () => {
   it("returns null for null command", () => {
     assert.equal(matchConstraintPattern(null), null);
   });
+
+  // Phase 1: python import of vendor packages
+  it("matches python import vnstock_data as vendor-api", () => {
+    assert.equal(matchConstraintPattern('python -c "import vnstock_data"'), "vendor-api");
+  });
+
+  it("matches python import vnstock as vendor-api", () => {
+    assert.equal(matchConstraintPattern("python -c 'import vnstock'"), "vendor-api");
+  });
+
+  it("matches python3 import vnstock_data as vendor-api", () => {
+    assert.equal(matchConstraintPattern("python3 -c 'import vnstock_data'"), "vendor-api");
+  });
+
+  // Phase 1: bootstrap/setup commands
+  it("matches pnpm bootstrap:api as package-manager", () => {
+    assert.equal(matchConstraintPattern("pnpm bootstrap:api"), "package-manager");
+  });
+
+  it("matches pnpm setup as package-manager", () => {
+    assert.equal(matchConstraintPattern("pnpm setup"), "package-manager");
+  });
+
+  it("matches uv sync as package-manager", () => {
+    assert.equal(matchConstraintPattern("uv sync"), "package-manager");
+  });
+
+  // Phase 1: negative cases
+  it("does NOT match python print as vendor-api", () => {
+    assert.equal(matchConstraintPattern('python -c "print(1)"'), null);
+  });
+
+  it("does NOT match import os as vendor-api", () => {
+    assert.equal(matchConstraintPattern('python -c "import os"'), null);
+  });
 });
 
 describe("checkObservationExists", () => {
@@ -99,6 +134,42 @@ describe("checkObservationExists", () => {
 
   it("handles null observations", () => {
     const result = checkObservationExists("sudo", null);
+    assert.equal(result.found, false);
+  });
+
+  // Phase 2: schema mismatch — match on constraint_type OR constraint field
+  it("finds observation with matching constraint_type field", () => {
+    const obs = [
+      { constraint_type: "vendor-api", constraint: "device_limit_blocks_reinstall", status: "active" },
+    ];
+    const result = checkObservationExists("vendor-api", obs);
+    assert.equal(result.found, true);
+  });
+
+  it("finds observation with constraint_type only", () => {
+    const obs = [{ constraint_type: "vendor-api", status: "active" }];
+    const result = checkObservationExists("vendor-api", obs);
+    assert.equal(result.found, true);
+  });
+
+  it("matches on constraint_type when both fields present", () => {
+    const obs = [
+      { constraint_type: "vendor-api", constraint: "device_limit_blocks_reinstall", status: "active" },
+    ];
+    const result = checkObservationExists("vendor-api", obs);
+    assert.equal(result.found, true);
+    assert.equal(result.observation.constraint_type, "vendor-api");
+  });
+
+  it("finds observation by constraint field when constraint_type absent", () => {
+    const obs = [{ constraint: "vendor-api", status: "active" }];
+    const result = checkObservationExists("vendor-api", obs);
+    assert.equal(result.found, true);
+  });
+
+  it("does NOT find observation with only slug-style constraint field", () => {
+    const obs = [{ constraint: "device_limit_blocks_reinstall", status: "active" }];
+    const result = checkObservationExists("vendor-api", obs);
     assert.equal(result.found, false);
   });
 });
@@ -170,5 +241,31 @@ describe("makeGateDecision", () => {
       { exhausted: false, windowActive: true }
     );
     assert.equal(decision.decision, "escalate");
+  });
+
+  // Phase 3: budget-first ordering
+  it("escalate when budget exhausted and command matches pattern (no observation)", () => {
+    const decision = makeGateDecision("vendor-api", { found: false }, { exhausted: true });
+    assert.equal(decision.decision, "escalate");
+  });
+
+  it("escalate when budget exhausted even without observation", () => {
+    const decision = makeGateDecision(
+      "vendor-api",
+      { found: false },
+      { exhausted: true, windowActive: false }
+    );
+    assert.equal(decision.decision, "escalate");
+    assert.ok(decision.reason.includes("Budget exhausted"));
+  });
+
+  it("ok when budget not exhausted and no pattern match", () => {
+    const decision = makeGateDecision(null, { found: false }, { exhausted: false });
+    assert.equal(decision.decision, "ok");
+  });
+
+  it("ok when no pattern match even if budget exhausted", () => {
+    const decision = makeGateDecision(null, { found: false }, { exhausted: true });
+    assert.equal(decision.decision, "ok");
   });
 });

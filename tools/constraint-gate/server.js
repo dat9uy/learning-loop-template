@@ -64,15 +64,13 @@ server.tool(
     const constraintMatch = matchConstraintPattern(command);
     const observationStatus = checkObservationExists(constraintMatch, observations);
 
-    // Find matching budget for the constraint (if any)
+    // Global budget check — iterate ALL budgets, find first exhausted
     let budgetStatus = { exhausted: false, windowActive: false };
-    if (constraintMatch && observationStatus.found) {
-      const obs = observationStatus.observation;
-      if (obs.external_system && obs.resource) {
-        const budgetData = budgets.find(
-          (b) => b.external_system === obs.external_system && b.resource === obs.resource
-        );
-        budgetStatus = evaluateBudget(budgetData);
+    for (const budget of budgets) {
+      const status = evaluateBudget(budget);
+      if (status.exhausted || status.windowActive) {
+        budgetStatus = status;
+        break;
       }
     }
 

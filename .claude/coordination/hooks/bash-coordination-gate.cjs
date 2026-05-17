@@ -61,12 +61,34 @@ function main() {
     process.exit(0);
   }
 
-  // Check for active observation with matching constraint_type
   const root = findProjectRoot();
   const obsDir = path.join(root, 'records', 'observations');
+
+  // Global budget check — iterate ALL budgets, find first exhausted
+  const budgets = readBudgets(obsDir);
+  for (const budget of budgets) {
+    const current = budget.current ?? 0;
+    const limit = budget.budget ?? 0;
+    const exhausted = current >= limit;
+    const windowActive = budget.validation_window?.active === true;
+    if (exhausted || windowActive) {
+      const output = {
+        decision: 'escalate',
+        reason: exhausted
+          ? `Budget exhausted for constraint "${constraintMatch}".`
+          : `Validation window active for constraint "${constraintMatch}".`,
+        constraint_type: constraintMatch,
+      };
+      console.log(JSON.stringify(output));
+      process.exit(2);
+    }
+  }
+
+  // Check for active observation with matching constraint_type or constraint
   const observations = readObservations(obsDir);
   const hasObservation = observations.some(
-    obs => obs.constraint_type === constraintMatch && obs.status === 'active'
+    obs => obs.status === 'active' &&
+      (obs.constraint_type === constraintMatch || obs.constraint === constraintMatch)
   );
 
   if (!hasObservation) {
@@ -79,37 +101,6 @@ function main() {
     };
     console.log(JSON.stringify(output));
     process.exit(2);
-  }
-
-  // Check budget if observation has external_system + resource
-  const obs = observations.find(
-    o => o.constraint_type === constraintMatch && o.status === 'active'
-  );
-  if (obs && obs.external_system && obs.resource) {
-    const budgets = readBudgets(obsDir);
-    const budget = budgets.find(
-      b => b.external_system === obs.external_system && b.resource === obs.resource
-    );
-    if (budget && budget.current >= budget.budget) {
-      const output = {
-        decision: 'escalate',
-        reason: `Budget exhausted for constraint "${constraintMatch}" (${obs.external_system}/${obs.resource}).`,
-        constraint_type: constraintMatch,
-        observation_id: obs.id,
-      };
-      console.log(JSON.stringify(output));
-      process.exit(2);
-    }
-    if (budget && budget.validation_window?.active) {
-      const output = {
-        decision: 'escalate',
-        reason: `Validation window active for constraint "${constraintMatch}".`,
-        constraint_type: constraintMatch,
-        observation_id: obs.id,
-      };
-      console.log(JSON.stringify(output));
-      process.exit(2);
-    }
   }
 
   process.exit(0);

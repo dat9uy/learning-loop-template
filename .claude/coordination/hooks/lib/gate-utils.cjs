@@ -5,13 +5,14 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
 
-// Constraint patterns — same as gate-logic.js (CJS single source of truth)
-const CONSTRAINT_PATTERNS = {
-  docker: /\bdocker\b(?!-)/,
-  sudo: /\bsudo\b/,
-  'package-manager': /\b(pip|npm|yarn|pnpm)\s+(install|add)\b/,
-  'vendor-api': /\bcurl\b.*api/,
-};
+// Constraint patterns — loaded from tools/constraint-gate/patterns.json (single source of truth)
+const PATTERNS_RAW = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../../../../tools/constraint-gate/patterns.json'), 'utf8')
+);
+
+const CONSTRAINT_PATTERNS = Object.fromEntries(
+  Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
+);
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
 

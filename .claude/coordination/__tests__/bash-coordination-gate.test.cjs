@@ -63,13 +63,13 @@ console.log('\n--- bash-coordination-gate.cjs ---');
   assert(r.exitCode === 0, 'git status → exit 0 (not constrained)');
 }
 
-// Test 4: docker run → exit 2 (constrained, no observation with constraint_type: docker)
+// Test 4: docker run → exit 2 (constrained, budget exhausted → escalate)
 {
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
   assert(r.exitCode === 2, 'docker run → exit 2 (constrained)');
   let output;
   try { output = JSON.parse(r.stdout); } catch { output = null; }
-  assert(output && output.decision === 'block', 'docker run output has decision: block');
+  assert(output && output.decision === 'escalate', 'docker run output has decision: escalate (budget exhausted)');
 }
 
 // Test 5: sudo → exit 2 (constrained)

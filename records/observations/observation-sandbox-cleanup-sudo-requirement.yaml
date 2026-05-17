@@ -1,6 +1,7 @@
 id: observation-sandbox-cleanup-sudo-requirement
 schema_version: "1.0"
 type: observation
+constraint_type: "vendor-api"
 status: active
 created_at: "2026-05-17T14:00:00+07:00"
 updated_at: "2026-05-17T14:45:00+07:00"

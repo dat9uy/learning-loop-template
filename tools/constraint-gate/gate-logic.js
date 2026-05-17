@@ -3,12 +3,16 @@
  * Single source of truth for constraint patterns and gate decisions.
  */
 
-export const CONSTRAINT_PATTERNS = {
-  docker: /\bdocker\b(?!-)/,
-  sudo: /\bsudo\b/,
-  "package-manager": /\b(pip|npm|yarn|pnpm)\s+(install|add)\b/,
-  "vendor-api": /\bcurl\b.*api/,
-};
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
+
+export const CONSTRAINT_PATTERNS = Object.fromEntries(
+  Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
+);
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
 
@@ -40,7 +44,9 @@ export function checkObservationExists(constraintType, observations) {
     return { found: false };
   }
   const match = observations.find(
-    (obs) => obs.constraint_type === constraintType && obs.status === "active"
+    (obs) =>
+      obs.status === "active" &&
+      (obs.constraint_type === constraintType || obs.constraint === constraintType)
   );
   return match ? { found: true, observation: match } : { found: false };
 }
@@ -66,6 +72,20 @@ export function evaluateBudget(budgetData) {
  * Returns { decision: "ok" | "block" | "escalate", ... }
  */
 export function makeGateDecision(constraintMatch, observationStatus, budgetStatus) {
+  // Budget exhaustion is a global constraint — escalate regardless of observation
+  if (budgetStatus?.exhausted || budgetStatus?.windowActive) {
+    if (constraintMatch) {
+      return {
+        decision: "escalate",
+        reason: budgetStatus.exhausted
+          ? `Budget exhausted for constraint "${constraintMatch}".`
+          : `Validation window active for constraint "${constraintMatch}".`,
+        constraint_type: constraintMatch,
+        observation_id: observationStatus?.observation?.id,
+      };
+    }
+  }
+
   // No constraint matched → ok
   if (!constraintMatch) {
     return { decision: "ok" };
@@ -78,18 +98,6 @@ export function makeGateDecision(constraintMatch, observationStatus, budgetStatu
       reason: `Constraint "${constraintMatch}" detected. No active observation found. Record an observation before proceeding.`,
       observation_required: true,
       constraint_type: constraintMatch,
-    };
-  }
-
-  // Observation exists — check budget
-  if (budgetStatus?.exhausted || budgetStatus?.windowActive) {
-    return {
-      decision: "escalate",
-      reason: budgetStatus.exhausted
-        ? `Budget exhausted for constraint "${constraintMatch}".`
-        : `Validation window active for constraint "${constraintMatch}".`,
-      constraint_type: constraintMatch,
-      observation_id: observationStatus.observation?.id,
     };
   }
 
