@@ -1,7 +1,7 @@
 ---
 title: "Vnstock Installer Rewrite Validation"
 description: "Validate the rewritten install-vnstock.sh under the new state-machine enforcement layers. Adds stale-container guard to install script, then runs single-slot Docker validation with fresh-environment protocol."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, validation, state-machine, budget, tdd]
@@ -25,10 +25,10 @@ Validate the rewritten `install-vnstock.sh` under the new state-machine enforcem
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Pre-Validation Check](./phase-01-pre-validation-check.md) | Pending |
-| 2 | [Install Script Stale-Container Guard](./phase-02-install-script-stale-container-guard.md) | Pending |
-| 3 | [Validation Run](./phase-03-validation-run.md) | Pending |
-| 4 | [Post-Validation and Evidence](./phase-04-post-validation-and-evidence.md) | Pending |
+| 1 | [Pre-Validation Check](./phase-01-pre-validation-check.md) | Completed |
+| 2 | [Install Script Stale-Container Guard](./phase-02-install-script-stale-container-guard.md) | Completed |
+| 3 | [Validation Run](./phase-03-validation-run.md) | Completed |
+| 4 | [Post-Validation and Evidence](./phase-04-post-validation-and-evidence.md) | Completed |
 
 ## Key Decisions
 

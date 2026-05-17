@@ -1,0 +1,50 @@
+id: experiment-vnstock-installer-rewrite-validation-20260517T053000Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-17T05:30:00Z"
+updated_at: "2026-05-17T05:30:00Z"
+source_refs: []
+goal: Validate rewritten install-vnstock.sh with stale-container guard in fresh Docker container.
+hypothesis: Rewritten install-vnstock.sh with stale-container guard correctly installs vnstock_data in fresh Docker container without consuming extra slots.
+method:
+  - Run pre-validation checks (budget, host state, Docker availability).
+  - Add validation_window_active gate to check-budget.js.
+  - Implement stale-container guard in install-vnstock.sh (TDD).
+  - Run Docker validation with fresh container and named volume for .venv.
+  - Verify device registration in vendor UI.
+success_metrics:
+  - Install script exits 0 in fresh Docker container.
+  - vnstock_data import check passes.
+  - Device registers successfully (bronze tier).
+  - Stale-container guard test passes (3 test cases).
+  - Budget gate blocks concurrent validations.
+result: supports
+agent_outcome: supports
+product_outcome: Device registered successfully. vnstock_data installed and importable.
+observations:
+  - Install script exited 0 in fresh Docker container.
+  - Device registered: bronze tier, 1/1 used.
+  - vnstock_data import check passed.
+  - API ping returned warning (non-fatal, script still exited 0).
+  - Stale-container guard did not trigger (fresh container, no pre-existing .vnstock).
+  - Named volume prevented host filesystem mutation.
+  - Budget gate (validation_window_active) verified working.
+promotion_review:
+  - Install script with stale-container guard validated in Docker sandbox.
+  - Device slot consumed (1/1). Budget updated.
+  - Stale-container guard test preserved for regression protection.
+scope: install
+claim_refs:
+  - record:claim-vnstock-device-limit-ui-inconsistency
+risk_refs: []
+output_level: product-code
+verification:
+  claim_refs:
+    - record:claim-vnstock-device-limit-ui-inconsistency
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: product-code
+  requires_human_approval: true
+  approval_status: approved

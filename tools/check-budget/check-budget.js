@@ -14,6 +14,7 @@ function parseArgs() {
   return {
     system: systemIdx >= 0 ? args[systemIdx + 1] : null,
     resource: resourceIdx >= 0 ? args[resourceIdx + 1] : null,
+    allowActiveWindow: args.includes("--allow-active-window"),
   };
 }
 
@@ -40,7 +41,7 @@ function isStale(lastVerified) {
 }
 
 function main() {
-  const { system, resource } = parseArgs();
+  const { system, resource, allowActiveWindow } = parseArgs();
 
   if (!system || !resource) {
     console.error("Usage: node check-budget.js --system <system> --resource <resource>");
@@ -91,6 +92,9 @@ function main() {
       console.log(JSON.stringify(output));
 
       if (budget.current >= budget.budget) {
+        process.exit(1);
+      }
+      if (budget.validation_window?.active && !allowActiveWindow) {
         process.exit(1);
       }
       process.exit(0);

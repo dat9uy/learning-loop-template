@@ -110,7 +110,7 @@ validation_window:
     assert.strictEqual(output.stale, true);
   });
 
-  it("returns validation_window_active: true when window is active", () => {
+  it("returns exit 1 when validation_window is active (gate blocks concurrent)", () => {
     writeBudgetFile("test-budget-window-resource-budget.yaml", `
 id: test-window
 external_system: test_system_window
@@ -126,9 +126,23 @@ validation_window:
   reason: "operator validation in progress"
 `);
     const result = runCheckBudgetWithCode("test_system_window", "test_resource_window");
-    assert.strictEqual(result.code, 0);
+    assert.strictEqual(result.code, 1);
     const output = JSON.parse(result.stdout);
     assert.strictEqual(output.validation_window_active, true);
+  });
+
+  it("returns exit 0 when validation_window is active with --allow-active-window", () => {
+    const checkBudgetPath = join(root, "tools", "check-budget", "check-budget.js");
+    try {
+      const stdout = execSync(
+        `node ${checkBudgetPath} --system test_system_window --resource test_resource_window --allow-active-window`,
+        { encoding: "utf8", cwd: root }
+      );
+      const output = JSON.parse(stdout);
+      assert.strictEqual(output.validation_window_active, true);
+    } catch (err) {
+      assert.fail(`Expected exit 0 but got exit ${err.status}`);
+    }
   });
 
   it("returns exit 2 when budget file is not found", () => {

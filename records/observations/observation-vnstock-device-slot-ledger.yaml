@@ -179,3 +179,17 @@ ledger:
       Confirmed script error interception, atomicity guard, and next steps all work.
       Container state inspection showed no vnstock_data in site-packages (expected
       since step 6 failed before package install).
+
+  - timestamp: "2026-05-17T05:30:00+07:00"
+    experiment: experiment-vnstock-installer-rewrite-validation-20260517T053000Z
+    fingerprint: "Docker-container-python3.12-slim"
+    action: installer-rewrite-validation-with-stale-guard
+    slot_consumed: true
+    operator_cleared_after: false
+    notes: >
+      Validation run of rewritten install-vnstock.sh with stale-container guard.
+      Fresh Docker container, named volume for .venv isolation.
+      Install script exited 0, device registered (bronze tier, 1/1 used).
+      vnstock_data installed and importable. API ping returned warning (non-fatal).
+      Stale-container guard did not trigger (fresh container, no pre-existing .vnstock).
+      Budget gate (validation_window_active) verified working.

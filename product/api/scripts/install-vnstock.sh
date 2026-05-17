@@ -171,10 +171,17 @@ if [[ "${FORCE}" -eq 0 ]]; then
     exit 0
   fi
 else
-  if [[ -f "${API_ROOT}/.vnstock/device.id" ]]; then
-    printf 'WARNING: --force will invalidate the previous device registration.\n' >&2
-    rm -f "${API_ROOT}/.vnstock/device.id"
+  if [[ -d "${API_ROOT}/.vnstock" ]]; then
+    printf 'WARNING: --force will remove existing .vnstock and invalidate any previous device registration.\n' >&2
+    rm -rf "${API_ROOT}/.vnstock"
   fi
+fi
+
+# Stale-container detection: .vnstock exists but vnstock_data doesn't import.
+# This means a prior install attempt left partial state (installer reached step 5
+# but failed at step 6). Re-running would consume another slot.
+if [[ -d "${API_ROOT}/.vnstock" && "${FORCE}" -eq 0 ]]; then
+  fail "stale .vnstock detected but vnstock_data not importable. This container has residual state from a prior install attempt. Use --force to re-register (consumes a slot) or run in a fresh container."
 fi
 
 # Slot-aware warning

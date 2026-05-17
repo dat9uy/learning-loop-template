@@ -3,19 +3,19 @@ schema_version: "1.0"
 type: observation
 status: active
 created_at: "2026-05-16T04:00:00+07:00"
-updated_at: "2026-05-16T04:00:00+07:00"
+updated_at: "2026-05-17T05:30:00+07:00"
 source_refs: []
 notes: "Resource budget for vnstock vendor device slots. Operator-managed state."
 
 external_system: vnstock_vendor
 resource: device_slots
 budget: 1
-current: 0
-last_verified: "2026-05-16T04:00:00+07:00"
+current: 1
+last_verified: "2026-05-17T05:30:00+07:00"
 verification_method: operator_manual_check
-operator_notes: "Operator cleared all devices on 2026-05-16. One slot available."
+operator_notes: "Validation run completed. Device registered. Script with stale-container guard verified."
 validation_window:
   active: false
-  opened_at: null
-  closed_at: null
-  reason: null
+  opened_at: "2026-05-17T05:00:00+07:00"
+  closed_at: "2026-05-17T05:30:00+07:00"
+  reason: "validation completed"
