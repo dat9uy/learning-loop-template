@@ -15,6 +15,7 @@
     "list:verified": "bash tools/list-verified/list-verified.sh",
     "test": "node --test tools/**/*.test.js",
     "check:budget": "node tools/check-budget/check-budget.js",
+    "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
     "check": "pnpm validate:records && pnpm test"
   },
   "dependencies": {
