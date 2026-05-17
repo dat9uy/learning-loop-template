@@ -5,14 +5,15 @@
 
 # %% Imports
 import logging
-import sys
+import os
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO)
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-from vendor_compat import ensure_vci_device_id
+# vnstock_data reads $HOME/.vnstock/api_key.json via Path.home().
+# Set HOME to product/api so the installed config is found.
+_api_root = Path(__file__).resolve().parents[2]
+os.environ["HOME"] = str(_api_root)
 
-ensure_vci_device_id()
+logging.basicConfig(level=logging.INFO)
 
 from vnstock_data import Fundamental
 
