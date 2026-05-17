@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Hook Expansion"
-status: pending
+status: complete
 priority: P1
 effort: 1.5h
 dependencies: [1]

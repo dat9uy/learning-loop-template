@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Integration & Config"
-status: pending
+status: complete
 priority: P2
 effort: 30m
 dependencies: [1, 3]

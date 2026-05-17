@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Schema Documentation"
-status: pending
+status: complete
 priority: P3
 effort: 30m
 dependencies: []

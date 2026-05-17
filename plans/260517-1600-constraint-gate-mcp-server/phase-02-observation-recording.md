@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Observation Recording"
-status: pending
+status: complete
 priority: P1
 effort: 1h
 dependencies: [1]

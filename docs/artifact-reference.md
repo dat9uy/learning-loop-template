@@ -230,6 +230,25 @@ Observations capture factual state — device ledgers, resource budgets, behavio
 
 Body fields are freeform — no `additionalProperties: false`. Observations may carry any additional fields relevant to their domain (e.g., `ledger[]`, `external_system`, `key_findings`).
 
+#### Observation and Resource-Budget Schema Relationship
+
+`observation.schema.json` and `resource-budget.schema.json` are **independent schemas** — budget is NOT a specialization of observation. Both coexist in `records/observations/` and share only the `id` field convention. Budget files are identified by the `-resource-budget.yaml` suffix.
+
+#### Constraint Gate Extension Fields
+
+Observations used by the constraint gate may include these freeform extension fields:
+
+| Field | Type | Purpose |
+|---|---|---|
+| `constraint_type` | string | Matches constrained actions (e.g., `sudo`, `docker`, `device_limit`). Used by gate pattern matching. |
+| `constraint` | string | Short slug describing the constraint (e.g., `cleanup_requires_sudo`). |
+| `reason` | string | Why this constraint exists. |
+| `resolution` | string | How to work around or resolve the constraint. |
+| `blocked_phase` | string | Which plan phase is blocked by this constraint. |
+| `operator_action` | string | Manual steps the operator must take. |
+
+These fields are not enforced by schema — they are conventions used by `tools/constraint-gate/gate-logic.js` and `.claude/coordination/hooks/bash-coordination-gate.cjs`.
+
 ---
 
 ## Cross-Record Reference Map

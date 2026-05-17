@@ -1,7 +1,7 @@
 ---
 title: "Constraint Gate MCP Server"
 description: "Build MCP server with check_gate and record_observation tools, expand hook to gate Edit/Write/Bash, enforce coordination constraints mechanically."
-status: pending
+status: complete
 priority: P1
 effort: 6h
 branch: "main"
@@ -48,11 +48,11 @@ Hook = synchronous enforcement (blocks bad calls). MCP server = proactive tool (
 
 | Phase | Name | Status | Priority | Effort |
 |-------|------|--------|----------|--------|
-| 1 | [MCP Server Foundation](./phase-01-mcp-server-foundation.md) | Pending | P1 | 2h |
-| 2 | [Observation Recording](./phase-02-observation-recording.md) | Pending | P1 | 1h |
-| 3 | [Hook Expansion](./phase-03-hook-expansion.md) | Pending | P1 | 1.5h |
-| 4 | [Integration & Config](./phase-04-integration-config.md) | Pending | P2 | 30m |
-| 5 | [Schema Documentation](./phase-05-schema-documentation.md) | Pending | P3 | 30m |
+| 1 | [MCP Server Foundation](./phase-01-mcp-server-foundation.md) | Complete | P1 | 2h |
+| 2 | [Observation Recording](./phase-02-observation-recording.md) | Complete | P1 | 1h |
+| 3 | [Hook Expansion](./phase-03-hook-expansion.md) | Complete | P1 | 1.5h |
+| 4 | [Integration & Config](./phase-04-integration-config.md) | Complete | P2 | 30m |
+| 5 | [Schema Documentation](./phase-05-schema-documentation.md) | Complete | P3 | 30m |
 
 ## Dependencies
 
