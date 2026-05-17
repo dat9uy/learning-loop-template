@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Strengthen Capability Docs"
-status: pending
+status: completed
 priority: P2
 effort: "10m"
 dependencies: []

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Re-validate Capabilities"
-status: pending
+status: blocked
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -25,6 +25,22 @@ Re-run all 5 vnstock_data capability scripts after cleanup to verify they still 
 
 - Phase 2 completed (cleanup script ran, transient root-owned artifacts removed)
 - `.vnstock` preserved (device registration intact)
+
+## Blocked State (2026-05-17)
+
+**Root cause:** Docker HOME leak created root-owned `.venv`. Cleanup script preserved it (stale-container guard). Manual `sudo rm -rf .venv` completed, but `pnpm bootstrap:api` hits stale guard (`.vnstock` exists, `vnstock_data` not importable). Bypassing stale guard by removing `.vnstock` causes installer to attempt new registration, hitting device limit (budget 1/1).
+
+**Attempted:**
+1. `pnpm bootstrap:api` → stale guard fired
+2. Renamed `.vnstock` to `.vnstock.bak`, ran installer → device limit exceeded
+3. Restored `.vnstock` from backup
+
+**Observation:** `observation-sandbox-cleanup-sudo-requirement.yaml` documents full constraint chain.
+
+**To unblock:**
+1. Clear device at https://vnstocks.com/account?section=devices
+2. Run `pnpm bootstrap:api` (will register new device, consume slot)
+3. Update `observation-vnstock-resource-budget.yaml` if device ID changes
 
 ## Related Code Files
 

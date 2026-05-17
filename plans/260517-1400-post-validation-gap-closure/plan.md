@@ -1,7 +1,7 @@
 ---
 title: "Post-Validation Gap Closure"
 description: "Close gaps after vnstock installer rewrite validation: fix phase statuses, create Docker cleanup mechanism, strengthen capability definition, re-validate capability scripts."
-status: pending
+status: in-progress
 priority: P2
 branch: "main"
 tags: [vnstock, capabilities, cleanup, docs, validation]
@@ -30,10 +30,10 @@ After completing the vnstock installer rewrite validation plan, four gaps remain
 
 | Phase | Name | Status | Priority | Effort |
 |-------|------|--------|----------|--------|
-| 1 | [Fix Phase Statuses](./phase-01-fix-phase-statuses.md) | Pending | P3 | 10m |
-| 2 | [Create Cleanup Script](./phase-02-create-cleanup-script.md) | Pending | P2 | 30m |
-| 3 | [Strengthen Capability Docs](./phase-03-strengthen-capability-docs.md) | Pending | P2 | 20m |
-| 4 | [Re-validate Capabilities](./phase-04-re-validate-capabilities.md) | Pending | P1 | 1h |
+| 1 | [Fix Phase Statuses](./phase-01-fix-phase-statuses.md) | Completed | P3 | 10m |
+| 2 | [Create Cleanup Script](./phase-02-create-cleanup-script.md) | Completed | P2 | 30m |
+| 3 | [Strengthen Capability Docs](./phase-03-strengthen-capability-docs.md) | Completed | P2 | 20m |
+| 4 | [Re-validate Capabilities](./phase-04-re-validate-capabilities.md) | Blocked | P1 | 1h |
 
 ## Dependencies
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Fix Phase Statuses"
-status: pending
+status: completed
 priority: P3
 effort: "10m"
 dependencies: []
