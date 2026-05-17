@@ -38,6 +38,10 @@ Keep separate:
 - decision basis vs decision effect
 - meta evidence vs domain evidence
 
+## Observation State Rule
+
+Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), check `records/observations/` for relevant observation records. Observations are the authoritative source for factual system state — they are operator-managed and more reliable than agent memory or user recall. See `record:decision-20260517T1200Z-observation-state-check-rule`.
+
 ## Verification Rules
 
 Claims assert independent verification dimensions:

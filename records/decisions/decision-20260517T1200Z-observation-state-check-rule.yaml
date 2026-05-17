@@ -1,0 +1,38 @@
+id: decision-20260517T1200Z-observation-state-check-rule
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-17T12:00:00Z"
+updated_at: "2026-05-17T12:00:00Z"
+source_refs:
+  - local:records/evidence/meta/observation-record-discovery-gap.md
+notes: "Meta/loop architecture. N=1 closeable gap: agent asked about device slot state instead of reading the observation record. Encodes the principle that observations are the authoritative source for external system state."
+question: Should agents be required to check observation records for external system state before asking the user?
+decision: "Yes. Add a rule to the Agent Anti-Confusion Checklist and Agent Intake Flow: before asking the user about external system state, scan records/observations/ for relevant observation records. Observations are operator-managed and more reliable than agent memory or user recall."
+rationale: "The user pointed out that records/observations/observation-vnstock-resource-budget.yaml already contained the device slot state (budget: 1, current: 1). The agent asked the user instead, wasting a question round and revealing that the intake flow does not guide agents to check observations. This is a discoverability gap in the loop's own operating rules."
+alternatives:
+  - "Rely on agent memory only. Rejected: memory is session-scoped and unreliable across sessions."
+  - "Add observation checking to the learning-loop skill references only. Rejected: the operator-guide.md is the canonical source for agent behavior rules."
+  - "Wait for N>=2 cases before adopting. Rejected: this is a principle (N=1 closeable), not a schema or template."
+tradeoffs:
+  - "Adds one more step to the intake flow, increasing prompt length slightly."
+  - "Agents may over-read observations when not needed. Mitigation: only required when touching external systems."
+  - "Observation records may be stale. Mitigation: records carry last_verified timestamps; stale data triggers a warning per resource-budget-rules.md."
+supersedes: []
+decision_effect:
+  action: approve
+  scope: schema-improvement
+  affected_refs:
+    - local:docs/operator-guide.md
+    - local:.claude/skills/learning-loop/references/learning-loop-rules.md
+  boundaries:
+    allowed_actions:
+      - "Add observation-check rule to Agent Anti-Confusion Checklist in docs/operator-guide.md."
+      - "Add observation scan to Agent Intake Flow step 2 in docs/operator-guide.md."
+      - "Add observation-check principle to .claude/skills/learning-loop/references/learning-loop-rules.md."
+    blocked_actions:
+      - Editing existing observation records for this rule.
+      - Adding schema changes or validators for this rule.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check
