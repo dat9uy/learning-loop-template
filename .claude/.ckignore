@@ -1,0 +1,3 @@
+# Project-local overrides for scout-block hook
+# Allow .venv access — this project manages its own Python env via bootstrap workflow
+!.venv

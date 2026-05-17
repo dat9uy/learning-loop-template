@@ -1,0 +1,27 @@
+id: observation-vnstock-side-effect-import
+schema_version: "1.0"
+type: observation
+constraint_type: "side-effect-import"
+status: active
+created_at: "2026-05-18T10:00:00+07:00"
+updated_at: "2026-05-18T10:00:00+07:00"
+source_refs:
+  - record:observation-vnstock-import-reactivates-cleared-device
+  - record:observation-vnstock-device-slot-ledger
+notes: >
+  Importing vnstock_data triggers vendor API authentication. If the auth cache
+  has expired, re-authentication restores previously cleared devices to the
+  visible dashboard, consuming device slots without explicit registration.
+
+  This is a hard-gate constraint: the side-effect-import pattern in patterns.json
+  always blocks, regardless of observation or budget state.
+
+safe_alternative: >
+  Use importlib.util.find_spec('vnstock_data') to check if the package is
+  installed without triggering import side effects:
+    python -c "import importlib.util; spec = importlib.util.find_spec('vnstock_data'); print('found at:', spec.origin if spec else 'NOT INSTALLED')"
+
+blocked_commands:
+  - "python -c 'import vnstock_data'"
+  - "python3 -c 'import vnstock_data'"
+  - "from vnstock_data import ..."
