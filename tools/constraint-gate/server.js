@@ -18,6 +18,7 @@ import {
 } from "./gate-logic.js";
 import { readCoordinationConfig, readObservations, readBudgets } from "./file-readers.js";
 import { writeObservation } from "./observation-writer.js";
+import { readFileSync } from "node:fs";
 
 /**
  * Resolve project root. Override via GATE_ROOT env var for testing.
@@ -25,6 +26,51 @@ import { writeObservation } from "./observation-writer.js";
 function resolveRoot() {
   if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
   return dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+}
+
+/**
+ * Read the last operator message marker written by inbound-state-gate.cjs.
+ * Returns { timestamp, prompt_snippet } or null if not found.
+ */
+function readLastOperatorMessage(root) {
+  try {
+    const markerPath = join(root, ".claude", "coordination", ".last-operator-message");
+    return JSON.parse(readFileSync(markerPath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if observations are stale relative to the last operator state-change message.
+ * Returns { stale, reason, observation_id } or { stale: false }.
+ */
+function checkObservationStaleness(observations, root) {
+  const marker = readLastOperatorMessage(root);
+  if (!marker || !marker.timestamp) return { stale: false };
+
+  const markerTime = new Date(marker.timestamp).getTime();
+  if (isNaN(markerTime)) return { stale: false };
+
+  for (const obs of observations) {
+    if (obs.status !== "active") continue;
+    if (!obs.updated_at) {
+      return {
+        stale: true,
+        reason: `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`,
+        observation_id: obs.id,
+      };
+    }
+    const obsTime = new Date(obs.updated_at).getTime();
+    if (isNaN(obsTime) || markerTime > obsTime) {
+      return {
+        stale: true,
+        reason: `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`,
+        observation_id: obs.id,
+      };
+    }
+  }
+  return { stale: false };
 }
 
 /**
@@ -75,6 +121,18 @@ server.tool(
     }
 
     const decision = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
+
+    // Inbound gate integration: if gate says ok but observations are stale
+    // relative to the last operator message, escalate instead.
+    if (decision.decision === "ok" && constraintMatch) {
+      const staleness = checkObservationStaleness(observations, root);
+      if (staleness.stale) {
+        decision.decision = "escalate";
+        decision.reason = staleness.reason;
+        decision.observation_id = staleness.observation_id;
+        decision.inbound_gate = true;
+      }
+    }
 
     // Log to stderr (never stdout — MCP uses stdout for protocol)
     console.error(`gate: ${command} → ${decision.decision}${constraintMatch ? ` (${constraintMatch})` : ""}`);

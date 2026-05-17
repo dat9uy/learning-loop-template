@@ -114,6 +114,53 @@ function matchesAnyGlob(patterns, filePath) {
   return patterns.some(p => globMatch(p, filePath));
 }
 
+/**
+ * Read the last operator message marker written by inbound-state-gate.cjs.
+ * Returns { timestamp, prompt_snippet } or null if not found.
+ */
+function readLastOperatorMessage(coordDir) {
+  const markerPath = path.join(coordDir, '.last-operator-message');
+  try {
+    return JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if observations are stale relative to the last operator state-change message.
+ * Returns { stale: true, reason } if the operator sent a state-change message
+ * after the observation was last updated.
+ */
+function checkObservationStaleness(observations, coordDir) {
+  const marker = readLastOperatorMessage(coordDir);
+  if (!marker || !marker.timestamp) return { stale: false };
+
+  const markerTime = new Date(marker.timestamp).getTime();
+  if (isNaN(markerTime)) return { stale: false };
+
+  // Check if any active observation is older than the marker
+  for (const obs of observations) {
+    if (obs.status !== 'active') continue;
+    if (!obs.updated_at) {
+      return {
+        stale: true,
+        reason: `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`,
+        observation_id: obs.id,
+      };
+    }
+    const obsTime = new Date(obs.updated_at).getTime();
+    if (isNaN(obsTime) || markerTime > obsTime) {
+      return {
+        stale: true,
+        reason: `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`,
+        observation_id: obs.id,
+      };
+    }
+  }
+  return { stale: false };
+}
+
 module.exports = {
   CONSTRAINT_PATTERNS,
   matchConstraintPattern,
@@ -121,6 +168,8 @@ module.exports = {
   readActiveProfile,
   getProfile,
   readObservations,
+  readLastOperatorMessage,
+  checkObservationStaleness,
   globMatch,
   matchesAnyGlob,
 };

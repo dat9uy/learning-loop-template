@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { matchConstraintPattern, readCoordinationConfig, readObservations } = require('./lib/gate-utils.cjs');
+const { matchConstraintPattern, readCoordinationConfig, readObservations, checkObservationStaleness } = require('./lib/gate-utils.cjs');
 
 function findProjectRoot() {
   // Walk up from coord dir to find project root (contains records/)
@@ -98,6 +98,21 @@ function main() {
       observation_required: true,
       constraint_type: constraintMatch,
       command,
+    };
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
+
+  // Inbound gate integration: check if operator sent state-change message
+  // after the observation was last updated. If so, escalate.
+  const staleness = checkObservationStaleness(observations, coordDir);
+  if (staleness.stale) {
+    const output = {
+      decision: 'escalate',
+      reason: staleness.reason,
+      constraint_type: constraintMatch,
+      observation_id: staleness.observation_id,
+      inbound_gate: true,
     };
     console.log(JSON.stringify(output));
     process.exit(2);

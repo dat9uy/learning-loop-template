@@ -9,3 +9,4 @@ product/*/.local/
 product/*/.vnstock/
 product/*/dist/
 .claude/coordination/gate-log.jsonl
+.claude/coordination/.last-operator-message
