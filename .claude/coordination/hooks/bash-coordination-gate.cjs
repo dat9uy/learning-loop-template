@@ -8,9 +8,15 @@ const { matchConstraintPattern, readCoordinationConfig, readObservations, checkO
 
 function findProjectRoot() {
   // Walk up from coord dir to find project root (contains records/)
+  // Override via GATE_ROOT env var for testing.
+  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
   let dir = path.join(__dirname, '..', '..', '..');
-  if (fs.existsSync(path.join(dir, 'records'))) return dir;
-  return path.join(__dirname, '..', '..', '..');
+  while (!fs.existsSync(path.join(dir, 'records'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return dir;
 }
 
 function readBudgets(observationsDir) {

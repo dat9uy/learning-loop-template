@@ -34,7 +34,7 @@ function resolveRoot() {
  */
 function readLastOperatorMessage(root) {
   try {
-    const markerPath = join(root, ".claude", "coordination", ".last-operator-message");
+    const markerPath = process.env.GATE_MARKER_PATH || join(root, ".claude", "coordination", ".last-operator-message");
     return JSON.parse(readFileSync(markerPath, "utf8"));
   } catch {
     return null;
@@ -58,7 +58,7 @@ function checkObservationStaleness(observations, root) {
       return {
         stale: true,
         reason: `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`,
-        observation_id: obs.id,
+        observation_id: obs.id || obs.constraint,
       };
     }
     const obsTime = new Date(obs.updated_at).getTime();
@@ -66,7 +66,7 @@ function checkObservationStaleness(observations, root) {
       return {
         stale: true,
         reason: `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`,
-        observation_id: obs.id,
+        observation_id: obs.id || obs.constraint,
       };
     }
   }

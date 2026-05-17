@@ -119,7 +119,7 @@ function matchesAnyGlob(patterns, filePath) {
  * Returns { timestamp, prompt_snippet } or null if not found.
  */
 function readLastOperatorMessage(coordDir) {
-  const markerPath = path.join(coordDir, '.last-operator-message');
+  const markerPath = process.env.GATE_MARKER_PATH || path.join(coordDir, '.last-operator-message');
   try {
     return JSON.parse(fs.readFileSync(markerPath, 'utf8'));
   } catch {
@@ -146,7 +146,7 @@ function checkObservationStaleness(observations, coordDir) {
       return {
         stale: true,
         reason: `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`,
-        observation_id: obs.id,
+        observation_id: obs.id || obs.constraint,
       };
     }
     const obsTime = new Date(obs.updated_at).getTime();
@@ -154,7 +154,7 @@ function checkObservationStaleness(observations, coordDir) {
       return {
         stale: true,
         reason: `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`,
-        observation_id: obs.id,
+        observation_id: obs.id || obs.constraint,
       };
     }
   }

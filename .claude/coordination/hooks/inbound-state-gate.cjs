@@ -26,7 +26,7 @@ const STATE_CHANGE_PATTERNS = [
   // Device/resource registration or creation
   /\b(i|we)?\s*(registered|created|installed|started|launched|ran|executed|bootstrapped)\b/i,
   // State reports
-  /\b(it'?s?|that'?s?|everything'?s?|all)\s*(working|running|fixed|ready|done|complete|success|good|ok)\b/i,
+  /\b(it'?s?|it\s+is|that'?s?|that\s+is|everything'?s?|everything\s+is|all)\s+(working|running|fixed|ready|done|complete|success|good|ok)\b/i,
   // Container/service state
   /\b(container|service|server|process|app)\s*(is|are|was)\s*(up|running|alive|ready|started|stopped|killed|dead)\b/i,
   // Slot/device status
@@ -67,12 +67,18 @@ function detectStateChange(prompt) {
 }
 
 /**
- * Find project root. Walk up from coord dir.
+ * Find project root. Walk up from script dir looking for records/.
+ * Override via GATE_ROOT env var for testing.
  */
 function findProjectRoot() {
+  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
   let dir = path.join(__dirname, '..', '..', '..');
-  if (fs.existsSync(path.join(dir, 'records'))) return dir;
-  return path.join(__dirname, '..', '..', '..');
+  while (!fs.existsSync(path.join(dir, 'records'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return dir;
 }
 
 /**
@@ -119,11 +125,12 @@ function findStaleObservations(observations, now) {
  */
 function writeOperatorMessageMarker(root, prompt) {
   try {
-    const markerPath = path.join(root, '.claude', 'coordination', '.last-operator-message');
+    const markerPath = process.env.GATE_MARKER_PATH || path.join(root, '.claude', 'coordination', '.last-operator-message');
     const marker = {
       timestamp: new Date().toISOString(),
       prompt_snippet: prompt.slice(0, 200),
     };
+    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
     fs.writeFileSync(markerPath, JSON.stringify(marker, null, 2));
   } catch {
     // marker write failure never blocks
@@ -159,6 +166,9 @@ function main() {
 
   // Short messages are usually not state-change reports
   if (prompt.length < 10) process.exit(0);
+
+  // Questions ending with ? are usually not state-change reports (F11)
+  if (prompt.endsWith('?')) process.exit(0);
 
   // Detect state-change signal
   if (!detectStateChange(prompt)) process.exit(0);
