@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "MCP Staleness Fix (F3)"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: [1]

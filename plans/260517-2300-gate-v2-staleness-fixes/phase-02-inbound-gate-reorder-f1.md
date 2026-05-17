@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Inbound Gate Reorder (F1)"
-status: pending
+status: completed
 priority: P1
 effort: "45m"
 dependencies: [1]

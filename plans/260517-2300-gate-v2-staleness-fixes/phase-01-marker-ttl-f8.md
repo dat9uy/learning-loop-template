@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: Marker TTL (F8)
-status: in-progress
+status: completed
 priority: P1
 effort: 30m
 dependencies: []

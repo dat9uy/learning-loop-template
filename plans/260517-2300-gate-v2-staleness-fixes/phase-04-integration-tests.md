@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Integration Tests"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1, 2, 3]

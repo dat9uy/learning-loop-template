@@ -4,7 +4,7 @@ description: >-
   Fix 4 known issues in the constraint gate's staleness handling: phantom
   escalation (F1), algorithm divergence (F2), MCP skip on budget (F3), marker
   never expires (F8).
-status: pending
+status: completed
 priority: P1
 branch: main
 tags:
@@ -33,11 +33,11 @@ Fix 4 known issues in the constraint gate's staleness handling. These issues wer
 
 | Phase | Name | Status | Priority | Effort | Dependencies |
 |-------|------|--------|----------|--------|--------------|
-| 1 | [Marker TTL (F8)](./phase-01-marker-ttl-f8.md) | Pending | P1 | 30m | In Progress |
-| 2 | [Inbound Gate Reorder (F1)](./phase-02-inbound-gate-reorder-f1.md) | Pending | P1 | 45m | 1 |
-| 3 | [MCP Staleness Fix (F3)](./phase-03-mcp-staleness-fix-f3.md) | Pending | P2 | 30m | 1 |
-| 4 | [Integration Tests](./phase-04-integration-tests.md) | Pending | P1 | 1h | 1, 2, 3 |
-| 5 | [Documentation](./phase-05-documentation.md) | Pending | P2 | 20m | 1, 2, 3, 4 |
+| 1 | [Marker TTL (F8)](./phase-01-marker-ttl-f8.md) | Complete | P1 | 30m | — |
+| 2 | [Inbound Gate Reorder (F1)](./phase-02-inbound-gate-reorder-f1.md) | Complete | P1 | 45m | 1 |
+| 3 | [MCP Staleness Fix (F3)](./phase-03-mcp-staleness-fix-f3.md) | Complete | P2 | 30m | 1 |
+| 4 | [Integration Tests](./phase-04-integration-tests.md) | Complete | P1 | 1h | 1, 2, 3 |
+| 5 | [Documentation](./phase-05-documentation.md) | Complete | P2 | 20m | 1, 2, 3, 4 |
 
 ## Key Constraint
 
