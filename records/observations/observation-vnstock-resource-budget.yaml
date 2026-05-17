@@ -4,7 +4,7 @@ type: observation
 constraint_type: "vendor-api"
 status: active
 created_at: "2026-05-16T04:00:00+07:00"
-updated_at: "2026-05-17T05:30:00+07:00"
+updated_at: "2026-05-18T00:45:00+07:00"
 source_refs: []
 notes: "Resource budget for vnstock vendor device slots. Operator-managed state."
 
@@ -12,7 +12,8 @@ external_system: vnstock_vendor
 resource: device_slots
 budget: 1
 current: 1
-last_verified: "2026-05-17T05:30:00+07:00"
+device_id: "2ff1c8e8dbd68876704376494dd4ae78"
+last_verified: "2026-05-18T00:45:00+07:00"
 verification_method: operator_manual_check
 operator_notes: "Validation run completed. Device registered. Script with stale-container guard verified."
 validation_window:
