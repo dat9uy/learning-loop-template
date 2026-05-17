@@ -72,6 +72,17 @@ export function evaluateBudget(budgetData) {
  * Returns { decision: "ok" | "block" | "escalate", ... }
  */
 export function makeGateDecision(constraintMatch, observationStatus, budgetStatus) {
+  // Side-effect imports always block — importing triggers vendor auth which
+  // reactivates cleared devices. No observation or budget state can override.
+  if (constraintMatch === "side-effect-import") {
+    return {
+      decision: "block",
+      reason: `Importing vnstock_data triggers vendor authentication and may reactivate cleared devices. Use importlib.util.find_spec() for safe checks.`,
+      constraint_type: constraintMatch,
+      hard_block: true,
+    };
+  }
+
   // Budget exhaustion is a global constraint — escalate regardless of observation
   if (budgetStatus?.exhausted || budgetStatus?.windowActive) {
     if (constraintMatch) {

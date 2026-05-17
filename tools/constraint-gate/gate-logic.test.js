@@ -69,16 +69,16 @@ describe("matchConstraintPattern", () => {
   });
 
   // Phase 1: python import of vendor packages
-  it("matches python import vnstock_data as vendor-api", () => {
-    assert.equal(matchConstraintPattern('python -c "import vnstock_data"'), "vendor-api");
+  it("matches python import vnstock_data as side-effect-import", () => {
+    assert.equal(matchConstraintPattern('python -c "import vnstock_data"'), "side-effect-import");
   });
 
   it("matches python import vnstock as vendor-api", () => {
     assert.equal(matchConstraintPattern("python -c 'import vnstock'"), "vendor-api");
   });
 
-  it("matches python3 import vnstock_data as vendor-api", () => {
-    assert.equal(matchConstraintPattern("python3 -c 'import vnstock_data'"), "vendor-api");
+  it("matches python3 import vnstock_data as side-effect-import", () => {
+    assert.equal(matchConstraintPattern("python3 -c 'import vnstock_data'"), "side-effect-import");
   });
 
   // Phase 1: bootstrap/setup commands
@@ -267,5 +267,37 @@ describe("makeGateDecision", () => {
   it("ok when no pattern match even if budget exhausted", () => {
     const decision = makeGateDecision(null, { found: false }, { exhausted: true });
     assert.equal(decision.decision, "ok");
+  });
+
+  // side-effect-import: always blocks regardless of observation or budget state
+  it("blocks side-effect-import even with active observation", () => {
+    const decision = makeGateDecision(
+      "side-effect-import",
+      { found: true, observation: { id: "obs-1" } },
+      { exhausted: false }
+    );
+    assert.equal(decision.decision, "block");
+    assert.equal(decision.hard_block, true);
+    assert.ok(decision.reason.includes("find_spec"));
+  });
+
+  it("blocks side-effect-import even with exhausted budget", () => {
+    const decision = makeGateDecision(
+      "side-effect-import",
+      { found: false },
+      { exhausted: true }
+    );
+    assert.equal(decision.decision, "block");
+    assert.equal(decision.hard_block, true);
+  });
+
+  it("blocks side-effect-import even with active validation window", () => {
+    const decision = makeGateDecision(
+      "side-effect-import",
+      { found: true, observation: { id: "obs-1" } },
+      { exhausted: false, windowActive: true }
+    );
+    assert.equal(decision.decision, "block");
+    assert.equal(decision.hard_block, true);
   });
 });

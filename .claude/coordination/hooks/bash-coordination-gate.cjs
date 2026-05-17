@@ -67,6 +67,20 @@ function main() {
     process.exit(0);
   }
 
+  // Side-effect imports always block — importing vnstock_data triggers vendor
+  // auth which reactivates cleared devices. No observation or budget can override.
+  if (constraintMatch === 'side-effect-import') {
+    const output = {
+      decision: 'block',
+      reason: 'Importing vnstock_data triggers vendor authentication and may reactivate cleared devices. Use importlib.util.find_spec() for safe checks.',
+      constraint_type: constraintMatch,
+      hard_block: true,
+      command,
+    };
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
+
   const root = findProjectRoot();
   const obsDir = path.join(root, 'records', 'observations');
 

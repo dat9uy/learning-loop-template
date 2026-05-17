@@ -23,6 +23,7 @@ describe('gate-utils.cjs pattern sync', () => {
     assert.ok(CONSTRAINT_PATTERNS.sudo instanceof RegExp);
     assert.ok(CONSTRAINT_PATTERNS['package-manager'] instanceof RegExp);
     assert.ok(CONSTRAINT_PATTERNS['vendor-api'] instanceof RegExp);
+    assert.ok(CONSTRAINT_PATTERNS['side-effect-import'] instanceof RegExp);
   });
 
   it('patterns match expected commands', () => {
@@ -31,7 +32,8 @@ describe('gate-utils.cjs pattern sync', () => {
     assert.strictEqual(matchConstraintPattern('sudo rm -rf /'), 'sudo');
     assert.strictEqual(matchConstraintPattern('pnpm install'), 'package-manager');
     assert.strictEqual(matchConstraintPattern('pnpm bootstrap:api'), 'package-manager');
-    assert.strictEqual(matchConstraintPattern('python -c "import vnstock_data"'), 'vendor-api');
+    assert.strictEqual(matchConstraintPattern('python -c "import vnstock_data"'), 'side-effect-import');
+    assert.strictEqual(matchConstraintPattern("python -c 'import vnstock'"), 'vendor-api');
     assert.strictEqual(matchConstraintPattern('ls'), null);
   });
 });
