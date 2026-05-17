@@ -5,7 +5,7 @@ status: in-progress
 priority: P2
 branch: "main"
 tags: [vnstock, capabilities, cleanup, docs, validation]
-blockedBy: []
+blockedBy: [260517-2300-gate-v2-staleness-fixes]
 blocks: [260517-1800-constraint-gate-gap-closure]
 created: "2026-05-17T06:23:54.323Z"
 createdBy: "ck:plan"

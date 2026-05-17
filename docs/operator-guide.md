@@ -111,6 +111,7 @@ External systems with irreversible operations (vendor APIs with device slots, pr
 - ANY check failure on a budget-consuming action = STOP (not fix-and-retry)
 - After a budget-consuming action, agent reports result and waits for operator confirmation
 - Validation window: no state-changing actions between clearance and final report
+- When a guard/gate blocks an action, trace the full dependency chain back to resource budgets before attempting workarounds. If the chain ends at an exhausted budget, report the constraint to the operator immediately — do not burn cycles on bypasses
 
 ### Detailed References
 
