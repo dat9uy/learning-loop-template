@@ -4,11 +4,17 @@ type: observation
 constraint_type: "vendor-api"
 status: active
 created_at: "2026-05-17T14:00:00+07:00"
-updated_at: "2026-05-17T14:45:00+07:00"
+updated_at: "2026-05-18T00:00:00+07:00"
 source_refs:
   - "record:decision-20260517T1200Z-observation-state-check-rule"
   - "observation-vnstock-resource-budget"
 notes: "Docker HOME leak creates root-owned artifacts. Cleanup + re-bootstrap requires multi-step manual operator intervention due to sudo, stale guard, and device limit constraints."
+
+gate_v2_mitigations:
+  F1: "fixed — marker reorder in gate-logic.test.js prevents phantom escalation"
+  F8: "fixed — marker TTL prevents stale markers from blocking decisions"
+  F2: "resolved — side effect of F1 fix (marker reorder eliminated duplicate marker issue)"
+  F3: "fixed — MCP staleness check applied to all decision types, not just allow"
 
 constraint: cleanup_requires_sudo
 reason: "Docker runs with product/api as HOME, leaking root-owned .cache, .config, .venv, .vnstock, and product/ directories. Regular user cannot rm root-owned files."
