@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Install Script Stale-Container Guard"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
