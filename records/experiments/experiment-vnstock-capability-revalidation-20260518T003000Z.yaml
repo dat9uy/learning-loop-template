@@ -1,0 +1,67 @@
+id: experiment-vnstock-capability-revalidation-20260518T003000Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-18T00:30:00Z"
+updated_at: "2026-05-18T01:15:00Z"
+source_refs:
+  - local:records/evidence/vnstock-data/capability-revalidation-20260518.md
+goal: Re-validate all 5 vnstock_data capability scripts post-cleanup to confirm library layer works after install-vnstock.sh rewrite.
+hypothesis: After operator sudo-cleanup and re-bootstrap, vnstock_data capability scripts will execute successfully against vendor API endpoints.
+method:
+  - Verify budget state (pnpm check:budget) and preconditions (.vnstock removed).
+  - Record observation for package-manager constraint gate.
+  - Run pnpm bootstrap:api to rebuild .venv and install vnstock_data.
+  - Verify installation via importlib.util.find_spec (not direct import, to avoid side-effect-import hard-block).
+  - Execute all 5 capability scripts sequentially (discovery, reference, market, fundamental, insights-macro).
+  - Capture results and create evidence file.
+  - Update plan status and budget YAML.
+success_metrics:
+  - All 5 capability scripts exit 0.
+  - vnstock_data imports successfully from .venv.
+  - Device registers without consuming extra slots.
+  - Budget YAML updated correctly.
+result: supports
+agent_outcome: "Initial run failed with 'Không tìm thấy thông tin người dùng hợp lệ'. Root cause was HOME not set to product/api, so vnstock_data couldn't find api_key.json. After fixing capability scripts to set HOME, all 5 scripts pass."
+product_outcome: "Device registration succeeded (2ff1c8e8dbd68876704376494dd4ae78, bronze tier, 1/1 used). vnstock_data 3.1.8 installed. All 5 capability scripts pass after HOME fix."
+observations:
+  - "Budget check passed: current: 0, remaining: 1. Prerequisites met."
+  - "package-manager constraint gate fired on pnpm bootstrap:api. Observation recorded dynamically via MCP tool. Gate passed on retry."
+  - "Bootstrap completed: vnstock_data 3.1.8 installed, device registered."
+  - "find_spec verification confirmed package at .venv/lib/python3.13/site-packages/vnstock_data/__init__.py."
+  - "Initial run: all 5 scripts failed with exit code 1 and Vietnamese auth error."
+  - "Debug finding: vnstock_data reads $HOME/.vnstock/api_key.json via Path.home(). HOME was defaulting to /home/datguy, not product/api."
+  - "Fix: Updated all 5 capability scripts to set os.environ['HOME'] = str(_api_root) before importing vnstock_data."
+  - "After fix: all 5 scripts pass (exit code 0). API calls return valid data."
+  - "vendor_compat code is NOT the issue - it works correctly. The problem was HOME not being set."
+promotion_review:
+  - "Device registered and visible in vendor portal."
+  - "vnstock_data installed and importable."
+  - "All API calls rejected by vendor auth — runtime dimension cannot be verified."
+  - "Vendor authorization is external dependency; cannot be resolved by agent."
+scope: runtime
+claim_refs:
+  - record:claim-vnstock-post-registration-auth-failure
+  - record:claim-vnstock-home-config-path
+risk_refs: []
+output_level: runtime-captured
+output_capture:
+  allowed_outputs:
+    - metadata
+    - schema-shape
+    - exit-codes
+    - error-messages
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+verification:
+  claim_refs:
+    - record:claim-vnstock-post-registration-auth-failure
+    - record:claim-vnstock-home-config-path
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved

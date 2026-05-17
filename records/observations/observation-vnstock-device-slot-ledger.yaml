@@ -3,7 +3,7 @@ schema_version: "1.0"
 type: observation
 status: active
 created_at: "2026-05-15T00:30:00Z"
-updated_at: "2026-05-15T02:20:00+07:00"
+updated_at: "2026-05-18T01:15:00+07:00"
 source_refs: []
 notes: >
   Ledger tracking all known device slot consumptions for the vnstock-data capability.
@@ -193,3 +193,16 @@ ledger:
       vnstock_data installed and importable. API ping returned warning (non-fatal).
       Stale-container guard did not trigger (fresh container, no pre-existing .vnstock).
       Budget gate (validation_window_active) verified working.
+
+  - timestamp: "2026-05-18T00:39:54+07:00"
+    experiment: experiment-vnstock-capability-revalidation-20260518T003000Z
+    fingerprint: "2ff1c8e8dbd68876704376494dd4ae78"
+    action: phase-04-capability-revalidation-post-cleanup
+    slot_consumed: true
+    operator_cleared_after: false
+    notes: >
+      Phase-04 revalidation after operator sudo-cleanup and re-bootstrap.
+      Device registered (bronze tier, 1/1 used). vnstock_data 3.1.8 installed.
+      All 5 capability scripts failed with vendor auth error.
+      Vendor portal confirms device visible with activity at 00:42:35.
+      Root cause: vendor account/subscription authorization, not registration.

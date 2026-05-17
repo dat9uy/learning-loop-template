@@ -26,7 +26,11 @@ This error occurs **after** successful device registration (device ID `2ff1c8e8d
 
 ## Root Cause Assessment
 
-The failure is **not** an installation or environment issue. `vnstock_data` imports successfully from `.venv`. The failure is a **vendor account authorization** issue — the registered device is not associated with a valid/active user subscription on the vendor server.
+**INITIAL ASSESSMENT (incorrect):** The failure was attributed to vendor account authorization.
+
+**CORRECTED ASSESSMENT:** The failure was caused by `HOME` not being set to `product/api`. `vnstock_data` reads `$HOME/.vnstock/api_key.json` via `Path.home()`. When HOME defaults to `/home/datguy` (the shell user), vnstock_data can't find the installed config. The vendor_compat code was not the issue.
+
+**Fix:** Updated all 5 capability scripts to set `os.environ["HOME"] = str(_api_root)` before importing vnstock_data. After fix, all scripts pass.
 
 ## Vendor Portal Verification (Operator-Confirmed)
 
