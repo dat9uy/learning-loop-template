@@ -120,6 +120,154 @@ describe("MCP server check_gate tool", () => {
     }
     rmSync(tmp, { recursive: true, force: true });
   });
+
+  it("escalates with inbound_gate when fresh marker and stale observation", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(obsDir, { recursive: true });
+    writeFileSync(
+      join(coordDir, "coordination-config.json"),
+      JSON.stringify({ version: "1.0", profiles: {} })
+    );
+    writeFileSync(
+      join(obsDir, "observation-docker.yaml"),
+      `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
+    );
+    writeFileSync(
+      join(coordDir, ".last-operator-message"),
+      JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: "I cleared the device" }, null, 2)
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "check_gate",
+        arguments: { command: "docker run ubuntu" },
+      });
+      const text = result.content[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.decision, "escalate");
+      assert.equal(parsed.inbound_gate, true);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("does NOT escalate when marker is expired (TTL)", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(obsDir, { recursive: true });
+    writeFileSync(
+      join(coordDir, "coordination-config.json"),
+      JSON.stringify({ version: "1.0", profiles: {} })
+    );
+    writeFileSync(
+      join(obsDir, "observation-docker.yaml"),
+      `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
+    );
+    writeFileSync(
+      join(coordDir, ".last-operator-message"),
+      JSON.stringify({ timestamp: new Date(Date.now() - 31 * 60 * 1000).toISOString(), prompt_snippet: "old message" }, null, 2)
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "check_gate",
+        arguments: { command: "docker run ubuntu" },
+      });
+      const text = result.content[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.decision, "ok");
+      assert.equal(parsed.inbound_gate, undefined);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("F3: budget exhaustion + stale marker includes inbound_gate: true", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(obsDir, { recursive: true });
+    writeFileSync(
+      join(coordDir, "coordination-config.json"),
+      JSON.stringify({ version: "1.0", profiles: {} })
+    );
+    writeFileSync(
+      join(obsDir, "observation-docker.yaml"),
+      `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
+    );
+    writeFileSync(
+      join(obsDir, "budget-docker-resource-budget.yaml"),
+      `budget: 1\ncurrent: 1\nconstraint_type: docker\nvalidation_window: { active: false }`
+    );
+    writeFileSync(
+      join(coordDir, ".last-operator-message"),
+      JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: "I cleared the device" }, null, 2)
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "check_gate",
+        arguments: { command: "docker run ubuntu" },
+      });
+      const text = result.content[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.decision, "escalate");
+      assert.equal(parsed.inbound_gate, true);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("F3: budget exhaustion + observation newer than marker does NOT include inbound_gate", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(obsDir, { recursive: true });
+    writeFileSync(
+      join(coordDir, "coordination-config.json"),
+      JSON.stringify({ version: "1.0", profiles: {} })
+    );
+    writeFileSync(
+      join(obsDir, "observation-docker.yaml"),
+      `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date().toISOString()}\nnotes: test`
+    );
+    writeFileSync(
+      join(obsDir, "budget-docker-resource-budget.yaml"),
+      `budget: 1\ncurrent: 1\nconstraint_type: docker\nvalidation_window: { active: false }`
+    );
+    writeFileSync(
+      join(coordDir, ".last-operator-message"),
+      JSON.stringify({ timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), prompt_snippet: "old" }, null, 2)
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "check_gate",
+        arguments: { command: "docker run ubuntu" },
+      });
+      const text = result.content[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.decision, "escalate");
+      assert.equal(parsed.inbound_gate, undefined);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
 });
 
 describe("MCP server record_observation tool", () => {

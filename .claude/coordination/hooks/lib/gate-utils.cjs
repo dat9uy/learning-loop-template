@@ -114,14 +114,23 @@ function matchesAnyGlob(patterns, filePath) {
   return patterns.some(p => globMatch(p, filePath));
 }
 
+const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Read the last operator message marker written by inbound-state-gate.cjs.
- * Returns { timestamp, prompt_snippet } or null if not found.
+ * Returns { timestamp, prompt_snippet } or null if not found or expired.
+ * Markers older than MARKER_TTL_MS are treated as non-existent to prevent
+ * perpetual escalation after state-change messages.
  */
 function readLastOperatorMessage(coordDir) {
   const markerPath = process.env.GATE_MARKER_PATH || path.join(coordDir, '.last-operator-message');
   try {
-    return JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+    const marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+    if (!marker || !marker.timestamp) return null;
+    const markerTime = new Date(marker.timestamp).getTime();
+    if (isNaN(markerTime)) return null;
+    if ((Date.now() - markerTime) > MARKER_TTL_MS) return null;
+    return marker;
   } catch {
     return null;
   }

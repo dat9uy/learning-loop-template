@@ -107,24 +107,34 @@ console.log('\n=== Category 1: State-Change Detection ===');
 {
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+  const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
 
-  // Marker written = state-change detected (hook exits 0 before context injection when no observations)
+  // Marker written = state-change detected (requires stale observation for marker to write post-F1)
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t1 = runInboundHook('I cleared the device', env);
   assert(markerExists(tmpDir), 'device clearance → marker written');
   clearMarker(tmpDir);
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t2 = runInboundHook('the container is running', env);
   assert(markerExists(tmpDir), 'container state → marker written');
   clearMarker(tmpDir);
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t3 = runInboundHook('I installed vnstock', env);
   assert(markerExists(tmpDir), 'action report → marker written');
   clearMarker(tmpDir);
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t4 = runInboundHook('the slot is free', env);
   assert(markerExists(tmpDir), 'state assertion → marker written');
   clearMarker(tmpDir);
 
+  clearObservations(tmpDir);
   const t5 = runInboundHook("what should we do next?", env);
   assert(!markerExists(tmpDir), 'normal message → no marker');
 
@@ -137,13 +147,18 @@ console.log('\n=== Category 1: State-Change Detection ===');
   const t8 = runInboundHook('is the device cleared?', env);
   assert(!markerExists(tmpDir), 'question ending with ? → no marker (F11)');
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t9 = runInboundHook("I didn't clear the device", env);
   assert(markerExists(tmpDir), 'negated state → marker written');
   clearMarker(tmpDir);
 
+  clearObservations(tmpDir);
   const t10 = runInboundHook('is the test suite done?', env);
   assert(!markerExists(tmpDir), 'question filter (F11) → no marker');
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const t11 = runInboundHook('the build is broken', env);
   assert(markerExists(tmpDir), 'broad pattern match → marker written (documented false positive)');
   clearMarker(tmpDir);
@@ -252,11 +267,17 @@ console.log('\n=== Category 4: Marker File Flow ===');
   assert(marker.prompt_snippet.includes('cleared'), 'marker contains prompt snippet');
   clearMarker(tmpDir);
 
-  // Fresh obs + state-change → marker STILL written (F1 phantom escalation)
+  // Fresh obs + state-change → marker NOT written (F1 fix)
   clearObservations(tmpDir);
   writeObservation(tmpDir, { id: 'obs-m2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
   runInboundHook('the container is running', env);
-  assert(markerExists(tmpDir), 'fresh + state-change → marker STILL written (F1)');
+  assert(!markerExists(tmpDir), 'fresh + state-change → marker NOT written (F1 fix)');
+  clearMarker(tmpDir);
+
+  // No observations + state-change → marker NOT written
+  clearObservations(tmpDir);
+  runInboundHook('I cleared the device', env);
+  assert(!markerExists(tmpDir), 'no obs + state-change → marker NOT written');
   clearMarker(tmpDir);
 
   // Normal message → no marker
@@ -344,6 +365,8 @@ console.log('\n=== Category 6: False Positive Rate ===');
   const t5 = runInboundHook('is the device cleared?', env);
   assert(!markerExists(tmpDir), 'question with state → not detected (F11)');
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-fp', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() });
   const t6 = runInboundHook('the build is broken', env);
   assert(markerExists(tmpDir), 'broad pattern → detected (documented false positive)');
   clearMarker(tmpDir);
@@ -357,9 +380,9 @@ console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
   const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'constraint-gate', 'server.js');
   const serverCode = fs.readFileSync(serverPath, 'utf8');
   const hasStalenessCheck = serverCode.includes('checkObservationStaleness');
-  const onlyOnOk = serverCode.includes('decision.decision === "ok"') && serverCode.includes('checkObservationStaleness');
+  const checksRegardless = serverCode.includes('if (constraintMatch)') && serverCode.includes('checkObservationStaleness');
   assert(hasStalenessCheck, 'MCP server has staleness check function');
-  assert(onlyOnOk, 'MCP server only checks staleness when decision === "ok" (F3 — known behavior)');
+  assert(checksRegardless, 'MCP server checks staleness regardless of decision (F3 fix)');
 }
 
 // --- Category 8: Test Isolation ---
@@ -368,7 +391,10 @@ console.log('\n=== Category 8: Test Isolation ===');
   const tmpDir = createTempProject();
   const customMarker = path.join(tmpDir, 'custom-marker.json');
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: customMarker };
+  const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
 
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   runInboundHook('I cleared the device', env);
   assert(fs.existsSync(customMarker), 'GATE_MARKER_PATH override → marker written to custom path');
 
@@ -378,6 +404,8 @@ console.log('\n=== Category 8: Test Isolation ===');
   // Default path test
   clearMarker(tmpDir);
   try { fs.unlinkSync(customMarker); } catch {}
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, staleObs);
   const env2 = { GATE_ROOT: tmpDir }; // no GATE_MARKER_PATH
   runInboundHook('I cleared the device', env2);
   assert(fs.existsSync(defaultMarkerPath), 'default marker path → writes to .claude/coordination/.last-operator-message');

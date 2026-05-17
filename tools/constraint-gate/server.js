@@ -28,14 +28,23 @@ function resolveRoot() {
   return dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 }
 
+const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Read the last operator message marker written by inbound-state-gate.cjs.
- * Returns { timestamp, prompt_snippet } or null if not found.
+ * Returns { timestamp, prompt_snippet } or null if not found or expired.
+ * Markers older than MARKER_TTL_MS are treated as non-existent to prevent
+ * perpetual escalation after state-change messages.
  */
 function readLastOperatorMessage(root) {
   try {
     const markerPath = process.env.GATE_MARKER_PATH || join(root, ".claude", "coordination", ".last-operator-message");
-    return JSON.parse(readFileSync(markerPath, "utf8"));
+    const marker = JSON.parse(readFileSync(markerPath, "utf8"));
+    if (!marker || !marker.timestamp) return null;
+    const markerTime = new Date(marker.timestamp).getTime();
+    if (isNaN(markerTime)) return null;
+    if ((Date.now() - markerTime) > MARKER_TTL_MS) return null;
+    return marker;
   } catch {
     return null;
   }
@@ -122,15 +131,18 @@ server.tool(
 
     const decision = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
 
-    // Inbound gate integration: if gate says ok but observations are stale
-    // relative to the last operator message, escalate instead.
-    if (decision.decision === "ok" && constraintMatch) {
+    // Inbound gate integration: check staleness regardless of decision, but only
+    // when constraint matches. If observations are stale relative to the last
+    // operator message, add inbound_gate flag. Upgrade "ok" to "escalate".
+    if (constraintMatch) {
       const staleness = checkObservationStaleness(observations, root);
       if (staleness.stale) {
-        decision.decision = "escalate";
-        decision.reason = staleness.reason;
-        decision.observation_id = staleness.observation_id;
         decision.inbound_gate = true;
+        if (decision.decision === "ok") {
+          decision.decision = "escalate";
+          decision.reason = staleness.reason;
+          decision.observation_id = staleness.observation_id;
+        }
       }
     }
 

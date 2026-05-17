@@ -175,9 +175,6 @@ function main() {
 
   const root = findProjectRoot();
 
-  // Write operator message marker for outbound gate
-  writeOperatorMessageMarker(root, prompt);
-
   // Read active observations
   const observations = readActiveObservations(root);
   if (observations.length === 0) process.exit(0);
@@ -186,6 +183,10 @@ function main() {
   const now = Date.now();
   const stale = findStaleObservations(observations, now);
   if (stale.length === 0) process.exit(0);
+
+  // Write operator message marker for outbound gate
+  // Only write marker when observations are actually stale (F1 fix)
+  writeOperatorMessageMarker(root, prompt);
 
   // Inject context — soft warning, not a hard block
   const message = buildContextMessage(stale);
