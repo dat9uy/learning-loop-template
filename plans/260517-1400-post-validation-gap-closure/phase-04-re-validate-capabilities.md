@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Re-validate Capabilities"
-status: blocked
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]

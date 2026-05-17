@@ -1,7 +1,7 @@
 ---
 title: "Post-Validation Gap Closure"
 description: "Close gaps after vnstock installer rewrite validation: fix phase statuses, create Docker cleanup mechanism, strengthen capability definition, re-validate capability scripts."
-status: in-progress
+status: completed
 priority: P2
 branch: "main"
 tags: [vnstock, capabilities, cleanup, docs, validation]
