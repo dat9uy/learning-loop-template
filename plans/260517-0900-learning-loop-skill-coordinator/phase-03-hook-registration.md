@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Hook Registration"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [0, 2]

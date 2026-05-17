@@ -1,7 +1,7 @@
 ---
 title: "Learning-Loop Skill Coordinator"
 description: "Transform learning-loop into a universal skill coordinator. PreToolUse hook gates write-capable external skills through learning-loop, which checks state, builds constraint prompts, and returns instructions for Claude to execute target skills under constraints."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [learning-loop, coordinator, hooks, skills, coordination]
@@ -32,13 +32,13 @@ Transform learning-loop from a prompt-authoring skill into a universal skill coo
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 0 | [Protocol Verification](./phase-00-protocol-verification.md) | Pending |
-| 1 | [Coordination Config Schema](./phase-01-coordination-config-schema.md) | Pending |
-| 2 | [Hook Script (TDD)](./phase-02-hook-script-tdd.md) | Pending |
-| 3 | [Hook Registration](./phase-03-hook-registration.md) | Pending |
-| 4 | [SKILL.md Coordinator Expansion](./phase-04-skill-md-coordinator-expansion.md) | Pending |
-| 5 | [CLAUDE.md Rules](./phase-05-claude-md-rules.md) | Pending |
-| 6 | [Integration Test](./phase-06-integration-test.md) | Pending |
+| 0 | [Protocol Verification](./phase-00-protocol-verification.md) | Completed |
+| 1 | [Coordination Config Schema](./phase-01-coordination-config-schema.md) | Completed |
+| 2 | [Hook Script (TDD)](./phase-02-hook-script-tdd.md) | Completed |
+| 3 | [Hook Registration](./phase-03-hook-registration.md) | Completed |
+| 4 | [SKILL.md Coordinator Expansion](./phase-04-skill-md-coordinator-expansion.md) | Completed |
+| 5 | [CLAUDE.md Rules](./phase-05-claude-md-rules.md) | Completed |
+| 6 | [Integration Test](./phase-06-integration-test.md) | Completed |
 
 ## Key Design Decisions
 

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "profiles": {
+    "code-generation": {
+      "description": "Skills that write code files",
+      "write_allowlist": ["product/**", "tools/**"],
+      "write_forbidlist": ["records/**", "evidence/**", "docs/**", "plans/**", "schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md", "docs/artifact-reference.md"],
+      "gate_signals": ["validation_window"]
+    },
+    "plan-execution": {
+      "description": "Skills that execute plans",
+      "write_allowlist": ["product/**", "tools/**", "records/**", "evidence/**"],
+      "write_forbidlist": ["schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md", "docs/artifact-reference.md"],
+      "gate_signals": ["validation_window"]
+    },
+    "external-system": {
+      "description": "Skills that interact with external systems (not used in v1)",
+      "write_allowlist": ["product/**", "records/**", "evidence/**"],
+      "write_forbidlist": ["schemas/**"],
+      "read_requirelist": ["docs/operator-guide.md"],
+      "gate_signals": ["budget_check", "validation_window", "staleness_check"]
+    }
+  }
+}

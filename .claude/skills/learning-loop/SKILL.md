@@ -25,6 +25,10 @@ Use when the user asks:
 
 Also use before any task involving external systems with irreversible state (e.g., vendor APIs, device slots, production databases).
 
+Also use when:
+- A skill call was blocked by the coordination hook (you are now the coordinator)
+- Any external skill needs to interact with this repo's records, evidence, or state
+
 ## Workflow
 
 1. Classify the requested learning-loop task:
@@ -56,6 +60,19 @@ Also use before any task involving external systems with irreversible state (e.g
    - required approvals, if any
    - why this prompt shape
    - unresolved questions, if any
+
+## Coordination Workflow
+
+When invoked as coordinator (target skill specified):
+
+1. Load `references/coordination-rules.md` for the full coordination protocol.
+2. Read `.claude/coordination/skill-registry.json` → find target skill profile.
+3. Read `.claude/coordination/coordination-config.json` → load profile rules.
+4. Run pre-execution gates per profile (budget_check, validation_window).
+5. Build constraint prompt per the template in coordination-rules.md.
+6. Write `.claude/coordination/.bypass-next` (one-shot hook bypass).
+7. Return the constraint prompt + instructions for Claude to invoke the target skill directly.
+8. After target skill completes, run `pnpm check` to validate records.
 
 ## Prompt Requirements
 

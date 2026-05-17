@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "SKILL.md Coordinator Expansion"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [0, 1]

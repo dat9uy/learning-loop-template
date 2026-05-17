@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "Protocol Verification"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: []
@@ -76,6 +76,34 @@ Record all findings in this phase file. Based on results:
 
 **If skills CANNOT invoke other skills:**
 → Coordinator returns instructions; Claude executes them directly. Layer 3 becomes a prompt template, not a dispatcher.
+
+## Findings (2026-05-17)
+
+### 1. Skill tool EXISTS and is interceptable
+
+Evidence: `allowed-tools` in hookify.md lists "Skill" as a valid tool name. Claude Code's skill-schema.json defines `allowed-tools` field. Skills are first-class tools in the PreToolUse hook system.
+
+**Decision:** Proceed with hook-on-Skill approach. No pivot needed.
+
+### 2. Hook protocol field names verified
+
+From existing hooks:
+- `scout-block.cjs:84`: `const toolName = data.tool_name || 'unknown';`
+- `privacy-block.cjs:107`: `const { tool_input: toolInput, tool_name: toolName } = hookData;`
+
+Field names: `tool_name`, `tool_input`. Skill tool input: `{ "skill": "skill-name", "args": "..." }`
+
+### 3. Skills CANNOT invoke other skills programmatically
+
+No `invokeSkill()` API exists. Skills are prompt-based — the coordinator builds a constraint prompt and returns it. Claude executes the target skill's instructions directly.
+
+**Decision:** Layer 3 is a prompt template, not a dispatcher. Bypass file mechanism needed for coordinator to invoke target skill.
+
+### 4. Settings merge behavior
+
+Project `.claude/settings.json` does not exist. `.claude/settings.local.json` has permissions only. Claude Code convention: project settings merge with global settings (not override). Creating `.claude/settings.json` with hooks will merge with global hooks.
+
+**Decision:** Create `.claude/settings.json` with coordination hook only. Global hooks continue to work.
 
 ## Success Criteria
 
