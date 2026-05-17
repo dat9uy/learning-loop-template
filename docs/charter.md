@@ -2,7 +2,7 @@
 
 ## Objective
 
-Generate product proposals from structured knowledge, reviewed experiments, and explicit decisions. The lab measures what a learning loop can justify from records, not what an agent remembers from another codebase.
+Generate product proposals from structured knowledge, reviewed experiments, and explicit decisions — with a stateful constraint enforcement layer that gates irreversible operations behind observation records and resource budgets. The lab measures what a learning loop can justify from records, not what an agent remembers from another codebase.
 
 ## Scope
 
@@ -14,6 +14,18 @@ The template contains:
 - proposal-only experiments;
 - guardrails for provenance and review.
 
+### Constraint Enforcement Layer
+
+The template also contains a stateful enforcement layer for irreversible operations:
+
+- **Observation records** (`records/observations/`) — mutable state captures for external system constraints (device slots, resource budgets, behavioral findings). Operator-managed; agent-readable.
+- **Resource budgets** — observation files with `*-resource-budget.yaml` suffix track `budget`/`current` counts, `validation_window` state, and `last_verified` timestamps.
+- **Constraint gate** (`tools/constraint-gate/`) — MCP server + pure gate logic that checks commands against observation state and returns `ok` / `block` / `escalate`.
+- **Coordination hooks** (`.claude/coordination/hooks/`) — PreToolUse hooks that intercept Bash, Edit/Write, and Skill calls to enforce gate decisions and write-path boundaries.
+- **Coordination profiles** (`.claude/coordination/coordination-config.json`) — define write allowlists/forbidlists per skill category.
+
+This layer addresses the gap between "agent remembers to check" and "system enforces the check." The gate is only as good as its observations — keeping observations in sync with external reality (especially after operator-provided state changes) is an active area of work.
+
 The template does not contain product application code (no FastAPI source, no UI source, no database, no live runtime integration). Capability scripts under `product/<stack>/capabilities/` are feasibility probes, not product code.
 
 ## Operating Rules
@@ -23,11 +35,16 @@ The template does not contain product application code (no FastAPI source, no UI
 3. Product output is a proposal or no-build decision unless a later plan approves implementation.
 4. Existing projects are provenance sources, not design sources.
 5. Product stack choices remain recommendations until a build experiment is approved.
+6. Commands touching irreversible external systems must pass the constraint gate. The gate reads observation records and resource budgets — stale observations produce wrong decisions.
+7. Observation records are the authoritative source for external system state. Check them before asking the operator.
 
 ## Initial Folder Ownership
 
 - `records/`: source YAML records (claims, risks, experiments, decisions, capability records, observations) plus dedicated evidence files.
+- `records/observations/`: constraint observations and resource budgets (mutable, operator-managed).
 - `docs/`: project metadata and learning-loop policy docs.
 - `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
+- `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
+- `.claude/coordination/`: hooks, profiles, skill registry, and gate audit log.
 - `plans/`: active and historical plans + brainstorm reports.
