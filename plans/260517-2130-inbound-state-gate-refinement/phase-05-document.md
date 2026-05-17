@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Document"
-status: pending
+status: complete
 priority: P2
 effort: "20m"
 dependencies: [4]

@@ -1,7 +1,7 @@
 ---
 title: "Inbound State Gate Refinement"
 description: "Validate, test, and refine the UserPromptSubmit-based inbound state gate. TDD approach to verify hook format, context injection, marker file flow, and outbound gate integration."
-status: in-progress
+status: complete
 priority: P1
 branch: "main"
 tags: [hooks, enforcement, tdd, constraint-gate, inbound]
@@ -32,11 +32,11 @@ The `UserPromptSubmit` hook is new to this project. We need to verify:
 
 | Phase | Name | Status | Priority | Effort |
 |-------|------|--------|----------|--------|
-| 1 | [Research](./phase-01-research.md) | Pending | P1 | 30m |
-| 2 | [Test Design](./phase-02-test-design.md) | Pending | P1 | 30m |
-| 3 | [Implement Tests](./phase-03-implement-tests.md) | Pending | P1 | 1h |
-| 4 | [Validate Integration](./phase-04-validate-integration.md) | Pending | P1 | 30m |
-| 5 | [Document](./phase-05-document.md) | Pending | P2 | 20m |
+| 1 | [Research](./phase-01-research.md) | Complete | P1 | 30m |
+| 2 | [Test Design](./phase-02-test-design.md) | Complete | P1 | 30m |
+| 3 | [Implement Tests](./phase-03-implement-tests.md) | Complete | P1 | 1h |
+| 4 | [Validate Integration](./phase-04-validate-integration.md) | Complete | P1 | 30m |
+| 5 | [Document](./phase-05-document.md) | Complete | P2 | 20m |
 
 ## Dependencies
 

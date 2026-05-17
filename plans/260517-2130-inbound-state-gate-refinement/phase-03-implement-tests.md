@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Implement Tests"
-status: pending
+status: complete
 priority: P1
 effort: "1h"
 dependencies: [2]

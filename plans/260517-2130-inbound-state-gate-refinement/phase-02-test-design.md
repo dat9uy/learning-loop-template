@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Test Design"
-status: pending
+status: complete
 priority: P1
 effort: "30m"
 dependencies: [1]
