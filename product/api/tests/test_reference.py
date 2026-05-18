@@ -21,8 +21,6 @@ import pytest
 from fastapi import HTTPException
 
 import src.routers.reference as reference_router
-from src import vendor_compat
-
 
 class FakeEquity:
     def list(self):
@@ -66,15 +64,6 @@ def test_endpoint_blocks_without_runtime_gate(monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         reference_router.list_equity()
     assert exc_info.value.status_code == 403
-
-
-def test_app_import_applies_vendor_compat_before_router_use() -> None:
-    assert user_agent_stub.get_headers is not original_get_headers
-    headers = user_agent_stub.get_headers(data_source="VCI")
-    assert headers["Device-Id"]
-    assert headers["Cookie"].startswith("device_id=")
-    assert vendor_compat.ensure_vci_device_id is not None
-
 
 def test_equity_endpoint_returns_reference_schema(monkeypatch):
     approve_live_reference(monkeypatch)

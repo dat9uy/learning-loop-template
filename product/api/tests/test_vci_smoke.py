@@ -10,7 +10,6 @@ if not os.environ.get("VNSTOCK_SMOKE_TEST_ALLOW_LIVE"):
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src import vendor_compat  # noqa: F401
 from vnstock_data import Market, Reference
 
 
