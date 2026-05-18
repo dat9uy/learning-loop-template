@@ -7,7 +7,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `README.md` — repo lanes and standalone-operation guardrail.
 - `docs/operator-guide.md` — first-run, normal workflow, runtime artifact standard, validation, approval boundaries.
 - `docs/artifact-reference.md` — typed record schemas, claim verification dimensions, proof blocks, capability-term glossary.
-- `docs/lab-model.md` — lab concepts and separation of concerns.
+- `docs/record-system-architecture.md` — entity roles, record hierarchy, state machine, verification axes.
 - `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
 
 ## Core Philosophy

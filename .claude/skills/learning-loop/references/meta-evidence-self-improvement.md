@@ -50,7 +50,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - README.md
 - docs/operator-guide.md
-- docs/lab-model.md
+- docs/record-system-architecture.md
 - [specific files that show the gap]
 
 Goal:
