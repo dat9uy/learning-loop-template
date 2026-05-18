@@ -1,4 +1,6 @@
-# Lab Model
+# Record System Architecture
+
+This document describes the record system's data model, entity roles, state machine, and verification axes. For the reasoning principles behind these structures — why the loop exists, how to think about verification, decisions as boundaries, and state-machine rules — read `docs/philosophy.md` first.
 
 ## Record Ledger
 
@@ -44,7 +46,7 @@ Capability scripts are standalone feasibility probes that test API-return-data r
 
 ## State-Machine Layer
 
-The lab has two distinct state models:
+The system has two distinct state models:
 
 ### Record State (Immutable Ledger)
 
@@ -77,21 +79,6 @@ Command → matchConstraintPattern()
 ### The Sync-State Problem
 
 The gate is only as good as its observations. When an operator resolves a constraint externally (e.g., clears a device slot), the observation must be updated before the next gated command. This is an active area of work — the gap between "operator changes reality" and "observation reflects reality" is the sync-state problem. See `plans/reports/debugger-260517-1430-observation-update-miss-meta-process.md`.
-
-## Philosophy Rules
-
-1. Source/evidence supports claims and grounds risks; it is not proof by itself.
-2. Proof is experiment outcome plus the `verification.proves` dimension, not a separate entity.
-3. Experiments use `verification.proves`; claims store dimension status, not assurance.
-4. Source-only state stays implicit from `source_refs`; verification starts at `claimed`.
-5. Claim assurance is derived from valid verification dimensions; do not duplicate it elsewhere.
-6. Risk confidence is not claim assurance.
-7. Product approval is a decision effect, not an assurance level.
-8. Decisions approve boundaries; experiments produce outputs within those boundaries.
-9. Capability records cite claims and capability-script paths; they do not embed raw evidence.
-10. Capability records are bound by the per-record-type allowlist: only capability records may cite `local:product/*/capabilities/...`.
-11. Observation records are the authoritative source for external system state. Check observations before asking the operator about device slots, budgets, or operational constraints.
-12. The constraint gate is only as good as its observations. Stale observations produce wrong gate decisions. When external reality changes, update the observation first.
 
 ## Verification Axes
 

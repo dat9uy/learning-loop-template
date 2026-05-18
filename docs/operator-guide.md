@@ -1,5 +1,7 @@
 # Operator Guide
 
+This guide covers mechanics: how to name records, validate them, bootstrap stacks, and run the agent intake flow. For the *reasoning* behind these steps — why the loop exists, how to think about verification dimensions, decisions as boundaries, and state-machine rules — read `docs/philosophy.md` first.
+
 ## Start Here
 
 Run default validation before changing records:

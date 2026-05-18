@@ -19,11 +19,12 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 
 | Doc | When to read |
 |---|---|
-| `docs/operator-guide.md` | First run / day-to-day intake, bootstrap, runtime, agent flow |
+| `docs/philosophy.md` | **Read this first.** Why the loop exists, how to reason with it, and the "How to Reason With the Loop" practices |
+| `docs/operator-guide.md` | First run / day-to-day intake, bootstrap, runtime, agent flow — mechanics after you understand the philosophy |
 | `docs/charter.md` | Scope + operating rules |
-| `docs/lab-model.md` | Entity roles + verification axes |
+| `docs/record-system-architecture.md` | Entity roles, record hierarchy, state machine, verification axes |
 | `docs/artifact-reference.md` | Typed record schemas, dimension semantics, capability-term glossary |
-| `docs/red-team-review.md` | Review classifications |
+| `docs/red-team-review.md` | Review dimensions, classifications, and when to apply external review in the loop |
 | `docs/journals/` | Session journals |
 
 ## Quick Commands

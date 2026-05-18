@@ -78,6 +78,6 @@ Required fields:
 
 ## See Also
 
-- `docs/lab-model.md` — entity roles and hierarchy
+- `docs/record-system-architecture.md` — entity roles, record hierarchy, state machine
 - `docs/operator-guide.md` — evidence model and approval flow
 - `docs/artifact-reference.md` — dimension semantics

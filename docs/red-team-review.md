@@ -1,29 +1,114 @@
-# Red Team Review
+# Review in the Learning Loop
 
-## Product Pragmatist
+The learning loop is adversarial by design. Claims are challenged by experiments. Experiments are challenged by cleanup rules. Decisions are challenged by superseding decisions. This document describes when and how to apply external review — the skeptical agent or operator who reads records they did not write.
 
-Classification: non-blocker.
+## Review Is Not Optional
 
-The template favors evidence and approval discipline before build speed. The smallest useful first step is a reviewed evidence capsule, not a product scaffold.
+External review catches what the loop's built-in checks miss:
 
-## Workflow Scientist
+- A claim with a weak experiment that passed validation.
+- A decision whose blocked_actions leave a gap.
+- An experiment whose cleanup succeeded but whose temp directory was not actually deleted.
+- A risk that was mitigated once but whose mitigation is now stale.
 
-Classification: non-blocker.
+The loop assumes the next reader is skeptical. Review makes that assumption real.
 
-The record ledger and capability-record contract make inputs explicit enough to evaluate agent behavior. More metrics can wait until repeated experiments create querying pressure.
+## What Gets Reviewed
 
-## Security And Provenance Reviewer
+| Artifact | When to review | What to check |
+|---|---|---|
+| **Claim record** | Before relying on it for a product decision | Are the dimensions appropriate? Is the evidence sufficient for the strongest dimension? Are source_refs active or legacy? |
+| **Experiment record** | Before updating a claim dimension | Does the hypothesis match what was actually tested? Is the result_reason conclusive or hand-wavy? Does cleanup_status block the result? |
+| **Decision record** | Before acting on its scope | Do the allowed_actions match the rationale? Do the blocked_actions close all gaps? Is there a simpler alternative not considered? |
+| **Risk record** | During planning and before product approval | Is the risk still active? Has the mitigation been tested? Is the severity proportional to the evidence? |
+| **Capability record** | Before product build | Do the `record_ref` claims cover the required dimensions? Does the map from library surface to product surface miss anything? |
+| **Observation record** | Before budget-consuming actions | Is `last_verified` fresh? Does `current` match external reality? Is the `validation_window` still active? |
+| **Product code** | After implementation | Does it stay within the decision's allowed_actions? Does it respect output policy? Does it handle the risks flagged in planning? |
 
-Classification: blocker avoided.
+## Review Dimensions
 
-The template starts blank, requires local evidence citations, and blocks raw data, secrets, copied implementation, live execution, and product use unless explicit decisions approve scope.
+### Epistemic Review
 
-## Fixes Applied
+Are the records justified by the evidence? Check:
 
-- Generated docs remain optional and non-authoritative.
-- Negative fixtures validate unsafe references.
-- Handoff states first-run boundaries instead of accumulated project state.
+- **Evidence sufficiency** — does the cited evidence actually support the claim, or is it tangential?
+- **Confidence calibration** — is the strongest dimension (`verified`, `approved`) warranted, or should it be weaker?
+- **Dimension separation** — are `static`, `install`, `runtime`, and `product` kept separate, or conflated?
+- **Negative knowledge** — are failures and inconclusive results preserved, or swept under "notes"?
 
-## Unresolved Questions
+### Structural Review
 
-- None until the first domain/source is selected.
+Do the records form a coherent graph? Check:
+
+- **Cross-reference integrity** — do `source_refs`, `claim_refs`, `proof_refs`, and `decision_refs` resolve to existing records?
+- **Hierarchy consistency** — does the evidence → claim → experiment → decision chain make sense?
+- **Superseded links** — are old records linked to their replacements, or do they float unconnected?
+- **Stale evidence** — is there evidence cited that has been disproven by a newer experiment?
+
+### Boundary Review
+
+Do decisions actually fence what they intend to fence? Check:
+
+- **Allowed vs blocked** — is every allowed_action matched by a blocked_action that closes the complementary set?
+- **Scope leakage** — does the decision's `affected_refs` include everything it touches, or miss downstream files?
+- **Reversibility** — does the decision account for how to undo or supersede itself?
+
+### Temporal Review
+
+Has external reality changed since the records were written? Check:
+
+- **Observation freshness** — when was the observation last verified? Is the `validation_window` still valid?
+- **Budget state** — has the resource budget been exhausted by an action not recorded in the loop?
+- **Vendor state** — have external systems (APIs, device slots, auth models) changed since the experiment ran?
+
+## Review Classifications
+
+After review, classify the finding:
+
+| Classification | Meaning | Action |
+|---|---|---|
+| **non-blocker** | The finding is observational or suggests future improvement. No immediate fix required. | Document in review notes. Address if convenient. |
+| **blocker avoided** | The loop's built-in checks already prevent the bad outcome. The finding confirms the check is working. | No action unless the check itself is fragile. |
+| **blocker** | The finding reveals a gap that could lead to a wrong decision, unverified product code, or exhausted resources. | Fix before proceeding. Update records, rerun validation, or escalate to operator. |
+| **meta** | The finding reveals a gap in the loop itself — a missing schema, a rule that agents consistently miss, a validator that should exist. | Create meta evidence under `records/evidence/meta/`. Consider a meta risk or decision if the gap is structural. |
+
+## When to Review
+
+### Continuous Review
+
+Every agent reading records they did not write is a reviewer. Before relying on a claim, experiment, or decision, perform a lightweight epistemic review. This is not bureaucracy. It is the loop's immune system.
+
+### Focused Review
+
+Trigger a full review across all dimensions when:
+
+- A product-build plan is approved.
+- A vendor API changes (new version, new auth model, new rate limits).
+- A resource budget is exhausted or reset.
+- A claim's strongest dimension is promoted (`claimed` → `verified` or `approved`).
+- An operator resolves an external constraint (e.g., clears a device slot).
+
+### External Review
+
+Bring in a human or separate agent team when:
+
+- The decision involves irreversible external state.
+- The risk severity is `high` or `critical`.
+- The experiment is the first of its kind for a new vendor or domain.
+- The loop has self-identified a meta gap (the loop improving itself needs outside validation).
+
+## Review Output
+
+A review should produce:
+
+1. **Classification** for each finding (non-blocker / blocker avoided / blocker / meta).
+2. **Affected records** — which claim, experiment, decision, or observation the finding touches.
+3. **Reasoning** — why the finding matters, with citations to evidence or records.
+4. **Recommended action** — fix now, defer, or escalate.
+5. **Meta flag** — whether the finding should become meta evidence.
+
+Save review output under `records/evidence/meta/` only if the finding is meta (about the loop itself). Domain-specific reviews are ephemeral unless they reveal a blocker that must be recorded.
+
+## Summary
+
+Review is not a gate at the end. It is a continuous, skeptical reading of records by agents and operators who did not write them. The loop's built-in checks catch mechanical errors. Review catches judgment errors — overconfidence, scope creep, stale assumptions, and gaps in reasoning. Treat every record as if a skeptical agent will read it next week and decide whether to trust it.
