@@ -1,7 +1,7 @@
 ---
 title: "vnstock HOME Override: Shared Module + .env"
 description: "Replace 5x copy-pasted HOME override boilerplate with a shared vnstock_env.py module and .env file for uv convenience."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [vnstock, drdy, env, refactor]
@@ -23,11 +23,11 @@ vnstock_data reads `$HOME/.vnstock/api_key.json` via `Path.home()` at import tim
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Create vnstock_env.py](./phase-01-create-vnstock-env-py.md) | Pending |
-| 2 | [Create .env file](./phase-02-create-env-file.md) | Pending |
-| 3 | [Update capability scripts](./phase-03-update-capability-scripts.md) | Pending |
-| 4 | [Update FastAPI router](./phase-04-update-fastapi-router.md) | Pending |
-| 5 | [Verify compilation](./phase-05-verify-compilation.md) | Pending |
+| 1 | [Create vnstock_env.py](./phase-01-create-vnstock-env-py.md) | Completed |
+| 2 | [Create .env file](./phase-02-create-env-file.md) | Completed |
+| 3 | [Update capability scripts](./phase-03-update-capability-scripts.md) | Completed |
+| 4 | [Update FastAPI router](./phase-04-update-fastapi-router.md) | Completed |
+| 5 | [Verify compilation](./phase-05-verify-compilation.md) | Completed |
 
 ## Dependencies
 

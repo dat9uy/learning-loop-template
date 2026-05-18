@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Update capability scripts"
-status: pending
+status: completed
 priority: P2
 effort: "15m"
 dependencies: [1]

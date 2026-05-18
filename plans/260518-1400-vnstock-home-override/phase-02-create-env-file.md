@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Create .env file"
-status: pending
+status: completed
 priority: P3
 effort: "5m"
 dependencies: []

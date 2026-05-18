@@ -5,13 +5,11 @@
 
 # %% Setup and imports
 import logging
-import os
+import sys
 from pathlib import Path
 
-# vnstock_data reads $HOME/.vnstock/api_key.json via Path.home().
-# Set HOME to product/api so the installed config is found.
-_api_root = Path(__file__).resolve().parents[2]
-os.environ["HOME"] = str(_api_root)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import vnstock_env
 
 logging.basicConfig(level=logging.INFO)
 

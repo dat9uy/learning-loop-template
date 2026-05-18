@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Verify compilation"
-status: pending
+status: completed
 priority: P2
 effort: "10m"
 dependencies: [1, 2, 3, 4]

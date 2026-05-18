@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Update FastAPI router"
-status: pending
+status: completed
 priority: P2
 effort: "5m"
 dependencies: [1]

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Create vnstock_env.py"
-status: pending
+status: completed
 priority: P2
 effort: "10m"
 dependencies: []

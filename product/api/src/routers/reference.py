@@ -1,6 +1,7 @@
 from typing import Any
 
 import pandas as pd
+import vnstock_env
 from fastapi import APIRouter, Path, Query
 from vnstock_data import Reference
 
