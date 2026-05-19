@@ -1,20 +1,15 @@
-import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateDerivedAssurance } from "./derived-claim-assurance.js";
 import { validateFilenameConventions } from "./filename-convention-validation.js";
 import { loadRecords } from "./record-loader.js";
+import { loadSchemas } from "./schema-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
 import { RecordParseError } from "./yaml-parse-wrapper.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
-const schemas = Object.fromEntries(
-  ["claim", "experiment", "decision", "risk", "capability"].map((type) => [
-    type,
-    JSON.parse(readFileSync(join(root, "schemas", `${type}.schema.json`), "utf8")),
-  ]),
-);
+const schemas = loadSchemas(root);
 
 function runNegativeFixtures() {
   const cases = [

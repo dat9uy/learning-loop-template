@@ -1,0 +1,90 @@
+id: decision-260519T1400Z-claim-deprecation
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-19T14:00:00Z"
+updated_at: "2026-05-19T14:00:00Z"
+source_refs: []
+question: >
+  Should the claim schema be deprecated for new entries in favor of machine-extracted index entries?
+decision: >
+  Claim schema is deprecated for new entries. Existing 10 claims remain frozen-legacy (read-only).
+  New assertions are extracted into records/index/ from evidence ## Findings.
+rationale: >
+  Two root causes drive this change. First, no one does the synthesis work — experiments are archived
+  and evidence is captured, but the step from "experiment succeeded" to "doc question is resolved"
+  is skipped. Second, claims are not atomic — current claim YAMLs bundle multiple assertions,
+  accumulate supersession history in place, and carry heavy verification blocks. Writing one claim
+  takes 10+ minutes, so they are skipped. Machine-extracted index solves both: humans write
+  ## Findings bullets during or right after experiments (natural, low friction), and each bullet
+  becomes one atomic assertion in records/index/. The index is agent-derived and agent-owned;
+  humans never edit it. Drift is detected mechanically via evidence_immutable_hash. See
+  plans/reports/brainstorm-20260518-machine-extracted-index.md for full design.
+alternatives:
+  - >
+    Keep claims as the primary assertion store and add a lighter "quick claim" template.
+    Rejected — the template still requires a separate authoring step; it does not solve the
+    motivation problem. The ## Findings convention is lighter because it happens inline
+    during evidence writing.
+  - >
+    Use search-only with no index at all — agents read evidence files on every query.
+    Rejected — query time scales with evidence file count; index entries are pre-extracted
+    and self-contained, enabling grep-first, read-narrow state queries.
+tradeoffs:
+  - >
+    Frozen-legacy claims may drift from new index assertions. Mitigation: Mechanism 2
+    Scope A in the extraction tool hard-stops when new extracted assertions contradict
+    frozen claims, surfacing the mismatch to the operator.
+  - >
+    Index entries are machine-derived and may contain extraction errors. Mitigation:
+    evidence_immutable_hash detects post-extraction edits; Mechanism 2 Scope B enforces
+    re-extraction when evidence changes; extraction authority inherits from evidence
+    validation_status, so only passed evidence becomes active index entries.
+  - >
+    N=1/N>1 counting requires atomic assertions, which demands strict evidence
+    frontmatter and one-file-one-dimension discipline. Mitigation: the extraction tool
+    errors on cross-dimension bullets, enforcing the invariant from day one.
+supersedes: []
+decision_effect:
+  action: supersede
+  scope: schema-improvement
+  affected_refs:
+    - record:claim-loop-capabilities-stack-allowlist
+    - record:claim-product-fastapi-reference
+    - record:claim-product-tanstack-reference-view
+    - record:claim-vnstock-device-limit-mechanism
+    - record:claim-vnstock-device-limit-ui-inconsistency
+    - record:claim-vnstock-home-config-path
+    - record:claim-vnstock-install-sandbox
+    - record:claim-vnstock-post-registration-auth-failure
+    - record:claim-vnstock-runtime-403-root-cause
+    - record:claim-vnstock-version-requirements
+    - local:plans/reports/brainstorm-20260518-machine-extracted-index.md
+  boundaries:
+    allowed_actions:
+      - >
+        Add "deprecated": true and an updated description to schemas/claim.schema.json
+        pointing at this decision record.
+      - >
+        Create schemas/index-entry.schema.json for the new extracted-assertion record type.
+      - >
+        Create the records/index/ directory with .gitkeep.
+      - >
+        Extend tools/validate-records/ to recognize records/index/ YAMLs and validate them
+        against index-entry.schema.json.
+      - >
+        Update docs/record-system-architecture.md to document the new records/index/ entity
+        and frozen-legacy claims.
+    blocked_actions:
+      - >
+        Creating new claim YAMLs in records/claims/ after this decision. Any new assertion
+        must go through evidence ## Findings and the extraction tool into records/index/.
+      - >
+        Editing the verification block or assertion text of existing frozen-legacy claims.
+        They remain read-only as historical audit trail.
+      - >
+        Removing records/claims/ or the 10 existing claim files. Frozen-legacy status
+        preserves them for historical reference and N-counting audit.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check

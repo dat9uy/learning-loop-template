@@ -65,6 +65,26 @@ const recordLocalRoots = {
 };
 
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {
+  if (record.type === "extracted-assertion") {
+    for (const sourceRef of record.source_refs || []) {
+      if (typeof sourceRef !== "object" || !sourceRef.file) continue;
+      const fileRef = sourceRef.file;
+      if (typeof fileRef !== "string") continue;
+      if (fileRef.startsWith("legacy:")) {
+        if (!allowDisallowedFixtures) errors.push(`${record.__file}: disallowed legacy source ${fileRef.slice("legacy:".length)}`);
+        continue;
+      }
+      if (fileRef.startsWith("local:")) {
+        validateLocalRef(record, fileRef, root, errors);
+        continue;
+      }
+      if (fileRef.startsWith("record:")) {
+        if (!ids.has(fileRef.slice("record:".length))) errors.push(`${record.__file}: missing record reference ${fileRef}`);
+        continue;
+      }
+    }
+    return;
+  }
   for (const sourceRef of record.source_refs || []) {
     if (typeof sourceRef !== "string") continue;
     if (sourceRef.startsWith("legacy:")) {
@@ -148,7 +168,13 @@ export function validateLocalRef(record, ref, root, errors) {
 
 function validateRecordReferences(records, ids, errors) {
   for (const record of records) {
-    for (const ref of [...(record.evidence_refs || []), ...(record.supersedes || [])]) {
+    const refFields = [
+      ...(record.evidence_refs || []),
+      ...(record.supersedes || []),
+      ...(record.superseded_by ? [record.superseded_by] : []),
+      ...(record.experiment_refs || []),
+    ];
+    for (const ref of refFields) {
       if (typeof ref !== "string") continue;
       if (ref.startsWith("record:") && !ids.has(ref.slice("record:".length))) {
         errors.push(`${record.__file}: missing record reference ${ref}`);

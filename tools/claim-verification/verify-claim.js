@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verificationDimensions } from "../validate-records/claim-verification-rules.js";
 import { loadRecords } from "../validate-records/record-loader.js";
+import { loadSchemas } from "../validate-records/schema-loader.js";
 import { validateRecords } from "../validate-records/record-validation-rules.js";
 import { parse as parseValue } from "yaml";
 
@@ -47,15 +48,6 @@ function parseArgs(argv) {
 function fail(message) {
   console.error(message);
   process.exit(1);
-}
-
-function loadSchemas() {
-  return Object.fromEntries(
-    ["claim", "experiment", "decision", "risk", "capability"].map((type) => [
-      type,
-      JSON.parse(readFileSync(join(root, "schemas", `${type}.schema.json`), "utf8")),
-    ]),
-  );
 }
 
 function validateRecordSet(records, schemas) {
@@ -164,7 +156,7 @@ function main() {
     return;
   }
 
-  const schemas = loadSchemas();
+  const schemas = loadSchemas(root);
   const records = loadRecords(root);
   validateRecordSet(records, schemas);
 

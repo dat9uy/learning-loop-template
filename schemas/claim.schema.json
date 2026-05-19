@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Claim Record",
+  "description": "Claim Record — deprecated for new entries per decision-260519T1400Z-claim-deprecation. Existing claims are frozen-legacy.",
+  "deprecated": true,
   "type": "object",
   "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "subject", "claim", "scope", "evidence_refs", "confidence", "limitations", "approval", "verification"],
   "properties": {
