@@ -7,13 +7,12 @@ The constraint gate system enforces operational boundaries on AI agent actions t
 ### Architecture Diagram
 
 ```
-Operator Message          Agent Action (Bash/Skill/Edit)
+Operator Message          Agent Action (Bash/Edit/Write)
        |                           |
        v                           v
 [UserPromptSubmit]          [PreToolUse]
        |                           |
  inbound-state-gate        bash-coordination-gate
-       |                    skill-coordination-gate
        |                    write-coordination-gate
        |                           |
        v                           v
@@ -82,12 +81,11 @@ Always exits with code 0 (soft gate).
 
 **Files:**
 - `.claude/coordination/hooks/bash-coordination-gate.cjs`
-- `.claude/coordination/hooks/skill-coordination-gate.cjs`
 - `.claude/coordination/hooks/write-coordination-gate.cjs`
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking (exits 2 on escalation/block)
 
-Outbound gates intercept agent tool usage before execution. They check constraints against coordination config and observation records.
+Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, and observation staleness. The write gate checks file paths against domain rules.
 
 #### Bash Coordination Gate Flow
 

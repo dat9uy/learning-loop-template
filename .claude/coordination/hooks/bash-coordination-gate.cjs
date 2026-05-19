@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { matchConstraintPattern, readCoordinationConfig, readObservations, checkObservationStaleness } = require('./lib/gate-utils.cjs');
+const { matchConstraintPattern, readObservations, checkObservationStaleness } = require('./lib/gate-utils.cjs');
 
 function findProjectRoot() {
   // Walk up from coord dir to find project root (contains records/)
@@ -57,11 +57,6 @@ function main() {
   }
 
   const coordDir = path.join(__dirname, '..');
-  const config = readCoordinationConfig(coordDir);
-  if (!config || !config.profiles) {
-    process.exit(0);
-  }
-
   const constraintMatch = matchConstraintPattern(command);
   if (!constraintMatch) {
     process.exit(0);

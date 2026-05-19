@@ -5,7 +5,6 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
 
-// Constraint patterns — loaded from tools/constraint-gate/patterns.json (single source of truth)
 const PATTERNS_RAW = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../../../../tools/constraint-gate/patterns.json'), 'utf8')
 );
@@ -16,11 +15,6 @@ const CONSTRAINT_PATTERNS = Object.fromEntries(
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
 
-/**
- * Match command against constraint patterns.
- * Splits on ;, &, | and checks each segment.
- * Returns first matching constraint type, or null.
- */
 function matchConstraintPattern(command) {
   if (!command || typeof command !== 'string') return null;
   const segments = command.split(SEGMENT_SEPARATORS);
@@ -34,44 +28,6 @@ function matchConstraintPattern(command) {
   return null;
 }
 
-/**
- * Read coordination-config.json. Fail-open: returns {} on error.
- */
-function readCoordinationConfig(coordDir) {
-  const configPath = path.join(coordDir, 'coordination-config.json');
-  try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  } catch (err) {
-    console.error(`gate-utils: failed to read coordination config: ${err.message}`);
-    return {};
-  }
-}
-
-/**
- * Read active profile from .active-profile file.
- * Defaults to 'code-generation' (most restrictive).
- */
-function readActiveProfile(coordDir) {
-  const profilePath = path.join(coordDir, '.active-profile');
-  try {
-    const name = fs.readFileSync(profilePath, 'utf8').trim();
-    return name || 'code-generation';
-  } catch {
-    return 'code-generation';
-  }
-}
-
-/**
- * Get profile config by name. Falls back to code-generation.
- */
-function getProfile(config, profileName) {
-  return config?.profiles?.[profileName] || config?.profiles?.['code-generation'] || {};
-}
-
-/**
- * Read observation YAML files from observations dir.
- * Fail-open: returns [] on error.
- */
 function readObservations(observationsDir) {
   try {
     const files = fs.readdirSync(observationsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
@@ -92,12 +48,7 @@ function readObservations(observationsDir) {
   }
 }
 
-/**
- * Simple glob matching for forbidlist patterns.
- * Supports ** for directory trees and * for single segments.
- */
 function globMatch(pattern, filePath) {
-  // Convert glob to regex — escape dots first, then handle globs
   const regexStr = pattern
     .replace(/\./g, '\\.')
     .replace(/\*\*/g, '⟨GLOBSTAR⟩')
@@ -107,21 +58,8 @@ function globMatch(pattern, filePath) {
   return regex.test(filePath);
 }
 
-/**
- * Check if a path matches any pattern in a glob list.
- */
-function matchesAnyGlob(patterns, filePath) {
-  return patterns.some(p => globMatch(p, filePath));
-}
+const MARKER_TTL_MS = 30 * 60 * 1000;
 
-const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-/**
- * Read the last operator message marker written by inbound-state-gate.cjs.
- * Returns { timestamp, prompt_snippet } or null if not found or expired.
- * Markers older than MARKER_TTL_MS are treated as non-existent to prevent
- * perpetual escalation after state-change messages.
- */
 function readLastOperatorMessage(coordDir) {
   const markerPath = process.env.GATE_MARKER_PATH || path.join(coordDir, '.last-operator-message');
   try {
@@ -136,11 +74,6 @@ function readLastOperatorMessage(coordDir) {
   }
 }
 
-/**
- * Check if observations are stale relative to the last operator state-change message.
- * Returns { stale: true, reason } if the operator sent a state-change message
- * after the observation was last updated.
- */
 function checkObservationStaleness(observations, coordDir) {
   const marker = readLastOperatorMessage(coordDir);
   if (!marker || !marker.timestamp) return { stale: false };
@@ -148,7 +81,6 @@ function checkObservationStaleness(observations, coordDir) {
   const markerTime = new Date(marker.timestamp).getTime();
   if (isNaN(markerTime)) return { stale: false };
 
-  // Check if any active observation is older than the marker
   for (const obs of observations) {
     if (obs.status !== 'active') continue;
     if (!obs.updated_at) {
@@ -173,12 +105,8 @@ function checkObservationStaleness(observations, coordDir) {
 module.exports = {
   CONSTRAINT_PATTERNS,
   matchConstraintPattern,
-  readCoordinationConfig,
-  readActiveProfile,
-  getProfile,
   readObservations,
   readLastOperatorMessage,
   checkObservationStaleness,
   globMatch,
-  matchesAnyGlob,
 };

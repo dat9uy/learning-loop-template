@@ -1,6 +1,5 @@
 /**
- * File readers for constraint gate — reads coordination config,
- * observation YAML files, and budget YAML files.
+ * File readers for constraint gate — reads observation YAML files and budget YAML files.
  * All readers are fail-open: return empty defaults on error.
  */
 
@@ -15,19 +14,6 @@ import { parse as parseYaml } from "yaml";
  */
 function resolveRoot() {
   return dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-}
-
-/**
- * Read coordination-config.json. Returns parsed object or {} on error.
- */
-export function readCoordinationConfig(root) {
-  const configPath = join(root || resolveRoot(), ".claude", "coordination", "coordination-config.json");
-  try {
-    return JSON.parse(readFileSync(configPath, "utf8"));
-  } catch (err) {
-    console.error(`gate: failed to read coordination config: ${err.message}`);
-    return {};
-  }
 }
 
 /**

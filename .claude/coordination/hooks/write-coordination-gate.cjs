@@ -3,7 +3,44 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readCoordinationConfig, readActiveProfile, getProfile, matchesAnyGlob } = require('./lib/gate-utils.cjs');
+const { globMatch } = require('./lib/gate-utils.cjs');
+
+const DOMAIN_RULES = [
+  { pattern: 'docs/**',           decision: 'allow' },
+  { pattern: 'plans/**',          decision: 'allow' },
+  { pattern: '.claude/**',        decision: 'allow' },
+  { pattern: 'records/observations/**', decision: 'block', reason: 'Observation files affect bash gate decisions. Explicit approval required.' },
+  { pattern: 'records/evidence/**',     decision: 'block', reason: 'Evidence files affect validation. Explicit approval required.' },
+  { pattern: 'records/**',        decision: 'allow' },
+  { pattern: 'evidence/**',       decision: 'allow' },
+  { pattern: '**/node_modules/**', decision: 'block', reason: 'Build artifacts are not git-tracked' },
+  { pattern: '**/dist/**',        decision: 'block', reason: 'Build artifacts are not git-tracked' },
+  { pattern: '**/build/**',       decision: 'block', reason: 'Build artifacts are not git-tracked' },
+  { pattern: 'product/**',        decision: 'allow' },
+  { pattern: 'tools/**',          decision: 'allow' },
+  { pattern: 'schemas/**',        decision: 'block', reason: 'Schema changes require validation. Run pnpm validate:records first, then approve.' },
+  { pattern: '*',                 decision: 'allow' },
+  { pattern: '**',                decision: 'block', reason: 'Unknown path. Only write to known domains.' },
+];
+
+function findProjectRoot() {
+  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
+  let dir = path.join(__dirname, '..', '..', '..');
+  while (!fs.existsSync(path.join(dir, 'records'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return dir;
+}
+
+function toRelative(filePath) {
+  if (!path.isAbsolute(filePath)) return filePath;
+  const root = findProjectRoot();
+  const rel = path.relative(root, filePath);
+  if (rel.startsWith('..')) return filePath;
+  return rel;
+}
 
 function main() {
   let input;
@@ -13,7 +50,6 @@ function main() {
     process.exit(0);
   }
 
-  // Only gate Edit and Write
   if (input.tool_name !== 'Edit' && input.tool_name !== 'Write') {
     process.exit(0);
   }
@@ -23,25 +59,23 @@ function main() {
     process.exit(0);
   }
 
-  const coordDir = path.join(__dirname, '..');
-  const config = readCoordinationConfig(coordDir);
-  if (!config || !config.profiles) {
-    process.exit(0);
-  }
+  const relPath = toRelative(filePath);
 
-  const profileName = readActiveProfile(coordDir);
-  const profile = getProfile(config, profileName);
-  const forbidlist = profile.write_forbidlist || [];
-
-  if (matchesAnyGlob(forbidlist, filePath)) {
-    const output = {
-      decision: 'block',
-      reason: `Write to "${filePath}" is forbidden by profile "${profileName}". Matched forbidlist pattern.`,
-      profile: profileName,
-      file_path: filePath,
-    };
-    console.log(JSON.stringify(output));
-    process.exit(2);
+  for (const rule of DOMAIN_RULES) {
+    if (globMatch(rule.pattern, relPath)) {
+      if (rule.decision === 'allow') {
+        process.exit(0);
+      } else {
+        const output = {
+          decision: 'block',
+          reason: rule.reason || `Write to "${relPath}" is forbidden by domain rule "${rule.pattern}".`,
+          file_path: filePath,
+          matched_rule: rule.pattern,
+        };
+        console.log(JSON.stringify(output));
+        process.exit(2);
+      }
+    }
   }
 
   process.exit(0);

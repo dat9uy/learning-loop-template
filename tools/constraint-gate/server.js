@@ -1,7 +1,7 @@
 /**
  * Constraint Gate MCP Server
  * Exposes check_gate and record_observation tools via stdio transport.
- * Reads coordination config and observation files on each call (stateless).
+ * Reads observation files on each call (stateless).
  */
 
 import { dirname, join } from "node:path";
@@ -16,7 +16,7 @@ import {
   evaluateBudget,
   makeGateDecision,
 } from "./gate-logic.js";
-import { readCoordinationConfig, readObservations, readBudgets } from "./file-readers.js";
+import { readObservations, readBudgets } from "./file-readers.js";
 import { writeObservation } from "./observation-writer.js";
 import { readFileSync } from "node:fs";
 
@@ -111,7 +111,6 @@ server.tool(
     const root = resolveRoot();
 
     // Read state files (stateless — fresh read each call)
-    const config = readCoordinationConfig(root);
     const observations = readObservations(root);
     const budgets = readBudgets(root);
 

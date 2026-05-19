@@ -1,7 +1,7 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -25,13 +25,6 @@ async function startServer(root) {
 describe("MCP server check_gate tool", () => {
   it("returns ok for unconstrained command", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
-    mkdirSync(coordDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
-
     const { client, transport } = await startServer(tmp);
     try {
       const result = await client.callTool({ name: "check_gate", arguments: { command: "ls -la" } });
@@ -46,14 +39,8 @@ describe("MCP server check_gate tool", () => {
 
   it("returns block when constraint matched but no observation", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
     const obsDir = join(tmp, "records", "observations");
-    mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
 
     const { client, transport } = await startServer(tmp);
     try {
@@ -73,14 +60,8 @@ describe("MCP server check_gate tool", () => {
 
   it("returns ok when constraint matched and observation exists", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
     const obsDir = join(tmp, "records", "observations");
-    mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
     writeFileSync(
       join(obsDir, "observation-sudo.yaml"),
       `id: obs-sudo\nconstraint_type: sudo\nstatus: active\nnotes: test`
@@ -103,13 +84,6 @@ describe("MCP server check_gate tool", () => {
 
   it("lists check_gate as available tool", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
-    mkdirSync(coordDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
-
     const { client, transport } = await startServer(tmp);
     try {
       const tools = await client.listTools();
@@ -127,10 +101,6 @@ describe("MCP server check_gate tool", () => {
     const obsDir = join(tmp, "records", "observations");
     mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
     writeFileSync(
       join(obsDir, "observation-docker.yaml"),
       `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
@@ -163,10 +133,6 @@ describe("MCP server check_gate tool", () => {
     mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
     writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
-    writeFileSync(
       join(obsDir, "observation-docker.yaml"),
       `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
     );
@@ -197,10 +163,6 @@ describe("MCP server check_gate tool", () => {
     const obsDir = join(tmp, "records", "observations");
     mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
     writeFileSync(
       join(obsDir, "observation-docker.yaml"),
       `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()}\nnotes: test`
@@ -237,10 +199,6 @@ describe("MCP server check_gate tool", () => {
     mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
     writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
-    writeFileSync(
       join(obsDir, "observation-docker.yaml"),
       `id: obs-docker\nconstraint_type: docker\nstatus: active\nupdated_at: ${new Date().toISOString()}\nnotes: test`
     );
@@ -273,14 +231,8 @@ describe("MCP server check_gate tool", () => {
 describe("MCP server record_observation tool", () => {
   it("records observation and creates file", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
     const obsDir = join(tmp, "records", "observations");
-    mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
 
     const { client, transport } = await startServer(tmp);
     try {
@@ -305,14 +257,8 @@ describe("MCP server record_observation tool", () => {
 
   it("rejects duplicate observation", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
     const obsDir = join(tmp, "records", "observations");
-    mkdirSync(coordDir, { recursive: true });
     mkdirSync(obsDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
 
     const { client, transport } = await startServer(tmp);
     try {
@@ -345,13 +291,6 @@ describe("MCP server record_observation tool", () => {
 
   it("lists record_observation as available tool", async () => {
     const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
-    mkdirSync(coordDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: {} })
-    );
-
     const { client, transport } = await startServer(tmp);
     try {
       const tools = await client.listTools();

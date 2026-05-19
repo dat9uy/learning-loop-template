@@ -121,55 +121,42 @@ External systems with irreversible operations (vendor APIs with device slots, pr
 - Prompt templates: `.claude/skills/learning-loop/references/prompt-blueprints-state-gated.md`
 - Schema: `schemas/resource-budget.schema.json`
 
-## Skill Coordination
+## Write Domain Rules
 
-Write-capable external skills are gated by a PreToolUse hook. Registered skills cannot be invoked directly — they must go through the learning-loop coordinator.
+The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) enforces path-based rules for all Edit and Write tool calls. Rules are evaluated in order; first match wins.
 
-### Registered Skills
+### Allowed Paths
 
-Skills in `.claude/coordination/skill-registry.json` are blocked by the hook. Unregistered skills bypass coordination.
+| Path | Reason |
+|------|--------|
+| `docs/**` | Documentation — git-tracked, reversible |
+| `plans/**` | Plans — git-tracked, reversible |
+| `.claude/**` | Claude system config — self-modifying |
+| `records/**` (except observations/evidence subdirs) | General records — git-tracked |
+| `evidence/**` | Evidence — git-tracked |
+| `product/**` | Product source code |
+| `tools/**` | Tool source code |
+| `*` (root files) | Root project files (README.md, package.json, etc.) |
 
-| Skill | Profile |
-|---|---|
-| backend-development | code-generation |
-| frontend-development | code-generation |
-| tanstack | code-generation |
-| cook | plan-execution |
-| fix | code-generation |
-| mcp-builder | code-generation |
-| web-frameworks | code-generation |
-| mobile-development | code-generation |
+### Blocked Paths
 
-### Coordination Flow
+| Path | Reason |
+|------|--------|
+| `records/observations/**` | Affects bash gate decisions — explicit approval required |
+| `records/evidence/**` | Affects validation — explicit approval required |
+| `**/node_modules/**` | Build artifacts — not git-tracked |
+| `**/dist/**` | Build artifacts — not git-tracked |
+| `**/build/**` | Build artifacts — not git-tracked |
+| `schemas/**` | Schema changes require validation — run `pnpm validate:records` first |
+| `**` (catch-all) | Unknown path — only write to known domains |
 
-1. Claude invokes a registered skill → hook blocks with exit 2 + JSON message
-2. Claude routes to `/ck:learning-loop` with `target=<skill>` and original intent
-3. Coordinator reads skill-registry.json + coordination-config.json for the profile
-4. Coordinator runs gate checks (budget, validation window) per profile's `gate_signals`
-5. Coordinator builds a constraint prompt with write allowlist/forbidlist
-6. Coordinator writes `.claude/coordination/.bypass-next` (one-shot bypass)
-7. Claude invokes the target skill directly (hook allows via bypass)
-8. After skill completes, `pnpm check` validates records
+### Bash Gate
 
-### Profiles
-
-Profiles define write boundaries per skill category:
-
-- **code-generation**: may write to `product/**`, `tools/**`; must not write to `records/**`, `evidence/**`, `docs/**`, `plans/**`, `schemas/**`
-- **plan-execution**: may write to `product/**`, `tools/**`, `records/**`, `evidence/**`; must not write to `schemas/**`
-- **external-system**: defined but not used in v1
-
-### Adding a Skill to the Registry
-
-1. Add entry to `.claude/coordination/skill-registry.json` under `registered_skills`
-2. Assign a profile from `.claude/coordination/coordination-config.json`
-3. Run `node .claude/coordination/__tests__/coordination-config.test.cjs` to validate
-4. Run `bash .claude/coordination/__tests__/integration-test.sh` to verify hook behavior
+The bash gate (`.claude/coordination/hooks/bash-coordination-gate.cjs`) blocks Bash commands that match constraint patterns without active observations or with exhausted budgets. This is the single safety layer for external-system commands.
 
 ### Detailed References
 
-- Hook: `.claude/coordination/hooks/skill-coordination-gate.cjs`
-- Coordination rules: `.claude/skills/learning-loop/references/coordination-rules.md`
+- Hooks: `.claude/coordination/hooks/`
 - Tests: `.claude/coordination/__tests__/`
 
 ## Runtime Validation Request Protocol

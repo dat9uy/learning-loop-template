@@ -1,48 +1,13 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import {
-  readCoordinationConfig,
-  readObservations,
-  readBudgets,
-} from "./file-readers.js";
+import { readObservations, readBudgets } from "./file-readers.js";
 
 function createTmpDir() {
   return mkdtempSync(join(tmpdir(), "gate-test-"));
 }
-
-describe("readCoordinationConfig", () => {
-  it("returns parsed config when file exists", () => {
-    const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
-    mkdirSync(coordDir, { recursive: true });
-    writeFileSync(
-      join(coordDir, "coordination-config.json"),
-      JSON.stringify({ version: "1.0", profiles: { test: {} } })
-    );
-    const result = readCoordinationConfig(tmp);
-    assert.equal(result.version, "1.0");
-    assert.ok(result.profiles.test);
-    rmSync(tmp, { recursive: true, force: true });
-  });
-
-  it("returns empty object when file missing (fail-open)", () => {
-    const result = readCoordinationConfig("/nonexistent/path");
-    assert.deepEqual(result, {});
-  });
-
-  it("returns empty object when file malformed (fail-open)", () => {
-    const tmp = createTmpDir();
-    const coordDir = join(tmp, ".claude", "coordination");
-    mkdirSync(coordDir, { recursive: true });
-    writeFileSync(join(coordDir, "coordination-config.json"), "NOT JSON");
-    const result = readCoordinationConfig(tmp);
-    assert.deepEqual(result, {});
-    rmSync(tmp, { recursive: true, force: true });
-  });
-});
 
 describe("readObservations", () => {
   it("returns parsed YAML observations", () => {

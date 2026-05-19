@@ -7,9 +7,7 @@ const path = require('path');
 
 const HOOK_PATH = path.join(__dirname, '..', 'hooks', 'bash-coordination-gate.cjs');
 const COORD_DIR = path.join(__dirname, '..');
-const CONFIG_PATH = path.join(COORD_DIR, 'coordination-config.json');
 const OBS_DIR = path.join(__dirname, '..', '..', '..', 'records', 'observations');
-const ACTIVE_PROFILE_PATH = path.join(COORD_DIR, '.active-profile');
 
 let passed = 0;
 let failed = 0;
@@ -37,11 +35,6 @@ function assert(condition, msg) {
     failed++;
   }
 }
-
-// Backup config files
-const origConfig = fs.readFileSync(CONFIG_PATH, 'utf8');
-let origProfile = null;
-try { origProfile = fs.readFileSync(ACTIVE_PROFILE_PATH, 'utf8'); } catch {}
 
 console.log('\n--- bash-coordination-gate.cjs ---');
 
@@ -102,16 +95,7 @@ console.log('\n--- bash-coordination-gate.cjs ---');
   assert(r.exitCode === 2, 'docker ; sudo → exit 2 (both constrained)');
 }
 
-// Test 10: Missing config → exit 0 (fail-open)
-{
-  const backup = fs.readFileSync(CONFIG_PATH, 'utf8');
-  fs.unlinkSync(CONFIG_PATH);
-  const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
-  assert(r.exitCode === 0, 'missing config → exit 0 (fail-open)');
-  fs.writeFileSync(CONFIG_PATH, backup);
-}
-
-// Test 11: Performance < 50ms
+// Test 10: Performance < 100ms
 {
   const start = Date.now();
   runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
@@ -120,7 +104,6 @@ console.log('\n--- bash-coordination-gate.cjs ---');
 }
 
 // Cleanup
-try { fs.unlinkSync(ACTIVE_PROFILE_PATH); } catch {}
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

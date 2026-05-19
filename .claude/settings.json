@@ -12,15 +12,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Skill",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/coordination/hooks/skill-coordination-gate.cjs"
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write",
         "hooks": [
           {

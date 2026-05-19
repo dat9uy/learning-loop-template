@@ -22,7 +22,7 @@ The template also contains a stateful enforcement layer for irreversible operati
 - **Resource budgets** — observation files with `*-resource-budget.yaml` suffix track `budget`/`current` counts, `validation_window` state, and `last_verified` timestamps.
 - **Constraint gate** (`tools/constraint-gate/`) — MCP server + pure gate logic that checks commands against observation state and returns `ok` / `block` / `escalate`.
 - **Coordination hooks** (`.claude/coordination/hooks/`) — PreToolUse hooks that intercept Bash, Edit/Write, and Skill calls to enforce gate decisions and write-path boundaries.
-- **Coordination profiles** (`.claude/coordination/coordination-config.json`) — define write allowlists/forbidlists per skill category.
+- **Domain-aware write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) — blocks file writes based on path domain rules.
 
 This layer addresses the gap between "agent remembers to check" and "system enforces the check." The gate is only as good as its observations — keeping observations in sync with external reality (especially after operator-provided state changes) is an active area of work.
 
@@ -47,5 +47,5 @@ The template does not contain product application code (no FastAPI source, no UI
 - `tools/`: validation and verification scripts.
 - `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
 - `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/index/*.yaml` entries.
-- `.claude/coordination/`: hooks, profiles, skill registry, and gate audit log.
+- `.claude/coordination/`: hooks, gate audit log, and observation records.
 - `plans/`: active and historical plans + brainstorm reports.

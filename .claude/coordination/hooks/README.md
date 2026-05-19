@@ -52,21 +52,31 @@ Gates Bash commands against constraint patterns, resource budgets, and observati
 }
 ```
 
-### skill-coordination-gate.cjs
-
-**Type:** `PreToolUse`
-**Matcher:** `Skill`
-**Exit behavior:** 0 (allow) or 2 (block)
-
-Blocks unregistered skills based on `skill-registry.json`.
-
 ### write-coordination-gate.cjs
 
 **Type:** `PreToolUse`
 **Matcher:** `Edit|Write`
 **Exit behavior:** 0 (allow) or 2 (block)
 
-Enforces write allowlists and forbidlists from coordination config.
+Enforces domain rules for file writes. Rules are evaluated in order; first match wins.
+
+| Pattern | Decision | Reason |
+|---------|----------|--------|
+| `docs/**` | allow | Documentation path |
+| `plans/**` | allow | Plan path |
+| `.claude/**` | allow | Claude system config |
+| `records/observations/**` | block | Observation files affect bash gate decisions |
+| `records/evidence/**` | block | Evidence files affect validation |
+| `records/**` | allow | General record path |
+| `evidence/**` | allow | Evidence path |
+| `**/node_modules/**` | block | Build artifacts are not git-tracked |
+| `**/dist/**` | block | Build artifacts are not git-tracked |
+| `**/build/**` | block | Build artifacts are not git-tracked |
+| `product/**` | allow | Product source code |
+| `tools/**` | allow | Tool source code |
+| `schemas/**` | block | Schema changes require validation |
+| `*` | allow | Root project file |
+| `**` | block | Unknown path — only write to known domains |
 
 ## Shared Utilities
 
@@ -74,12 +84,10 @@ Enforces write allowlists and forbidlists from coordination config.
 
 Common functions used by multiple hooks:
 - `matchConstraintPattern(command)` — Match command against constraint patterns
-- `readCoordinationConfig(coordDir)` — Read coordination config
-- `readActiveProfile(coordDir)` — Read active profile
 - `readObservations(obsDir)` — Read observation YAML files
 - `readLastOperatorMessage(coordDir)` — Read marker file
 - `checkObservationStaleness(observations, coordDir)` — Check if observations are stale
-- `globMatch(pattern, path)` / `matchesAnyGlob(patterns, path)` — Glob matching
+- `globMatch(pattern, path)` — Glob matching
 
 ## Environment Variables
 

@@ -5,7 +5,7 @@ status: pending
 priority: P2
 branch: "main"
 tags: [machine-extracted-index, docs, canonicalization]
-blockedBy: ["260519-1558-migration-execution-machine-extracted-index", "260520-0157-coordination-model-collapse"]
+blockedBy: ["260519-1558-migration-execution-machine-extracted-index"]
 blocks: []
 created: "2026-05-19T16:26:59.994Z"
 createdBy: "ck:plan"

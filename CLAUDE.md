@@ -2,20 +2,21 @@
 
 ## Skill Coordination
 
-This repo uses a coordination system for external skills. When you invoke a write-capable
-skill (e.g., /ck:backend-development, /ck:cook, /ck:deploy) and it gets blocked by the
-coordination hook:
+This repo uses a coordination system for external skills. The system has three
+PreToolUse hooks and one MCP server:
 
-1. **Do NOT retry the blocked skill directly.**
-2. **Invoke /ck:learning-loop** with:
-   - `target=<blocked-skill-name>` (e.g., target=backend-development)
-   - Your original intent (what you wanted the skill to do)
-3. Learning-loop will check state, build constraints, and return instructions.
-4. Follow the returned instructions to invoke the target skill.
+- **Bash gate** (`.claude/coordination/hooks/bash-coordination-gate.cjs`) —
+  blocks Bash commands that match constraint patterns without active observations
+  or with exhausted budgets.
+- **Write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) —
+  blocks file writes based on domain rules (`schemas/**` and
+  `records/observations/**` blocked; `docs/**`, `plans/**`, `product/**`,
+  `tools/**` allowed).
+- **Inbound gate** (`.claude/coordination/hooks/inbound-state-gate.cjs`) —
+  warns when operator state-change messages may have stale observations.
+- **MCP server** (`tools/constraint-gate/server.js`) — provides `check_gate`
+  and `record_observation` tools for agent-driven constraint checks.
 
-Skills NOT in the coordination registry (test, scout, research, code-review, etc.)
-bypass coordination and can be invoked directly.
-
-The coordination config lives at `.claude/coordination/`:
-- `skill-registry.json` — which skills are gated
-- `coordination-config.json` — profiles with write allowlists
+Skills can be invoked directly. There is no skill registry, no profile-based
+gating, and no coordinator workflow. The bash gate and write gate enforce
+safety mechanically.
