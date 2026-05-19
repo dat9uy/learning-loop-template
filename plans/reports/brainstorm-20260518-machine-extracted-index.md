@@ -494,6 +494,57 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 
 **Status:** Completed 2026-05-20. All 4 phases executed: philosophy.md and operator-guide.md rewritten to index-first; artifact-reference.md updated with index-entry schema table and deprecation banner; brainstorm marked complete; stale-reference check passes; `pnpm check` passes (136/136). See `plans/260519-2326-docs-canonicalization-machine-extracted-index/` for full implementation details.
 
+### Plan 5: Mechanical Enforcement Gap Closure (G1 + G2)
+
+**Dependencies:** Plans 1–4. Surfaced during 2026-05-20 post-implementation review.
+**Risk:** Medium — touches the extraction tool's hot path; supersession write-back changes index entry shape on regeneration.
+**Session scope:** One commit per gap, one review round.
+
+**Gap G1 — Supersession write-back not implemented:**
+- `tools/extract-index/index-entry-builder.js:45-46` hard-codes `superseded_by: null` and `supersedes: []` on every build. `checkSupersession()` in `extract-index.js:159` emits errors but never patches entries.
+- The active pair `device-id-injection-required` ↔ `device-id-injection-not-required` carries linked fields only because they were hand-edited, which violates item 9 ("agent-derived, never hand-edited") and Mechanism 1 ("agent cannot write index without confirming the human artifact").
+- Fix: when a `## Confirmation / Disproof Notes` block names an old assertion-id, the tool must write `superseded_by: <new-id>` on the old entry and `supersedes: [<old-id>]` on the new entry as part of the same extraction pass. Without an explicit disproof note, retain the existing hard-stop (Mechanism 2 Scope C unchanged).
+- Verification: regenerate index from the two prototype-seed evidence files and confirm the supersession pair is reproduced byte-for-byte from extraction (no manual edits required).
+
+**Gap G2 — Mechanism 2 Scope A (frozen-claim drift) is not enforced:**
+- No code in `tools/` references `records/claims/` or compares new extracted assertions against frozen claim text. The brainstorm's promised hard-stop ("Mechanism 2 Scope A extended to compare new extracted assertions against frozen claims; contradictions hard-stop") does not exist.
+- Fix: extend the extraction tool (or add a sibling audit step in `tools/validate-records/`) to load all `records/claims/*.yaml`, scan each frozen claim's `assertion` / `verification.*.reason` for topic-tag matches against newly-extracted entries with semantic-opposite naming (`X-required` vs `X-not-required`) on the same `(capability, dimension)` pair. On hit, hard-stop with a message naming both records unless the frozen claim's `notes` field already records the supersession.
+- Verification: the `claim-vnstock-runtime-403-root-cause` ↔ `device-id-injection-not-required` pair must resolve cleanly (frozen claim's notes already record the change); any new contradiction without a recorded supersession must hard-stop with a reproducible error.
+
+**Acceptance criteria:**
+- Re-running `pnpm extract:index` over the current evidence corpus produces byte-identical `superseded_by` / `supersedes` fields on the existing supersession pair without any hand-edit.
+- A synthetic test case with a contradiction against a frozen claim (no `notes` supersession record) triggers a hard-stop with a non-zero exit code.
+- `pnpm check` passes; new tests cover both gaps.
+
+**Status:** Planned 2026-05-20.
+
+### Plan 6: Residual Docs Index-First Conversion (G4 + G5)
+
+**Dependencies:** Plan 4 (philosophy + operator-guide + artifact-reference partially converted). Plan 5 not required (editorial only).
+**Risk:** None — editorial.
+**Session scope:** One commit, no review gate required.
+
+**Gap G4 — `docs/artifact-reference.md` half-converted:**
+- Line 392 explicitly notes: "This document remains predominantly claim-centric. Full index-first parallel sections (Dimension Overview for extracted assertions, Experiment Proof mapping for index entries, Product Decision routing) are a future documentation enhancement beyond the current canonicalization plan."
+- Fix: author the parallel index-entry sections (Dimension Overview, Experiment Proof mapping, Product Decision routing) so the document is no longer claim-centric. Move claim-centric sections behind the deprecation banner without deleting them (frozen-legacy audit value).
+
+**Gap G5 — Five docs still reference claims as live:**
+- `docs/charter.md` (2 mentions), `docs/record-system-architecture.md` (11), `docs/problem-classification.md` (4), `docs/red-team-review.md` (9), `docs/vendor-vnstock-installer.md` (5).
+- Fix: walk each file; replace "claim" with "index entry" / "extracted assertion" / "frozen-legacy claim" as semantically correct. The state-query routing language in `record-system-architecture.md` is the highest priority because operator-guide and philosophy now point readers there.
+
+**Gap G7 — Vendor-doc snapshot mislabelled as evidence (deferred reclassification, marker only):**
+- `records/evidence/vnstock-data/unified-ui-snapshot/` is a machine-refreshed copy of upstream `vnstock-hq/vnstock-agent-guide` docs pinned by commit, not human-authored findings. It fits none of the three territories cleanly (not `docs/`, not human-authored evidence, not YAML).
+- The extraction tool already ignores it (no `## Findings`, no frontmatter), so the mismatch is conceptual not mechanical. A full territory move to `records/vendor-references/` is deferred until autonomous doc-ingestion work begins (see `docs/trajectory.md` bridge 1) — by then the right shape will be informed by more than one vendor.
+- Fix (cheap insurance): add `records/evidence/vnstock-data/unified-ui-snapshot/_KIND.md` (two-line marker) stating the subtree is a vendor documentation snapshot, ignored by the extraction tool, queued for reclassification when bridge 1 starts. No refresh-tool change, no validator change, no territory restructure.
+
+**Acceptance criteria:**
+- No doc outside `records/claims/` and the deprecation banner contexts says claims are the primary state store.
+- `records/evidence/vnstock-data/unified-ui-snapshot/_KIND.md` exists and names the subtree's true class.
+- `pnpm check` passes.
+- Cross-document references between philosophy, operator-guide, artifact-reference, and record-system-architecture remain consistent on the index-first routing rule.
+
+**Status:** Planned 2026-05-20.
+
 ## Unresolved Questions
 
 All four originally-listed Qs (Q1–Q4) are resolved by items 11 (Q2), 13 (Q4), 14 (Q1), and 15 (Q3).
@@ -512,5 +563,7 @@ All originally open design points were resolved during Plan 2 implementation:
 
 - **Plan 1 (Schema + Scaffolding):** Completed 2026-05-19.
 - **Plan 2 (Extraction Tool):** Completed 2026-05-19.
-- **Plan 3 (Migration Execution):** Completed 2026-05-19.
+- **Plan 3 (Migration Execution):** Completed 2026-05-19. Prototype seed #2 (`claim-vnstock-install-sandbox`) deferred to lazy migration — multi-dimensional invariant remains partially unproven outside the runtime/install split seed #1 happened to exercise.
 - **Plan 4 (Deprecation + Docs Canonicalization):** Completed 2026-05-20. See `plans/260519-2326-docs-canonicalization-machine-extracted-index/`.
+- **Plan 5 (Mechanical Enforcement Gap Closure — G1 + G2):** Planned 2026-05-20. Closes supersession write-back and frozen-claim drift hard-stop.
+- **Plan 6 (Residual Docs Index-First Conversion — G4 + G5):** Planned 2026-05-20. Completes artifact-reference index-entry parallel sections and converts remaining 5 docs.
