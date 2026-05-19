@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Entry Point and Writer"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies:
@@ -104,16 +104,16 @@ Flow:
 
 ## Success Criteria
 
-- [ ] `extract-index --dry-run` completes without error on all current evidence files (skip path validated).
-- [ ] `index-entry-builder.js` produces objects that pass schema validation against `schemas/index-entry.schema.json`.
-- [ ] `file-writer.js` writes YAML only when content changes; uses atomic temp+rename.
-- [ ] Missing frontmatter `dimension` produces clear error with inferred suggestion from sibling files (unified frontmatter validation step).
-- [ ] Gotcha 2: supersession hard-stop triggers when disproof note names existing assertion.
-- [ ] Frontmatter backfill error includes inferred suggestions.
-- [ ] CLI exit codes follow convention (0 success, 1 validation failure, 2 usage error).
-- [ ] `validation_status: failed` evidence files are skipped and logged (not thrown).
-- [ ] One corrupt existing index file does not block extraction; it is treated as "missing" with a warning.
-- [ ] Malformed experiment YAML does not block extraction; warning is emitted.
+- [x] `extract-index --dry-run` completes without error on all current evidence files (skip path validated).
+- [x] `index-entry-builder.js` produces objects that pass schema validation against `schemas/index-entry.schema.json`.
+- [x] `file-writer.js` writes YAML only when content changes; uses atomic temp+rename.
+- [x] Missing frontmatter `dimension` produces clear error with inferred suggestion from sibling files (unified frontmatter validation step).
+- [x] Gotcha 2: supersession hard-stop triggers when disproof note names existing assertion.
+- [x] Frontmatter backfill error includes inferred suggestions.
+- [x] CLI exit codes follow convention (0 success, 1 validation failure, 2 usage error).
+- [x] `validation_status: failed` evidence files are skipped and logged (not thrown).
+- [x] One corrupt existing index file does not block extraction; it is treated as "missing" with a warning.
+- [x] Malformed experiment YAML does not block extraction; warning is emitted.
 
 ## Risk Assessment
 

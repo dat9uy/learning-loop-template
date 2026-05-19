@@ -46,5 +46,6 @@ The template does not contain product application code (no FastAPI source, no UI
 - `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
 - `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
+- `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/index/*.yaml` entries.
 - `.claude/coordination/`: hooks, profiles, skill registry, and gate audit log.
 - `plans/`: active and historical plans + brainstorm reports.

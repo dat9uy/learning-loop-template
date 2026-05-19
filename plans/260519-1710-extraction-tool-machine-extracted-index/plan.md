@@ -1,7 +1,7 @@
 ---
 title: "Extraction Tool: Machine-Extracted Index"
 description: "Build tools/extract-index/ to read evidence ## Findings, parse atomic assertions, and write records/index/ YAMLs. Resolves three open design gotchas from the brainstorm."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: ["machine-extracted-index", "extraction-tool", "records", "parser"]
@@ -23,9 +23,9 @@ Plan 2 of 4 from the machine-extracted index redesign. Builds the extraction too
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Spec and Parser](./phase-01-spec-and-parser.md) | Pending |
-| 2 | [Entry Point and Writer](./phase-02-entry-point-and-writer.md) | Pending |
-| 3 | [Tests and Integration](./phase-03-tests-and-integration.md) | Pending |
+| 1 | [Spec and Parser](./phase-01-spec-and-parser.md) | Completed |
+| 2 | [Entry Point and Writer](./phase-02-entry-point-and-writer.md) | Completed |
+| 3 | [Tests and Integration](./phase-03-tests-and-integration.md) | Completed |
 
 ## Key Decisions
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Spec and Parser"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -87,14 +87,14 @@ Line-based state machine:
 
 ## Success Criteria
 
-- [ ] `frontmatter-splitter.js` parses valid frontmatter correctly.
-- [ ] `frontmatter-splitter.js` returns `meta: null` for files without frontmatter.
-- [ ] `frontmatter-splitter.js` throws on unclosed `---`.
-- [ ] `findings-parser.js` returns empty array when `## Findings` is absent.
-- [ ] `findings-parser.js` extracts tagged bullets with context and caveats.
-- [ ] `findings-parser.js` throws on bullets missing `[topic-tag]` or with invalid tag (not matching `[a-z0-9-]+`).
-- [ ] `findings-parser.js` handles multi-line assertions.
-- [ ] `hash-computer.js` produces deterministic SHA-256 for identical input.
+- [x] `frontmatter-splitter.js` parses valid frontmatter correctly.
+- [x] `frontmatter-splitter.js` returns `meta: null` for files without frontmatter.
+- [x] `frontmatter-splitter.js` throws on unclosed `---`.
+- [x] `findings-parser.js` returns empty array when `## Findings` is absent.
+- [x] `findings-parser.js` extracts tagged bullets with context and caveats.
+- [x] `findings-parser.js` throws on bullets missing `[topic-tag]` or with invalid tag (not matching `[a-z0-9-]+`).
+- [x] `findings-parser.js` handles multi-line assertions.
+- [x] `hash-computer.js` produces deterministic SHA-256 for identical input.
 
 ## Risk Assessment
 

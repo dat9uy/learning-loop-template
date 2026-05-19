@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Tests and Integration"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies:
@@ -123,13 +123,13 @@ In-memory fixtures (no disk writes for unit tests). For integration tests, use `
 
 ## Success Criteria
 
-- [ ] All unit tests pass.
-- [ ] Integration tests pass (CLI spawn, tmp dir fixtures, cleanup).
-- [ ] Round-trip test passes: synthetic evidence -> extracted index YAML -> zero schema validation errors.
-- [ ] `pnpm check` passes in full.
-- [ ] `extract-index --dry-run` runs clean on all current evidence files.
-- [ ] No test leaks (all tmp files cleaned up).
-- [ ] Synthetic fixture test exercises at least one file with real `## Findings` parsing.
+- [x] All unit tests pass.
+- [x] Integration tests pass (CLI spawn, tmp dir fixtures, cleanup).
+- [x] Round-trip test passes: synthetic evidence -> extracted index YAML -> zero schema validation errors.
+- [x] `pnpm check` passes in full.
+- [x] `extract-index --dry-run` runs clean on all current evidence files.
+- [x] No test leaks (all tmp files cleaned up).
+- [x] Synthetic fixture test exercises at least one file with real `## Findings` parsing.
 
 ## Risk Assessment
 

@@ -32,6 +32,7 @@ records/claims/        -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
 capability scripts     -> product/<stack>/capabilities/ (runtime-verification substrate)
 constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
+index extractor        -> tools/extract-index/ (CLI: `pnpm extract:index`)
 derived claim assurance -> effective assurance from verification dimensions and decisions
 generated views        -> disabled until model settles
 ```
@@ -57,6 +58,8 @@ The record system now has three territories:
 
 Claims are frozen-legacy (read-only audit trail, no new entries). State queries route to `records/index/` first; frozen claims serve historical audit only.
 
+The extraction is performed by `tools/extract-index/extract-index.js` (invoked via `pnpm extract:index`). Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` (passed/pending/failed); files missing these fields are skipped.
+
 ### Provenance Chain
 
 ```text
@@ -72,6 +75,12 @@ Index entry `status` (`active | superseded | pending_approval`) derives from the
 - `evidence.validation_status: passed` -> `index.status: active`
 - `evidence.validation_status: pending` -> `index.status: pending_approval`
 - `evidence.validation_status: failed` -> extraction skipped (no entry written)
+
+Supersession never happens automatically. An index entry is only superseded when a later evidence file contains explicit `## Confirmation / Disproof Notes` that contradict the earlier assertion; without such explicit disproof, duplicate assertions are aggregated instead.
+
+### Pre-Write Aggregation
+
+Before writing, the extractor merges `source_refs` by assertion ID (stable hash from `capability`, `dimension`, `scope`, and assertion text) and computes `n_count` (number of distinct source evidence files). This produces one YAML entry per unique assertion, even when the same assertion appears in multiple evidence files.
 
 ## State-Machine Layer
 

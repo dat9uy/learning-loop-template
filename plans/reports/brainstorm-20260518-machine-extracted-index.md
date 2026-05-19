@@ -437,6 +437,19 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 
 **Acceptance criteria:** Tool runs clean on evidence files that already have `## Findings`; produces valid YAMLs per Plan 1 schema; `pnpm check` passes.
 
+**Status:** Completed 2026-05-19 — `tools/extract-index/` implemented with 6 modules (all under 200 lines), 3 test files (38 tests), `pnpm check` at 139 pass / 0 fail.
+
+**Decision deltas from red-team/validation:**
+- Parser strategy: line-based scanner for `## Findings` bullets; no markdown AST library (remark/unified overkill for a single rigid section). Zero new npm dependencies.
+- Frontmatter splitter: line-based `---` split skipping fenced-code-block delimiters; manual code-block state tracking.
+- Hash format: SHA-256 via `node:crypto` on raw Buffer; `sha256:<hex>` format.
+- Pre-write aggregation: in-memory map keyed by assertion ID merges `source_refs` across evidence files and computes `n_count` as `merged_source_refs.length`.
+- Supersession: never auto-supersede without explicit `## Confirmation / Disproof Notes` naming the old assertion-id; hard-stop to operator otherwise.
+- Frontmatter strictness: missing `capability`, `dimension`, `scope`, or `validation_status` errors with inferred suggestions derived from sibling files in the same evidence directory.
+- `context: null` omitted from index entry when evidence has no `Context:` nested bullet (schema requires `string`, not nullable).
+- `validateFrontmatter` enforces capability pattern `[a-z0-9-]+`, dimension in enum, validation_status in enum — prevents path traversal and schema-invalid IDs.
+- `main()` guarded with `import.meta.url === process.argv[1]` so module import for tests does not trigger CLI execution.
+
 ### Plan 3: Migration Execution
 
 **Dependencies:** Plans 1 and 2.
