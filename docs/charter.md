@@ -4,6 +4,8 @@
 
 Generate product proposals from structured knowledge, reviewed experiments, and explicit decisions — with a stateful constraint enforcement layer that gates irreversible operations behind observation records and resource budgets. The lab measures what a learning loop can justify from records, not what an agent remembers from another codebase.
 
+For the system's intended long-term direction (incremental autonomy on the verification axis), see `docs/trajectory.md`.
+
 ## Scope
 
 The template contains:
