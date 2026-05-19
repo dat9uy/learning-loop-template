@@ -7,7 +7,8 @@ branch: "main"
 tags: ["machine-extracted-index", "extraction-tool", "records", "parser"]
 blockedBy:
   - project:260519-1400-schema-scaffolding-machine-extracted-index
-blocks: []
+blocks:
+  - project:260519-1558-migration-execution-machine-extracted-index-prototype-seeds
 created: "2026-05-19T10:43:34.460Z"
 createdBy: "ck:plan"
 source: skill
