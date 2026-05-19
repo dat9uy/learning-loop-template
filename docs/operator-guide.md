@@ -40,7 +40,8 @@ Total: 13 characters, fixed length, lexicographically sortable.
 | Experiment | `records/experiments/` | `experiment-<scope>-YYMMDDTmmZ-<slug>.yaml` | Yes |
 | Risk | `records/risks/` | `risk-YYMMDDTmmZ-<slug>.yaml` | Yes |
 | Domain Evidence (run) | `records/evidence/<domain>/` | `<type>-YYMMDDTmmZ[-<variant>].md` | Yes |
-| Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No |
+| Index entry | `records/index/` | `assertion-<capability>-<dimension>-<topic-tag>.yaml` | No |
+| Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No — frozen-legacy, read-only. No new entries. |
 | Capability | `records/capabilities/` | `capability-<stack>-<slug>.yaml` | No |
 | Observation | `records/observations/` | `observation-<scope>-<slug>.yaml` | No |
 | Meta Evidence | `records/evidence/meta/` | `<descriptive-kebab-slug>.md` | No |
@@ -48,17 +49,13 @@ Total: 13 characters, fixed length, lexicographically sortable.
 The `id` field inside every YAML record must match the filename stem (filename without extension).
 New conventions apply prospectively; historical records keep their original names.
 
-## Claim Verification
+## State Query Protocol
 
-Before adding, verifying, rejecting, or product-approving claims, classify the claim with `docs/artifact-reference.md`. Proof plans must pass verification validation before they run install, import, runtime, or product approval work.
+Before verifying assertions, read `docs/record-system-architecture.md` for the index data model and `docs/artifact-reference.md` for schema details (note: artifact-reference.md is in transition; the index-entry schema lives in `schemas/index-entry.schema.json`).
 
-Use `pnpm verify:claim` to validate current claim verification records without changing files. To preview a metadata-only verification block update, run:
+Run `pnpm extract:index` to regenerate machine-extracted assertions from evidence `## Findings`. The tool reads all `records/evidence/**/*.md` files, extracts top-level bullets under `## Findings`, and writes `records/index/assertion-<capability>-<dimension>-<topic-tag>.yaml` entries.
 
-```bash
-pnpm verify:claim -- --claim <claim-id> --dimension <dimension> --status <status> --reason <text> [--scope <scope>] [--output <level>] [--proof-ref <record-ref>] [--decision-ref <record-ref>] [--blocked-action <action>] [--apply]
-```
-
-`--dimension` accepts `static`, `install`, `runtime`, or `product`. `--status` accepts `claimed`, `verified`, or `rejected` for non-product dimensions, and `claimed`, `approved`, or `rejected` for `product`. `--scope` (`sandbox` or `production`) applies to `install` and `runtime`. `--output` (`metadata-only`, `sample-output`, or `runtime-captured`) applies to `runtime`. The `product` dimension uses `--decision-ref`; non-product dimensions use `--proof-ref`. Repeat `--proof-ref`, `--decision-ref`, and `--blocked-action` as needed. The command is a dry run unless `--apply` is explicit; apply mode writes only the selected claim `verification` block after existing records and the proposed verification pass validation. It validates existing proof records but never installs packages, imports packages, reads keys or local config, calls live services, captures raw data, mutates product code, or executes proof gates.
+The legacy `pnpm verify:claim` tool remains functional for frozen-legacy claims in `records/claims/`; do not use it for new work.
 
 ## Evidence Model
 
@@ -70,13 +67,26 @@ Put durable evidence capsules under `records/evidence/<scope>/`. Active `source_
 
 Do not use active `legacy:` refs. Historical source paths may appear only in evidence-doc prose under `Original Source Summary`.
 
+## Evidence Findings Convention
+
+Evidence markdown files may include a `## Findings` section for machine extraction into `records/index/`.
+
+- Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion.
+- Nested bullets prefixed `Context:` populate the index entry `context` field.
+- Nested bullets prefixed `Caveat:` populate the index entry `caveats` array.
+- The extraction tool (`pnpm extract:index`) reads this section and produces `records/index/assertion-<capability>-<dimension>-<topic-tag>.yaml`.
+- Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` for extraction to be attempted.
+- Files without a `## Findings` section (or with no `[topic-tag]` bullets) are silently skipped, not errored.
+
 ## Adding Or Updating Records
 
 1. Add or update safe local evidence under `records/evidence/<scope>/`.
-2. Update claim, experiment, or decision records to cite local evidence and the current verification dimensions.
-3. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json` (fields: `stack`, `surface`, `maps[]`).
-4. For factual state captures (device ledgers, resource budgets, behavioral findings), author observation records under `records/observations/` per `schemas/observation.schema.json` (fields: `id`, `schema_version`, `type`, `status`, `created_at`, `updated_at`, `source_refs`).
-5. Run:
+2. Write or update evidence markdown with a `## Findings` section containing atomic assertions tagged with `[topic-tag]`.
+3. Update experiment or decision records to cite local evidence and the current verification dimensions. For frozen-legacy claims, update only if correcting a cross-reference; for new work, author evidence with `## Findings` and run `pnpm extract:index`.
+4. Run `pnpm extract:index` to regenerate `records/index/` from evidence.
+5. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json` (fields: `stack`, `surface`, `maps[]`).
+6. For factual state captures (device ledgers, resource budgets, behavioral findings), author observation records under `records/observations/` per `schemas/observation.schema.json` (fields: `id`, `schema_version`, `type`, `status`, `created_at`, `updated_at`, `source_refs`).
+7. Run:
 
 ```bash
 pnpm validate:records
@@ -205,7 +215,7 @@ Each approved runtime proof evidence file, or a gate-section inside it, must rec
 Cleanup is part of proof success, not best-effort housekeeping.
 
 - If `temp_root_deleted` is not `true` and `cleanup_status` is not `succeeded`, the experiment outcome is `failed` or `blocked`.
-- A failed cleanup blocks dimension verification: claims may not mark the `install` or `runtime` dimension `verified`, or the `product` dimension `approved`, from a run with failed cleanup.
+- A failed cleanup blocks dimension verification: index entries may not have their source evidence `validation_status` set to `passed` for `install` or `runtime` dimensions, and product approval is blocked, from a run with failed cleanup.
 - A failed cleanup also blocks downstream capability-record publication for the affected scope.
 
 ### Schema Deferral
@@ -218,15 +228,15 @@ When the user asks for learning-loop work, the agent should:
 
 1. Classify the prompt:
    - evidence capture;
-   - claim/risk setup;
+   - assertion/risk setup;
    - verification experiment;
    - product/build request;
    - observation capture;
    - intentional skip of required knowledge;
    - external/user-provided decision;
    - self-improvement request.
-2. Locate relevant claims, experiments, and decisions first. Evidence files are referenced via `record_ref`, never browsed standalone for truth-status discovery (Q4 E rule). Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class and read each matched file; apply guidance and increment any sample-count thresholds (Q5 R2 rule). After claim-first orientation but before drafting experiment steps, list `records/evidence/<capability>/` end-to-end for files or subdirectories not referenced by the active claim verification block; read relevant text evidence files, skip raw/binary/generated/private artifacts unless explicitly approved, skip files marked with `## Superseded By` unless forensic context is needed (consult the linked canonical artifact instead), and list relevant files in the plan's "Read for context". Capability-dir scanning is for planning-context discovery; truth-status of any discovered file is still determined per the claims-first rule above (Q6 rule). Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), scan `records/observations/` for relevant observation records and read them. Observations are the authoritative source for factual system state (see `record:decision-20260517T1200Z-observation-state-check-rule`).
-3. Extract candidate claims and risks.
+2. Locate relevant index entries, experiments, and decisions first. Evidence files are referenced via `source_refs`, never browsed standalone for truth-status discovery (Q4 E rule). Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class and read each matched file; apply guidance and increment any sample-count thresholds (Q5 R2 rule). After index-first orientation but before drafting experiment steps, list `records/evidence/<capability>/` end-to-end for files or subdirectories not referenced by active index entries; read relevant text evidence files, skip raw/binary/generated/private artifacts unless explicitly approved, skip files marked with `## Superseded By` unless forensic context is needed (consult the linked canonical artifact instead), and list relevant files in the plan's "Read for context". Capability-dir scanning is for planning-context discovery; truth-status of any discovered file is still determined per the index-first rule above (Q6 rule). Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), scan `records/observations/` for relevant observation records and read them. Observations are the authoritative source for factual system state (see `record:decision-20260517T1200Z-observation-state-check-rule`).
+3. Extract candidate index entries (or frozen-legacy claims) and risks.
 4. Classify required verification:
    - source review;
    - static inspection;
@@ -237,11 +247,11 @@ When the user asks for learning-loop work, the agent should:
 5. Identify missing decisions or approvals before risky work.
 6. Ask follow-up questions when authority, scope, output, storage, or blocked actions are unclear.
 7. Create/update records before downstream artifacts.
-8. Plan experiments with explicit `claim_refs`, `risk_refs`, `source_refs`, `verification.proves`, output policy, and approval status.
+8. Plan experiments with explicit `claim_refs` (still required by experiment schema for validation; cite frozen-legacy claims for new work), `source_refs` (point to local evidence files), `risk_refs`, `verification.proves`, output policy, and approval status.
 9. Run only approved work.
-10. Link experiment results back to claims/risks.
-11. Derive claim assurance from verification dimensions.
-12. Publish capability records only after their `record_ref` claims are verified for the relevant dimension.
+10. Link experiment results back to evidence (which feeds the index) and risks.
+11. Derive assertion assurance from verification dimensions.
+12. Publish capability records only after their `maps[].source` references (index entries or frozen-legacy claims) are verified for the relevant dimension.
 13. Validate records with `pnpm validate:records` and `pnpm check`.
 
 ## Operator Cards
@@ -251,12 +261,12 @@ When the user asks for learning-loop work, the agent should:
 When user asks to build product/API/tool on top of a verified library:
 
 - Do not jump directly to implementation.
-- Expand request into claims, risks, experiments, and decisions.
-- Required claims usually include identity, allowed use, entitlement/scope, install/import substrate, callable surface, output/storage boundary.
+- Expand request into assertions (index entries), risks, experiments, and decisions.
+- Required assertions usually include identity, allowed use, entitlement/scope, install/import substrate, callable surface, output/storage boundary.
 - Required risks usually include entitlement ambiguity, scope creep, data capture, false assurance, operational limits.
 - Required experiments usually include evidence review, static verification, approved install verification, approved runtime/output verification.
 - Required decisions approve product/build scope, output policy, and blocked actions.
-- Capability records must state the verified library surfaces (via `record_ref` to surface claims) and the product surfaces they map to (`route_class`, `view_class`, `response_class`).
+- Capability records must state the verified library surfaces (via `maps[].source` to reference index entries or frozen-legacy claims) and the product surfaces they map to (`route_class`, `view_class`, `response_class`).
 
 ### Capability Runtime Experiment
 
@@ -264,12 +274,12 @@ When user asks to create capability scripts (standalone feasibility scripts) for
 
 - Capability scripts are standalone scripts under `product/<stack>/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
 - Capability scripts are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
-- Capability scripts verify the `runtime` dimension of a claim. The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
+- Capability scripts verify the `runtime` dimension of an assertion (index entry or frozen-legacy claim). The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
 - The capability scripts are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
 - Capability scripts may live in `product/<stack>/` before product approval because they are feasibility probes, not product implementations.
 - **Environment model:** Capability scripts share a persistent dependency environment with their stack. The environment root is `product/<stack>/` (language-specific: `product/web/node_modules/` for TS/JS, `product/api/.venv/` for Python, `product/<stack>/vendor/` for Go, etc.). Capability scripts run against this environment, not a disposable temp install. Future product code in the same stack uses the same environment and the same library installation.
 - This per-stack environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device while avoiding cross-runtime coupling.
-- Required experiment steps: create capability scripts, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update claim `runtime` dimension to `verified`.
+- Required experiment steps: create capability scripts, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update the corresponding index entry's source evidence `validation_status` to `passed`, then run `pnpm extract:index`.
 
 ### Stacks and Capability Locations
 
@@ -292,22 +302,22 @@ The command runs two explicit stages: `uv sync` installs public dependencies in 
 
 ### Intentional Skip Pattern
 
-When user wants to skip a required claim:
+When user wants to skip a required assertion:
 
 - Do not let skipped knowledge disappear.
 - Convert skipped required knowledge into:
-  - records-side status/claim;
+  - records-side status/index-entry or frozen-legacy claim;
   - active blocking risk;
   - narrowed decision boundary;
   - capability text showing blocked execution/deployment.
-- Allow only safe work that does not depend on the skipped claim.
+- Allow only safe work that does not depend on the skipped assertion.
 
 ### Evidence Doc Execution Verification
 
 When user asks whether everything in an evidence doc can execute technically:
 
 - Treat as verification request, not direct execution.
-- Build a claim extraction matrix: `doc section -> claim -> verification class -> experiment -> capability-record eligibility`.
+- Build an assertion extraction matrix: `doc section -> assertion -> verification class -> experiment -> capability-record eligibility`.
 - Separate execution classes: symbol exists, import succeeds, method callable, sample call returns output, output schema matches expectation, business behavior is correct.
 - Classify snippets as illustrative-only, static-verifiable, import-verifiable, runtime-verifiable with sample output, or blocked pending approval.
 - Ask approval before install/runtime/live execution.
@@ -320,7 +330,7 @@ When user provides outside confirmation:
 - Accept it as possible decision/evidence input.
 - Not treat it as complete proof or unlimited approval.
 - Ask: who confirmed it, what authority, what exact scope, what remains blocked, durable evidence, covered rights.
-- Recommend: evidence note, scoped claims, active risks for authority/scope/durability/expiry, `decision_effect`, capability boundaries.
+- Recommend: evidence note, scoped assertions (index entries), active risks for authority/scope/durability/expiry, `decision_effect`, capability boundaries.
 
 Principle: external confirmation can seed a decision, but the loop still records scope, basis, risks, and boundaries.
 
@@ -329,7 +339,7 @@ Principle: external confirmation can seed a decision, but the loop still records
 The loop can improve itself.
 
 - Hard-test failures can become evidence.
-- The agent can create claims/risks/experiments about workflow gaps.
+- The agent can create index-entry candidates/risks/experiments about workflow gaps.
 - Runtime output should not become a decision.
 - A decision approves what runtime output may be captured.
 - An experiment produces runtime output under that decision boundary.
@@ -419,7 +429,7 @@ Plan-level lifecycle status (`pending`, `in-progress`, `completed`) follows proj
 
 Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm that produced them. Agent Intake Flow step 2 carries the canonical wording; this section is documentary. If the two diverge, step 2 wins.
 
-### Q4 E - Claims-first scanning for evidence truth-status
+### Q4 E - Claims-first scanning for evidence truth-status (historical)
 
 - Prior ambiguity: a disproved evidence file (`installer-prior-notes.md` claimed installer reads `~/.vnstock/user.json`) sat on disk with no signal; future agents could re-adopt the disproven claim by direct browse.
 - Alternatives considered: status field in frontmatter (rejected), `## Status` markdown body (crosses source/proof line), claim-side status block (deferred N>=2), per-file `## Supersedes` link in disproving evidence (adopted as Q4 D), computed validation view (deferred N>=2).
@@ -433,7 +443,7 @@ Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm th
 - Chosen: doc rule. Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class; read each matched file and apply guidance.
 - Origin: same brainstorm (Q5). Pairs with Q4 D's `## Supersedes` convention.
 
-### Q6 - Capability-directory scan after claims-first orientation
+### Q6 - Capability-directory scan after claims-first orientation (historical)
 
 - Prior ambiguity: claims-first scanning surfaced cited evidence but missed uncited files in the same capability directory. The `unified-ui-snapshot/` directory was nearly missed during vnstock plan drafting.
 - Alternative considered: rely on claims to cite everything (rejected; claims drift, capability dirs hold reference docs that aren't claim-cited).
@@ -446,13 +456,13 @@ Before answering or editing, verify:
 
 - Am I treating evidence as source, not proof?
 - Am I using `verification.proves` on experiments?
-- Am I deriving claim assurance from dimensions instead of storing it?
-- Am I using risks for cautions, not negative claims?
+- Am I deriving assertion assurance from dimensions instead of storing it?
+- Am I using risks for cautions, not negative assertions?
 - Am I requiring decisions for approval/acceptance/product permission?
-- Am I keeping capability records slim and faithful to their cited claims?
+- Am I keeping capability records slim and faithful to their cited assertions?
 - Am I blocking runtime/product/live/output actions until approved?
 - Am I preserving unresolved knowledge as risk instead of ignoring it?
-- Am I recording factual state as observations, not claims?
+- Am I recording factual state as observations, not index entries?
 - Am I checking observation records for external system state before asking the user?
 
 ## Generated Docs

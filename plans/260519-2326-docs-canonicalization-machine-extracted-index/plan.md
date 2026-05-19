@@ -1,7 +1,7 @@
 ---
 title: "Docs Canonicalization for Machine-Extracted Index"
 description: "Update philosophy.md, operator-guide.md, and artifact-reference.md to canonicalize index-first conventions. Mark claims as frozen-legacy and close the machine-extracted-index brainstorm."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [machine-extracted-index, docs, canonicalization]
@@ -34,10 +34,10 @@ All changes are documentation-only. No runtime behavior changes. No record schem
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Philosophy Index-First Rewrite](./phase-01-philosophy-index-first-rewrite.md) | Pending |
-| 2 | [Operator-Guide Index-First Rewrite](./phase-02-operator-guide-index-first-rewrite.md) | Pending |
-| 3 | [Artifact-Reference Index-Entry Addition](./phase-03-artifact-reference-index-entry-addition.md) | Pending |
-| 4 | [Plans Cleanup and Acceptance](./phase-04-plans-cleanup-and-acceptance.md) | Pending |
+| 1 | [Philosophy Index-First Rewrite](./phase-01-philosophy-index-first-rewrite.md) | Completed |
+| 2 | [Operator-Guide Index-First Rewrite](./phase-02-operator-guide-index-first-rewrite.md) | Completed |
+| 3 | [Artifact-Reference Index-Entry Addition](./phase-03-artifact-reference-index-entry-addition.md) | Completed |
+| 4 | [Plans Cleanup and Acceptance](./phase-04-plans-cleanup-and-acceptance.md) | Completed |
 
 ## Dependencies
 

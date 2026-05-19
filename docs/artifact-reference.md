@@ -1,6 +1,8 @@
-# Claim Verification
+# Artifact Reference
 
-This document is the source of truth for claim verification. Claims no longer move through a single ordered state chain. Each claim asserts one or more independent verification dimensions, and each dimension is proved or rejected by the correct authority.
+> **Deprecation notice:** The claim schema (`schemas/claim.schema.json`) is deprecated for new entries per `record:decision-260519T1400Z-claim-deprecation`. Existing claims in `records/claims/` are frozen-legacy (read-only audit trail). New work uses machine-extracted index entries (`schemas/index-entry.schema.json`, type `extracted-assertion`).
+
+This document is the source of truth for artifact schemas and verification. Claims no longer move through a single ordered state chain. Each claim asserts one or more independent verification dimensions, and each dimension is proved or rejected by the correct authority.
 
 ## Dimension Overview
 
@@ -142,6 +144,34 @@ Schemas live in `schemas/*.schema.json` and are enforced by AJV. All schemas per
 | `verification.product.decision_refs` | array | no | items: string |
 | `verification.blocked_actions` | array | no | items: string |
 
+### Index Entry (extracted-assertion)
+
+| Field | Type | Required | Allowed Values |
+|---|---|---|---|
+| `id` | string | yes | free |
+| `schema_version` | string | yes | free |
+| `type` | const | yes | `extracted-assertion` |
+| `assertion` | string | yes | free |
+| `context` | string | no | free |
+| `caveats` | array | yes | items: string |
+| `capability` | string | yes | free (extraction tool enforces `[a-z0-9-]+`) |
+| `dimension` | enum | yes | `static`, `install`, `runtime`, `product` |
+| `scope` | string | yes | free (conventionally `sandbox` or `production`) |
+| `topic_tag` | string | yes | free |
+| `n_count` | integer | yes | ≥ 1 |
+| `superseded_by` | string \| null | yes | `assertion-...` or `null` |
+| `supersedes` | array | yes | items: string |
+| `status` | enum | yes | `active`, `superseded`, `pending_approval` |
+| `source_refs[].file` | string | yes | `^(local|record|legacy):.+` |
+| `source_refs[].section` | string | yes | `"## Findings"` |
+| `source_refs[].bullet_index` | integer | yes | ≥ 1 |
+| `source_refs[].line_anchor` | string | yes | free |
+| `experiment_refs` | array | yes | items: pattern `^record:.+` |
+| `extraction.agent_run` | string | yes | free |
+| `extraction.first_extracted_at` | string | yes | ISO-8601 UTC |
+| `extraction.last_updated_at` | string | yes | ISO-8601 UTC |
+| `extraction.evidence_immutable_hash` | string | yes | `sha256:<hex>` |
+
 ### Experiment
 
 | Field | Type | Required | Allowed Values |
@@ -266,6 +296,10 @@ These fields are not enforced by schema — they are conventions used by `tools/
 | `risk.claim_refs[]` | risk | claim | `record:<id>` | **Script** `record:` existence |
 | `risk.experiment_refs[]` | risk | experiment | `record:<id>` | **Script** `record:` existence |
 | `decision.decision_effect.affected_refs[]` | decision | claim / risk / any | `record:<id>` | **Script** `record:` existence |
+| `source_refs[]` | index entry | local files / records / legacy | `^(local|record|legacy):.+` | **Script** existence + allowed-root containment |
+| `experiment_refs[]` | index entry | experiment | `record:<id>` | **Script** existence |
+| `superseded_by` | index entry | index entry | bare assertion ID or `null` | Not validated (index entries use bare IDs, not `record:` prefix) |
+| `supersedes[]` | index entry | index entry | bare assertion ID | Not validated (index entries use bare IDs, not `record:` prefix) |
 
 ### Reference Prefix Grammar
 
@@ -314,6 +348,8 @@ Also checks `evidence_refs` and `supersedes` for `record:` existence.
 
 This is **core learning-loop logic** — it cannot be expressed in JSON Schema because it requires cross-record lookups and semantic matching.
 
+**Index validation:** `tools/validate-records/` also validates `records/index/` YAMLs against `schemas/index-entry.schema.json`. Cross-record checks on index entries verify that `source_refs[].file` exists and that `experiment_refs[]` point to existing experiments. The claim-verification ledger (Layer 3) does not apply to index entries; they derive status directly from evidence `validation_status`. Semantic alignment of experiment proofs against index entry capability/dimension is not yet enforced.
+
 ### Layer 4 — Derived Assurance Validation
 
 `tools/validate-records/derived-claim-assurance.js` computes assurance level from claim dimensions and supporting experiments:
@@ -348,7 +384,9 @@ The word "capability" carries three distinct meanings in this repo. Always quali
 | Term | Path | Created when | Role |
 |---|---|---|---|
 | **Capability script** | `product/<stack>/capabilities/<scope>/*.py` (e.g. `product/api/capabilities/vnstock-data/capability-01-reference.py`) | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment (`product/<stack>/`). Not an integration test for product endpoints. |
-| **Capability record** | `records/capabilities/capability-*.yaml` | During pre-build phase 01 of a product-build plan. | Record-style YAML mapping verified library surfaces (claims) to product surfaces (route_class, view_class). Schema: `schemas/capability.schema.json`. Field shape: `stack`, `surface`, `maps[]`. |
+| **Capability record** | `records/capabilities/capability-*.yaml` | During pre-build phase 01 of a product-build plan. | Record-style YAML mapping verified library surfaces (index entries or frozen-legacy claims) to product surfaces (route_class, view_class). Schema: `schemas/capability.schema.json`. Field shape: `stack`, `surface`, `maps[]`. |
 | **Capability Runtime Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Capability Runtime Experiment". The experiment record is the ledger entry; capability scripts are its execution substrate. |
 
 Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.
+
+> **Note:** This document remains predominantly claim-centric. Full index-first parallel sections (Dimension Overview for extracted assertions, Experiment Proof mapping for index entries, Product Decision routing) are a future documentation enhancement beyond the current canonicalization plan.

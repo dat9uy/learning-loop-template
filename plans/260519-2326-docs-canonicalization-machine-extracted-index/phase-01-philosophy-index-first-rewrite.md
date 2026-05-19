@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Philosophy Index-First Rewrite"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: []

@@ -99,7 +99,7 @@ Observations and resource budgets are **mutable state captures** of external sys
 | Mutability | Append-only (new records) | Mutable (update in place) |
 | Source of truth | Evidence + experiments | External system reality |
 | Lifecycle | draft → reviewed → approved | active → archived |
-| Authority | Claims-first scanning | Operator-managed; agent-readable |
+| Authority | Index-first scanning | Operator-managed; agent-readable |
 | Enforcement | Indirect (via decisions) | Direct (constraint gate blocks/escalates) |
 
 ### Constraint Gate Decision Tree

@@ -492,18 +492,25 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 
 **Acceptance criteria:** No stale references to "claims as primary state" remain in `docs/`; `pnpm check` passes.
 
-**Status:** Plan created 2026-05-19 (`plans/260519-2326-docs-canonicalization-machine-extracted-index/`) — 4 phases, red-team reviewed (15 findings applied), ready for implementation.
+**Status:** Completed 2026-05-20. All 4 phases executed: philosophy.md and operator-guide.md rewritten to index-first; artifact-reference.md updated with index-entry schema table and deprecation banner; brainstorm marked complete; stale-reference check passes; `pnpm check` passes (136/136). See `plans/260519-2326-docs-canonicalization-machine-extracted-index/` for full implementation details.
 
 ## Unresolved Questions
 
 All four originally-listed Qs (Q1–Q4) are resolved by items 11 (Q2), 13 (Q4), 14 (Q1), and 15 (Q3).
 
-Three open design points remain, deferred to Plan 2 (extraction-tool spec):
+All originally open design points were resolved during Plan 2 implementation:
 
-1. **Cross-dimension bullets in single-dimension evidence files** — surfaced in Worked Example, gotcha #1. Recommended resolution: error-and-refuse with a clear split-into-companion-file message.
-2. **Supersession detection heuristic** — surfaced in Worked Example, gotcha #2. Tool must combine an explicit `## Confirmation / Disproof Notes` block (naming the old assertion-id) and an optional topic-tag convention.
-3. **Frontmatter backfill on legacy files** — surfaced in Worked Example, gotcha #3. Tool's error message should include inferred-field suggestions for the operator to paste.
+1. **Cross-dimension bullets in single-dimension evidence files** — error-and-refuse with inferred-field suggestions derived from sibling files (`validateFrontmatter` enforces capability pattern `[a-z0-9-]+`, dimension in enum, validation_status in enum).
+2. **Supersession detection heuristic** — never auto-supersede without explicit `## Confirmation / Disproof Notes` naming the old assertion-id; hard-stop to operator otherwise. Pre-write aggregation merges `source_refs` by assertion ID and computes `n_count`.
+3. **Frontmatter backfill on legacy files** — error message includes inferred suggestions derived from sibling files in the same evidence directory.
 
 ---
 
 **Worked example (done; embedded above):** `claim-vnstock-runtime-403-root-cause` migration is fully sketched in the "Worked Example" section. Surfaces the three design points for the extraction tool listed above.
+
+## Completion Status
+
+- **Plan 1 (Schema + Scaffolding):** Completed 2026-05-19.
+- **Plan 2 (Extraction Tool):** Completed 2026-05-19.
+- **Plan 3 (Migration Execution):** Completed 2026-05-19.
+- **Plan 4 (Deprecation + Docs Canonicalization):** Completed 2026-05-20. See `plans/260519-2326-docs-canonicalization-machine-extracted-index/`.

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Plans Cleanup and Acceptance"
-status: pending
+status: completed
 priority: P2
 effort: "20m"
 dependencies: [3]

@@ -35,13 +35,13 @@ When you write a decision, you are drawing a fence. The fence keeps future agent
 
 Evidence files are raw material. They do not self-certify. A disproven evidence file can sit on disk forever and mislead the next agent who browses it standalone.
 
-Truth status lives in claims, not in evidence. A claim's verification block says which dimensions are proved and by which experiments. Evidence is referenced by claims; claims are never inferred from evidence.
+Truth status lives in the machine-extracted index, not in evidence. An index entry is an atomic assertion derived from evidence `## Findings`; it carries dimension, scope, and status. Evidence is referenced by index entries; index entries are never inferred from evidence directly.
 
-Always read claims first. Evidence second. Never the other way around.
+Always read the index first. Evidence second. Never the other way around. The index is the single top-level artifact for state queries.
 
 ## State Machine and Observations
 
-Claims, experiments, and decisions answer "what do we know?" Observations answer "what is the current state?" Both are necessary. Knowledge without state is blind. State without knowledge is meaningless.
+Index entries, experiments, and decisions answer "what do we know?" Observations answer "what is the current state?" Both are necessary. Knowledge without state is blind. State without knowledge is meaningless.
 
 ### Observations Are the Authoritative Source for External Facts
 
@@ -73,7 +73,7 @@ The learning loop is a governance layer for external boundaries. It is not a gen
 
 | Tier | What it governs | Workflow |
 |---|---|---|
-| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: claim → experiment → decision |
+| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: evidence → index → experiment → decision (frozen-legacy claims remain in records/claims/ as read-only audit trail) |
 | **Internal implementation** | Refactoring, module extraction, naming, structure, patterns within approved boundaries | ck:* skills: plan → cook → review |
 
 A refactor that touches no external system does not need a decision record. A vendor API change always does. The question is never "is this big enough?" The question is "does this touch an external boundary?"
@@ -82,13 +82,13 @@ A refactor that touches no external system does not need a decision record. A ve
 
 ### Start With What You Do Not Know
 
-Before planning, list uncertainties. Convert each uncertainty into a claim (what you believe) and a risk (what could go wrong). The loop is not about proving you are right. It is about making your uncertainty explicit so it can be addressed or bounded.
+Before planning, list uncertainties. Convert each uncertainty into an index entry candidate (what you believe) and a risk (what could go wrong). The loop is not about proving you are right. It is about making your uncertainty explicit so it can be addressed or bounded.
 
 ### Prove Before Building
 
 A capability script proves a library returns usable data. An experiment proves a hypothesis. A decision approves a scope. Product code comes last, never first.
 
-If you find yourself writing product code before a claim is verified, stop. You are building on unproven ground.
+If you find yourself writing product code before an assertion is indexed and verified, stop. You are building on unproven ground.
 
 ### Preserve Negative Knowledge
 
@@ -106,7 +106,7 @@ The operator is the final authority, but the loop should do the work of remember
 
 The loop assumes agents make mistakes. It is designed to catch them.
 
-- **Claims are challenged** by experiments.
+- **Index entries are challenged** by newer evidence (and the experiments that produce it).
 - **Experiments are challenged** by cleanup rules (a failed cleanup invalidates the result).
 - **Decisions are challenged** by superseding decisions.
 - **Evidence is challenged** by newer evidence.

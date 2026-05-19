@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Operator-Guide Index-First Rewrite"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1]

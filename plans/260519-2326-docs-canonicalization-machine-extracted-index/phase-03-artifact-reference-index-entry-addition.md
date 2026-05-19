@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Artifact-Reference Index-Entry Addition"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: [2]
