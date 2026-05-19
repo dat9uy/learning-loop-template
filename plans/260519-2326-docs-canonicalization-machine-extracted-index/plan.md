@@ -5,7 +5,7 @@ status: pending
 priority: P2
 branch: "main"
 tags: [machine-extracted-index, docs, canonicalization]
-blockedBy: ["260519-1558-migration-execution-machine-extracted-index"]
+blockedBy: ["260519-1558-migration-execution-machine-extracted-index", "260520-0157-coordination-model-collapse"]
 blocks: []
 created: "2026-05-19T16:26:59.994Z"
 createdBy: "ck:plan"
@@ -42,6 +42,7 @@ All changes are documentation-only. No runtime behavior changes. No record schem
 ## Dependencies
 
 - **Blocked by:** `260519-1558-migration-execution-machine-extracted-index` (Plan 3 — prototype seed migration and parity check). Status: **completed** (commit `044a89a`).
+- **Blocked by:** `260520-0157-coordination-model-collapse` (Coordination model collapse — remove profile-based gating). Status: **pending**. This plan must complete first so the coordination system allows docs-only work without false-positive blocks.
 - No downstream blocks.
 
 ## Risk Assessment
