@@ -3,7 +3,7 @@ record_type: evidence
 capability: vnstock-data
 dimension: install
 scope: sandbox
-validation_status: failed
+validation_status: passed
 claim_support: does-not-support
 secret_injection_class: api-key-via-shell-env-var
 installer_url_class: vnstocks-official-download
@@ -104,6 +104,13 @@ The URL above came from installer output, not from external documentation or inf
 ## Supersedes
 
 - `local:records/evidence/vnstock-data/installer-prior-notes.md` - prior claim that installer reads `~/.vnstock/user.json` was empirically superseded. Installer reads `VNSTOCK_API_KEY` env var; this run additionally showed it may persist the key into temp-local config files during installation. Package import shape remains unverified in this run because the device-limit gate stopped installation.
+
+## Findings
+
+- [vendor-device-limit-blocks-install] The vendor installer blocks at device-limit enforcement before installing vnstock_data when no free device slot exists.
+  - Context: Observed in sandbox on 2026-05-08; the installer exited 1 at step 6.
+- [installer-writes-api-key-to-temp-config] The installer writes API-key material to temp-local config files even when the key is injected via environment variable.
+  - Context: Temp-file secret audit on 2026-05-08.
 
 ## Source
 

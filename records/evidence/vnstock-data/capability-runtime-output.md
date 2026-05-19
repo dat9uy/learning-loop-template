@@ -78,6 +78,12 @@ No raw row values, full DataFrames, credential values, config contents, or time-
 - `reference.search.symbol("VNM", limit=5)` returned an empty DataFrame while preserving the expected search schema.
 - `vnstock_data` package metadata and module `__version__` disagree (`3.1.7` vs `3.0.0`); package metadata is treated as the installed distribution version.
 
+## Findings
+
+- [live-api-surfaces-verified] Live API calls across Reference, Market, Fundamental, Insights, and Macro surfaces succeed with metadata-only output capture.
+  - Context: Verified in product/api shared venv on 2026-05-10 across 20+ calls.
+  - Caveat: `reference.search.symbol("VNM", limit=5)` returned an empty DataFrame while preserving the expected search schema.
+
 ## Output Policy Review
 
 - Raw external data values: not retained in this evidence envelope.

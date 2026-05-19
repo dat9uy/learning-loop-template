@@ -1,0 +1,27 @@
+id: assertion-vnstock-data-install-archive-wrapper-flags-not-exposed
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: The vnstock-cli-installer.run archive wrapper does not expose
+  `--non-interactive`, `--api-key`, `--venv-path`, or `--language` flags.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: archive-wrapper-flags-not-exposed
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/vnstock-data/experiment-install-20260508T101723Z.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L58
+experiment_refs:
+  - record:experiment-meta-install-template-candidate-260512T0046Z
+  - record:experiment-vnstock-install-20260508T101723Z
+  - record:experiment-vnstock-install-vendor-one-liner-20260513T213042Z
+extraction:
+  agent_run: extract-index-2026-05-19T16:13:17Z
+  first_extracted_at: 2026-05-19T16:13:17Z
+  last_updated_at: 2026-05-19T16:13:17Z
+  evidence_immutable_hash: sha256:108f887e5696ca0dcdecac574e80911b709501f77948a6731f92674d4ef92bc6

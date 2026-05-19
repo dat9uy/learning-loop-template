@@ -124,6 +124,19 @@ Each fresh container consumes a distinct device slot.
 - **New finding**: Device IDs are not stable across containers; each instance consumes a slot.
 - **New finding**: Version drift exists between `vnstock_data` source `__version__` and dist-info.
 
+## Findings
+
+- [full-install-exits-zero] With a free device slot, the vendor installer exits 0, registers a new device, and successfully installs vnstock_data.
+  - Context: Verified in `python:3.11-slim` container with cleared device slots on 2026-05-14.
+- [installer-creates-venv-at-home] The installer unconditionally creates `.venv` at `$HOME/.venv` and respects `HOME` overrides.
+  - Context: Confirmed with `HOME=/tmp/fake-home` on 2026-05-14; `/root/.venv` was NOT created.
+- [device-ids-non-deterministic] Device IDs are not deterministic across container instances; each fresh container consumes a distinct device slot.
+  - Context: A second container run on the same host generated a different device ID and hit the device-limit gate on 2026-05-14.
+- [vendor-tier-bronze-one-limit] The vendor installer falsely claims "Golden package, 2 devices" in its error message; the actual tier is Bronze with a 1-device limit.
+  - Context: Retrospective finding from 2026-05-15; every experiment that hit device limit was hitting the 1-device ceiling.
+- [vnai-no-preinstall-needed] vnai does NOT need to be pre-installed in the substrate; the installer handles vnai/vnii installation itself.
+  - Context: Verified in full install run on 2026-05-14.
+
 ## Source
 
 - Operator: local

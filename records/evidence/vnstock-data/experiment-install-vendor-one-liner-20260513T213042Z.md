@@ -86,6 +86,12 @@ ModuleNotFoundError: No module named 'requests'
 - Does not resolve the venv-path discrepancy because the installer fails before venv creation.
 - Installer SHA-256 changed since 2026-05-09; vendor does not publish checksums.
 
+## Findings
+
+- [one-liner-needs-requests] The vendor-documented one-liner install command requires `requests` to be pre-installed in the substrate; without it the inner installer fails with `ModuleNotFoundError: No module named 'requests'`.
+  - Context: Verified in fresh `python:3.11-slim` containers on 2026-05-13.
+  - Caveat: The vendor troubleshooting guide omits this prerequisite while the vendor Dockerfile sample includes it.
+
 ## Source
 
 - Operator: local

@@ -1,3 +1,13 @@
+---
+record_type: evidence
+capability: vnstock-data
+dimension: install
+scope: sandbox
+validation_status: passed
+claim_support: does-not-support
+created: "2026-05-08T10:17:23Z"
+---
+
 # vnstock Install Experiment Evidence
 
 ## Envelope
@@ -51,3 +61,10 @@ The current installer therefore does not match the prior note that it reads a pr
 ## Cleanup Confirmation
 
 The temp root was deleted after each attempted run. No installer logs, credentials, config contents, raw data, downloaded installer file, extracted scripts, or venv binaries were retained.
+
+## Findings
+
+- [archive-wrapper-flags-not-exposed] The vnstock-cli-installer.run archive wrapper does not expose `--non-interactive`, `--api-key`, `--venv-path`, or `--language` flags.
+  - Context: Verified by archive-level `--check` and help inspection on 2026-05-08.
+- [installer-env-var-driven] The extracted Python installer entrypoint is environment-variable driven; `VNSTOCK_API_KEY`, `VNSTOCK_LANGUAGE`, `VNSTOCK_VENV_TYPE`, and `VNSTOCK_VENV_PATH` control behavior.
+  - Context: Source inspection of extracted installer entrypoint on 2026-05-08.

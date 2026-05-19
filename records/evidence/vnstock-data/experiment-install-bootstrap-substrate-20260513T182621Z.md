@@ -114,6 +114,15 @@ Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành.
 - `VNSTOCK_CONFIG_PATH` is respected; config files written to `/tmp/fake-home/.vnstock`.
 - Device-limit gate behavior is consistent with prior observations.
 
+## Findings
+
+- [bootstrap-script-validated] The `product/api/scripts/install-vnstock.sh` bootstrap script is validated: the product `.venv` with `requests` and `pandas` is a sufficient substrate, and the `HOME` override works as intended.
+  - Context: Verified in bootstrap-equivalent Docker substrate on 2026-05-13.
+- [vnai-no-preinstall-needed] vnai does NOT need to be pre-installed in the substrate; the installer handles vnai, vnii, and typing_extensions installation itself.
+  - Context: Confirmed in bootstrap-equivalent substrate with only `requests` and `pandas` pre-installed on 2026-05-13.
+- [substrate-venv-unmodified] The substrate venv (analogous to `product/api/.venv`) is left completely unmodified by the installer.
+  - Context: Verified that `/opt/test-venv` contained no new packages after installer run on 2026-05-13.
+
 ## Source
 
 - Operator: local

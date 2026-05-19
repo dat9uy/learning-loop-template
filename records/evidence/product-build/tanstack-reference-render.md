@@ -1,5 +1,7 @@
 ---
 record_type: evidence
+capability: product-build
+dimension: product
 scope: product-build
 validation_status: passed
 claim_support: supports

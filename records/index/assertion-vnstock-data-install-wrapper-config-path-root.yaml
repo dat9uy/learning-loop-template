@@ -1,0 +1,25 @@
+id: assertion-vnstock-data-install-wrapper-config-path-root
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: The install-vnstock.sh wrapper must set `VNSTOCK_CONFIG_PATH` to the
+  `.vnstock` root, not one segment deeper, for the installer and runtime to
+  agree on where `user.json`, `api_key.json`, and `device.id` live.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: wrapper-config-path-root
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/vnstock-data/wrapper-config-path-fix-20260511.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L6
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-19T16:08:31Z
+  first_extracted_at: 2026-05-19T16:08:31Z
+  last_updated_at: 2026-05-19T16:08:31Z
+  evidence_immutable_hash: sha256:6171b551a9729c5829b38bfc7bb8d5277c44f95cf95fd4543afa23b6dd24e4f1

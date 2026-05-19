@@ -73,6 +73,11 @@ The experiment validates that the bootstrap script behaves correctly in producti
 - The `vendor_compat` runtime patch is **necessary** and correctly loaded.
 - No product changes are required for the install dimension.
 
+## Findings
+
+- [bootstrap-script-idempotent] The `product/api/scripts/install-vnstock.sh` bootstrap script is idempotent: it skips installation when vnstock_data is already importable.
+  - Context: Verified in real product directory on 2026-05-14; script exited 0 with "vnstock_data already imports... skipping installer."
+
 ## Source
 
 - Operator: local

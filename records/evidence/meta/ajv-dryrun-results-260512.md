@@ -1,8 +1,14 @@
 ---
+record_type: evidence
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+claim_support: supports
+created: "2026-05-12T00:00:00Z"
 id: evidence-meta-ajv-dryrun-results-260512
 title: AJV strict dry-run results against current schemas and records
 date: "2026-05-12"
-scope: meta-tooling
 summary: Empirical results of running AJV 2020 strict:true allErrors:true against 5 schemas + 34 records with proposed datetime UTC-Z pattern injected on created_at/updated_at/reviewed_at. Surfaces both expected datetime drift and three previously-silent-pass required-property gaps.
 source_refs:
   - local:plans/reports/brainstorm-260512-1534-ajv-schema-validation-scope.md

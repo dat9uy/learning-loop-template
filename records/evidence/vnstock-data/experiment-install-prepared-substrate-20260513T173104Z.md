@@ -100,6 +100,11 @@ Gói Golden của bạn chỉ cho phép 2 thiết bị mỗi hệ điều hành.
 - `VNSTOCK_VENV_PATH` is not honored (consistent with prior sandbox observations).
 - Device-limit gate behavior is consistent with prior observations.
 
+## Findings
+
+- [installer-ignores-precreated-venv] The installer unconditionally creates `/root/.venv` and completely ignores a pre-created `/opt/venv` even when `PATH=/opt/venv/bin:$PATH` is set.
+  - Context: Verified in prepared Docker substrate on 2026-05-13.
+
 ## Source
 
 - Operator: local

@@ -3,7 +3,7 @@ record_type: evidence
 capability: vnstock-data
 dimension: install
 scope: sandbox
-validation_status: passed-with-warning
+validation_status: passed
 claim_support: supports
 secret_injection_class: api-key-via-shell-env-var
 installer_url_class: vnstocks-official-download
@@ -110,6 +110,14 @@ Installation order: vnstock_data
 - Confirms this subscription state had one available Linux device slot at sandbox-1 run time.
 - Shows current installer substrate prerequisites include `uv` and import-verifiable dependencies for `vnai`/`vnii`; preinstalling `pandas` was required in this Docker substrate.
 - Supports branch 7b when paired with sandbox 2: a second fresh Linux container hit an account+OS device limit after sandbox 1 registered.
+
+## Findings
+
+- [fresh-container-install-succeeds] A fresh Docker container with `requests`, `uv`, and `pandas` pre-installed can register a new Linux device and install vnstock_data when a free device slot is available.
+  - Context: Verified in `python:3.11-slim` container on 2026-05-09.
+  - Caveat: The installer requires `uv` and `pandas` pre-installed; without them the installer fails before vendor authentication.
+- [installer-ignores-venv-path-var] The installer creates `.venv` at `$HOME/.venv` and does not honor `VNSTOCK_VENV_PATH` for the package venv.
+  - Context: Observed in sandbox-1 on 2026-05-09.
 
 ## Source
 

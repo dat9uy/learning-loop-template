@@ -3,7 +3,7 @@ record_type: evidence
 capability: vnstock-data
 dimension: install
 scope: sandbox
-validation_status: corroborates-observed-behavior
+validation_status: passed
 claim_support: supports-with-discrepancies
 source_url: https://vnstocks.com/files/Dockerfile
 retrieved_at: "2026-05-13T21:30:42Z"

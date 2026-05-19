@@ -1,8 +1,14 @@
 ---
+record_type: evidence
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+claim_support: supports
+created: "2026-05-12T00:00:00Z"
 id: evidence-meta-yaml-parser-friction-and-schema-inventory-260512
 title: YAML parser friction and schema inventory
 date: "2026-05-12"
-scope: meta-tooling
 summary: Evidence supporting the YAML parser library swap and AJV deferral.
 source_refs:
   - local:plans/reports/brainstorm-260512-1357-parser-swap-ajv-deferral.md

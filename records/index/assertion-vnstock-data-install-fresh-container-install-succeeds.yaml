@@ -1,0 +1,28 @@
+id: assertion-vnstock-data-install-fresh-container-install-succeeds
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: A fresh Docker container with `requests`, `uv`, and `pandas`
+  pre-installed can register a new Linux device and install vnstock_data when a
+  free device slot is available.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: fresh-container-install-succeeds
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/vnstock-data/experiment-install-20260509T071800Z-sandbox-1.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L103
+experiment_refs:
+  - record:experiment-meta-install-template-candidate-260512T0046Z
+  - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
+  - record:experiment-vnstock-install-vendor-one-liner-20260513T213042Z
+extraction:
+  agent_run: extract-index-2026-05-19T16:13:17Z
+  first_extracted_at: 2026-05-19T16:13:17Z
+  last_updated_at: 2026-05-19T16:13:17Z
+  evidence_immutable_hash: sha256:afb1020526b5c20eed40672a1e1a94707c6da0779fd3e74c8468e241df0db4af

@@ -1,3 +1,13 @@
+---
+record_type: evidence
+capability: vnstock-data
+dimension: runtime
+scope: sandbox
+validation_status: passed
+claim_support: supports
+created: "2026-05-18T00:30:00+07:00"
+---
+
 # vnstock_data Capability Re-validation — 2026-05-18
 
 ## Environment
@@ -49,3 +59,12 @@ This error occurs **after** successful device registration (device ID `2ff1c8e8d
 2. If subscription expired or account inactive, reactivate before re-running capability scripts
 3. If account is active but device unauthorized, contact Vnstock support with device ID `2ff1c8e8dbd68876704376494dd4ae78`
 4. After vendor-side resolution, re-run capability scripts (no re-install needed — device already registered)
+
+## Findings
+
+- [device-id-injection-not-required] vnstock_data 3.1.8 no longer requires Device-Id injection for VCI auth; `api_key.json` is sufficient.
+  - Context: Verified across 6 surfaces (Reference.listings, Reference.company, Market.ohlcv, Fundamental.income_statement, Insights.ranking, Macro.gdp) in sandbox on 2026-05-18.
+  - Caveat: TCBS provider not tested; behavior may differ.
+- [home-env-for-api-key] vnstock_data 3.1.8 resolves `api_key.json` via `Path.home() / ".vnstock" / "api_key.json"`, so `os.environ["HOME"]` must point at `product/api` before importing vnstock_data.
+  - Context: Capability scripts in product/api now set HOME explicitly before import.
+  - Caveat: If HOME is left at the shell user's home, vnstock_data raises "Không tìm thấy thông tin người dùng hợp lệ" (vendor-side, looks like an auth failure but is actually a missing-config failure).

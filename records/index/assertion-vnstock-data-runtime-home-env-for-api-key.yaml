@@ -1,0 +1,27 @@
+id: assertion-vnstock-data-runtime-home-env-for-api-key
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: vnstock_data 3.1.8 resolves `api_key.json` via `Path.home() /
+  ".vnstock" / "api_key.json"`, so `os.environ["HOME"]` must point at
+  `product/api` before importing vnstock_data.
+capability: vnstock-data
+dimension: runtime
+scope: sandbox
+topic_tag: home-env-for-api-key
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/vnstock-data/capability-revalidation-20260518.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L59
+experiment_refs:
+  - record:experiment-vnstock-capability-revalidation-20260518T003000Z
+  - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
+extraction:
+  agent_run: extract-index-2026-05-19T16:08:31Z
+  first_extracted_at: 2026-05-19T16:08:31Z
+  last_updated_at: 2026-05-19T16:08:31Z
+  evidence_immutable_hash: sha256:ed80d2e6607a2596d3cbec0936f75d85fe7993c3031e19868add13e870ddccd5

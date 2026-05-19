@@ -20,7 +20,7 @@ describe("record-loader", () => {
   it("discovers records/index/ directory", () => {
     const records = loadRecords(root);
     const indexRecords = records.filter((r) => r.type === "extracted-assertion");
-    assert.strictEqual(indexRecords.length, 0, "no index records yet (empty directory)");
+    assert.ok(indexRecords.length >= 5, `expected at least 5 index records, got: ${indexRecords.length}`);
   });
 });
 

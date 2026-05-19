@@ -231,9 +231,9 @@ describe("extract-index CLI", () => {
     assert.strictEqual(result.code, 2);
   });
 
-  it("returns exit 1 when evidence has missing frontmatter on real repo", () => {
+  it("returns exit 0 on real repo with all frontmatter valid", () => {
     const result = runWithCode("--dry-run");
-    assert.strictEqual(result.code, 1);
+    assert.strictEqual(result.code, 0);
     assert.match(result.stdout, /Processed \d+ evidence files/);
   });
 

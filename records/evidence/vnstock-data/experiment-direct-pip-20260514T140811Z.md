@@ -60,6 +60,11 @@ hangs/fails because pip cannot parse the HTML page as a package index.
 - No pip bypass strategy exists.
 - The bootstrap script (`product/api/scripts/install-vnstock.sh`) remains the correct install path.
 
+## Findings
+
+- [direct-pip-not-viable] Direct pip install from the vendor index is not viable; the vendor endpoint is a web UI, not a PEP 503 simple index.
+  - Context: Probed `https://vnstocks.com/api/simple` with curl and attempted `pip install --extra-index-url` on 2026-05-14.
+
 ## Source
 
 - Operator: local
