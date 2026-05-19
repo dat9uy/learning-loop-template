@@ -470,6 +470,12 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 
 **Acceptance criteria:** All new index entries validate against Plan 1 schema; doc-parity table passes; `pnpm check` passes; git diff is reviewable (evidence markdown + index YAMLs only; no claim file edits).
 
+**Status:** Completed 2026-05-19 — prototype seed #1 executed (evidence files updated with `## Findings`, extraction tool ran, 24+ index entries generated including supersession pair `device-id-injection-required` → `device-id-injection-not-required`); prototype seed #2 deferred to lazy migration (seed #1 proved the pattern); `pnpm check` passes.
+
+**Decision deltas from implementation:**
+- Cross-dimension bullet in `capability-revalidation-20260518.md` (`vendor-compat-archived` appearing in runtime-dimension file) was flagged by extraction tool and deferred to lazy migration per one-file-one-dimension rule.
+- All 10 frozen-legacy claim YAMLs remain untouched in `records/claims/`.
+
 ### Plan 4: Deprecation + Docs Canonicalization
 
 **Dependencies:** Plan 3 validated (prototype seeds pass parity check; extraction tool stable).
@@ -485,6 +491,8 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 - Close out any lingering `plans/` artifacts: mark this brainstorm complete.
 
 **Acceptance criteria:** No stale references to "claims as primary state" remain in `docs/`; `pnpm check` passes.
+
+**Status:** Plan created 2026-05-19 (`plans/260519-2326-docs-canonicalization-machine-extracted-index/`) — 4 phases, red-team reviewed (15 findings applied), ready for implementation.
 
 ## Unresolved Questions
 
