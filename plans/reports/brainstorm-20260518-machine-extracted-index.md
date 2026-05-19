@@ -401,6 +401,17 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
   - Note that claims are frozen as legacy reference (no new entries); state queries route to `records/index/`.
   - Preserve frozen-legacy claims as read-only audit trail.
 
+**Status:** Completed 2026-05-19 — decision record authored (`decision-260519T1400Z-claim-deprecation`), claim schema deprecated (`deprecated: true`), index-entry schema created (`schemas/index-entry.schema.json`), validator plumbing extended (shared `schema-loader.js`, `records/index/` in loader, `extracted-assertion` validation path), docs updated (`docs/record-system-architecture.md`).
+
+**Decision deltas from red-team/validation:**
+- `decision_effect.action` changed from `deprecate` to `supersede` (matches decision schema enum).
+- `decision_effect.scope` changed from `records` to `schema-improvement` (matches decision schema enum).
+- `source_refs` to `plans/reports/` moved to `affected_refs` (avoids local-path validation failure on `source_refs`).
+- Schema filename `index-entry.schema.json` mapped to type `extracted-assertion` via explicit mapping object in shared `schema-loader.js` (replaces array-map pattern).
+- `superseded_by` typed as `["string", "null"]` (accepts null for active entries).
+- `experiment_refs` schema carries `pattern: "^record:.+"`.
+- Bare IDs (no `record:` prefix) in `superseded_by` and `supersedes` accepted as by-design convention.
+
 **Acceptance criteria:** `pnpm check` passes on all unchanged files + the new schema loads without errors.
 
 ### Plan 2: Extraction Tool

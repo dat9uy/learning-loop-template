@@ -4,14 +4,15 @@ This document describes the record system's data model, entity roles, state mach
 
 ## Record Ledger
 
-Records are human-edited source files under `records/`. They describe claims, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state (device slots, resource budgets, behavioral findings).
+Records are human-edited source files under `records/`. They describe claims, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state (device slots, resource budgets, behavioral findings). Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
 
 ## Entity Roles
 
 | Entity | What it does | How it helps learning |
 |---|---|---|
 | Evidence/source material | Captures where information came from and its limits. | Preserves durable context without pretending it is verified truth. |
-| Claim record | States a candidate assertion and links sources/experiments. | Gives the loop something precise to verify, reject, or qualify. |
+| Index entry | Machine-extracted atomic assertion from evidence `## Findings`. | Replaces claims as the canonical state query target; enables N=1/N>1 counting. |
+| Claim record | States a candidate assertion and links sources/experiments. | Frozen-legacy (read-only audit trail, no new entries). Historical reference only. |
 | Risk record | States conditional caution, severity, confidence, and mitigation. | Prevents weak/ambiguous knowledge from becoming unsafe capability. |
 | Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
 | Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
@@ -25,7 +26,9 @@ Records are human-edited source files under `records/`. They describe claims, ex
 
 ```text
 records/evidence/      -> durable source material
-records ledger         -> claims + risks + experiments + decisions + capability records
+records/index/         -> machine-extracted assertions (agent-owned, human-read-only)
+records ledger         -> risks + experiments + decisions + capability records
+records/claims/        -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
 capability scripts     -> product/<stack>/capabilities/ (runtime-verification substrate)
 constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
@@ -36,7 +39,7 @@ generated views        -> disabled until model settles
 Short version:
 
 ```text
-records/evidence -> claims + risks + experiments -> dimensions -> capability scripts (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
+records/evidence -> records/index/ (machine-extracted assertions) + risks + experiments -> dimensions -> capability scripts (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
                                       |
                                       v
                     observations + budgets -> constraint gate -> command gating
@@ -44,13 +47,39 @@ records/evidence -> claims + risks + experiments -> dimensions -> capability scr
 
 Capability scripts are standalone feasibility probes that test API-return-data runtime. They live in `product/<stack>/capabilities/` before product approval because they are not product implementations. Capability records are the YAML ledger entries that bind verified library surfaces to product surfaces; they are authored only during a product-build plan.
 
+## Machine-Extracted Index
+
+The record system now has three territories:
+
+- `docs/` — human-only escape hatch. Intentionally informal. May diverge from records.
+- `records/evidence/` — human-authored markdown, source of truth. Agent may create under explicit operation; agent never edits existing.
+- `records/index/` — machine-derived YAMLs. Agent-owned, human-read-only. Assertions are extracted atomically from evidence `## Findings` sections.
+
+Claims are frozen-legacy (read-only audit trail, no new entries). State queries route to `records/index/` first; frozen claims serve historical audit only.
+
+### Provenance Chain
+
+```text
+experiment.id -> evidence_refs[] -> ## Findings bullet -> records/index/<assertion-id>.yaml
+```
+
+Index entries are self-contained — agents can answer state queries from the YAML alone without reading source evidence. `source_refs` and `experiment_refs` inside each entry point to the underlying evidence and experiments for deeper audit queries.
+
+### Status Derivation
+
+Index entry `status` (`active | superseded | pending_approval`) derives from the source evidence's `validation_status`, not from an editorial lifecycle:
+
+- `evidence.validation_status: passed` -> `index.status: active`
+- `evidence.validation_status: pending` -> `index.status: pending_approval`
+- `evidence.validation_status: failed` -> extraction skipped (no entry written)
+
 ## State-Machine Layer
 
 The system has two distinct state models:
 
 ### Record State (Immutable Ledger)
 
-Claims, experiments, decisions, and capability records follow editorial lifecycle states (`draft` → `reviewed` → `approved`). These are append-oriented — new records, not mutations. Verification dimensions (`claimed` → `verified`/`rejected`) are orthogonal to record status.
+Experiments, decisions, risks, and capability records follow editorial lifecycle states (`draft` → `reviewed` → `approved`). These are append-oriented — new records, not mutations. Claims are frozen-legacy and no longer follow this lifecycle. Index entries (`extracted-assertion`) derive their `status` directly from evidence `validation_status`; they do not follow the editorial lifecycle.
 
 ### Observation State (Mutable Enforcement)
 
@@ -91,7 +120,8 @@ Keep these axes separate:
 | Risk confidence | risks | Credibility/usefulness of a caution. |
 | Experiment outcome | experiments | Supports, rejects, or inconclusive. |
 | Experiment proof | experiments | Dimension and scope proved by the experiment. |
-| Claim verification dimensions | claims | Independent static/install/runtime/product statuses. |
+| Claim verification dimensions | claims | Independent static/install/runtime/product statuses. Frozen-legacy only. |
+| Index entry status | extracted-assertion | `active | superseded | pending_approval`; derived from evidence `validation_status`. |
 | Derived claim assurance | claims | Effective assurance from valid dimensions and linked experiments. |
 | Decision basis | decisions | Evidence/records/experiments used as rationale. |
 | Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |

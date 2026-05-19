@@ -1,7 +1,7 @@
 ---
 title: "Schema + Scaffolding: Machine-Extracted Index"
 description: "Mechanical foundation for machine-extracted index: deprecation decision, index-entry schema, records/index/ directory, validator plumbing, and architecture doc updates."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: ["machine-extracted-index", "schema", "records", "validation"]
@@ -22,10 +22,10 @@ Plan 1 of 4 from the machine-extracted index redesign. Creates the mechanical fo
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Decision and Schema](./phase-01-decision-and-schema.md) | Pending |
-| 2 | [Validator Plumbing](./phase-02-validator-plumbing.md) | Pending |
-| 3 | [Documentation Update](./phase-03-documentation-update.md) | Pending |
-| 4 | [Acceptance Validation](./phase-04-acceptance-validation.md) | Pending |
+| 1 | [Decision and Schema](./phase-01-decision-and-schema.md) | Completed |
+| 2 | [Validator Plumbing](./phase-02-validator-plumbing.md) | Completed |
+| 3 | [Documentation Update](./phase-03-documentation-update.md) | Completed |
+| 4 | [Acceptance Validation](./phase-04-acceptance-validation.md) | Completed |
 
 ## Key Decisions
 
