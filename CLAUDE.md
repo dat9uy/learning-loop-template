@@ -20,3 +20,35 @@ PreToolUse hooks and one MCP server:
 Skills can be invoked directly. There is no skill registry, no profile-based
 gating, and no coordinator workflow. The bash gate and write gate enforce
 safety mechanically.
+
+## Write Gate Block Protocol
+
+When the write-coordination-gate blocks a tool call with `decision: block`, the
+agent MUST NOT silently defer or skip the artifact. Required behavior:
+
+1. **Identify if the artifact is required by the current plan.** If the plan
+   phase explicitly lists the file as a deliverable, it is required.
+2. **Use `AskUserQuestion`** to surface the block to the operator with:
+   - What file is blocked
+   - Why the gate blocked it (rule + reason)
+   - Why the file is needed (plan requirement)
+   - Concrete options: approve writing, use MCP `record_observation` to
+     pre-authorize, or skip with journal note
+3. **Never use Bash to bypass a write-gate block.** If Edit/Write is blocked for
+   a path, using Bash (sed, cat, echo, etc.) to modify that same path is a
+   circumvention, not a solution. Bash is for shell operations; blocked file
+   edits require operator approval or MCP-mediated authorization.
+4. **Never assume `--auto` mode overrides mechanical blocks.** The `--auto`
+   flag skips review gates (post-research, post-plan, etc.), NOT PreToolUse
+   hook blocks. A blocked tool is a hard stop requiring operator input.
+
+### Pre-authorized paths
+
+The following paths have active observations and do NOT require prompting:
+
+- `records/evidence/**` — pre-authorized by `observation-evidence-write-path`
+  for runtime verification artifacts. Agent may write directly; operator
+  validates content after.
+
+Paths without observations (e.g., `schemas/**`, `records/observations/**`)
+remain blocked and require the protocol above.

@@ -1,0 +1,17 @@
+id: observation-evidence-write-path
+schema_version: "1.0"
+type: observation
+status: inactive
+created_at: "2026-05-21T00:00:00Z"
+updated_at: "2026-05-21T00:00:00Z"
+source_refs:
+  - local:.claude/coordination/hooks/write-coordination-gate.cjs
+  - local:CLAUDE.md
+constraint_type: write-path
+constraint: records-evidence
+description: >
+  Authorize agent writes to records/evidence/** for runtime verification artifacts.
+  Evidence files are required by plan phases (e.g., fundamental capability closeout).
+  Operator retains ownership of evidence content; agent drafts, operator validates.
+  This observation eliminates friction so agents do not need to AskUserQuestion
+  on every evidence file write during plan execution.
