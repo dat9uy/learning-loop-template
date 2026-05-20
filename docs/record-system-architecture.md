@@ -4,7 +4,7 @@ This document describes the record system's data model, entity roles, state mach
 
 ## Record Ledger
 
-Records are human-edited source files under `records/`. They describe claims, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state (device slots, resource budgets, behavioral findings). Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
+Records are human-edited source files under `records/`. They describe frozen-legacy claims, index entries, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state (device slots, resource budgets, behavioral findings). Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
 
 ## Entity Roles
 
@@ -16,11 +16,11 @@ Records are human-edited source files under `records/`. They describe claims, ex
 | Risk record | States conditional caution, severity, confidence, and mitigation. | Prevents weak/ambiguous knowledge from becoming unsafe capability. |
 | Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
 | Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
-| Capability record | Maps verified library surfaces (claims) to product surfaces (`route_class`, `view_class`). | Binds upstream verification to the build target without smuggling implementation detail. |
+| Capability record | Maps verified library surfaces (index entries or frozen-legacy claims) to product surfaces (`route_class`, `view_class`). | Binds upstream verification to the build target without smuggling implementation detail. |
 | Capability script | Standalone feasibility probe under `product/<stack>/capabilities/<scope>/`. | Tests API-return-data runtime; substrate for the runtime-verification experiment, not product code. |
 | Observation record | Captures mutable external system state (device slots, resource budgets, behavioral findings). | Authoritative source for operational constraints; gates irreversible commands via the constraint gate. |
 | Resource budget | Observation subtype tracking `budget`/`current` counts and `validation_window` state. | Prevents agent from exhausting finite external resources (vendor slots, rate limits). |
-| Derived claim assurance | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
+| Derived claim assurance (frozen-legacy claims only) | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
 
 ## Core Hierarchy
 
@@ -124,14 +124,14 @@ Keep these axes separate:
 
 | Axis | Applies to | Meaning |
 |---|---|---|
-| Record status | claims, experiments, decisions, capability records | Editorial/review state. |
+| Record status | frozen-legacy claims, index entries, experiments, decisions, capability records | Editorial/review state. |
 | Risk status | risks | Candidate/reviewed/active/mitigated/accepted/rejected caution state. |
 | Risk confidence | risks | Credibility/usefulness of a caution. |
 | Experiment outcome | experiments | Supports, rejects, or inconclusive. |
 | Experiment proof | experiments | Dimension and scope proved by the experiment. |
-| Claim verification dimensions | claims | Independent static/install/runtime/product statuses. Frozen-legacy only. |
+| Claim verification dimensions | frozen-legacy claims | Independent static/install/runtime/product statuses. Frozen-legacy only. |
 | Index entry status | extracted-assertion | `active | superseded | pending_approval`; derived from evidence `validation_status`. |
-| Derived claim assurance | claims | Effective assurance from valid dimensions and linked experiments. |
+| Derived claim assurance | frozen-legacy claims | Effective assurance from valid dimensions and linked experiments. |
 | Decision basis | decisions | Evidence/records/experiments used as rationale. |
 | Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |
 | Capability map | capability records | Mapping of verified library surfaces to product surfaces. |
@@ -141,6 +141,6 @@ Keep these axes separate:
 
 ## Product Generation Loop
 
-The loop reads the record ledger (claims, experiments, decisions, capability records) and emits a proposal or a no-build decision. Capability records are the technical bridge between a verified library claim and a product surface; they make the build target machine-checkable without committing to product implementation. The loop does not create product code in this template.
+The loop reads the record ledger (index entries, frozen-legacy claims, experiments, decisions, capability records) and emits a proposal or a no-build decision. Capability records are the technical bridge between a verified library surface (index entry or frozen-legacy claim) and a product surface; they make the build target machine-checkable without committing to product implementation. The loop does not create product code in this template.
 
 When the loop needs to issue commands that touch irreversible external systems, it passes through the constraint gate. The gate reads observation records and resource budgets to decide whether the command is allowed (`ok`), requires an observation first (`block`), or needs operator intervention (`escalate`). This keeps the loop honest about resource state without relying on agent memory.

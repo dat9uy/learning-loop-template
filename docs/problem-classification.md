@@ -6,7 +6,7 @@ Quick reference for choosing the right `records/` artifact when something goes w
 
 | Symptom | Artifact | Result | Why |
 |---------|----------|--------|-----|
-| Concrete failure during walkthrough / test / build | **Experiment** | `rejects` | Records what was attempted, what broke, and which claim dimension is blocked. |
+| Concrete failure during walkthrough / test / build | **Experiment** | `rejects` | Records what was attempted, what broke, and which index-entry dimension (or frozen-legacy claim dimension) is blocked. |
 | Systemic concern — could break, hard to maintain, security worry | **Risk** | `active` (status) | Tracks conditional caution with severity, likelihood, and mitigation plan. |
 | Unclear whether it's a bug or expected behavior; needs more data | **Experiment** | `inconclusive` | Records the attempt and what blocked a clear verdict. Prevents premature classification. |
 
@@ -16,7 +16,7 @@ Quick reference for choosing the right `records/` artifact when something goes w
 
 Use when:
 - A reproducible step in the product walkthrough fails (HTTP error, crash, wrong data, broken navigation).
-- A claim dimension that was previously `verified` now fails on re-check.
+- An index-entry dimension (or frozen-legacy claim dimension) that was previously `active` (or `verified`) now fails on re-check.
 - Build or test fails with a clear error.
 
 Required fields:
@@ -66,14 +66,14 @@ Required fields:
 | File a Risk for a reproducible 403 during walkthrough | File an Experiment with `result: rejects` | Risks are for future exposure, not present failures. |
 | File an Experiment with `result: supports` when the walkthrough was skipped | File an Experiment with `result: inconclusive` | `supports` requires evidence; absence of evidence is not support. |
 | Put the fix in the Experiment record | Put the fix in product code; use Experiment to record verification | Experiments are ledger entries, not implementation plans. |
-| Create a new Claim for every bug | Use Experiment `rejects` against existing Claim | Claims are assertions to verify; bugs are evidence about existing claims. |
+| Create a new index entry for every bug | Use Experiment `rejects` against existing index entry | Index entries are assertions to verify; bugs are evidence about existing assertions. |
 
 ## Workflow
 
 1. Reproduce the problem.
 2. Match symptom to table above.
 3. Create evidence under `records/evidence/<scope>/` if needed.
-4. Author the record, cite evidence and affected claim refs.
+4. Author the record, cite evidence and affected index-entry or claim refs.
 5. Run `pnpm validate:records` before finishing.
 
 ## See Also

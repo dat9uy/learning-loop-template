@@ -10,7 +10,7 @@ For the system's intended long-term direction (incremental autonomy on the verif
 
 The template contains:
 
-- a small typed record ledger (claims, risks, experiments, decisions, capability records, observations);
+- a small typed record ledger (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations);
 - dedicated evidence files under `records/evidence/`;
 - per-stack scaffolding under `product/<stack>/` (stack manifest + capability scripts + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
@@ -42,7 +42,7 @@ The template does not contain product application code (no FastAPI source, no UI
 
 ## Initial Folder Ownership
 
-- `records/`: source YAML records (claims, risks, experiments, decisions, capability records, observations) plus dedicated evidence files.
+- `records/`: source YAML records (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations) plus dedicated evidence files.
 - `records/observations/`: constraint observations and resource budgets (mutable, operator-managed).
 - `docs/`: project metadata and learning-loop policy docs.
 - `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.

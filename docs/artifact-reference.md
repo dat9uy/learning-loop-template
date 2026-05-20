@@ -15,6 +15,21 @@ This document is the source of truth for artifact schemas and verification. Clai
 
 At least one dimension must be present. `claimed` dimensions must not carry proof refs. Verified, approved, or rejected dimensions must carry matching proof refs or decision refs.
 
+### Dimension Overview — Index Entries
+
+Index entries use different status values derived from evidence `validation_status`, not an editorial lifecycle:
+
+| Dimension | Status values | Extra fields | Proof authority |
+|---|---|---|---|
+| `static` | `active`, `superseded`, `pending_approval` | none | Experiment (via `experiment_refs`) |
+| `install` | `active`, `superseded`, `pending_approval` | `scope` field | Approved human-gated experiment (via `experiment_refs`) |
+| `runtime` | `active`, `superseded`, `pending_approval` | `scope`, `output` fields | Approved human-gated experiment (via `experiment_refs`) |
+| `product` | `active`, `pending_approval` | none | Approved decision (via `decision_effect.affected_refs`) |
+
+`claimed` does not exist for index entries. Unverified assertions surface as `pending_approval` when `evidence.validation_status: pending`, or are not extracted at all when `validation_status: failed`.
+
+Frozen-legacy claim counterpart: [Dimension Overview](#dimension-overview) above.
+
 ## Claim Fields
 
 Every claim record includes a `verification` block:
@@ -64,6 +79,19 @@ verification:
 
 `install` and `runtime` proofs require approved experiment status plus `requires_human_approval: true` and `approval_status: approved`.
 
+### Experiment Proof — Index Entries
+
+Index entries prove dimensions via `experiment_refs` — an array pointing to the experiment records that verify the assertion. This is the index entry's pointer *to* the experiment; the experiment's own `verification.proves` declaration is the reverse direction of the same relationship.
+
+```yaml
+experiment_refs:
+  - record:experiment-vnstock-install-20260508T101723Z
+```
+
+The experiment's `verification.proves` still references `claim_refs` (frozen-legacy ledger) — the index entry is a derived view, not a replacement for the experiment's own proof declaration. An index entry with `experiment_refs` pointing to an experiment that proves `runtime` dimension means the index entry's `runtime` dimension is `active` (if the experiment is approved) or `pending_approval` (if the evidence `validation_status` is pending).
+
+Frozen-legacy claim counterpart: [Experiment Proof](#experiment-proof) above.
+
 ## Product Decisions
 
 The `product` dimension is decided, not experimentally proved. Product approval or rejection must come from an approved decision whose `decision_effect` references the claim:
@@ -77,6 +105,12 @@ decision_effect:
 ```
 
 Runtime proof alone never approves product use.
+
+### Product Decisions — Index Entries
+
+Product approval for an index entry comes from a decision whose `decision_effect.affected_refs` includes the assertion's experiment or the evidence file. Index entries do not have a `product` dimension status in the same way claims do — instead, a `pending_approval` status on an index entry with `dimension: product` signals that a decision is needed. An `active` status on such an entry means a decision has approved product use.
+
+Frozen-legacy claim counterpart: [Product Decisions](#product-decisions) above.
 
 ## Runtime Output Policy
 
@@ -388,5 +422,3 @@ The word "capability" carries three distinct meanings in this repo. Always quali
 | **Capability Runtime Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Capability Runtime Experiment". The experiment record is the ledger entry; capability scripts are its execution substrate. |
 
 Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.
-
-> **Note:** This document remains predominantly claim-centric. Full index-first parallel sections (Dimension Overview for extracted assertions, Experiment Proof mapping for index entries, Product Decision routing) are a future documentation enhancement beyond the current canonicalization plan.

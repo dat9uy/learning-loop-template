@@ -17,11 +17,11 @@ The loop assumes the next reader is skeptical. Review makes that assumption real
 
 | Artifact | When to review | What to check |
 |---|---|---|
-| **Claim record** | Before relying on it for a product decision | Are the dimensions appropriate? Is the evidence sufficient for the strongest dimension? Are source_refs active or legacy? |
-| **Experiment record** | Before updating a claim dimension | Does the hypothesis match what was actually tested? Is the result_reason conclusive or hand-wavy? Does cleanup_status block the result? |
+| **Frozen-legacy claim record** | Before relying on it for a product decision | Are the dimensions appropriate? Is the evidence sufficient for the strongest dimension? Are source_refs active or legacy? |
+| **Experiment record** | Before updating a frozen-legacy claim dimension or index-entry dimension | Does the hypothesis match what was actually tested? Is the result_reason conclusive or hand-wavy? Does cleanup_status block the result? |
 | **Decision record** | Before acting on its scope | Do the allowed_actions match the rationale? Do the blocked_actions close all gaps? Is there a simpler alternative not considered? |
 | **Risk record** | During planning and before product approval | Is the risk still active? Has the mitigation been tested? Is the severity proportional to the evidence? |
-| **Capability record** | Before product build | Do the `record_ref` claims cover the required dimensions? Does the map from library surface to product surface miss anything? |
+| **Capability record** | Before product build | Do the `record_ref` index entries (or frozen-legacy claims) cover the required dimensions? Does the map from library surface to product surface miss anything? |
 | **Observation record** | Before budget-consuming actions | Is `last_verified` fresh? Does `current` match external reality? Is the `validation_window` still active? |
 | **Product code** | After implementation | Does it stay within the decision's allowed_actions? Does it respect output policy? Does it handle the risks flagged in planning? |
 
@@ -41,7 +41,7 @@ Are the records justified by the evidence? Check:
 Do the records form a coherent graph? Check:
 
 - **Cross-reference integrity** — do `source_refs`, `claim_refs`, `proof_refs`, and `decision_refs` resolve to existing records?
-- **Hierarchy consistency** — does the evidence → claim → experiment → decision chain make sense?
+- **Hierarchy consistency** — does the evidence → index entry → experiment → decision chain make sense (frozen-legacy: evidence → claim → experiment → decision)?
 - **Superseded links** — are old records linked to their replacements, or do they float unconnected?
 - **Stale evidence** — is there evidence cited that has been disproven by a newer experiment?
 
@@ -85,7 +85,7 @@ Trigger a full review across all dimensions when:
 - A product-build plan is approved.
 - A vendor API changes (new version, new auth model, new rate limits).
 - A resource budget is exhausted or reset.
-- A claim's strongest dimension is promoted (`claimed` → `verified` or `approved`).
+- A frozen-legacy claim's strongest dimension is promoted (`claimed` → `verified` or `approved`), or an index entry's status shifts to `active`.
 - An operator resolves an external constraint (e.g., clears a device slot).
 
 ### External Review
@@ -102,7 +102,7 @@ Bring in a human or separate agent team when:
 A review should produce:
 
 1. **Classification** for each finding (non-blocker / blocker avoided / blocker / meta).
-2. **Affected records** — which claim, experiment, decision, or observation the finding touches.
+2. **Affected records** — which index entry (or frozen-legacy claim), experiment, decision, or observation the finding touches.
 3. **Reasoning** — why the finding matters, with citations to evidence or records.
 4. **Recommended action** — fix now, defer, or escalate.
 5. **Meta flag** — whether the finding should become meta evidence.
