@@ -1,0 +1,10 @@
+id: capability-fastapi-fundamental-rest
+maps:
+  - source: GET /fundamental/income/{symbol}
+  - source: GET /fundamental/balance/{symbol}
+  - source: GET /fundamental/cashflow/{symbol}
+  - source: GET /fundamental/ratios/{symbol}
+schema_version: "2.0"
+stack: api
+surface: HTTP/REST
+type: capability

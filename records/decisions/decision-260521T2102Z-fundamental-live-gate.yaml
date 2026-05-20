@@ -1,0 +1,39 @@
+id: decision-260521T2102Z-fundamental-live-gate
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-21T21:02:00Z"
+updated_at: "2026-05-21T21:30:00Z"
+source_refs:
+  - record:capability-fastapi-reference-rest
+  - local:records/evidence/product-build/fastapi-reference-endpoints.md
+  - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
+question: Should live fundamental endpoints be gated behind an environment variable check?
+decision: No gate. Follow the reference router pattern — direct passthrough to vnstock_data without runtime gate checks.
+rationale: Verification found `product/api/src/routers/reference.py` has NO gate — it makes direct live calls. The plan incorrectly assumed `VNSTOCK_REFERENCE_LIVE_GATE` existed. Fundamental endpoints should match the actual reference behavior, not an imagined one. The vendor API device slot limit is managed at the install/import layer, not per-request.
+alternatives:
+  - "Add gate to fundamental only (new pattern). Rejected: introduces inconsistency with reference router; no proven need."
+  - "Add gate to both reference and fundamental. Rejected: would change existing reference behavior outside this plan's scope."
+tradeoffs:
+  - "No gate means live calls proceed on every request. Mitigation: mocked tests for CI; operator controls via install-layer device slot management."
+  - "Less protection than originally planned. Mitigation: reference capability operates the same way; no additional risk introduced."
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - records/capabilities/capability-fastapi-fundamental-rest
+    - product/api/src/routers/fundamental.py
+    - product/api/tests/test_fundamental.py
+  boundaries:
+    allowed_actions:
+      - direct vnstock_data calls without gate check
+      - run tests with mocked Fundamental class
+    blocked_actions:
+      - add runtime gate env var check
+      - credential-capture during live calls
+      - raw-data-export from live endpoints
+      - production-deployment without separate decision
+    required_gates:
+      - pytest-api-suite
+      - pnpm validate:records
