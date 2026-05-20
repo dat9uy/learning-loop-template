@@ -154,9 +154,13 @@ Walk `docs/operator-guide.md`, `docs/record-system-architecture.md`, `docs/artif
 
 ### Workstream C: Verify Product Code Against Capability Records
 
-Build a lightweight validation tool (or extend `tools/validate-records/`) that checks whether product code implements every `route_class` declared in capability records. This makes Layer 2 → Layer 3 connection machine-checkable.
+Build a surface-based drift validator that checks whether product code implements every `route_class` declared in capability records. This makes Layer 2 → Layer 3 connection machine-checkable.
 
-**Scope:** New tool or validator extension. Reads capability records + parses product source. Reports drift.
+**Architecture:** Parser registry keyed by capability `surface`. `HTTP/REST` surfaces validated via OpenAPI spec generation from FastAPI app (proven viable via `vnstock_data` stubbing pattern from tests). `TanStack Start route` surfaces validated via regex parser. Standalone `validate:drift` script, separate from record validation.
+
+**Scope:** New tool under `tools/validate-capability-product-drift/`. OpenAPI generator script under `tools/generate-openapi/`. Reads capability records + product source. Reports drift as hard failures.
+
+**Planned:** `plans/260520-1715-capability-to-product-validation/`
 
 **Deferred:** Schema changes to capability records (e.g., adding `assertion_ref` per map). The current `source_refs` at record level is sufficient for agent orientation. Per-map traceability is a future enhancement if drift becomes frequent.
 
@@ -167,7 +171,7 @@ Build a lightweight validation tool (or extend `tools/validate-records/`) that c
 | "Runtime probe" rename confuses operators used to "capability script" | Update all docs in one pass; add note in `docs/operator-guide.md` glossary |
 | Capability records still feel passive after re-grounding | Accept that Layer 2 is specification, not driver. Product code is driven by normal engineering, not loop artifacts |
 | Web stack never gets runtime probes, creating asymmetry | Document explicitly: web stack probes the API layer (internal), not external libraries. Asymmetry is correct |
-| Workstream C tool becomes brittle (regex parsing product code) | Start with regex/grep heuristics. Escalate to AST parsing only if N>=2 proves regex insufficient |
+| Workstream C tool becomes brittle (regex parsing product code) | API stack uses OpenAPI generation (proven viable via test stubbing pattern). Web stack uses regex. Escalate to AST only if regex proves insufficient for TanStack |
 
 ## Trade-off Summary
 
@@ -199,10 +203,11 @@ The validation interview (2026-05-20) confirmed the original design and expanded
 
 ### Implementation Status
 
-| Phase | Status | Date |
-|-------|--------|------|
-| 1 | Completed | 2026-05-20 |
-| 2 | Completed | 2026-05-20 |
+| Workstream | Status | Date | Plan |
+|------------|--------|------|------|
+| A — Re-ground capability records on index entries | Completed | 2026-05-20 | `plans/260520-1650-reground-capability-records-rename-runtime-probe/phase-01-re-ground-capability-records-on-index-entries.md` |
+| B — Rename capability script to runtime probe in docs | Completed | 2026-05-20 | `plans/260520-1650-reground-capability-records-rename-runtime-probe/phase-02-rename-capability-script-to-runtime-probe-in-docs.md` |
+| C — Verify product code against capability records | Planned | 2026-05-20 | `plans/260520-1715-capability-to-product-validation/` |
 
-**Validation:** 10/10 claims verified, 0 failures. Plan implemented 2026-05-20.
-**Next step:** Workstream C (machine-checkable Layer 2→3 validation) remains deferred.
+**Validation:** 10/10 claims verified, 0 failures. Plans A+B implemented 2026-05-20.
+**Next step:** Implement Workstream C via `/ck:cook plans/260520-1715-capability-to-product-validation`. Architecture: surface-based parser registry, OpenAPI generation for HTTP/REST, regex for TanStack, standalone `validate:drift` script.
