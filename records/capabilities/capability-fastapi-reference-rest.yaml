@@ -1,22 +1,9 @@
 id: capability-fastapi-reference-rest
-schema_version: "1.0"
-type: capability
-status: approved
-created_at: "2026-05-11T00:00:00Z"
-updated_at: "2026-05-20T00:00:00Z"
-source_refs:
-  - record:assertion-vnstock-data-runtime-live-api-surfaces-verified
-  - local:product/api/capabilities/vnstock-data/capability-01-reference.py
+maps:
+  - source: GET /reference/equity
+  - source: GET /reference/company/{symbol}
+  - source: GET /reference/search
+schema_version: "2.0"
 stack: api
 surface: HTTP/REST
-maps:
-  - source: vnstock_data.Reference.equity.list
-    route_class: GET /reference/equity
-    response_class: EquityListResponse
-  - source: vnstock_data.Reference.company(symbol).info
-    route_class: GET /reference/company/{symbol}
-    response_class: CompanyInfoResponse
-  - source: vnstock_data.Reference.equity.list filtered by symbol/org_name
-    route_class: GET /reference/search
-    response_class: SymbolSearchResponse
-supersedes: []
+type: capability
