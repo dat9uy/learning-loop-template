@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Research and Analysis"
-status: pending
+status: complete
 priority: P1
 effort: "30m"
 dependencies: []
@@ -35,15 +35,15 @@ No code architecture changes. This phase produces findings and a data contract s
 
 ## Implementation Steps
 
-1. **Run the runtime probe** (operator-gated; if live gate unavailable, inspect source code of `vnstock_data.Fundamental` to infer shapes).
+1. **Run the runtime probe** (operator approval required per runtime validation protocol; if operator declines, inspect source code of `vnstock_data.Fundamental` to infer shapes).
 2. **Capture output schemas** for:
    - `Fundamental.equity(SYMBOL).income_statement(limit=N)`
    - `Fundamental.equity(SYMBOL).balance_sheet(limit=N)`
    - `Fundamental.equity(SYMBOL).cash_flow(limit=N)`
    - `Fundamental.equity(SYMBOL).ratio()`
 3. **Document column names, types, nullability** in an evidence file under `records/evidence/vnstock-data/`.
-4. **Cross-check with reference pattern**: confirm `DataFrameEnvelope`, router prefix, model config, CORS, and client patterns are suitable for replication.
-5. **List active plans** in `./plans/` to confirm no file conflicts on `main.py`, `router.tsx`, or shared models.
+4. **Cross-check with reference pattern**: read `records/capabilities/capability-fastapi-reference-rest.yaml` and `records/capabilities/capability-tanstack-reference-render.yaml`; confirm `DataFrameEnvelope`, router prefix, model config, CORS, and client patterns are suitable for replication.
+5. **Check for cross-plan conflicts**: scan `records/observations/` for active resource budgets or device slot state that may block live probe execution; list active plans in `./plans/` to confirm no file conflicts on `main.py`, `router.tsx`, or shared models.
 
 ## Success Criteria
 

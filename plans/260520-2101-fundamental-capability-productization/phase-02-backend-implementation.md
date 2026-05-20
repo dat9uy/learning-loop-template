@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Backend Implementation"
-status: pending
+status: complete
 priority: P1
 effort: "2h"
 dependencies: [1]
@@ -11,7 +11,7 @@ dependencies: [1]
 
 ## Overview
 
-Build the FastAPI backend for fundamental data: Pydantic models, router with 4 endpoints, runtime gate, and unit tests. Follows the exact pattern of `product/api/src/routers/reference.py`.
+Build the FastAPI backend for fundamental data: Pydantic models, router with 4 endpoints, and unit tests. Follows the exact pattern of `product/api/src/routers/reference.py`.
 
 ## Requirements
 
@@ -21,10 +21,8 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
   - `GET /fundamental/cashflow/{symbol}?limit={n}` — cash flow statement
   - `GET /fundamental/ratios/{symbol}` — financial ratios
 - Non-functional:
-  - Runtime gate: `VNSTOCK_FUNDAMENTAL_LIVE_GATE=approved` required for live calls
   - Response schema: `DataFrameEnvelope` with dynamic columns
   - Input validation: symbol pattern `^[A-Za-z0-9._-]+$`, limit `1 <= limit <= 20`
-  - 403 response when gate not approved
 
 ## Architecture
 
@@ -33,11 +31,6 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
 │   Client    │────▶│  /fundamental/*     │────▶│  vnstock_data│
 │             │     │  FastAPI Router     │     │  Fundamental │
 └─────────────┘     └─────────────────────┘     └──────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │ Runtime Gate│
-                    │  env check  │
-                    └─────────────┘
 ```
 
 ## Related Code Files
@@ -50,6 +43,14 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
 - Read for context: `product/api/src/routers/reference.py`
 - Read for context: `product/api/tests/test_reference.py`
 
+## Pre-Implementation Checklist
+
+Before writing code, verify:
+
+- [ ] `record:decision-260521T2101Z-envelope-pattern-reuse` exists and is approved
+- [ ] `record:decision-260521T2102Z-fundamental-live-gate` exists and is approved (no-gate passthrough)
+- [ ] All decision records pass `pnpm validate:records`
+
 ## Implementation Steps
 
 1. **Create `product/api/src/models/fundamental.py`**
@@ -61,10 +62,8 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
    - Import `vnstock_env` before `vnstock_data`
    - Import `Fundamental` from `vnstock_data`
    - Reuse `_records_from_frame` helper from reference router (or extract to shared util — decision: inline copy to avoid cross-file coupling during this phase)
-   - Gate function: check `os.environ.get("VNSTOCK_FUNDAMENTAL_LIVE_GATE") == "approved"`, raise `HTTPException(403)` if not
    - Four endpoints with `APIRouter(prefix="/fundamental", tags=["fundamental"])`
    - Each endpoint:
-     - Validate gate
      - Call `Fundamental().equity(symbol).{method}(limit=limit)`
      - Convert via `_records_from_frame`
      - Return typed response
@@ -75,7 +74,6 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
 4. **Create `product/api/tests/test_fundamental.py`**
    - Stub `vnstock_data` and `Fundamental` class with FakeFundamental
    - Fake returns fixed DataFrames with realistic columns (based on Phase 1 findings)
-   - Test gate blocks without env var
    - Test each endpoint returns correct schema shape
    - Test limit parameter bounds
    - Test invalid symbol pattern
@@ -83,7 +81,7 @@ Build the FastAPI backend for fundamental data: Pydantic models, router with 4 e
 ## Success Criteria
 
 - [ ] `product/api/src/models/fundamental.py` created with response models
-- [ ] `product/api/src/routers/fundamental.py` created with 4 gated endpoints
+- [ ] `product/api/src/routers/fundamental.py` created with 4 endpoints
 - [ ] `product/api/src/main.py` wires router
 - [ ] `product/api/tests/test_fundamental.py` passes (`pytest`)
 - [ ] `GET /health` still returns ok

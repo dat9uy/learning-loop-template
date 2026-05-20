@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Integration and Testing"
-status: pending
+status: complete
 priority: P1
 effort: "1.5h"
 dependencies: [2, 3]
@@ -55,16 +55,17 @@ No new architecture. This phase validates the integration of Phase 2 + Phase 3.
    pnpm check
    ```
 
-4. **Manual smoke test (operator-gated, requires live gate)**
-   - Terminal 1: `VNSTOCK_FUNDAMENTAL_LIVE_GATE=approved pnpm dev:api`
+4. **Manual smoke test (operator-gated)**
+   - Terminal 1: `pnpm dev:api`
    - Terminal 2: `pnpm dev:web`
    - Browser: navigate to `http://localhost:5173/fundamental/VIC`
    - Verify all 4 tabs load data
    - Verify `http://localhost:8000/fundamental/income/VIC?limit=4` returns JSON
 
-5. **Capture evidence** from smoke test to `records/evidence/vnstock-data/`
-   - Screenshot or curl output saved as evidence
-   - `## Findings` section with `[fundamental-product]` assertions
+5. **Capture evidence from smoke test (operator-gated)**
+   - Agent drafts findings; operator authors the evidence file under `records/evidence/vnstock-data/`.
+   - The write gate blocks agent writes to `records/evidence/**`.
+   - Draft must include `## Findings` section with `[fundamental-product]` assertions and `source_refs`.
 
 6. **Run `pnpm extract:index`** to regenerate index entries from new evidence
 
@@ -79,6 +80,5 @@ No new architecture. This phase validates the integration of Phase 2 + Phase 3.
 
 ## Risk Assessment
 
-- **Live gate not available for smoke test**: Document in evidence that smoke test was deferred. Unit tests provide coverage.
 - **Record validation fails due to new evidence format**: Fix frontmatter or `## Findings` syntax before proceeding.
 - **Reference test regression**: Check `test_reference.py` still passes after main.py changes.

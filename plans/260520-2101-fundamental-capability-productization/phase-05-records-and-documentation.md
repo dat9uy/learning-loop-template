@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Records and Documentation"
-status: pending
+status: complete
 priority: P2
 effort: "45m"
 dependencies: [4]
@@ -64,8 +64,10 @@ Record artifacts only. No code changes.
      - source: /fundamental/$symbol
    ```
 
-3. **Create evidence file**
-   - Frontmatter: `capability: fundamental`, `dimension: product`, `scope: api+web`, `validation_status: verified`
+3. **Create evidence file (operator-gated)**
+   - The agent may draft evidence findings; the operator must author the evidence file under `records/evidence/vnstock-data/`.
+   - The write gate blocks agent writes to `records/evidence/**`; operator approval and a `write-path` observation are required.
+   - Draft content must include frontmatter: `capability: fundamental`, `dimension: product`, `scope: api+web`, `validation_status: verified`
    - `## Findings` with `[fundamental-endpoints]` and `[fundamental-frontend]` assertions
    - `source_refs` pointing to local code files and records
 
