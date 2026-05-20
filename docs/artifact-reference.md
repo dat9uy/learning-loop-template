@@ -418,7 +418,7 @@ The word "capability" carries three distinct meanings in this repo. Always quali
 | Term | Path | Created when | Role |
 |---|---|---|---|
 | **Runtime probe** | `product/<stack>/capabilities/<scope>/*.py` (e.g. `product/api/capabilities/vnstock-data/capability-01-reference.py`) | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment (`product/<stack>/`). Not an integration test for product endpoints. |
-| **Capability record** | `records/capabilities/capability-*.yaml` | During pre-build phase 01 of a product-build plan. | Record-style YAML mapping verified library surfaces (index entries or frozen-legacy claims) to product surfaces (route_class, view_class). Schema: `schemas/capability.schema.json`. Field shape: `stack`, `surface`, `maps[]`. |
+| **Capability record** | `records/capabilities/capability-*.yaml` | Operator runs `pnpm generate:capabilities` after surface changes. | Runtime-derived YAML mapping product surfaces to canonical capability entries. Schema: `schemas/capability.schema.json` v2.0 minimal. Field shape: `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source` only. No `id`, `status`, `created_at`, `updated_at`, `source_refs`, or `supersedes`. |
 | **Runtime Probe Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Runtime Probe Experiment". The experiment record is the ledger entry; runtime probes are its execution substrate. |
 
 Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.

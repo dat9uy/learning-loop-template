@@ -9,6 +9,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `docs/artifact-reference.md` — typed record schemas, claim verification dimensions, proof blocks, capability-term glossary.
 - `docs/record-system-architecture.md` — entity roles, record hierarchy, state machine, verification axes.
 - `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
+- `references/context-retrieval-patterns.md` — Tier 2 Verification Lookup Pattern; trace capability → product code → runtime probes → index entries.
 
 ## Core Philosophy
 

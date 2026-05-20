@@ -168,3 +168,9 @@ When two or more experiments target the same claim dimension:
 ## Optional: Orchestration Helper Script Spec
 
 A future `tools/` script could read an experiment YAML and output the exact `pnpm verify:claim` command. Deferred until N ≥ 3 distinct orchestration cases prove the need.
+
+---
+
+## Cross-Reference
+
+- See `references/context-retrieval-patterns.md` for Tier 2 Verification Lookup Pattern and agent intake guardrails.

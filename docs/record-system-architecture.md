@@ -134,13 +134,13 @@ Keep these axes separate:
 | Derived claim assurance | frozen-legacy claims | Effective assurance from valid dimensions and linked experiments. |
 | Decision basis | decisions | Evidence/records/experiments used as rationale. |
 | Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |
-| Capability map | capability records | Mapping of verified library surfaces to product surfaces. |
+| Capability map | capability records | Runtime-derived mapping of product surfaces to canonical entries. Generated, not hand-written. |
 | Observation status | observations | active / archived. Mutable — reflects current external state. |
 | Budget state | resource budgets | current vs budget count, validation_window.active, last_verified freshness. |
 | Gate decision | constraint gate | ok / block / escalate. Derived from observation + budget + command pattern. |
 
 ## Product Generation Loop
 
-The loop reads the record ledger (index entries, frozen-legacy claims, experiments, decisions, capability records) and emits a proposal or a no-build decision. Capability records are the technical bridge between a verified library surface (index entry or frozen-legacy claim) and a product surface; they make the build target machine-checkable without committing to product implementation. The loop does not create product code in this template.
+The loop reads the record ledger (index entries, frozen-legacy claims, experiments, decisions, capability records) and emits a proposal or a no-build decision. Capability records are runtime-derived from product surfaces via per-surface adapters; they describe what the product implements, not what it should implement. The loop does not create product code in this template.
 
 When the loop needs to issue commands that touch irreversible external systems, it passes through the constraint gate. The gate reads observation records and resource budgets to decide whether the command is allowed (`ok`), requires an observation first (`block`), or needs operator intervention (`escalate`). This keeps the loop honest about resource state without relying on agent memory.

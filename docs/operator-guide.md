@@ -290,33 +290,32 @@ When user asks to create runtime probes (standalone feasibility scripts) for a l
 
 Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root.
 
-### Capability Validation
+### Capability Generation
 
-Run `pnpm validate:drift` to check whether product code implements every `route_class` declared in capability records. This makes the Layer 2 (Surface Mapping) → Layer 3 (Product Implementation) connection machine-checkable.
+Run `pnpm generate:capabilities` after product surface changes to regenerate capability records from native self-descriptions. This eliminates drift by construction — records are always derived from ground truth.
 
-The validator uses a **parser registry keyed by `surface`** (not `stack`). Current supported surfaces:
+The generation pipeline uses **per-surface adapters** that read native self-descriptions and emit normalized capability entries:
 
-| Surface | Parser | Product source |
+| Surface | Adapter | Product source |
 |---|---|---|
-| `HTTP/REST` | OpenAPI spec generated from FastAPI app | `product/api/src/main.py` |
-| `TanStack Start route` | Regex parser for route definitions | `product/web/src/router.tsx` + `routes/**/*.tsx` |
+| `HTTP/REST` | FastAPI adapter — inlines OpenAPI generation | `product/api/src/main.py` |
+| `TanStack Start route` | TanStack adapter — reads router.tsx + route files | `product/web/src/router.tsx` + `routes/**/*.tsx` |
 
-Drift errors cite the capability record file, map index, expected route, and surface type:
+Generated records are minimal: `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source` only. No `id`, `status`, `created_at`, `updated_at`, `source_refs`, or `supersedes`.
 
-```
-capability drift: records/capabilities/capability-fastapi-reference-rest.yaml map[0] route_class "GET /reference/equity" not found in OpenAPI spec (surface: HTTP/REST)
-```
+`pnpm check` runs `generate:capabilities --dry-run` to detect stale records before validation and tests.
 
 #### Extending the Surface Registry
 
 To add a new surface (e.g., gRPC, GraphQL, Django REST):
 
-1. Create `tools/validate-capability-product-drift/validators/<surface-kebab>-validator.js`
-2. Export a function matching the signature `(capabilityRecord, root) => string[]`
-3. Register it in `tools/validate-capability-product-drift/surface-registry.js`
-4. Document the new surface in this section
+1. Create `tools/generate-capabilities/adapters/<surface-kebab>-adapter.js`
+2. Export an `async function extract(root) => { entries: [{source, domain}] }`
+3. Register it in `tools/generate-capabilities/adapters/registry.js`
+4. Add the surface string to the `surface` enum in `schemas/capability.schema.json`
+5. Document the new surface in this section
 
-Unsupported surfaces produce a warning, not an error, so the registry can be incrementally populated.
+Unsupported surfaces throw at generation time, so the registry must be fully populated.
 
 ### API Stack Bootstrap
 
