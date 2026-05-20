@@ -16,6 +16,7 @@
     "test": "node --test tools/**/*.test.js",
     "check:budget": "node tools/check-budget/check-budget.js",
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
+    "validate:drift": "node tools/validate-capability-product-drift/capability-product-drift.js",
     "check": "pnpm validate:records && pnpm test",
     "gate:server": "node tools/constraint-gate/server.js",
     "extract:index": "node tools/extract-index/extract-index.js"
