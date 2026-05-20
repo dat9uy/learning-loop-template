@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Consolidate Bash Gate & MCP Server"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [3]
@@ -89,13 +89,13 @@ The bash gate and MCP server do NOT share logic via `gate-logic.js` or `file-rea
 
 ## Success Criteria
 
-- [ ] `server.js` has no `readCoordinationConfig` call or import.
-- [ ] `file-readers.js` has no `readCoordinationConfig` export.
-- [ ] `server.test.js` does not create mock `coordination-config.json` files.
-- [ ] `file-readers.test.js` has no `readCoordinationConfig` tests (or file is deleted).
-- [ ] Grep for profile-model terms in `tools/constraint-gate/` and `hooks/` returns zero hits.
-- [ ] All bash gate, integration, gate-utils, and inbound gate tests pass.
-- [ ] MCP server tests pass.
+- [x] `server.js` has no `readCoordinationConfig` call or import.
+- [x] `file-readers.js` has no `readCoordinationConfig` export.
+- [x] `server.test.js` does not create mock `coordination-config.json` files.
+- [x] `file-readers.test.js` has no `readCoordinationConfig` tests (or file is deleted).
+- [x] Grep for profile-model terms in `tools/constraint-gate/` and `hooks/` returns zero hits.
+- [x] All bash gate, integration, gate-utils, and inbound gate tests pass.
+- [x] MCP server tests pass.
 
 ## Risk Assessment
 

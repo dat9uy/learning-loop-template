@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Design Validation & Gap Closure"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: []
@@ -93,10 +93,10 @@ Rules are evaluated in order. First match wins.
 
 ## Success Criteria
 
-- [ ] `external-system` profile confirmed unused.
-- [ ] `read_requirelist` confirmed unenforced.
-- [ ] Domain rules user-approved.
-- [ ] No `gap-analysis.md` document created.
+- [x] `external-system` profile confirmed unused.
+- [x] `read_requirelist` confirmed unenforced.
+- [x] Domain rules user-approved.
+- [x] No `gap-analysis.md` document created.
 
 ## Risk Assessment
 

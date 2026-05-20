@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Update Documentation & Learning-Loop Skill"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [4]
@@ -104,13 +104,13 @@ grep -r "skill-registry\|active-profile\|bypass-next\|skill-coordination-gate\|p
 
 ## Success Criteria
 
-- [ ] `CLAUDE.md` describes the new coordination model with no coordinator workflow references.
-- [ ] `system-architecture.md` diagram shows only 3 hooks + MCP server.
-- [ ] `charter.md` has no profile/registry/coordinator references.
-- [ ] `operator-guide.md` has no `.bypass-next` or skill registry table.
-- [ ] `hooks/README.md` has no skill gate section or profile references.
-- [ ] `learning-loop` skill is either deleted or has a new defined purpose in `SKILL.md`.
-- [ ] Grep sweep shows zero stale references outside journals/plans.
+- [x] `CLAUDE.md` describes the new coordination model with no coordinator workflow references.
+- [x] `system-architecture.md` diagram shows only 3 hooks + MCP server.
+- [x] `charter.md` has no profile/registry/coordinator references.
+- [x] `operator-guide.md` has no `.bypass-next` or skill registry table.
+- [x] `hooks/README.md` has no skill gate section or profile references.
+- [x] `learning-loop` skill is either deleted or has a new defined purpose in `SKILL.md`.
+- [x] Grep sweep shows zero stale references outside journals/plans.
 
 ## Risk Assessment
 

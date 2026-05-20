@@ -1,7 +1,7 @@
 ---
 title: "Coordination Model Collapse: Remove Profile-Based Gating"
 description: "Collapse the coordination system's two contradictory risk models into one observation-based model. Delete the skill gate, skill registry, active-profile mechanism, and .bypass-next workaround. Make the write gate domain-aware. Keep bash gate and inbound gate as the single safety layer."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [coordination, learning-loop, gate, simplification]
@@ -43,12 +43,12 @@ This plan collapses Model A into Model B. The result is a single, self-contained
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Analysis & Design](./phase-01-analysis-design.md) | Pending |
-| 2 | [Remove Skill Gate & Registry](./phase-02-remove-skill-gate-registry.md) | Pending |
-| 3 | [Make Write Gate Domain-Aware](./phase-03-make-write-gate-domain-aware.md) | Pending |
-| 4 | [Consolidate Bash Gate & MCP](./phase-04-consolidate-bash-gate-mcp.md) | Pending |
-| 5 | [Update Docs & Tests](./phase-05-update-docs-tests.md) | Pending |
-| 6 | [Validate & Migrate](./phase-06-validate-migrate.md) | Pending |
+| 1 | [Analysis & Design](./phase-01-analysis-design.md) | Completed |
+| 2 | [Remove Skill Gate & Registry](./phase-02-remove-skill-gate-registry.md) | Completed |
+| 3 | [Make Write Gate Domain-Aware](./phase-03-make-write-gate-domain-aware.md) | Completed |
+| 4 | [Consolidate Bash Gate & MCP](./phase-04-consolidate-bash-gate-mcp.md) | Completed |
+| 5 | [Update Docs & Tests](./phase-05-update-docs-tests.md) | Completed |
+| 6 | [Validate & Migrate](./phase-06-validate-migrate.md) | Completed |
 
 ## Dependencies
 

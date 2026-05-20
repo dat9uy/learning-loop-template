@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Validate & Unblock"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [5]
@@ -91,16 +91,16 @@ Run the full validation suite: all hook tests, MCP server tests, record validati
 
 ## Success Criteria
 
-- [ ] All hook tests pass.
-- [ ] MCP server tests pass.
-- [ ] `pnpm validate:records` passes.
-- [ ] `pnpm check` passes.
-- [ ] Smoke test confirms `docs/**` writes are allowed (exit 0).
-- [ ] Smoke test confirms `records/observations/**` writes are blocked (exit 2).
-- [ ] Smoke test confirms `schemas/**` writes are blocked (exit 2).
-- [ ] Docs canonicalization plan has no `blockedBy` reference to this plan.
-- [ ] Resolution journal entry exists.
-- [ ] Git diff shows only expected files changed.
+- [x] All hook tests pass.
+- [x] MCP server tests pass.
+- [x] `pnpm validate:records` passes.
+- [x] `pnpm check` passes.
+- [x] Smoke test confirms `docs/**` writes are allowed (exit 0).
+- [x] Smoke test confirms `records/observations/**` writes are blocked (exit 2).
+- [x] Smoke test confirms `schemas/**` writes are blocked (exit 2).
+- [x] Docs canonicalization plan has no `blockedBy` reference to this plan.
+- [x] Resolution journal entry exists.
+- [x] Git diff shows only expected files changed.
 
 ## Risk Assessment
 

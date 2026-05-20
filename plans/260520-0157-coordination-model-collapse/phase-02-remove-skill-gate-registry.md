@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Delete Model A & Fix Bash Gate"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -124,17 +124,17 @@ This order eliminates the intermediate broken state between config deletion and 
 
 ## Success Criteria
 
-- [ ] `bash-coordination-gate.cjs` has no `readCoordinationConfig` call and no `!config.profiles` guard.
-- [ ] `bash-coordination-gate.test.cjs` passes with updated expectations.
-- [ ] `skill-coordination-gate.cjs` does not exist.
-- [ ] `skill-registry.json` does not exist.
-- [ ] `coordination-config.json` does not exist.
-- [ ] `.active-profile` and `.bypass-next` do not exist.
-- [ ] `settings.json` is valid JSON.
-- [ ] `settings.json` has no `Skill` matcher in `PreToolUse`.
-- [ ] `skill-coordination-gate.test.cjs` and `coordination-config.test.cjs` do not exist.
-- [ ] `integration-test.sh` does not exist.
-- [ ] `gate-utils.cjs` still exports `readCoordinationConfig`, `readActiveProfile`, `getProfile`.
+- [x] `bash-coordination-gate.cjs` has no `readCoordinationConfig` call and no `!config.profiles` guard.
+- [x] `bash-coordination-gate.test.cjs` passes with updated expectations.
+- [x] `skill-coordination-gate.cjs` does not exist.
+- [x] `skill-registry.json` does not exist.
+- [x] `coordination-config.json` does not exist.
+- [x] `.active-profile` and `.bypass-next` do not exist.
+- [x] `settings.json` is valid JSON.
+- [x] `settings.json` has no `Skill` matcher in `PreToolUse`.
+- [x] `skill-coordination-gate.test.cjs` and `coordination-config.test.cjs` do not exist.
+- [x] `integration-test.sh` does not exist.
+- [x] `gate-utils.cjs` still exports `readCoordinationConfig`, `readActiveProfile`, `getProfile`.
 
 ## Risk Assessment
 

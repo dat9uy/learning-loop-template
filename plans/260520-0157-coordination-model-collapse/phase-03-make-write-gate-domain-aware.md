@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Make Write Gate Domain-Aware"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [2]
@@ -140,13 +140,13 @@ Keep these exports:
 
 ## Success Criteria
 
-- [ ] `write-coordination-gate.cjs` uses `DOMAIN_RULES` with no profile references.
-- [ ] `records/observations/**` and `records/evidence/**` are blocked.
-- [ ] `**/node_modules/**`, `**/dist/**`, `**/build/**` are blocked.
-- [ ] `.claude/**` and root files (`*`) are allowed.
-- [ ] All 13 test cases pass.
-- [ ] Execution time remains under 50ms.
-- [ ] `gate-utils.cjs` has no `readCoordinationConfig`, `readActiveProfile`, `getProfile`, or `matchesAnyGlob` exports.
+- [x] `write-coordination-gate.cjs` uses `DOMAIN_RULES` with no profile references.
+- [x] `records/observations/**` and `records/evidence/**` are blocked.
+- [x] `**/node_modules/**`, `**/dist/**`, `**/build/**` are blocked.
+- [x] `.claude/**` and root files (`*`) are allowed.
+- [x] All 13 test cases pass.
+- [x] Execution time remains under 50ms.
+- [x] `gate-utils.cjs` has no `readCoordinationConfig`, `readActiveProfile`, `getProfile`, or `matchesAnyGlob` exports.
 
 ## Risk Assessment
 
