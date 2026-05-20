@@ -285,21 +285,19 @@ When user asks to create runtime probes (standalone feasibility scripts) for a l
 
 | Stack | Manifest | Runtime probe root |
 |---|---|---|
-| Python API | `product/api/pyproject.toml` | `product/api/capabilities/` |
-| TypeScript web | `product/web/package.json` when introduced | `product/web/capabilities/` |
+| Python API | `product/<stack>/pyproject.toml` | `product/<stack>/capabilities/` |
+| TypeScript web | `product/<stack>/package.json` | `product/<stack>/capabilities/` |
+| Go service | `product/<stack>/go.mod` | `product/<stack>/capabilities/` |
 
 Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root.
+
+For concrete examples (vnstock API stack paths), see `docs/operator-guide-vnstock-appendix.md`.
 
 ### Capability Generation
 
 Run `pnpm generate:capabilities` after product surface changes to regenerate capability records from native self-descriptions. This eliminates drift by construction — records are always derived from ground truth.
 
-The generation pipeline uses **per-surface adapters** that read native self-descriptions and emit normalized capability entries:
-
-| Surface | Adapter | Product source |
-|---|---|---|
-| `HTTP/REST` | FastAPI adapter — inlines OpenAPI generation | `product/api/src/main.py` |
-| `TanStack Start route` | TanStack adapter — reads router.tsx + route files | `product/web/src/router.tsx` + `routes/**/*.tsx` |
+The generation pipeline uses **per-surface adapters** that read native self-descriptions and emit normalized capability entries. Surface adapters map product source files to normalized capability entries. Each stack registers its own adapters in the surface registry.
 
 Generated records are minimal: `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source` only. No `id`, `status`, `created_at`, `updated_at`, `source_refs`, or `supersedes`.
 
@@ -317,15 +315,42 @@ To add a new surface (e.g., gRPC, GraphQL, Django REST):
 
 Unsupported surfaces throw at generation time, so the registry must be fully populated.
 
-### API Stack Bootstrap
+For concrete adapter examples (FastAPI, TanStack), see `docs/operator-guide-vnstock-appendix.md`.
 
-Bootstrap the Python API stack from the repo root with:
+### Adding a New Live Gate
 
-```bash
-pnpm bootstrap:api
+When integrating a new external system that requires runtime protection (vendor APIs, authenticated registries, device-slot systems), add a live gate using this template:
+
+#### 1. Environment Variable Pattern
+
+Define a gate constant and check environment before use:
+
+```python
+import os
+from fastapi import HTTPException
+
+GATE_NAME_LIVE_GATE = os.getenv("GATE_NAME_LIVE_GATE", "closed")
+if GATE_NAME_LIVE_GATE != "open":
+    raise HTTPException(status_code=403, detail="Gate closed. Operator approval required.")
 ```
 
-The command runs two explicit stages: `uv sync` installs public dependencies in `product/api/.venv`, then `product/api/scripts/install-vnstock.sh` runs the SHA-pinned vnstock vendor installer with `product/api` as `HOME`. Stage 2 requires an operator-provided `VNSTOCK_API_KEY`, may consume a vendor device slot, and must not be run from package install hooks.
+#### 2. Approval Flow
+
+- Gate starts `closed` (default).
+- Operator sets env var to `open` after confirming external system state (device slots, budgets, credentials).
+- Agent checks gate before any live call; if closed, reports blocked and stops.
+- After the approved operation, operator resets gate to `closed`.
+- Do not cache gate state in agent memory; re-read env var each time.
+
+#### 3. Decision Record
+
+Author a decision record under `records/decisions/` that documents:
+- `allowed_actions`: what the gate permits when open
+- `blocked_actions`: what remains forbidden even when open
+- `required_gates`: the env var name and expected value
+- `affected_refs`: experiment and capability records that depend on this gate
+
+For a worked example of this pattern (vnstock `VNSTOCK_REFERENCE_LIVE_GATE`), see `docs/operator-guide-vnstock-appendix.md`.
 
 ### Intentional Skip Pattern
 

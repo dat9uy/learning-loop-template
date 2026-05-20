@@ -26,11 +26,11 @@ Closes structural gaps in the learning-loop skill templates and operator-guide t
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Research and Analysis](./phase-01-research-and-analysis.md) | Pending |
-| 2 | [Memory Prohibition Implementation](./phase-02-memory-prohibition-implementation.md) | Pending |
-| 3 | [Operator-Guide Domain Split](./phase-03-operator-guide-domain-split.md) | Pending |
-| 4 | [Product-Build Blueprint Update](./phase-04-product-build-blueprint-update.md) | Pending |
-| 5 | [Meta-Evidence and Validation](./phase-05-meta-evidence-and-validation.md) | Pending |
+| 1 | [Research and Analysis](./phase-01-research-and-analysis.md) | Completed |
+| 2 | [Memory Prohibition Implementation](./phase-02-memory-prohibition-implementation.md) | Completed |
+| 3 | [Operator-Guide Domain Split](./phase-03-operator-guide-domain-split.md) | Completed |
+| 4 | [Product-Build Blueprint Update](./phase-04-product-build-blueprint-update.md) | Completed |
+| 5 | [Meta-Evidence and Validation](./phase-05-meta-evidence-and-validation.md) | Completed |
 
 ## Key Decisions
 

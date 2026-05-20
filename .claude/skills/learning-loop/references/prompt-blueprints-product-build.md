@@ -20,6 +20,8 @@ Constraints:
 - Do not create application code.
 - Do not cite `local:product/<stack>/capabilities/...` from non-capability records.
 - Use qualified terms: runtime probe, capability record, Runtime Probe Experiment.
+- Before any implementation phase, encode all architectural decisions (envelope pattern, gate naming, fetch strategy) as `records/decisions/` artifacts with scoped `decision_effect`.
+- Do not proceed to implementation until decision records exist for every Key Decision.
 
 Validation:
 - Run pnpm validate:records.
@@ -36,6 +38,7 @@ Work context: /home/datguy/codingProjects/learning-loop-template
 Allowed scope:
 - Approved stack and surface from the decision record.
 - Existing runtime probes under `product/<stack>/capabilities/` as reference substrate only.
+- Allowed scope is bounded by the approved decision record's `decision_effect`. Do not expand beyond allowed actions.
 
 Forbidden actions:
 - Do not expand product scope beyond the approved decision.
@@ -44,6 +47,15 @@ Forbidden actions:
 
 Validation:
 - Run stack validators and repo validators.
+```
+
+## Pre-Implementation Checklist
+
+```text
+- [ ] All plan Key Decisions have corresponding `records/decisions/` artifacts
+- [ ] Decision records cite source evidence and required gates
+- [ ] No implementation phase proceeds without decision coverage
+- [ ] Evidence creation is delegated to operator; agent drafts only
 ```
 
 ## Post-Build Verification Prompt
@@ -57,6 +69,10 @@ Goal:
 - Capture safe metadata-only results.
 - Update experiment observations and claim verification proof refs.
 - Keep capability-record source refs locked to `local:product/<stack>/capabilities/...`.
+
+Constraints:
+- Agent may draft evidence findings; operator must author the evidence file under `records/evidence/`. The write gate blocks agent writes to this path.
+- Do not update `validation_status` to `passed` without operator confirmation.
 
 Validation:
 - Run pnpm validate:records.

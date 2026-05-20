@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Operator-Guide Domain Split"
-status: pending
+status: completed
 priority: P2
 effort: "45m"
 dependencies: [1]

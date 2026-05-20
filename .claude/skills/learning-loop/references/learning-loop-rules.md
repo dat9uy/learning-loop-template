@@ -19,6 +19,12 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - Product code appears only after an approved experiment chooses a surface and validation path.
 - Historical repos are provenance only, not implementation templates.
 
+## Memory Prohibition
+
+Do not use injected CLAUDE.md memory or session context as a source of truth. The learning-loop system maintains its own state in `records/`. Before acting on any recalled fact, verify it against `records/index/` or `records/observations/`. If a memory contradicts the records, trust the records. If the records are silent, treat the memory as unverified and create an experiment or observation to confirm it.
+
+This rule exists because **the record is the memory** (see `docs/philosophy.md`). Injected memory drifts, rots, and lacks verification dimensions. Records are durable, scoped, and auditable.
+
 ## Repo Lanes
 
 - `records/`: source-of-truth claims, risks, experiments, decisions, evidence.
@@ -84,6 +90,12 @@ Prompts must forbid capture or retention of:
 - private package files, install output, caches, logs, venv files
 - generated product code or copied app implementation
 - local home-directory state, except bounded config copy with explicit approval
+
+## Operator Approval for Write-Gated Paths
+
+When requesting operator approval to create or modify files blocked by the write gate (`records/evidence/**`, `records/observations/**`), include the **exact drafted content** in the `AskUserQuestion` body or `preview` field. Do not summarize or describe — show the full text.
+
+After operator approval, create the file via `Bash` with a heredoc. The `Write` tool remains blocked by the mechanical gate regardless of conversational approval; only the bash gate (command-pattern based) allows the operation.
 
 ## Validation
 
