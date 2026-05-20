@@ -24,7 +24,7 @@ Use these as prompt constraints. If exact wording matters, read the source docs 
 - `records/evidence/`: durable evidence capsules.
 - `records/evidence/meta/`: loop self-improvement evidence when needed.
 - `docs/`: project metadata and loop policy, not domain evidence dumps.
-- `product/`: per-stack workspace; capability scripts may live under `product/<stack>/capabilities/`, while application code appears only after an approved build experiment.
+- `product/`: per-stack workspace; runtime probes may live under `product/<stack>/capabilities/`, while application code appears only after an approved build experiment.
 - `tools/`: validators and verification helpers.
 
 ## Separation Rules

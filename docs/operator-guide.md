@@ -268,22 +268,22 @@ When user asks to build product/API/tool on top of a verified library:
 - Required decisions approve product/build scope, output policy, and blocked actions.
 - Capability records must state the verified library surfaces (via `maps[].source` to reference index entries or frozen-legacy claims) and the product surfaces they map to (`route_class`, `view_class`, `response_class`).
 
-### Capability Runtime Experiment
+### Runtime Probe Experiment
 
-When user asks to create capability scripts (standalone feasibility scripts) for a library or SDK:
+When user asks to create runtime probes (standalone feasibility scripts) for a library or SDK:
 
-- Capability scripts are standalone scripts under `product/<stack>/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
-- Capability scripts are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
-- Capability scripts verify the `runtime` dimension of an assertion (index entry or frozen-legacy claim). The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
-- The capability scripts are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
-- Capability scripts may live in `product/<stack>/` before product approval because they are feasibility probes, not product implementations.
-- **Environment model:** Capability scripts share a persistent dependency environment with their stack. The environment root is `product/<stack>/` (language-specific: `product/web/node_modules/` for TS/JS, `product/api/.venv/` for Python, `product/<stack>/vendor/` for Go, etc.). Capability scripts run against this environment, not a disposable temp install. Future product code in the same stack uses the same environment and the same library installation.
+- Runtime probes are standalone scripts under `product/<stack>/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
+- Runtime probes are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
+- Runtime probes verify the `runtime` dimension of an assertion (index entry or frozen-legacy claim). The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
+- The runtime probes are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
+- Runtime probes may live in `product/<stack>/` before product approval because they are feasibility probes, not product implementations.
+- **Environment model:** Runtime probes share a persistent dependency environment with their stack. The environment root is `product/<stack>/` (language-specific: `product/web/node_modules/` for TS/JS, `product/api/.venv/` for Python, `product/<stack>/vendor/` for Go, etc.). Runtime probes run against this environment, not a disposable temp install. Future product code in the same stack uses the same environment and the same library installation.
 - This per-stack environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device while avoiding cross-runtime coupling.
-- Required experiment steps: create capability scripts, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update the corresponding index entry's source evidence `validation_status` to `passed`, then run `pnpm extract:index`.
+- Required experiment steps: create runtime probes, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update the corresponding index entry's source evidence `validation_status` to `passed`, then run `pnpm extract:index`.
 
 ### Stacks and Capability Locations
 
-| Stack | Manifest | Capability script root |
+| Stack | Manifest | Runtime probe root |
 |---|---|---|
 | Python API | `product/api/pyproject.toml` | `product/api/capabilities/` |
 | TypeScript web | `product/web/package.json` when introduced | `product/web/capabilities/` |

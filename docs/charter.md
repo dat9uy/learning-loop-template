@@ -12,7 +12,7 @@ The template contains:
 
 - a small typed record ledger (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations);
 - dedicated evidence files under `records/evidence/`;
-- per-stack scaffolding under `product/<stack>/` (stack manifest + capability scripts + bootstrap helpers) for runtime-verification work;
+- per-stack scaffolding under `product/<stack>/` (stack manifest + runtime probes + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
 - guardrails for provenance and review.
 
@@ -45,7 +45,7 @@ The template does not contain product application code (no FastAPI source, no UI
 - `records/`: source YAML records (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations) plus dedicated evidence files.
 - `records/observations/`: constraint observations and resource budgets (mutable, operator-managed).
 - `docs/`: project metadata and learning-loop policy docs.
-- `product/<stack>/`: per-stack home for capability scripts, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
+- `product/<stack>/`: per-stack home for runtime probes, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
 - `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
 - `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/index/*.yaml` entries.

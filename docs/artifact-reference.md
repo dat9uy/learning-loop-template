@@ -116,7 +116,7 @@ Frozen-legacy claim counterpart: [Product Decisions](#product-decisions) above.
 
 Runtime dimensions declare output as `metadata-only`, `sample-output`, or `runtime-captured`. Proof records must keep durable evidence curated and safe. Temporary install/runtime substrate stays outside the repo and must be deleted after metadata capture.
 
-**Exception: Capability scripts.** Standalone feasibility scripts under `product/<stack>/capabilities/<scope>/` are durable executable substrate. They are not temp files; they are reusable probes that test API-return-data runtime and share the stack environment. Capability records may cite them directly as proof substrate. Capability script output (sample data, schema shapes) is captured into the experiment's evidence envelope, not committed as raw data.
+**Exception: Runtime probes.** Standalone feasibility scripts under `product/<stack>/capabilities/<scope>/` are durable executable substrate. They are not temp files; they are reusable probes that test API-return-data runtime and share the stack environment. Capability records may cite them directly as proof substrate. Runtime probe output (sample data, schema shapes) is captured into the experiment's evidence envelope, not committed as raw data.
 
 ## Forbidden Shortcuts
 
@@ -417,8 +417,8 @@ The word "capability" carries three distinct meanings in this repo. Always quali
 
 | Term | Path | Created when | Role |
 |---|---|---|---|
-| **Capability script** | `product/<stack>/capabilities/<scope>/*.py` (e.g. `product/api/capabilities/vnstock-data/capability-01-reference.py`) | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment (`product/<stack>/`). Not an integration test for product endpoints. |
+| **Runtime probe** | `product/<stack>/capabilities/<scope>/*.py` (e.g. `product/api/capabilities/vnstock-data/capability-01-reference.py`) | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment (`product/<stack>/`). Not an integration test for product endpoints. |
 | **Capability record** | `records/capabilities/capability-*.yaml` | During pre-build phase 01 of a product-build plan. | Record-style YAML mapping verified library surfaces (index entries or frozen-legacy claims) to product surfaces (route_class, view_class). Schema: `schemas/capability.schema.json`. Field shape: `stack`, `surface`, `maps[]`. |
-| **Capability Runtime Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Capability Runtime Experiment". The experiment record is the ledger entry; capability scripts are its execution substrate. |
+| **Runtime Probe Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Runtime Probe Experiment". The experiment record is the ledger entry; runtime probes are its execution substrate. |
 
 Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.

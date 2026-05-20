@@ -2,7 +2,7 @@
 
 `product/` is a workspace marker. Runtime-specific stack directories live below it, for example `product/api/` for Python and `product/web/` for TypeScript.
 
-Each stack owns its manifest, persistent environment, local vendor metadata, and capability scripts under `product/<stack>/capabilities/<scope>/`. See `docs/operator-guide.md` → "Stacks and Capability Locations" and "Capability Runtime Experiment" for the full protocol.
+Each stack owns its manifest, persistent environment, local vendor metadata, and runtime probes under `product/<stack>/capabilities/<scope>/`. See `docs/operator-guide.md` → "Stacks and Capability Locations" and "Runtime Probe Experiment" for the full protocol.
 
 Bootstrap the Python API stack with `pnpm bootstrap:api`. This runs public dependency sync first, then the explicit vnstock vendor installer stage after operator-provided `VNSTOCK_API_KEY`.
 

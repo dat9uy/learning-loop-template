@@ -8,7 +8,7 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 |---|---|
 | `records/` | claim / risk / experiment / decision / capability / observation / evidence ledger |
 | `records/observations/` | constraint observations + resource budgets (mutable state, operator-managed) |
-| `product/<stack>/` | per-stack capability scripts (and, post-approval, product code) |
+| `product/<stack>/` | per-stack runtime probes (and, post-approval, product code) |
 | `docs/` | policy + operator guides |
 | `tools/` | validators + verification helpers |
 | `tools/constraint-gate/` | MCP server + gate logic for command gating |
@@ -51,7 +51,7 @@ The gate reads observation records and resource budgets from `records/observatio
 
 - **New here** → `docs/operator-guide.md`
 - **Understanding record types** → `docs/artifact-reference.md`
-- **Authoring a capability record** → `docs/operator-guide.md` "Capability Runtime Experiment" + `schemas/capability.schema.json`
+- **Authoring a capability record** → `docs/operator-guide.md` "Runtime Probe Experiment" + `schemas/capability.schema.json`
 - **Building product on top of a verified library** → `plans/reports/brainstorm-260511-0030-external-skills-integration.md`
 - **Constraint gate & budget enforcement** → `docs/operator-guide.md` "Resource Budget & State-Machine"
 - **How observations work** → `schemas/observation.schema.json` + `records/observations/`

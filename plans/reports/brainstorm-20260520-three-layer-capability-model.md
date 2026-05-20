@@ -21,7 +21,7 @@ Verified from live codebase:
 | Experiment record | `records/experiments/experiment-vnstock-capabilities-20260509T174957Z.yaml` | Documents the runtime probe execution | The probe via `source_refs` |
 | Evidence file | `records/evidence/vnstock-data/capability-runtime-output.md` | Captures findings from probe output | Experiment record |
 | Index entry | `records/index/assertion-vnstock-data-runtime-live-api-surfaces-verified.yaml` | Extracted assertion: "Reference/Market/Fundamental/Insights/Macro surfaces work" | Evidence file + experiment |
-| Capability record | `records/capabilities/capability-fastapi-reference-rest.yaml` | Maps library surface → product surface | **Frozen claim** (`record:claim-product-fastapi-reference`) + probe |
+| Capability record | `records/capabilities/capability-fastapi-reference-rest.yaml` | Maps library surface → product surface | **Live assertion** (`record:assertion-vnstock-data-runtime-live-api-surfaces-verified`) + probe |
 | Product code | `product/api/src/routers/reference.py` | Implements FastAPI endpoints | Nothing in records (orphaned) |
 | Product tests | `product/api/tests/test_reference.py` | Tests product code with mocked `FakeReference` | Nothing in records |
 
@@ -134,7 +134,7 @@ A future agent encountering the Reference slice for the first time:
 4. **Read product code** (`product/api/src/routers/reference.py`) → verifies the implementation matches the capability record's `maps[]`.
 5. **Read product tests** (`product/api/tests/test_reference.py`) → verifies tests cover the mapped surfaces.
 
-This flow is currently broken at step 2 because `source_refs[0]` points to `record:claim-product-fastapi-reference` (frozen) instead of the live index entry.
+This flow was previously broken at step 2 because `source_refs[0]` pointed to `record:claim-product-fastapi-reference` (frozen) instead of the live index entry. Fixed 2026-05-20 — both capability records now cite `record:assertion-vnstock-data-runtime-live-api-surfaces-verified`.
 
 ## Directions for Next Steps
 
@@ -179,3 +179,30 @@ Build a lightweight validation tool (or extend `tools/validate-records/`) that c
 | A + B + C (all three) | Medium | Medium | High — plus machine-checkable Layer 2→3 |
 
 **Recommended:** A + B first (editorial, low risk, high clarity gain). C after A + B are stable.
+
+## Implementation Plan
+
+Workstreams A+B were planned in `plans/260520-1650-reground-capability-records-rename-runtime-probe/`.
+
+**Phase 1** — Re-ground capability records on index entries (`phase-01-re-ground-capability-records-on-index-entries.md`)
+**Phase 2** — Rename capability script to runtime probe in docs (`phase-02-rename-capability-script-to-runtime-probe-in-docs.md`)
+
+### Scope Changes During Validation
+
+The validation interview (2026-05-20) confirmed the original design and expanded scope in two areas:
+
+| Original Scope | Validated Scope | Rationale |
+|---------------|-----------------|-----------|
+| Rename only the artifact term "capability script" → "runtime probe" | **Also** rename the experiment concept name "Capability Runtime Experiment" → "Runtime Probe Experiment" | User decision: full naming consistency |
+| Docs + READMEs only (8 files) | Docs + READMEs + skill references (10 files) | `.claude/skills/learning-loop/references/learning-loop-rules.md` and `prompt-blueprints-product-build.md` included per user decision |
+| Tanstack capability grounding left implicit | Explicitly confirmed: tanstack cites same API-layer assertion as fastapi | Web stack has no external library probes; it grounds on the verified API layer |
+
+### Implementation Status
+
+| Phase | Status | Date |
+|-------|--------|------|
+| 1 | Completed | 2026-05-20 |
+| 2 | Completed | 2026-05-20 |
+
+**Validation:** 10/10 claims verified, 0 failures. Plan implemented 2026-05-20.
+**Next step:** Workstream C (machine-checkable Layer 2→3 validation) remains deferred.

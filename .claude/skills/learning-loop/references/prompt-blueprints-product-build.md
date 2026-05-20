@@ -19,7 +19,7 @@ Goal:
 Constraints:
 - Do not create application code.
 - Do not cite `local:product/<stack>/capabilities/...` from non-capability records.
-- Use qualified terms: capability script, capability record, Capability Runtime Experiment.
+- Use qualified terms: runtime probe, capability record, Runtime Probe Experiment.
 
 Validation:
 - Run pnpm validate:records.
@@ -35,7 +35,7 @@ Work context: /home/datguy/codingProjects/learning-loop-template
 
 Allowed scope:
 - Approved stack and surface from the decision record.
-- Existing capability scripts under `product/<stack>/capabilities/` as reference substrate only.
+- Existing runtime probes under `product/<stack>/capabilities/` as reference substrate only.
 
 Forbidden actions:
 - Do not expand product scope beyond the approved decision.

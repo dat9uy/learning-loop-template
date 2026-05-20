@@ -17,7 +17,7 @@ Records are human-edited source files under `records/`. They describe frozen-leg
 | Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
 | Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
 | Capability record | Maps verified library surfaces (index entries or frozen-legacy claims) to product surfaces (`route_class`, `view_class`). | Binds upstream verification to the build target without smuggling implementation detail. |
-| Capability script | Standalone feasibility probe under `product/<stack>/capabilities/<scope>/`. | Tests API-return-data runtime; substrate for the runtime-verification experiment, not product code. |
+| Runtime probe | Standalone feasibility probe under `product/<stack>/capabilities/<scope>/`. | Tests API-return-data runtime; substrate for the runtime-verification experiment, not product code. |
 | Observation record | Captures mutable external system state (device slots, resource budgets, behavioral findings). | Authoritative source for operational constraints; gates irreversible commands via the constraint gate. |
 | Resource budget | Observation subtype tracking `budget`/`current` counts and `validation_window` state. | Prevents agent from exhausting finite external resources (vendor slots, rate limits). |
 | Derived claim assurance (frozen-legacy claims only) | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
@@ -30,7 +30,7 @@ records/index/         -> machine-extracted assertions (agent-owned, human-read-
 records ledger         -> risks + experiments + decisions + capability records
 records/claims/        -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
-capability scripts     -> product/<stack>/capabilities/ (runtime-verification substrate)
+runtime probes         -> product/<stack>/capabilities/ (runtime-verification substrate)
 constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
 index extractor        -> tools/extract-index/ (CLI: `pnpm extract:index`)
 derived claim assurance -> effective assurance from verification dimensions and decisions
@@ -40,13 +40,13 @@ generated views        -> disabled until model settles
 Short version:
 
 ```text
-records/evidence -> records/index/ (machine-extracted assertions) + risks + experiments -> dimensions -> capability scripts (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
+records/evidence -> records/index/ (machine-extracted assertions) + risks + experiments -> dimensions -> runtime probes (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
                                       |
                                       v
                     observations + budgets -> constraint gate -> command gating
 ```
 
-Capability scripts are standalone feasibility probes that test API-return-data runtime. They live in `product/<stack>/capabilities/` before product approval because they are not product implementations. Capability records are the YAML ledger entries that bind verified library surfaces to product surfaces; they are authored only during a product-build plan.
+Runtime probes are standalone feasibility probes that test API-return-data runtime. They live in `product/<stack>/capabilities/` before product approval because they are not product implementations. Capability records are the YAML ledger entries that bind verified library surfaces to product surfaces; they are authored only during a product-build plan.
 
 ## Machine-Extracted Index
 

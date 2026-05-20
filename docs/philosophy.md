@@ -86,7 +86,7 @@ Before planning, list uncertainties. Convert each uncertainty into an index entr
 
 ### Prove Before Building
 
-A capability script proves a library returns usable data. An experiment proves a hypothesis. A decision approves a scope. Product code comes last, never first.
+A runtime probe proves a library returns usable data. An experiment proves a hypothesis. A decision approves a scope. Product code comes last, never first.
 
 If you find yourself writing product code before an assertion is indexed and verified, stop. You are building on unproven ground.
 
