@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Decision"
-status: pending
+status: completed
 priority: P1
 effort: "15m"
 dependencies: []
@@ -38,8 +38,8 @@ Create a decision record that justifies adding an `update_observation` capabilit
 
 ## Success Criteria
 
-- [ ] Decision record exists and is schema-valid.
-- [ ] Record references the journal entry and the CLAUDE.md protocol section.
+- [x] Decision record exists and is schema-valid.
+- [x] Record references the journal entry and the CLAUDE.md protocol section.
 
 ## Risk Assessment
 

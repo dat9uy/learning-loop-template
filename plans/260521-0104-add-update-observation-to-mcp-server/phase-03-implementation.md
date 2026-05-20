@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Implementation"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [2]
@@ -85,10 +85,10 @@ server.js
 
 ## Success Criteria
 
-- [ ] All new tests pass (green phase of TDD).
-- [ ] All existing tests pass (no regression).
-- [ ] `update_observation` tool appears in MCP tool list.
-- [ ] Code under 200 lines per file (observation-writer.js may need splitting if it grows).
+- [x] All new tests pass (green phase of TDD).
+- [x] All existing tests pass (no regression).
+- [x] `update_observation` tool appears in MCP tool list.
+- [x] Code under 200 lines per file (observation-writer.js may need splitting if it grows).
 
 ## Risk Assessment
 

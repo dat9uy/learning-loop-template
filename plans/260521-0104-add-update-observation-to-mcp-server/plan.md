@@ -1,7 +1,7 @@
 ---
 title: "Add update_observation to constraint-gate MCP server"
 description: ""
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: []
@@ -24,10 +24,10 @@ Discovered during evidence-file authoring for fundamental capability closeout (j
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Decision](./phase-01-decision.md) | Pending |
-| 2 | [Tests](./phase-02-tests.md) | Pending |
-| 3 | [Implementation](./phase-03-implementation.md) | Pending |
-| 4 | [Verification](./phase-04-verification.md) | Pending |
+| 1 | [Decision](./phase-01-decision.md) | Complete |
+| 2 | [Tests](./phase-02-tests.md) | Complete |
+| 3 | [Implementation](./phase-03-implementation.md) | Complete |
+| 4 | [Verification](./phase-04-verification.md) | Complete |
 
 ## Dependencies
 

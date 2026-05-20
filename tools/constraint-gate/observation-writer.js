@@ -3,7 +3,7 @@
  * with auto-generated schema fields and path safety guards.
  */
 
-import { writeFileSync, readFileSync, existsSync, renameSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, renameSync, readdirSync, lstatSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { stringify as stringifyYaml, parse as parseYaml } from "yaml";
 import { randomBytes } from "node:crypto";
@@ -103,4 +103,108 @@ export function writeObservation({ root, constraint_type, constraint, descriptio
   renameSync(tmpPath, fullPath);
 
   return { recorded: true, id: observation.id, path: fullPath };
+}
+
+const VALID_STATUSES = ["active", "inactive", "archived"];
+const IMMUTABLE_FIELDS = ["id", "schema_version", "type", "created_at", "constraint_type", "constraint", "source_refs"];
+
+/**
+ * Update an existing observation's status.
+ * Scans observation files by id, updates status and updated_at atomically.
+ * Returns { updated: true, id, path } or { updated: false, reason }.
+ */
+export function updateObservation({ root, observation_id, status, reason }) {
+  if (!VALID_STATUSES.includes(status)) {
+    return { updated: false, reason: "invalid_status" };
+  }
+
+  const obsDir = join(root, "records", "observations");
+  if (!existsSync(obsDir)) {
+    return { updated: false, reason: "not_found" };
+  }
+
+  const files = readdirSync(obsDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+  let targetPath = null;
+  let targetData = null;
+
+  for (const filename of files) {
+    const filePath = resolve(obsDir, filename);
+
+    // Skip symlinks — do not follow
+    try {
+      if (lstatSync(filePath).isSymbolicLink()) continue;
+    } catch {
+      continue;
+    }
+
+    // Path traversal guard
+    if (!filePath.startsWith(resolve(obsDir))) {
+      continue;
+    }
+
+    try {
+      const content = parseYaml(readFileSync(filePath, "utf8"));
+      if (content && content.id === observation_id) {
+        targetPath = filePath;
+        targetData = content;
+        break;
+      }
+    } catch {
+      // skip unparseable files
+    }
+  }
+
+  if (!targetPath || !targetData) {
+    return { updated: false, reason: "not_found" };
+  }
+
+  // Verify exact id match after parse
+  if (targetData.id !== observation_id) {
+    return { updated: false, reason: "not_found" };
+  }
+
+  const now = new Date();
+  const updatedAt = now.toISOString();
+
+  // Bounds-check updated_at: reject if the generated timestamp is older than created_at
+  const updatedTime = now.getTime();
+  const createdTime = new Date(targetData.created_at).getTime();
+  if (!isNaN(createdTime) && updatedTime < createdTime) {
+    return { updated: false, reason: "timestamp_out_of_bounds" };
+  }
+
+  // Mutate only whitelisted fields
+  const updated = {
+    ...targetData,
+    status,
+    updated_at: updatedAt,
+  };
+
+  if (reason) {
+    const existingNotes = targetData.notes || "";
+    updated.notes = existingNotes ? `${existingNotes}\n[update reason]: ${reason}` : `[update reason]: ${reason}`;
+  }
+
+  // Preserve immutable fields exactly as they were (defense in depth)
+  for (const field of IMMUTABLE_FIELDS) {
+    if (field in targetData) {
+      updated[field] = targetData[field];
+    }
+  }
+
+  const yamlContent = stringifyYaml(updated);
+
+  // Atomic write with unique temp suffix
+  const tmpSuffix = `tmp-${randomBytes(4).toString("hex")}`;
+  const tmpPath = targetPath + `.${tmpSuffix}`;
+  writeFileSync(tmpPath, yamlContent, "utf8");
+
+  // Re-validate resolved path before rename
+  if (!resolve(tmpPath).startsWith(resolve(obsDir))) {
+    return { updated: false, reason: "path_traversal_blocked" };
+  }
+
+  renameSync(tmpPath, targetPath);
+
+  return { updated: true, id: observation_id, path: targetPath };
 }

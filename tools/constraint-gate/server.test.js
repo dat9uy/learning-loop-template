@@ -1,11 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { parse as parseYaml } from "yaml";
 
 function createTmpDir() {
   return mkdtempSync(join(tmpdir(), "gate-server-test-"));
@@ -296,6 +297,106 @@ describe("MCP server record_observation tool", () => {
       const tools = await client.listTools();
       const names = tools.tools.map((t) => t.name);
       assert.ok(names.includes("record_observation"), "record_observation tool registered");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("MCP server update_observation tool", () => {
+  it("lists update_observation as available tool", async () => {
+    const tmp = createTmpDir();
+    const { client, transport } = await startServer(tmp);
+    try {
+      const tools = await client.listTools();
+      const names = tools.tools.map((t) => t.name);
+      assert.ok(names.includes("update_observation"), "update_observation tool registered");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("changes status via MCP client", async () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-update.yaml"),
+      `id: obs-update-test\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-update\nnotes: original`
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "update_observation",
+        arguments: {
+          observation_id: "obs-update-test",
+          status: "inactive",
+        },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.updated, true);
+      assert.equal(parsed.id, "obs-update-test");
+
+      const content = parseYaml(readFileSync(parsed.path, "utf8"));
+      assert.equal(content.status, "inactive");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("returns error when observation missing", async () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "update_observation",
+        arguments: {
+          observation_id: "obs-missing",
+          status: "inactive",
+        },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.updated, false);
+      assert.equal(parsed.reason, "not_found");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("logs reason if provided", async () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-log.yaml"),
+      `id: obs-log-test\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-log\nnotes: original`
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "update_observation",
+        arguments: {
+          observation_id: "obs-log-test",
+          status: "archived",
+          reason: "archived for test",
+        },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.updated, true);
+
+      const content = parseYaml(readFileSync(parsed.path, "utf8"));
+      assert.ok(content.notes.includes("archived for test"));
     } finally {
       await transport.close();
     }

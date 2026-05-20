@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Tests"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [1]
@@ -53,9 +53,9 @@ Test layers:
 
 ## Success Criteria
 
-- [ ] All new tests exist and fail (red phase of TDD).
-- [ ] Existing tests still pass (no regression).
-- [ ] Test coverage includes: happy path, not-found, invalid status.
+- [x] All new tests exist and fail (red phase of TDD).
+- [x] Existing tests still pass (no regression).
+- [x] Test coverage includes: happy path, not-found, invalid status.
 
 ## Risk Assessment
 

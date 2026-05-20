@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse as parseYaml } from "yaml";
@@ -10,6 +10,7 @@ import {
   generateObservationId,
   buildObservationYaml,
   writeObservation,
+  updateObservation,
 } from "./observation-writer.js";
 
 function createTmpDir() {
@@ -202,6 +203,191 @@ describe("writeObservation", () => {
 
     assert.equal(result.recorded, false);
     assert.ok(result.reason);
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("updateObservation", () => {
+  it("toggles status from active to inactive", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-test.yaml"),
+      `id: obs-test-active\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-toggle\nnotes: original`
+    );
+
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-test-active",
+      status: "inactive",
+    });
+
+    assert.equal(result.updated, true);
+    assert.equal(result.id, "obs-test-active");
+
+    const content = parseYaml(readFileSync(result.path, "utf8"));
+    assert.equal(content.status, "inactive");
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("toggles status from inactive to active", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-test.yaml"),
+      `id: obs-test-inactive\nschema_version: "1.0"\ntype: observation\nstatus: inactive\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-reactivate\nnotes: original`
+    );
+
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-test-inactive",
+      status: "active",
+    });
+
+    assert.equal(result.updated, true);
+    const content = parseYaml(readFileSync(result.path, "utf8"));
+    assert.equal(content.status, "active");
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("returns not_found when observation does not exist", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-missing",
+      status: "inactive",
+    });
+
+    assert.equal(result.updated, false);
+    assert.equal(result.reason, "not_found");
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("rejects invalid status values", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-test.yaml"),
+      `id: obs-test-invalid\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-invalid\nnotes: original`
+    );
+
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-test-invalid",
+      status: "deleted",
+    });
+
+    assert.equal(result.updated, false);
+    assert.equal(result.reason, "invalid_status");
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("updates updated_at timestamp", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const oldTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-test.yaml"),
+      `id: obs-test-time\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${oldTime}\nupdated_at: ${oldTime}\nconstraint_type: test\nconstraint: test-time\nnotes: original`
+    );
+
+    const before = Date.now();
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-test-time",
+      status: "inactive",
+    });
+    const after = Date.now();
+
+    assert.equal(result.updated, true);
+    const content = parseYaml(readFileSync(result.path, "utf8"));
+    const updatedTime = new Date(content.updated_at).getTime();
+    assert.ok(updatedTime >= before - 1000);
+    assert.ok(updatedTime <= after + 1000);
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("rejects symlinked observation files", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const realFile = join(tmp, "real-obs.yaml");
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      realFile,
+      `id: obs-test-symlink\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: test\nconstraint: test-symlink\nnotes: original`
+    );
+    // Create symlink inside observations dir pointing outside
+    const symlinkPath = join(obsDir, "observation-symlink.yaml");
+    let hasSymlink = false;
+    try {
+      symlinkSync(realFile, symlinkPath);
+      hasSymlink = true;
+    } catch {
+      // skip if platform does not support symlinks
+    }
+
+    if (hasSymlink) {
+      const result = updateObservation({
+        root: tmp,
+        observation_id: "obs-test-symlink",
+        status: "inactive",
+      });
+
+      assert.equal(result.updated, false);
+      // Symlinked file should be skipped during scan
+      assert.equal(result.reason, "not_found");
+    }
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("preserves all fields except status, updated_at, and notes", () => {
+    const tmp = createTmpDir();
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(obsDir, { recursive: true });
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-test.yaml"),
+      `id: obs-test-preserve\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nsource_refs:\n  - record:test\nnotes: original\nconstraint_type: test\nconstraint: test-preserve`
+    );
+
+    const result = updateObservation({
+      root: tmp,
+      observation_id: "obs-test-preserve",
+      status: "archived",
+      reason: "test reason",
+    });
+
+    assert.equal(result.updated, true);
+    const content = parseYaml(readFileSync(result.path, "utf8"));
+    assert.equal(content.id, "obs-test-preserve");
+    assert.equal(content.schema_version, "1.0");
+    assert.equal(content.type, "observation");
+    assert.equal(content.status, "archived");
+    assert.equal(content.created_at, past);
+    assert.deepEqual(content.source_refs, ["record:test"]);
+    assert.equal(content.constraint_type, "test");
+    assert.equal(content.constraint, "test-preserve");
+    // Notes should be appended with reason
+    assert.ok(content.notes.includes("original"));
+    assert.ok(content.notes.includes("test reason"));
 
     rmSync(tmp, { recursive: true, force: true });
   });

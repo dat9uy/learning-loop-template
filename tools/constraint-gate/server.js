@@ -18,7 +18,7 @@ import {
   evaluateWritePath,
 } from "./gate-logic.js";
 import { readObservations, readBudgets } from "./file-readers.js";
-import { writeObservation } from "./observation-writer.js";
+import { writeObservation, updateObservation } from "./observation-writer.js";
 import { readFileSync } from "node:fs";
 
 /**
@@ -217,6 +217,43 @@ server.tool(
       tool: "record_observation",
       constraint_type,
       constraint,
+      ...result,
+    });
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+server.tool(
+  "update_observation",
+  "Update an existing observation's status. Returns updated status.",
+  {
+    observation_id: z.string().describe("The id of the observation to update"),
+    status: z.string().refine((val) => ["active", "inactive", "archived"].includes(val), {
+      message: "invalid_status",
+    }).describe("New status: active, inactive, or archived"),
+    reason: z.string().optional().describe("Optional reason for the status change"),
+  },
+  async ({ observation_id, status, reason }) => {
+    const root = resolveRoot();
+    const result = updateObservation({
+      root,
+      observation_id,
+      status,
+      reason,
+    });
+
+    console.error(`gate: update_observation ${observation_id} → ${result.updated ? "updated" : result.reason}`);
+
+    // Append to gate log (non-blocking)
+    appendGateLog(root, {
+      timestamp: new Date().toISOString(),
+      tool: "update_observation",
+      observation_id,
+      status,
+      reason: reason || undefined,
       ...result,
     });
 

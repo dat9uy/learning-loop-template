@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Verification"
-status: pending
+status: completed
 priority: P2
 effort: "15m"
 dependencies: [3]
@@ -45,10 +45,10 @@ End-to-end verification: confirm the `update_observation` capability works in a 
 
 ## Success Criteria
 
-- [ ] MCP `update_observation` toggles status correctly.
-- [ ] Write gate blocks/allows based on observation status.
-- [ ] `pnpm test` passes (all constraint-gate tests).
-- [ ] `pnpm check` passes (no regressions in records, capabilities, or tool tests).
+- [x] MCP `update_observation` toggles status correctly.
+- [x] Write gate blocks/allows based on observation status.
+- [x] `pnpm test` passes (all constraint-gate tests).
+- [x] `pnpm check` passes (no regressions in records, capabilities, or tool tests).
 
 ## Risk Assessment
 
