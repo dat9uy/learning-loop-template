@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Frozen-Claim Drift Tests"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]

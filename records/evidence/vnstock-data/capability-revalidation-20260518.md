@@ -68,3 +68,7 @@ This error occurs **after** successful device registration (device ID `2ff1c8e8d
 - [home-env-for-api-key] vnstock_data 3.1.8 resolves `api_key.json` via `Path.home() / ".vnstock" / "api_key.json"`, so `os.environ["HOME"]` must point at `product/api` before importing vnstock_data.
   - Context: Capability scripts in product/api now set HOME explicitly before import.
   - Caveat: If HOME is left at the shell user's home, vnstock_data raises "Không tìm thấy thông tin người dùng hợp lệ" (vendor-side, looks like an auth failure but is actually a missing-config failure).
+
+## Confirmation / Disproof Notes
+
+- Disproves assertion-vnstock-data-runtime-device-id-injection-required: vnstock_data 3.1.8 authenticates with `api_key.json` alone; the prior Device-Id header requirement no longer holds.

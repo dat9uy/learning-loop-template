@@ -1,7 +1,7 @@
 ---
 title: "Plan 5: Mechanical Enforcement Gap Closure (Supersession Write-Back + Frozen-Claim Drift)"
 description: ""
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: []
@@ -27,11 +27,11 @@ TDD structure: each gap gets a failing-tests phase, then an implementation phase
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Supersession Write-Back Tests](./phase-01-supersession-write-back-tests.md) | Pending |
-| 2 | [Supersession Write-Back Implementation](./phase-02-supersession-write-back-implementation.md) | Pending |
-| 3 | [Frozen-Claim Drift Tests](./phase-03-frozen-claim-drift-tests.md) | Pending |
-| 4 | [Frozen-Claim Drift Implementation](./phase-04-frozen-claim-drift-implementation.md) | Pending |
-| 5 | [Corpus Regression + Acceptance](./phase-05-corpus-regression-acceptance.md) | Pending |
+| 1 | [Supersession Write-Back Tests](./phase-01-supersession-write-back-tests.md) | Completed |
+| 2 | [Supersession Write-Back Implementation](./phase-02-supersession-write-back-implementation.md) | Completed |
+| 3 | [Frozen-Claim Drift Tests](./phase-03-frozen-claim-drift-tests.md) | Completed |
+| 4 | [Frozen-Claim Drift Implementation](./phase-04-frozen-claim-drift-implementation.md) | Completed |
+| 5 | [Corpus Regression + Acceptance](./phase-05-corpus-regression-acceptance.md) | Completed |
 
 ## Dependencies
 

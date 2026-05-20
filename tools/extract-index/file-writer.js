@@ -16,7 +16,12 @@ export function readExistingIndex(path) {
 
 export function shouldWrite(existing, entry) {
   if (!existing) return true;
-  return existing.extraction?.evidence_immutable_hash !== entry.extraction?.evidence_immutable_hash;
+  if (existing.extraction?.evidence_immutable_hash !== entry.extraction?.evidence_immutable_hash) return true;
+  if (existing.status !== entry.status) return true;
+  if ((existing.superseded_by ?? null) !== (entry.superseded_by ?? null)) return true;
+  const a = (existing.supersedes ?? []).join("|");
+  const b = (entry.supersedes ?? []).join("|");
+  return a !== b;
 }
 
 export function writeIndexEntry(root, entry) {

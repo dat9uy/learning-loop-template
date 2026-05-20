@@ -29,6 +29,7 @@ function makeTmpProject() {
   mkdirSync(join(tmp, "records", "evidence", "test"), { recursive: true });
   mkdirSync(join(tmp, "records", "experiments"), { recursive: true });
   mkdirSync(join(tmp, "records", "index"), { recursive: true });
+  mkdirSync(join(tmp, "records", "claims"), { recursive: true });
   return tmp;
 }
 
@@ -42,6 +43,10 @@ function writeExperiment(tmp, name, content) {
 
 function writeIndex(tmp, name, content) {
   writeFileSync(join(tmp, "records", "index", name), content);
+}
+
+function writeClaim(tmp, name, content) {
+  writeFileSync(join(tmp, "records", "claims", name), content);
 }
 
 describe("hash-computer", () => {
@@ -166,6 +171,132 @@ describe("extract-index gotchas", () => {
     writeEvidence(tmp, "test/valid.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Valid\n## Findings\n- [tag] Assertion.\n");
     const result = runExtraction(tmp, { dryRun: true, verbose: false });
     assert.strictEqual(result.stats.entriesProduced, 1);
+  });
+});
+
+describe("supersession write-back", () => {
+  function writeOldEntry(tmp, id, hash) {
+    writeIndex(tmp, `${id}.yaml`, `id: ${id}\nschema_version: "1.0"\ntype: extracted-assertion\nstatus: active\nassertion: Old text.\ncapability: cap\ndimension: runtime\nscope: sandbox\ntopic_tag: tag-old\nn_count: 1\nsuperseded_by: null\nsupersedes: []\nsource_refs: []\nexperiment_refs: []\nextraction:\n  agent_run: run-1\n  first_extracted_at: "2026-05-19T17:00:00Z"\n  last_updated_at: "2026-05-19T17:00:00Z"\n  evidence_immutable_hash: sha256:${hash}\n`);
+  }
+
+  it("writes supersedes link on new entry when disproof note names old assertion-id", () => {
+    const tmp = makeTmpProject();
+    writeOldEntry(tmp, "assertion-cap-runtime-tag-old", "old");
+    writeEvidence(tmp, "test/new.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# New\n## Findings\n- [tag-new] New text.\n## Confirmation / Disproof Notes\n- Disproves assertion-cap-runtime-tag-old\n");
+    const result = runExtraction(tmp, { dryRun: false, verbose: false });
+    const newYaml = parseYaml(readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag-new.yaml"), "utf8"));
+    assert.deepStrictEqual(newYaml.supersedes, ["assertion-cap-runtime-tag-old"], `expected supersedes link, errors: ${result.errors.join(" | ")}`);
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("writes superseded_by link on old entry when new disproof references it", () => {
+    const tmp = makeTmpProject();
+    writeOldEntry(tmp, "assertion-cap-runtime-tag-old", "old");
+    writeEvidence(tmp, "test/new.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# New\n## Findings\n- [tag-new] New text.\n## Confirmation / Disproof Notes\n- Disproves assertion-cap-runtime-tag-old\n");
+    runExtraction(tmp, { dryRun: false, verbose: false });
+    const oldYaml = parseYaml(readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag-old.yaml"), "utf8"));
+    assert.strictEqual(oldYaml.superseded_by, "assertion-cap-runtime-tag-new");
+    assert.strictEqual(oldYaml.status, "superseded");
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("hard-stops when assertion text changes without disproof note", () => {
+    const tmp = makeTmpProject();
+    writeIndex(tmp, "assertion-cap-runtime-tag.yaml", `id: assertion-cap-runtime-tag\nschema_version: "1.0"\ntype: extracted-assertion\nstatus: active\nassertion: Old text.\ncapability: cap\ndimension: runtime\nscope: sandbox\ntopic_tag: tag\nn_count: 1\nsuperseded_by: null\nsupersedes: []\nsource_refs: []\nexperiment_refs: []\nextraction:\n  agent_run: run-1\n  first_extracted_at: "2026-05-19T17:00:00Z"\n  last_updated_at: "2026-05-19T17:00:00Z"\n  evidence_immutable_hash: sha256:old\n`);
+    writeEvidence(tmp, "test/rewrite.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Rewrite\n## Findings\n- [tag] Rewritten text.\n");
+    const before = readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag.yaml"), "utf8");
+    const result = runExtraction(tmp, { dryRun: false, verbose: false });
+    assert.ok(result.errors.some((e) => e.includes("Supersession hard-stop")));
+    const after = readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag.yaml"), "utf8");
+    assert.strictEqual(before, after, "old entry must not be mutated on hard-stop");
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("hard-stops when disproof note names non-existent assertion-id", () => {
+    const tmp = makeTmpProject();
+    writeEvidence(tmp, "test/orphan.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Orphan\n## Findings\n- [tag-new] New text.\n## Confirmation / Disproof Notes\n- Disproves assertion-cap-runtime-missing-id\n");
+    const result = runExtraction(tmp, { dryRun: false, verbose: false });
+    assert.ok(result.errors.some((e) => e.includes("assertion-cap-runtime-missing-id") && /non-existent|orphan/i.test(e)), `expected orphan error, got: ${result.errors.join(" | ")}`);
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("frozen-claim drift", () => {
+  function claimYaml({ id, capability, claimText, notes, dimReason }) {
+    const notesLine = notes ? `notes: ${JSON.stringify(notes)}\n` : "";
+    return `id: ${id}\nschema_version: "1.0"\ntype: claim\nstatus: approved\ncreated_at: "2026-05-01T00:00:00Z"\nupdated_at: "2026-05-01T00:00:00Z"\nsource_refs: []\n${notesLine}subject: "test"\nclaim: ${JSON.stringify(claimText)}\nscope: sandbox\nconfidence: high\napproval:\n  status: approved\n  reviewer: operator\n  reviewed_at: "2026-05-01T00:00:00Z"\nverification:\n  runtime:\n    status: verified\n    scope: sandbox\n    output: runtime-captured\n    reason: ${JSON.stringify(dimReason)}\n    proof_refs: []\ncapability: ${capability}\n`;
+  }
+
+  it("hard-stops when new entry contradicts frozen claim without supersession note", () => {
+    const tmp = makeTmpProject();
+    writeClaim(tmp, "claim-x.yaml", claimYaml({
+      id: "claim-x",
+      capability: "cap",
+      claimText: "Thing-x is required.",
+      notes: null,
+      dimReason: "Thing-x required for capability cap.",
+    }));
+    writeEvidence(tmp, "test/contradict.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Contradict\n## Findings\n- [thing-x-not-required] Thing-x is no longer required.\n");
+    const result = runExtraction(tmp, { dryRun: true, verbose: false });
+    assert.ok(
+      result.errors.some((e) => e.includes("claim-x") && e.includes("assertion-cap-runtime-thing-x-not-required")),
+      `expected drift error naming both records, got: ${result.errors.join(" | ")}`
+    );
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("passes when frozen claim notes already record supersession", () => {
+    const tmp = makeTmpProject();
+    writeClaim(tmp, "claim-x.yaml", claimYaml({
+      id: "claim-x",
+      capability: "cap",
+      claimText: "Thing-x is required.",
+      notes: "SUPERSEDED by experiment-2026-05-15. Thing-x no longer required.",
+      dimReason: "Thing-x required.",
+    }));
+    writeEvidence(tmp, "test/resolved.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Resolved\n## Findings\n- [thing-x-not-required] Thing-x is no longer required.\n");
+    const result = runExtraction(tmp, { dryRun: true, verbose: false });
+    assert.ok(
+      !result.errors.some((e) => /drift/i.test(e)),
+      `expected no drift error, got: ${result.errors.join(" | ")}`
+    );
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("does not hard-stop on unrelated frozen claims", () => {
+    const tmp = makeTmpProject();
+    writeClaim(tmp, "claim-other.yaml", claimYaml({
+      id: "claim-other",
+      capability: "other-cap",
+      claimText: "Y is required.",
+      notes: null,
+      dimReason: "Y required.",
+    }));
+    writeEvidence(tmp, "test/unrelated.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Unrelated\n## Findings\n- [z-not-required] Z is not required.\n");
+    const result = runExtraction(tmp, { dryRun: true, verbose: false });
+    assert.ok(
+      !result.errors.some((e) => /drift/i.test(e)),
+      `expected no drift error for unrelated capability, got: ${result.errors.join(" | ")}`
+    );
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("names both records in drift error message", () => {
+    const tmp = makeTmpProject();
+    writeClaim(tmp, "claim-y.yaml", claimYaml({
+      id: "claim-y",
+      capability: "cap",
+      claimText: "Header-injection is required.",
+      notes: null,
+      dimReason: "Header-injection required for cap.",
+    }));
+    writeEvidence(tmp, "test/contradict2.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Contradict2\n## Findings\n- [header-injection-not-required] Header-injection is no longer required.\n");
+    const result = runExtraction(tmp, { dryRun: true, verbose: false });
+    const driftErr = result.errors.find((e) => /drift/i.test(e));
+    assert.ok(driftErr, `expected a drift error, got: ${result.errors.join(" | ")}`);
+    assert.ok(driftErr.includes("claim-y"), `error must name claim-y: ${driftErr}`);
+    assert.ok(driftErr.includes("assertion-cap-runtime-header-injection-not-required"), `error must name new assertion: ${driftErr}`);
+    rmSync(tmp, { recursive: true, force: true });
   });
 });
 

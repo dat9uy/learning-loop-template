@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Corpus Regression + Acceptance"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [4]

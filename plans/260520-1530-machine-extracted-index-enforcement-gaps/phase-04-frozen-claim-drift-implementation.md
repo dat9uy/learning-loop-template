@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Frozen-Claim Drift Implementation"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [3]

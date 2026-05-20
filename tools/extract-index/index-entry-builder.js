@@ -15,6 +15,7 @@ export function buildIndexEntry({
   agentRun,
   firstExtractedAt,
   lastUpdatedAt,
+  supersedes = [],
 }) {
   const status = STATUS_MAP[meta.validation_status];
   if (!status) {
@@ -43,7 +44,7 @@ export function buildIndexEntry({
     topic_tag: finding.topicTag,
     n_count: nCount,
     superseded_by: null,
-    supersedes: [],
+    supersedes,
     source_refs: sourceRefs,
     experiment_refs: experimentIds.map((id) => `record:${id}`),
     extraction: {

@@ -21,7 +21,7 @@ experiment_refs:
   - record:experiment-vnstock-capability-revalidation-20260518T003000Z
   - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
 extraction:
-  agent_run: extract-index-2026-05-19T16:08:31Z
+  agent_run: extract-index-2026-05-20T07:53:23Z
   first_extracted_at: 2026-05-19T16:08:31Z
-  last_updated_at: 2026-05-19T16:08:31Z
-  evidence_immutable_hash: sha256:ed80d2e6607a2596d3cbec0936f75d85fe7993c3031e19868add13e870ddccd5
+  last_updated_at: 2026-05-20T07:53:23Z
+  evidence_immutable_hash: sha256:bc7b8d21683bccba14b9826713a359e39777337f3cd3122eadac7669d09d034c

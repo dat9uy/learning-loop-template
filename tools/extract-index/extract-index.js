@@ -7,6 +7,7 @@ import { parseFindings } from "./findings-parser.js";
 import { computeHash } from "./hash-computer.js";
 import { buildIndexEntry } from "./index-entry-builder.js";
 import { readExistingIndex, shouldWrite, writeIndexEntry } from "./file-writer.js";
+import { loadFrozenClaims, checkFrozenClaimDrift } from "./frozen-claim-drift.js";
 
 const scriptRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -175,6 +176,74 @@ function checkSupersession(newEntries, existingEntries, disproofIds, errors) {
   }
 }
 
+function oppositeTopicTag(tag) {
+  if (tag.endsWith("-not-required")) return tag.slice(0, -"-not-required".length) + "-required";
+  if (tag.endsWith("-required")) return tag.slice(0, -"-required".length) + "-not-required";
+  return null;
+}
+
+function applySupersessionWriteBack(newEntries, existingEntries, parsed, errors) {
+  // Build Map<new_id, Set<old_id>> from disproof notes.
+  // Disproof notes attach to an evidence file, not to a specific finding inside
+  // it. When the file produces one finding the pairing is unambiguous. When the
+  // file produces multiple findings we disambiguate by the explicit topic-tag
+  // opposition (`X-required` ↔ `X-not-required`) to avoid cross-pollinating the
+  // `supersedes` field onto unrelated findings.
+  const findingsByFile = new Map();
+  for (const item of parsed) {
+    const list = findingsByFile.get(item.evidencePath) || [];
+    list.push(item);
+    findingsByFile.set(item.evidencePath, list);
+  }
+
+  const intents = new Map();
+  for (const item of parsed) {
+    if (!item.disproofIds || item.disproofIds.length === 0) continue;
+    const siblings = findingsByFile.get(item.evidencePath) || [];
+    const multi = siblings.length > 1;
+    const opposite = multi ? oppositeTopicTag(item.finding.topicTag) : null;
+    const newId = `assertion-${item.meta.capability}-${item.meta.dimension}-${item.finding.topicTag}`;
+    for (const oldId of item.disproofIds) {
+      if (oldId === newId) continue;
+      if (multi) {
+        if (!opposite || !oldId.endsWith(`-${opposite}`)) continue;
+      }
+      if (!intents.has(newId)) intents.set(newId, new Set());
+      intents.get(newId).add(oldId);
+    }
+  }
+
+  // Set supersedes on new entries
+  for (const entry of newEntries) {
+    const set = intents.get(entry.id);
+    if (set && set.size > 0) {
+      entry.supersedes = [...set].sort();
+    }
+  }
+
+  // Build reverse map and mutate old entries
+  const newById = new Map(newEntries.map((e) => [e.id, e]));
+  const mutatedOld = [];
+  const seenOld = new Set();
+  for (const [newId, oldIds] of intents) {
+    for (const oldId of oldIds) {
+      if (seenOld.has(oldId)) continue;
+      seenOld.add(oldId);
+      const target = existingEntries.get(oldId) || newById.get(oldId);
+      if (!target) {
+        errors.push(
+          `Supersession orphan: disproof note names non-existent assertion-id ${oldId} (referenced by ${newId})`
+        );
+        continue;
+      }
+      target.superseded_by = newId;
+      target.status = "superseded";
+      if (!newById.has(oldId)) mutatedOld.push(target);
+    }
+  }
+  return mutatedOld;
+}
+
 export function runExtraction(root, args) {
   const now = new Date().toISOString().slice(0, -5) + "Z";
   const agentRun = `extract-index-${now}`;
@@ -300,6 +369,25 @@ export function runExtraction(root, args) {
   const allDisproofIds = Array.from(new Set(parsed.flatMap((p) => p.disproofIds)));
   checkSupersession(newEntries, existingEntries, allDisproofIds, errors);
 
+  // Supersession write-back (mutates new entries' supersedes and old entries' superseded_by/status)
+  const mutatedOld = applySupersessionWriteBack(newEntries, existingEntries, parsed, errors);
+
+  // Frozen-claim drift check (Mechanism 2 Scope A)
+  const claimsDir = join(root, "records", "claims");
+  const frozenClaims = loadFrozenClaims(claimsDir);
+  const driftErrors = checkFrozenClaimDrift(newEntries, frozenClaims);
+  for (const err of driftErrors) errors.push(err);
+
+  // Hard-stop: do not write anything when errors exist
+  if (errors.length > 0) {
+    return {
+      stats: { filesProcessed, filesWithFindings, entriesProduced: newEntries.length, written: 0, unchanged: 0 },
+      errors,
+      skipped,
+      newEntries,
+    };
+  }
+
   // Write or report
   let written = 0;
   let unchanged = 0;
@@ -314,6 +402,17 @@ export function runExtraction(root, args) {
       written += 1;
     } else {
       writeIndexEntry(root, entry);
+      written += 1;
+    }
+  }
+
+  // Write mutated old entries (supersession write-back)
+  for (const old of mutatedOld) {
+    if (args.dryRun) {
+      console.log(`[dry-run] would update ${old.id}.yaml (supersession)`);
+      written += 1;
+    } else {
+      writeIndexEntry(root, old);
       written += 1;
     }
   }

@@ -516,7 +516,7 @@ Below are the four plans derived from the Next Steps. They are ordered by depend
 - A synthetic test case with a contradiction against a frozen claim (no `notes` supersession record) triggers a hard-stop with a non-zero exit code.
 - `pnpm check` passes; new tests cover both gaps.
 
-**Status:** Planned 2026-05-20.
+**Status:** Completed 2026-05-20. Both gaps closed with TDD: supersession write-back now mutates `supersedes` on new entries and `superseded_by`/`status` on old entries during extraction (file-scoped disambiguation when multiple findings share an evidence file); frozen-claim drift hard-stops on topic-tag opposition unless `notes` records `SUPERSEDED` or names the new assertion-id. Existing `device-id-injection-*` pair regenerates with correct supersession fields without hand-editing; synthetic drift fixture confirmed hard-stop; `pnpm check` passes 144/144. See `plans/260520-1530-machine-extracted-index-enforcement-gaps/` and new module `tools/extract-index/frozen-claim-drift.js`.
 
 ### Plan 6: Residual Docs Index-First Conversion (G4 + G5)
 
@@ -565,5 +565,5 @@ All originally open design points were resolved during Plan 2 implementation:
 - **Plan 2 (Extraction Tool):** Completed 2026-05-19.
 - **Plan 3 (Migration Execution):** Completed 2026-05-19. Prototype seed #2 (`claim-vnstock-install-sandbox`) deferred to lazy migration — multi-dimensional invariant remains partially unproven outside the runtime/install split seed #1 happened to exercise.
 - **Plan 4 (Deprecation + Docs Canonicalization):** Completed 2026-05-20. See `plans/260519-2326-docs-canonicalization-machine-extracted-index/`.
-- **Plan 5 (Mechanical Enforcement Gap Closure — G1 + G2):** Planned 2026-05-20. Closes supersession write-back and frozen-claim drift hard-stop.
+- **Plan 5 (Mechanical Enforcement Gap Closure — G1 + G2):** Completed 2026-05-20. Both gaps closed via TDD; see `plans/260520-1530-machine-extracted-index-enforcement-gaps/`.
 - **Plan 6 (Residual Docs Index-First Conversion — G4 + G5):** Planned 2026-05-20. Completes artifact-reference index-entry parallel sections and converts remaining 5 docs.
