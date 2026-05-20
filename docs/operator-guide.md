@@ -433,7 +433,7 @@ Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm th
 
 - Prior ambiguity: a disproved evidence file (`installer-prior-notes.md` claimed installer reads `~/.vnstock/user.json`) sat on disk with no signal; future agents could re-adopt the disproven claim by direct browse.
 - Alternatives considered: status field in frontmatter (rejected), `## Status` markdown body (crosses source/proof line), claim-side status block (deferred N>=2), per-file `## Supersedes` link in disproving evidence (adopted as Q4 D), computed validation view (deferred N>=2).
-- Chosen: structural prevention. Evidence is referenced via claims, never browsed standalone for truth-status discovery.
+- Chosen: structural prevention. Evidence is referenced via index entries (or frozen-legacy claims), never browsed standalone for truth-status discovery.
 - Origin: `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md` (Q4).
 
 ### Q5 R2 - Pre-experiment scan of `records/evidence/meta/`
@@ -446,8 +446,8 @@ Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm th
 ### Q6 - Capability-directory scan after claims-first orientation (historical)
 
 - Prior ambiguity: claims-first scanning surfaced cited evidence but missed uncited files in the same capability directory. The `unified-ui-snapshot/` directory was nearly missed during vnstock plan drafting.
-- Alternative considered: rely on claims to cite everything (rejected; claims drift, capability dirs hold reference docs that aren't claim-cited).
-- Chosen: after claims-first orientation, list `records/evidence/<capability>/` end-to-end. Read relevant text evidence, skip raw/binary/generated/private artifacts and `## Superseded By` files unless forensic context is needed.
+- Alternative considered: rely on claims to cite everything (rejected; claims drift, capability dirs hold reference docs that aren't claim-cited). Historical: this was written before the index-entry migration; the current routing rule uses index entries first, then frozen-legacy claims.
+- Chosen: after index-entry-first (or claims-first for frozen-legacy) orientation, list `records/evidence/<capability>/` end-to-end. Read relevant text evidence, skip raw/binary/generated/private artifacts and `## Superseded By` files unless forensic context is needed.
 - Origin: `records/evidence/meta/capability-dir-scan-rule.md` (commit `e0a1c0f`). Not part of the original Q1-Q5 cascade; added later when the gap surfaced during planning.
 
 ## Agent Anti-Confusion Checklist
