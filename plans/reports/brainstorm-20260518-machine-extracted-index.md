@@ -92,7 +92,7 @@ Experiment YAMLs (`agent_outcome`, `product_outcome`) and frozen claim YAMLs (as
     - **Prototype seed (2 claims):** Migrate `claim-vnstock-runtime-403-root-cause` (stress-tests N counting + supersession) and `claim-vnstock-install-sandbox` (stress-tests multi-dimensional assertions). Human writes `## Findings` into the relevant evidence files; extraction tool builds `records/index/` entries; verify the new index answers the same doc questions the claim used to.
     - **Lazy migration thereafter:** Pull-based — when an agent answers a doc question and the live assertion still lives only in a frozen claim, agent proposes evidence rewrite to operator (Mechanism 1). On confirmation, evidence gets `## Findings`, extraction runs. No proactive batch work — aligns with the motivation diagnosis.
     - **Frozen ≠ invisible:** Mechanism 2 Scope A extends to "frozen claim vs extracted index" (see below).
-11. **Section convention (G4.A):** Evidence files adopt `## Findings` as the sole extraction target. Top-level bullets carry `[topic-tag]` followed by an atomic assertion; nested bullets prefixed `Context:` and `Caveat:` populate corresponding index fields. `## Confirmation / Disproof Notes` is kept for cross-evidence supersession signals (Mechanism 2 Scope C). All other sections (`## Summary`, `## Observations`, `## Steps Executed`, etc.) remain freeform narrative, not extracted.
+11. **Section convention (G4.A):** Evidence files adopt `## Findings` as the sole extraction target. Top-level bullets carry `[topic-tag]` followed by an atomic assertion; nested bullets prefixed `Context:` and `Caveat:` populate corresponding index fields. `## Confirmation / Disproof Notes` is parsed for cross-evidence supersession — each `assertion-…` ID under that header drives mechanical write-back of `superseded_by` / `status` on the old entry and `supersedes` on the new entry (Mechanism 2 Scope C, implemented Plan 5). On multi-finding evidence files, disproof IDs disambiguate by topic-tag opposition (`X-required` ↔ `X-not-required`); single-finding files pair unambiguously. All other sections (`## Summary`, `## Observations`, `## Steps Executed`, etc.) remain freeform narrative, not extracted.
 12. **Soft immutability via hash (G6.B):** Evidence files are editable; the index entry's `evidence_immutable_hash` detects post-extraction edits. Hash mismatch triggers Mechanism 2 Scope B re-extraction. "Immutability" is not enforced at the filesystem level — the invariant is "index must match its sources at extraction time," enforced by the hash check.
 13. **Doc question resolution: index-first, self-contained (Q4.B refined):** Index is the sole top-level artifact for state queries. Agent answers from `records/index/<assertion-id>.yaml` alone; reads source_refs/experiment_refs only on deeper queries (proof, audit, history). Docs (`docs/`) provide intent/context and remain human-only; if docs and index disagree, agent flags drift to operator (item 7 + Mechanism 2 extension).
 14. **Extraction authority inherits from evidence (Q1.A):** No separate approval step on the index entry. The index entry's `status` is derived mechanically from the source evidence's `validation_status`:
@@ -168,6 +168,20 @@ extraction:
 
 Extraction tool reads each top-level bullet as an assertion. `[topic-tag]` is required (extraction errors otherwise). Nested `Context:` and `Caveat:` lines populate the index entry. Other nested bullets are ignored with a warning.
 
+### Disproof Notes (drives supersession write-back)
+
+When new evidence disproves a prior extracted assertion, the same evidence file declares the supersession via a sibling section:
+
+```markdown
+## Confirmation / Disproof Notes
+
+- Disproves assertion-vnstock-data-runtime-device-id-injection-required: vnstock_data 3.1.8 authenticates with `api_key.json` alone.
+```
+
+The extraction tool parses every `assertion-…` ID under this header, looks each one up in the existing index, and on a match writes `superseded_by: <new-id>` + `status: superseded` on the old entry and `supersedes: [<old-id>]` on the new entry — within the same extraction pass. No hand-edits to the index. Without a disproof note, an assertion-text change on an existing ID is a hard-stop (Mechanism 2 Scope C).
+
+**Disambiguation when one evidence file produces multiple findings:** the disproof ID must end in the explicit topic-tag opposite of the finding it targets (`X-required` ↔ `X-not-required`). The pairing is otherwise unambiguous for single-finding files. Operators who need to supersede from a file producing several unrelated findings should either split the evidence or name the disproof IDs with matching `-required` / `-not-required` suffixes.
+
 ## Mechanisms Decided
 
 ### Mechanism 1: Suggest-Then-Confirm
@@ -193,6 +207,14 @@ Agent detects drift among learning loop artifacts. Hard stop. Ask human for reso
 *Example:* New experiment shows Device-Id not required; old extracted assertion in `records/index/` claims it is. Increment `n_count` on the new assertion only; set `superseded_by` on the old.
 
 **Out of scope:** Docs (escape hatch, external to loop) and observations (state snapshots, atomic budget counters — no drift, only updates).
+
+### Enforcement Status (post-Plan-5)
+
+Scopes A, B, C are now mechanically enforced by `tools/extract-index/`:
+
+- **Scope A — frozen-claim drift:** `frozen-claim-drift.js` hard-stops when a new extracted assertion's topic-tag (`X-required` / `X-not-required`) opposes a frozen claim on the same `(capability, dimension)`. Escape hatch: the operator adds `SUPERSEDED` or the new assertion-id to the claim's `notes` field. Free-form contradiction detection remains operator judgment.
+- **Scope B — evidence-to-extraction fidelity:** `evidence_immutable_hash` is computed at extraction and compared on every re-run. Any post-extraction edit forces re-extraction.
+- **Scope C — assertion supersession:** disproof notes drive supersession write-back; assertion-text change without a disproof note is a hard-stop. `n_count` increments on aggregation; `supersedes` / `superseded_by` are written mechanically (never hand-edited).
 
 ## Worked Example: vnstock-403 Migration (Action Point)
 
