@@ -13,13 +13,15 @@
     "verify:claim": "node tools/claim-verification/verify-claim.js",
     "generate:docs": "node tools/generate-docs/generate-docs.js",
     "list:verified": "bash tools/list-verified/list-verified.sh",
-    "test": "node --test tools/**/*.test.js",
+    "test": "node --test 'tools/**/*.test.js'",
     "check:budget": "node tools/check-budget/check-budget.js",
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
-    "validate:drift": "node tools/validate-capability-product-drift/capability-product-drift.js",
-    "check": "pnpm validate:records && pnpm test",
+    "generate:capabilities": "node tools/generate-capabilities/generate-capabilities.js",
+    "check": "pnpm generate:capabilities --dry-run && pnpm validate:records && pnpm test",
     "gate:server": "node tools/constraint-gate/server.js",
-    "extract:index": "node tools/extract-index/extract-index.js"
+    "extract:index": "node tools/extract-index/extract-index.js",
+    "list:probes": "node tools/list-probes/list-probes.js",
+    "search:index": "node tools/search-index/search-index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
