@@ -1,7 +1,7 @@
 ---
 title: "Capability Generation via Surface Adapters"
 description: "Replace hand-written capability records with runtime-derived generation using per-surface adapters. Build generation CLI, cut over from drift validator, update schema to v2.0 minimal format, add lookup helpers, and update all docs."
-status: pending
+status: completed
 priority: P1
 effort: "8h"
 branch: "main"
@@ -25,12 +25,12 @@ The old drift validator (`tools/validate-capability-product-drift/`) is deleted 
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Surface Adapters + Generation CLI](./phase-01-surface-adapters-generation-cli.md) | Pending |
-| 2 | [Schema v1.1 + Record Regeneration](./phase-02-schema-v1-1-record-regeneration.md) | Pending |
-| 3 | [Cut-over + Cleanup](./phase-03-cut-over-cleanup.md) | Pending |
-| 4 | [CLI Helpers](./phase-04-cli-helpers.md) | Pending |
-| 5 | [Schema v2.0 + Docs + Skill Refs](./phase-05-schema-v2-0-docs-skill-refs.md) | Pending |
-| 6 | [Integration Tests + Final Validation](./phase-06-integration-tests-final-validation.md) | Pending |
+| 1 | [Surface Adapters + Generation CLI](./phase-01-surface-adapters-generation-cli.md) | Completed |
+| 2 | [Schema v1.1 + Record Regeneration](./phase-02-schema-v1-1-record-regeneration.md) | Completed |
+| 3 | [Cut-over + Cleanup](./phase-03-cut-over-cleanup.md) | Completed |
+| 4 | [CLI Helpers](./phase-04-cli-helpers.md) | Completed |
+| 5 | [Schema v2.0 + Docs + Skill Refs](./phase-05-schema-v2-0-docs-skill-refs.md) | Completed |
+| 6 | [Integration Tests + Final Validation](./phase-06-integration-tests-final-validation.md) | Completed |
 
 ## Cross-Plan Dependencies
 
@@ -59,12 +59,12 @@ The old drift validator (`tools/validate-capability-product-drift/`) is deleted 
 
 ## Success Criteria (Whole Plan)
 
-- [ ] `pnpm generate:capabilities` produces correct YAML for both FastAPI and TanStack surfaces
-- [ ] `pnpm generate:capabilities --dry-run` fails when records differ from generated output
-- [ ] `pnpm check` passes with new pipeline (`generate:capabilities --dry-run && validate:records && test`)
-- [ ] Old drift validator `tools/validate-capability-product-drift/` is deleted
-- [ ] `pnpm validate:records` passes against v1.1 schema with regenerated records
-- [ ] `pnpm validate:records` passes against v2.0 schema after final transition
-- [ ] `pnpm list-probes --stack api` and `pnpm search-index --capability ...` work
-- [ ] All docs updated per brainstorm doc-update table
-- [ ] Skill references updated with Tier 2 Verification Lookup Pattern
+- [x] `pnpm generate:capabilities` produces correct YAML for both FastAPI and TanStack surfaces
+- [x] `pnpm generate:capabilities --dry-run` fails when records differ from generated output
+- [x] `pnpm check` passes with new pipeline (`generate:capabilities --dry-run && validate:records && test`)
+- [x] Old drift validator `tools/validate-capability-product-drift/` is deleted
+- [x] `pnpm validate:records` passes against v1.1 schema with regenerated records
+- [x] `pnpm validate:records` passes against v2.0 schema after final transition
+- [x] `pnpm list-probes --stack api` and `pnpm search-index --capability ...` work
+- [x] All docs updated per brainstorm doc-update table
+- [x] Skill references updated with Tier 2 Verification Lookup Pattern

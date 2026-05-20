@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Integration Tests + Final Validation"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [5]
@@ -55,12 +55,12 @@ CI can run integration tests after unit tests pass.
 5. Fix any red-team findings
 
 ## Success Criteria
-- [ ] Integration tests pass against running FastAPI server
-- [ ] Integration tests pass against actual TanStack router files
-- [ ] `pnpm check` passes end-to-end
-- [ ] Red-team review finds zero unresolved issues
-- [ ] All 6 phase success criteria met
-- [ ] Plan marked complete
+- [x] Integration tests pass against running FastAPI server
+- [x] Integration tests pass against actual TanStack router files
+- [x] `pnpm check` passes end-to-end
+- [x] Red-team review finds zero unresolved issues
+- [x] All 6 phase success criteria met
+- [x] Plan marked complete
 
 ## Risk Assessment
 | Risk | Mitigation |

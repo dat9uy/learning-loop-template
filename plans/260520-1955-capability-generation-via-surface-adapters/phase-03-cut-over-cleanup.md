@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Cut-over + Cleanup"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -38,11 +38,11 @@ Delete the old drift validator entirely. Update `pnpm check` to use `generate:ca
 6. Fix any found references
 
 ## Success Criteria
-- [ ] `tools/validate-capability-product-drift/` does not exist
-- [ ] `tools/generate-openapi/` does not exist
-- [ ] `pnpm check` passes end-to-end
-- [ ] No stale references to deleted tools anywhere in repo
-- [ ] Git diff shows only deletions and script updates
+- [x] `tools/validate-capability-product-drift/` does not exist
+- [x] `tools/generate-openapi/` does not exist
+- [x] `pnpm check` passes end-to-end
+- [x] No stale references to deleted tools anywhere in repo
+- [x] Git diff shows only deletions and script updates
 
 ## Risk Assessment
 | Risk | Mitigation |

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Schema v2.0 + Docs + Skill Refs"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [4]
@@ -64,11 +64,11 @@ maps:
 5. Run `pnpm validate:records && pnpm test` — must pass
 
 ## Success Criteria
-- [ ] v2.0 schema validates regenerated records
-- [ ] `pnpm validate:records` passes with v2.0 schema
-- [ ] All docs listed in severity table are updated
-- [ ] Skill references contain Tier 2 Verification Lookup Pattern with 7-step lookup chain
-- [ ] No stale references to hand-written capability records or drift validator
+- [x] v2.0 schema validates regenerated records
+- [x] `pnpm validate:records` passes with v2.0 schema
+- [x] All docs listed in severity table are updated
+- [x] Skill references contain Tier 2 Verification Lookup Pattern with 7-step lookup chain
+- [x] No stale references to hand-written capability records or drift validator
 
 ## Risk Assessment
 | Risk | Mitigation |

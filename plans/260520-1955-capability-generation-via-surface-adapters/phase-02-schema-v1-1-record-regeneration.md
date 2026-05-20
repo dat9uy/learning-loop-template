@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Schema v1.1 + Record Regeneration"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -41,11 +41,11 @@ Schema v1.1 is a backward-compatible stepping stone. All previously required fie
 6. Keep `schemas/capability-v1.1.schema.json` as a copy during transition window (removed in Phase 5 after v2.0 is stable)
 
 ## Success Criteria
-- [ ] `schemas/capability.schema.json` validates as v1.1
-- [ ] Old hand-written records (if any existed) would still pass v1.1
-- [ ] Regenerated records pass `pnpm validate:records`
-- [ ] Generated records contain only `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source`
-- [ ] `capability-v1.1.schema.json` preserved as transition backup
+- [x] `schemas/capability.schema.json` validates as v1.1
+- [x] Old hand-written records (if any existed) would still pass v1.1
+- [x] Regenerated records pass `pnpm validate:records`
+- [x] Generated records contain only `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source`
+- [x] `capability-v1.1.schema.json` preserved as transition backup
 
 ## Risk Assessment
 | Risk | Mitigation |

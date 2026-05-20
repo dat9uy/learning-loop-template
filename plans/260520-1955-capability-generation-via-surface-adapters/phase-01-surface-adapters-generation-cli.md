@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Surface Adapters + Generation CLI"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: []
@@ -109,11 +109,11 @@ Lazy-loaded dynamic imports. Adapters do not define their own surface type.
 8. Run tests; fix failures
 
 ## Success Criteria
-- [ ] `pnpm test` passes for all new adapter tests
-- [ ] FastAPI adapter produces 3 entries from current OpenAPI spec
-- [ ] TanStack adapter produces 2 entries from current route files
-- [ ] `--dry-run` detects when a record would change (YAML-aware comparison, not text diff)
-- [ ] `--dry-run` exits 0 when records are up-to-date
+- [x] `pnpm test` passes for all new adapter tests
+- [x] FastAPI adapter produces 3 entries from current OpenAPI spec
+- [x] TanStack adapter produces 2 entries from current route files
+- [x] `--dry-run` detects when a record would change (YAML-aware comparison, not text diff)
+- [x] `--dry-run` exits 0 when records are up-to-date
 
 ## Risk Assessment
 | Risk | Mitigation |

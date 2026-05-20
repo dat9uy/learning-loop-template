@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "CLI Helpers"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [3]
@@ -55,10 +55,10 @@ Prints matching record IDs. With `--json`, prints full record metadata.
 5. Run tests; fix failures
 
 ## Success Criteria
-- [ ] `pnpm list-probes --stack api` returns `product/api/capabilities/vnstock-data/capability-01-reference.py`
-- [ ] `pnpm search-index --capability capability-fastapi-reference-rest` returns matching index entries
-- [ ] Both tools support `--json` flag
-- [ ] Tests pass
+- [x] `pnpm list-probes --stack api` returns `product/api/capabilities/vnstock-data/capability-01-reference.py`
+- [x] `pnpm search-index --capability capability-fastapi-reference-rest` returns matching index entries
+- [x] Both tools support `--json` flag
+- [x] Tests pass
 
 ## Risk Assessment
 | Risk | Mitigation |
