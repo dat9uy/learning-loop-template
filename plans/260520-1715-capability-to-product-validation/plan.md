@@ -1,7 +1,7 @@
 ---
 title: "Capability-to-Product Validation Tool"
 description: "Build surface-based drift validator using OpenAPI for HTTP/REST and regex for TanStack, with extensible parser registry"
-status: pending
+status: completed
 priority: P2
 effort: "5h"
 branch: "main"
@@ -33,9 +33,9 @@ This design makes adding future surfaces (gRPC, GraphQL, Django REST) a matter o
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Research & Design](./phase-01-research-design.md) | Pending |
-| 2 | [Implement Validator](./phase-02-implement-validator.md) | Pending |
-| 3 | [Tests & Integration](./phase-03-tests-integration.md) | Pending |
+| 1 | [Research & Design](./phase-01-research-design.md) | Completed |
+| 2 | [Implement Validator](./phase-02-implement-validator.md) | Completed |
+| 3 | [Tests & Integration](./phase-03-tests-integration.md) | Completed |
 
 ## Dependencies
 

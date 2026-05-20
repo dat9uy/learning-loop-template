@@ -207,7 +207,7 @@ The validation interview (2026-05-20) confirmed the original design and expanded
 |------------|--------|------|------|
 | A — Re-ground capability records on index entries | Completed | 2026-05-20 | `plans/260520-1650-reground-capability-records-rename-runtime-probe/phase-01-re-ground-capability-records-on-index-entries.md` |
 | B — Rename capability script to runtime probe in docs | Completed | 2026-05-20 | `plans/260520-1650-reground-capability-records-rename-runtime-probe/phase-02-rename-capability-script-to-runtime-probe-in-docs.md` |
-| C — Verify product code against capability records | Planned | 2026-05-20 | `plans/260520-1715-capability-to-product-validation/` |
+| C — Verify product code against capability records | Completed | 2026-05-20 | `plans/260520-1715-capability-to-product-validation/` |
 
-**Validation:** 10/10 claims verified, 0 failures. Plans A+B implemented 2026-05-20.
-**Next step:** Implement Workstream C via `/ck:cook plans/260520-1715-capability-to-product-validation`. Architecture: surface-based parser registry, OpenAPI generation for HTTP/REST, regex for TanStack, standalone `validate:drift` script.
+**Validation:** 10/10 claims verified, 0 failures. Plans A+B implemented 2026-05-20. Plan C implemented 2026-05-20.
+**Status:** All three workstreams complete. The three-layer capability model is now fully operational with machine-checkable Layer 2→3 drift validation via `pnpm validate:drift`.

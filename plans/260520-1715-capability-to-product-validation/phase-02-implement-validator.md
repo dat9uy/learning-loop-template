@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement Validator"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [1]
@@ -196,13 +196,13 @@ Must pass with zero errors. Existing validation must not regress.
 
 ## Success Criteria
 
-- [ ] `generate-openapi.py` produces valid OpenAPI JSON
-- [ ] `parseOpenApiPaths` extracts all 3 API routes
-- [ ] `parseTanStackRoutes` extracts all 2 web routes
-- [ ] `validateCapabilityProductDrift` returns zero errors for current records + current product code
-- [ ] Synthetic drift test: injecting a fake `route_class` produces exactly one drift error
-- [ ] All new code under 200 lines total
-- [ ] Extensibility documented: code comments explain how to add a new surface
+- [x] `generate-openapi.py` produces valid OpenAPI JSON
+- [x] `parseOpenApiPaths` extracts all 3 API routes
+- [x] `parseTanStackRoutes` extracts all 2 web routes
+- [x] `validateCapabilityProductDrift` returns zero errors for current records + current product code
+- [x] Synthetic drift test: injecting a fake `route_class` produces exactly one drift error
+- [x] All new code under 200 lines total (implementation ~175 lines, tests separate ~95 lines)
+- [x] Extensibility documented: code comments explain how to add a new surface
 
 ## Risk Assessment
 

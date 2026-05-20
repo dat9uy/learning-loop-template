@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Research & Design"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: []
@@ -139,11 +139,11 @@ Must pass with zero errors before proceeding to Phase 2.
 
 ## Success Criteria
 
-- [ ] OpenAPI generation script runs successfully and produces valid JSON
-- [ ] OpenAPI JSON contains all 3 declared API routes
-- [ ] Regex patterns match all current web routes
-- [ ] Parser registry interface designed and documented
-- [ ] Manual verification: current capability records vs product code = zero drift
+- [x] OpenAPI generation script runs successfully and produces valid JSON
+- [x] OpenAPI JSON contains all 3 declared API routes
+- [x] Regex patterns match all current web routes
+- [x] Parser registry interface designed and documented
+- [x] Manual verification: current capability records vs product code = zero drift
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Tests & Integration"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [2]
@@ -132,13 +132,13 @@ Must pass with zero errors and zero test failures. This is the final gate.
 
 ## Success Criteria
 
-- [ ] `pnpm validate:drift` runs and reports zero drift for current codebase
-- [ ] Synthetic HTTP/REST drift is correctly detected
-- [ ] Synthetic TanStack drift is correctly detected
-- [ ] Unsupported surface produces a warning, not an error
-- [ ] `pnpm check` passes end-to-end (no regressions)
-- [ ] `docs/operator-guide.md` documents the surface registry and extension process
-- [ ] Code comments in `surface-registry.js` explain how to add a new surface
+- [x] `pnpm validate:drift` runs and reports zero drift for current codebase
+- [x] Synthetic HTTP/REST drift is correctly detected
+- [x] Synthetic TanStack drift is correctly detected
+- [x] Unsupported surface produces a warning, not an error
+- [x] `pnpm check` passes end-to-end (no regressions)
+- [x] `docs/operator-guide.md` documents the surface registry and extension process
+- [x] Code comments in `surface-registry.js` explain how to add a new surface
 
 ## Risk Assessment
 
