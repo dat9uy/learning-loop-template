@@ -6,7 +6,15 @@
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendFileSync, mkdirSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  statSync,
+  renameSync,
+  readdirSync,
+  unlinkSync,
+  readFileSync,
+} from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -19,7 +27,7 @@ import {
 } from "./gate-logic.js";
 import { readObservations, readBudgets } from "./file-readers.js";
 import { writeObservation, updateObservation } from "./observation-writer.js";
-import { readFileSync } from "node:fs";
+import { evaluateWorkflows, triggerWorkflow, validateCommand } from "./workflow-runner.js";
 
 /**
  * Resolve project root. Override via GATE_ROOT env var for testing.
@@ -83,6 +91,38 @@ function checkObservationStaleness(observations, root) {
   return { stale: false };
 }
 
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_LOG_BACKUPS = 5;
+
+/**
+ * Rotate gate-log.jsonl if it exceeds MAX_LOG_SIZE.
+ * Keeps only the MAX_LOG_BACKUPS most recent backups.
+ */
+function rotateGateLog(logDir) {
+  try {
+    const logPath = join(logDir, "gate-log.jsonl");
+    const stats = statSync(logPath);
+    if (stats.size <= MAX_LOG_SIZE) return;
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    renameSync(logPath, join(logDir, `gate-log-${timestamp}.jsonl`));
+
+    const backups = readdirSync(logDir)
+      .filter((f) => f.startsWith("gate-log-") && f.endsWith(".jsonl"))
+      .map((f) => {
+        const s = statSync(join(logDir, f));
+        return { name: f, mtime: s.mtime };
+      })
+      .sort((a, b) => b.mtime - a.mtime);
+
+    for (const b of backups.slice(MAX_LOG_BACKUPS)) {
+      unlinkSync(join(logDir, b.name));
+    }
+  } catch {
+    // rotation failure never blocks gate decision
+  }
+}
+
 /**
  * Append a JSONL entry to the gate log. Never blocks on failure.
  */
@@ -90,6 +130,7 @@ function appendGateLog(root, entry) {
   try {
     const logDir = join(root, ".claude", "coordination");
     mkdirSync(logDir, { recursive: true });
+    rotateGateLog(logDir);
     appendFileSync(join(logDir, "gate-log.jsonl"), JSON.stringify(entry) + "\n");
   } catch {
     // log failure never blocks gate decision
@@ -254,6 +295,97 @@ server.tool(
       observation_id,
       status,
       reason: reason || undefined,
+      ...result,
+    });
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+server.tool(
+  "notify_artifact_change",
+  "Notify that an artifact file has changed. Logs the change, checks observation staleness, and evaluates triggered workflows.",
+  {
+    path: z.string().describe("File path that changed"),
+    change_type: z.enum(["created", "updated", "deleted"]).describe("Type of change"),
+  },
+  async ({ path, change_type }) => {
+    const root = resolveRoot();
+    const marker = readLastOperatorMessage(root);
+
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      tool: "notify_artifact_change",
+      path,
+      change_type,
+      state_change_detected: !!marker,
+      triggered_workflows: [],
+    };
+
+    // Re-check staleness for write-path observations matching the changed path
+    let staleEscalation = false;
+    const observations = readObservations(root);
+    const matchingObs = observations.filter(
+      (obs) =>
+        obs.status === "active" &&
+        obs.constraint_type === "write-path" &&
+        (obs.constraint === "records-evidence" || obs.constraint?.startsWith("records-evidence"))
+    );
+    if (matchingObs.length > 0) {
+      const staleness = checkObservationStaleness(matchingObs, root);
+      if (staleness.stale) {
+        staleEscalation = true;
+      }
+    }
+
+    // Evaluate workflows
+    const triggered = evaluateWorkflows(path, change_type, root);
+    const validTriggered = triggered.filter((t) => t.commands);
+    const workflowNames = validTriggered.map((t) => t.name);
+    logEntry.triggered_workflows = workflowNames;
+
+    // Fire-and-forget triggered workflows
+    for (const t of validTriggered) {
+      triggerWorkflow(t.name, { path }, root).catch(() => {
+        // fire-and-forget: ignore spawn errors
+      });
+    }
+
+    appendGateLog(root, logEntry);
+
+    const result = {
+      logged: true,
+      triggered_workflows: workflowNames,
+    };
+    if (staleEscalation) {
+      result.stale_escalation = true;
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }],
+    };
+  }
+);
+
+server.tool(
+  "trigger_workflow",
+  "Trigger a workflow by name. Validates commands against allowlist before spawning.",
+  {
+    name: z.string().describe("Workflow name"),
+    context: z.object({}).passthrough().optional().describe("Arbitrary context passed to workflow"),
+  },
+  async ({ name, context }) => {
+    const root = resolveRoot();
+    const result = await triggerWorkflow(name, context || {}, root);
+
+    console.error(`gate: trigger_workflow ${name} → ${result.triggered ? "triggered" : result.reason || result.registry_error}`);
+
+    appendGateLog(root, {
+      timestamp: new Date().toISOString(),
+      tool: "trigger_workflow",
+      workflow: name,
       ...result,
     });
 

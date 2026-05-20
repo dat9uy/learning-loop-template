@@ -3,36 +3,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { globMatch, readObservations, checkObservationStaleness, pathMatchesObservation } = require('./lib/gate-utils.cjs');
+const { globMatch, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot } = require('./lib/gate-utils.cjs');
 
-const DOMAIN_RULES = [
-  { pattern: 'docs/**',           decision: 'allow' },
-  { pattern: 'plans/**',          decision: 'allow' },
-  { pattern: '.claude/**',        decision: 'allow' },
-  { pattern: 'records/observations/**', decision: 'block', reason: 'Observation files affect bash gate decisions. Explicit approval required.' },
-  { pattern: 'records/evidence/**',     decision: 'block', reason: 'Evidence files affect validation. Explicit approval required.' },
-  { pattern: 'records/**',        decision: 'allow' },
-  { pattern: 'evidence/**',       decision: 'allow' },
-  { pattern: '**/node_modules/**', decision: 'block', reason: 'Build artifacts are not git-tracked' },
-  { pattern: '**/dist/**',        decision: 'block', reason: 'Build artifacts are not git-tracked' },
-  { pattern: '**/build/**',       decision: 'block', reason: 'Build artifacts are not git-tracked' },
-  { pattern: 'product/**',        decision: 'allow' },
-  { pattern: 'tools/**',          decision: 'allow' },
-  { pattern: 'schemas/**',        decision: 'block', reason: 'Schema changes require validation. Run pnpm validate:records first, then approve.' },
-  { pattern: '*',                 decision: 'allow' },
-  { pattern: '**',                decision: 'block', reason: 'Unknown path. Only write to known domains.' },
-];
-
-function findProjectRoot() {
-  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
-  let dir = path.join(__dirname, '..', '..', '..');
-  while (!fs.existsSync(path.join(dir, 'records'))) {
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return dir;
-}
+// Rollback: cp write-coordination-gate.cjs.bak write-coordination-gate.cjs
 
 function toRelative(filePath) {
   if (!path.isAbsolute(filePath)) return filePath;
@@ -61,19 +34,40 @@ function main() {
 
   const relPath = path.normalize(toRelative(filePath));
 
-  // Unconditional block for observation files — only MCP server writes here
+  // Unconditional block for observation files
   if (globMatch('records/observations/**', relPath)) {
-    const output = {
+    console.log(JSON.stringify({
       decision: 'block',
       reason: 'Observation files affect gate decisions. Explicit approval required.',
       file_path: filePath,
       matched_rule: 'records/observations/**',
-    };
-    console.log(JSON.stringify(output));
+    }));
     process.exit(2);
   }
 
-  // Check write-path observations before domain rules (only for paths that could match)
+  // Unconditional block for schemas
+  if (globMatch('schemas/**', relPath)) {
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Schema changes require validation. Run pnpm validate:records first, then approve.',
+      file_path: filePath,
+      matched_rule: 'schemas/**',
+    }));
+    process.exit(2);
+  }
+
+  // Unconditional blocks for build artifacts
+  if (globMatch('**/node_modules/**', relPath) || globMatch('**/dist/**', relPath) || globMatch('**/build/**', relPath)) {
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Build artifacts are not git-tracked',
+      file_path: filePath,
+      matched_rule: '**/node_modules/**',
+    }));
+    process.exit(2);
+  }
+
+  // Evidence write-path check: active observation + staleness check
   if (globMatch('records/evidence/**', relPath)) {
     const root = findProjectRoot();
     const obsDir = path.join(root, 'records', 'observations');
@@ -84,35 +78,46 @@ function main() {
     if (matchingObs) {
       const staleness = checkObservationStaleness([matchingObs], coordDir);
       if (staleness.stale) {
-        const output = {
+        console.log(JSON.stringify({
           decision: 'escalate',
           reason: staleness.reason,
           file_path: filePath,
           observation_id: staleness.observation_id,
           inbound_gate: true,
-        };
-        console.log(JSON.stringify(output));
+        }));
         process.exit(2);
       }
       process.exit(0);
     }
+
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Evidence files affect validation. Explicit approval required.',
+      file_path: filePath,
+      matched_rule: 'records/evidence/**',
+    }));
+    process.exit(2);
   }
 
-  for (const rule of DOMAIN_RULES) {
-    if (globMatch(rule.pattern, relPath)) {
-      if (rule.decision === 'allow') {
-        process.exit(0);
-      } else {
-        const output = {
-          decision: 'block',
-          reason: rule.reason || `Write to "${relPath}" is forbidden by domain rule "${rule.pattern}".`,
-          file_path: filePath,
-          matched_rule: rule.pattern,
-        };
-        console.log(JSON.stringify(output));
-        process.exit(2);
-      }
-    }
+  // Allowed domains
+  if (globMatch('docs/**', relPath) || globMatch('plans/**', relPath) || globMatch('.claude/**', relPath) || globMatch('product/**', relPath) || globMatch('tools/**', relPath)) {
+    process.exit(0);
+  }
+
+  // Single-segment unknown files -> allow
+  if (globMatch('*', relPath)) {
+    process.exit(0);
+  }
+
+  // Multi-segment catch-all -> block
+  if (globMatch('**', relPath)) {
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Unknown path. Only write to known domains.',
+      file_path: filePath,
+      matched_rule: '**',
+    }));
+    process.exit(2);
   }
 
   process.exit(0);

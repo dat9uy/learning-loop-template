@@ -133,7 +133,7 @@ External systems with irreversible operations (vendor APIs with device slots, pr
 
 ## Write Domain Rules
 
-The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) enforces path-based rules for all Edit and Write tool calls. Rules are evaluated in order; first match wins.
+The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) is a minimal safety net (~90 lines). It enforces hard blocks only; all policy logic (domain rules, budget checks, path-specific reasoning) has moved to the MCP server. Agents call `check_gate` via MCP for policy decisions on non-critical paths.
 
 ### Approving File Creation in records/
 
@@ -164,11 +164,8 @@ Without a fresh `write-path` observation, writes to `records/evidence/**` are bl
 | `docs/**` | Documentation — git-tracked, reversible |
 | `plans/**` | Plans — git-tracked, reversible |
 | `.claude/**` | Claude system config — self-modifying |
-| `records/**` (except observations/evidence subdirs) | General records — git-tracked |
-| `evidence/**` | Evidence — git-tracked |
-| `product/**` | Product source code |
 | `tools/**` | Tool source code |
-| `*` (root files) | Root project files (README.md, package.json, etc.) |
+| `product/**` | Product source code |
 
 ### Blocked Paths
 
@@ -176,20 +173,60 @@ Without a fresh `write-path` observation, writes to `records/evidence/**` are bl
 |------|--------|
 | `records/observations/**` | Affects bash gate decisions — explicit approval required |
 | `records/evidence/**` | Affects validation — explicit approval required |
+| `schemas/**` | Schema changes require validation — run `pnpm validate:records` first |
 | `**/node_modules/**` | Build artifacts — not git-tracked |
 | `**/dist/**` | Build artifacts — not git-tracked |
 | `**/build/**` | Build artifacts — not git-tracked |
-| `schemas/**` | Schema changes require validation — run `pnpm validate:records` first |
 | `**` (catch-all) | Unknown path — only write to known domains |
 
 ### Bash Gate
 
 The bash gate (`.claude/coordination/hooks/bash-coordination-gate.cjs`) blocks Bash commands that match constraint patterns without active observations or with exhausted budgets. This is the single safety layer for external-system commands.
 
+### Rollback
+
+To restore the full policy hook, run:
+```bash
+cp .claude/coordination/hooks/write-coordination-gate.cjs.bak .claude/coordination/hooks/write-coordination-gate.cjs
+```
+
 ### Detailed References
 
 - Hooks: `.claude/coordination/hooks/`
 - Tests: `.claude/coordination/__tests__/`
+
+## Workflow Auto-Trigger
+
+After writing evidence files, the agent calls `notify_artifact_change` via MCP. The tool logs the change, checks for matching workflows in `.claude/coordination/workflows.json`, and auto-triggers them.
+
+The `evidence-changed` workflow auto-triggers `extract-index` then `validate-records` whenever a file under `records/evidence/**` is created or updated.
+
+Workflows run async (fire-and-forget). The agent continues immediately after triggering. Check `.claude/coordination/workflow-log.jsonl` for success/failure entries and `.claude/coordination/.workflow-failures` for failure markers.
+
+## Adding Workflows
+
+Edit `.claude/coordination/workflows.json` to register new artifact-driven workflows.
+
+- Commands must be arrays, not shell strings
+- Only `node` with a script path under `tools/` is allowed
+- Example:
+
+```json
+{
+  "workflows": {
+    "evidence-changed": {
+      "triggers": ["records/evidence/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/extract-index/extract-index.js"],
+        ["node", "tools/validate-records/validate-records.js"]
+      ]
+    }
+  }
+}
+```
+
+**Warning:** An `observation-changed` workflow is NOT possible because `records/observations/**` is blocked by the hook. The agent cannot Edit or Write observation files directly; it must use the `record_observation` or `update_observation` MCP tools instead.
 
 ## Runtime Validation Request Protocol
 

@@ -12,16 +12,24 @@ Operator Message          Agent Action (Bash/Edit/Write)
        v                           v
 [UserPromptSubmit]          [PreToolUse]
        |                           |
- inbound-state-gate        bash-coordination-gate
-       |                    write-coordination-gate
+ inbound-state-gate        minimal-write-gate
+       |                    bash-coordination-gate
        |                           |
        v                           v
 .last-operator-message     constraint-gate MCP server
+       |                    (check_gate, record_observation,
+       |                     update_observation,
+       |                     notify_artifact_change,
+       |                     trigger_workflow)
        |                           |
        +-----------+---------------+
                    |
               observations/
               (YAML records)
+                   |
+              .claude/coordination/
+              workflows.json
+              workflow-log.jsonl
 ```
 
 ### Inbound State Gate
@@ -85,7 +93,7 @@ Always exits with code 0 (soft gate).
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking (exits 2 on escalation/block)
 
-Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate checks file paths against domain rules and `write-path` observations.
+Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate is a minimal safety net (~90 lines) that enforces hard blocks only; all policy logic has moved to the MCP server.
 
 #### Bash Coordination Gate Flow
 
@@ -102,20 +110,33 @@ Outbound gates intercept agent tool usage before execution. The bash gate checks
 
 1. Read tool input from stdin JSON
 2. Skip if tool is not `Edit` or `Write`
-3. Unconditionally block `records/observations/**`
+3. Hard block unconditionally:
+   - `records/observations/**`
+   - `schemas/**`
+   - `node_modules/**`
+   - `dist/**`
+   - `build/**`
+   - Unknown paths (`**` catch-all)
 4. For `records/evidence/**`, check for active `write-path` observation
 5. If observation found, check staleness relative to last operator message
-6. Fresh observation → allow; stale → escalate; none → fall through to domain rules
-7. Apply domain rules for remaining paths
+6. Fresh observation → allow; stale → escalate; none → block
+7. Allow pre-authorized paths: `docs/**`, `plans/**`, `tools/**`, `.claude/**`, `product/**`
+
+All policy logic (domain rules, budget checks, path-specific reasoning) has moved to the MCP server. Agents call `check_gate` via MCP for policy decisions on non-critical paths.
+
+**Rollback:** To restore the full policy hook, run:
+```bash
+cp .claude/coordination/hooks/write-coordination-gate.cjs.bak .claude/coordination/hooks/write-coordination-gate.cjs
+```
 
 #### Write-Path Observations
 
-A new observation type `write-path` unlocks writes to otherwise blocked `records/**` paths:
+A `write-path` observation unlocks writes to otherwise blocked `records/**` paths:
 
 - `constraint_type`: `write-path`
 - `constraint`: `records-evidence` (unblocks `records/evidence/**`)
 
-The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**`. The write gate checks `write-path` observations before applying domain rules. Both gates reuse the same staleness algorithm.
+The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**`. The write gate checks `write-path` observations before applying hard blocks. Both gates reuse the same staleness algorithm.
 
 #### Staleness Algorithm (Outbound)
 
@@ -131,9 +152,9 @@ This algorithm differs from the inbound gate's 30-minute threshold. See Known Is
 
 **File:** `tools/constraint-gate/server.js`
 **Transport:** stdio (MCP protocol)
-**Tools:** `check_gate`, `record_observation`
+**Tools:** `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`
 
-The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol, enabling integration with agent tool systems.
+The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol, enabling integration with agent tool systems. Policy decisions that were previously embedded in the write gate now live here.
 
 #### check_gate
 
@@ -141,7 +162,66 @@ Returns `ok`, `block`, or `escalate` for a given command. Includes `inbound_gate
 
 #### record_observation
 
-Records a constraint observation as a YAML file in `records/observations/`.
+Records a new constraint observation as a YAML file in `records/observations/`.
+
+#### update_observation
+
+Updates an existing observation in `records/observations/` by rewriting the YAML file with new field values.
+
+#### notify_artifact_change
+
+Logs an artifact change to `gate-log.jsonl`, checks observation staleness, and triggers matching workflows from the workflow registry.
+
+#### trigger_workflow
+
+Validates a command against an allowlist and spawns it with isolated stdio. Only `node` with a script path under `tools/` is permitted.
+
+### MCP Workflow Layer
+
+The workflow layer auto-triggers commands when artifacts change.
+
+#### notify_artifact_change(path, change_type)
+
+When an agent writes an evidence file, it calls `notify_artifact_change` via MCP. The tool:
+
+1. Appends a structured log entry to `.claude/coordination/gate-log.jsonl`
+2. Reads `.claude/coordination/workflows.json` to find matching workflows
+3. Checks if the artifact path and change type match any trigger rules
+4. Spawns each matching command via `trigger_workflow`
+
+#### Workflow Registry
+
+`.claude/coordination/workflows.json` maps artifact changes to tool invocations:
+
+```json
+{
+  "workflows": {
+    "evidence-changed": {
+      "triggers": ["records/evidence/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/extract-index/extract-index.js"],
+        ["node", "tools/validate-records/validate-records.js"]
+      ]
+    }
+  }
+}
+```
+
+- Commands are arrays (e.g., `["node", "tools/extract-index/extract-index.js"]`)
+- Allowlist: only `node` with script path under `tools/` is permitted
+- Spawn isolation: `{ stdio: "pipe", detached: true }` — no inherited stdout
+
+#### Workflow Logs
+
+- **Execution log:** `.claude/coordination/workflow-log.jsonl`
+- **Failure marker:** `.claude/coordination/.workflow-failures`
+
+Workflows run async (fire-and-forget). The agent continues immediately after triggering. Check `workflow-log.jsonl` for success/failure entries and `.workflow-failures` for failure markers.
+
+### Log Rotation
+
+`gate-log.jsonl` rotates at 10 MB, keeping 5 backups. Older backups are deleted automatically.
 
 ### Observation Records
 
@@ -212,12 +292,12 @@ State-change patterns are broad. Messages like "the build is broken" trigger det
 **Impact:** Occasional unnecessary context injection.
 **Mitigation:** Questions ending with `?` are already filtered. Further refinement of patterns may be needed.
 
-#### F12: Race Condition
+#### F12: Race Condition — RESOLVED
 
 `fs.writeFileSync` is non-atomic. A partial read during concurrent write causes `JSON.parse` to fail, resulting in `readLastOperatorMessage` returning `null` and the escalation being silently skipped.
 
 **Impact:** Rare missed escalation during concurrent marker writes.
-**Mitigation:** Acceptable for soft gate. Use atomic writes (write to temp + rename) if critical.
+**Resolution (2026-05-21):** Replaced `fs.writeFileSync` with atomic write (write to temp + rename) in `inbound-state-gate.cjs`. No more partial read / JSON.parse failure.
 
 #### Multi-Session Isolation
 

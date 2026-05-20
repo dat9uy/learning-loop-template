@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Workflow Registry and Integration"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [3]

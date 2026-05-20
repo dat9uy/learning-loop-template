@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { findProjectRoot } = require('./lib/gate-utils.cjs');
 
 // --- State-change signal patterns ---
 // Operator messages that indicate external state has changed.
@@ -64,21 +65,6 @@ function readPayload() {
 function detectStateChange(prompt) {
   if (!prompt || typeof prompt !== 'string') return false;
   return STATE_CHANGE_PATTERNS.some(pattern => pattern.test(prompt));
-}
-
-/**
- * Find project root. Walk up from script dir looking for records/.
- * Override via GATE_ROOT env var for testing.
- */
-function findProjectRoot() {
-  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
-  let dir = path.join(__dirname, '..', '..', '..');
-  while (!fs.existsSync(path.join(dir, 'records'))) {
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return dir;
 }
 
 /**
@@ -131,7 +117,9 @@ function writeOperatorMessageMarker(root, prompt) {
       prompt_snippet: prompt.slice(0, 200),
     };
     fs.mkdirSync(path.dirname(markerPath), { recursive: true });
-    fs.writeFileSync(markerPath, JSON.stringify(marker, null, 2));
+    const tmpMarkerPath = markerPath + '.tmp';
+    fs.writeFileSync(tmpMarkerPath, JSON.stringify(marker, null, 2));
+    fs.renameSync(tmpMarkerPath, markerPath);
   } catch {
     // marker write failure never blocks
   }

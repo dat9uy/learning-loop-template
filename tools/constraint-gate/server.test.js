@@ -403,3 +403,164 @@ describe("MCP server update_observation tool", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 });
+
+describe("MCP server notify_artifact_change tool", () => {
+  it("logs to gate-log and returns logged: true", async () => {
+    const tmp = createTmpDir();
+    mkdirSync(join(tmp, ".claude", "coordination"), { recursive: true });
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "notify_artifact_change",
+        arguments: { path: "docs/readme.md", change_type: "updated" },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.logged, true);
+      assert.deepEqual(parsed.triggered_workflows, []);
+    } finally {
+      await transport.close();
+    }
+
+    const logPath = join(tmp, ".claude", "coordination", "gate-log.jsonl");
+    const logs = readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((l) => JSON.parse(l));
+    const entry = logs.find((l) => l.tool === "notify_artifact_change");
+    assert.ok(entry);
+    assert.equal(entry.path, "docs/readme.md");
+    assert.equal(entry.change_type, "updated");
+    assert.equal(entry.state_change_detected, false);
+
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("sets stale_escalation when active write-path observation is stale", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const obsDir = join(tmp, "records", "observations");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(obsDir, { recursive: true });
+
+    const past = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    writeFileSync(
+      join(obsDir, "observation-evidence.yaml"),
+      `id: obs-evidence\nschema_version: "1.0"\ntype: observation\nstatus: active\ncreated_at: ${past}\nupdated_at: ${past}\nconstraint_type: write-path\nconstraint: records-evidence\nnotes: test`
+    );
+    writeFileSync(
+      join(coordDir, ".last-operator-message"),
+      JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: "I updated the evidence" }, null, 2)
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "notify_artifact_change",
+        arguments: { path: "records/evidence/test.md", change_type: "created" },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.logged, true);
+      assert.equal(parsed.stale_escalation, true);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});
+
+describe("MCP server trigger_workflow tool", () => {
+  it("returns triggered: true with pid for allowed workflow", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    const toolsDir = join(tmp, "tools");
+    mkdirSync(coordDir, { recursive: true });
+    mkdirSync(toolsDir, { recursive: true });
+
+    writeFileSync(
+      join(toolsDir, "dummy.js"),
+      "console.log('ok');\n"
+    );
+    writeFileSync(
+      join(coordDir, "workflows.json"),
+      JSON.stringify({
+        workflows: {
+          dummy: {
+            triggers: ["docs/**"],
+            change_types: ["created"],
+            commands: [["node", "tools/dummy.js"]],
+          },
+        },
+      })
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "trigger_workflow",
+        arguments: { name: "dummy" },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.triggered, true);
+      assert.ok(Array.isArray(parsed.results));
+      assert.ok(parsed.results[0].pid > 0);
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("returns not_found for unknown workflow", async () => {
+    const tmp = createTmpDir();
+    mkdirSync(join(tmp, ".claude", "coordination"), { recursive: true });
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "trigger_workflow",
+        arguments: { name: "nonexistent" },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.triggered, false);
+      assert.equal(parsed.reason, "not_found");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("returns not_allowed for disallowed command", async () => {
+    const tmp = createTmpDir();
+    const coordDir = join(tmp, ".claude", "coordination");
+    mkdirSync(coordDir, { recursive: true });
+
+    writeFileSync(
+      join(coordDir, "workflows.json"),
+      JSON.stringify({
+        workflows: {
+          bad: {
+            triggers: [],
+            change_types: [],
+            commands: [["bash", "-c", "echo bad"]],
+          },
+        },
+      })
+    );
+
+    const { client, transport } = await startServer(tmp);
+    try {
+      const result = await client.callTool({
+        name: "trigger_workflow",
+        arguments: { name: "bad" },
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.equal(parsed.triggered, true);
+      assert.ok(Array.isArray(parsed.results));
+      assert.equal(parsed.results[0].triggered, false);
+      assert.equal(parsed.results[0].reason, "not_allowed");
+    } finally {
+      await transport.close();
+    }
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});

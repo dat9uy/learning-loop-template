@@ -5,6 +5,17 @@ const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
 
+function findProjectRoot() {
+  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
+  let dir = path.join(__dirname, '..', '..', '..', '..');
+  while (!fs.existsSync(path.join(dir, 'records'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return dir;
+}
+
 const PATTERNS_RAW = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../../../../tools/constraint-gate/patterns.json'), 'utf8')
 );
@@ -123,4 +134,5 @@ module.exports = {
   checkObservationStaleness,
   globMatch,
   pathMatchesObservation,
+  findProjectRoot,
 };

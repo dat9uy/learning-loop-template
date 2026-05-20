@@ -1,7 +1,7 @@
 ---
 title: "MCP Workflow Layer + Minimal Hook"
 description: "Shrink PreToolUse hooks to hard-blocking safety net; move policy and workflow triggers to constraint-gate MCP server"
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [coordination, mcp, hooks, workflow]

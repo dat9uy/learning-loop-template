@@ -4,20 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { matchConstraintPattern, readObservations, checkObservationStaleness, pathMatchesObservation } = require('./lib/gate-utils.cjs');
-
-function findProjectRoot() {
-  // Walk up from coord dir to find project root (contains records/)
-  // Override via GATE_ROOT env var for testing.
-  if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
-  let dir = path.join(__dirname, '..', '..', '..');
-  while (!fs.existsSync(path.join(dir, 'records'))) {
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return dir;
-}
+const { matchConstraintPattern, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot } = require('./lib/gate-utils.cjs');
 
 const PATH_WRITE_PATTERNS = [
   />{1,2}\s*records\/[^\s;&|]+/,

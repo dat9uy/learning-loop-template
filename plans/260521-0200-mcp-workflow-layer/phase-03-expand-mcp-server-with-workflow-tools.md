@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Expand MCP Server with Workflow Tools"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [2]

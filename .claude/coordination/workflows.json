@@ -1,0 +1,12 @@
+{
+  "workflows": {
+    "evidence-changed": {
+      "triggers": ["records/evidence/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/extract-index/extract-index.js"],
+        ["node", "tools/validate-records/validate-records.js"]
+      ]
+    }
+  }
+}
