@@ -166,13 +166,6 @@ export function updateObservation({ root, observation_id, status, reason }) {
   const now = new Date();
   const updatedAt = now.toISOString();
 
-  // Bounds-check updated_at: reject if the generated timestamp is older than created_at
-  const updatedTime = now.getTime();
-  const createdTime = new Date(targetData.created_at).getTime();
-  if (!isNaN(createdTime) && updatedTime < createdTime) {
-    return { updated: false, reason: "timestamp_out_of_bounds" };
-  }
-
   // Mutate only whitelisted fields
   const updated = {
     ...targetData,
