@@ -14,6 +14,22 @@ The redesigns already shipped point this way. Atomicity (machine-extracted index
 
 Autonomy is incremental. Each future plan moves one bridge from human-driven to machine-driven. There is no date and no flag-day. The system gets less human-paced one mechanism at a time.
 
+## Milestone: Observation-Driven Gate Enforcement
+
+Crossed 2026-05-20. The constraint enforcement layer evolved from hardcoded rules to stateful observation-driven gates.
+
+Before this milestone, the write gate blocked paths mechanically (`records/evidence/**`) with no override mechanism. Operator approval was conversational — the agent asked, the operator said yes, the agent tried again, the gate blocked again. The agent fell back to `Bash` heredocs, bypassing the gate entirely.
+
+After this milestone, all `records/**` writes are blocked by default. The write gate reads `write-path` observations and uses the same staleness logic (`checkObservationStaleness`) as the bash gate. Operator approval is recorded via the constraint-gate MCP server as an observation YAML. The gate reads that observation on the next tool call and allows the write. The bash gate also checks path-write patterns, closing the heredoc bypass.
+
+What changed:
+- **Approval became mechanical.** Conversational yes/no is not enough. The MCP server must record an observation.
+- **Gates became stateful.** They read `records/observations/` on every tool call, same as the bash gate reads constraint observations.
+- **The loop became self-referential.** The loop's state machine (observations) controls the loop's own execution gates.
+- **Staleness is unified.** The inbound gate's `.last-operator-message` marker invalidates observations for both bash constraints and write paths.
+
+This milestone is load-bearing for autonomy. A loop that cannot control its own execution boundaries cannot safely run unsupervised experiments. Observation-driven gates make the enforcement layer programmable by the operator rather than hardcoded by the system designer.
+
 ## The Four Bridges
 
 Each bridge is work that does not exist yet. The current system stops at the first bridge.

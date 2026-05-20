@@ -67,6 +67,18 @@ Agents read observations and budgets. They do not write them. Only the operator 
 
 This separation is deliberate. An agent that could update its own budget would have no external constraint. The operator is the sole source of truth for mutable system state.
 
+### Observations Control the Gates
+
+Observations are no longer only remembered facts. They are permission signals.
+
+The constraint enforcement layer — write gate, bash gate — reads active observations to make allow or block decisions. A `write-path` observation with `constraint: records-evidence` unblocks `Write` calls to `records/evidence/**`. A `sudo` observation unblocks `sudo` commands in `Bash`. No observation, no action.
+
+This makes the loop self-referential. The loop's state machine (observations) controls the loop's execution gates. Operator approval is not a conversational nicety. It is a mechanical state transition: approval is recorded as an observation, the observation is read by the gate, the gate permits the action.
+
+The MCP server is the interface between operator intent and gate state. The operator says yes; the agent calls `record_observation`; the MCP server writes YAML to `records/observations/`; the gate reads that YAML on the next tool call. The conversation is ephemeral. The observation is durable. The gate is stateless and reads fresh state every time.
+
+Conversational approval without an observation is a false promise. The gate cannot see the conversation. Only the observation matters.
+
 ## Governance Model: Two Tiers
 
 The learning loop is a governance layer for external boundaries. It is not a general decision-making system for all code changes.
