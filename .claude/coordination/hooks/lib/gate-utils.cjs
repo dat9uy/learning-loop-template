@@ -60,6 +60,10 @@ function globMatch(pattern, filePath) {
 
 const MARKER_TTL_MS = 30 * 60 * 1000;
 
+const WRITE_PATH_PATTERNS = {
+  'records-evidence': 'records/evidence/**',
+};
+
 function readLastOperatorMessage(coordDir) {
   const markerPath = process.env.GATE_MARKER_PATH || path.join(coordDir, '.last-operator-message');
   try {
@@ -102,6 +106,15 @@ function checkObservationStaleness(observations, coordDir) {
   return { stale: false };
 }
 
+function pathMatchesObservation(observation, filePath) {
+  if (observation.constraint_type !== 'write-path') return false;
+  if (observation.status !== 'active') return false;
+  if (globMatch('records/observations/**', filePath)) return false;
+  const pattern = WRITE_PATH_PATTERNS[observation.constraint];
+  if (!pattern) return false;
+  return globMatch(pattern, filePath);
+}
+
 module.exports = {
   CONSTRAINT_PATTERNS,
   matchConstraintPattern,
@@ -109,4 +122,5 @@ module.exports = {
   readLastOperatorMessage,
   checkObservationStaleness,
   globMatch,
+  pathMatchesObservation,
 };

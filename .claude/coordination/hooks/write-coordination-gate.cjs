@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { globMatch } = require('./lib/gate-utils.cjs');
+const { globMatch, readObservations, checkObservationStaleness, pathMatchesObservation } = require('./lib/gate-utils.cjs');
 
 const DOMAIN_RULES = [
   { pattern: 'docs/**',           decision: 'allow' },
@@ -59,7 +59,44 @@ function main() {
     process.exit(0);
   }
 
-  const relPath = toRelative(filePath);
+  const relPath = path.normalize(toRelative(filePath));
+
+  // Unconditional block for observation files — only MCP server writes here
+  if (globMatch('records/observations/**', relPath)) {
+    const output = {
+      decision: 'block',
+      reason: 'Observation files affect gate decisions. Explicit approval required.',
+      file_path: filePath,
+      matched_rule: 'records/observations/**',
+    };
+    console.log(JSON.stringify(output));
+    process.exit(2);
+  }
+
+  // Check write-path observations before domain rules (only for paths that could match)
+  if (globMatch('records/evidence/**', relPath)) {
+    const root = findProjectRoot();
+    const obsDir = path.join(root, 'records', 'observations');
+    const coordDir = path.join(__dirname, '..');
+    const observations = readObservations(obsDir);
+    const matchingObs = observations.find(obs => pathMatchesObservation(obs, relPath));
+
+    if (matchingObs) {
+      const staleness = checkObservationStaleness([matchingObs], coordDir);
+      if (staleness.stale) {
+        const output = {
+          decision: 'escalate',
+          reason: staleness.reason,
+          file_path: filePath,
+          observation_id: staleness.observation_id,
+          inbound_gate: true,
+        };
+        console.log(JSON.stringify(output));
+        process.exit(2);
+      }
+      process.exit(0);
+    }
+  }
 
   for (const rule of DOMAIN_RULES) {
     if (globMatch(rule.pattern, relPath)) {

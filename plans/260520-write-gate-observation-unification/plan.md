@@ -1,7 +1,7 @@
 ---
 title: "Write Gate Observation Unification"
 description: "Close write-gate approval UX gap by reusing observation/staleness infrastructure. Teach write gate and bash gate to check write-path observations before blocking records/** file creation."
-status: planned
+status: completed
 priority: P1
 branch: "main"
 tags: [coordination, gate, observation, records]
@@ -29,11 +29,11 @@ This plan unifies the write gate and bash gate with the existing observation/sta
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Update Gate Utils](./phase-01-update-gate-utils.md) | Pending |
-| 2 | [Update Write Gate](./phase-02-update-write-gate.md) | Pending |
-| 3 | [Update Bash Gate](./phase-03-update-bash-gate.md) | Pending |
-| 4 | [Update Tests](./phase-04-update-tests.md) | Pending |
-| 5 | [Update Docs](./phase-05-update-docs.md) | Pending |
+| 1 | [Update Gate Utils](./phase-01-update-gate-utils.md) | Completed |
+| 2 | [Update Write Gate](./phase-02-update-write-gate.md) | Completed |
+| 3 | [Update Bash Gate](./phase-03-update-bash-gate.md) | Completed |
+| 4 | [Update Tests](./phase-04-update-tests.md) | Completed |
+| 5 | [Update Docs](./phase-05-update-docs.md) | Completed |
 
 ## Dependencies
 
@@ -87,15 +87,15 @@ This plan unifies the write gate and bash gate with the existing observation/sta
 
 ## Success Criteria (Whole Plan)
 
-- [ ] Write to `records/evidence/**` without observation → blocked
-- [ ] Write to `records/evidence/**` with fresh observation → allowed
-- [ ] Write to `records/evidence/**` with stale observation → blocked
-- [ ] Bash heredoc to `records/evidence/**` without observation → blocked
-- [ ] Bash heredoc to `records/evidence/**` with fresh observation → allowed
-- [ ] MCP server can still write observations to `records/observations/` freely
-- [ ] All existing tests pass after changes
-- [ ] New tests cover observation-based allow and staleness-based block for both gates
-- [ ] MCP `check_gate` with `file_path` validates write-path observations correctly
+- [x] Write to `records/evidence/**` without observation → blocked
+- [x] Write to `records/evidence/**` with fresh observation → allowed
+- [x] Write to `records/evidence/**` with stale observation → blocked
+- [x] Bash heredoc to `records/evidence/**` without observation → blocked
+- [x] Bash heredoc to `records/evidence/**` with fresh observation → allowed
+- [x] MCP server can still write observations to `records/observations/` freely
+- [x] All existing tests pass after changes
+- [x] New tests cover observation-based allow and staleness-based block for both gates
+- [x] MCP `check_gate` with `file_path` validates write-path observations correctly
 
 ## Validation Log
 

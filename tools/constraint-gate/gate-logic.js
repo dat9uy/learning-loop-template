@@ -4,7 +4,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,6 +13,29 @@ const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "
 export const CONSTRAINT_PATTERNS = Object.fromEntries(
   Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
 );
+
+const WRITE_PATH_PATTERNS = {
+  'records-evidence': 'records/evidence/**',
+};
+
+function globMatch(pattern, filePath) {
+  const regexStr = pattern
+    .replace(/\./g, '\\.')
+    .replace(/\*\*/g, '⟨GLOBSTAR⟩')
+    .replace(/\*/g, '[^/]*')
+    .replace(/⟨GLOBSTAR⟩/g, '.*');
+  const regex = new RegExp(`^${regexStr}$`);
+  return regex.test(filePath);
+}
+
+export function pathMatchesObservation(observation, filePath) {
+  if (observation.constraint_type !== 'write-path') return false;
+  if (observation.status !== 'active') return false;
+  if (globMatch('records/observations/**', filePath)) return false;
+  const pattern = WRITE_PATH_PATTERNS[observation.constraint];
+  if (!pattern) return false;
+  return globMatch(pattern, filePath);
+}
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
 
@@ -112,5 +135,48 @@ export function makeGateDecision(constraintMatch, observationStatus, budgetStatu
     };
   }
 
+  return { decision: "ok" };
+}
+
+/**
+ * Evaluate a file path against write-path observations.
+ * Returns { decision: "ok" | "block" | "escalate", ... }.
+ */
+export function evaluateWritePath(filePath, observations, checkStalenessFn) {
+  if (!filePath || typeof filePath !== "string") {
+    return { decision: "ok" };
+  }
+  const normalized = normalize(filePath.replace(/^\.\//, ""));
+
+  if (globMatch("records/observations/**", normalized)) {
+    return {
+      decision: "block",
+      reason: "records/observations/** is blocked unconditionally",
+      hard_block: true,
+    };
+  }
+
+  if (globMatch("records/evidence/**", normalized)) {
+    const matchingObs = observations.find((obs) => pathMatchesObservation(obs, normalized));
+    if (!matchingObs) {
+      return {
+        decision: "block",
+        observation_required: true,
+        constraint_type: "write-path",
+      };
+    }
+    const staleness = checkStalenessFn ? checkStalenessFn([matchingObs]) : { stale: false };
+    if (staleness.stale) {
+      return {
+        decision: "escalate",
+        reason: staleness.reason,
+        observation_id: staleness.observation_id,
+        inbound_gate: true,
+      };
+    }
+    return { decision: "ok" };
+  }
+
+  // Other paths (records/claims/**, docs/**, etc.) → ok
   return { decision: "ok" };
 }

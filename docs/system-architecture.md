@@ -85,17 +85,37 @@ Always exits with code 0 (soft gate).
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking (exits 2 on escalation/block)
 
-Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, and observation staleness. The write gate checks file paths against domain rules.
+Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate checks file paths against domain rules and `write-path` observations.
 
 #### Bash Coordination Gate Flow
 
 1. Read tool input from stdin JSON
 2. Skip if tool is not `Bash`
 3. Match command against constraint patterns
-4. Check resource budgets (global)
-5. Check for active observation matching constraint
-6. Check observation staleness relative to last operator message
-7. Escalate, block, or allow
+4. Detect file writes to `records/**` via redirects (`>`, `>>`), heredocs (`<<`), and `tee`
+5. Check resource budgets (global)
+6. Check for active observation matching constraint or write-path
+7. Check observation staleness relative to last operator message
+8. Escalate, block, or allow
+
+#### Write Coordination Gate Flow
+
+1. Read tool input from stdin JSON
+2. Skip if tool is not `Edit` or `Write`
+3. Unconditionally block `records/observations/**`
+4. For `records/evidence/**`, check for active `write-path` observation
+5. If observation found, check staleness relative to last operator message
+6. Fresh observation → allow; stale → escalate; none → fall through to domain rules
+7. Apply domain rules for remaining paths
+
+#### Write-Path Observations
+
+A new observation type `write-path` unlocks writes to otherwise blocked `records/**` paths:
+
+- `constraint_type`: `write-path`
+- `constraint`: `records-evidence` (unblocks `records/evidence/**`)
+
+The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**`. The write gate checks `write-path` observations before applying domain rules. Both gates reuse the same staleness algorithm.
 
 #### Staleness Algorithm (Outbound)
 

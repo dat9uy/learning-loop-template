@@ -14,6 +14,8 @@
       "type": "array",
       "items": { "type": "string", "pattern": "^(local|record|legacy):.+" }
     },
+    "constraint_type": { "type": "string" },
+    "constraint": { "type": "string" },
     "notes": { "type": "string" }
   }
 }

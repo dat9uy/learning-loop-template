@@ -111,3 +111,35 @@ describe('readLastOperatorMessage TTL', () => {
     }
   });
 });
+
+describe('pathMatchesObservation', () => {
+  it('matches records-evidence to records/evidence/foo.md', () => {
+    const { pathMatchesObservation } = require('../hooks/lib/gate-utils.cjs');
+    const obs = { constraint_type: 'write-path', constraint: 'records-evidence', status: 'active' };
+    assert.strictEqual(pathMatchesObservation(obs, 'records/evidence/foo.md'), true);
+  });
+
+  it('returns false when constraint is missing', () => {
+    const { pathMatchesObservation } = require('../hooks/lib/gate-utils.cjs');
+    const obs = { constraint_type: 'write-path', status: 'active' };
+    assert.strictEqual(pathMatchesObservation(obs, 'records/evidence/foo.md'), false);
+  });
+
+  it('returns false when constraint_type is wrong', () => {
+    const { pathMatchesObservation } = require('../hooks/lib/gate-utils.cjs');
+    const obs = { constraint_type: 'docker', constraint: 'records-evidence', status: 'active' };
+    assert.strictEqual(pathMatchesObservation(obs, 'records/evidence/foo.md'), false);
+  });
+
+  it('returns false when status is archived', () => {
+    const { pathMatchesObservation } = require('../hooks/lib/gate-utils.cjs');
+    const obs = { constraint_type: 'write-path', constraint: 'records-evidence', status: 'archived' };
+    assert.strictEqual(pathMatchesObservation(obs, 'records/evidence/foo.md'), false);
+  });
+
+  it('returns false for records/observations/** regardless of constraint', () => {
+    const { pathMatchesObservation } = require('../hooks/lib/gate-utils.cjs');
+    const obs = { constraint_type: 'write-path', constraint: 'records-evidence', status: 'active' };
+    assert.strictEqual(pathMatchesObservation(obs, 'records/observations/foo.yaml'), false);
+  });
+});

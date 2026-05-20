@@ -112,6 +112,21 @@ function parseOutbound(result) {
   }
 }
 
+function runWriteGate(filePath, envOverrides = {}) {
+  const WRITE_HOOK = path.join(__dirname, '..', 'hooks', 'write-coordination-gate.cjs');
+  const result = spawnSync('node', [WRITE_HOOK], {
+    input: JSON.stringify({ tool_name: 'Write', tool_input: { file_path: filePath } }),
+    encoding: 'utf8',
+    timeout: 5000,
+    env: { ...process.env, ...envOverrides },
+  });
+  return {
+    exitCode: result.status ?? 0,
+    stdout: (result.stdout || '').trim(),
+    stderr: (result.stderr || '').trim(),
+  };
+}
+
 async function startMcpServer(root) {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
@@ -188,6 +203,61 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
   // No marker + stale real obs → ok (not stale relative to marker)
   const t3 = runOutboundGate('docker run ubuntu', env);
   assert(t3.exitCode === 0, 'no marker + real obs → exit 0');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
+// --- Integration: Write-Path Observation End-to-End ---
+{
+  console.log('\n=== Integration: Write-Path Observation End-to-End ===');
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+
+  // Write fresh write-path observation
+  fs.writeFileSync(
+    path.join(tmpDir, 'records', 'observations', 'obs-write-evidence-001.yaml'),
+    `id: obs-write-evidence-001\nconstraint_type: write-path\nconstraint: records-evidence\nstatus: active\nupdated_at: ${new Date(Date.now() - 5 * 60 * 1000).toISOString()}\ndescription: Operator approved evidence file creation`
+  );
+
+  // Fresh observation → write gate allows
+  const w1 = runWriteGate('records/evidence/foo.md', env);
+  assert(w1.exitCode === 0, 'fresh observation → write gate allows');
+
+  // Fresh observation → bash gate allows heredoc
+  const b1 = runOutboundGate("cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF", env);
+  assert(b1.exitCode === 0, 'fresh observation → bash gate allows heredoc');
+
+  // Stale marker + fresh observation → still allow (obs newer than marker)
+  fs.writeFileSync(
+    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
+    JSON.stringify({ timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
+  );
+  const w2 = runWriteGate('records/evidence/foo.md', env);
+  assert(w2.exitCode === 0, 'fresh observation + old marker → write gate allows');
+
+  // Make observation stale (older than marker)
+  fs.writeFileSync(
+    path.join(tmpDir, 'records', 'observations', 'obs-write-evidence-001.yaml'),
+    `id: obs-write-evidence-001\nconstraint_type: write-path\nconstraint: records-evidence\nstatus: active\nupdated_at: ${new Date(Date.now() - 20 * 60 * 1000).toISOString()}\ndescription: Operator approved evidence file creation`
+  );
+  fs.writeFileSync(
+    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
+    JSON.stringify({ timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), prompt_snippet: 'state change' }, null, 2)
+  );
+
+  // Stale observation → write gate escalates
+  const w3 = runWriteGate('records/evidence/foo.md', env);
+  assert(w3.exitCode === 2, 'stale observation → write gate escalates');
+  const outW3 = parseOutbound(w3);
+  assert(outW3 && outW3.decision === 'escalate', 'stale → escalate');
+  assert(outW3 && outW3.inbound_gate === true, 'stale → inbound_gate');
+
+  // Stale observation → bash gate escalates
+  const b3 = runOutboundGate('echo x > records/evidence/foo.md', env);
+  assert(b3.exitCode === 2, 'stale observation → bash gate escalates');
+  const outB3 = parseOutbound(b3);
+  assert(outB3 && outB3.decision === 'escalate', 'stale bash → escalate');
+  assert(outB3 && outB3.inbound_gate === true, 'stale bash → inbound_gate');
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

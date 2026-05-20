@@ -15,6 +15,7 @@ import {
   checkObservationExists,
   evaluateBudget,
   makeGateDecision,
+  evaluateWritePath,
 } from "./gate-logic.js";
 import { readObservations, readBudgets } from "./file-readers.js";
 import { writeObservation } from "./observation-writer.js";
@@ -104,10 +105,11 @@ server.tool(
   "check_gate",
   "Check if a command is allowed by constraint gate. Returns ok/block/escalate.",
   {
-    command: z.string().describe("The command to check against constraint patterns"),
+    command: z.string().optional().describe("The command to check against constraint patterns"),
+    file_path: z.string().optional().describe("Optional file path to check against write-path observations"),
     context: z.string().optional().describe("Optional context about why this command is being run"),
   },
-  async ({ command }) => {
+  async ({ command, file_path }) => {
     const root = resolveRoot();
 
     // Read state files (stateless — fresh read each call)
@@ -115,45 +117,69 @@ server.tool(
     const budgets = readBudgets(root);
 
     // Gate logic
-    const constraintMatch = matchConstraintPattern(command);
-    const observationStatus = checkObservationExists(constraintMatch, observations);
+    let constraintDecision = null;
+    let constraintMatch = null;
+    if (command) {
+      constraintMatch = matchConstraintPattern(command);
+      const observationStatus = checkObservationExists(constraintMatch, observations);
 
-    // Global budget check — iterate ALL budgets, find first exhausted
-    let budgetStatus = { exhausted: false, windowActive: false };
-    for (const budget of budgets) {
-      const status = evaluateBudget(budget);
-      if (status.exhausted || status.windowActive) {
-        budgetStatus = status;
-        break;
+      // Global budget check — iterate ALL budgets, find first exhausted
+      let budgetStatus = { exhausted: false, windowActive: false };
+      for (const budget of budgets) {
+        const status = evaluateBudget(budget);
+        if (status.exhausted || status.windowActive) {
+          budgetStatus = status;
+          break;
+        }
       }
-    }
 
-    const decision = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
+      constraintDecision = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
 
-    // Inbound gate integration: check staleness regardless of decision, but only
-    // when constraint matches. If observations are stale relative to the last
-    // operator message, add inbound_gate flag. Upgrade "ok" to "escalate".
-    if (constraintMatch) {
-      const staleness = checkObservationStaleness(observations, root);
-      if (staleness.stale) {
-        decision.inbound_gate = true;
-        if (decision.decision === "ok") {
-          decision.decision = "escalate";
-          decision.reason = staleness.reason;
-          decision.observation_id = staleness.observation_id;
+      // Inbound gate integration: check staleness regardless of decision, but only
+      // when constraint matches. If observations are stale relative to the last
+      // operator message, add inbound_gate flag. Upgrade "ok" to "escalate".
+      if (constraintMatch) {
+        const staleness = checkObservationStaleness(observations, root);
+        if (staleness.stale) {
+          constraintDecision.inbound_gate = true;
+          if (constraintDecision.decision === "ok") {
+            constraintDecision.decision = "escalate";
+            constraintDecision.reason = staleness.reason;
+            constraintDecision.observation_id = staleness.observation_id;
+          }
         }
       }
     }
 
+    // Write-path evaluation (independent of constraint check)
+    let pathDecision = null;
+    if (file_path) {
+      pathDecision = evaluateWritePath(file_path, observations, (obs) => checkObservationStaleness(obs, root));
+    }
+
+    // Combine results: constraint takes priority if both fail
+    let decision;
+    if (constraintDecision?.hard_block || pathDecision?.hard_block) {
+      decision = constraintDecision?.hard_block ? constraintDecision : pathDecision;
+    } else if (constraintDecision && constraintDecision.decision !== "ok") {
+      decision = constraintDecision;
+    } else if (pathDecision && pathDecision.decision !== "ok") {
+      decision = pathDecision;
+    } else {
+      decision = constraintDecision || pathDecision || { decision: "ok" };
+    }
+
     // Log to stderr (never stdout — MCP uses stdout for protocol)
-    console.error(`gate: ${command} → ${decision.decision}${constraintMatch ? ` (${constraintMatch})` : ""}`);
+    const logCommand = command || file_path || "";
+    console.error(`gate: ${logCommand} → ${decision.decision}${constraintMatch ? ` (${constraintMatch})` : ""}`);
 
     // Append to gate log (non-blocking)
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
       tool: "check_gate",
       decision: decision.decision,
-      command,
+      command: command || undefined,
+      file_path: file_path || undefined,
       constraint_type: constraintMatch,
       ...decision,
     });

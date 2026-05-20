@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { matchConstraintPattern, readObservations, checkObservationStaleness } = require('./lib/gate-utils.cjs');
+const { matchConstraintPattern, readObservations, checkObservationStaleness, pathMatchesObservation } = require('./lib/gate-utils.cjs');
 
 function findProjectRoot() {
   // Walk up from coord dir to find project root (contains records/)
@@ -17,6 +17,38 @@ function findProjectRoot() {
     dir = parent;
   }
   return dir;
+}
+
+const PATH_WRITE_PATTERNS = [
+  />{1,2}\s*records\/[^\s;&|]+/,
+  /<<['"]?\w+['"]?\s*>\s*records\//,
+  /\btee\b.*records\/[^\s;&|]+/,
+];
+
+function extractRecordsPath(command) {
+  if (!command || typeof command !== 'string') return null;
+  for (const pattern of PATH_WRITE_PATTERNS) {
+    const match = command.match(pattern);
+    if (match) {
+      let rawPath = match[0];
+      // Strip redirect operators and tee prefix
+      rawPath = rawPath.replace(/^>{1,2}\s*/, '');
+      rawPath = rawPath.replace(/^<<['"]?\w+['"]?\s*>\s*/, '');
+      rawPath = rawPath.replace(/^\btee\b\s*/, '');
+      // Strip tee flags (-a, -i, --append, etc.) and -- separator
+      const parts = rawPath.split(/\s+/);
+      let i = 0;
+      while (i < parts.length && (parts[i].startsWith('-') || parts[i] === '--')) {
+        i++;
+      }
+      rawPath = parts.slice(i).join(' ');
+      // Strip quotes and ./ prefix
+      rawPath = rawPath.replace(/^["']|["']$/g, '');
+      rawPath = rawPath.replace(/^\.\//, '');
+      return rawPath;
+    }
+  }
+  return null;
 }
 
 function readBudgets(observationsDir) {
@@ -57,79 +89,121 @@ function main() {
   }
 
   const coordDir = path.join(__dirname, '..');
-  const constraintMatch = matchConstraintPattern(command);
-  if (!constraintMatch) {
-    process.exit(0);
-  }
-
-  // Side-effect imports always block — importing vnstock_data triggers vendor
-  // auth which reactivates cleared devices. No observation or budget can override.
-  if (constraintMatch === 'side-effect-import') {
-    const output = {
-      decision: 'block',
-      reason: 'Importing vnstock_data triggers vendor authentication and may reactivate cleared devices. Use importlib.util.find_spec() for safe checks.',
-      constraint_type: constraintMatch,
-      hard_block: true,
-      command,
-    };
-    console.log(JSON.stringify(output));
-    process.exit(2);
-  }
-
   const root = findProjectRoot();
   const obsDir = path.join(root, 'records', 'observations');
 
-  // Global budget check — iterate ALL budgets, find first exhausted
-  const budgets = readBudgets(obsDir);
-  for (const budget of budgets) {
-    const current = budget.current ?? 0;
-    const limit = budget.budget ?? 0;
-    const exhausted = current >= limit;
-    const windowActive = budget.validation_window?.active === true;
-    if (exhausted || windowActive) {
-      const output = {
-        decision: 'escalate',
-        reason: exhausted
-          ? `Budget exhausted for constraint "${constraintMatch}".`
-          : `Validation window active for constraint "${constraintMatch}".`,
+  let constraintResult = null;
+  let pathResult = null;
+
+  // --- Constraint pattern check ---
+  const constraintMatch = matchConstraintPattern(command);
+  if (constraintMatch) {
+    // Side-effect imports always block
+    if (constraintMatch === 'side-effect-import') {
+      constraintResult = {
+        decision: 'block',
+        reason: 'Importing vnstock_data triggers vendor authentication and may reactivate cleared devices. Use importlib.util.find_spec() for safe checks.',
         constraint_type: constraintMatch,
+        hard_block: true,
+        command,
       };
-      console.log(JSON.stringify(output));
-      process.exit(2);
+    } else {
+      // Budget check
+      const budgets = readBudgets(obsDir);
+      for (const budget of budgets) {
+        const current = budget.current ?? 0;
+        const limit = budget.budget ?? 0;
+        const exhausted = current >= limit;
+        const windowActive = budget.validation_window?.active === true;
+        if (exhausted || windowActive) {
+          constraintResult = {
+            decision: 'escalate',
+            reason: exhausted
+              ? `Budget exhausted for constraint "${constraintMatch}".`
+              : `Validation window active for constraint "${constraintMatch}".`,
+            constraint_type: constraintMatch,
+          };
+          break;
+        }
+      }
+
+      if (!constraintResult) {
+        // Observation check
+        const observations = readObservations(obsDir);
+        const hasObservation = observations.some(
+          obs => obs.status === 'active' &&
+            (obs.constraint_type === constraintMatch || obs.constraint === constraintMatch)
+        );
+
+        if (!hasObservation) {
+          constraintResult = {
+            decision: 'block',
+            reason: `Constraint "${constraintMatch}" detected in command. No active observation found. Record an observation via the constraint-gate MCP tool before proceeding.`,
+            observation_required: true,
+            constraint_type: constraintMatch,
+            command,
+          };
+        } else {
+          // Staleness check
+          const staleness = checkObservationStaleness(observations, coordDir);
+          if (staleness.stale) {
+            constraintResult = {
+              decision: 'escalate',
+              reason: staleness.reason,
+              constraint_type: constraintMatch,
+              observation_id: staleness.observation_id,
+              inbound_gate: true,
+            };
+          }
+        }
+      }
     }
   }
 
-  // Check for active observation with matching constraint_type or constraint
-  const observations = readObservations(obsDir);
-  const hasObservation = observations.some(
-    obs => obs.status === 'active' &&
-      (obs.constraint_type === constraintMatch || obs.constraint === constraintMatch)
-  );
-
-  if (!hasObservation) {
-    const output = {
-      decision: 'block',
-      reason: `Constraint "${constraintMatch}" detected in command. No active observation found. Record an observation via the constraint-gate MCP tool before proceeding.`,
-      observation_required: true,
-      constraint_type: constraintMatch,
-      command,
-    };
-    console.log(JSON.stringify(output));
-    process.exit(2);
+  // --- Path-write detection check ---
+  const recordsPath = path.normalize(extractRecordsPath(command) || '');
+  if (recordsPath) {
+    if (recordsPath.startsWith('records/observations/')) {
+      pathResult = {
+        decision: 'block',
+        reason: 'records/observations/** is blocked unconditionally',
+        hard_block: true,
+      };
+    } else if (recordsPath.startsWith('records/evidence/')) {
+      const observations = readObservations(obsDir);
+      const matchingObs = observations.find(obs => pathMatchesObservation(obs, recordsPath));
+      if (!matchingObs) {
+        pathResult = {
+          decision: 'block',
+          observation_required: true,
+          constraint_type: 'write-path',
+        };
+      } else {
+        const staleness = checkObservationStaleness([matchingObs], coordDir);
+        if (staleness.stale) {
+          pathResult = {
+            decision: 'escalate',
+            reason: staleness.reason,
+            observation_id: staleness.observation_id,
+            inbound_gate: true,
+          };
+        }
+      }
+    }
+    // Other records/** paths → allow (no pathResult)
   }
 
-  // Inbound gate integration: check if operator sent state-change message
-  // after the observation was last updated. If so, escalate.
-  const staleness = checkObservationStaleness(observations, coordDir);
-  if (staleness.stale) {
-    const output = {
-      decision: 'escalate',
-      reason: staleness.reason,
-      constraint_type: constraintMatch,
-      observation_id: staleness.observation_id,
-      inbound_gate: true,
-    };
-    console.log(JSON.stringify(output));
+  // --- Combine results ---
+  if (constraintResult?.hard_block || pathResult?.hard_block) {
+    console.log(JSON.stringify(constraintResult?.hard_block ? constraintResult : pathResult));
+    process.exit(2);
+  }
+  if (constraintResult) {
+    console.log(JSON.stringify(constraintResult));
+    process.exit(2);
+  }
+  if (pathResult) {
+    console.log(JSON.stringify(pathResult));
     process.exit(2);
   }
 

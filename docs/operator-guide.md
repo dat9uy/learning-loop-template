@@ -135,6 +135,28 @@ External systems with irreversible operations (vendor APIs with device slots, pr
 
 The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) enforces path-based rules for all Edit and Write tool calls. Rules are evaluated in order; first match wins.
 
+### Approving File Creation in records/
+
+To create files under `records/evidence/`, the agent must first record a `write-path` observation after operator approval:
+
+```yaml
+id: obs-write-evidence-<scope>-<timestamp>
+constraint_type: write-path
+constraint: records-evidence
+status: active
+updated_at: "2026-05-20T22:33:00Z"
+description: Operator approved evidence file creation
+```
+
+**Workflow:**
+
+1. Agent asks operator: "I need to create `records/evidence/vnstock-260520.md`. Content: ..."
+2. Operator: "Yes, approved."
+3. Agent records observation: `record_observation(constraint_type: "write-path", constraint: "records-evidence")`
+4. Agent uses Write tool → write gate sees fresh observation → allows
+
+Without a fresh `write-path` observation, writes to `records/evidence/**` are blocked. `records/observations/**` remains unconditionally blocked.
+
 ### Allowed Paths
 
 | Path | Reason |
