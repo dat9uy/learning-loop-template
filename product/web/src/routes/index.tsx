@@ -9,6 +9,7 @@ export function IndexRoute() {
     <main>
       <h1>FastAPI Reference Build</h1>
       <p><Link to={equityRoutePath}>Equity list</Link></p>
+      <p><Link to="/fundamental/$symbol" params={{ symbol: 'VIC' }}>Fundamental data (VIC)</Link></p>
       <SearchBox />
     </main>
   )

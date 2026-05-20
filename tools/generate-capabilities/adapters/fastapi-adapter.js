@@ -27,6 +27,7 @@ from pathlib import Path
 
 vnstock_data_stub = types.ModuleType("vnstock_data")
 vnstock_data_stub.Reference = object
+vnstock_data_stub.Fundamental = object
 sys.modules["vnstock_data"] = vnstock_data_stub
 
 vnstock_env_stub = types.ModuleType("vnstock_env")

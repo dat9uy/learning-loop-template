@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .routers.fundamental import router as fundamental_router
 from .routers.reference import router as reference_router
 
 
@@ -19,6 +20,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(reference_router)
+    app.include_router(fundamental_router)
     return app
 
 
