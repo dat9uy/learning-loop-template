@@ -2,7 +2,7 @@
 capability: fundamental
 dimension: product
 scope: api+web
-validation_status: verified
+validation_status: passed
 ---
 
 ## Findings
