@@ -34,8 +34,8 @@ Meta evidence must say it documents loop architecture or operating policy, not d
 
 Create or review meta risk and decision records when the gap has durable governance impact:
 
-- Risk records: use `records/risks/risk-YYMMDDTmmZ-<slug>.yaml` when residual exposure persists.
-- Decision records: use `records/decisions/decision-YYMMDDTmmZ-<slug>.yaml` when a loop-level policy choice, deferral, approval, or revisit trigger must be pinned.
+- Risk records: use `records/<surface>/risks/risk-YYMMDDTmmZ-<slug>.yaml` when residual exposure persists.
+- Decision records: use `records/<surface>/decisions/decision-YYMMDDTmmZ-<slug>.yaml` when a loop-level policy choice, deferral, approval, or revisit trigger must be pinned.
 - Link them with `source_refs` to `local:records/evidence/meta/...` and `record:` refs.
 - State in `notes` that the record is meta/loop architecture, not domain evidence.
 - Do not invent a new schema field just to mark `meta`; follow existing risk/decision schemas.

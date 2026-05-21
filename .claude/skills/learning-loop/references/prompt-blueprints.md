@@ -156,7 +156,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - `workflow_generate_prompt` for migration procedures (replaces deleted operator-guide sections)
 - The evidence MD(s) listed above.
-- Existing per-run experiment YAMLs in records/experiments/ for reference.
+- Existing per-run experiment YAMLs in records/<surface>/experiments/ for reference.
 
 For each evidence MD:
 

@@ -92,7 +92,7 @@ Last verified: {last_verified}.
 Hard-stop rules:
 - ANY check failure on a budget-consuming action = STOP (not fix-and-retry).
 - After this action, report result and wait for operator confirmation.
-- Operator must update budget YAML after this action.
+- Operator must update `records/observations/{id}-resource-budget.yaml` after this action.
 - Do not proceed to the next budget-consuming action until the budget file is updated.
 
 ---

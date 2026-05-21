@@ -23,7 +23,7 @@ MCP tools: `workflow_classify_prompt`, `workflow_intake_orient` implement parts 
 
 ## Memory Prohibition
 
-Do not use injected CLAUDE.md memory or session context as a source of truth. The learning-loop system maintains its own state in `records/`. Before acting on any recalled fact, verify it against `records/index/` or `records/observations/`. If a memory contradicts the records, trust the records. If the records are silent, treat the memory as unverified and create an experiment or observation to confirm it.
+Do not use injected CLAUDE.md memory or session context as a source of truth. The learning-loop system maintains its own state in `records/`. Before acting on any recalled fact, verify it against `records/<surface>/index/` or `records/observations/`. If a memory contradicts the records, trust the records. If the records are silent, treat the memory as unverified and create an experiment or observation to confirm it.
 
 This rule exists because **the record is the memory** (see `docs/philosophy.md`). Injected memory drifts, rots, and lacks verification dimensions. Records are durable, scoped, and auditable.
 

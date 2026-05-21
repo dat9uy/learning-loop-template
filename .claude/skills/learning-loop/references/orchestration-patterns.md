@@ -20,9 +20,9 @@ Reports: [absolute path to this repo]/plans/reports/
 Plans: [absolute path to this repo]/plans/
 
 Read first:
-- records/experiments/[experiment-id].yaml
-- records/claims/[claim-id].yaml
-- records/evidence/[domain]/ (relevant evidence)
+- records/<surface>/experiments/[experiment-id].yaml
+- records/<surface>/claims/[claim-id].yaml
+- records/<surface>/evidence/ (relevant evidence)
 - docs/operator-guide.md (Runtime Artifact Standard, Experiment Result Convention)
 - docs/artifact-concepts.md (dimension rules)
 
@@ -78,8 +78,8 @@ Update claim [claim-id] based on experiment [experiment-id].
 Work context: [absolute path to this repo]
 
 Read first:
-- records/experiments/[experiment-id].yaml
-- records/claims/[claim-id].yaml
+- records/<surface>/experiments/[experiment-id].yaml
+- records/<surface>/claims/[claim-id].yaml
 - docs/artifact-concepts.md (dimension status values)
 - docs/operator-guide.md (Claim Verification)
 
@@ -127,8 +127,8 @@ Review alignment between experiment [experiment-id] and claim [claim-id].
 Work context: [absolute path to this repo]
 
 Read:
-- records/experiments/[experiment-id].yaml (verification.proves, result, scope, output_level)
-- records/claims/[claim-id].yaml (verification.<dimension>, limitations)
+- records/<surface>/experiments/[experiment-id].yaml (verification.proves, result, scope, output_level)
+- records/<surface>/claims/[claim-id].yaml (verification.<dimension>, limitations)
 - Relevant evidence files cited by both records.
 
 Checks:

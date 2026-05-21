@@ -24,7 +24,7 @@ Constraints:
 - Do not create application code.
 - Do not cite `local:product/<stack>/capabilities/...` from non-capability records.
 - Use qualified terms: runtime probe, capability record, Runtime Probe Experiment.
-- Before any implementation phase, encode all architectural decisions (envelope pattern, gate naming, fetch strategy) as `records/decisions/` artifacts with scoped `decision_effect`.
+- Before any implementation phase, encode all architectural decisions (envelope pattern, gate naming, fetch strategy) as `records/<surface>/decisions/` artifacts with scoped `decision_effect`.
 - Do not proceed to implementation until decision records exist for every Key Decision.
 
 Validation:
@@ -56,7 +56,7 @@ Validation:
 ## Pre-Implementation Checklist
 
 ```text
-- [ ] All plan Key Decisions have corresponding `records/decisions/` artifacts
+- [ ] All plan Key Decisions have corresponding `records/<surface>/decisions/` artifacts
 - [ ] Decision records cite source evidence and required gates
 - [ ] No implementation phase proceeds without decision coverage
 - [ ] Evidence creation is delegated to operator; agent drafts only

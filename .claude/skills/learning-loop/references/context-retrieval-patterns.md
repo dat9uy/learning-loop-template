@@ -20,7 +20,7 @@ Trace dependency for capability [capability-id].
 Work context: [absolute path to this repo]
 
 Step 1 — Read the capability record:
-- records/capabilities/[capability-id].yaml
+- records/<surface>/capabilities/[capability-id].yaml
 - Note: stack, surface, maps[].source only. No verification state here.
 
 Step 2 — List runtime probes for the stack:
@@ -36,7 +36,7 @@ Step 4 — Search index entries by capability:
 - Index entries carry verification state (Tier 1), not the capability record.
 
 Step 5 — Read matching index entries:
-- records/index/[index-entry-id].yaml
+- records/<surface>/index/[index-entry-id].yaml
 - Check verification.<dimension>.status for each dimension.
 
 Step 6 — Read evidence cited by index entries:
@@ -44,7 +44,7 @@ Step 6 — Read evidence cited by index entries:
 - Confirm evidence validation_status matches index entry status.
 
 Step 7 — Read experiments proving the dimension:
-- records/experiments/[experiment-id].yaml (from index entry experiment_refs or evidence)
+- records/<surface>/experiments/[experiment-id].yaml (from index entry experiment_refs or evidence)
 - Confirm experiment result supports the claimed dimension status.
 
 STOP guards:
@@ -59,8 +59,8 @@ STOP guards:
 
 | Tier | Artifact | Carries verification state? | Authority |
 |---|---|---|---|
-| Tier 1 | Index entries (`records/index/`) | Yes — `verification.<dimension>.status` | Machine-derived from evidence |
-| Tier 2 | Capability records (`records/capabilities/`) | No — structural description only | Runtime-generated from product surfaces |
+| Tier 1 | Index entries (`records/<surface>/index/`) | Yes — `verification.<dimension>.status` | Machine-derived from evidence |
+| Tier 2 | Capability records (`records/<surface>/capabilities/`) | No — structural description only | Runtime-generated from product surfaces |
 | Tier 3 | Product code (`product/*/`) | No — implementation ground truth | Read directly, never inferred |
 
 ### CLI Helpers
