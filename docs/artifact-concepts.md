@@ -1,6 +1,6 @@
 # Artifact Concepts
 
-> **Deprecation notice:** The claim schema (`schemas/claim.schema.json`) is deprecated for new entries per `record:decision-260519T1400Z-claim-deprecation`. Existing claims in `records/claims/` are frozen-legacy (read-only audit trail). New work uses machine-extracted index entries (`schemas/index-entry.schema.json`, type `extracted-assertion`).
+> **Deprecation notice:** The claim schema (`schemas/claim.schema.json`) is deprecated for new entries per `record:decision-260519T1400Z-claim-deprecation`. Existing claims in `records/<surface>/claims/` are frozen-legacy (read-only audit trail). New work uses machine-extracted index entries (`schemas/index-entry.schema.json`, type `extracted-assertion`).
 
 This document explains artifact concepts and conventions. For field-level schema validation, see `schemas/*.schema.json` (enforced by AJV). For cross-record reference validation, use the `validate_records` MCP tool. For runtime request preparation, use `workflow_prepare_runtime_request`.
 
@@ -141,7 +141,7 @@ All artifact schemas live in `schemas/*.schema.json` and are enforced by AJV. Al
 
 | Prefix | Example | Meaning |
 |---|---|---|
-| `local:` | `local:records/evidence/vnstock-data/installer-prior-notes.md` | File inside repo. Must exist and stay under allowed root |
+| `local:` | `local:records/vnstock/evidence/installer-prior-notes.md` | File inside repo. Must exist and stay under allowed root |
 | `record:` | `record:experiment-vnstock-install-20260508T101723Z` | Pointer to another typed record by `id`. Target must exist in `records/` |
 | `legacy:` | `legacy:plans/reports/legacy-doc.md` | Historical reference. Disallowed for new records |
 
@@ -162,7 +162,7 @@ The following directories under `records/` do not have JSON schemas and are not 
 
 | Directory | Content | Validation |
 |---|---|---|
-| `records/evidence/` | Markdown evidence capsules | None (referenced by `local:` or `record:`) |
+| `records/<surface>/evidence/` | Markdown evidence capsules | None (referenced by `local:` or `record:`) |
 | `records/backlog-items/` | Backlog items | None (empty) |
 | `records/validation-gates/` | Validation gates | None (empty) |
 
@@ -175,7 +175,7 @@ The word "capability" carries three distinct meanings in this repo. Always quali
 | Term | Path | Created when | Role |
 |---|---|---|---|
 | **Runtime probe** | `product/<stack>/capabilities/<scope>/*.py` | During runtime-verification work for a library. | Standalone Python feasibility probe. Tests API-return-data runtime. Shares the per-stack environment. Not an integration test for product endpoints. |
-| **Capability record** | `records/capabilities/capability-*.yaml` | Operator runs `pnpm generate:capabilities` after surface changes. | Runtime-derived YAML mapping product surfaces to canonical capability entries. Schema: `schemas/capability.schema.json` v2.0 minimal. |
+| **Capability record** | `records/<surface>/capabilities/capability-*.yaml` | Operator runs `pnpm generate:capabilities` after surface changes. | Runtime-derived YAML mapping product surfaces to canonical capability entries. Schema: `schemas/capability.schema.json` v2.0 minimal. |
 | **Runtime Probe Experiment** | (concept, not a path) | When verifying a library's `runtime` dimension. | Pattern documented in `docs/operator-guide.md` → "Runtime Probe Experiment". The experiment record is the ledger entry; runtime probes are its execution substrate. |
 
 Disambiguation rule: bare "capability" defaults to **capability record** in product-build plans. Frozen records before 2026-05-10 may mention older paths/terms and remain unchanged by policy.

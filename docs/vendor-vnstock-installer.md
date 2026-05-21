@@ -11,7 +11,7 @@ source_reads:
   - venv:vnstock 4.0.2
   - venv:vnai
 related:
-  - frozen-legacy records/claims/claim-vnstock-runtime-403-root-cause.yaml
+  - frozen-legacy records/vnstock/claims/claim-vnstock-runtime-403-root-cause.yaml
   - plans/reports/pm-260511-0259-vnstock-installer-deep-dive.md
 scope: "Observable behavior of `vnstock-cli-installer.run` as invoked by `product/api/scripts/install-vnstock.sh`. Reconstructed from installer logs + source-read of the installed packages."
 ---
@@ -23,7 +23,7 @@ Reference for operators and future debug sessions. The vendor `vnstock-cli-insta
 > **Revised bottom line (2026-05-11, post source-read).** The blocker had TWO independent causes, both narrower than the prior diagnostic claimed:
 > 1. **Runtime 403** — `vnstock_data`'s `get_headers` for VCI does NOT inject the `Device-Id` header / `device_id` cookie that VietCap now enforces. `vnstock` (PyPI) DOES inject them. The "URL trailing-slash bug" claim in the original diagnostic is **false** — source shows `_TRADING_URL = '…/api'` with no trailing slash.
 > 2. **IsADirectoryError on import** — caused by **our wrapper** setting `VNSTOCK_CONFIG_PATH=${API_HOME}/.vnstock/user.json` when the installer treats this env var as the directory to write into. Setting it to `${API_HOME}/.vnstock` (no `/user.json` suffix) lines the installer's output paths up with what the runtime expects via `Path.home()/'.vnstock'/'user.json'`.
-> Both causes were fixed in the 2026-05-11 runtime blocker repair. See `frozen-legacy records/claims/claim-vnstock-runtime-403-root-cause.yaml` and `records/evidence/vnstock-data/runtime-403-fix-20260511.md`.
+> Both causes were fixed in the 2026-05-11 runtime blocker repair. See `frozen-legacy records/vnstock/claims/claim-vnstock-runtime-403-root-cause.yaml` and `records/vnstock/evidence/runtime-403-fix-20260511.md`.
 
 ## Two-Stage Architecture
 

@@ -91,7 +91,7 @@ The learning loop is a governance layer for external boundaries. It is not a gen
 
 | Tier | What it governs | Workflow |
 |---|---|---|
-| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: evidence → index → experiment → decision (frozen-legacy claims remain in records/claims/ as read-only audit trail) |
+| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: evidence → index → experiment → decision (frozen-legacy claims remain in records/<surface>/claims/ as read-only audit trail) |
 | **Internal implementation** | Refactoring, module extraction, naming, structure, patterns within approved boundaries | ck:* skills: plan → cook → review |
 
 A refactor that touches no external system does not need a decision record. A vendor API change always does. The question is never "is this big enough?" The question is "does this touch an external boundary?"

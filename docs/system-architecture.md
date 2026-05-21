@@ -119,7 +119,7 @@ Outbound gates intercept agent tool usage before execution. The bash gate checks
    - `dist/**`
    - `build/**`
    - Unknown paths (`**` catch-all)
-4. For `records/evidence/**`, check for active `write-path` observation
+4. For `records/evidence/**` and `records/*/evidence/**`, check for active `write-path` observation
 5. If observation found, check staleness relative to last operator message
 6. Fresh observation → allow; stale → escalate; none → block
 7. Allow pre-authorized paths: `docs/**`, `plans/**`, `tools/**`, `.claude/**`, `product/**`
@@ -136,9 +136,9 @@ cp .claude/coordination/hooks/write-coordination-gate.cjs.bak .claude/coordinati
 A `write-path` observation unlocks writes to otherwise blocked `records/**` paths:
 
 - `constraint_type`: `write-path`
-- `constraint`: `records-evidence` (unblocks `records/evidence/**`)
+- `constraint`: `records-evidence` (unblocks `records/evidence/**` and `records/*/evidence/**`)
 
-The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**`. The write gate checks `write-path` observations before applying hard blocks. Both gates reuse the same staleness algorithm.
+The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**` or `records/*/evidence/**`. The write gate checks `write-path` observations before applying hard blocks. Both gates reuse the same staleness algorithm.
 
 #### Staleness Algorithm (Outbound)
 
@@ -227,7 +227,7 @@ When an agent writes an evidence file, it calls `notify_artifact_change` via MCP
 {
   "workflows": {
     "evidence-changed": {
-      "triggers": ["records/evidence/**"],
+      "triggers": ["records/*/evidence/**"],
       "change_types": ["created", "updated"],
       "commands": [
         ["node", "tools/extract-index/extract-index.js"],

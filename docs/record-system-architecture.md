@@ -4,15 +4,15 @@ This document describes the record system's data model, core hierarchy, state ma
 
 ## Record Ledger
 
-Records are human-edited source files under `records/`. They describe frozen-legacy claims, index entries, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state. Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
+Records are human-edited source files under `records/`. They describe frozen-legacy claims, index entries, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/<surface>/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state. Index entries live under `records/<surface>/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
 
 ## Core Hierarchy
 
 ```text
-records/evidence/      -> durable source material
-records/index/         -> machine-extracted assertions (agent-owned, human-read-only)
-records ledger         -> risks + experiments + decisions + capability records
-records/claims/        -> frozen-legacy (read-only audit trail, no new entries)
+records/<surface>/evidence/ -> durable source material
+records/<surface>/index/    -> machine-extracted assertions (agent-owned, human-read-only)
+records ledger            -> risks + experiments + decisions + capability records
+records/<surface>/claims/ -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
 runtime probes         -> product/<stack>/capabilities/ (runtime-verification substrate)
 constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
@@ -24,7 +24,7 @@ generated views        -> disabled until model settles
 Short version:
 
 ```text
-records/evidence -> records/index/ (machine-extracted assertions) + risks + experiments -> dimensions -> runtime probes (product/<stack>/capabilities/) -> capability records (records/capabilities/) -> decisions
+records/<surface>/evidence -> records/<surface>/index/ (machine-extracted assertions) + risks + experiments -> dimensions -> runtime probes (product/<stack>/capabilities/) -> capability records (records/<surface>/capabilities/) -> decisions
                                       |
                                       v
                     observations + budgets -> constraint gate -> command gating
@@ -37,17 +37,17 @@ Runtime probes are standalone feasibility probes that test API-return-data runti
 The record system has three territories:
 
 - `docs/` — human-only escape hatch. Intentionally informal. May diverge from records.
-- `records/evidence/` — human-authored markdown, source of truth. Agent may create under explicit operation; agent never edits existing.
-- `records/index/` — machine-derived YAMLs. Agent-owned, human-read-only. Assertions are extracted atomically from evidence `## Findings` sections.
+- `records/<surface>/evidence/` — human-authored markdown, source of truth. Agent may create under explicit operation; agent never edits existing.
+- `records/<surface>/index/` — machine-derived YAMLs. Agent-owned, human-read-only. Assertions are extracted atomically from evidence `## Findings` sections.
 
-Claims are frozen-legacy (read-only audit trail, no new entries). State queries route to `records/index/` first; frozen claims serve historical audit only.
+Claims are frozen-legacy (read-only audit trail, no new entries). State queries route to `records/<surface>/index/` first; frozen claims serve historical audit only.
 
 The extraction is performed by `tools/extract-index/extract-index.js` (invoked via `pnpm extract:index`). Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` (passed/pending/failed); files missing these fields are skipped.
 
 ### Provenance Chain
 
 ```text
-experiment.id -> evidence_refs[] -> ## Findings bullet -> records/index/<assertion-id>.yaml
+experiment.id -> evidence_refs[] -> ## Findings bullet -> records/<surface>/index/<assertion-id>.yaml
 ```
 
 Index entries are self-contained — agents can answer state queries from the YAML alone without reading source evidence. `source_refs` and `experiment_refs` inside each entry point to the underlying evidence and experiments for deeper audit queries.

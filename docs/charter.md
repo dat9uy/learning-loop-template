@@ -11,7 +11,7 @@ For the system's intended long-term direction (incremental autonomy on the verif
 The template contains:
 
 - a small typed record ledger (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations);
-- dedicated evidence files under `records/evidence/`;
+- dedicated evidence files under `records/<surface>/evidence/`;
 - per-stack scaffolding under `product/<stack>/` (stack manifest + runtime probes + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
 - guardrails for provenance and review.
@@ -48,6 +48,6 @@ The template does not contain product application code (no FastAPI source, no UI
 - `product/<stack>/`: per-stack home for runtime probes, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
 - `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
-- `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/index/*.yaml` entries.
+- `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/<surface>/index/*.yaml` entries.
 - `.claude/coordination/`: hooks, gate audit log, and observation records.
 - `plans/`: active and historical plans + brainstorm reports.

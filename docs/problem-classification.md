@@ -72,7 +72,7 @@ Required fields:
 
 1. Reproduce the problem.
 2. Match symptom to table above.
-3. Create evidence under `records/evidence/<scope>/` if needed.
+3. Create evidence under `records/<surface>/evidence/` if needed.
 4. Author the record, cite evidence and affected index-entry or claim refs.
 5. Run `pnpm validate:records` before finishing.
 
