@@ -1,4 +1,18 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Capability Directory Scan Rule
+
+## Findings
+
+- [capability-dir-scan] After claims-first orientation, list `records/evidence/<capability>/` end-to-end for files not referenced by active index entries.
+- [claims-first-orientation] Truth status of discovered files still determined by claims-first scanning; directory scan is for planning-context discovery only.
+- [skip-rules] Skip raw, binary, generated, private artifacts unless explicitly approved; skip files marked `## Superseded By` unless forensic context needed.
+- [q6-rule] Capability-directory scan canonized as Agent Intake Flow step 2 (Q6).
 
 ## Observation
 

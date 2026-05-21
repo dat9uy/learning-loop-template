@@ -1,4 +1,21 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Evidence Truth Status Mechanism
+
+## Findings
+
+- [truth-status] Evidence files do not self-advertise truth status; structural prevention required.
+- [claims-first-scanning] Orient through claims/index entries, never browse evidence standalone for truth-status discovery.
+- [supersedes-pattern] Disproving evidence uses `## Superseded By` or `## Supersedes` block linking to canonical replacement.
+- [schema-deferred] Claim-side status block vs computed-view debate deferred until N=2 disproof events or N=1 direct-browse failure.
+- [q4e-canonized] Claims-first scanning canonized as Agent Intake Flow step 2 (Q4 E).
+
+## Observation
 
 ## Observation
 

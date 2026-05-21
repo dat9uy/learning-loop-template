@@ -1,4 +1,19 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Process-Side Artifact Ambiguity
+
+## Findings
+
+- [process-side-artifact] Knowledge pack (`knowledge-packs/<domain>/`) is the process-side artifact agents consume to discover verified capabilities.
+- [knowledge-pack-consumption] Cleared-context agents scan `knowledge-packs/` before exploring evidence or re-running experiments.
+- [pack-contents] `capabilities.yaml` tells agent what it may do; `facts.yaml` tells verified truths with record_ref provenance; `manifest.yaml` tells pack scope and approval status.
+- [ambiguity-cost] Without documented consumption pattern: evidence treated as agent-facing, duplicate experiments, packs remain empty.
+- [deferred-promotion] Canonical adoption requires decision record; do not modify docs until self-improvement decision approved.
 
 ## Observation
 

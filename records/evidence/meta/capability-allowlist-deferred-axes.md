@@ -1,6 +1,21 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Capability Allowlist Deferred Axes
 
 This meta evidence documents three loop-architecture extensions that were considered for the capability source-ref allowlist and explicitly deferred. It is not a domain fact.
+
+## Findings
+
+- [capability-allowlist] Capability source-ref allowlist scoped to minimum: `product/*/capabilities` only, single-segment `*` wildcard.
+- [glob-pattern] Multi-segment wildcards (`**`) and character classes rejected to avoid traversal edge cases and regex coupling.
+- [stack-enum] `stack` field remains open-string, not enum; stack legitimacy gated by manifest convention in PR review.
+- [manifest-enforcement] Stack manifest detection deferred from validator to documentation and PR review to avoid language-aware tooling coupling.
+- [revisit-trigger] Each deferred axis carries explicit revisit trigger retrievable by event class and threshold.
 
 ## Framing
 

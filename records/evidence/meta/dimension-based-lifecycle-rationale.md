@@ -1,6 +1,20 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Dimension-Based Verification Rationale
 
 This meta evidence documents a loop architecture change, not a domain fact.
+
+## Findings
+
+- [verification-dimensions] Independent verification dimensions (static, install, runtime, product) replace single claim state chain.
+- [dimension-separation] Dimensions keep technical proof, runtime scope, rejection, and product approval separate.
+- [experiments-prove] Experiments prove non-product dimensions with `verification.proves`; decisions approve or reject product use.
+- [revisit-trigger] If verification grows beyond six dimensions or dimensions share identical schema, reconsider normalized record type.
 
 ## Problem
 

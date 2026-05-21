@@ -1,4 +1,19 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: draft
+---
+
 # Secret Injection Class
+
+## Findings
+
+- [secret-injection-class] Proposed class label `api-key-via-shell-env-var` for runtime/install experiments requiring API keys.
+- [api-key-env-var] Operator injects secret through shell before agent process starts; agent verifies presence with non-echoing check only.
+- [agent-restriction] Agent must never read, print, log, or retain secret value.
+- [substrate-model] Secret stays in disposable execution substrate; repo stores only durable metadata evidence.
+- [trigger-threshold] Revisit after N=2 secret-bearing experiments; do not canonize full taxonomy from single case.
 
 ## Observation
 

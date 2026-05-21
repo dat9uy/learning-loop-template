@@ -16,6 +16,14 @@ source_refs:
 
 # YAML Parser Friction And Schema Inventory
 
+## Findings
+
+- [yaml-parser-swap] Hand-rolled YAML parser rejected block scalars and colon-bearing scalars; library swap validated with byte-identical green output across all 34 records.
+- [ajv-deferral] AJV schema validation deferred to separate change; swap kept posture shift singular (YAML reader now, validator later).
+- [regression-validated] All 34 current records parsed with identical shape snapshots after swap.
+- [trigger-condition] Revisit AJV when schema enforcement needs JSON Schema 2020-12 behavior that hand-rolled validator silently ignores, especially timestamp format constraints.
+- [scope-separation] YAML parsing friction and JSON Schema gap are separate concerns with independent triggers.
+
 ## Friction History
 
 - `decision-20260510T170623Z-vnstock-installer-bootstrap` originally used a YAML pipe block scalar in notes; `simple-yaml-parser.js` rejected it with an opaque key/value parse error.

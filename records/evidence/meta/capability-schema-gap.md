@@ -1,4 +1,19 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Capability Schema Gap
+
+## Findings
+
+- [capability-schema] `schemas/capability.schema.json` exists in minimal map-oriented form (`stack` + `surface` + `maps[]`).
+- [map-oriented-shape] Current schema took map-oriented shape during capabilities-stack migration, replacing proposed predicate-oriented shape.
+- [deferred-fields] Fields `description`, `method`, `prerequisites`, explicit `verified_by` held for N>=3 verified packs.
+- [partial-supersession] Gap file retains original text as history; partial-supersession note corrects stale signal without rewriting.
+- [trigger-threshold] Revisit trigger: N>=3 packs verified; current population N=2 surrogate (one more required).
 
 ## Observation
 

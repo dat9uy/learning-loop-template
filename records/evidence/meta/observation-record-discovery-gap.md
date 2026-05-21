@@ -1,4 +1,19 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # Observation Record Discovery Gap
+
+## Findings
+
+- [observation-state-check] Before asking user about external system state, scan `records/observations/` for relevant observation records.
+- [system-state-discovery] Observations are authoritative source for factual system state; more reliable than agent memory or user recall.
+- [applies-to] Device slots, budgets, registration status, rate limits, operational constraints.
+- [canonized] Rule canonized as Agent Intake Flow step 2 and Agent Anti-Confusion Checklist.
+- [n1-closeable] N=1 closeable principle; adopted without requiring second confirmation.
 
 ## Observation
 

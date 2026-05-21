@@ -1,4 +1,21 @@
+---
+capability: meta
+dimension: install
+scope: meta-tooling
+validation_status: passed
+---
+
 # Install Experiment Template Gap
+
+## Findings
+
+- [install-template-gap] No reusable install experiment template existed for flows requiring archive wrapper, extracted entrypoint, runner deps, and env-var config.
+- [template-candidate] Four vnstock install experiments accumulated; three converge on stable 7-section envelope + 11-key frontmatter.
+- [legacy-outlier] Fourth experiment predates convention and classified as legacy outlier, excluded from convergence analysis.
+- [resolution-path] Meta-experiment + draft template candidate gated by follow-up decision before canonization (N>=2 class).
+- [trigger-consumed] Prior trigger (event class `next-install-experiment`, threshold N=2) consumed by vnstock experiments; new trigger set for next non-vnstock case.
+
+## Observation
 
 ## Observation
 

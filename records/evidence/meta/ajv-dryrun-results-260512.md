@@ -18,6 +18,14 @@ source_refs:
 
 # AJV Dry-Run Results
 
+## Findings
+
+- [ajv-validation] AJV strict mode found 26 failures across 34 records: 23 date-only timestamps, 1 local-timezone form, 3 missing required fields.
+- [datetime-format] Historical date-only `created_at` forms are valid per prospective-application principle; only local-timezone forms are the drift trigger.
+- [silent-pass-gap] Three real data-quality gaps surfaced: missing `decision_refs` in product verification, missing `output_level` in two experiment `verification.proves` blocks.
+- [recommendation] Loose datetime pattern `^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$` + fix 4 affected records is minimum-blast-radius change.
+- [prospective-only] New records should use strict UTC-Z; historical records preserved per artifact-timestamp-convention decision.
+
 ## Method
 
 Throwaway `tools/validate-records/ajv-dryrun.js` (deleted after evidence captured). Loaded the 5 production schemas; injected `pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"` on `created_at`, `updated_at`, and `claim.approval.reviewed_at` in-memory. Compiled with `Ajv2020({ strict: true, allErrors: true })`. Validated all 34 records via existing loader.

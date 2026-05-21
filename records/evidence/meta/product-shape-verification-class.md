@@ -1,4 +1,21 @@
+---
+capability: meta
+dimension: product
+scope: meta-tooling
+validation_status: draft
+---
+
 # Product Shape Verification Class Deferral
+
+## Findings
+
+- [product-shape-verification] Operator-inspectable product shape deferred until N>=3 distinct product slice walkthroughs.
+- [deferral-n-equals-three] Current sample count: 1 (`experiment-operator-product-shape-walkthrough-260511T1900Z`).
+- [sufficient-for-now] Runtime plus metadata-only or sample-output evidence sufficient at N=1.
+- [do-not-generalize] Do not generalize walkthrough conventions before N>=3; do not add new verification dimension from single sample.
+- [increment-sample] When planning product slice walkthrough, increment sample count in this file.
+
+Deferred meta-evidence under the Q5 R2 pattern. This file records a repeated-pattern watchpoint, not a new verification dimension.
 
 Deferred meta-evidence under the Q5 R2 pattern. This file records a repeated-pattern watchpoint, not a new verification dimension.
 

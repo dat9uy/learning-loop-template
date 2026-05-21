@@ -1,4 +1,21 @@
+---
+capability: meta
+dimension: static
+scope: meta-tooling
+validation_status: passed
+---
+
 # N Equals One Gap Class
+
+## Findings
+
+- [gap-classification] Meta-evidence gaps split by sample-count requirement: N=1 closeable vs N>=2 deferred.
+- [sample-count-heuristic] N=1 closeable: principle applies from single instance (e.g., process-side artifact ambiguity). N>=2 deferred: schema/template needs repeated cases before canonization.
+- [classification-examples] N=1: `process-side-artifact-ambiguity`. N>=2 deferred: `capability-schema-gap`, `runtime-run-schema-deferral`, `install-experiment-template-gap`.
+- [trigger-rule] Classify new meta-evidence by sample-count requirement and mirror classification in its `## Trigger` section.
+- [canonized] Classification rule canonized in learning-loop skill reference `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md`.
+
+## Observation
 
 ## Observation
 

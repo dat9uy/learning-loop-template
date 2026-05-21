@@ -1,4 +1,21 @@
+---
+capability: meta
+dimension: install
+scope: meta-tooling
+validation_status: draft
+---
+
 # Install Experiment Template Candidate
+
+## Findings
+
+- [install-template] Candidate derived from convergence of 4 vnstock install evidence MDs; 3 of 4 converge on stable 7-section body envelope.
+- [evidence-envelope] Required body sections: Summary, Substrate, Steps Executed, Observations, Sanitized Installer Output, Disproof/Confirmation Notes, Source.
+- [frontmatter-keys] Canonical frontmatter requires 11 keys: record_type, capability, dimension, scope, validation_status, claim_support, secret_injection_class, installer_url_class, static_dimension_consistency, created, substrate.
+- [promotion-gated] Candidate not canonical until validated against next non-vnstock install experiment via meta-experiment.
+- [authoring-boundaries] No credentials, API keys, raw vendor data, host-identifying values in any section except sanitized output.
+
+Status: draft (candidate). Pending validation against the next non-vnstock install experiment via `experiment-meta-install-template-candidate-260512T0046Z`. Do not cite this template as canonical until the meta-experiment passes and a follow-up decision promotes it.
 
 Status: draft (candidate). Pending validation against the next non-vnstock install experiment via `experiment-meta-install-template-candidate-260512T0046Z`. Do not cite this template as canonical until the meta-experiment passes and a follow-up decision promotes it.
 
