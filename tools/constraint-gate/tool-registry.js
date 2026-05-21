@@ -1,4 +1,23 @@
+import { appendGateLog } from "./gate-logging.js";
+
 const registeredNames = new Set();
+
+/**
+ * Safely import a module, logging failures without crashing.
+ */
+export async function safeImport(path, root) {
+  try {
+    return await import(path);
+  } catch (err) {
+    appendGateLog(root || ".", {
+      timestamp: new Date().toISOString(),
+      action: "safeImport_failed",
+      path,
+      error: err.message,
+    });
+    return null;
+  }
+}
 
 /**
  * Register a tool on an MCP server with error boundary and name collision check.

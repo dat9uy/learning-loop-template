@@ -1,36 +1,47 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerTool } from "./tool-registry.js";
-import { gateTool } from "./tools/gate-tool.js";
-import { recordObservationTool } from "./tools/record-observation-tool.js";
-import { updateObservationTool } from "./tools/update-observation-tool.js";
-import { notifyArtifactTool } from "./tools/notify-artifact-tool.js";
-import { triggerWorkflowTool } from "./tools/trigger-workflow-tool.js";
-import { validateRecordsTool } from "./tools/validate-records-tool.js";
-import { updateClaimTool } from "./tools/update-claim-tool.js";
-import { extractIndexTool } from "./tools/extract-index-tool.js";
-import { searchIndexTool } from "./tools/search-index-tool.js";
-import { generateCapabilitiesTool } from "./tools/generate-capabilities-tool.js";
-import { listProbesTool } from "./tools/list-probes-tool.js";
-import { listVerifiedTool } from "./tools/list-verified-tool.js";
+import { registerTool, safeImport } from "./tool-registry.js";
+import { resolveRoot } from "./resolve-root.js";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolveRoot();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const MANIFEST_PATH = join(__dirname, "tools", "manifest.json");
+
+function loadManifest() {
+  try {
+    const raw = readFileSync(MANIFEST_PATH, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+const TOOL_MODULES = loadManifest();
 
 const server = new McpServer({
   name: "constraint-gate",
   version: "1.0.0",
 });
 
-registerTool(server, gateTool);
-registerTool(server, recordObservationTool);
-registerTool(server, updateObservationTool);
-registerTool(server, notifyArtifactTool);
-registerTool(server, triggerWorkflowTool);
-registerTool(server, validateRecordsTool);
-registerTool(server, updateClaimTool);
-registerTool(server, extractIndexTool);
-registerTool(server, searchIndexTool);
-registerTool(server, generateCapabilitiesTool);
-registerTool(server, listProbesTool);
-registerTool(server, listVerifiedTool);
+let registered = 0;
+let failed = 0;
+
+for (const mod of TOOL_MODULES) {
+  const imported = await safeImport(mod.file, root);
+  if (imported && imported[mod.export]) {
+    registerTool(server, imported[mod.export]);
+    registered++;
+  } else {
+    console.error(`safeImport: skipped ${mod.file} (missing export "${mod.export}")`);
+    failed++;
+  }
+}
+
+console.error(`constraint-gate: registered ${registered} of ${TOOL_MODULES.length} tools${failed > 0 ? ` (${failed} failed)` : ""}`);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
