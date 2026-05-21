@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Capability + Probe Tools"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [2]
@@ -156,12 +156,12 @@ Add imports and register both tools.
 
 ## Success Criteria
 
-- [ ] `generate_capability_records` callable via MCP
-- [ ] `list_runtime_probes` callable via MCP
-- [ ] Dry-run mode detects drift without writing
-- [ ] CLI `pnpm generate:capabilities` still works
-- [ ] CLI `pnpm list:probes` still works
-- [ ] Tests pass
+- [x] `generate_capability_records` callable via MCP
+- [x] `list_runtime_probes` callable via MCP
+- [x] Dry-run mode detects drift without writing
+- [x] CLI `pnpm generate:capabilities` still works
+- [x] CLI `pnpm list:probes` still works
+- [x] Tests pass
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Index Tools"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [2]
@@ -143,13 +143,13 @@ Add imports and register both tools.
 
 ## Success Criteria
 
-- [ ] `extract_index_entries` callable via MCP
-- [ ] `search_index_entries` callable via MCP
-- [ ] Extract is idempotent (same result on second call)
-- [ ] Search is read-only
-- [ ] CLI `pnpm extract:index` still works
-- [ ] CLI `pnpm search:index` still works
-- [ ] Tests pass
+- [x] `extract_index_entries` callable via MCP
+- [x] `search_index_entries` callable via MCP
+- [x] Extract is idempotent (same result on second call)
+- [x] Search is read-only
+- [x] CLI `pnpm extract:index` still works
+- [x] CLI `pnpm search:index` still works
+- [x] Tests pass
 
 ## Risk Assessment
 

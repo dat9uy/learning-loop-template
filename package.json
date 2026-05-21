@@ -12,7 +12,7 @@
     "validate:records": "node tools/validate-records/validate-records.js",
     "verify:claim": "node tools/claim-verification/verify-claim.js",
     "generate:docs": "node tools/generate-docs/generate-docs.js",
-    "list:verified": "bash tools/list-verified/list-verified.sh",
+    "list:verified": "node tools/list-verified/list-verified.js",
     "test": "node --test 'tools/**/*.test.js' '.claude/coordination/__tests__/*.test.cjs'",
     "check:budget": "node tools/check-budget/check-budget.js",
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",

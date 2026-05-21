@@ -16,6 +16,8 @@ export const CONSTRAINT_PATTERNS = Object.fromEntries(
 
 const WRITE_PATH_PATTERNS = {
   'records-evidence': 'records/evidence/**',
+  'records-index': 'records/index/**',
+  'records-capabilities': 'records/capabilities/**',
 };
 
 function globMatch(pattern, filePath) {
@@ -156,15 +158,9 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
     };
   }
 
-  if (globMatch("records/evidence/**", normalized)) {
-    const matchingObs = observations.find((obs) => pathMatchesObservation(obs, normalized));
-    if (!matchingObs) {
-      return {
-        decision: "block",
-        observation_required: true,
-        constraint_type: "write-path",
-      };
-    }
+  // Check all write-path patterns (evidence, index, capabilities) via observations
+  const matchingObs = observations.find((obs) => pathMatchesObservation(obs, normalized));
+  if (matchingObs) {
     const staleness = checkStalenessFn ? checkStalenessFn([matchingObs]) : { stale: false };
     if (staleness.stale) {
       return {
@@ -175,6 +171,18 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
       };
     }
     return { decision: "ok" };
+  }
+
+  // If the path matches a known write-path pattern but has no observation → block
+  const knownWritePatterns = Object.values(WRITE_PATH_PATTERNS);
+  for (const pattern of knownWritePatterns) {
+    if (globMatch(pattern, normalized)) {
+      return {
+        decision: "block",
+        observation_required: true,
+        constraint_type: "write-path",
+      };
+    }
   }
 
   // Other paths (records/claims/**, docs/**, etc.) → ok

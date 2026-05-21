@@ -228,6 +228,27 @@ Edit `.claude/coordination/workflows.json` to register new artifact-driven workf
 
 **Warning:** An `observation-changed` workflow is NOT possible because `records/observations/**` is blocked by the hook. The agent cannot Edit or Write observation files directly; it must use the `record_observation` or `update_observation` MCP tools instead.
 
+## MCP Tools
+
+The constraint-gate MCP server exposes 12 tools. Agents call these instead of direct file edits or shell commands for record-system operations.
+
+| Tool | Description | Mutates? |
+|---|---|---|
+| `check_gate` | Returns `ok`, `block`, or `escalate` for a command. Includes inbound staleness check. | No |
+| `record_observation` | Records a new constraint observation YAML in `records/observations/`. | Yes |
+| `update_observation` | Updates an existing observation by rewriting its YAML. | Yes |
+| `notify_artifact_change` | Logs artifact change, checks staleness, triggers workflows. | Yes |
+| `trigger_workflow` | Validates command against allowlist and spawns it with isolated stdio. | Yes |
+| `validate_records` | Validates YAML records against JSON schemas. Returns errors and warnings. | No |
+| `update_claim_verification` | Updates a claim's verification status for a dimension. Preview with `apply=false`. | Yes |
+| `extract_index_entries` | Extracts index entries from evidence markdown. Idempotent. | Yes |
+| `search_index_entries` | Read-only search across index entries by capability, dimension, status. | No |
+| `generate_capability_records` | Generates capability records from product surface adapters. Preview with `dry_run`. | Yes |
+| `list_runtime_probes` | Lists runtime probe files for a stack. Read-only. | No |
+| `list_verified_claims` | Lists verified claims and supporting evidence. Read-only. | No |
+
+**Key rule:** Mutating tools (`record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `update_claim_verification`, `extract_index_entries`, `generate_capability_records`) still gate through the constraint system. Read-only tools (`check_gate`, `validate_records`, `search_index_entries`, `list_runtime_probes`, `list_verified_claims`) do not require observations.
+
 ## Runtime Validation Request Protocol
 
 Before running install, import, config, runtime, or live service commands, ask for human approval and include:

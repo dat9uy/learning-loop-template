@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Shared Infrastructure"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: []
@@ -159,13 +159,13 @@ export function listVerifiedClaims(root) {
 
 ## Success Criteria
 
-- [ ] `tools/lib/frontmatter-splitter.js` exists and is imported by extract-index
-- [ ] `tools/extract-index/frontmatter-splitter.test.js` passes
-- [ ] Write gate allows `records/index/**` and `records/capabilities/**` with observation
-- [ ] Write gate blocks `records/index/**` and `records/capabilities/**` without observation
-- [ ] `tools/list-verified/list-verified.js` exists and outputs same data as `.sh`
-- [ ] `tools/list-verified/list-verified.test.js` passes
-- [ ] `pnpm test` passes (no regressions)
+- [x] `tools/lib/frontmatter-splitter.js` exists and is imported by extract-index
+- [x] `tools/extract-index/frontmatter-splitter.test.js` passes
+- [x] Write gate allows `records/index/**` and `records/capabilities/**` with observation
+- [x] Write gate blocks `records/index/**` and `records/capabilities/**` without observation
+- [x] `tools/list-verified/list-verified.js` exists and outputs same data as `.sh`
+- [x] `tools/list-verified/list-verified.test.js` passes
+- [x] `pnpm test` passes (no regressions)
 
 ## Rollback Strategy
 

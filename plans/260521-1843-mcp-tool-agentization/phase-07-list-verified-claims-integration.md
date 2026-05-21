@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "list_verified_claims + Integration"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [1, 2, 3, 4, 5, 6]
@@ -121,14 +121,14 @@ Create `tools/constraint-gate/integration.test.js`:
 
 ## Success Criteria
 
-- [ ] `list_verified_claims` callable via MCP
-- [ ] Returns `{ claims: [...], evidence: [...] }`
-- [ ] `list-verified.sh` deleted; `list-verified.js` is sole implementation
-- [ ] `package.json` script updated
-- [ ] Server has exactly 12 registered tools
-- [ ] Integration test passes
-- [ ] All existing tests pass (no regressions)
-- [ ] `pnpm check` passes (validate:records + test)
+- [x] `list_verified_claims` callable via MCP
+- [x] Returns `{ claims: [...], evidence: [...] }`
+- [x] `list-verified.sh` deleted; `list-verified.js` is sole implementation
+- [x] `package.json` script updated
+- [x] Server has exactly 12 registered tools
+- [x] Integration test passes
+- [x] All existing tests pass (no regressions)
+- [x] `pnpm check` passes (validate:records + test)
 
 ## Risk Assessment
 
@@ -156,6 +156,6 @@ After Phase 7 completes: Plan is ready for `/ck:cook` implementation.
 
 ## Post-Implementation Checklist
 
-- [ ] Update `docs/system-architecture.md` with new MCP tools
-- [ ] Update `docs/operator-guide.md` with tool descriptions
-- [ ] Verify `.mcp.json` registration is correct (if config file exists)
+- [x] Update `docs/system-architecture.md` with new MCP tools
+- [x] Update `docs/operator-guide.md` with tool descriptions
+- [x] Verify `.mcp.json` registration is correct (if config file exists)

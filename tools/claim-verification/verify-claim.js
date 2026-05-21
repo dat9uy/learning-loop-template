@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verificationDimensions } from "../validate-records/claim-verification-rules.js";
 import { loadRecords } from "../validate-records/record-loader.js";
@@ -7,7 +7,7 @@ import { loadSchemas } from "../validate-records/schema-loader.js";
 import { validateRecords } from "../validate-records/record-validation-rules.js";
 import { parse as parseValue } from "yaml";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const SCRIPT_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
 function usage() {
   return [
@@ -45,14 +45,11 @@ function parseArgs(argv) {
   return args;
 }
 
-function fail(message) {
-  console.error(message);
-  process.exit(1);
-}
-
-function validateRecordSet(records, schemas) {
-  const errors = validateRecords(records, schemas, root);
-  if (errors.length) fail(errors.map((error) => `- ${error}`).join("\n"));
+function validateRecordSet(records, schemas, rootPath) {
+  const errors = validateRecords(records, schemas, rootPath);
+  if (errors.length) {
+    throw new Error(errors.map((error) => `- ${error}`).join("\n"));
+  }
 }
 
 function hasUpdateArgs(args) {
@@ -65,8 +62,8 @@ function requireUpdateArgs(args) {
   if (!args.dimension) missing.push("--dimension");
   if (!args.status) missing.push("--status");
   if (!args.reason) missing.push("--reason");
-  if (missing.length) fail(`Missing required update argument(s): ${missing.join(", ")}`);
-  if (!verificationDimensions.has(args.dimension)) fail(`Unsupported verification dimension: ${args.dimension}`);
+  if (missing.length) throw new Error(`Missing required update argument(s): ${missing.join(", ")}`);
+  if (!verificationDimensions.has(args.dimension)) throw new Error(`Unsupported verification dimension: ${args.dimension}`);
 }
 
 export function assertWritablePlainString(label, value) {
@@ -123,7 +120,7 @@ function replaceVerificationBlock(fileText, verification) {
 
 function findTargetClaim(records, claimId) {
   const claim = records.find((record) => record.id === claimId && record.type === "claim");
-  if (!claim) fail(`Claim not found: ${claimId}`);
+  if (!claim) throw new Error(`Claim not found: ${claimId}`);
   return claim;
 }
 
@@ -135,13 +132,66 @@ function buildDimension(args) {
   return { ...base, proof_refs: args.proofRefs };
 }
 
-function printProposal(claim, verification, args) {
-  console.log(`Claim: ${claim.id}`);
-  console.log(`Dimension: ${args.dimension}`);
-  console.log(`Proposed status: ${args.status}`);
-  console.log(`Proof refs: ${args.proofRefs.length}`);
-  console.log(`Decision refs: ${args.decisionRefs.length}`);
-  if (!args.apply) console.log("Dry run: no files changed");
+function formatProposal(claim, args) {
+  const lines = [
+    `Claim: ${claim.id}`,
+    `Dimension: ${args.dimension}`,
+    `Proposed status: ${args.status}`,
+    `Proof refs: ${args.proofRefs.length}`,
+    `Decision refs: ${args.decisionRefs.length}`,
+  ];
+  if (!args.apply) lines.push("Dry run: no files changed");
+  return lines.join("\n");
+}
+
+/**
+ * Pure function to update claim verification. Throws on error.
+ * @returns {{ updated: boolean, claim_id: string, preview?: string }}
+ */
+export function updateClaimVerification({
+  root,
+  claimId,
+  dimension,
+  status,
+  reason,
+  scope,
+  output,
+  proofRefs = [],
+  decisionRefs = [],
+  blockedActions = [],
+  apply = false,
+}) {
+  const rootPath = root || SCRIPT_ROOT;
+  const schemas = loadSchemas(rootPath);
+  const records = loadRecords(rootPath);
+  validateRecordSet(records, schemas, rootPath);
+
+  const claim = findTargetClaim(records, claimId);
+  const verification = {
+    ...(claim.verification || {}),
+    [dimension]: buildDimension({
+      dimension, status, reason, scope, output, proofRefs, decisionRefs,
+    }),
+    blocked_actions: blockedActions,
+  };
+
+  const updatedRecords = records.map((record) => (
+    record.id === claim.id ? { ...record, verification } : record
+  ));
+  validateRecordSet(updatedRecords, schemas, rootPath);
+
+  const preview = formatProposal(claim, { dimension, status, proofRefs, decisionRefs, apply });
+
+  if (!apply) {
+    return { updated: false, claim_id: claimId, preview };
+  }
+
+  const filePath = join(rootPath, claim.__file);
+  const nextFileText = replaceVerificationBlock(readFileSync(filePath, "utf8"), verification);
+  writeFileSync(filePath, nextFileText);
+  validateRecordSet(loadRecords(rootPath), schemas, rootPath);
+
+  return { updated: true, claim_id: claimId, preview: `Applied verification update to ${claim.__file}.` };
 }
 
 function main() {
@@ -149,16 +199,22 @@ function main() {
   try {
     args = parseArgs(process.argv.slice(2));
   } catch (error) {
-    fail(`${error.message}\n${usage()}`);
+    console.error(`${error.message}\n${usage()}`);
+    process.exit(1);
   }
   if (args.help) {
     console.log(usage());
     return;
   }
 
-  const schemas = loadSchemas(root);
-  const records = loadRecords(root);
-  validateRecordSet(records, schemas);
+  const schemas = loadSchemas(SCRIPT_ROOT);
+  const records = loadRecords(SCRIPT_ROOT);
+  try {
+    validateRecordSet(records, schemas, SCRIPT_ROOT);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 
   if (!hasUpdateArgs(args)) {
     console.log(`Validated ${records.length} records.`);
@@ -166,7 +222,13 @@ function main() {
     return;
   }
 
-  requireUpdateArgs(args);
+  try {
+    requireUpdateArgs(args);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+
   const claim = findTargetClaim(records, args.claim);
   const verification = {
     ...(claim.verification || {}),
@@ -177,15 +239,25 @@ function main() {
   const updatedRecords = records.map((record) => (
     record.id === claim.id ? { ...record, verification } : record
   ));
-  validateRecordSet(updatedRecords, schemas);
-  printProposal(claim, verification, args);
+  try {
+    validateRecordSet(updatedRecords, schemas, SCRIPT_ROOT);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+  console.log(formatProposal(claim, args));
 
   if (!args.apply) return;
 
-  const filePath = join(root, claim.__file);
+  const filePath = join(SCRIPT_ROOT, claim.__file);
   const nextFileText = replaceVerificationBlock(readFileSync(filePath, "utf8"), verification);
   writeFileSync(filePath, nextFileText);
-  validateRecordSet(loadRecords(root), schemas);
+  try {
+    validateRecordSet(loadRecords(SCRIPT_ROOT), schemas, SCRIPT_ROOT);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
   console.log(`Applied verification update to ${claim.__file}.`);
 }
 

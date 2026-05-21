@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Tool Registry + Server Refactor"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -243,12 +243,12 @@ If the server fails to start, debug import errors before proceeding. Do NOT star
 
 ## Success Criteria
 
-- [ ] `server.js` under 150 lines
-- [ ] `tool-registry.js` exists and works
-- [ ] Each existing tool lives in its own file under `tools/constraint-gate/tools/`
-- [ ] All existing tests pass
-- [ ] New tests for registry, logging, and extracted tools pass
-- [ ] `gate-log.jsonl` still receives entries from all tools
+- [x] `server.js` under 150 lines
+- [x] `tool-registry.js` exists and works
+- [x] Each existing tool lives in its own file under `tools/constraint-gate/tools/`
+- [x] All existing tests pass
+- [x] New tests for registry, logging, and extracted tools pass
+- [x] `gate-log.jsonl` still receives entries from all tools
 
 ## Risk Assessment
 

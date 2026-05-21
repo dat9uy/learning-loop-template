@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "validate_records Tool"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -134,12 +134,12 @@ Add import and `registerTool(server, validateRecordsTool)`.
 
 ## Success Criteria
 
-- [ ] `validate_records` callable via MCP
-- [ ] Returns `{ valid, record_count, errors[], warnings[] }`
-- [ ] Each error has `{ record, message }` structure
-- [ ] Read-only: never modifies files
-- [ ] Gate log entry written per call
-- [ ] Tests pass
+- [x] `validate_records` callable via MCP
+- [x] Returns `{ valid, record_count, errors[], warnings[] }`
+- [x] Each error has `{ record, message }` structure
+- [x] Read-only: never modifies files
+- [x] Gate log entry written per call
+- [x] Tests pass
 
 ## Risk Assessment
 

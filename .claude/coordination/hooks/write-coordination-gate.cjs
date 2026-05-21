@@ -33,6 +33,7 @@ function main() {
   }
 
   const relPath = path.normalize(toRelative(filePath));
+  const coordDir = path.join(__dirname, '..');
 
   // Unconditional block for observation files
   if (globMatch('records/observations/**', relPath)) {
@@ -71,7 +72,6 @@ function main() {
   if (globMatch('records/evidence/**', relPath)) {
     const root = findProjectRoot();
     const obsDir = path.join(root, 'records', 'observations');
-    const coordDir = path.join(__dirname, '..');
     const observations = readObservations(obsDir);
     const matchingObs = observations.find(obs => pathMatchesObservation(obs, relPath));
 
@@ -95,6 +95,37 @@ function main() {
       reason: 'Evidence files affect validation. Explicit approval required.',
       file_path: filePath,
       matched_rule: 'records/evidence/**',
+    }));
+    process.exit(2);
+  }
+
+  // Index and capabilities are agent-managed derived artifacts
+  if (globMatch('records/index/**', relPath) || globMatch('records/capabilities/**', relPath)) {
+    const root = findProjectRoot();
+    const obsDir = path.join(root, 'records', 'observations');
+    const observations = readObservations(obsDir);
+    const matchingObs = observations.find(obs => pathMatchesObservation(obs, relPath));
+
+    if (matchingObs) {
+      const staleness = checkObservationStaleness([matchingObs], coordDir);
+      if (staleness.stale) {
+        console.log(JSON.stringify({
+          decision: 'escalate',
+          reason: staleness.reason,
+          file_path: filePath,
+          observation_id: staleness.observation_id,
+          inbound_gate: true,
+        }));
+        process.exit(2);
+      }
+      process.exit(0);
+    }
+
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Index/capability files require observation. Explicit approval required.',
+      file_path: filePath,
+      matched_rule: 'records/{index,capabilities}/**',
     }));
     process.exit(2);
   }

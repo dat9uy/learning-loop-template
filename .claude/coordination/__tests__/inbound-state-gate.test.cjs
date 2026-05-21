@@ -378,9 +378,13 @@ console.log('\n=== Category 6: False Positive Rate ===');
 console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
 {
   const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'constraint-gate', 'server.js');
+  const inboundStatePath = path.join(__dirname, '..', '..', '..', 'tools', 'constraint-gate', 'inbound-state.js');
   const serverCode = fs.readFileSync(serverPath, 'utf8');
-  const hasStalenessCheck = serverCode.includes('checkObservationStaleness');
-  const checksRegardless = serverCode.includes('if (constraintMatch)') && serverCode.includes('checkObservationStaleness');
+  const inboundStateCode = fs.readFileSync(inboundStatePath, 'utf8');
+  const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');
+  const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'constraint-gate', 'tools', 'gate-tool.js');
+  const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
+  const checksRegardless = gateToolCode.includes('if (constraintMatch)') && gateToolCode.includes('checkObservationStaleness');
   assert(hasStalenessCheck, 'MCP server has staleness check function');
   assert(checksRegardless, 'MCP server checks staleness regardless of decision (F3 fix)');
 }

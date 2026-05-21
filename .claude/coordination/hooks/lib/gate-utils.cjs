@@ -73,6 +73,8 @@ const MARKER_TTL_MS = 30 * 60 * 1000;
 
 const WRITE_PATH_PATTERNS = {
   'records-evidence': 'records/evidence/**',
+  'records-index': 'records/index/**',
+  'records-capabilities': 'records/capabilities/**',
 };
 
 function readLastOperatorMessage(coordDir) {

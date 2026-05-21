@@ -18,9 +18,11 @@ Operator Message          Agent Action (Bash/Edit/Write)
        v                           v
 .last-operator-message     constraint-gate MCP server
        |                    (check_gate, record_observation,
-       |                     update_observation,
-       |                     notify_artifact_change,
-       |                     trigger_workflow)
+       |                     update_observation, notify_artifact_change,
+       |                     trigger_workflow, validate_records,
+       |                     update_claim_verification, extract_index_entries,
+       |                     search_index_entries, generate_capability_records,
+       |                     list_runtime_probes, list_verified_claims)
        |                           |
        +-----------+---------------+
                    |
@@ -152,7 +154,7 @@ This algorithm differs from the inbound gate's 30-minute threshold. See Known Is
 
 **File:** `tools/constraint-gate/server.js`
 **Transport:** stdio (MCP protocol)
-**Tools:** `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`
+**Tools:** `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `list_runtime_probes`, `list_verified_claims`
 
 The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol, enabling integration with agent tool systems. Policy decisions that were previously embedded in the write gate now live here.
 
@@ -175,6 +177,34 @@ Logs an artifact change to `gate-log.jsonl`, checks observation staleness, and t
 #### trigger_workflow
 
 Validates a command against an allowlist and spawns it with isolated stdio. Only `node` with a script path under `tools/` is permitted.
+
+#### validate_records
+
+Validates YAML records under `records/` against JSON schemas. Returns structured errors, warnings, and derived assurance failures. Use after writing records to verify correctness.
+
+#### update_claim_verification
+
+Updates a frozen-legacy claim's verification status for a specific dimension (`static`, `install`, `runtime`, `product`). Supports preview mode (`apply: false`) before committing.
+
+#### extract_index_entries
+
+Extracts machine-readable index entries from evidence markdown `## Findings` sections. Idempotent — safe to call multiple times. Use after writing evidence to update the index.
+
+#### search_index_entries
+
+Read-only search across index entries by capability, dimension, and status. Returns matching entries with frontmatter.
+
+#### generate_capability_records
+
+Generates capability records from product surface adapters. Supports `dry_run` to preview drift before writing.
+
+#### list_runtime_probes
+
+Lists runtime probe files for a given stack. Read-only discovery tool.
+
+#### list_verified_claims
+
+Lists all verified claims and their supporting evidence. Read-only reporting tool. Pure JS implementation with no external dependencies.
 
 ### MCP Workflow Layer
 

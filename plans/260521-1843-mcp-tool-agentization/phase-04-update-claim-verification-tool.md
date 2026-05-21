@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "update_claim_verification Tool"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -42,10 +42,10 @@ The existing `verify-claim.js` is CLI-focused (calls `process.exit`, `console.er
 **CRITICAL:** Before extracting, audit ALL internal functions for `process.exit` calls. `verify-claim.js` has `fail()` which calls `process.exit(1)` — this will kill the MCP server if triggered.
 
 **Audit checklist:**
-- [ ] Replace `fail()` with thrown errors in the library path
-- [ ] Thread `root` through ALL internal functions (currently module-level `const root`)
-- [ ] Replace `console.error` in library path with returned error messages
-- [ ] Ensure `main()` CLI wrapper catches errors and calls `process.exit`
+- [x] Replace `fail()` with thrown errors in the library path
+- [x] Thread `root` through ALL internal functions (currently module-level `const root`)
+- [x] Replace `console.error` in library path with returned error messages
+- [x] Ensure `main()` CLI wrapper catches errors and calls `process.exit`
 
 Extract a pure `updateClaimVerification` function from the CLI body:
 
@@ -152,12 +152,12 @@ Add import and `registerTool(server, updateClaimTool)`.
 
 ## Success Criteria
 
-- [ ] `update_claim_verification` callable via MCP
-- [ ] Enum validation on `dimension` and `status` (Zod)
-- [ ] Dry-run preview mode (apply=false)
-- [ ] Apply mode writes claim YAML (apply=true)
-- [ ] CLI `pnpm verify:claim` still works unchanged
-- [ ] Tests pass
+- [x] `update_claim_verification` callable via MCP
+- [x] Enum validation on `dimension` and `status` (Zod)
+- [x] Dry-run preview mode (apply=false)
+- [x] Apply mode writes claim YAML (apply=true)
+- [x] CLI `pnpm verify:claim` still works unchanged
+- [x] Tests pass
 
 ## Risk Assessment
 

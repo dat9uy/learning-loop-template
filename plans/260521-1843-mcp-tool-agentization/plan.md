@@ -1,7 +1,7 @@
 ---
 title: "MCP Tool Agentization: Extend constraint-gate with 7 learning-loop tools"
 description: "Extend the constraint-gate MCP server with 7 agent-facing tools for record validation, claim verification, index management, capability generation, probe listing, and verified claims reporting. Modularize server with tool registry pattern. Update write gate for new paths."
-status: pending
+status: completed
 priority: P1
 effort: "8h"
 branch: "main"
@@ -60,13 +60,13 @@ tools/constraint-gate/
 
 | Phase | Name | Status | Priority | Effort |
 |-------|------|--------|----------|--------|
-| 1 | [Shared Infrastructure](./phase-01-shared-infrastructure.md) | Pending | P1 | 1.5h |
-| 2 | [Tool Registry + Server Refactor](./phase-02-tool-registry-server-refactor.md) | Pending | P1 | 1h |
-| 3 | [validate_records Tool](./phase-03-validate-records-tool.md) | Pending | P1 | 1h |
-| 4 | [update_claim_verification Tool](./phase-04-update-claim-verification-tool.md) | Pending | P1 | 1h |
-| 5 | [Index Tools](./phase-05-index-tools.md) | Pending | P2 | 1h |
-| 6 | [Capability + Probe Tools](./phase-06-capability-probe-tools.md) | Pending | P2 | 1h |
-| 7 | [list_verified_claims + Integration](./phase-07-list-verified-claims-integration.md) | Pending | P2 | 1.5h |
+| 1 | [Shared Infrastructure](./phase-01-shared-infrastructure.md) | Completed | P1 | 1.5h |
+| 2 | [Tool Registry + Server Refactor](./phase-02-tool-registry-server-refactor.md) | Completed | P1 | 1h |
+| 3 | [validate_records Tool](./phase-03-validate-records-tool.md) | Completed | P1 | 1h |
+| 4 | [update_claim_verification Tool](./phase-04-update-claim-verification-tool.md) | Completed | P1 | 1h |
+| 5 | [Index Tools](./phase-05-index-tools.md) | Completed | P2 | 1h |
+| 6 | [Capability + Probe Tools](./phase-06-capability-probe-tools.md) | Completed | P2 | 1h |
+| 7 | [list_verified_claims + Integration](./phase-07-list-verified-claims-integration.md) | Completed | P2 | 1.5h |
 
 ## Dependencies
 
@@ -208,11 +208,11 @@ tools/constraint-gate/
 
 ## Success Criteria
 
-- [ ] All 7 new tools callable via MCP with structured JSON responses
-- [ ] Server size under 400 lines (modularized)
-- [ ] Existing 5 tools unchanged and functional
-- [ ] Write gate allows `records/index/**` and `records/capabilities/**` with observation
-- [ ] list-verified rewritten in pure JS, no `yq` dependency
-- [ ] All existing tests pass
-- [ ] New tests for each MCP tool handler
-- [ ] Audit trail logs all tool calls
+- [x] All 7 new tools callable via MCP with structured JSON responses
+- [x] Server size under 400 lines (modularized)
+- [x] Existing 5 tools unchanged and functional
+- [x] Write gate allows `records/index/**` and `records/capabilities/**` with observation
+- [x] list-verified rewritten in pure JS, no `yq` dependency
+- [x] All existing tests pass
+- [x] New tests for each MCP tool handler
+- [x] Audit trail logs all tool calls
