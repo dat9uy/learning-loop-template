@@ -24,7 +24,7 @@ Changes committed as `20ac1fa`:
 
 - **Tests**: 7 unit tests in `observation-writer.test.js` (invalid status, not found, symlink skip, immutability, atomic write, timestamp bounds, notes append). 4 integration tests in `server.test.js` (success path, bad status, missing id, round-trip read-after-update). All TDD — red first, then green.
 
-- **Decision record**: `records/decisions/decision-add-update-observation-to-mcp-server.yaml` documenting rationale, alternatives rejected, and tradeoffs accepted.
+- **Decision record**: `records/decisions/decision-260521T0000Z-add-update-observation-to-mcp-server.yaml` documenting rationale, alternatives rejected, and tradeoffs accepted.
 
 ## The Brutal Truth
 
