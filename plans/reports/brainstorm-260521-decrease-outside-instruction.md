@@ -236,6 +236,70 @@ Output: { prompt: string,                    // The actual prompt text
 
 **Pattern:** Agent calls `workflow_generate_prompt` → evaluates `constraints` + `budget_context` + `approval_gates` → calls next tool with `prompt` embedded in arguments. No automatic chaining; agent decides at each step.
 
+#### `workflow_intentional_skip`
+Handle user request to skip a required assertion. Converts skipped knowledge into structured loop artifacts.
+
+```
+Input:  { assertion_id: string,
+          skip_reason: string,
+          scope: string }
+Output: { status: "blocked" | "narrowed" | "accepted",
+          records_required: string[],    // index entry, risk, decision, capability updates
+          blocked_work: string[],        // what the agent must NOT do now
+          allowed_work: string[],        // what the agent MAY do instead
+          rationale: string }
+```
+
+**Rule:** Do not let skipped knowledge disappear. Convert into records-side status, active blocking risk, narrowed decision boundary, or capability text showing blocked execution.
+
+#### `workflow_verify_evidence_execution`
+Verify whether all assertions in an evidence document can execute technically. Treats as verification request, not direct execution.
+
+```
+Input:  { evidence_path: string,
+          verification_depth: "symbol-exists" | "import-succeeds" | "method-callable" | "sample-output" | "full-runtime" }
+Output: { assertion_matrix: { section: string, assertion: string, verification_class: string, status: string }[],
+          executable_count: number,
+          blocked_count: number,
+          skipped_snippets: { reason: string, line_range: string }[],
+          required_approvals: string[] }
+```
+
+**Rule:** Separate execution classes (symbol exists → import succeeds → method callable → sample call returns output → output schema matches → business behavior correct). Classify snippets as illustrative-only, static-verifiable, import-verifiable, runtime-verifiable, or blocked pending approval.
+
+#### `workflow_external_decision`
+Process user-provided outside confirmation as decision input, not complete proof.
+
+```
+Input:  { source: string,           // who confirmed
+          authority_scope: string,  // what authority
+          confirmed_scope: string,  // what exact scope
+          remaining_blocks: string[] }
+Output: { acceptance: "partial" | "full" | "rejected",
+          records_required: string[],  // evidence note, assertions, risks, decision_effect
+          risks: string[],             // authority, scope, durability, expiry risks
+          capability_boundaries: string[],
+          rationale: string }
+```
+
+**Rule:** External confirmation seeds a decision; the loop still records scope, basis, risks, and boundaries.
+
+#### `workflow_self_improvement`
+Handle loop self-improvement requests. Creates improvement experiments under existing governance.
+
+```
+Input:  { improvement_type: "schema-change" | "doc-change" | "workflow-gap" | "tool-gap",
+          description: string,
+          proposed_changes: object }
+Output: { experiment_candidate: object,    // experiment record draft
+          decision_required: boolean,       // whether schema/doc changes need decision
+          risks: string[],
+          next_steps: string[],
+          canonical_adoption_path: string }
+```
+
+**Rule:** Hard-test failures become evidence. Self-improvement experiments may propose schema/doc changes. Canonical adoption requires explicit decision approval. Runtime output does not become a decision; a decision approves what runtime output may be captured.
+
 ### Gate Tools (New — from Scout Report)
 
 See `plans/reports/agentize-scout-260521-mcp-candidates.md` §3 for full specs. Priority order:
@@ -334,7 +398,46 @@ All tools log to shared `gate-log.jsonl`. Already has rotation (10 MB, 5 backups
 
 Standardize: `{ success: boolean, complete: boolean, errors: string[], result: object }`
 
-### 5. Rich Descriptions
+### 5. pnpm Command Integration
+
+Workflow tools do NOT replace pnpm commands. They guide the agent on WHEN and WHY to run them:
+
+| pnpm Command | Workflow Tool Relationship |
+|---|---|
+| `pnpm extract:index` | Agent runs after `workflow_intake_orient` or evidence changes; triggered by `notify_artifact_change` auto-workflow |
+| `pnpm validate:records` | Agent runs after record changes; `gate_validate_records` provides structured error output |
+| `pnpm check` | Agent runs as final validation step; combines `validate:records`, `generate:capabilities --dry-run`, and other checks |
+| `pnpm check:budget` | `gate_check` calls equivalent logic; agent may run pnpm variant for CLI debugging |
+| `pnpm generate:capabilities` | Agent runs after product surface changes; `gate_generate_capability_records` provides drift detection |
+
+Workflow tools return guidance; pnpm commands perform work. The agent uses both.
+
+### 6. Fallback Mechanism During Transition
+
+If a workflow tool returns incomplete or unexpected results, the agent falls back to the operator guide by:
+
+1. Checking the tool's `gate_status` field — `"blocked"` or `"needs_observation"` means stop and consult guide
+2. Comparing tool output against the `required_records` list — missing records indicate incomplete intake
+3. Using `workflow_generate_prompt` with `blueprint: "state-gated"` to get constrained next-step guidance
+
+The operator guide remains the authoritative fallback until all 13 intake steps have verified tool coverage.
+
+### 7. Testing Strategy
+
+Each workflow tool gets a `.test.js` file following the existing gate tool pattern:
+
+```
+tools/constraint-gate/tools/
+  workflow-classify-prompt-tool.js
+  workflow-classify-prompt-tool.test.js
+  workflow-intake-orient-tool.js
+  workflow-intake-orient-tool.test.js
+  ...
+```
+
+Tests validate: input schema rejection, happy-path output shape, error handling, and edge cases (empty input, malformed input, missing records). Tests run with `pnpm test` alongside existing gate tool tests.
+
+### 8. Rich Descriptions
 
 MCP tool descriptions are the agent's primary documentation. Each description must state: what it does, when to use, what it returns, failure modes.
 
@@ -348,10 +451,33 @@ MCP tool descriptions are the agent's primary documentation. Each description mu
 | Server size growth | Low | Registry pattern caps at ~280 lines |
 | Tool description quality | Medium | Descriptions are deliverable; poor descriptions = poor agent behavior |
 | Migration of operator guide content | Low | Incremental — encode one section, test, then delete from guide |
-| Two schema languages | Avoided | Keep AJV only; no Zod |
+| Two schema languages | Avoided | AJV for YAML record schemas; Zod already in use for MCP tool input schemas. No new schema language needed. |
 | Workflow tools become too opinionated | Medium | Workflow tools suggest, agent decides; descriptions state "agent may override" |
 
 ---
+
+## Integration Test Scenario
+
+**Test name:** `agent-completes-intake-lifecycle`
+
+**Setup:** Fresh agent session, cleared context, no operator-guide.md access.
+
+**Input prompt:** "I want to verify that the vnstock install works in a fresh sandbox and then build a product capability on top of it."
+
+**Expected agent behavior (without opening operator-guide.md):**
+
+1. Calls `workflow_classify_prompt` → receives category "product" with suggested tools
+2. Calls `workflow_intake_orient` → receives index entries for `vnstock-data`, meta triggers, observations, capability files
+3. Reads observation records for resource budget state
+4. Calls `workflow_request_runtime_gate` → receives structured approval request for sandbox install
+5. After operator approval, runs approved install in temp directory
+6. Calls `workflow_convert_evidence_to_experiment` → produces experiment YAML from evidence MD
+7. Calls `workflow_report_phase_status` → reports process steps + experiment outcome
+8. Calls `gate_validate_records` → validates all authored records
+9. Calls `gate_extract_index_entries` → regenerates index from evidence
+10. Derives capability records only after index entries verified for install dimension
+
+**Pass criteria:** All 10 steps complete without agent opening `docs/operator-guide.md`. Agent may reference `docs/philosophy.md` for reasoning.
 
 ## Success Metrics
 
@@ -360,6 +486,7 @@ MCP tool descriptions are the agent's primary documentation. Each description mu
 3. **Tool coverage:** All 13 intake steps have corresponding MCP tool or template
 4. **Card coverage:** All operator cards have corresponding workflow tool
 5. **Blueprint coverage:** All prompt blueprints callable via `workflow_generate_prompt`
+6. **Meta evidence format:** All meta evidence files (existing + new) use `## Findings` with `[topic-tag]` bullets + frontmatter
 
 ---
 
@@ -367,7 +494,7 @@ MCP tool descriptions are the agent's primary documentation. Each description mu
 
 Comparing the brainstorm plan against the current `docs/operator-guide.md`, two gaps surfaced. These are addressed below; a third gap (seven operator cards without corresponding workflow tools) is deferred for separate discussion.
 
-### Gap 2: Evidence Findings Convention Not Explicitly Encoded
+### Gap 1: Evidence Findings Convention Not Explicitly Encoded
 
 The `## Findings` syntax rules in operator-guide.md (lines 71-80) are procedural knowledge that `gate_extract_index_entries` depends on, yet the brainstorm's artifact encoding table does not list them:
 
@@ -379,7 +506,7 @@ The `## Findings` syntax rules in operator-guide.md (lines 71-80) are procedural
 
 **Resolution:** Encode as `records/evidence/meta/evidence-findings-convention.md` with `## Findings` using `[topic-tag]` bullets. Each bullet states one syntax rule. `Context:` nested bullets explain why the rule exists. `Caveat:` nested bullets note exceptions. Include frontmatter with `capability: meta`, `dimension: static`, `scope: meta-tooling`, `validation_status: passed`. Add a cross-reference in `gate_extract_index_entries` tool description pointing to this file.
 
-### Gap 3: Resource Budget Procedural Rules Beyond "Overview"
+### Gap 2: Resource Budget Procedural Rules Beyond "Overview"
 
 The brainstorm says "Keep overview; details in observation schema + `gate_check`". But operator-guide.md lines 104-133 contain ~30 lines of procedural rules not captured in any schema:
 
@@ -392,7 +519,7 @@ The observation schema stores state (`budget`, `current`, `last_verified`), not 
 
 **Resolution:** Encode procedural rules as `records/evidence/meta/resource-budget-procedural-rules.md` with `## Findings` using `[topic-tag]` bullets. One bullet per rule (budget declaration, check failure = STOP, operator confirmation, validation window, dependency chain trace). Include frontmatter with `capability: meta`, `dimension: static`, `scope: governance`, `validation_status: passed`. Keep a one-line overview in the shrunk guide pointing to this file. Embed the 4-step flow and 6 key rules in `gate_check` tool description as constraints the agent must evaluate.
 
-### Gap 1: Seven Operator Cards Without Corresponding Workflow Tools
+### Gap 3: Seven Operator Cards Without Corresponding Workflow Tools
 
 The brainstorm originally defined workflow tools for only 2 of 9 operator cards (Product Build Request, Runtime Probe Experiment). The remaining 7 cards need solutions.
 
@@ -430,39 +557,37 @@ The brainstorm originally defined workflow tools for only 2 of 9 operator cards 
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
-| Write gate allowlist update | Required | Add `records/index/**` + `records/capabilities/**` |
-| Tool registry pattern | Required | `tool-registry.js` + modular tool files |
-| `gate_validate_records` | P1 | From scout report |
-| `gate_extract_index_entries` | P2 | From scout report |
-| `gate_search_index_entries` | P2 | From scout report |
+| Write gate allowlist update | **Done** | `records/index/**` + `records/capabilities/**` already have observation-based auth |
+| Tool registry pattern | **Done** | `tool-registry.js` exists; server already modularized |
+| `gate_validate_records` | P1 | From scout report — **already implemented** |
+| `gate_extract_index_entries` | P2 | From scout report — **already implemented** |
+| `gate_search_index_entries` | P2 | From scout report — **already implemented** |
 | `workflow_classify_prompt` | P1 | New |
 | `workflow_intake_orient` | P1 | New |
 | `workflow_request_runtime_gate` | P1 | New |
 | `workflow_convert_evidence_to_experiment` | P2 | New |
 | `workflow_generate_prompt` | P2 | New |
 | Remaining gate tools | P3-P4 | From scout report |
-| `workflow_intentional_skip` | P2 | New |
-| `workflow_verify_evidence_execution` | P2 | New |
-| `workflow_external_decision` | P2 | New |
-| `workflow_self_improvement` | P2 | New |
-| `records/evidence/meta/evidence-findings-convention.md` | P2 | New meta evidence |
-| `records/evidence/meta/resource-budget-procedural-rules.md` | P2 | New meta evidence |
-| `records/evidence/meta/capability-generation-extension.md` | P2 | New meta evidence |
-| `records/evidence/meta/live-gate-template.md` | P2 | New meta evidence |
+| `workflow_intentional_skip` | P2 | New — spec added in this report |
+| `workflow_verify_evidence_execution` | P2 | New — spec added in this report |
+| `workflow_external_decision` | P2 | New — spec added in this report |
+| `workflow_self_improvement` | P2 | New — spec added in this report |
+| `records/evidence/meta/evidence-findings-convention.md` | **Done** | Created with `## Findings` + frontmatter |
+| `records/evidence/meta/resource-budget-procedural-rules.md` | **Done** | Created with `## Findings` + frontmatter |
+| `records/evidence/meta/capability-generation-extension.md` | **Done** | Created with `## Findings` + frontmatter |
+| `records/evidence/meta/live-gate-template.md` | **Done** | Created with `## Findings` + frontmatter |
 | Remaining workflow tools | P3 | New |
 
 ---
 
 ## Next Steps
 
-1. **Plan phases** — `/ck:plan` with phases: registry scaffold → gate tools → workflow tools → guide shrink → integration test
-2. **Write gate allowlist** — Add `records/index/**` + `records/capabilities/**` with observation requirement
-3. **Implement registry** — `tool-registry.js` + refactor existing tools into modular files
-4. **Add gate tools P1-P2** — validate_records, extract_index, search_index
-5. **Add workflow tools P1** — classify_prompt, intake_orient, request_runtime_gate
-6. **Add remaining tools** — Per priority order
-7. **Shrink operator guide** — Remove encoded sections, keep philosophy
-8. **Integration test** — Agent completes full lifecycle without opening guide
+1. **Plan phases** — `/ck:plan` with phases: workflow tools P1 → workflow tools P2 → remaining tools → guide shrink → integration test
+2. **Add workflow tools P1** — classify_prompt, intake_orient, request_runtime_gate
+3. **Add workflow tools P2** — convert_evidence, generate_prompt, intentional_skip, verify_evidence, external_decision, self_improvement
+4. **Create meta evidence files** — evidence-findings-convention, resource-budget-rules, capability-generation, live-gate-template
+5. **Shrink operator guide** — Remove encoded sections, keep philosophy
+6. **Integration test** — Agent completes full lifecycle without opening guide
 
 ---
 
