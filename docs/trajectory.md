@@ -61,5 +61,5 @@ What stays in `docs/` is irreducible judgment. What moves to `records/` is proce
 
 - Present-tense system description: `charter.md`.
 - How to reason with the current loop: `philosophy.md`.
-- Current artifact model (claim deprecation, index entries): `record-system-architecture.md`, `artifact-reference.md`.
+- Current artifact model (claim deprecation, index entries): `record-system-architecture.md`, `artifact-concepts.md`.
 - The brainstorm that made atomicity load-bearing: `plans/reports/brainstorm-20260518-machine-extracted-index.md`.

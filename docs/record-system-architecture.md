@@ -1,26 +1,10 @@
 # Record System Architecture
 
-This document describes the record system's data model, entity roles, state machine, and verification axes. For the reasoning principles behind these structures — why the loop exists, how to think about verification, decisions as boundaries, and state-machine rules — read `docs/philosophy.md` first.
+This document describes the record system's data model, core hierarchy, state machine, and product generation loop. For entity roles and verification axes, use the `workflow_intake_orient` MCP tool.
 
 ## Record Ledger
 
-Records are human-edited source files under `records/`. They describe frozen-legacy claims, index entries, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state (device slots, resource budgets, behavioral findings). Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
-
-## Entity Roles
-
-| Entity | What it does | How it helps learning |
-|---|---|---|
-| Evidence/source material | Captures where information came from and its limits. | Preserves durable context without pretending it is verified truth. |
-| Index entry | Machine-extracted atomic assertion from evidence `## Findings`. | Replaces claims as the canonical state query target; enables N=1/N>1 counting. |
-| Claim record | States a candidate assertion and links sources/experiments. | Frozen-legacy (read-only audit trail, no new entries). Historical reference only. |
-| Risk record | States conditional caution, severity, confidence, and mitigation. | Prevents weak/ambiguous knowledge from becoming unsafe capability. |
-| Experiment record | Records review, verification, runtime check, build test, or rejection. | Proves or rejects non-product verification dimensions. |
-| Decision record | Records human/policy authority and scoped effects. | Separates permission from technical verification. |
-| Capability record | Maps verified library surfaces (index entries or frozen-legacy claims) to product surfaces (`route_class`, `view_class`). | Binds upstream verification to the build target without smuggling implementation detail. |
-| Runtime probe | Standalone feasibility probe under `product/<stack>/capabilities/<scope>/`. | Tests API-return-data runtime; substrate for the runtime-verification experiment, not product code. |
-| Observation record | Captures mutable external system state (device slots, resource budgets, behavioral findings). | Authoritative source for operational constraints; gates irreversible commands via the constraint gate. |
-| Resource budget | Observation subtype tracking `budget`/`current` counts and `validation_window` state. | Prevents agent from exhausting finite external resources (vendor slots, rate limits). |
-| Derived claim assurance (frozen-legacy claims only) | Projects claim strength from claim dimensions and linked experiments. | Avoids duplicated assurance ladders on claims. |
+Records are human-edited source files under `records/`. They describe frozen-legacy claims, index entries, experiments, decisions, risks, capability records, and observations in a small typed format. Evidence files live under `records/evidence/` and are cited by records. Observation files live under `records/observations/` and capture mutable external system state. Index entries live under `records/index/` as machine-derived YAMLs that are agent-owned and human-read-only.
 
 ## Core Hierarchy
 
@@ -32,7 +16,7 @@ records/claims/        -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
 runtime probes         -> product/<stack>/capabilities/ (runtime-verification substrate)
 constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
-index extractor        -> tools/extract-index/ (CLI: `pnpm extract:index`)
+index extractor        -> tools/extract-index/ (CLI: pnpm extract:index)
 derived claim assurance -> effective assurance from verification dimensions and decisions
 generated views        -> disabled until model settles
 ```
@@ -50,7 +34,7 @@ Runtime probes are standalone feasibility probes that test API-return-data runti
 
 ## Machine-Extracted Index
 
-The record system now has three territories:
+The record system has three territories:
 
 - `docs/` — human-only escape hatch. Intentionally informal. May diverge from records.
 - `records/evidence/` — human-authored markdown, source of truth. Agent may create under explicit operation; agent never edits existing.
@@ -88,7 +72,7 @@ The system has two distinct state models:
 
 ### Record State (Immutable Ledger)
 
-Experiments, decisions, risks, and capability records follow editorial lifecycle states (`draft` → `reviewed` → `approved`). These are append-oriented — new records, not mutations. Claims are frozen-legacy and no longer follow this lifecycle. Index entries (`extracted-assertion`) derive their `status` directly from evidence `validation_status`; they do not follow the editorial lifecycle.
+Experiments, decisions, risks, and capability records follow editorial lifecycle states (`draft` -> `reviewed` -> `approved`). These are append-oriented — new records, not mutations. Claims are frozen-legacy and no longer follow this lifecycle. Index entries (`extracted-assertion`) derive their `status` directly from evidence `validation_status`; they do not follow the editorial lifecycle.
 
 ### Observation State (Mutable Enforcement)
 
@@ -98,46 +82,25 @@ Observations and resource budgets are **mutable state captures** of external sys
 |---|---|---|
 | Mutability | Append-only (new records) | Mutable (update in place) |
 | Source of truth | Evidence + experiments | External system reality |
-| Lifecycle | draft → reviewed → approved | active → archived |
+| Lifecycle | draft -> reviewed -> approved | active -> archived |
 | Authority | Index-first scanning | Operator-managed; agent-readable |
 | Enforcement | Indirect (via decisions) | Direct (constraint gate blocks/escalates) |
 
 ### Constraint Gate Decision Tree
 
 ```
-Command → matchConstraintPattern()
-  ├─ no match → ok
-  └─ match → checkObservationExists()
-       ├─ no observation → block (observation_required)
-       └─ observation found → evaluateBudget()
-            ├─ budget ok → ok
-            └─ budget exhausted / window active → escalate
+Command -> matchConstraintPattern()
+  ├─ no match -> ok
+  └─ match -> checkObservationExists()
+       ├─ no observation -> block (observation_required)
+       └─ observation found -> evaluateBudget()
+            ├─ budget ok -> ok
+            └─ budget exhausted / window active -> escalate
 ```
 
 ### The Sync-State Problem
 
 The gate is only as good as its observations. When an operator resolves a constraint externally (e.g., clears a device slot), the observation must be updated before the next gated command. This is an active area of work — the gap between "operator changes reality" and "observation reflects reality" is the sync-state problem. See `plans/reports/debugger-260517-1430-observation-update-miss-meta-process.md`.
-
-## Verification Axes
-
-Keep these axes separate:
-
-| Axis | Applies to | Meaning |
-|---|---|---|
-| Record status | frozen-legacy claims, index entries, experiments, decisions, capability records | Editorial/review state. |
-| Risk status | risks | Candidate/reviewed/active/mitigated/accepted/rejected caution state. |
-| Risk confidence | risks | Credibility/usefulness of a caution. |
-| Experiment outcome | experiments | Supports, rejects, or inconclusive. |
-| Experiment proof | experiments | Dimension and scope proved by the experiment. |
-| Claim verification dimensions | frozen-legacy claims | Independent static/install/runtime/product statuses. Frozen-legacy only. |
-| Index entry status | extracted-assertion | `active | superseded | pending_approval`; derived from evidence `validation_status`. |
-| Derived claim assurance | frozen-legacy claims | Effective assurance from valid dimensions and linked experiments. |
-| Decision basis | decisions | Evidence/records/experiments used as rationale. |
-| Decision effect | decisions | Scoped approval/rejection/acceptance/mitigation/defer/supersede. |
-| Capability map | capability records | Runtime-derived mapping of product surfaces to canonical entries. Generated, not hand-written. |
-| Observation status | observations | active / archived. Mutable — reflects current external state. |
-| Budget state | resource budgets | current vs budget count, validation_window.active, last_verified freshness. |
-| Gate decision | constraint gate | ok / block / escalate. Derived from observation + budget + command pattern. |
 
 ## Product Generation Loop
 

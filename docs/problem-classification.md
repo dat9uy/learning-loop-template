@@ -80,4 +80,4 @@ Required fields:
 
 - `docs/record-system-architecture.md` — entity roles, record hierarchy, state machine
 - `docs/operator-guide.md` — evidence model and approval flow
-- `docs/artifact-reference.md` — dimension semantics
+- `docs/artifact-concepts.md` — dimension semantics
