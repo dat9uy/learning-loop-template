@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "safeImport + Dynamic Manifest Pre-Spike"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []

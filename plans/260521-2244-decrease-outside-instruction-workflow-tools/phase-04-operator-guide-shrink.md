@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Operator Guide Shrink"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1, 2, 3]

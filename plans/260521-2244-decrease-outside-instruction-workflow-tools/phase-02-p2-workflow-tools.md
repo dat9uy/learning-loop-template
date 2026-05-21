@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "P2 Workflow Tools"
-status: pending
+status: completed
 priority: P2
 effort: "6h"
 dependencies: [1]

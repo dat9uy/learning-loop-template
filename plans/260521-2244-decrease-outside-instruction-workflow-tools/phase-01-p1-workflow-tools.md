@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "P1 Workflow Tools"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [0]

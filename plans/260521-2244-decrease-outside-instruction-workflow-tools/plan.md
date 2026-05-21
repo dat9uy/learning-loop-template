@@ -1,7 +1,7 @@
 ---
 title: "Decrease Outside Instruction: Workflow Tools + Guide Shrink"
 description: "Encode procedural operator-guide knowledge into 13 MCP workflow tools, shrink guide from 600 to <120 lines, validate end-to-end agent autonomy"
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [workflow, mcp, agentization, docs]
