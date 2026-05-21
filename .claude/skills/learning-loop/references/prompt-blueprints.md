@@ -32,7 +32,7 @@ Plans: [absolute path to this repo]/plans/
 
 Read first:
 - README.md
-- docs/operator-guide.md
+- docs/operator-guide.md (compressed; procedural detail via `workflow_generate_prompt`)
 - docs/artifact-reference.md
 - [task-specific docs/records]
 
@@ -152,8 +152,7 @@ Reports: [absolute path to this repo]/plans/reports/
 Plans: [absolute path to this repo]/plans/
 
 Read first:
-- docs/operator-guide.md (Evidence-MD to Experiment-YAML Conversion).
-- docs/operator-guide.md (Experiment Result Convention).
+- `workflow_generate_prompt` for migration procedures (replaces deleted operator-guide sections)
 - The evidence MD(s) listed above.
 - Existing per-run experiment YAMLs in records/experiments/ for reference.
 

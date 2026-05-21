@@ -1,601 +1,97 @@
 # Operator Guide
 
-This guide covers mechanics: how to name records, validate them, bootstrap stacks, and run the agent intake flow. For the *reasoning* behind these steps — why the loop exists, how to think about verification dimensions, decisions as boundaries, and state-machine rules — read `docs/philosophy.md` first.
+This guide covers mechanics. For reasoning — why the loop exists, verification dimensions, decisions as boundaries, and state-machine rules — read `docs/philosophy.md` first.
+
+## Procedural knowledge encoded in MCP workflow tools
+
+All procedural prompts, runtime validation protocols, experiment conventions, and operator checklists are now generated via workflow tools. See `workflow_generate_prompt`, `workflow_prepare_runtime_request`, `workflow_product_build`, and the constraint-gate MCP server.
 
 ## Start Here
 
-Run default validation before changing records:
-
-```bash
-pnpm check
-```
-
-Use `records/` for the verification/proof ledger, `records/evidence/` for evidence files, and `docs/` for project metadata.
+Run `pnpm check` before changing records. Use `records/` for the ledger, `records/evidence/` for evidence, and `docs/` for metadata.
 
 ## Record Naming Conventions
 
-Artifact filenames use a unified timestamp convention.
-
-### Timestamp Format
-
-```
-YYMMDDTmmZ
-```
-
-- `YY` = 2-digit year (26 for 2026)
-- `MM` = 2-digit month
-- `DD` = 2-digit day
-- `T` = literal separator
-- `HH` = 2-digit hour UTC
-- `MM` = 2-digit minute UTC
-- `Z` = literal Z for UTC
-
-Total: 13 characters, fixed length, lexicographically sortable.
-
-### Artifact Patterns
+Timestamp: `YYMMDDTmmZ` (13 chars, UTC, lexicographically sortable).
 
 | Artifact | Directory | Pattern | Timestamped? |
 |---|---|---|---|
 | Decision | `records/decisions/` | `decision-YYMMDDTmmZ-<slug>.yaml` | Yes |
 | Experiment | `records/experiments/` | `experiment-<scope>-YYMMDDTmmZ-<slug>.yaml` | Yes |
 | Risk | `records/risks/` | `risk-YYMMDDTmmZ-<slug>.yaml` | Yes |
-| Domain Evidence (run) | `records/evidence/<domain>/` | `<type>-YYMMDDTmmZ[-<variant>].md` | Yes |
+| Domain Evidence | `records/evidence/<domain>/` | `<type>-YYMMDDTmmZ[-<variant>].md` | Yes |
 | Index entry | `records/index/` | `assertion-<capability>-<dimension>-<topic-tag>.yaml` | No |
-| Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No — frozen-legacy, read-only. No new entries. |
+| Claim | `records/claims/` | `claim-<scope>-<slug>.yaml` | No — frozen-legacy, read-only |
 | Capability | `records/capabilities/` | `capability-<stack>-<slug>.yaml` | No |
 | Observation | `records/observations/` | `observation-<scope>-<slug>.yaml` | No |
 | Meta Evidence | `records/evidence/meta/` | `<descriptive-kebab-slug>.md` | No |
 
-The `id` field inside every YAML record must match the filename stem (filename without extension).
-New conventions apply prospectively; historical records keep their original names.
+The `id` field inside every YAML record must match the filename stem. New conventions apply prospectively; historical records keep original names.
 
 ## State Query Protocol
 
-Before verifying assertions, read `docs/record-system-architecture.md` for the index data model and `docs/artifact-reference.md` for schema details (note: artifact-reference.md is in transition; the index-entry schema lives in `schemas/index-entry.schema.json`).
-
-Run `pnpm extract:index` to regenerate machine-extracted assertions from evidence `## Findings`. The tool reads all `records/evidence/**/*.md` files, extracts top-level bullets under `## Findings`, and writes `records/index/assertion-<capability>-<dimension>-<topic-tag>.yaml` entries.
-
-The legacy `pnpm verify:claim` tool remains functional for frozen-legacy claims in `records/claims/`; do not use it for new work.
+Run `pnpm extract:index` to regenerate machine-extracted assertions from evidence `## Findings`. For read-only search across index entries, use the MCP `search_index_entries` tool.
 
 ## Evidence Model
 
-Put durable evidence capsules under `records/evidence/<scope>/`. Active `source_refs` should use:
-
-- `local:records/evidence/...` for local evidence files;
-- `local:product/<stack>/capabilities/...` for capability records only;
-- `record:<id>` for internal record evidence.
-
-Do not use active `legacy:` refs. Historical source paths may appear only in evidence-doc prose under `Original Source Summary`.
+Active `source_refs` should use `local:records/evidence/...`, `local:product/<stack>/capabilities/...` (capability records only), or `record:<id>`. Do not use active `legacy:` refs.
 
 ## Evidence Findings Convention
 
-Evidence markdown files may include a `## Findings` section for machine extraction into `records/index/`.
-
-- Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion.
-- Nested bullets prefixed `Context:` populate the index entry `context` field.
-- Nested bullets prefixed `Caveat:` populate the index entry `caveats` array.
-- The extraction tool (`pnpm extract:index`) reads this section and produces `records/index/assertion-<capability>-<dimension>-<topic-tag>.yaml`.
-- Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` for extraction to be attempted.
-- Files without a `## Findings` section (or with no `[topic-tag]` bullets) are silently skipped, not errored.
+Evidence markdown files may include a `## Findings` section for machine extraction. Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion. Nested `Context:` bullets populate `context`; nested `Caveat:` bullets populate `caveats`. The extraction tool (`pnpm extract:index`) reads this and produces `records/index/assertion-...yaml`. Files without `## Findings` (or without `[topic-tag]` bullets) are silently skipped.
 
 ## Adding Or Updating Records
 
-1. Add or update safe local evidence under `records/evidence/<scope>/`.
-2. Write or update evidence markdown with a `## Findings` section containing atomic assertions tagged with `[topic-tag]`.
-3. Update experiment or decision records to cite local evidence and the current verification dimensions. For frozen-legacy claims, update only if correcting a cross-reference; for new work, author evidence with `## Findings` and run `pnpm extract:index`.
-4. Run `pnpm extract:index` to regenerate `records/index/` from evidence.
-5. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json` (fields: `stack`, `surface`, `maps[]`).
-6. For factual state captures (device ledgers, resource budgets, behavioral findings), author observation records under `records/observations/` per `schemas/observation.schema.json` (fields: `id`, `schema_version`, `type`, `status`, `created_at`, `updated_at`, `source_refs`).
-7. Run:
-
-```bash
-pnpm validate:records
-pnpm check
-```
+1. Add or update safe local evidence under `records/evidence/<scope>/` with `## Findings`.
+2. Update experiment or decision records to cite local evidence and current verification dimensions.
+3. For product-build plans, author capability records under `records/capabilities/` per `schemas/capability.schema.json`.
+4. For factual state captures, author observation records under `records/observations/` per `schemas/observation.schema.json`.
+5. Run `pnpm validate:records` and `pnpm check`.
 
 ## Approval Flow
 
-Decisions approve scope explicitly. A decision record's `decision_effect` names the action, scope, affected refs, allowed actions, blocked actions, and required gates. Review for planning does not approve runtime access, external integration, commercial use, persistent storage, arbitrary criteria, or product code; those require their own scoped decisions.
+A decision record's `decision_effect` names the action, scope, affected refs, allowed actions, blocked actions, and required gates. Review for planning does not approve runtime access, external integration, commercial use, persistent storage, arbitrary criteria, or product code; those require their own scoped decisions.
 
 ## Resource Budget & State-Machine
 
-External systems with irreversible operations (vendor APIs with device slots, production databases, rate-limited endpoints) need structural enforcement — not just agent memory. The learning-loop skill acts as gatekeeper: before producing a prompt for a budget-consuming action, it checks resource state and blocks when budget is exhausted.
+External systems with irreversible operations use a gatekeeper model. The learning-loop skill checks resource state before producing a prompt for budget-consuming actions and blocks when budget is exhausted.
 
-### When This Applies
+- Budget observation: `records/observations/<scope>-resource-budget.yaml` tracks `budget`, `current`, `last_verified`, and `validation_window`.
+- Check tool: `pnpm check:budget -- --system {system} --resource {resource}` returns current state.
+- Operator-only writes: agent never mutates budget YAML; operator updates after each action.
 
-- Task involves an external system where actions cannot be undone (e.g., vendor device registration, production writes)
-- A resource budget observation exists under `records/observations/*-resource-budget.yaml`
+For MCP-driven gate checks, use `check_gate`. For runtime request preparation, use `workflow_prepare_runtime_request`.
 
-### How It Works
-
-1. **Budget observation** — `records/observations/<scope>-resource-budget.yaml` tracks `budget` (max), `current` (used), `last_verified`, and `validation_window`
-2. **Check tool** — `pnpm check:budget -- --system {system} --resource {resource}` returns JSON with current state
-3. **Skill gating** — learning-loop skill calls the tool before prompt generation:
-   - Budget exhausted → BLOCKED signal (no prompt produced)
-   - Validation window active → DEFERRED signal (no state-changing actions)
-   - Stale data (>7 days) → WARNING (ask operator to confirm)
-   - Budget available → constrained prompt with budget context embedded
-4. **Operator-only writes** — agent never mutates budget YAML; operator updates after each action
-
-### Key Rules
-
-- Plans with irreversible operations MUST declare a resource budget
-- ANY check failure on a budget-consuming action = STOP (not fix-and-retry)
-- After a budget-consuming action, agent reports result and waits for operator confirmation
-- Validation window: no state-changing actions between clearance and final report
-- When a guard/gate blocks an action, trace the full dependency chain back to resource budgets before attempting workarounds. If the chain ends at an exhausted budget, report the constraint to the operator immediately — do not burn cycles on bypasses
-
-### Detailed References
-
-- Rules: `.claude/skills/learning-loop/references/resource-budget-rules.md`
-- Prompt templates: `.claude/skills/learning-loop/references/prompt-blueprints-state-gated.md`
-- Schema: `schemas/resource-budget.schema.json`
+References: `references/resource-budget-rules.md`, `references/prompt-blueprints-state-gated.md`, `schemas/resource-budget.schema.json`.
 
 ## Write Domain Rules
 
-The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) is a minimal safety net (~90 lines). It enforces hard blocks only; all policy logic (domain rules, budget checks, path-specific reasoning) has moved to the MCP server. Agents call `check_gate` via MCP for policy decisions on non-critical paths.
+The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) enforces hard blocks only; policy logic lives in the MCP server. Agents call `check_gate` via MCP for policy decisions on non-critical paths.
 
-### Approving File Creation in records/
+Allowed: `docs/**`, `plans/**`, `.claude/**`, `tools/**`, `product/**`.
+Blocked: `records/observations/**`, `records/evidence/**`, `schemas/**`, build artifacts, unknown paths.
 
-To create files under `records/evidence/`, the agent must first record a `write-path` observation after operator approval:
-
-```yaml
-id: obs-write-evidence-<scope>-<timestamp>
-constraint_type: write-path
-constraint: records-evidence
-status: active
-updated_at: "2026-05-20T22:33:00Z"
-description: Operator approved evidence file creation
-```
-
-**Workflow:**
-
-1. Agent asks operator: "I need to create `records/evidence/vnstock-260520.md`. Content: ..."
-2. Operator: "Yes, approved."
-3. Agent records observation: `record_observation(constraint_type: "write-path", constraint: "records-evidence")`
-4. Agent uses Write tool → write gate sees fresh observation → allows
-
-Without a fresh `write-path` observation, writes to `records/evidence/**` are blocked. `records/observations/**` remains unconditionally blocked.
-
-### Allowed Paths
-
-| Path | Reason |
-|------|--------|
-| `docs/**` | Documentation — git-tracked, reversible |
-| `plans/**` | Plans — git-tracked, reversible |
-| `.claude/**` | Claude system config — self-modifying |
-| `tools/**` | Tool source code |
-| `product/**` | Product source code |
-
-### Blocked Paths
-
-| Path | Reason |
-|------|--------|
-| `records/observations/**` | Affects bash gate decisions — explicit approval required |
-| `records/evidence/**` | Affects validation — explicit approval required |
-| `schemas/**` | Schema changes require validation — run `pnpm validate:records` first |
-| `**/node_modules/**` | Build artifacts — not git-tracked |
-| `**/dist/**` | Build artifacts — not git-tracked |
-| `**/build/**` | Build artifacts — not git-tracked |
-| `**` (catch-all) | Unknown path — only write to known domains |
-
-### Bash Gate
-
-The bash gate (`.claude/coordination/hooks/bash-coordination-gate.cjs`) blocks Bash commands that match constraint patterns without active observations or with exhausted budgets. This is the single safety layer for external-system commands.
-
-### Rollback
-
-To restore the full policy hook, run:
-```bash
-cp .claude/coordination/hooks/write-coordination-gate.cjs.bak .claude/coordination/hooks/write-coordination-gate.cjs
-```
-
-### Detailed References
-
-- Hooks: `.claude/coordination/hooks/`
-- Tests: `.claude/coordination/__tests__/`
+References: `.claude/coordination/hooks/`, `.claude/coordination/__tests__/`.
 
 ## Workflow Auto-Trigger
 
-After writing evidence files, the agent calls `notify_artifact_change` via MCP. The tool logs the change, checks for matching workflows in `.claude/coordination/workflows.json`, and auto-triggers them.
+After writing evidence files, call `notify_artifact_change` via MCP. The `evidence-changed` workflow auto-triggers `extract-index` then `validate-records` for `records/evidence/**` changes.
 
-The `evidence-changed` workflow auto-triggers `extract-index` then `validate-records` whenever a file under `records/evidence/**` is created or updated.
-
-Workflows run async (fire-and-forget). The agent continues immediately after triggering. Check `.claude/coordination/workflow-log.jsonl` for success/failure entries and `.claude/coordination/.workflow-failures` for failure markers.
-
-## Adding Workflows
-
-Edit `.claude/coordination/workflows.json` to register new artifact-driven workflows.
-
-- Commands must be arrays, not shell strings
-- Only `node` with a script path under `tools/` is allowed
-- Example:
-
-```json
-{
-  "workflows": {
-    "evidence-changed": {
-      "triggers": ["records/evidence/**"],
-      "change_types": ["created", "updated"],
-      "commands": [
-        ["node", "tools/extract-index/extract-index.js"],
-        ["node", "tools/validate-records/validate-records.js"]
-      ]
-    }
-  }
-}
-```
-
-**Warning:** An `observation-changed` workflow is NOT possible because `records/observations/**` is blocked by the hook. The agent cannot Edit or Write observation files directly; it must use the `record_observation` or `update_observation` MCP tools instead.
+Workflows are defined in `.claude/coordination/workflows.json`. Log at `.claude/coordination/workflow-log.jsonl`; failures at `.claude/coordination/.workflow-failures`.
 
 ## MCP Tools
 
-The constraint-gate MCP server exposes 12 tools. Agents call these instead of direct file edits or shell commands for record-system operations.
+The constraint-gate MCP server (`tools/constraint-gate/server.js`) exposes 25 tools: 12 enforcement tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
 
-| Tool | Description | Mutates? |
-|---|---|---|
-| `check_gate` | Returns `ok`, `block`, or `escalate` for a command. Includes inbound staleness check. | No |
-| `record_observation` | Records a new constraint observation YAML in `records/observations/`. | Yes |
-| `update_observation` | Updates an existing observation by rewriting its YAML. | Yes |
-| `notify_artifact_change` | Logs artifact change, checks staleness, triggers workflows. | Yes |
-| `trigger_workflow` | Validates command against allowlist and spawns it with isolated stdio. | Yes |
-| `validate_records` | Validates YAML records against JSON schemas. Returns errors and warnings. | No |
-| `update_claim_verification` | Updates a claim's verification status for a dimension. Preview with `apply=false`. | Yes |
-| `extract_index_entries` | Extracts index entries from evidence markdown. Idempotent. | Yes |
-| `search_index_entries` | Read-only search across index entries by capability, dimension, status. | No |
-| `generate_capability_records` | Generates capability records from product surface adapters. Preview with `dry_run`. | Yes |
-| `list_runtime_probes` | Lists runtime probe files for a stack. Read-only. | No |
-| `list_verified_claims` | Lists verified claims and supporting evidence. Read-only. | No |
+Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`.
 
-**Key rule:** Mutating tools (`record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `update_claim_verification`, `extract_index_entries`, `generate_capability_records`) still gate through the constraint system. Read-only tools (`check_gate`, `validate_records`, `search_index_entries`, `list_runtime_probes`, `list_verified_claims`) do not require observations.
+Key workflow tools: `workflow_classify_prompt`, `workflow_intake_orient`, `workflow_intake_plan`, `workflow_prepare_runtime_request`, `workflow_generate_prompt`, `workflow_product_build`, `workflow_convert_evidence`, `workflow_verify_evidence`, `workflow_intentional_skip`, `workflow_external_decision`, `workflow_self_improvement`, `workflow_report_phase_status`, `workflow_runtime_probe`.
 
-## Runtime Validation Request Protocol
+See the constraint-gate server for the full tool list and schema.
 
-Before running install, import, config, runtime, or live service commands, ask for human approval and include:
+## Runtime Validation
 
-- which dimension is being proved (`install` or `runtime`) and the scope (`sandbox` or `production`);
-- for runtime, the requested output level (`metadata-only`, `sample-output`, or `runtime-captured`);
-- what evidence is missing;
-- why local evidence is insufficient;
-- the exact command class proposed;
-- disposable temp directory, temp venv, and temp `HOME` boundaries;
-- expected metadata-only output;
-- whether any local config source is needed, only if explicitly approved for this gate, with contents forbidden from capture;
-- forbidden captures/actions: credentials, local config contents, install logs, private package files, raw external data, live calls, generated clients, and product app code.
-
-Sandbox scope is the default for install and runtime gates; production scope requires a separate decision and stricter output policy.
-
-Default validation must not install packages, insert keys, import private packages, call live services, retain artifacts, or mutate real home config.
-
-## Runtime Artifact Standard
-
-Runtime proof experiments split into two layers:
-
-- Executable substrate is a disposable OS temp directory outside the repo, e.g. `/tmp/learning-loop-run-<run_id>`. The repo never holds executable substrate.
-- Durable proof is a curated evidence envelope inside `records/evidence/<scope>/`. The envelope cites the run, not the temp files.
-
-The repo is the evidence ledger. The OS temp directory is executable substrate. Runtime temp files are not durable proof and must never be retained, committed, or referenced as lasting evidence.
-
-### Required Envelope Fields
-
-Each approved runtime proof evidence file, or a gate-section inside it, must record:
-
-- `run_id`: stable identifier for the run, e.g. `runtime-YYYYMMDD-HHMMSS-<random>`.
-- `temp_root_class`: class label of the temp root, e.g. `os-temp-outside-repo`. Never the literal path.
-- `approval_gate`: gate scope approved for this run, e.g. `install-import` or `runtime-method`.
-- `command_class`: class label of the command, e.g. `temp-venv-install`, `temp-home-import`, `metadata-only-method-call`.
-- `allowed_outputs`: classes captured into the envelope, e.g. `metadata`, `schema-shape`, `redacted-labels`, `sanitized-exception`.
-- `blocked_outputs`: classes explicitly excluded from capture, e.g. `raw-external-data`, `cell-values`, `row-indexes`, `time-series-values`, `identifiers`, `credentials`, `config-contents`, `install-logs`, `private-artifacts`, `venvs`, `caches`, `temp-dirs`.
-- `cleanup_status`: `succeeded` or `failed`.
-- `temp_root_deleted`: `true` only when post-run deletion is confirmed by the operator.
-- `validation_status`: `pending`, `passed`, or `failed` after `pnpm validate:records` and `pnpm check`.
-
-### Cleanup Fail-Closed Rule
-
-Cleanup is part of proof success, not best-effort housekeeping.
-
-- If `temp_root_deleted` is not `true` and `cleanup_status` is not `succeeded`, the experiment outcome is `failed` or `blocked`.
-- A failed cleanup blocks dimension verification: index entries may not have their source evidence `validation_status` set to `passed` for `install` or `runtime` dimensions, and product approval is blocked, from a run with failed cleanup.
-- A failed cleanup also blocks downstream capability-record publication for the affected scope.
-
-### Schema Deferral
-
-A generic `runtime_run` YAML schema and an automated in-repo temp scanner are deferred until repeated runtime proof cases prove the pattern. Until then, envelope fields live as markdown sections inside the relevant evidence, protocol, or experiment files.
-
-## Agent Intake Flow
-
-When the user asks for learning-loop work, the agent should:
-
-1. Classify the prompt:
-   - evidence capture;
-   - assertion/risk setup;
-   - verification experiment;
-   - product/build request;
-   - observation capture;
-   - intentional skip of required knowledge;
-   - external/user-provided decision;
-   - self-improvement request.
-2. Locate relevant index entries, experiments, and decisions first. Evidence files are referenced via `source_refs`, never browsed standalone for truth-status discovery (Q4 E rule). Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class and read each matched file; apply guidance and increment any sample-count thresholds (Q5 R2 rule). After index-first orientation but before drafting experiment steps, list `records/evidence/<capability>/` end-to-end for files or subdirectories not referenced by active index entries; read relevant text evidence files, skip raw/binary/generated/private artifacts unless explicitly approved, skip files marked with `## Superseded By` unless forensic context is needed (consult the linked canonical artifact instead), and list relevant files in the plan's "Read for context". Capability-dir scanning is for planning-context discovery; truth-status of any discovered file is still determined per the index-first rule above (Q6 rule). Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), scan `records/observations/` for relevant observation records and read them. Observations are the authoritative source for factual system state (see `record:decision-20260517T1200Z-observation-state-check-rule`).
-3. Extract candidate index entries (or frozen-legacy claims) and risks.
-4. Classify required verification:
-   - source review;
-   - static inspection;
-   - install/import check;
-   - runtime check with output capture;
-   - product/build experiment;
-   - schema/operator self-improvement.
-5. Identify missing decisions or approvals before risky work.
-6. Ask follow-up questions when authority, scope, output, storage, or blocked actions are unclear.
-7. Create/update records before downstream artifacts.
-8. Plan experiments with explicit `claim_refs` (still required by experiment schema for validation; cite frozen-legacy claims for new work), `source_refs` (point to local evidence files), `risk_refs`, `verification.proves`, output policy, and approval status.
-9. Run only approved work.
-10. Link experiment results back to evidence (which feeds the index) and risks.
-11. Derive assertion assurance from verification dimensions.
-12. Publish capability records only after their `maps[].source` references (index entries or frozen-legacy claims) are verified for the relevant dimension.
-13. Validate records with `pnpm validate:records` and `pnpm check`.
-
-## Operator Cards
-
-### Product Build Request
-
-When user asks to build product/API/tool on top of a verified library:
-
-- Do not jump directly to implementation.
-- Expand request into assertions (index entries), risks, experiments, and decisions.
-- Required assertions usually include identity, allowed use, entitlement/scope, install/import substrate, callable surface, output/storage boundary.
-- Required risks usually include entitlement ambiguity, scope creep, data capture, false assurance, operational limits.
-- Required experiments usually include evidence review, static verification, approved install verification, approved runtime/output verification.
-- Required decisions approve product/build scope, output policy, and blocked actions.
-- Capability records must state the verified library surfaces (via `maps[].source` to reference index entries or frozen-legacy claims) and the product surfaces they map to (`route_class`, `view_class`, `response_class`).
-
-### Runtime Probe Experiment
-
-When user asks to create runtime probes (standalone feasibility scripts) for a library or SDK:
-
-- Runtime probes are standalone scripts under `product/<stack>/capabilities/<scope>/` that test whether a library's API returns usable data. They use minimal calls per API surface area (one script per domain layer).
-- Runtime probes are distinct from product code (they do not implement product features) and distinct from basic runtime proof (they test API-return-data, not just import/load).
-- Runtime probes verify the `runtime` dimension of an assertion (index entry or frozen-legacy claim). The experiment record carries `verification.proves: runtime` with `output: sample-output` or `runtime-captured`.
-- The runtime probes are the execution substrate; the experiment record is the ledger entry. Scripts may be segmented (e.g., cell markers, regions, or blocks) for interactive or whole-script execution.
-- Runtime probes may live in `product/<stack>/` before product approval because they are feasibility probes, not product implementations.
-- **Environment model:** Runtime probes share a persistent dependency environment with their stack. The environment root is `product/<stack>/` (language-specific: `product/web/node_modules/` for TS/JS, `product/api/.venv/` for Python, `product/<stack>/vendor/` for Go, etc.). Runtime probes run against this environment, not a disposable temp install. Future product code in the same stack uses the same environment and the same library installation.
-- This per-stack environment is intentional. It respects external constraints such as vendor device limits, license activations, or authenticated registries by keeping all execution on the registered device while avoiding cross-runtime coupling.
-- Required experiment steps: create runtime probes, run against live endpoints using the shared environment, capture metadata + schema-shape + redacted sample output, update the corresponding index entry's source evidence `validation_status` to `passed`, then run `pnpm extract:index`.
-
-### Stacks and Capability Locations
-
-| Stack | Manifest | Runtime probe root |
-|---|---|---|
-| Python API | `product/<stack>/pyproject.toml` | `product/<stack>/capabilities/` |
-| TypeScript web | `product/<stack>/package.json` | `product/<stack>/capabilities/` |
-| Go service | `product/<stack>/go.mod` | `product/<stack>/capabilities/` |
-
-Every `product/<stack>/` directory must contain a stack manifest such as `pyproject.toml`, `package.json`, or `go.mod`. The validator only allows `local:product/*/capabilities/...` for capability records; all other record types keep the default `records/evidence` local source root.
-
-For concrete examples (vnstock API stack paths), see `docs/operator-guide-vnstock-appendix.md`.
-
-### Capability Generation
-
-Run `pnpm generate:capabilities` after product surface changes to regenerate capability records from native self-descriptions. This eliminates drift by construction — records are always derived from ground truth.
-
-The generation pipeline uses **per-surface adapters** that read native self-descriptions and emit normalized capability entries. Surface adapters map product source files to normalized capability entries. Each stack registers its own adapters in the surface registry.
-
-Generated records are minimal: `type`, `schema_version`, `stack`, `surface`, `maps[]` with `source` only. No `id`, `status`, `created_at`, `updated_at`, `source_refs`, or `supersedes`.
-
-`pnpm check` runs `generate:capabilities --dry-run` to detect stale records before validation and tests.
-
-#### Extending the Surface Registry
-
-To add a new surface (e.g., gRPC, GraphQL, Django REST):
-
-1. Create `tools/generate-capabilities/adapters/<surface-kebab>-adapter.js`
-2. Export an `async function extract(root) => { entries: [{source, domain}] }`
-3. Register it in `tools/generate-capabilities/adapters/registry.js`
-4. Add the surface string to the `surface` enum in `schemas/capability.schema.json`
-5. Document the new surface in this section
-
-Unsupported surfaces throw at generation time, so the registry must be fully populated.
-
-For concrete adapter examples (FastAPI, TanStack), see `docs/operator-guide-vnstock-appendix.md`.
-
-### Adding a New Live Gate
-
-When integrating a new external system that requires runtime protection (vendor APIs, authenticated registries, device-slot systems), add a live gate using this template:
-
-#### 1. Environment Variable Pattern
-
-Define a gate constant and check environment before use:
-
-```python
-import os
-from fastapi import HTTPException
-
-GATE_NAME_LIVE_GATE = os.getenv("GATE_NAME_LIVE_GATE", "closed")
-if GATE_NAME_LIVE_GATE != "open":
-    raise HTTPException(status_code=403, detail="Gate closed. Operator approval required.")
-```
-
-#### 2. Approval Flow
-
-- Gate starts `closed` (default).
-- Operator sets env var to `open` after confirming external system state (device slots, budgets, credentials).
-- Agent checks gate before any live call; if closed, reports blocked and stops.
-- After the approved operation, operator resets gate to `closed`.
-- Do not cache gate state in agent memory; re-read env var each time.
-
-#### 3. Decision Record
-
-Author a decision record under `records/decisions/` that documents:
-- `allowed_actions`: what the gate permits when open
-- `blocked_actions`: what remains forbidden even when open
-- `required_gates`: the env var name and expected value
-- `affected_refs`: experiment and capability records that depend on this gate
-
-For a worked example of this pattern (vnstock `VNSTOCK_REFERENCE_LIVE_GATE`), see `docs/operator-guide-vnstock-appendix.md`.
-
-### Intentional Skip Pattern
-
-When user wants to skip a required assertion:
-
-- Do not let skipped knowledge disappear.
-- Convert skipped required knowledge into:
-  - records-side status/index-entry or frozen-legacy claim;
-  - active blocking risk;
-  - narrowed decision boundary;
-  - capability text showing blocked execution/deployment.
-- Allow only safe work that does not depend on the skipped assertion.
-
-### Evidence Doc Execution Verification
-
-When user asks whether everything in an evidence doc can execute technically:
-
-- Treat as verification request, not direct execution.
-- Build an assertion extraction matrix: `doc section -> assertion -> verification class -> experiment -> capability-record eligibility`.
-- Separate execution classes: symbol exists, import succeeds, method callable, sample call returns output, output schema matches expectation, business behavior is correct.
-- Classify snippets as illustrative-only, static-verifiable, import-verifiable, runtime-verifiable with sample output, or blocked pending approval.
-- Ask approval before install/runtime/live execution.
-- Runtime experiment may capture metadata + sample output + code output only under approved output policy.
-
-### External/User-Provided Decision Input
-
-When user provides outside confirmation:
-
-- Accept it as possible decision/evidence input.
-- Not treat it as complete proof or unlimited approval.
-- Ask: who confirmed it, what authority, what exact scope, what remains blocked, durable evidence, covered rights.
-- Recommend: evidence note, scoped assertions (index entries), active risks for authority/scope/durability/expiry, `decision_effect`, capability boundaries.
-
-Principle: external confirmation can seed a decision, but the loop still records scope, basis, risks, and boundaries.
-
-### Self-Improvement Flow
-
-The loop can improve itself.
-
-- Hard-test failures can become evidence.
-- The agent can create index-entry candidates/risks/experiments about workflow gaps.
-- Runtime output should not become a decision.
-- A decision approves what runtime output may be captured.
-- An experiment produces runtime output under that decision boundary.
-- Self-improvement experiments may propose schema/doc changes.
-- Canonical adoption requires explicit decision approval.
-
-For a worked example of meta-process improvement debate (multi-question cascade, deferred-meta-evidence pattern, `## Trigger` recall mechanism), see `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md`.
-
-## Experiment Result Convention
-
-Experiment YAMLs use `result` as one of:
-
-- `supports` - outcome supports the hypothesis.
-- `does-not-support` - outcome contradicts the hypothesis.
-- `inconclusive` - outcome did not produce a clear answer (vendor gate, env failure, operator interrupt, indeterminate result).
-
-Pair with sibling `result_reason` (free text) for disambiguation, especially for `inconclusive`.
-
-The convention is not enforced by `experiment.schema.json` - `result` remains an unconstrained `string`. Schema enum hardening is deferred until at least three distinct experiments use the convention without semantic strain (per `record:decision-20260509T192448Z-experiment-result-convention`).
-
-### Convention Application
-
-New conventions apply prospectively unless an explicit migration is approved. A historical experiment authored before a convention lands does not need to be rewritten for cosmetic alignment; per-experiment immutability beats convention uniformity. Convert only when the operator approves a migration plan that documents the conversion mode (Migration / Structuring; see "Evidence-MD to Experiment-YAML Conversion").
-
-See `record:decision-20260509T192449Z-prospective-convention-application` for the policy decision.
-
-## Evidence-MD to Experiment-YAML Conversion
-
-When converting an evidence MD into a structured experiment YAML, classify the source MD up front. Both modes share the experiment YAML output schema and the audit linkage (`source_refs` -> the original evidence MD); modes differ in whether `hypothesis` and `success_metrics` are reconstructed verbatim or marked post-hoc.
-
-### Mode: Migration
-
-The original evidence MD captured a hypothesis, success metrics, and a decisive outcome. The conversion is verbatim:
-
-- `hypothesis`, `success_metrics`, and `result` carry over without reinterpretation.
-- `source_refs` lists the original evidence MD using `local:records/evidence/...`.
-- `result_reason` (if needed) cites the same passage that justified the original outcome.
-- The output YAML status is `reviewed` if the original was operator-reviewed; otherwise `draft`.
-- `result` follows the convention from "Experiment Result Convention".
-
-### Mode: Structuring
-
-The original evidence MD lacked a clean hypothesis or success metrics. Reconstruction is post-hoc:
-
-- `hypothesis` and `success_metrics` are reconstructed from the evidence narrative; mark them as post-hoc in `notes`.
-- `result` is `inconclusive` unless the evidence is decisive on its own; never `supports` or `does-not-support` without operator confirmation.
-- The output YAML is pinned at `status: draft` until operator review.
-
-### Shared Rules
-
-- Both modes preserve the original evidence MD unchanged.
-- Both modes link `source_refs` back to the original evidence MD.
-- Conversion runs only after the operator approves an explicit migration plan; no ad-hoc conversion.
-- Run `pnpm validate:records` and `pnpm check` after each approved batch.
-- For prompt/checklist support, see the `learning-loop` skill (`evidence-to-experiment migration` task class) at `.claude/skills/learning-loop/`.
-
-## Phase Success Criteria
-
-A plan phase has two orthogonal axes that must be tracked separately to avoid the "mostly checked off" failure mode where process boxes appear complete despite a blocked or inconclusive experimental result.
-
-### Process Steps
-
-A list of agent actions required to perform the phase: read inputs, author records, run validation, etc. Each step is a checkbox. `[x]` means the step was performed and reviewed. Process completion is independent of experimental outcome.
-
-### Experiment Outcome
-
-The phase's experimental result, using the convention from "Experiment Result Convention":
-
-- `supports`
-- `does-not-support`
-- `inconclusive`
-
-Plus a `Blocker / result reason` line if the outcome is `does-not-support` or `inconclusive`.
-
-### Reporting
-
-A phase summary must state both axes explicitly. Examples:
-
-- "Process: 9/9 steps complete. Experiment: `inconclusive` (vendor device-limit gate)."
-- "Process: 6/6 steps complete. Experiment: `supports` (sandbox-1 reached `from vnstock_data import Reference`)."
-
-### Lifecycle Status Orthogonality
-
-Plan-level lifecycle status (`pending`, `in-progress`, `completed`) follows project-management conventions and tracks process. Experiment outcome lives in evidence/experiment records. The two are orthogonal: a plan can be `completed` while its underlying experiment is `blocked` or `inconclusive`. Do not block plan close-out on an external gate that prevents experimental verification.
-
-## Rule Origins
-
-Shorthand citations in Agent Intake Flow trace to the meta-process brainstorm that produced them. Agent Intake Flow step 2 carries the canonical wording; this section is documentary. If the two diverge, step 2 wins.
-
-### Q4 E - Claims-first scanning for evidence truth-status (historical)
-
-- Prior ambiguity: a disproved evidence file (`installer-prior-notes.md` claimed installer reads `~/.vnstock/user.json`) sat on disk with no signal; future agents could re-adopt the disproven claim by direct browse.
-- Alternatives considered: status field in frontmatter (rejected), `## Status` markdown body (crosses source/proof line), claim-side status block (deferred N>=2), per-file `## Supersedes` link in disproving evidence (adopted as Q4 D), computed validation view (deferred N>=2).
-- Chosen: structural prevention. Evidence is referenced via index entries (or frozen-legacy claims), never browsed standalone for truth-status discovery.
-- Origin: `plans/reports/brainstorm-20260508-resume-vnstock-and-meta-loop.md` (Q4).
-
-### Q5 R2 - Pre-experiment scan of `records/evidence/meta/`
-
-- Prior ambiguity: deferred meta-evidence files had no recall mechanism; N>=2 triggers could fire silently months later under a different agent.
-- Alternatives considered: in-file counter (compliance failure), validation tool extension (premature), plan-template extension (premature), separate `_pending` index (drift risk).
-- Chosen: doc rule. Before opening a new experiment plan, scan `records/evidence/meta/` for `## Trigger` sections matching the new experiment's event class; read each matched file and apply guidance.
-- Origin: same brainstorm (Q5). Pairs with Q4 D's `## Supersedes` convention.
-
-### Q6 - Capability-directory scan after claims-first orientation (historical)
-
-- Prior ambiguity: claims-first scanning surfaced cited evidence but missed uncited files in the same capability directory. The `unified-ui-snapshot/` directory was nearly missed during vnstock plan drafting.
-- Alternative considered: rely on claims to cite everything (rejected; claims drift, capability dirs hold reference docs that aren't claim-cited). Historical: this was written before the index-entry migration; the current routing rule uses index entries first, then frozen-legacy claims.
-- Chosen: after index-entry-first (or claims-first for frozen-legacy) orientation, list `records/evidence/<capability>/` end-to-end. Read relevant text evidence, skip raw/binary/generated/private artifacts and `## Superseded By` files unless forensic context is needed.
-- Origin: `records/evidence/meta/capability-dir-scan-rule.md` (commit `e0a1c0f`). Not part of the original Q1-Q5 cascade; added later when the gap surfaced during planning.
-
-## Agent Anti-Confusion Checklist
-
-Before answering or editing, verify:
-
-- Am I treating evidence as source, not proof?
-- Am I using `verification.proves` on experiments?
-- Am I deriving assertion assurance from dimensions instead of storing it?
-- Am I using risks for cautions, not negative assertions?
-- Am I requiring decisions for approval/acceptance/product permission?
-- Am I keeping capability records slim and faithful to their cited assertions?
-- Am I blocking runtime/product/live/output actions until approved?
-- Am I preserving unresolved knowledge as risk instead of ignoring it?
-- Am I recording factual state as observations, not index entries?
-- Am I checking observation records for external system state before asking the user?
+Runtime validation is managed through workflow tools. Use `workflow_prepare_runtime_request` to prepare bounded runtime/install proofs.
 
 ## Generated Docs
 

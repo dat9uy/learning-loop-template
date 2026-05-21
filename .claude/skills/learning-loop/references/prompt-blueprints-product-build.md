@@ -1,5 +1,7 @@
 # Product Build Prompt Blueprints
 
+For product-build orchestration, use `workflow_product_build`.
+
 ## Pre-Build Record Authoring
 
 ```text

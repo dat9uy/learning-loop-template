@@ -121,6 +121,8 @@ Validation:
 - Run `pnpm validate:records`.
 - Run `pnpm check`.
 - Run `pnpm check:budget -- --system {system} --resource {resource}` before any state-changing action.
+- For runtime request preparation, use `workflow_prepare_runtime_request`.
+- For gate checks, use `check_gate`.
 
 Report:
 - What changed.
