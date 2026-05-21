@@ -8,6 +8,12 @@ Agents have no persistent memory across sessions. Each agent starts fresh. It do
 
 Without the loop, every session repeats the same discoveries, re-runs the same experiments, and remakes the same mistakes. The loop turns ephemeral agent work into durable institutional knowledge.
 
+### Docs Are the Escape Hatch
+
+`docs/` is outside the loop. If an agent must open a doc to know what to do next, that knowledge is a **gap** — it belongs in records, observations, index entries, or MCP tools, not in a human-readable file.
+
+This document exists for irreducible judgment: the "why" behind loop design, not the "what" of loop operation. Procedural knowledge (naming conventions, intake steps, approval protocols, experiment formats) belongs in encoded artifacts. Philosophy belongs here. When you find yourself writing "Step 1, do X; Step 2, do Y" in a doc, stop. That is a loop gap. Encode it.
+
 ## Three Philosophical Pillars
 
 ### 1. Verification Is Dimensional, Not Binary
@@ -127,10 +133,10 @@ Do not treat the loop as a approval pipeline to pass through. Treat it as a deba
 
 ## What the Loop Is Not
 
-- **It is not a checklist.** Checklists are memory aids for people who already understand. The loop is a reasoning framework for agents who do not.
+- **It is not a checklist.** Checklists are memory aids for people who already understand. The loop is a reasoning framework for agents who do not. Checklists that agents must read from docs are loop gaps.
 - **It is not a bureaucracy.** Records are lightweight. A single experiment with clear hypothesis and result is enough. Verbose ceremony adds no confidence.
 - **It is not a guarantee.** A verified claim can still fail in production. The loop raises confidence; it does not eliminate risk.
-- **It is not a substitute for judgment.** The operator decides what risks to accept. The loop informs the decision; it does not make it.
+- **It is not a substitute for judgment.** The operator decides what risks to accept. The loop informs the decision; it does not make it. Judgment lives in docs; procedure lives in the loop.
 
 ## Summary
 
