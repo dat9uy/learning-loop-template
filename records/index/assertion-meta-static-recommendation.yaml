@@ -1,0 +1,24 @@
+id: assertion-meta-static-recommendation
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Loose datetime pattern `^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$` +
+  fix 4 affected records is minimum-blast-radius change.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: recommendation
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/meta/ajv-dryrun-results-260512.md
+    section: "## Findings"
+    bullet_index: 4
+    line_anchor: L9
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T18:59:36Z
+  first_extracted_at: 2026-05-21T18:59:36Z
+  last_updated_at: 2026-05-21T18:59:36Z
+  evidence_immutable_hash: sha256:9c3731aaeb392464fb2560827e358d44468ce306cca9124dd9365dbbefb11044

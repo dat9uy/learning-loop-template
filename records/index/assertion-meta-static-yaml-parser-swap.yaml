@@ -1,0 +1,25 @@
+id: assertion-meta-static-yaml-parser-swap
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Hand-rolled YAML parser rejected block scalars and colon-bearing
+  scalars; library swap validated with byte-identical green output across all 34
+  records.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: yaml-parser-swap
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/meta/yaml-parser-friction-and-schema-inventory-260512.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L6
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T18:59:36Z
+  first_extracted_at: 2026-05-21T18:59:36Z
+  last_updated_at: 2026-05-21T18:59:36Z
+  evidence_immutable_hash: sha256:f37cd478f627e04684ddbc7a9df52b0126fb7dcb9c2f2395465dd54911354593

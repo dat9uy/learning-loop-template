@@ -20,7 +20,7 @@ source_refs:
 experiment_refs:
   - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
 extraction:
-  agent_run: extract-index-2026-05-20T07:58:19Z
+  agent_run: extract-index-2026-05-21T18:59:36Z
   first_extracted_at: 2026-05-20T07:55:39Z
-  last_updated_at: 2026-05-20T07:58:19Z
+  last_updated_at: 2026-05-21T18:59:36Z
   evidence_immutable_hash: sha256:383b9b35c3729b55719eb4e3bde506bda04d1ebc3efdcc413206f51e3db91caa

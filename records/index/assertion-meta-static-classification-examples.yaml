@@ -1,0 +1,25 @@
+id: assertion-meta-static-classification-examples
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: "N=1: `process-side-artifact-ambiguity`. N>=2 deferred:
+  `capability-schema-gap`, `runtime-run-schema-deferral`,
+  `install-experiment-template-gap`."
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: classification-examples
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/meta/n-equals-one-gap-class.md
+    section: "## Findings"
+    bullet_index: 3
+    line_anchor: L8
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T18:59:36Z
+  first_extracted_at: 2026-05-21T18:59:36Z
+  last_updated_at: 2026-05-21T18:59:36Z
+  evidence_immutable_hash: sha256:5211642ed8851a28c74de77762f3cdfcb2f0cb7ace3c13c4386717fa5d8dcf3d

@@ -1,0 +1,24 @@
+id: assertion-meta-static-frontmatter-required
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Evidence files must include frontmatter with `capability`,
+  `dimension`, `scope`, and `validation_status` for extraction to be attempted.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: frontmatter-required
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/evidence/meta/evidence-findings-convention.md
+    section: "## Findings"
+    bullet_index: 5
+    line_anchor: L10
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T18:59:36Z
+  first_extracted_at: 2026-05-21T18:59:36Z
+  last_updated_at: 2026-05-21T18:59:36Z
+  evidence_immutable_hash: sha256:faaa251871b9668dec0b01da07284ae69de20e3225674e2699c0ed933f1e637c
