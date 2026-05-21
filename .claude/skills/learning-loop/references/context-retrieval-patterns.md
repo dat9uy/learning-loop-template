@@ -2,6 +2,8 @@
 
 Use these blueprints when an agent needs to trace a dependency chain from a capability record to the underlying product code, runtime probes, and index entries. These patterns enforce ground-truth reading over name-based inference.
 
+MCP tools: `workflow_intake_orient`, `list_runtime_probes`, `search_index_entries` implement these lookups mechanically.
+
 ---
 
 ## Tier 2 Verification Lookup Pattern

@@ -2,6 +2,8 @@
 
 Use these blueprints when the user wants to run an experiment and update a claim in one continuous workflow, or when they want to verify that an experiment's evidence aligns with a claim before promotion.
 
+MCP tools: `workflow_intake_plan`, `workflow_report_phase_status` implement orient/plan/phase-reporting mechanically.
+
 These prompts chain existing blueprints; they do not replace `prompt-blueprints.md` or `learning-loop-rules.md`.
 
 ---
@@ -22,7 +24,7 @@ Read first:
 - records/claims/[claim-id].yaml
 - records/evidence/[domain]/ (relevant evidence)
 - docs/operator-guide.md (Runtime Artifact Standard, Experiment Result Convention)
-- docs/artifact-reference.md (dimension rules)
+- docs/artifact-concepts.md (dimension rules)
 
 Phase 1 — Evidence-first scan:
 - Verify the experiment's claim_refs and risk_refs match current records.
@@ -78,7 +80,7 @@ Work context: [absolute path to this repo]
 Read first:
 - records/experiments/[experiment-id].yaml
 - records/claims/[claim-id].yaml
-- docs/artifact-reference.md (dimension status values)
+- docs/artifact-concepts.md (dimension status values)
 - docs/operator-guide.md (Claim Verification)
 
 Steps:

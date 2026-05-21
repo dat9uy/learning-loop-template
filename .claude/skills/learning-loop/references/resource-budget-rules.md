@@ -2,6 +2,8 @@
 
 Use these as hard constraints when a learning-loop task involves external systems with irreversible state.
 
+MCP tools: `check_gate`, `workflow_prepare_runtime_request` enforce these constraints mechanically.
+
 ## Core Rules
 
 1. **Plans with irreversible operations MUST declare a resource budget.**

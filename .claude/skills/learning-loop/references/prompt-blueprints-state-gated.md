@@ -2,6 +2,8 @@
 
 Use these templates when a learning-loop task involves external systems with irreversible state and budget gating applies.
 
+MCP tool: `workflow_prepare_runtime_request` generates structured approval requests from these templates mechanically.
+
 Replace bracketed text. Remove sections that do not apply.
 
 ## BLOCKED Signal
@@ -76,7 +78,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - README.md
 - docs/operator-guide.md
-- docs/artifact-reference.md
+- docs/artifact-concepts.md
 - [task-specific docs/records]
 
 ---

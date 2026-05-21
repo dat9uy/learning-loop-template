@@ -2,11 +2,13 @@
 
 Use these as prompt constraints. If exact wording matters, read the source docs before drafting.
 
+MCP tools: `workflow_classify_prompt`, `workflow_intake_orient` implement parts of this reference mechanically.
+
 ## Source Docs to Read
 
 - `README.md` — repo lanes and standalone-operation guardrail.
 - `docs/operator-guide.md` — first-run, normal workflow, runtime artifact standard, validation, approval boundaries.
-- `docs/artifact-reference.md` — typed record schemas, claim verification dimensions, proof blocks, capability-term glossary.
+- `docs/artifact-concepts.md` — dimension semantics, verification concepts, forbidden shortcuts, capability glossary. For field-level schemas, see `schemas/*.schema.json`.
 - `docs/record-system-architecture.md` — entity roles, record hierarchy, state machine, verification axes.
 - `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
 - `references/context-retrieval-patterns.md` — Tier 2 Verification Lookup Pattern; trace capability → product code → runtime probes → index entries.

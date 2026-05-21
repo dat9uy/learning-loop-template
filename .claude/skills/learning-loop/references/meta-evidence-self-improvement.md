@@ -2,6 +2,8 @@
 
 Use this reference when the user wants the loop to improve itself or when prompt drafting reveals a policy/schema/tooling gap.
 
+MCP tool: `workflow_self_improvement` turns improvement proposals into experiment candidates mechanically.
+
 ## When to Use Meta Flow
 
 Use meta flow for:

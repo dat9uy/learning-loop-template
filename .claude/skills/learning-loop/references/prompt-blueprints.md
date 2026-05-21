@@ -2,6 +2,8 @@
 
 Use these as building blocks. Replace bracketed text. Remove sections that do not apply.
 
+MCP tool: `workflow_generate_prompt` reads these blueprints and extracts structured prompts mechanically.
+
 ## Answer Format to User
 
 When the user asks how to prompt the learning loop, answer with:
@@ -33,7 +35,7 @@ Plans: [absolute path to this repo]/plans/
 Read first:
 - README.md
 - docs/operator-guide.md (compressed; procedural detail via `workflow_generate_prompt`)
-- docs/artifact-reference.md
+- docs/artifact-concepts.md
 - [task-specific docs/records]
 
 Goal:

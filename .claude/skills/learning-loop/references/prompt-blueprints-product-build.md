@@ -2,6 +2,8 @@
 
 For product-build orchestration, use `workflow_product_build`.
 
+MCP tool: `workflow_product_build` decomposes product requests into assertions, risks, experiments, and decisions mechanically.
+
 ## Pre-Build Record Authoring
 
 ```text
@@ -11,7 +13,7 @@ Work context: /home/datguy/codingProjects/learning-loop-template
 
 Read first:
 - docs/operator-guide.md
-- docs/artifact-reference.md
+- docs/artifact-concepts.md
 - relevant records and evidence
 
 Goal:
