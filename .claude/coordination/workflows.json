@@ -7,6 +7,28 @@
         ["node", "tools/extract-index/extract-index.js"],
         ["node", "tools/validate-records/validate-records.js"]
       ]
+    },
+    "observation-changed": {
+      "triggers": ["records/observations/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/validate-records/validate-records.js"]
+      ]
+    },
+    "capability-changed": {
+      "triggers": ["records/capabilities/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/validate-records/validate-records.js"],
+        ["node", "tools/constraint-gate/tools/generate-capabilities-tool.js", "--dry_run"]
+      ]
+    },
+    "index-changed": {
+      "triggers": ["records/index/**"],
+      "change_types": ["created", "updated"],
+      "commands": [
+        ["node", "tools/validate-records/validate-records.js"]
+      ]
     }
   }
 }
