@@ -14,6 +14,14 @@ Goal: encode the procedural knowledge into learning-loop artifacts (records, ind
 
 ---
 
+## Prerequisites
+
+Before implementing this plan, read:
+
+1. **`plans/reports/scout-260521-meta-evidence-inventory.md`** — Inventory of all 16 current meta evidence files. Confirms no content overlap with proposed artifacts. Establishes format baseline.
+
+---
+
 ## Problem Statement
 
 Agents start fresh every session. Without the loop, they repeat the same discoveries and mistakes. The operator guide exists to prevent this — but it is a **passive document**. The agent reads it, interprets it, decides what to do. Errors compound:
@@ -256,6 +264,12 @@ See `plans/reports/agentize-scout-260521-mcp-candidates.md` §3 for full specs. 
 | Experiment result convention | Index entry | `records/index/assertion-loop-convention-result.yaml` |
 | Agent anti-confusion checklist | Meta evidence | `records/evidence/meta/agent-confusion-patterns.md` |
 | Rule origins (Q4 E, Q5 R2, Q6) | Index entries | `records/index/assertion-loop-rules-{q}.yaml` |
+| Evidence Findings Convention | Meta evidence (`## Findings`) | `records/evidence/meta/evidence-findings-convention.md` |
+| Resource Budget procedural rules | Meta evidence (`## Findings`) | `records/evidence/meta/resource-budget-procedural-rules.md` |
+| Capability Generation extension | Meta evidence (`## Findings`) | `records/evidence/meta/capability-generation-extension.md` |
+| Live Gate template | Meta evidence (`## Findings`) | `records/evidence/meta/live-gate-template.md` |
+
+**Meta evidence format rule:** All meta evidence files use `## Findings` with `[topic-tag]` bullets for machine extraction. Narrative sections (`## Observation`, `## Evidence`, `## Trigger`, `## Deferral`) are supplementary, not replacements. Frontmatter required: `capability`, `dimension`, `scope`, `validation_status`.
 
 ---
 
@@ -349,6 +363,69 @@ MCP tool descriptions are the agent's primary documentation. Each description mu
 
 ---
 
+## Gaps Identified (Post-Analysis)
+
+Comparing the brainstorm plan against the current `docs/operator-guide.md`, two gaps surfaced. These are addressed below; a third gap (seven operator cards without corresponding workflow tools) is deferred for separate discussion.
+
+### Gap 2: Evidence Findings Convention Not Explicitly Encoded
+
+The `## Findings` syntax rules in operator-guide.md (lines 71-80) are procedural knowledge that `gate_extract_index_entries` depends on, yet the brainstorm's artifact encoding table does not list them:
+
+- `[topic-tag]` prefix format on each top-level bullet
+- `Context:` nested prefix → index entry `context` field
+- `Caveat:` nested prefix → index entry `caveats` array
+- Required frontmatter fields (`capability`, `dimension`, `scope`, `validation_status`) for extraction to be attempted
+- Silent-skip behavior when `## Findings` is missing or has no tagged bullets
+
+**Resolution:** Encode as `records/evidence/meta/evidence-findings-convention.md` with `## Findings` using `[topic-tag]` bullets. Each bullet states one syntax rule. `Context:` nested bullets explain why the rule exists. `Caveat:` nested bullets note exceptions. Include frontmatter with `capability: meta`, `dimension: static`, `scope: meta-tooling`, `validation_status: passed`. Add a cross-reference in `gate_extract_index_entries` tool description pointing to this file.
+
+### Gap 3: Resource Budget Procedural Rules Beyond "Overview"
+
+The brainstorm says "Keep overview; details in observation schema + `gate_check`". But operator-guide.md lines 104-133 contain ~30 lines of procedural rules not captured in any schema:
+
+- **How It Works** (4-step flow: budget observation → check tool → skill gating → operator-only writes)
+- **Key Rules** (6 bullets: plans MUST declare budget, any check failure = STOP, post-action operator confirmation, validation window semantics, guard/gate blocking chain rule)
+- **Validation window**: no state-changing actions between clearance and final report
+- **Dependency chain rule**: trace full chain back to resource budgets before attempting workarounds; if chain ends at exhausted budget, report immediately
+
+The observation schema stores state (`budget`, `current`, `last_verified`), not procedure.
+
+**Resolution:** Encode procedural rules as `records/evidence/meta/resource-budget-procedural-rules.md` with `## Findings` using `[topic-tag]` bullets. One bullet per rule (budget declaration, check failure = STOP, operator confirmation, validation window, dependency chain trace). Include frontmatter with `capability: meta`, `dimension: static`, `scope: governance`, `validation_status: passed`. Keep a one-line overview in the shrunk guide pointing to this file. Embed the 4-step flow and 6 key rules in `gate_check` tool description as constraints the agent must evaluate.
+
+### Gap 1: Seven Operator Cards Without Corresponding Workflow Tools
+
+The brainstorm originally defined workflow tools for only 2 of 9 operator cards (Product Build Request, Runtime Probe Experiment). The remaining 7 cards need solutions.
+
+**Pattern analysis** across the 7 cards reveals three patterns:
+
+| Pattern | Cards | Nature |
+|---------|-------|--------|
+| A. Prompt-classifiable situations | Intentional Skip, Evidence Doc Verification, External Decision, Self-Improvement | User says something specific → agent follows a decision tree |
+| B. Reference knowledge | Stacks/Locations, Capability Generation | Data model + procedure the agent consults when needed |
+| C. Template/procedure | Adding a New Live Gate | Multi-step template for creating a system component |
+
+**Solutions:**
+
+| Card | Solution | Artifact Path / Tool Name |
+|------|----------|---------------------------|
+| Stacks and Capability Locations | Embed table in tool descriptions | (none — inline in `gate_generate_capability_records` + `workflow_runtime_probe`) |
+| Capability Generation | Meta evidence (`## Findings`) | `records/evidence/meta/capability-generation-extension.md` |
+| Adding a New Live Gate | Meta evidence (`## Findings`) | `records/evidence/meta/live-gate-template.md` |
+| Intentional Skip Pattern | **Workflow tool** | `workflow_intentional_skip` |
+| Evidence Doc Execution Verification | **Workflow tool** | `workflow_verify_evidence_execution` |
+| External/User-Provided Decision Input | **Workflow tool** | `workflow_external_decision` |
+| Self-Improvement Flow | **Workflow tool** | `workflow_self_improvement` |
+
+**Why 4 workflow tools + 2 meta evidence files (not 7 workflow tools):**
+
+- Pattern A cards (4) map to `workflow_classify_prompt` categories. The classifier tells the agent which tool to call. Each has a distinct decision tree and output shape — unification would bloat the tool description.
+- Pattern B cards (2) are reference knowledge, not processes. A workflow tool that returns a lookup table adds indirection without value.
+- Pattern C (1) is a template, not a branching decision tree. The agent reads it once per gate creation.
+
+**Simplification cascade tested:** Unifying the 4 Pattern A tools into one `workflow_reasoning_guide` with a `situation` parameter was evaluated and rejected. The agent would struggle to choose the right mode; separate tools with clear names are discoverable through classification.
+
+---
+
 ## Dependencies
 
 | Dependency | Status | Notes |
@@ -364,6 +441,14 @@ MCP tool descriptions are the agent's primary documentation. Each description mu
 | `workflow_convert_evidence_to_experiment` | P2 | New |
 | `workflow_generate_prompt` | P2 | New |
 | Remaining gate tools | P3-P4 | From scout report |
+| `workflow_intentional_skip` | P2 | New |
+| `workflow_verify_evidence_execution` | P2 | New |
+| `workflow_external_decision` | P2 | New |
+| `workflow_self_improvement` | P2 | New |
+| `records/evidence/meta/evidence-findings-convention.md` | P2 | New meta evidence |
+| `records/evidence/meta/resource-budget-procedural-rules.md` | P2 | New meta evidence |
+| `records/evidence/meta/capability-generation-extension.md` | P2 | New meta evidence |
+| `records/evidence/meta/live-gate-template.md` | P2 | New meta evidence |
 | Remaining workflow tools | P3 | New |
 
 ---
