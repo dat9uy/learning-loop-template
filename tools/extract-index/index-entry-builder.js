@@ -2,6 +2,7 @@ const STATUS_MAP = {
   passed: "active",
   pending: "pending_approval",
   failed: "failed",
+  draft: null,
 };
 
 export function buildIndexEntry({
@@ -18,12 +19,12 @@ export function buildIndexEntry({
   supersedes = [],
 }) {
   const status = STATUS_MAP[meta.validation_status];
-  if (!status) {
+  if (!(meta.validation_status in STATUS_MAP)) {
     throw new Error(
-      `Unknown validation_status "${meta.validation_status}", expected passed/pending/failed`
+      `Unknown validation_status "${meta.validation_status}", expected passed/pending/failed/draft`
     );
   }
-  if (status === "failed") {
+  if (status === null || meta.validation_status === "failed") {
     return null;
   }
 

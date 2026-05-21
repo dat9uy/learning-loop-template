@@ -114,7 +114,7 @@ function validateFrontmatter(meta, evidencePath, errors) {
     errors.push(`dimension must be one of ${validDimensions.join(", ")}, got "${meta.dimension}"`);
   }
 
-  const validStatuses = ["passed", "pending", "failed"];
+  const validStatuses = ["passed", "pending", "failed", "draft"];
   if (!validStatuses.includes(meta.validation_status)) {
     errors.push(`validation_status must be one of ${validStatuses.join(", ")}, got "${meta.validation_status}"`);
   }
@@ -286,6 +286,12 @@ export function runExtraction(root, args) {
       if (meta.validation_status === "failed") {
         if (args.verbose) console.warn(`Skipped ${relPath}: validation_status is failed`);
         skipped.push(`${relPath}: validation_status failed`);
+        continue;
+      }
+
+      if (meta.validation_status === "draft") {
+        if (args.verbose) console.warn(`Skipped ${relPath}: validation_status is draft`);
+        skipped.push(`${relPath}: validation_status draft`);
         continue;
       }
 
