@@ -1,0 +1,76 @@
+id: experiment-meta-install-template-candidate-260512T0046Z
+schema_version: "1.0"
+type: experiment
+status: draft
+created_at: "2026-05-11T17:46:00Z"
+updated_at: "2026-05-11T17:46:00Z"
+source_refs:
+  - local:records/meta/evidence/install-experiment-template-candidate.md
+  - local:records/meta/evidence/install-experiment-template-gap.md
+  - local:records/vnstock/evidence/experiment-install-20260508T101723Z.md
+  - local:records/vnstock/evidence/experiment-install-20260508T171112Z.md
+  - local:records/vnstock/evidence/experiment-install-20260509T071800Z-sandbox-1.md
+  - local:records/vnstock/evidence/experiment-install-20260509T071900Z-sandbox-2.md
+notes: Meta-experiment validating a markdown template envelope, not a domain claim. The experiment schema scope enum lacks a meta value, so this record uses schema-improvement as the closest available scope and records the deviation here. The verification block is intentionally omitted because no claim is under test, and claim_refs are omitted for the same reason. Source brainstorm lives at plans/reports/brainstorm-260512-0046-install-template-and-capability-schema-gap-revisit.md and the driving plan lives at plans/260512-0046-meta-evidence-gap-revisit/, both outside the records/evidence local-ref allowlist, so they are cited here rather than as source_refs.
+goal: Validate the install experiment template candidate against the 4 existing vnstock install evidence MDs and classify the legacy outlier explicitly.
+hypothesis: The candidate 7-section body envelope plus 11-key YAML frontmatter captures all required structure across the 4 cases without forcing case-specific add-ons (Static Dimension Consistency, Process-Side Findings, Supersedes, legacy Allowed/Blocked Outputs) into the required set.
+method:
+  - Compare the candidate template's required frontmatter keys against each of the 4 evidence MDs' frontmatter.
+  - Compare the candidate template's 7 required body sections against each evidence MD's section list.
+  - Compare the candidate template's 4 optional section triggers against each evidence MD's actual optional-section usage.
+  - Classify the 4th case (experiment-install-20260508T101723Z.md) as pre-convention legacy if its envelope predates the stabilized convention.
+  - Record per-case fit verdicts and aggregate deviation notes.
+success_metrics:
+  - All 4 cases fit the template or are explicitly classified as pre-convention legacy.
+  - No required section is empty in cases marked as fitting.
+  - Optional-section list is stable across cases — no case requires an optional section that the candidate does not name.
+  - No case forces a currently-optional section into the required set.
+result: supports
+agent_outcome: Candidate envelope fits 3 of 4 vnstock cases (T171112Z, T071800Z-sandbox-1, T071900Z-sandbox-2). The 4th case (T101723Z) predates the frontmatter convention and uses a legacy body shape (Envelope + Allowed/Blocked Outputs + Result + Cleanup Confirmation); it is classified as pre-convention legacy and is not migrated by this experiment. Optional-section list (Static Dimension Consistency, Process-Side Findings, Supersedes, legacy Allowed/Blocked) is stable across the cases that use them.
+product_outcome: none
+observations:
+  - case: experiment-install-20260508T101723Z.md
+    fit: pre-convention-legacy
+    frontmatter: absent
+    body_shape: envelope-as-body-with-allowed-and-blocked-outputs
+    notes: predates the stabilized 11-key YAML frontmatter convention and the 7-section body envelope; retained as historical evidence without migration
+  - case: experiment-install-20260508T171112Z.md
+    fit: fits
+    frontmatter: full-11-key
+    required_sections: all-present
+    optional_sections_used:
+      - Static Dimension Consistency
+      - Process-Side Findings
+      - Supersedes
+    notes: triggers for all 3 optional sections were independently justified in this case
+  - case: experiment-install-20260509T071800Z-sandbox-1.md
+    fit: fits
+    frontmatter: full-11-key
+    required_sections: all-present
+    optional_sections_used: []
+    notes: passes-with-warning case; no optional sections triggered
+  - case: experiment-install-20260509T071900Z-sandbox-2.md
+    fit: fits
+    frontmatter: full-11-key
+    required_sections: all-present
+    optional_sections_used: []
+    notes: device-limit case immediately following sandbox-1; same envelope, different verdict
+promotion_review:
+  - Promotion to canonical requires at least one non-vnstock install experiment authored against the candidate without forcing the candidate to grow new required sections.
+  - If the next install experiment forces a new required section, revise the candidate and re-run this meta-experiment before promoting.
+  - Operator review must confirm the legacy classification of T101723Z is acceptable (do not back-migrate frozen evidence).
+scope: schema-improvement
+output_level: docs-only
+output_capture:
+  allowed_outputs:
+    - template-fit-table
+    - deviation-notes
+    - optional-section-trigger-audit
+    - legacy-classification-note
+  blocked_outputs:
+    - raw-installer-logs
+    - credentials
+    - api-keys
+    - raw-vendor-data
+    - host-identifying-values
+    - private-artifacts

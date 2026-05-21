@@ -1,0 +1,39 @@
+id: decision-20260509T192449Z-prospective-convention-application
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-09T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
+source_refs:
+  - local:records/vnstock/evidence/experiment-install-20260508T101723Z.md
+  - local:records/vnstock/evidence/experiment-install-20260508T171112Z.md
+  - record:decision-20260509T192448Z-experiment-result-convention
+notes: Meta loop policy; not domain evidence. Scoped by plans/reports/review-20260509-vnstock-resume-record-layer-gaps.md and plans/reports/next-steps-20260509-vnstock-product-and-meta.md.
+question: When a new convention lands, must historical records be rewritten to match?
+decision: New conventions apply prospectively. Historical records authored before the convention do not need rewriting for cosmetic alignment. Migration of historical records requires an explicit migration plan (see Migration / Structuring modes in operator-guide).
+rationale: Per-experiment immutability and audit-trail integrity beat convention uniformity at the cost of one stale value. Forcing in-place rewrites violates the immutability principle established for run-1 / run-2 evidence and experiment YAMLs.
+alternatives:
+  - Always rewrite historical records to match new conventions (uniformity-first).
+  - Always preserve historical records exactly as authored, with no migration path (immutability-first).
+  - Decide case-by-case with no general rule.
+tradeoffs:
+  - Some historical records will visibly diverge from current convention.
+  - Migration-when-approved preserves an escape hatch for cases where divergence is harmful.
+  - Reviewer/agent must read the convention's "Convention Application" clause to interpret historical drift.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: schema-improvement
+  affected_refs:
+    - local:docs/operator-guide.md
+    - record:decision-20260509T192448Z-experiment-result-convention
+  boundaries:
+    allowed_actions:
+      - Apply new conventions only to records authored after the convention lands.
+      - Migrate historical records via an approved Migration / Structuring plan.
+    blocked_actions:
+      - In-place edits to frozen historical records solely for cosmetic alignment.
+      - Schema-enum-only enforcement that fails-closed against historical records.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check

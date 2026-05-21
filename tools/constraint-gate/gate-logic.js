@@ -15,9 +15,9 @@ export const CONSTRAINT_PATTERNS = Object.fromEntries(
 );
 
 const WRITE_PATH_PATTERNS = {
-  'records-evidence': 'records/evidence/**',
-  'records-index': 'records/index/**',
-  'records-capabilities': 'records/capabilities/**',
+  'records-evidence': ['records/evidence/**', 'records/*/evidence/**'],
+  'records-index': ['records/index/**', 'records/*/index/**'],
+  'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };
 
 function globMatch(pattern, filePath) {
@@ -34,9 +34,9 @@ export function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
   if (observation.status !== 'active') return false;
   if (globMatch('records/observations/**', filePath)) return false;
-  const pattern = WRITE_PATH_PATTERNS[observation.constraint];
-  if (!pattern) return false;
-  return globMatch(pattern, filePath);
+  const patterns = WRITE_PATH_PATTERNS[observation.constraint];
+  if (!patterns) return false;
+  return patterns.some((p) => globMatch(p, filePath));
 }
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
@@ -174,7 +174,7 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
   }
 
   // If the path matches a known write-path pattern but has no observation → block
-  const knownWritePatterns = Object.values(WRITE_PATH_PATTERNS);
+  const knownWritePatterns = Object.values(WRITE_PATH_PATTERNS).flat();
   for (const pattern of knownWritePatterns) {
     if (globMatch(pattern, normalized)) {
       return {

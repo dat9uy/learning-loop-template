@@ -1,0 +1,40 @@
+id: claim-product-tanstack-reference-view
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
+source_refs:
+  - record:claim-product-fastapi-reference
+  - local:records/fastapi/evidence/fastapi-reference-endpoints.md
+subject: TanStack Start route views for Reference data
+claim: The FastAPI Reference endpoints may be rendered as route views.
+scope: product
+evidence_refs:
+  - record:capability-tanstack-reference-render
+confidence: medium
+limitations:
+  - Route views are limited to equity list and company detail render metadata.
+  - Smoke tests use fixture-backed data and do not call a live backend.
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-11T00:00:00Z"
+verification:
+  runtime:
+    status: verified
+    scope: sandbox
+    output: metadata-only
+    reason: Fixture-backed route render proof passed after FastAPI runtime claim was verified.
+    proof_refs:
+      - record:experiment-product-build-tanstack-reference-20260511T003000Z
+      - record:claim-product-fastapi-reference
+  product:
+    status: approved
+    reason: Product render surface approved by decision-20260511T003000Z-product-approval-vnstock-reference-slice. Operator walkthrough and gate-removal experiments confirm navigation and rendering.
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
+  blocked_actions:
+    - live-backend-calls-in-web-tests
+    - credential-capture
+    - raw-data-export

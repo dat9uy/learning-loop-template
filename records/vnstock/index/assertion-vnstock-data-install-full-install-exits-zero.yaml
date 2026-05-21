@@ -1,0 +1,24 @@
+id: assertion-vnstock-data-install-full-install-exits-zero
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: With a free device slot, the vendor installer exits 0, registers a
+  new device, and successfully installs vnstock_data.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: full-install-exits-zero
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/experiment-install-full-20260514T140811Z.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L116
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:ceec97ba2a62a3716ede303e79ad9fc262121e09c7edb75b87b6d370b5125f0d

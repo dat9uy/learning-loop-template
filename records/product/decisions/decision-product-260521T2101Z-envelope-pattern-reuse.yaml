@@ -1,0 +1,38 @@
+id: decision-260521T2101Z-envelope-pattern-reuse
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-21T21:01:00Z"
+updated_at: "2026-05-21T21:01:00Z"
+source_refs:
+  - record:capability-fastapi-reference-rest
+  - local:records/fastapi/evidence/fastapi-reference-endpoints.md
+question: Should the fundamental capability reuse the DataFrameEnvelope response pattern from the reference capability?
+decision: Reuse DataFrameEnvelope for fundamental API responses with ConfigDict(extra="allow") for dynamic columns.
+rationale: The reference capability already proved this pattern works for vnstock_data DataFrame responses. Reusing it maintains consistency across API endpoints and reduces implementation risk. Dynamic columns via extra="allow" handle variance across symbols without hardcoded schemas.
+alternatives:
+  - "Create row-level typed Pydantic models per statement type. Rejected: column names vary by symbol and time period; typed models would break on new columns."
+  - "Return raw JSON from DataFrame.to_dict(). Rejected: loses envelope metadata (columns list, row_count) that frontend table components depend on."
+tradeoffs:
+  - "Reusing pattern speeds implementation but couples fundamental models to reference model definition. Mitigation: reference model is stable and tested."
+  - "extra=allow sacrifices strict validation for flexibility. Mitigation: input validation on symbol pattern and limit bounds compensates."
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - records/capabilities/capability-fastapi-fundamental-rest
+    - product/api/src/models/fundamental.py
+    - product/api/src/routers/fundamental.py
+  boundaries:
+    allowed_actions:
+      - create response models inheriting from DataFrameEnvelope
+      - use ConfigDict(extra="allow") for dynamic column support
+      - reuse _records_from_frame helper pattern
+    blocked_actions:
+      - create row-level typed Pydantic models per statement type
+      - hardcode column schemas in response models
+      - return raw DataFrame dict without envelope wrapper
+    required_gates:
+      - pnpm validate:records
+      - pytest-api-suite

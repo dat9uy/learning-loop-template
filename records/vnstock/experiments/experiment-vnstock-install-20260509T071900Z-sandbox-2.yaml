@@ -1,0 +1,88 @@
+id: experiment-vnstock-install-20260509T071900Z-sandbox-2
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-09T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
+source_refs:
+  - local:records/vnstock/evidence/experiment-install-20260509T071900Z-sandbox-2.md
+scope: install
+output_level: metadata-only
+goal: Test whether a second fresh Linux Docker sandbox can install vnstock_data immediately after sandbox 1.
+hypothesis: If metering is per-fingerprint only, a second clean Linux sandbox should also register and install; if metering is account+OS-global, sandbox 2 should hit the device limit.
+method:
+  - run-second-fresh-docker-container-immediately-after-sandbox-1
+  - download-installer
+  - extract-makeself-archive
+  - execute-installer-entrypoint-with-env-vars
+  - verify-import-from-installer-created-venv
+  - audit-temp-files-for-secret-material
+success_metrics:
+  - second-sandbox-outcome-captured
+  - device-limit-message-captured-if-hit
+  - import-result-captured
+  - metadata-captured
+  - temp-root-cleaned-with-container
+result: does-not-support
+result_reason: account-os-device-limit-hit-after-sandbox-1-registered
+agent_outcome: branch-7b-confirmed
+product_outcome: none
+observations:
+  - No other intentional vnstock activity occurred between sandbox 1 and sandbox 2.
+  - Vendor registration failed because bronze plan allowed 1 Linux device and 1 was already registered.
+  - Installer continued after registration failure but could not download vnstock_data because the device was not registered.
+  - vnstock_data import failed with ModuleNotFoundError.
+  - Installer wrote API key material inside temp-local substrate, deleted with the container.
+promotion_review:
+  - Device-limit mechanism is account+OS-global for the observed subscription state.
+  - Further clean-fingerprint reruns need operator device clearance or subscription/device-slot change.
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+  - record:claim-vnstock-device-limit-mechanism
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+    - record:claim-vnstock-device-limit-mechanism
+  proves:
+    - dimension: static
+      output_level: metadata-only
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+risk_refs:
+  - record:risk-vnstock-external-installer
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - import-verification
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - vendor-device-limit-message
+    - sanitized-installer-status-lines
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
+approval:
+  required: true
+  status: approved
+  gate: device-limit-falsification
+  output_level: metadata-only
+  approved_command_class: fresh-docker-run + download-installer-run + env-var-driven-temp-install
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs

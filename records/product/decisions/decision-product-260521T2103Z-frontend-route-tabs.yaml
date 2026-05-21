@@ -1,0 +1,43 @@
+id: decision-260521T2103Z-frontend-route-tabs
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-21T21:03:00Z"
+updated_at: "2026-05-21T21:03:00Z"
+source_refs:
+  - record:capability-tanstack-reference-render
+  - local:records/tanstack/evidence/tanstack-reference-render.md
+question: What frontend route and UI pattern should the fundamental capability use?
+decision: Route /fundamental/$symbol with tabbed views for Income Statement, Balance Sheet, Cash Flow, and Ratios.
+rationale: The reference frontend uses a similar detail view pattern (CompanyDetail at /reference/company/$symbol). Tabs naturally separate the 4 statement types without nested routing complexity. A single route keeps router config minimal and matches the TanStack reference pattern.
+alternatives:
+  - "Nested sub-routes per statement type (/fundamental/$symbol/income, /balance, etc). Rejected: over-engineering for MVP; tab state is sufficient."
+  - "Single scrollable page with all statements. Rejected: poor UX for 4 tables with different column sets."
+  - "Dropdown selector instead of tabs. Rejected: tabs provide faster navigation and clearer state."
+tradeoffs:
+  - "Tab state is not URL-persisted. Mitigation: acceptable for MVP; can add query param persistence later."
+  - "All 4 tabs fetch from separate endpoints. Mitigation: parallel fetch on mount; typical data size is small (4-8 periods)."
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - records/capabilities/capability-tanstack-fundamental-render
+    - product/web/src/routes/fundamental/$symbol.tsx
+    - product/web/src/components/FundamentalTabs.tsx
+    - product/web/src/components/FundamentalTable.tsx
+    - product/web/src/lib/fundamental-client.ts
+  boundaries:
+    allowed_actions:
+      - create /fundamental/$symbol route
+      - build tabbed UI with 4 statement types
+      - reuse DataFrameEnvelope type pattern from reference client
+      - use plain React + CSS (no external UI library)
+    blocked_actions:
+      - add external UI library dependencies
+      - create nested sub-routes per tab
+      - use virtualized rendering unless tables exceed 100 rows
+    required_gates:
+      - pnpm check
+      - web-smoke-tests
+      - pnpm validate:records

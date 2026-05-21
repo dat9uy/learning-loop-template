@@ -66,7 +66,7 @@ describe("agent lifecycle integration", () => {
     assert.ok(runtimeParsed.pre_conditions.length > 0);
 
     // Step 5: convert evidence with real evidence file
-    const evidencePath = "records/evidence/meta/capability-generation-extension.md";
+    const evidencePath = "records/meta/evidence/capability-generation-extension.md";
     const convertResult = await workflowConvertEvidenceTool.handler({
       evidence_path: evidencePath,
       mode: "dry_run",
@@ -152,7 +152,7 @@ describe("agent lifecycle integration", () => {
 
     // workflow_verify_evidence
     const verifyResult = await workflowVerifyEvidenceTool.handler({
-      evidence_path: "records/evidence/meta/evidence-findings-convention.md",
+      evidence_path: "records/meta/evidence/evidence-findings-convention.md",
       verification_depth: "shallow",
     });
     const verifyParsed = JSON.parse(verifyResult.content[0].text);

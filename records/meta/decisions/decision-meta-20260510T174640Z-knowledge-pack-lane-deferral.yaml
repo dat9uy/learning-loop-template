@@ -1,0 +1,57 @@
+id: decision-20260510T174640Z-knowledge-pack-lane-deferral
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: "2026-05-10T17:46:40Z"
+updated_at: "2026-05-10T17:46:40Z"
+source_refs:
+  - local:records/meta/evidence/knowledge-pack-lane-deferral.md
+  - record:decision-20260510T160000Z-capabilities-stack-migration
+notes: Drafted in the same session as the doc-quieting pass on 2026-05-10. Pending operator approval. Does not supersede decision-20260510T160000Z-capabilities-stack-migration; it documents the disposition of the knowledge-packs/ entry in that decision's per-record-type default source-root allowlist. Brainstorm context is recorded in plans/reports/brainstorm-260511-0030-external-skills-integration.md (Unresolved Questions) and the superseded plans/reports/brainstorm-20260510-external-skills-integration.md.
+question: Should the knowledge-pack lane be retained as latent infrastructure, fully retired (directory deleted, validator allowlist trimmed, pack_ref refs rejected), or held in the prior promoting state in the active doc surface?
+decision: Quiet but do not retire. Remove knowledge-pack as a promoted concept from the operator-facing doc surface (executed in the same session as this draft; see source evidence). Keep the knowledge-packs/ directory and its draft placeholder manifests on disk. Keep the knowledge-packs/ entry in the validator's per-record-type default source-root allowlist for non-capability records. Block authoring of new pack manifests, citation of pack:<id> refs from new records, and promotion of pack creation in operator-facing docs until a separate reactivation decision is approved.
+rationale: The current product line treats the records ledger as the knowledge base; pack publication adds no value to the FastAPI-on-vnstock build and was confusing for agents reading the operator-facing docs. Doc-surface quieting eliminates that confusion. Full retirement carries non-trivial cost - regression sweep of all 19 currently-validating records to confirm no pack:<id> refs are in flight, edits to validator code and the per-record-type allowlist message strings, deletion of the _template scaffolding that future product lines may want as a starting point, and removal of pack-specific validator modules. The cost is not justified given the latent infra fits in two directories plus one allowlist token, with no active records citing it. Quieting without retiring captures the design intent without incurring the cleanup cost or destroying potentially-useful future scaffolding.
+alternatives:
+  - Full retirement. Delete knowledge-packs/, remove the knowledge-packs/ token from the validator's per-record-type default allowlist, drop the pack:<id> reference class from validator regex, retire pack-specific validator modules, scan all records for pack:<id> refs and convert. Rejected because the cost is high, the benefit is near-zero (the doc surface is already quieted), and any future pack-using product line would have to rebuild the infra from scratch.
+  - Status quo. Leave the operator-facing docs promoting pack creation and consumption alongside record-ledger usage. Rejected because the brainstorm explicitly named pack confusion as a risk and the FastAPI-on-vnstock product line does not consume packs.
+  - Hard-archive. Move knowledge-packs/ under records/_archive/ with a README explaining the deferral. Rejected because the directory is already inert under draft status; a move adds churn without changing the disposition.
+tradeoffs:
+  - Latent infra accumulates without testing. If a future product line reactivates packs, the schema/validator path may have bit-rotted. Mitigation - reactivation requires a new decision and gets its own runtime-verification phase.
+  - The operator-facing doc surface no longer mentions pack as a concept agents may reach for. New agents cannot discover the pack lane without reading this decision or an explicit operator hint. Acceptable because the lane is intentionally not in scope.
+  - Two intentional latent-marker lines remain in operator-guide.md and charter.md noting the knowledge-packs/ lane as deferred. Maintenance overhead is one line per doc; benefit is unambiguous footprint for future operators.
+  - Pack-specific validator modules (pack-source-validation.js, publication-gate-validation.js) remain wired into pnpm check. They continue to no-op against the empty/draft manifests but consume validator runtime and a small amount of operator attention on every run.
+supersedes: []
+decision_effect:
+  action: defer
+  scope: schema-improvement
+  affected_refs:
+    - local:knowledge-packs/_template/manifest.yaml
+    - local:knowledge-packs/_template/facts.yaml
+    - local:knowledge-packs/_template/capabilities.yaml
+    - local:knowledge-packs/vnstock-data/manifest.yaml
+    - local:tools/validate-records/validate-records.js
+    - local:tools/validate-records/pack-source-validation.js
+    - local:tools/validate-records/publication-gate-validation.js
+    - local:docs/handoff.md
+    - local:docs/charter.md
+    - local:docs/lab-model.md
+    - local:docs/operator-guide.md
+    - local:docs/red-team-review.md
+    - local:README.md
+  boundaries:
+    allowed_actions:
+      - Retain the knowledge-packs/ directory and its draft placeholder manifests on disk.
+      - Retain the knowledge-packs/ token in the validator's per-record-type default source-root allowlist for non-capability records.
+      - Maintain at most one latent-marker line per active doc indicating the knowledge-packs/ lane is deferred.
+      - Reactivate the lane via a new decision that explicitly approves pack authoring scope and any required schema additions.
+    blocked_actions:
+      - Authoring new pack manifests under knowledge-packs/<id>/ without a prior reactivation decision.
+      - Citing pack:<id> refs from new records (claims, experiments, decisions, capability records, risks).
+      - Promoting pack creation, pack consumption, or pack publication in operator-facing docs.
+      - Treating any draft pack manifest as a publication target.
+      - Editing decision-20260510T160000Z-capabilities-stack-migration to remove the knowledge-packs/ allowlist entry; that change requires a new decision that succeeds this one.
+      - Deleting tools/validate-records/pack-source-validation.js or tools/validate-records/publication-gate-validation.js without a reactivation or successor decision.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check
+      - Operator approval before promotion from draft to approved.

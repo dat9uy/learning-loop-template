@@ -20,9 +20,20 @@ const DEFAULT_STACKS = [
  * @param {string} [opts.schemaVersion] — schema version to emit
  * @returns {{ drift: boolean, diffs: Array<{file: string, expected: object, actual: object}> }}
  */
+function deriveSurfaceFromCapabilityId(id) {
+  const m = id.match(/^capability-([a-z0-9]+)-/);
+  return m ? m[1] : null;
+}
+
+function getCapabilityDir(root, outDir, record) {
+  if (outDir) return outDir;
+  const surface = deriveSurfaceFromCapabilityId(record.id);
+  return join(root, "records", surface || "capabilities", "capabilities");
+}
+
 export async function generateCapabilities(opts) {
   const root = opts.root;
-  const outDir = opts.outDir || join(root, "records", "capabilities");
+  const outDir = opts.outDir || null;
   const registry = opts.registry || adapterRegistry;
   const stacks = opts.stacks || DEFAULT_STACKS;
   const dryRun = opts.dryRun || false;
@@ -46,7 +57,8 @@ export async function generateCapabilities(opts) {
   if (dryRun) {
     const diffs = [];
     for (const record of generatedRecords) {
-      const filePath = join(outDir, `${record.id}.yaml`);
+      const dir = getCapabilityDir(root, outDir, record);
+      const filePath = join(dir, `${record.id}.yaml`);
       let actual = null;
       try {
         actual = YAML.parse(readFileSync(filePath, "utf8"));
@@ -66,18 +78,31 @@ export async function generateCapabilities(opts) {
     }
     // Check for extra files
     const expectedIds = new Set(generatedRecords.map((r) => r.id));
-    for (const fileName of readdirSync(outDir).filter((n) => n.endsWith(".yaml"))) {
-      const id = fileName.replace(/\.yaml$/, "");
-      if (!expectedIds.has(id)) {
-        diffs.push({ file: id, expected: null, actual: YAML.parse(readFileSync(join(outDir, fileName), "utf8")) });
+    const seenDirs = new Set();
+    for (const record of generatedRecords) {
+      seenDirs.add(getCapabilityDir(root, outDir, record));
+    }
+    for (const dir of seenDirs) {
+      let files;
+      try {
+        files = readdirSync(dir).filter((n) => n.endsWith(".yaml"));
+      } catch {
+        continue;
+      }
+      for (const fileName of files) {
+        const id = fileName.replace(/\.yaml$/, "");
+        if (!expectedIds.has(id)) {
+          diffs.push({ file: id, expected: null, actual: YAML.parse(readFileSync(join(dir, fileName), "utf8")) });
+        }
       }
     }
     return { drift: diffs.length > 0, diffs };
   }
 
-  mkdirSync(outDir, { recursive: true });
   for (const record of generatedRecords) {
-    const filePath = join(outDir, `${record.id}.yaml`);
+    const dir = getCapabilityDir(root, outDir, record);
+    mkdirSync(dir, { recursive: true });
+    const filePath = join(dir, `${record.id}.yaml`);
     const yaml = YAML.stringify(record, { sortMapEntries: true });
     writeFileSync(filePath, yaml, "utf8");
   }

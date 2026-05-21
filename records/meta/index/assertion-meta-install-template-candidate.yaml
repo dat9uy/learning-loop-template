@@ -1,0 +1,25 @@
+id: assertion-meta-install-template-candidate
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Four vnstock install experiments accumulated; three converge on
+  stable 7-section envelope + 11-key frontmatter.
+capability: meta
+dimension: install
+scope: meta-tooling
+topic_tag: template-candidate
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/install-experiment-template-gap.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L7
+experiment_refs:
+  - record:experiment-meta-install-template-candidate-260512T0046Z
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:5a84076402bc1e3886de85d2db341f43076619f4a66220c3ccc90d2f7b4f53c7

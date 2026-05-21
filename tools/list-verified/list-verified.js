@@ -21,35 +21,41 @@ function getVerifiedDimensions(record) {
   return dims;
 }
 
+const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
+
 function loadClaims(root) {
-  const claimsDir = join(root, "records", "claims");
   const claims = [];
-  let files;
-  try {
-    files = readdirSync(claimsDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
-  } catch {
-    return claims;
-  }
-  for (const file of files) {
+  const collect = (dir) => {
+    let files;
     try {
-      const content = readFileSync(join(claimsDir, file), "utf8");
-      const record = parseYaml(content, { uniqueKeys: false });
-      if (record && isVerifiedClaim(record)) {
-        claims.push({
-          id: record.id || file.replace(/\.yaml?$/, ""),
-          subject: record.subject || "",
-          verified_dimensions: getVerifiedDimensions(record),
-        });
-      }
+      files = readdirSync(dir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
     } catch {
-      // skip unparseable
+      return;
     }
+    for (const file of files) {
+      try {
+        const content = readFileSync(join(dir, file), "utf8");
+        const record = parseYaml(content, { uniqueKeys: false });
+        if (record && isVerifiedClaim(record)) {
+          claims.push({
+            id: record.id || file.replace(/\.yaml?$/, ""),
+            subject: record.subject || "",
+            verified_dimensions: getVerifiedDimensions(record),
+          });
+        }
+      } catch {
+        // skip unparseable
+      }
+    }
+  };
+  collect(join(root, "records", "claims"));
+  for (const surface of SURFACES) {
+    collect(join(root, "records", surface, "claims"));
   }
   return claims;
 }
 
 function loadEvidence(root) {
-  const evidenceDir = join(root, "records", "evidence");
   const evidence = [];
 
   function walk(dir) {
@@ -83,7 +89,10 @@ function loadEvidence(root) {
     }
   }
 
-  walk(evidenceDir);
+  walk(join(root, "records", "evidence"));
+  for (const surface of SURFACES) {
+    walk(join(root, "records", surface, "evidence"));
+  }
   return evidence;
 }
 

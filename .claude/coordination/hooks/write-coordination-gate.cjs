@@ -69,7 +69,7 @@ function main() {
   }
 
   // Evidence write-path check: active observation + staleness check
-  if (globMatch('records/evidence/**', relPath)) {
+  if (globMatch('records/evidence/**', relPath) || globMatch('records/*/evidence/**', relPath)) {
     const root = findProjectRoot();
     const obsDir = path.join(root, 'records', 'observations');
     const observations = readObservations(obsDir);
@@ -100,7 +100,7 @@ function main() {
   }
 
   // Index and capabilities are agent-managed derived artifacts
-  if (globMatch('records/index/**', relPath) || globMatch('records/capabilities/**', relPath)) {
+  if (globMatch('records/index/**', relPath) || globMatch('records/*/index/**', relPath) || globMatch('records/capabilities/**', relPath) || globMatch('records/*/capabilities/**', relPath)) {
     const root = findProjectRoot();
     const obsDir = path.join(root, 'records', 'observations');
     const observations = readObservations(obsDir);

@@ -1,0 +1,73 @@
+id: claim-vnstock-install-sandbox
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-14T14:08:11Z"
+source_refs:
+  - local:records/vnstock/evidence/installer-prior-notes.md
+  - local:records/vnstock/evidence/experiment-install-20260508T101723Z.md
+  - local:records/vnstock/evidence/experiment-install-20260508T171112Z.md
+  - local:records/vnstock/evidence/capability-runtime-output.md
+  - local:records/vnstock/evidence/vendor-installation-troubleshooting-guide.md
+  - local:records/vnstock/evidence/vendor-dockerfile-sample.md
+  - record:experiment-vnstock-capabilities-20260509T174957Z
+notes: "Active operator decision: record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance. Vendor official docs (2026-05-13) corroborate env-var-driven and non-interactive install paths; one-liner command and Dockerfile sample now referenced."
+subject: vnstock Python package
+claim: vnstock may be installable and importable in a sandbox environment by downloading and executing the official Makeself .run installer; the env-var-driven noninteractive install path is verified in sandbox and corroborated by vendor documentation, while the exact archive-wrapper flag syntax remains partially discrepant
+scope: sandbox
+evidence_refs:
+  - local:records/vnstock/evidence/installer-prior-notes.md
+  - local:records/vnstock/evidence/experiment-install-20260508T101723Z.md
+  - local:records/vnstock/evidence/experiment-install-20260508T171112Z.md
+  - local:records/vnstock/evidence/vendor-installation-troubleshooting-guide.md
+  - local:records/vnstock/evidence/vendor-dockerfile-sample.md
+  - local:records/vnstock/evidence/experiment-install-vendor-one-liner-20260513T213042Z.md
+  - local:records/vnstock/evidence/experiment-install-prepared-substrate-20260513T173104Z.md
+  - local:records/vnstock/evidence/experiment-install-bootstrap-substrate-20260513T182621Z.md
+  - local:records/vnstock/evidence/experiment-install-full-20260514T140811Z.md
+  - local:records/vnstock/evidence/experiment-product-bootstrap-20260514T140811Z.md
+  - local:records/vnstock/evidence/experiment-direct-pip-20260514T140811Z.md
+confidence: medium
+limitations:
+  - Verification is limited to sandbox installation and metadata-only import checks.
+  - Production use and live provider calls require separate approval.
+  - The vendor one-liner (`--quiet --accept -- --api-key`) requires `requests` to be pre-installed in the substrate; the vendor troubleshooting guide omits this prerequisite while the vendor Dockerfile sample includes it. The one-liner succeeds in prepared substrates (requests/pandas pre-installed) and reaches device registration.
+  - The Makeself archive-wrapper flag passthrough has been independently verified in our sandbox.
+  - "The installer unconditionally creates a venv at $HOME/.venv. When HOME is not overridden, this defaults to /root/.venv. When HOME is overridden (as in the bootstrap script), the installer respects it and creates .venv in the specified home directory."
+  - The vendor Dockerfile assumption that `/opt/venv` will be used is incorrect; venv path override via `PATH` or pre-created venvs is not supported by the installer.
+  - "The bootstrap script product/api/scripts/install-vnstock.sh is validated: the product .venv (requests + pandas) is a sufficient substrate, and the HOME override works as intended."
+  - "vnai does NOT need to be pre-installed in the substrate; the installer handles vnai/vnii installation itself."
+  - "Full vendor install confirmed: with a free device slot, the installer exits 0 and installs vnstock_data 3.0.0."
+  - "Device IDs are not deterministic across container instances; each fresh container consumes a distinct device slot."
+  - "Direct pip install from the vendor index is not viable; the index is a web UI, not a PEP 503 simple index."
+  - "The product is already bootstrapped and the bootstrap script is idempotent (skips when vnstock_data is already importable)."
+  - "RETROSPECTIVE (2026-05-15): The vendor installer falsely claims 'Golden package, 2 devices' in its error message. The actual tier is Bronze with a 1-device limit. Every experiment that hit device limit was hitting the 1-device ceiling. See claim-vnstock-device-limit-ui-inconsistency."
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-08T00:00:00Z"
+verification:
+  static:
+    status: claimed
+    reason: Prior notes identify the installer class and expected install flow.
+    proof_refs: []
+  install:
+    status: verified
+    scope: sandbox
+    reason: Sandbox install fully verified. Vendor one-liner completes successfully with requests pre-installed and a free device slot. Installer exits 0, vnstock_data 3.0.0 installed. Bootstrap script idempotency confirmed in product.
+    proof_refs:
+      - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
+  runtime:
+    status: verified
+    scope: sandbox
+    output: runtime-captured
+    reason: The approved capability runtime experiment executed live Reference, Market, Fundamental, Insights, and Macro calls from the shared product environment with metadata-only output capture.
+    proof_refs:
+      - record:experiment-vnstock-capabilities-20260509T174957Z
+  product:
+    status: approved
+    reason: Scoped Reference product slice approved by decision record.
+    decision_refs:
+      - record:decision-20260511T003000Z-product-approval-vnstock-reference-slice
+  blocked_actions: []

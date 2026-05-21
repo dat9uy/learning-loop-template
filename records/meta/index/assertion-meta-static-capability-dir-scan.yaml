@@ -1,0 +1,24 @@
+id: assertion-meta-static-capability-dir-scan
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: After claims-first orientation, list `records/evidence/<capability>/`
+  end-to-end for files not referenced by active index entries.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: capability-dir-scan
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/capability-dir-scan-rule.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L6
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:8f51423be029c3f34efa8a7db35f1860d9ee5a0cee63536902cf5ec14dbe9540

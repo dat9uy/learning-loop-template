@@ -241,13 +241,13 @@ describe("End-to-end: evidence-changed workflow", () => {
   it("triggerWorkflow spawns extract-index and logs to workflow-log.jsonl", async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), "workflow-e2e-"));
     mkdirSync(join(tmpDir, ".claude", "coordination"), { recursive: true });
-    mkdirSync(join(tmpDir, "records", "evidence"), { recursive: true });
-    mkdirSync(join(tmpDir, "records", "index"), { recursive: true });
+    mkdirSync(join(tmpDir, "records", "meta", "evidence"), { recursive: true });
+    mkdirSync(join(tmpDir, "records", "meta", "index"), { recursive: true });
     mkdirSync(join(tmpDir, "tools", "extract-index"), { recursive: true });
     mkdirSync(join(tmpDir, "tools", "validate-records"), { recursive: true });
 
     // Write a dummy evidence file
-    writeFileSync(join(tmpDir, "records", "evidence", "test.md"), "# Test\n\n## Findings\n\n- [claim] something is true");
+    writeFileSync(join(tmpDir, "records", "meta", "evidence", "test.md"), "# Test\n\n## Findings\n\n- [claim] something is true");
 
     // Create stub scripts that exit 0
     writeFileSync(join(tmpDir, "tools", "extract-index", "extract-index.js"), `console.log("extract-index ran");`);
@@ -257,7 +257,7 @@ describe("End-to-end: evidence-changed workflow", () => {
     writeFileSync(join(tmpDir, ".claude", "coordination", "workflows.json"), JSON.stringify({
       workflows: {
         "evidence-changed": {
-          triggers: ["records/evidence/**"],
+          triggers: ["records/*/evidence/**"],
           change_types: ["created", "updated"],
           commands: [
             ["node", "tools/extract-index/extract-index.js"],
@@ -267,7 +267,7 @@ describe("End-to-end: evidence-changed workflow", () => {
       }
     }));
 
-    const result = await triggerWorkflow("evidence-changed", { path: "records/evidence/test.md" }, tmpDir);
+    const result = await triggerWorkflow("evidence-changed", { path: "records/meta/evidence/test.md" }, tmpDir);
     assert.strictEqual(result.triggered, true);
     assert.ok(Array.isArray(result.results));
     assert.strictEqual(result.results.length, 2);

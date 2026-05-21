@@ -1,0 +1,46 @@
+id: claim-vnstock-home-config-path
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-18T01:30:00Z"
+updated_at: "2026-05-18T01:30:00Z"
+source_refs:
+  - local:records/vnstock/evidence/capability-revalidation-20260518.md
+  - record:experiment-vnstock-capability-revalidation-20260518T003000Z
+notes: "Discovered during Phase-04 revalidation. vnstock_data reads api_key.json via Path.home()/.vnstock/, not via VNSTOCK_CONFIG_PATH env var. When HOME is unset or points elsewhere, all API calls fail with Vietnamese auth error even though package is installed and device registered."
+subject: vnstock_data requires HOME=product/api to find api_key.json
+claim: "vnstock_data reads $HOME/.vnstock/api_key.json via Path.home(). The VNSTOCK_CONFIG_PATH env var is NOT used by vnstock_data for config resolution. When HOME defaults to the shell user's home (e.g., /home/datguy), vnstock_data cannot find the installed api_key.json and all API calls fail with 'Không tìm thấy thông tin người dùng hợp lệ'. Capability scripts must set os.environ['HOME'] to product/api before importing vnstock_data."
+scope: sandbox
+evidence_refs:
+  - local:records/vnstock/evidence/capability-revalidation-20260518.md
+confidence: high
+limitations:
+  - Only tested with vnstock_data 3.1.8 (source version 3.0.0). Newer versions may change config resolution.
+  - VNSTOCK_CONFIG_PATH is set by install-vnstock.sh but ignored by vnstock_data for api_key.json lookup.
+  - The .vnstock directory also contains device.id, auth_state.json, and other config that may also require correct HOME.
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-18T01:30:00Z"
+verification:
+  static:
+    status: claimed
+    reason: "Source inspection of vnstock_data/core/utils/const.py confirms HOME_DIR=pathlib.Path.home() and PROJECT_DIR=HOME_DIR/'.vnstock'. No VNSTOCK_CONFIG_PATH override exists."
+    proof_refs: []
+  install:
+    status: claimed
+    scope: sandbox
+    reason: "Installation sets api_key.json at product/api/.vnstock/api_key.json. Install script correctly sets HOME, but capability scripts did not."
+    proof_refs: []
+  runtime:
+    status: verified
+    scope: sandbox
+    output: metadata-only
+    reason: "All 5 capability scripts pass after setting HOME=product/api. All 5 fail without it. Confirmed by direct test."
+    proof_refs:
+      - record:experiment-vnstock-capability-revalidation-20260518T003000Z
+  product:
+    status: claimed
+    reason: "Product code must also set HOME correctly when calling vnstock_data APIs."
+    decision_refs: []
+  blocked_actions: []

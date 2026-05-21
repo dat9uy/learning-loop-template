@@ -1,0 +1,27 @@
+id: assertion-vnstock-data-install-installer-ignores-venv-path-var
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: The installer creates `.venv` at `$HOME/.venv` and does not honor
+  `VNSTOCK_VENV_PATH` for the package venv.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: installer-ignores-venv-path-var
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/experiment-install-20260509T071800Z-sandbox-1.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L106
+experiment_refs:
+  - record:experiment-meta-install-template-candidate-260512T0046Z
+  - record:experiment-vnstock-install-20260509T071800Z-sandbox-1
+  - record:experiment-vnstock-install-vendor-one-liner-20260513T213042Z
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:afb1020526b5c20eed40672a1e1a94707c6da0779fd3e74c8468e241df0db4af

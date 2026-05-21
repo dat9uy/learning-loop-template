@@ -1,0 +1,88 @@
+id: experiment-vnstock-capabilities-20260509T174957Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-09T00:00:00Z"
+updated_at: "2026-05-10T00:00:00Z"
+source_refs:
+  - record:claim-vnstock-install-sandbox
+  - local:records/vnstock/evidence/capability-runtime-output.md
+scope: runtime
+output_level: runtime-captured
+goal: Test whether vnstock_data's Unified UI APIs return usable data via standalone capability scripts in the shared persistent environment.
+hypothesis: The capability scripts can execute against the shared environment and return DataFrames with real Vietnamese stock data for all major domain layers (Reference, Market, Fundamental, Insights, Macro).
+method:
+  - create-capability-scripts-per-domain-layer
+  - execute-capability-00-discovery-import-and-api-tree
+  - execute-capability-01-reference-listings-company-search
+  - execute-capability-02-market-ohlcv-quote-orderbook
+  - execute-capability-03-fundamental-statements-ratios
+  - execute-capability-04-insights-ranking-macro-economy
+  - capture-metadata-schema-shape-redacted-sample-output
+  - verify-output-matches-expected-unified-ui-schema
+success_metrics:
+  - all-capability-scripts-execute-without-error
+  - reference-layer-returns-dataframe-with-symbol-data
+  - market-layer-returns-ohlcv-dataframe
+  - fundamental-layer-returns-financial-statements
+  - insights-layer-returns-ranking-dataframe
+  - macro-layer-returns-economic-indicators
+  - sample-output-captured-for-each-domain
+result: supports
+result_reason: All five capability scripts executed against live endpoints in the shared product environment after updating GDP/CPI calls from unsupported quarterly period to supported yearly period.
+agent_outcome: Verified Reference, Market, Fundamental, Insights, and Macro runtime surfaces via metadata-only captured output in records/evidence/vnstock-data/capability-runtime-output.md.
+product_outcome: none
+observations:
+  - Capability scripts are standalone and segmented for interactive or whole-script execution.
+  - Scripts share the persistent environment at product/ with future product code.
+  - Minimal API calls per script to respect rate limits and vendor constraints.
+  - Capability files: product/capabilities/vnstock-data/capability-00-discovery.py, capability-01-reference.py, capability-02-market.py, capability-03-fundamental.py, capability-04-insights-macro.py, README.md
+  - Runtime execution completed in product/.venv with vnstock_data package metadata version 3.1.7.
+  - Macro GDP/CPI API accepted period="year" and rejected the originally staged period="quarter".
+  - Reference search for the tested symbol returned an empty DataFrame with the expected schema.
+promotion_review:
+  - Do not commit raw data or credentials.
+  - Runtime output capture is limited to schema shape, row counts, and column names.
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: runtime-captured
+  requires_human_approval: true
+  approval_status: approved
+risk_refs:
+  - record:risk-vnstock-external-installer
+output_capture:
+  allowed_outputs:
+    - metadata
+    - schema-shape
+    - redacted-labels
+    - dataframe-column-names
+    - row-counts
+    - sample-output-snippet
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - live-api-calls
+    - private-artifacts
+    - full-dataframe-values
+    - time-series-values
+approval:
+  required: true
+  status: approved
+  gate: capability-runtime-verification
+  output_level: runtime-captured
+  approved_command_class: shared-env-python-execution-capability-scripts
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - live-api-calls
+    - private-artifacts
+    - full-dataframe-values
+    - time-series-values

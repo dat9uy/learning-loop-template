@@ -1,0 +1,38 @@
+id: decision-260521T2104Z-no-caching-layer
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-21T21:04:00Z"
+updated_at: "2026-05-21T21:04:00Z"
+source_refs:
+  - record:capability-fastapi-reference-rest
+  - local:records/fastapi/evidence/fastapi-reference-endpoints.md
+question: Should the fundamental capability include a data caching layer?
+decision: No caching layer. Passthrough to vnstock_data per existing reference router behavior.
+rationale: The reference capability uses direct passthrough without caching. Adding caching introduces significant complexity (invalidation strategy, storage backend, TTL management, cache warming) without proven performance need. Fundamental data requests are low-frequency compared to reference data. Caching can be revisited if latency or rate-limit issues arise in production.
+alternatives:
+  - "Add in-memory LRU cache with TTL. Rejected: adds complexity; no evidence of performance bottleneck."
+  - "Cache in Redis. Rejected: introduces new infrastructure dependency for unproven need."
+  - "Cache at frontend layer with TanQuery. Rejected: data changes per reporting period; stale data risk."
+tradeoffs:
+  - "No caching means repeated identical requests hit the vendor API. Mitigation: fundamental data is low-frequency user action."
+  - "Vendor API latency may affect UX. Mitigation: accept for MVP; monitor and revisit if needed."
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - product/api/src/routers/fundamental.py
+    - product/api/tests/test_fundamental.py
+  boundaries:
+    allowed_actions:
+      - direct vnstock_data calls per request
+      - passthrough without intermediate storage
+    blocked_actions:
+      - add redis/memcached/storage cache
+      - implement cache invalidation logic
+      - persist external data locally between requests
+      - share state across requests
+    required_gates:
+      - pytest-api-suite
+      - pnpm validate:records

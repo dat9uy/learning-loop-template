@@ -156,7 +156,7 @@ function main() {
         reason: 'records/observations/** is blocked unconditionally',
         hard_block: true,
       };
-    } else if (recordsPath.startsWith('records/evidence/')) {
+    } else if (recordsPath.match(/^records\/(?:[^/]+\/)?evidence\//)) {
       const observations = readObservations(obsDir);
       const matchingObs = observations.find(obs => pathMatchesObservation(obs, recordsPath));
       if (!matchingObs) {

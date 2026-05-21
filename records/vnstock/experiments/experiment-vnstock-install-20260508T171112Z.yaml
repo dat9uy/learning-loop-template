@@ -1,0 +1,76 @@
+id: experiment-vnstock-install-20260508T171112Z
+schema_version: "1.0"
+type: experiment
+status: reviewed
+created_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-09T00:00:00Z"
+source_refs:
+  - local:records/vnstock/evidence/experiment-install-20260508T171112Z.md
+scope: install
+output_level: metadata-only
+goal: Verify vnstock can be installed and imported in sandbox through the env-var-driven installer path
+hypothesis: vnstock installs successfully when the official installer receives VNSTOCK_API_KEY and temp-local config and venv paths through environment variables
+method:
+  - verify-api-key-env-present-without-printing
+  - download-installer
+  - inspect-installer-options
+  - extract-makeself-archive
+  - execute-installer-entrypoint-with-env-vars
+  - verify-import
+  - audit-temp-files-for-secret-material
+success_metrics:
+  - env-var-api-key-path-accepted
+  - install-exit-code-zero
+  - import-succeeds
+  - metadata-captured
+  - temp-root-cleaned
+result: inconclusive
+result_reason: blocked-by-vendor-device-limit
+agent_outcome: install not verified
+product_outcome: none
+observations:
+  - VNSTOCK_API_KEY environment-variable path was accepted by the vendor installer.
+  - Vendor installer created a temp-local venv before device-limit enforcement.
+  - Vendor installer stopped at the subscribed-package device-limit gate.
+  - vnstock_data import failed because package installation did not complete.
+  - Temp-local config files contained API key material and were deleted with the temp substrate.
+promotion_review:
+  - Do not promote install claim to verified.
+  - Device-limit mechanism requires a separate controlled investigation after operator clearance.
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - import-verification
+    - module-symbol-list
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - vendor-device-limit-message
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs
+approval:
+  required: true
+  status: approved
+  gate: install-import
+  output_level: metadata-only
+  approved_command_class: download-installer-run + makeself-exec + env-var-driven-temp-venv-install
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs

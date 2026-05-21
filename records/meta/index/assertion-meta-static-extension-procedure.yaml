@@ -1,0 +1,25 @@
+id: assertion-meta-static-extension-procedure
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: "Five steps to add new surface: create adapter file, export
+  `extract(root)` function, register in registry, add surface enum to schema,
+  document in meta evidence."
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: extension-procedure
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/capability-generation-extension.md
+    section: "## Findings"
+    bullet_index: 5
+    line_anchor: L10
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:15e7e7e761618863fc33b89fb34de66486871fc0dbc05debf876279385911bc4

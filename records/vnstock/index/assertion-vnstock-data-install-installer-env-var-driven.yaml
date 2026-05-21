@@ -1,0 +1,28 @@
+id: assertion-vnstock-data-install-installer-env-var-driven
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: The extracted Python installer entrypoint is environment-variable
+  driven; `VNSTOCK_API_KEY`, `VNSTOCK_LANGUAGE`, `VNSTOCK_VENV_TYPE`, and
+  `VNSTOCK_VENV_PATH` control behavior.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: installer-env-var-driven
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/experiment-install-20260508T101723Z.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L60
+experiment_refs:
+  - record:experiment-meta-install-template-candidate-260512T0046Z
+  - record:experiment-vnstock-install-20260508T101723Z
+  - record:experiment-vnstock-install-vendor-one-liner-20260513T213042Z
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:108f887e5696ca0dcdecac574e80911b709501f77948a6731f92674d4ef92bc6

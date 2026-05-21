@@ -72,9 +72,9 @@ function globMatch(pattern, filePath) {
 const MARKER_TTL_MS = 30 * 60 * 1000;
 
 const WRITE_PATH_PATTERNS = {
-  'records-evidence': 'records/evidence/**',
-  'records-index': 'records/index/**',
-  'records-capabilities': 'records/capabilities/**',
+  'records-evidence': ['records/evidence/**', 'records/*/evidence/**'],
+  'records-index': ['records/index/**', 'records/*/index/**'],
+  'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };
 
 function readLastOperatorMessage(coordDir) {
@@ -123,9 +123,9 @@ function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
   if (observation.status !== 'active') return false;
   if (globMatch('records/observations/**', filePath)) return false;
-  const pattern = WRITE_PATH_PATTERNS[observation.constraint];
-  if (!pattern) return false;
-  return globMatch(pattern, filePath);
+  const patterns = WRITE_PATH_PATTERNS[observation.constraint];
+  if (!patterns) return false;
+  return patterns.some((p) => globMatch(p, filePath));
 }
 
 module.exports = {

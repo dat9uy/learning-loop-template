@@ -31,12 +31,25 @@ function parseArgs(argv) {
   return args;
 }
 
-function* walkEvidenceFiles(dir) {
+const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
+
+function* walkEvidenceFiles(root) {
+  const dirs = [join(root, "records", "evidence")];
+  for (const surface of SURFACES) {
+    dirs.push(join(root, "records", surface, "evidence"));
+  }
+  for (const dir of dirs) {
+    if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) continue;
+    yield* _walkEvidenceDir(dir);
+  }
+}
+
+function* _walkEvidenceDir(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {
-      yield* walkEvidenceFiles(path);
+      yield* _walkEvidenceDir(path);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       yield path;
     }
@@ -45,26 +58,29 @@ function* walkEvidenceFiles(dir) {
 
 function buildExperimentMap(root) {
   const map = new Map();
-  const experimentsDir = join(root, "records", "experiments");
-  if (!statSync(experimentsDir, { throwIfNoEntry: false })?.isDirectory()) {
-    return map;
+  const dirs = [join(root, "records", "experiments")];
+  for (const surface of SURFACES) {
+    dirs.push(join(root, "records", surface, "experiments"));
   }
-  for (const entry of readdirSync(experimentsDir, { withFileTypes: true })) {
-    if (!entry.name.endsWith(".yaml")) continue;
-    const path = join(experimentsDir, entry.name);
-    try {
-      const text = readFileSync(path, "utf8");
-      const yaml = parseYaml(text);
-      if (!yaml || !Array.isArray(yaml.source_refs)) continue;
-      for (const ref of yaml.source_refs) {
-        if (typeof ref === "string" && ref.startsWith("local:")) {
-          const list = map.get(ref) || [];
-          list.push(yaml.id);
-          map.set(ref, list);
+  for (const experimentsDir of dirs) {
+    if (!statSync(experimentsDir, { throwIfNoEntry: false })?.isDirectory()) continue;
+    for (const entry of readdirSync(experimentsDir, { withFileTypes: true })) {
+      if (!entry.name.endsWith(".yaml")) continue;
+      const path = join(experimentsDir, entry.name);
+      try {
+        const text = readFileSync(path, "utf8");
+        const yaml = parseYaml(text);
+        if (!yaml || !Array.isArray(yaml.source_refs)) continue;
+        for (const ref of yaml.source_refs) {
+          if (typeof ref === "string" && ref.startsWith("local:")) {
+            const list = map.get(ref) || [];
+            list.push(yaml.id);
+            map.set(ref, list);
+          }
         }
+      } catch (cause) {
+        console.warn(`Warning: malformed experiment ${entry.name}, skipping: ${cause.message}`);
       }
-    } catch (cause) {
-      console.warn(`Warning: malformed experiment ${entry.name}, skipping: ${cause.message}`);
     }
   }
   return map;
@@ -142,16 +158,19 @@ function parseDisproofNotes(text) {
 
 function loadExistingIndexEntries(root) {
   const entries = new Map();
-  const indexDir = join(root, "records", "index");
-  if (!statSync(indexDir, { throwIfNoEntry: false })?.isDirectory()) {
-    return entries;
+  const dirs = [join(root, "records", "index")];
+  for (const surface of SURFACES) {
+    dirs.push(join(root, "records", surface, "index"));
   }
-  for (const entry of readdirSync(indexDir, { withFileTypes: true })) {
-    if (!entry.name.endsWith(".yaml")) continue;
-    const path = join(indexDir, entry.name);
-    const existing = readExistingIndex(path);
-    if (existing && existing.id) {
-      entries.set(existing.id, existing);
+  for (const indexDir of dirs) {
+    if (!statSync(indexDir, { throwIfNoEntry: false })?.isDirectory()) continue;
+    for (const entry of readdirSync(indexDir, { withFileTypes: true })) {
+      if (!entry.name.endsWith(".yaml")) continue;
+      const path = join(indexDir, entry.name);
+      const existing = readExistingIndex(path);
+      if (existing && existing.id) {
+        entries.set(existing.id, existing);
+      }
     }
   }
   return entries;
@@ -247,7 +266,6 @@ function applySupersessionWriteBack(newEntries, existingEntries, parsed, errors)
 export function runExtraction(root, args) {
   const now = new Date().toISOString().slice(0, -5) + "Z";
   const agentRun = `extract-index-${now}`;
-  const evidenceDir = join(root, "records", "evidence");
   const experimentMap = buildExperimentMap(root);
   const existingEntries = loadExistingIndexEntries(root);
 
@@ -257,7 +275,7 @@ export function runExtraction(root, args) {
   let filesProcessed = 0;
   let filesWithFindings = 0;
 
-  for (const filePath of walkEvidenceFiles(evidenceDir)) {
+  for (const filePath of walkEvidenceFiles(root)) {
     const relPath = relative(root, filePath);
     filesProcessed += 1;
 
@@ -379,8 +397,14 @@ export function runExtraction(root, args) {
   const mutatedOld = applySupersessionWriteBack(newEntries, existingEntries, parsed, errors);
 
   // Frozen-claim drift check (Mechanism 2 Scope A)
-  const claimsDir = join(root, "records", "claims");
-  const frozenClaims = loadFrozenClaims(claimsDir);
+  const claimsDirs = [join(root, "records", "claims")];
+  for (const surface of SURFACES) {
+    claimsDirs.push(join(root, "records", surface, "claims"));
+  }
+  const frozenClaims = [];
+  for (const claimsDir of claimsDirs) {
+    frozenClaims.push(...loadFrozenClaims(claimsDir));
+  }
   const driftErrors = checkFrozenClaimDrift(newEntries, frozenClaims);
   for (const err of driftErrors) errors.push(err);
 

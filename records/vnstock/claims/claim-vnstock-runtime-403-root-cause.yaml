@@ -1,0 +1,55 @@
+id: claim-vnstock-runtime-403-root-cause
+schema_version: "1.0"
+type: claim
+status: approved
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-18T01:45:00Z"
+source_refs:
+  - local:records/vnstock/evidence/runtime-403-fix-20260511.md
+  - local:records/vnstock/evidence/experiment-install-full-20260514T140811Z.md
+  - local:records/vnstock/evidence/experiment-product-bootstrap-20260514T140811Z.md
+  - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
+notes: "SUPERSEDED by experiment-vnstock-vendor-compt-removal-20260518T014500Z. vnstock_data 3.1.8 no longer requires Device-Id injection. vendor_compat is archived."
+subject: "vnstock_data VCI runtime 403 + IsADirectoryError on import (SUPERSEDED)"
+claim: "ORIGINAL CLAIM (2026-05-11): FastAPI Reference runtime failure had two root causes: wrapper VNSTOCK_CONFIG_PATH pointed one segment too deep, and vnstock_data VCI headers lacked Device-Id. SUPERSEDED (2026-05-18): vnstock_data 3.1.8 no longer requires Device-Id injection. The vendor changed their authentication mechanism to rely solely on api_key.json. vendor_compat is archived."
+scope: sandbox
+evidence_refs:
+  - local:records/vnstock/evidence/runtime-403-fix-20260511.md
+confidence: high
+limitations:
+  - "SUPERSEDED: vendor_compat is no longer needed for vnstock_data 3.1.8."
+  - Header proof is metadata-only; raw generated Device-Id values are intentionally not retained.
+  - vnstock_data version drift remains between tarball filename, dist-info metadata, and source __version__.
+  - "SUPERSEDED: Clean vendor install (no patches) now works without Device-Id injection."
+  - Product approval remains claimed until FastAPI Reference Build records close-out completes.
+approval:
+  status: approved
+  reviewer: operator
+  reviewed_at: "2026-05-18T01:45:00Z"
+verification:
+  static:
+    status: verified
+    reason: "Source-read confirmed vnstock_data 3.0.0 did not inject Device-Id. SUPERSEDED: vnstock_data 3.1.8 no longer requires it."
+    proof_refs:
+      - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
+      - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
+  install:
+    status: verified
+    scope: sandbox
+    reason: "Wrapper now sets VNSTOCK_CONFIG_PATH to the .vnstock directory. SUPERSEDED: HOME must be set to product/api for vnstock_data to find api_key.json."
+    proof_refs:
+      - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
+      - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
+  runtime:
+    status: verified
+    scope: sandbox
+    output: runtime-captured
+    reason: "SUPERSEDED: All 6 API calls succeed without Device-Id injection. vendor_compat is archived."
+    proof_refs:
+      - record:experiment-vnstock-vendor-compat-removal-20260518T014500Z
+      - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
+  product:
+    status: claimed
+    reason: "Blocker resolution required before product slice (FastAPI Reference Build) can ship."
+    decision_refs: []
+  blocked_actions: []

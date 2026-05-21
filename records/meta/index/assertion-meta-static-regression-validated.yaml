@@ -1,0 +1,23 @@
+id: assertion-meta-static-regression-validated
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: All 34 current records parsed with identical shape snapshots after swap.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: regression-validated
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+    section: "## Findings"
+    bullet_index: 3
+    line_anchor: L8
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:f37cd478f627e04684ddbc7a9df52b0126fb7dcb9c2f2395465dd54911354593

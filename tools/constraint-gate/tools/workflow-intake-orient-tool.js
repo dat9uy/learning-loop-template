@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import YAML from "yaml";
 import { resolveRoot } from "../resolve-root.js";
 
+const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
+
 async function loadYamlDir(root, dir) {
   const path = resolve(root, dir);
   const files = await readdir(path).catch(() => []);
@@ -20,16 +22,32 @@ async function loadYamlDir(root, dir) {
   return results;
 }
 
+async function loadYamlDirs(root, dirs) {
+  const all = [];
+  for (const dir of dirs) {
+    const entries = await loadYamlDir(root, dir);
+    all.push(...entries);
+  }
+  return all;
+}
+
 async function listMetaTriggers(root) {
-  const path = resolve(root, "records/evidence/meta");
-  const files = await readdir(path).catch(() => []);
-  return files.filter((f) => f !== ".gitkeep" && f !== ".DS_Store");
+  const dirs = [resolve(root, "records/evidence/meta")];
+  for (const surface of SURFACES) {
+    dirs.push(resolve(root, `records/${surface}/evidence`));
+  }
+  const all = [];
+  for (const path of dirs) {
+    const files = await readdir(path).catch(() => []);
+    all.push(...files.filter((f) => f !== ".gitkeep" && f !== ".DS_Store"));
+  }
+  return all;
 }
 
 export const workflowIntakeOrientTool = {
   name: "workflow_intake_orient",
   description:
-    "Orients the agent by reading records/index, records/evidence/meta, records/observations, and records/capabilities. " +
+    "Orients the agent by reading records/*/index, records/*/evidence, records/observations, and records/*/capabilities. " +
     "Use AT THE START of an intake session to understand current record state. " +
     "Returns structured overview: index entries, meta triggers, observations, capability files, and missing decisions. " +
     "Failure mode: invalid category filter returns error.",
@@ -48,9 +66,13 @@ export const workflowIntakeOrientTool = {
       };
     }
 
-    const indexEntries = await loadYamlDir(root, "records/index");
+    const indexDirs = ["records/index", ...SURFACES.map((s) => `records/${s}/index`)];
+    const capabilityDirs = ["records/capabilities", ...SURFACES.map((s) => `records/${s}/capabilities`)];
+    const decisionDirs = ["records/decisions", ...SURFACES.map((s) => `records/${s}/decisions`)];
+
+    const indexEntries = await loadYamlDirs(root, indexDirs);
     const observations = await loadYamlDir(root, "records/observations");
-    const capabilities = await loadYamlDir(root, "records/capabilities");
+    const capabilities = await loadYamlDirs(root, capabilityDirs);
     const metaTriggers = await listMetaTriggers(root);
 
     let filteredIndex = indexEntries;
@@ -71,7 +93,11 @@ export const workflowIntakeOrientTool = {
       );
     }
 
-    const decisionFiles = await readdir(resolve(root, "records/decisions")).catch(() => []);
+    const decisionFiles = [];
+    for (const dir of decisionDirs) {
+      const files = await readdir(resolve(root, dir)).catch(() => []);
+      decisionFiles.push(...files);
+    }
     const missingDecisions = filteredIndex
       .filter((e) => e.dimension === "product")
       .filter((e) => {

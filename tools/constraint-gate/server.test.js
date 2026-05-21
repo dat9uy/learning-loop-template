@@ -457,7 +457,7 @@ describe("MCP server notify_artifact_change tool", () => {
     try {
       const result = await client.callTool({
         name: "notify_artifact_change",
-        arguments: { path: "records/evidence/test.md", change_type: "created" },
+        arguments: { path: "records/meta/evidence/test.md", change_type: "created" },
       });
       const parsed = JSON.parse(result.content[0].text);
       assert.equal(parsed.logged, true);

@@ -8,22 +8,37 @@ import YAML from "yaml";
  * @param {{ capability?: string, dimension?: string, status?: string }} filters
  * @returns {Array<{id: string, frontmatter: object}>}
  */
-export function searchIndex(root, filters = {}) {
-  const indexDir = join(root, "records", "index");
-  const results = [];
+const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
 
-  let files;
-  try {
-    files = readdirSync(indexDir).filter((n) => n.endsWith(".yaml"));
-  } catch {
-    return results;
+function collectIndexFiles(root) {
+  const files = [];
+  const collect = (dir) => {
+    let entries;
+    try {
+      entries = readdirSync(dir).filter((n) => n.endsWith(".yaml"));
+    } catch {
+      return;
+    }
+    for (const name of entries) {
+      files.push({ dir, name });
+    }
+  };
+  collect(join(root, "records", "index"));
+  for (const surface of SURFACES) {
+    collect(join(root, "records", surface, "index"));
   }
+  return files;
+}
 
-  for (const file of files) {
-    const id = file.replace(/\.yaml$/, "");
+export function searchIndex(root, filters = {}) {
+  const results = [];
+  const files = collectIndexFiles(root);
+
+  for (const { dir, name } of files) {
+    const id = name.replace(/\.yaml$/, "");
     let frontmatter;
     try {
-      frontmatter = YAML.parse(readFileSync(join(indexDir, file), "utf8"));
+      frontmatter = YAML.parse(readFileSync(join(dir, name), "utf8"));
     } catch {
       continue;
     }

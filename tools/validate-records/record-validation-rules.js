@@ -60,8 +60,8 @@ export function validateRecords(records, schemas, root, allowDisallowedFixtures 
 }
 
 const recordLocalRoots = {
-  default: ["records/evidence"],
-  capability: ["records/evidence", "product/*/capabilities"],
+  default: ["records/evidence", "records/*/evidence"],
+  capability: ["records/evidence", "records/*/evidence", "product/*/capabilities"],
 };
 
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {

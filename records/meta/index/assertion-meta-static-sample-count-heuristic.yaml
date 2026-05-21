@@ -1,0 +1,25 @@
+id: assertion-meta-static-sample-count-heuristic
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: "N=1 closeable: principle applies from single instance (e.g.,
+  process-side artifact ambiguity). N>=2 deferred: schema/template needs
+  repeated cases before canonization."
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: sample-count-heuristic
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/n-equals-one-gap-class.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L7
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:5211642ed8851a28c74de77762f3cdfcb2f0cb7ace3c13c4386717fa5d8dcf3d

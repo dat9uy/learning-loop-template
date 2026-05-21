@@ -1,0 +1,54 @@
+id: risk-vnstock-external-installer
+schema_version: "1.0"
+type: risk
+status: active
+created_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-14T17:13:16Z"
+source_refs:
+  - local:records/vnstock/evidence/installer-prior-notes.md
+  - local:records/vnstock/evidence/vendor-installation-troubleshooting-guide.md
+  - local:records/vnstock/evidence/vendor-dockerfile-sample.md
+  - local:records/vnstock/evidence/experiment-bootstrap-critique-rerun-20260514T171316Z.md
+  - record:claim-vnstock-device-limit-mechanism
+  - record:claim-vnstock-device-limit-ui-inconsistency
+notes: >
+  Vendor officially documents the Makeself installer path, Docker integration,
+  and non-interactive mode. Risk severity elevated: the installer is an external
+  binary without published checksums, AND the vendor misrepresents both tier
+  (claims "Golden", actual is Bronze) and device limit (claims 2 per OS,
+  actual is 1). Most critically, device registration succeeds and consumes
+  a slot even when the installer subsequently reports "failure" due to limit.
+  From the vendor's perspective, the device was successfully registered;
+  only the sponsor package download is blocked.
+risk_statement: >
+  External Makeself .run installer from vnstocks.com with multiple vendor-side
+  inconsistencies: tier mislabeling, device limit misrepresentation, and
+  asymmetric failure semantics where device registration consumes a slot
+  independently of package installation success.
+category: security
+severity: high
+likelihood: high
+confidence: high
+mitigation:
+  blocked_actions:
+    - credential-capture
+    - raw-data-export
+    - live-provider-calls
+    - unattended-device-registration
+  required_gates:
+    - human-approval
+    - temp-directory
+    - metadata-only-output
+    - device-slot-secretary-check
+new_findings:
+  - date: "2026-05-15T20:10:54Z"
+    finding: >
+      The vnstock_data package reads its authentication config from $HOME/.vnstock
+      during module import. This means importability is NOT purely a function of
+      the venv state — it depends on the HOME environment variable pointing to
+      the directory containing .vnstock/. Any bootstrap script or test that checks
+      `import vnstock_data` must preserve HOME to match the installer's config path.
+      Failure to do so produces false-negative import errors even after a successful
+      vendor install. This is a silent footgun for CI/CD and containerized deployments.
+    impact: high
+    mitigated_by: install-vnstock.sh now sets HOME=API_HOME for all post-flight checks

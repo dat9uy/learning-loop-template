@@ -1,0 +1,26 @@
+id: assertion-vnstock-data-runtime-device-id-injection-required
+schema_version: "1.0"
+type: extracted-assertion
+status: superseded
+assertion: vnstock_data VCI request headers must include a `Device-Id` header
+  and matching `device_id` cookie for the listing and quote surfaces to
+  authenticate.
+capability: vnstock-data
+dimension: runtime
+scope: sandbox
+topic_tag: device-id-injection-required
+n_count: 1
+superseded_by: assertion-vnstock-data-runtime-device-id-injection-not-required
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/runtime-403-fix-20260511.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L27
+experiment_refs:
+  - record:experiment-vnstock-runtime-403-fix-20260511T143500Z
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:383b9b35c3729b55719eb4e3bde506bda04d1ebc3efdcc413206f51e3db91caa

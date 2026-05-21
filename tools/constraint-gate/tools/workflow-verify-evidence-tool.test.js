@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { workflowVerifyEvidenceTool } from "./workflow-verify-evidence-tool.js";
 
-const EVIDENCE_PATH = "records/evidence/meta/install-experiment-template-candidate.md";
+const EVIDENCE_PATH = "records/meta/evidence/install-experiment-template-candidate.md";
 
 describe("workflowVerifyEvidenceTool", () => {
   it("shallow depth returns symbol-exists and import-succeeds classes", async () => {
@@ -31,7 +31,7 @@ describe("workflowVerifyEvidenceTool", () => {
 
   it("missing file returns error", async () => {
     const result = await workflowVerifyEvidenceTool.handler({
-      evidence_path: "records/evidence/meta/non-existent.md",
+      evidence_path: "records/meta/evidence/non-existent.md",
       verification_depth: "shallow",
     });
     assert.equal(result.isError, true);

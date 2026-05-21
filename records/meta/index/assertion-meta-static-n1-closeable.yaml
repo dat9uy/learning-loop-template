@@ -1,0 +1,23 @@
+id: assertion-meta-static-n1-closeable
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: N=1 closeable principle; adopted without requiring second confirmation.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: n1-closeable
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+    section: "## Findings"
+    bullet_index: 5
+    line_anchor: L10
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:9b1aa010d68bc8405469faf84ad5676e8012f9bd82f714832b7a735b5d8f4603

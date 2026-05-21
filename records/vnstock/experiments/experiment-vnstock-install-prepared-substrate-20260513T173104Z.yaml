@@ -1,0 +1,105 @@
+id: experiment-vnstock-install-prepared-substrate-20260513T173104Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-13T17:31:04Z"
+updated_at: "2026-05-13T17:31:04Z"
+source_refs:
+  - local:records/vnstock/evidence/vendor-dockerfile-sample.md
+  - local:records/vnstock/evidence/vendor-installation-troubleshooting-guide.md
+  - local:records/vnstock/evidence/experiment-install-vendor-one-liner-20260513T213042Z.md
+  - record:claim-vnstock-install-sandbox
+notes: >
+  Follow-up experiment to experiment-vnstock-install-vendor-one-liner-20260513T213042Z.
+  Tests two hypotheses in a prepared substrate matching the vendor Dockerfile pattern:
+  (1) Does pre-installing requests, vnai, pandas, numpy allow the one-liner to proceed?
+  (2) Does a pre-created /opt/venv with PATH set cause the installer to use it instead of $HOME/.venv?
+goal: >
+  Verify whether the vendor-documented one-liner succeeds in a prepared substrate
+  (python:3.11-slim with requests, vnai, pandas, numpy pre-installed in /opt/venv)
+  and whether the pre-created /opt/venv is respected by the Makeself installer.
+hypothesis: >
+  (1) If requests, vnai, pandas, and numpy are pre-installed in /opt/venv, the vendor one-liner
+  will proceed past the import requests failure and reach the venv creation / package installation stage.
+  (2) If PATH=/opt/venv/bin:$PATH is set, the installer will install sponsor packages into /opt/venv
+  rather than creating $HOME/.venv.
+method:
+  - "Start fresh python:3.11-slim container."
+  - "Install system deps: wget, build-essential, curl, ca-certificates."
+  - "Create /opt/venv and pre-install: requests>=2.31.0, vnai>=2.2.3, pandas>=1.5.3, numpy>=1.26.4, vnstock>=3.3.0."
+  - "Set PATH=/opt/venv/bin:$PATH and VIRTUAL_ENV=/opt/venv."
+  - "Download and run the vendor one-liner with API key from environment."
+  - "Capture exit code, venv creation behavior, and whether /opt/venv or $HOME/.venv contains vnstock_data."
+  - "Accept device-limit registration failure if it occurs; target is venv-path behavior."
+  - "Audit temp files for secret material; remove container."
+success_metrics:
+  - one-liner-reaches-device-limit-or-succeeds
+  - venv-path-determined
+  - pre-created-opt-venv-respected-or-documented
+  - temp-root-cleaned-with-container
+  - metadata-captured
+result: mixed
+result_reason: >
+  Hypothesis 1 is confirmed: in a prepared substrate with requests/vnai/pandas/numpy pre-installed,
+  the vendor one-liner proceeds past dependency checks, creates a venv, installs dependencies,
+  and reaches the device-registration stage (which fails due to account device limit, expected).
+  Hypothesis 2 is contradicted: despite PATH=/opt/venv/bin:$PATH and a pre-populated /opt/venv,
+  the installer unconditionally creates /root/.venv and installs all packages there.
+  The pre-created /opt/venv is completely ignored.
+agent_outcome: >
+  The vendor one-liner is viable in prepared substrates but the installer has hardcoded venv path
+  behavior (/root/.venv) that cannot be overridden by environment variables or pre-created venvs.
+  This contradicts the vendor Dockerfile pattern which assumes /opt/venv will be used.
+  Product teams should not rely on /opt/venv for vnstock installations unless the vendor
+  explicitly documents venv path override support.
+product_outcome: none
+observations:
+  - Installer SHA-256 observed: fad4bb7b86d23e853b09b9d7431ed7d49bcdc74b32551bbcb1fc19a095a830f2 (unchanged from prior experiment)
+  - Pre-installed packages in /opt/venv: vnstock 4.0.2, vnstock_ezchart 0.0.3, requests, vnai, pandas, numpy
+  - Installer ignored pre-created /opt/venv and created /root/.venv unconditionally
+  - Installer installed uv into /root/.venv, then used uv to install 35 dependency packages
+  - vnii>=0.2.1 was installed successfully via the installer
+  - Device registration reached but failed with device-limit message (installer falsely claims "Golden 2"; actual limit is 1 Bronze device)
+  - vnstock_data was NOT installed in either /opt/venv or /root/.venv because device limit blocked sponsor package installation
+  - API key material was written to /root/.vnstock/api_key.json inside the container (expected, cleaned with container)
+  - No API key material found in /tmp or other temp locations
+  - Container removed successfully via --rm
+promotion_review:
+  - Update claim-vnstock-install-sandbox to document that venv-path discrepancy is now resolved (installer always uses /root/.venv)
+  - Remove the unresolved venv-path language from claim limitations
+  - Do NOT modify product/api/scripts/install-vnstock.sh to use /opt/venv; the hypothesis is disproved
+  - Document that prepared substrates must include requests, vnai, pandas, numpy for one-liner viability
+scope: install
+output_level: metadata-only
+claim_refs:
+  - record:claim-vnstock-install-sandbox
+risk_refs:
+  - record:risk-vnstock-external-installer
+verification:
+  claim_refs:
+    - record:claim-vnstock-install-sandbox
+  proves:
+    - dimension: install
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved
+
+output_capture:
+  allowed_outputs:
+    - package-metadata
+    - installer-options-verified
+    - install-command-success
+    - script-download-url-class
+    - vendor-device-limit-message
+    - sanitized-installer-status-lines
+    - venv-path-observation
+  blocked_outputs:
+    - raw-external-data
+    - api-credentials
+    - config-contents
+    - raw-install-logs
+    - live-api-calls
+    - private-artifacts
+    - temp-dirs
+    - venvs

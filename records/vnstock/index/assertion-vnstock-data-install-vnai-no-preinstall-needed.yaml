@@ -1,0 +1,28 @@
+id: assertion-vnstock-data-install-vnai-no-preinstall-needed
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: vnai does NOT need to be pre-installed in the substrate; the
+  installer handles vnai, vnii, and typing_extensions installation itself.
+capability: vnstock-data
+dimension: install
+scope: sandbox
+topic_tag: vnai-no-preinstall-needed
+n_count: 2
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/experiment-install-bootstrap-substrate-20260513T182621Z.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L108
+  - file: local:records/vnstock/evidence/experiment-install-full-20260514T140811Z.md
+    section: "## Findings"
+    bullet_index: 5
+    line_anchor: L124
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:d9851d0a2cda76e4d5b47bd28c26e2d8c59ea09f76c3f774f6a4ebb64b040283

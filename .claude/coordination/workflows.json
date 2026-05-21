@@ -1,7 +1,7 @@
 {
   "workflows": {
     "evidence-changed": {
-      "triggers": ["records/evidence/**"],
+      "triggers": ["records/*/evidence/**"],
       "change_types": ["created", "updated"],
       "commands": [
         ["node", "tools/extract-index/extract-index.js"],
@@ -16,7 +16,7 @@
       ]
     },
     "capability-changed": {
-      "triggers": ["records/capabilities/**"],
+      "triggers": ["records/*/capabilities/**"],
       "change_types": ["created", "updated"],
       "commands": [
         ["node", "tools/validate-records/validate-records.js"],
@@ -24,7 +24,7 @@
       ]
     },
     "index-changed": {
-      "triggers": ["records/index/**"],
+      "triggers": ["records/*/index/**"],
       "change_types": ["created", "updated"],
       "commands": [
         ["node", "tools/validate-records/validate-records.js"]

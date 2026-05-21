@@ -30,6 +30,8 @@ function makeTmpProject() {
   mkdirSync(join(tmp, "records", "experiments"), { recursive: true });
   mkdirSync(join(tmp, "records", "index"), { recursive: true });
   mkdirSync(join(tmp, "records", "claims"), { recursive: true });
+  mkdirSync(join(tmp, "records", "product", "index"), { recursive: true });
+  mkdirSync(join(tmp, "records", "product", "claims"), { recursive: true });
   return tmp;
 }
 
@@ -184,7 +186,7 @@ describe("supersession write-back", () => {
     writeOldEntry(tmp, "assertion-cap-runtime-tag-old", "old");
     writeEvidence(tmp, "test/new.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# New\n## Findings\n- [tag-new] New text.\n## Confirmation / Disproof Notes\n- Disproves assertion-cap-runtime-tag-old\n");
     const result = runExtraction(tmp, { dryRun: false, verbose: false });
-    const newYaml = parseYaml(readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag-new.yaml"), "utf8"));
+    const newYaml = parseYaml(readFileSync(join(tmp, "records", "product", "index", "assertion-cap-runtime-tag-new.yaml"), "utf8"));
     assert.deepStrictEqual(newYaml.supersedes, ["assertion-cap-runtime-tag-old"], `expected supersedes link, errors: ${result.errors.join(" | ")}`);
     rmSync(tmp, { recursive: true, force: true });
   });
@@ -194,7 +196,7 @@ describe("supersession write-back", () => {
     writeOldEntry(tmp, "assertion-cap-runtime-tag-old", "old");
     writeEvidence(tmp, "test/new.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# New\n## Findings\n- [tag-new] New text.\n## Confirmation / Disproof Notes\n- Disproves assertion-cap-runtime-tag-old\n");
     runExtraction(tmp, { dryRun: false, verbose: false });
-    const oldYaml = parseYaml(readFileSync(join(tmp, "records", "index", "assertion-cap-runtime-tag-old.yaml"), "utf8"));
+    const oldYaml = parseYaml(readFileSync(join(tmp, "records", "product", "index", "assertion-cap-runtime-tag-old.yaml"), "utf8"));
     assert.strictEqual(oldYaml.superseded_by, "assertion-cap-runtime-tag-new");
     assert.strictEqual(oldYaml.status, "superseded");
     rmSync(tmp, { recursive: true, force: true });
@@ -317,12 +319,12 @@ describe("extract-index round-trip", () => {
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.stats.entriesProduced, 1);
 
-    const indexFiles = readdirSync(join(tmp, "records", "index")).filter((f) => f.endsWith(".yaml"));
+    const indexFiles = readdirSync(join(tmp, "records", "product", "index")).filter((f) => f.endsWith(".yaml"));
     assert.strictEqual(indexFiles.length, 1);
 
-    const yamlText = readFileSync(join(tmp, "records", "index", indexFiles[0]), "utf8");
+    const yamlText = readFileSync(join(tmp, "records", "product", "index", indexFiles[0]), "utf8");
     const record = parseYaml(yamlText);
-    record.__file = `records/index/${indexFiles[0]}`;
+    record.__file = `records/product/index/${indexFiles[0]}`;
 
     const schemas = loadSchemas(root);
     const errors = validateRecords([record], schemas, tmp);
@@ -334,14 +336,14 @@ describe("extract-index round-trip", () => {
     const result = runExtraction(tmp, { dryRun: false, verbose: false });
     assert.strictEqual(result.errors.length, 0);
 
-    const indexFiles = readdirSync(join(tmp, "records", "index")).filter((f) => f.endsWith(".yaml") && f.includes("no-ctx"));
+    const indexFiles = readdirSync(join(tmp, "records", "product", "index")).filter((f) => f.endsWith(".yaml") && f.includes("no-ctx"));
     assert.strictEqual(indexFiles.length, 1);
 
-    const yamlText = readFileSync(join(tmp, "records", "index", indexFiles[0]), "utf8");
+    const yamlText = readFileSync(join(tmp, "records", "product", "index", indexFiles[0]), "utf8");
     const record = parseYaml(yamlText);
     assert.strictEqual(record.context, undefined);
 
-    record.__file = `records/index/${indexFiles[0]}`;
+    record.__file = `records/product/index/${indexFiles[0]}`;
     const schemas = loadSchemas(root);
     const errors = validateRecords([record], schemas, tmp);
     assert.deepStrictEqual(errors, [], `schema errors: ${errors.join(", ")}`);

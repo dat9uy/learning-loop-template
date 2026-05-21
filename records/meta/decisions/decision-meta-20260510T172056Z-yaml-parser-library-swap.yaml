@@ -1,0 +1,53 @@
+id: decision-20260510T172056Z-yaml-parser-library-swap
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-10T17:20:56Z"
+updated_at: "2026-05-12T07:33:34Z"
+source_refs:
+  - record:decision-20260510T170623Z-vnstock-installer-bootstrap
+  - record:decision-20260510T160000Z-capabilities-stack-migration
+  - local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+notes: Brainstorm report lives at plans/reports/brainstorm-260512-1357-parser-swap-ajv-deferral.md; plans/ is outside source_refs allowlist, so the path is cited here. Friction trigger was the cryptic key/value parser error raised while drafting decision-20260510T170623Z-vnstock-installer-bootstrap whose original notes used a YAML pipe block scalar. Additional friction trigger on 2026-05-12; colons inside unquoted sequence scalars in decision-260512T1321Z-artifact-timestamp-convention tradeoffs array caused parser errors. A third related gap surfaced in the same session; the corpus uses three distinct datetime formats in created_at and updated_at fields (date-only YYYY-MM-DD, UTC datetime YYYY-MM-DDThh:mm:ssZ, and local offset YYYY-MM-DDThh:mm:ss+07:00) with no schema constraint. AJV remains deferred to a separate decision; this change only replaces the YAML reader.
+question: Should the hand-rolled tools/validate-records/simple-yaml-parser.js be replaced by the eemeli/yaml package so project tooling stops owning YAML grammar and only the project-specific schema and ledger rules remain hand-rolled?
+decision: Replace tools/validate-records/simple-yaml-parser.js with the eemeli/yaml package as the sole YAML reader for ledger records, so project code stops owning YAML grammar and focuses only on schema rules and project-specific record rules.
+rationale: Hand-rolled simple-yaml-parser.js silently rejects standard YAML 1.2 features including block scalars, anchors, and multi-line plain scalars, surfacing cryptic key/value errors when authors use idiomatic YAML. The friction surfaced while drafting decision-20260510T170623Z-vnstock-installer-bootstrap whose original notes used a pipe block scalar and triggered an opaque parser failure. A second friction trigger surfaced on 2026-05-12 while authoring decision-260512T1321Z-artifact-timestamp-convention; tradeoffs array items containing the string "Mitigation:" caused "Expected key/value" parser errors because the hand-rolled parser treats colons inside unquoted sequence scalars as key/value separators, which is incorrect YAML 1.2 grammar. YAML correctness is a solved problem upstream; the project's value-add is its source-ref allowlist, frozen-record guards, claim-verification rules, and derived-claim assurance, all of which are hand-rolled but none of which require owning a YAML parser. eemeli/yaml is pure JavaScript, ESM-native, zero runtime dependencies after install, and parses YAML 1.2 directly.
+alternatives:
+  - Extend simple-yaml-parser.js to support block scalars, anchors, and conditionals. Rejected because reinventing YAML grammar is the opposite of the project's value-add and the parser already has documented gaps.
+  - Use the older js-yaml package. Rejected because eemeli/yaml is more actively maintained, ESM-native by default, and parses YAML 1.2 cleanly while js-yaml carries its own legacy quirks.
+  - Adopt both eemeli/yaml and the ajv JSON Schema validator in a single change so that simple-yaml-parser.js and the hand-rolled validateSchema function in record-validation-rules.js both delete and the project keeps only its source-ref allowlist, frozen-record guards, claim-verification rules, and derived-claim assurance. Deferred to the follow-up brainstorm because bundling two posture shifts in one commit amplifies regression risk and the JSON Schema validator gap warrants its own inventory of which 2020-12 features each project schema actually uses (oneOf, anyOf, ref, additionalProperties, conditionals); the brainstorm may flip this draft to the bundled scope if the inventory shows the gap is non-trivial.
+  - Adopt only ajv without swapping the YAML parser. Rejected because the trigger for this decision is the YAML parser limitation surfaced by decision-20260510T170623Z-vnstock-installer-bootstrap; ajv alone does not address that and would still require either eemeli/yaml or the hand-rolled parser as a YAML reader.
+  - Status quo plus a documentation note instructing authors to never use block scalars in records. Rejected because the constraint is invisible until parser failure and shifts cognitive cost to record authors instead of fixing the tooling.
+tradeoffs:
+  - Project crosses the zero-runtime-dependency threshold; package.json gains its first runtime dependency. pnpm-lock.yaml machinery is already wired so the marginal cost is one entry in node_modules.
+  - node_modules grows by roughly half a megabyte. Tolerable for a tooling-only repo.
+  - The hand-rolled JSON Schema validator (validateSchema in record-validation-rules.js) remains in scope for a separate decision; it is also partial against the declared 2020-12 draft and silently passes oneOf, anyOf, ref, and conditional features. This decision does not address that gap.
+  - Existing 34 records must parse and validate identically after the swap. Library parsers can be stricter on edge cases such as duplicate keys or implicit type coercion, so a regression run is required before the swap lands.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: schema-improvement
+  affected_refs:
+    - local:tools/validate-records/simple-yaml-parser.js
+    - local:tools/validate-records/record-loader.js
+    - local:tools/validate-records/pack-source-validation.js
+    - local:tools/validate-records/publication-gate-validation.js
+    - local:tools/validate-records/use-case-fixture-validation.js
+    - local:tools/claim-verification/verify-claim.js
+    - local:tools/generate-docs/pack-summary.js
+    - local:package.json
+  boundaries:
+    allowed_actions:
+      - Add the eemeli/yaml package as a runtime dependency in package.json.
+      - Replace every import of tools/validate-records/simple-yaml-parser.js across the six caller files with the library equivalent.
+      - Delete tools/validate-records/simple-yaml-parser.js after all callers migrate and pnpm validate:records still passes against the existing 34 records.
+      - Allow record authors to use multi-line block scalars where readability genuinely benefits, such as long rationale or decision text.
+    blocked_actions:
+      - Replacing the hand-rolled JSON Schema validator (validateSchema) within this decision; that is a separate decision and a separate brainstorm.
+      - Adding any other npm dependency in the same change.
+      - Reintroducing custom YAML parsing inside any tools subdirectory.
+      - Editing frozen historical records to use new YAML features even though the new parser would accept them.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check
+      - All 34 existing records parse and validate identically after the swap with no diff in error output for the green baseline.

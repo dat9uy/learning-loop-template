@@ -1,0 +1,28 @@
+id: assertion-meta-static-canonized
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Classification rule canonized in learning-loop skill reference
+  `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md`.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: canonized
+n_count: 2
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/n-equals-one-gap-class.md
+    section: "## Findings"
+    bullet_index: 5
+    line_anchor: L10
+  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+    section: "## Findings"
+    bullet_index: 4
+    line_anchor: L9
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:0ed85fe651aaa4d446860208ef4d96efc91d5d518abc56dfd16ee78f0f31b747

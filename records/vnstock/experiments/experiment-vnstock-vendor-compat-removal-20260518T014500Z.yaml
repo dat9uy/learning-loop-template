@@ -1,0 +1,57 @@
+id: experiment-vnstock-vendor-compat-removal-20260518T014500Z
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: "2026-05-18T01:45:00Z"
+updated_at: "2026-05-18T01:45:00Z"
+source_refs:
+  - local:records/vnstock/evidence/capability-revalidation-20260518.md
+  - record:claim-vnstock-runtime-403-root-cause
+  - record:claim-vnstock-home-config-path
+goal: Verify whether vendor_compat Device-Id injection is still required by vnstock_data 3.1.8.
+hypothesis: "vnstock_data 3.1.8 no longer requires Device-Id injection for VCI API calls. The vendor changed their authentication mechanism to rely solely on api_key.json."
+method:
+  - Import vnstock_data directly without vendor_compat patch
+  - Test Reference.listings (equity list)
+  - Test Reference.company (company info)
+  - Test Market.ohlcv (historical data)
+  - Test Fundamental.income_statement (financials)
+  - Test Insights.ranking (top gainers)
+  - Test Macro.gdp (economic data)
+  - Compare results with vendor_compat-enabled runs
+success_metrics:
+  - All 6 API calls return valid DataFrames without Device-Id injection
+  - No 403 errors or authentication failures
+  - Results match prior successful runs with vendor_compat
+result: supports
+agent_outcome: "All 6 API calls succeeded without vendor_compat Device-Id injection. The vendor has changed their authentication mechanism."
+product_outcome: "vnstock_data 3.1.8 authenticates via api_key.json only. Device-Id injection is no longer required. vendor_compat can be archived."
+observations:
+  - "Reference.listings returned 1742 symbols without Device-Id."
+  - "Reference.company('VIC') returned 1 row without Device-Id."
+  - "Market.ohlcv('VIC') returned 7 rows without Device-Id."
+  - "Fundamental.income_statement('VIC') returned 57 rows without Device-Id."
+  - "Insights.ranking().gainer() returned 10 rows without Device-Id."
+  - "Macro.economy().gdp() returned 135 rows without Device-Id."
+  - "No 403 errors or Vietnamese auth errors during any API call."
+  - "vendor_compat is now obsolete for vnstock_data 3.1.8."
+promotion_review:
+  - "vendor_compat code can be archived/removed."
+  - "Capability scripts no longer need vendor_compat import."
+  - "claim-vnstock-runtime-403-root-cause is superseded by this finding."
+scope: runtime
+claim_refs:
+  - record:claim-vnstock-runtime-403-root-cause
+  - record:claim-vnstock-home-config-path
+risk_refs: []
+output_level: runtime-captured
+verification:
+  claim_refs:
+    - record:claim-vnstock-runtime-403-root-cause
+    - record:claim-vnstock-home-config-path
+  proves:
+    - dimension: runtime
+      scope: sandbox
+      output_level: metadata-only
+  requires_human_approval: true
+  approval_status: approved

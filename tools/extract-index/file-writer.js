@@ -24,8 +24,27 @@ export function shouldWrite(existing, entry) {
   return a !== b;
 }
 
+const CAPABILITY_SURFACE_MAP = {
+  "vnstock-data": "vnstock",
+  fundamental: "product",
+  fastapi: "fastapi",
+  tanstack: "tanstack",
+  product: "product",
+  meta: "meta",
+  loop: "meta",
+};
+
+function deriveSurface(entry) {
+  const cap = entry.capability || "";
+  for (const [prefix, surface] of Object.entries(CAPABILITY_SURFACE_MAP)) {
+    if (cap === prefix || cap.startsWith(`${prefix}-`)) return surface;
+  }
+  return "product";
+}
+
 export function writeIndexEntry(root, entry) {
-  const dir = join(root, "records", "index");
+  const surface = deriveSurface(entry);
+  const dir = join(root, "records", surface, "index");
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }

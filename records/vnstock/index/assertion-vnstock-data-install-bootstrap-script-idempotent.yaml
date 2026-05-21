@@ -1,0 +1,24 @@
+id: assertion-vnstock-data-install-bootstrap-script-idempotent
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: "The `product/api/scripts/install-vnstock.sh` bootstrap script is
+  idempotent: it skips installation when vnstock_data is already importable."
+capability: vnstock-data
+dimension: install
+scope: product
+topic_tag: bootstrap-script-idempotent
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/vnstock/evidence/experiment-product-bootstrap-20260514T140811Z.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L65
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:0c36bd0e8582cd69e44aed398a0e073047aecbdd5c9445f0567d7acc7758665f

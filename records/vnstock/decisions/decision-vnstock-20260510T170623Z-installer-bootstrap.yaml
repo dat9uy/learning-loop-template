@@ -1,0 +1,59 @@
+id: decision-20260510T170623Z-vnstock-installer-bootstrap
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-10T17:06:23Z"
+updated_at: "2026-05-10T17:09:08Z"
+source_refs:
+  - local:records/meta/evidence/vnstock-installer-bootstrap.md
+  - local:records/meta/evidence/vnstock-installer-bootstrap-runtime.md
+  - local:records/meta/evidence/capabilities-stack-migration.md
+  - local:records/vnstock/evidence/installer-prior-notes.md
+  - local:records/vnstock/evidence/experiment-install-20260509T071800Z-sandbox-1.md
+  - record:claim-vnstock-install-sandbox
+  - record:claim-vnstock-device-limit-mechanism
+  - record:decision-20260510T160000Z-capabilities-stack-migration
+  - record:decision-20260509T070411Z-vnstock-vendor-device-limit-clearance
+notes: Approved after the bootstrap script landed and runtime-20260510-1709-vnstock-bootstrap recreated product/api/.venv from a deleted venv, verified the pinned installer SHA, completed pnpm bootstrap:api, and passed product/api/.venv/bin/python import vnstock_data. Corrects only the install-topology tradeoff bullet inside decision-20260510T160000Z-capabilities-stack-migration; the per-stack layout decision is not superseded.
+question: How should vnstock_data install be separated from the public-deps uv sync flow under product/api/ so that the venv is reproducible from a fresh clone, without misrepresenting vnstock_data as a uv-resolvable artifact?
+decision: Adopt a two-stage bootstrap. Stage 1 runs uv sync over public deps only (pandas, requests, uv); the optional vendor extra is removed from product/api/pyproject.toml. Stage 2 runs product/api/scripts/install-vnstock.sh which downloads the Makeself installer, verifies SHA-256 against a pinned value, and executes it with HOME set to the realpath of product/api so the installer-created $HOME/.venv resolves to the venv stage 1 created. The script is idempotent via a pre-flight import vnstock_data short-circuit. Both stages chain through a single root command pnpm bootstrap:api.
+rationale: vnstock_data ships as a Makeself self-extracting .run archive that creates its own venv, registers the executing device against the vendor account, then internally downloads and extracts the package. There is no vendor-published wheel; uv has no artifact class for an installer-archive dependency, so separation must happen at the bootstrap layer and not inside uv's resolver. The current vendor extra is misleading config because it advertises a resolution path uv cannot satisfy, and the resulting venv stands only because someone hand-copied vnstock_data files from a pre-migration .venv which is not reproducible from the repo. The two-stage flow keeps each stage reproducible inside its own contract, with public deps via uv.lock deterministic and the vendor stage deterministic given a pinned installer SHA, the same vendor URL class, and a registered device slot.
+alternatives:
+  - Vendor a wheel under tool.uv.sources with a path redirect to a local .whl. Rejected because no vendor-published wheel exists.
+  - Stand up a private PyPI index and publish vnstock_data to it. Rejected because the project lacks the hosting infra and repackaging the vendor's installer-wrapped artifact is likely a license violation.
+  - Keep the optional vendor extra and continue hand-copying vendor files from a pre-existing .venv after uv sync fails. Rejected because the resulting venv is not reproducible from the repo.
+  - Inline the installer script into a package.json postinstall hook so any pnpm install triggers the vendor flow. Rejected because postinstall consumes device slots without operator opt-in.
+tradeoffs:
+  - Two-stage flow breaks single-command venv creation from uv sync alone. Mitigated by a single root entry pnpm bootstrap:api that chains both stages.
+  - The installer SHA pin is the contract with the vendor; a vendor rotation without notice fails the script closed. Rotation is a loop-recorded event, not a silent commit.
+  - Each fresh stage-2 run consumes one device slot under the bronze-tier subscription. Operator handles slot accounting via the vnstocks UI; the script does not perform clearance.
+  - pandas is an installer prerequisite per sandbox-1 evidence, so its presence in project.dependencies becomes load-bearing for stage 2 and future bumps require a re-verify sandbox run.
+  - Removing the vendor extra is a breaking config change for any external skill or doc that calls uv sync --extra vendor. Audited in the implementation plan's doc-harmonize phase.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: install
+  affected_refs:
+    - local:product/api/pyproject.toml
+    - local:product/api/scripts/install-vnstock.sh
+    - local:package.json
+    - local:docs/operator-guide.md
+    - local:product/README.md
+    - local:product/api/capabilities/vnstock-data/README.md
+  boundaries:
+    allowed_actions:
+      - Drop the optional vendor extra from product/api/pyproject.toml.
+      - Author product/api/scripts/install-vnstock.sh with SHA-pinned download and idempotent post-flight import check.
+      - Wire pnpm bootstrap:api to chain uv sync followed by the install-vnstock script.
+      - Update living docs (operator guide, product README, capability README) to reference pnpm bootstrap:api in place of uv sync --extra vendor.
+      - Rotate the installer SHA pin only after a sandbox-1-style experiment record proves the new installer behaves.
+    blocked_actions:
+      - Editing frozen historical records (experiment-vnstock-capabilities-20260509T174957Z, capability-runtime-output.md, docs/journals/260510-vnstock-capability-runtime.md).
+      - Auto-running stage 2 from a pnpm install postinstall hook or any non-explicit operator command.
+      - Performing vendor device clearance from inside the bootstrap script.
+      - Bumping the pandas floor in pyproject.toml without a re-verify sandbox experiment.
+      - Citing local:product/api/scripts/install-vnstock.sh from non-capability record source_refs per the per-record-type allowlist in decision-20260510T160000Z-capabilities-stack-migration.
+    required_gates:
+      - pnpm validate:records
+      - pnpm check
+      - product/api/.venv/bin/python imports vnstock_data successfully after a fresh pnpm bootstrap:api run on a deleted .venv

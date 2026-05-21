@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { workflowConvertEvidenceTool } from "./workflow-convert-evidence-tool.js";
 
-const EVIDENCE_PATH = "records/evidence/meta/capability-allowlist-deferred-axes.md";
+const EVIDENCE_PATH = "records/meta/evidence/capability-allowlist-deferred-axes.md";
 
 describe("workflowConvertEvidenceTool", () => {
   it("dry_run returns preview status and valid yaml", async () => {
@@ -43,7 +43,7 @@ describe("workflowConvertEvidenceTool", () => {
 
   it("missing file returns error", async () => {
     const result = await workflowConvertEvidenceTool.handler({
-      evidence_path: "records/evidence/meta/non-existent.md",
+      evidence_path: "records/meta/evidence/non-existent.md",
       mode: "dry_run",
     });
     assert.equal(result.isError, true);

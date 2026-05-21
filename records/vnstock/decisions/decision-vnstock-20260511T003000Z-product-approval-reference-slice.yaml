@@ -1,0 +1,42 @@
+id: decision-20260511T003000Z-product-approval-vnstock-reference-slice
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-11T00:00:00Z"
+updated_at: "2026-05-11T00:00:00Z"
+source_refs:
+  - record:claim-vnstock-install-sandbox
+  - record:experiment-vnstock-capabilities-20260509T174957Z
+  - local:records/vnstock/evidence/capability-runtime-output.md
+question: Should the verified vnstock_data Reference slice be approved for a scoped product build?
+decision: Approve a product build limited to the Reference equity list, company info, and symbol search surfaces.
+rationale: The install and runtime dimensions for the sandbox vnstock_data claim are verified, and the build is bounded to metadata-safe Reference surfaces with blocked raw-data and credential capture.
+alternatives:
+  - Defer product build until additional Reference methods are verified.
+  - Keep the work as capability scripts only without product surfaces.
+tradeoffs:
+  - Approval enables the reference product slice while preserving live-call and raw-data restrictions.
+  - Scope remains narrow and excludes production deployment.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - record:claim-vnstock-install-sandbox
+    - record:claim-product-fastapi-reference
+    - record:claim-product-tanstack-reference-view
+  boundaries:
+    allowed_actions:
+      - build Reference slice only
+      - run metadata-only endpoint checks
+      - run fixture-backed web smoke tests
+    blocked_actions:
+      - live-provider-calls
+      - credential-capture
+      - raw-data-export
+      - production-deployment
+    required_gates:
+      - preflight-import-only
+      - pytest-api-suite
+      - web-smoke-tests
+      - records-validation

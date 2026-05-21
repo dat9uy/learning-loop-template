@@ -1,0 +1,37 @@
+id: decision-20260508-loop-dimension-model
+schema_version: "1.0"
+type: decision
+status: approved
+created_at: "2026-05-08T00:00:00Z"
+updated_at: "2026-05-08T00:00:00Z"
+source_refs:
+  - local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - record:risk-20260508-loop-dimension-model-transition
+notes: Meta loop architecture decision, not domain evidence.
+question: Should claim verification use independent dimensions instead of one ordered state chain?
+decision: Adopt static, install, runtime, and product as independent claim verification dimensions.
+rationale: Independent dimensions separate technical proof from product authority and let experiments prove only the scope they actually tested.
+alternatives:
+  - Keep a single ordered claim state chain and add more states.
+  - Store all proof status only on experiments and derive claim state entirely.
+  - Keep both old state and new dimensions during a compatibility period.
+tradeoffs:
+  - Breaking change is acceptable because no production records exist.
+  - Validators, fixtures, docs, and skill prompts must be rewritten together.
+  - Product approval stays decision-owned even when runtime proof exists.
+supersedes: []
+decision_effect:
+  action: approve
+  scope: schema-improvement
+  affected_refs:
+    - record:risk-20260508-loop-dimension-model-transition
+  boundaries:
+    allowed_actions:
+      - Use static, install, runtime, and product dimensions in claim records.
+      - Use experiment verification.proves for static, install, and runtime proof.
+      - Use decisions for product approval or rejection.
+    blocked_actions:
+      - Adding a fifth verification dimension without meta evidence and a decision.
+      - Treating runtime proof as product approval.
+    required_gates:
+      - pnpm check

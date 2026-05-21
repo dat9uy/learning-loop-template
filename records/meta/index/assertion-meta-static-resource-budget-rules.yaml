@@ -1,0 +1,24 @@
+id: assertion-meta-static-resource-budget-rules
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: External systems with irreversible operations need structural
+  enforcement via resource budget observations, not just agent memory.
+capability: meta
+dimension: static
+scope: governance
+topic_tag: resource-budget-rules
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L6
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:bf629e81838aa506d8b8ee7971b0a87b6cfddf46181d4f106ad8a9a58d780c24

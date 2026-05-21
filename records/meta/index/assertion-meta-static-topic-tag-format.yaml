@@ -1,0 +1,24 @@
+id: assertion-meta-static-topic-tag-format
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: Each top-level bullet starts with `[topic-tag]` followed by an atomic
+  assertion. Topic tags are kebab-case, unique within the file.
+capability: meta
+dimension: static
+scope: meta-tooling
+topic_tag: topic-tag-format
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/evidence-findings-convention.md
+    section: "## Findings"
+    bullet_index: 2
+    line_anchor: L7
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-21T20:11:25Z
+  first_extracted_at: 2026-05-21T20:11:25Z
+  last_updated_at: 2026-05-21T20:11:25Z
+  evidence_immutable_hash: sha256:faaa251871b9668dec0b01da07284ae69de20e3225674e2699c0ed933f1e637c
