@@ -128,6 +128,96 @@ function pathMatchesObservation(observation, filePath) {
   return patterns.some((p) => globMatch(p, filePath));
 }
 
+function extractFrontmatter(content) {
+  if (!content || typeof content !== 'string') return null;
+  const trimmed = content.trim();
+  if (!trimmed.startsWith('---')) return null;
+  const end = trimmed.indexOf('---', 3);
+  if (end === -1) return null;
+  const yamlBlock = trimmed.slice(3, end).trim();
+  if (!yamlBlock) return null;
+  try {
+    const parsed = yaml.parse(yamlBlock, { uniqueKeys: false });
+    if (parsed && typeof parsed === 'object') return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function hasProductBuildTag(frontmatter) {
+  if (!frontmatter || !frontmatter.tags) return false;
+  const tags = Array.isArray(frontmatter.tags) ? frontmatter.tags : [frontmatter.tags];
+  return tags.includes('product-build');
+}
+
+function extractSurfaces(frontmatter) {
+  if (!frontmatter || !frontmatter.surfaces) return [];
+  return Array.isArray(frontmatter.surfaces) ? frontmatter.surfaces : [frontmatter.surfaces];
+}
+
+function checkDecisionRecords(surfaces, recordsDir) {
+  const missing = [];
+  const found = [];
+  for (const surface of surfaces) {
+    if (!surface || typeof surface !== 'string') continue;
+    const surfaceFirstDir = path.join(recordsDir, surface, 'decisions');
+    const flatDir = path.join(recordsDir, 'decisions');
+    let hasDecision = false;
+    // Try surface-first
+    try {
+      if (fs.existsSync(surfaceFirstDir)) {
+        const files = fs.readdirSync(surfaceFirstDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+        if (files.length > 0) hasDecision = true;
+      }
+    } catch { /* ignore */ }
+    // Fallback flat: match surface as a word boundary in filename
+    if (!hasDecision) {
+      try {
+        if (fs.existsSync(flatDir)) {
+          const pattern = new RegExp(`\\b${surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          const files = fs.readdirSync(flatDir).filter(f =>
+            (f.endsWith('.yaml') || f.endsWith('.yml')) && pattern.test(f)
+          );
+          if (files.length > 0) hasDecision = true;
+        }
+      } catch { /* ignore */ }
+    }
+    if (hasDecision) found.push(surface);
+    else missing.push(surface);
+  }
+  return { missing, found };
+}
+
+function inferSurface(filePath) {
+  if (!filePath || typeof filePath !== 'string') return null;
+  const parts = filePath.split('/');
+
+  // product/api/** and product/web/** → surface "product"
+  if (parts[0] === 'product' && parts.length >= 2) {
+    if (parts[1] === 'api' || parts[1] === 'web') return 'product';
+    return parts[1];
+  }
+
+  // records/<segment>/** → return <segment> as surface
+  if (parts[0] === 'records' && parts.length >= 2) {
+    return parts[1];
+  }
+
+  // docs/journals/** → null (no enforcement, suggestions only)
+  if (parts[0] === 'docs' && parts[1] === 'journals') {
+    return null;
+  }
+
+  return null;
+}
+
+function hasDecisionRecords(surface, recordsDir) {
+  if (!surface || typeof surface !== 'string') return true;
+  const result = checkDecisionRecords([surface], recordsDir);
+  return result.missing.length === 0;
+}
+
 module.exports = {
   CONSTRAINT_PATTERNS,
   matchConstraintPattern,
@@ -137,4 +227,10 @@ module.exports = {
   globMatch,
   pathMatchesObservation,
   findProjectRoot,
+  extractFrontmatter,
+  hasProductBuildTag,
+  extractSurfaces,
+  checkDecisionRecords,
+  inferSurface,
+  hasDecisionRecords,
 };

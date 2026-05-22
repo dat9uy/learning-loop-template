@@ -3,7 +3,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const { globMatch, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot } = require('./lib/gate-utils.cjs');
+const {
+  globMatch, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot,
+  extractFrontmatter, hasProductBuildTag, extractSurfaces, checkDecisionRecords,
+  inferSurface, hasDecisionRecords,
+} = require('./lib/gate-utils.cjs');
 
 // Rollback: cp write-coordination-gate.cjs.bak write-coordination-gate.cjs
 
@@ -15,7 +19,14 @@ function toRelative(filePath) {
   return rel;
 }
 
+function getResponseMode() {
+  const mode = process.env.GATE_RESPONSE_MODE || 'warn';
+  return mode === 'escalate' ? 'escalate' : 'warn';
+}
+
 function main() {
+  const responseMode = getResponseMode();
+
   let input;
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -66,6 +77,77 @@ function main() {
       matched_rule: '**/node_modules/**',
     }));
     process.exit(2);
+  }
+
+  // ─── Artifact-aware gate: plan content scanning ───
+  if (globMatch('plans/**/plan.md', relPath)) {
+    // Skip content scan for edits to existing plans
+    const root = findProjectRoot();
+    const fullPath = path.join(root, relPath);
+    if (fs.existsSync(fullPath)) {
+      process.exit(0);
+    }
+
+    const content = (input.tool_input?.content || '').slice(0, 2048);
+    const frontmatter = extractFrontmatter(content);
+    if (frontmatter && hasProductBuildTag(frontmatter)) {
+      const surfaces = extractSurfaces(frontmatter);
+      const recordsDir = path.join(root, 'records');
+      const { missing } = checkDecisionRecords(surfaces, recordsDir);
+      if (missing.length > 0) {
+        if (responseMode === 'escalate') {
+          console.log(JSON.stringify({
+            decision: 'block',
+            reason: `Missing decision records for surfaces: ${missing.join(', ')}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
+            file_path: filePath,
+            matched_rule: 'plans/**/plan.md',
+            missing_surfaces: missing,
+          }));
+          process.exit(2);
+        } else {
+          console.log(JSON.stringify({
+            decision: 'warn',
+            reason: `Missing decision records for surfaces: ${missing.join(', ')}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
+            file_path: filePath,
+            matched_rule: 'plans/**/plan.md',
+            missing_surfaces: missing,
+          }));
+        }
+      }
+    }
+    process.exit(0);
+  }
+
+  // ─── Artifact-aware gate: product code & journal surface inference ───
+  if (globMatch('product/**', relPath)) {
+    const surface = inferSurface(relPath);
+    const root = findProjectRoot();
+    const recordsDir = path.join(root, 'records');
+    if (surface && !hasDecisionRecords(surface, recordsDir)) {
+      if (responseMode === 'escalate') {
+        console.log(JSON.stringify({
+          decision: 'block',
+          reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
+          file_path: filePath,
+          matched_rule: 'product/**',
+          surface,
+        }));
+        process.exit(2);
+      } else {
+        console.log(JSON.stringify({
+          decision: 'warn',
+          reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
+          file_path: filePath,
+          matched_rule: 'product/**',
+          surface,
+        }));
+      }
+    }
+    process.exit(0);
+  }
+
+  if (globMatch('docs/journals/**', relPath)) {
+    process.exit(0);
   }
 
   // Evidence write-path check: active observation + staleness check
