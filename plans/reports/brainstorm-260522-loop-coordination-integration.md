@@ -264,19 +264,37 @@ Recommendation: Start with **warn** mode. Graduate to **escalate** after operato
 
 ---
 
-## Next Steps
+## Decision Update (Post-Predict Analysis)
 
-1. **Validate gate approach**: Prototype a content-scanning rule in `write-coordination-gate.cjs` for `plans/**` only. Test on existing plans.
-2. **Decide surface mapping**: Hardcode vs config vs derived from directory structure.
-3. **Choose gate response mode**: warn / escalate / auto-draft.
-4. **Write plan template**: Add Phase 0 loop pre-flight to `references/plan-organization.md` or local equivalent.
-5. **Build validator script**: `tools/validate-plan-loop.js` for CI-level checking.
-6. **Document in CLAUDE.md**: Add artifact-level loop rules to project instructions.
+A `/ck:predict` multi-persona analysis was run on the core question: implement custom skills vs. make the system compatible with external skills. Verdict: **STOP on custom skill set; GO on gate-based enforcement with deferred agentize.**
+
+### Predict Findings
+
+- **Custom skill shadows (Option A) and orchestrator skill (Option B) remain rejected.** Both were evaluated and rejected in this report for drift risk, rigid chaining, and workflow contradiction. The predict analysis confirmed no new evidence justifies reversing these decisions.
+- **Agentize (making the loop an external MCP/CLI/skill) is deferred until N>=3.** The loop's schemas, record types, and gate rules are still stabilizing. Publishing now would lock unstable internals and create backward-compatibility obligations prematurely.
+- **Gate-based enforcement (Option F + C + H) is affirmed as the correct path.** The three-layer defense (artifact-aware gate, plan templates, CI validator) proceeds unchanged.
+
+### Unresolved Questions — Resolutions
+
+| # | Question | Resolution | Rationale |
+|---|----------|------------|-----------|
+| 1 | File content scan vs. `.claude/loop-state.json` marker? | **Read file content.** The "first write only" mitigation makes this acceptable. A marker file introduces a second source of truth that can drift from reality. If latency becomes measurable (>50ms), optimize by caching frontmatter in memory during the gate process lifetime. |
+| 2 | `plans/**` unconditionally allowed or scoped-checked? | **Scoped-checked for product-build plans only.** Use the `tags: [product-build]` frontmatter as the discriminator. Plans without this tag remain unconditionally allowed. Preserves existing behavior for non-product plans while enforcing the loop for product builds. |
+| 3 | Journal auto-drafting: create file directly or emit YAML for operator approval? | **Emit YAML content for operator approval.** Direct file creation bypasses operator judgment. The journal is the agent's observation; the experiment record is the operator's formalization. Emission keeps the operator in the loop and avoids write-gate complications. |
+| 4 | Multi-surface plan handling? | **Phase 0 lists all surfaces; gate checks each independently.** All surfaces must have decision records. If any lacks records, gate escalates with a list of missing surfaces. Surface inference mapping is applied per-file, not per-plan. |
 
 ---
 
-**Unresolved questions:**
-- Surface inference strategy (hardcoded/config/derived)
-- Gate response mode (warn/escalate/auto-draft)
-- Multi-surface plan handling
-- Journal auto-drafting approval boundary (agent drafts vs operator approves)
+## Next Steps
+
+1. **Prototype gate rule**: Add content-scanning to `write-coordination-gate.cjs` for `plans/**` with `tags: [product-build]` only. Test on existing plans. Start in **warn** mode.
+2. **Hardcode surface mapping**: Initial mapping in gate logic. Graduate to config file after operator validates correctness across 3+ product builds.
+3. **Write plan template**: Add Phase 0 loop pre-flight to plan generation docs. Include surface declaration checklist.
+4. **Build validator script**: `tools/validate-plan-loop.js` for CI-level checking.
+5. **Document in CLAUDE.md**: Add artifact-level loop rules to project instructions.
+6. **Execute the 260511 product build plan**: Use phase-gated orchestration (Approach 1) to validate gate enforcement in practice. Collect friction data to inform N>=2 reconsideration.
+
+---
+
+**Unresolved questions (post-decision):**
+- None. All open questions from the original brainstorm have been resolved above.
