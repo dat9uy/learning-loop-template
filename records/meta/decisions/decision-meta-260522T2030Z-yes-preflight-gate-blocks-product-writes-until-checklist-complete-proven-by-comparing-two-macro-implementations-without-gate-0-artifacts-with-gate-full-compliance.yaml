@@ -1,0 +1,35 @@
+id: decision-meta-260522T2030Z-yes-preflight-gate-blocks-product-writes-until-checklist-complete-proven-by-comparing-two-macro-implementations-without-gate-0-artifacts-with-gate-full-compliance
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: 2026-05-22T13:30:03Z
+updated_at: 2026-05-22T13:30:03Z
+source_refs:
+  - record:experiment-product-macro-cook-no-loop-20260522T055121Z
+  - record:experiment-product-260522T2020Z-implement-the-vnstock-macro-layer
+  - local:plans/260522-pre-flight-gate-positive-contract/plan.md
+question: Does preflight gate prevent cook-without-loop gap?
+decision: "Yes. Preflight gate blocks product/** writes until checklist
+  complete. Proven by comparing two macro implementations: without gate (0
+  artifacts), with gate (full compliance)."
+rationale: "Empirical proof: two identical tasks with identical tooling. First
+  attempt (no preflight gate): 0 loop artifacts created, product code written
+  first. Second attempt (with preflight gate): decision record created,
+  preflight marked complete, plan approved, then product code written. The only
+  variable was the gate enforcement."
+alternatives:
+  - Manual operator review
+  - Agent memory/prompting
+tradeoffs:
+  - Gate complexity vs reliability
+supersedes: []
+decision_effect:
+  action: approve
+  scope: product
+  affected_refs:
+    - records/product/experiments/experiment-product-macro-cook-no-loop-20260522T055121Z
+    - records/product/experiments/experiment-product-260522T2020Z-implement-the-vnstock-macro-layer
+  boundaries:
+    allowed_actions:
+      - claim preflight gate prevents cook-without-loop gap
+    blocked_actions: []

@@ -1,0 +1,57 @@
+id: experiment-product-260522T2020Z-implement-the-vnstock-macro-layer-economy-currency-commodity-in-the-product-with-full-learning-loop-compliance-contrasting-with-the-previous-failed-attempt
+schema_version: "1.0"
+type: experiment
+status: approved
+created_at: 2026-05-22T13:20:40Z
+updated_at: 2026-05-22T13:26:31Z
+source_refs:
+  - local:constraint-gate-mcp
+goal: Implement the vnstock macro layer (economy, currency, commodity) in the
+  product with full learning-loop compliance, contrasting with the previous
+  failed attempt.
+hypothesis: If /ck:cook is preceded by explicit learning-loop record creation
+  (decision record, preflight marker, plan approval), the implementation will
+  produce loop-compliant product code with no artifact authority violations.
+method:
+  - Create decision record for macro layer via MCP create_decision_record
+  - Mark preflight complete for product surface via MCP mark_preflight_complete
+  - Create implementation plan in plans/ directory
+  - Get user approval via AskUserQuestion
+  - Implement backend routers, frontend components, and tests
+  - Run code-reviewer subagent for quality gate
+  - Run tests and verify 100% pass rate for new code
+  - Commit changes via git-manager subagent
+  - Write journal entry documenting compliance
+success_metrics:
+  - decision-record-exists-before-implementation
+  - preflight-marker-active-before-product-writes
+  - plan-approved-by-user-before-coding
+  - code-reviewer-approves-with-0-critical-issues
+  - all-macro-tests-pass
+  - no-regression-in-existing-tests
+  - commits-created-with-conventional-format
+  - journal-written-in-docs-journals
+result: supports
+agent_outcome: Hypothesis confirmed. When /ck:cook is preceded by explicit
+  learning-loop record creation (decision record + preflight marker + plan
+  approval), the implementation produces loop-compliant product code with no
+  artifact authority violations. The preflight gate blocked the agent from
+  writing product code until the checklist was completed, forcing compliance.
+product_outcome: "Macro layer API (21 endpoints) and frontend successfully
+  implemented. All loop artifacts created: decision record before
+  implementation, preflight marker before product/** writes, approved plan, code
+  review passed, tests pass, conventional commits. This experiment supersedes
+  experiment-product-macro-cook-no-loop-20260522T055121Z."
+observations: []
+promotion_review: []
+scope: product
+output_level: metadata-only
+verification:
+  claim_refs: []
+  proves: []
+  requires_human_approval: true
+  approval_status: not-required
+notes: "Proves decision-product-260522T2026Z: preflight gate with positive
+  contract is the correct mechanism to prevent product-build without
+  learning-loop records. Previous failure mode
+  (experiment-product-macro-cook-no-loop-20260522T055121Z) is now closed."

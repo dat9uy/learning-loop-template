@@ -1,0 +1,25 @@
+id: assertion-meta-static-mcp-source-refs-missing
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: The `update_decision_record` and `update_experiment_record` MCP tools
+  do not expose a `source_refs` parameter. After creation, records with invalid
+  `source_refs` cannot be corrected through the authorized MCP path.
+capability: meta
+dimension: static
+scope: governance
+topic_tag: mcp-source-refs-missing
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/mcp-crud-gap-macro-implementation-260522.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L10
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-22T13:37:59Z
+  first_extracted_at: 2026-05-22T13:37:59Z
+  last_updated_at: 2026-05-22T13:37:59Z
+  evidence_immutable_hash: sha256:b64e78257afbbbb4ae5f5c46f0c93edf8b539efae476cf93822f433cd1d2851b
