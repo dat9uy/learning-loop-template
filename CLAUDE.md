@@ -58,3 +58,36 @@ The following paths have write-path observations and do NOT require
 
 Paths without observations (e.g., `schemas/**`, `records/observations/**`)
 remain blocked and require step 3 above.
+
+## Artifact-Level Loop Rules
+
+The write gate enforces loop compliance mechanically. These rules are the
+human-readable contract.
+
+### Product-Build Plans
+- All plans with `tags: [product-build]` MUST declare surfaces in Phase 0.
+- Decision records MUST exist in `records/<surface>/decisions/` before
+  implementation phases begin.
+- The gate scans plan frontmatter on first write. Missing decision records
+  trigger a warning (default) or block (escalate mode).
+
+### Product Code Writes
+- Writing to `product/**` requires decision records for the inferred surface.
+- Surface inference: `product/api/*` -> surface `product`, `product/web/*` ->
+  surface `product`. Unknown segments infer surface from first path segment.
+- The gate checks `records/<surface>/decisions/*.yaml` (surface-first) or
+  `records/decisions/*<surface>*.yaml` (flat fallback).
+
+### Journal Writes
+- `docs/journals/**` is allowed unconditionally.
+- Agents SHOULD suggest drafting `records/<surface>/experiments/` YAML when
+  journals contain experiment-worthy observations.
+- Journals are agent observations; experiment records are operator
+  formalizations.
+
+### Gate Response Modes
+- `warn` (default): allow the write, emit a JSON warning. Use during
+  initial validation and mapping confirmation.
+- `escalate`: block the write, require operator approval. Use after the
+  operator has validated surface mapping across 3+ builds.
+- Set mode via `GATE_RESPONSE_MODE` environment variable.

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Gate Content Scanning"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: []

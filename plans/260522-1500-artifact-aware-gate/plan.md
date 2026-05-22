@@ -1,7 +1,7 @@
 ---
 title: "Artifact-Aware Gate Enforcement"
 description: "Implement the three-layer defense from brainstorm report 260522: artifact-aware write gate (primary), plan template with Phase 0 loop pre-flight (secondary), and CI validator script (tertiary). Enforces learning-loop compliance at the write boundary without modifying skills."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [gate, enforcement, learning-loop, product-build, coordination]
@@ -13,6 +13,25 @@ source: skill
 ---
 
 # Artifact-Aware Gate Enforcement
+
+## Phase 0: Loop Pre-Flight
+
+### Surface Declaration
+This plan touches the following surfaces:
+- [x] `meta` (loop infrastructure — gate system, coordination hooks)
+
+### Decision Record Checklist
+- [x] Gate response mode decision recorded
+- [x] Surface inference approach documented
+
+### Pre-Flight Validation
+```bash
+pnpm validate:records
+pnpm check
+```
+
+### Gate Mode
+Current gate response mode: `warn` (allow with warning)
 
 ## Overview
 
@@ -28,12 +47,12 @@ Implement the three-layer defense from `plans/reports/brainstorm-260522-loop-coo
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Gate Content Scanning](./phase-01-gate-content-scanning.md) | Pending |
-| 2 | [Surface Inference & Product Code Gating](./phase-02-surface-inference-product-code-gating.md) | Pending |
-| 3 | [Plan Template Update](./phase-03-plan-template-update.md) | Pending |
-| 4 | [CI Validator Script](./phase-04-ci-validator-script.md) | Pending |
-| 5 | [CLAUDE.md Documentation](./phase-05-claude-md-documentation.md) | Pending |
-| 6 | [Integration & Final Validation](./phase-06-integration-final-validation.md) | Pending |
+| 1 | [Gate Content Scanning](./phase-01-gate-content-scanning.md) | Completed |
+| 2 | [Surface Inference & Product Code Gating](./phase-02-surface-inference-product-code-gating.md) | Completed |
+| 3 | [Plan Template Update](./phase-03-plan-template-update.md) | Completed |
+| 4 | [CI Validator Script](./phase-04-ci-validator-script.md) | Completed |
+| 5 | [CLAUDE.md Documentation](./phase-05-claude-md-documentation.md) | Completed |
+| 6 | [Integration & Final Validation](./phase-06-integration-final-validation.md) | Completed |
 
 ## Current Status
 

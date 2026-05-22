@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Plan Template Update"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [1]

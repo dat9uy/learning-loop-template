@@ -40,6 +40,19 @@ Active `source_refs` should use `local:records/<surface>/evidence/...`, `local:p
 
 Evidence markdown files may include a `## Findings` section for machine extraction. Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion. Nested `Context:` bullets populate `context`; nested `Caveat:` bullets populate `caveats`. The extraction tool (`pnpm extract:index`) reads this and produces `records/<surface>/index/assertion-...yaml`. Files without `## Findings` (or without `[topic-tag]` bullets) are silently skipped.
 
+## Plan Authoring
+
+All product-build plans (tagged `product-build`) require Phase 0: Loop Pre-Flight before implementation phases. Phase 0 declares surfaces and verifies decision record coverage.
+
+Reference template: `.claude/skills/learning-loop/references/plan-phase-0-template.md`
+
+1. Declare all surfaces the plan touches.
+2. Confirm decision records exist in `records/<surface>/decisions/` for each surface.
+3. Run pre-flight validation: `pnpm validate:records` and `pnpm check`.
+4. Proceed to implementation phases only after decision coverage is confirmed.
+
+The gate scans plan frontmatter on first write. Missing decision records trigger a warning (default) or block (escalate mode). Set mode via `GATE_RESPONSE_MODE`.
+
 ## Adding Or Updating Records
 
 1. Add or update safe local evidence under `records/<surface>/evidence/` with `## Findings`.

@@ -53,9 +53,19 @@ Validation:
 - Run stack validators and repo validators.
 ```
 
+## Plan Structure
+
+Product-build plans MUST include Phase 0: Loop Pre-Flight before implementation phases.
+Phase 0 declares surfaces, lists required decision records, and provides a pre-flight checklist.
+Reference: `.claude/skills/learning-loop/references/plan-phase-0-template.md`
+
+Phase 0 is advisory — the gate (phase 1) enforces mechanically; the template guides the operator.
+Both work together: template prevents mistakes, gate catches them.
+
 ## Pre-Implementation Checklist
 
 ```text
+- [ ] Phase 0 completed: surfaces declared, decision records confirmed
 - [ ] All plan Key Decisions have corresponding `records/<surface>/decisions/` artifacts
 - [ ] Decision records cite source evidence and required gates
 - [ ] No implementation phase proceeds without decision coverage
