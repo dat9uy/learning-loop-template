@@ -5,6 +5,7 @@ import { companyRoutePath, CompanyRoute, loadCompanyReference } from './routes/r
 import { equityRoutePath, EquityRoute, loadEquityReference } from './routes/reference/equity'
 import { fundamentalRoutePath, FundamentalRoute } from './routes/fundamental/$symbol'
 import { indexRoutePath, IndexRoute } from './routes'
+import { macroRoutePath, MacroRoute } from './routes/macro/index'
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -36,7 +37,13 @@ export const fundamentalRoute = createRoute({
   component: () => <FundamentalRoute symbol={fundamentalRoute.useParams().symbol} />,
 })
 
-export const appRoutes = rootRoute.addChildren([indexRoute, equityReferenceRoute, companyReferenceRoute, fundamentalRoute])
+export const macroRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: macroRoutePath,
+  component: MacroRoute,
+})
+
+export const appRoutes = rootRoute.addChildren([indexRoute, equityReferenceRoute, companyReferenceRoute, fundamentalRoute, macroRoute])
 export const router = createRouter({ routeTree: appRoutes })
 
 declare module '@tanstack/react-router' {
