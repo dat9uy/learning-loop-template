@@ -1,0 +1,107 @@
+id: experiment-product-macro-cook-no-loop-20260522T055121Z
+schema_version: "1.0"
+type: experiment
+status: reviewed
+created_at: "2026-05-21T22:51:21Z"
+updated_at: "2026-05-22T08:51:21Z"
+source_refs:
+  - local:records/meta/evidence/skill-template-gap-260520T2133Z.md
+  - record:decision-260512T0046Z-loop-meta-evidence-gap-revisit
+notes: >
+  Git archive branch: archive/macro-wrong-integration (preserves all 3 commits).
+  Commits: 9fe41ae (feat), 181e1dc (test), d796d38 (docs/journal).
+  The journal product/api/docs/journals/2026-05-22-1430-macro-layer-implementation.md
+  only exists on the archive branch; it was removed from main by the hard reset.
+  This experiment is a concrete instance of the gap class documented in
+  skill-template-gap-260520T2133Z.md (unencoded decisions, evidence authority violation).
+goal: >
+  Test whether /ck:cook can implement a product feature (macro layer API)
+  while automatically producing learning-loop records (claims, risks, decisions,
+  experiments) as required by the learning-loop governance model.
+hypothesis: >
+  If /ck:cook is invoked with a plan for the macro layer, the implementation
+  workflow will naturally integrate with the learning-loop system by producing
+  or referencing pre-existing decision records, claims, and risks before writing
+  product code, and will generate a post-implementation experiment record
+  instead of a docs/journals developer log.
+method:
+  - "Invoke /ck:cook to implement macro layer for product/api."
+  - "Observe whether pre-implementation checks for learning-loop decision records occur."
+  - "Observe whether post-implementation learning-loop artifacts are created in records/."
+  - "Compare actual output (docs/journals/) against expected output (records/)."
+  - "Verify presence of claims, risks, decisions for macro layer in records/product/."
+success_metrics:
+  - pre-existing-decision-records-for-macro-layer
+  - pre-existing-claim-records-for-macro-layer
+  - pre-existing-risk-records-for-macro-layer
+  - post-implementation-experiment-in-records-product-experiments
+  - post-implementation-evidence-in-records-product-evidence
+  - journal-in-records-not-docs
+  - no-product-code-before-decision-coverage
+result: does-not-support
+result_reason: >
+  Hypothesis rejected. /ck:cook produced product code (21 endpoints, 23 tests,
+  Pydantic models, FastAPI router) without any pre-existing learning-loop records.
+  No claims, risks, or decisions existed in records/product/ before implementation.
+  Post-implementation output was a reactive developer journal in
+  product/api/docs/journals/ instead of a proactive experiment/evidence record
+  in records/product/. The learning-loop skill was never invoked; the coordination
+  model collapse plan removed the old profile-based bridge but did not add a new
+  integration between /ck:cook and the record system.
+agent_outcome: >
+  The /ck:cook skill operates as a pure implementation pipeline with no awareness
+  of the learning-loop record system. The learning-loop skill currently only
+  authors prompts; it does not hook into pre-implementation or post-implementation
+  phases of /ck:cook. The journal that was produced (product/api/docs/journals/)
+  is a high-quality developer log containing decisions, risks, and lessons, but it
+  lives in the wrong system (docs/journals vs records/). This confirms the
+  workflow gap identified in coordination-model-collapse Finding #12:
+  "learning-loop skill purpose deleted but skill not repurposed."
+product_outcome: none
+observations:
+  - git_commit_feat: 9fe41ae
+    description: "feat(macro): implement macro layer with 21 endpoints"
+    files_changed: 3
+    product_code: true
+  - git_commit_test: 181e1dc
+    description: "test(macro): add 23 unit tests and stubs for macro layer"
+    files_changed: 3
+    product_code: true
+  - git_commit_docs: d796d38
+    description: "docs(macro): add implementation plan and journal entry"
+    files_changed: 2
+    product_code: false
+    journal_location: product/api/docs/journals/
+    correct_location: records/product/experiments/
+  - records_pre_check:
+    claims_in_records_product: 0
+    risks_in_records_product: 0
+    decisions_in_records_product: 0
+    experiments_in_records_product_macro_related: 0
+  - records_post_check:
+    claims_created: 0
+    risks_created: 0
+    decisions_created: 0
+    experiments_created: 0
+  - learning_loop_skill_invoked: false
+    reason: /ck:cook does not invoke /learning-loop and no wrapper exists
+promotion_review:
+  - Do not promote /ck:cook as a standalone product-build tool until loop integration is added.
+  - Repurpose learning-loop skill or create a wrapper skill that chains loop pre-checks + cook implementation + loop post-capture.
+  - Decision records must exist before any product code for a new surface is written.
+  - Archive branch archive/macro-wrong-integration preserves the code for reference but must not be merged without loop compliance.
+scope: product
+output_level: metadata-only
+output_capture:
+  allowed_outputs:
+    - metadata
+    - commit-hashes
+    - branch-names
+    - file-counts
+    - record-presence-checks
+  blocked_outputs:
+    - raw-data-capture
+    - credential-capture
+    - product-code-capture
+    - temp-dirs
+    - venvs
