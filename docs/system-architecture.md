@@ -95,7 +95,7 @@ Always exits with code 0 (soft gate).
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking (exits 2 on escalation/block)
 
-Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate is a minimal safety net (~90 lines) that enforces hard blocks only; all policy logic has moved to the MCP server.
+Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks and embeds artifact-aware policy logic directly for product-build plans and product code writes.
 
 #### Bash Coordination Gate Flow
 
@@ -119,12 +119,16 @@ Outbound gates intercept agent tool usage before execution. The bash gate checks
    - `dist/**`
    - `build/**`
    - Unknown paths (`**` catch-all)
-4. For `records/evidence/**` and `records/*/evidence/**`, check for active `write-path` observation
-5. If observation found, check staleness relative to last operator message
-6. Fresh observation → allow; stale → escalate; none → block
-7. Allow pre-authorized paths: `docs/**`, `plans/**`, `tools/**`, `.claude/**`, `product/**`
+4. Artifact-aware checks (always block regardless of `GATE_RESPONSE_MODE`):
+   - `plans/**/plan.md` with `tags: [product-build]`: parse frontmatter, extract surfaces, verify decision records exist in `records/<surface>/decisions/*.yaml`; missing → block (exit 2)
+   - `product/**`: infer surface from path, verify decision records exist; missing → block (exit 2)
+5. For `records/evidence/**` and `records/*/evidence/**`, check for active `write-path` observation
+6. If observation found, check staleness relative to last operator message
+7. Fresh observation → allow; stale → escalate; none → block
+8. Allow pre-authorized paths: `docs/**`, `plans/**`, `tools/**`, `.claude/**`
+9. `docs/journals/**` is allowed unconditionally
 
-All policy logic (domain rules, budget checks, path-specific reasoning) has moved to the MCP server. Agents call `check_gate` via MCP for policy decisions on non-critical paths.
+Non-artifact policy decisions (budget checks, non-critical paths) are handled via the MCP server. Agents call `check_gate` via MCP for those decisions. Artifact-aware checks are enforced mechanically in the hook and cannot be bypassed.
 
 **Rollback:** To restore the full policy hook, run:
 ```bash

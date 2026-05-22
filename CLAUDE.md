@@ -69,7 +69,7 @@ human-readable contract.
 - Decision records MUST exist in `records/<surface>/decisions/` before
   implementation phases begin.
 - The gate scans plan frontmatter on first write. Missing decision records
-  trigger a warning (default) or block (escalate mode).
+  **always block** (exit 2) — regardless of `GATE_RESPONSE_MODE`.
 
 ### Product Code Writes
 - Writing to `product/**` requires decision records for the inferred surface.
@@ -77,6 +77,8 @@ human-readable contract.
   surface `product`. Unknown segments infer surface from first path segment.
 - The gate checks `records/<surface>/decisions/*.yaml` (surface-first) or
   `records/decisions/*<surface>*.yaml` (flat fallback).
+- Missing decision records **always block** (exit 2) — regardless of
+  `GATE_RESPONSE_MODE`.
 
 ### Journal Writes
 - `docs/journals/**` is allowed unconditionally.
@@ -86,8 +88,38 @@ human-readable contract.
   formalizations.
 
 ### Gate Response Modes
-- `warn` (default): allow the write, emit a JSON warning. Use during
-  initial validation and mapping confirmation.
-- `escalate`: block the write, require operator approval. Use after the
-  operator has validated surface mapping across 3+ builds.
+`GATE_RESPONSE_MODE` controls behavior for **non-artifact** gate checks only
+(unknown paths, observation staleness, etc.). Artifact-aware checks
+(product-build plans and product code) always block regardless of this setting.
+
+- `warn` (default): allow the write, emit a JSON warning. Applies to unknown
+  paths and observation staleness only.
+- `escalate`: block the write, require operator approval. Applies to unknown
+  paths and observation staleness only.
 - Set mode via `GATE_RESPONSE_MODE` environment variable.
+
+## Implementation Workflows
+
+Two supported paths for product implementation:
+
+### Use Case A — Direct Cook (pre-check then cook)
+
+For quick product changes that skip formal planning:
+
+1. **Pre-check:** `node tools/check-loop-ready.js <surface>`
+2. **If ready:** `/ck:cook evidence.md` or `/ck:cook <file>`
+3. **If not ready:** create decision records in `records/<surface>/decisions/` first
+
+### Use Case B — Plan Then Cook (structured)
+
+For features requiring research and coordination:
+
+1. `/ck:plan` (produces plan.md with Phase 0 surface declaration)
+2. Gate validates at plan-write time — missing decision records block
+3. `/ck:cook plan.md` (gate backstop also validates product code writes)
+
+### Agent Rule
+
+**Never ignore gate block decisions.** If blocked, create the missing artifact
+(decision record, observation, or schema validation) and retry. Do not use Bash
+to circumvent a write-gate block.

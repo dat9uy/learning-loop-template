@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Pre-Check Script and Docs"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -62,7 +62,7 @@ Create `tools/check-loop-ready.js` so agents can verify loop readiness before in
 
 ## Success Criteria
 
-- [ ] `node tools/check-loop-ready.js product` exits 0 when `records/product/decisions/` has YAML files
-- [ ] Same command exits 1 with helpful message when decisions missing
-- [ ] `CLAUDE.md` contains both use-case workflows
-- [ ] Script has no external dependencies
+- [x] `node tools/check-loop-ready.js product` exits 0 when `records/product/decisions/` has YAML files
+- [x] Same command exits 1 with helpful message when decisions missing
+- [x] `CLAUDE.md` contains both use-case workflows
+- [x] Script has no external dependencies

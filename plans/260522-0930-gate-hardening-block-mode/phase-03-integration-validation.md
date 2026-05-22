@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Integration Validation"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [1, 2]
@@ -53,7 +53,7 @@ Run full test suite and validation scripts to confirm no regressions.
 
 ## Success Criteria
 
-- [ ] All gate tests pass (0 failures)
-- [ ] `pnpm check` completes successfully
-- [ ] No regressions in existing test suites
-- [ ] End-to-end simulation confirms block/allow behavior
+- [x] All gate tests pass (0 failures)
+- [x] `pnpm check` completes successfully
+- [x] No regressions in existing test suites
+- [x] End-to-end simulation confirms block/allow behavior

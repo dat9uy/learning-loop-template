@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Tests and Gate Hardening"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []
@@ -51,7 +51,7 @@ Update artifact-aware gate tests to expect `block` instead of `warn` for missing
 
 ## Success Criteria
 
-- [ ] All artifact-aware gate tests pass (7 content-scanning + 9 surface-inference cases)
-- [ ] Tests confirm `block` behavior regardless of `GATE_RESPONSE_MODE`
-- [ ] Existing allow cases still exit 0
-- [ ] No changes to non-artifact gate behaviors
+- [x] All artifact-aware gate tests pass (7 content-scanning + 9 surface-inference cases)
+- [x] Tests confirm `block` behavior regardless of `GATE_RESPONSE_MODE`
+- [x] Existing allow cases still exit 0
+- [x] No changes to non-artifact gate behaviors

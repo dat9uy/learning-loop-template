@@ -1,7 +1,7 @@
 ---
 title: "Gate Hardening: Block Mode for Artifact-Aware Checks"
 description: "Harden the artifact-aware write gate to always block (never warn) for product-build plans and product code writes without decision records. Add a pre-check script for direct-cook workflows. Update CLAUDE.md with both use-case paths."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [gate, enforcement, learning-loop, product-build, coordination]
@@ -44,9 +44,9 @@ The artifact-aware gate (from `plans/260522-1500-artifact-aware-gate`) currently
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Tests and Gate Hardening](./phase-01-tests-and-gate-hardening.md) | Pending |
-| 2 | [Pre-Check Script and Docs](./phase-02-pre-check-script-and-docs.md) | Pending |
-| 3 | [Integration Validation](./phase-03-integration-validation.md) | Pending |
+| 1 | [Tests and Gate Hardening](./phase-01-tests-and-gate-hardening.md) | Completed |
+| 2 | [Pre-Check Script and Docs](./phase-02-pre-check-script-and-docs.md) | Completed |
+| 3 | [Integration Validation](./phase-03-integration-validation.md) | Completed |
 
 ## Dependencies
 
