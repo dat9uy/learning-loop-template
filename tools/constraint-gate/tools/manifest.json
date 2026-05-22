@@ -29,5 +29,6 @@
   { "file": "./tools/create-experiment-record-tool.js", "export": "createExperimentRecordTool" },
   { "file": "./tools/update-experiment-record-tool.js", "export": "updateExperimentRecordTool" },
   { "file": "./tools/create-risk-record-tool.js", "export": "createRiskRecordTool" },
-  { "file": "./tools/update-risk-record-tool.js", "export": "updateRiskRecordTool" }
+  { "file": "./tools/update-risk-record-tool.js", "export": "updateRiskRecordTool" },
+  { "file": "./tools/mark-preflight-complete-tool.js", "export": "markPreflightCompleteTool" }
 ]

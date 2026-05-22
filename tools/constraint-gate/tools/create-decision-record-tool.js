@@ -5,7 +5,7 @@ import { resolveRoot } from "../resolve-root.js";
 
 export const createDecisionRecordTool = {
   name: "create_decision_record",
-  description: "Create a decision record YAML file. Use this before writing product code or product-build plans. The record starts in draft status. The write gate requires at least one decision record to exist before allowing product/** writes.",
+  description: "Create a decision record YAML file. Use this before writing product-build plans. The record starts in draft status. For product/** writes, the write gate now requires a preflight marker (via mark_preflight_complete) instead of decision records. Decision records are still required for product-build plan.md files.",
   schema: {
     surface: z.string().describe("Surface/scope this decision applies to (e.g., 'product', 'api', 'web'). Determines directory: records/<surface>/decisions/"),
     question: z.string().describe("The question or choice this decision resolves"),

@@ -14,8 +14,8 @@ Three PreToolUse hooks and one MCP server enforce mechanical safety:
   `plans/**`, `product/**`, `tools/**`, `.claude/**`, single-segment files.
 - **Inbound gate** (`.claude/coordination/hooks/inbound-state-gate.cjs`) —
   warns when operator state-change messages may have stale observations.
-- **MCP server** (`tools/constraint-gate/server.js`) — 31 tools for
-  constraint checks, record CRUD, and workflow orchestration.
+- **MCP server** (`tools/constraint-gate/server.js`) — 32 tools for
+  constraint checks, record CRUD, preflight gating, and workflow orchestration.
 
 ## MCP-First Record Access
 
@@ -39,6 +39,7 @@ no observation-dance, no pre-authorized path, and no bypass.
 | `validate_records` | Validate all YAML records against schemas |
 | `extract_index_entries` | Rebuild the index from evidence/capability files |
 | `generate_capability_records` | Generate capability records from product surfaces |
+| `mark_preflight_complete` | Mark preflight checklist complete for a surface (unlocks product/** writes for 30 min) |
 
 ### Record ID Convention
 
@@ -88,12 +89,15 @@ When the gate blocks with `decision: block`:
   `GATE_RESPONSE_MODE`.
 
 ### Product Code Writes
-- Writing to `product/**` requires decision records for the inferred surface.
-- Surface inference: `product/api/*` → surface `product`, `product/web/*` →
-  surface `product`. Unknown segments infer from first path segment.
-- The gate checks `records/<surface>/decisions/*.yaml` (surface-first) or
-  `records/decisions/*<surface>*.yaml` (flat fallback).
-- Missing decision records **always block** (exit 2).
+- Writing to `product/**` requires a valid preflight marker for the inferred surface.
+- Surface inference: all `product/**` paths → surface `product`.
+- The gate checks `.claude/coordination/.loop-preflight-<surface>` for a marker
+  with a valid timestamp within 30-minute TTL.
+- Missing or expired preflight markers **always block** (exit 2) — regardless of
+  `GATE_RESPONSE_MODE`.
+- The block message includes a `preflight_checklist` (6 steps) and `surface` field.
+- Use `mark_preflight_complete` MCP tool to create the marker. Direct writes
+  to `.loop-preflight-*` files are blocked by both write and bash gates.
 
 ### Journal Writes
 - `docs/journals/**` is allowed unconditionally.
@@ -114,21 +118,22 @@ When the gate blocks with `decision: block`:
 
 For quick product changes:
 
-1. Use `create_decision_record` MCP tool to create decision records for the
-   target surface.
+1. Use `mark_preflight_complete` MCP tool to unlock product/** writes for the target surface.
 2. `/ck:cook evidence.md` or `/ck:cook <file>`
-3. Gate validates product code writes have matching decision records.
+3. Gate validates product code writes have a valid preflight marker.
 
 ### Use Case B — Plan Then Cook
 
 For features requiring research:
 
 1. `/ck:plan` (produces plan.md with Phase 0 surface declaration)
-2. Use `create_decision_record` MCP tool for required decision records.
-3. Gate validates at plan-write time and at product code write time.
+2. Use `create_decision_record` MCP tool for required decision records (plan gate).
+3. Use `mark_preflight_complete` MCP tool to unlock product/** writes.
 4. `/ck:cook plan.md`
 
 ### Agent Rule
 
-**Never ignore gate block decisions.** If blocked, use MCP CRUD tools to
-create the missing record and retry. Do not use Bash to circumvent a gate block.
+**Never ignore gate block decisions.** If blocked by preflight gate, use
+`mark_preflight_complete` MCP tool and retry. If blocked by records gate,
+use MCP CRUD tools to create the missing record. Do not use Bash to
+circumvent a gate block.

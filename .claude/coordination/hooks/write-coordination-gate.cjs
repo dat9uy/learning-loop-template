@@ -6,7 +6,7 @@ const path = require('path');
 const {
   globMatch, findProjectRoot,
   extractFrontmatter, hasProductBuildTag, extractSurfaces, checkDecisionRecords,
-  inferSurface, hasDecisionRecords,
+  inferSurface, hasDecisionRecords, readPreflightMarker,
 } = require('./lib/gate-utils.cjs');
 
 // Rollback: cp write-coordination-gate.cjs.bak write-coordination-gate.cjs
@@ -100,20 +100,42 @@ function main() {
     process.exit(0);
   }
 
-  // ─── Artifact-aware gate: product code & journal surface inference ───
+  // ─── Preflight marker write protection (before .claude/** allow) ───
+  if (globMatch('.claude/coordination/.loop-preflight-*', relPath)) {
+    console.log(JSON.stringify({
+      decision: 'block',
+      reason: 'Preflight marker files can only be created via the mark_preflight_complete MCP tool. Direct writes are blocked.',
+      file_path: filePath,
+      matched_rule: '.claude/coordination/.loop-preflight-*',
+    }));
+    process.exit(2);
+  }
+
+  // ─── Artifact-aware gate: product code preflight check ───
   if (globMatch('product/**', relPath)) {
     const surface = inferSurface(relPath);
-    const root = findProjectRoot();
-    const recordsDir = path.join(root, 'records');
-    if (surface && !hasDecisionRecords(surface, recordsDir)) {
-      console.log(JSON.stringify({
-        decision: 'block',
-        reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
-        file_path: filePath,
-        matched_rule: 'product/**',
-        surface,
-      }));
-      process.exit(2);
+    if (surface) {
+      const root = findProjectRoot();
+      const coordDir = path.join(root, '.claude', 'coordination');
+      const marker = readPreflightMarker(surface, coordDir);
+      if (!marker) {
+        console.log(JSON.stringify({
+          decision: 'block',
+          reason: `Preflight check not completed for surface "${surface}". Use the mark_preflight_complete MCP tool after reviewing the checklist.`,
+          file_path: filePath,
+          matched_rule: 'product/**',
+          surface,
+          preflight_checklist: [
+            '1. Review the product-build plan for this surface',
+            '2. Verify decision records exist in records/' + surface + '/decisions/',
+            '3. Run and review any existing test suites',
+            '4. Confirm the change aligns with the approved architecture',
+            '5. Verify no schema-breaking changes without migration',
+            '6. Call mark_preflight_complete MCP tool for surface "' + surface + '"',
+          ],
+        }));
+        process.exit(2);
+      }
     }
     process.exit(0);
   }

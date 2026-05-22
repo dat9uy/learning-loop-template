@@ -174,14 +174,40 @@ function checkDecisionRecords(surfaces, recordsDir) {
   return { missing, found };
 }
 
+function readPreflightMarker(surface, coordDir) {
+  const markerPath = path.join(coordDir, `.loop-preflight-${surface}`);
+  try {
+    const raw = fs.readFileSync(markerPath, 'utf8');
+    const marker = JSON.parse(raw);
+    if (!marker.completed_at) return null;
+    const ts = new Date(marker.completed_at);
+    if (isNaN(ts.getTime())) return null;
+    if (Date.now() - ts.getTime() > MARKER_TTL_MS) return null;
+    return marker;
+  } catch {
+    return null;
+  }
+}
+
+function writePreflightMarker(surface, coordDir) {
+  const markerPath = path.join(coordDir, `.loop-preflight-${surface}`);
+  const content = JSON.stringify({
+    surface,
+    completed_at: new Date().toISOString(),
+  }, null, 2);
+  fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+  const tmpPath = markerPath + '.tmp';
+  fs.writeFileSync(tmpPath, content, 'utf8');
+  fs.renameSync(tmpPath, markerPath);
+}
+
 function inferSurface(filePath) {
   if (!filePath || typeof filePath !== 'string') return null;
   const parts = filePath.split('/');
 
-  // product/api/** and product/web/** → surface "product"
+  // All product/** paths → surface "product"
   if (parts[0] === 'product' && parts.length >= 2) {
-    if (parts[1] === 'api' || parts[1] === 'web') return 'product';
-    return parts[1];
+    return 'product';
   }
 
   // records/<segment>/** → return <segment> as surface
@@ -208,6 +234,8 @@ module.exports = {
   matchConstraintPattern,
   readObservations,
   readLastOperatorMessage,
+  readPreflightMarker,
+  writePreflightMarker,
   checkObservationStaleness,
   globMatch,
   findProjectRoot,

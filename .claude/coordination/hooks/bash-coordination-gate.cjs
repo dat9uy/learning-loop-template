@@ -10,6 +10,8 @@ const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
   /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,
   /\btee\b.*["']?\.?\/?records\/[^\s"';&|]+["']?/,
+  />{1,2}\s*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
+  /\btee\b.*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
 ];
 
 function commandWritesToRecords(command) {

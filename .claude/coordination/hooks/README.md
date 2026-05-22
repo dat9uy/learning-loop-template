@@ -64,6 +64,7 @@ Enforces domain rules for file writes. Rules are evaluated in order; first match
 |---------|----------|--------|
 | `docs/**` | allow | Documentation path |
 | `plans/**` | allow | Plan path |
+| `.claude/coordination/.loop-preflight-*` | block | Preflight markers only created via MCP tool |
 | `.claude/**` | allow | Claude system config |
 | `records/observations/**` | block | Observation files affect bash gate decisions |
 | `records/evidence/**` | block | Evidence files affect validation |
@@ -72,7 +73,7 @@ Enforces domain rules for file writes. Rules are evaluated in order; first match
 | `**/node_modules/**` | block | Build artifacts are not git-tracked |
 | `**/dist/**` | block | Build artifacts are not git-tracked |
 | `**/build/**` | block | Build artifacts are not git-tracked |
-| `product/**` | allow | Product source code |
+| `product/**` | allow (with valid preflight marker) | Product source code — requires preflight marker |
 | `tools/**` | allow | Tool source code |
 | `schemas/**` | block | Schema changes require validation |
 | `*` | allow | Root project file |
@@ -86,6 +87,8 @@ Common functions used by multiple hooks:
 - `matchConstraintPattern(command)` — Match command against constraint patterns
 - `readObservations(obsDir)` — Read observation YAML files
 - `readLastOperatorMessage(coordDir)` — Read marker file
+- `readPreflightMarker(surface, coordDir)` — Read preflight marker file, enforce 30-min TTL
+- `writePreflightMarker(surface, coordDir)` — Atomic write preflight marker file
 - `checkObservationStaleness(observations, coordDir)` — Check if observations are stale
 - `globMatch(pattern, path)` — Glob matching
 
