@@ -8,6 +8,7 @@ vnstock_data_stub = types.ModuleType("vnstock_data")
 vnstock_data_stub.__version__ = "test"
 vnstock_data_stub.Fundamental = object
 vnstock_data_stub.Reference = object
+vnstock_data_stub.Macro = object
 sys.modules["vnstock_data"] = vnstock_data_stub
 
 user_agent_stub = types.ModuleType("vnstock_data.core.utils.user_agent")
