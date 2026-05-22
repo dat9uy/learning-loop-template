@@ -19,14 +19,7 @@ function toRelative(filePath) {
   return rel;
 }
 
-function getResponseMode() {
-  const mode = process.env.GATE_RESPONSE_MODE || 'warn';
-  return mode === 'escalate' ? 'escalate' : 'warn';
-}
-
 function main() {
-  const responseMode = getResponseMode();
-
   let input;
   try {
     input = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -95,24 +88,14 @@ function main() {
       const recordsDir = path.join(root, 'records');
       const { missing } = checkDecisionRecords(surfaces, recordsDir);
       if (missing.length > 0) {
-        if (responseMode === 'escalate') {
-          console.log(JSON.stringify({
-            decision: 'block',
-            reason: `Missing decision records for surfaces: ${missing.join(', ')}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
-            file_path: filePath,
-            matched_rule: 'plans/**/plan.md',
-            missing_surfaces: missing,
-          }));
-          process.exit(2);
-        } else {
-          console.log(JSON.stringify({
-            decision: 'warn',
-            reason: `Missing decision records for surfaces: ${missing.join(', ')}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
-            file_path: filePath,
-            matched_rule: 'plans/**/plan.md',
-            missing_surfaces: missing,
-          }));
-        }
+        console.log(JSON.stringify({
+          decision: 'block',
+          reason: `Missing decision records for surfaces: ${missing.join(', ')}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
+          file_path: filePath,
+          matched_rule: 'plans/**/plan.md',
+          missing_surfaces: missing,
+        }));
+        process.exit(2);
       }
     }
     process.exit(0);
@@ -124,24 +107,14 @@ function main() {
     const root = findProjectRoot();
     const recordsDir = path.join(root, 'records');
     if (surface && !hasDecisionRecords(surface, recordsDir)) {
-      if (responseMode === 'escalate') {
-        console.log(JSON.stringify({
-          decision: 'block',
-          reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
-          file_path: filePath,
-          matched_rule: 'product/**',
-          surface,
-        }));
-        process.exit(2);
-      } else {
-        console.log(JSON.stringify({
-          decision: 'warn',
-          reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
-          file_path: filePath,
-          matched_rule: 'product/**',
-          surface,
-        }));
-      }
+      console.log(JSON.stringify({
+        decision: 'block',
+        reason: `Missing decision records for surface "${surface}". Create records/${surface}/decisions/*.yaml or records/decisions/*${surface}*.yaml before writing product code.`,
+        file_path: filePath,
+        matched_rule: 'product/**',
+        surface,
+      }));
+      process.exit(2);
     }
     process.exit(0);
   }

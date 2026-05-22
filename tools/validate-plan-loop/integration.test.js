@@ -76,7 +76,7 @@ function parseOutput(stdout) {
 }
 
 describe("integration: full workflow simulation", () => {
-  it("warn mode: missing decision records -> gate warns, validator reports", () => {
+  it("warn mode: missing decision records -> gate always blocks (exit 2)", () => {
     withTempProject((tmpDir) => {
       // Write product-build plan with no decision records
       const planContent = `---
@@ -92,15 +92,15 @@ surfaces: [product]
       fs.mkdirSync(path.join(tmpDir, "plans", "2026", "test"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "plans", "2026", "test", "plan.md"), planContent);
 
-      // Gate should warn on product code write
+      // Gate should block on product code write regardless of response mode
       const hookResult = runHook(
         { tool_name: "Write", tool_input: { file_path: "product/api/main.py", content: "print(1)" } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: "warn" }
       );
-      assert.strictEqual(hookResult.exitCode, 0);
+      assert.strictEqual(hookResult.exitCode, 2);
       const hookOut = parseOutput(hookResult.stdout) || parseOutput(hookResult.stderr);
-      assert.ok(hookOut, "gate should emit JSON warning");
-      assert.strictEqual(hookOut.decision, "warn");
+      assert.ok(hookOut, "gate should emit JSON block");
+      assert.strictEqual(hookOut.decision, "block");
 
       // Validator should report violations
       const valResult = runValidator(tmpDir);

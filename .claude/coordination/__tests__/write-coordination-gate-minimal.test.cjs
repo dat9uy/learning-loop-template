@@ -17,6 +17,17 @@ function createTempProject() {
   return tmpDir;
 }
 
+function writeDecisionRecord(tmpDir, surface, filename) {
+  const surfaceFirstDir = path.join(tmpDir, 'records', surface, 'decisions');
+  const flatDir = path.join(tmpDir, 'records', 'decisions');
+  const targetDir = surface ? surfaceFirstDir : flatDir;
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(targetDir, filename),
+    `id: ${filename.replace('.yaml', '')}\nstatus: active\n`
+  );
+}
+
 function writeObservation(tmpDir, id, constraint, timestamp) {
   const content = [
     `id: ${id}`,
@@ -128,8 +139,9 @@ describe('write-coordination-gate minimal behavior', () => {
       });
     });
 
-    it('Edit product/** -> exit 0', async () => {
+    it('Edit product/** with decision record -> exit 0', async () => {
       await withTempProject(async (tmpDir) => {
+        writeDecisionRecord(tmpDir, 'product', 'decision-product.yaml');
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/main.py' } },
           { GATE_ROOT: tmpDir }

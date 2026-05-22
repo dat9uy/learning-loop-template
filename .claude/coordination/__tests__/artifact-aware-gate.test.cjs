@@ -95,17 +95,17 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
     });
   });
 
-  it('plan.md with product-build tag and MISSING decision records -> warn mode emits warning (exit 0)', async () => {
+  it('plan.md with product-build tag and MISSING decision records -> always block (exit 2)', async () => {
     await withTempProject(async (tmpDir) => {
       const content = '---\ntitle: "Product Plan"\ntags: [product-build]\nsurfaces: [product]\n---\n\n# Plan\n';
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON warning');
-      assert.strictEqual(out.decision, 'warn');
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
       assert.ok(out.missing_surfaces.includes('product'), 'should list missing surface');
     });
   });
@@ -177,16 +177,16 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('product/web/src/routes.ts without decision record -> warn mode (exit 0)', async () => {
+  it('product/web/src/routes.ts without decision record -> always block (exit 2)', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/web/src/routes.ts', content: 'const x = 1;' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON warning');
-      assert.strictEqual(out.decision, 'warn');
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
       assert.ok(out.surface === 'product' || out.surface === 'web', 'should include surface');
     });
   });
@@ -239,16 +239,16 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('unknown product/unknown/stack.py -> warn (surface inferred from first segment)', async () => {
+  it('unknown product/unknown/stack.py -> always block (surface inferred from first segment)', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/unknown/stack.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON warning');
-      assert.strictEqual(out.decision, 'warn');
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
     });
   });
 
@@ -280,16 +280,16 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('multi-segment product path product/api/capabilities/vnstock-data/capability.py -> surface product, no decision -> warn', async () => {
+  it('multi-segment product path product/api/capabilities/vnstock-data/capability.py -> surface product, no decision -> block', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/capabilities/vnstock-data/capability.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON warning');
-      assert.strictEqual(out.decision, 'warn');
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
     });
   });
 });
