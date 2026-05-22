@@ -1,7 +1,7 @@
 ---
 title: "Records Surface-First Directory Restructure"
 description: "Migrate flat records/<artifact_type>/ structure to surface-first records/<surface>/<artifact_type>/ layout. Big-bang migration with pre-migration tests, gate pattern updates, tool path updates, file moves, index regeneration, and docs sync."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [refactor, records, surface-first, restructure, migration]
