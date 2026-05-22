@@ -110,6 +110,14 @@ Product approval for an index entry comes from a decision whose `decision_effect
 
 Frozen-legacy claim counterpart: [Product Decisions](#product-decisions) above.
 
+## Decision vs Assertion — When to Use Which
+
+A **decision** is a policy choice between alternatives. It answers "What shall we do?" and follows an editorial lifecycle (`draft` → `reviewed` → `approved`). Examples: adopt a gate, change a threshold, approve a scope boundary.
+
+An **assertion** (machine-extracted index entry) is a factual conclusion from evidence and experiments. It answers "What is true?" and derives its status from `evidence.validation_status`. Examples: "Gate X blocks Y", "Installer Z writes config to path W", "API returns shape Q under condition R".
+
+**Do not create decision records for yes/no factual questions.** If empirical proof shows a mechanism works or fails, capture it in `records/<surface>/evidence/` with a `## Findings` bullet, then run `pnpm extract:index` to emit the assertion into `records/<surface>/index/`. Reserve decision records for normative policy approvals that sit at the end of the chain: `evidence → index → experiments → decisions`.
+
 ## Runtime Output Policy
 
 Runtime dimensions declare output as `metadata-only`, `sample-output`, or `runtime-captured`. Proof records must keep durable evidence curated and safe. Temporary install/runtime substrate stays outside the repo and must be deleted after metadata capture.

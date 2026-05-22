@@ -1,0 +1,26 @@
+id: assertion-meta-static-preflight-gate-blocks-cook-without-loop
+schema_version: "1.0"
+type: extracted-assertion
+status: active
+assertion: "Preflight gate blocks product/** writes until operator checklist is
+  complete. Proven by comparing two macro implementations: without gate, 0 loop
+  artifacts created and product code written first; with gate, decision record
+  created, preflight marked complete, plan approved, then product code written."
+capability: meta
+dimension: static
+scope: governance
+topic_tag: preflight-gate-blocks-cook-without-loop
+n_count: 1
+superseded_by: null
+supersedes: []
+source_refs:
+  - file: local:records/meta/evidence/preflight-gate-effectiveness.md
+    section: "## Findings"
+    bullet_index: 1
+    line_anchor: L10
+experiment_refs: []
+extraction:
+  agent_run: extract-index-2026-05-22T13:51:29Z
+  first_extracted_at: 2026-05-22T13:51:29Z
+  last_updated_at: 2026-05-22T13:51:29Z
+  evidence_immutable_hash: sha256:318a355062b6fc520e68816aebca768acb5dcd7a2515d5bbef03ff2d4ceb83f0
