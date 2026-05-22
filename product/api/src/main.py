@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.fundamental import router as fundamental_router
+from .routers.macro_commodity import router as macro_commodity_router
+from .routers.macro_currency import router as macro_currency_router
+from .routers.macro_economy import router as macro_economy_router
 from .routers.reference import router as reference_router
 
 
@@ -21,6 +24,9 @@ def create_app() -> FastAPI:
 
     app.include_router(reference_router)
     app.include_router(fundamental_router)
+    app.include_router(macro_economy_router)
+    app.include_router(macro_currency_router)
+    app.include_router(macro_commodity_router)
     return app
 
 
