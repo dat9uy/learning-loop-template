@@ -207,57 +207,32 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// --- Integration: Write-Path Observation End-to-End ---
+// --- Integration: records/** always blocked, MCP tools for CRUD ---
 {
-  console.log('\n=== Integration: Write-Path Observation End-to-End ===');
+  console.log('\n=== Integration: records/** always blocked ===');
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
 
-  // Write fresh write-path observation
-  fs.writeFileSync(
-    path.join(tmpDir, 'records', 'observations', 'obs-write-evidence-001.yaml'),
-    `id: obs-write-evidence-001\nconstraint_type: write-path\nconstraint: records-evidence\nstatus: active\nupdated_at: ${new Date(Date.now() - 5 * 60 * 1000).toISOString()}\ndescription: Operator approved evidence file creation`
-  );
-
-  // Fresh observation → write gate allows
+  // Write gate blocks records/evidence unconditionally
   const w1 = runWriteGate('records/evidence/foo.md', env);
-  assert(w1.exitCode === 0, 'fresh observation → write gate allows');
+  assert(w1.exitCode === 2, 'write gate blocks records/evidence unconditionally');
+  const outW1 = parseOutbound(w1);
+  assert(outW1 && outW1.decision === 'block', 'write gate → decision: block');
+  assert(outW1 && outW1.matched_rule === 'records/**', 'write gate → matched_rule: records/**');
 
-  // Fresh observation → bash gate allows heredoc
+  // Write gate blocks records/observations unconditionally
+  const w2 = runWriteGate('records/observations/obs-test.yaml', env);
+  assert(w2.exitCode === 2, 'write gate blocks records/observations unconditionally');
+
+  // Bash gate blocks heredoc to records/** unconditionally
   const b1 = runOutboundGate("cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF", env);
-  assert(b1.exitCode === 0, 'fresh observation → bash gate allows heredoc');
+  assert(b1.exitCode === 2, 'bash gate blocks heredoc to records/evidence');
+  const outB1 = parseOutbound(b1);
+  assert(outB1 && outB1.hard_block === true, 'bash gate → hard_block');
 
-  // Stale marker + fresh observation → still allow (obs newer than marker)
-  fs.writeFileSync(
-    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-    JSON.stringify({ timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
-  );
-  const w2 = runWriteGate('records/evidence/foo.md', env);
-  assert(w2.exitCode === 0, 'fresh observation + old marker → write gate allows');
-
-  // Make observation stale (older than marker)
-  fs.writeFileSync(
-    path.join(tmpDir, 'records', 'observations', 'obs-write-evidence-001.yaml'),
-    `id: obs-write-evidence-001\nconstraint_type: write-path\nconstraint: records-evidence\nstatus: active\nupdated_at: ${new Date(Date.now() - 20 * 60 * 1000).toISOString()}\ndescription: Operator approved evidence file creation`
-  );
-  fs.writeFileSync(
-    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-    JSON.stringify({ timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), prompt_snippet: 'state change' }, null, 2)
-  );
-
-  // Stale observation → write gate escalates
-  const w3 = runWriteGate('records/evidence/foo.md', env);
-  assert(w3.exitCode === 2, 'stale observation → write gate escalates');
-  const outW3 = parseOutbound(w3);
-  assert(outW3 && outW3.decision === 'escalate', 'stale → escalate');
-  assert(outW3 && outW3.inbound_gate === true, 'stale → inbound_gate');
-
-  // Stale observation → bash gate escalates
-  const b3 = runOutboundGate('echo x > records/evidence/foo.md', env);
-  assert(b3.exitCode === 2, 'stale observation → bash gate escalates');
-  const outB3 = parseOutbound(b3);
-  assert(outB3 && outB3.decision === 'escalate', 'stale bash → escalate');
-  assert(outB3 && outB3.inbound_gate === true, 'stale bash → inbound_gate');
+  // Bash gate blocks redirect to records/** unconditionally
+  const b2 = runOutboundGate('echo x > records/decisions/test.yaml', env);
+  assert(b2.exitCode === 2, 'bash gate blocks redirect to records/decisions');
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

@@ -1,125 +1,134 @@
 # CLAUDE.md — Learning Loop Template
 
-## Skill Coordination
+## Coordination System
 
-This repo uses a coordination system for external skills. The system has three
-PreToolUse hooks and one MCP server:
+Three PreToolUse hooks and one MCP server enforce mechanical safety:
 
 - **Bash gate** (`.claude/coordination/hooks/bash-coordination-gate.cjs`) —
-  blocks Bash commands that match constraint patterns without active observations
-  or with exhausted budgets.
+  blocks Bash commands matching constraint patterns (docker, sudo, package-manager,
+  vendor-api, side-effect-import) without active observations, and blocks all
+  direct writes to `records/**` via redirects/heredocs/tee.
 - **Write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) —
-  blocks file writes based on domain rules (`schemas/**` and
-  `records/observations/**` blocked; `docs/**`, `plans/**`, `product/**`,
-  `tools/**` allowed).
+  blocks Edit/Write to `records/**`, `schemas/**`, `node_modules/**`,
+  `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`,
+  `plans/**`, `product/**`, `tools/**`, `.claude/**`, single-segment files.
 - **Inbound gate** (`.claude/coordination/hooks/inbound-state-gate.cjs`) —
   warns when operator state-change messages may have stale observations.
-- **MCP server** (`tools/constraint-gate/server.js`) — provides `check_gate`
-  and `record_observation` tools for agent-driven constraint checks.
+- **MCP server** (`tools/constraint-gate/server.js`) — 31 tools for
+  constraint checks, record CRUD, and workflow orchestration.
 
-Skills can be invoked directly. There is no skill registry, no profile-based
-gating, and no coordinator workflow. The bash gate and write gate enforce
-safety mechanically.
+## MCP-First Record Access
+
+**All `records/**` writes go through MCP tools.** Both gates unconditionally
+block direct file writes (Edit/Write/Bash redirects) to `records/**`. There is
+no observation-dance, no pre-authorized path, and no bypass.
+
+### Available MCP CRUD Tools
+
+| Tool | Purpose |
+|------|---------|
+| `create_decision_record` | Create a decision YAML in `records/<surface>/decisions/` |
+| `update_decision_record` | Update an existing decision record |
+| `create_experiment_record` | Create an experiment YAML in `records/<surface>/experiments/` |
+| `update_experiment_record` | Update an existing experiment record |
+| `create_risk_record` | Create a risk YAML in `records/<surface>/risks/` |
+| `update_risk_record` | Update an existing risk record |
+| `record_observation` | Create an observation YAML in `records/observations/` |
+| `update_observation` | Update an existing observation's status |
+| `notify_artifact_change` | Log a file change and evaluate triggered workflows |
+| `validate_records` | Validate all YAML records against schemas |
+| `extract_index_entries` | Rebuild the index from evidence/capability files |
+| `generate_capability_records` | Generate capability records from product surfaces |
+
+### Record ID Convention
+
+`{type}-{surface}-{YYMMDD}T{HHmm}Z-{slug}` — e.g.,
+`decision-product-260522T0930Z-use-vnstock-sdk`
+
+### Surface-First Directory Layout
+
+```
+records/
+├── <surface>/
+│   ├── decisions/*.yaml
+│   ├── experiments/*.yaml
+│   └── risks/*.yaml
+├── observations/*.yaml
+├── meta/
+│   ├── evidence/*.md
+│   └── capabilities/*.yaml
+└── index.yaml
+```
 
 ## Write Gate Block Protocol
 
-When the write-coordination-gate blocks a tool call with `decision: block`, the
-agent MUST NOT silently defer or skip the artifact. Required behavior:
+When the gate blocks with `decision: block`:
 
-1. **Identify if the artifact is required by the current plan.** If the plan
-   phase explicitly lists the file as a deliverable, it is required.
-2. **For observation-backed paths** (`records/evidence/**`): Use MCP
-   `record_observation` (new observation) or `update_observation` (existing
-   observation) to activate the write-path observation, then retry the write.
-   The `.last-operator-message` marker invalidates observations when the
-   operator reports state changes; the agent updates them naively without
-   prompting. No `AskUserQuestion` required.
-3. **For unconditionally blocked paths** (`schemas/**`, `records/observations/**`):
-   Use `AskUserQuestion` to surface the block to the operator with: what file is
-   blocked, why the gate blocked it, why the file is needed, and options to
-   approve or skip with a journal note.
-4. **Never use Bash to bypass a write-gate block.** If Edit/Write is blocked for
-   a path, using Bash (sed, cat, echo, etc.) to modify that same path is a
-   circumvention, not a solution. Bash is for shell operations; blocked file
-   edits require operator approval or MCP-mediated authorization.
-5. **Never assume `--auto` mode overrides mechanical blocks.** The `--auto`
-   flag skips review gates (post-research, post-plan, etc.), NOT PreToolUse
-   hook blocks. A blocked tool is a hard stop requiring operator input.
-
-### Pre-authorized paths
-
-The following paths have write-path observations and do NOT require
-`AskUserQuestion`:
-
-- `records/evidence/**` — authorized by `observation-evidence-write-path` for
-  runtime verification artifacts. If the observation is inactive or stale, the
-  agent uses MCP `update_observation` to re-activate it and proceeds. Operator
-  validates content after.
-
-Paths without observations (e.g., `schemas/**`, `records/observations/**`)
-remain blocked and require step 3 above.
+1. **Identify if the artifact is required.** If the plan phase lists the file
+   as a deliverable, it is required.
+2. **For `records/**` paths:** Use the appropriate MCP CRUD tool to create or
+   update the record. The MCP server writes directly — no gate bypass.
+3. **For `schemas/**` paths:** Use `AskUserQuestion` to surface the block to
+   the operator with: what file is blocked, why, why it's needed, and options
+   to approve or skip.
+4. **Never use Bash to circumvent a write-gate block.** If Edit/Write is
+   blocked, using Bash (sed, cat, echo, redirect) to modify that same path is
+   a circumvention, not a solution.
+5. **Never assume `--auto` mode overrides mechanical blocks.** `--auto`
+   skips review gates, NOT PreToolUse hook blocks. A blocked tool is a hard
+   stop.
 
 ## Artifact-Level Loop Rules
-
-The write gate enforces loop compliance mechanically. These rules are the
-human-readable contract.
 
 ### Product-Build Plans
 - All plans with `tags: [product-build]` MUST declare surfaces in Phase 0.
 - Decision records MUST exist in `records/<surface>/decisions/` before
-  implementation phases begin.
-- The gate scans plan frontmatter on first write. Missing decision records
-  **always block** (exit 2) — regardless of `GATE_RESPONSE_MODE`.
-
-### Product Code Writes
-- Writing to `product/**` requires decision records for the inferred surface.
-- Surface inference: `product/api/*` -> surface `product`, `product/web/*` ->
-  surface `product`. Unknown segments infer surface from first path segment.
-- The gate checks `records/<surface>/decisions/*.yaml` (surface-first) or
-  `records/decisions/*<surface>*.yaml` (flat fallback).
+  implementation phases begin. Use `create_decision_record` MCP tool.
 - Missing decision records **always block** (exit 2) — regardless of
   `GATE_RESPONSE_MODE`.
 
+### Product Code Writes
+- Writing to `product/**` requires decision records for the inferred surface.
+- Surface inference: `product/api/*` → surface `product`, `product/web/*` →
+  surface `product`. Unknown segments infer from first path segment.
+- The gate checks `records/<surface>/decisions/*.yaml` (surface-first) or
+  `records/decisions/*<surface>*.yaml` (flat fallback).
+- Missing decision records **always block** (exit 2).
+
 ### Journal Writes
 - `docs/journals/**` is allowed unconditionally.
-- Agents SHOULD suggest drafting `records/<surface>/experiments/` YAML when
-  journals contain experiment-worthy observations.
-- Journals are agent observations; experiment records are operator
-  formalizations.
+- Agents SHOULD suggest using `create_experiment_record` when journals
+  contain experiment-worthy observations.
 
 ### Gate Response Modes
 `GATE_RESPONSE_MODE` controls behavior for **non-artifact** gate checks only
-(unknown paths, observation staleness, etc.). Artifact-aware checks
-(product-build plans and product code) always block regardless of this setting.
+(unknown paths, observation staleness). Artifact-aware checks always block.
 
-- `warn` (default): allow the write, emit a JSON warning. Applies to unknown
-  paths and observation staleness only.
-- `escalate`: block the write, require operator approval. Applies to unknown
-  paths and observation staleness only.
-- Set mode via `GATE_RESPONSE_MODE` environment variable.
+- `warn` (default): allow the write, emit JSON warning.
+- `escalate`: block the write, require operator approval.
+- Set via `GATE_RESPONSE_MODE` environment variable.
 
 ## Implementation Workflows
 
-Two supported paths for product implementation:
+### Use Case A — Direct Cook
 
-### Use Case A — Direct Cook (pre-check then cook)
+For quick product changes:
 
-For quick product changes that skip formal planning:
+1. Use `create_decision_record` MCP tool to create decision records for the
+   target surface.
+2. `/ck:cook evidence.md` or `/ck:cook <file>`
+3. Gate validates product code writes have matching decision records.
 
-1. **Pre-check:** `node tools/check-loop-ready.js <surface>`
-2. **If ready:** `/ck:cook evidence.md` or `/ck:cook <file>`
-3. **If not ready:** create decision records in `records/<surface>/decisions/` first
+### Use Case B — Plan Then Cook
 
-### Use Case B — Plan Then Cook (structured)
-
-For features requiring research and coordination:
+For features requiring research:
 
 1. `/ck:plan` (produces plan.md with Phase 0 surface declaration)
-2. Gate validates at plan-write time — missing decision records block
-3. `/ck:cook plan.md` (gate backstop also validates product code writes)
+2. Use `create_decision_record` MCP tool for required decision records.
+3. Gate validates at plan-write time and at product code write time.
+4. `/ck:cook plan.md`
 
 ### Agent Rule
 
-**Never ignore gate block decisions.** If blocked, create the missing artifact
-(decision record, observation, or schema validation) and retry. Do not use Bash
-to circumvent a write-gate block.
+**Never ignore gate block decisions.** If blocked, use MCP CRUD tools to
+create the missing record and retry. Do not use Bash to circumvent a gate block.

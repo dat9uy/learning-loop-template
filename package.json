@@ -18,7 +18,6 @@
     "check:budget": "node tools/check-budget/check-budget.js",
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
     "generate:capabilities": "node tools/generate-capabilities/generate-capabilities.js",
-    "check:loop-ready": "node tools/check-loop-ready.js",
     "check": "pnpm generate:capabilities --dry-run && pnpm validate:records && pnpm validate:plan-loop && pnpm test",
     "gate:server": "node tools/constraint-gate/server.js",
     "extract:index": "node tools/extract-index/extract-index.js",

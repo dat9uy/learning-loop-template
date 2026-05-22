@@ -23,5 +23,11 @@
   { "file": "./tools/workflow-self-improvement-tool.js", "export": "workflowSelfImprovementTool" },
   { "file": "./tools/workflow-report-phase-status-tool.js", "export": "workflowReportPhaseStatusTool" },
   { "file": "./tools/workflow-product-build-tool.js", "export": "workflowProductBuildTool" },
-  { "file": "./tools/workflow-runtime-probe-tool.js", "export": "workflowRuntimeProbeTool" }
+  { "file": "./tools/workflow-runtime-probe-tool.js", "export": "workflowRuntimeProbeTool" },
+  { "file": "./tools/create-decision-record-tool.js", "export": "createDecisionRecordTool" },
+  { "file": "./tools/update-decision-record-tool.js", "export": "updateDecisionRecordTool" },
+  { "file": "./tools/create-experiment-record-tool.js", "export": "createExperimentRecordTool" },
+  { "file": "./tools/update-experiment-record-tool.js", "export": "updateExperimentRecordTool" },
+  { "file": "./tools/create-risk-record-tool.js", "export": "createRiskRecordTool" },
+  { "file": "./tools/update-risk-record-tool.js", "export": "updateRiskRecordTool" }
 ]

@@ -22,8 +22,8 @@ async function startServer(root) {
   return { client, transport };
 }
 
-describe("Integration: all 25 tools", () => {
-  it("lists all 25 expected tools", async () => {
+describe("Integration: all 31 tools", () => {
+  it("lists all 31 expected tools", async () => {
     const tmp = createTmpDir();
     mkdirSync(join(tmp, "records", "observations"), { recursive: true });
     const { client, transport } = await startServer(tmp);
@@ -56,11 +56,17 @@ describe("Integration: all 25 tools", () => {
         "workflow_report_phase_status",
         "workflow_product_build",
         "workflow_runtime_probe",
+        "create_decision_record",
+        "update_decision_record",
+        "create_experiment_record",
+        "update_experiment_record",
+        "create_risk_record",
+        "update_risk_record",
       ];
       for (const name of expected) {
         assert.ok(names.includes(name), `Missing tool: ${name}`);
       }
-      assert.equal(names.length, 25, `Expected 25 tools, got ${names.length}: ${names.join(", ")}`);
+      assert.equal(names.length, 31, `Expected 31 tools, got ${names.length}: ${names.join(", ")}`);
     } finally {
       await transport.close();
     }

@@ -128,70 +128,68 @@ function clearMarker(tmpDir) {
   try { fs.unlinkSync(markerPath); } catch {}
 }
 
-// Test 11: heredoc to records/evidence with no observation → block
+// Test 11: heredoc to records/evidence → block unconditionally
 {
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-  assert(r.exitCode === 2, 'heredoc to records/evidence with no observation → exit 2');
+  assert(r.exitCode === 2, 'heredoc to records/evidence → exit 2 (unconditional block)');
   let output;
   try { output = JSON.parse(r.stdout); } catch { output = null; }
-  assert(output && output.observation_required === true, 'heredoc no obs → observation_required');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  assert(output && output.hard_block === true, 'records/evidence → hard_block');
 }
 
-// Test 12: heredoc to records/evidence with fresh observation → allow
+// Test 12: heredoc to records/evidence with observation → still block
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-  assert(r.exitCode === 0, 'heredoc to records/evidence with fresh observation → exit 0');
+  assert(r.exitCode === 2, 'heredoc to records/evidence with observation → still exit 2 (MCP only)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 13: heredoc to records/evidence with stale observation → escalate
+// Test 13: heredoc to records/evidence with stale observation → block (not escalate)
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 10 * 60 * 1000).toISOString());
   setMarker(tmpDir, new Date().toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-  assert(r.exitCode === 2, 'heredoc to records/evidence with stale observation → exit 2');
+  assert(r.exitCode === 2, 'heredoc to records/evidence stale obs → exit 2 (unconditional)');
   let output;
   try { output = JSON.parse(r.stdout); } catch { output = null; }
-  assert(output && output.decision === 'escalate', 'stale observation → escalate');
-  assert(output && output.inbound_gate === true, 'stale observation → inbound_gate: true');
+  assert(output && output.hard_block === true, 'stale obs → hard_block (not escalate)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 14: tee to records/evidence with fresh observation → allow
+// Test 14: tee to records/evidence → block unconditionally
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x | tee records/evidence/foo.md' } }, env);
-  assert(r.exitCode === 0, 'tee to records/evidence with fresh observation → exit 0');
+  assert(r.exitCode === 2, 'tee to records/evidence → exit 2 (MCP only)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 15: redirect with quotes to records/evidence with fresh observation → allow
+// Test 15: redirect with quotes to records/evidence → block unconditionally
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > "./records/evidence/foo.md"' } }, env);
-  assert(r.exitCode === 0, 'redirect with quotes to records/evidence with fresh observation → exit 0');
+  assert(r.exitCode === 2, 'redirect with quotes to records/evidence → exit 2 (MCP only)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 16: redirect to records/observations with fresh observation → block unconditionally
+// Test 16: redirect to records/observations → block unconditionally
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date().toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/observations/foo.yaml' } }, env);
-  assert(r.exitCode === 2, 'redirect to records/observations with fresh observation → exit 2 (unconditional)');
+  assert(r.exitCode === 2, 'redirect to records/observations → exit 2 (unconditional)');
   let output;
   try { output = JSON.parse(r.stdout); } catch { output = null; }
   assert(output && output.hard_block === true, 'observations → hard_block');
@@ -207,32 +205,35 @@ function clearMarker(tmpDir) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 18: heredoc to records/claims/foo.yaml → allow (other records/**)
+// Test 18: heredoc to records/claims/foo.yaml → block (ALL records/** blocked)
 {
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/claims/foo.yaml\ncontent\nEOF" } }, env);
-  assert(r.exitCode === 0, 'heredoc to records/claims/foo.yaml → exit 0');
+  assert(r.exitCode === 2, 'heredoc to records/claims/foo.yaml → exit 2 (MCP only)');
+  let output;
+  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  assert(output && output.hard_block === true, 'records/claims → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 19: tee -a to records/evidence with fresh observation → allow
+// Test 19: tee -a to records/evidence → block unconditionally
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x | tee -a records/evidence/foo.md' } }, env);
-  assert(r.exitCode === 0, 'tee -a to records/evidence with fresh observation → exit 0');
+  assert(r.exitCode === 2, 'tee -a to records/evidence → exit 2 (MCP only)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-// Test 20: path traversal to records/observations via evidence → blocked unconditionally
+// Test 20: path traversal to records/observations → block (all records/** blocked)
 {
   const tmpDir = createTempProject();
   writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date().toISOString());
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/evidence/../observations/foo.yaml' } }, env);
-  assert(r.exitCode === 2, 'path traversal to observations via evidence → exit 2');
+  assert(r.exitCode === 2, 'path traversal to records/** → exit 2');
   let output;
   try { output = JSON.parse(r.stdout); } catch { output = null; }
   assert(output && output.hard_block === true, 'traversal → hard_block');

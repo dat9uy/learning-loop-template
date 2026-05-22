@@ -71,12 +71,6 @@ function globMatch(pattern, filePath) {
 
 const MARKER_TTL_MS = 30 * 60 * 1000;
 
-const WRITE_PATH_PATTERNS = {
-  'records-evidence': ['records/evidence/**', 'records/*/evidence/**'],
-  'records-index': ['records/index/**', 'records/*/index/**'],
-  'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
-};
-
 function readLastOperatorMessage(coordDir) {
   const markerPath = process.env.GATE_MARKER_PATH || path.join(coordDir, '.last-operator-message');
   try {
@@ -117,15 +111,6 @@ function checkObservationStaleness(observations, coordDir) {
     }
   }
   return { stale: false };
-}
-
-function pathMatchesObservation(observation, filePath) {
-  if (observation.constraint_type !== 'write-path') return false;
-  if (observation.status !== 'active') return false;
-  if (globMatch('records/observations/**', filePath)) return false;
-  const patterns = WRITE_PATH_PATTERNS[observation.constraint];
-  if (!patterns) return false;
-  return patterns.some((p) => globMatch(p, filePath));
 }
 
 function extractFrontmatter(content) {
@@ -225,7 +210,6 @@ module.exports = {
   readLastOperatorMessage,
   checkObservationStaleness,
   globMatch,
-  pathMatchesObservation,
   findProjectRoot,
   extractFrontmatter,
   hasProductBuildTag,

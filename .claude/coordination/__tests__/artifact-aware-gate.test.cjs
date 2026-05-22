@@ -204,28 +204,18 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('records/vnstock/index/foo.yaml with observation + decision -> exit 0', async () => {
+  it('records/vnstock/index/foo.yaml → always block (records/** blocked)', async () => {
     await withTempProject(async (tmpDir) => {
       writeDecisionRecord(tmpDir, 'vnstock', 'decision-vnstock.yaml');
-      // Evidence/index/capabilities paths require an active observation
-      const obsDir = path.join(tmpDir, 'records', 'observations');
-      fs.mkdirSync(obsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(obsDir, 'obs-vnstock-index.yaml'),
-        [
-          'id: obs-vnstock-index',
-          'constraint_type: write-path',
-          'constraint: records-index',
-          'status: active',
-          `updated_at: "${new Date().toISOString()}"`,
-          'description: test observation',
-        ].join('\n')
-      );
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'records/vnstock/index/foo.yaml', content: 'id: test' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
+      const out = parseOutput(r.stdout) || parseOutput(r.stderr);
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
+      assert.strictEqual(out.matched_rule, 'records/**');
     });
   });
 

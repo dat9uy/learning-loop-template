@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  globMatch, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot,
+  globMatch, findProjectRoot,
   extractFrontmatter, hasProductBuildTag, extractSurfaces, checkDecisionRecords,
   inferSurface, hasDecisionRecords,
 } = require('./lib/gate-utils.cjs');
@@ -37,15 +37,14 @@ function main() {
   }
 
   const relPath = path.normalize(toRelative(filePath));
-  const coordDir = path.join(__dirname, '..');
 
-  // Unconditional block for observation files
-  if (globMatch('records/observations/**', relPath)) {
+  // All records/** writes go through MCP tools — block direct Edit/Write
+  if (globMatch('records/**', relPath)) {
     console.log(JSON.stringify({
       decision: 'block',
-      reason: 'Observation files affect gate decisions. Explicit approval required.',
+      reason: 'Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.',
       file_path: filePath,
-      matched_rule: 'records/observations/**',
+      matched_rule: 'records/**',
     }));
     process.exit(2);
   }
@@ -121,68 +120,6 @@ function main() {
 
   if (globMatch('docs/journals/**', relPath)) {
     process.exit(0);
-  }
-
-  // Evidence write-path check: active observation + staleness check
-  if (globMatch('records/evidence/**', relPath) || globMatch('records/*/evidence/**', relPath)) {
-    const root = findProjectRoot();
-    const obsDir = path.join(root, 'records', 'observations');
-    const observations = readObservations(obsDir);
-    const matchingObs = observations.find(obs => pathMatchesObservation(obs, relPath));
-
-    if (matchingObs) {
-      const staleness = checkObservationStaleness([matchingObs], coordDir);
-      if (staleness.stale) {
-        console.log(JSON.stringify({
-          decision: 'escalate',
-          reason: staleness.reason,
-          file_path: filePath,
-          observation_id: staleness.observation_id,
-          inbound_gate: true,
-        }));
-        process.exit(2);
-      }
-      process.exit(0);
-    }
-
-    console.log(JSON.stringify({
-      decision: 'block',
-      reason: 'Evidence files affect validation. Explicit approval required.',
-      file_path: filePath,
-      matched_rule: 'records/evidence/**',
-    }));
-    process.exit(2);
-  }
-
-  // Index and capabilities are agent-managed derived artifacts
-  if (globMatch('records/index/**', relPath) || globMatch('records/*/index/**', relPath) || globMatch('records/capabilities/**', relPath) || globMatch('records/*/capabilities/**', relPath)) {
-    const root = findProjectRoot();
-    const obsDir = path.join(root, 'records', 'observations');
-    const observations = readObservations(obsDir);
-    const matchingObs = observations.find(obs => pathMatchesObservation(obs, relPath));
-
-    if (matchingObs) {
-      const staleness = checkObservationStaleness([matchingObs], coordDir);
-      if (staleness.stale) {
-        console.log(JSON.stringify({
-          decision: 'escalate',
-          reason: staleness.reason,
-          file_path: filePath,
-          observation_id: staleness.observation_id,
-          inbound_gate: true,
-        }));
-        process.exit(2);
-      }
-      process.exit(0);
-    }
-
-    console.log(JSON.stringify({
-      decision: 'block',
-      reason: 'Index/capability files require observation. Explicit approval required.',
-      file_path: filePath,
-      matched_rule: 'records/{index,capabilities}/**',
-    }));
-    process.exit(2);
   }
 
   // Allowed domains

@@ -172,11 +172,11 @@ describe('write-coordination-gate minimal behavior', () => {
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON on stderr/stdout');
         assert.strictEqual(out.decision, 'block');
-        assert.strictEqual(out.matched_rule, 'records/observations/**');
+        assert.strictEqual(out.matched_rule, 'records/**');
       });
     });
 
-    it('Edit records/evidence/** with NO observation -> exit 2, matched_rule', async () => {
+    it('Edit records/evidence/** -> exit 2, matched_rule: records/**', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'records/evidence/foo.md' } },
@@ -185,7 +185,7 @@ describe('write-coordination-gate minimal behavior', () => {
         assert.strictEqual(r.exitCode, 2);
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON');
-        assert.strictEqual(out.matched_rule, 'records/evidence/**');
+        assert.strictEqual(out.matched_rule, 'records/**');
       });
     });
 
@@ -265,47 +265,7 @@ describe('write-coordination-gate minimal behavior', () => {
         assert.strictEqual(r.exitCode, 2);
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON');
-        assert.strictEqual(out.matched_rule, 'records/observations/**');
-      });
-    });
-  });
-
-  describe('observation-based paths (records/evidence)', () => {
-    it('Edit records/evidence/** with ACTIVE fresh observation -> exit 0', async () => {
-      await withTempProject(async (tmpDir) => {
-        const fresh = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', fresh);
-
-        const r = await runHook(
-          { tool_name: 'Edit', tool_input: { file_path: 'records/evidence/foo.md' } },
-          {
-            GATE_ROOT: tmpDir,
-            GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-          }
-        );
-        assert.strictEqual(r.exitCode, 0);
-      });
-    });
-
-    it('Edit records/evidence/** with STALE observation + fresh .last-operator-message marker -> exit 2, decision: escalate, inbound_gate: true', async () => {
-      await withTempProject(async (tmpDir) => {
-        const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-        writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', stale);
-        setMarker(tmpDir, new Date().toISOString());
-
-        const r = await runHook(
-          { tool_name: 'Edit', tool_input: { file_path: 'records/evidence/foo.md' } },
-          {
-            GATE_ROOT: tmpDir,
-            GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-          }
-        );
-        assert.strictEqual(r.exitCode, 2);
-        const out = parseOutput(r.stdout);
-        assert.ok(out, 'hook should emit JSON');
-        assert.strictEqual(out.decision, 'escalate');
-        assert.strictEqual(out.inbound_gate, true);
-        assert.strictEqual(out.observation_id, 'obs-evidence-001');
+        assert.strictEqual(out.matched_rule, 'records/**');
       });
     });
   });

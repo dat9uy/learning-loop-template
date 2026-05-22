@@ -4,38 +4,20 @@
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { matchConstraintPattern, readObservations, checkObservationStaleness, pathMatchesObservation, findProjectRoot } = require('./lib/gate-utils.cjs');
+const { matchConstraintPattern, readObservations, checkObservationStaleness, findProjectRoot } = require('./lib/gate-utils.cjs');
 
 const PATH_WRITE_PATTERNS = [
-  />{1,2}\s*records\/[^\s;&|]+/,
-  /<<['"]?\w+['"]?\s*>\s*records\//,
-  /\btee\b.*records\/[^\s;&|]+/,
+  />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
+  /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,
+  /\btee\b.*["']?\.?\/?records\/[^\s"';&|]+["']?/,
 ];
 
-function extractRecordsPath(command) {
-  if (!command || typeof command !== 'string') return null;
+function commandWritesToRecords(command) {
+  if (!command || typeof command !== 'string') return false;
   for (const pattern of PATH_WRITE_PATTERNS) {
-    const match = command.match(pattern);
-    if (match) {
-      let rawPath = match[0];
-      // Strip redirect operators and tee prefix
-      rawPath = rawPath.replace(/^>{1,2}\s*/, '');
-      rawPath = rawPath.replace(/^<<['"]?\w+['"]?\s*>\s*/, '');
-      rawPath = rawPath.replace(/^\btee\b\s*/, '');
-      // Strip tee flags (-a, -i, --append, etc.) and -- separator
-      const parts = rawPath.split(/\s+/);
-      let i = 0;
-      while (i < parts.length && (parts[i].startsWith('-') || parts[i] === '--')) {
-        i++;
-      }
-      rawPath = parts.slice(i).join(' ');
-      // Strip quotes and ./ prefix
-      rawPath = rawPath.replace(/^["']|["']$/g, '');
-      rawPath = rawPath.replace(/^\.\//, '');
-      return rawPath;
-    }
+    if (pattern.test(command)) return true;
   }
-  return null;
+  return false;
 }
 
 function readBudgets(observationsDir) {
@@ -147,37 +129,13 @@ function main() {
     }
   }
 
-  // --- Path-write detection check ---
-  const recordsPath = path.normalize(extractRecordsPath(command) || '');
-  if (recordsPath) {
-    if (recordsPath.startsWith('records/observations/')) {
-      pathResult = {
-        decision: 'block',
-        reason: 'records/observations/** is blocked unconditionally',
-        hard_block: true,
-      };
-    } else if (recordsPath.match(/^records\/(?:[^/]+\/)?evidence\//)) {
-      const observations = readObservations(obsDir);
-      const matchingObs = observations.find(obs => pathMatchesObservation(obs, recordsPath));
-      if (!matchingObs) {
-        pathResult = {
-          decision: 'block',
-          observation_required: true,
-          constraint_type: 'write-path',
-        };
-      } else {
-        const staleness = checkObservationStaleness([matchingObs], coordDir);
-        if (staleness.stale) {
-          pathResult = {
-            decision: 'escalate',
-            reason: staleness.reason,
-            observation_id: staleness.observation_id,
-            inbound_gate: true,
-          };
-        }
-      }
-    }
-    // Other records/** paths → allow (no pathResult)
+  // --- Path-write detection: ALL records/** blocked, use MCP tools ---
+  if (commandWritesToRecords(command)) {
+    pathResult = {
+      decision: 'block',
+      reason: 'Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.',
+      hard_block: true,
+    };
   }
 
   // --- Combine results ---
