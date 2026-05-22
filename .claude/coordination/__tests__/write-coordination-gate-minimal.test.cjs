@@ -28,6 +28,11 @@ function writeDecisionRecord(tmpDir, surface, filename) {
   );
 }
 
+function setPreflightMarker(tmpDir, surface) {
+  const markerPath = path.join(tmpDir, '.claude', 'coordination', `.loop-preflight-${surface}`);
+  fs.writeFileSync(markerPath, JSON.stringify({ surface, completed_at: new Date().toISOString() }));
+}
+
 function writeObservation(tmpDir, id, constraint, timestamp) {
   const content = [
     `id: ${id}`,
@@ -139,9 +144,9 @@ describe('write-coordination-gate minimal behavior', () => {
       });
     });
 
-    it('Edit product/** with decision record -> exit 0', async () => {
+    it('Edit product/** with preflight marker -> exit 0', async () => {
       await withTempProject(async (tmpDir) => {
-        writeDecisionRecord(tmpDir, 'product', 'decision-product.yaml');
+        setPreflightMarker(tmpDir, 'product');
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/main.py' } },
           { GATE_ROOT: tmpDir }

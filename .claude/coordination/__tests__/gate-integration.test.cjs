@@ -237,6 +237,48 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+// --- Integration: Preflight Gate ---
+{
+  console.log('\n=== Integration: Preflight Gate ===');
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+  const coordDir = path.join(tmpDir, '.claude', 'coordination');
+
+  // product/** blocked without preflight marker
+  const w1 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
+  assert(w1.exitCode === 2, 'product/** blocked without preflight marker');
+  const outW1 = parseOutbound(w1) || (() => { try { return JSON.parse(w1.stdout); } catch { return null; } })();
+  assert(outW1 && outW1.decision === 'block', 'preflight block → decision: block');
+  assert(outW1 && outW1.surface === 'product', 'preflight block → surface: product');
+  assert(outW1 && Array.isArray(outW1.preflight_checklist), 'preflight block → includes preflight_checklist');
+
+  // product/** allowed with valid preflight marker
+  fs.writeFileSync(
+    path.join(coordDir, '.loop-preflight-product'),
+    JSON.stringify({ surface: 'product', completed_at: new Date().toISOString() })
+  );
+  const w2 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
+  assert(w2.exitCode === 0, 'product/** allowed with valid preflight marker');
+
+  // product/** blocked with expired preflight marker (> 30 min)
+  fs.writeFileSync(
+    path.join(coordDir, '.loop-preflight-product'),
+    JSON.stringify({ surface: 'product', completed_at: new Date(Date.now() - 31 * 60 * 1000).toISOString() })
+  );
+  const w3 = runWriteGate(`${tmpDir}/product/web/src/app.tsx`, env);
+  assert(w3.exitCode === 2, 'product/** blocked with expired preflight marker');
+
+  // Bash gate blocks direct writes to preflight marker files
+  const b1 = runOutboundGate(`echo '{}' > .claude/coordination/.loop-preflight-product`, env);
+  assert(b1.exitCode === 2, 'bash gate blocks redirect to .loop-preflight-*');
+
+  // Write gate blocks direct writes to preflight marker files
+  const w4 = runWriteGate(`${tmpDir}/.claude/coordination/.loop-preflight-product`, env);
+  assert(w4.exitCode === 2, 'write gate blocks direct write to .loop-preflight-*');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
 // --- Integration: MCP Server with Real Budget + Observations ---
 (async () => {
   console.log('\n=== Integration: MCP Server with Real Budget + Observations ===');

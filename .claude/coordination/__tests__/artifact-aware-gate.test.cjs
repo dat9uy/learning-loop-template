@@ -29,6 +29,11 @@ function writeDecisionRecord(tmpDir, surface, filename) {
   );
 }
 
+function setPreflightMarker(tmpDir, surface) {
+  const markerPath = path.join(tmpDir, '.claude', 'coordination', `.loop-preflight-${surface}`);
+  fs.writeFileSync(markerPath, JSON.stringify({ surface, completed_at: new Date().toISOString() }));
+}
+
 function runHook(input, envOverrides = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [HOOK_PATH], {
@@ -166,9 +171,9 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
 // ─── Phase 2: Surface Inference ───
 
 describe('artifact-aware gate — surface inference (phase 2)', () => {
-  it('product/api/src/main.py with decision record -> exit 0', async () => {
+  it('product/api/src/main.py with preflight marker -> exit 0', async () => {
     await withTempProject(async (tmpDir) => {
-      writeDecisionRecord(tmpDir, 'product', 'decision-product.yaml');
+      setPreflightMarker(tmpDir, 'product');
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/src/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
@@ -177,7 +182,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('product/web/src/routes.ts without decision record -> always block (exit 2)', async () => {
+  it('product/web/src/routes.ts without preflight marker -> always block (exit 2)', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/web/src/routes.ts', content: 'const x = 1;' } },
@@ -187,11 +192,11 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
-      assert.ok(out.surface === 'product' || out.surface === 'web', 'should include surface');
+      assert.strictEqual(out.surface, 'product', 'should include surface');
     });
   });
 
-  it('product/api/... + escalate mode + no decision -> blocked (exit 2)', async () => {
+  it('product/api/... + escalate mode + no preflight marker -> blocked (exit 2)', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
@@ -229,7 +234,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('unknown product/unknown/stack.py -> always block (surface inferred from first segment)', async () => {
+  it('unknown product/unknown/stack.py -> always block (no preflight marker)', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/unknown/stack.py', content: 'print(1)' } },
@@ -242,26 +247,24 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('surface-first path records/product/decisions/*.yaml found -> product code allowed', async () => {
+  it('surface-first path records/product/decisions/*.yaml found but no preflight marker -> product code blocked', async () => {
     await withTempProject(async (tmpDir) => {
+      // Decision records exist but preflight marker is required now
       writeDecisionRecord(tmpDir, 'product', 'decision-product.yaml');
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.strictEqual(r.exitCode, 2);
+      const out = parseOutput(r.stdout) || parseOutput(r.stderr);
+      assert.ok(out, 'should emit JSON block');
+      assert.strictEqual(out.decision, 'block');
     });
   });
 
-  it('flat fallback records/decisions/*product*.yaml found -> product code allowed', async () => {
+  it('preflight marker present -> product code allowed (decision records irrelevant)', async () => {
     await withTempProject(async (tmpDir) => {
-      // Write flat fallback decision record (no surface subdirectory)
-      const flatDir = path.join(tmpDir, 'records', 'decisions');
-      fs.mkdirSync(flatDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(flatDir, 'decision-product-001.yaml'),
-        'id: decision-product-001\nstatus: active\n'
-      );
+      setPreflightMarker(tmpDir, 'product');
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
@@ -270,7 +273,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
     });
   });
 
-  it('multi-segment product path product/api/capabilities/vnstock-data/capability.py -> surface product, no decision -> block', async () => {
+  it('multi-segment product path product/api/capabilities/vnstock-data/capability.py -> surface product, no marker -> block', async () => {
     await withTempProject(async (tmpDir) => {
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'product/api/capabilities/vnstock-data/capability.py', content: 'print(1)' } },

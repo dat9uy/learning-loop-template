@@ -153,11 +153,12 @@ describe("Gate-MCP integration: records/** blocked, MCP creates records, gate al
     assert.equal(content.status, "approved");
   });
 
-  it("gate allows product/** after decision records exist", async () => {
-    // Create decision for "product" surface using writer directly (gate runs against /tmp/fake-root)
+  it("gate allows product/** after preflight marker exists", async () => {
+    // Create preflight marker for "product" surface (gate runs against /tmp/fake-root)
     const gateRoot = "/tmp/fake-root-for-gate-test";
-    mkdirSync(join(gateRoot, "records", "product", "decisions"), { recursive: true });
-    createDecision({ root: gateRoot, surface: "product", question: "Q?", decision: "Gate test decision" });
+    const coordDir = join(gateRoot, ".claude", "coordination");
+    mkdirSync(coordDir, { recursive: true });
+    writeFileSync(join(coordDir, ".loop-preflight-product"), JSON.stringify({ surface: "product", completed_at: new Date().toISOString() }));
 
     const result = await runWriteGate(`${gateRoot}/product/api/src/index.ts`);
     assert.equal(result.exitCode, 0);
@@ -180,7 +181,7 @@ describe("Gate-MCP integration: records/** blocked, MCP creates records, gate al
     assert.equal(result.decision, "block");
   });
 
-  it("server lists 31 tools including new CRUD tools", async () => {
+  it("server lists 32 tools including new CRUD tools", async () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name);
     assert.ok(names.includes("create_decision_record"), "Missing create_decision_record");
@@ -189,6 +190,7 @@ describe("Gate-MCP integration: records/** blocked, MCP creates records, gate al
     assert.ok(names.includes("update_experiment_record"), "Missing update_experiment_record");
     assert.ok(names.includes("create_risk_record"), "Missing create_risk_record");
     assert.ok(names.includes("update_risk_record"), "Missing update_risk_record");
-    assert.equal(names.length, 31, `Expected 31 tools, got ${names.length}`);
+    assert.ok(names.includes("mark_preflight_complete"), "Missing mark_preflight_complete");
+    assert.equal(names.length, 32, `Expected 32 tools, got ${names.length}`);
   });
 });
