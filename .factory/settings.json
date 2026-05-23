@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/inbound-state-gate.cjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Create|ApplyPatch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/write-coordination-gate.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Execute",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/bash-coordination-gate.cjs"
+          }
+        ]
+      }
+    ]
+  }
+}

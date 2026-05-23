@@ -2,20 +2,39 @@
 
 ## Coordination System
 
-Three PreToolUse hooks and one MCP server enforce mechanical safety:
+Three PreToolUse hooks and one MCP server enforce mechanical safety.
+All gate logic lives in `tools/coordination-gate/core/` (single source of truth).
+Both Claude Code and Droid CLI use the same universal hooks via thin wrappers:
 
-- **Bash gate** (`.claude/coordination/hooks/bash-coordination-gate.cjs`) —
-  blocks Bash commands matching constraint patterns (docker, sudo, package-manager,
-  vendor-api, side-effect-import) without active observations, and blocks all
-  direct writes to `records/**` via redirects/heredocs/tee.
-- **Write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) —
-  blocks Edit/Write to `records/**`, `schemas/**`, `node_modules/**`,
-  `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`,
-  `plans/**`, `product/**`, `tools/**`, `.claude/**`, single-segment files.
-- **Inbound gate** (`.claude/coordination/hooks/inbound-state-gate.cjs`) —
-  warns when operator state-change messages may have stale observations.
-- **MCP server** (`tools/constraint-gate/server.js`) — 32 tools for
+| Surface | Hook | Wrapper | Universal Script |
+|---------|------|---------|------------------|
+| Claude Code | Bash gate | `.claude/coordination/hooks/bash-coordination-gate.cjs` | `tools/coordination-gate/hooks/bash-gate.js` |
+| Claude Code | Write gate | `.claude/coordination/hooks/write-coordination-gate.cjs` | `tools/coordination-gate/hooks/write-gate.js` |
+| Claude Code | Inbound gate | `.claude/coordination/hooks/inbound-state-gate.cjs` | `tools/coordination-gate/hooks/inbound-gate.js` |
+| Droid CLI | Execute gate | `.factory/coordination/hooks/bash-coordination-gate.cjs` | `tools/coordination-gate/hooks/bash-gate.js` |
+| Droid CLI | Write gate | `.factory/coordination/hooks/write-coordination-gate.cjs` | `tools/coordination-gate/hooks/write-gate.js` |
+| Droid CLI | Inbound gate | `.factory/coordination/hooks/inbound-state-gate.cjs` | `tools/coordination-gate/hooks/inbound-gate.js` |
+
+- **Bash/Execute gate** — blocks commands matching constraint patterns (docker,
+  sudo, package-manager, vendor-api, side-effect-import) without active
+  observations, and blocks all direct writes to `records/**` via
+  redirects/heredocs/tee.
+- **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`,
+  `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, and unknown
+  multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`,
+  `tools/**`, `.claude/**`, `.factory/**`, single-segment files.
+- **Inbound gate** — warns when operator state-change messages may have stale
+  observations.
+- **MCP server** (`tools/coordination-gate/mcp/server.js`) — 32 tools for
   constraint checks, record CRUD, preflight gating, and workflow orchestration.
+
+### Droid CLI Configuration
+
+Droid CLI uses `.factory/settings.json` with the same hook JSON structure as
+Claude Code. Tool name differences are handled by the universal protocol adapter:
+- `Bash` (Claude) ↔ `Execute` (Droid)
+- `Write` (Claude) ↔ `Create` (Droid)
+- `Edit`, `ApplyPatch` — same in both
 
 ## MCP-First Record Access
 

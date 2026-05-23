@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 /**
- * Thin wrapper — delegates to universal bash-gate.js
- * Kept for backward compatibility with existing .claude/settings.json
+ * Droid CLI Write Gate — PreToolUse hook for Edit/Create/ApplyPatch.
+ * Delegates to universal write-gate.js (single source of truth).
  */
 'use strict';
 
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const universalHook = path.join(__dirname, '../../../tools/coordination-gate/hooks/bash-gate.js');
+const universalHook = path.join(__dirname, '../../../../tools/coordination-gate/hooks/write-gate.js');
 
-// Read stdin and pass it to the universal hook
 const stdin = require('fs').readFileSync(0, 'utf8');
 try {
   execFileSync('node', [universalHook], {
