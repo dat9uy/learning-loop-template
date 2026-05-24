@@ -88,7 +88,7 @@ describe("mark_preflight_complete MCP tool", () => {
     assert.ok(secondTime >= firstTime, "refreshed marker should have same or newer timestamp");
   });
 
-  it("server lists 32 tools including mark_preflight_complete", async () => {
+  it("server lists 33 tools including mark_preflight_complete", async () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name);
     assert.ok(names.includes("mark_preflight_complete"), "Missing mark_preflight_complete");

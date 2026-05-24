@@ -181,7 +181,7 @@ describe("Gate-MCP integration: records/** blocked, MCP creates records, gate al
     assert.equal(result.decision, "block");
   });
 
-  it("server lists 32 tools including new CRUD tools", async () => {
+  it("server lists 33 tools including new CRUD tools", async () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name);
     assert.ok(names.includes("create_decision_record"), "Missing create_decision_record");

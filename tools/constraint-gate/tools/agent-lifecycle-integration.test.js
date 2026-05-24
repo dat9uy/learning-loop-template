@@ -125,7 +125,7 @@ describe("agent lifecycle integration", () => {
     // Additional assertion: 25 tools registered in manifest
     const manifestText = await readFile(resolve(ROOT, "tools/constraint-gate/tools/manifest.json"), "utf-8");
     const manifest = JSON.parse(manifestText);
-    assert.equal(manifest.length, 33, `expected 32 tools in manifest, found ${manifest.length}`);
+    assert.equal(manifest.length, 33, `expected 33 tools in manifest, found ${manifest.length}`);
   });
 
   it("exercises additional workflow tools in isolation", async () => {
