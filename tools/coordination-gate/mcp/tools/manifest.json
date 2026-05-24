@@ -30,5 +30,6 @@
   { "file": "./tools/update-experiment-record-tool.js", "export": "updateExperimentRecordTool" },
   { "file": "./tools/create-risk-record-tool.js", "export": "createRiskRecordTool" },
   { "file": "./tools/update-risk-record-tool.js", "export": "updateRiskRecordTool" },
-  { "file": "./tools/mark-preflight-complete-tool.js", "export": "markPreflightCompleteTool" }
+  { "file": "./tools/mark-preflight-complete-tool.js", "export": "markPreflightCompleteTool" },
+  { "file": "./tools/delete-record-tool.js", "export": "deleteRecordTool" }
 ]

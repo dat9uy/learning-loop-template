@@ -191,6 +191,6 @@ describe("Gate-MCP integration: records/** blocked, MCP creates records, gate al
     assert.ok(names.includes("create_risk_record"), "Missing create_risk_record");
     assert.ok(names.includes("update_risk_record"), "Missing update_risk_record");
     assert.ok(names.includes("mark_preflight_complete"), "Missing mark_preflight_complete");
-    assert.equal(names.length, 32, `Expected 32 tools, got ${names.length}`);
+    assert.equal(names.length, 33, `Expected 33 tools, got ${names.length}`);
   });
 });

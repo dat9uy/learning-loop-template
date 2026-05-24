@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createExperiment } from "../../core/experiment-writer.js";
 import { appendGateLog } from "../../core/gate-logging.js";
 import { resolveRoot } from "../../core/resolve-root.js";
+import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
 export const createExperimentRecordTool = {
   name: "create_experiment_record",
@@ -20,6 +21,18 @@ export const createExperimentRecordTool = {
   },
   handler: async ({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs }) => {
     const root = resolveRoot();
+
+    // Validate source_refs if provided
+    if (source_refs) {
+      const validation = validateSourceRefs(source_refs, "experiment", root);
+      if (!validation.valid) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ created: false, reason: "invalid_source_refs", errors: validation.errors }) }],
+          isError: true,
+        };
+      }
+    }
+
     const result = createExperiment({
       root,
       surface,

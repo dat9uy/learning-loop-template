@@ -1,0 +1,38 @@
+id: decision-meta-260524T1326Z-yes-the-observation-state-check-rule-is-canonized-as-mandatory-agent-behavior
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: 2026-05-24T06:26:23Z
+updated_at: 2026-05-24T06:26:23Z
+source_refs:
+  - local:records/meta/evidence/observation-record-discovery-gap.md
+  - record:decision-20260517T1200Z-observation-state-check-rule
+question: Should agents check records/observations/ before asking the user about
+  external system state?
+decision: Yes. The observation-state-check rule is canonized as mandatory agent behavior.
+rationale: Observations are operator-managed and more reliable than agent memory
+  or user recall. Agents skipping this layer causes redundant questions and
+  potential state confusion.
+alternatives:
+  - Leave as best-practice suggestion
+  - Rely on operator-guide alone without skill reference enforcement
+tradeoffs:
+  - Agent friction (one more check) vs accuracy
+  - Cannot mechanically enforce agent behavior, only guide it
+supersedes: []
+decision_effect:
+  action: approve
+  scope: planning
+  affected_refs:
+    - docs/operator-guide.md
+    - .claude/skills/learning-loop/references/learning-loop-rules.md
+  boundaries:
+    allowed_actions:
+      - Update operator-guide Agent Intake Flow
+      - Update Agent Anti-Confusion Checklist
+      - Update learning-loop-rules.md
+    blocked_actions:
+      - Cannot mechanically force agent compliance
+      - No gate-level enforcement for observation checks
+    required_gates:
+      - skill reference review

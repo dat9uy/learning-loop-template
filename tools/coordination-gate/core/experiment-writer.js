@@ -62,13 +62,31 @@ export function createExperiment({ root, surface, goal, hypothesis, method, succ
   return { created: false, reason: result.reason, ...(result.existing_id ? { existing_id: result.existing_id } : {}) };
 }
 
-const EXPERIMENT_IMMUTABLE = ["id", "schema_version", "type", "created_at", "source_refs"];
+const EXPERIMENT_IMMUTABLE = ["id", "schema_version", "type", "created_at"];
 
 /**
  * Update an experiment record by ID.
+ * source_refs is append-only.
+ * verification block can be fully updated.
  */
 export function updateExperiment({ root, surface, experiment_id, updates }) {
   const dirPath = resolveRecordDir(root, { type: "experiment", surface });
+
+  // Handle append-only source_refs
+  if (updates.source_refs && Array.isArray(updates.source_refs)) {
+    const found = findRecordById(dirPath, experiment_id);
+    if (found) {
+      const existing = found.data.source_refs || [];
+      const merged = [...existing];
+      for (const ref of updates.source_refs) {
+        if (!merged.includes(ref)) {
+          merged.push(ref);
+        }
+      }
+      updates.source_refs = merged;
+    }
+  }
+
   return updateRecordFile(dirPath, experiment_id, updates, EXPERIMENT_IMMUTABLE);
 }
 

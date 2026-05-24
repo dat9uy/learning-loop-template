@@ -123,6 +123,15 @@ Meta-evidence gaps split into two classes based on what the gap requires to clos
 
 When opening or reviewing a meta-evidence file, classify it. Apply this informally first; promote the classification rule to a meta-claim only after a second loop iteration validates it.
 
+### Enforcement
+
+New meta-evidence MUST classify itself in its `## Trigger` section. Evidence without classification is a gap. When reviewing meta-evidence, check:
+- Does the `## Trigger` section specify `threshold: N=1` or `threshold: N>=2`?
+- Does the evidence body explain why that threshold applies?
+- Is the classification consistent with the gap type (principle vs schema/template)?
+
+Plan-level decisions not encoded as `records/<surface>/decisions/` artifacts are also a gap class. Before closing a meta-evidence file, verify all Key Decisions have corresponding decision records.
+
 ## Worked Example
 
 For a complete example of meta-process improvement debate captured as a brainstorm report - Q1-Q5 cascade, deferred-meta-evidence pattern with `## Trigger` recall mechanism, structural prevention via doc rules - see:

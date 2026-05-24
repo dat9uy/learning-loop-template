@@ -49,8 +49,9 @@ export const workflowVerifyEvidenceTool = {
     "Reads an evidence MD file, extracts code snippets and assertions, and classifies each assertion by execution class. " +
     "Use BEFORE deciding which runtime checks are needed. " +
     "Execution classes: symbol-exists, import-succeeds, method-callable, sample-output, full-runtime. " +
-    "Returns assertion_matrix, counts, skipped_snippets, and required_approvals. " +
-    "Failure mode: missing file returns error.",
+    "Returns assertion_matrix, counts, skipped_snippets, required_approvals, and operator_confirmation_required. " +
+    "Failure mode: missing file returns error. " +
+    "IMPORTANT: Agent must NOT update validation_status to passed without explicit operator confirmation.",
   schema: {
     evidence_path: z.string().describe("Repo-relative path to the evidence MD file"),
     verification_depth: z.enum(["shallow", "medium", "deep"]).optional().default("shallow").describe("How deep to verify"),
@@ -91,6 +92,8 @@ export const workflowVerifyEvidenceTool = {
           counts,
           skipped_snippets: skipped.map((s) => s.language),
           required_approvals: approvals,
+          operator_confirmation_required: true,
+          agent_may_not_pass_validation: "Agent must NOT update validation_status to passed without explicit operator confirmation",
         }),
       }],
     };

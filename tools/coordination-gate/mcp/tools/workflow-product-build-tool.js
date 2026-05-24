@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { resolveRoot } from "../../core/resolve-root.js";
 
 function expand(request, scope, constraints) {
   const assertions = [`${scope}-scoped implementation satisfies: ${request}`];
@@ -23,13 +26,22 @@ function expand(request, scope, constraints) {
   return { assertions, risks, experiments, decisions, required_records: requiredRecords };
 }
 
+function checkDecisionRecords(root, surface) {
+  const decisionsDir = join(root, "records", surface, "decisions");
+  if (!existsSync(decisionsDir)) {
+    return { has_decisions: false, count: 0, files: [] };
+  }
+  const files = readdirSync(decisionsDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+  return { has_decisions: files.length > 0, count: files.length, files };
+}
+
 export const workflowProductBuildTool = {
   name: "workflow_product_build",
   description:
     "Expands a user product request into structured assertions, risks, experiments, decisions, and required records. " +
     "Use WHEN a product request arrives to decompose it into verifiable artifacts. " +
     "References capability generation extension rules and meta-evidence self-improvement patterns. " +
-    "Returns assertions[], risks[], experiments[], decisions[], and required_records[]. " +
+    "Returns assertions[], risks[], experiments[], decisions[], required_records[], and decision_coverage. " +
     "Failure mode: empty request returns error.",
   schema: {
     request_description: z.string().describe("Human-readable product request description"),
@@ -44,7 +56,19 @@ export const workflowProductBuildTool = {
         isError: true,
       };
     }
+    const root = resolveRoot();
     const out = expand(request, args.scope, args.known_constraints || []);
-    return { content: [{ type: "text", text: JSON.stringify(out) }] };
+    const decisionCoverage = checkDecisionRecords(root, args.scope);
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          ...out,
+          decision_coverage: decisionCoverage,
+          decision_coverage_required: true,
+          can_proceed: decisionCoverage.has_decisions,
+        }),
+      }],
+    };
   },
 };

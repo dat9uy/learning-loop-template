@@ -52,14 +52,31 @@ export function createDecision({ root, surface, question, decision, rationale, a
   return { created: false, reason: result.reason, ...(result.existing_id ? { existing_id: result.existing_id } : {}) };
 }
 
-const DECISION_IMMUTABLE = ["id", "schema_version", "type", "created_at", "source_refs"];
+const DECISION_IMMUTABLE = ["id", "schema_version", "type", "created_at"];
 
 /**
  * Update a decision record by ID.
  * Only mutable fields are changed; immutable fields preserved.
+ * source_refs is append-only: new refs are merged with existing, duplicates removed.
  */
 export function updateDecision({ root, surface, decision_id, updates }) {
   const dirPath = resolveRecordDir(root, { type: "decision", surface });
+
+  // Handle append-only source_refs
+  if (updates.source_refs && Array.isArray(updates.source_refs)) {
+    const found = findRecordById(dirPath, decision_id);
+    if (found) {
+      const existing = found.data.source_refs || [];
+      const merged = [...existing];
+      for (const ref of updates.source_refs) {
+        if (!merged.includes(ref)) {
+          merged.push(ref);
+        }
+      }
+      updates.source_refs = merged;
+    }
+  }
+
   return updateRecordFile(dirPath, decision_id, updates, DECISION_IMMUTABLE);
 }
 

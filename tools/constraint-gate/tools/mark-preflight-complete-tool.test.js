@@ -92,7 +92,7 @@ describe("mark_preflight_complete MCP tool", () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name);
     assert.ok(names.includes("mark_preflight_complete"), "Missing mark_preflight_complete");
-    assert.equal(names.length, 32, `Expected 32 tools, got ${names.length}`);
+    assert.equal(names.length, 33, `Expected 33 tools, got ${names.length}`);
   });
 
   it("supports different surfaces independently", async () => {
