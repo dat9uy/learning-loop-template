@@ -45,11 +45,12 @@ Test Suite
 
 ## Related Code Files
 
-- Create: `tools/constraint-gate/__tests__/mcp-lifecycle-integration.test.js`
-- Create: `tools/constraint-gate/__tests__/gate-enforcement-integration.test.js`
-- Create: `tools/constraint-gate/__tests__/index-extraction-integration.test.js`
-- Create: `tools/constraint-gate/__tests__/cross-tool-integration.test.js`
+- Create: `tools/coordination-gate/__tests__/mcp-lifecycle-integration.test.js`
+- Create: `tools/coordination-gate/__tests__/gate-enforcement-integration.test.js`
+- Create: `tools/coordination-gate/__tests__/index-extraction-integration.test.js`
+- Create: `tools/coordination-gate/__tests__/cross-tool-integration.test.js`
 - Modify: `.claude/coordination/__tests__/gate-integration.test.cjs`
+- Note: All MCP tools and core modules now live in `tools/coordination-gate/` (mcp/ for tools, core/ for writers)
 
 ## Implementation Steps
 
@@ -83,6 +84,7 @@ Test Suite
    - Test: `mark_preflight_complete` → creates marker → product writes allowed
    - **Test isolation**: Copy `schemas/*.schema.json` into temp dir before running `validateRecords`
    - **Alternative**: Mock `loadSchemas` to use actual project schemas without temp dir copy
+   - Note: All workflow tools live in `tools/coordination-gate/mcp/tools/`
 
 ## TDD Structure
 

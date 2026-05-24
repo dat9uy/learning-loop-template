@@ -30,7 +30,7 @@ Research follows the evidence-first chain: meta assertions â†’ source evidence â
 - Read: `records/meta/index/*.yaml` (all meta assertions)
 - Read: `records/meta/evidence/*.md` (all meta evidence)
 - Read: `records/meta/decisions/*.yaml` (meta decisions)
-- Read: `tools/constraint-gate/tools/*.js` (MCP tools)
+- Read: `tools/coordination-gate/mcp/tools/*.js` (MCP tools)
 - Read: `schemas/*.schema.json` (all schemas)
 - Read: `.claude/skills/learning-loop/references/*.md` (skill references)
 

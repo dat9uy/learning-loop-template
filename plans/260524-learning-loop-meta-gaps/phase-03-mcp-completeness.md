@@ -36,24 +36,24 @@ The validation layer is shared across create and update tools to ensure consiste
 
 ## Related Code Files
 
-- Modify: `tools/constraint-gate/tools/update-decision-record-tool.js`
-- Modify: `tools/constraint-gate/tools/update-experiment-record-tool.js`
-- Modify: `tools/constraint-gate/tools/create-decision-record-tool.js`
-- Modify: `tools/constraint-gate/tools/create-experiment-record-tool.js`
-- Modify: `tools/constraint-gate/tools/create-risk-record-tool.js`
-- Create: `tools/constraint-gate/tools/delete-record-tool.js`
-- Create: `tools/constraint-gate/lib/source-ref-validator.js`
-- Modify: `tools/constraint-gate/decision-writer.js`
-- Modify: `tools/constraint-gate/experiment-writer.js`
-- Modify: `tools/constraint-gate/risk-writer.js`
-- Create: `tools/constraint-gate/tools/delete-record-tool.test.js`
-- Create: `tools/constraint-gate/lib/source-ref-validator.test.js`
+- Modify: `tools/coordination-gate/mcp/tools/update-decision-record-tool.js`
+- Modify: `tools/coordination-gate/mcp/tools/update-experiment-record-tool.js`
+- Modify: `tools/coordination-gate/mcp/tools/create-decision-record-tool.js`
+- Modify: `tools/coordination-gate/mcp/tools/create-experiment-record-tool.js`
+- Modify: `tools/coordination-gate/mcp/tools/create-risk-record-tool.js`
+- Create: `tools/coordination-gate/mcp/tools/delete-record-tool.js`
+- Create: `tools/coordination-gate/mcp/lib/source-ref-validator.js`
+- Modify: `tools/coordination-gate/core/decision-writer.js`
+- Modify: `tools/coordination-gate/core/experiment-writer.js`
+- Modify: `tools/coordination-gate/core/risk-writer.js`
+- Create: `tools/coordination-gate/mcp/tools/delete-record-tool.test.js`
+- Create: `tools/coordination-gate/mcp/lib/source-ref-validator.test.js`
 
 ## Implementation Steps
 
 1. **Source ref validator module** (1.5h)
    - Reuse existing validation functions from `validate-records/record-validation-rules.js`
-   - Create `lib/source-ref-validator.js` that imports and re-exports:
+   - Create `mcp/lib/source-ref-validator.js` that imports and re-exports:
      - `validateLocalRef` from `../../validate-records/record-validation-rules.js`
      - `validateAllowedLocalPath` from `../../validate-records/record-validation-rules.js`
    - Add MCP-specific wrapper:
@@ -64,12 +64,12 @@ The validation layer is shared across create and update tools to ensure consiste
      - `record:` refs must match exact full record ID (check against filesystem)
      - `legacy:` refs allowed but logged as deprecated
    - Tests first: `source-ref-validator.test.js`
-   - **Import path note**: Use `../../validate-records/record-validation-rules.js` from `tools/constraint-gate/lib/`
+   - **Import path note**: Use `../../validate-records/record-validation-rules.js` from `tools/coordination-gate/mcp/lib/`
 
 2. **Update decision record — add source_refs (append-only)** (1h)
    - Add `source_refs` to update schema (optional, array of strings to append)
    - Pass source_refs through to `updateDecision` writer
-   - **Important**: `source_refs` is in `COMMON_IMMUTABLE` list in `record-writer.js`
+   - **Important**: `source_refs` is in `COMMON_IMMUTABLE` list in `core/record-writer.js`
    - Implement append-only behavior: new refs are merged with existing, duplicates removed
    - Validate new source_refs via shared validator before appending
    - Update `update-decision-record-tool.test.js`
@@ -107,7 +107,7 @@ The validation layer is shared across create and update tools to ensure consiste
    - Soft delete: move record to `.deleted/` audit subdirectory under same surface/type path
    - Log deletion to gate log with full record content snapshot
    - Update manifest.json (tool count becomes 33)
-   - Update `agent-lifecycle-integration.test.js` tool count assertion to 33
+   - Update `mcp/tools/agent-lifecycle-integration.test.js` tool count assertion to 33
    - Tests: `delete-record-tool.test.js`
    - Test: deletes draft record successfully
    - Test: blocks deletion of approved records

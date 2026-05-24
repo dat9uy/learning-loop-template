@@ -28,7 +28,7 @@ Close the 4 skill template gaps identified in `records/meta/evidence/skill-templ
 Agent behavior is governed by three layers:
 1. **Skill references** (`.claude/skills/learning-loop/references/`) — authoritative rules
 2. **Operator guide** (`docs/operator-guide.md`) — human-readable procedures
-3. **MCP workflow tools** (`tools/constraint-gate/tools/workflow-*.js`) — mechanical enforcement
+3. **MCP workflow tools** (`tools/coordination-gate/mcp/tools/workflow-*.js`) — mechanical enforcement
 
 Changes flow: skill reference update → operator guide sync → workflow tool enforcement.
 

@@ -46,6 +46,7 @@ AJV handles JSON Schema 2020-12 features (`$ref`, `items.required`, `pattern`) w
 - Modify: `records/vnstock/experiments/experiment-vnstock-install-20260509T071900Z-sandbox-2.yaml`
 - Create: `tools/validate-records/ajv-validator.js`
 - Create: `tools/validate-records/ajv-validator.test.js`
+- Note: MCP server and core writers now live in `tools/coordination-gate/` (completed by plan `260524-unified-coordination-gate`)
 
 ## Implementation Steps
 

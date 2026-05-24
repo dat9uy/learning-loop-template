@@ -5,7 +5,7 @@ status: pending
 priority: P1
 branch: "main"
 tags: [product-build, meta, governance, tooling]
-blockedBy: []
+blockedBy: [260524-unified-coordination-gate]
 blocks: []
 created: "2026-05-23T18:00:49.819Z"
 createdBy: "ck:plan"
@@ -50,6 +50,7 @@ This plan addresses systematic gaps in the learning loop template identified thr
 
 ## Cross-Plan Relationships
 
+- **Depends on**: `260524-unified-coordination-gate` (file paths changed: `tools/constraint-gate/` → `tools/coordination-gate/mcp/` and `tools/coordination-gate/core/`)
 - Complements: `260522-2008-macro-layer-implementation` (MCP gaps discovered during macro session)
 - Supersedes aspects of: `260520-2133-meta-process-skill-template-fix` (skill template gaps)
 - Informed by: `260512-0046-meta-evidence-gap-revisit` (N=1 vs N>=2 classification)
