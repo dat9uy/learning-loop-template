@@ -8,7 +8,8 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const universalHook = path.join(__dirname, '../../../../tools/coordination-gate/hooks/bash-gate.js');
+const projectRoot = path.resolve(__dirname, '../../..');
+const universalHook = path.join(projectRoot, 'tools/coordination-gate/hooks/bash-gate.js');
 
 const stdin = require('fs').readFileSync(0, 'utf8');
 try {
