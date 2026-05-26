@@ -11,11 +11,18 @@ export const markPreflightCompleteTool = {
   },
   handler: async ({ surface }) => {
     const root = resolveRoot();
-    const coordDir = process.env.GATE_COORD_DIR || `${root}/.claude/coordination`;
 
-    writePreflightMarker(surface, coordDir);
+    // Write to both .claude and .factory for cross-surface compatibility
+    // If GATE_COORD_DIR is set (test override), use only that directory
+    const coordDirs = process.env.GATE_COORD_DIR
+      ? [process.env.GATE_COORD_DIR]
+      : [`${root}/.claude/coordination`, `${root}/.factory/coordination`];
 
-    const marker = readPreflightMarker(surface, coordDir);
+    let marker = null;
+    for (const coordDir of coordDirs) {
+      writePreflightMarker(surface, coordDir);
+      marker = readPreflightMarker(surface, coordDir);
+    }
 
     console.error(`gate: mark_preflight_complete ${surface} → marker created at ${marker.completed_at}`);
 

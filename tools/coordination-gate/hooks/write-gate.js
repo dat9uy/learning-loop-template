@@ -132,8 +132,13 @@ function main() {
   if (globMatch("product/**", relPath)) {
     const surface = inferSurface(relPath);
     if (surface) {
-      const coordDir = join(root, ".claude", "coordination");
-      const marker = readPreflightMarker(surface, coordDir);
+      // Check both .claude and .factory coordination dirs for cross-surface compatibility
+      let marker = null;
+      for (const dir of [".claude", ".factory"]) {
+        const coordDir = join(root, dir, "coordination");
+        marker = readPreflightMarker(surface, coordDir);
+        if (marker) break;
+      }
       if (!marker) {
         console.log(formatOutput({
           decision: "block",
