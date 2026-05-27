@@ -162,7 +162,7 @@ All artifact schemas live in `schemas/*.schema.json` and are enforced by AJV. Al
 - **Layer 3:** Cross-record relationship validation (claim↔experiment↔decision ledger)
 - **Layer 4:** Derived assurance validation (frozen-legacy claims only)
 
-For full validation details, see `tools/validate-records/` source or run `validate_records` via MCP.
+For full validation details, see `tools/learning-loop-mcp/core/` source or run `index_validate` via MCP.
 
 ## Unschematized Record Types
 

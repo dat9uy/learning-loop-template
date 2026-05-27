@@ -16,13 +16,14 @@ Operator Message          Agent Action (Bash/Edit/Write)
        |                    bash-coordination-gate
        |                           |
        v                           v
-.last-operator-message     constraint-gate MCP server
+.last-operator-message     learning-loop-mcp MCP server
        |                    (check_gate, record_observation,
        |                     update_observation, notify_artifact_change,
        |                     trigger_workflow, validate_records,
        |                     update_claim_verification, extract_index_entries,
        |                     search_index_entries, generate_capability_records,
-       |                     list_runtime_probes, list_verified_claims)
+       |                     list_runtime_probes, list_verified_claims,
+       |                     gate_mark_preflight, workflow_*)
        |                           |
        +-----------+---------------+
                    |
@@ -90,12 +91,14 @@ Always exits with code 0 (soft gate).
 ### Outbound Gates
 
 **Files:**
-- `.claude/coordination/hooks/bash-coordination-gate.cjs`
-- `.claude/coordination/hooks/write-coordination-gate.cjs`
+- `.claude/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mcp/hooks/bash-gate.js`)
+- `.claude/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mcp/hooks/write-gate.js`)
+- `.factory/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mcp/hooks/bash-gate.js`)
+- `.factory/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mcp/hooks/write-gate.js`)
 **Hook Type:** `PreToolUse`
 **Behavior:** Hard-blocking (exits 2 on escalation/block)
 
-Outbound gates intercept agent tool usage before execution. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks and embeds artifact-aware policy logic directly for product-build plans and product code writes.
+Outbound gates intercept agent tool usage before execution. Both Claude Code and Droid CLI use the same universal hook scripts in `tools/learning-loop-mcp/hooks/`. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks and embeds artifact-aware policy logic directly for product-build plans and product code writes.
 
 #### Bash Coordination Gate Flow
 
@@ -156,11 +159,11 @@ This algorithm differs from the inbound gate's 30-minute threshold. See Known Is
 
 ### Constraint Gate MCP Server
 
-**File:** `tools/constraint-gate/server.js`
+**File:** `tools/learning-loop-mcp/server.js`
 **Transport:** stdio (MCP protocol)
-**Tools:** `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `list_runtime_probes`, `list_verified_claims`
+**Tools:** 35 tools total — `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `list_runtime_probes`, `list_verified_claims`, `gate_mark_preflight`, plus 13 workflow tools (`workflow_*`).
 
-The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol, enabling integration with agent tool systems. Policy decisions that were previously embedded in the write gate now live here.
+The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol. All policy logic lives in `tools/learning-loop-mcp/core/` — single source of truth for both Claude Code and Droid CLI.
 
 #### check_gate
 
@@ -234,17 +237,18 @@ When an agent writes an evidence file, it calls `notify_artifact_change` via MCP
       "triggers": ["records/*/evidence/**"],
       "change_types": ["created", "updated"],
       "commands": [
-        ["node", "tools/extract-index/extract-index.js"],
-        ["node", "tools/validate-records/validate-records.js"]
+        ["node", "tools/extract-index-cli.js"],
+        ["node", "tools/validate-records-cli.js"]
       ]
     }
   }
 }
 ```
 
-- Commands are arrays (e.g., `["node", "tools/extract-index/extract-index.js"]`)
+- Commands are arrays (e.g., `["node", "tools/extract-index-cli.js"]`)
 - Allowlist: only `node` with script path under `tools/` is permitted
 - Spawn isolation: `{ stdio: "pipe", detached: true }` — no inherited stdout
+- All CLI scripts are thin MCP stdio shims that delegate to the MCP server
 
 #### Workflow Logs
 

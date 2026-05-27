@@ -4,7 +4,7 @@ This guide covers mechanics. For reasoning — why the loop exists, verification
 
 ## Procedural knowledge encoded in MCP workflow tools
 
-All procedural prompts, runtime validation protocols, experiment conventions, and operator checklists are now generated via workflow tools. See `workflow_generate_prompt`, `workflow_prepare_runtime_request`, `workflow_product_build`, and the constraint-gate MCP server.
+All procedural prompts, runtime validation protocols, experiment conventions, and operator checklists are now generated via MCP workflow tools. See `workflow_generate_prompt`, `workflow_prepare_runtime_request`, `workflow_product_build`, and the `tools/learning-loop-mcp/` MCP server.
 
 ## Start Here
 
@@ -94,13 +94,13 @@ Workflows are defined in `.claude/coordination/workflows.json`. Log at `.claude/
 
 ## MCP Tools
 
-The constraint-gate MCP server (`tools/constraint-gate/server.js`) exposes 25 tools: 12 enforcement tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
+The `tools/learning-loop-mcp/` MCP server exposes 35 tools: 22 enforcement/CRUD tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
 
-Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`.
+Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `gate_mark_preflight`.
 
 Key workflow tools: `workflow_classify_prompt`, `workflow_intake_orient`, `workflow_intake_plan`, `workflow_prepare_runtime_request`, `workflow_generate_prompt`, `workflow_product_build`, `workflow_convert_evidence`, `workflow_verify_evidence`, `workflow_intentional_skip`, `workflow_external_decision`, `workflow_self_improvement`, `workflow_report_phase_status`, `workflow_runtime_probe`.
 
-See the constraint-gate server for the full tool list and schema.
+See `tools/learning-loop-mcp/agent-manifest.json` for the full tool list, schemas, and quickstart recipes.
 
 ## Runtime Validation
 

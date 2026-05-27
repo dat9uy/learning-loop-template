@@ -15,8 +15,8 @@ records ledger            -> risks + experiments + decisions + capability record
 records/<surface>/claims/ -> frozen-legacy (read-only audit trail, no new entries)
 records/observations/  -> mutable external state (device slots, budgets, constraints)
 runtime probes         -> product/<stack>/capabilities/ (runtime-verification substrate)
-constraint gate        -> tools/constraint-gate/ + .claude/coordination/hooks/
-index extractor        -> tools/extract-index/ (CLI: pnpm extract:index)
+constraint gate        -> tools/learning-loop-mcp/ + .claude/coordination/hooks/ + .factory/coordination/hooks/
+index extractor        -> tools/learning-loop-mcp/core/extract-index/ (CLI: pnpm extract:index)
 derived claim assurance -> effective assurance from verification dimensions and decisions
 generated views        -> disabled until model settles
 ```
@@ -42,7 +42,7 @@ The record system has three territories:
 
 Claims are frozen-legacy (read-only audit trail, no new entries). State queries route to `records/<surface>/index/` first; frozen claims serve historical audit only.
 
-The extraction is performed by `tools/extract-index/extract-index.js` (invoked via `pnpm extract:index`). Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` (passed/pending/failed); files missing these fields are skipped.
+The extraction is performed by `tools/learning-loop-mcp/core/extract-index/extract-index.js` (invoked via `pnpm extract:index`). Evidence files must include frontmatter with `capability`, `dimension`, `scope`, and `validation_status` (passed/pending/failed); files missing these fields are skipped.
 
 ### Provenance Chain
 

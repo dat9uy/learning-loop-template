@@ -10,7 +10,7 @@ For the system's intended long-term direction (incremental autonomy on the verif
 
 The template contains:
 
-- a small typed record ledger (frozen-legacy claims, index entries, risks, experiments, decisions, capability records, observations);
+- a small typed record ledger (index entries, risks, experiments, decisions, capability records, observations);
 - dedicated evidence files under `records/<surface>/evidence/`;
 - per-stack scaffolding under `product/<stack>/` (stack manifest + runtime probes + bootstrap helpers) for runtime-verification work;
 - proposal-only experiments;
@@ -22,7 +22,7 @@ The template also contains a stateful enforcement layer for irreversible operati
 
 - **Observation records** (`records/observations/`) — mutable state captures for external system constraints (device slots, resource budgets, behavioral findings). Operator-managed; agent-readable.
 - **Resource budgets** — observation files with `*-resource-budget.yaml` suffix track `budget`/`current` counts, `validation_window` state, and `last_verified` timestamps.
-- **Constraint gate** (`tools/constraint-gate/`) — MCP server + pure gate logic that checks commands against observation state and returns `ok` / `block` / `escalate`.
+- **Constraint gate** (`tools/learning-loop-mcp/`) — MCP server + pure gate logic in `core/` that checks commands against observation state and returns `ok` / `block` / `escalate`.
 - **Coordination hooks** (`.claude/coordination/hooks/`) — PreToolUse hooks that intercept Bash, Edit/Write, and Skill calls to enforce gate decisions and write-path boundaries.
 - **Domain-aware write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) — blocks file writes based on path domain rules.
 
@@ -47,7 +47,7 @@ The template does not contain product application code (no FastAPI source, no UI
 - `docs/`: project metadata and learning-loop policy docs.
 - `product/<stack>/`: per-stack home for runtime probes, stack manifest, and stack-specific bootstrap helpers. No product application code until an approved build experiment.
 - `tools/`: validation and verification scripts.
-- `tools/constraint-gate/`: MCP server, gate logic, patterns, and observation writer.
-- `tools/extract-index/`: reads evidence markdown `## Findings` sections, parses atomic assertions tagged with `[topic-tag]`, and writes `records/<surface>/index/*.yaml` entries.
+- `tools/learning-loop-mcp/`: MCP server, gate logic, validation, index extraction, and workflow tools. Single source of truth for both Claude Code and Droid CLI.
+- CLI shims (`tools/*-cli.js`): thin stdio clients that spawn the MCP server. `pnpm extract:index`, `pnpm validate:records`, `pnpm check:budget`, etc.
 - `.claude/coordination/`: hooks, gate audit log, and observation records.
 - `plans/`: active and historical plans + brainstorm reports.
