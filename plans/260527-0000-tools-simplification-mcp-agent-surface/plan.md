@@ -5,7 +5,7 @@ description: >-
   duplication, refactor standalone CLI tools for MCP-safe imports, namespace
   all 33 MCP tools by domain, and build an agent-facing manifest with quickstart
   recipes.
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags:
