@@ -31,13 +31,11 @@ root_cause: >
   same environment fingerprint reactivates it without consuming a new slot, but it
   DOES count against the device limit again.
 key_findings:
-  - "Cleared" vendor devices are not truly deleted; they persist on the backend.
-  - Importing `vnstock_data` with an expired auth cache triggers re-authentication.
+  - Cleared vendor devices are not truly deleted; they persist on the backend.
+  - Importing vnstock_data with an expired auth cache triggers re-authentication.
   - Re-authentication can restore previously cleared devices to the visible list.
-  - This makes even "read-only" operations (import checks, idempotency tests) non-neutral
-    for device slot visibility when the auth cache is stale.
-  - The current host fingerprint is glibc2.43; the Docker sandbox fingerprint was glibc2.41.
-    These are treated as separate devices by the vendor.
+  - Read-only operations (import checks, idempotency tests) are non-neutral for device slot visibility when the auth cache is stale.
+  - The current host fingerprint is glibc2.43; the Docker sandbox fingerprint was glibc2.41. These are treated as separate devices by the vendor.
 implications:
   - The idempotency check in `install-vnstock.sh` (`python -c "import vnstock_data"`)
     is NOT slot-safe if the auth cache has expired and a prior registration exists.
@@ -52,11 +50,9 @@ mitigations_applied:
     installer execution.
   - No vendor installer `.run` file was executed during this session.
 mitigations_needed:
-  - Consider adding an auth-cache warning to `install-vnstock.sh`: if `.vnstock/auth_state.json`
-    exists but the device was operator-cleared, the script should warn that ANY vendor
-    interaction (even import checks) may restore the device.
-  - Operator should verify dashboard is truly empty (0 devices) before trusting a "clear".
-  - Future experiments should avoid importing `vnstock_data` from the host after clearing.
+  - Consider adding an auth-cache warning to install-vnstock.sh. If .vnstock/auth_state.json exists but the device was operator-cleared, the script should warn that ANY vendor interaction (even import checks) may restore the device.
+  - Operator should verify dashboard is truly empty (0 devices) before trusting a clear.
+  - Future experiments should avoid importing vnstock_data from the host after clearing.
 slot_impact:
   new_slot_consumed: false
   existing_slot_reactivated: true
