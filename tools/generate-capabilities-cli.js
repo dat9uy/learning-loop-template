@@ -7,7 +7,6 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER = join(__dirname, "learning-loop-mcp", "server.js");
 
-const allowDisallowed = process.argv.includes("--allow-disallowed-fixtures");
 const dryRun = process.argv.includes("--dry-run");
 
 async function main() {
@@ -15,15 +14,12 @@ async function main() {
     command: "node",
     args: [SERVER],
   });
-  const client = new Client({ name: "validate-cli", version: "0.1.0" });
+  const client = new Client({ name: "generate-capabilities-cli", version: "0.1.0" });
   await client.connect(transport);
 
   const result = await client.callTool({
-    name: "index_validate",
-    arguments: {
-      allow_disallowed_fixtures: allowDisallowed,
-      include_negative_fixtures: true,
-    },
+    name: "capability_generate",
+    arguments: { dry_run: dryRun },
   });
 
   const text = result.content[0].text;
@@ -31,22 +27,20 @@ async function main() {
 
   if (dryRun) {
     console.log(text);
-  } else {
-    if (parsed.errors.length) {
-      for (const error of parsed.errors) {
-        console.error(`- ${error.record}: ${error.message}`);
-      }
-    }
-    if (parsed.warnings.length) {
-      for (const warning of parsed.warnings) {
-        console.error(`Warning: ${warning.record}: ${warning.message}`);
-      }
-    }
-    console.log(`Validated ${parsed.record_count} records.`);
+    const code = parsed.drift ? 1 : 0;
+    await transport.close();
+    process.exit(code);
   }
 
+  if (parsed.error) {
+    console.error(parsed.message);
+    await transport.close();
+    process.exit(1);
+  }
+
+  console.log("Capabilities generated.");
   await transport.close();
-  process.exit(parsed.valid ? 0 : 1);
+  process.exit(0);
 }
 
 main().catch((err) => {

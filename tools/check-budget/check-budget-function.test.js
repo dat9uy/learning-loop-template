@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { writeFileSync, rmSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runCheckBudget } from "./check-budget.js";
+import { runCheckBudget } from "#mcp/core/budget-checker.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const observationsDir = join(root, "records", "observations");

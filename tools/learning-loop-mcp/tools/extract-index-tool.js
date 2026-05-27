@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { runExtraction } from "../../extract-index/extract-index.js";
+import { runExtraction } from "#mcp/core/extract-index/extract-index.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

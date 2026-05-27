@@ -1,6 +1,5 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { adapterRegistry } from "./adapters/registry.js";
 import { normalizeEntries } from "./normalizer.js";
@@ -120,26 +119,4 @@ function mapsEqual(a, b) {
   return true;
 }
 
-async function main() {
-  const dryRun = process.argv.includes("--dry-run");
-  const root = process.cwd();
-  const result = await generateCapabilities({ root, dryRun });
-
-  if (dryRun) {
-    if (result.drift) {
-      for (const diff of result.diffs) {
-        console.error(`DRIFT: ${diff.file}`);
-      }
-      process.exit(1);
-    }
-    console.log("OK — no drift detected");
-    process.exit(0);
-  }
-
-  for (const record of result.records || []) {
-    console.log(`Generated ${record.id}.yaml`);
-  }
-}
-
-const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) main();
+// Pure logic module — CLI entry point lives in tools/generate-capabilities-cli.js

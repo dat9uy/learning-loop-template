@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { splitFrontmatter } from "./frontmatter-splitter.js";
+import { splitFrontmatter } from "#lib/frontmatter-splitter.js";
 
 describe("frontmatter-splitter", () => {
   it("parses valid frontmatter", () => {

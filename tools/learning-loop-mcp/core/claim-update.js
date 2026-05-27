@@ -7,63 +7,11 @@ import { loadSchemas } from "#mcp/core/schema-loader.js";
 import { validateRecords } from "#mcp/core/record-validation-rules.js";
 import { parse as parseValue } from "yaml";
 
-const SCRIPT_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-
-function usage() {
-  return [
-    "Usage: pnpm verify:claim -- --claim <id> --dimension <dimension> --status <status> --reason <text> [--scope <scope>] [--output <level>] [--proof-ref <ref>] [--decision-ref <ref>] [--blocked-action <text>] [--apply]",
-    "Without update flags, validates claim verification records only.",
-    "Without --apply, previews the update and prints: Dry run: no files changed.",
-  ].join("\n");
-}
-
-function requireValue(argv, index, flag) {
-  const value = argv[index + 1];
-  if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value`);
-  return value;
-}
-
-function parseArgs(argv) {
-  const args = { proofRefs: [], decisionRefs: [], blockedActions: [], apply: false, help: false };
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    if (arg === "--") continue;
-    if (arg === "--help" || arg === "-h") args.help = true;
-    else if (arg === "--apply") args.apply = true;
-    else if (arg === "--claim") args.claim = requireValue(argv, index, arg);
-    else if (arg === "--dimension") args.dimension = requireValue(argv, index, arg);
-    else if (arg === "--status") args.status = requireValue(argv, index, arg);
-    else if (arg === "--reason") args.reason = requireValue(argv, index, arg);
-    else if (arg === "--scope") args.scope = requireValue(argv, index, arg);
-    else if (arg === "--output") args.output = requireValue(argv, index, arg);
-    else if (arg === "--proof-ref") args.proofRefs.push(requireValue(argv, index, arg));
-    else if (arg === "--decision-ref") args.decisionRefs.push(requireValue(argv, index, arg));
-    else if (arg === "--blocked-action") args.blockedActions.push(requireValue(argv, index, arg));
-    else throw new Error(`Unknown argument: ${arg}`);
-    if (["--claim", "--dimension", "--status", "--reason", "--scope", "--output", "--proof-ref", "--decision-ref", "--blocked-action"].includes(arg)) index += 1;
-  }
-  return args;
-}
-
 function validateRecordSet(records, schemas, rootPath) {
   const errors = validateRecords(records, schemas, rootPath);
   if (errors.length) {
     throw new Error(errors.map((error) => `- ${error}`).join("\n"));
   }
-}
-
-function hasUpdateArgs(args) {
-  return Boolean(args.apply || args.claim || args.dimension || args.status || args.reason || args.proofRefs.length || args.decisionRefs.length || args.blockedActions.length);
-}
-
-function requireUpdateArgs(args) {
-  const missing = [];
-  if (!args.claim) missing.push("--claim");
-  if (!args.dimension) missing.push("--dimension");
-  if (!args.status) missing.push("--status");
-  if (!args.reason) missing.push("--reason");
-  if (missing.length) throw new Error(`Missing required update argument(s): ${missing.join(", ")}`);
-  if (!verificationDimensions.has(args.dimension)) throw new Error(`Unsupported verification dimension: ${args.dimension}`);
 }
 
 export function assertWritablePlainString(label, value) {
@@ -161,7 +109,7 @@ export function updateClaimVerification({
   blockedActions = [],
   apply = false,
 }) {
-  const rootPath = root || SCRIPT_ROOT;
+  const rootPath = root;
   const schemas = loadSchemas(rootPath);
   const records = loadRecords(rootPath);
   validateRecordSet(records, schemas, rootPath);
@@ -193,73 +141,3 @@ export function updateClaimVerification({
 
   return { updated: true, claim_id: claimId, preview: `Applied verification update to ${claim.__file}.` };
 }
-
-function main() {
-  let args;
-  try {
-    args = parseArgs(process.argv.slice(2));
-  } catch (error) {
-    console.error(`${error.message}\n${usage()}`);
-    process.exit(1);
-  }
-  if (args.help) {
-    console.log(usage());
-    return;
-  }
-
-  const schemas = loadSchemas(SCRIPT_ROOT);
-  const records = loadRecords(SCRIPT_ROOT);
-  try {
-    validateRecordSet(records, schemas, SCRIPT_ROOT);
-  } catch (error) {
-    console.error(error.message);
-    process.exit(1);
-  }
-
-  if (!hasUpdateArgs(args)) {
-    console.log(`Validated ${records.length} records.`);
-    console.log("Dry run: no files changed");
-    return;
-  }
-
-  try {
-    requireUpdateArgs(args);
-  } catch (error) {
-    console.error(error.message);
-    process.exit(1);
-  }
-
-  const claim = findTargetClaim(records, args.claim);
-  const verification = {
-    ...(claim.verification || {}),
-    [args.dimension]: buildDimension(args),
-    blocked_actions: args.blockedActions,
-  };
-
-  const updatedRecords = records.map((record) => (
-    record.id === claim.id ? { ...record, verification } : record
-  ));
-  try {
-    validateRecordSet(updatedRecords, schemas, SCRIPT_ROOT);
-  } catch (error) {
-    console.error(error.message);
-    process.exit(1);
-  }
-  console.log(formatProposal(claim, args));
-
-  if (!args.apply) return;
-
-  const filePath = join(SCRIPT_ROOT, claim.__file);
-  const nextFileText = replaceVerificationBlock(readFileSync(filePath, "utf8"), verification);
-  writeFileSync(filePath, nextFileText);
-  try {
-    validateRecordSet(loadRecords(SCRIPT_ROOT), schemas, SCRIPT_ROOT);
-  } catch (error) {
-    console.error(error.message);
-    process.exit(1);
-  }
-  console.log(`Applied verification update to ${claim.__file}.`);
-}
-
-const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) main();

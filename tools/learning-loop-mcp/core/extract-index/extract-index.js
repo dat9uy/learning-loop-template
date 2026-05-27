@@ -2,34 +2,14 @@ import { readFileSync, readdirSync, statSync, lstatSync } from "node:fs";
 import { join, relative, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { splitFrontmatter } from "./frontmatter-splitter.js";
+import { splitFrontmatter } from "#lib/frontmatter-splitter.js";
 import { parseFindings } from "./findings-parser.js";
 import { computeHash } from "./hash-computer.js";
 import { buildIndexEntry } from "./index-entry-builder.js";
 import { readExistingIndex, shouldWrite, writeIndexEntry } from "./file-writer.js";
 import { loadFrozenClaims, checkFrozenClaimDrift } from "./frozen-claim-drift.js";
 
-const scriptRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-
-function parseArgs(argv) {
-  const args = { capability: null, dryRun: false, verbose: false, root: null };
-  for (let i = 2; i < argv.length; i++) {
-    if (argv[i] === "--capability") {
-      if (i + 1 >= argv.length) throw new Error("--capability requires a value");
-      args.capability = argv[++i];
-    } else if (argv[i] === "--dry-run") {
-      args.dryRun = true;
-    } else if (argv[i] === "--verbose") {
-      args.verbose = true;
-    } else if (argv[i] === "--root") {
-      if (i + 1 >= argv.length) throw new Error("--root requires a value");
-      args.root = argv[++i];
-    } else if (argv[i].startsWith("-")) {
-      throw new Error(`Unknown flag: ${argv[i]}`);
-    }
-  }
-  return args;
-}
+// Pure logic module — root path is passed by caller, never computed here
 
 const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
 
@@ -248,7 +228,7 @@ function applySupersessionWriteBack(newEntries, existingEntries, parsed, errors)
     for (const oldId of oldIds) {
       if (seenOld.has(oldId)) continue;
       seenOld.add(oldId);
-      const target = existingEntries.get(oldId) || newById.get(oldId);
+      const target = newById.get(oldId) || existingEntries.get(oldId);
       if (!target) {
         errors.push(
           `Supersession orphan: disproof note names non-existent assertion-id ${oldId} (referenced by ${newId})`
@@ -455,33 +435,4 @@ export function runExtraction(root, args) {
   };
 }
 
-function main() {
-  let args;
-  try {
-    args = parseArgs(process.argv);
-  } catch (err) {
-    console.error(`Usage error: ${err.message}`);
-    console.error("Usage: node extract-index.js [--capability <name>] [--dry-run] [--verbose] [--root <path>]");
-    process.exit(2);
-  }
-
-  const root = args.root || scriptRoot;
-  const result = runExtraction(root, args);
-
-  console.log(`Processed ${result.stats.filesProcessed} evidence files`);
-  console.log(`${result.stats.filesWithFindings} files had ## Findings`);
-  console.log(`${result.stats.entriesProduced} index entries produced`);
-  console.log(`${result.stats.written} written, ${result.stats.unchanged} unchanged`);
-  if (result.skipped.length && args.verbose) {
-    for (const s of result.skipped) console.warn(`Skipped: ${s}`);
-  }
-  if (result.errors.length) {
-    for (const err of result.errors) console.error(`Error: ${err}`);
-    process.exit(1);
-  }
-}
-
-const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) {
-  main();
-}
+// Pure logic module — CLI entry point lives in tools/extract-index-cli.js

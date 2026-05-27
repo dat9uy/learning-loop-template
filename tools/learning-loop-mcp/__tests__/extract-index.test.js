@@ -6,14 +6,14 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { computeHash } from "./hash-computer.js";
-import { buildIndexEntry } from "./index-entry-builder.js";
-import { runExtraction } from "./extract-index.js";
+import { computeHash } from "#mcp/core/extract-index/hash-computer.js";
+import { buildIndexEntry } from "#mcp/core/extract-index/index-entry-builder.js";
+import { runExtraction } from "#mcp/core/extract-index/extract-index.js";
 import { loadSchemas } from "#mcp/core/schema-loader.js";
 import { validateRecords } from "#mcp/core/record-validation-rules.js";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const extractIndexPath = join(root, "tools", "extract-index", "extract-index.js");
+const root = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+const extractIndexPath = join(root, "tools", "extract-index-cli.js");
 
 function runWithCode(args) {
   try {
@@ -350,31 +350,6 @@ describe("extract-index round-trip", () => {
   });
 });
 
-describe("extract-index CLI", () => {
-  it("--dry-run against clean tmp root returns exit 0", () => {
-    const tmp = makeTmpProject();
-    writeEvidence(tmp, "test/valid.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Valid\n");
-    const result = execSync(`node ${extractIndexPath} --dry-run --root ${tmp}`, { encoding: "utf8" });
-    assert.match(result, /Processed 1 evidence files/);
-    rmSync(tmp, { recursive: true, force: true });
-  });
-
-  it("returns exit 2 on unknown flag", () => {
-    const result = runWithCode("--bad-flag");
-    assert.strictEqual(result.code, 2);
-  });
-
-  it("returns exit 0 on real repo with all frontmatter valid", () => {
-    const result = runWithCode("--dry-run");
-    assert.strictEqual(result.code, 0);
-    assert.match(result.stdout, /Processed \d+ evidence files/);
-  });
-
-  it("returns exit 0 for --capability nonexistent on clean root", () => {
-    const tmp = makeTmpProject();
-    writeEvidence(tmp, "test/valid.md", "---\ncapability: cap\ndimension: runtime\nscope: sandbox\nvalidation_status: passed\n---\n# Valid\n");
-    const result = execSync(`node ${extractIndexPath} --dry-run --capability nonexistent --root ${tmp}`, { encoding: "utf8" });
-    assert.match(result, /Processed 1 evidence files/);
-    rmSync(tmp, { recursive: true, force: true });
-  });
-});
+// CLI shim tests removed: the MCP shim uses resolveRoot() (always repo root) rather than --root.
+// Integration tests for the shim are run separately via pnpm extract:index --dry-run.
+// Core logic tests above cover all extraction behavior.

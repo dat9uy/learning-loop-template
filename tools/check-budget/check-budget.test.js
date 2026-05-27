@@ -52,7 +52,7 @@ external_system: test_system_available
 resource: test_resource_available
 budget: 5
 current: 2
-last_verified: "2026-05-16T00:00:00Z"
+last_verified: "2026-05-25T00:00:00Z"
 verification_method: test
 validation_window:
   active: false
@@ -75,7 +75,7 @@ external_system: test_system_exhausted
 resource: test_resource_exhausted
 budget: 1
 current: 1
-last_verified: "2026-05-16T00:00:00Z"
+last_verified: "2026-05-25T00:00:00Z"
 verification_method: test
 validation_window:
   active: false
@@ -117,7 +117,7 @@ external_system: test_system_window
 resource: test_resource_window
 budget: 5
 current: 2
-last_verified: "2026-05-16T00:00:00Z"
+last_verified: "2026-05-25T00:00:00Z"
 verification_method: test
 validation_window:
   active: true

@@ -31,5 +31,7 @@
   { "file": "./tools/create-risk-record-tool.js", "export": "recordCreateRiskTool" },
   { "file": "./tools/update-risk-record-tool.js", "export": "recordUpdateRiskTool" },
   { "file": "./tools/mark-preflight-complete-tool.js", "export": "gateMarkPreflightTool" },
-  { "file": "./tools/delete-record-tool.js", "export": "recordDeleteTool" }
+  { "file": "./tools/delete-record-tool.js", "export": "recordDeleteTool" },
+  { "file": "./tools/validate-plans-tool.js", "export": "indexValidatePlansTool" },
+  { "file": "./tools/check-budget-tool.js", "export": "budgetCheckTool" }
 ]

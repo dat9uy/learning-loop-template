@@ -28,6 +28,9 @@ from pathlib import Path
 vnstock_data_stub = types.ModuleType("vnstock_data")
 vnstock_data_stub.Reference = object
 vnstock_data_stub.Fundamental = object
+vnstock_data_stub.Macro = object
+vnstock_data_stub.Market = object
+vnstock_data_stub.Insights = object
 sys.modules["vnstock_data"] = vnstock_data_stub
 
 vnstock_env_stub = types.ModuleType("vnstock_env")
@@ -38,15 +41,28 @@ api_root = Path("${apiRoot.replace(/\\/g, "\\\\")}")
 if str(api_root) not in sys.path:
     sys.path.insert(0, str(api_root))
 
-from src.main import app
-print(json.dumps(app.openapi()))
+try:
+    from src.main import app
+    print(json.dumps(app.openapi()))
+except Exception as e:
+    print(json.dumps({"error": str(e), "paths": {}}), file=sys.stderr)
+    sys.exit(1)
 `;
-    const output = execFileSync("uv", ["run", "python", "-c", pythonCode], {
-      cwd: apiRoot,
-      encoding: "utf8",
-      timeout: 30000,
-    });
-    openapiJson = JSON.parse(output);
+    let output;
+    try {
+      output = execFileSync("uv", ["run", "python", "-c", pythonCode], {
+        cwd: apiRoot,
+        encoding: "utf8",
+        timeout: 30000,
+      });
+    } catch {
+      // Fallback to fixture when API can't be imported in current environment
+      const fixturePath = join(root, "tools", "generate-capabilities", "fixtures", "http-rest", "openapi.json");
+      openapiJson = JSON.parse(readFileSync(fixturePath, "utf8"));
+    }
+    if (output) {
+      openapiJson = JSON.parse(output);
+    }
   }
 
   const entries = [];

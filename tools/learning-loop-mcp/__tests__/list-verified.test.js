@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { listVerifiedClaims } from "./list-verified.js";
+import { listVerifiedClaims } from "#mcp/core/list-verified.js";
 
 function createTmpProject() {
   const tmp = mkdtempSync(join(tmpdir(), "list-verified-test-"));

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import YAML from "yaml";
-import { generateCapabilities } from "./generate-capabilities.js";
+import { generateCapabilities } from "#mcp/core/generate-capabilities/generate-capabilities.js";
 
 describe("generate-capabilities", () => {
   it("writes one YAML record per (stack, domain) from mock adapter entries", async () => {

@@ -8,7 +8,7 @@ import YAML from "yaml";
  * @param {{ capability?: string, dimension?: string, status?: string }} filters
  * @returns {Array<{id: string, frontmatter: object}>}
  */
-const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
+export const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
 
 function collectIndexFiles(root) {
   const files = [];
@@ -73,29 +73,4 @@ export function searchIndex(root, filters = {}) {
   }
 
   return results;
-}
-
-// CLI entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const args = process.argv.slice(2);
-  const getArg = (flag) => {
-    const idx = args.indexOf(flag);
-    return idx >= 0 ? args[idx + 1] : undefined;
-  };
-
-  const capability = getArg("--capability");
-  const dimension = getArg("--dimension");
-  const status = getArg("--status");
-  const json = args.includes("--json");
-  const root = process.cwd();
-
-  const results = searchIndex(root, { capability, dimension, status });
-
-  if (json) {
-    console.log(JSON.stringify(results, null, 2));
-  } else {
-    for (const r of results) {
-      console.log(r.id);
-    }
-  }
 }

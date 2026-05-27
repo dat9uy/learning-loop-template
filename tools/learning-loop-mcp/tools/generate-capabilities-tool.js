@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateCapabilities } from "../../generate-capabilities/generate-capabilities.js";
+import { generateCapabilities } from "#mcp/core/generate-capabilities/generate-capabilities.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

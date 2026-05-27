@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assertWritablePlainString } from "./verify-claim.js";
+import { assertWritablePlainString } from "#mcp/core/claim-update.js";
 
 const label = "reason";
 

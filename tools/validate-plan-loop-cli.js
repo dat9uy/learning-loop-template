@@ -7,46 +7,33 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER = join(__dirname, "learning-loop-mcp", "server.js");
 
-const allowDisallowed = process.argv.includes("--allow-disallowed-fixtures");
-const dryRun = process.argv.includes("--dry-run");
-
 async function main() {
   const transport = new StdioClientTransport({
     command: "node",
     args: [SERVER],
   });
-  const client = new Client({ name: "validate-cli", version: "0.1.0" });
+  const client = new Client({ name: "validate-plan-loop-cli", version: "0.1.0" });
   await client.connect(transport);
 
   const result = await client.callTool({
-    name: "index_validate",
-    arguments: {
-      allow_disallowed_fixtures: allowDisallowed,
-      include_negative_fixtures: true,
-    },
+    name: "index_validate_plans",
+    arguments: {},
   });
 
   const text = result.content[0].text;
   const parsed = JSON.parse(text);
 
-  if (dryRun) {
-    console.log(text);
+  if (parsed.passed) {
+    console.log(`✓ ${parsed.checked} plans checked, 0 violations found`);
   } else {
-    if (parsed.errors.length) {
-      for (const error of parsed.errors) {
-        console.error(`- ${error.record}: ${error.message}`);
-      }
+    console.log(`${parsed.violations.length} violation(s) found across ${parsed.checked} plan(s):\n`);
+    for (const v of parsed.violations) {
+      console.log(`  ${v.file}: ${v.error}`);
     }
-    if (parsed.warnings.length) {
-      for (const warning of parsed.warnings) {
-        console.error(`Warning: ${warning.record}: ${warning.message}`);
-      }
-    }
-    console.log(`Validated ${parsed.record_count} records.`);
   }
 
   await transport.close();
-  process.exit(parsed.valid ? 0 : 1);
+  process.exit(parsed.passed ? 0 : 1);
 }
 
 main().catch((err) => {

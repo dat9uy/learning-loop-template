@@ -1,7 +1,7 @@
 ---
 title: "CLI-to-MCP Shim Migration"
 description: "Migrate all remaining standalone CLIs into thin MCP stdio shims. Move logic into learning-loop-mcp/core/, delete standalone directories, update package.json scripts. Refactor-only, zero logic changes."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [refactor, mcp, cli-shim, product-build]

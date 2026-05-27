@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseFindings } from "./findings-parser.js";
+import { parseFindings } from "#mcp/core/extract-index/findings-parser.js";
 
 describe("findings-parser", () => {
   it("returns empty array when ## Findings is absent", () => {

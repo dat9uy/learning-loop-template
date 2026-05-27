@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { splitFrontmatter } from "../lib/frontmatter-splitter.js";
+import { splitFrontmatter } from "#lib/frontmatter-splitter.js";
 
 function isVerifiedClaim(record) {
   if (record.approval?.status !== "approved") return false;
@@ -21,7 +21,7 @@ function getVerifiedDimensions(record) {
   return dims;
 }
 
-const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
+export const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
 
 function loadClaims(root) {
   const claims = [];
@@ -38,7 +38,7 @@ function loadClaims(root) {
         const record = parseYaml(content, { uniqueKeys: false });
         if (record && isVerifiedClaim(record)) {
           claims.push({
-            id: record.id || file.replace(/\.yaml?$/, ""),
+            id: record.id || file.replace(/\.yaml?/, ""),
             subject: record.subject || "",
             verified_dimensions: getVerifiedDimensions(record),
           });
@@ -100,19 +100,4 @@ export function listVerifiedClaims(root) {
   const claims = loadClaims(root);
   const evidence = loadEvidence(root);
   return { claims, evidence };
-}
-
-// CLI entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const root = process.cwd();
-  const result = listVerifiedClaims(root);
-  console.log("=== Verified Claims ===");
-  for (const claim of result.claims) {
-    console.log(`${claim.id} | ${claim.subject} | [${claim.verified_dimensions.join(",")}]`);
-  }
-  console.log("");
-  console.log("=== Supporting Evidence ===");
-  for (const ev of result.evidence) {
-    console.log(`${ev.path} | ${ev.capability}/${ev.dimension}/${ev.scope} | ${ev.status}`);
-  }
 }

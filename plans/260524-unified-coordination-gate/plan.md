@@ -4,7 +4,7 @@ description: >-
   Extract shared coordination core from tools/constraint-gate, create universal
   hook scripts usable by both Claude Code and Droid CLI, and establish .factory/
   config mirror so changes in one place apply to both agent surfaces.
-status: pending
+status: completed
 priority: P1
 branch: main
 tags:

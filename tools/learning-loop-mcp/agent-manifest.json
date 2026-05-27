@@ -53,9 +53,14 @@
     },
     "index": {
       "description": "Index extraction, search, and validation",
-      "tools": ["index_validate", "index_extract", "index_search", "index_update_claim"],
+      "tools": ["index_validate", "index_extract", "index_search", "index_update_claim", "index_validate_plans"],
       "ordering": "extract-before-search",
       "typical_chain": ["index_validate", "index_extract", "index_search"]
+    },
+    "budget": {
+      "description": "Resource budget checking",
+      "tools": ["budget_check"],
+      "ordering": "any"
     },
     "capability": {
       "description": "Capability map generation and probe listing",

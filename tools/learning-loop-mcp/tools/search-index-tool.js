@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { searchIndex } from "../../search-index/search-index.js";
+import { searchIndex } from "#mcp/core/search-index.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

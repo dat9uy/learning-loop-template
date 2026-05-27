@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { updateClaimVerification } from "../../claim-verification/verify-claim.js";
+import { updateClaimVerification } from "#mcp/core/claim-update.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

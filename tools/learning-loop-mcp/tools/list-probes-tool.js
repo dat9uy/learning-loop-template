@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { listProbes } from "../../list-probes/list-probes.js";
+import { listProbes } from "#mcp/core/list-probes.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

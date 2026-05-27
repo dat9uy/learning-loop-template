@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { listVerifiedClaims } from "../../list-verified/list-verified.js";
+import { listVerifiedClaims } from "#mcp/core/list-verified.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

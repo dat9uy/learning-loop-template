@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { searchIndex } from "./search-index.js";
+import { searchIndex } from "#mcp/core/search-index.js";
 
 describe("search-index", () => {
   it("filters by capability ID", () => {

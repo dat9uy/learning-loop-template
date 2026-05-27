@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import yaml from "yaml";
 
 export function globSync(pattern, { cwd, absolute }) {
@@ -108,7 +107,7 @@ function hasPhase0(content) {
   return /^#{1,2}\s+Phase\s*0\b/mi.test(content);
 }
 
-function scanPlans(projectRoot) {
+export function scanPlans(projectRoot) {
   const violations = [];
   const planFiles = globSync("plans/**/plan.md", { cwd: projectRoot, absolute: true });
 
@@ -149,24 +148,14 @@ function scanPlans(projectRoot) {
   return { violations, checked: planFiles.length };
 }
 
-function report(violations, checked) {
+export function report(violations, checked) {
   if (violations.length === 0) {
-    console.log(`✓ ${checked} plans checked, 0 violations found`);
-    return;
+    return `✓ ${checked} plans checked, 0 violations found`;
   }
 
-  console.log(`${violations.length} violation(s) found across ${checked} plan(s):\n`);
+  const lines = [`${violations.length} violation(s) found across ${checked} plan(s):\n`];
   for (const v of violations) {
-    console.log(`  ${v.file}: ${v.error}`);
+    lines.push(`  ${v.file}: ${v.error}`);
   }
+  return lines.join("\n");
 }
-
-function main() {
-  const projectRoot = findProjectRoot();
-  const { violations, checked } = scanPlans(projectRoot);
-  report(violations, checked);
-  process.exit(violations.length > 0 ? 1 : 0);
-}
-
-const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) main();
