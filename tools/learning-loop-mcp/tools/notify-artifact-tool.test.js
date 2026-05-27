@@ -93,9 +93,10 @@ describe("workflow_notify_artifact", () => {
       `source_refs: []\nwrite_path: records/product/evidence/\n`
     );
     // Create a newer operator message marker so the obs appears stale
+    const now = new Date().toISOString();
     writeFileSync(
       join(tempDir, ".claude", "coordination", ".last-operator-message"),
-      JSON.stringify({ timestamp: "2026-05-27T12:00:00Z", prompt_snippet: "test" })
+      JSON.stringify({ timestamp: now, prompt_snippet: "test" })
     );
 
     const result = await handler({ path: "records/product/evidence/foo.md", change_type: "updated" });
