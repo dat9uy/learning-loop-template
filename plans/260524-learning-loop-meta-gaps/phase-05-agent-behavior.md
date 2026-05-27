@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Agent-Behavior"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: [1, 2]

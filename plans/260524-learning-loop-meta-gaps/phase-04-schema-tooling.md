@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Schema-Tooling"
-status: pending
+status: completed
 priority: P2
 effort: "5h"
 dependencies: [1, 2]

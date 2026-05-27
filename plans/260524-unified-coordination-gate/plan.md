@@ -14,7 +14,7 @@ tags:
   - droid
   - claude-code
 blockedBy: []
-blocks: [260524-learning-loop-meta-gaps]
+blocks: []
 created: '2026-05-23T18:47:43.196Z'
 createdBy: 'ck:plan'
 source: skill
@@ -58,7 +58,7 @@ This plan extracts a **shared coordination core** from `tools/constraint-gate/`,
 
 ## Cross-Plan Relationships
 
-- **Blocks**: `260524-learning-loop-meta-gaps` (this plan changes file paths from `tools/constraint-gate/` to `tools/coordination-gate/mcp/` and `core/`; the meta-gaps plan must use updated paths)
+- ~~**Blocks**: `260524-learning-loop-meta-gaps`~~ (completed 2026-05-27)
 - **Informed by**: `260522-0930-gate-hardening-block-mode` (block mode behavior — preserved in universal hooks)
 - **Informed by**: `260522-1500-artifact-aware-gate` (artifact-aware gating — preserved in universal hooks)
 

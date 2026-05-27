@@ -12,3 +12,5 @@ product/*/dist/
 .claude/coordination/gate-log.jsonl
 .claude/coordination/.last-operator-message
 .claude/coordination/.loop-preflight-*
+.factory/coordination/.last-operator-message
+.factory/coordination/.loop-preflight-*
