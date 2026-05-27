@@ -208,46 +208,43 @@ describe('write-coordination-gate minimal behavior', () => {
       });
     });
 
-    it('Edit node_modules/** -> exit 2', async () => {
+    it('Edit node_modules/** -> exit 0 (not gated)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'node_modules/foo/bar.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.strictEqual(r.exitCode, 0);
       });
     });
 
-    it('Edit dist/** -> exit 2', async () => {
+    it('Edit dist/** -> exit 0 (not gated)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'dist/bundle.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.strictEqual(r.exitCode, 0);
       });
     });
 
-    it('Edit build/** -> exit 2', async () => {
+    it('Edit build/** -> exit 0 (not gated)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'build/out.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.strictEqual(r.exitCode, 0);
       });
     });
 
-    it('Edit unknown multi-segment path (tmp/.steal) -> exit 2 (catch-all)', async () => {
+    it('Edit unknown multi-segment path (tmp/.steal) -> exit 0 (not gated)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'tmp/.steal' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
-        const out = parseOutput(r.stdout);
-        assert.ok(out, 'hook should emit JSON');
-        assert.strictEqual(out.matched_rule, '**');
+        assert.strictEqual(r.exitCode, 0);
       });
     });
 

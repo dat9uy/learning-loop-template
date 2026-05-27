@@ -149,7 +149,7 @@ export function makeGateDecision(constraintMatch, observationStatus, budgetStatu
  */
 export function findProjectRoot() {
   if (process.env.GATE_ROOT) return process.env.GATE_ROOT;
-  let dir = join(__dirname, '..', '..', '..', '..');
+  let dir = join(__dirname, '..', '..', '..');
   while (!existsSync(join(dir, 'records'))) {
     const parent = dirname(dir);
     if (parent === dir) break;

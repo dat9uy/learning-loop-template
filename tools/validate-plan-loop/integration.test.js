@@ -32,6 +32,14 @@ function writeDecisionRecord(tmpDir, surface, filename) {
   );
 }
 
+function setPreflightMarker(tmpDir, surface) {
+  const markerPath = path.join(tmpDir, ".claude", "coordination", `.loop-preflight-${surface}`);
+  fs.writeFileSync(
+    markerPath,
+    JSON.stringify({ surface, completed_at: new Date().toISOString() })
+  );
+}
+
 function runHook(input, envOverrides = {}) {
   const result = spawnSync("node", [HOOK_PATH], {
     env: { ...process.env, ...envOverrides },
@@ -123,9 +131,10 @@ surfaces: [product]
     });
   });
 
-  it("present decision records -> gate allows, validator clean", () => {
+  it("present decision records + preflight -> gate allows, validator clean", () => {
     withTempProject((tmpDir) => {
       writeDecisionRecord(tmpDir, "product", "decision-product.yaml");
+      setPreflightMarker(tmpDir, "product");
 
       // Write product-build plan
       const planContent = `---
@@ -158,6 +167,7 @@ surfaces: [product]
   it("surface-first path convention works", () => {
     withTempProject((tmpDir) => {
       writeDecisionRecord(tmpDir, "product", "decision-product.yaml");
+      setPreflightMarker(tmpDir, "product");
 
       const hookResult = runHook(
         { tool_name: "Write", tool_input: { file_path: "product/web/app.ts", content: "const x = 1;" } },
@@ -176,6 +186,7 @@ surfaces: [product]
         path.join(flatDir, "decision-product-001.yaml"),
         "id: decision-product-001\nstatus: active\n"
       );
+      setPreflightMarker(tmpDir, "product");
 
       const hookResult = runHook(
         { tool_name: "Write", tool_input: { file_path: "product/web/app.ts", content: "const x = 1;" } },

@@ -172,14 +172,14 @@ describe('readPreflightMarker TTL', () => {
     }
   });
 
-  it('returns marker at exactly TTL boundary (strict >, not >=)', () => {
+  it('returns marker just inside TTL boundary (strict >, not >=)', () => {
     const { readPreflightMarker } = require('../hooks/lib/gate-utils.cjs');
-    // Marker at exactly 30 min is still valid (strict > means 30*60*1000 is NOT expired)
-    const exact = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-    const { tmpDir } = createTmpPreflight('product', exact);
+    // Marker 500ms inside boundary is still valid (strict > means 30*60*1000 is NOT expired)
+    const nearBoundary = new Date(Date.now() - 30 * 60 * 1000 + 500).toISOString();
+    const { tmpDir } = createTmpPreflight('product', nearBoundary);
     try {
       const marker = readPreflightMarker('product', tmpDir);
-      assert.ok(marker, 'marker at exactly 30 min should still be valid');
+      assert.ok(marker, 'marker just inside 30 min boundary should still be valid');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

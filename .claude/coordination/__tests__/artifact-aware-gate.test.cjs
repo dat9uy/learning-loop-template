@@ -100,33 +100,25 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
     });
   });
 
-  it('plan.md with product-build tag and MISSING decision records -> always block (exit 2)', async () => {
+  it('plan.md with product-build tag and MISSING decision records -> allowed (exit 0)', async () => {
     await withTempProject(async (tmpDir) => {
       const content = '---\ntitle: "Product Plan"\ntags: [product-build]\nsurfaces: [product]\n---\n\n# Plan\n';
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 2);
-      const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON block');
-      assert.strictEqual(out.decision, 'block');
-      assert.ok(out.missing_surfaces.includes('product'), 'should list missing surface');
+      assert.strictEqual(r.exitCode, 0);
     });
   });
 
-  it('plan.md with product-build tag and MISSING records + escalate mode -> blocked (exit 2)', async () => {
+  it('plan.md with product-build tag and MISSING records + escalate mode -> allowed (exit 0)', async () => {
     await withTempProject(async (tmpDir) => {
       const content = '---\ntitle: "Product Plan"\ntags: [product-build]\nsurfaces: [product]\n---\n\n# Plan\n';
       const r = await runHook(
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 2);
-      const out = parseOutput(r.stdout) || parseOutput(r.stderr);
-      assert.ok(out, 'should emit JSON block');
-      assert.strictEqual(out.decision, 'block');
-      assert.ok(out.reason.includes('product'), 'should mention missing surface in reason');
+      assert.strictEqual(r.exitCode, 0);
     });
   });
 

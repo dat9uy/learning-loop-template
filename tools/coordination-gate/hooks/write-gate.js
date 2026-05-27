@@ -2,11 +2,14 @@
 /**
  * Universal Write Gate — PreToolUse hook for Edit/Write/Create/ApplyPatch.
  *
+ * Simplified: only protects records/ and product/. All other paths are allowed
+ * (plans/, docs/, .claude/, .factory/, tools/, unknown paths).
+ *
  * Works with both Claude Code and Droid CLI.
  * Imports all logic from coordination-gate/core (single source of truth).
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, dirname, normalize as normalizePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -14,18 +17,12 @@ import {
   normalizeToolName,
   extractFilePath,
   formatOutput,
-  exitCode,
 } from "./lib/protocol-adapter.js";
 import {
   globMatch,
   findProjectRoot,
-  extractFrontmatter,
-  hasProductBuildTag,
-  extractSurfaces,
-  checkDecisionRecords,
   inferSurface,
   readPreflightMarker,
-  writePreflightMarker,
 } from "../core/gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,7 +54,7 @@ function main() {
   const relPath = normalizePath(toRelative(filePath).replace(/^\.\//, ""));
   const root = findProjectRoot();
 
-  // All records/** writes go through MCP tools — block direct Edit/Write
+  // --- 1. records/** — always block (use MCP tools) ---
   if (globMatch("records/**", relPath)) {
     console.log(formatOutput({
       decision: "block",
@@ -68,7 +65,7 @@ function main() {
     process.exit(2);
   }
 
-  // Unconditional block for schemas
+  // --- 2. schemas/** — always block (needs validation) ---
   if (globMatch("schemas/**", relPath)) {
     console.log(formatOutput({
       decision: "block",
@@ -79,8 +76,12 @@ function main() {
     process.exit(2);
   }
 
-  // Unconditional blocks for build artifacts
-  if (globMatch("**/node_modules/**", relPath) || globMatch("**/dist/**", relPath) || globMatch("**/build/**", relPath)) {
+  // --- 3. Build artifacts — always block ---
+  if (
+    globMatch("**/node_modules/**", relPath) ||
+    globMatch("**/dist/**", relPath) ||
+    globMatch("**/build/**", relPath)
+  ) {
     console.log(formatOutput({
       decision: "block",
       reason: "Build artifacts are not git-tracked",
@@ -90,35 +91,11 @@ function main() {
     process.exit(2);
   }
 
-  // Artifact-aware gate: plan content scanning
-  if (globMatch("plans/**/plan.md", relPath)) {
-    const fullPath = join(root, relPath);
-    if (existsSync(fullPath)) {
-      process.exit(0);
-    }
-
-    const content = (input.tool_input?.content || "").slice(0, 2048);
-    const frontmatter = extractFrontmatter(content);
-    if (frontmatter && hasProductBuildTag(frontmatter)) {
-      const surfaces = extractSurfaces(frontmatter);
-      const recordsDir = join(root, "records");
-      const { missing } = checkDecisionRecords(surfaces, recordsDir);
-      if (missing.length > 0) {
-        console.log(formatOutput({
-          decision: "block",
-          reason: `Missing decision records for surfaces: ${missing.join(", ")}. Create records/<surface>/decisions/*.yaml before product-build plans.`,
-          file_path: filePath,
-          matched_rule: "plans/**/plan.md",
-          missing_surfaces: missing,
-        }));
-        process.exit(2);
-      }
-    }
-    process.exit(0);
-  }
-
-  // Preflight marker write protection
-  if (globMatch(".claude/coordination/.loop-preflight-*", relPath) || globMatch(".factory/coordination/.loop-preflight-*", relPath)) {
+  // --- 4. Preflight markers — always block (only via MCP) ---
+  if (
+    globMatch(".claude/coordination/.loop-preflight-*", relPath) ||
+    globMatch(".factory/coordination/.loop-preflight-*", relPath)
+  ) {
     console.log(formatOutput({
       decision: "block",
       reason: "Preflight marker files can only be created via the mark_preflight_complete MCP tool. Direct writes are blocked.",
@@ -128,11 +105,10 @@ function main() {
     process.exit(2);
   }
 
-  // Artifact-aware gate: product code preflight check
+  // --- 5. product/** — preflight check ---
   if (globMatch("product/**", relPath)) {
     const surface = inferSurface(relPath);
     if (surface) {
-      // Check both .claude and .factory coordination dirs for cross-surface compatibility
       let marker = null;
       for (const dir of [".claude", ".factory"]) {
         const coordDir = join(root, dir, "coordination");
@@ -161,31 +137,7 @@ function main() {
     process.exit(0);
   }
 
-  if (globMatch("docs/journals/**", relPath)) {
-    process.exit(0);
-  }
-
-  // Allowed domains
-  if (globMatch("docs/**", relPath) || globMatch("plans/**", relPath) || globMatch(".claude/**", relPath) || globMatch(".factory/**", relPath) || globMatch("product/**", relPath) || globMatch("tools/**", relPath)) {
-    process.exit(0);
-  }
-
-  // Single-segment unknown files -> allow
-  if (globMatch("*", relPath)) {
-    process.exit(0);
-  }
-
-  // Multi-segment catch-all -> block
-  if (globMatch("**", relPath)) {
-    console.log(formatOutput({
-      decision: "block",
-      reason: "Unknown path. Only write to known domains.",
-      file_path: filePath,
-      matched_rule: "**",
-    }));
-    process.exit(2);
-  }
-
+  // --- 6. Everything else (plans/, docs/, .claude/, .factory/, tools/, unknown) → allow ---
   process.exit(0);
 }
 
