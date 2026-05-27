@@ -19,8 +19,8 @@
       "triggers": ["records/*/capabilities/**"],
       "change_types": ["created", "updated"],
       "commands": [
-        ["node", "tools/validate-records/validate-records.js"],
-        ["node", "tools/generate-capabilities/generate-capabilities.js", "--dry-run"]
+        ["node", "tools/validate-records-cli.js"],
+        ["node", "tools/generate-capabilities-cli.js", "--dry-run"]
       ]
     },
     "index-changed": {
