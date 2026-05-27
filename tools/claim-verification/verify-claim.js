@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { verificationDimensions } from "../validate-records/claim-verification-rules.js";
-import { loadRecords } from "../validate-records/record-loader.js";
-import { loadSchemas } from "../validate-records/schema-loader.js";
-import { validateRecords } from "../validate-records/record-validation-rules.js";
+import { verificationDimensions } from "#mcp/core/claim-verification-rules.js";
+import { loadRecords } from "#mcp/core/record-loader.js";
+import { loadSchemas } from "#mcp/core/schema-loader.js";
+import { validateRecords } from "#mcp/core/record-validation-rules.js";
 import { parse as parseValue } from "yaml";
 
 const SCRIPT_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));

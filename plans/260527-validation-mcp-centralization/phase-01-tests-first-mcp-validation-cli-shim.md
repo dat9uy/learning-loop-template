@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Tests-First MCP Validation + CLI Shim"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -73,7 +73,7 @@ test("CLI shim spawns MCP server and returns JSON", async () => {
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/__tests__/validation-centralization.test.js` created with 4+ test cases.
-- [ ] Tests are committed before any Phase 2 file moves.
-- [ ] `pnpm test` discovers new test file (failures are expected at this stage).
-- [ ] Exact fixture case list and expected substrings match `validate-records.js` current state.
+- [x] `tools/learning-loop-mcp/__tests__/validation-centralization.test.js` created with 4+ test cases.
+- [x] Tests committed before any Phase 2 file moves.
+- [x] `pnpm test` discovers new test file (3 pass, 2 expected fail before modules moved).
+- [x] Exact fixture case list and expected substrings match `validate-records.js` current state.

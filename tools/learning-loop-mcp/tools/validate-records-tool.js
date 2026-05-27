@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { loadRecords } from "../../validate-records/record-loader.js";
-import { loadSchemas } from "../../validate-records/schema-loader.js";
-import { validateRecords } from "../../validate-records/record-validation-rules.js";
-import { validateDerivedAssurance } from "../../validate-records/derived-claim-assurance.js";
-import { validateFilenameConventions } from "../../validate-records/filename-convention-validation.js";
+import { loadRecords } from "../core/record-loader.js";
+import { loadSchemas } from "../core/schema-loader.js";
+import { validateRecords } from "../core/record-validation-rules.js";
+import { validateDerivedAssurance } from "../core/derived-claim-assurance.js";
+import { validateFilenameConventions } from "../core/filename-convention-validation.js";
+import { runNegativeFixtures } from "../core/negative-fixture-runner.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -20,6 +21,7 @@ export const indexValidateTool = {
   description: "Validate YAML records against JSON schemas. Use AFTER writing records to verify correctness. Returns structured errors and warnings.",
   schema: {
     allow_disallowed_fixtures: z.boolean().optional().describe("Allow fixtures that use disallowed source_ref patterns (for test fixtures)"),
+    include_negative_fixtures: z.boolean().optional().describe("Also validate negative test fixtures (default: false)"),
     root: z.string().optional().describe("Project root directory (default: auto-detected)"),
   },
   handler: async (args) => {
@@ -43,11 +45,17 @@ export const indexValidateTool = {
       };
     }
 
-    const validationErrors = validateRecords(records, schemas, root, args.allow_disallowed_fixtures || false);
+    const allowDisallowed = args.allow_disallowed_fixtures || false;
+    const validationErrors = validateRecords(records, schemas, root, allowDisallowed);
     const derivedErrors = validateDerivedAssurance(records);
     const warnings = validateFilenameConventions(records);
 
     const errors = [...validationErrors, ...derivedErrors];
+
+    if (args.include_negative_fixtures) {
+      const fixtureErrors = runNegativeFixtures(root, allowDisallowed);
+      errors.push(...fixtureErrors);
+    }
 
     const result = {
       valid: errors.length === 0,

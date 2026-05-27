@@ -1,7 +1,7 @@
 ---
 title: "Validation MCP Centralization"
 description: "Move all validation logic from tools/validate-records/ into tools/learning-loop-mcp/core/, move fixtures/ into tools/learning-loop-mcp/fixtures/, and make the CLI a thin MCP stdio shim. Delete the standalone CLI. Zero logic changes."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [refactor, mcp, validation, cli-shim, product-build]
@@ -25,11 +25,11 @@ The `fixtures/` directory at repo root and `tools/validate-records/` CLI are orp
 
 | Phase | Name | Status | Effort | Priority |
 |-------|------|--------|--------|----------|
-| 1 | [Tests-First MCP Validation + CLI Shim](./phase-01-tests-first-mcp-validation-cli-shim.md) | Pending | 2h | P1 |
-| 2 | [Move Validation Modules into MCP Core](./phase-02-move-validation-modules-into-mcp-core.md) | Pending | 1h | P1 |
-| 3 | [Move Fixtures and Wire Negative Runner](./phase-03-move-fixtures-and-wire-negative-runner.md) | Pending | 1h | P1 |
-| 4 | [Create CLI Shim and Delete Old CLI](./phase-04-create-cli-shim-and-delete-old-cli.md) | Pending | 1h | P1 |
-| 5 | [Integration Validation](./phase-05-integration-validation.md) | Pending | 1h | P1 |
+| 1 | [Tests-First MCP Validation + CLI Shim](./phase-01-tests-first-mcp-validation-cli-shim.md) | Completed | 2h | P1 |
+| 2 | [Move Validation Modules into MCP Core](./phase-02-move-validation-modules-into-mcp-core.md) | Completed | 1h | P1 |
+| 3 | [Move Fixtures and Wire Negative Runner](./phase-03-move-fixtures-and-wire-negative-runner.md) | Completed | 1h | P1 |
+| 4 | [Create CLI Shim and Delete Old CLI](./phase-04-create-cli-shim-and-delete-old-cli.md) | Completed | 1h | P1 |
+| 5 | [Integration Validation](./phase-05-integration-validation.md) | Completed | 1h | P1 |
 
 ## Dependencies
 

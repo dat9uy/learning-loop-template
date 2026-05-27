@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Move Fixtures and Wire Negative Runner"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -52,8 +52,8 @@ Move `fixtures/` from repo root into `tools/learning-loop-mcp/fixtures/` and upd
 
 ## Success Criteria
 
-- [ ] `fixtures/` at repo root is empty (or deleted after git mv).
-- [ ] `tools/learning-loop-mcp/fixtures/negative/` contains all 26 negative fixture directories.
-- [ ] `tools/learning-loop-mcp/fixtures/capability-source-allowlist-valid/` exists.
-- [ ] `runNegativeFixtures` resolves fixtures from new path and returns 0 errors for valid fixtures.
-- [ ] Phase 1 tests still pass with updated paths.
+- [x] `fixtures/` at repo root is empty (or deleted after git mv).
+- [x] `tools/learning-loop-mcp/fixtures/negative/` contains all 26 negative fixture directories.
+- [x] `tools/learning-loop-mcp/fixtures/capability-source-allowlist-valid/` exists.
+- [x] `runNegativeFixtures` resolves fixtures from new path and returns 0 errors for valid fixtures.
+- [x] Phase 1 tests still pass with updated paths.

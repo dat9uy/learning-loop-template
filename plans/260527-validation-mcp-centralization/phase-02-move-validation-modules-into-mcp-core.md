@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Move Validation Modules into MCP Core"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
@@ -64,8 +64,8 @@ Move all `tools/validate-records/*.js` files into `tools/learning-loop-mcp/core/
 
 ## Success Criteria
 
-- [ ] All 8 module files exist under `tools/learning-loop-mcp/core/`.
-- [ ] Zero imports referencing `tools/validate-records/` inside moved files.
-- [ ] `index_validate` tool imports from `../core/` correctly.
-- [ ] `pnpm test` passes (Phase 1 contract tests now resolve imports).
-- [ ] `pnpm validate:records` still passes (old CLI untouched).
+- [x] All 8 module files exist under `tools/learning-loop-mcp/core/`.
+- [x] Zero imports referencing `tools/validate-records/` inside moved files.
+- [x] `index_validate` tool imports from `../core/` correctly.
+- [x] `pnpm test` passes (Phase 1 contract tests now resolve imports).
+- [x] `pnpm validate:records` still passes (old CLI untouched).

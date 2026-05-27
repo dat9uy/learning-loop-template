@@ -1,10 +1,10 @@
 /**
  * Source ref validator for MCP tools.
- * Reuses existing validation functions from validate-records/record-validation-rules.js
+ * Reuses existing validation functions from #mcp/core/record-validation-rules.js
  * with MCP-specific error messages.
  */
 
-import { validateLocalRef as validateLocalRefCore, validateAllowedLocalPath } from "../../validate-records/record-validation-rules.js";
+import { validateLocalRef as validateLocalRefCore, validateAllowedLocalPath } from "#mcp/core/record-validation-rules.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -63,7 +63,7 @@ export function validateSourceRef(ref, recordType, root) {
     }
     // Check if the record exists on disk
     // We can't easily check all surfaces, so we do a best-effort check
-    // The full validation in validate-records will catch missing refs
+    // The full validation in #mcp/core/record-validation-rules.js will catch missing refs
     return { valid: true };
   }
 

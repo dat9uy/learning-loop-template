@@ -2,9 +2,9 @@ import assert from "node:assert";
 import { describe, it } from "node:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runValidateRecords } from "./validate-records.js";
+import { runValidateRecords } from "#mcp/core/negative-fixture-runner.js";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const root = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
 
 describe("runValidateRecords (pure function)", () => {
   it("returns structured result with records, errors, warnings", () => {
@@ -33,8 +33,8 @@ describe("runValidateRecords (pure function)", () => {
   });
 
   it("validates a minimal fixture with zero errors", async () => {
-    const { loadSchemas } = await import("./schema-loader.js");
-    const { validateRecords } = await import("./record-validation-rules.js");
+    const { loadSchemas } = await import("#mcp/core/schema-loader.js");
+    const { validateRecords } = await import("#mcp/core/record-validation-rules.js");
     const fixture = {
       __file: "records/index/assertion-test-capability-runtime-test-topic.yaml",
       id: "assertion-test-capability-runtime-test-topic",

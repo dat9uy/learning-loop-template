@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Create CLI Shim and Delete Old CLI"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [3]
@@ -89,8 +89,8 @@ Create `tools/validate-records-cli.js` — a thin stdio client that spawns the M
 
 ## Success Criteria
 
-- [ ] `tools/validate-records-cli.js` exists and is executable.
-- [ ] `pnpm validate:records` exits 0.
-- [ ] `pnpm validate:records --allow-disallowed-fixtures` exits 0.
-- [ ] `tools/validate-records/` does not exist.
-- [ ] `rg "tools/validate-records"` returns zero matches in active code.
+- [x] `tools/validate-records-cli.js` exists and is executable.
+- [x] `pnpm validate:records` exits 0.
+- [x] `pnpm validate:records --allow-disallowed-fixtures` exits 0.
+- [x] `tools/validate-records/` does not exist.
+- [x] `rg "tools/validate-records"` returns zero matches in active code.

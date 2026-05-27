@@ -11,9 +11,9 @@ import { createExperiment } from "#mcp/core/experiment-writer.js";
 import { updateExperiment } from "#mcp/core/experiment-writer.js";
 import { recordDeleteTool } from "../tools/delete-record-tool.js";
 import { validateSourceRefs } from "#mcp/lib/source-ref-validator.js";
-import { loadRecords } from "../../validate-records/record-loader.js";
-import { loadSchemas } from "../../validate-records/schema-loader.js";
-import { validateRecords } from "../../validate-records/record-validation-rules.js";
+import { loadRecords } from "#mcp/core/record-loader.js";
+import { loadSchemas } from "#mcp/core/schema-loader.js";
+import { validateRecords } from "#mcp/core/record-validation-rules.js";
 import { stringify as stringifyYaml } from "yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

@@ -1,5 +1,4 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { validateDerivedAssurance } from "./derived-claim-assurance.js";
 import { validateFilenameConventions } from "./filename-convention-validation.js";
 import { loadRecords } from "./record-loader.js";
@@ -7,7 +6,7 @@ import { loadSchemas } from "./schema-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
 import { RecordParseError } from "./yaml-parse-wrapper.js";
 
-function runNegativeFixtures(rootPath, allowDisallowed) {
+export function runNegativeFixtures(rootPath, allowDisallowed) {
   const schemas = loadSchemas(rootPath);
   const cases = [
     ["invalid-reference", "missing record reference"],
@@ -41,7 +40,8 @@ function runNegativeFixtures(rootPath, allowDisallowed) {
   for (const [fixture, expected] of cases) {
     let records;
     try {
-      records = loadRecords(rootPath, join(rootPath, "fixtures", "negative", fixture));
+      const fixtureRoot = join(rootPath, "tools", "learning-loop-mcp", "fixtures", "negative");
+      records = loadRecords(rootPath, join(fixtureRoot, fixture));
     } catch (parseError) {
       if (typeof expected === "string" && parseError.message.includes(expected)) {
         continue;
@@ -76,21 +76,3 @@ export function runValidateRecords(rootPath, opts = {}) {
   const warnings = validateFilenameConventions(records);
   return { records, errors, warnings };
 }
-
-function main() {
-  const scriptRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-  const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
-  const result = runValidateRecords(scriptRoot, { allowDisallowedFixtures, includeNegativeFixtures: true });
-
-  if (result.errors.length) {
-    console.error(result.errors.map((error) => `- ${error}`).join("\n"));
-    process.exit(1);
-  }
-  console.log(`Validated ${result.records.length} records.`);
-  if (result.warnings.length) {
-    console.error(result.warnings.map((warning) => `Warning: ${warning}`).join("\n"));
-  }
-}
-
-const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
-if (isMain) main();

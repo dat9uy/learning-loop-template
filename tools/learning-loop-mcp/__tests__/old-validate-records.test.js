@@ -2,11 +2,11 @@ import assert from "node:assert";
 import { describe, it } from "node:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadSchemas } from "./schema-loader.js";
-import { loadRecords } from "./record-loader.js";
-import { validateRecords } from "./record-validation-rules.js";
+import { loadSchemas } from "#mcp/core/schema-loader.js";
+import { loadRecords } from "#mcp/core/record-loader.js";
+import { validateRecords } from "#mcp/core/record-validation-rules.js";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 describe("schema-loader", () => {
   it("loads extracted-assertion schema without error", () => {

@@ -9,8 +9,8 @@ import { parse as parseYaml } from "yaml";
 import { computeHash } from "./hash-computer.js";
 import { buildIndexEntry } from "./index-entry-builder.js";
 import { runExtraction } from "./extract-index.js";
-import { loadSchemas } from "../validate-records/schema-loader.js";
-import { validateRecords } from "../validate-records/record-validation-rules.js";
+import { loadSchemas } from "#mcp/core/schema-loader.js";
+import { validateRecords } from "#mcp/core/record-validation-rules.js";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const extractIndexPath = join(root, "tools", "extract-index", "extract-index.js");

@@ -13,7 +13,7 @@
     "dev:web": "cd product/web && pnpm dev",
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
-    "validate:records": "node tools/validate-records/validate-records.js",
+    "validate:records": "node tools/validate-records-cli.js",
     "validate:plan-loop": "node tools/validate-plan-loop/validate-plan-loop.js",
     "verify:claim": "node tools/claim-verification/verify-claim.js",
     "generate:docs": "node tools/generate-docs/generate-docs.js",
