@@ -130,7 +130,7 @@ function runWriteGate(filePath, envOverrides = {}) {
 async function startMcpServer(root) {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'constraint-gate', 'server.js');
+  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'coordination-gate', 'mcp', 'server.js');
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverPath],
@@ -294,7 +294,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
       JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
     );
     const r1 = await client.callTool({
-      name: "check_gate",
+      name: "gate_check",
       arguments: { command: "docker run ubuntu" },
     });
     const parsed1 = JSON.parse(r1.content[0].text);
@@ -313,7 +313,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
       JSON.stringify({ timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
     );
     const r2 = await client.callTool({
-      name: "check_gate",
+      name: "gate_check",
       arguments: { command: "docker run ubuntu" },
     });
     const parsed2 = JSON.parse(r2.content[0].text);

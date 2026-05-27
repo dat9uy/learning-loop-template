@@ -9,7 +9,7 @@ import { createDecision } from "../core/decision-writer.js";
 import { updateDecision } from "../core/decision-writer.js";
 import { createExperiment } from "../core/experiment-writer.js";
 import { updateExperiment } from "../core/experiment-writer.js";
-import { deleteRecordTool } from "../mcp/tools/delete-record-tool.js";
+import { recordDeleteTool } from "../mcp/tools/delete-record-tool.js";
 import { validateSourceRefs } from "../mcp/lib/source-ref-validator.js";
 import { loadRecords } from "../../validate-records/record-loader.js";
 import { loadSchemas } from "../../validate-records/schema-loader.js";
@@ -94,7 +94,7 @@ describe("MCP lifecycle integration", () => {
       assert.strictEqual(errors2.length, 0, `Post-update validation errors: ${errors2.join(", ")}`);
 
       // 5. Delete
-      const deleteResult = await deleteRecordTool.handler({
+      const deleteResult = await recordDeleteTool.handler({
         surface: "meta",
         record_id: createResult.id,
         record_type: "decision",

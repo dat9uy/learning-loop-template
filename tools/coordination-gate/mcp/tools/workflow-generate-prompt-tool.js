@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
 const BLUEPRINTS = {
   evidence: ".claude/skills/learning-loop/references/prompt-blueprints.md",

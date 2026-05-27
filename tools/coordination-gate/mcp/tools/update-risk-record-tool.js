@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { updateRisk } from "../../core/risk-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const updateRiskRecordTool = {
-  name: "update_risk_record",
+export const recordUpdateRiskTool = {
+  name: "record_update_risk",
   description: "Update an existing risk record by ID. Immutable fields (id, type, created_at) are preserved. Use to change status, severity, or add mitigation after analysis.",
   schema: {
     surface: z.string().describe("Surface the risk belongs to"),
@@ -38,7 +38,7 @@ export const updateRiskRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "update_risk_record",
+      tool: "record_update_risk",
       surface,
       risk_id,
       ...result,

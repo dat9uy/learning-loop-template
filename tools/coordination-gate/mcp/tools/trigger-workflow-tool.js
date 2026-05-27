@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { triggerWorkflow } from "../workflow-runner.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const triggerWorkflowTool = {
-  name: "trigger_workflow",
+export const workflowTriggerTool = {
+  name: "workflow_trigger",
   description: "Trigger a workflow by name. Validates commands against allowlist before spawning.",
   schema: {
     name: z.string().describe("Workflow name"),
@@ -18,7 +18,7 @@ export const triggerWorkflowTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "trigger_workflow",
+      tool: "workflow_trigger",
       workflow: name,
       ...result,
     });

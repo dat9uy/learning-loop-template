@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "constraint-gate": {
+    "coordination-gate": {
       "command": "node",
-      "args": ["tools/constraint-gate/server.js"]
+      "args": ["tools/coordination-gate/mcp/server.js"]
     }
   }
 }

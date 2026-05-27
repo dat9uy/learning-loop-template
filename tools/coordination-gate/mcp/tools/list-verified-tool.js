@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { listVerifiedClaims } from "../../list-verified/list-verified.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { listVerifiedClaims } from "../../../list-verified/list-verified.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const listVerifiedTool = {
-  name: "list_verified_claims",
+export const capabilityListVerifiedTool = {
+  name: "capability_list_verified",
   description: "List all verified claims and their supporting evidence. Read-only reporting tool.",
   schema: {},
   handler: async () => {
@@ -13,7 +13,7 @@ export const listVerifiedTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "list_verified_claims",
+      tool: "capability_list_verified",
       claim_count: result.claims.length,
       evidence_count: result.evidence.length,
     });

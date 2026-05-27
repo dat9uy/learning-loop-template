@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { updateExperiment } from "../../core/experiment-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
-export const updateExperimentRecordTool = {
-  name: "update_experiment_record",
+export const recordUpdateExperimentTool = {
+  name: "record_update_experiment",
   description: "Update an existing experiment record by ID. Immutable fields (id, type, created_at) are preserved. source_refs is append-only: new refs are merged with existing, duplicates removed. Use to record results, change status, add observations, or update verification after experiment execution.",
   schema: {
     surface: z.string().describe("Surface the experiment belongs to"),
@@ -69,7 +69,7 @@ export const updateExperimentRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "update_experiment_record",
+      tool: "record_update_experiment",
       surface,
       experiment_id,
       ...result,

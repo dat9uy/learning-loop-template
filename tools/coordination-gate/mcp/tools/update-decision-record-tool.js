@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { updateDecision } from "../../core/decision-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
-export const updateDecisionRecordTool = {
-  name: "update_decision_record",
+export const recordUpdateDecisionTool = {
+  name: "record_update_decision",
   description: "Update an existing decision record by ID. Immutable fields (id, type, created_at) are preserved. source_refs is append-only: new refs are merged with existing, duplicates removed. Use to change status from draft to reviewed/approved, or update rationale/tradeoffs.",
   schema: {
     surface: z.string().describe("Surface the decision belongs to (must match creation surface)"),
@@ -63,7 +63,7 @@ export const updateDecisionRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "update_decision_record",
+      tool: "record_update_decision",
       surface,
       decision_id,
       ...result,

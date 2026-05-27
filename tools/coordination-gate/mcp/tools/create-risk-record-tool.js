@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { createRisk } from "../../core/risk-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
-export const createRiskRecordTool = {
-  name: "create_risk_record",
+export const recordCreateRiskTool = {
+  name: "record_create_risk",
   description: "Create a risk record YAML file. Risks document potential issues that may affect the project. Records start in draft status.",
   schema: {
     surface: z.string().describe("Surface/scope this risk applies to (e.g., 'product', 'api')"),
@@ -44,7 +44,7 @@ export const createRiskRecordTool = {
       severity,
       likelihood,
       confidence,
-      source_refs: source_refs || ["local:constraint-gate-mcp"],
+      source_refs: source_refs || ["local:coordination-gate-mcp"],
       claim_refs,
       experiment_refs,
       mitigation,
@@ -54,7 +54,7 @@ export const createRiskRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "create_risk_record",
+      tool: "record_create_risk",
       surface,
       ...result,
     });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { findRecordById, resolveRecordDir } from "../../core/record-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { renameSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -16,8 +16,8 @@ function getDeletedDir(root, recordType, surface) {
   return join(baseDir, ".deleted");
 }
 
-export const deleteRecordTool = {
-  name: "delete_record",
+export const recordDeleteTool = {
+  name: "record_delete",
   description: "Soft-delete a record by moving it to a .deleted/ audit subdirectory. Only draft or rejected records can be deleted. Requires operator_confirmation=true and a reason of at least 20 characters. The record content is preserved in the audit directory for compliance.",
   schema: {
     surface: z.string().describe("Surface the record belongs to"),
@@ -93,7 +93,7 @@ export const deleteRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "delete_record",
+      tool: "record_delete",
       surface,
       record_id,
       record_type,

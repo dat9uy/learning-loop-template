@@ -5,10 +5,8 @@ import { parse as parseYaml } from "yaml";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-
-function parseArgs() {
-  const args = process.argv.slice(2);
+function parseArgs(argv) {
+  const args = argv.slice(2);
   const systemIdx = args.indexOf("--system");
   const resourceIdx = args.indexOf("--resource");
   return {
@@ -18,14 +16,14 @@ function parseArgs() {
   };
 }
 
-function findBudgetFiles() {
+function findBudgetFiles(root) {
   const observationsDir = join(root, "records", "observations");
   return readdirSync(observationsDir)
     .filter((name) => name.endsWith("-resource-budget.yaml"))
     .map((name) => join(observationsDir, name));
 }
 
-function loadSchema() {
+function loadSchema(root) {
   const schemaPath = join(root, "schemas", "resource-budget.schema.json");
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
   delete schema.$schema;
@@ -40,23 +38,32 @@ function isStale(lastVerified) {
   return diffDays > 7;
 }
 
-function main() {
-  const { system, resource, allowActiveWindow } = parseArgs();
+export function runCheckBudget(root, opts = {}) {
+  const { system, resource, allowActiveWindow } = opts;
 
   if (!system || !resource) {
-    console.error("Usage: node check-budget.js --system <system> --resource <resource>");
-    process.exit(2);
+    return { error: "Missing required arguments: system and resource", code: 2 };
   }
 
-  const schema = loadSchema();
-  const ajv = new Ajv({ strict: false });
-  addFormats(ajv);
-  const validate = ajv.compile(schema);
+  let schema, validate;
+  try {
+    schema = loadSchema(root);
+    const ajv = new Ajv({ strict: false });
+    addFormats(ajv);
+    validate = ajv.compile(schema);
+  } catch (err) {
+    return { error: `Failed to load schema: ${err.message}`, code: 2 };
+  }
 
-  const files = findBudgetFiles();
+  let files;
+  try {
+    files = findBudgetFiles(root);
+  } catch (err) {
+    return { error: `No budget files found: ${err.message}`, code: 2 };
+  }
+
   if (files.length === 0) {
-    console.error("No budget files found in records/observations/");
-    process.exit(2);
+    return { error: "No budget files found in records/observations/", code: 2 };
   }
 
   for (const file of files) {
@@ -64,15 +71,12 @@ function main() {
     try {
       budget = parseYaml(readFileSync(file, "utf8"));
     } catch (err) {
-      console.error(`Failed to parse ${file}: ${err.message}`);
-      process.exit(2);
+      return { error: `Failed to parse ${file}: ${err.message}`, code: 2 };
     }
 
     const valid = validate(budget);
     if (!valid) {
-      console.error(`Schema validation failed for ${file}:`);
-      console.error(JSON.stringify(validate.errors, null, 2));
-      process.exit(2);
+      return { error: `Schema validation failed for ${file}: ${JSON.stringify(validate.errors, null, 2)}`, code: 2 };
     }
 
     if (budget.external_system === system && budget.resource === resource) {
@@ -89,20 +93,33 @@ function main() {
         last_verified: budget.last_verified,
       };
 
-      console.log(JSON.stringify(output));
-
+      let code = 0;
       if (budget.current >= budget.budget) {
-        process.exit(1);
+        code = 1;
+      } else if (budget.validation_window?.active && !allowActiveWindow) {
+        code = 1;
       }
-      if (budget.validation_window?.active && !allowActiveWindow) {
-        process.exit(1);
-      }
-      process.exit(0);
+
+      return { output, code };
     }
   }
 
-  console.error(`No budget found for system=${system} resource=${resource}`);
-  process.exit(2);
+  return { error: `No budget found for system=${system} resource=${resource}`, code: 2 };
 }
 
-main();
+function main() {
+  const scriptRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const args = parseArgs(process.argv);
+  const result = runCheckBudget(scriptRoot, args);
+
+  if (result.error) {
+    console.error(result.error);
+    process.exit(result.code);
+  }
+
+  console.log(JSON.stringify(result.output));
+  process.exit(result.code);
+}
+
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

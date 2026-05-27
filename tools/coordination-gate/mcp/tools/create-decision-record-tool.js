@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { createDecision } from "../../core/decision-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
-export const createDecisionRecordTool = {
-  name: "create_decision_record",
+export const recordCreateDecisionTool = {
+  name: "record_create_decision",
   description: "Create a decision record YAML file. Use this before writing product-build plans. The record starts in draft status. For product/** writes, the write gate now requires a preflight marker (via mark_preflight_complete) instead of decision records. Decision records are still required for product-build plan.md files.",
   schema: {
     surface: z.string().describe("Surface/scope this decision applies to (e.g., 'product', 'api', 'web'). Determines directory: records/<surface>/decisions/"),
@@ -49,7 +49,7 @@ export const createDecisionRecordTool = {
       rationale,
       alternatives,
       tradeoffs,
-      source_refs: source_refs || ["local:constraint-gate-mcp"],
+      source_refs: source_refs || ["local:coordination-gate-mcp"],
       supersedes,
       decision_effect,
     });
@@ -58,7 +58,7 @@ export const createDecisionRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "create_decision_record",
+      tool: "record_create_decision",
       surface,
       ...result,
     });

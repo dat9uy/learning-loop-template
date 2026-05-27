@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { updateObservation } from "../../core/observation-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const updateObservationTool = {
-  name: "update_observation",
+export const recordUpdateObservationTool = {
+  name: "record_update_observation",
   description: "Update an existing observation's status. Returns updated status.",
   schema: {
     observation_id: z.string().describe("The id of the observation to update"),
@@ -26,7 +26,7 @@ export const updateObservationTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "update_observation",
+      tool: "record_update_observation",
       observation_id,
       status,
       reason: reason || undefined,

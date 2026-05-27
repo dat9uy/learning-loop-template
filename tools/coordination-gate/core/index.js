@@ -11,7 +11,7 @@
  * - Droid CLI hooks (.factory/coordination/hooks/)
  */
 
-export { resolveRoot } from "./resolve-root.js";
+export { resolveRoot } from "../../lib/resolve-root.js";
 
 export {
   CONSTRAINT_PATTERNS,
@@ -46,7 +46,7 @@ export {
 
 export { readLastOperatorMessage, checkObservationStaleness } from "./inbound-state.js";
 
-export { rotateGateLog, appendGateLog } from "./gate-logging.js";
+export { rotateGateLog, appendGateLog } from "../../lib/gate-logging.js";
 
 export {
   sanitizeSlug as sanitizeRecordSlug,

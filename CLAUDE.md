@@ -46,19 +46,21 @@ no observation-dance, no pre-authorized path, and no bypass.
 
 | Tool | Purpose |
 |------|---------|
-| `create_decision_record` | Create a decision YAML in `records/<surface>/decisions/` |
-| `update_decision_record` | Update an existing decision record |
-| `create_experiment_record` | Create an experiment YAML in `records/<surface>/experiments/` |
-| `update_experiment_record` | Update an existing experiment record |
-| `create_risk_record` | Create a risk YAML in `records/<surface>/risks/` |
-| `update_risk_record` | Update an existing risk record |
-| `record_observation` | Create an observation YAML in `records/observations/` |
-| `update_observation` | Update an existing observation's status |
-| `notify_artifact_change` | Log a file change and evaluate triggered workflows |
-| `validate_records` | Validate all YAML records against schemas |
-| `extract_index_entries` | Rebuild the index from evidence/capability files |
-| `generate_capability_records` | Generate capability records from product surfaces |
-| `mark_preflight_complete` | Mark preflight checklist complete for a surface (unlocks product/** writes for 30 min) |
+| `record_create_decision` | Create a decision YAML in `records/<surface>/decisions/` |
+| `record_update_decision` | Update an existing decision record |
+| `record_create_experiment` | Create an experiment YAML in `records/<surface>/experiments/` |
+| `record_update_experiment` | Update an existing experiment record |
+| `record_create_risk` | Create a risk YAML in `records/<surface>/risks/` |
+| `record_update_risk` | Update an existing risk record |
+| `record_create_observation` | Create an observation YAML in `records/observations/` |
+| `record_update_observation` | Update an existing observation's status |
+| `workflow_notify_artifact` | Log a file change and evaluate triggered workflows |
+| `index_validate` | Validate all YAML records against schemas |
+| `index_extract` | Rebuild the index from evidence/capability files |
+| `capability_generate` | Generate capability records from product surfaces |
+| `gate_mark_preflight` | Mark preflight checklist complete for a surface (unlocks product/** writes for 30 min) |
+
+See `tools/coordination-gate/mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
 
 ### Record ID Convention
 
@@ -103,7 +105,7 @@ When the gate blocks with `decision: block`:
 ### Product-Build Plans
 - All plans with `tags: [product-build]` MUST declare surfaces in Phase 0.
 - Decision records MUST exist in `records/<surface>/decisions/` before
-  implementation phases begin. Use `create_decision_record` MCP tool.
+  implementation phases begin. Use `record_create_decision` MCP tool.
 - Missing decision records **always block** (exit 2) — regardless of
   `GATE_RESPONSE_MODE`.
 
@@ -115,12 +117,12 @@ When the gate blocks with `decision: block`:
 - Missing or expired preflight markers **always block** (exit 2) — regardless of
   `GATE_RESPONSE_MODE`.
 - The block message includes a `preflight_checklist` (6 steps) and `surface` field.
-- Use `mark_preflight_complete` MCP tool to create the marker. Direct writes
+- Use `gate_mark_preflight` MCP tool to create the marker. Direct writes
   to `.loop-preflight-*` files are blocked by both write and bash gates.
 
 ### Journal Writes
 - `docs/journals/**` is allowed unconditionally.
-- Agents SHOULD suggest using `create_experiment_record` when journals
+- Agents SHOULD suggest using `record_create_experiment` when journals
   contain experiment-worthy observations.
 
 ### Gate Response Modes
@@ -137,7 +139,7 @@ When the gate blocks with `decision: block`:
 
 For quick product changes:
 
-1. Use `mark_preflight_complete` MCP tool to unlock product/** writes for the target surface.
+1. Use `gate_mark_preflight` MCP tool to unlock product/** writes for the target surface.
 2. `/ck:cook evidence.md` or `/ck:cook <file>`
 3. Gate validates product code writes have a valid preflight marker.
 
@@ -146,13 +148,13 @@ For quick product changes:
 For features requiring research:
 
 1. `/ck:plan` (produces plan.md with Phase 0 surface declaration)
-2. Use `create_decision_record` MCP tool for required decision records (plan gate).
-3. Use `mark_preflight_complete` MCP tool to unlock product/** writes.
+2. Use `record_create_decision` MCP tool for required decision records (plan gate).
+3. Use `gate_mark_preflight` MCP tool to unlock product/** writes.
 4. `/ck:cook plan.md`
 
 ### Agent Rule
 
 **Never ignore gate block decisions.** If blocked by preflight gate, use
-`mark_preflight_complete` MCP tool and retry. If blocked by records gate,
+`gate_mark_preflight` MCP tool and retry. If blocked by records gate,
 use MCP CRUD tools to create the missing record. Do not use Bash to
 circumvent a gate block.

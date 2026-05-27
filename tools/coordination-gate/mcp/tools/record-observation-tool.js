@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { writeObservation } from "../../core/observation-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const recordObservationTool = {
-  name: "record_observation",
+export const recordCreateObservationTool = {
+  name: "record_create_observation",
   description: "Record a constraint observation as a YAML file. Returns recorded status.",
   schema: {
     constraint_type: z.string().describe("Type of constraint (e.g., sudo, docker, device_limit)"),
@@ -19,14 +19,14 @@ export const recordObservationTool = {
       constraint_type,
       constraint,
       description,
-      source_refs: source_refs || ["local:constraint-gate-mcp"],
+      source_refs: source_refs || ["local:coordination-gate-mcp"],
     });
 
     console.error(`gate: record_observation ${constraint} → ${result.recorded ? "recorded" : result.reason}`);
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "record_observation",
+      tool: "record_create_observation",
       constraint_type,
       constraint,
       ...result,

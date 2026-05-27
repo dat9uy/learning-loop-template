@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
 function expand(request, scope, constraints) {
   const assertions = [`${scope}-scoped implementation satisfies: ${request}`];

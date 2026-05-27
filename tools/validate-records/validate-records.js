@@ -7,11 +7,8 @@ import { loadSchemas } from "./schema-loader.js";
 import { validateRecords } from "./record-validation-rules.js";
 import { RecordParseError } from "./yaml-parse-wrapper.js";
 
-const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
-const schemas = loadSchemas(root);
-
-function runNegativeFixtures() {
+function runNegativeFixtures(rootPath, allowDisallowed) {
+  const schemas = loadSchemas(rootPath);
   const cases = [
     ["invalid-reference", "missing record reference"],
     ["retired-pack-source-ref", "/source_refs/0 pattern: must match pattern"],
@@ -44,7 +41,7 @@ function runNegativeFixtures() {
   for (const [fixture, expected] of cases) {
     let records;
     try {
-      records = loadRecords(root, join(root, "fixtures", "negative", fixture));
+      records = loadRecords(rootPath, join(rootPath, "fixtures", "negative", fixture));
     } catch (parseError) {
       if (typeof expected === "string" && parseError.message.includes(expected)) {
         continue;
@@ -59,7 +56,7 @@ function runNegativeFixtures() {
       errors.push(`${fixture} did not fail with expected parse error kind: ${expected.kind}`);
       continue;
     }
-    const result = validateRecords(records, schemas, root, allowDisallowedFixtures);
+    const result = validateRecords(records, schemas, rootPath, allowDisallowed);
     if (!result.some((error) => error.includes(expected))) {
       errors.push(`${fixture} did not fail with expected message: ${expected}`);
     }
@@ -67,21 +64,33 @@ function runNegativeFixtures() {
   return errors;
 }
 
-function main() {
-  const records = loadRecords(root);
-  const errors = validateRecords(records, schemas, root, allowDisallowedFixtures);
+export function runValidateRecords(rootPath, opts = {}) {
+  const schemas = loadSchemas(rootPath);
+  const records = loadRecords(rootPath);
+  const allowDisallowed = opts.allowDisallowedFixtures || false;
+  const errors = validateRecords(records, schemas, rootPath, allowDisallowed);
   errors.push(...validateDerivedAssurance(records));
-  errors.push(...runNegativeFixtures());
+  if (opts.includeNegativeFixtures !== false) {
+    errors.push(...runNegativeFixtures(rootPath, allowDisallowed));
+  }
   const warnings = validateFilenameConventions(records);
+  return { records, errors, warnings };
+}
 
-  if (errors.length) {
-    console.error(errors.map((error) => `- ${error}`).join("\n"));
+function main() {
+  const scriptRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const allowDisallowedFixtures = process.argv.includes("--allow-disallowed-fixtures");
+  const result = runValidateRecords(scriptRoot, { allowDisallowedFixtures, includeNegativeFixtures: true });
+
+  if (result.errors.length) {
+    console.error(result.errors.map((error) => `- ${error}`).join("\n"));
     process.exit(1);
   }
-  console.log(`Validated ${records.length} records.`);
-  if (warnings.length) {
-    console.error(warnings.map((warning) => `Warning: ${warning}`).join("\n"));
+  console.log(`Validated ${result.records.length} records.`);
+  if (result.warnings.length) {
+    console.error(result.warnings.map((warning) => `Warning: ${warning}`).join("\n"));
   }
 }
 
-main();
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

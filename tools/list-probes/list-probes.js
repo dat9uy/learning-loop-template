@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * List runtime probe files under product/<stack>/capabilities/.
@@ -35,8 +36,7 @@ export function listProbes(root, opts) {
   return results;
 }
 
-// CLI entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+function main() {
   const stackIndex = process.argv.indexOf("--stack");
   const stack = stackIndex >= 0 ? process.argv[stackIndex + 1] : null;
   const json = process.argv.includes("--json");
@@ -57,3 +57,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
   }
 }
+
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { writePreflightMarker, readPreflightMarker } from "../../core/gate-logic.js";
 
-export const markPreflightCompleteTool = {
-  name: "mark_preflight_complete",
+export const gateMarkPreflightTool = {
+  name: "gate_mark_preflight",
   description: "Mark the preflight checklist as completed for a given surface. This is the ONLY way to create a preflight marker — direct file writes to .loop-preflight-* are blocked by the write gate. After calling this tool, product/** writes for the surface are unlocked for 30 minutes. The marker file (.loop-preflight-<surface>) is stored in .claude/coordination/ (or .factory/coordination/ for Droid CLI) and has a 30-minute TTL.",
   schema: {
     surface: z.string().describe("Surface to mark as preflight-complete (e.g., 'product'). Must match the surface inferred by the write gate for product/** paths."),
@@ -28,7 +28,7 @@ export const markPreflightCompleteTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "mark_preflight_complete",
+      tool: "gate_mark_preflight",
       surface,
       marker_created_at: marker.completed_at,
     });

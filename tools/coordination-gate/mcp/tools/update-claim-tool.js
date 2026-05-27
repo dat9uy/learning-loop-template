@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { updateClaimVerification } from "../../claim-verification/verify-claim.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { updateClaimVerification } from "../../../claim-verification/verify-claim.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
 const DIMENSIONS = ["static", "install", "runtime", "product"];
 const STATUSES = ["claimed", "verified", "rejected"];
 const CLAIM_ID_PATTERN = /^[a-z0-9-]+$/;
 
-export const updateClaimTool = {
-  name: "update_claim_verification",
+export const indexUpdateClaimTool = {
+  name: "index_update_claim",
   description: "Update a claim's verification status for a specific dimension. Use with apply=false first to preview, then apply=true to commit.",
   schema: {
     claim_id: z.string().regex(CLAIM_ID_PATTERN).describe("The claim ID to update"),
@@ -40,7 +40,7 @@ export const updateClaimTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "update_claim_verification",
+      tool: "index_update_claim",
       claim_id: args.claim_id,
       dimension: args.dimension,
       status: args.status,

@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { createExperiment } from "../../core/experiment-writer.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { validateSourceRefs } from "../lib/source-ref-validator.js";
 
-export const createExperimentRecordTool = {
-  name: "create_experiment_record",
+export const recordCreateExperimentTool = {
+  name: "record_create_experiment",
   description: "Create an experiment record YAML file. Experiments prove or disprove assertions. The flow is: draft assertions (decisions) → experiment to prove → evidence (derivative). Records start in draft status.",
   schema: {
     surface: z.string().describe("Surface/scope this experiment applies to (e.g., 'product', 'api')"),
@@ -40,7 +40,7 @@ export const createExperimentRecordTool = {
       hypothesis,
       method,
       success_metrics,
-      source_refs: source_refs || ["local:constraint-gate-mcp"],
+      source_refs: source_refs || ["local:coordination-gate-mcp"],
       scope,
       output_level,
       claim_refs,
@@ -51,7 +51,7 @@ export const createExperimentRecordTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "create_experiment_record",
+      tool: "record_create_experiment",
       surface,
       ...result,
     });

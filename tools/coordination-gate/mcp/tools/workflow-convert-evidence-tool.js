@@ -2,7 +2,7 @@ import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import YAML from "yaml";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
 function extractFindings(text) {
   const lines = text.split("\n");

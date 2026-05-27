@@ -20,7 +20,7 @@
       "change_types": ["created", "updated"],
       "commands": [
         ["node", "tools/validate-records/validate-records.js"],
-        ["node", "tools/constraint-gate/tools/generate-capabilities-tool.js", "--dry_run"]
+        ["node", "tools/generate-capabilities/generate-capabilities.js", "--dry-run"]
       ]
     },
     "index-changed": {

@@ -261,4 +261,5 @@ function main() {
   console.log(`Applied verification update to ${claim.__file}.`);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main();
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

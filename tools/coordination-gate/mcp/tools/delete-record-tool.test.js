@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { deleteRecordTool } from "./delete-record-tool.js";
+import { recordDeleteTool } from "./delete-record-tool.js";
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +48,7 @@ function createTempRecord(tempDir, surface, type, id, status) {
   return join(dir, filename);
 }
 
-describe("delete_record tool", () => {
+describe("record_delete tool", () => {
   let tempDir;
   const originalEnv = process.env.GATE_ROOT;
 
@@ -60,7 +60,7 @@ describe("delete_record tool", () => {
     process.env.GATE_ROOT = tempDir;
     const recordPath = createTempRecord(tempDir, "meta", "decision", "decision-meta-260524T0000Z-test", "draft");
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "decision-meta-260524T0000Z-test",
       record_type: "decision",
@@ -80,7 +80,7 @@ describe("delete_record tool", () => {
     process.env.GATE_ROOT = tempDir;
     createTempRecord(tempDir, "meta", "decision", "decision-meta-260524T0000Z-approved", "approved");
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "decision-meta-260524T0000Z-approved",
       record_type: "decision",
@@ -99,7 +99,7 @@ describe("delete_record tool", () => {
     process.env.GATE_ROOT = tempDir;
     createTempRecord(tempDir, "meta", "decision", "decision-meta-260524T0000Z-test", "draft");
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "decision-meta-260524T0000Z-test",
       record_type: "decision",
@@ -118,7 +118,7 @@ describe("delete_record tool", () => {
     process.env.GATE_ROOT = tempDir;
     createTempRecord(tempDir, "meta", "decision", "decision-meta-260524T0000Z-test", "draft");
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "decision-meta-260524T0000Z-test",
       record_type: "decision",
@@ -137,7 +137,7 @@ describe("delete_record tool", () => {
     process.env.GATE_ROOT = tempDir;
     createTempRecord(tempDir, "meta", "experiment", "experiment-meta-260524T0000Z-test", "draft");
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "experiment-meta-260524T0000Z-test",
       record_type: "experiment",
@@ -155,7 +155,7 @@ describe("delete_record tool", () => {
     tempDir = mkdtempSync(join(tmpdir(), "del-test-"));
     process.env.GATE_ROOT = tempDir;
 
-    const result = await deleteRecordTool.handler({
+    const result = await recordDeleteTool.handler({
       surface: "meta",
       record_id: "decision-meta-260524T0000Z-missing",
       record_type: "decision",

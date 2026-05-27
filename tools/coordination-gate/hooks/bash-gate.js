@@ -24,7 +24,7 @@ import {
 } from "../core/gate-logic.js";
 import { readObservations, readBudgets } from "../core/file-readers.js";
 import { checkObservationStaleness } from "../core/inbound-state.js";
-import { resolveRoot } from "../core/resolve-root.js";
+import { resolveRoot } from "../../lib/resolve-root.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

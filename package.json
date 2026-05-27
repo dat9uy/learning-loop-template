@@ -19,7 +19,7 @@
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
     "generate:capabilities": "node tools/generate-capabilities/generate-capabilities.js",
     "check": "pnpm generate:capabilities --dry-run && pnpm validate:records && pnpm validate:plan-loop && pnpm test",
-    "gate:server": "node tools/constraint-gate/server.js",
+    "gate:server": "node tools/coordination-gate/mcp/server.js",
     "extract:index": "node tools/extract-index/extract-index.js",
     "list:probes": "node tools/list-probes/list-probes.js",
     "search:index": "node tools/search-index/search-index.js"

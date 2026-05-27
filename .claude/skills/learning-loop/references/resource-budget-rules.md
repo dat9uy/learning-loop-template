@@ -2,7 +2,7 @@
 
 Use these as hard constraints when a learning-loop task involves external systems with irreversible state.
 
-MCP tools: `check_gate`, `workflow_prepare_runtime_request` enforce these constraints mechanically.
+MCP tools: `gate_check`, `workflow_prepare_runtime_request` enforce these constraints mechanically.
 
 ## Core Rules
 

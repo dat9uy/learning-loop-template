@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { readObservations } from "../../core/file-readers.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { readLastOperatorMessage, checkObservationStaleness } from "../../core/inbound-state.js";
 import { evaluateWorkflows, triggerWorkflow } from "../workflow-runner.js";
 
-export const notifyArtifactTool = {
-  name: "notify_artifact_change",
+export const workflowNotifyArtifactTool = {
+  name: "workflow_notify_artifact",
   description: "Notify that an artifact file has changed. Logs the change, checks observation staleness, and evaluates triggered workflows.",
   schema: {
     path: z.string().describe("File path that changed"),
@@ -18,7 +18,7 @@ export const notifyArtifactTool = {
 
     const logEntry = {
       timestamp: new Date().toISOString(),
-      tool: "notify_artifact_change",
+      tool: "workflow_notify_artifact",
       path,
       change_type,
       state_change_detected: !!marker,

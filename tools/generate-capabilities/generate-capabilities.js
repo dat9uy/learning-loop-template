@@ -1,5 +1,6 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { adapterRegistry } from "./adapters/registry.js";
 import { normalizeEntries } from "./normalizer.js";
@@ -119,8 +120,7 @@ function mapsEqual(a, b) {
   return true;
 }
 
-// CLI entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const root = process.cwd();
   const result = await generateCapabilities({ root, dryRun });
@@ -140,3 +140,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`Generated ${record.id}.yaml`);
   }
 }
+
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

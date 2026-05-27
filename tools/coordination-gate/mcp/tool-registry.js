@@ -1,4 +1,4 @@
-import { appendGateLog } from "../core/gate-logging.js";
+import { appendGateLog } from "../../lib/gate-logging.js";
 
 const registeredNames = new Set();
 

@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { runExtraction } from "../../extract-index/extract-index.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { runExtraction } from "../../../extract-index/extract-index.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const extractIndexTool = {
-  name: "extract_index_entries",
+export const indexExtractTool = {
+  name: "index_extract",
   description: "Extract index entries from evidence markdown files. Idempotent — safe to call multiple times. Use after writing evidence to update the index.",
   schema: {
     capability: z.string().optional().describe("Filter to specific capability (default: all)"),
@@ -21,7 +21,7 @@ export const extractIndexTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "extract_index_entries",
+      tool: "index_extract",
       ...result.stats,
     });
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import yaml from "yaml";
 
 function globSync(pattern, { cwd, absolute }) {
@@ -168,4 +169,5 @@ function main() {
   process.exit(violations.length > 0 ? 1 : 0);
 }
 
-main();
+const isMain = import.meta.url.startsWith("file:") && process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) main();

@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { searchIndex } from "../../search-index/search-index.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { searchIndex } from "../../../search-index/search-index.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const searchIndexTool = {
-  name: "search_index_entries",
+export const indexSearchTool = {
+  name: "index_search",
   description: "Search index entries by capability, dimension, and status. Read-only query.",
   schema: {
     capability: z.string().optional().describe("Filter by capability name"),
@@ -26,7 +26,7 @@ export const searchIndexTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "search_index_entries",
+      tool: "index_search",
       count: results.length,
     });
 

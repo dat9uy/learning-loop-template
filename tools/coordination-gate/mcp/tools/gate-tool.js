@@ -7,12 +7,12 @@ import {
   evaluateWritePath,
 } from "../../core/gate-logic.js";
 import { readObservations, readBudgets } from "../../core/file-readers.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 import { checkObservationStaleness } from "../../core/inbound-state.js";
 
-export const gateTool = {
-  name: "check_gate",
+export const gateCheckTool = {
+  name: "gate_check",
   description: "Check if a command is allowed by constraint gate. Returns ok/block/escalate.",
   schema: {
     command: z.string().optional().describe("The command to check against constraint patterns"),
@@ -76,7 +76,7 @@ export const gateTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "check_gate",
+      tool: "gate_check",
       decision: decision.decision,
       command: command || undefined,
       file_path: file_path || undefined,

@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { generateCapabilities } from "../../generate-capabilities/generate-capabilities.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { generateCapabilities } from "../../../generate-capabilities/generate-capabilities.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
-export const generateCapabilitiesTool = {
-  name: "generate_capability_records",
+export const capabilityGenerateTool = {
+  name: "capability_generate",
   description: "Generate capability records from product surface adapters. Use dry_run=true first to check for drift, then dry_run=false to write.",
   schema: {
     dry_run: z.boolean().optional().describe("Preview drift without writing (default: false)"),
@@ -45,7 +45,7 @@ export const generateCapabilitiesTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "generate_capability_records",
+      tool: "capability_generate",
       dry_run: args.dry_run,
       drift: result.drift,
       diff_count: result.diffs?.length || 0,

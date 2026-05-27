@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { loadRecords } from "../../validate-records/record-loader.js";
-import { loadSchemas } from "../../validate-records/schema-loader.js";
-import { validateRecords } from "../../validate-records/record-validation-rules.js";
-import { validateDerivedAssurance } from "../../validate-records/derived-claim-assurance.js";
-import { validateFilenameConventions } from "../../validate-records/filename-convention-validation.js";
-import { appendGateLog } from "../../core/gate-logging.js";
-import { resolveRoot } from "../../core/resolve-root.js";
+import { loadRecords } from "../../../validate-records/record-loader.js";
+import { loadSchemas } from "../../../validate-records/schema-loader.js";
+import { validateRecords } from "../../../validate-records/record-validation-rules.js";
+import { validateDerivedAssurance } from "../../../validate-records/derived-claim-assurance.js";
+import { validateFilenameConventions } from "../../../validate-records/filename-convention-validation.js";
+import { appendGateLog } from "../../../lib/gate-logging.js";
+import { resolveRoot } from "../../../lib/resolve-root.js";
 
 function parseErrorMessage(msg) {
   const match = msg.match(/^([^:]+):\s+(.+)$/);
@@ -15,8 +15,8 @@ function parseErrorMessage(msg) {
   return { record: "unknown", message: msg };
 }
 
-export const validateRecordsTool = {
-  name: "validate_records",
+export const indexValidateTool = {
+  name: "index_validate",
   description: "Validate YAML records against JSON schemas. Use AFTER writing records to verify correctness. Returns structured errors and warnings.",
   schema: {
     allow_disallowed_fixtures: z.boolean().optional().describe("Allow fixtures that use disallowed source_ref patterns (for test fixtures)"),
@@ -58,7 +58,7 @@ export const validateRecordsTool = {
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
-      tool: "validate_records",
+      tool: "index_validate",
       decision: result.valid ? "ok" : "block",
       record_count: records.length,
       error_count: errors.length,

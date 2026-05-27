@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTool, safeImport } from "./tool-registry.js";
-import { resolveRoot } from "../core/resolve-root.js";
+import { resolveRoot } from "../../lib/resolve-root.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,7 +23,7 @@ function loadManifest() {
 const TOOL_MODULES = loadManifest();
 
 const server = new McpServer({
-  name: "constraint-gate",
+  name: "coordination-gate",
   version: "1.0.0",
 });
 
@@ -41,8 +41,8 @@ for (const mod of TOOL_MODULES) {
   }
 }
 
-console.error(`constraint-gate: registered ${registered} of ${TOOL_MODULES.length} tools${failed > 0 ? ` (${failed} failed)` : ""}`);
+console.error(`coordination-gate: registered ${registered} of ${TOOL_MODULES.length} tools${failed > 0 ? ` (${failed} failed)` : ""}`);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("constraint-gate MCP server started");
+console.error("coordination-gate MCP server started");

@@ -17,7 +17,7 @@ function findProjectRoot() {
 }
 
 const PATTERNS_RAW = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../../../../tools/constraint-gate/patterns.json'), 'utf8')
+  fs.readFileSync(path.join(__dirname, '../../../../tools/coordination-gate/core/patterns.json'), 'utf8')
 );
 
 const CONSTRAINT_PATTERNS = Object.fromEntries(
