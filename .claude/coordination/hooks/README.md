@@ -81,16 +81,7 @@ Enforces domain rules for file writes. Rules are evaluated in order; first match
 
 ## Shared Utilities
 
-### lib/gate-utils.cjs
-
-Common functions used by multiple hooks:
-- `matchConstraintPattern(command)` — Match command against constraint patterns
-- `readObservations(obsDir)` — Read observation YAML files
-- `readLastOperatorMessage(coordDir)` — Read marker file
-- `readPreflightMarker(surface, coordDir)` — Read preflight marker file, enforce 30-min TTL
-- `writePreflightMarker(surface, coordDir)` — Atomic write preflight marker file
-- `checkObservationStaleness(observations, coordDir)` — Check if observations are stale
-- `globMatch(pattern, path)` — Glob matching
+All gate logic lives in `tools/learning-loop-mcp/core/` (ESM, single source of truth). Hook wrappers delegate to universal ESM hooks via `execFileSync`. There is no shared CJS utility file — the thin wrappers intentionally contain zero business logic.
 
 ## Environment Variables
 

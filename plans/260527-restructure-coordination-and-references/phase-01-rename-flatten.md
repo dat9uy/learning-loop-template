@@ -114,11 +114,11 @@ tools/coordination-gate/       tools/learning-loop-mcp/
     - All `tools/coordination-gate/mcp/` → `tools/learning-loop-mcp/`
 
 ## Success Criteria
-- [ ] `node tools/learning-loop-mcp/server.js` starts without import errors
-- [ ] `node --test 'tools/learning-loop-mcp/__tests__/*.test.js'` passes
-- [ ] `rg "coordination-gate" tools/learning-loop-mcp/` returns zero matches
-- [ ] `ls tools/learning-loop-mcp/mcp/` returns "No such file or directory"
-- [ ] Deepest import in `tools/learning-loop-mcp/tools/*.js` is `../../lib/` (was `../../../lib/`)
+- [x] `node tools/learning-loop-mcp/server.js` starts without import errors
+- [x] `node --test 'tools/learning-loop-mcp/__tests__/*.test.js'` passes
+- [x] `rg "coordination-gate" tools/learning-loop-mcp/` returns zero matches
+- [x] `ls tools/learning-loop-mcp/mcp/` returns "No such file or directory"
+- [x] Deepest import in `tools/learning-loop-mcp/tools/*.js` is `../../lib/` (was `../../../lib/`)
 
 ## Risk Assessment
 - **Risk:** `manifest.json` uses `./tools/*.js` paths relative to `server.js` — after flattening, `server.js` is now one level up, so `./tools/*.js` still resolves to `tools/learning-loop-mcp/tools/*.js`. Correct. Verify with `node -e "const m=require('./tools/learning-loop-mcp/tools/manifest.json'); console.log(m.length)"`.

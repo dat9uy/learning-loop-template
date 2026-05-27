@@ -3,17 +3,17 @@
 ## Coordination System
 
 Three PreToolUse hooks and one MCP server enforce mechanical safety.
-All gate logic lives in `tools/coordination-gate/core/` (single source of truth).
+All gate logic lives in `tools/learning-loop-mcp/core/` (single source of truth).
 Both Claude Code and Droid CLI use the same universal hooks via thin wrappers:
 
 | Surface | Hook | Wrapper | Universal Script |
 |---------|------|---------|------------------|
-| Claude Code | Bash gate | `.claude/coordination/hooks/bash-coordination-gate.cjs` | `tools/coordination-gate/hooks/bash-gate.js` |
-| Claude Code | Write gate | `.claude/coordination/hooks/write-coordination-gate.cjs` | `tools/coordination-gate/hooks/write-gate.js` |
-| Claude Code | Inbound gate | `.claude/coordination/hooks/inbound-state-gate.cjs` | `tools/coordination-gate/hooks/inbound-gate.js` |
-| Droid CLI | Execute gate | `.factory/coordination/hooks/bash-coordination-gate.cjs` | `tools/coordination-gate/hooks/bash-gate.js` |
-| Droid CLI | Write gate | `.factory/coordination/hooks/write-coordination-gate.cjs` | `tools/coordination-gate/hooks/write-gate.js` |
-| Droid CLI | Inbound gate | `.factory/coordination/hooks/inbound-state-gate.cjs` | `tools/coordination-gate/hooks/inbound-gate.js` |
+| Claude Code | Bash gate | `.claude/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/bash-gate.js` |
+| Claude Code | Write gate | `.claude/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/write-gate.js` |
+| Claude Code | Inbound gate | `.claude/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mcp/hooks/inbound-gate.js` |
+| Droid CLI | Execute gate | `.factory/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/bash-gate.js` |
+| Droid CLI | Write gate | `.factory/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/write-gate.js` |
+| Droid CLI | Inbound gate | `.factory/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mcp/hooks/inbound-gate.js` |
 
 - **Bash/Execute gate** — blocks commands matching constraint patterns (docker,
   sudo, package-manager, vendor-api, side-effect-import) without active
@@ -25,7 +25,7 @@ Both Claude Code and Droid CLI use the same universal hooks via thin wrappers:
   `tools/**`, `.claude/**`, `.factory/**`, single-segment files.
 - **Inbound gate** — warns when operator state-change messages may have stale
   observations.
-- **MCP server** (`tools/coordination-gate/mcp/server.js`) — 32 tools for
+- **MCP server** (`tools/learning-loop-mcp/server.js`) — 32 tools for
   constraint checks, record CRUD, preflight gating, and workflow orchestration.
 
 ### Droid CLI Configuration
@@ -60,7 +60,7 @@ no observation-dance, no pre-authorized path, and no bypass.
 | `capability_generate` | Generate capability records from product surfaces |
 | `gate_mark_preflight` | Mark preflight checklist complete for a surface (unlocks product/** writes for 30 min) |
 
-See `tools/coordination-gate/mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
+See `tools/learning-loop-mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
 
 ### Record ID Convention
 

@@ -130,7 +130,7 @@ function runWriteGate(filePath, envOverrides = {}) {
 async function startMcpServer(root) {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
-  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'coordination-gate', 'mcp', 'server.js');
+  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mcp', 'server.js');
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverPath],

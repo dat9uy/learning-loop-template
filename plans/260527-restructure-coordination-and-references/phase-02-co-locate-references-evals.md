@@ -98,12 +98,12 @@ BEFORE                              AFTER
      - `"runtime-validation": "tools/learning-loop-mcp/references/prompt-blueprints.md"`
 
 ## Success Criteria
-- [ ] `ls tools/learning-loop-mcp/references/` shows 10 markdown files
-- [ ] `ls tools/learning-loop-mcp/evals/` shows `evals.json`
-- [ ] `.claude/skills/learning-loop/SKILL.md` references `tools/learning-loop-mcp/references/`
-- [ ] `.factory/skills/learning-loop/SKILL.md` references `tools/learning-loop-mcp/references/`
-- [ ] `rg "references/learning-loop" .claude/skills/learning-loop/SKILL.md` returns zero (old relative path gone)
-- [ ] `rg "references/learning-loop" .factory/skills/learning-loop/SKILL.md` returns zero (old relative path gone)
+- [x] `ls tools/learning-loop-mcp/references/` shows 10 markdown files
+- [x] `ls tools/learning-loop-mcp/evals/` shows `evals.json`
+- [x] `.claude/skills/learning-loop/SKILL.md` references `tools/learning-loop-mcp/references/`
+- [x] `.factory/skills/learning-loop/SKILL.md` references `tools/learning-loop-mcp/references/`
+- [x] `rg "references/learning-loop" .claude/skills/learning-loop/SKILL.md` returns zero (old relative path gone)
+- [x] `rg "references/learning-loop" .factory/skills/learning-loop/SKILL.md` returns zero (old relative path gone)
 
 ## Risk Assessment
 - **Risk:** Any MCP workflow tool that reads reference files by hardcoded path. Scout for `readFileSync` calls that reference `.claude/skills/learning-loop/references/`. Update those paths.

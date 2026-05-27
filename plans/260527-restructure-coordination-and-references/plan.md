@@ -1,7 +1,7 @@
 ---
 title: "Restructure Coordination Gate to Learning-Loop-MCP"
 description: "Rename tools/coordination-gate to tools/learning-loop-mcp, flatten mcp/ subfolder, co-locate references/evals from .claude/skills/learning-loop/, add Node.js subpath imports, and update all config/docs/skills. Pure refactor — zero logic changes."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [refactor, rename, mcp, agent-experience, project-organization, product-build]

@@ -88,10 +88,10 @@ When budget state blocks prompt generation, return one of these signals instead 
 
 ## References
 
-- `references/learning-loop-rules.md` — condensed repo rules from `docs/` and meta evidence.
-- `references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
-- `references/prompt-blueprints.md` — reusable prompt skeletons.
-- `references/prompt-blueprints-state-gated.md` — state-gated prompt templates for budget-constrained tasks.
-- `references/prompt-blueprints-product-build.md` — product-build prompt skeletons.
-- `references/meta-evidence-self-improvement.md` — self-improvement and `meta` evidence rules.
-- `references/orchestration-patterns.md` — full-lifecycle experiment orchestration, claim update, and promotion rules.
+- `tools/learning-loop-mcp/references/learning-loop-rules.md` — condensed repo rules from `docs/` and meta evidence.
+- `tools/learning-loop-mcp/references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
+- `tools/learning-loop-mcp/references/prompt-blueprints.md` — reusable prompt skeletons.
+- `tools/learning-loop-mcp/references/prompt-blueprints-state-gated.md` — state-gated prompt templates for budget-constrained tasks.
+- `tools/learning-loop-mcp/references/prompt-blueprints-product-build.md` — product-build prompt skeletons.
+- `tools/learning-loop-mcp/references/meta-evidence-self-improvement.md` — self-improvement and `meta` evidence rules.
+- `tools/learning-loop-mcp/references/orchestration-patterns.md` — full-lifecycle experiment orchestration, claim update, and promotion rules.

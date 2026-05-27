@@ -9,7 +9,7 @@ const { execFileSync } = require('child_process');
 const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '../../..');
-const universalHook = path.join(projectRoot, 'tools/coordination-gate/hooks/write-gate.js');
+const universalHook = path.join(projectRoot, 'tools/learning-loop-mcp/hooks/write-gate.js');
 
 const stdin = require('fs').readFileSync(0, 'utf8');
 try {

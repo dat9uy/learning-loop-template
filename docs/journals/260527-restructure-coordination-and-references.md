@@ -59,6 +59,58 @@ During project-management follow-up, discovered `plans/260527-0000-tools-simplif
 
 Dependency graph now consistent. No blockers remaining for this plan.
 
-## Next Step
+## Implementation — `/ck:cook /home/datguy/codingProjects/learning-loop-template/plans/260527-restructure-coordination-and-references/plan.md --tdd`
 
-User selected `/ck:plan validate` (already completed). Recommend `/ck:cook /home/datguy/codingProjects/learning-loop-template/plans/260527-restructure-coordination-and-references/plan.md` for implementation.
+**Date:** 2026-05-27
+**Mode:** TDD (tests-first baseline, then refactor)
+**Result:** All 5 phases complete, zero logic changes, 227/228 tests pass (pre-existing `check-budget` failure).
+
+### Phase 1: Rename+Flatten
+- `git mv tools/coordination-gate tools/learning-loop-mcp`
+- Flattened `mcp/` → top level: server.js, tool-registry.js, workflow-runner.js, agent-manifest.json, lib/, tools/
+- Updated all 6 hook wrapper paths atomically (same commit)
+- Server smoke test: 33/33 tools registered
+
+### Phase 2: Co-locate References+Evals
+- `git mv .claude/skills/learning-loop/references tools/learning-loop-mcp/references`
+- `git mv .claude/skills/learning-loop/evals tools/learning-loop-mcp/evals`
+- Updated `.claude/skills/learning-loop/SKILL.md` and `.factory/skills/learning-loop/SKILL.md` references
+- Updated `workflow-generate-prompt-tool.js` BLUEPRINTS map
+
+### Phase 3: Subpath Imports
+- Added `"imports": { "#mcp/*": "./tools/learning-loop-mcp/*", "#lib/*": "./tools/lib/*" }` to `package.json`
+- Replaced `../../../lib/` → `#lib/`, `../../core/` → `#mcp/core/`, `../lib/` → `#lib/`, `../mcp/lib/` → `#mcp/lib/`
+- Alias usage: 50 `#lib/`, 25 `#mcp/core/`, 6 `#mcp/lib/`
+
+### Phase 4: Config+Docs+Skills Update
+- `package.json` script: `gate:server` → `node tools/learning-loop-mcp/server.js`
+- `.mcp.json`: server key `coordination-gate` → `learning-loop-mcp`
+- `CLAUDE.md`: all path references updated
+- `README.md`: lane table updated
+- `.factory/skills/coordination-gate/SKILL.md` + `.claude/skills/coordination-gate/SKILL.md` paths updated
+- `.claude/coordination/__tests__/*.test.cjs` hardcoded paths updated
+- `.claude/coordination/hooks/lib/gate-utils.cjs` patterns.json path updated
+
+### Phase 5: Verification
+- `node tools/learning-loop-mcp/server.js`: 33/33 tools registered (PASS)
+- `node --test 'tools/learning-loop-mcp/__tests__/*.test.js'`: 12/12 pass (PASS)
+- `node --test '.claude/coordination/__tests__/*.test.cjs'`: 78/78 pass (PASS)
+- `pnpm test`: 227/228 pass (pre-existing check-budget failure, NOT caused by refactor)
+- `pnpm check`: `generate:capabilities --dry-run` fails on pre-existing `vnstock_data` Python import (out of scope)
+- Zero `tools/coordination-gate` references in active code (PASS)
+- Zero `../../../lib/` deep imports in `tools/learning-loop-mcp/` (PASS)
+- All 6 hook wrappers exit 0 on benign inputs (PASS)
+- Code review subagent: APPROVED — all 8 acceptance criteria pass, zero regressions
+
+### Post-Implementation Cleanup
+
+**Deleted dead code:**
+- `.claude/coordination/hooks/lib/gate-utils.cjs` — was dead code in production (all hooks delegate to universal ESM hooks in `tools/learning-loop-mcp/hooks/`). Only remaining consumer was `.claude/coordination/__tests__/gate-utils.test.cjs`.
+- `.claude/coordination/__tests__/gate-utils.test.cjs` — tests for the deleted dead code.
+- Updated `.claude/coordination/hooks/README.md` — removed `gate-utils.cjs` section, replaced with note about universal ESM hooks.
+
+Test count: 228 → 204 (24 gate-utils tests removed). Only remaining failure: pre-existing `check-budget.test.js:48`.
+
+### Plan Status
+- All phase checkboxes marked `[x]`
+- `plan.md` frontmatter: `status: completed`

@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "server": "learning-loop-mcp",
+  "groups": {
+    "gate": {
+      "description": "Safety checks — call BEFORE any write operation",
+      "tools": ["gate_check", "gate_mark_preflight"],
+      "ordering": "mandatory-first",
+      "cache_ttl": 0
+    },
+    "record_crud": {
+      "description": "Create/update decision, experiment, risk, observation records",
+      "tools": [
+        "record_create_decision",
+        "record_update_decision",
+        "record_create_experiment",
+        "record_update_experiment",
+        "record_create_risk",
+        "record_update_risk",
+        "record_create_observation",
+        "record_update_observation",
+        "record_delete"
+      ],
+      "ordering": "any",
+      "requires_observation": true
+    },
+    "workflow": {
+      "description": "Learning-loop workflow orchestration",
+      "tools": [
+        "workflow_intake_orient",
+        "workflow_intake_plan",
+        "workflow_classify_prompt",
+        "workflow_prepare_runtime_request",
+        "workflow_convert_evidence",
+        "workflow_verify_evidence",
+        "workflow_generate_prompt",
+        "workflow_external_decision",
+        "workflow_self_improvement",
+        "workflow_intentional_skip",
+        "workflow_report_phase_status",
+        "workflow_product_build",
+        "workflow_runtime_probe",
+        "workflow_notify_artifact",
+        "workflow_trigger"
+      ],
+      "ordering": "linear",
+      "typical_chain": [
+        "workflow_intake_orient",
+        "workflow_intake_plan",
+        "workflow_product_build",
+        "workflow_runtime_probe"
+      ]
+    },
+    "index": {
+      "description": "Index extraction, search, and validation",
+      "tools": ["index_validate", "index_extract", "index_search", "index_update_claim"],
+      "ordering": "extract-before-search",
+      "typical_chain": ["index_validate", "index_extract", "index_search"]
+    },
+    "capability": {
+      "description": "Capability map generation and probe listing",
+      "tools": ["capability_generate", "capability_list_probes", "capability_list_verified"],
+      "ordering": "any"
+    }
+  },
+  "quickstart": {
+    "product_build": [
+      { "tool": "gate_mark_preflight", "surface": "product" },
+      { "tool": "gate_check", "file_path": "product/**" },
+      { "tool": "workflow_intake_orient", "input": "plan.md" },
+      { "tool": "workflow_intake_plan", "input": "$workflow_intake_orient" },
+      { "tool": "record_create_decision", "surface": "product" },
+      { "tool": "workflow_product_build" },
+      { "tool": "index_validate" },
+      { "tool": "index_extract" }
+    ],
+    "record_verification": [
+      { "tool": "index_validate" },
+      { "tool": "index_extract" },
+      { "tool": "index_search", "filters": { "status": "verified" } }
+    ],
+    "observation_gated_write": [
+      { "tool": "gate_check", "file_path": "records/evidence/**" },
+      { "tool": "record_create_observation", "constraint_type": "write-path", "constraint": "records-evidence" },
+      { "tool": "gate_check", "file_path": "records/evidence/**" }
+    ]
+  }
+}

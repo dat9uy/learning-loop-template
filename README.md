@@ -11,7 +11,7 @@ Product-agnostic scaffold for evidence → records → decisions → proposal-on
 | `product/<stack>/` | per-stack runtime probes (and, post-approval, product code) |
 | `docs/` | policy + operator guides |
 | `tools/` | validators + verification helpers |
-| `tools/constraint-gate/` | MCP server + gate logic for command gating |
+| `tools/learning-loop-mcp/` | MCP server + gate logic for command gating |
 | `.claude/coordination/` | hooks, profiles, and skill registry for write-path enforcement |
 | `plans/` | active and historical plans + brainstorm reports |
 

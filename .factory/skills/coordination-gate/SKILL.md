@@ -10,8 +10,8 @@ MCP server that enforces "observe before workaround" for constraint discovery an
 
 ## Server
 
-- **Name**: `coordination-gate`
-- **Entry**: `tools/coordination-gate/mcp/server.js`
+- **Name**: `learning-loop-mcp`
+- **Entry**: `tools/learning-loop-mcp/server.js`
 - **Registered**: 33 tools across 5 domains
 
 ## Tool Domains
@@ -40,4 +40,4 @@ Direct `Edit`/`Write`/`Bash` to `records/**` is mechanically blocked by the writ
 
 ## Agent Manifest
 
-See `tools/coordination-gate/mcp/agent-manifest.json` for full grouping, ordering hints, and typical chains.
+See `tools/learning-loop-mcp/agent-manifest.json` for full grouping, ordering hints, and typical chains.

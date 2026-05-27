@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "coordination-gate": {
+    "learning-loop-mcp": {
       "command": "node",
-      "args": ["tools/coordination-gate/mcp/server.js"]
+      "args": ["tools/learning-loop-mcp/server.js"]
     }
   }
 }

@@ -106,12 +106,12 @@ Files to update:
     - Contains `"write-coordination-gate.cjs"` in a test assertion — this is a filename, not a path, so it stays as-is.
 
 ## Success Criteria
-- [ ] `rg "coordination-gate" package.json .mcp.json` returns zero matches
-- [ ] `rg "tools/coordination-gate" README.md CLAUDE.md docs/` returns zero matches
-- [ ] `rg "tools/coordination-gate" .factory/skills/coordination-gate/SKILL.md` returns zero matches
-- [ ] `rg "tools/coordination-gate" .claude/skills/coordination-gate/SKILL.md` returns zero matches
-- [ ] `node tools/learning-loop-mcp/server.js` starts successfully
-- [ ] All hook wrappers resolve to existing files
+- [x] `rg "coordination-gate" package.json .mcp.json` returns zero matches
+- [x] `rg "tools/coordination-gate" README.md CLAUDE.md docs/` returns zero matches
+- [x] `rg "tools/coordination-gate" .factory/skills/coordination-gate/SKILL.md` returns zero matches
+- [x] `rg "tools/coordination-gate" .claude/skills/coordination-gate/SKILL.md` returns zero matches
+- [x] `node tools/learning-loop-mcp/server.js` starts successfully
+- [x] All hook wrappers resolve to existing files
 
 ## Risk Assessment
 - **Risk:** `.factory/settings.json` and `.claude/settings.json` reference hook files by filename only (not path), so they don't need changes. The wrapper files themselves contain the path.
