@@ -38,6 +38,22 @@ MCP server that enforces "observe before workaround" for constraint discovery an
 Use `record_create_*` / `record_update_*` for all `records/**` writes.
 Direct `Edit`/`Write`/`Bash` to `records/**` is mechanically blocked by the write gate.
 
+## Quickstart: Post-Write Validation
+
+After writing evidence, observations, capabilities, or index files via MCP record tools:
+
+1. Call `workflow_notify_artifact` with the file path and change type.
+2. Read the returned `recommended_next_tools`.
+3. Call each recommended tool explicitly (e.g., `index_validate`, `index_extract`, `capability_generate`).
+
+Example:
+```
+workflow_notify_artifact(path="records/product/evidence/decision.md", change_type="created")
+→ { recommended_next_tools: ["index_extract", "index_validate"] }
+index_extract()
+index_validate()
+```
+
 ## Agent Manifest
 
 See `tools/learning-loop-mcp/agent-manifest.json` for full grouping, ordering hints, and typical chains.

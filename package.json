@@ -33,5 +33,11 @@
     "ajv-formats": "^3.0.1",
     "yaml": "^2.8.4",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "simple-git-hooks": "^2.13.1"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm validate:records && pnpm extract:index"
   }
 }

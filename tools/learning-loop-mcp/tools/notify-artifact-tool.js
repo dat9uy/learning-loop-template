@@ -3,11 +3,11 @@ import { readObservations } from "#mcp/core/file-readers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readLastOperatorMessage, checkObservationStaleness } from "#mcp/core/inbound-state.js";
-import { evaluateWorkflows, triggerWorkflow } from "../workflow-runner.js";
+import { evaluateTriggers } from "#mcp/core/workflow-registry.js";
 
 export const workflowNotifyArtifactTool = {
   name: "workflow_notify_artifact",
-  description: "Notify that an artifact file has changed. Logs the change, checks observation staleness, and evaluates triggered workflows.",
+  description: "Notify that an artifact file has changed. Returns recommended MCP tools to call next based on registry triggers. Does NOT spawn processes.",
   schema: {
     path: z.string().describe("File path that changed"),
     change_type: z.enum(["created", "updated", "deleted"]).describe("Type of change"),
@@ -16,13 +16,16 @@ export const workflowNotifyArtifactTool = {
     const root = resolveRoot();
     const marker = readLastOperatorMessage(root);
 
+    const { matched, recommendations } = evaluateTriggers(path, change_type);
+
     const logEntry = {
       timestamp: new Date().toISOString(),
       tool: "workflow_notify_artifact",
       path,
       change_type,
       state_change_detected: !!marker,
-      triggered_workflows: [],
+      matched_workflows: matched,
+      recommended_tools: recommendations,
     };
 
     let staleEscalation = false;
@@ -40,22 +43,17 @@ export const workflowNotifyArtifactTool = {
       }
     }
 
-    const triggered = evaluateWorkflows(path, change_type, root);
-    const validTriggered = triggered.filter((t) => t.commands);
-    const workflowNames = validTriggered.map((t) => t.name);
-    logEntry.triggered_workflows = workflowNames;
-
-    for (const t of validTriggered) {
-      triggerWorkflow(t.name, { path }, root).catch(() => {
-        // fire-and-forget: ignore spawn errors
-      });
-    }
-
     appendGateLog(root, logEntry);
+
+    const reasoning = matched.length > 0
+      ? `${matched.join(", ")} workflow${matched.length > 1 ? "s" : ""} matched; recommended: ${recommendations.join(", ")}`
+      : "No matching workflows for this path.";
 
     const result = {
       logged: true,
-      triggered_workflows: workflowNames,
+      matched_workflows: matched,
+      recommended_next_tools: recommendations,
+      reasoning,
     };
     if (staleEscalation) {
       result.stale_escalation = true;

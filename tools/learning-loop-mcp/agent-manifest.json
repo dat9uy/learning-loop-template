@@ -48,7 +48,9 @@
         "workflow_intake_orient",
         "workflow_intake_plan",
         "workflow_product_build",
-        "workflow_runtime_probe"
+        "workflow_notify_artifact",
+        "index_validate",
+        "index_extract"
       ]
     },
     "index": {
