@@ -106,6 +106,26 @@ When the gate blocks with `decision: block`:
 - `escalate`: block the write, require operator approval.
 - Set via `GATE_RESPONSE_MODE` environment variable.
 
+## Budget-Check Rule (vendor-api commands)
+
+Before executing any `vendor-api` command (e.g., `curl` to vendor APIs, vendor SDK calls):
+
+1. Call `budget_check(system="vnstock", resource="device-slots")` (or appropriate system/resource)
+2. If budget observation is stale or missing, stop and ask the operator
+3. If budget is exhausted (`remaining: 0`), read `observation-vnstock-device-slot-ledger` to check host fingerprint
+4. Decide:
+   - Same fingerprint as registered device → safe, proceed
+   - New fingerprint → dangerous, stop or ask operator
+5. Record your reasoning via `meta_state_report(category="budget-check", ...)` with:
+   - `affected_system`: the vendor system name (e.g., `vnstock_vendor`)
+   - `description`: budget numbers, fingerprint match result, and decision
+   - `evidence_code_ref`: the budget observation path
+6. Only proceed after recording the budget-check meta-state entry
+
+## Side-Effect Import Rule (all vendor SDKs)
+
+If any vendor SDK import triggers device registration or authentication (e.g., `import vnstock_data`, `import vendor_data`), do not import it directly. Use `importlib.util.find_spec()` for safe checks. If the gate blocks with `side-effect-import`, respect the block. Do not attempt to bypass it.
+
 ## Implementation Workflows
 
 ### Use Case A — Direct Cook

@@ -9,3 +9,4 @@ Quick reference:
 - **Preflight:** use `gate_mark_preflight` MCP tool to unlock `product/**` writes
 - **Records:** all `records/**` writes go through MCP tools; direct file writes are blocked
 - **Gate response mode:** `warn` (default) or `escalate` via `GATE_RESPONSE_MODE` env var
+- **Budget check:** before vendor-api commands, call `budget_check`, then `meta_state_report(category="budget-check")` to record reasoning. See `AGENTS.md` for full flow.
