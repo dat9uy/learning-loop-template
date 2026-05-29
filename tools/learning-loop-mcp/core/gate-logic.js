@@ -102,7 +102,7 @@ export function evaluateBudget(budgetData) {
  * Make the final gate decision.
  * Returns { decision: "ok" | "block" | "escalate", ... }
  */
-export function makeGateDecision(constraintMatch, observationStatus, budgetStatus) {
+export function makeGateDecision(constraintMatch, observationStatus) {
   // Side-effect imports always block — importing triggers vendor auth which
   // reactivates cleared devices. No observation or budget state can override.
   if (constraintMatch === "side-effect-import") {
@@ -112,23 +112,6 @@ export function makeGateDecision(constraintMatch, observationStatus, budgetStatu
       constraint_type: constraintMatch,
       hard_block: true,
     };
-  }
-
-  // Budget exhaustion only escalates when the budget's constraint_type matches the command
-  if (budgetStatus?.exhausted || budgetStatus?.windowActive) {
-    if (constraintMatch && budgetStatus.constraint_type === constraintMatch) {
-      const system = budgetStatus.external_system ? ` (${budgetStatus.external_system}` : "";
-      const resource = budgetStatus.resource ? ` ${budgetStatus.resource}` : "";
-      const suffix = system || resource ? `${system}${resource})` : "";
-      return {
-        decision: "escalate",
-        reason: budgetStatus.exhausted
-          ? `Budget exhausted for constraint "${constraintMatch}"${suffix}.`
-          : `Validation window active for constraint "${constraintMatch}"${suffix}.`,
-        constraint_type: constraintMatch,
-        observation_id: observationStatus?.observation?.id,
-      };
-    }
   }
 
   // No constraint matched → ok

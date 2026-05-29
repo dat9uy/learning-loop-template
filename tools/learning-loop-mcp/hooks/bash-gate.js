@@ -19,10 +19,9 @@ import {
 import {
   matchConstraintPattern,
   checkObservationExists,
-  evaluateBudget,
   makeGateDecision,
 } from "#mcp/core/gate-logic.js";
-import { readObservations, readBudgets } from "#mcp/core/file-readers.js";
+import { readObservations } from "#mcp/core/file-readers.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -71,17 +70,7 @@ function main() {
     const observations = readObservations(root);
     const observationStatus = checkObservationExists(constraintMatch, observations);
 
-    const budgets = readBudgets(root);
-    let budgetStatus = { exhausted: false, windowActive: false };
-    for (const budget of budgets) {
-      const status = evaluateBudget(budget);
-      if (status.exhausted || status.windowActive) {
-        budgetStatus = status;
-        break;
-      }
-    }
-
-    constraintResult = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
+    constraintResult = makeGateDecision(constraintMatch, observationStatus);
 
     // Staleness check for non-hard-block decisions
     if (!constraintResult.hard_block) {

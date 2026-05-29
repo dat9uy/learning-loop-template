@@ -2,11 +2,10 @@ import { z } from "zod";
 import {
   matchConstraintPattern,
   checkObservationExists,
-  evaluateBudget,
   makeGateDecision,
   evaluateWritePath,
 } from "#mcp/core/gate-logic.js";
-import { readObservations, readBudgets } from "#mcp/core/file-readers.js";
+import { readObservations } from "#mcp/core/file-readers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
@@ -23,7 +22,6 @@ export const gateCheckTool = {
     const root = resolveRoot();
 
     const observations = readObservations(root);
-    const budgets = readBudgets(root);
 
     let constraintDecision = null;
     let constraintMatch = null;
@@ -31,16 +29,7 @@ export const gateCheckTool = {
       constraintMatch = matchConstraintPattern(command);
       const observationStatus = checkObservationExists(constraintMatch, observations);
 
-      let budgetStatus = { exhausted: false, windowActive: false };
-      for (const budget of budgets) {
-        const status = evaluateBudget(budget);
-        if (status.exhausted || status.windowActive) {
-          budgetStatus = status;
-          break;
-        }
-      }
-
-      constraintDecision = makeGateDecision(constraintMatch, observationStatus, budgetStatus);
+      constraintDecision = makeGateDecision(constraintMatch, observationStatus);
 
       if (constraintMatch) {
         const staleness = checkObservationStaleness(observations, root);
