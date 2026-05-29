@@ -21,6 +21,7 @@ The gate **reads** domain observations to check if they exist (meta-level: "has 
 
 **What the gate does:**
 - Match command strings against regex patterns (`patterns.json`)
+- Strip message flags (`-m`, `--message`, `--title`, `--description`, `--body`) and their values before matching to prevent false positives from quoted commit messages, PR titles, etc.
 - Check if an active observation exists for the matched constraint
 - Block commands that have no observation ("no one has approved this constraint")
 - Escalate when an observation is stale ("operator may have changed state, verify first")

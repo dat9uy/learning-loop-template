@@ -32,9 +32,9 @@ The gate splits on `;`, `&`, `|` and checks each segment. A segment like `git co
 
 | Phase | Name | Status | Effort |
 |-------|------|--------|--------|
-| 1 | [Tests-First](./phase-01-tests-first.md) | Pending | 1h |
-| 2 | [Implementation](./phase-02-implementation.md) | Pending | 1h |
-| 3 | [Integration Validation](./phase-03-integration-validation.md) | Pending | 1h |
+| 1 | [Tests-First](./phase-01-tests-first.md) | Completed | 1h |
+| 2 | [Implementation](./phase-02-implementation.md) | Completed | 1h |
+| 3 | [Integration Validation](./phase-03-integration-validation.md) | Completed | 1h |
 
 ## Dependencies
 
