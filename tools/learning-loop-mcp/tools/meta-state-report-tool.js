@@ -10,10 +10,10 @@ export const metaStateReportTool = {
   name: "meta_state_report",
   description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator.",
   schema: {
-    category: z.enum(["gate-logic-bug", "record-repair-gap", "schema-drift", "stale-ref", "mcp-tool-missing"])
+    category: z.enum(["gate-logic-bug", "record-repair-gap", "schema-drift", "stale-ref", "mcp-tool-missing", "budget-check"])
       .describe("Category of the finding"),
     severity: z.enum(["warning", "escalate"]).describe("Severity level"),
-    affected_system: z.enum(["gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry"])
+    affected_system: z.enum(["gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor"])
       .describe("Which system is affected by this finding"),
     description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
     evidence_journal: z.string().optional().describe("Path to related journal file"),
