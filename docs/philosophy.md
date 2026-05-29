@@ -61,6 +61,8 @@ External systems with irreversible operations carry a resource budget. The budge
 
 A budget check failure is a full stop, not a warning. Do not fix-and-retry. Do not bypass. The budget is the operator's explicit signal that a resource limit has been reached. Any attempt to work around it is a violation of the loop's governance contract.
 
+**Budget enforcement is the agent's responsibility, not the gate's.** The gate checks whether an observation exists for the constraint (meta-level: "has someone recorded this constraint?"). The agent checks whether the budget is exhausted and whether the context is safe (domain-level: "do we have budget left for this specific operation?"). See `docs/observation-vs-meta-state.md` for the full separation.
+
 ### Cleanup Is Part of Proof
 
 A runtime experiment is not complete when the code runs. It is complete when the temporary environment is destroyed and the observation confirms it.

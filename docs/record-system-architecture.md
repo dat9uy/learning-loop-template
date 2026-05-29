@@ -84,7 +84,9 @@ Observations and resource budgets are **mutable state captures** of external sys
 | Source of truth | Evidence + experiments | External system reality |
 | Lifecycle | draft -> reviewed -> approved | active -> archived |
 | Authority | Index-first scanning | Operator-managed; agent-readable |
-| Enforcement | Indirect (via decisions) | Direct (constraint gate blocks/escalates) |
+| Gate enforcement | Indirect (via decisions) | Direct: gate checks observation *existence*; agent checks budget *content* |
+
+**The gate enforces observation existence, not budget exhaustion.** The gate checks whether an active observation exists for a matched constraint (meta-level: "has someone recorded this constraint?"). The agent reads the observation's budget fields and decides whether the specific context is safe (domain-level: "do we have budget left for this operation?"). See `docs/observation-vs-meta-state.md` for the full separation.
 
 ### Constraint Gate Decision Tree
 
@@ -93,10 +95,15 @@ Command -> matchConstraintPattern()
   ├─ no match -> ok
   └─ match -> checkObservationExists()
        ├─ no observation -> block (observation_required)
-       └─ observation found -> evaluateBudget()
-            ├─ budget ok -> ok
-            └─ budget exhausted / window active -> escalate
+       └─ observation found -> ok (pass to agent)
+
+Agent -> reads domain observation (budget, fingerprint, context)
+  ├─ context safe -> proceed
+  ├─ context unsafe -> stop / ask operator
+  └─ records reasoning in meta-state registry
 ```
+
+**Note:** The gate enforces observation *existence* (meta-level). Budget evaluation is the agent's responsibility (domain-level). The old flow where `evaluateBudget()` lived in the gate is documented as a known bug in `plans/reports/brainstorm-260529-budget-escalation-observation-scoping.md`.
 
 ### The Sync-State Problem
 

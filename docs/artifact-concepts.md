@@ -118,6 +118,15 @@ An **assertion** (machine-extracted index entry) is a factual conclusion from ev
 
 **Do not create decision records for yes/no factual questions.** If empirical proof shows a mechanism works or fails, capture it in `records/<surface>/evidence/` with a `## Findings` bullet, then run `pnpm extract:index` to emit the assertion into `records/<surface>/index/`. Reserve decision records for normative policy approvals that sit at the end of the chain: `evidence → index → experiments → decisions`.
 
+## Observations vs. Meta-State
+
+Observations (`records/observations/*.yaml`) and meta-state (`tools/learning-loop-mcp/meta-state.jsonl`) are separate systems. Do not conflate them.
+
+- **Observations** track domain-level external state: budgets, device slots, vendor API status. Operator-managed. The gate reads them to check **existence** (meta-level: "has someone recorded this constraint?"), not to enforce **resource limits** (domain-level: "do we have budget left?"). See `docs/observation-vs-meta-state.md` for the full separation.
+- **Meta-state** tracks agent reasoning and system-level findings: "I checked the budget and it was safe because the fingerprint matched." Agent-maintained. Ephemeral (24h TTL). Not used by the gate.
+
+The gate enforces observation **existence** (pattern matched → observation present? → pass/block). The agent enforces observation **content** (budget exhausted? → same fingerprint? → proceed/stop). Both are necessary; neither replaces the other.
+
 ## Runtime Output Policy
 
 Runtime dimensions declare output as `metadata-only`, `sample-output`, or `runtime-captured`. Proof records must keep durable evidence curated and safe. Temporary install/runtime substrate stays outside the repo and must be deleted after metadata capture.

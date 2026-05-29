@@ -20,13 +20,14 @@ The template contains:
 
 The template also contains a stateful enforcement layer for irreversible operations:
 
-- **Observation records** (`records/observations/`) — mutable state captures for external system constraints (device slots, resource budgets, behavioral findings). Operator-managed; agent-readable.
-- **Resource budgets** — observation files with `*-resource-budget.yaml` suffix track `budget`/`current` counts, `validation_window` state, and `last_verified` timestamps.
-- **Constraint gate** (`tools/learning-loop-mcp/`) — MCP server + pure gate logic in `core/` that checks commands against observation state and returns `ok` / `block` / `escalate`.
+- **Observation records** (`records/observations/`) — mutable state captures for external system constraints (device slots, resource budgets, behavioral findings). Operator-managed; agent-readable. The gate checks these for **existence** (meta-level: "has someone recorded this constraint?"), not for **resource limits** (domain-level: "do we have budget left?"). See `docs/observation-vs-meta-state.md` for the full separation.
+- **Resource budgets** — observation files with `*-resource-budget.yaml` suffix track `budget`/`current` counts, `validation_window` state, and `last_verified` timestamps. The gate reads these to verify the observation is present and fresh; budget enforcement is the agent's responsibility.
+- **Meta-state registry** (`tools/learning-loop-mcp/meta-state.jsonl`) — agent-maintained findings about system-level issues (e.g., "I checked the budget and it was safe because the fingerprint matched"). Ephemeral (24h TTL). Not used by the gate. Separate from observations.
+- **Constraint gate** (`tools/learning-loop-mcp/`) — MCP server + pure gate logic in `core/` that checks commands against observation state and returns `ok` / `block` / `escalate`. The gate enforces pattern matching + observation existence; it does not enforce domain resource budgets.
 - **Coordination hooks** (`.claude/coordination/hooks/`) — PreToolUse hooks that intercept Bash, Edit/Write, and Skill calls to enforce gate decisions and write-path boundaries.
 - **Domain-aware write gate** (`.claude/coordination/hooks/write-coordination-gate.cjs`) — blocks file writes based on path domain rules.
 
-This layer addresses the gap between "agent remembers to check" and "system enforces the check." The gate is only as good as its observations — keeping observations in sync with external reality (especially after operator-provided state changes) is an active area of work.
+This layer addresses the gap between "agent remembers to check" and "system enforces the check." The gate is the first filter (observation existence). The agent is the second filter (budget context, fingerprint checks). The meta-state registry is the audit trail (agent reasoning). The gate is only as good as its observations — keeping observations in sync with external reality (especially after operator-provided state changes) is an active area of work.
 
 The template does not contain product application code (no FastAPI source, no UI source, no database, no live runtime integration). Capability scripts under `product/<stack>/capabilities/` are feasibility probes, not product code.
 

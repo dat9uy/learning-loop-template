@@ -32,6 +32,8 @@ What changed:
 
 This milestone is load-bearing for autonomy. A loop that cannot control its own execution boundaries cannot safely run unsupervised experiments. Observation-driven gates make the enforcement layer programmable by the operator rather than hardcoded by the system designer.
 
+**Clarification:** The gate enforces observation *existence* (pattern matched → observation present? → pass/block). Budget enforcement is the *agent's* responsibility: the agent reads the budget observation, checks context (fingerprint, container, idempotency), and decides whether to proceed. The meta-state registry captures this reasoning for future sessions. See `docs/observation-vs-meta-state.md` for the full separation.
+
 ## The Four Bridges
 
 Each bridge moves knowledge from human-readable docs into machine-driven loop mechanics. The current system stops at the first bridge.
