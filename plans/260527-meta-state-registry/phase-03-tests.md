@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Tests"
-status: pending
+status: completed
 effort: "2h"
 dependencies: [1]
 ---
@@ -99,10 +99,10 @@ process.env.GATE_ROOT = originalEnv;
 
 ## Success Criteria
 
-- [ ] All 13 test cases pass (`pnpm test` includes `meta-state.test.js`)
-- [ ] Tests run in <1 second total
-- [ ] No test leaks temp directories (clean up or use `process.env.GATE_ROOT` reset)
-- [ ] 100% line coverage of `meta-state.js` exports
+- [x] All 13 test cases pass (`pnpm test` includes `meta-state.test.js`)
+- [x] Tests run in <1 second total
+- [x] No test leaks temp directories (clean up or use `process.env.GATE_ROOT` reset)
+- [x] 100% line coverage of `meta-state.js` exports
 
 ## Risk Assessment
 

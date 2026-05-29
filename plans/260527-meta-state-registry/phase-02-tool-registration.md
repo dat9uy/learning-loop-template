@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Tool Registration"
-status: pending
+status: completed
 effort: "2h"
 dependencies: [1]
 ---
@@ -141,13 +141,13 @@ export const metaStateReportTool = {
 
 ## Success Criteria
 
-- [ ] All 4 tools load successfully (server startup shows "registered 40 of 40 tools")
-- [ ] `meta_state_report` creates a valid entry with `status: "reported"`
-- [ ] `meta_state_list` returns only active entries by default (excludes terminal)
-- [ ] `meta_state_list` with `include_expired: true` returns terminal entries
-- [ ] `meta_state_ack` promotes `reported` → `active` and removes `expires_at`
-- [ ] `meta_state_resolve` marks entry as `resolved` with `resolved_at` timestamp
-- [ ] `agent-manifest.json` has new `meta_state` group with all 4 tools
+- [x] All 4 tools load successfully (server startup shows "registered 40 of 40 tools")
+- [x] `meta_state_report` creates a valid entry with `status: "reported"`
+- [x] `meta_state_list` returns only active entries by default (excludes terminal)
+- [x] `meta_state_list` with `include_expired: true` returns terminal entries
+- [x] `meta_state_ack` promotes `reported` → `active` and removes `expires_at`
+- [x] `meta_state_resolve` marks entry as `resolved` with `resolved_at` timestamp
+- [x] `agent-manifest.json` has new `meta_state` group with all 4 tools
 
 ## Risk Assessment
 

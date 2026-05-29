@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Integration Verification"
-status: pending
+status: completed
 effort: "1h"
 dependencies: [1, 2, 3]
 ---
@@ -60,11 +60,11 @@ Integration test simulates the agent workflow:
 
 ## Success Criteria
 
-- [ ] `node tools/learning-loop-mcp/server.js` starts with "registered 40 of 40 tools"
-- [ ] End-to-end lifecycle test passes (report → list → auto-resolve → ack → resolve)
-- [ ] `pnpm test` passes with 0 failures
-- [ ] `pnpm check` passes with 0 failures
-- [ ] No regressions in existing MCP tool behavior (gate_check, record_create_observation, etc.)
+- [x] `node tools/learning-loop-mcp/server.js` starts with "registered 40 of 40 tools"
+- [x] End-to-end lifecycle test passes (report → list → auto-resolve → ack → resolve)
+- [x] `pnpm test` passes with 0 failures
+- [x] `pnpm check` passes with 0 failures
+- [x] No regressions in existing MCP tool behavior (gate_check, record_create_observation, etc.)
 
 ## Risk Assessment
 

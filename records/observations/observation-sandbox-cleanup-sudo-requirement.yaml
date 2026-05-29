@@ -1,41 +1,53 @@
 id: observation-sandbox-cleanup-sudo-requirement
 schema_version: "1.0"
 type: observation
-constraint_type: "vendor-api"
-status: active
-created_at: "2026-05-17T14:00:00+07:00"
-updated_at: "2026-05-18T00:00:00+07:00"
+constraint_type: vendor-api
+status: archived
+created_at: 2026-05-17T14:00:00+07:00
+updated_at: 2026-05-29T08:24:06.175Z
 source_refs:
-  - "record:decision-20260517T1200Z-observation-state-check-rule"
-  - "observation-vnstock-resource-budget"
-notes: "Docker HOME leak creates root-owned artifacts. Cleanup + re-bootstrap requires multi-step manual operator intervention due to sudo, stale guard, and device limit constraints."
-
+  - record:decision-20260517T1200Z-observation-state-check-rule
+  - observation-vnstock-resource-budget
+notes: |-
+  Docker HOME leak creates root-owned artifacts. Cleanup + re-bootstrap requires multi-step manual operator intervention due to sudo, stale guard, and device limit constraints.
+  [update reason]: Migrated to meta-state registry. New entry: meta-260529T1509Z-docker-home-leak-creates-root-owned-artifacts-cleanup-requir. Original observation is now archived as redundant.
 gate_v2_mitigations:
-  F1: "fixed — marker reorder in gate-logic.test.js prevents phantom escalation"
-  F8: "fixed — marker TTL prevents stale markers from blocking decisions"
-  F2: "resolved — side effect of F1 fix (marker reorder eliminated duplicate marker issue)"
-  F3: "fixed — MCP staleness check applied to all decision types, not just allow"
-
-constraint: cleanup_requires_sudo
-reason: "Docker runs with product/api as HOME, leaking root-owned .cache, .config, .venv, .vnstock, and product/ directories. Regular user cannot rm root-owned files."
-script: product/api/scripts/cleanup-sandbox.sh
-command: "sudo bash product/api/scripts/cleanup-sandbox.sh --confirm"
-
-constraint: stale_guard_deadlock
-reason: "Cleanup script preserves .venv when .vnstock exists (stale-container guard). But .venv is root-owned from prior Docker run, so uv sync fails with Permission denied. Removing .venv + preserving .vnstock = installer stale guard fires (vnstock_data not importable but .vnstock exists)."
-resolution: "Operator must sudo rm .venv after cleanup. Then installer stale guard fires. Must temporarily rename .vnstock to bypass guard, but then device limit is hit."
-
-constraint: device_limit_blocks_reinstall
-reason: "vnstock_data is vendor-only (not in pyproject.toml). Vendor installer bundles package installation with device registration. Removing .vnstock to bypass stale guard causes installer to attempt new registration, hitting device limit (budget 1/1). No way to install vnstock_data without consuming a device slot."
-resolution: "Operator must clear existing device at vnstocks.com/account?section=devices before re-running installer, OR find alternative install method."
-
-blocked_phase: "phase-04-re-validate-capabilities"
-impact: "Phase 4 (capability re-validation) cannot run until vnstock_data is installed in .venv."
-
+  F1: fixed — marker reorder in gate-logic.test.js prevents phantom escalation
+  F8: fixed — marker TTL prevents stale markers from blocking decisions
+  F2: resolved — side effect of F1 fix (marker reorder eliminated duplicate marker
+    issue)
+  F3: fixed — MCP staleness check applied to all decision types, not just allow
+constraints:
+  - constraint: cleanup_requires_sudo
+    reason: Docker runs with product/api as HOME, leaking root-owned .cache,
+      .config, .venv, .vnstock, and product/ directories. Regular user cannot rm
+      root-owned files.
+    script: product/api/scripts/cleanup-sandbox.sh
+    command: sudo bash product/api/scripts/cleanup-sandbox.sh --confirm
+  - constraint: stale_guard_deadlock
+    reason: Cleanup script preserves .venv when .vnstock exists (stale-container
+      guard). But .venv is root-owned from prior Docker run, so uv sync fails
+      with Permission denied. Removing .venv + preserving .vnstock = installer
+      stale guard fires (vnstock_data not importable but .vnstock exists).
+    resolution: Operator must sudo rm .venv after cleanup. Then installer stale
+      guard fires. Must temporarily rename .vnstock to bypass guard, but then
+      device limit is hit.
+  - constraint: device_limit_blocks_reinstall
+    reason: vnstock_data is vendor-only (not in pyproject.toml). Vendor installer
+      bundles package installation with device registration. Removing .vnstock
+      to bypass stale guard causes installer to attempt new registration,
+      hitting device limit (budget 1/1). No way to install vnstock_data without
+      consuming a device slot.
+    resolution: Operator must clear existing device at
+      vnstocks.com/account?section=devices before re-running installer, OR find
+      alternative install method.
+blocked_phase: phase-04-re-validate-capabilities
+impact: Phase 4 (capability re-validation) cannot run until vnstock_data is
+  installed in .venv.
 operator_action: |
   1. sudo bash product/api/scripts/cleanup-sandbox.sh --confirm
   2. sudo rm -rf product/api/.venv
   3. Clear device at https://vnstocks.com/account?section=devices
   4. pnpm bootstrap:api  (will register new device, consume slot)
-
-scout_hook_note: "Agent is blocked from accessing .venv paths by scout-block hook. Both cleanup and .venv removal require operator to run manually."
+scout_hook_note: Agent is blocked from accessing .venv paths by scout-block
+  hook. Both cleanup and .venv removal require operator to run manually.

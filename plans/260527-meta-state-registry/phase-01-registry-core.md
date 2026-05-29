@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Registry Core"
-status: pending
+status: completed
 effort: "3h"
 dependencies: []
 ---
@@ -111,13 +111,13 @@ reported → active → resolved
 
 ## Success Criteria
 
-- [ ] `readRegistry` returns empty array when file doesn't exist
-- [ ] `writeEntry` creates valid JSONL with one line per entry
-- [ ] `updateEntry` finds entry by id and applies patch atomically
-- [ ] `checkAutoResolve` returns `"auto-resolved"` when file mtime > created_at
-- [ ] `checkExpiry` returns `"expired"` when 24h passed on `reported` entry
-- [ ] `filterEntries` supports category, status, affected_system filters independently
-- [ ] Concurrent writes do not corrupt JSONL (atomic temp+rename)
+- [x] `readRegistry` returns empty array when file doesn't exist
+- [x] `writeEntry` creates valid JSONL with one line per entry
+- [x] `updateEntry` finds entry by id and applies patch atomically
+- [x] `checkAutoResolve` returns `"auto-resolved"` when file mtime > created_at
+- [x] `checkExpiry` returns `"expired"` when 24h passed on `reported` entry
+- [x] `filterEntries` supports category, status, affected_system filters independently
+- [x] Concurrent writes do not corrupt JSONL (atomic temp+rename)
 
 ## Risk Assessment
 
