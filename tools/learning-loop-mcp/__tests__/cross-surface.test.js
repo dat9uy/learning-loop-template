@@ -43,13 +43,13 @@ const bashTestCases = [
     name: "docker command blocked",
     claude: { tool_name: "Bash", tool_input: { command: "docker run ubuntu" } },
     droid: { tool_name: "Execute", tool_input: { command: "docker run ubuntu" } },
-    expectedDecision: "escalate",
+    expectedDecision: "block",
   },
   {
     name: "sudo command blocked",
     claude: { tool_name: "Bash", tool_input: { command: "sudo apt update" } },
     droid: { tool_name: "Execute", tool_input: { command: "sudo apt update" } },
-    expectedDecision: "escalate",
+    expectedDecision: "block",
   },
   {
     name: "ls command allowed",

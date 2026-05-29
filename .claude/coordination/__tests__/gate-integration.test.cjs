@@ -288,7 +288,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
 
   const { client, transport } = await startMcpServer(tmpDir);
   try {
-    // Budget exhausted + stale marker → escalate with inbound_gate: true (F3)
+    // Budget exhausted (mismatch) + stale marker → block with inbound_gate: true (F3)
     fs.writeFileSync(
       path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
       JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
@@ -298,7 +298,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
       arguments: { command: "docker run ubuntu" },
     });
     const parsed1 = JSON.parse(r1.content[0].text);
-    assert(parsed1.decision === 'escalate', 'MCP: budget exhausted + stale marker → escalate');
+    assert(parsed1.decision === 'block', 'MCP: budget exhausted (mismatch) + stale marker → block');
     assert(parsed1.inbound_gate === true, 'MCP: inbound_gate true with stale marker (F3)');
 
     // Budget exhausted + fresh marker → escalate without inbound_gate
@@ -317,7 +317,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
       arguments: { command: "docker run ubuntu" },
     });
     const parsed2 = JSON.parse(r2.content[0].text);
-    assert(parsed2.decision === 'escalate', 'MCP: budget exhausted + fresh marker → escalate');
+    assert(parsed2.decision === 'block', 'MCP: budget exhausted (mismatch) + fresh marker → block');
     assert(parsed2.inbound_gate === undefined, 'MCP: no inbound_gate with fresh marker');
   } finally {
     await transport.close();

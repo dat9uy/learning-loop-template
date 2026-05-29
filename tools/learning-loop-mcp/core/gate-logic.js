@@ -85,13 +85,16 @@ export function checkObservationExists(constraintType, observations) {
  */
 export function evaluateBudget(budgetData) {
   if (!budgetData || typeof budgetData !== "object") {
-    return { exhausted: false, windowActive: false };
+    return { exhausted: false, windowActive: false, constraint_type: null, external_system: null, resource: null };
   }
   const remaining = (budgetData.budget ?? 0) - (budgetData.current ?? 0);
   return {
     exhausted: (budgetData.current ?? 0) >= (budgetData.budget ?? 0),
     windowActive: budgetData.validation_window?.active === true,
     remaining,
+    constraint_type: budgetData.constraint_type || null,
+    external_system: budgetData.external_system || null,
+    resource: budgetData.resource || null,
   };
 }
 
@@ -111,14 +114,17 @@ export function makeGateDecision(constraintMatch, observationStatus, budgetStatu
     };
   }
 
-  // Budget exhaustion is a global constraint — escalate regardless of observation
+  // Budget exhaustion only escalates when the budget's constraint_type matches the command
   if (budgetStatus?.exhausted || budgetStatus?.windowActive) {
-    if (constraintMatch) {
+    if (constraintMatch && budgetStatus.constraint_type === constraintMatch) {
+      const system = budgetStatus.external_system ? ` (${budgetStatus.external_system}` : "";
+      const resource = budgetStatus.resource ? ` ${budgetStatus.resource}` : "";
+      const suffix = system || resource ? `${system}${resource})` : "";
       return {
         decision: "escalate",
         reason: budgetStatus.exhausted
-          ? `Budget exhausted for constraint "${constraintMatch}".`
-          : `Validation window active for constraint "${constraintMatch}".`,
+          ? `Budget exhausted for constraint "${constraintMatch}"${suffix}.`
+          : `Validation window active for constraint "${constraintMatch}"${suffix}.`,
         constraint_type: constraintMatch,
         observation_id: observationStatus?.observation?.id,
       };
