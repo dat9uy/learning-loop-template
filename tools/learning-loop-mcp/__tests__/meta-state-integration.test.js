@@ -212,4 +212,34 @@ describe("meta-state end-to-end lifecycle", () => {
       process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  test("budget-check category and vnstock_vendor affected_system accepted", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-budget-"));
+    process.env.GATE_ROOT = tempDir;
+
+    const reportResult = await metaStateReportTool.handler({
+      category: "budget-check",
+      severity: "warning",
+      affected_system: "vnstock_vendor",
+      description: "Agent checked budget before vendor-api curl. Budget 1/1, fingerprint matches, proceeding.",
+      evidence_code_ref: "records/observations/observation-vnstock-resource-budget.yaml",
+    });
+    const reportText = JSON.parse(reportResult.content[0].text);
+
+    try {
+      assert.strictEqual(reportText.reported, true);
+      assert.ok(reportText.id);
+
+      // Filter by budget-check category
+      const listResult = await metaStateListTool.handler({ category: "budget-check" });
+      const listText = JSON.parse(listResult.content[0].text);
+      assert.strictEqual(listText.count, 1);
+      assert.strictEqual(listText.entries[0].category, "budget-check");
+      assert.strictEqual(listText.entries[0].affected_system, "vnstock_vendor");
+      assert.strictEqual(listText.entries[0].status, "reported");
+      assert.ok(listText.entries[0].id.startsWith("meta-"));
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });

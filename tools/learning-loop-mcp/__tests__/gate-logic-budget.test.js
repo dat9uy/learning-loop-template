@@ -2,7 +2,7 @@ import assert from "node:assert";
 import { test } from "node:test";
 import { evaluateBudget, makeGateDecision } from "../core/gate-logic.js";
 
-// ─── evaluateBudget tests ───
+// ─── evaluateBudget tests (utility function, no longer called by gate) ───
 
 await test("evaluateBudget: exhausted returns metadata fields", () => {
   const budget = {
@@ -54,115 +54,34 @@ await test("evaluateBudget: null input fail-open", () => {
   assert.strictEqual(result.resource, null);
 });
 
-// ─── makeGateDecision: scoped budget escalation ───
+// ─── makeGateDecision: budget parameter removed (Option C) ───
 
-await test("makeGateDecision: matching constraint_type + exhausted → escalate", () => {
-  const result = makeGateDecision(
-    "vendor-api",
-    { found: false },
-    {
-      exhausted: true,
-      constraint_type: "vendor-api",
-      external_system: "vnstock_vendor",
-      resource: "device_slots",
-    }
-  );
-  assert.strictEqual(result.decision, "escalate");
-  assert.strictEqual(result.constraint_type, "vendor-api");
-  assert.ok(result.reason.includes("vnstock_vendor"), "reason should include external_system");
-  assert.ok(result.reason.includes("device_slots"), "reason should include resource");
-});
-
-await test("makeGateDecision: mismatched constraint_type + exhausted → block (not escalate)", () => {
-  const result = makeGateDecision(
-    "package-manager",
-    { found: false },
-    {
-      exhausted: true,
-      constraint_type: "vendor-api",
-      external_system: "vnstock_vendor",
-      resource: "device_slots",
-    }
-  );
-  assert.strictEqual(result.decision, "block");
-  assert.strictEqual(result.constraint_type, "package-manager");
-  assert.ok(result.reason.includes("No active observation found"), "reason should mention missing observation");
-});
-
-await test("makeGateDecision: sudo constraint + exhausted sudo budget → escalate", () => {
-  const result = makeGateDecision(
-    "sudo",
-    { found: false },
-    {
-      exhausted: true,
-      constraint_type: "sudo",
-      external_system: "infra",
-      resource: "escalation_tokens",
-    }
-  );
-  assert.strictEqual(result.decision, "escalate");
-  assert.ok(result.reason.includes("infra"));
-  assert.ok(result.reason.includes("escalation_tokens"));
-});
-
-await test("makeGateDecision: windowActive + matching constraint → escalate", () => {
-  const result = makeGateDecision(
-    "vendor-api",
-    { found: false },
-    {
-      exhausted: false,
-      windowActive: true,
-      constraint_type: "vendor-api",
-      external_system: "vnstock_vendor",
-      resource: "device_slots",
-    }
-  );
-  assert.strictEqual(result.decision, "escalate");
-  assert.ok(result.reason.includes("Validation window active"));
-});
-
-await test("makeGateDecision: windowActive + mismatched constraint → block", () => {
-  const result = makeGateDecision(
-    "docker",
-    { found: false },
-    {
-      exhausted: false,
-      windowActive: true,
-      constraint_type: "vendor-api",
-      external_system: "vnstock_vendor",
-      resource: "device_slots",
-    }
-  );
+await test("makeGateDecision: vendor-api with no observation → block (no budget check)", () => {
+  const result = makeGateDecision("vendor-api", { found: false });
   assert.strictEqual(result.decision, "block");
   assert.ok(result.reason.includes("No active observation found"));
+  assert.strictEqual(result.constraint_type, "vendor-api");
+  assert.strictEqual(result.observation_required, true);
 });
 
-await test("makeGateDecision: matching constraint but not exhausted → block (observation missing)", () => {
-  const result = makeGateDecision(
-    "vendor-api",
-    { found: false },
-    {
-      exhausted: false,
-      constraint_type: "vendor-api",
-    }
-  );
+await test("makeGateDecision: vendor-api with observation → ok (no budget escalation)", () => {
+  const result = makeGateDecision("vendor-api", { found: true, observation: { id: "obs-vnstock-1" } });
+  assert.strictEqual(result.decision, "ok");
+  // No budget-related fields should be present
+  assert.strictEqual(result.observation_id, undefined);
+  assert.strictEqual(result.reason, undefined);
+});
+
+await test("makeGateDecision: docker with no observation → block", () => {
+  const result = makeGateDecision("docker", { found: false });
   assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.constraint_type, "docker");
+  assert.strictEqual(result.observation_required, true);
 });
 
-await test("makeGateDecision: no budgetStatus, no observation → block", () => {
-  const result = makeGateDecision("docker", { found: false }, null);
-  assert.strictEqual(result.decision, "block");
-});
-
-await test("makeGateDecision: side-effect-import always blocks regardless of budget", () => {
-  const result = makeGateDecision(
-    "side-effect-import",
-    { found: false },
-    {
-      exhausted: true,
-      constraint_type: "vendor-api",
-    }
-  );
+await test("makeGateDecision: side-effect-import always blocks regardless of observation", () => {
+  const result = makeGateDecision("side-effect-import", { found: true });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
+  assert.ok(result.reason.includes("importlib.util.find_spec"));
 });
