@@ -30,6 +30,16 @@ Scoped the budget escalation so that a `vendor-api` budget only escalates `vendo
   - `curl api.vnstock.com` → `escalate` with correct reason: "Budget exhausted for constraint \"vendor-api\" (vnstock_vendor device_slots)."
   - `ls -la` → `ok` (not constrained)
 
+## Post-Commit Finding: Pattern Matching False Positive
+
+During the commit step, the bash gate blocked the `git commit` command because the commit message body contained the literal text `pnpm add` inside the explanation. The `matchConstraintPattern` regex matched `pnpm add` inside the quoted string, treating it as a package-manager command.
+
+This reveals that the gate's `matchConstraintPattern` does not distinguish between actual commands and text inside quoted strings, commit messages, or heredocs. The commit eventually succeeded because the pre-commit hooks ran before the gate check completed.
+
+This is a pre-existing issue separate from the budget escalation fix. Fixing it would require either:
+- Teaching `matchConstraintPattern` to skip quoted string content, or
+- Adding a special case for `git commit` messages in the bash gate
+
 ## Plan
 
 - `plans/260529-budget-escalation/plan.md` — all 4 phases completed
