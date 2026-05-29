@@ -3,5 +3,6 @@
   "sudo": "\\bsudo\\b",
   "package-manager": "\\b(pip|npm|yarn|pnpm|uv)\\s+(install|add|sync|bootstrap|setup)\\b",
   "vendor-api": "\\bcurl\\b.*api|import\\s+vnstock(?!_data)\\b",
-  "side-effect-import": "import\\s+vnstock_data\\b"
+  "side-effect-import": "import\\s+vnstock_data\\b",
+  "message_flags": ["-m", "--message", "--title", "--description", "--body"]
 }

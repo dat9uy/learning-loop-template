@@ -44,9 +44,48 @@ export function pathMatchesObservation(observation, filePath) {
 
 const SEGMENT_SEPARATORS = /[;&|]+/;
 
+const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
+
+/**
+ * Strip message flags and their values from a command segment.
+ * Quoted multi-word values (e.g., "fix pnpm add issue") are skipped as a block.
+ * Unquoted values are skipped as a single token.
+ * This prevents false positives from commit messages, PR titles, etc.
+ */
+function stripMessageFlags(segment) {
+  const tokens = segment.split(/\s+/);
+  const result = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
+    if (MESSAGE_FLAGS.has(token)) {
+      i++;
+      if (i < tokens.length) {
+        const next = tokens[i];
+        if (next.startsWith('"') || next.startsWith("'")) {
+          const quote = next[0];
+          // Skip until we find the token ending the quoted block
+          while (i < tokens.length && !tokens[i].endsWith(quote)) {
+            i++;
+          }
+          i++; // Skip the closing token (or the single self-closed token)
+        } else {
+          // Unquoted value: skip exactly one token
+          i++;
+        }
+      }
+      continue;
+    }
+    result.push(token);
+    i++;
+  }
+  return result.join(" ");
+}
+
 /**
  * Match a command against constraint patterns.
  * Splits on ;, &, | and checks each segment independently.
+ * Strips message flags before matching to avoid false positives.
  * Returns the first matching constraint type, or null.
  */
 export function matchConstraintPattern(command) {
@@ -56,8 +95,9 @@ export function matchConstraintPattern(command) {
   for (const segment of segments) {
     const trimmed = segment.trim();
     if (!trimmed) continue;
+    const stripped = stripMessageFlags(trimmed);
     for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(trimmed)) return type;
+      if (pattern.test(stripped)) return type;
     }
   }
   return null;
