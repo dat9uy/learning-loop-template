@@ -173,7 +173,112 @@ The gate (meta-level) should enforce: "Is there an observation for this constrai
 3. Update agent prompts to reference budget observations before vendor commands
 4. When agent budget management proves reliable, remove budget branch from `makeGateDecision`
 
+## Option C Design Decisions (Resolved 2026-05-29)
+
+### 1. Meta-state category — `budget-check` (generic, not vnstock-specific)
+
+Add `budget-check` to the `meta_state_report` category enum. The entry schema:
+
+```json
+{
+  "id": "meta-260529T1530Z-budget-check-vnstock-device-slots",
+  "category": "budget-check",
+  "severity": "warning",
+  "affected_system": "vnstock_vendor",
+  "description": "Agent checked budget before vendor-api command. Budget: 1/1, fingerprint matches ledger entry 0637fff6c615f57b73e646206fdf774d. Decision: proceed (idempotent re-run).",
+  "evidence": {
+    "observation": "records/observations/observation-vnstock-resource-budget.yaml",
+    "ledger": "records/observations/observation-vnstock-device-slot-ledger.yaml"
+  },
+  "status": "reported"
+}
+```
+
+### 2. `budget_check` MCP tool — keep minimal
+
+The tool returns budget numbers, stale status, and window state. It does NOT return fingerprint or ledger context. The agent reads the ledger observation separately via `index_search` or direct file read. This keeps the tool generic and applicable to any external system.
+
+### 3. `side-effect-import` hard block — stays in gate
+
+This is a command-level safety rule (importing reactivates cleared devices), not a resource-level rule. The gate enforces it because it has zero false positives: any `import vnstock_data` is dangerous. This is a domain-specific exception that belongs in the gate as a hard block, similar to `records/observations/**` writes.
+
+### 4. Budget branch removal — remove now from `makeGateDecision`
+
+The gate's budget check is a blunt instrument that blocks all `vendor-api` commands when budget is 1/1. The Option A fix made it correctly scoped, but it still cannot distinguish idempotent re-runs from new installs. The agent has the ledger context to make this distinction.
+
+### Agent Flow (Option C)
+
+```
+1. Gate passes vendor-api command
+   → observation exists, fresh, not stale
+2. Agent calls budget_check(system="vnstock", resource="device-slots")
+   → sees budget: 1, current: 1, remaining: 0
+3. Agent reads observation-vnstock-device-slot-ledger
+   → checks fingerprint match against current host
+4. Agent decides: "same fingerprint as ledger entry, idempotent, safe"
+5. Agent calls meta_state_report(category="budget-check", ...)
+   → records reasoning in meta-state.jsonl
+6. Agent proceeds with command
+```
+
+### Gate Logic (Option C)
+
+```javascript
+// makeGateDecision — budget branch removed
+if (constraintMatch === "side-effect-import") {
+  return { decision: "block", ... }; // hard block stays
+}
+
+// No budget escalation. Gate is meta-level only.
+
+// Constraint matched but no active observation → block
+if (!observationStatus?.found) {
+  return { decision: "block", ... };
+}
+
+return { decision: "ok" };
+```
+
+## Implementation Plan for Option C
+
+### Phase 1: Remove budget branch from gate
+- `gate-logic.js`: remove `budgetStatus` from `makeGateDecision` signature
+- `bash-gate.js`: remove `readBudgets` and `evaluateBudget` loop
+- `budget-checker.js` and `check-budget-tool.js`: keep as agent tools (no changes)
+- Tests: update all budget-escalation tests to expect `ok` instead of `escalate`
+
+### Phase 2: Extend meta-state category enum
+- `meta-state-report-tool.js`: add `budget-check` to category enum
+- `meta-state.js`: add `budget-check` validation (if any)
+- `meta-state.test.js`: add test for budget-check entry
+
+### Phase 3: Update agent prompt
+- `AGENTS.md` / `CLAUDE.md`: add agent rule: "Before executing vendor-api commands, check budget observation and ledger"
+- Add rule: "Record budget-check reasoning in meta-state via meta_state_report"
+
+### Phase 4: Integration validation
+- End-to-end test: agent executes `curl api.vnstock.com` when budget is 1/1
+- Gate should pass (observation exists)
+- Agent should check budget, read ledger, record meta-state, then proceed
+- Verify meta-state.jsonl contains budget-check entry
+
+## Risks (Updated)
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Agent forgets to check budget | Medium | Agent prompt + meta-state audit trail |
+| Budget observation goes stale | Low | Inbound gate already warns on stale observations |
+| Gate removal weakens safety | Low | Gate still blocks commands without any observation; side-effect-import hard block stays |
+| `side-effect-import` false positives | Low | Only vnstock-specific; no other packages use this pattern |
+
+## Success Metrics (Updated)
+
+- Option A: `pnpm add` no longer blocked by `vnstock` budget; correct error message for `vendor-api` commands (COMPLETED)
+- Option C: Agent can execute safe idempotent commands when budget is exhausted; meta-state records the reasoning
+- Option C: `budget_check` tool returns generic fields, not vnstock-specific
+- Option C: Gate no longer contains `budgetStatus` in `makeGateDecision`
+
 ## Unresolved Questions
 
 - Should the `sudo` constraint have its own budget observation, or should `sudo` be treated differently from `vendor-api`? (sudo is a system-level capability, not a vendor resource)
-- How does the agent report "I checked the budget and it was safe" vs "I checked the budget and it was exhausted but I overrode"? The meta-state registry's `meta_state_report` tool handles this, but the schema for budget-related entries is not yet defined.
+- Should we add a `budget-check` severity enum (e.g., `proceed`, `stop`, `ask-operator`) or keep the generic `warning`/`escalate`?
