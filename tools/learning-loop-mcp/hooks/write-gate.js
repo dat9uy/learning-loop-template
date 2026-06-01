@@ -17,12 +17,15 @@ import {
   normalizeToolName,
   extractFilePath,
   formatOutput,
+  exitCode,
 } from "./lib/protocol-adapter.js";
 import {
   globMatch,
   findProjectRoot,
   inferSurface,
   readPreflightMarker,
+  loadPromotedRules,
+  applyPromotedRules,
 } from "#mcp/core/gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -137,7 +140,15 @@ function main() {
     process.exit(0);
   }
 
-  // --- 6. Everything else (plans/, docs/, .claude/, .factory/, tools/, unknown) → allow ---
+  // --- 6. Promoted rules check (meta-state as rule registry) ---
+  const promotedRules = loadPromotedRules(root);
+  const promotedCheck = applyPromotedRules(null, relPath, promotedRules);
+  if (promotedCheck.decision === "escalate") {
+    console.log(formatOutput(promotedCheck));
+    process.exit(exitCode(promotedCheck));
+  }
+
+  // --- 7. Everything else (plans/, docs/, .claude/, .factory/, tools/, unknown) → allow ---
   process.exit(0);
 }
 

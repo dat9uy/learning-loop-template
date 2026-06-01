@@ -20,6 +20,8 @@ import {
   matchConstraintPattern,
   checkObservationExists,
   makeGateDecision,
+  loadPromotedRules,
+  applyPromotedRules,
 } from "#mcp/core/gate-logic.js";
 import { readObservations } from "#mcp/core/file-readers.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
@@ -36,6 +38,8 @@ const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   /\btee\b.*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   /\btee\b.*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
+  />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
+  /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
 ];
 
 function commandWritesToRecords(command) {
@@ -93,6 +97,14 @@ function main() {
       reason: "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",
       hard_block: true,
     };
+  }
+
+  // --- Promoted rules check (meta-state as rule registry) ---
+  const promotedRules = loadPromotedRules(root);
+  const promotedCheck = applyPromotedRules(command, null, promotedRules);
+  if (promotedCheck.decision === "escalate") {
+    console.log(formatOutput(promotedCheck));
+    process.exit(exitCode(promotedCheck));
   }
 
   // --- Combine results ---

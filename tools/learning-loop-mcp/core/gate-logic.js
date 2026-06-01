@@ -5,7 +5,7 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
  * Single source of truth for constraint patterns and gate decisions.
  */
 
-import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, renameSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -336,5 +336,173 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
   }
 
   // Other paths (records/claims/**, docs/**, etc.) → ok
+  return { decision: "ok" };
+}
+
+// ─── Promoted Rules (meta-state as rule registry) ───
+
+/** Whitelist for glob patterns to prevent path traversal. */
+const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", "meta-state.jsonl"];
+
+/**
+ * Simple regex safety check to prevent ReDoS.
+ * Rejects patterns with nested quantifiers (star height > 1).
+ * This is a lightweight replacement for the safe-regex package.
+ */
+export function isSafeRegexPattern(pattern) {
+  if (!pattern || typeof pattern !== "string") return false;
+  if (pattern.length > 500) return false;
+
+  let depth = 0;
+  let groupHadQuantifier = new Array(50).fill(false);
+  let inCharClass = false;
+  let escaped = false;
+
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (inCharClass) {
+      if (ch === "]") inCharClass = false;
+      continue;
+    }
+    if (ch === "[") {
+      inCharClass = true;
+      continue;
+    }
+    if (ch === "(" && !inCharClass) {
+      depth++;
+      if (depth < groupHadQuantifier.length) {
+        groupHadQuantifier[depth] = false;
+      }
+      continue;
+    }
+    if (ch === ")" && !inCharClass) {
+      if (depth < groupHadQuantifier.length && groupHadQuantifier[depth]) {
+        // Propagate: the group that just closed contained a quantifier,
+        // so the parent group now conceptually contains a quantified subpattern.
+        if (depth - 1 >= 0 && depth - 1 < groupHadQuantifier.length) {
+          groupHadQuantifier[depth - 1] = true;
+        }
+      }
+      depth--;
+      continue;
+    }
+
+    const isQuantifier = ch === "*" || ch === "+" || ch === "?";
+    const isRangeQuantifier = ch === "{" && /^{\d+(,\d*)?}/.test(pattern.slice(i));
+
+    if ((isQuantifier || isRangeQuantifier) && !inCharClass) {
+      // If any group at or above current depth already had a quantifier,
+      // another quantifier here creates star height > 1.
+      for (let d = 0; d <= depth && d < groupHadQuantifier.length; d++) {
+        if (groupHadQuantifier[d]) {
+          return false;
+        }
+      }
+      if (depth >= 0 && depth < groupHadQuantifier.length) {
+        groupHadQuantifier[depth] = true;
+      }
+    }
+  }
+
+  return true;
+}
+
+function isGlobScopeWhitelisted(pattern) {
+  if (!pattern || typeof pattern !== "string") return false;
+  return GLOB_SCOPE_WHITELIST.some((prefix) => pattern.startsWith(prefix));
+}
+
+/** Cache for promoted rules: { root -> { rules, mtime, size } } */
+const promotedRulesCache = new Map();
+
+/**
+ * Load active gate-enforced promoted rules from meta-state.jsonl.
+ * Uses (mtime, size) tuple for cache invalidation (RT Finding 6).
+ */
+export function loadPromotedRules(root) {
+  const path = join(root, "meta-state.jsonl");
+  if (!existsSync(path)) return [];
+
+  const stats = statSync(path);
+  const mtime = stats.mtime.getTime();
+  const size = stats.size;
+
+  const cached = promotedRulesCache.get(root);
+  if (cached && cached.mtime === mtime && cached.size === size) {
+    return cached.rules;
+  }
+
+  let entries = [];
+  try {
+    const raw = readFileSync(path, "utf8");
+    const lines = raw.split("\n").filter((line) => line.trim() !== "");
+    entries = lines.map((line) => JSON.parse(line));
+  } catch {
+    return [];
+  }
+
+  const rules = entries.filter(
+    (e) =>
+      e.status === "active" &&
+      e.category === "loop-anti-pattern" &&
+      e.promoted_to_rule?.enforcement === "gate"
+  );
+
+  promotedRulesCache.set(root, { rules, mtime, size });
+  return rules;
+}
+
+/**
+ * Apply promoted rules against a command (regex) or file path (glob).
+ * Returns escalate with rule provenance on match, ok otherwise.
+ */
+export function applyPromotedRules(command, filePath, rules) {
+  for (const rule of rules) {
+    // Defense-in-depth: skip rules that should not have been loaded
+    if (rule.status !== "active") continue;
+    if (rule.category !== "loop-anti-pattern") continue;
+    if (rule.promoted_to_rule?.enforcement !== "gate") continue;
+
+    const { pattern_type, pattern, rule_id } = rule.promoted_to_rule;
+    let matched = false;
+
+    try {
+      if (pattern_type === "regex" && command) {
+        if (!isSafeRegexPattern(pattern)) {
+          console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
+          continue;
+        }
+        matched = new RegExp(pattern).test(command);
+      } else if (pattern_type === "glob" && filePath) {
+        if (!isGlobScopeWhitelisted(pattern)) {
+          console.warn(`Rule ${rule_id}: glob pattern "${pattern}" rejected by scope whitelist`);
+          continue;
+        }
+        matched = globMatch(pattern, filePath);
+      }
+    } catch (err) {
+      console.warn(`Rule ${rule_id}: invalid pattern: ${err.message}`);
+      continue;
+    }
+
+    if (matched) {
+      return {
+        decision: "escalate",
+        reason: `Promoted rule "${rule_id}" matched: ${pattern}`,
+        rule_id,
+        meta_state_id: rule.id,
+        pattern_type,
+      };
+    }
+  }
   return { decision: "ok" };
 }
