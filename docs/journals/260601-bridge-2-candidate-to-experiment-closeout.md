@@ -54,6 +54,16 @@ Completed all 6 phases of Bridge 2 (Candidate → Experiment Plan). Built a dime
 
 ## Post-Implementation Reflections
 
+### Tool Build Reflections
+
+**What worked.** The template-dimension mapping is explicit and bounded — four templates (`install`, `runtime`, `static`, `product`) each route a candidate assertion to a specific experiment shape. No heuristics, no LLM, no ambiguity. The `auto_create` default of `false` is the correct safety posture for a system that has not yet earned trust on real data. Schema migration is backward-compatible (`assertion_refs` is additive, not overloaded). Test coverage is comprehensive: 20 new tests (12 unit + 8 tool) with zero regressions in the full suite (347/347 pass).
+
+**What didn't work.** The templates are starting points, not proven plans — they are educated guesses about what a real experiment should look like. The draft builder does not validate operational feasibility (budget, device slots, scope alignment). `assertion_refs` dangling-reference validation is missing from Layer 5 (`record-validation-rules.js`). Most importantly, there is no bridge from "draft exists" to "experiment runs" — Bridge 3 (class-level approval) does not exist, so the full workflow is still entirely human.
+
+**Root cause.** The loop tests tools, not workflows. Every new MCP tool gets isolated unit tests (mock candidate, mock template, mock filesystem), but no end-to-end workflow test exists covering candidate → draft → review → promotion → experiment → evidence → index. Real candidates are scarce because Bridge 1 (doc → candidate) is also unexercised — all 79 existing assertions are `active` or `superseded`. Bridge 2's "unexercised" status is a symptom of Bridge 1's "unexercised" status.
+
+### Operational Gap Reflections
+
 **Unified-UI snapshot migration deferred.** The pipeline is complete and tested but not exercised on real data. The `records/vnstock/evidence/unified-ui-snapshot/` contains reference shape documentation (API schemas), not `## Findings` evidence capsules. `extract-index` cannot parse these files — they lack the `## Findings` bullet format. Creating candidates from snapshots requires hand-authoring `extracted-assertion` records or running `workflow_vendor_doc_assist` on a markdown rendering of the snapshots.
 
 **What the migration would involve:**
@@ -64,7 +74,9 @@ Completed all 6 phases of Bridge 2 (Candidate → Experiment Plan). Built a dime
 5. Run experiments (requires budget check, vendor API calls, device slot management)
 6. Promote to `active` after evidence passes
 
-**Decision:** This is a separate operational workstream. It should get its own plan in `plans/`, verify budget observations, and use `gate_mark_preflight` for the vnstock surface. It should be a dedicated session, not shoehorned into the Bridge-2 implementation session.
+**Decision:** This is a separate operational workstream. It is a Bridge-1 exercise (candidate creation), not a Bridge-2 follow-up. It should get its own plan in `plans/`, verify budget observations, and use `gate_mark_preflight` for the vnstock surface. It should be a dedicated session, not shoehorned into the Bridge-2 implementation session.
+
+**What the gap means for autonomy.** The trajectory document says the destination is "an autonomous verification loop." Bridge 2 is a load-bearing component of that loop. But the loop's autonomy is bounded by the weakest exercised component. Today: Bridge 1 is not exercised on real data; Bridge 2 is not exercised on real data; Bridge 3 does not exist; Bridge 4 is implemented but not exercised. The loop is a pipeline of unproven components. The risk is that the first real end-to-end run will surface integration failures that no unit test can catch. This systemic pattern is documented as a meta risk: `record:risk-meta-260601T1328Z-bridge-components-tested-in-isolation-without-end-to-end-exercise`.
 
 **Next steps for snapshot migration:**
 - Create plan: `plans/260601-vnstock-unified-ui-snapshot-candidate-migration/`
@@ -74,6 +86,11 @@ Completed all 6 phases of Bridge 2 (Candidate → Experiment Plan). Built a dime
 - Exercise Bridge-1 pipeline on snapshot files (or hand-author candidates)
 - Exercise Bridge-2 pipeline on generated candidates
 - Run experiments and collect evidence
+
+**Meta references:**
+- Brainstorm report: `local:plans/reports/brainstorm-20260601-bridge-2-candidate-to-experiment-closeout.md`
+- Meta risk record: `record:risk-meta-260601T1343Z-bridge-components-tested-in-isolation-without-end-to-end-exercise`
+- Meta-state entries: `meta-260601T1339Z-the-learning-loop-has-no-mechanism-to-surface-the-internaliz`, `meta-260601T1339Z-agent-could-not-discover-the-meta-state-jsonl-registry-or-th`
 
 ## Risks Addressed
 
