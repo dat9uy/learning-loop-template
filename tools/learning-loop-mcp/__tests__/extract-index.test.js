@@ -85,6 +85,24 @@ describe("index-entry-builder", () => {
     assert.strictEqual(entry.n_count, 1);
   });
 
+  it("maps pending to candidate", () => {
+    const entry = buildIndexEntry({
+      finding: { topicTag: "tag", assertion: "A.", context: null, caveats: [], lineAnchor: "L1", bulletIndex: 1 },
+      meta: { capability: "cap", dimension: "runtime", scope: "s", validation_status: "pending" },
+      evidencePath: "records/evidence/test.md",
+      hash: "sha256:abc",
+      sourceRefs: [{ file: "local:records/evidence/test.md", section: "## Findings", bullet_index: 1, line_anchor: "L1" }],
+      nCount: 1,
+      experimentMap: new Map(),
+      agentRun: "run-1",
+      firstExtractedAt: "2026-05-19T17:00:00Z",
+      lastUpdatedAt: "2026-05-19T17:00:00Z",
+    });
+    assert.strictEqual(entry.status, "candidate");
+    assert.strictEqual(entry.type, "extracted-assertion");
+    assert.strictEqual(entry.id, "assertion-cap-runtime-tag");
+  });
+
   it("returns null for failed validation_status", () => {
     const entry = buildIndexEntry({
       finding: { topicTag: "tag", assertion: "A.", context: null, caveats: [], lineAnchor: "L1", bulletIndex: 1 },

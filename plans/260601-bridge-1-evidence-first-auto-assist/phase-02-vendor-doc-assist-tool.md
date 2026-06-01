@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Vendor Doc Assist Tool"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]
@@ -84,14 +84,14 @@ The suggestion engine is deliberately simple and rule-based (no LLM integration)
 
 ## Success Criteria
 
-- [ ] `workflow_vendor_doc_assist` tool registered in manifest and callable via MCP
-- [ ] Tool reads a vendor doc and returns structured suggestions
-- [ ] Suggested findings include at least one `## Findings`-format bullet with confidence > 0.5
-- [ ] Capability detection works for known capabilities (vnstock-data, fastapi, tanstack)
-- [ ] Cross-reference detection flags existing index matches
-- [ ] Tool does not write to `records/<surface>/evidence/`
-- [ ] Tests pass
-- [ ] `pnpm check` passes
+- [x] `workflow_vendor_doc_assist` tool registered in manifest and callable via MCP
+- [x] Tool reads a vendor doc and returns structured suggestions
+- [x] Suggested findings include at least one `## Findings`-format bullet with confidence > 0.5
+- [x] Capability detection works for known capabilities (vnstock-data, fastapi, tanstack)
+- [x] Cross-reference detection flags existing index matches
+- [x] Tool does not write to `records/<surface>/evidence/`
+- [x] Tests pass
+- [x] `pnpm check` passes
 
 ## Risk Assessment
 

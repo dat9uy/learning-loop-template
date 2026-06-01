@@ -1,7 +1,7 @@
 ---
 title: "Bridge 1 — Evidence-First Auto-Assist for Vendor Doc Ingestion"
 description: "Close Bridge 1 (Doc → Candidate Assertion) of the trajectory. Add candidate status to the index schema, build a vendor-doc assist MCP tool, and hard-block product consumption of unverified vendor assertions."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [product-build, bridge-1, vendor-docs, mcp-tool, index-schema, validation]
@@ -34,11 +34,11 @@ From the brainstorm report:
 
 | Phase | Name | Status | Effort | Priority | Dependencies |
 |-------|------|--------|--------|----------|-------------|
-| 1 | [Schema+Status Enum](./phase-01-schema-status-enum.md) | Pending | 1h | P1 | — |
-| 2 | [Vendor Doc Assist Tool](./phase-02-vendor-doc-assist-tool.md) | Pending | 3h | P1 | 1 |
-| 3 | [Validation Hard-Block](./phase-03-validation-hard-block.md) | Pending | 2h | P1 | 1, 2 |
-| 4 | [Index Query Filter](./phase-04-index-query-filter.md) | Pending | 1h | P2 | 1, 2 |
-| 5 | [End-to-End Test](./phase-05-end-to-end-test.md) | Pending | 2h | P1 | 3, 4 |
+| 1 | [Schema+Status Enum](./phase-01-schema-status-enum.md) | Completed | 1h | P1 | — |
+| 2 | [Vendor Doc Assist Tool](./phase-02-vendor-doc-assist-tool.md) | Completed | 3h | P1 | 1 |
+| 3 | [Validation Hard-Block](./phase-03-validation-hard-block.md) | Completed | 2h | P1 | 1, 2 |
+| 4 | [Index Query Filter](./phase-04-index-query-filter.md) | Completed | 1h | P2 | 1, 2 |
+| 5 | [End-to-End Test](./phase-05-end-to-end-test.md) | Completed | 2h | P1 | 3, 4 |
 
 ## Dependencies
 

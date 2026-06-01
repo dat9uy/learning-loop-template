@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Schema+Status Enum"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []
@@ -11,12 +11,12 @@ dependencies: []
 
 ## Overview
 
-Add `candidate` to the `index-entry.schema.json` status enum and update the extraction pipeline to map `evidence.validation_status: pending` to `candidate` instead of `pending_approval`. This is the foundational schema change that all downstream phases depend on.
+Add `candidate` to the `index-entry.schema.json` status enum and update the extraction pipeline to map `evidence.validation_status: completed` to `candidate` instead of `pending_approval`. This is the foundational schema change that all downstream phases depend on.
 
 ## Requirements
 
 - Functional: `schemas/index-entry.schema.json` accepts `candidate` as a valid status value.
-- Functional: `extract-index` produces `candidate` entries when evidence has `validation_status: pending`.
+- Functional: `extract-index` produces `candidate` entries when evidence has `validation_status: completed`.
 - Functional: `extract-index` still produces `active` for `passed` and `pending_approval` when no `pending` evidence exists.
 - Non-functional: Zero breaking changes to existing `active`/`superseded`/`pending_approval` entries.
 
@@ -67,11 +67,11 @@ const STATUS_MAP = {
 
 ## Success Criteria
 
-- [ ] `schemas/index-entry.schema.json` status enum includes `candidate`
-- [ ] `index-entry-builder.js` `STATUS_MAP` maps `pending` → `candidate`
-- [ ] `docs/artifact-concepts.md` documents the new status
-- [ ] `pnpm test` passes with no regressions
-- [ ] `pnpm extract:index --dry-run` runs clean on existing evidence
+- [x] `schemas/index-entry.schema.json` status enum includes `candidate`
+- [x] `index-entry-builder.js` `STATUS_MAP` maps `pending` → `candidate`
+- [x] `docs/artifact-concepts.md` documents the new status
+- [x] `pnpm test` passes with no regressions
+- [x] `pnpm extract:index --dry-run` runs clean on existing evidence
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "End-to-End Test"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [3, 4]
@@ -90,14 +90,14 @@ Install with `pip install vnstock_data`.
 
 ## Success Criteria
 
-- [ ] Synthetic vendor doc produces suggestions with confidence > 0.5
-- [ ] Evidence written from suggestions produces a `candidate` index entry
-- [ ] `validateRecords` rejects a product experiment referencing the `candidate` entry
-- [ ] `listVerifiedClaims` does not include the `candidate` entry by default
-- [ ] `searchIndex` with `include_candidates: true` includes the `candidate` entry
-- [ ] Test is idempotent and runs in <30 seconds
-- [ ] `pnpm test` passes
-- [ ] `pnpm check` passes
+- [x] Synthetic vendor doc produces suggestions with confidence > 0.5
+- [x] Evidence written from suggestions produces a `candidate` index entry
+- [x] `validateRecords` rejects a product experiment referencing the `candidate` entry
+- [x] `listVerifiedClaims` does not include the `candidate` entry by default
+- [x] `searchIndex` with `include_candidates: true` includes the `candidate` entry
+- [x] Test is idempotent and runs in <30 seconds
+- [x] `pnpm test` passes
+- [x] `pnpm check` passes
 
 ## Risk Assessment
 

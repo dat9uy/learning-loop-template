@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Index Query Filter"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1, 2]
@@ -82,14 +82,14 @@ These core functions currently filter by capability, dimension, and status. The 
 
 ## Success Criteria
 
-- [ ] `searchIndex` defaults to excluding `candidate` entries
-- [ ] `searchIndex` with `include_candidates: true` includes `candidate` entries
-- [ ] `listVerifiedClaims` defaults to excluding `candidate` entries
-- [ ] `listVerifiedClaims` with `include_candidates: true` includes `candidate` entries
-- [ ] `index_search` MCP tool exposes `include_candidates` parameter
-- [ ] `capability_list_verified` MCP tool exposes `include_candidates` parameter
-- [ ] Tests cover all filter combinations
-- [ ] `pnpm test` passes
+- [x] `searchIndex` defaults to excluding `candidate` entries
+- [x] `searchIndex` with `include_candidates: true` includes `candidate` entries
+- [x] `listVerifiedClaims` defaults to excluding `candidate` entries
+- [x] `listVerifiedClaims` with `include_candidates: true` includes `candidate` entries
+- [x] `index_search` MCP tool exposes `include_candidates` parameter
+- [x] `capability_list_verified` MCP tool exposes `include_candidates` parameter
+- [x] Tests cover all filter combinations
+- [x] `pnpm test` passes
 
 ## Risk Assessment
 

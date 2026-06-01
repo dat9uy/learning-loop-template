@@ -21,12 +21,12 @@ Index entries use different status values derived from evidence `validation_stat
 
 | Dimension | Status values | Extra fields | Proof authority |
 |---|---|---|---|
-| `static` | `active`, `superseded`, `pending_approval` | none | Experiment (via `experiment_refs`) |
-| `install` | `active`, `superseded`, `pending_approval` | `scope` field | Approved human-gated experiment (via `experiment_refs`) |
-| `runtime` | `active`, `superseded`, `pending_approval` | `scope`, `output` fields | Approved human-gated experiment (via `experiment_refs`) |
-| `product` | `active`, `pending_approval` | none | Approved decision (via `decision_effect.affected_refs`) |
+| `static` | `active`, `superseded`, `pending_approval`, `candidate` | none | Experiment (via `experiment_refs`) |
+| `install` | `active`, `superseded`, `pending_approval`, `candidate` | `scope` field | Approved human-gated experiment (via `experiment_refs`) |
+| `runtime` | `active`, `superseded`, `pending_approval`, `candidate` | `scope`, `output` fields | Approved human-gated experiment (via `experiment_refs`) |
+| `product` | `active`, `pending_approval`, `candidate` | none | Approved decision (via `decision_effect.affected_refs`) |
 
-`claimed` does not exist for index entries. Unverified assertions surface as `pending_approval` when `evidence.validation_status: pending`, or are not extracted at all when `validation_status: failed`.
+`claimed` does not exist for index entries. Unverified assertions surface as `candidate` when `evidence.validation_status: pending`, or are not extracted at all when `validation_status: failed`. `candidate` is for vendor-sourced or unverified assertions; `pending_approval` is for human-promoted candidates awaiting experiment.
 
 Frozen-legacy claim counterpart: [Dimension Overview](#dimension-overview) above.
 

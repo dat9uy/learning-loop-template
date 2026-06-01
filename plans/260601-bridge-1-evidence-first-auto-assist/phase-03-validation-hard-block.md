@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Validation Hard-Block"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1, 2]
@@ -77,13 +77,13 @@ For each record that is NOT a `claim` or `extracted-assertion`:
 
 ## Success Criteria
 
-- [ ] `validateRecords` rejects product records that reference `candidate` assertions
-- [ ] Error message names the candidate assertion ID and the referencing record
-- [ ] `active`, `superseded`, `pending_approval` references pass without error
-- [ ] Frozen-legacy `claim` records are exempt from candidate checks
-- [ ] Tests cover all record types that can reference index entries
-- [ ] `pnpm validate:records` passes on existing records (no existing violations)
-- [ ] `pnpm test` passes
+- [x] `validateRecords` rejects product records that reference `candidate` assertions
+- [x] Error message names the candidate assertion ID and the referencing record
+- [x] `active`, `superseded`, `pending_approval` references pass without error
+- [x] Frozen-legacy `claim` records are exempt from candidate checks
+- [x] Tests cover all record types that can reference index entries
+- [x] `pnpm validate:records` passes on existing records (no existing violations)
+- [x] `pnpm test` passes
 
 ## Risk Assessment
 
