@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "New loop_describe Tool"
-status: pending
+status: completed
 priority: P2
 effort: 8h
 dependencies: [1, 2]

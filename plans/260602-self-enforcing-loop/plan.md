@@ -1,7 +1,7 @@
 ---
 title: "Self-Enforcing Loop Architecture: Meta-State as Rule Registry"
 description: "Make meta-state.jsonl the rule registry: extend schema with promoted_to_rule, gate reads/enforces active rules, new loop_describe tool with tier-aware reads (hot/warm/cold/summary). Three surgical changes; no new artifact types, no new schemas, no new directories."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, gate, mcp, refactor, tdd, anti-pattern]
@@ -32,10 +32,10 @@ Implements the architecture in `plans/reports/brainstorm-260602-self-enforcing-l
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Schema Extension](./phase-01-schema-extension.md) | Pending |
-| 2 | [Gate Reads Promoted Rules](./phase-02-gate-reads-promoted-rules.md) | Pending |
-| 3 | [New loop_describe Tool](./phase-03-new-loop-describe-tool.md) | Pending |
-| 4 | [Migration and Validation](./phase-04-migration-and-validation.md) | Pending |
+| 1 | [Schema Extension](./phase-01-schema-extension.md) | completed |
+| 2 | [Gate Reads Promoted Rules](./phase-02-gate-reads-promoted-rules.md) | completed |
+| 3 | [New loop_describe Tool](./phase-03-new-loop-describe-tool.md) | completed |
+| 4 | [Migration and Validation](./phase-04-migration-and-validation.md) | completed |
 
 ## Cross-Plan Dependencies
 
@@ -78,14 +78,14 @@ Implements the architecture in `plans/reports/brainstorm-260602-self-enforcing-l
 
 ## Success Criteria (Whole-Plan)
 
-- [ ] `loop-anti-pattern` category accepted by `meta_state_report`
-- [ ] Gate enforces active promoted rules (regex + glob)
-- [ ] `loop_describe` tool returns 4 tiers correctly
-- [ ] First anti-pattern rule promoted and demonstrably enforced
-- [ ] `pnpm test` passes
-- [ ] `pnpm validate:records` passes
-- [ ] No regression in existing constraint patterns
-- [ ] All 4 phase regression gates pass
+- [x] `loop-anti-pattern` category accepted by `meta_state_report`
+- [x] Gate enforces active promoted rules (regex + glob)
+- [x] `loop_describe` tool returns 4 tiers correctly
+- [x] First anti-pattern rule promoted and demonstrably enforced
+- [x] `pnpm test` passes (407 tests)
+- [x] `pnpm validate:records` passes
+- [x] No regression in existing constraint patterns
+- [x] All 4 phase regression gates pass
 
 ## Red Team Review
 

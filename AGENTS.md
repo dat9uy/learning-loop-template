@@ -20,6 +20,21 @@ Shared coordination rules for both Claude Code and Droid CLI. All gate logic liv
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
 - **MCP server** (`tools/learning-loop-mcp/server.js`) — 35 tools for constraint checks, record CRUD, preflight gating, and workflow orchestration.
 
+### Discovery: `loop_describe`
+
+Call `loop_describe({tier: "warm"})` at session start to discover the loop's operational surface and active rules. The tool returns a tiered view to control context bloat:
+
+| Tier | Returns | Size | When |
+|---|---|---|---|
+| `summary` | counts only | <1KB | pre-flight |
+| `hot` | active promoted rules + tool names | ~5KB | "is X safe?" |
+| `warm` | active surface + tool descriptions + findings | 10-25KB | default; session start |
+| `cold` | full history + all findings | 25-100KB | audit only |
+
+The response includes a `tier` field (robustness echo) and a `degraded` flag when partial data is returned. On `degraded: true`, retry with `tier: "summary"` or proceed with partial data.
+
+`loop_describe` composes with `meta_state_list`; use `meta_state_list` for detailed filtering and `loop_describe` for operational context.
+
 ### Protocol Adapter
 
 The universal hooks handle tool name differences between surfaces:

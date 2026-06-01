@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Gate Reads Promoted Rules"
-status: pending
+status: completed
 priority: P2
 effort: 6h
 dependencies: [1]
