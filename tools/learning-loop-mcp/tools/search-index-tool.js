@@ -5,11 +5,12 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const indexSearchTool = {
   name: "index_search",
-  description: "Search index entries by capability, dimension, and status. Read-only query.",
+  description: "Search index entries by capability, dimension, and status. Read-only query. Defaults to excluding candidate (unverified) entries unless explicitly requested.",
   schema: {
     capability: z.string().optional().describe("Filter by capability name"),
     dimension: z.string().optional().describe("Filter by verification dimension (static, install, runtime, product)"),
     status: z.string().optional().describe("Filter by verification status (claimed, verified, rejected)"),
+    include_candidates: z.boolean().optional().describe("Include candidate entries in results (default: false)"),
   },
   handler: async (args) => {
     const root = resolveRoot();
@@ -17,7 +18,7 @@ export const indexSearchTool = {
       capability: args.capability,
       dimension: args.dimension,
       status: args.status,
-    });
+    }, args.include_candidates ? false : true);
 
     const result = {
       count: results.length,

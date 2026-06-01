@@ -27,7 +27,7 @@
     "schema_version": { "type": "string" },
     "type": { "const": "extracted-assertion" },
     "status": {
-      "enum": ["active", "superseded", "pending_approval"]
+      "enum": ["active", "superseded", "pending_approval", "candidate"]
     },
     "assertion": { "type": "string" },
     "context": { "type": "string" },

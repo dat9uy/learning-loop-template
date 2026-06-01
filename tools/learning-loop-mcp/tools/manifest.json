@@ -16,6 +16,7 @@
   { "file": "./tools/workflow-intake-plan-tool.js", "export": "workflowIntakePlanTool" },
   { "file": "./tools/workflow-prepare-runtime-request-tool.js", "export": "workflowPrepareRuntimeRequestTool" },
   { "file": "./tools/workflow-convert-evidence-tool.js", "export": "workflowConvertEvidenceTool" },
+  { "file": "./tools/workflow-vendor-doc-assist-tool.js", "export": "workflowVendorDocAssistTool" },
   { "file": "./tools/workflow-generate-prompt-tool.js", "export": "workflowGeneratePromptTool" },
   { "file": "./tools/workflow-intentional-skip-tool.js", "export": "workflowIntentionalSkipTool" },
   { "file": "./tools/workflow-verify-evidence-tool.js", "export": "workflowVerifyEvidenceTool" },

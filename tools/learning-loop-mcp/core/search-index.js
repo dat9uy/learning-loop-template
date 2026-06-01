@@ -6,6 +6,7 @@ import YAML from "yaml";
  * Search index entries by capability, dimension, and status.
  * @param {string} root — repo root
  * @param {{ capability?: string, dimension?: string, status?: string }} filters
+ * @param {boolean} excludeCandidates — when true (default), skip entries with status: candidate
  * @returns {Array<{id: string, frontmatter: object}>}
  */
 export const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
@@ -30,7 +31,7 @@ function collectIndexFiles(root) {
   return files;
 }
 
-export function searchIndex(root, filters = {}) {
+export function searchIndex(root, filters = {}, excludeCandidates = true) {
   const results = [];
   const files = collectIndexFiles(root);
 
@@ -59,6 +60,7 @@ export function searchIndex(root, filters = {}) {
       const dimData = (frontmatter.verification || {})[filters.dimension];
       if (!dimData || dimData.status !== filters.status) continue;
     } else if (filters.status) {
+      // Check old-style verification dimension status
       let found = false;
       for (const dim of Object.values(frontmatter.verification || {})) {
         if (dim.status === filters.status) {
@@ -66,7 +68,16 @@ export function searchIndex(root, filters = {}) {
           break;
         }
       }
+      // Also check top-level status for extracted-assertions
+      if (frontmatter.status === filters.status) {
+        found = true;
+      }
       if (!found) continue;
+    }
+
+    // Candidate exclusion: when no explicit status filter is set, exclude candidate entries
+    if (excludeCandidates && !filters.status && frontmatter.status === "candidate") {
+      continue;
     }
 
     results.push({ id, frontmatter });
