@@ -1,7 +1,7 @@
-import { z } from "zod";
 import {
   writeEntry,
   generateId,
+  metaStateEntrySchema,
 } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -9,21 +9,10 @@ import { resolveRoot } from "#lib/resolve-root.js";
 export const metaStateReportTool = {
   name: "meta_state_report",
   description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator.",
-  schema: {
-    category: z.enum(["gate-logic-bug", "record-repair-gap", "schema-drift", "stale-ref", "mcp-tool-missing", "budget-check"])
-      .describe("Category of the finding"),
-    severity: z.enum(["warning", "escalate"]).describe("Severity level"),
-    affected_system: z.enum(["gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor"])
-      .describe("Which system is affected by this finding"),
-    description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
-    evidence_journal: z.string().optional().describe("Path to related journal file"),
-    evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
-    evidence_test: z.string().optional().describe("Test file reference"),
-    auto_resolve_file: z.string().optional().describe("File path to watch for auto-resolve"),
-    auto_resolve_line_range: z.array(z.number()).optional().describe("Line range [start, end] for auto-resolve"),
-  },
+  schema: metaStateEntrySchema.shape,
   handler: async ({
     category,
+    subtype,
     severity,
     affected_system,
     description,
@@ -41,6 +30,7 @@ export const metaStateReportTool = {
     const entry = {
       id,
       category,
+      ...(subtype && { subtype }),
       severity,
       affected_system,
       description,

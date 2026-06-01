@@ -1,9 +1,37 @@
 import { readFileSync, writeFileSync, existsSync, statSync, renameSync, appendFileSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
+import { z } from "zod";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
 const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Shared zod schema for meta_state_report input validation.
+ * Lives in meta-state.js (the registry source of truth) per RT Finding 11.
+ */
+export const metaStateEntrySchema = z.object({
+  category: z.enum([
+    "gate-logic-bug", "record-repair-gap", "schema-drift",
+    "stale-ref", "mcp-tool-missing", "budget-check",
+    "loop-anti-pattern",
+  ]).describe("Category of the finding"),
+  severity: z.enum(["warning", "escalate"]).describe("Severity level"),
+  affected_system: z.enum([
+    "gate-logic", "record-validation", "index-extractor",
+    "mcp-tools", "workflow-registry", "vnstock_vendor",
+  ]).describe("Which system is affected by this finding"),
+  description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
+  subtype: z.string().optional()
+    .describe("Subtype for loop-anti-pattern findings (e.g., escape-hatch-abuse, new-artifact-type, schema-bloat)"),
+  evidence_journal: z.string().optional().describe("Path to related journal file"),
+  evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
+  evidence_test: z.string().optional().describe("Test file reference"),
+  auto_resolve_file: z.string().optional().describe("File path to watch for auto-resolve"),
+  auto_resolve_line_range: z.array(z.number()).optional().describe("Line range [start, end] for auto-resolve"),
+  status: z.enum(["reported"]).optional()
+    .describe("Status — only 'reported' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses."),
+});
 
 /** Per-root write queue to prevent read-modify-write races. */
 const writeQueues = new Map();
@@ -52,21 +80,32 @@ export function writeEntry(root, entry) {
 /**
  * Atomically update an entry by id, applying a patch object.
  * Also compacts terminal entries older than 7 days.
- * Returns true if entry found and updated, null otherwise.
+ * Supports optional compare-and-swap via _expected_version in patch.
+ * Returns true if entry found and updated, null if not found,
+ * or "version_mismatch" if CAS check fails.
  */
 export function updateEntry(root, id, patch) {
   return enqueue(root, () => {
     const entries = readRegistry(root);
     let found = false;
+    let currentVersion = 0;
 
     // Check id exists before any mutation
     for (const entry of entries) {
       if (entry.id === id) {
         found = true;
+        currentVersion = entry.version ?? 0;
         break;
       }
     }
     if (!found) return null;
+
+    // CAS check
+    if ("_expected_version" in patch) {
+      if (currentVersion !== patch._expected_version) {
+        return "version_mismatch";
+      }
+    }
 
     const now = Date.now();
     const updated = entries.filter((entry) => {
@@ -79,7 +118,10 @@ export function updateEntry(root, id, patch) {
 
     for (const entry of updated) {
       if (entry.id === id) {
-        Object.assign(entry, patch);
+        const cleanPatch = { ...patch };
+        delete cleanPatch._expected_version;
+        Object.assign(entry, cleanPatch);
+        entry.version = (entry.version ?? 0) + 1;
       }
     }
 
