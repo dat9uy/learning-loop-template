@@ -1,5 +1,29 @@
 date: "2026-06-02T00:00:00Z"
-tags: [brainstorm, meta, agent-behavior, anti-pattern, docs, plans, philosophy]
+status: superseded
+superseded_by: brainstorm-260602-self-enforcing-loop-architecture.md
+superseded_at: "2026-06-02T00:00:00Z"
+supersession_reason: |
+  Correctly identified the anti-pattern (agents default to docs/plans as architecture)
+  but proposed content-heavy prevention measures that don't use the loop's own machinery.
+  Superseded by the architecture-level fix in brainstorm-260602-self-enforcing-loop-architecture.md
+  which makes meta-state.jsonl the rule registry via promoted_to_rule, a gate function,
+  and a loop_describe MCP tool. The anti-pattern analysis here remains valid and is
+  referenced by the new report.
+tags: [brainstorm, meta, agent-behavior, anti-pattern, docs, plans, philosophy, superseded]
+
+# [SUPERSEDED] Why Agents Default to `docs/` and `plans/` as Architecture
+
+> ## STATUS: SUPERSEDED (2026-06-02)
+>
+> This report is **retained as historical analysis**. It correctly identified the recurring anti-pattern (agents defaulting to `docs/` and `plans/` as architecture rather than escape hatch) and proposed 6 prevention measures. However, those measures were content-heavy (new philosophy rules, gate warnings, prompt injection, new meta-state category) and did not use the loop's existing machinery.
+>
+> **Anti-pattern analysis:** Valid. The 5 root causes identified here are accurate and inform the superseding design.
+>
+> **Prevention measures:** Superseded. The correct fix is to make the loop's own state — `meta-state.jsonl` — the rule registry. See `brainstorm-260602-self-enforcing-loop-architecture.md` for the superseding design.
+>
+> The original 5 root causes, anti-pattern table, and 6 prevention measures are preserved below for historical context.
+
+---
 
 # Why Agents Default to `docs/` and `plans/` as Architecture
 

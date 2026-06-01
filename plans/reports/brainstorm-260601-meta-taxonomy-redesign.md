@@ -1,6 +1,35 @@
 ---
 date: "2026-06-01T13:53:00Z"
-tags: [brainstorm, meta, taxonomy, convention, evidence, assertion, self-learning]
+status: rejected
+superseded_by: brainstorm-260602-self-enforcing-loop-architecture.md
+rejected_at: "2026-06-02T00:00:00Z"
+rejection_reason: |
+  Proposed a new `convention` artifact type with `schemas/convention.schema.json`,
+  96 YAML files, and `conventions/` directory. Violates the "no new artifact types"
+  philosophy. Both the proposed solution AND the content-heavy prevention measures
+  in `brainstorm-260602-agent-docs-plans-default-pattern.md` are superseded by the
+  architecture-level fix in `brainstorm-260602-self-enforcing-loop-architecture.md`,
+  which makes the loop's own state (meta-state.jsonl) the rule registry.
+tags: [brainstorm, meta, taxonomy, convention, evidence, assertion, self-learning, rejected, anti-pattern-exhibit]
+---
+
+# [REJECTED] Meta-Level Taxonomy Redesign: Conventions vs. Vendor Capabilities
+
+> ## STATUS: REJECTED (2026-06-02)
+>
+> This report is **retained as a rejected anti-pattern exhibit**. It correctly identified that 96 meta assertions lost their provenance after the 1:1 cleanup, but the proposed solution — a new `convention` artifact type with `schemas/convention.schema.json`, 96 YAML files, and a `conventions/` directory — is **rejected** for the following reasons:
+>
+> 1. **Violates "no new artifact types" philosophy** in `docs/philosophy.md`
+> 2. **Treats `docs/` and `plans/` as architecture** rather than escape hatch
+> 3. **Proposes a new schema** instead of encoding knowledge in existing surfaces
+> 4. **Bureaucracy, not mechanism** — 96 YAML files is permanent loop inflation
+>
+> **Problem analysis:** Valid. The 96 assertions needed a home, and the existing surfaces didn't fit. This was the correct diagnosis.
+>
+> **Solution:** Rejected. The correct fix is not to create a new artifact type. It is to make the loop's own state — `meta-state.jsonl` — the rule registry. See `brainstorm-260602-self-enforcing-loop-architecture.md` for the superseding design.
+>
+> The original "Critical Update" and all REJECTED inline markers below are preserved for historical context.
+
 ---
 
 # Meta-Level Taxonomy Redesign: Conventions vs. Vendor Capabilities
