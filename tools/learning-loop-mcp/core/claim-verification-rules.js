@@ -70,21 +70,25 @@ function validateExperimentProves(experiment, byId, errors) {
   const verification = experiment.verification;
   if (!verification) return;
 
-  const claimRefs = Array.isArray(verification.claim_refs) ? verification.claim_refs : [];
-  if (!claimRefs.length) errors.push(verificationError(experiment, "verification.claim_refs must name at least one claim"));
+  const targetRefs = Array.isArray(verification.assertion_refs)
+    ? verification.assertion_refs
+    : (Array.isArray(verification.claim_refs) ? verification.claim_refs : []);
+  if (!targetRefs.length) errors.push(verificationError(experiment, "verification.assertion_refs must name at least one assertion or claim"));
   if (!Array.isArray(verification.proves) || !verification.proves.length) {
     errors.push(verificationError(experiment, "verification.proves must name at least one dimension"));
     return;
   }
 
-  for (const ref of claimRefs) {
+  for (const ref of targetRefs) {
     const id = recordIdFromRef(ref);
     if (!id) {
-      errors.push(verificationError(experiment, `unsupported verification claim reference ${ref}`));
+      errors.push(verificationError(experiment, `unsupported verification target reference ${ref}`));
       continue;
     }
-    const claim = byId.get(id);
-    if (!claim || claim.type !== "claim") errors.push(verificationError(experiment, `missing claim reference ${ref}`));
+    const target = byId.get(id);
+    if (!target || (target.type !== "claim" && target.type !== "extracted-assertion")) {
+      errors.push(verificationError(experiment, `missing assertion or claim reference ${ref}`));
+    }
   }
 
   for (const proof of verification.proves) {
@@ -107,15 +111,15 @@ function validateExperimentProves(experiment, byId, errors) {
   }
 }
 
-const dimensionEntries = (claim) => Object.entries(claim.verification || {}).filter(([key]) => verificationDimensions.has(key));
+const dimensionEntries = (target) => Object.entries(target.verification || {}).filter(([key]) => verificationDimensions.has(key));
 
-function validateProofRefsForStatus(claim, dimension, config, proofRecords, errors) {
+function validateProofRefsForStatus(target, dimension, config, proofRecords, errors) {
   const refs = config.proof_refs || [];
   if (config.status === "claimed" && refs.length) {
-    errors.push(verificationError(claim, `${dimension} claimed status must not carry proof refs`));
+    errors.push(verificationError(target, `${dimension} claimed status must not carry proof refs`));
   }
   if (["verified", "rejected"].includes(config.status) && !refs.length) {
-    errors.push(verificationError(claim, `${dimension} ${config.status} status requires proof refs`));
+    errors.push(verificationError(target, `${dimension} ${config.status} status requires proof refs`));
     return;
   }
   if (!["verified", "rejected"].includes(config.status)) return;
@@ -123,56 +127,56 @@ function validateProofRefsForStatus(claim, dimension, config, proofRecords, erro
   const matchingExperiments = proofRecords.filter((record) => (
     record.type === "experiment"
       && reviewedStatuses.has(record.status)
-      && experimentProvesDimension(record, claim, config, dimension)
+      && experimentProvesDimension(record, target, config, dimension)
   ));
   if (!matchingExperiments.length) {
-    errors.push(verificationError(claim, `${dimension} ${config.status} status requires matching experiment proof ref`));
+    errors.push(verificationError(target, `${dimension} ${config.status} status requires matching experiment proof ref`));
   }
 }
 
-function validateProductDimension(claim, config, byId, errors) {
+function validateProductDimension(target, config, byId, errors) {
   const refs = config.decision_refs || [];
   if (config.status === "claimed" && refs.length) {
-    errors.push(verificationError(claim, "product claimed status must not carry decision refs"));
+    errors.push(verificationError(target, "product claimed status must not carry decision refs"));
   }
   if (["approved", "rejected"].includes(config.status) && !refs.length) {
-    errors.push(verificationError(claim, `product ${config.status} status requires decision refs`));
+    errors.push(verificationError(target, `product ${config.status} status requires decision refs`));
     return;
   }
   if (!["approved", "rejected"].includes(config.status)) return;
 
-  const decisions = resolveRefs(claim, refs, byId, errors, "decision");
+  const decisions = resolveRefs(target, refs, byId, errors, "decision");
   const action = config.status === "approved" ? "approve" : "reject";
-  if (!decisions.some((record) => decisionApprovesProduct(record, claim, action))) {
-    errors.push(verificationError(claim, `product ${config.status} decision proof must reference claim`));
+  if (!decisions.some((record) => decisionApprovesProduct(record, target, action))) {
+    errors.push(verificationError(target, `product ${config.status} decision proof must reference claim`));
   }
   if (decisions.some((record) => record.type === "experiment")) {
-    errors.push(verificationError(claim, "product dimension must use decisions, not experiment proofs"));
+    errors.push(verificationError(target, "product dimension must use decisions, not experiment proofs"));
   }
 }
 
-function validateClaimDimensions(claim, byId, errors) {
-  const entries = dimensionEntries(claim);
+function validateTargetDimensions(target, byId, errors) {
+  const entries = dimensionEntries(target);
   if (!entries.length) {
-    errors.push(verificationError(claim, "must include at least one verification dimension"));
+    errors.push(verificationError(target, "must include at least one verification dimension"));
     return;
   }
 
   for (const [dimension, config] of entries) {
     if (dimension === "product") {
       if (!productStatuses.has(config.status)) {
-        errors.push(verificationError(claim, `product status must be one of claimed, approved, rejected`));
+        errors.push(verificationError(target, `product status must be one of claimed, approved, rejected`));
         continue;
       }
-      validateProductDimension(claim, config, byId, errors);
+      validateProductDimension(target, config, byId, errors);
       continue;
     }
     if (!proofStatuses.has(config.status)) {
-      errors.push(verificationError(claim, `${dimension} status must be one of claimed, verified, rejected`));
+      errors.push(verificationError(target, `${dimension} status must be one of claimed, verified, rejected`));
       continue;
     }
-    const proofRecords = resolveRefs(claim, config.proof_refs || [], byId, errors, "proof");
-    validateProofRefsForStatus(claim, dimension, config, proofRecords, errors);
+    const proofRecords = resolveRefs(target, config.proof_refs || [], byId, errors, "proof");
+    validateProofRefsForStatus(target, dimension, config, proofRecords, errors);
   }
 }
 
@@ -180,6 +184,6 @@ export function validateClaimVerification(records) {
   const errors = [];
   const byId = new Map(records.map((record) => [record.id, record]));
   for (const record of records) if (record.type === "experiment") validateExperimentProves(record, byId, errors);
-  for (const record of records) if (record.type === "claim") validateClaimDimensions(record, byId, errors);
+  for (const record of records) if (record.type === "claim" || (record.type === "extracted-assertion" && record.verification)) validateTargetDimensions(record, byId, errors);
   return errors;
 }

@@ -168,4 +168,85 @@ describe("record_delete tool", () => {
     assert.strictEqual(text.reason, "not_found");
     process.env.GATE_ROOT = originalEnv;
   });
+
+  test("hard-deletes evidence file", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "del-test-"));
+    process.env.GATE_ROOT = tempDir;
+    const dir = join(tempDir, "records", "meta", "evidence");
+    mkdirSync(dir, { recursive: true });
+    const evidencePath = join(dir, "test-evidence.md");
+    writeFileSync(evidencePath, "# Test evidence");
+
+    const result = await recordDeleteTool.handler({
+      surface: "meta",
+      record_id: "test-evidence",
+      record_type: "evidence",
+      reason: "Test cleanup of evidence file",
+      operator_confirmation: true,
+    });
+
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.deleted, true);
+    assert.strictEqual(existsSync(evidencePath), false);
+    assert.strictEqual(text.audit_path, undefined);
+    process.env.GATE_ROOT = originalEnv;
+  });
+
+  test("hard-deletes claim file", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "del-test-"));
+    process.env.GATE_ROOT = tempDir;
+    const dir = join(tempDir, "records", "meta", "claims");
+    mkdirSync(dir, { recursive: true });
+    const record = {
+      id: "claim-meta-test",
+      schema_version: "1.0",
+      type: "claim",
+      status: "draft",
+      created_at: "2026-05-23T12:00:00Z",
+      updated_at: "2026-05-23T12:00:00Z",
+      source_refs: [],
+      subject: "Test",
+      claim: "Test claim",
+      scope: "test",
+      evidence_refs: [],
+      confidence: "low",
+      limitations: [],
+      approval: { status: "draft", reviewer: "", reviewed_at: "" },
+      verification: {},
+    };
+    const claimPath = join(dir, "claim-meta-test.yaml");
+    writeFileSync(claimPath, stringifyYaml(record));
+
+    const result = await recordDeleteTool.handler({
+      surface: "meta",
+      record_id: "claim-meta-test",
+      record_type: "claim",
+      reason: "Test cleanup of claim record",
+      operator_confirmation: true,
+    });
+
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.deleted, true);
+    assert.strictEqual(existsSync(claimPath), false);
+    assert.strictEqual(text.audit_path, undefined);
+    process.env.GATE_ROOT = originalEnv;
+  });
+
+  test("blocks deletion of not-found evidence file", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "del-test-"));
+    process.env.GATE_ROOT = tempDir;
+
+    const result = await recordDeleteTool.handler({
+      surface: "meta",
+      record_id: "missing-evidence",
+      record_type: "evidence",
+      reason: "Test cleanup of missing evidence",
+      operator_confirmation: true,
+    });
+
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.deleted, false);
+    assert.strictEqual(text.reason, "not_found");
+    process.env.GATE_ROOT = originalEnv;
+  });
 });

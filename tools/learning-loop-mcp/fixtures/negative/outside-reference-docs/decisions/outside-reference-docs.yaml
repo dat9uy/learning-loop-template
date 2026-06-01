@@ -1,0 +1,15 @@
+id: outside-reference-docs
+schema_version: "1.0"
+type: decision
+status: draft
+created_at: "2026-06-01T00:00:00Z"
+updated_at: "2026-06-01T00:00:00Z"
+source_refs:
+  - record:decision-meta-20260508-loop-dimension-model
+question: "Test question"
+decision: "Test decision"
+rationale: "Test rationale"
+alternatives: []
+tradeoffs: []
+supersedes: []
+notes: "References docs/journals/260513-vnstock-bootstrap-substrate-experiment.md in notes"

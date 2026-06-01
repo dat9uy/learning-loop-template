@@ -50,7 +50,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(local|record|legacy):.+"
+        "pattern": "^(local|record|legacy|self):.+"
       }
     },
     "notes": {
@@ -139,7 +139,6 @@
     "verification": {
       "type": "object",
       "required": [
-        "claim_refs",
         "proves",
         "requires_human_approval",
         "approval_status"
@@ -196,6 +195,13 @@
             "approved",
             "rejected"
           ]
+        },
+        "assertion_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^record:assertion-[a-z0-9-]+-(static|install|runtime|product)-[a-z0-9-]+$"
+          }
         }
       }
     },

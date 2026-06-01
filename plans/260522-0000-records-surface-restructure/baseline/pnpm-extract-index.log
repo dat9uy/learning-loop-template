@@ -1,0 +1,40 @@
+$ node tools/extract-index/extract-index.js
+Warning: line 57: unknown nested bullet, ignoring
+Warning: line 58: unknown nested bullet, ignoring
+Warning: line 60: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 73: unknown nested bullet, ignoring
+Warning: line 74: unknown nested bullet, ignoring
+Warning: line 53: unknown nested bullet, ignoring
+Warning: line 59: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 98: unknown nested bullet, ignoring
+Warning: line 100: unknown nested bullet, ignoring
+Warning: line 104: unknown nested bullet, ignoring
+Warning: line 105: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 109: unknown nested bullet, ignoring
+Warning: line 111: unknown nested bullet, ignoring
+Warning: line 117: unknown nested bullet, ignoring
+Warning: line 119: unknown nested bullet, ignoring
+Warning: line 121: unknown nested bullet, ignoring
+Warning: line 123: unknown nested bullet, ignoring
+Warning: line 125: unknown nested bullet, ignoring
+Warning: line 93: unknown nested bullet, ignoring
+Warning: line 79: unknown nested bullet, ignoring
+Warning: line 80: unknown nested bullet, ignoring
+Warning: line 66: unknown nested bullet, ignoring
+Warning: line 13: unknown nested bullet, ignoring
+Warning: line 14: unknown nested bullet, ignoring
+Warning: line 15: unknown nested bullet, ignoring
+Warning: line 16: unknown nested bullet, ignoring
+Warning: line 17: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+Warning: line 28: unknown nested bullet, ignoring
+Warning: line 29: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+Processed 58 evidence files
+31 files had ## Findings
+108 index entries produced
+1 written, 107 unchanged

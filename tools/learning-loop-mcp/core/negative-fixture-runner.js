@@ -35,6 +35,7 @@ export function runNegativeFixtures(rootPath, allowDisallowed) {
     ["invalid-output-capture", "/output_capture type: must be object"],
     ["invalid-decision-effect", "/decision_effect/action enum: must be equal to one of the allowed values"],
     ["bad-timestamp", "/created_at pattern: must match pattern"],
+    ["outside-reference-docs", "references outside-artifact"],
   ];
   const errors = [];
   for (const [fixture, expected] of cases) {

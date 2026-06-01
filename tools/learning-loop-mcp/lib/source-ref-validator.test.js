@@ -74,6 +74,18 @@ describe("validateSourceRef", () => {
     const decResult = validateSourceRef("local:product/api/capabilities/test.py", "decision", tempDir);
     assert.strictEqual(decResult.valid, false);
   });
+
+  test("accepts self: ref as valid without existence check", () => {
+    const result = validateSourceRef("self:assertion-meta-static-capability-allowlist", "decision", "/tmp");
+    assert.strictEqual(result.valid, true);
+    assert.strictEqual(result.deprecated, undefined);
+  });
+
+  test("rejects self: ref with empty path", () => {
+    const result = validateSourceRef("self:", "decision", "/tmp");
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("must contain"));
+  });
 });
 
 describe("validateSourceRefs", () => {

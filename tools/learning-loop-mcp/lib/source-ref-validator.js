@@ -34,6 +34,14 @@ export function validateSourceRef(ref, recordType, root) {
     return { valid: false, error: `source ref must be a string, got ${typeof ref}` };
   }
 
+  if (ref.startsWith("self:")) {
+    const selfPath = ref.slice("self:".length);
+    if (!selfPath || selfPath.length < 1) {
+      return { valid: false, error: `self: ref must contain a path component, got "${selfPath}"` };
+    }
+    return { valid: true };
+  }
+
   if (ref.startsWith("legacy:")) {
     // Legacy refs are allowed but deprecated
     return { valid: true, deprecated: true };

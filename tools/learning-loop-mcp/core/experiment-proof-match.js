@@ -1,6 +1,8 @@
-export function experimentProvesDimension(experiment, claim, dimensionConfig, dimension) {
+export function experimentProvesDimension(experiment, target, dimensionConfig, dimension) {
   const verification = experiment.verification;
-  if (!verification || !(verification.claim_refs || []).includes(`record:${claim.id}`)) return false;
+  if (!verification) return false;
+  const targetRefs = verification.assertion_refs || verification.claim_refs || [];
+  if (!targetRefs.includes(`record:${target.id}`)) return false;
   return (verification.proves || []).some((proof) => {
     if (proof.dimension !== dimension) return false;
     if (dimension === "install") {

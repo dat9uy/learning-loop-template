@@ -113,6 +113,42 @@ function validateCandidateConsumption(records, errors) {
   }
 }
 
+const GRANDFATHERED_CUTOFF = "2026-06-01T00:00:00Z";
+
+const OUTSIDE_PATTERNS = [
+  /docs\/journals\/[^\s]+\.(md|yaml|yml)/,
+  /plans\/reports\/[^\s]+\.(md|yaml|yml)/,
+];
+
+function extractAllStrings(value, found = []) {
+  if (typeof value === "string") {
+    found.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) extractAllStrings(item, found);
+  } else if (value && typeof value === "object") {
+    for (const v of Object.values(value)) extractAllStrings(v, found);
+  }
+  return found;
+}
+
+function isGrandfathered(record) {
+  const createdAt = record.created_at || record.extraction?.first_extracted_at;
+  return !createdAt || createdAt < GRANDFATHERED_CUTOFF;
+}
+
+function validateOutsideReferences(record, errors) {
+  if (isGrandfathered(record)) return;
+  const strings = extractAllStrings(record);
+  for (const str of strings) {
+    for (const pattern of OUTSIDE_PATTERNS) {
+      if (pattern.test(str)) {
+        errors.push(`${record.__file}: references outside-artifact "${str}". Internalize findings into records/<surface>/evidence/ or records/<surface>/index/ and reference via record: or local: (allowed roots only).`);
+        break;
+      }
+    }
+  }
+}
+
 export function validateRecords(records, schemas, root, allowDisallowedFixtures = false) {
   const errors = [];
   const ids = new Map();
@@ -127,6 +163,9 @@ export function validateRecords(records, schemas, root, allowDisallowedFixtures 
   validateRecordReferences(records, ids, errors);
   validateCandidateConsumption(records, errors);
   errors.push(...validateClaimVerification(records));
+  for (const record of records) {
+    validateOutsideReferences(record, errors);
+  }
   return errors;
 }
 
@@ -141,6 +180,9 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
       if (typeof sourceRef !== "object" || !sourceRef.file) continue;
       const fileRef = sourceRef.file;
       if (typeof fileRef !== "string") continue;
+      if (fileRef.startsWith("self:")) {
+        continue;
+      }
       if (fileRef.startsWith("legacy:")) {
         if (!allowDisallowedFixtures) errors.push(`${record.__file}: disallowed legacy source ${fileRef.slice("legacy:".length)}`);
         continue;
@@ -158,6 +200,9 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
   }
   for (const sourceRef of record.source_refs || []) {
     if (typeof sourceRef !== "string") continue;
+    if (sourceRef.startsWith("self:")) {
+      continue;
+    }
     if (sourceRef.startsWith("legacy:")) {
       if (!allowDisallowedFixtures) errors.push(`${record.__file}: disallowed legacy source ${sourceRef.slice("legacy:".length)}`);
       continue;

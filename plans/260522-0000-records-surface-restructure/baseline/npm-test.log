@@ -1,0 +1,880 @@
+
+> learning-loop-template@0.1.0 test
+> node --test 'tools/**/*.test.js' '.claude/coordination/__tests__/*.test.cjs'
+
+
+--- bash-coordination-gate.cjs ---
+  PASS: non-Bash tool → exit 0 (allow)
+  PASS: ls -la → exit 0 (not constrained)
+  PASS: git status → exit 0 (not constrained)
+  PASS: docker run → exit 2 (constrained)
+  PASS: docker run output has decision: escalate (budget exhausted)
+  PASS: sudo → exit 2 (constrained)
+  PASS: pip install → exit 2 (constrained)
+  PASS: cat docker-compose.yml → exit 0 (word boundary)
+  PASS: echo undocumented → exit 0 (word boundary)
+  PASS: docker ; sudo → exit 2 (both constrained)
+  PASS: execution under 300ms (actual: 107ms)
+  PASS: heredoc to records/evidence with no observation → exit 2
+  PASS: heredoc no obs → observation_required
+  PASS: heredoc to records/evidence with fresh observation → exit 0
+  PASS: heredoc to records/evidence with stale observation → exit 2
+  PASS: stale observation → escalate
+  PASS: stale observation → inbound_gate: true
+  PASS: tee to records/evidence with fresh observation → exit 0
+  PASS: redirect with quotes to records/evidence with fresh observation → exit 0
+  PASS: redirect to records/observations with fresh observation → exit 2 (unconditional)
+  PASS: observations → hard_block
+  PASS: heredoc to docs/foo.md → exit 0
+  PASS: heredoc to records/claims/foo.yaml → exit 0
+  PASS: tee -a to records/evidence with fresh observation → exit 0
+  PASS: path traversal to observations via evidence → exit 2
+  PASS: traversal → hard_block
+
+Results: 26 passed, 0 failed
+✔ .claude/coordination/__tests__/bash-coordination-gate.test.cjs (1938.061821ms)
+
+=== Integration: Inbound Gate with Real Observations ===
+  PASS: copied real observation files to temp dir
+  PASS: real stale obs + state-change → marker written
+  PASS: real stale obs + state-change → context injected
+  PASS: real fresh obs + state-change → marker NOT written (F1)
+  PASS: real fresh obs + state-change → no context
+
+=== Integration: Outbound Gate with Real Observations ===
+  PASS: real stale obs + fresh marker → escalate
+  PASS: inbound_gate flag true with real obs
+  PASS: expired marker + real obs → exit 0 (F8 TTL)
+  PASS: no marker + real obs → exit 0
+
+=== Integration: Write-Path Observation End-to-End ===
+  PASS: fresh observation → write gate allows
+  PASS: fresh observation → bash gate allows heredoc
+  PASS: fresh observation + old marker → write gate allows
+  PASS: stale observation → write gate escalates
+  PASS: stale → escalate
+  PASS: stale → inbound_gate
+  PASS: stale observation → bash gate escalates
+  PASS: stale bash → escalate
+  PASS: stale bash → inbound_gate
+
+=== Integration: MCP Server with Real Budget + Observations ===
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: failed to parse observation observation-vnstock-import-reactivates-cleared-device.yaml: Unexpected scalar at node end at line 34, column 15:
+
+  - "Cleared" vendor devices are not truly deleted; they persist on the backend.
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+gate: failed to parse observation test-budget-invalid-resource-budget.yaml: Nested mappings are not allowed in compact mappings at line 2, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+gate: failed to parse budget test-budget-invalid-resource-budget.yaml: Nested mappings are not allowed in compact mappings at line 2, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+gate: docker run ubuntu → escalate (docker)
+  PASS: MCP: budget exhausted + stale marker → escalate
+  PASS: MCP: inbound_gate true with stale marker (F3)
+gate: failed to parse observation observation-vnstock-import-reactivates-cleared-device.yaml: Unexpected scalar at node end at line 34, column 15:
+
+  - "Cleared" vendor devices are not truly deleted; they persist on the backend.
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+gate: failed to parse observation test-budget-invalid-resource-budget.yaml: Nested mappings are not allowed in compact mappings at line 2, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+gate: failed to parse budget test-budget-invalid-resource-budget.yaml: Nested mappings are not allowed in compact mappings at line 2, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+gate: docker run ubuntu → escalate (docker)
+  PASS: MCP: budget exhausted + fresh marker → escalate
+  PASS: MCP: no inbound_gate with fresh marker
+
+=== Results: 22 passed, 0 failed ===
+✔ .claude/coordination/__tests__/gate-integration.test.cjs (1934.812327ms)
+▶ gate-utils.cjs pattern sync
+  ✔ loads CONSTRAINT_PATTERNS from patterns.json (26.771568ms)
+  ✔ patterns match expected commands (0.93165ms)
+✔ gate-utils.cjs pattern sync (28.713632ms)
+▶ readLastOperatorMessage TTL
+  ✔ returns marker when within TTL (fresh) (1.306052ms)
+  ✔ returns null when marker is older than TTL (expired) (0.552845ms)
+  ✔ returns null when marker has invalid timestamp (0.404398ms)
+  ✔ returns null when no marker file exists (0.291787ms)
+  ✔ returns null for marker exactly at TTL boundary (strict expiry) (0.393308ms)
+✔ readLastOperatorMessage TTL (3.618359ms)
+▶ pathMatchesObservation
+  ✔ matches records-evidence to records/evidence/foo.md (0.727933ms)
+  ✔ returns false when constraint is missing (0.233699ms)
+  ✔ returns false when constraint_type is wrong (0.160936ms)
+  ✔ returns false when status is archived (0.094972ms)
+  ✔ returns false for records/observations/** regardless of constraint (0.120516ms)
+✔ pathMatchesObservation (1.659881ms)
+
+=== Category 1: State-Change Detection ===
+  PASS: device clearance → marker written
+  PASS: container state → marker written
+  PASS: action report → marker written
+  PASS: state assertion → marker written
+  PASS: normal message → no marker
+  PASS: short message → no marker
+  PASS: empty message → no marker
+  PASS: question ending with ? → no marker (F11)
+  PASS: negated state → marker written
+  PASS: question filter (F11) → no marker
+  PASS: broad pattern match → marker written (documented false positive)
+
+=== Category 2: Observation Staleness ===
+  PASS: fresh observation → no context injection
+  PASS: stale observation → context injected
+  PASS: missing updated_at → context injected
+  PASS: invalid updated_at → context injected
+  PASS: divergence case: 10min old → inbound NOT stale (<30min)
+
+=== Category 3: Context Injection Format ===
+  PASS: state-change + stale obs → context injected
+  PASS: output has hookEventName
+  PASS: additionalContext mentions observation id
+  PASS: additionalContext has gate header
+  PASS: state-change + fresh obs → no context
+  PASS: no state-change → no context
+  PASS: state-change + no obs → no context
+
+=== Category 4: Marker File Flow ===
+  PASS: stale + state-change → marker exists
+  PASS: marker has timestamp
+  PASS: marker contains prompt snippet
+  PASS: fresh + state-change → marker NOT written (F1 fix)
+  PASS: no obs + state-change → marker NOT written
+  PASS: normal message → no marker
+
+=== Category 5: Outbound Gate Integration ===
+  PASS: stale obs + constrained → exit 2
+  PASS: decision is escalate
+  PASS: inbound_gate flag is true
+  PASS: fresh obs + old marker → exit 0 (no escalation)
+  PASS: no marker → exit 0 (no escalation)
+  PASS: F1 phantom escalation: fresh obs + new marker → inbound_gate true
+  PASS: F2 divergence: 10min obs + new marker → outbound escalates
+
+=== Category 6: False Positive Rate ===
+  PASS: casual conversation → correctly not detected
+  PASS: code discussion → correctly not detected
+  PASS: pure question → not detected
+  PASS: unrelated topic → not detected
+  PASS: question with state → not detected (F11)
+  PASS: broad pattern → detected (documented false positive)
+
+=== Category 7: MCP Server Divergence (Code Inspection) ===
+  PASS: MCP server has staleness check function
+  PASS: MCP server checks staleness regardless of decision (F3 fix)
+
+=== Category 8: Test Isolation ===
+  PASS: GATE_MARKER_PATH override → marker written to custom path
+  PASS: GATE_MARKER_PATH override → default path NOT used
+  PASS: default marker path → writes to .claude/coordination/.last-operator-message
+
+=== Category 9: Observation Schema ===
+  PASS: observation with id → context injected
+  PASS: context mentions observation id
+  PASS: observation without id → context injected
+  PASS: context mentions constraint fallback
+  PASS: observation with neither → context injected
+  PASS: context mentions unknown fallback
+
+=== Results: 53 passed, 0 failed ===
+✔ .claude/coordination/__tests__/inbound-state-gate.test.cjs (2809.012036ms)
+▶ write-coordination-gate minimal behavior
+  ▶ allowed paths (exit 0)
+    ✔ non-Edit/Write tool -> exit 0 (83.630865ms)
+    ✔ Edit docs/** -> exit 0 (71.096865ms)
+    ✔ Write plans/** -> exit 0 (80.226905ms)
+    ✔ Edit .claude/** -> exit 0 (112.635342ms)
+    ✔ Edit product/** -> exit 0 (95.694635ms)
+    ✔ Edit tools/** -> exit 0 (94.637728ms)
+  ✔ allowed paths (exit 0) (541.816892ms)
+  ▶ blocked paths (exit 2)
+    ✔ Edit records/observations/** -> exit 2, decision: block (116.385198ms)
+    ✔ Edit records/evidence/** with NO observation -> exit 2, matched_rule (76.291129ms)
+    ✔ Edit schemas/** -> exit 2, decision: block (106.917069ms)
+    ✔ Edit node_modules/** -> exit 2 (85.278249ms)
+    ✔ Edit dist/** -> exit 2 (99.523272ms)
+    ✔ Edit build/** -> exit 2 (80.556018ms)
+    ✔ Edit unknown multi-segment path (tmp/.steal) -> exit 2 (catch-all) (72.746339ms)
+    ✔ Edit single-segment unknown path (vendor-secrets.env) -> exit 0 (allowed by * rule) (83.362221ms)
+    ✔ Path traversal to observations (records/evidence/../observations/foo.yaml) -> exit 2 (94.54707ms)
+  ✔ blocked paths (exit 2) (816.893535ms)
+  ▶ observation-based paths (records/evidence)
+    ✔ Edit records/evidence/** with ACTIVE fresh observation -> exit 0 (93.371934ms)
+    ✔ Edit records/evidence/** with STALE observation + fresh .last-operator-message marker -> exit 2, decision: escalate, inbound_gate: true (120.222279ms)
+  ✔ observation-based paths (records/evidence) (214.049996ms)
+✔ write-coordination-gate minimal behavior (1576.380266ms)
+▶ write gate index/capabilities
+  ✔ allows records/index/foo.yaml with active observation (119.122312ms)
+  ✔ blocks records/index/foo.yaml without observation (87.130145ms)
+  ✔ allows records/capabilities/api-rest.yaml with active observation (128.935809ms)
+  ✔ blocks records/capabilities/api-rest.yaml without observation (93.898191ms)
+  ✔ escalates when observation is stale (96.24711ms)
+✔ write gate index/capabilities (527.138833ms)
+No budget found for system=nonexistent_system resource=nonexistent_resource
+Failed to parse /home/datguy/codingProjects/learning-loop-template/records/observations/test-budget-invalid-resource-budget.yaml: Nested mappings are not allowed in compact mappings at line 2, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+▶ check-budget
+  ✔ returns exit 0 when budget is available (181.446783ms)
+  ✔ returns exit 1 when budget is exhausted (229.193447ms)
+  ✔ returns stale: true when last_verified is older than 7 days (236.846598ms)
+  ✔ returns exit 1 when validation_window is active (gate blocks concurrent) (198.582473ms)
+  ✔ returns exit 0 when validation_window is active with --allow-active-window (195.316264ms)
+  ✔ returns exit 2 when budget file is not found (164.494738ms)
+  ✔ returns exit 2 when YAML is invalid (200.048151ms)
+✔ check-budget (1408.5553ms)
+✔ assertWritablePlainString accepts plain scalar text (5.355754ms)
+✔ assertWritablePlainString rejects YAML-special scalar syntax with project-owned wording (5.414721ms)
+✔ assertWritablePlainString rejects project-owned format guard violations (1.507293ms)
+gate: failed to read observations dir: ENOENT: no such file or directory, scandir '/nonexistent/path/records/observations'
+gate: failed to parse observation bad.yaml: Flow map in block collection must be sufficiently indented and end with a } at line 1, column 17:
+
+{{{{invalid yaml
+                ^
+
+gate: failed to read budgets dir: ENOENT: no such file or directory, scandir '/nonexistent/path/records/observations'
+▶ readObservations
+  ✔ returns parsed YAML observations (11.431926ms)
+  ✔ returns empty array when directory missing (fail-open) (1.842049ms)
+  ✔ handles malformed YAML gracefully (fail-open) (4.15238ms)
+  ✔ handles YAML with duplicate keys without crashing (2.596378ms)
+✔ readObservations (21.889827ms)
+▶ readBudgets
+  ✔ returns parsed budget YAML files (2.21118ms)
+  ✔ returns empty array when directory missing (fail-open) (0.45853ms)
+  ✔ returns empty array when no budget files exist (1.520207ms)
+✔ readBudgets (4.798701ms)
+▶ gate-logging
+  ✔ appendGateLog creates log file if missing (3.2023ms)
+  ✔ appendGateLog appends multiple entries (0.794765ms)
+  ✔ rotateGateLog rotates when size exceeds limit (24.342445ms)
+  ✔ rotateGateLog does not throw on missing file (0.906102ms)
+  ✔ appendGateLog does not throw on failure (0.533029ms)
+✔ gate-logging (31.213106ms)
+▶ matchConstraintPattern
+  ✔ matches docker command (1.255359ms)
+  ✔ matches sudo command (0.385625ms)
+  ✔ matches package-manager (pip install) (0.466739ms)
+  ✔ matches package-manager (npm install) (0.257546ms)
+  ✔ matches package-manager (pnpm add) (0.15576ms)
+  ✔ matches vendor-api (curl ... api) (0.200718ms)
+  ✔ does NOT match cat docker-compose.yml (word boundary) (0.206928ms)
+  ✔ does NOT match 'see undocumented feature' (1.526086ms)
+  ✔ does NOT match ls -la (0.204133ms)
+  ✔ checks each segment when split on semicolon (0.20866ms)
+  ✔ checks each segment when split on pipe (0.13466ms)
+  ✔ checks each segment when split on && (0.08578ms)
+  ✔ returns null for empty command (0.072227ms)
+  ✔ returns null for null command (0.056039ms)
+  ✔ matches python import vnstock_data as side-effect-import (0.094583ms)
+  ✔ matches python import vnstock as vendor-api (0.04992ms)
+  ✔ matches python3 import vnstock_data as side-effect-import (0.037928ms)
+  ✔ matches pnpm bootstrap:api as package-manager (0.035754ms)
+  ✔ matches pnpm setup as package-manager (0.050088ms)
+  ✔ matches uv sync as package-manager (0.058992ms)
+  ✔ does NOT match python print as vendor-api (0.054604ms)
+  ✔ does NOT match import os as vendor-api (0.093515ms)
+✔ matchConstraintPattern (7.17529ms)
+▶ checkObservationExists
+  ✔ finds active observation by constraint_type (0.180501ms)
+  ✔ returns not found for missing constraint_type (0.124459ms)
+  ✔ returns not found for archived observation (0.093746ms)
+  ✔ handles empty observations array (0.75374ms)
+  ✔ handles null observations (0.141271ms)
+  ✔ finds observation with matching constraint_type field (0.13927ms)
+  ✔ finds observation with constraint_type only (0.115662ms)
+  ✔ matches on constraint_type when both fields present (0.083165ms)
+  ✔ finds observation by constraint field when constraint_type absent (0.095417ms)
+  ✔ does NOT find observation with only slug-style constraint field (0.084916ms)
+✔ checkObservationExists (2.147547ms)
+▶ evaluateBudget
+  ✔ returns exhausted when current >= budget (0.178788ms)
+  ✔ returns not exhausted when current < budget (0.081343ms)
+  ✔ returns windowActive when validation_window.active is true (0.052098ms)
+  ✔ returns windowActive false when validation_window is absent (0.051729ms)
+  ✔ returns exhausted false for null budget (fail-open) (0.084111ms)
+✔ evaluateBudget (1.148131ms)
+▶ makeGateDecision
+  ✔ returns ok when no constraint match (0.192598ms)
+  ✔ returns block when constraint matched but no observation (0.109685ms)
+  ✔ returns ok when constraint matched, observation exists, budget ok (0.047083ms)
+  ✔ returns escalate when budget exhausted (0.040273ms)
+  ✔ returns escalate when validation window active (0.035223ms)
+  ✔ escalate when budget exhausted and command matches pattern (no observation) (0.035411ms)
+  ✔ escalate when budget exhausted even without observation (0.047478ms)
+  ✔ ok when budget not exhausted and no pattern match (0.034014ms)
+  ✔ ok when no pattern match even if budget exhausted (0.087739ms)
+  ✔ blocks side-effect-import even with active observation (0.121029ms)
+  ✔ blocks side-effect-import even with exhausted budget (0.247069ms)
+  ✔ blocks side-effect-import even with active validation window (0.072076ms)
+✔ makeGateDecision (1.337083ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+▶ Integration: all 25 tools
+  ✔ lists all 25 expected tools (513.562356ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: failed to read observations dir: ENOENT: no such file or directory, scandir '/tmp/gate-integration-test-EpvDM0/records/observations'
+gate: failed to read budgets dir: ENOENT: no such file or directory, scandir '/tmp/gate-integration-test-EpvDM0/records/observations'
+gate: ls → ok
+  ✔ round-trip: check_gate returns decision (404.776766ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+  ✔ round-trip: list_verified_claims returns structured data (465.587567ms)
+✔ Integration: all 25 tools (1385.537731ms)
+▶ sanitizeSlug
+  ✔ converts to kebab-case (2.457336ms)
+  ✔ strips path traversal (0.448423ms)
+  ✔ strips leading slashes (0.225716ms)
+  ✔ returns null for empty string (0.177853ms)
+  ✔ returns null for null (0.459942ms)
+  ✔ handles special characters (0.172796ms)
+✔ sanitizeSlug (5.358473ms)
+▶ generateFilename
+  ✔ generates correct filename (0.242066ms)
+  ✔ generates from sudo requirement (0.620986ms)
+  ✔ strips traversal from filename (0.169495ms)
+✔ generateFilename (1.400871ms)
+▶ generateObservationId
+  ✔ generates id with obs- prefix (0.592428ms)
+  ✔ generates unique ids (0.237468ms)
+✔ generateObservationId (0.991937ms)
+▶ buildObservationYaml
+  ✔ builds object with all required fields (1.451149ms)
+  ✔ uses provided source_refs (0.359815ms)
+✔ buildObservationYaml (2.035743ms)
+▶ writeObservation
+  ✔ creates observation file (19.05522ms)
+  ✔ rejects duplicate observation (2.891376ms)
+  ✔ blocks path traversal (1.808041ms)
+  ✔ rejects missing constraint_type (0.494787ms)
+  ✔ rejects missing constraint (0.296896ms)
+✔ writeObservation (24.965227ms)
+▶ updateObservation
+  ✔ toggles status from active to inactive (5.15968ms)
+  ✔ toggles status from inactive to active (2.745747ms)
+  ✔ returns not_found when observation does not exist (0.32031ms)
+  ✔ rejects invalid status values (0.329993ms)
+  ✔ updates updated_at timestamp (2.202758ms)
+  ✔ rejects symlinked observation files (0.616063ms)
+  ✔ preserves all fields except status, updated_at, and notes (4.117545ms)
+✔ updateObservation (15.936145ms)
+▶ resolveRoot
+  ✔ returns default root when no override (1.262173ms)
+  ✔ returns override when provided inside project (0.295551ms)
+  ✔ returns GATE_ROOT env when set inside project (1.697538ms)
+  ✔ throws on path traversal outside project (0.60185ms)
+  ✔ throws on relative path outside project (0.190765ms)
+  ✔ throws on sibling directory with matching prefix (0.115464ms)
+✔ resolveRoot (5.560767ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: failed to read observations dir: ENOENT: no such file or directory, scandir '/tmp/gate-server-test-GQ6pLU/records/observations'
+gate: failed to read budgets dir: ENOENT: no such file or directory, scandir '/tmp/gate-server-test-GQ6pLU/records/observations'
+gate: ls -la → ok
+▶ MCP server check_gate tool
+  ✔ returns ok for unconstrained command (496.371306ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: docker run ubuntu → block (docker)
+  ✔ returns block when constraint matched but no observation (444.657501ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: sudo chown root file → ok (sudo)
+  ✔ returns ok when constraint matched and observation exists (412.873268ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+  ✔ lists check_gate as available tool (297.509689ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: docker run ubuntu → escalate (docker)
+  ✔ escalates with inbound_gate when fresh marker and stale observation (239.00732ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: docker run ubuntu → ok (docker)
+  ✔ does NOT escalate when marker is expired (TTL) (183.739968ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: docker run ubuntu → escalate (docker)
+  ✔ F3: budget exhaustion + stale marker includes inbound_gate: true (178.388823ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: docker run ubuntu → escalate (docker)
+  ✔ F3: budget exhaustion + observation newer than marker does NOT include inbound_gate (160.127524ms)
+✔ MCP server check_gate tool (2414.652359ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: record_observation stale-mount → recorded
+▶ MCP server record_observation tool
+  ✔ records observation and creates file (173.11275ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: record_observation test-dup → recorded
+gate: record_observation test-dup → already_exists
+  ✔ rejects duplicate observation (159.809645ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+  ✔ lists record_observation as available tool (160.110206ms)
+✔ MCP server record_observation tool (493.370876ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+▶ MCP server update_observation tool
+  ✔ lists update_observation as available tool (157.340147ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: update_observation obs-update-test → updated
+  ✔ changes status via MCP client (173.921026ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: update_observation obs-missing → not_found
+  ✔ returns error when observation missing (165.235662ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: update_observation obs-log-test → updated
+  ✔ logs reason if provided (191.43821ms)
+✔ MCP server update_observation tool (688.194884ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: failed to read observations dir: ENOENT: no such file or directory, scandir '/tmp/gate-server-test-LxrKR4/records/observations'
+▶ MCP server notify_artifact_change tool
+  ✔ logs to gate-log and returns logged: true (153.911326ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+  ✔ sets stale_escalation when active write-path observation is stale (180.132917ms)
+✔ MCP server notify_artifact_change tool (334.21522ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: trigger_workflow dummy → triggered
+▶ MCP server trigger_workflow tool
+  ✔ returns triggered: true with pid for allowed workflow (182.044422ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: trigger_workflow nonexistent → not_found
+  ✔ returns not_found for unknown workflow (159.104957ms)
+constraint-gate: registered 25 of 25 tools
+constraint-gate MCP server started
+gate: trigger_workflow bad → triggered
+  ✔ returns not_allowed for disallowed command (187.313498ms)
+✔ MCP server trigger_workflow tool (528.723549ms)
+▶ registerTool
+  ✔ calls server.tool() with correct arguments (1.176586ms)
+  ✔ error boundary catches handler exceptions and returns isError (2.302093ms)
+  ✔ error boundary passes through normal results (0.361504ms)
+  ✔ throws on duplicate tool name (0.566322ms)
+✔ registerTool (5.830203ms)
+Warning: line 57: unknown nested bullet, ignoring
+Warning: line 58: unknown nested bullet, ignoring
+Warning: line 60: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 73: unknown nested bullet, ignoring
+Warning: line 74: unknown nested bullet, ignoring
+Warning: line 53: unknown nested bullet, ignoring
+Warning: line 59: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 98: unknown nested bullet, ignoring
+Warning: line 100: unknown nested bullet, ignoring
+Warning: line 104: unknown nested bullet, ignoring
+Warning: line 105: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 109: unknown nested bullet, ignoring
+Warning: line 111: unknown nested bullet, ignoring
+Warning: line 117: unknown nested bullet, ignoring
+Warning: line 119: unknown nested bullet, ignoring
+Warning: line 121: unknown nested bullet, ignoring
+Warning: line 123: unknown nested bullet, ignoring
+Warning: line 125: unknown nested bullet, ignoring
+Warning: line 93: unknown nested bullet, ignoring
+Warning: line 79: unknown nested bullet, ignoring
+Warning: line 80: unknown nested bullet, ignoring
+Warning: line 66: unknown nested bullet, ignoring
+Warning: line 13: unknown nested bullet, ignoring
+Warning: line 14: unknown nested bullet, ignoring
+Warning: line 15: unknown nested bullet, ignoring
+Warning: line 16: unknown nested bullet, ignoring
+Warning: line 17: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+Warning: line 28: unknown nested bullet, ignoring
+Warning: line 29: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+[dry-run] would write assertion-vnstock-data-runtime-device-id-injection-required.yaml
+▶ agent lifecycle integration
+  ✔ completes 10-step workflow without opening operator guide (1942.865531ms)
+  ✔ exercises additional workflow tools in isolation (3.455215ms)
+✔ agent lifecycle integration (1947.64577ms)
+Warning: line 57: unknown nested bullet, ignoring
+Warning: line 58: unknown nested bullet, ignoring
+Warning: line 60: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 73: unknown nested bullet, ignoring
+Warning: line 74: unknown nested bullet, ignoring
+Warning: line 53: unknown nested bullet, ignoring
+Warning: line 59: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 98: unknown nested bullet, ignoring
+Warning: line 100: unknown nested bullet, ignoring
+Warning: line 104: unknown nested bullet, ignoring
+Warning: line 105: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 109: unknown nested bullet, ignoring
+Warning: line 111: unknown nested bullet, ignoring
+Warning: line 117: unknown nested bullet, ignoring
+Warning: line 119: unknown nested bullet, ignoring
+Warning: line 121: unknown nested bullet, ignoring
+Warning: line 123: unknown nested bullet, ignoring
+Warning: line 125: unknown nested bullet, ignoring
+Warning: line 93: unknown nested bullet, ignoring
+Warning: line 79: unknown nested bullet, ignoring
+Warning: line 80: unknown nested bullet, ignoring
+Warning: line 66: unknown nested bullet, ignoring
+Warning: line 13: unknown nested bullet, ignoring
+Warning: line 14: unknown nested bullet, ignoring
+Warning: line 15: unknown nested bullet, ignoring
+Warning: line 16: unknown nested bullet, ignoring
+Warning: line 17: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+Warning: line 28: unknown nested bullet, ignoring
+Warning: line 29: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+[dry-run] would write assertion-vnstock-data-runtime-device-id-injection-required.yaml
+▶ extractIndexTool
+  ✔ dry run returns stats without writing (271.191118ms)
+  ✔ accepts capability filter (166.562971ms)
+✔ extractIndexTool (438.93439ms)
+▶ generateCapabilitiesTool
+  ✔ dry run returns drift result (1562.846564ms)
+  ✔ accepts custom stacks (654.842722ms)
+✔ generateCapabilitiesTool (2218.966638ms)
+▶ listProbesTool
+  ✔ returns probes for valid stack (6.64773ms)
+  ✔ returns empty for non-existent stack (0.64303ms)
+✔ listProbesTool (8.379631ms)
+▶ listVerifiedTool
+  ✔ returns claims and evidence arrays (91.019027ms)
+✔ listVerifiedTool (92.810464ms)
+▶ searchIndexTool
+  ✔ returns results with count (115.863928ms)
+  ✔ filters by capability (98.857611ms)
+✔ searchIndexTool (216.775076ms)
+▶ updateClaimTool
+  ✔ dry run with real claim returns updated: false (392.879335ms)
+  ✔ throws error for non-existent claim (257.668566ms)
+  ✔ Zod validates dimension enum (0.957905ms)
+  ✔ Zod validates status enum (0.31174ms)
+  ✔ Zod rejects invalid claim_id pattern (0.70877ms)
+✔ updateClaimTool (654.632351ms)
+▶ validateRecordsTool
+  ✔ returns valid: true with no errors for current repo (431.456805ms)
+  ✔ returns structured result with record_count (311.082083ms)
+  ✔ accepts allow_disallowed_fixtures option (232.04481ms)
+✔ validateRecordsTool (976.117934ms)
+▶ workflowClassifyPromptTool
+  ✔ returns error for empty prompt (2.804964ms)
+  ✔ classifies evidence-style prompt as evidence (0.586277ms)
+  ✔ classifies product-style prompt as product (0.315995ms)
+  ✔ classifies runtime command prompt as verification (0.240642ms)
+  ✔ classifies observation-style prompt as observation (0.304629ms)
+  ✔ classifies assertion-style prompt as assertion (0.262877ms)
+  ✔ classifies skip-style prompt as skip (0.233023ms)
+  ✔ classifies external decision prompt as external_decision (1.521953ms)
+  ✔ classifies self improvement prompt as self_improvement (0.34384ms)
+✔ workflowClassifyPromptTool (8.157033ms)
+▶ workflowConvertEvidenceTool
+  ✔ dry_run returns preview status and valid yaml (16.332813ms)
+  ✔ migration mode sets reviewed status (7.535939ms)
+  ✔ structuring mode sets draft status and post-hoc note (10.870222ms)
+  ✔ missing file returns error (4.07185ms)
+✔ workflowConvertEvidenceTool (40.512015ms)
+▶ workflowExternalDecisionTool
+  ✔ returns full acceptance when no remaining blocks and scope matches (1.15005ms)
+  ✔ returns partial acceptance when remaining blocks exist (0.57716ms)
+  ✔ returns rejected when confirmed scope exceeds authority (0.282049ms)
+✔ workflowExternalDecisionTool (3.380263ms)
+▶ workflowGeneratePromptTool
+  ✔ evidence blueprint returns correct shape (8.101431ms)
+  ✔ state-gated blueprint returns correct shape (1.850912ms)
+  ✔ product-build blueprint returns correct shape (2.310622ms)
+  ✔ experiment blueprint returns correct shape (4.5795ms)
+  ✔ runtime-validation blueprint returns correct shape (2.94377ms)
+✔ workflowGeneratePromptTool (21.522851ms)
+▶ workflowIntakeOrientTool
+  ✔ basic orient returns non-empty index entries (591.009534ms)
+  ✔ missing category returns error (2.150032ms)
+  ✔ capability scope filters capability files (285.43581ms)
+  ✔ returns observations with status fields (194.590994ms)
+  ✔ returns meta trigger filenames (67.602523ms)
+✔ workflowIntakeOrientTool (1142.62034ms)
+▶ workflowIntakePlanTool
+  ✔ consumes orient output and returns ordered steps (1.414727ms)
+  ✔ classifies verification types correctly (0.394212ms)
+  ✔ flags blocked when no candidates found (0.522038ms)
+  ✔ returns error for missing orient_result (0.222303ms)
+  ✔ suggests questions for missing decisions (0.259684ms)
+✔ workflowIntakePlanTool (4.066691ms)
+▶ workflowIntentionalSkipTool
+  ✔ returns blocked for critical security scope (1.558505ms)
+  ✔ returns narrowed for minor docs scope (0.610849ms)
+  ✔ returns accepted for low-risk scope (0.328855ms)
+  ✔ returns blocked for empty reason (0.244018ms)
+✔ workflowIntentionalSkipTool (4.466673ms)
+▶ workflowPrepareRuntimeRequestTool
+  ✔ sandbox install checklist passes (1.399839ms)
+  ✔ production without observation flags missing (0.69191ms)
+  ✔ missing evidence flags missing (0.353991ms)
+  ✔ returns error for missing required fields (0.285279ms)
+  ✔ approval request includes safety disclaimer (0.257788ms)
+✔ workflowPrepareRuntimeRequestTool (4.536825ms)
+▶ workflowProductBuildTool
+  ✔ expands minimal request into structured artifacts (0.964076ms)
+  ✔ returns error for empty request (1.417119ms)
+  ✔ expands complex request with constraints into richer artifacts (0.446776ms)
+  ✔ includes capability generation extension hints when scope is api (0.213793ms)
+✔ workflowProductBuildTool (4.150098ms)
+▶ workflowReportPhaseStatusTool
+  ✔ returns complete when all steps done and result conclusive (1.032584ms)
+  ✔ returns incomplete when steps remain (0.26202ms)
+  ✔ returns incomplete when result inconclusive even with all steps done (0.157385ms)
+  ✔ returns incomplete when blocker reason present (0.169916ms)
+  ✔ returns complete for failure result when all steps done and no blocker (0.142672ms)
+✔ workflowReportPhaseStatusTool (2.949394ms)
+▶ workflowRuntimeProbeTool
+  ✔ plans probe for known stack with commands (1.216561ms)
+  ✔ returns error for empty stack (0.34245ms)
+  ✔ returns fallback probe for unknown stack (0.283783ms)
+  ✔ includes temp_dir in plan when provided (0.238774ms)
+✔ workflowRuntimeProbeTool (3.506565ms)
+▶ workflowSelfImprovementTool
+  ✔ schema-change returns correct candidate and adoption path (1.29624ms)
+  ✔ workflow-gap returns correct candidate and adoption path (0.335324ms)
+  ✔ returns experiment candidate for heuristic-tune (0.272114ms)
+✔ workflowSelfImprovementTool (3.21764ms)
+▶ workflowVerifyEvidenceTool
+  ✔ shallow depth returns symbol-exists and import-succeeds classes (12.69935ms)
+  ✔ deep depth includes full-runtime where applicable (6.825699ms)
+  ✔ missing file returns error (2.294751ms)
+  ✔ counts match matrix length (10.070334ms)
+✔ workflowVerifyEvidenceTool (34.154671ms)
+▶ loadRegistry
+  ✔ returns empty workflows when file is missing (2.179501ms)
+  ✔ loads valid workflows.json (0.851872ms)
+  ✔ returns error on invalid JSON (1.341172ms)
+✔ loadRegistry (5.73042ms)
+▶ evaluateWorkflows
+  ✔ matches triggers by glob and filters by change_type (1.13023ms)
+  ✔ returns registry error when workflows.json is invalid (0.971952ms)
+✔ evaluateWorkflows (2.435298ms)
+▶ validateCommand
+  ✔ allows node with script under tools/ (0.479831ms)
+  ✔ rejects shell strings (0.235502ms)
+  ✔ rejects paths outside tools/ (0.272426ms)
+  ✔ rejects path traversal within tools/ prefix (0.209293ms)
+  ✔ rejects malformed commands (0.281548ms)
+✔ validateCommand (1.995679ms)
+▶ triggerWorkflow
+  ✔ spawns with isolated stdio and logs to workflow-log.jsonl (312.995478ms)
+  ✔ returns not_found for missing workflow (0.76826ms)
+  ✔ returns not_allowed for disallowed commands (3.178105ms)
+  ✔ substitutes {path} in command arguments (11.57915ms)
+✔ triggerWorkflow (330.015813ms)
+▶ End-to-end: evidence-changed workflow
+  ✔ triggerWorkflow spawns extract-index and logs to workflow-log.jsonl (519.518488ms)
+✔ End-to-end: evidence-changed workflow (519.779472ms)
+Warning: corrupt existing index file /tmp/extract-index-test-6ICugW/records/index/corrupt.yaml, treating as missing: Nested mappings are not allowed in compact mappings at line 1, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+Warning: malformed experiment bad-experiment.yaml, skipping: Nested mappings are not allowed in compact mappings at line 1, column 6:
+
+not: valid: : :
+     ^
+
+Warning: corrupt existing index file /tmp/extract-index-test-6ICugW/records/index/corrupt.yaml, treating as missing: Nested mappings are not allowed in compact mappings at line 1, column 14:
+
+this is not: valid yaml: : :
+             ^
+
+[dry-run] would write assertion-cap-runtime-thing-x-not-required.yaml
+[dry-run] would write assertion-cap-runtime-z-not-required.yaml
+Usage error: Unknown flag: --bad-flag
+Usage: node extract-index.js [--capability <name>] [--dry-run] [--verbose] [--root <path>]
+Warning: line 57: unknown nested bullet, ignoring
+Warning: line 58: unknown nested bullet, ignoring
+Warning: line 60: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 73: unknown nested bullet, ignoring
+Warning: line 74: unknown nested bullet, ignoring
+Warning: line 53: unknown nested bullet, ignoring
+Warning: line 59: unknown nested bullet, ignoring
+Warning: line 61: unknown nested bullet, ignoring
+Warning: line 98: unknown nested bullet, ignoring
+Warning: line 100: unknown nested bullet, ignoring
+Warning: line 104: unknown nested bullet, ignoring
+Warning: line 105: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 107: unknown nested bullet, ignoring
+Warning: line 109: unknown nested bullet, ignoring
+Warning: line 111: unknown nested bullet, ignoring
+Warning: line 117: unknown nested bullet, ignoring
+Warning: line 119: unknown nested bullet, ignoring
+Warning: line 121: unknown nested bullet, ignoring
+Warning: line 123: unknown nested bullet, ignoring
+Warning: line 125: unknown nested bullet, ignoring
+Warning: line 93: unknown nested bullet, ignoring
+Warning: line 79: unknown nested bullet, ignoring
+Warning: line 80: unknown nested bullet, ignoring
+Warning: line 66: unknown nested bullet, ignoring
+Warning: line 13: unknown nested bullet, ignoring
+Warning: line 14: unknown nested bullet, ignoring
+Warning: line 15: unknown nested bullet, ignoring
+Warning: line 16: unknown nested bullet, ignoring
+Warning: line 17: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+Warning: line 28: unknown nested bullet, ignoring
+Warning: line 29: unknown nested bullet, ignoring
+Warning: line 7: unknown nested bullet, ignoring
+▶ hash-computer
+  ✔ produces deterministic sha256:<hex> (1.898166ms)
+  ✔ rejects non-Buffer input (0.653942ms)
+✔ hash-computer (3.818621ms)
+▶ index-entry-builder
+  ✔ maps passed to active (0.599958ms)
+  ✔ returns null for failed validation_status (0.241243ms)
+✔ index-entry-builder (1.260962ms)
+▶ extract-index gotchas
+  ✔ suggests missing frontmatter fields from siblings (21.771539ms)
+  ✔ skips failed validation_status without error (6.586569ms)
+  ✔ errors on invalid validation_status and does not crash (6.866567ms)
+  ✔ errors on invalid capability format (11.025708ms)
+  ✔ errors on invalid dimension (8.329944ms)
+  ✔ hard-stops on supersession without disproof note (11.701821ms)
+  ✔ allows supersession when disproof note confirms (7.803827ms)
+  ✔ ignores corrupt existing index with warning (16.904696ms)
+  ✔ warns on malformed experiment without blocking (10.711519ms)
+✔ extract-index gotchas (104.670962ms)
+▶ supersession write-back
+  ✔ writes supersedes link on new entry when disproof note names old assertion-id (11.142059ms)
+  ✔ writes superseded_by link on old entry when new disproof references it (4.758517ms)
+  ✔ hard-stops when assertion text changes without disproof note (1.844567ms)
+  ✔ hard-stops when disproof note names non-existent assertion-id (0.704871ms)
+✔ supersession write-back (18.760264ms)
+▶ frozen-claim drift
+  ✔ hard-stops when new entry contradicts frozen claim without supersession note (1.396674ms)
+  ✔ passes when frozen claim notes already record supersession (1.823795ms)
+  ✔ does not hard-stop on unrelated frozen claims (1.762452ms)
+  ✔ names both records in drift error message (2.436111ms)
+✔ frozen-claim drift (7.727386ms)
+▶ extract-index round-trip
+  ✔ produces schema-valid index YAML from evidence (130.314936ms)
+  ✔ omits context when evidence has no Context nested bullet (79.860582ms)
+✔ extract-index round-trip (210.997783ms)
+▶ extract-index CLI
+  ✔ --dry-run against clean tmp root returns exit 0 (68.094757ms)
+  ✔ returns exit 2 on unknown flag (87.983047ms)
+  ✔ returns exit 0 on real repo with all frontmatter valid (226.526009ms)
+  ✔ returns exit 0 for --capability nonexistent on clean root (58.361171ms)
+✔ extract-index CLI (441.173677ms)
+Warning: line 3: unknown nested bullet, ignoring
+▶ findings-parser
+  ✔ returns empty array when ## Findings is absent (3.352058ms)
+  ✔ returns empty array when ## Findings is empty (0.318111ms)
+  ✔ extracts single bullet with tag and assertion (0.286074ms)
+  ✔ extracts context and caveats (0.605615ms)
+  ✔ extracts multiple bullets (0.21323ms)
+  ✔ handles multi-line assertion (0.236268ms)
+  ✔ handles multi-line caveat (0.267478ms)
+  ✔ throws on bullet missing [tag] (0.567701ms)
+  ✔ throws on invalid tag with underscore (0.249468ms)
+  ✔ throws on invalid tag with uppercase (0.241292ms)
+  ✔ uses first ## Findings and ignores subsequent (0.157346ms)
+  ✔ preserves state across blank lines (0.13178ms)
+  ✔ ignores unknown nested bullets with warning (0.937715ms)
+✔ findings-parser (9.113208ms)
+▶ frontmatter-splitter
+  ✔ parses valid frontmatter (7.549734ms)
+  ✔ returns meta: null when frontmatter is absent (0.264038ms)
+  ✔ throws on unclosed delimiter (0.759576ms)
+  ✔ throws on invalid YAML (2.190194ms)
+  ✔ ignores --- inside fenced code blocks (0.80789ms)
+  ✔ handles multiple --- delimiters and stops at first valid pair (1.329082ms)
+✔ frontmatter-splitter (14.501896ms)
+✔ tools/generate-capabilities/adapters/fastapi-adapter.integration.test.js (71.762005ms)
+▶ fastapi-adapter
+  ✔ extracts entries from OpenAPI JSON fixture (5.209935ms)
+  ✔ derives domain from first path segment (0.363695ms)
+  ✔ skips /health route (0.21409ms)
+  ✔ ignores non-HTTP methods (0.115057ms)
+  ✔ skips routes without a domain segment (0.130925ms)
+✔ fastapi-adapter (7.18512ms)
+✔ tools/generate-capabilities/adapters/tanstack-adapter.integration.test.js (72.740427ms)
+▶ tanstack-adapter
+  ✔ extracts route paths from fixture router and route files (1.47766ms)
+  ✔ derives domain from first path segment (2.56025ms)
+  ✔ ignores index route without RoutePath import (0.517108ms)
+✔ tanstack-adapter (5.795957ms)
+▶ generate-capabilities
+  ✔ writes one YAML record per (stack, domain) from mock adapter entries (26.482606ms)
+  ✔ dry-run returns mismatch when records differ (3.7054ms)
+  ✔ dry-run returns no mismatch when records match (11.05508ms)
+✔ generate-capabilities (43.186142ms)
+▶ splitFrontmatter
+  ✔ returns null meta when no frontmatter (0.993106ms)
+  ✔ parses frontmatter and returns body (6.969016ms)
+  ✔ ignores --- inside code blocks (1.15099ms)
+  ✔ throws on unclosed frontmatter (0.59622ms)
+  ✔ handles empty frontmatter (0.31697ms)
+✔ splitFrontmatter (11.387366ms)
+▶ list-probes
+  ✔ lists all .py files under product/<stack>/capabilities/ (6.001844ms)
+  ✔ returns empty array when no probes exist (6.579028ms)
+  ✔ ignores directories and non-.py files (0.962878ms)
+✔ list-probes (14.932009ms)
+▶ listVerifiedClaims
+  ✔ returns empty when no claims or evidence (1.816061ms)
+  ✔ finds verified claims (7.185107ms)
+  ✔ ignores non-approved claims (1.923694ms)
+  ✔ ignores claims without verified dimensions (3.087685ms)
+  ✔ maps evidence correctly (4.376661ms)
+  ✔ skips evidence without claim_support (1.125467ms)
+  ✔ skips evidence without frontmatter (0.575507ms)
+✔ listVerifiedClaims (21.61711ms)
+▶ search-index
+  ✔ filters by capability ID (7.443357ms)
+  ✔ filters by dimension (1.937706ms)
+  ✔ filters by status (1.247418ms)
+  ✔ returns empty array when no matches (0.941074ms)
+✔ search-index (12.656229ms)
+▶ schema-loader
+  ✔ loads extracted-assertion schema without error (0.77189ms)
+✔ schema-loader (1.299292ms)
+▶ record-loader
+  ✔ discovers records/index/ directory (140.666201ms)
+✔ record-loader (140.807537ms)
+▶ validateRecords
+  ✔ validates a minimal extracted-assertion fixture with zero errors (70.252427ms)
+✔ validateRecords (70.439516ms)
+ℹ tests 341
+ℹ suites 75
+ℹ pass 341
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4831.394612

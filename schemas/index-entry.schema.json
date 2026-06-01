@@ -60,7 +60,7 @@
         "properties": {
           "file": {
             "type": "string",
-            "pattern": "^(local|record|legacy):.+"
+            "pattern": "^(local|record|legacy|self):.+"
           },
           "section": { "type": "string" },
           "bullet_index": {

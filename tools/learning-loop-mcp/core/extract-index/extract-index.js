@@ -18,8 +18,10 @@ function* walkEvidenceFiles(root) {
   for (const surface of SURFACES) {
     dirs.push(join(root, "records", surface, "evidence"));
   }
+  const metaEvidenceDir = join(root, "records", "meta", "evidence");
   for (const dir of dirs) {
     if (!statSync(dir, { throwIfNoEntry: false })?.isDirectory()) continue;
+    if (dir === metaEvidenceDir) continue; // Skip meta evidence — index entries use self: refs
     yield* _walkEvidenceDir(dir);
   }
 }
