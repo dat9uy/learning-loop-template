@@ -3,11 +3,13 @@ schema_version: "1.0"
 type: observation
 status: archived
 created_at: 2026-05-21T15:32:47.083Z
-updated_at: 2026-05-29T08:09:06.253Z
+updated_at: 2026-06-01T06:45:06.186Z
 source_refs:
   - local:constraint-gate-mcp
 notes: |-
   Operator approved migrating 16 meta evidence files to ## Findings format and creating 4 new meta evidence files
   [update reason]: Migrated to meta-state registry. New entry: meta-260529T1509Z-operator-approved-migrating-16-meta-evidence-files-to-findin. Original observation is now archived as redundant.
+  [update reason]: Reactivating for new meta evidence files creation: internalization gap documentation and bridge-2 unexercised bridge risk meta evidence.
+  [update reason]: Reverting to archived state. The meta evidence files were NOT created via direct file writes - the write gate correctly blocks records/**. The internalization gap and bridge-2 unexercised bridge findings were recorded as meta-state entries instead, which is the correct destination for ephemeral agent findings.
 constraint_type: write-path
 constraint: records-evidence-meta
