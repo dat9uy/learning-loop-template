@@ -5,7 +5,7 @@ status: active
 created_at: "2026-05-08T00:00:00Z"
 updated_at: "2026-05-08T00:00:00Z"
 source_refs:
-  - local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - record:assertion-meta-static-verification-dimensions
 notes: Meta loop architecture risk, not domain evidence.
 risk_statement: Agents or external notes may still use old claim state language and generate invalid verification prompts or records.
 category: other

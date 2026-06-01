@@ -2,8 +2,7 @@ id: assertion-meta-static-map-oriented-shape
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Current schema took map-oriented shape during capabilities-stack
-  migration, replacing proposed predicate-oriented shape.
+assertion: Current schema took map-oriented shape during capabilities-stack migration, replacing proposed predicate-oriented shape.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-schema-gap.md
+  - file: self:assertion-meta-static-map-oriented-shape
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

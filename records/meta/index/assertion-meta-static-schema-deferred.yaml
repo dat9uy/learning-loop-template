@@ -2,8 +2,7 @@ id: assertion-meta-static-schema-deferred
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Claim-side status block vs computed-view debate deferred until N=2
-  disproof events or N=1 direct-browse failure.
+assertion: Claim-side status block vs computed-view debate deferred until N=2 disproof events or N=1 direct-browse failure.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-truth-status-mechanism.md
+  - file: self:assertion-meta-static-schema-deferred
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

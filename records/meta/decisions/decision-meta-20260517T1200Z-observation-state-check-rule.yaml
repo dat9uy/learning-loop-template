@@ -5,7 +5,7 @@ status: approved
 created_at: "2026-05-17T12:00:00Z"
 updated_at: "2026-05-17T12:00:00Z"
 source_refs:
-  - local:records/meta/evidence/observation-record-discovery-gap.md
+  - record:assertion-meta-static-observation-state-check
 notes: "Meta/loop architecture. N=1 closeable gap: agent asked about device slot state instead of reading the observation record. Encodes the principle that observations are the authoritative source for external system state."
 question: Should agents be required to check observation records for external system state before asking the user?
 decision: "Yes. Add a rule to the Agent Anti-Confusion Checklist and Agent Intake Flow: before asking the user about external system state, scan records/observations/ for relevant observation records. Observations are operator-managed and more reliable than agent memory or user recall."

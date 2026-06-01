@@ -2,8 +2,7 @@ id: assertion-meta-static-ajv-validation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: "AJV strict mode found 26 failures across 34 records: 23 date-only
-  timestamps, 1 local-timezone form, 3 missing required fields."
+assertion: "AJV strict mode found 26 failures across 34 records: 23 date-only timestamps, 1 local-timezone form, 3 missing required fields."
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - file: self:assertion-meta-static-ajv-validation
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

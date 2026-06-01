@@ -2,8 +2,7 @@ id: assertion-meta-static-prospective-only
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: New records should use strict UTC-Z; historical records preserved per
-  artifact-timestamp-convention decision.
+assertion: New records should use strict UTC-Z; historical records preserved per artifact-timestamp-convention decision.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - file: self:assertion-meta-static-prospective-only
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

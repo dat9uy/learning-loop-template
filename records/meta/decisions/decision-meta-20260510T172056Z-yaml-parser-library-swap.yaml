@@ -7,7 +7,7 @@ updated_at: "2026-05-12T07:33:34Z"
 source_refs:
   - record:decision-20260510T170623Z-vnstock-installer-bootstrap
   - record:decision-20260510T160000Z-capabilities-stack-migration
-  - local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+  - record:assertion-meta-static-yaml-parser-swap
 notes: Brainstorm report lives at plans/reports/brainstorm-260512-1357-parser-swap-ajv-deferral.md; plans/ is outside source_refs allowlist, so the path is cited here. Friction trigger was the cryptic key/value parser error raised while drafting decision-20260510T170623Z-vnstock-installer-bootstrap whose original notes used a YAML pipe block scalar. Additional friction trigger on 2026-05-12; colons inside unquoted sequence scalars in decision-260512T1321Z-artifact-timestamp-convention tradeoffs array caused parser errors. A third related gap surfaced in the same session; the corpus uses three distinct datetime formats in created_at and updated_at fields (date-only YYYY-MM-DD, UTC datetime YYYY-MM-DDThh:mm:ssZ, and local offset YYYY-MM-DDThh:mm:ss+07:00) with no schema constraint. AJV remains deferred to a separate decision; this change only replaces the YAML reader.
 question: Should the hand-rolled tools/validate-records/simple-yaml-parser.js be replaced by the eemeli/yaml package so project tooling stops owning YAML grammar and only the project-specific schema and ledger rules remain hand-rolled?
 decision: Replace tools/validate-records/simple-yaml-parser.js with the eemeli/yaml package as the sole YAML reader for ledger records, so project code stops owning YAML grammar and focuses only on schema rules and project-specific record rules.

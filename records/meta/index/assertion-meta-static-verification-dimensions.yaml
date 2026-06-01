@@ -2,8 +2,7 @@ id: assertion-meta-static-verification-dimensions
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Independent verification dimensions (static, install, runtime,
-  product) replace single claim state chain.
+assertion: Independent verification dimensions (static, install, runtime, product) replace single claim state chain.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - file: self:assertion-meta-static-verification-dimensions
     section: "## Findings"
     bullet_index: 1
     line_anchor: L8

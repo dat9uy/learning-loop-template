@@ -5,9 +5,9 @@ status: draft
 created_at: "2026-05-11T17:46:00Z"
 updated_at: "2026-05-11T17:46:00Z"
 source_refs:
-  - local:records/meta/evidence/install-experiment-template-candidate.md
-  - local:records/meta/evidence/install-experiment-template-gap.md
-  - local:records/meta/evidence/capability-schema-gap.md
+  - self:assertion-meta-static-sample-count-heuristic
+  - record:assertion-meta-install-install-template-gap
+  - record:assertion-meta-static-classification-examples
   - record:experiment-meta-install-template-candidate-260512T0046Z
 notes: Meta/loop architecture decision, not domain evidence. Pairs with the open meta-experiment under records/experiments/. The decision schema scope enum lacks a meta value, so this record uses schema-improvement as the closest available scope and records the deviation here. Source brainstorm lives at plans/reports/brainstorm-260512-0046-install-template-and-capability-schema-gap-revisit.md and the driving plan lives at plans/260512-0046-meta-evidence-gap-revisit/, both outside the records/evidence local-ref allowlist, so they are cited here rather than as source_refs.
 question: How should the loop resolve the install-experiment-template gap (N=2 trigger exceeded) and the capability-schema gap (N>=3 trigger not yet met) while keeping the YAML parser swap decision independent?
@@ -27,9 +27,9 @@ decision_effect:
   action: approve
   scope: schema-improvement
   affected_refs:
-    - local:records/meta/evidence/install-experiment-template-candidate.md
-    - local:records/meta/evidence/install-experiment-template-gap.md
-    - local:records/meta/evidence/capability-schema-gap.md
+    - self:assertion-meta-static-sample-count-heuristic
+    - record:assertion-meta-install-install-template-gap
+    - record:assertion-meta-static-classification-examples
     - record:experiment-meta-install-template-candidate-260512T0046Z
     - local:plans/reports/brainstorm-260512-0046-install-template-and-capability-schema-gap-revisit.md
     - local:plans/260512-0046-meta-evidence-gap-revisit/plan.md

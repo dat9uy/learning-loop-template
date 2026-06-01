@@ -2,8 +2,7 @@ id: assertion-meta-static-claims-first-orientation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Truth status of discovered files still determined by claims-first
-  scanning; directory scan is for planning-context discovery only.
+assertion: Truth status of discovered files still determined by claims-first scanning; directory scan is for planning-context discovery only.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-dir-scan-rule.md
+  - file: self:assertion-meta-static-claims-first-orientation
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

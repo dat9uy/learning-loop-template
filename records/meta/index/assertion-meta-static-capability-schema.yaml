@@ -2,8 +2,7 @@ id: assertion-meta-static-capability-schema
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: "`schemas/capability.schema.json` exists in minimal map-oriented form
-  (`stack` + `surface` + `maps[]`)."
+assertion: "`schemas/capability.schema.json` exists in minimal map-oriented form (`stack` + `surface` + `maps[]`)."
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-schema-gap.md
+  - file: self:assertion-meta-static-capability-schema
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

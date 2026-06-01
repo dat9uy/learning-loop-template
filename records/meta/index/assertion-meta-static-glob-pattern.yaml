@@ -2,8 +2,7 @@ id: assertion-meta-static-glob-pattern
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Multi-segment wildcards (`**`) and character classes rejected to
-  avoid traversal edge cases and regex coupling.
+assertion: Multi-segment wildcards (`**`) and character classes rejected to avoid traversal edge cases and regex coupling.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-allowlist-deferred-axes.md
+  - file: self:assertion-meta-static-glob-pattern
     section: "## Findings"
     bullet_index: 2
     line_anchor: L9

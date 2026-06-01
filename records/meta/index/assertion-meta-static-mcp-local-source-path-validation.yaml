@@ -2,9 +2,7 @@ id: assertion-meta-static-mcp-local-source-path-validation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: The record schema validator requires `local:` source refs to live
-  under `records/evidence` directories, but the `create_*` tools do not enforce
-  this at creation time.
+assertion: The record schema validator requires `local:` source refs to live under `records/evidence` directories, but the `create_*` tools do not enforce this at creation time.
 capability: meta
 dimension: static
 scope: governance
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/mcp-crud-gap-macro-implementation-260522.md
+  - file: self:assertion-meta-static-mcp-local-source-path-validation
     section: "## Findings"
     bullet_index: 2
     line_anchor: L11

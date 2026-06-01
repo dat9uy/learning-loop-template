@@ -2,8 +2,7 @@ id: assertion-meta-static-memory-dependence
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Planner used injected CLAUDE memory to replicate gate pattern instead
-  of querying `records/index/`; fixed by adding memory prohibition to rules.
+assertion: Planner used injected CLAUDE memory to replicate gate pattern instead of querying `records/index/`; fixed by adding memory prohibition to rules.
 capability: meta
 dimension: static
 scope: skill-template
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/skill-template-gap-260520T2133Z.md
+  - file: self:assertion-meta-static-memory-dependence
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

@@ -2,8 +2,7 @@ id: assertion-meta-install-template-candidate
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Four vnstock install experiments accumulated; three converge on
-  stable 7-section envelope + 11-key frontmatter.
+assertion: Four vnstock install experiments accumulated; three converge on stable 7-section envelope + 11-key frontmatter.
 capability: meta
 dimension: install
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/install-experiment-template-gap.md
+  - file: self:assertion-meta-install-template-candidate
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

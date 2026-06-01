@@ -2,8 +2,7 @@ id: assertion-meta-static-ajv-deferral
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: AJV schema validation deferred to separate change; swap kept posture
-  shift singular (YAML reader now, validator later).
+assertion: AJV schema validation deferred to separate change; swap kept posture shift singular (YAML reader now, validator later).
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+  - file: self:assertion-meta-static-ajv-deferral
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

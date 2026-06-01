@@ -2,8 +2,7 @@ id: assertion-meta-static-scope-separation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: YAML parsing friction and JSON Schema gap are separate concerns with
-  independent triggers.
+assertion: YAML parsing friction and JSON Schema gap are separate concerns with independent triggers.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+  - file: self:assertion-meta-static-scope-separation
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

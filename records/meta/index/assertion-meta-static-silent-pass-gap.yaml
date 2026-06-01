@@ -2,9 +2,7 @@ id: assertion-meta-static-silent-pass-gap
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: "Three real data-quality gaps surfaced: missing `decision_refs` in
-  product verification, missing `output_level` in two experiment
-  `verification.proves` blocks."
+assertion: "Three real data-quality gaps surfaced: missing `decision_refs` in product verification, missing `output_level` in two experiment `verification.proves` blocks."
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - file: self:assertion-meta-static-silent-pass-gap
     section: "## Findings"
     bullet_index: 3
     line_anchor: L8

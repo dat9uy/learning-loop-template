@@ -11,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-findings-convention.md
+  - file: self:assertion-meta-static-caveat-prefix
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

@@ -2,8 +2,7 @@ id: assertion-meta-static-experiments-prove
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Experiments prove non-product dimensions with `verification.proves`;
-  decisions approve or reject product use.
+assertion: Experiments prove non-product dimensions with `verification.proves`; decisions approve or reject product use.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - file: self:assertion-meta-static-experiments-prove
     section: "## Findings"
     bullet_index: 3
     line_anchor: L10

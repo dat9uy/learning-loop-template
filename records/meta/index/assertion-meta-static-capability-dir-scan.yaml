@@ -2,8 +2,7 @@ id: assertion-meta-static-capability-dir-scan
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: After claims-first orientation, list `records/evidence/<capability>/`
-  end-to-end for files not referenced by active index entries.
+assertion: After claims-first orientation, list `records/evidence/<capability>/` end-to-end for files not referenced by active index entries.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-dir-scan-rule.md
+  - file: self:assertion-meta-static-capability-dir-scan
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

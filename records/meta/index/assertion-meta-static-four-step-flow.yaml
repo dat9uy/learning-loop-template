@@ -2,9 +2,7 @@ id: assertion-meta-static-four-step-flow
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Budget observation tracks state; `check_gate` or `pnpm check:budget`
-  returns JSON; skill gates prompt generation; operator-only writes mutate
-  budget YAML.
+assertion: Budget observation tracks state; `check_gate` or `pnpm check:budget` returns JSON; skill gates prompt generation; operator-only writes mutate budget YAML.
 capability: meta
 dimension: static
 scope: governance
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+  - file: self:assertion-meta-static-four-step-flow
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

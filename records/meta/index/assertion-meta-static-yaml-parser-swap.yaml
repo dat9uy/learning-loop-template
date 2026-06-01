@@ -2,9 +2,7 @@ id: assertion-meta-static-yaml-parser-swap
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Hand-rolled YAML parser rejected block scalars and colon-bearing
-  scalars; library swap validated with byte-identical green output across all 34
-  records.
+assertion: Hand-rolled YAML parser rejected block scalars and colon-bearing scalars; library swap validated with byte-identical green output across all 34 records.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/yaml-parser-friction-and-schema-inventory-260512.md
+  - file: self:assertion-meta-static-yaml-parser-swap
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

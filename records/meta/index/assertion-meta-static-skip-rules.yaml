@@ -2,8 +2,7 @@ id: assertion-meta-static-skip-rules
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Skip raw, binary, generated, private artifacts unless explicitly
-  approved; skip files marked `## Superseded By` unless forensic context needed.
+assertion: Skip raw, binary, generated, private artifacts unless explicitly approved; skip files marked `## Superseded By` unless forensic context needed.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-dir-scan-rule.md
+  - file: self:assertion-meta-static-skip-rules
     section: "## Findings"
     bullet_index: 3
     line_anchor: L8

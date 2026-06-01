@@ -2,8 +2,7 @@ id: assertion-meta-static-observation-state-check
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Before asking user about external system state, scan
-  `records/observations/` for relevant observation records.
+assertion: Before asking user about external system state, scan `records/observations/` for relevant observation records.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+  - file: self:assertion-meta-static-observation-state-check
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

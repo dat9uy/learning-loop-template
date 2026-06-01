@@ -2,8 +2,7 @@ id: assertion-meta-static-canonized
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Classification rule canonized in learning-loop skill reference
-  `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md`.
+assertion: Classification rule canonized in learning-loop skill reference `.claude/skills/learning-loop/references/meta-evidence-self-improvement.md`.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,11 +11,11 @@ n_count: 2
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/n-equals-one-gap-class.md
+  - file: self:assertion-meta-static-canonized
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10
-  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+  - file: self:assertion-meta-static-canonized
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

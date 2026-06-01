@@ -2,8 +2,7 @@ id: assertion-meta-static-mcp-no-delete-tool
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: There is no `delete_record` MCP tool. After migrating a decision
-  between surfaces, the old record can only be removed via direct Bash `rm`.
+assertion: There is no `delete_record` MCP tool. After migrating a decision between surfaces, the old record can only be removed via direct Bash `rm`.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/mcp-crud-gap-macro-implementation-260522.md
+  - file: self:assertion-meta-static-mcp-no-delete-tool
     section: "## Findings"
     bullet_index: 5
     line_anchor: L14

@@ -2,8 +2,7 @@ id: assertion-meta-static-env-var-pattern
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Define gate constant `GATE_NAME_LIVE_GATE =
-  os.getenv("GATE_NAME_LIVE_GATE", "closed")`; check before any live call.
+assertion: Define gate constant `GATE_NAME_LIVE_GATE = os.getenv("GATE_NAME_LIVE_GATE", "closed")`; check before any live call.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/live-gate-template.md
+  - file: self:assertion-meta-static-env-var-pattern
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

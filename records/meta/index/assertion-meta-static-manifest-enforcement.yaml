@@ -2,8 +2,7 @@ id: assertion-meta-static-manifest-enforcement
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Stack manifest detection deferred from validator to documentation and
-  PR review to avoid language-aware tooling coupling.
+assertion: Stack manifest detection deferred from validator to documentation and PR review to avoid language-aware tooling coupling.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-allowlist-deferred-axes.md
+  - file: self:assertion-meta-static-manifest-enforcement
     section: "## Findings"
     bullet_index: 4
     line_anchor: L11

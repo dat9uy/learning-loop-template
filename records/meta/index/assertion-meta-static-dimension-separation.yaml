@@ -2,8 +2,7 @@ id: assertion-meta-static-dimension-separation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Dimensions keep technical proof, runtime scope, rejection, and
-  product approval separate.
+assertion: Dimensions keep technical proof, runtime scope, rejection, and product approval separate.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - file: self:assertion-meta-static-dimension-separation
     section: "## Findings"
     bullet_index: 2
     line_anchor: L9

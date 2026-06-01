@@ -2,9 +2,7 @@ id: assertion-meta-static-dependency-chain-trace
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: When guard/gate blocks an action, trace full dependency chain back to
-  resource budgets before attempting workarounds; if chain ends at exhausted
-  budget, report constraint immediately.
+assertion: When guard/gate blocks an action, trace full dependency chain back to resource budgets before attempting workarounds; if chain ends at exhausted budget, report constraint immediately.
 capability: meta
 dimension: static
 scope: governance
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+  - file: self:assertion-meta-static-dependency-chain-trace
     section: "## Findings"
     bullet_index: 7
     line_anchor: L12

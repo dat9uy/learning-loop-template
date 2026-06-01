@@ -2,9 +2,7 @@ id: assertion-meta-static-evidence-authority
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Phase 5 instructed agent-authored evidence without operator
-  confirmation; fixed by updating product-build blueprint with operator-only
-  evidence protocol.
+assertion: Phase 5 instructed agent-authored evidence without operator confirmation; fixed by updating product-build blueprint with operator-only evidence protocol.
 capability: meta
 dimension: static
 scope: skill-template
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/skill-template-gap-260520T2133Z.md
+  - file: self:assertion-meta-static-evidence-authority
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

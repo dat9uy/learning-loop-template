@@ -2,8 +2,7 @@ id: assertion-meta-static-budget-declaration
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Plans with irreversible operations MUST declare a resource budget
-  before execution.
+assertion: Plans with irreversible operations MUST declare a resource budget before execution.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+  - file: self:assertion-meta-static-budget-declaration
     section: "## Findings"
     bullet_index: 3
     line_anchor: L8

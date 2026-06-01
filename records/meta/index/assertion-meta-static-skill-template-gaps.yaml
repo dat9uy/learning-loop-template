@@ -2,8 +2,7 @@ id: assertion-meta-static-skill-template-gaps
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Four gaps discovered in learning-loop skill templates during plan
-  `260520-2101-fundamental-capability-productization`.
+assertion: Four gaps discovered in learning-loop skill templates during plan `260520-2101-fundamental-capability-productization`.
 capability: meta
 dimension: static
 scope: skill-template
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/skill-template-gap-260520T2133Z.md
+  - file: self:assertion-meta-static-skill-template-gaps
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

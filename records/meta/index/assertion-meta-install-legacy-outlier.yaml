@@ -2,8 +2,7 @@ id: assertion-meta-install-legacy-outlier
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Fourth experiment predates convention and classified as legacy
-  outlier, excluded from convergence analysis.
+assertion: Fourth experiment predates convention and classified as legacy outlier, excluded from convergence analysis.
 capability: meta
 dimension: install
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/install-experiment-template-gap.md
+  - file: self:assertion-meta-install-legacy-outlier
     section: "## Findings"
     bullet_index: 3
     line_anchor: L8

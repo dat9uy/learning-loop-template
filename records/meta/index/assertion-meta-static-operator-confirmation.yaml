@@ -2,8 +2,7 @@ id: assertion-meta-static-operator-confirmation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: After a budget-consuming action, agent reports result and waits for
-  operator confirmation before proceeding.
+assertion: After a budget-consuming action, agent reports result and waits for operator confirmation before proceeding.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+  - file: self:assertion-meta-static-operator-confirmation
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

@@ -2,8 +2,7 @@ id: assertion-meta-static-recommendation
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Loose datetime pattern `^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$` +
-  fix 4 affected records is minimum-blast-radius change.
+assertion: Loose datetime pattern `^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$` + fix 4 affected records is minimum-blast-radius change.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - file: self:assertion-meta-static-recommendation
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

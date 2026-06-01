@@ -5,7 +5,7 @@ status: draft
 created_at: 2026-05-24T06:26:23Z
 updated_at: 2026-05-24T06:26:23Z
 source_refs:
-  - local:records/meta/evidence/observation-record-discovery-gap.md
+  - record:assertion-meta-static-observation-state-check
   - record:decision-20260517T1200Z-observation-state-check-rule
 question: Should agents check records/observations/ before asking the user about
   external system state?

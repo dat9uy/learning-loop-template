@@ -2,8 +2,7 @@ id: assertion-meta-static-process-side-artifact
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Knowledge pack (`knowledge-packs/<domain>/`) is the process-side
-  artifact agents consume to discover verified capabilities.
+assertion: Knowledge pack (`knowledge-packs/<domain>/`) is the process-side artifact agents consume to discover verified capabilities.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/process-side-artifact-ambiguity.md
+  - file: self:assertion-meta-static-process-side-artifact
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

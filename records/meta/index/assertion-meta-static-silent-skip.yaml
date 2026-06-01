@@ -2,8 +2,7 @@ id: assertion-meta-static-silent-skip
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Files without a `## Findings` section or with no `[topic-tag]`
-  bullets are silently skipped, not errored.
+assertion: Files without a `## Findings` section or with no `[topic-tag]` bullets are silently skipped, not errored.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-findings-convention.md
+  - file: self:assertion-meta-static-silent-skip
     section: "## Findings"
     bullet_index: 6
     line_anchor: L11

@@ -2,9 +2,7 @@ id: assertion-meta-static-surface-registry
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Per-surface adapters read native self-descriptions and emit
-  normalized capability entries; each stack registers adapters in the surface
-  registry.
+assertion: Per-surface adapters read native self-descriptions and emit normalized capability entries; each stack registers adapters in the surface registry.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-generation-extension.md
+  - file: self:assertion-meta-static-surface-registry
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

@@ -2,8 +2,7 @@ id: assertion-meta-static-validation-window
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: No state-changing actions between clearance and final report; window
-  semantics enforced by observation staleness check.
+assertion: No state-changing actions between clearance and final report; window semantics enforced by observation staleness check.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/resource-budget-procedural-rules.md
+  - file: self:assertion-meta-static-validation-window
     section: "## Findings"
     bullet_index: 6
     line_anchor: L11

@@ -2,9 +2,7 @@ id: assertion-meta-static-datetime-format
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Historical date-only `created_at` forms are valid per
-  prospective-application principle; only local-timezone forms are the drift
-  trigger.
+assertion: Historical date-only `created_at` forms are valid per prospective-application principle; only local-timezone forms are the drift trigger.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - file: self:assertion-meta-static-datetime-format
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

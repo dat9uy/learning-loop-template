@@ -2,8 +2,7 @@ id: assertion-meta-static-partial-supersession
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Gap file retains original text as history; partial-supersession note
-  corrects stale signal without rewriting.
+assertion: Gap file retains original text as history; partial-supersession note corrects stale signal without rewriting.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-schema-gap.md
+  - file: self:assertion-meta-static-partial-supersession
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

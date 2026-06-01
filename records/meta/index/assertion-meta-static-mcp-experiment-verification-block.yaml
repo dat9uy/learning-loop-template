@@ -2,8 +2,7 @@ id: assertion-meta-static-mcp-experiment-verification-block
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: The `create_experiment_record` tool does not expose
-  `verification.claim_refs` or `verification.proves` fields.
+assertion: The `create_experiment_record` tool does not expose `verification.claim_refs` or `verification.proves` fields.
 capability: meta
 dimension: static
 scope: governance
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/mcp-crud-gap-macro-implementation-260522.md
+  - file: self:assertion-meta-static-mcp-experiment-verification-block
     section: "## Findings"
     bullet_index: 4
     line_anchor: L13

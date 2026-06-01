@@ -5,7 +5,7 @@ status: approved
 created_at: "2026-05-12T09:44:00Z"
 updated_at: "2026-05-12T09:44:00Z"
 source_refs:
-  - local:records/meta/evidence/ajv-dryrun-results-260512.md
+  - record:assertion-meta-static-ajv-validation
   - record:decision-20260510T172056Z-yaml-parser-library-swap
   - record:decision-260512T1321Z-artifact-timestamp-convention
 notes: "Brainstorm reports live at plans/reports/brainstorm-260512-1534-ajv-schema-validation-scope.md and plans/reports/brainstorm-260512-1357-parser-swap-ajv-deferral.md; implementation plan lives at plans/260512-1534-ajv-schema-validation-swap/plan.md; predecessor plan lives at plans/260512-1410-yaml-parser-library-swap/plan.md. plans/ is outside source_refs allowlist, so those paths are cited here. Motivating commit: e2a82d6. experiment-meta-install-template-candidate-260512T0046Z.yaml and related local-time records had YAML field timestamps normalized to UTC-Z without filename renames; filename convention remains governed by decision-260512T1321Z."

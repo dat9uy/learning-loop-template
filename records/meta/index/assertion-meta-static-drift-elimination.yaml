@@ -2,8 +2,7 @@ id: assertion-meta-static-drift-elimination
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Records derived from ground truth by construction; drift detected via
-  `--dry-run` during `pnpm check`.
+assertion: Records derived from ground truth by construction; drift detected via `--dry-run` during `pnpm check`.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-generation-extension.md
+  - file: self:assertion-meta-static-drift-elimination
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

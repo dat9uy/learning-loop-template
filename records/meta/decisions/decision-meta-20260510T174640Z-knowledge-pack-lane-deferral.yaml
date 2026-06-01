@@ -5,7 +5,7 @@ status: draft
 created_at: "2026-05-10T17:46:40Z"
 updated_at: "2026-05-10T17:46:40Z"
 source_refs:
-  - local:records/meta/evidence/knowledge-pack-lane-deferral.md
+  - record:assertion-meta-static-knowledge-pack-consumption
   - record:decision-20260510T160000Z-capabilities-stack-migration
 notes: Drafted in the same session as the doc-quieting pass on 2026-05-10. Pending operator approval. Does not supersede decision-20260510T160000Z-capabilities-stack-migration; it documents the disposition of the knowledge-packs/ entry in that decision's per-record-type default source-root allowlist. Brainstorm context is recorded in plans/reports/brainstorm-260511-0030-external-skills-integration.md (Unresolved Questions) and the superseded plans/reports/brainstorm-20260510-external-skills-integration.md.
 question: Should the knowledge-pack lane be retained as latent infrastructure, fully retired (directory deleted, validator allowlist trimmed, pack_ref refs rejected), or held in the prior promoting state in the active doc surface?

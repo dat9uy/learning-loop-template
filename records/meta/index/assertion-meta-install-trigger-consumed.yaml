@@ -2,8 +2,7 @@ id: assertion-meta-install-trigger-consumed
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Prior trigger (event class `next-install-experiment`, threshold N=2)
-  consumed by vnstock experiments; new trigger set for next non-vnstock case.
+assertion: Prior trigger (event class `next-install-experiment`, threshold N=2) consumed by vnstock experiments; new trigger set for next non-vnstock case.
 capability: meta
 dimension: install
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/install-experiment-template-gap.md
+  - file: self:assertion-meta-install-trigger-consumed
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

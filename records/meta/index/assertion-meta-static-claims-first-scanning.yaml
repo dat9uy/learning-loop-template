@@ -2,8 +2,7 @@ id: assertion-meta-static-claims-first-scanning
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Orient through claims/index entries, never browse evidence standalone
-  for truth-status discovery.
+assertion: Orient through claims/index entries, never browse evidence standalone for truth-status discovery.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-truth-status-mechanism.md
+  - file: self:assertion-meta-static-claims-first-scanning
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

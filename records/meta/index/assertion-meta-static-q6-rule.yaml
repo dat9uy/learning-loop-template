@@ -11,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-dir-scan-rule.md
+  - file: self:assertion-meta-static-q6-rule
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9

@@ -2,8 +2,7 @@ id: assertion-meta-static-gap-classification
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: "Meta-evidence gaps split by sample-count requirement: N=1 closeable
-  vs N>=2 deferred."
+assertion: "Meta-evidence gaps split by sample-count requirement: N=1 closeable vs N>=2 deferred."
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/n-equals-one-gap-class.md
+  - file: self:assertion-meta-static-gap-classification
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

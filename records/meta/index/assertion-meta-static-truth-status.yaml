@@ -2,8 +2,7 @@ id: assertion-meta-static-truth-status
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Evidence files do not self-advertise truth status; structural
-  prevention required.
+assertion: Evidence files do not self-advertise truth status; structural prevention required.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-truth-status-mechanism.md
+  - file: self:assertion-meta-static-truth-status
     section: "## Findings"
     bullet_index: 1
     line_anchor: L6

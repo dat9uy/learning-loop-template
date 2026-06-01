@@ -2,8 +2,7 @@ id: assertion-meta-static-deferred-promotion
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Canonical adoption requires decision record; do not modify docs until
-  self-improvement decision approved.
+assertion: Canonical adoption requires decision record; do not modify docs until self-improvement decision approved.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/process-side-artifact-ambiguity.md
+  - file: self:assertion-meta-static-deferred-promotion
     section: "## Findings"
     bullet_index: 5
     line_anchor: L10

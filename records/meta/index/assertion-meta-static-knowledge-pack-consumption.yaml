@@ -2,8 +2,7 @@ id: assertion-meta-static-knowledge-pack-consumption
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Cleared-context agents scan `knowledge-packs/` before exploring
-  evidence or re-running experiments.
+assertion: Cleared-context agents scan `knowledge-packs/` before exploring evidence or re-running experiments.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/process-side-artifact-ambiguity.md
+  - file: self:assertion-meta-static-knowledge-pack-consumption
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

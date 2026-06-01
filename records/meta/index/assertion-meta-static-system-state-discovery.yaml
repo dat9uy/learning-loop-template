@@ -2,8 +2,7 @@ id: assertion-meta-static-system-state-discovery
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Observations are authoritative source for factual system state; more
-  reliable than agent memory or user recall.
+assertion: Observations are authoritative source for factual system state; more reliable than agent memory or user recall.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+  - file: self:assertion-meta-static-system-state-discovery
     section: "## Findings"
     bullet_index: 2
     line_anchor: L7

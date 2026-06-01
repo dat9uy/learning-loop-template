@@ -2,9 +2,7 @@ id: assertion-meta-static-meta-evidence-format
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Meta evidence files use `## Findings` with `[topic-tag]` bullets for
-  machine extraction, plus narrative sections (`## Observation`, `## Evidence`,
-  `## Trigger`, `## Deferral`) as supplementary context.
+assertion: Meta evidence files use `## Findings` with `[topic-tag]` bullets for machine extraction, plus narrative sections (`## Observation`, `## Evidence`, `## Trigger`, `## Deferral`) as supplementary context.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -13,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/evidence-findings-convention.md
+  - file: self:assertion-meta-static-meta-evidence-format
     section: "## Findings"
     bullet_index: 7
     line_anchor: L12

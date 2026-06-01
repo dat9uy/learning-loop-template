@@ -2,8 +2,7 @@ id: assertion-meta-static-applies-to
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Device slots, budgets, registration status, rate limits, operational
-  constraints.
+assertion: Device slots, budgets, registration status, rate limits, operational constraints.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/observation-record-discovery-gap.md
+  - file: self:assertion-meta-static-applies-to
     section: "## Findings"
     bullet_index: 3
     line_anchor: L8

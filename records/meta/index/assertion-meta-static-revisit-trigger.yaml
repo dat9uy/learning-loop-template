@@ -2,8 +2,7 @@ id: assertion-meta-static-revisit-trigger
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Each deferred axis carries explicit revisit trigger retrievable by
-  event class and threshold.
+assertion: Each deferred axis carries explicit revisit trigger retrievable by event class and threshold.
 capability: meta
 dimension: static
 scope: meta-tooling
@@ -12,11 +11,11 @@ n_count: 2
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/capability-allowlist-deferred-axes.md
+  - file: self:assertion-meta-static-revisit-trigger
     section: "## Findings"
     bullet_index: 5
     line_anchor: L12
-  - file: local:records/meta/evidence/dimension-based-lifecycle-rationale.md
+  - file: self:assertion-meta-static-revisit-trigger
     section: "## Findings"
     bullet_index: 4
     line_anchor: L11

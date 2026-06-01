@@ -2,8 +2,7 @@ id: assertion-meta-static-unencoded-decisions
 schema_version: "1.0"
 type: extracted-assertion
 status: active
-assertion: Plan-level decisions not encoded as `records/decisions/` artifacts;
-  fixed by updating prompt blueprints with decision-record requirement.
+assertion: Plan-level decisions not encoded as `records/decisions/` artifacts; fixed by updating prompt blueprints with decision-record requirement.
 capability: meta
 dimension: static
 scope: skill-template
@@ -12,7 +11,7 @@ n_count: 1
 superseded_by: null
 supersedes: []
 source_refs:
-  - file: local:records/meta/evidence/skill-template-gap-260520T2133Z.md
+  - file: self:assertion-meta-static-unencoded-decisions
     section: "## Findings"
     bullet_index: 4
     line_anchor: L9
