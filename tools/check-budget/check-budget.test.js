@@ -46,13 +46,16 @@ describe("check-budget", () => {
   });
 
   it("returns exit 0 when budget is available", () => {
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 2);
+    const recentDateStr = recentDate.toISOString();
     writeBudgetFile("test-budget-available-resource-budget.yaml", `
 id: test-available
 external_system: test_system_available
 resource: test_resource_available
 budget: 5
 current: 2
-last_verified: "2026-05-25T00:00:00Z"
+last_verified: "${recentDateStr}"
 verification_method: test
 validation_window:
   active: false
@@ -69,13 +72,16 @@ validation_window:
   });
 
   it("returns exit 1 when budget is exhausted", () => {
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 2);
+    const recentDateStr = recentDate.toISOString();
     writeBudgetFile("test-budget-exhausted-resource-budget.yaml", `
 id: test-exhausted
 external_system: test_system_exhausted
 resource: test_resource_exhausted
 budget: 1
 current: 1
-last_verified: "2026-05-25T00:00:00Z"
+last_verified: "${recentDateStr}"
 verification_method: test
 validation_window:
   active: false
@@ -111,13 +117,16 @@ validation_window:
   });
 
   it("returns exit 1 when validation_window is active (gate blocks concurrent)", () => {
+    const recentDate = new Date();
+    recentDate.setDate(recentDate.getDate() - 2);
+    const recentDateStr = recentDate.toISOString();
     writeBudgetFile("test-budget-window-resource-budget.yaml", `
 id: test-window
 external_system: test_system_window
 resource: test_resource_window
 budget: 5
 current: 2
-last_verified: "2026-05-25T00:00:00Z"
+last_verified: "${recentDateStr}"
 verification_method: test
 validation_window:
   active: true
