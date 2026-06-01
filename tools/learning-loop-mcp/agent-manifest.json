@@ -71,8 +71,14 @@
     },
     "meta_state": {
       "description": "Meta-state registry for loop self-awareness findings",
-      "tools": ["meta_state_report", "meta_state_list", "meta_state_ack", "meta_state_resolve"],
+      "tools": ["meta_state_report", "meta_state_list", "meta_state_ack", "meta_state_resolve", "meta_state_promote_rule"],
       "ordering": "any"
+    },
+    "introspection": {
+      "description": "Discover the loop's operational surface and active rules",
+      "tools": ["loop_describe"],
+      "ordering": "any",
+      "typical_chain": ["loop_describe"]
     }
   },
   "quickstart": {
