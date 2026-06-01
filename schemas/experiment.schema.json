@@ -2,55 +2,208 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Experiment Record",
   "type": "object",
-  "required": ["id", "schema_version", "type", "status", "created_at", "updated_at", "source_refs", "goal", "hypothesis", "method", "success_metrics", "result", "agent_outcome", "product_outcome", "observations", "promotion_review"],
+  "required": [
+    "id",
+    "schema_version",
+    "type",
+    "status",
+    "created_at",
+    "updated_at",
+    "source_refs",
+    "goal",
+    "hypothesis",
+    "method",
+    "success_metrics",
+    "result",
+    "agent_outcome",
+    "product_outcome",
+    "observations",
+    "promotion_review"
+  ],
   "properties": {
-    "id": { "type": "string" },
-    "schema_version": { "type": "string" },
-    "type": { "const": "experiment" },
-    "status": { "enum": ["draft", "reviewed", "approved", "rejected"] },
-    "created_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
-    "updated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
-    "source_refs": { "type": "array", "items": { "type": "string", "pattern": "^(local|record|legacy):.+" } },
-    "notes": { "type": "string" },
-    "goal": { "type": "string" },
-    "hypothesis": { "type": "string" },
-    "method": { "type": "array", "items": { "type": "string" } },
-    "success_metrics": { "type": "array", "items": { "type": "string" } },
-    "result": { "type": "string" },
-    "agent_outcome": { "type": "string" },
-    "product_outcome": { "type": "string" },
-    "observations": { "type": "array" },
-    "promotion_review": { "type": "array" },
-    "scope": { "enum": ["planning", "install", "runtime", "product", "schema-improvement"] },
-    "claim_refs": { "type": "array", "items": { "type": "string" } },
-    "risk_refs": { "type": "array", "items": { "type": "string" } },
-    "output_level": { "enum": ["none", "docs-only", "metadata-only", "runtime-captured", "product-code"] },
+    "id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "type": {
+      "const": "experiment"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "approved",
+        "rejected"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "updated_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(local|record|legacy):.+"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "method": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "success_metrics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "result": {
+      "type": "string"
+    },
+    "agent_outcome": {
+      "type": "string"
+    },
+    "product_outcome": {
+      "type": "string"
+    },
+    "observations": {
+      "type": "array"
+    },
+    "promotion_review": {
+      "type": "array"
+    },
+    "scope": {
+      "enum": [
+        "planning",
+        "install",
+        "runtime",
+        "product",
+        "schema-improvement"
+      ]
+    },
+    "claim_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risk_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_level": {
+      "enum": [
+        "none",
+        "docs-only",
+        "metadata-only",
+        "runtime-captured",
+        "product-code"
+      ]
+    },
     "output_capture": {
       "type": "object",
       "properties": {
-        "allowed_outputs": { "type": "array", "items": { "type": "string" } },
-        "blocked_outputs": { "type": "array", "items": { "type": "string" } }
+        "allowed_outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "verification": {
       "type": "object",
-      "required": ["claim_refs", "proves", "requires_human_approval", "approval_status"],
+      "required": [
+        "claim_refs",
+        "proves",
+        "requires_human_approval",
+        "approval_status"
+      ],
       "properties": {
-        "claim_refs": { "type": "array", "items": { "type": "string" } },
+        "claim_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "proves": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["dimension", "output_level"],
+            "required": [
+              "dimension",
+              "output_level"
+            ],
             "properties": {
-              "dimension": { "enum": ["static", "install", "runtime"] },
-              "scope": { "enum": ["sandbox", "production"] },
-              "output_level": { "enum": ["none", "docs-only", "metadata-only", "runtime-captured", "product-code"] }
+              "dimension": {
+                "enum": [
+                  "static",
+                  "install",
+                  "runtime",
+                  "product"
+                ]
+              },
+              "scope": {
+                "enum": [
+                  "sandbox",
+                  "production"
+                ]
+              },
+              "output_level": {
+                "enum": [
+                  "none",
+                  "docs-only",
+                  "metadata-only",
+                  "runtime-captured",
+                  "product-code"
+                ]
+              }
             }
           }
         },
-        "requires_human_approval": { "type": "boolean" },
-        "approval_status": { "enum": ["not-required", "requested", "approved", "rejected"] }
+        "requires_human_approval": {
+          "type": "boolean"
+        },
+        "approval_status": {
+          "enum": [
+            "not-required",
+            "requested",
+            "approved",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "assertion_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^record:assertion-[a-z0-9-]+-(static|install|runtime|product)-[a-z0-9-]+$"
       }
     }
   }

@@ -18,8 +18,9 @@ export const recordCreateExperimentTool = {
     output_level: z.enum(["none", "docs-only", "metadata-only", "runtime-captured", "product-code"]).optional().describe("Expected output granularity"),
     claim_refs: z.array(z.string()).optional().describe("Claims this experiment validates"),
     risk_refs: z.array(z.string()).optional().describe("Risks this experiment addresses"),
+    assertion_refs: z.array(z.string()).optional().describe("Assertion references this experiment validates (e.g., record:assertion-vnstock-data-install-...)"),
   },
-  handler: async ({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs }) => {
+  handler: async ({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs }) => {
     const root = resolveRoot();
 
     // Validate source_refs if provided
@@ -45,6 +46,7 @@ export const recordCreateExperimentTool = {
       output_level,
       claim_refs,
       risk_refs,
+      assertion_refs,
     });
 
     console.error(`gate: create_experiment_record ${surface} → ${result.created ? "created" : result.reason}`);
