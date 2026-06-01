@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Design"
-status: pending
+status: completed
 effort: "2h"
 dependencies: [1]
 ---
@@ -124,11 +124,11 @@ The promotion workflow for Bridge 2 is intentionally minimal. The full automatio
 
 ## Success Criteria
 
-- [ ] Mapping convention documented in `docs/artifact-concepts.md`
-- [ ] Template registry has 4 dimension templates (install, runtime, static, product)
-- [ ] MCP tool schema designed with `assertion_id`, `surface`, `template_override`, `auto_create`
-- [ ] Promotion workflow defined (candidate → pending_approval → active) with clear human decision points
-- [ ] Design doc reviewed and approved (operator sign-off)
+- [x] Mapping convention documented in `docs/artifact-concepts.md`
+- [x] Template registry has 4 dimension templates (install, runtime, static, product)
+- [x] MCP tool schema designed with `assertion_id`, `surface`, `template_override`, `auto_create`
+- [x] Promotion workflow defined (candidate → pending_approval → active) with clear human decision points
+- [x] Design doc reviewed and approved (operator sign-off)
 
 ## Risk Assessment
 

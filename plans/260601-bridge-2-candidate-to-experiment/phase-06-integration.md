@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Integration"
-status: pending
+status: completed
 effort: "1h"
 dependencies: [5]
 ---
@@ -37,14 +37,14 @@ Run the full Bridge-2 pipeline against the real codebase. Verify no regressions,
 
 ## Success Criteria
 
-- [ ] `pnpm test` passes (including all bridge-2 tests)
-- [ ] `pnpm validate:records` passes
-- [ ] `pnpm validate:plan-loop` passes
-- [ ] `pnpm extract:index --dry-run` passes
-- [ ] `docs/artifact-concepts.md` updated with mapping convention and promotion workflow
-- [ ] `workflow_candidate_to_experiment` visible in `manifest.json`
-- [ ] Smoke test produces valid draft experiment
-- [ ] Journal entry written
+- [x] `pnpm test` passes (including all bridge-2 tests)
+- [x] `pnpm validate:records` passes
+- [x] `pnpm validate:plan-loop` passes
+- [x] `pnpm extract:index --dry-run` passes
+- [x] `docs/artifact-concepts.md` updated with mapping convention and promotion workflow
+- [x] `workflow_candidate_to_experiment` visible in `manifest.json`
+- [x] Smoke test produces valid draft experiment
+- [x] Journal entry written
 
 ## Risk Assessment
 

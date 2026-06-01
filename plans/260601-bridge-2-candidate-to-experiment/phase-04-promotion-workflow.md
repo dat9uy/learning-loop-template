@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Promotion Workflow"
-status: pending
+status: completed
 effort: "2h"
 dependencies: [3]
 ---
@@ -97,12 +97,12 @@ const STATUS_MAP = {
 
 ## Success Criteria
 
-- [ ] Promotion workflow documented in `docs/artifact-concepts.md`
-- [ ] `validateRecords` confirmed to allow `pending_approval` references (test or manual verification)
-- [ ] `extract-index` confirmed to map `passed → active` (already true, verified)
-- [ ] At least one test covers `pending_approval` reference being allowed
-- [ ] `pnpm validate:records` passes on existing records
-- [ ] `pnpm test` passes
+- [x] Promotion workflow documented in `docs/artifact-concepts.md`
+- [x] `validateRecords` confirmed to allow `pending_approval` references (test or manual verification)
+- [x] `extract-index` confirmed to map `passed → active` (already true, verified)
+- [x] At least one test covers `pending_approval` reference being allowed
+- [x] `pnpm validate:records` passes on existing records
+- [x] `pnpm test` passes
 
 ## Risk Assessment
 

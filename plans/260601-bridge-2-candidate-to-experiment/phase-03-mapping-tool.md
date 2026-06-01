@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Mapping Tool"
-status: pending
+status: completed
 effort: "3h"
 dependencies: [2]
 ---
@@ -179,17 +179,17 @@ export function buildExperimentDraft(candidate, template, overrides = {}) {
 
 ## Success Criteria
 
-- [ ] `workflow_candidate_to_experiment` tool registered in manifest and callable
-- [ ] Tool reads candidate assertion and returns structured experiment draft
-- [ ] Draft includes substituted goal, hypothesis, method, success_metrics
-- [ ] Draft `source_refs` includes `record:<candidate-id>`
-- [ ] Draft `verification.requires_human_approval` is `true`
-- [ ] Tool with `auto_create: true` creates an experiment record
-- [ ] Tool with `auto_create: false` does NOT create a record
-- [ ] Tool rejects non-candidate assertions with error
-- [ ] Tests cover all 4 dimensions
-- [ ] `pnpm test` passes
-- [ ] `pnpm check` passes
+- [x] `workflow_candidate_to_experiment` tool registered in manifest and callable
+- [x] Tool reads candidate assertion and returns structured experiment draft
+- [x] Draft includes substituted goal, hypothesis, method, success_metrics
+- [x] Draft `source_refs` includes `record:<candidate-id>`
+- [x] Draft `verification.requires_human_approval` is `true`
+- [x] Tool with `auto_create: true` creates an experiment record
+- [x] Tool with `auto_create: false` does NOT create a record
+- [x] Tool rejects non-candidate assertions with error
+- [x] Tests cover all 4 dimensions
+- [x] `pnpm test` passes
+- [x] `pnpm check` passes
 
 ## Risk Assessment
 

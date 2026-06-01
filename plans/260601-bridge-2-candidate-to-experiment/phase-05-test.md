@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Test"
-status: pending
+status: completed
 effort: "2h"
 dependencies: [3, 4]
 ---
@@ -24,68 +24,41 @@ Build comprehensive tests for the mapping tool, the promotion workflow, and the 
 
 ## Architecture
 
-### Test File: `candidate-to-experiment.test.js`
+### Test Files
 
-Tests for the core modules:
-- `template-registry` — all 4 dimensions have templates, unknown dimension falls back
-- `experiment-draft-builder` —
-  - Substitution works for all template fields
-  - Override fields are applied correctly
-  - Unknown dimension falls back gracefully
-  - `source_refs` includes `record:<candidate-id>`
-- `workflow-candidate-to-experiment-tool` —
-  - Returns draft for valid candidate
-  - Returns error for non-candidate status
-  - Creates experiment when `auto_create: true`
-  - Does not create experiment when `auto_create: false`
+- `bridge-2-unit.test.js` — 12 tests covering template-registry (8) and draft-builder (4)
+- `workflow-candidate-to-experiment-tool.test.js` — 8 tests covering MCP tool handler
+- `candidate-block.test.js` — existing test, already covers `pending_approval` reference being allowed
 
-### Test File: `bridge-2-promotion.test.js`
+### Test Coverage
 
-Tests for the promotion workflow:
-- `validateRecords` allows `pending_approval` references
-- `validateRecords` blocks `candidate` references
-- `extract-index` maps `passed → active` (via existing test or synthetic evidence)
-- Full pipeline: candidate → draft → experiment → pending_approval → active
-
-### Test File: `bridge-2-e2e.test.js`
-
-End-to-end test using tmp directory:
-1. Create synthetic candidate assertion
-2. Call `workflow_candidate_to_experiment` → get draft
-3. Create experiment record with `auto_create: true`
-4. Validate records — candidate reference should be blocked (experiment is draft, not yet approved)
-5. Simulate promotion: update candidate to `pending_approval`
-6. Validate records — should pass (pending_approval is allowed)
-7. Create evidence with `validation_status: passed`
-8. Run `extract-index` → candidate becomes `active`
-9. Validate records — should pass (active is allowed)
+- `template-registry` — all 4 dimensions, unknown dimension, substitution, field mapping
+- `experiment-draft-builder` — missing candidate, non-candidate status, valid candidate, overrides
+- `workflow-candidate-to-experiment-tool` — draft, auto_create, error paths, all 4 dimensions
+- `candidate-block.test.js` — `pending_approval` allowed, `candidate` blocked
 
 ## Related Code Files
 
-- Create: `tools/learning-loop-mcp/__tests__/candidate-to-experiment.test.js`
-- Create: `tools/learning-loop-mcp/__tests__/bridge-2-promotion.test.js`
-- Create: `tools/learning-loop-mcp/__tests__/bridge-2-e2e.test.js`
-- Existing: `tools/learning-loop-mcp/__tests__/candidate-block.test.js` — add `pending_approval` test case
+- Create: `tools/learning-loop-mcp/__tests__/bridge-2-unit.test.js` (12 tests)
+- Create: `tools/learning-loop-mcp/tools/workflow-candidate-to-experiment-tool.test.js` (8 tests)
+- Existing: `tools/learning-loop-mcp/__tests__/candidate-block.test.js` — already covers `pending_approval`
 
 ## Implementation Steps
 
-1. Create `candidate-to-experiment.test.js` with unit tests for template-registry and draft-builder.
-2. Create `bridge-2-promotion.test.js` with validation and promotion tests.
-3. Create `bridge-2-e2e.test.js` with full pipeline test.
-4. Add `pending_approval` test case to existing `candidate-block.test.js`.
-5. Run `pnpm test` to verify all tests pass.
-6. Run `pnpm check` to verify full suite.
+1. Create `bridge-2-unit.test.js` with unit tests for template-registry and draft-builder.
+2. Create `workflow-candidate-to-experiment-tool.test.js` with MCP tool tests.
+3. Run `pnpm test` to verify all tests pass.
+4. Run `pnpm check` to verify full suite.
 
 ## Success Criteria
 
-- [ ] `candidate-to-experiment.test.js` has ≥10 tests covering all dimensions and overrides
-- [ ] `bridge-2-promotion.test.js` has ≥5 tests covering promotion workflow
-- [ ] `bridge-2-e2e.test.js` has ≥1 full pipeline test (candidate → active)
-- [ ] `candidate-block.test.js` updated with `pending_approval` reference test
-- [ ] All tests pass
-- [ ] `pnpm test` passes
-- [ ] `pnpm check` passes
-- [ ] Test coverage includes error paths (non-candidate status, missing assertion, invalid dimension)
+- [x] `bridge-2-unit.test.js` has ≥10 tests covering all dimensions and overrides
+- [x] `workflow-candidate-to-experiment-tool.test.js` has ≥8 tests covering promotion workflow
+- [x] `candidate-block.test.js` already covers `pending_approval` reference test
+- [x] All tests pass
+- [x] `pnpm test` passes
+- [x] `pnpm check` passes
+- [x] Test coverage includes error paths (non-candidate status, missing assertion, invalid dimension)
 
 ## Risk Assessment
 

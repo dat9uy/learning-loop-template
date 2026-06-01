@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Research"
-status: pending
+status: completed
 effort: "2h"
 dependencies: []
 ---
@@ -44,10 +44,10 @@ Survey the current state of candidate assertions, experiment templates, and exis
 
 ## Success Criteria
 
-- [ ] Live candidate count confirmed (expected: 0)
-- [ ] Experiment patterns per dimension documented (at least 3 dimensions: install, runtime, product)
-- [ ] Decision recorded on whether to add `assertion_refs` to experiment schema or reuse `source_refs`
-- [ ] Research summary written to `research-output.md`
+- [x] Live candidate count confirmed (expected: 0)
+- [x] Experiment patterns per dimension documented (at least 3 dimensions: install, runtime, product)
+- [x] Decision recorded on whether to add `assertion_refs` to experiment schema or reuse `source_refs`
+- [x] Research summary written to `research-output.md`
 
 ## Risk Assessment
 

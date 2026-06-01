@@ -1,7 +1,7 @@
 ---
 title: "Bridge 2 — Candidate-to-Experiment Mapping"
 description: "Close Bridge 2 (Candidate → Experiment Plan) of docs/trajectory.md. Build a mapping convention and MCP tool that generates experiment records from candidate assertions, plus the promotion workflow from candidate to pending_approval to active."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [bridge-2, candidate, experiment, mcp-tool, workflow]
@@ -26,12 +26,12 @@ This plan defines the mapping convention, builds an MCP tool, and adds the promo
 
 | Phase | Name | Status | Effort | Priority |
 |-------|------|--------|--------|----------|
-| 1 | [Research](./phase-01-research.md) | Pending | 2h | P1 |
-| 2 | [Design](./phase-02-design.md) | Pending | 2h | P1 |
-| 3 | [Mapping Tool](./phase-03-mapping-tool.md) | Pending | 3h | P1 |
-| 4 | [Promotion Workflow](./phase-04-promotion-workflow.md) | Pending | 2h | P1 |
-| 5 | [Test](./phase-05-test.md) | Pending | 2h | P1 |
-| 6 | [Integration](./phase-06-integration.md) | Pending | 1h | P2 |
+| 1 | [Research](./phase-01-research.md) | Completed | 2h | P1 |
+| 2 | [Design](./phase-02-design.md) | Completed | 2h | P1 |
+| 3 | [Mapping Tool](./phase-03-mapping-tool.md) | Completed | 3h | P1 |
+| 4 | [Promotion Workflow](./phase-04-promotion-workflow.md) | Completed | 2h | P1 |
+| 5 | [Test](./phase-05-test.md) | Completed | 2h | P1 |
+| 6 | [Integration](./phase-06-integration.md) | Completed | 1h | P2 |
 
 ## Dependencies
 
