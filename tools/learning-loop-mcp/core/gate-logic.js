@@ -46,13 +46,19 @@ const SEGMENT_SEPARATORS = /[;&|]+/;
 
 const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
 
+/** Split a command on ;, &, | separators. */
+export function splitSegments(command) {
+  if (!command || typeof command !== "string") return [];
+  return command.split(SEGMENT_SEPARATORS).map((s) => s.trim()).filter(Boolean);
+}
+
 /**
  * Strip message flags and their values from a command segment.
  * Quoted multi-word values (e.g., "fix pnpm add issue") are skipped as a block.
  * Unquoted values are skipped as a single token.
  * This prevents false positives from commit messages, PR titles, etc.
  */
-function stripMessageFlags(segment) {
+export function stripMessageFlags(segment) {
   const tokens = segment.split(/\s+/);
   const result = [];
   let i = 0;
@@ -91,11 +97,8 @@ function stripMessageFlags(segment) {
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
 
-  const segments = command.split(SEGMENT_SEPARATORS);
-  for (const segment of segments) {
-    const trimmed = segment.trim();
-    if (!trimmed) continue;
-    const stripped = stripMessageFlags(trimmed);
+  for (const segment of splitSegments(command)) {
+    const stripped = stripMessageFlags(segment);
     for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
       if (pattern.test(stripped)) return type;
     }
@@ -481,7 +484,13 @@ export function applyPromotedRules(command, filePath, rules) {
           console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
           continue;
         }
-        matched = new RegExp(pattern).test(command);
+        for (const segment of splitSegments(command)) {
+          const stripped = stripMessageFlags(segment);
+          if (new RegExp(pattern).test(stripped)) {
+            matched = true;
+            break;
+          }
+        }
       } else if (pattern_type === "glob" && filePath) {
         if (!isGlobScopeWhitelisted(pattern)) {
           console.warn(`Rule ${rule_id}: glob pattern "${pattern}" rejected by scope whitelist`);

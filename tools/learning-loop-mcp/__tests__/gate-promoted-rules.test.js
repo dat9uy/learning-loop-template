@@ -5,6 +5,8 @@ import {
   makeGateDecision,
   loadPromotedRules,
   applyPromotedRules,
+  splitSegments,
+  stripMessageFlags,
 } from "../core/gate-logic.js";
 import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -392,5 +394,79 @@ describe("gate promoted rules new behavior", () => {
     const rules = loadPromotedRules(tempDir);
     assert.strictEqual(rules.length, 1);
     assert.strictEqual(rules[0].id, "meta-active");
+  });
+});
+
+describe("gate promoted rules G8 stripMessageFlags", () => {
+  const activeRule = {
+    id: "meta-260602T0000Z-escape-hatch",
+    category: "loop-anti-pattern",
+    status: "active",
+    promoted_to_rule: {
+      rule_id: "rule-no-new-artifact-types",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "propose|design|create|new\\s+(schema|artifact|directory|convention)",
+    },
+  };
+
+  test("git commit message with create returns ok (G8 fix)", () => {
+    const result = applyPromotedRules(
+      'git commit -m "create new convention"',
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
+  test("message flag value with matching text returns ok (G8 fix)", () => {
+    const result = applyPromotedRules(
+      'foo --title "propose a new schema"',
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
+  test("echo quoted string with create still escalates — known heredoc limitation", () => {
+    const result = applyPromotedRules(
+      'echo "create new convention"',
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
+  });
+
+  test("raw command without message flag returns escalate", () => {
+    const result = applyPromotedRules(
+      "propose a new artifact type",
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
+  });
+
+  test("multi-segment command with real match in second segment returns escalate", () => {
+    const result = applyPromotedRules(
+      'git commit -m "add new convention"; propose a new schema',
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
+  });
+
+  test("splitSegments exports correct segments", () => {
+    const segments = splitSegments("a; b & c | d");
+    assert.deepStrictEqual(segments, ["a", "b", "c", "d"]);
+  });
+
+  test("stripMessageFlags strips -m and --title values", () => {
+    const stripped = stripMessageFlags('git commit -m "create new convention"');
+    assert.ok(!stripped.includes("create"));
+    assert.ok(stripped.includes("git"));
+    assert.ok(stripped.includes("commit"));
   });
 });
