@@ -111,59 +111,22 @@ SP3: Drift Query
 
 ### SP0: Self-Modification Affordance — `meta_state_log_change`
 
-**Goal:** A general-purpose change-logging tool. The agent (or an auto-hook) can record any system change as a meta-state entry. Schema changes are one instance; the affordance covers all kinds: rule changes, tool additions, policy changes, surface boundary changes, lifecycle transitions, severity threshold changes.
-
-**Why general, not schema-specific:** per the operator correction, "self-modifying" is a principle, not a schema-only feature. The tool shape must accept any `change_kind` and any `change_diff`.
-
-**Tool shape (proposed):**
-```js
-meta_state_log_change({
-  change_kind: "schema" | "rule" | "tool" | "policy" | "surface" | "lifecycle" | string,
-  change_diff: {
-    added: string[],     // paths or field names added
-    removed: string[],   // paths or field names removed
-    changed: string[],   // paths or field names whose meaning changed
-  },
-  reason: string,        // why the change was made (min 20 chars)
-  applies_to: {          // scope of the change
-    tools?: string[],
-    surfaces?: string[],
-    rules?: string[],
-    statuses?: string[],
-    schemas?: string[],
-  },
-  supersedes?: string,   // id of the previous change entry this supersedes
-  evidence_code_ref?: string,  // optional: where in code the change lives
-})
-```
-
-**Subtype:** `schema-evolution` (or specific kinds: `rule-change`, `tool-addition`, `policy-update`, `surface-change`, `lifecycle-update`).
-
-**Example (when SP0 lands):** a future commit adds `effective_status` as a derived field. The change is logged:
-```json
-{
-  "id": "meta-260615T0930Z-add-effective-status-derived-field",
-  "category": "loop-anti-pattern",
-  "subtype": "schema-evolution",
-  "description": "Added effective_status as a derived field. Backward compatible. Affects loop_describe response shape.",
-  "status": "active",
-  "affected_system": "mcp-tools",
-  "change_kind": "schema",
-  "change_diff": {
-    "added": ["effective_status"],
-    "removed": [],
-    "changed": []
-  },
-  "applies_to": { "tools": ["loop_describe"] },
-  "supersedes": null
-}
-```
-
-**Auto-hook (defense-in-depth):** an optional post-load hook in `core/meta-state.js` that detects schema-shape changes and auto-logs the diff. Agent doesn't have to remember to call the tool; the change is recorded as a side effect of loading.
-
-**Out of scope:**
-- Auto-mutation of meta-state in response to the change (the change is logged, not applied to existing entries).
-- Migration of old entries to the new shape (handled by the agent case-by-case).
+> **SP0 design has been moved to a dedicated report:** [`brainstorm-260602-sp0-log-change.md`](./brainstorm-260602-sp0-log-change.md) (status: locked 2026-06-02).
+>
+> The dedicated report contains the full SP0 design: tool shape, generated entry shape, core schema changes (discriminated union on `entry_kind`), test plan, `meta_state_list` compatibility, and known limitations. Implementation will consume the dedicated report via `/ck:plan`.
+>
+> **Brief recap of the locked design (full spec in the linked report):**
+>
+> - **Tool name:** `meta_state_log_change` (agent-callable)
+> - **Change model:** 3-bucket `change_dimension` (`semantic` / `mechanical` / `surface`) + open `change_target` (string) + structured `change_diff` (`added` / `removed` / `changed`)
+> - **Entry shape:** discriminated union on `entry_kind: "finding" | "change-log"` — single registry, no separate file
+> - **Entry status:** `active` from creation, no TTL, no auto-resolve, immutable audit log
+> - **Side effects:** appends one entry to `meta-state.jsonl`; appends one line to gate log
+> - **CAS:** not used (log-only)
+> - **Auto-hook:** dropped from SP0; revisit after drift measurement
+> - **Schema protection:** tool-only for SP0; write-gate extension deferred
+>
+> **Why the dedicated report:** the operator approved SP0 with the note "write the dedicated report for this, the refer the parent doc to this, so we could ck:plan in scope." SP1-SP3 remain designed in this parent doc; SP0's full design lives in the dedicated report because it is the first sub-project to be implemented.
 
 ### SP1: Derivation Query — `meta_state_derive_status`
 
