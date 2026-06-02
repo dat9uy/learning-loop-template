@@ -127,7 +127,6 @@ export const metaStatePromoteRuleTool = {
         promoted_at: now,
         promoted_by: "operator",
       },
-      auto_resolve: null,
     };
 
     await updateEntry(root, id, patch);

@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, statSync, renameSync, appendFileSync } from "node:fs";
-import { join, isAbsolute } from "node:path";
+import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
@@ -27,8 +27,6 @@ export const metaStateEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  auto_resolve_file: z.string().optional().describe("File path to watch for auto-resolve"),
-  auto_resolve_line_range: z.array(z.number()).optional().describe("Line range [start, end] for auto-resolve"),
   status: z.enum(["reported"]).optional()
     .describe("Status — only 'reported' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses."),
 });
@@ -131,26 +129,6 @@ export function updateEntry(root, id, patch) {
     renameSync(tmpPath, path);
     return true;
   });
-}
-
-/**
- * Check if an entry should auto-resolve based on file mtime.
- * Returns "auto-resolved" if the watched file was modified after entry creation,
- * null otherwise.
- */
-export function checkAutoResolve(entry, root) {
-  if (!entry.auto_resolve || !entry.auto_resolve.file_modified) return null;
-  let filePath = entry.auto_resolve.file_modified;
-  if (!isAbsolute(filePath)) {
-    filePath = join(root, filePath);
-  }
-  if (!existsSync(filePath)) return null;
-  const mtime = statSync(filePath).mtime.getTime();
-  const created = new Date(entry.created_at).getTime();
-  if (mtime > created) {
-    return "auto-resolved";
-  }
-  return null;
 }
 
 /**

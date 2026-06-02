@@ -19,8 +19,6 @@ export const metaStateReportTool = {
     evidence_journal,
     evidence_code_ref,
     evidence_test,
-    auto_resolve_file,
-    auto_resolve_line_range,
   }) => {
     const root = resolveRoot();
     const id = generateId(slugify(description));
@@ -39,12 +37,6 @@ export const metaStateReportTool = {
         ...(evidence_code_ref && { code_ref: evidence_code_ref }),
         ...(evidence_test && { test: evidence_test }),
       },
-      auto_resolve: auto_resolve_file
-        ? {
-            file_modified: auto_resolve_file,
-            ...(auto_resolve_line_range && { line_range: auto_resolve_line_range }),
-          }
-        : null,
       status: "reported",
       created_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),

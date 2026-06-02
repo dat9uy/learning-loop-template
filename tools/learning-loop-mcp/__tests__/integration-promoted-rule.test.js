@@ -34,7 +34,6 @@ describe("integration: promoted rule end-to-end", () => {
       await updateEntry(tempDir, entries1[0].id, {
         category: "loop-anti-pattern",
         subtype: "gate-bug",
-        auto_resolve: null,
       });
 
       const afterFirst = readRegistry(tempDir);
@@ -43,7 +42,6 @@ describe("integration: promoted rule end-to-end", () => {
       await updateEntry(tempDir, entries1[0].id, {
         category: "loop-anti-pattern",
         subtype: "gate-bug",
-        auto_resolve: null,
       });
 
       const afterSecond = readRegistry(tempDir);
@@ -264,7 +262,6 @@ describe("integration: promoted rule end-to-end", () => {
       await updateEntry(tempDir, before[0].id, {
         category: "loop-anti-pattern",
         subtype: "gate-bug",
-        auto_resolve: null,
       });
 
       const after = readRegistry(tempDir);
@@ -294,7 +291,6 @@ describe("integration: promoted rule end-to-end", () => {
       await updateEntry(tempDir, entries[0].id, {
         category: "loop-anti-pattern",
         subtype: "gate-bug",
-        auto_resolve: null,
       });
 
       // warm tier should NOT show legacy fallback since all entries are loop-anti-pattern

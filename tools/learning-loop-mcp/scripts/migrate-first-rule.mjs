@@ -44,7 +44,6 @@ for (const entry of entries) {
   const patch = {
     category: "loop-anti-pattern",
     subtype,
-    auto_resolve: null,
   };
 
   // For the target entry, also promote to active rule

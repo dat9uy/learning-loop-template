@@ -5,7 +5,7 @@ import { metaStateListTool } from "../tools/meta-state-list-tool.js";
 import { metaStateAckTool } from "../tools/meta-state-ack-tool.js";
 import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
 import { readRegistry } from "../core/meta-state.js";
-import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -24,7 +24,6 @@ describe("meta-state end-to-end lifecycle", () => {
         affected_system: "gate-logic",
         description: "Gate logic allows suspicious pattern through without matching",
         evidence_journal: "docs/journals/test.md",
-        auto_resolve_file: "tools/learning-loop-mcp/core/gate-logic.js",
       });
       const reportText = JSON.parse(reportResult.content[0].text);
       assert.strictEqual(reportText.reported, true);
@@ -74,38 +73,6 @@ describe("meta-state end-to-end lifecycle", () => {
       const listText4 = JSON.parse(listResult4.content[0].text);
       assert.strictEqual(listText4.count, 1);
       assert.strictEqual(listText4.entries[0].status, "resolved");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
-
-  test("auto-resolve triggers when watched file is modified", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-auto-"));
-    process.env.GATE_ROOT = tempDir;
-
-    const targetFile = join(tempDir, "watched.js");
-    writeFileSync(targetFile, "// initial");
-
-    // Set file mtime 2 seconds in the future so it is strictly > created_at
-    const future = new Date(Date.now() + 2000);
-    utimesSync(targetFile, future, future);
-
-    const reportResult = await metaStateReportTool.handler({
-      category: "schema-drift",
-      severity: "warning",
-      affected_system: "record-validation",
-      description: "Schema validation misses new required field in observation records",
-      auto_resolve_file: targetFile,
-    });
-    const reportText = JSON.parse(reportResult.content[0].text);
-
-    try {
-      // List should auto-resolve the entry
-      const listResult = await metaStateListTool.handler({ include_expired: true });
-      const listText = JSON.parse(listResult.content[0].text);
-      const entry = listText.entries.find((e) => e.id === reportText.id);
-      assert.ok(entry);
-      assert.strictEqual(entry.status, "auto-resolved");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

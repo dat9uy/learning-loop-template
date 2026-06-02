@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   readRegistry,
-  checkAutoResolve,
   checkExpiry,
   filterEntries,
   updateEntry,
@@ -28,12 +27,9 @@ export const metaStateListTool = {
 
     for (const entry of entries) {
       let newStatus = null;
-      const autoResolved = checkAutoResolve(entry, root);
       const expired = checkExpiry(entry);
 
-      if (autoResolved) {
-        newStatus = autoResolved;
-      } else if (expired) {
+      if (expired) {
         newStatus = expired;
       }
 

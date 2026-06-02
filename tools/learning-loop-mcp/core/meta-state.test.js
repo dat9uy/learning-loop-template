@@ -4,7 +4,6 @@ import {
   readRegistry,
   writeEntry,
   updateEntry,
-  checkAutoResolve,
   checkExpiry,
   filterEntries,
   generateId,
@@ -25,7 +24,6 @@ function makeEntry(overrides = {}) {
     affected_system: overrides.affected_system ?? "gate-logic",
     description: overrides.description ?? "Test meta-state entry description",
     evidence: overrides.evidence ?? { journal: "docs/journals/test.md" },
-    auto_resolve: overrides.auto_resolve ?? null,
     status: overrides.status ?? "reported",
     created_at: overrides.created_at ?? now.toISOString(),
     expires_at: overrides.expires_at ?? tomorrow.toISOString(),
@@ -79,41 +77,6 @@ describe("meta-state registry core", () => {
     assert.strictEqual(updated.status, "active");
     assert.strictEqual(updated.acked_at, now);
     assert.strictEqual(updated.category, e.category);
-    process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkAutoResolve returns auto-resolved when file mtime > created_at", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
-    process.env.GATE_ROOT = tempDir;
-    const targetFile = join(tempDir, "target.js");
-    writeFileSync(targetFile, "// initial");
-    const now = new Date();
-    const oneSecAgo = new Date(now.getTime() - 1000);
-    // Set mtime to the future relative to created_at
-    utimesSync(targetFile, now, now);
-    const e = makeEntry({
-      created_at: oneSecAgo.toISOString(),
-      auto_resolve: { file_modified: targetFile },
-    });
-    const result = checkAutoResolve(e, tempDir);
-    assert.strictEqual(result, "auto-resolved");
-    process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkAutoResolve returns null when file unchanged", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
-    process.env.GATE_ROOT = tempDir;
-    const targetFile = join(tempDir, "target.js");
-    writeFileSync(targetFile, "// initial");
-    const now = new Date();
-    // Set created_at to future relative to mtime
-    const oneSecFuture = new Date(now.getTime() + 1000);
-    const e = makeEntry({
-      created_at: oneSecFuture.toISOString(),
-      auto_resolve: { file_modified: targetFile },
-    });
-    const result = checkAutoResolve(e, tempDir);
-    assert.strictEqual(result, null);
     process.env.GATE_ROOT = originalEnv;
   });
 
@@ -228,25 +191,6 @@ describe("meta-state registry core", () => {
     assert.ok(/^meta-\d{6}T\d{4}Z-test-slug$/.test(id), `id "${id}" did not match expected format`);
   });
 
-  test("checkAutoResolve resolves relative path against root", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
-    process.env.GATE_ROOT = tempDir;
-    const subDir = join(tempDir, "tools", "learning-loop-mcp");
-    mkdirSync(subDir, { recursive: true });
-    const targetFile = join(subDir, "core.js");
-    writeFileSync(targetFile, "// code");
-    const now = new Date();
-    const oneSecAgo = new Date(now.getTime() - 1000);
-    utimesSync(targetFile, now, now);
-    const e = makeEntry({
-      created_at: oneSecAgo.toISOString(),
-      auto_resolve: { file_modified: "tools/learning-loop-mcp/core.js" },
-    });
-    const result = checkAutoResolve(e, tempDir);
-    assert.strictEqual(result, "auto-resolved");
-    process.env.GATE_ROOT = originalEnv;
-  });
-
   test("updateEntry returns null when entry id not found", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
     process.env.GATE_ROOT = tempDir;
@@ -274,5 +218,36 @@ describe("meta-state registry core", () => {
     ];
     const result = filterEntries(entries, {});
     assert.strictEqual(result.length, 2);
+  });
+});
+
+describe("meta-state T4 auto_resolve removal", () => {
+  test("metaStateEntrySchema strips unknown auto_resolve_file input", async () => {
+    const { metaStateEntrySchema } = await import("./meta-state.js");
+    const result = metaStateEntrySchema.safeParse({
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Test with auto_resolve_file should have it stripped",
+      auto_resolve_file: "tools/test.js",
+    });
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.data.auto_resolve_file, undefined);
+  });
+
+  test("metaStateEntrySchema accepts input without auto_resolve fields", async () => {
+    const { metaStateEntrySchema } = await import("./meta-state.js");
+    const result = metaStateEntrySchema.safeParse({
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Test without auto_resolve fields should pass",
+    });
+    assert.strictEqual(result.success, true);
+  });
+
+  test("checkAutoResolve is no longer exported", async () => {
+    const mod = await import("./meta-state.js");
+    assert.strictEqual(mod.checkAutoResolve, undefined);
   });
 });
