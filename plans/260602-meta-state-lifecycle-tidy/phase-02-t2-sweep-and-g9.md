@@ -1,10 +1,11 @@
 ---
 phase: 2
-title: "T2 — meta_state_sweep tool + G9 fix + expire 4 stale 260529 entries"
-status: pending
+title: T2 — meta_state_sweep tool + G9 fix + expire 4 stale 260529 entries
+status: completed
 priority: P2
-effort: "2h"
-dependencies: [phase-01-t1-fix-g8]
+effort: 2h
+dependencies:
+  - phase-01-t1-fix-g8
 ---
 
 # Phase T2: meta_state_sweep Tool + G9 Fix + Expire 4 Stale Entries

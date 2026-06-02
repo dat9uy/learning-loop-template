@@ -1,10 +1,27 @@
 ---
-title: "Meta-State Lifecycle Tidy + G8 (promoted-rule stripMessageFlags) + G9 (introspect status filter)"
-description: "Followup to 260602-self-enforcing-loop. Four TDD phases: fix G8 (promoted-rule regex must call stripMessageFlags to avoid commit-message false positives), wire meta_state_sweep and apply it to the 4 expired 260529 entries, fix G9 (listAntiPatterns must filter terminal status to honor the warm-tier contract), classify the 7 valid reported entries, and decide whether to wire or remove auto_resolve. YAGNI on T4 lean. Builds on the rule-registry machinery shipped 2026-06-02."
-status: pending
+title: >-
+  Meta-State Lifecycle Tidy + G8 (promoted-rule stripMessageFlags) + G9
+  (introspect status filter)
+description: >-
+  Followup to 260602-self-enforcing-loop. Four TDD phases: fix G8 (promoted-rule
+  regex must call stripMessageFlags to avoid commit-message false positives),
+  wire meta_state_sweep and apply it to the 4 expired 260529 entries, fix G9
+  (listAntiPatterns must filter terminal status to honor the warm-tier
+  contract), classify the 7 valid reported entries, and decide whether to wire
+  or remove auto_resolve. YAGNI on T4 lean. Builds on the rule-registry
+  machinery shipped 2026-06-02.
+status: completed
 priority: P2
-branch: "main"
-tags: [meta, gate, introspect, lifecycle, tdd, g8, g9, followup]
+branch: main
+tags:
+  - meta
+  - gate
+  - introspect
+  - lifecycle
+  - tdd
+  - g8
+  - g9
+  - followup
 blockedBy:
   - 260602-self-enforcing-loop
 blocks: []
@@ -17,8 +34,10 @@ related:
   - tools/learning-loop-mcp/core/loop-introspect.js
   - tools/learning-loop-mcp/hooks/bash-gate.js
   - tools/learning-loop-mcp/hooks/write-gate.js
-created: "2026-06-02T00:00:00Z"
-createdBy: "ck:plan --hard --tdd plans/reports/brainstorm-260602-meta-state-lifecycle-tidy.md"
+created: '2026-06-02T00:00:00Z'
+createdBy: >-
+  ck:plan --hard --tdd
+  plans/reports/brainstorm-260602-meta-state-lifecycle-tidy.md
 source: skill
 ---
 
@@ -34,10 +53,10 @@ The most critical finding is **G8**: `applyPromotedRules` does not call `stripMe
 
 | Phase | Name | Status | Effort |
 |-------|------|--------|--------|
-| 1 | [T1 — Fix G8 (promoted-rule stripMessageFlags)](./phase-01-t1-fix-g8.md) | pending | 1h |
-| 2 | [T2 — meta_state_sweep tool + G9 fix + expire 4 stale 260529 entries](./phase-02-t2-sweep-and-g9.md) | pending | 2h |
-| 3 | [T3 — Classify 7 valid reported entries](./phase-03-t3-classify-entries.md) | pending | 1.5h |
-| 4 | [T4 — Wire-or-remove auto_resolve (YAGNI lean)](./phase-04-t4-auto-resolve.md) | pending | 0.5h |
+| 1 | [T1 — Fix G8 (promoted-rule stripMessageFlags)](./phase-01-t1-fix-g8.md) | pending | Completed |
+| 2 | [T2 — meta_state_sweep tool + G9 fix + expire 4 stale 260529 entries](./phase-02-t2-sweep-and-g9.md) | pending | Completed |
+| 3 | [T3 — Classify 7 valid reported entries](./phase-03-t3-classify-entries.md) | pending | Completed |
+| 4 | [T4 — Wire-or-remove auto_resolve (YAGNI lean)](./phase-04-t4-auto-resolve.md) | pending | Completed |
 
 ## Cross-Plan Dependencies
 
@@ -92,10 +111,10 @@ The most critical finding is **G8**: `applyPromotedRules` does not call `stripMe
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
-| 1 | T1's extracted `splitSegments` / `stripMessageFlags` behave differently in isolation (per-segment loop vs whole-command match) | High | Accept | Phase T1 |
-| 2 | T2 sweep race: dry-run captures N transitions, apply captures N+1 if a new entry is reported between | Medium | Accept | Phase T2 |
-| 3 | T2 G9 fix changes `loop_describe` warm tier count mid-session; agents caching previous shape will see a different length | Low | Accept | Phase T2 |
-| 4 | T3 disposition disagreement with operator on the sanitizeslug promotion | Low | Accept | Phase T3 |
+| 1 | T1's extracted `splitSegments` / `stripMessageFlags` behave differently in isolation (per-segment loop vs whole-command match) | High | Accept | Completed |
+| 2 | T2 sweep race: dry-run captures N transitions, apply captures N+1 if a new entry is reported between | Medium | Accept | Completed |
+| 3 | T2 G9 fix changes `loop_describe` warm tier count mid-session; agents caching previous shape will see a different length | Low | Accept | Completed |
+| 4 | T3 disposition disagreement with operator on the sanitizeslug promotion | Low | Accept | Completed |
 | 5 | T4 removal more invasive than planned: 5 existing tests reference `auto_resolve_file` / `checkAutoResolve`; net test count changes from +3 to -2 | Medium | Accept | Phase T4 |
 | 6 | T4 `checkAutoResolve` becomes dead code after schema removal; decide delete vs no-op | Medium | Accept | Phase T4 |
 | 7 | ck CLI unavailable for plan scaffolding due to G8 false positive (this plan was written using direct `Create` tool) | Low | Document | Whole-plan |

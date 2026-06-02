@@ -1,9 +1,9 @@
 ---
 phase: 1
-title: "T1 — Fix G8 (promoted-rule stripMessageFlags)"
-status: pending
+title: T1 — Fix G8 (promoted-rule stripMessageFlags)
+status: completed
 priority: P2
-effort: "1h"
+effort: 1h
 dependencies: []
 ---
 

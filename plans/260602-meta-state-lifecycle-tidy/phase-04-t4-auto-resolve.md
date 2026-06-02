@@ -1,10 +1,11 @@
 ---
 phase: 4
-title: "T4 — Wire-or-remove auto_resolve (YAGNI lean: remove)"
-status: pending
+title: 'T4 — Wire-or-remove auto_resolve (YAGNI lean: remove)'
+status: completed
 priority: P3
-effort: "0.5h"
-dependencies: [phase-03-t3-classify-entries]
+effort: 0.5h
+dependencies:
+  - phase-03-t3-classify-entries
 ---
 
 # Phase T4: Wire-or-Remove auto_resolve
