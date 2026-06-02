@@ -4,6 +4,9 @@ status: proposed
 tags: [brainstorm, meta, meta-state, agent-affordances, self-modifying, derivation, drift, mcp-tools, decomposition]
 related:
   - plans/reports/brainstorm-260602-derived-status-and-self-healing.md (supersedes)
+  - plans/reports/brainstorm-260602-sp0-log-change.md (SP0 dedicated — locked, shipped)
+  - plans/reports/brainstorm-260602-sp1-derive-status.md (SP1 dedicated — locked, plan pending)
+  - plans/260602-sp0-log-change/plan.md (SP0 plan — completed)
   - plans/260602-strict-mcp-call-rules/plan.md
   - plans/260602-self-enforcing-loop/plan.md
   - plans/260602-meta-state-lifecycle-tidy/plan.md
@@ -126,48 +129,35 @@ SP3: Drift Query
 > - **Auto-hook:** dropped from SP0; revisit after drift measurement
 > - **Schema protection:** tool-only for SP0; write-gate extension deferred
 >
-> **Why the dedicated report:** the operator approved SP0 with the note "write the dedicated report for this, the refer the parent doc to this, so we could ck:plan in scope." SP1-SP3 remain designed in this parent doc; SP0's full design lives in the dedicated report because it is the first sub-project to be implemented.
+> **Why the dedicated report:** the operator approved SP0 with the note "write the dedicated report for this, the refer the parent doc to this, so we could ck:plan in scope." SP0 and SP1 are now both dedicated; SP2 and SP3 remain designed in this parent doc until their brainstorm sessions lock their designs.
 
 ### SP1: Derivation Query — `meta_state_derive_status`
 
 **Goal:** A pure derivation function exposed as an MCP tool. The agent asks "what is the effective status of this entry?" and gets a structured answer. The function is the verifier (Pattern 2); the agent decides what to do with the answer.
 
-**Tool shape (proposed):**
-```js
-meta_state_derive_status({
-  id: string,            // entry id to derive status for
-  context?: {            // optional override (defaults: load from root)
-    root?: string,
-    mcp_config?: object,
-    test_runner?: string,
-  },
-})
-```
-
-**Returns:**
-```json
-{
-  "id": "meta-260601T1339Z-the-learning-loop...",
-  "raw_status": "active",
-  "derived_status": "resolved-by-mechanism",
-  "derivation": {
-    "kind": "mechanism-shipped",
-    "evidence": {
-      "files_exist": [".factory/hooks/loop-surface-inject.cjs", ".factory/hooks.json"],
-      "tests_pass": true,
-      "test_count": 5,
-      "test_path": ".factory/hooks/__tests__/loop-surface-inject.test.cjs"
-    },
-    "checked_at": "2026-06-02T12:30:00Z"
-  },
-  "drift": false,
-  "recommendation": "no_action" | "resolve" | "investigate" | "log_drift"
-}
-```
-
-**Pure function core (testable, no I/O at unit level):** `deriveStatus(entry, codeContext) -> DerivedStatus`. Lives in `core/derive-status.js`. MCP tool wraps it with I/O.
-
-**Why a tool, not just `loop_describe({tier:"cold"})`:** the derivation is expensive (file I/O, possibly test runs). Calling it once for a specific id is cheaper than loading the whole cold tier. The tool is a focused query; `loop_describe` is a survey.
+> **SP1 design has been moved to a dedicated report:** [`brainstorm-260602-sp1-derive-status.md`](./brainstorm-260602-sp1-derive-status.md) (status: locked 2026-06-02).
+>
+> The dedicated report contains the full SP1 design: tool shape, derivation kinds, `signals` (renamed from `evidence` to avoid the `records/meta/evidence/` collision), recommendation triggers, test plan, and change-log fast path. Implementation will consume the dedicated report via `/ck:plan`.
+>
+> **Brief recap of the locked design (full spec in the linked report):**
+>
+> - **Tool name:** `meta_state_derive_status` (agent-callable, mirrors `meta_state_list`)
+> - **Approach:** uniform baseline (always read `evidence_code_ref` + `evidence_test`) + opt-in test-runner via `codeContext.run_tests: boolean` (default false)
+> - **Pure function core (no I/O at unit level):** `deriveStatus(entry, codeContext) -> DerivedStatus`. Lives in `core/derive-status.js`. MCP tool wraps it with I/O.
+> - **Output shape:** `{ id, raw_status, derived_status, derivation { kind, signals, checked_at, duration_ms }, drift, recommendation }`
+> - **`derivation.kind` (4 values):** `mechanism-shipped` | `code-only` | `code-missing` | `no-signals`
+> - **`derived_status` (3 values):** `resolved-by-mechanism` | `active-no-signal` | `active-uncertain`
+> - **`recommendation` (4 values):** `no_action` | `resolve` | `investigate` | `log_drift`
+> - **Drift detection:** `drift: true` iff `derived_status` says mechanism shipped but `raw_status` is not terminal
+> - **Change-log fast path:** `kind: "not-derivable"` no-op; agents query change-log history via `meta_state_list({ entry_kind: "change-log" })` (SP0-shipped)
+> - **Naming:** `signals` (not `evidence`) for the per-check field — avoids the `records/meta/evidence/` collision
+> - **Out of scope for SP1:** auto-mutation, SP2 grounding deep checks, SP3 drift aggregation, `meta_state_resolve` integration, schema migration, subtype signal table
+> - **Test budget:** 20 new tests (12 unit + 8 tool) + 475 existing = 495 total
+> - **Touchpoints:** 4 new files + 1 modify (`tools/manifest.json`); no schema or existing tool changes
+>
+> **Acceptance test:** end-to-end on `meta-260601T1339Z-the-learning-loop...` (a finding with `evidence_code_ref: "tools/learning-loop-mcp/lib/source-ref-validator.js"`) must return `derived_status: "resolved-by-mechanism"` + `recommendation: "resolve"` + `drift: true`.
+>
+> **Why a dedicated report:** same rationale as SP0. The parent doc decomposes 4 sub-projects (SP0-SP3); each sub-project gets a dedicated design doc when its brainstorm session locks the design. SP0 and SP1 are now both dedicated; SP2 and SP3 remain in this parent doc until their brainstorm sessions lock their designs.
 
 ### SP2: Grounding Check — `meta_state_check_grounding`
 
@@ -249,6 +239,17 @@ meta_state_query_drift({
 - No follow-up plan created in this session.
 - No schema migration. The "schema home" question (Q3) is settled as: zod in `core/meta-state.js` (runtime) + `schemas/meta-state.schema.json` (static validation), both generated from one field list. But this is a future change, not this session.
 
+## What Has Happened Since (cumulative status, 2026-06-02)
+
+This parent doc was written on 2026-06-02T12:30Z with all 4 sub-projects in design phase. Subsequent work has advanced the decomposition:
+
+- **SP0 (Self-Modification Affordance) — SHIPPED.** See `plans/260602-sp0-log-change/plan.md` (status: completed). The 5-phase TDD plan shipped 25 new tests (472 → 475 after the SP0 housekeeping follow-up; 475 currently passing). `meta_state_log_change` is registered in `tools/manifest.json` (46 tools total; 45 in the original manifest, +1 in this session). The first real change-log entry is in `meta-state.jsonl`.
+- **SP1 (Derivation Query) — DESIGN LOCKED.** See `brainstorm-260602-sp1-derive-status.md` (status: locked 2026-06-02). Plan handoff via `/ck:plan --tdd` is deferred to a future session; 20 new tests planned (495 total). The dedicated report contains the full SP1 design including the `evidence` → `signals` rename rationale.
+- **SP2 (Grounding Check) — design unchanged.** Still in this parent doc.
+- **SP3 (Drift Query) — design unchanged.** Still in this parent doc.
+
+The decomposition framing (Pattern 2: invest in the verifier, not the generator) and the build order rationale (SP0 → SP1 → SP2 → SP3) hold. The auto-mutation in SP3's phase 2 (30-day drift-event window) remains the highest-stakes change and still cannot ship in the same cycle as the others.
+
 ## Build Order Rationale
 
 - **SP0 first:** every other sub-project involves the agent modifying or querying meta-state. SP0 makes the system self-aware of those modifications. Without SP0, the agent can make changes that are invisible to its own audit trail.
@@ -296,19 +297,25 @@ The end state is: `status` is a hint, `derived_status` is the source of truth, a
 - `plans/260602-self-enforcing-loop/plan.md` — `meta_state_promote_rule`, `loadPromotedRules` foundation
 - `plans/260602-strict-mcp-call-rules/plan.md` — SessionStart hook, scope_predicate
 - `plans/260602-meta-state-lifecycle-tidy/plan.md` — sweep tool, status filter, expires_at handling
+- `plans/260602-sp0-log-change/plan.md` — SP0 plan, **completed** (5 phases, 25 new tests)
+- `plans/reports/brainstorm-260602-sp0-log-change.md` — SP0 dedicated design, locked
+- `plans/reports/brainstorm-260602-sp1-derive-status.md` — SP1 dedicated design, locked (plan pending)
 - `plans/reports/brainstorm-260602-derived-status-and-self-healing.md` — superseded by this doc
 
 ### Code References
 
-- `tools/learning-loop-mcp/core/meta-state.js` — registry source of truth
-- `tools/learning-loop-mcp/core/loop-introspect.js` — reads meta-state directly (never touches `records/index/` for meta)
+- `tools/learning-loop-mcp/core/meta-state.js` — registry source of truth; exports `META_STATE_FINDING_CATEGORIES`, `metaStateFindingEntrySchema`, `metaStateChangeEntrySchema`, `metaStateEntrySchema` (union)
+- `tools/learning-loop-mcp/core/loop-introspect.js` — reads meta-state directly (never touches `records/index/` for meta); `listAllMetaCategories` derives from `META_STATE_FINDING_CATEGORIES`
 - `tools/learning-loop-mcp/core/extract-index/extract-index.js:21-24` — hardcoded skip of meta evidence
 - `tools/learning-loop-mcp/core/gate-logic.js:434` — `loadPromotedRules`
-- `tools/learning-loop-mcp/tools/meta-state-report-tool.js` — existing report tool
+- `tools/learning-loop-mcp/core/slugify.js` — shared slugify helper (extracted in SP0 Phase 4)
+- `tools/learning-loop-mcp/tools/meta-state-report-tool.js` — existing report tool (uses `metaStateFindingEntrySchema.shape`)
 - `tools/learning-loop-mcp/tools/meta-state-ack-tool.js` — existing ack tool
-- `tools/learning-loop-mcp/tools/meta-state-resolve-tool.js` — existing resolve tool
+- `tools/learning-loop-mcp/tools/meta-state-resolve-tool.js` — existing resolve tool (rejects `change_log_immutable` per SP0)
 - `tools/learning-loop-mcp/tools/meta-state-promote-rule-tool.js` — existing promote tool
 - `tools/learning-loop-mcp/tools/meta-state-sweep-tool.js` — existing sweep tool
+- `tools/learning-loop-mcp/tools/meta-state-list-tool.js` — existing list tool (added `entry_kind` filter per SP0)
+- `tools/learning-loop-mcp/tools/meta-state-log-change-tool.js` — **NEW** in SP0, change-log writer
 - `tools/learning-loop-mcp/tools/loop-describe-tool.js` — discovery surface
 - `schemas/index-entry.schema.json` — non-meta index entry schema (for comparison only)
-- `meta-state.jsonl` — 15 entries as of 2026-06-02T12:30Z
+- `meta-state.jsonl` — 19 entries as of 2026-06-02 (18 findings + 1 change-log from SP0)
