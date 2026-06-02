@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "SessionStart Hook (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: []
@@ -280,13 +280,13 @@ pnpm test .factory/hooks/__tests__/loop-surface-inject.test.js
 
 ## Success Criteria
 
-- [ ] `.factory/hooks.json` exists at project root with `SessionStart` matcher `startup`
-- [ ] `.factory/hooks/loop-surface-inject.cjs` exists, is executable, and respects all 3 guards
-- [ ] All 4 new tests pass
-- [ ] `pnpm test` passes 434/434 (current 430 + 4 new)
+- [x] `.factory/hooks.json` exists at project root with `SessionStart` matcher `startup`
+- [x] `.factory/hooks/loop-surface-inject.cjs` exists, is executable, and respects all 3 guards
+- [x] All 6 new tests pass
+- [x] `pnpm test` passes 443/443
 - [ ] Manual verification: agent context includes the loop-surface block in a matching project
 - [ ] Manual verification: no block injected in a plain project
-- [ ] `LL_DISABLE_LOOP_SURFACE_INJECTION=1` suppresses the block
+- [x] `LL_DISABLE_LOOP_SURFACE_INJECTION=1` suppresses the block
 
 ## Risk Assessment
 

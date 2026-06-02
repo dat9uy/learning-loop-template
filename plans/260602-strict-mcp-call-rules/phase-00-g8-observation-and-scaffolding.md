@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "G8 Observation + Plan Scaffolding"
-status: pending
+status: completed
 priority: P2
 effort: "0.25h"
 dependencies: []
@@ -69,10 +69,10 @@ The subcommand-class G8 fix is **out of scope** for this plan (it would touch th
 
 ## Success Criteria
 
-- [ ] `meta-state.jsonl` contains the G8 subcommand-class entry with the new ID
-- [ ] G8 entry smoke test (`g8-subcommand-class-entry.test.js`) passes
-- [ ] `pnpm validate:records` passes
-- [ ] `plans/260602-strict-mcp-call-rules/plan.md` + `phase-01-*.md` + `phase-02-*.md` exist and are non-empty
+- [x] `meta-state.jsonl` contains the G8 subcommand-class entry with the new ID
+- [x] G8 entry smoke test (`g8-subcommand-class-entry.test.js`) passes
+- [x] `pnpm validate:records` passes
+- [x] `plans/260602-strict-mcp-call-rules/plan.md` + `phase-01-*.md` + `phase-02-*.md` exist and are non-empty
 
 ## Risk Assessment
 

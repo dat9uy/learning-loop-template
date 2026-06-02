@@ -1,7 +1,7 @@
 ---
 title: "Strict MCP-Call Rules: Gate Scope Predicate + SessionStart Hook"
 description: "Implements the design in plans/reports/brainstorm-260602-strict-mcp-call-rules.md. Two TDD phases: (1) gate scope_predicate field on meta_state_promote_rule and loadPromotedRules so the new rule-project-skill-boundary only fires in projects that have their own .mcp.json; (2) project-level .factory/hooks.json + loop-surface-inject.cjs that auto-injects loop_describe({tier:\"summary\"}) on Droid SessionStart events, closing G7 (loop_describe adoption = 0 outside tests). Addresses prompt/behavior gap that 260602-self-enforcing-loop and 260602-meta-state-lifecycle-tidy left open."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, gate, mcp, enforcement, anti-pattern, hook, session-start, tdd, followup]
@@ -85,17 +85,17 @@ Not applicable — this plan does not modify `loop_describe`. The `SessionStart`
 
 ## Success Criteria (Whole-Plan)
 
-- [ ] `meta_state_promote_rule` accepts a new optional `scope_predicate` field (`none` | `project_has_learning_loop_mcp`)
-- [ ] `loadPromotedRules` evaluates `scope_predicate` against project context; rules with `none` fire globally (current behavior); rules with `project_has_learning_loop_mcp` only fire when the project has `.mcp.json` + `learning-loop-mcp` entry
-- [ ] New meta-state entry `meta-260602T0750Z-...` exists with `status: "active"`, `enforcement: "gate"`, `rule_id: "rule-project-skill-boundary"`, `scope_predicate: "project_has_learning_loop_mcp"`
-- [ ] The new entry is enforced end-to-end (glob match in matching project, no match in plain project)
-- [ ] New project-level `.factory/hooks.json` registers `SessionStart` with matcher `startup`
-- [ ] New `.factory/hooks/loop-surface-inject.cjs` exits silently when no `.mcp.json` or no `learning-loop-mcp` entry
-- [ ] New script spawns the MCP server and calls `loop_describe({tier:"summary"})` in matching project; prints a 1-2KB block to stdout
-- [ ] `pnpm test` passes (current 423 + 11 new = 434/434 after red-team +1 G8 smoke test)
-- [ ] `pnpm validate:records` passes
-- [ ] No regression in existing 4 promoted-rule integration tests
-- [ ] G8 false-positive observation recorded in `meta-state.jsonl` via `meta_state_report` (Phase 0 deliverable)
+- [x] `meta_state_promote_rule` accepts a new optional `scope_predicate` field (`none` | `project_has_learning_loop_mcp`)
+- [x] `loadPromotedRules` evaluates `scope_predicate` against project context; rules with `none` fire globally (current behavior); rules with `project_has_learning_loop_mcp` only fire when the project has `.mcp.json` + `learning-loop-mcp` entry
+- [x] New meta-state entry `meta-260602T0750Z-...` exists with `status: "active"`, `enforcement: "gate"`, `rule_id: "rule-project-skill-boundary"`, `scope_predicate: "project_has_learning_loop_mcp"`
+- [x] The new entry is enforced end-to-end (glob match in matching project, no match in plain project)
+- [x] New project-level `.factory/hooks.json` registers `SessionStart` with matcher `startup`
+- [x] New `.factory/hooks/loop-surface-inject.cjs` exits silently when no `.mcp.json` or no `learning-loop-mcp` entry
+- [x] New script spawns the MCP server and calls `loop_describe({tier:"summary"})` in matching project; prints a 1-2KB block to stdout
+- [x] `pnpm test` passes (443/443 after all fixes)
+- [x] `pnpm validate:records` passes
+- [x] No regression in existing 4 promoted-rule integration tests
+- [x] G8 false-positive observation recorded in `meta-state.jsonl` via `meta_state_report` (Phase 0 deliverable)
 
 ## Red Team Review
 

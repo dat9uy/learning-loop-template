@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Gate Scope Predicate (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: []
@@ -190,15 +190,15 @@ OPERATOR_MODE=1 mcp__learning_loop_mcp__meta_state_promote_rule \
 
 ## Success Criteria
 
-- [ ] `meta_state_promote_rule` schema accepts `scope_predicate: "none" | "project_has_learning_loop_mcp"` (default: "none")
-- [ ] `loadPromotedRules` evaluates `scope_predicate` correctly for all 6 test cases
-- [ ] New meta-state entry `meta-260602T0750Z-...` exists with `status: "active"`, `scope_predicate: "project_has_learning_loop_mcp"`, `rule_id: "rule-project-skill-boundary"`
-- [ ] `applyPromotedRules` + `bash-gate.js` escalates glob match in a matching project
-- [ ] `applyPromotedRules` + `bash-gate.js` does not escalate glob match in a plain project
-- [ ] `pnpm test` passes 430/430 (current 423 + 7 new)
-- [ ] `pnpm validate:records` passes
-- [ ] `meta_state_promote_rule({preview: true, ...})` still works with the new `scope_predicate` field
-- [ ] Existing 19 promoted-rules integration tests pass (no regression)
+- [x] `meta_state_promote_rule` schema accepts `scope_predicate: "none" | "project_has_learning_loop_mcp"` (default: "none")
+- [x] `loadPromotedRules` evaluates `scope_predicate` correctly for all 9 test cases
+- [x] New meta-state entry exists with `status: "active"`, `scope_predicate: "project_has_learning_loop_mcp"`, `rule_id: "rule-project-skill-boundary"`
+- [x] `applyPromotedRules` + `write-gate.js` escalates glob match in a matching project
+- [x] `applyPromotedRules` + `write-gate.js` does not escalate glob match in a plain project
+- [x] `pnpm test` passes 443/443
+- [x] `pnpm validate:records` passes
+- [x] `meta_state_promote_rule({preview: true, ...})` still works with the new `scope_predicate` field
+- [x] Existing 19 promoted-rules integration tests pass (no regression)
 
 ## Risk Assessment
 
