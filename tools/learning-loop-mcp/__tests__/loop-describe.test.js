@@ -2,8 +2,10 @@ import { describe, test } from "node:test";
 import assert from "node:assert";
 import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
 import { metaStateListTool } from "../tools/meta-state-list-tool.js";
+import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
 import { loopDescribeTool } from "../tools/loop-describe-tool.js";
 import { loadPromotedRules } from "../core/gate-logic.js";
+import { listAntiPatterns } from "../core/loop-introspect.js";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -235,6 +237,87 @@ describe("loop_describe new behavior", () => {
       assert.ok(Array.isArray(text.tools));
       // Should still return tools even if some imports failed
       assert.ok(text.tools.length > 0);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});
+
+describe("listAntiPatterns G9 status filter", () => {
+  let tempDir;
+  const originalEnv = process.env.GATE_ROOT;
+
+  test("excludes resolved entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const report = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        subtype: "escape-hatch-abuse",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Resolved anti-pattern entry for G9 testing",
+      });
+      const id = JSON.parse(report.content[0].text).id;
+      await metaStateResolveTool.handler({ id, resolution: "fixed" });
+
+      const result = listAntiPatterns(tempDir);
+      assert.strictEqual(result.length, 0);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("excludes expired entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-exp-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const report = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        subtype: "escape-hatch-abuse",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Expired anti-pattern entry for G9 testing",
+      });
+      const id = JSON.parse(report.content[0].text).id;
+      // Force expiry by setting expires_at to past
+      const { updateEntry } = await import("../core/meta-state.js");
+      await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
+
+      // metaStateListTool auto-applies expiry
+      await metaStateListTool.handler({ include_expired: true });
+
+      const result = listAntiPatterns(tempDir);
+      assert.strictEqual(result.length, 0);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("includes reported and active entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-inc-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        subtype: "escape-hatch-abuse",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Reported anti-pattern entry for G9 testing one",
+      });
+      const report2 = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        subtype: "new-artifact-type",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Reported anti-pattern entry for G9 testing two",
+      });
+      const id2 = JSON.parse(report2.content[0].text).id;
+      const { metaStateAckTool } = await import("../tools/meta-state-ack-tool.js");
+      await metaStateAckTool.handler({ id: id2, reason: "ack" });
+
+      const result = listAntiPatterns(tempDir);
+      assert.strictEqual(result.length, 2);
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

@@ -120,11 +120,14 @@ export function listActiveFindings(root, { categories } = {}) {
 }
 
 /**
- * List anti-pattern findings (loop-anti-pattern category).
+ * List anti-pattern findings (loop-anti-pattern category, non-terminal status).
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  let findings = entries.filter((e) => e.category === "loop-anti-pattern");
+  const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+  let findings = entries.filter(
+    (e) => e.category === "loop-anti-pattern" && !TERMINAL_STATUSES.has(e.status)
+  );
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
   }

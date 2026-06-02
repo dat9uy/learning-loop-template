@@ -41,5 +41,6 @@
   { "file": "./tools/meta-state-ack-tool.js", "export": "metaStateAckTool" },
   { "file": "./tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool" },
   { "file": "./tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool" },
-  { "file": "./tools/loop-describe-tool.js", "export": "loopDescribeTool" }
+  { "file": "./tools/loop-describe-tool.js", "export": "loopDescribeTool" },
+  { "file": "./tools/meta-state-sweep-tool.js", "export": "metaStateSweepTool" }
 ]
