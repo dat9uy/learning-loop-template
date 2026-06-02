@@ -6,6 +6,14 @@ const REGISTRY_FILENAME = "meta-state.jsonl";
 const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+// Source-of-truth categories for finding entries. Export so introspection
+// layers (e.g. core/loop-introspect.js) can derive from the same source.
+export const META_STATE_FINDING_CATEGORIES = [
+  "gate-logic-bug", "record-repair-gap", "schema-drift",
+  "stale-ref", "mcp-tool-missing", "budget-check",
+  "loop-anti-pattern",
+];
+
 /**
  * Finding branch schema — used by the 5 existing meta-state finding tools.
  * Has .shape available for tool schema reuse.

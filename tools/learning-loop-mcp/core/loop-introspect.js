@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readRegistry } from "./meta-state.js";
+import { readRegistry, META_STATE_FINDING_CATEGORIES } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -78,18 +78,12 @@ export function listAllRecordTypes(root) {
 }
 
 /**
- * List all meta-state categories from the zod enum.
+ * List all meta-state finding categories. Source of truth is
+ * META_STATE_FINDING_CATEGORIES in core/meta-state.js (kept in sync
+ * with the metaStateFindingEntrySchema zod enum).
  */
 export function listAllMetaCategories() {
-  return [
-    "gate-logic-bug",
-    "record-repair-gap",
-    "schema-drift",
-    "stale-ref",
-    "mcp-tool-missing",
-    "budget-check",
-    "loop-anti-pattern",
-  ];
+  return [...META_STATE_FINDING_CATEGORIES];
 }
 
 /**
