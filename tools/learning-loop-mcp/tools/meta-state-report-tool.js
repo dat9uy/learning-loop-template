@@ -1,15 +1,16 @@
 import {
   writeEntry,
   generateId,
-  metaStateEntrySchema,
+  metaStateFindingEntrySchema,
 } from "#mcp/core/meta-state.js";
+import { slugify } from "#mcp/core/slugify.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateReportTool = {
   name: "meta_state_report",
   description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator.",
-  schema: metaStateEntrySchema.shape,
+  schema: metaStateFindingEntrySchema.shape,
   handler: async ({
     category,
     subtype,
@@ -27,6 +28,7 @@ export const metaStateReportTool = {
 
     const entry = {
       id,
+      entry_kind: "finding",
       category,
       ...(subtype && { subtype }),
       severity,
@@ -68,11 +70,3 @@ export const metaStateReportTool = {
     };
   },
 };
-
-function slugify(description) {
-  return description
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .slice(0, 60)
-    .replace(/^-|-$/g, "");
-}

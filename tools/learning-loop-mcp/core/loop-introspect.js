@@ -112,7 +112,7 @@ export function listAllGatePatterns(root) {
 export function listActiveFindings(root, { categories } = {}) {
   const entries = readRegistry(root);
   const activeStatuses = new Set(["reported", "active"]);
-  let findings = entries.filter((e) => activeStatuses.has(e.status));
+  let findings = entries.filter((e) => activeStatuses.has(e.status) && e.entry_kind === "finding");
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
   }
@@ -139,7 +139,7 @@ export function listAntiPatterns(root, { categories } = {}) {
  */
 export function listAllFindings(root, { categories } = {}) {
   const entries = readRegistry(root);
-  let findings = entries;
+  let findings = entries.filter((e) => e.entry_kind === "finding");
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
   }

@@ -99,13 +99,13 @@ This phase has no new tests. The 52 existing tests are the verification:
 
 ## Success Criteria
 
-- [ ] `manifest.json` includes the new tool
-- [ ] `core/slugify.js` exists with the exported function
-- [ ] `meta-state-report-tool.js` imports `slugify` from the shared location
-- [ ] `meta-state-log-change-tool.js` imports `slugify` from the shared location
-- [ ] No local `slugify` definitions remain in tool files
-- [ ] 52 existing tests pass
-- [ ] `pnpm test` passes (full suite)
+- [x] `manifest.json` includes the new tool
+- [x] `core/slugify.js` exists with the exported function
+- [x] `meta-state-report-tool.js` imports `slugify` from the shared location
+- [x] `meta-state-log-change-tool.js` imports `slugify` from the shared location
+- [x] No local `slugify` definitions remain in tool files
+- [x] 52 existing tests pass
+- [x] `pnpm test` passes (full suite)
 
 ## Risk Assessment
 

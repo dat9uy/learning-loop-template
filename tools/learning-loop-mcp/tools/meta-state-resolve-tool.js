@@ -33,6 +33,18 @@ export const metaStateResolveTool = {
       };
     }
 
+    if (entry.entry_kind === "change-log") {
+      const result = { resolved: false, reason: "change_log_immutable", id };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_resolve",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
     if (TERMINAL_STATUSES.has(entry.status)) {
       const result = {
         resolved: false,

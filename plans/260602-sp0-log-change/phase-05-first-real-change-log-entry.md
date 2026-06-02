@@ -103,15 +103,15 @@ The test pattern mirrors `g8-subcommand-class-entry.test.js` (smoke test that re
 
 ## Success Criteria
 
-- [ ] 1 new smoke test written and failing (RED)
-- [ ] The change-log entry is appended to `meta-state.jsonl`
-- [ ] The smoke test passes after the entry is logged (GREEN)
-- [ ] 52 existing tests still pass
-- [ ] The entry has `entry_kind: "change-log"`, `change_dimension: "surface"`, `change_target: "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js"`, `change_diff.added: ["meta_state_log_change"]`
-- [ ] The entry is the first change-log entry in the registry
-- [ ] `pnpm test` passes (full suite)
-- [ ] `pnpm validate:records` passes
-- [ ] `pnpm validate:plan-loop` passes
+- [x] 1 new smoke test written and failing (RED)
+- [x] The change-log entry is appended to `meta-state.jsonl`
+- [x] The smoke test passes after the entry is logged (GREEN)
+- [x] 52 existing tests still pass
+- [x] The entry has `entry_kind: "change-log"`, `change_dimension: "surface"`, `change_target: "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js"`, `change_diff.added: ["meta_state_log_change"]`
+- [x] The entry is the first change-log entry in the registry
+- [x] `pnpm test` passes (full suite)
+- [x] `pnpm validate:records` passes
+- [x] `pnpm validate:plan-loop` passes
 
 ## Risk Assessment
 

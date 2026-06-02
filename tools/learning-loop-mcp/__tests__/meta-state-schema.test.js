@@ -1,14 +1,20 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
 import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateEntrySchema, readRegistry } from "../core/meta-state.js";
-import { mkdtempSync } from "node:fs";
+import {
+  metaStateFindingEntrySchema,
+  metaStateChangeEntrySchema,
+  metaStateEntrySchema,
+  readRegistry,
+  filterEntries,
+} from "../core/meta-state.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("meta-state schema regression", () => {
   test("existing gate-logic-bug category validates", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -18,7 +24,7 @@ describe("meta-state schema regression", () => {
   });
 
   test("invalid category is rejected", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "not-a-category",
       severity: "warning",
       affected_system: "gate-logic",
@@ -28,7 +34,7 @@ describe("meta-state schema regression", () => {
   });
 
   test("entry without optional fields validates", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "budget-check",
       severity: "warning",
       affected_system: "vnstock_vendor",
@@ -38,7 +44,7 @@ describe("meta-state schema regression", () => {
   });
 
   test("description shorter than 20 chars is rejected", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -53,7 +59,7 @@ describe("meta-state schema new behavior", () => {
   const originalEnv = process.env.GATE_ROOT;
 
   test("loop-anti-pattern category is accepted", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "gate-logic",
@@ -63,7 +69,7 @@ describe("meta-state schema new behavior", () => {
   });
 
   test("loop-anti-pattern with subtype is accepted", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "loop-anti-pattern",
       subtype: "new-artifact-type",
       severity: "warning",
@@ -74,7 +80,7 @@ describe("meta-state schema new behavior", () => {
   });
 
   test("subtype on non-loop-anti-pattern category is accepted (forward compat)", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       subtype: "anything",
       severity: "warning",
@@ -85,7 +91,7 @@ describe("meta-state schema new behavior", () => {
   });
 
   test("status reported is accepted", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -96,7 +102,7 @@ describe("meta-state schema new behavior", () => {
   });
 
   test("status active is rejected", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -107,7 +113,7 @@ describe("meta-state schema new behavior", () => {
   });
 
   test("status resolved is rejected", () => {
-    const result = metaStateEntrySchema.safeParse({
+    const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -117,13 +123,13 @@ describe("meta-state schema new behavior", () => {
     assert.strictEqual(result.success, false);
   });
 
-  test("tool schema matches shared metaStateEntrySchema shape", () => {
+  test("tool schema matches shared metaStateFindingEntrySchema shape", () => {
     const toolKeys = Object.keys(metaStateReportTool.schema).sort();
-    const sharedKeys = Object.keys(metaStateEntrySchema.shape).sort();
+    const sharedKeys = Object.keys(metaStateFindingEntrySchema.shape).sort();
     assert.deepStrictEqual(toolKeys, sharedKeys, "Tool schema keys must match shared schema keys");
     for (const key of toolKeys) {
       assert.ok(
-        metaStateEntrySchema.shape[key],
+        metaStateFindingEntrySchema.shape[key],
         `Shared schema missing key: ${key}`
       );
     }
@@ -159,5 +165,205 @@ describe("meta-state schema new behavior", () => {
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }
+  });
+});
+
+describe("meta-state change-log schema", () => {
+  test("metaStateChangeEntrySchema accepts valid change-log input", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "core/meta-state.js",
+      change_diff: { added: ["entry_kind"], removed: [], changed: [] },
+      reason: "SP0 introduces a discriminated union to support change-log entries alongside findings.",
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, true);
+  });
+
+  test("metaStateChangeEntrySchema rejects change_dimension outside the 3-bucket enum", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "unknown",
+      change_target: "core/meta-state.js",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "This change dimension does not exist in the schema.",
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, false);
+  });
+
+  test("metaStateChangeEntrySchema rejects change_target empty string", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "mechanical",
+      change_target: "",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Empty target should be rejected by the schema.",
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, false);
+  });
+
+  test("metaStateChangeEntrySchema rejects reason shorter than 20 chars", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "surface",
+      change_target: "tools/manifest.json",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "too short",
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, false);
+  });
+
+  test("metaStateChangeEntrySchema accepts any change_target string (open)", () => {
+    const targets = [
+      "tools/learning-loop-mcp/core/meta-state.js",
+      "rule-no-new-artifact-types",
+      "https://example.com/design-doc",
+    ];
+    for (const target of targets) {
+      const result = metaStateChangeEntrySchema.safeParse({
+        entry_kind: "change-log",
+        change_dimension: "semantic",
+        change_target: target,
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: `Testing open change_target with value: ${target}`,
+        status: "active",
+        created_at: new Date().toISOString(),
+      });
+      assert.strictEqual(result.success, true, `Expected target "${target}" to be valid`);
+    }
+  });
+
+  test("metaStateChangeEntrySchema accepts applies_to with all optional sub-fields", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "surface",
+      change_target: "tools/meta-state-log-change-tool.js",
+      change_diff: { added: ["meta_state_log_change"], removed: [], changed: [] },
+      reason: "New tool for logging system changes is added to the MCP surface.",
+      applies_to: {
+        tools: ["meta_state_log_change", "meta_state_list"],
+        surfaces: ["meta"],
+        rules: ["rule-no-new-artifact-types"],
+        statuses: ["active"],
+        schemas: ["core/meta-state.js"],
+      },
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, true);
+    assert.deepStrictEqual(result.data.applies_to.tools, ["meta_state_log_change", "meta_state_list"]);
+  });
+});
+
+describe("meta-state discriminated union", () => {
+  test("metaStateEntrySchema (union) picks finding branch and ignores change-log fields", () => {
+    const result = metaStateEntrySchema.safeParse({
+      entry_kind: "finding",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Mixing finding and change-log fields should not pollute result.",
+      change_dimension: "semantic",
+      change_target: "mixed",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "This is a mixed entry that should be parsed as finding.",
+    });
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.data.entry_kind, "finding");
+    assert.strictEqual(result.data.change_dimension, undefined);
+  });
+
+  test("metaStateEntrySchema (union) picks change-log branch and ignores finding fields", () => {
+    const result = metaStateEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "core/meta-state.js",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Change-log entries must not carry finding-only fields like severity.",
+      severity: "warning",
+      affected_system: "gate-logic",
+      status: "active",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.data.entry_kind, "change-log");
+    assert.strictEqual(result.data.severity, undefined);
+    assert.strictEqual(result.data.affected_system, undefined);
+  });
+});
+
+describe("meta-state readRegistry legacy coercion", () => {
+  let tempDir;
+
+  test("readRegistry coerces legacy entries to entry_kind: finding", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-legacy-"));
+    const legacy = {
+      id: "meta-260601T0000Z-legacy-entry",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Legacy entry without entry_kind field.",
+      status: "reported",
+      created_at: "2026-06-01T00:00:00.000Z",
+    };
+    const path = join(tempDir, "meta-state.jsonl");
+    writeFileSync(path, JSON.stringify(legacy) + "\n");
+    const entries = readRegistry(tempDir);
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].entry_kind, "finding");
+    assert.strictEqual(entries[0].category, "gate-logic-bug");
+  });
+
+  test("readRegistry preserves entries with entry_kind: change-log", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-changelog-"));
+    const changeLog = {
+      id: "meta-260602T0000Z-change-log-entry",
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "core/meta-state.js",
+      change_diff: { added: ["entry_kind"], removed: [], changed: [] },
+      reason: "Round-trip test for change-log entries.",
+      status: "active",
+      created_at: "2026-06-02T00:00:00.000Z",
+    };
+    const path = join(tempDir, "meta-state.jsonl");
+    writeFileSync(path, JSON.stringify(changeLog) + "\n");
+    const entries = readRegistry(tempDir);
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].entry_kind, "change-log");
+    assert.strictEqual(entries[0].change_dimension, "semantic");
+  });
+});
+
+describe("meta-state filterEntries entry_kind", () => {
+
+  test("filterEntries({ entry_kind: change-log }) returns only change-log entries", () => {
+    const entries = [
+      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "reported" },
+      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "active" },
+      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "active" },
+    ];
+    const result = filterEntries(entries, { entry_kind: "change-log" });
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].id, "c1");
+  });
+
+  test("filterEntries({ entry_kind: finding }) returns only finding entries", () => {
+    const entries = [
+      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "reported" },
+      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "active" },
+      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "active" },
+    ];
+    const result = filterEntries(entries, { entry_kind: "finding" });
+    assert.strictEqual(result.length, 2);
+    assert.ok(result.every((e) => e.entry_kind === "finding"));
   });
 });

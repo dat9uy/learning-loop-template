@@ -115,14 +115,14 @@ Create `__tests__/meta-state-list-entry-kind.test.js` with 4 tests:
 
 ## Success Criteria
 
-- [ ] 4 new tests written and failing (RED)
-- [ ] 4 new tests pass after implementation (GREEN)
-- [ ] 16 + 12 + 12 + 8 = 48 existing tests still pass
-- [ ] `meta_state_list` default behavior unchanged (no `entry_kind` → both kinds)
-- [ ] `entry_kind` filter correctly separates findings from change-log entries
-- [ ] Terminal-status exclusion still works for findings
-- [ ] Response shape includes `entry_kind_filter` for debuggability
-- [ ] `pnpm test` passes (full suite)
+- [x] 4 new tests written and failing (RED)
+- [x] 4 new tests pass after implementation (GREEN)
+- [x] 16 + 12 + 12 + 8 = 48 existing tests still pass
+- [x] `meta_state_list` default behavior unchanged (no `entry_kind` → both kinds)
+- [x] `entry_kind` filter correctly separates findings from change-log entries
+- [x] Terminal-status exclusion still works for findings
+- [x] Response shape includes `entry_kind_filter` for debuggability
+- [x] `pnpm test` passes (full suite)
 
 ## Risk Assessment
 

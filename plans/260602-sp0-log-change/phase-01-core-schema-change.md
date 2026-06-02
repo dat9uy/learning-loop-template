@@ -247,15 +247,15 @@ Add 12 new tests to `__tests__/meta-state-schema.test.js` (existing 12 are updat
 
 ## Success Criteria
 
-- [ ] 10 existing test cases updated (9 safeParse + 1 .shape) and still pass after the schema rename
-- [ ] 12 new tests written and failing (RED)
-- [ ] 12 new tests pass after implementation (GREEN)
-- [ ] 16 existing `core/meta-state.test.js` tests still pass (regression-safety floor)
-- [ ] 12 existing `__tests__/meta-state-schema.test.js` tests still pass (now using the new schema names)
-- [ ] The 5 existing meta-state tools (`meta_state_report`, `meta_state_list`, etc.) work after their file updates
-- [ ] The 15 legacy entries in `meta-state.jsonl` load correctly via `readRegistry()` (coercion works)
-- [ ] Compaction invariant is documented in `updateEntry`
-- [ ] `pnpm test` passes (full suite)
+- [x] 10 existing test cases updated (9 safeParse + 1 .shape) and still pass after the schema rename
+- [x] 12 new tests written and failing (RED)
+- [x] 12 new tests pass after implementation (GREEN)
+- [x] 16 existing `core/meta-state.test.js` tests still pass (regression-safety floor)
+- [x] 12 existing `__tests__/meta-state-schema.test.js` tests still pass (now using the new schema names)
+- [x] The 5 existing meta-state tools (`meta_state_report`, `meta_state_list`, etc.) work after their file updates
+- [x] The legacy entries in `meta-state.jsonl` load correctly via `readRegistry()` (coercion works)
+- [x] Compaction invariant is documented in `updateEntry`
+- [x] `pnpm test` passes (full suite)
 
 ## Risk Assessment
 

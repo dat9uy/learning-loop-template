@@ -18,8 +18,10 @@ export const metaStateListTool = {
     status: z.string().optional().describe("Filter by status"),
     affected_system: z.string().optional().describe("Filter by affected system"),
     include_expired: z.boolean().optional().default(false).describe("Include terminal statuses in results"),
+    entry_kind: z.enum(["finding", "change-log"]).optional()
+      .describe("Filter by entry kind; default = both"),
   },
-  handler: async ({ category, status, affected_system, include_expired }) => {
+  handler: async ({ category, status, affected_system, include_expired, entry_kind }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -46,6 +48,7 @@ export const metaStateListTool = {
       ...(category && { category }),
       ...(status && { status }),
       ...(affected_system && { affected_system }),
+      ...(entry_kind && { entry_kind }),
     };
 
     let result = filterEntries(updated, activeFilters);
@@ -67,6 +70,7 @@ export const metaStateListTool = {
       count: result.length,
       filters_applied: activeFilters,
       include_expired: include_expired || false,
+      entry_kind_filter: entry_kind || null,
     };
 
     return {

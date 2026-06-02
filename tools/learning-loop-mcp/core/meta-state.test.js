@@ -251,3 +251,65 @@ describe("meta-state T4 auto_resolve removal", () => {
     assert.strictEqual(mod.checkAutoResolve, undefined);
   });
 });
+
+describe("meta-state change-log compaction guard", () => {
+  let tempDir;
+  const originalEnv = process.env.GATE_ROOT;
+
+  test("compaction does not remove old terminal change-log entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-cl-compact-"));
+    process.env.GATE_ROOT = tempDir;
+    const { writeEntry, updateEntry, readRegistry } = await import("./meta-state.js");
+
+    try {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      const oldTerminal = {
+        id: "meta-260601T0000Z-old-terminal-finding",
+        entry_kind: "finding",
+        category: "gate-logic-bug",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Old terminal finding that should be compacted.",
+        status: "auto-resolved",
+        created_at: eightDaysAgo.toISOString(),
+        resolved_at: eightDaysAgo.toISOString(),
+      };
+      const oldChangeLog = {
+        id: "meta-260601T0000Z-old-change-log",
+        entry_kind: "change-log",
+        change_dimension: "semantic",
+        change_target: "core/test.js",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Old change-log entry that must NOT be compacted even if terminal.",
+        status: "resolved",
+        created_at: eightDaysAgo.toISOString(),
+        resolved_at: eightDaysAgo.toISOString(),
+      };
+      await writeEntry(tempDir, oldTerminal);
+      await writeEntry(tempDir, oldChangeLog);
+
+      // Trigger compaction via update on any entry
+      const fresh = {
+        id: "meta-260602T0000Z-fresh",
+        entry_kind: "finding",
+        category: "gate-logic-bug",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Fresh entry to trigger compaction.",
+        status: "reported",
+        created_at: new Date().toISOString(),
+      };
+      await writeEntry(tempDir, fresh);
+      await updateEntry(tempDir, fresh.id, { description: "Updated to trigger compaction" });
+
+      const entries = readRegistry(tempDir);
+      assert.strictEqual(entries.length, 2);
+      const ids = entries.map((e) => e.id);
+      assert.ok(!ids.includes(oldTerminal.id), "Old terminal finding should be compacted");
+      assert.ok(ids.includes(oldChangeLog.id), "Old terminal change-log must NOT be compacted");
+      assert.ok(ids.includes(fresh.id), "Fresh entry should remain");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});

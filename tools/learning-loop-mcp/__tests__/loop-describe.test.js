@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
 import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
 import { metaStateListTool } from "../tools/meta-state-list-tool.js";
 import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
 import { loopDescribeTool } from "../tools/loop-describe-tool.js";
@@ -318,6 +319,90 @@ describe("listAntiPatterns G9 status filter", () => {
 
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 2);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});
+
+describe("loop_describe change-log isolation", () => {
+  let tempDir;
+  const originalEnv = process.env.GATE_ROOT;
+
+  test("warm tier active_findings excludes change-log entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-cl-warm-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        subtype: "escape-hatch-abuse",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Active finding that should appear in warm tier.",
+      });
+      await metaStateLogChangeTool.handler({
+        change_dimension: "surface",
+        change_target: "tools/test.js",
+        change_diff: { added: ["x"], removed: [], changed: [] },
+        reason: "Change-log entry must not leak into active_findings.",
+      });
+
+      const result = await loopDescribeTool.handler({ tier: "warm" });
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(text.active_findings.length, 1);
+      assert.strictEqual(text.active_findings[0].category, "loop-anti-pattern");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("cold tier all_findings excludes change-log entries", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-cl-cold-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      await metaStateReportTool.handler({
+        category: "gate-logic-bug",
+        severity: "warning",
+        affected_system: "gate-logic",
+        description: "Finding that should appear in cold tier.",
+      });
+      await metaStateLogChangeTool.handler({
+        change_dimension: "semantic",
+        change_target: "core/test.js",
+        change_diff: { added: ["y"], removed: [], changed: [] },
+        reason: "Change-log entry must not leak into all_findings.",
+      });
+
+      const result = await loopDescribeTool.handler({ tier: "cold" });
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(text.all_findings.length, 1);
+      assert.strictEqual(text.all_findings[0].entry_kind, "finding");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});
+
+describe("meta_state_resolve change-log guard", () => {
+  let tempDir;
+  const originalEnv = process.env.GATE_ROOT;
+
+  test("rejects resolving a change-log entry", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-resolve-cl-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const logResult = await metaStateLogChangeTool.handler({
+        change_dimension: "surface",
+        change_target: "tools/guard-test.js",
+        change_diff: { added: ["z"], removed: [], changed: [] },
+        reason: "Change-log entries are immutable and must not be resolved.",
+      });
+      const id = JSON.parse(logResult.content[0].text).id;
+
+      const result = await metaStateResolveTool.handler({ id });
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(text.resolved, false);
+      assert.strictEqual(text.reason, "change_log_immutable");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

@@ -184,14 +184,14 @@ For tests 4 and 5: the zod schema throws on `safeParse` failure. The handler sho
 
 ## Success Criteria
 
-- [ ] 8 new tests written and failing (RED)
-- [ ] 8 new tests pass after implementation (GREEN)
-- [ ] 16 + 12 + 12 = 40 existing tests still pass
-- [ ] Tool is agent-callable (no `OPERATOR_MODE` check)
-- [ ] Tool returns structured response with `logged`, `id`, `entry_kind`, `change_dimension`, `change_target`, `created_at`
-- [ ] Tool writes to `meta-state.jsonl` with `entry_kind: "change-log"`, `status: "active"`, no `expires_at`
-- [ ] Tool appends a gate log line
-- [ ] `pnpm test` passes (full suite)
+- [x] 8 new tests written and failing (RED)
+- [x] 8 new tests pass after implementation (GREEN)
+- [x] 16 + 12 + 12 = 40 existing tests still pass
+- [x] Tool is agent-callable (no `OPERATOR_MODE` check)
+- [x] Tool returns structured response with `logged`, `id`, `entry_kind`, `change_dimension`, `change_target`, `created_at`
+- [x] Tool writes to `meta-state.jsonl` with `entry_kind: "change-log"`, `status: "active"`, no `expires_at`
+- [x] Tool appends a gate log line
+- [x] `pnpm test` passes (full suite)
 
 ## Risk Assessment
 

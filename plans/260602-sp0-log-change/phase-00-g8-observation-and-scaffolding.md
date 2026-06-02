@@ -95,11 +95,11 @@ Mitigation used: rewrote the commit message to avoid all banned words (`propose|
 
 ## Success Criteria
 
-- [ ] `meta-state.jsonl` contains the G8 subcommand-class recurrence entry with the new ID
-- [ ] All 6 plan files exist in `plans/260602-sp0-log-change/` and are non-empty
-- [ ] `g8-subcommand-class-entry.test.js` continues to pass
-- [ ] `pnpm validate:records` passes
-- [ ] `pnpm validate:plan-loop` passes
+- [x] `meta-state.jsonl` contains the G8 subcommand-class recurrence entry with the new ID
+- [x] All 6 plan files exist in `plans/260602-sp0-log-change/` and are non-empty
+- [x] `g8-subcommand-class-entry.test.js` continues to pass
+- [x] `pnpm validate:records` passes
+- [x] `pnpm validate:plan-loop` passes
 
 ## Risk Assessment
 

@@ -7,10 +7,11 @@ const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
- * Shared zod schema for meta_state_report input validation.
- * Lives in meta-state.js (the registry source of truth) per RT Finding 11.
+ * Finding branch schema — used by the 5 existing meta-state finding tools.
+ * Has .shape available for tool schema reuse.
  */
-export const metaStateEntrySchema = z.object({
+export const metaStateFindingEntrySchema = z.object({
+  entry_kind: z.literal("finding").default("finding"),
   category: z.enum([
     "gate-logic-bug", "record-repair-gap", "schema-drift",
     "stale-ref", "mcp-tool-missing", "budget-check",
@@ -30,6 +31,50 @@ export const metaStateEntrySchema = z.object({
   status: z.enum(["reported"]).optional()
     .describe("Status — only 'reported' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses."),
 });
+
+/**
+ * Change-log branch schema — used by meta_state_log_change.
+ * Has .shape available for tool schema reuse.
+ */
+export const metaStateChangeEntrySchema = z.object({
+  entry_kind: z.literal("change-log").describe("Discriminator — always 'change-log' for this schema"),
+  change_dimension: z.enum(["semantic", "mechanical", "surface"])
+    .describe("What kind of change"),
+  change_target: z.string().min(1)
+    .describe("Specific path or identifier being changed"),
+  change_diff: z.object({
+    added: z.array(z.string()).default([]).describe("Paths/fields added"),
+    removed: z.array(z.string()).default([]).describe("Paths/fields removed"),
+    changed: z.array(z.string()).default([]).describe("Paths/fields whose meaning changed (not value)"),
+  }).describe("Structured diff"),
+  reason: z.string().min(20)
+    .describe("Why the change was made (min 20 chars)"),
+  applies_to: z.object({
+    tools: z.array(z.string()).optional().describe("Tool names affected"),
+    surfaces: z.array(z.string()).optional().describe("Surface names affected"),
+    rules: z.array(z.string()).optional().describe("Rule IDs affected"),
+    statuses: z.array(z.string()).optional().describe("Status values affected"),
+    schemas: z.array(z.string()).optional().describe("Schema files affected"),
+  }).optional().describe("Wider impact scope"),
+  supersedes: z.string().optional()
+    .describe("ID of a previous change-log entry this one replaces"),
+  evidence: z.object({
+    code_ref: z.string().optional(),
+    journal: z.string().optional(),
+  }).optional().describe("Path to related journal/plans/reports file"),
+  status: z.literal("active").default("active").describe("Status — change-log entries are always 'active' (immutable audit log)"),
+  created_at: z.string().describe("ISO timestamp"),
+  version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
+});
+
+/**
+ * Cross-cutting union validator — for readRegistry validation, loop_describe, etc.
+ * Does NOT have .shape (by zod design); use the branch schemas for .shape.
+ */
+export const metaStateEntrySchema = z.union([
+  metaStateFindingEntrySchema,
+  metaStateChangeEntrySchema,
+]);
 
 /** Per-root write queue to prevent read-modify-write races. */
 const writeQueues = new Map();
@@ -55,7 +100,13 @@ export function readRegistry(root) {
   if (!existsSync(path)) return [];
   const raw = readFileSync(path, "utf8");
   const lines = raw.split("\n").filter((line) => line.trim() !== "");
-  return lines.map((line) => JSON.parse(line));
+  return lines.map((line) => {
+    const entry = JSON.parse(line);
+    if (!entry.entry_kind) {
+      entry.entry_kind = "finding"; // Backward-compat coerce
+    }
+    return entry;
+  });
 }
 
 /**
@@ -106,9 +157,15 @@ export function updateEntry(root, id, patch) {
     }
 
     const now = Date.now();
+
+    // Compaction invariant: change-log entries are never compacted.
+    // They are immutable audit log with status="active" (terminal statuses
+    // like "auto-resolved" or "expired" don't apply). The explicit
+    // entry_kind guard below enforces this. If a future change-log subtype
+    // evolves to have a terminal status, this invariant must be re-verified.
     const updated = entries.filter((entry) => {
       const age = now - new Date(entry.created_at).getTime();
-      if (TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {
+      if (entry.entry_kind !== "change-log" && TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {
         return false; // compact old terminal entries
       }
       return true;
@@ -151,6 +208,7 @@ export function checkExpiry(entry) {
  */
 export function filterEntries(entries, filters) {
   return entries.filter((entry) => {
+    if (filters.entry_kind && entry.entry_kind !== filters.entry_kind) return false;
     if (filters.category && entry.category !== filters.category) return false;
     if (filters.status && entry.status !== filters.status) return false;
     if (filters.affected_system && entry.affected_system !== filters.affected_system) return false;

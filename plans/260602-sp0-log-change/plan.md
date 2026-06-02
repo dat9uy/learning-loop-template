@@ -1,7 +1,7 @@
 ---
 title: "SP0: meta_state_log_change (Self-Modification Affordance)"
 description: "Implements the design in plans/reports/brainstorm-260602-sp0-log-change.md. Adds a new MCP tool for the agent to log system changes (schema, rule, tool, policy, surface, lifecycle, manifest) as a first-class entry kind in meta-state.jsonl. Five TDD phases ship the discriminated-union schema, the new tool, an entry_kind filter on meta_state_list, the manifest registration, and the first real self-modification log entry. TDD structure preserves the 16 existing tests in core/meta-state.test.js."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, mcp, tdd, agent-affordances, self-modifying, change-log, meta-state, discriminator]
