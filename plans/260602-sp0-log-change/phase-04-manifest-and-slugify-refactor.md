@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Manifest Registration + slugify Refactor"
-status: pending
+status: completed
 priority: P2
 effort: "0.5h"
 dependencies: [2]

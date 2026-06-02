@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "meta_state_list entry_kind Filter (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [1, 2]

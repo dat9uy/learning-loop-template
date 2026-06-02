@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "G8 Observation + Plan Scaffolding"
-status: pending
+status: completed
 priority: P2
 effort: "0.25h"
 dependencies: []

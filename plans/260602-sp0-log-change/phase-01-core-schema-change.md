@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Core Schema Change: Discriminated Union (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "6-8h"
 dependencies: []

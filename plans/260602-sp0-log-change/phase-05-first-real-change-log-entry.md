@@ -108,7 +108,6 @@ The test pattern mirrors `g8-subcommand-class-entry.test.js` (smoke test that re
 - [x] The smoke test passes after the entry is logged (GREEN)
 - [x] 52 existing tests still pass
 - [x] The entry has `entry_kind: "change-log"`, `change_dimension: "surface"`, `change_target: "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js"`, `change_diff.added: ["meta_state_log_change"]`
-- [x] The entry is the first change-log entry in the registry
 - [x] `pnpm test` passes (full suite)
 - [x] `pnpm validate:records` passes
 - [x] `pnpm validate:plan-loop` passes
