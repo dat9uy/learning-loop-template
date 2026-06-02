@@ -1,0 +1,14 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "startup",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"$FACTORY_PROJECT_DIR\"/.factory/hooks/loop-surface-inject.cjs",
+          "timeout": 10
+        }
+      ]
+    }
+  ]
+}
