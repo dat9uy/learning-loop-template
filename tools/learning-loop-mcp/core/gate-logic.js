@@ -23,14 +23,24 @@ const WRITE_PATH_PATTERNS = {
   'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };
 
+function expandBraces(pattern) {
+  const match = pattern.match(/^(.*?)\{([^}]+)\}(.*)$/);
+  if (!match) return [pattern];
+  const [, pre, options, post] = match;
+  return options.split(',').flatMap((opt) => expandBraces(pre + opt.trim() + post));
+}
+
 export function globMatch(pattern, filePath) {
-  const regexStr = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*\*/g, '⟨GLOBSTAR⟩')
-    .replace(/\*/g, '[^/]*')
-    .replace(/⟨GLOBSTAR⟩/g, '.*');
-  const regex = new RegExp(`^${regexStr}$`);
-  return regex.test(filePath);
+  const patterns = expandBraces(pattern);
+  return patterns.some((p) => {
+    const regexStr = p
+      .replace(/\./g, '\\.')
+      .replace(/\*\*/g, '⟨GLOBSTAR⟩')
+      .replace(/\*/g, '[^/]*')
+      .replace(/⟨GLOBSTAR⟩/g, '.*');
+    const regex = new RegExp(`^${regexStr}$`);
+    return regex.test(filePath);
+  });
 }
 
 export function pathMatchesObservation(observation, filePath) {
@@ -345,7 +355,7 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
 // ─── Promoted Rules (meta-state as rule registry) ───
 
 /** Whitelist for glob patterns to prevent path traversal. */
-const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", "meta-state.jsonl"];
+const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", ".factory/", "meta-state.jsonl"];
 
 /**
  * Simple regex safety check to prevent ReDoS.
@@ -419,9 +429,20 @@ export function isSafeRegexPattern(pattern) {
   return true;
 }
 
-function isGlobScopeWhitelisted(pattern) {
+export function isGlobScopeWhitelisted(pattern) {
   if (!pattern || typeof pattern !== "string") return false;
   return GLOB_SCOPE_WHITELIST.some((prefix) => pattern.startsWith(prefix));
+}
+
+function projectHasLearningLoopMcp(root) {
+  try {
+    const cfgPath = join(root, ".mcp.json");
+    if (!existsSync(cfgPath)) return false;
+    const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
+    return !!(cfg.mcpServers && cfg.mcpServers["learning-loop-mcp"]);
+  } catch {
+    return false;
+  }
 }
 
 /** Cache for promoted rules: { root -> { rules, mtime, size } } */
@@ -453,12 +474,22 @@ export function loadPromotedRules(root) {
     return [];
   }
 
-  const rules = entries.filter(
+  let rules = entries.filter(
     (e) =>
       e.status === "active" &&
       e.category === "loop-anti-pattern" &&
       e.promoted_to_rule?.enforcement === "gate"
   );
+
+  rules = rules.filter((r) => {
+    const predicate = r.promoted_to_rule?.scope_predicate;
+    if (!predicate || predicate === "none") return true;
+    if (predicate === "project_has_learning_loop_mcp") {
+      return projectHasLearningLoopMcp(root);
+    }
+    console.warn(`Rule ${r.promoted_to_rule.rule_id}: unknown scope_predicate "${predicate}"`);
+    return true;
+  });
 
   promotedRulesCache.set(root, { rules, mtime, size });
   return rules;

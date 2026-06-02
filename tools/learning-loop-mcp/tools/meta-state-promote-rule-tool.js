@@ -26,11 +26,12 @@ export const metaStatePromoteRuleTool = {
     enforcement: z.enum(["gate", "agent", "tool"]).describe("Where the rule is enforced"),
     pattern_type: z.enum(["regex", "glob"]).describe("Pattern language"),
     pattern: z.string().describe("Pattern string"),
+    scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
     preview: z.boolean().optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.array(z.string()).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.array(z.string()).optional().describe("Sample paths to test against (for glob preview)"),
   },
-  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, preview, sample_commands, sample_paths }) => {
+  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -116,6 +117,42 @@ export const metaStatePromoteRuleTool = {
     }
 
     // Activation mode
+
+    // Glob scope whitelist check (RT Finding 4)
+    if (pattern_type === "glob") {
+      const { isGlobScopeWhitelisted } = await import("#mcp/core/gate-logic.js");
+      if (!isGlobScopeWhitelisted(pattern)) {
+        const result = { promoted: false, reason: "pattern_rejected_by_scope_whitelist", id, pattern };
+        appendGateLog(root, {
+          timestamp: new Date().toISOString(),
+          tool: "meta_state_promote_rule",
+          ...result,
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+        };
+      }
+    }
+
+    // Rule ID uniqueness check (RT Finding 10)
+    const alreadyActive = entries.find(
+      (e) =>
+        e.id !== id &&
+        e.status === "active" &&
+        e.promoted_to_rule?.rule_id === rule_id
+    );
+    if (alreadyActive) {
+      const result = { promoted: false, reason: "rule_id_already_active", id, rule_id };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_promote_rule",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
     const now = new Date().toISOString();
     const patch = {
       status: "active",
@@ -124,6 +161,7 @@ export const metaStatePromoteRuleTool = {
         enforcement,
         pattern_type,
         pattern,
+        ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
         promoted_at: now,
         promoted_by: "operator",
       },
