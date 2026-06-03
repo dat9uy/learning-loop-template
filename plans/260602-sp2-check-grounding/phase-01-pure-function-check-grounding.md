@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Pure Function `checkGrounding` (TDD, 28 unit tests)"
-status: pending
+status: completed
 priority: P2
 effort: "6-8h"
 dependencies: [0]

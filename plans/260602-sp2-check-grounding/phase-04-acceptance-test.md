@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Acceptance Test on Real Workflow + First Real Use"
-status: pending
+status: completed
 priority: P2
 effort: "0.5h"
 dependencies: [1, 2, 3]

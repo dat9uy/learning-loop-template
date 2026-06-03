@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Manifest Registration (`manifest.json` + `agent-manifest.json`)"
-status: pending
+status: completed
 priority: P2
 effort: "0.25h"
 dependencies: [2]

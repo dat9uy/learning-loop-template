@@ -38,6 +38,10 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_test: z.string().optional().describe("Test file reference"),
   status: z.enum(["reported"]).optional()
     .describe("Status — only 'reported' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses."),
+  mechanism_check: z.boolean().optional()
+    .describe("Opt-in flag (SP2): include this finding in grounding checks. Default false. When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
+  code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
+    .describe("SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; updated by meta_state_refresh_fingerprint on explicit refresh."),
 });
 
 /**

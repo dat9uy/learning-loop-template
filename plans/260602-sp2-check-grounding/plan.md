@@ -1,7 +1,7 @@
 ---
 title: "SP2: meta_state_check_grounding (Grounding Check)"
 description: "Implements the design in plans/reports/brainstorm-260602-sp2-check-grounding.md. Adds a pure-function grounding engine + 2 MCP tools (check + refresh) that detect drift between a meta-state finding's evidence_code_ref and the current filesystem state via SHA-256 fingerprint comparison. Closes the SP1 gap: SP1 detects missing/extra files; SP2 detects in-place mutation. TDD structure preserves the 512 existing tests. 28 unit + 11 tool + 2 acceptance = 41 new tests; target total 553. Schema gains 2 new optional fields (mechanism_check, code_fingerprint) on metaStateFindingEntrySchema."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, mcp, tdd, agent-affordances, grounding, verifier, meta-state, drift-detection, hash, fingerprint]

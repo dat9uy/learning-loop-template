@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "`meta_state_check_grounding` + `meta_state_refresh_fingerprint` Tools (TDD, 11 tool tests)"
-status: pending
+status: completed
 priority: P2
 effort: "4-5h"
 dependencies: [1]
