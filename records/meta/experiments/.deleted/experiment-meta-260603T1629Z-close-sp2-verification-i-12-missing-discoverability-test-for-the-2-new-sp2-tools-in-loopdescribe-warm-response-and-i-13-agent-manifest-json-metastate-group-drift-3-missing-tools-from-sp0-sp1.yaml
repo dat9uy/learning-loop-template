@@ -1,0 +1,57 @@
+id: experiment-meta-260603T1629Z-close-sp2-verification-i-12-missing-discoverability-test-for-the-2-new-sp2-tools-in-loopdescribe-warm-response-and-i-13-agent-manifest-json-metastate-group-drift-3-missing-tools-from-sp0-sp1
+schema_version: "1.0"
+type: experiment
+status: draft
+created_at: 2026-06-03T09:29:31Z
+updated_at: 2026-06-03T09:29:31Z
+source_refs:
+  - self:experiment-meta-sp2-gap-closure-cook-20260603T1548Z
+goal: Close SP2 verification I-12 (missing discoverability test for the 2 new
+  SP2 tools in loop_describe warm response) and I-13 (agent-manifest.json
+  meta_state group drift, 3 missing tools from SP0/SP1).
+hypothesis: "A TDD-locked test on the warm-tier response plus a JSON backfill to
+  agent-manifest.json restores discoverability and groups consistency.
+  Operational first use of meta_state_derive_status on a stale reported finding
+  returns the locked shape (resolved-by-mechanism, drift: true, recommendation:
+  resolve)."
+method:
+  - "Phase 0 (TDD): write the SP2 discoverability test first (RED step), confirm
+    passes (test locks the contract for future regressions). Patch
+    agent-manifest.json meta_state.tools array from 7 to 10 entries in
+    chronological order (sweep, log_change, derive_status between promote_rule
+    and check_grounding). Verify JSON syntax."
+  - "Phase 1 (operational): call meta_state_derive_status on
+    meta-260601T1353Z-bash-gate-constraint-matcher-does-not-distinguish-heredoc\
+    -co (the only stale reported entry from SP1 journal set). Call
+    meta_state_log_change for SP1 self-modification (mirrors SP0 self-log at
+    meta-260602T1705Z-...)."
+  - "Run pnpm test (target: 557 pass), pnpm validate:records (183 records, 0
+    errors), pnpm validate:plan-loop (74 plans, 0 violations)."
+success_metrics:
+  - "New test SP2: warm tier surfaces check_grounding + refresh_fingerprint
+    passes"
+  - agent-manifest.json validates as JSON; meta_state.tools has 10 entries in
+    the expected order
+  - "All 10 meta_state_* tool names appear in loop_describe({ tier: warm
+    }).tools"
+  - "meta_state_derive_status call returns derived_status:
+    resolved-by-mechanism, drift: true, recommendation: resolve"
+  - "meta-state.jsonl gains 1 change-log entry (entry_kind: change-log,
+    change_target:
+    tools/learning-loop-mcp/tools/meta-state-derive-status-tool.js, id:
+    meta-260603T1548Z-...)"
+  - gate-log.jsonl gains 2 entries (one for derive_status, one for log_change)
+  - pnpm test shows 557 pass, 0 fail; no regression in pre-existing 556 tests
+  - pnpm validate:records and pnpm validate:plan-loop both pass
+result: ""
+agent_outcome: ""
+product_outcome: ""
+observations: []
+promotion_review: []
+scope: schema-improvement
+output_level: metadata-only
+verification:
+  claim_refs: []
+  proves: []
+  requires_human_approval: true
+  approval_status: not-required
