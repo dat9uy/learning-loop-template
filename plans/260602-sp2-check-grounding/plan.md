@@ -13,6 +13,7 @@ related:
   - plans/reports/verification-260603-sp2-design.md (pre-plan verification report)
   - plans/260602-sp1-derive-status/plan.md (sibling, completed — pattern reference)
   - plans/260602-sp0-log-change/plan.md (sibling, completed — pattern reference)
+  - plans/260603-sp2-discoverability-and-manifest-backfill/plan.md (gap-closure follow-up, completed — closes SP2 I-12 + I-13 deferrals and 2 SP1 post-cook follow-ups; final total 557 tests)
   - tools/learning-loop-mcp/core/check-grounding.js (NEW — pure function)
   - tools/learning-loop-mcp/core/meta-state.js (metaStateFindingEntrySchema gains 2 optional fields)
   - tools/learning-loop-mcp/core/derive-status.js (SP1 sibling — codeContext + signal-extraction patterns)
