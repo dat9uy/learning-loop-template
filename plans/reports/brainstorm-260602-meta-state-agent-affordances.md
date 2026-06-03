@@ -5,7 +5,8 @@ tags: [brainstorm, meta, meta-state, agent-affordances, self-modifying, derivati
 related:
   - plans/reports/brainstorm-260602-derived-status-and-self-healing.md (supersedes)
   - plans/reports/brainstorm-260602-sp0-log-change.md (SP0 dedicated — locked, shipped)
-  - plans/reports/brainstorm-260602-sp1-derive-status.md (SP1 dedicated — locked, plan pending)
+  - plans/reports/brainstorm-260602-sp1-derive-status.md (SP1 dedicated — locked, shipped)
+  - plans/reports/brainstorm-260602-sp2-check-grounding.md (SP2 dedicated — locked 2026-06-03, plan pending)
   - plans/260602-sp0-log-change/plan.md (SP0 plan — completed)
   - plans/260602-strict-mcp-call-rules/plan.md
   - plans/260602-self-enforcing-loop/plan.md
@@ -161,33 +162,29 @@ SP3: Drift Query
 
 ### SP2: Grounding Check — `meta_state_check_grounding`
 
-**Goal:** The agent can ask "is the mechanism this entry references still live?" — file exists, hash matches, tests pass, code_ref points to real code. The check is opt-in per entry via a `mechanism_check` field; opt-in because running the full test suite on every check is too slow.
+**Goal:** The agent can ask "is the mechanism this entry references still live?" — file exists, hash matches the snapshot at last check, tests pass. Hash mismatch = drift. Opt-in per entry via a `mechanism_check` field; opt-in because running the full test suite on every check is too slow.
 
-**Tool shape (proposed):**
-```js
-meta_state_check_grounding({
-  id: string,            // entry id to check
-  run_tests?: boolean,   // default false (file-existence check only)
-})
-```
-
-**Returns:**
-```json
-{
-  "id": "meta-260601T1339Z-the-learning-loop...",
-  "grounding": {
-    "evidence_code_ref": "tools/learning-loop-mcp/hooks/loop-surface-inject.cjs",
-    "code_ref_exists": true,
-    "code_ref_hash": "sha256:abc123...",
-    "tests_referenced": true,
-    "tests_run": false,        // run_tests was false
-    "last_checked_at": "2026-06-02T12:30:00Z"
-  },
-  "status": "grounded" | "drifted" | "unknown"
-}
-```
-
-**Caching:** mtime+size on the referenced file (same pattern as `loadPromotedRules`). Test-run results cached for the current session.
+> **SP2 design has been moved to a dedicated report:** [`brainstorm-260602-sp2-check-grounding.md`](./brainstorm-260602-sp2-check-grounding.md) (status: locked 2026-06-03).
+>
+> The dedicated report contains the full SP2 design: two new schema fields (`mechanism_check` boolean + `code_fingerprint` SHA-256 string, no `evidence_` prefix per operator correction), the check + refresh tool pair (the user explicitly asked "which function has the functionality to update the hash to resolve the hash mismatched?" — the answer is a separate `meta_state_refresh_fingerprint` tool, not a parameter on the check tool), the locked 4-value status enum (`grounded` | `drifted` | `unknown` | `skipped`), the 3-value drift-kind enum, the auto-record-on-first-check semantics, the test plan, and the explicit "legitimate code change" workflow. Implementation will consume the dedicated report via `/ck:plan --tdd` in a future session.
+>
+> **Brief recap of the locked design (full spec in the linked report):**
+>
+> - **Tool names:** `meta_state_check_grounding` (the check) + `meta_state_refresh_fingerprint` (the recovery tool)
+> - **Approach:** pure function `checkGrounding(entry, codeContext)` in `core/check-grounding.js` (mirrors SP1's `deriveStatus`); auto-records `code_fingerprint` on first call (idempotent on second call); explicit refresh tool updates the stored hash when the agent accepts a drift
+> - **Schema additions:** two new optional fields on `metaStateFindingEntrySchema` — `mechanism_check: z.boolean().optional()` and `code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()`. No `evidence_` prefix (operator correction during brainstorm: avoid the `records/meta/evidence/` collision)
+> - **Output shape:** `{ id, raw_status, grounding { evidence_code_ref, code_ref_exists, code_ref_hash, code_fingerprint, hash_match, tests_referenced, tests_run, test_passed, checked_at, duration_ms }, status, drift_kind, fingerprint_was_recorded }`
+> - **Status (4 values):** `grounded` | `drifted` | `unknown` | `skipped`. `skipped` = `mechanism_check !== true`; `unknown` = opt-in but no `evidence_code_ref`; `grounded` = file exists + hash matches (or no fingerprint yet) + tests pass; `drifted` = file missing OR hash mismatch OR test failed
+> - **Drift kind (3 values):** `code_missing` | `hash_mismatch` | `test_failed` | `null` (when status is `grounded`, `skipped`, or `unknown`)
+> - **Test-runner integration:** opt-in via `codeContext.run_tests` (default false). Same subprocess + per-process mtime-keyed cache pattern as SP1
+> - **"Legitimate code change" workflow:** first check records fingerprint; second check after code mutation returns `drifted`; agent calls `meta_state_refresh_fingerprint` to accept the new state; third check returns `grounded`
+> - **Out of scope for SP2:** SP3 drift aggregation, auto-mutation of drifted entries, cross-file integrity, continuous grounding, subtype-specific grounding, hash storage external to the entry
+> - **Test budget:** 36 new tests (24 unit + 8 check-tool + 2 refresh-tool + 2 acceptance) + 512 existing = 548 total
+> - **Touchpoints:** 6 new files + 1 schema addition (2 new optional fields) + 1 manifest.json modify (2 new lines in meta-state-* group); no changes to existing schemas' required fields or existing tools
+>
+> **Acceptance test:** end-to-end on a temp finding with `mechanism_check: true` + `evidence_code_ref: <temp_file>`: first check records fingerprint; mutate file; second check returns `status: "drifted"`, `drift_kind: "hash_mismatch"`; `meta_state_refresh_fingerprint` updates the stored hash; third check returns `status: "grounded"`.
+>
+> **Why a dedicated report:** same rationale as SP0 and SP1. The parent doc decomposes 4 sub-projects (SP0-SP3); each sub-project gets a dedicated design doc when its brainstorm session locks the design. SP0, SP1, and SP2 are now all dedicated; SP3 remains in this parent doc until its brainstorm session locks its design.
 
 ### SP3: Drift Query — `meta_state_query_drift`
 
@@ -201,9 +198,11 @@ meta_state_query_drift({
     category?: string,
     affected_system?: string,
   },
-  run_grounding?: boolean,  // default false (derivation only)
+  run_grounding?: boolean,  // default false (derivation only); when true, SP2's checkGrounding is invoked per entry
 })
 ```
+
+**Note on `run_grounding`:** when true, SP3 invokes `checkGrounding` for each entry (per the SP2 dedicated report). The aggregation joins SP1's `derived_status` + SP2's `status` + `drift_kind` to produce a unified drift view. Entries with `mechanism_check: true` and `status: "drifted"` (from SP2) are surfaced alongside SP1's `drift: true` entries.
 
 **Returns:**
 ```json
@@ -245,7 +244,7 @@ This parent doc was written on 2026-06-02T12:30Z with all 4 sub-projects in desi
 
 - **SP0 (Self-Modification Affordance) — SHIPPED.** See `plans/260602-sp0-log-change/plan.md` (status: completed). The 5-phase TDD plan shipped 25 new tests (472 → 475 after the SP0 housekeeping follow-up; 475 currently passing). `meta_state_log_change` is registered in `tools/manifest.json` (46 tools total; 45 in the original manifest, +1 in this session). The first real change-log entry is in `meta-state.jsonl`.
 - **SP1 (Derivation Query) — DESIGN LOCKED.** See `brainstorm-260602-sp1-derive-status.md` (status: locked 2026-06-02). Plan handoff via `/ck:plan --tdd` is deferred to a future session; 20 new tests planned (495 total). The dedicated report contains the full SP1 design including the `evidence` → `signals` rename rationale.
-- **SP2 (Grounding Check) — design unchanged.** Still in this parent doc.
+- **SP2 (Grounding Check) — DESIGN LOCKED.** See `brainstorm-260602-sp2-check-grounding.md` (status: locked 2026-06-03). Plan handoff via `/ck:plan --tdd` is deferred to a future session; 36 new tests planned (548 total). The dedicated report contains the full SP2 design including the `mechanism_check` + `code_fingerprint` schema additions, the check + refresh tool pair, and the "legitimate code change" workflow.
 - **SP3 (Drift Query) — design unchanged.** Still in this parent doc.
 
 The decomposition framing (Pattern 2: invest in the verifier, not the generator) and the build order rationale (SP0 → SP1 → SP2 → SP3) hold. The auto-mutation in SP3's phase 2 (30-day drift-event window) remains the highest-stakes change and still cannot ship in the same cycle as the others.
@@ -300,6 +299,7 @@ The end state is: `status` is a hint, `derived_status` is the source of truth, a
 - `plans/260602-sp0-log-change/plan.md` — SP0 plan, **completed** (5 phases, 25 new tests)
 - `plans/reports/brainstorm-260602-sp0-log-change.md` — SP0 dedicated design, locked
 - `plans/reports/brainstorm-260602-sp1-derive-status.md` — SP1 dedicated design, locked (plan pending)
+- `plans/reports/brainstorm-260602-sp2-check-grounding.md` — SP2 dedicated design, locked 2026-06-03 (plan pending)
 - `plans/reports/brainstorm-260602-derived-status-and-self-healing.md` — superseded by this doc
 
 ### Code References
