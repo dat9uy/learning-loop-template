@@ -45,6 +45,40 @@ Each bridge moves knowledge from human-readable docs into machine-driven loop me
 
 Each bridge reduces doc dependency. Bridge 1 removes the need to re-read vendor docs. Bridge 2 removes the need to manually author experiment plans. Bridge 3 removes the need for per-experiment operator approval. Bridge 4 removes ambiguity about what is proven vs what is merely claimed.
 
+## The Fifth Bridge: Schema as Source of Truth (the big leap)
+
+Bridges 1-4 move *content* from human-readable docs into machine-actionable records. They shrink operator cognitive load. The fifth bridge is different: it moves the loop's *own code* from hand-written to schema-derived. It shrinks operator maintenance load.
+
+Today, for every record type, four parallel "field catalogues" exist:
+
+1. The JSON schema in `schemas/<type>.schema.json`.
+2. The tool's zod input schema in `tools/create-<type>-record-tool.js` and `tools/update-<type>-record-tool.js`.
+3. The writer's output shape in `core/<type>-writer.js#build<Type>Yaml`.
+4. The semantic validator's read paths in `core/claim-verification-rules.js` and `core/record-validation-rules.js`.
+
+Each is hand-written. None of them is cross-checked. They drift. The SP2 cook session hit this: the writer never bridged top-level `assertion_refs` to `verification.assertion_refs`; the bridge-2 unit test only checked the top level; the record was rejected by validation. Three of the four layers were correct in isolation; the system as a whole produced an invalid record. Eleven drift cells exist across the four hand-written record types (8 in experiment, 3 in risk; decision and observation are clean).
+
+The fifth bridge replaces this with "write the schema; the code derives":
+
+- **Tool zod schemas** are generated from the JSON schema by a new `core/schema-to-zod.js` module. The 8 hand-written tool zod files become one-liners. Drift between the schema and the tool surface becomes impossible by construction.
+- **Record builders** are generated from the schema's `properties`, `required`, and a small `x-writer` extension for defaults. The four hand-written writers (`experiment-writer.js`, `risk-writer.js`, `decision-writer.js`, `observation-writer.js`) collapse into thin wrappers.
+- **Semantic validators** consume the schema's "required-derived-fields" annotations. New semantic rules are declared in the schema, not in JS.
+
+This is the big leap because it is **self-maintaining**: when a new field is added to a schema, every dependent layer updates without human action. The hand-maintenance surface shrinks from "four files per record type" to "one file per record type" (the schema). The class of bug the SP2 cook hit becomes structurally impossible. Future field additions no longer require coordinated edits across schema + 2 tool files + writer + validator + test fixtures.
+
+The destination sentence reads even more clearly with this bridge in place: knowledge moves "from docs into records, from records into tools, **from hand-written tools into self-deriving tools, and from self-deriving tools into self-driving workflow.**" The loop's own code joins the same gradient the content was already on.
+
+### Why this leap is sequenced after SP3
+
+SP3 introduces 1+ new tools to the manifest, a new drift-aggregation query, and likely a new dimension or two. Adding code-generation now would entangle the codegen with SP3's emerging schemas. The two-phase rollout described in `plans/reports/brainstorm-260603-field-coverage.md` (Approach 2 then Approach 3) is the right sequencing: ship the tool-zod codegen + coverage test first to prove the pattern, then generalize to writers and validators after SP3's schemas stabilize. SP3 should not inherit a half-finished codegen migration.
+
+### Risk
+
+- Codegen is harder to read than hand-written code. The `core/schema-to-zod.js` module will need clear error messages and a debugging story ("how do I see what the tool surface looks like for an experiment?"). The pattern of `x-writer` extension fields is itself a small DSL that can drift — keep the extension set minimal and audit it in the same field-coverage test.
+- `additionalProperties: false` is not currently set on most schemas, so codegen may accept fields the schema did not enumerate. The new `field-coverage.test.js` should set `additionalProperties: false` in its coverage matrix checks before the codegen lands.
+- The 183 existing records must keep validating. AJV's strict mode (already in `record-validation-rules.js`) is the test surface.
+- A field-coverage test that catches drift can itself be skipped or weakened. The test must be wired into the same negative-fixture runner that already gates `validate:records` in CI, not a separate opt-in check.
+
 ## What Stays Human Forever
 
 Autonomy is on the verification axis, not the judgment axis. The destination keeps humans in the loop for:
@@ -65,3 +99,4 @@ What stays in `docs/` is irreducible judgment. What moves to `records/` is proce
 - How to reason with the current loop: `philosophy.md`.
 - Current artifact model (claim deprecation, index entries): `record-system-architecture.md`, `artifact-concepts.md`.
 - The brainstorm that made atomicity load-bearing: `plans/reports/brainstorm-20260518-machine-extracted-index.md`.
+- The design for schema-derived code generation (the fifth bridge): `plans/reports/brainstorm-260603-field-coverage.md`.
