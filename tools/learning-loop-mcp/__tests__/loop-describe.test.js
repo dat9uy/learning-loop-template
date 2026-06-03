@@ -114,6 +114,26 @@ describe("loop_describe new behavior", () => {
     }
   });
 
+  test("SP2: warm tier surfaces check_grounding + refresh_fingerprint", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-sp2-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const result = await loopDescribeTool.handler({ tier: "warm" });
+      const text = JSON.parse(result.content[0].text);
+      const names = text.tools.map((t) => t.name);
+      assert.ok(
+        names.includes("meta_state_check_grounding"),
+        "SP2 check tool must appear in warm response"
+      );
+      assert.ok(
+        names.includes("meta_state_refresh_fingerprint"),
+        "SP2 refresh tool must appear in warm response"
+      );
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
   test("tier cold returns full history", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-cold-"));
     process.env.GATE_ROOT = tempDir;
