@@ -451,6 +451,61 @@ console.log('\n=== Category 9: Observation Schema ===');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
+// --- Category 10: Meta-State-First Ordering (260603 fix) ---
+// Defends against: agent in 260603-field-coverage-planning session anchored on the
+// listed observation IDs and missed that the gate was triggered by a state-change signal
+// requiring a meta-state.jsonl read first. Pattern documented in meta-state.jsonl lines 15-19
+// (5 G8 subcommand-class recurrences). Fix: buildContextMessage leads with the meta-state hint.
+console.log('\n=== Category 10: Meta-State-First Ordering ===');
+{
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+  const now = new Date();
+
+  // Single stale obs → meta-state hint appears BEFORE the obs id
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-meta-test', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  const t1 = runInboundHook('I cleared the device', env);
+  assert(contextWasInjected(t1), 'gate fires → context injected');
+  let parsed1;
+  try { parsed1 = JSON.parse(t1.stdout); } catch { parsed1 = null; }
+  const ctx1 = parsed1?.hookSpecificOutput?.additionalContext || '';
+  const metaStateIdx1 = ctx1.indexOf('meta-state.jsonl');
+  const obsIdIdx1 = ctx1.indexOf('obs-meta-test');
+  assert(metaStateIdx1 > 0, 'context contains meta-state.jsonl hint');
+  assert(obsIdIdx1 > 0, 'context contains observation id');
+  assert(metaStateIdx1 < obsIdIdx1, 'meta-state hint appears BEFORE observation id (anchoring defense)');
+  assert(ctx1.includes('READ'), 'context includes READ directive (call to action)');
+  assert(ctx1.includes('last 20 lines'), 'context specifies reading window (last 20 lines)');
+  assert(ctx1.includes('change-log'), 'context mentions change-log entry kind (entry-type hint)');
+  clearMarker(tmpDir);
+
+  // Multiple stale obs → meta-state hint still appears BEFORE the first obs id
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-multi-a', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-multi-b', status: 'active', constraint_type: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-multi-c', status: 'active', constraint_type: 'budget', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  const t2 = runInboundHook('the container is running', env);
+  let parsed2;
+  try { parsed2 = JSON.parse(t2.stdout); } catch { parsed2 = null; }
+  const ctx2 = parsed2?.hookSpecificOutput?.additionalContext || '';
+  const metaStateIdx2 = ctx2.indexOf('meta-state.jsonl');
+  const firstObsIdx2 = ctx2.indexOf('obs-multi-a');
+  assert(metaStateIdx2 > 0 && firstObsIdx2 > 0, 'multi-obs: both hint and obs present');
+  assert(metaStateIdx2 < firstObsIdx2, 'multi-obs: meta-state hint BEFORE first observation id');
+  assert(ctx2.includes('obs-multi-a') && ctx2.includes('obs-multi-b') && ctx2.includes('obs-multi-c'), 'multi-obs: all observation ids present');
+  clearMarker(tmpDir);
+
+  // Sanity: previous behavior (observations listed first) would FAIL the new test.
+  // The substring "Active observations may be stale" is intentionally absent; replaced by
+  // "Affected (stale) observations:" which appears AFTER the meta-state hint. This is the
+  // structural fix — the new ordering cannot be regressed by reverting one line.
+  assert(!ctx1.includes('Active observations may be stale'), 'legacy leading phrase removed (anchoring defense)');
+  assert(ctx1.includes('Affected (stale) observations'), 'new subordinate phrasing present');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
 // --- Summary ---
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
 process.exit(failed > 0 ? 1 : 0);

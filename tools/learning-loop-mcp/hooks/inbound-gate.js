@@ -90,7 +90,12 @@ function buildContextMessage(staleObservations) {
   const ids = staleObservations.map((o) => o.id || o.constraint || "unknown").join(", ");
   return [
     "INBOUND STATE GATE: Operator message contains a state-change signal.",
-    `Active observations may be stale: ${ids}`,
+    "",
+    "→ READ `meta-state.jsonl` FIRST (last 20 lines). Recent `change-log` and `finding` entries often explain the operator's intent and the gate's escalation context. The named observations below are a subset; the full context is in the registry.",
+    "",
+    "Affected (stale) observations:",
+    `  ${ids}`,
+    "",
     "Before proceeding, update affected observations via record_observation MCP tool.",
     "Do NOT assume external state matches observation records — verify first.",
   ].join("\n");
