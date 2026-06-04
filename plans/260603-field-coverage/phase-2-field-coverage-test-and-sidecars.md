@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "`__tests__/field-coverage.test.js` + 2 sidecars (TDD, locks the contract)"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [0, 1]
@@ -269,16 +269,16 @@ Run `pnpm validate:records` (183 records) and `pnpm validate:plan-loop` (74 plan
 
 ## Success Criteria
 
-- [ ] `schemas/field-drift-exceptions.yaml` has 13 entries
-- [ ] `schemas/validator-coverage.yaml` enumerates every validator-read path (plus the 6 R6 GAP entries)
-- [ ] `__tests__/field-coverage.test.js` has 5 tests, all pass
-- [ ] 573 pre-existing + 19 Phase 0 = 592 tests + 5 new = 597 tests pass
-- [ ] `pnpm test` shows 597 pass, 0 fail
-- [ ] `pnpm validate:records` passes
-- [ ] `pnpm validate:plan-loop` passes
-- [ ] The value-set-coverage check is included (R1 from verification-2200)
-- [ ] The exceptions-count test catches silent additions
-- [ ] The integration test runs all 3 check classes without error
+- [x] `schemas/field-drift-exceptions.yaml` has 13 entries
+- [x] `schemas/validator-coverage.yaml` enumerates every validator-read path (plus the 6 R6 GAP entries)
+- [x] `__tests__/field-coverage.test.js` has 5 tests, all pass
+- [x] 573 pre-existing + 19 Phase 0 = 592 tests + 5 new = 597 tests pass
+- [x] `pnpm test` shows 597 pass, 0 fail
+- [x] `pnpm validate:records` passes
+- [x] `pnpm validate:plan-loop` passes
+- [x] The value-set-coverage check is included (R1 from verification-2200)
+- [x] The exceptions-count test catches silent additions
+- [x] The integration test runs all 3 check classes without error
 
 ## Risk Assessment
 

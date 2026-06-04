@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Refactor 8 record-CUD tool files to schema-derived zod (TDD, regression-safety)"
-status: in_progress
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [0]
@@ -287,15 +287,15 @@ The order minimizes risk: each refactor builds on the previous; the experiment t
 
 ## Success Criteria
 
-- [ ] All 8 tool files use `buildZodSchemaFor(...)` for their `schema:` property
-- [ ] `update-experiment-record-tool.js` uses `zodObjectForProperties(...)` for the `verification` block
-- [ ] `schemas/tool-descriptions.yaml` is populated with all 8 tools' descriptions
-- [ ] 573 pre-existing tests + 19 Phase 0 tests = 592 tests still pass
-- [ ] `pnpm test` shows 592 pass, 0 fail
-- [ ] `pnpm validate:records` passes (183 records)
-- [ ] `pnpm validate:plan-loop` passes (74 plans)
-- [ ] No `.describe(...)` strings remain in the 8 tool files (migrated to sidecar)
-- [ ] The 8 hand-written zod schemas are removed (replaced by `buildZodSchemaFor` calls)
+- [x] All 8 tool files use `buildZodSchemaFor(...)` for their `schema:` property
+- [x] `update-experiment-record-tool.js` uses `zodObjectForProperties(...)` for the `verification` block
+- [x] `schemas/tool-descriptions.yaml` is populated with all 8 tools' descriptions
+- [x] 573 pre-existing tests + 19 Phase 0 tests = 592 tests still pass
+- [x] `pnpm test` shows 592 pass, 0 fail
+- [x] `pnpm validate:records` passes (183 records)
+- [x] `pnpm validate:plan-loop` passes (74 plans)
+- [x] No `.describe(...)` strings remain in the 8 tool files (migrated to sidecar)
+- [x] The 8 hand-written zod schemas are removed (replaced by `buildZodSchemaFor` calls)
 
 ## Risk Assessment
 

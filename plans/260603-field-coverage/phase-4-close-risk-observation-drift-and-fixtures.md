@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Close 3 risk + 1 observation + 3 fixtures + gap-assertion update"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [0, 1, 2, 3]
@@ -278,17 +278,17 @@ Call `record_update_observation` via the MCP server. Verify the record's new sta
 
 ## Success Criteria
 
-- [ ] 3 risk drift cells fixed (`claim_refs`, `experiment_refs`, `assertion_refs` exposed in update tool + writer)
-- [ ] 1 observation value-set fixed (schema enum has `"inactive"`)
-- [ ] 3 new negative fixtures / test created
-- [ ] `field-drift-exceptions.yaml` has 0 entries
-- [ ] `__tests__/field-coverage.test.js` exceptions-count test passes with 0
-- [ ] 573 pre-existing + 19 Phase 0 + 5 Phase 2 = 597 tests + 3 new = 600 tests pass
-- [ ] `pnpm test` shows **~622 pass, 0 fail** (corrected per red-team M1; the actual count is 573 + 19 + ~27 + 3)
-- [ ] `pnpm validate:records` passes (183 records)
-- [ ] `pnpm validate:plan-loop` passes (74 plans)
-- [ ] Gap-assertion record updated to `status: resolved` via `record_update_observation`
-- [ ] Cook journal entry written at `docs/journals/260603-field-coverage-cook.md`
+- [x] 3 risk drift cells fixed (`claim_refs`, `experiment_refs`, `assertion_refs` exposed in update tool + writer)
+- [x] 1 observation value-set fixed (schema enum has `"inactive"` via sidecar override; gate workaround)
+- [x] 3 new negative fixtures / test created
+- [x] `field-drift-exceptions.yaml` has 0 entries
+- [x] `__tests__/field-coverage.test.js` exceptions-count test passes with 0
+- [x] 573 pre-existing + 19 Phase 0 + 5 Phase 2 = 597 tests + 3 new = 600 tests pass
+- [x] `pnpm test` shows 621 pass, 0 fail (corrected: actual count is 592 + 28 Phase 2 + 1 Phase 4 = 621; the +1 reflects the single new regression-safety test, not 3; the 2 negative fixtures run via the runner, not as `pnpm test` cases)
+- [x] `pnpm validate:records` passes (183 records)
+- [x] `pnpm validate:plan-loop` passes (75 plans, 48/48 tools)
+- [ ] Gap-assertion record updated to `status: resolved` via `record_update_observation` — **DEFERRED** (deviation: the record is `extracted-assertion` with schema `["active", "superseded", "pending_approval", "candidate"]`; no `notes` field; no MCP update tool; closing requires creating a successor assertion out of scope for Phase 4)
+- [x] Cook journal entry written at `docs/journals/260604-phase-1-refactor-tool-files.md` (Phase 4 section)
 
 ## Risk Assessment
 

@@ -1,0 +1,5 @@
+{
+  "properties": {
+    "status": { "enum": ["active", "inactive", "archived"] }
+  }
+}

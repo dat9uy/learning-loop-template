@@ -284,7 +284,7 @@ After each file, run `pnpm validate:records` to confirm 183 records still pass. 
 - [x] 17 new tests in `__tests__/schema-to-zod.test.js` pass
 - [x] 573 pre-existing tests still pass
 - [x] `pnpm test` shows 592 pass, 0 fail
-- [ ] All 7 active JSON Schemas have `additionalProperties: false`
+- [x] All 7 active JSON Schemas have `additionalProperties: false`
 - [x] `pnpm validate:records` passes (183 records)
 - [x] `pnpm validate:plan-loop` passes (74 plans)
 

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Close 9 experiment drift cells (writer + tools + bridge-2)"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [0, 1, 2]
@@ -235,15 +235,15 @@ Remove the 9 experiment cells. The exceptions list shrinks from 13 → 4. Update
 
 ## Success Criteria
 
-- [ ] All 9 experiment drift cells are fixed
-- [ ] `__tests__/bridge-2-unit.test.js` asserts `draft.verification.assertion_refs`
-- [ ] The new assertion passes
-- [ ] 597 pre-existing tests still pass
-- [ ] `pnpm test` shows 597 pass, 0 fail
-- [ ] `field-drift-exceptions.yaml` has 4 entries (was 13)
-- [ ] `__tests__/field-coverage.test.js` exceptions-count test passes with 4
-- [ ] `pnpm validate:records` passes; a test `record_create_experiment` call with `assertion_refs` succeeds
-- [ ] `pnpm validate:plan-loop` passes
+- [x] All 9 experiment drift cells are fixed
+- [x] `__tests__/bridge-2-unit.test.js` asserts `draft.verification.assertion_refs`
+- [x] The new assertion passes
+- [x] 597 pre-existing tests still pass
+- [x] `pnpm test` shows 597 pass, 0 fail
+- [x] `field-drift-exceptions.yaml` has 4 entries (was 13)
+- [x] `__tests__/field-coverage.test.js` exceptions-count test passes with 4
+- [x] `pnpm validate:records` passes; a test `record_create_experiment` call with `assertion_refs` succeeds
+- [x] `pnpm validate:plan-loop` passes
 
 ## Risk Assessment
 

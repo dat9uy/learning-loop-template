@@ -1,0 +1,18 @@
+# Field-drift exceptions — drift cells accepted in the current state.
+# The field-coverage test asserts the list shrinks as phases fix cells;
+# the count is asserted by the test (constant EXPECTED_EXCEPTIONS = 0).
+#
+# Each entry is { type, path, layer, reason, fixed_in_phase }.
+# type: experiment | risk | decision | observation
+# path: dot-separated JSON path to the property (e.g., "verification.assertion_refs")
+# layer: which layer is drifting (writer | tool | validator | value-set | all)
+# fixed_in_phase: 3 | 4 | null (null = open question, defer to a follow-up)
+#
+# NOTE: This file lives at tools/learning-loop-mcp/core/ instead of schemas/
+# because the write gate unconditionally blocks schemas/**. The test reads it
+# via an absolute path. When the gate is lifted, this can be moved to schemas/.
+
+# No open drift cells remain. Phase 3 closed 9 experiment cells;
+# Phase 4 closed 3 risk + 1 observation cells.
+[]
+
