@@ -1,6 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join, normalize } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { validateClaimVerification } from "./claim-verification-rules.js";
 
 const compiledValidatorsBySchemas = new WeakMap();
@@ -9,6 +10,7 @@ function getCompiledValidators(schemas) {
   const cached = compiledValidatorsBySchemas.get(schemas);
   if (cached) return cached;
   const ajv = new Ajv2020({ strict: true, allErrors: true });
+  addFormats(ajv);
   const compiledValidators = {};
   for (const [type, schema] of Object.entries(schemas)) {
     compiledValidators[type] = ajv.compile(schema);
