@@ -1,38 +1,29 @@
 import { z } from "zod";
+import { composeUpdateSchema } from "#mcp/core/schema-to-zod.js";
 import { updateExperiment } from "#mcp/core/experiment-writer.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { validateSourceRefs } from "#mcp/lib/source-ref-validator.js";
 
+// Schema-derived update schema with the `verification` block re-exposed as a
+// nested optional block. `verification` is excluded from the top-level shape
+// (the writer auto-generates the default; the create tool excludes it too)
+// and re-added via nestedBlocks. `surface` and `experiment_id` are tool-only.
+const baseSchema = composeUpdateSchema({
+  type: "experiment",
+  root: resolveRoot(),
+  excludeFields: ["id", "schema_version", "type", "status", "created_at", "updated_at", "verification"],
+  nestedBlocks: { verification: "verification" },
+  toolOnlyFields: {
+    surface: z.string().describe("Surface the experiment belongs to"),
+    experiment_id: z.string().describe("ID of the experiment record to update"),
+  },
+});
+
 export const recordUpdateExperimentTool = {
   name: "record_update_experiment",
   description: "Update an existing experiment record by ID. Immutable fields (id, type, created_at) are preserved. source_refs is append-only: new refs are merged with existing, duplicates removed. Use to record results, change status, add observations, or update verification after experiment execution.",
-  schema: {
-    surface: z.string().describe("Surface the experiment belongs to"),
-    experiment_id: z.string().describe("ID of the experiment record to update"),
-    status: z.enum(["draft", "reviewed", "approved", "rejected"]).optional().describe("New status"),
-    goal: z.string().optional().describe("Updated goal"),
-    hypothesis: z.string().optional().describe("Updated hypothesis"),
-    method: z.array(z.string()).optional().describe("Updated method steps"),
-    success_metrics: z.array(z.string()).optional().describe("Updated success criteria"),
-    result: z.string().optional().describe("Experiment result (e.g., 'supports', 'does-not-support', 'inconclusive')"),
-    agent_outcome: z.string().optional().describe("Agent's assessment of the outcome"),
-    product_outcome: z.string().optional().describe("Product impact of the outcome"),
-    observations: z.array(z.any()).optional().describe("Observations recorded during experiment"),
-    promotion_review: z.array(z.any()).optional().describe("Promotion review notes"),
-    source_refs: z.array(z.string()).optional().describe("Source references to append (append-only, deduplicated)"),
-    verification: z.object({
-      claim_refs: z.array(z.string()).optional().describe("Claims this experiment validates"),
-      proves: z.array(z.object({
-        dimension: z.enum(["static", "install", "runtime"]).describe("Verification dimension"),
-        scope: z.enum(["sandbox", "production"]).optional().describe("Scope of verification"),
-        output_level: z.enum(["none", "docs-only", "metadata-only", "runtime-captured", "product-code"]).describe("Output granularity proven"),
-      })).optional().describe("What this experiment proves"),
-      requires_human_approval: z.boolean().optional().describe("Whether human approval is required"),
-      approval_status: z.enum(["not-required", "requested", "approved", "rejected"]).optional().describe("Current approval status"),
-    }).optional().describe("Updated verification block"),
-    notes: z.string().optional().describe("Additional notes to append"),
-  },
+  schema: baseSchema.shape,
   handler: async ({ surface, experiment_id, notes, source_refs, verification, ...updates }) => {
     const root = resolveRoot();
 

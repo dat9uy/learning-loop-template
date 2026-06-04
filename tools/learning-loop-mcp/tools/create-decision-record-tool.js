@@ -1,32 +1,28 @@
 import { z } from "zod";
+import { buildZodSchemaFor } from "#mcp/core/schema-to-zod.js";
 import { createDecision } from "#mcp/core/decision-writer.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { validateSourceRefs } from "#mcp/lib/source-ref-validator.js";
 
+// Schema-derived base; `surface` is a tool-only field (not in the record
+// schema — it determines records/<surface>/decisions/ directory layout).
+const decisionBaseSchema = buildZodSchemaFor("decision", {
+  root: resolveRoot(),
+  excludeFields: ["id", "schema_version", "type", "status", "created_at", "updated_at"],
+});
+const schemaShape = {
+  surface: z.string().describe("Surface/scope this decision applies to (e.g., 'product', 'api', 'web'). Determines directory: records/<surface>/decisions/"),
+  ...decisionBaseSchema.shape,
+};
+
+// MCP SDK 1.29.0 accepts raw shapes; pass the shape directly.
+const schema = schemaShape;
+
 export const recordCreateDecisionTool = {
   name: "record_create_decision",
   description: "Create a decision record YAML file. Use this before writing product-build plans. The record starts in draft status. For product/** writes, the write gate now requires a preflight marker (via mark_preflight_complete) instead of decision records. Decision records are still required for product-build plan.md files.",
-  schema: {
-    surface: z.string().describe("Surface/scope this decision applies to (e.g., 'product', 'api', 'web'). Determines directory: records/<surface>/decisions/"),
-    question: z.string().describe("The question or choice this decision resolves"),
-    decision: z.string().describe("The decision made"),
-    rationale: z.string().optional().describe("Why this decision was chosen"),
-    alternatives: z.array(z.string()).optional().describe("Alternatives considered but rejected"),
-    tradeoffs: z.array(z.string()).optional().describe("Tradeoffs accepted with this decision"),
-    source_refs: z.array(z.string()).optional().describe("Source references (e.g., record:..., local:...)"),
-    supersedes: z.array(z.string()).optional().describe("IDs of decisions this one supersedes"),
-    decision_effect: z.object({
-      action: z.enum(["approve", "reject", "accept-risk", "mitigate-risk", "defer", "supersede"]),
-      scope: z.enum(["planning", "install", "runtime", "product", "schema-improvement"]),
-      affected_refs: z.array(z.string()),
-      boundaries: z.object({
-        allowed_actions: z.array(z.string()).optional(),
-        blocked_actions: z.array(z.string()).optional(),
-        required_gates: z.array(z.string()).optional(),
-      }).optional(),
-    }).optional().describe("Effect and boundaries of this decision"),
-  },
+  schema,
   handler: async ({ surface, question, decision, rationale, alternatives, tradeoffs, source_refs, supersedes, decision_effect }) => {
     const root = resolveRoot();
 

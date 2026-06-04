@@ -70,3 +70,52 @@ export function zodObjectForProperties(properties, required = [], { descriptions
   }
   return obj;
 }
+
+/**
+ * Compose a tool's update schema from the type's schema + nested blocks +
+ * tool-only fields. Update semantics: every schema field is optional (the
+ * caller sends only the fields they want to change).
+ *
+ * - type: record type ("experiment" | "risk" | "decision" | "observation")
+ * - root: project root (for loadSchemas)
+ * - excludeFields: writer-generated fields to strip
+ * - nestedBlocks: map of { <field_name>: <schema_property_path> }
+ *   e.g., { verification: "verification" } for experiment
+ *        or { decision_effect: "decision_effect" } for decision
+ * - toolOnlyFields: extra fields not in the schema (e.g., experiment_id)
+ * Returns a z.object({...}).strict() with the type's fields (all optional) +
+ * nested blocks (optional) + tool-only fields.
+ */
+export function composeUpdateSchema({
+  type,
+  root,
+  excludeFields = [],
+  nestedBlocks = {},
+  toolOnlyFields = {},
+}) {
+  const schemas = loadSchemas(root);
+  const inputSchema = buildZodSchemaFor(type, { root, excludeFields });
+
+  // Make every schema field optional for update semantics.
+  const shape = {};
+  for (const [key, value] of Object.entries(inputSchema.shape)) {
+    shape[key] = value.isOptional() ? value : value.optional();
+  }
+
+  // Add nested blocks (e.g., verification for experiment, decision_effect for decision).
+  // Apply sidecar descriptions keyed as `<type>_<block>` (e.g., experiment_verification).
+  const descriptions = loadDescriptions();
+  for (const [fieldName, schemaPath] of Object.entries(nestedBlocks)) {
+    const blockProps = schemas[type].properties[schemaPath].properties;
+    const blockRequired = schemas[type].properties[schemaPath].required || [];
+    const blockDescriptions = descriptions[`${type}_${fieldName}`] || {};
+    shape[fieldName] = zodObjectForProperties(blockProps, blockRequired, {
+      descriptions: blockDescriptions,
+    }).optional();
+  }
+
+  // Add tool-only fields (e.g., experiment_id, risk_id).
+  Object.assign(shape, toolOnlyFields);
+
+  return z.object(shape).strict();
+}

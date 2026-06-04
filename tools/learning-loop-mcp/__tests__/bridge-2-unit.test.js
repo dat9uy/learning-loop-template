@@ -152,6 +152,7 @@ describe("experiment-draft-builder", () => {
     assert.strictEqual(result.overrides_applied, false);
     assert.deepStrictEqual(result.draft.source_refs, ["record:assertion-valid"]);
     assert.deepStrictEqual(result.draft.assertion_refs, ["record:assertion-valid"]);
+    assert.deepStrictEqual(result.draft.verification.assertion_refs, ["record:assertion-valid"]);
     assert.strictEqual(result.draft.verification.requires_human_approval, true);
   });
 

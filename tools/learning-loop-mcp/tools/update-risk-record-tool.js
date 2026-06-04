@@ -1,26 +1,24 @@
 import { z } from "zod";
+import { composeUpdateSchema } from "#mcp/core/schema-to-zod.js";
 import { updateRisk } from "#mcp/core/risk-writer.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
+// Schema-derived update schema; `surface` and `risk_id` are tool-only fields.
+const baseSchema = composeUpdateSchema({
+  type: "risk",
+  root: resolveRoot(),
+  excludeFields: ["id", "schema_version", "type", "status", "created_at", "updated_at"],
+  toolOnlyFields: {
+    surface: z.string().describe("Surface the risk belongs to"),
+    risk_id: z.string().describe("ID of the risk record to update"),
+  },
+});
+
 export const recordUpdateRiskTool = {
   name: "record_update_risk",
   description: "Update an existing risk record by ID. Immutable fields (id, type, created_at) are preserved. Use to change status, severity, or add mitigation after analysis.",
-  schema: {
-    surface: z.string().describe("Surface the risk belongs to"),
-    risk_id: z.string().describe("ID of the risk record to update"),
-    status: z.enum(["draft", "reviewed", "active", "mitigated", "accepted", "rejected"]).optional().describe("New status"),
-    risk_statement: z.string().optional().describe("Updated risk statement"),
-    category: z.enum(["license", "scope-boundary", "data-quality", "runtime", "security", "compliance", "other"]).optional().describe("Updated category"),
-    severity: z.enum(["low", "medium", "high", "critical"]).optional().describe("Updated severity"),
-    likelihood: z.enum(["low", "medium", "high"]).optional().describe("Updated likelihood"),
-    confidence: z.enum(["low", "medium", "high"]).optional().describe("Updated confidence"),
-    mitigation: z.object({
-      blocked_actions: z.array(z.string()).optional(),
-      required_gates: z.array(z.string()).optional(),
-    }).optional().describe("Updated mitigation measures"),
-    notes: z.string().optional().describe("Additional notes to append"),
-  },
+  schema: baseSchema.shape,
   handler: async ({ surface, risk_id, notes, ...updates }) => {
     const root = resolveRoot();
 

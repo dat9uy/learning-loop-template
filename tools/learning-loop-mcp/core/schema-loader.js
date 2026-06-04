@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const schemaMapping = {
@@ -11,11 +11,25 @@ const schemaMapping = {
   observation: "observation.schema.json",
 };
 
+function applyObservationOverride(root, schema) {
+  const overridePath = join(root, "tools", "learning-loop-mcp", "core", "observation-schema-override.json");
+  if (!existsSync(overridePath)) return schema;
+  const override = JSON.parse(readFileSync(overridePath, "utf8"));
+  return {
+    ...schema,
+    properties: {
+      ...(schema.properties || {}),
+      ...(override.properties || {}),
+    },
+  };
+}
+
 export function loadSchemas(root) {
   return Object.fromEntries(
-    Object.entries(schemaMapping).map(([type, filename]) => [
-      type,
-      JSON.parse(readFileSync(join(root, "schemas", filename), "utf8")),
-    ]),
+    Object.entries(schemaMapping).map(([type, filename]) => {
+      const raw = JSON.parse(readFileSync(join(root, "schemas", filename), "utf8"));
+      const schema = type === "observation" ? applyObservationOverride(root, raw) : raw;
+      return [type, schema];
+    }),
   );
 }

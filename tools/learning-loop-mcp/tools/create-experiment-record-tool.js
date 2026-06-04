@@ -1,25 +1,31 @@
 import { z } from "zod";
+import { buildZodSchemaFor } from "#mcp/core/schema-to-zod.js";
 import { createExperiment } from "#mcp/core/experiment-writer.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { validateSourceRefs } from "#mcp/lib/source-ref-validator.js";
 
+// Schema-derived base. `verification` is excluded because the writer
+// auto-generates the default verification block (claim_refs, proves: [],
+// requires_human_approval: true, approval_status: not-required). The update
+// tool re-exposes `verification` via composeUpdateSchema's nestedBlocks.
+// `surface` is a tool-only field (not in the record schema).
+const experimentBaseSchema = buildZodSchemaFor("experiment", {
+  root: resolveRoot(),
+  excludeFields: ["id", "schema_version", "type", "status", "created_at", "updated_at", "verification"],
+});
+const schemaShape = {
+  surface: z.string().describe("Surface/scope this experiment applies to (e.g., 'product', 'api')"),
+  ...experimentBaseSchema.shape,
+};
+
+// MCP SDK 1.29.0 accepts raw shapes; pass the shape directly.
+const schema = schemaShape;
+
 export const recordCreateExperimentTool = {
   name: "record_create_experiment",
   description: "Create an experiment record YAML file. Experiments prove or disprove assertions. The flow is: draft assertions (decisions) → experiment to prove → evidence (derivative). Records start in draft status.",
-  schema: {
-    surface: z.string().describe("Surface/scope this experiment applies to (e.g., 'product', 'api')"),
-    goal: z.string().describe("What the experiment aims to determine"),
-    hypothesis: z.string().optional().describe("The hypothesis being tested"),
-    method: z.array(z.string()).optional().describe("Steps to execute the experiment"),
-    success_metrics: z.array(z.string()).optional().describe("Criteria for success"),
-    source_refs: z.array(z.string()).optional().describe("Source references"),
-    scope: z.enum(["planning", "install", "runtime", "product", "schema-improvement"]).optional().describe("Scope of the experiment"),
-    output_level: z.enum(["none", "docs-only", "metadata-only", "runtime-captured", "product-code"]).optional().describe("Expected output granularity"),
-    claim_refs: z.array(z.string()).optional().describe("Claims this experiment validates"),
-    risk_refs: z.array(z.string()).optional().describe("Risks this experiment addresses"),
-    assertion_refs: z.array(z.string()).optional().describe("Assertion references this experiment validates (e.g., record:assertion-vnstock-data-install-...)"),
-  },
+  schema,
   handler: async ({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs }) => {
     const root = resolveRoot();
 

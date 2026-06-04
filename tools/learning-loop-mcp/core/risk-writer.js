@@ -14,7 +14,7 @@ const VALID_CONFIDENCES = ["low", "medium", "high"];
 /**
  * Build a risk record YAML object from input params.
  */
-export function buildRiskYaml({ surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation }) {
+export function buildRiskYaml({ surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation, assertion_refs }) {
   const now = generateISOTimestamp();
   const slug = sanitizeSlug(risk_statement);
   const id = generateRecordId({ type: "risk", surface, slug });
@@ -39,6 +39,7 @@ export function buildRiskYaml({ surface, risk_statement, category, severity, lik
     ...(source_refs ? { source_refs } : {}),
     ...(claim_refs ? { claim_refs } : {}),
     ...(experiment_refs ? { experiment_refs } : {}),
+    ...(assertion_refs ? { assertion_refs } : {}),
     ...(mitigation ? { mitigation } : {}),
   };
 }
@@ -47,10 +48,10 @@ export function buildRiskYaml({ surface, risk_statement, category, severity, lik
  * Create a risk record file.
  * Returns { created: true, id, path } or { created: false, reason }.
  */
-export function createRisk({ root, surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation }) {
+export function createRisk({ root, surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation, assertion_refs }) {
   if (!risk_statement) return { created: false, reason: "missing risk_statement" };
 
-  const record = buildRiskYaml({ surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation });
+  const record = buildRiskYaml({ surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation, assertion_refs });
   const dirPath = resolveRecordDir(root, { type: "risk", surface });
   const filename = generateFilename({ type: "risk", surface, slug: sanitizeSlug(risk_statement) });
   const result = atomicWriteYaml(dirPath, filename, record);

@@ -36,6 +36,8 @@ export function runNegativeFixtures(rootPath, allowDisallowed) {
     ["invalid-decision-effect", "/decision_effect/action enum: must be equal to one of the allowed values"],
     ["bad-timestamp", "/created_at pattern: must match pattern"],
     ["outside-reference-docs", "references outside-artifact"],
+    ["experiment-missing-verification-assertion-refs", "verification.assertion_refs must name at least one assertion or claim"],
+    ["risk-missing-assertion-refs", "validation-pass"],
   ];
   const errors = [];
   for (const [fixture, expected] of cases) {
@@ -55,6 +57,13 @@ export function runNegativeFixtures(rootPath, allowDisallowed) {
     }
     if (typeof expected === "object") {
       errors.push(`${fixture} did not fail with expected parse error kind: ${expected.kind}`);
+      continue;
+    }
+    if (expected === "validation-pass") {
+      const result = validateRecords(records, schemas, rootPath, allowDisallowed);
+      if (result.length > 0) {
+        errors.push(`${fixture} expected validation-pass (no errors) but got: ${result.join("; ")}`);
+      }
       continue;
     }
     const result = validateRecords(records, schemas, rootPath, allowDisallowed);

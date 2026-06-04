@@ -9,7 +9,7 @@ const SCHEMA_VERSION = "1.0";
 /**
  * Build an experiment record YAML object from input params.
  */
-export function buildExperimentYaml({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs }) {
+export function buildExperimentYaml({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs, notes, output_capture }) {
   const now = generateISOTimestamp();
   const slug = sanitizeSlug(goal);
   const id = generateRecordId({ type: "experiment", surface, slug });
@@ -36,8 +36,11 @@ export function buildExperimentYaml({ surface, goal, hypothesis, method, success
     ...(risk_refs ? { risk_refs } : {}),
     ...(assertion_refs ? { assertion_refs } : {}),
     ...(output_level ? { output_level } : {}),
+    ...(notes ? { notes } : {}),
+    ...(output_capture ? { output_capture } : {}),
     verification: {
       claim_refs: claim_refs || [],
+      assertion_refs: assertion_refs || [],
       proves: [],
       requires_human_approval: true,
       approval_status: "not-required",
@@ -49,10 +52,10 @@ export function buildExperimentYaml({ surface, goal, hypothesis, method, success
  * Create an experiment record file.
  * Returns { created: true, id, path } or { created: false, reason }.
  */
-export function createExperiment({ root, surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs }) {
+export function createExperiment({ root, surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs, notes, output_capture }) {
   if (!goal) return { created: false, reason: "missing goal" };
 
-  const record = buildExperimentYaml({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs });
+  const record = buildExperimentYaml({ surface, goal, hypothesis, method, success_metrics, source_refs, scope, output_level, claim_refs, risk_refs, assertion_refs, notes, output_capture });
   const dirPath = resolveRecordDir(root, { type: "experiment", surface });
   const filename = generateFilename({ type: "experiment", surface, slug: sanitizeSlug(goal) });
   const result = atomicWriteYaml(dirPath, filename, record);

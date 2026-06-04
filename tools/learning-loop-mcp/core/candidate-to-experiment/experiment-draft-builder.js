@@ -67,6 +67,7 @@ export function buildExperimentDraft({ root, surface, assertionId, overrides = {
     assertion_refs: [`record:${assertionId}`],
     verification: {
       claim_refs: [],
+      assertion_refs: [`record:${assertionId}`],
       proves: [
         {
           dimension: candidate.dimension,

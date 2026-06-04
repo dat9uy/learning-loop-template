@@ -1,27 +1,28 @@
 import { z } from "zod";
+import { buildZodSchemaFor } from "#mcp/core/schema-to-zod.js";
 import { createRisk } from "#mcp/core/risk-writer.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { validateSourceRefs } from "#mcp/lib/source-ref-validator.js";
 
+// Schema-derived base; `surface` is a tool-only field (not in the record
+// schema — it determines records/<surface>/risks/ directory layout).
+const riskBaseSchema = buildZodSchemaFor("risk", {
+  root: resolveRoot(),
+  excludeFields: ["id", "schema_version", "type", "status", "created_at", "updated_at"],
+});
+const schemaShape = {
+  surface: z.string().describe("Surface/scope this risk applies to (e.g., 'product', 'api')"),
+  ...riskBaseSchema.shape,
+};
+
+// MCP SDK 1.29.0 accepts raw shapes; pass the shape directly.
+const schema = schemaShape;
+
 export const recordCreateRiskTool = {
   name: "record_create_risk",
   description: "Create a risk record YAML file. Risks document potential issues that may affect the project. Records start in draft status.",
-  schema: {
-    surface: z.string().describe("Surface/scope this risk applies to (e.g., 'product', 'api')"),
-    risk_statement: z.string().describe("Clear statement of the risk"),
-    category: z.enum(["license", "scope-boundary", "data-quality", "runtime", "security", "compliance", "other"]).optional().describe("Risk category"),
-    severity: z.enum(["low", "medium", "high", "critical"]).optional().describe("Impact severity if risk materializes"),
-    likelihood: z.enum(["low", "medium", "high"]).optional().describe("Probability of risk occurring"),
-    confidence: z.enum(["low", "medium", "high"]).optional().describe("Confidence in the assessment"),
-    source_refs: z.array(z.string()).optional().describe("Source references"),
-    claim_refs: z.array(z.string()).optional().describe("Claims this risk relates to"),
-    experiment_refs: z.array(z.string()).optional().describe("Experiments that address this risk"),
-    mitigation: z.object({
-      blocked_actions: z.array(z.string()).optional(),
-      required_gates: z.array(z.string()).optional(),
-    }).optional().describe("Mitigation measures"),
-  },
+  schema,
   handler: async ({ surface, risk_statement, category, severity, likelihood, confidence, source_refs, claim_refs, experiment_refs, mitigation }) => {
     const root = resolveRoot();
 
