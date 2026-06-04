@@ -369,3 +369,34 @@ describe("z.fromJSONSchema() — spike metadata", () => {
     );
   });
 });
+
+// --- Phase 0 extensions: lock the easy cases of the wrapper's contract ---
+// These tests pin the simple structural behavior of z.fromJSONSchema() that
+// the schema-to-zod wrapper (core/schema-to-zod.js) depends on. Per
+// research-260603-2200-zod-description-passthrough.md, description passthrough
+// works for required fields; this test pins the easy case. The optional-wrapper
+// re-apply path (tested in __tests__/schema-to-zod.test.js) handles the hard
+// case.
+describe("z.fromJSONSchema() — Phase 0 extensions (TDD locks the contract)", () => {
+  it("required field description is reachable via .description (regression-safety for wrapper)", () => {
+    const zodSchema = z.fromJSONSchema({
+      type: "object",
+      properties: { name: { type: "string", description: "required name field" } },
+      required: ["name"],
+    });
+    assert.strictEqual(zodSchema.shape.name.description, "required name field");
+  });
+
+  it("additionalProperties: false is enforced — rejects extras (regression-safety for 6-schema upgrade)", () => {
+    const zodSchema = z.fromJSONSchema({
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+      additionalProperties: false,
+    });
+    assert.throws(
+      () => zodSchema.parse({ name: "ok", extra: "BOGUS" }),
+      /unrecognized|extra|additional/i,
+    );
+  });
+});

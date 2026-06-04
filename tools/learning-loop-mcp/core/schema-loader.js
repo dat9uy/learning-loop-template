@@ -8,6 +8,7 @@ const schemaMapping = {
   risk: "risk.schema.json",
   capability: "capability.schema.json",
   "extracted-assertion": "index-entry.schema.json",
+  observation: "observation.schema.json",
 };
 
 export function loadSchemas(root) {
