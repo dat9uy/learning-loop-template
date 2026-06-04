@@ -20,6 +20,20 @@ Shared coordination rules for both Claude Code and Droid CLI. All gate logic liv
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
 - **MCP server** (`tools/learning-loop-mcp/server.js`) — 35 tools for constraint checks, record CRUD, preflight gating, and workflow orchestration.
 
+### Inbound State Gate — Meta-State First
+
+**When the inbound state gate fires** (visible as a `INBOUND STATE GATE:` block in the operator message or session context), **read `meta-state.jsonl` (last 20 lines) BEFORE attempting any bash command**. The named observations in the gate warning are often a subset; the full escalation context (recent `change-log` and `finding` entries) lives in the registry.
+
+**Why**: the gate is a SIGNAL that the operator just changed something external to the loop (cleared a device, reset state, etc.). The named observations are a *symptom* (they may be stale). The *cause* — the operator's intent and any prior gate-bug recurrences — is in `meta-state.jsonl`. Skipping this read reproduces known gate-bug classes (e.g., the G8 subcommand-class false positive, 5 documented recurrences in `meta-state.jsonl`).
+
+**Concrete protocol**:
+1. Gate fires → read `meta-state.jsonl` (last 20 lines, or use `meta_state_list` MCP tool with `entry_kind` filter).
+2. Scan for recent `change-log` entries (operator intent) and `finding` entries (known gate bugs that may escalate).
+3. If a matching prior finding exists, apply the operator-approved workaround BEFORE running the corresponding bash command.
+4. Only then proceed to update affected observations via `record_observation` MCP tool.
+
+**Defense in depth**: the hook message itself leads with the meta-state hint (see `tools/learning-loop-mcp/hooks/inbound-gate.js#buildContextMessage`), but this AGENTS.md rule is the canonical source.
+
 ### Discovery: `loop_describe`
 
 Call `loop_describe({tier: "warm"})` at session start to discover the loop's operational surface and active rules. The tool returns a tiered view to control context bloat:
