@@ -1,7 +1,7 @@
 ---
 title: "Field-Coverage Mechanism: Schema as Source of Truth (Approach 2)"
 description: "Implements Approach 2 from plans/reports/brainstorm-260603-field-coverage.md. Builds a thin `core/schema-to-zod.js` wrapper around zod 4.4.3's built-in `z.fromJSONSchema()` (spike-validated at __tests__/schema-to-zod-spike.test.js), refactors 8 hand-written record-CUD tool zod schemas to use it, adds a `__tests__/field-coverage.test.js` that catches writer/validator/value-set drift, and closes 13 drift cells (9 experiment + 3 risk + 1 observation) + 1 bridge-2 unit-test gap. Net effect: 4-layer drift class (schema/tool-zod/writer/validator) becomes impossible for 4 active record types (experiment, risk, decision, observation) and the 3 known experiment gaps are fixed. TDD structure preserves the 573 pre-existing tests. Surface: `meta`."
-status: pending
+status: in-progress
 priority: P2
 branch: "main"
 tags: [field-coverage, schema-truth, drift-prevention, code-organization, gap-closure, tdd, fifth-bridge, approach-2, meta, fromJSONSchema]
@@ -47,8 +47,8 @@ The pre-plan verification report (1 of 2 reports produced for this plan) re-deri
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 0 | [Schema-to-zod engine + 7-schema `additionalProperties: false` upgrade (TDD)](./phase-0-schema-to-zod-engine.md) | pending |
-| 1 | [Refactor 8 record-CUD tool files to schema-derived zod (TDD, regression-safety)](./phase-1-refactor-8-tool-files.md) | pending |
+| 0 | [Schema-to-zod engine + 7-schema `additionalProperties: false` upgrade (TDD)](./phase-0-schema-to-zod-engine.md) | completed |
+| 1 | [Refactor 8 record-CUD tool files to schema-derived zod (TDD, regression-safety)](./phase-1-refactor-8-tool-files.md) | in_progress |
 | 2 | [`__tests__/field-coverage.test.js` + 2 sidecars (TDD, locks the contract)](./phase-2-field-coverage-test-and-sidecars.md) | pending |
 | 3 | [Close 9 experiment drift cells (writer + tools + bridge-2)](./phase-3-close-experiment-drift-cells.md) | pending |
 | 4 | [Close 3 risk drift cells + 1 observation value-set drift + 3 new negative fixtures + gap-assertion update](./phase-4-close-risk-observation-drift-and-fixtures.md) | pending |

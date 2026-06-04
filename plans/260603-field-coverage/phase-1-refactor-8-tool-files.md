@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Refactor 8 record-CUD tool files to schema-derived zod (TDD, regression-safety)"
-status: pending
+status: in_progress
 priority: P2
 effort: "0.5d"
 dependencies: [0]

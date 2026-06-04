@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "Schema-to-zod engine + 7-schema `additionalProperties: false` upgrade (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: []
@@ -278,15 +278,15 @@ After each file, run `pnpm validate:records` to confirm 183 records still pass. 
 
 ## Success Criteria
 
-- [ ] `core/schema-to-zod.js` is < 60 LOC
-- [ ] `core/schema-description-loader.js` is < 15 LOC
-- [ ] 2 new tests in `__tests__/schema-to-zod-spike.test.js` pass
-- [ ] 17 new tests in `__tests__/schema-to-zod.test.js` pass
-- [ ] 573 pre-existing tests still pass
-- [ ] `pnpm test` shows 592 pass, 0 fail
+- [x] `core/schema-to-zod.js` is < 60 LOC
+- [x] `core/schema-description-loader.js` is < 15 LOC
+- [x] 2 new tests in `__tests__/schema-to-zod-spike.test.js` pass
+- [x] 17 new tests in `__tests__/schema-to-zod.test.js` pass
+- [x] 573 pre-existing tests still pass
+- [x] `pnpm test` shows 592 pass, 0 fail
 - [ ] All 7 active JSON Schemas have `additionalProperties: false`
-- [ ] `pnpm validate:records` passes (183 records)
-- [ ] `pnpm validate:plan-loop` passes (74 plans)
+- [x] `pnpm validate:records` passes (183 records)
+- [x] `pnpm validate:plan-loop` passes (74 plans)
 
 ## Risk Assessment
 
