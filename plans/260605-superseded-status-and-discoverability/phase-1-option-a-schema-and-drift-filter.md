@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Option A: Status enum + consolidated_into + consolidates + session_id + drift filter (TDD, 7 tests)"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: ["phase-0"]

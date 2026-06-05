@@ -1,7 +1,7 @@
 ---
 title: "Superseded Status + Consolidated_into + Loop_describe Cold Tier + MCP Connection Discoverability"
 description: "Closes 2 gap entries (meta-260605T1356Z-loop-describe-cold-tier-superseded-lineage-missing and meta-260605T1356Z-sp0-sp3-tools-require-live-mcp-server-connection) plus the underlying G8 supersede housekeeping. Phase 1 adds 'superseded' to the meta-state status enum + a `consolidated_into` field on findings + a `consolidates` field on change-logs + a `session_id` field for hook idempotency, and updates the SP3 drift filter to treat superseded as terminal. Phase 2 applies Option A to the 4 G8 finding entries (1st, 3rd, 4th, 5th recurrences) so the G8 bug stays visible in the audit trail (via a single change-log) without polluting the drift view. Phase 3 surfaces the superseded lineage in `loop_describe({ tier: 'cold' })` so agents can trace old findings to their canonical change-log without reading the registry directly. Phase 4 EXTENDS the existing `.factory/hooks/loop-surface-inject.cjs` hook (which already does a real MCP probe) to log a meta_state_report finding on probe failure + surface a banner, closing the discoverability gap demonstrated by this very session. TDD structure: 7 schema/drift tests + 2 G8-apply tests + 4 loop_describe tests + 3 hook tests = 16 new tests. Target total: 557 + 16 = 573. Closes the 'consolidated = resolved' semantic lie and the 'MCP-not-connected = silent direct-file-I/O' gap. Surface: meta (loop's own machinery, not product/**)."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, mcp, tdd, agent-affordances, superseded, consolidated-into, loop-describe, discoverability, mcp-connection, drift-filter, meta-state, g8]

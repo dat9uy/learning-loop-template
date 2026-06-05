@@ -76,6 +76,41 @@ export const loopDescribeTool = {
         result.active_findings = activeFindings;
         result.all_findings = introspect.listAllFindings(root, { categories });
         result.anti_patterns = antiPatterns;
+
+        // Superseded lineage surface (Phase 3 of plan 260605):
+        // group all finding entries with status='superseded' and a consolidated_into
+        // pointer by their canonical change-log entry. Orphans (consolidated_into
+        // points to a non-existent change-log) are surfaced in a separate array.
+        const allEntries = introspect.readAllEntriesForLineage(root);
+        const changeLogMap = new Map(
+          allEntries
+            .filter((e) => e.entry_kind === "change-log")
+            .map((cl) => [cl.id, cl]),
+        );
+        const superseded = allEntries.filter(
+          (e) => e.entry_kind !== "change-log" && e.status === "superseded" && typeof e.consolidated_into === "string",
+        );
+        const groups = new Map();
+        const orphans = [];
+        for (const f of superseded) {
+          const target = changeLogMap.get(f.consolidated_into);
+          if (!target) {
+            orphans.push({ id: f.id, consolidated_into: f.consolidated_into, note: "change-log not found" });
+            continue;
+          }
+          if (!groups.has(target.id)) groups.set(target.id, { change_log: target, findings: [] });
+          groups.get(target.id).findings.push(f);
+        }
+        const lineage = Array.from(groups.values())
+          .map((g) => ({
+            change_log: g.change_log,
+            findings: g.findings.sort((a, b) => a.id.localeCompare(b.id)),
+          }))
+          .sort((a, b) => (b.change_log.created_at || "").localeCompare(a.change_log.created_at || ""));
+        result.superseded_lineage = lineage;
+        if (orphans.length > 0) {
+          result.orphans = orphans;
+        }
       }
 
       result.degraded = degraded || warnings.length > 0;

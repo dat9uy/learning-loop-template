@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { z } from "zod";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Source-of-truth categories for finding entries. Export so introspection
@@ -36,8 +36,12 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported"]).optional()
-    .describe("Status — only 'reported' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses."),
+  status: z.enum(["reported", "superseded"]).optional()
+    .describe("Status — 'reported' or 'superseded' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses. 'superseded' is a terminal status indicating the entry is no longer the canonical source; the canonical source is the change-log referenced by consolidated_into."),
+  consolidated_into: z.string().optional()
+    .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
+  session_id: z.string().optional()
+    .describe("Idempotency key for hook-emitted findings. When set, the entry is unique per session. The MCP connection hook (Phase 4) uses this to avoid emitting the same finding twice in one session."),
   mechanism_check: z.boolean().optional()
     .describe("Opt-in flag (SP2): include this finding in grounding checks. Default false. When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
@@ -70,6 +74,8 @@ export const metaStateChangeEntrySchema = z.object({
   }).optional().describe("Wider impact scope"),
   supersedes: z.string().optional()
     .describe("ID of a previous change-log entry this one replaces"),
+  consolidates: z.string().optional()
+    .describe("Comma-separated list of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
   evidence: z.object({
     code_ref: z.string().optional(),
     journal: z.string().optional(),

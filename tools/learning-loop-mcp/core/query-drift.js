@@ -70,6 +70,10 @@ export function queryDrift(entries, codeContext = {}) {
  * to detect "the mechanism's file is gone" as a drift event.
  */
 function computeIsDrift(derivation, grounding, entry) {
+  // Terminal statuses (auto-resolved, expired, resolved, superseded) are always
+  // non-drift — the entry's claim is consistent with its terminal state, since
+  // the entry is no longer the canonical source. The TERMINAL_STATUSES set in
+  // core/meta-state.js is the source of truth for which statuses count.
   const rawActive = entry.status === "active" || entry.status === "reported";
   if (!rawActive) return false;
 

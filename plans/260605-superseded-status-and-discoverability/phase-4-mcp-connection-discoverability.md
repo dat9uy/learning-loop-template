@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "MCP connection discoverability (extend existing loop-surface-inject hook, TDD, 3 tests)"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: ["phase-3"]

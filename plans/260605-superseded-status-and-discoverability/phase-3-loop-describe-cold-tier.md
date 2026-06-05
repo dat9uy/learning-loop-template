@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "loop_describe({ tier: 'cold' }) superseded lineage surface (TDD, 4 tests)"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: ["phase-2"]

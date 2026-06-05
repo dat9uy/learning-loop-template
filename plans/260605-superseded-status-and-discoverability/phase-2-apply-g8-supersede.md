@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Apply Option A to 4 G8 finding entries (TDD, 2 tests)"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: ["phase-1"]

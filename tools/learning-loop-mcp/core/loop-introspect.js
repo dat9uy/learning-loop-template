@@ -146,3 +146,12 @@ export function listAllFindings(root, { categories } = {}) {
 export function listPromotedRules(root) {
   return loadPromotedRules(root);
 }
+
+/**
+ * Read all entries (finding + change-log) from the meta-state registry.
+ * Used by loop_describe cold tier to compute the superseded_lineage surface
+ * (Phase 3 of plan 260605). Returns an array of entry objects (no filtering).
+ */
+export function readAllEntriesForLineage(root) {
+  return readRegistry(root);
+}
