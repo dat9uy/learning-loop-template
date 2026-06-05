@@ -15,7 +15,10 @@ describe("G8 subcommand-class meta-state entry", () => {
       (e) =>
         e.subtype === "gate-bug" &&
         typeof e.description === "string" &&
-        e.description.includes("subcommand-class false positive")
+        e.description.includes("subcommand-class false positive") &&
+        // Exclude the rule entry (which has a promoted_to_rule); we want
+        // a G8 finding entry, not the rule that codifies the prevention.
+        !e.promoted_to_rule
     );
 
     assert.ok(g8Entry, "Expected a meta-state entry with subtype=gate-bug and description containing 'subcommand-class false positive'");

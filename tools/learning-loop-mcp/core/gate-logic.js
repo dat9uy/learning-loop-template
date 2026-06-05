@@ -56,10 +56,93 @@ const SEGMENT_SEPARATORS = /[;&|]+/;
 
 const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
 
-/** Split a command on ;, &, | separators. */
+/**
+ * Split a command on `;`, `&`, `|` separators — quote-aware.
+ *
+ * A naive `command.split(/[;&|]+/)` would fragment a quoted message body
+ * like `git commit -m "a;b" -m "c|d"` on the `;` and `|` inside the
+ * quoted strings, causing downstream `stripMessageFlags` to miss the
+ * message body and the regex to match tokens that should be inside the
+ * body. This is the splitSegments-quote-unaware bug
+ * (see finding meta-260606T0301Z-...).
+ *
+ * The state machine tracks:
+ *  - single-quote state (POSIX shell: no escapes inside `'...'`)
+ *  - double-quote state (POSIX shell: backslash escapes some chars inside `"..."`)
+ *  - backslash escape (consumes the next char literally)
+ *
+ * Separators are only split on when NOT inside a quote and NOT escaped.
+ * Each resulting segment is trimmed; empty segments are dropped (same
+ * as the prior behavior).
+ */
 export function splitSegments(command) {
   if (!command || typeof command !== "string") return [];
-  return command.split(SEGMENT_SEPARATORS).map((s) => s.trim()).filter(Boolean);
+  const segments = [];
+  let buf = "";
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+
+    if (escaped) {
+      // Backslash escape: consume this char literally, regardless of quote state.
+      // (POSIX: inside single quotes, backslash is literal — but our tokenizer
+      // never enters single-quote via a backslash; it enters via `'`. So this
+      // branch only fires outside single quotes, matching shell semantics.)
+      buf += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (inSingle) {
+      buf += ch;
+      if (ch === "'") inSingle = false;
+      continue;
+    }
+
+    if (inDouble) {
+      buf += ch;
+      if (ch === "\\") {
+        // Inside double quotes, backslash escapes the next char (POSIX).
+        // We don't actually need to look at the next char to tokenize; we
+        // just need to NOT treat the next char as a quote-close or escape.
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') inDouble = false;
+      continue;
+    }
+
+    // Not in any quote.
+    if (ch === "\\") {
+      buf += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === "'") {
+      buf += ch;
+      inSingle = true;
+      continue;
+    }
+    if (ch === '"') {
+      buf += ch;
+      inDouble = true;
+      continue;
+    }
+    if (ch === ";" || ch === "&" || ch === "|") {
+      const trimmed = buf.trim();
+      if (trimmed) segments.push(trimmed);
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+
+  const trimmed = buf.trim();
+  if (trimmed) segments.push(trimmed);
+  return segments;
 }
 
 /**
@@ -359,7 +442,19 @@ const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", ".factory
 
 /**
  * Simple regex safety check to prevent ReDoS.
- * Rejects patterns with nested quantifiers (star height > 1).
+ * Rejects patterns where a group with an inner quantifier is itself
+ * quantified (star height > 1). This is the canonical ReDoS pattern
+ * (e.g., `(a+)+`, `(a*)*`, `(a+)?`).
+ *
+ * The check distinguishes three cases:
+ *  1. A quantifier on a group that previously contained a quantifier
+ *     (e.g., `(a+)+`) — REJECT.
+ *  2. A quantifier at the top level (depth 0) on a non-group token
+ *     (e.g., `\s+` in `(verb)\s+(noun)`) — ALLOW. Multiple top-level
+ *     quantifiers in different alternatives are not nested.
+ *  3. A quantifier inside a group that previously had a quantifier
+ *     (e.g., `(a+)+` with the `+` inside the group) — REJECT.
+ *
  * This is a lightweight replacement for the safe-regex package.
  */
 export function isSafeRegexPattern(pattern) {
@@ -398,10 +493,13 @@ export function isSafeRegexPattern(pattern) {
       continue;
     }
     if (ch === ")" && !inCharClass) {
+      // Propagate: the group that just closed contained a quantifier,
+      // so the parent (real group, depth > 0) now conceptually contains
+      // a quantified subpattern. Propagation to depth 0 is a no-op
+      // (top-level quantifiers are not "nested" — they're in different
+      // alternatives or separated by non-group tokens).
       if (depth < groupHadQuantifier.length && groupHadQuantifier[depth]) {
-        // Propagate: the group that just closed contained a quantifier,
-        // so the parent group now conceptually contains a quantified subpattern.
-        if (depth - 1 >= 0 && depth - 1 < groupHadQuantifier.length) {
+        if (depth - 1 > 0 && depth - 1 < groupHadQuantifier.length) {
           groupHadQuantifier[depth - 1] = true;
         }
       }
@@ -413,14 +511,26 @@ export function isSafeRegexPattern(pattern) {
     const isRangeQuantifier = ch === "{" && /^{\d+(,\d*)?}/.test(pattern.slice(i));
 
     if ((isQuantifier || isRangeQuantifier) && !inCharClass) {
-      // If any group at or above current depth already had a quantifier,
-      // another quantifier here creates star height > 1.
-      for (let d = 0; d <= depth && d < groupHadQuantifier.length; d++) {
+      // Case 1: this quantifier quantifies a group (preceded by `)`)
+      // AND that group had a quantifier inside.
+      if (
+        i > 0 &&
+        pattern[i - 1] === ")" &&
+        depth + 1 < groupHadQuantifier.length &&
+        groupHadQuantifier[depth + 1]
+      ) {
+        return false;
+      }
+      // Case 3: this quantifier is inside a group at depth > 0, AND
+      // an enclosing group already had a quantifier. (Top-level
+      // quantifiers — depth 0 — are not checked here, per case 2.)
+      for (let d = 1; d <= depth && d < groupHadQuantifier.length; d++) {
         if (groupHadQuantifier[d]) {
           return false;
         }
       }
-      if (depth >= 0 && depth < groupHadQuantifier.length) {
+      // Track the quantifier at the current depth (only for real groups).
+      if (depth > 0 && depth < groupHadQuantifier.length) {
         groupHadQuantifier[depth] = true;
       }
     }
@@ -474,9 +584,18 @@ export function loadPromotedRules(root) {
     return [];
   }
 
+  // Rule status semantics: a finding with `promoted_to_rule` is the source of
+  // an active rule. The finding itself may be `status: "resolved"` (resolved
+  // by rule promotion) OR `status: "active"` (actively enforced). Either
+  // way, the rule is live. The status field tracks the FINDING's lifecycle,
+  // not the RULE's lifecycle. (See plans/260606-g8-subcommand-class-fix for
+  // the empirical proof: 3 historical rule entries had status='resolved'
+  // and were silently not loaded, leaving the gate's promoted-rules check
+  // a no-op.) `status: "disabled"` is an explicit kill switch and is
+  // excluded.
   let rules = entries.filter(
     (e) =>
-      e.status === "active" &&
+      (e.status === "active" || e.status === "resolved") &&
       e.category === "loop-anti-pattern" &&
       e.promoted_to_rule?.enforcement === "gate"
   );
@@ -501,8 +620,12 @@ export function loadPromotedRules(root) {
  */
 export function applyPromotedRules(command, filePath, rules) {
   for (const rule of rules) {
-    // Defense-in-depth: skip rules that should not have been loaded
-    if (rule.status !== "active") continue;
+    // Defense-in-depth: skip rules that should not have been loaded.
+    // The status check mirrors loadPromotedRules: a finding with
+    // promoted_to_rule is the source of a live rule regardless of whether
+    // the finding itself is 'active' or 'resolved' (resolved by promotion).
+    // 'disabled' remains the explicit kill switch.
+    if (rule.status !== "active" && rule.status !== "resolved") continue;
     if (rule.category !== "loop-anti-pattern") continue;
     if (rule.promoted_to_rule?.enforcement !== "gate") continue;
 

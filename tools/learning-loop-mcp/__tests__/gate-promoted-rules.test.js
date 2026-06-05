@@ -7,6 +7,7 @@ import {
   applyPromotedRules,
   splitSegments,
   stripMessageFlags,
+  isSafeRegexPattern,
 } from "../core/gate-logic.js";
 import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -463,10 +464,238 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
     assert.deepStrictEqual(segments, ["a", "b", "c", "d"]);
   });
 
+  test("splitSegments does NOT split on ';' inside single quotes", () => {
+    const segments = splitSegments("git commit -m 'a;b;c'");
+    assert.deepStrictEqual(segments, ["git commit -m 'a;b;c'"]);
+  });
+
+  test("splitSegments does NOT split on ';' inside double quotes", () => {
+    const segments = splitSegments('git commit -m "a;b;c"');
+    assert.deepStrictEqual(segments, ['git commit -m "a;b;c"']);
+  });
+
+  test("splitSegments handles nested quote contexts correctly", () => {
+    // A double-quoted string containing a single-quoted substring should
+    // not be terminated by the inner single quote.
+    const segments = splitSegments(`echo "it's fine; really"`);
+    assert.deepStrictEqual(segments, [`echo "it's fine; really"`]);
+  });
+
+  test("splitSegments handles backslash escapes outside quotes", () => {
+    // The escaped ';' should not be a separator.
+    const segments = splitSegments("echo a\\;b");
+    assert.deepStrictEqual(segments, ["echo a\\;b"]);
+  });
+
+  test("splitSegments handles backslash escapes inside double quotes", () => {
+    // Inside double quotes, a backslash escapes the next char; the escaped
+    // double-quote is a literal char, not a quote-close.
+    const segments = splitSegments('echo "a\\"b;c"');
+    assert.deepStrictEqual(segments, ['echo "a\\"b;c"']);
+  });
+
+  test("splitSegments still splits on unquoted separators", () => {
+    const segments = splitSegments('cmd1; cmd2 "x;y"; cmd3');
+    assert.deepStrictEqual(segments, ['cmd1', 'cmd2 "x;y"', "cmd3"]);
+  });
+
+  test("splitSegments (regression: splitSegments-quote-unaware bug) — quoted message body with ';' and trigger words stays one segment", () => {
+    // Empirical proof 2026-06-06: a git commit message body containing
+    // 'create a new schema' (a legit rule trigger) was fragmenting on
+    // the ';' in 'false positives; CLI subcommand' and matching the rule.
+    const msg = `git commit -m "fix(gate): G8 fix" -m "Some body; create a new schema; still escalate"`;
+    const segments = splitSegments(msg);
+    assert.strictEqual(segments.length, 1, `Expected 1 segment, got ${segments.length}: ${JSON.stringify(segments)}`);
+    assert.strictEqual(segments[0], msg);
+  });
+
+  test("applyPromotedRules returns ok for git commit with trigger words in quoted -m body (the P1 latent bug)", () => {
+    // The active rule, with the refined pattern, would still match
+    // 'create a new schema' inside a -m body — BUT the quote-aware
+    // splitSegments keeps the body intact, and stripMessageFlags then
+    // strips the -m value, so the regex sees only 'git commit'.
+    const result = applyPromotedRules(
+      `git commit -m "fix(gate): G8 fix" -m "body; create a new schema; escalate"`,
+      null,
+      [activeRule],
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
   test("stripMessageFlags strips -m and --title values", () => {
     const stripped = stripMessageFlags('git commit -m "create new convention"');
     assert.ok(!stripped.includes("create"));
     assert.ok(stripped.includes("git"));
     assert.ok(stripped.includes("commit"));
+  });
+});
+
+describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
+  // Active rule with the REFINED pattern (requires context qualifier after
+  // create/propose/design — closes the 7 G8 subcommand-class recurrences).
+  // The refined pattern is the canonical one shipped by plan
+  // 260606-g8-subcommand-class-fix; this test file pins it.
+  const activeRule = {
+    id: "meta-260602T0000Z-escape-hatch-abuse-meta-taxonomy-proposal",
+    category: "loop-anti-pattern",
+    status: "resolved", // finding resolved by rule promotion; rule is live
+    promoted_to_rule: {
+      rule_id: "rule-no-new-artifact-types",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern:
+        "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
+      promoted_at: "2026-06-01T22:00:13.387Z",
+      refined_at: "2026-06-06T01:55:00.000Z",
+      promoted_by: "operator",
+    },
+  };
+
+  test("ck plan create subcommand returns ok (G8 subcommand-class false positive fixed)", () => {
+    const result = applyPromotedRules(
+      "ck plan create --title test --phases P0 --dir 260606-test",
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
+  test("record_create_decision function name returns ok (no whitespace after 'create')", () => {
+    const result = applyPromotedRules(
+      "record_create_decision --input foo",
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
+  test("meta_state_log_change subcommand returns ok (function-name class)", () => {
+    const result = applyPromotedRules(
+      "meta_state_log_change --target foo",
+      null,
+      [activeRule]
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
+
+  test("propose a new schema still escalates (regression guard for legit triggers)", () => {
+    const result = applyPromotedRules("propose a new schema", null, [activeRule]);
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-no-new-artifact-types");
+  });
+
+  test("design a new artifact still escalates", () => {
+    const result = applyPromotedRules("design a new artifact", null, [activeRule]);
+    assert.strictEqual(result.decision, "escalate");
+  });
+
+  test("create a new directory still escalates (matches create+article+noun)", () => {
+    const result = applyPromotedRules("create a new directory", null, [activeRule]);
+    assert.strictEqual(result.decision, "escalate");
+  });
+
+  test("new schema still escalates (matches new+noun alternative)", () => {
+    const result = applyPromotedRules("new schema", null, [activeRule]);
+    assert.strictEqual(result.decision, "escalate");
+  });
+
+  test("create schema still escalates (matches create+noun without article)", () => {
+    const result = applyPromotedRules("create schema", null, [activeRule]);
+    assert.strictEqual(result.decision, "escalate");
+  });
+});
+
+describe("gate promoted rules status semantics (P1)", () => {
+  test("loadPromotedRules loads status='resolved' entries with promoted_to_rule (rule is live after resolution)", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-resolved-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    writeFileSync(
+      metaPath,
+      JSON.stringify({
+        id: "meta-test-resolved",
+        category: "loop-anti-pattern",
+        status: "resolved",
+        promoted_to_rule: {
+          rule_id: "rule-test-resolved",
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "test",
+        },
+      }) + "\n"
+    );
+    const rules = loadPromotedRules(tempDir);
+    assert.strictEqual(rules.length, 1);
+    assert.strictEqual(rules[0].id, "meta-test-resolved");
+  });
+
+  test("loadPromotedRules does NOT load status='disabled' (explicit kill switch)", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-disabled-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    writeFileSync(
+      metaPath,
+      JSON.stringify({
+        id: "meta-test-disabled",
+        category: "loop-anti-pattern",
+        status: "disabled",
+        promoted_to_rule: {
+          rule_id: "rule-test-disabled",
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "test",
+        },
+      }) + "\n"
+    );
+    const rules = loadPromotedRules(tempDir);
+    assert.strictEqual(rules.length, 0);
+  });
+
+  test("applyPromotedRules accepts status='resolved' rules (mirrors loadPromotedRules)", () => {
+    const rules = [
+      {
+        id: "meta-1",
+        category: "loop-anti-pattern",
+        status: "resolved",
+        promoted_to_rule: {
+          rule_id: "rule-resolved-test",
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "match-me",
+        },
+      },
+    ];
+    const result = applyPromotedRules("please match-me here", null, rules);
+    assert.strictEqual(result.decision, "escalate");
+    assert.strictEqual(result.rule_id, "rule-resolved-test");
+  });
+});
+
+describe("isSafeRegexPattern (P1: relaxed top-level quantifier check)", () => {
+  test("rejects ReDoS pattern (a+)+ (star height 2)", () => {
+    assert.strictEqual(isSafeRegexPattern("(a+)+"), false);
+  });
+
+  test("accepts the G8 refined pattern (multiple top-level quantifiers, no nested groups with quantifiers)", () => {
+    const refined =
+      "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)";
+    assert.strictEqual(isSafeRegexPattern(refined), true);
+  });
+
+  test("accepts multiple top-level \\s+ quantifiers in different alternatives", () => {
+    assert.strictEqual(
+      isSafeRegexPattern("(verb)\\s+(noun)|other\\s+(noun)"),
+      true
+    );
+  });
+
+  test("rejects nested groups where an inner group with a quantifier is itself quantified", () => {
+    // (a+)+ style: inner group with quantifier, then outer quantifier on that group
+    assert.strictEqual(isSafeRegexPattern("((a+)+)"), false);
+  });
+
+  test("accepts the original G8 pattern (single top-level quantifier)", () => {
+    assert.strictEqual(
+      isSafeRegexPattern("propose|design|create|new\\s+(schema|artifact|directory|convention)"),
+      true
+    );
   });
 });
