@@ -98,5 +98,25 @@ What stays in `docs/` is irreducible judgment. What moves to `records/` is proce
 - Present-tense system description: `charter.md`.
 - How to reason with the current loop: `philosophy.md`.
 - Current artifact model (claim deprecation, index entries): `record-system-architecture.md`, `artifact-concepts.md`.
+
+## What Has Happened Since (2026-06-05 update)
+
+The meta-state agent-affordances decomposition (`plans/reports/brainstorm-260602-meta-state-agent-affordances.md`) is the precondition for "the loop's own code joins the same gradient the content was already on" (the destination sentence). As of 2026-06-05, three of four sub-projects ship, and the fourth is plan-ready.
+
+| Sub-project | Status | Tools | Tests |
+|---|---|---|---|
+| SP0 (Self-Modification Affordance) | SHIPPED | `meta_state_log_change` + `meta_state_sweep` | 475 (+25) |
+| SP1 (Derivation Query) | SHIPPED | `meta_state_derive_status` | 511 (+36) |
+| SP2 (Grounding Check) | SHIPPED | `meta_state_check_grounding` + `meta_state_refresh_fingerprint` | 552 (+41) |
+| SP2 gap closure (discoverability + manifest backfill) | SHIPPED | (manifest backfill) | 557 (+1) |
+| SP3 (Drift Query) | DESIGN LOCKED + PLAN READY | `meta_state_query_drift` | 610 planned (+53) |
+| **Field-coverage (Approach 2)** | SHIPPED | 4 record types schema-derived | 621 (+49) |
+
+**The Fifth Bridge** (schema as source of truth) shipped for 4 record types (experiment, risk, decision, observation) via `core/schema-to-zod.js`. Tool zod schemas are now generated from JSON Schema at runtime, making schema-vs-tool drift impossible by construction. Approach 3 (full codegen for writers + validators) is sequenced after SP3 — SP3's schemas need to stabilize first.
+
+**The "self-referential" milestone has been crossed.** The loop's state machine (`meta-state.jsonl`) now controls the loop's own audit trail. The agent can:
+- Log its own modifications via `meta_state_log_change` (SP0)
+- Compute the effective status of any finding via `meta_state_derive_status` (SP1)
+- Verify the file/code/test surface of any finding via `meta_state_check_grou
 - The brainstorm that made atomicity load-bearing: `plans/reports/brainstorm-20260518-machine-extracted-index.md`.
 - The design for schema-derived code generation (the fifth bridge): `plans/reports/brainstorm-260603-field-coverage.md`.

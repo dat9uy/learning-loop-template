@@ -188,7 +188,29 @@ SP3: Drift Query
 
 ### SP3: Drift Query — `meta_state_query_drift`
 
-**Goal:** The agent can ask "which entries' asserted status disagrees with derived status?" — and get a flat list. The agent then decides what to do (resolve, log a drift event, investigate).
+> **SP3 design has been moved to a dedicated report:** [`brainstorm-260603-sp3-drift.md`](./brainstorm-260603-sp3-drift.md) (status: locked 2026-06-05).
+>
+> The dedicated report contains the full SP3 design: tool shape, lean 5-field output (no nested SP1/SP2 objects), the 4-case join logic (SP1 `derived_status` + SP1 `derivation.kind` for `code-missing` + SP2 `grounding.status`), `run_grounding: false` default with opt-in join, 53 new tests planned (24 unit + 24 tool + 2 acceptance + 2 grounding-mode + 1 discoverability), red-team review with 6 applied findings, and Phase 2 auto-mutation captured as a stub for a future brainstorm. The plan is at `plans/260603-sp3-drift/plan.md` (status: pending, 4-phase TDD, awaiting cook handoff).
+>
+> **Brief recap of the locked design (full spec in the linked report):**
+>
+> - **Tool name:** `meta_state_query_drift` (agent-callable, mirrors `meta_state_derive_status` and `meta_state_list`)
+> - **Approach:** joins SP1's `deriveStatus` (unconditional) + SP2's `checkGrounding` (when `run_grounding: true`) per entry; filters for drift (7 cases enumerated below); emits a lean 5-field drift event per drift
+> - **Pure function core (no I/O at unit level):** `queryDrift(entries, codeContext) -> DriftReport`. Lives in `core/query-drift.js`. MCP tool wraps it with I/O.
+> - **Input shape:** `{ filter?: { status?: 'active' | 'reported' }, run_grounding?: boolean (default `false`) }`
+> - **Output shape:** `{ drift_count: number, drift_events: Array<{ id, raw_status, derived_status, drift_kind, recommendation }> }`
+> - **Drift cases (4 join + 2 derivation-only + 1 fast-path skip):** case 1 (resolved + grounded) → `resolve`; case 2 (resolved + drifted) → `resolve` (primary=derivation); case 3 (active-no-signal + drifted) → `investigate`; case 4 (active-no-signal + grounded) → no drift; case 5 (code-only) → `investigate`; case 6 (code-missing) → `investigate`; case 7 (change-log) → skip
+> - **`drift_kind` (1 value, Phase 1):** `"assertion_lags_derivation"` (agent drills in via SP1/SP2 for source)
+> - **Recommendation (2 values emitted):** `resolve` | `investigate`
+> - **Test budget:** 53 new tests (24 unit + 24 tool + 2 acceptance + 2 grounding-mode + 1 discoverability) + 557 existing = 610 total
+> - **Touchpoints:** 5 new files (`core/query-drift.js`, `tools/meta-state-query-drift-tool.js`, 2 test files, 1 acceptance file) + 4 modify (`tools/manifest.json`, `agent-manifest.json`, `__tests__/loop-describe.test.js`, `meta-state.jsonl` change-log for G8 6th recurrence)
+> - **Plan handoff:** `plans/260603-sp3-drift/plan.md` (status: pending, 4 phases, 0.5h + 4h + 4h + 2h = 10.5h). Red Team Review section appended with 6 applied findings (4 High, 2 Medium); 1 rejected finding deferred to a separate "gate log resilience" plan.
+> - **Phase 2 (auto-mutation) stub:** captured in the dedicated report's "Out of Scope" section. The parent doc's original Phase 2 design (`auto_resolve: true` parameter for opt-in auto-mutation after 30 days of drift-rate data) is preserved below as historical context.
+> - **Out of scope for Phase 1:** schema-derived tool zod (Approach 3 is sequenced after SP3 per `docs/trajectory.md`); expanded filter shape (`category?`, `affected_system?`, `entry_kind?`); drift event persistence; change-log drift checks.
+>
+> **Why a dedicated report:** same rationale as SP0, SP1, and SP2. The parent doc decomposes 4 sub-projects (SP0-SP3); each sub-project gets a dedicated design doc when its brainstorm session locks the design. SP0, SP1, SP2, and SP3 are now all dedicated.
+
+**Goal (parent doc's original design, preserved as historical context):** The agent can ask "which entries' asserted status disagrees with derived status?" — and get a flat list. The agent then decides what to do (resolve, log a drift event, investigate).
 
 **Tool shape (proposed):**
 ```js
@@ -243,9 +265,13 @@ meta_state_query_drift({
 This parent doc was written on 2026-06-02T12:30Z with all 4 sub-projects in design phase. Subsequent work has advanced the decomposition:
 
 - **SP0 (Self-Modification Affordance) — SHIPPED.** See `plans/260602-sp0-log-change/plan.md` (status: completed). The 5-phase TDD plan shipped 25 new tests (472 → 475 after the SP0 housekeeping follow-up; 475 currently passing). `meta_state_log_change` is registered in `tools/manifest.json` (46 tools total; 45 in the original manifest, +1 in this session). The first real change-log entry is in `meta-state.jsonl`.
-- **SP1 (Derivation Query) — DESIGN LOCKED.** See `brainstorm-260602-sp1-derive-status.md` (status: locked 2026-06-02). Plan handoff via `/ck:plan --tdd` is deferred to a future session; 20 new tests planned (495 total). The dedicated report contains the full SP1 design including the `evidence` → `signals` rename rationale.
-- **SP2 (Grounding Check) — DESIGN LOCKED.** See `brainstorm-260602-sp2-check-grounding.md` (status: locked 2026-06-03). Plan handoff via `/ck:plan --tdd` is deferred to a future session; 36 new tests planned (548 total). The dedicated report contains the full SP2 design including the `mechanism_check` + `code_fingerprint` schema additions, the check + refresh tool pair, and the "legitimate code change" workflow.
-- **SP3 (Drift Query) — design unchanged.** Still in this parent doc.
+- **SP1 (Derivation Query) — SHIPPED.** See `plans/260602-sp1-derive-status/plan.md` (status: completed) and `brainstorm-260602-sp1-derive-status.md` (status: locked 2026-06-02). The 5-phase TDD plan shipped 36 new tests (24 unit + 10 tool + 2 acceptance; 475 → 511 total). `meta_state_derive_status` is registered in `tools/manifest.json` and `agent-manifest.json` (1 line each). The dedicated report contains the full SP1 design including the `evidence` → `signals` rename rationale.
+- **SP2 (Grounding Check) — SHIPPED.** The SP2 work spans 4 plans (all status: completed):
+  1. `plans/260602-strict-mcp-call-rules/plan.md` — added the gate `scope_predicate` field on `meta_state_promote_rule` + the Droid `SessionStart` hook that auto-injects `loop_describe({tier:"summary"})`. Closes the prompt/behavior gap (G7: `loop_describe` adoption = 0 outside tests) that the original `260602-meta-state-lifecycle-tidy` left open. 2 TDD phases.
+  2. `plans/260602-sp2-check-grounding/plan.md` — the main SP2 plan. Ships `meta_state_check_grounding` (verifier + first-time recorder) + `meta_state_refresh_fingerprint` (explicit mutation tool). 5-phase TDD plan shipped 41 new tests (28 unit + 11 tool + 2 acceptance; 511 → 552 total). Adds 2 new optional fields to the meta-state entry schema (`mechanism_check`, `code_fingerprint`). Registered in `tools/manifest.json` and `agent-manifest.json` (2 lines each).
+  3. `plans/260603-field-coverage/plan.md` — schema-as-source-of-truth (Approach 2). Migrated 4 record types (experiment, risk, decision, observation) to schema-derived zod via `core/schema-to-zod.js`. The `meta_state_promote_rule` tool's input shape (which the SP2 plan extended with `mechanism_check`) is now validated against the schema at runtime. 5-phase TDD plan shipped 49 new tests (19 + 28 + 1 + 1 across phases; baseline 557 → 621 total).
+  4. `plans/260603-sp2-discoverability-and-manifest-backfill/plan.md` — gap closure. Added 1 discoverability test for `loop_describe` warm-tier surfacing of the 2 SP2 tools + backfilled the `agent-manifest.json` `meta_state` group with the missing SP0/SP1 tools (557 → 557; +1 new test, no count delta on baseline). See `brainstorm-260602-sp2-check-grounding.md` (status: locked 2026-06-03) for the original SP2 design including the `mechanism_check` + `code_fingerprint` schema additions, the check + refresh tool pair, and the "legitimate code change" workflow.
+- **SP3 (Drift Query) — DESIGN LOCKED + PLAN READY.** See `brainstorm-260603-sp3-drift.md` (status: locked 2026-06-05) and `plans/260603-sp3-drift/plan.md` (status: pending, 4-phase TDD, 10.5h total). 53 new tests planned (610 total: 557 baseline + 53 new). Red-team review appended to plan.md with 6 applied findings (4 High: import paths, `readRegistry(root)`, `code-missing` enum semantics, `computeIsDrift` case 6; 2 Medium: `resolveRoot` try/catch, `filterEntries` idiom) and 1 rejected finding (gate log resilience, project-wide pattern, deferred). 8 findings total, 4 stale references reconciled in whole-plan consistency sweep, 0 unresolved contradictions. The plan awaits cook handoff. G8 subcommand-class false positive (6th recurrence) required the Create-tool workaround for plan scaffolding (Phase 0 logs the recurrence). Phase 2 auto-mutation (the parent doc's original `auto_resolve: true` design) is captured as a stub in the dedicated report's "Out of Scope" section for a follow-up brainstorm after 30 days of drift-rate data.
 
 The decomposition framing (Pattern 2: invest in the verifier, not the generator) and the build order rationale (SP0 → SP1 → SP2 → SP3) hold. The auto-mutation in SP3's phase 2 (30-day drift-event window) remains the highest-stakes change and still cannot ship in the same cycle as the others.
 
