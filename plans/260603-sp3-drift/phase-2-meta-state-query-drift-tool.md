@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "meta_state_query_drift Tool (TDD, 24 tool tests)"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: ["phase-1"]

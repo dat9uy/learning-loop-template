@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Manifest Registration + Acceptance Test + Grounding-Mode Tests"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: ["phase-2"]

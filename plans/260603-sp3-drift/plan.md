@@ -1,7 +1,7 @@
 ---
 title: "SP3: meta_state_query_drift (Drift Aggregation Query)"
 description: "Implements the locked design in plans/reports/brainstorm-260603-sp3-drift.md (status: locked 2026-06-05). Adds a pure-function drift aggregator + MCP tool that joins SP1's deriveStatus + SP2's checkGrounding across the meta-state registry to surface entries whose raw_status disagrees with derived/grounded state. Phase 1 ships the read-only query (agent decides); Phase 2 auto-mutation is documented as a future brainstorm stub. TDD structure preserves the 557 existing tests (post-SP2-gap-closure). 24 unit + 24 tool + 2 acceptance + 2 grounding-mode = 52 new tests; target total 609. Closes the drift-surfacing gap: the agent can now ask 'which entries disagree with their derived/grounded state?' and get a flat drift-event list. Default run_grounding: false (derivation-only; opt-in to join SP2). Surface: meta."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, mcp, tdd, agent-affordances, drift, verifier, meta-state, drift-detection, join, sp3]

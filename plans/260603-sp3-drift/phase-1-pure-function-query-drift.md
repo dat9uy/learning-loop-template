@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Pure function queryDrift (TDD, 24 unit tests)"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: ["phase-0"]

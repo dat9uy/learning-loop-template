@@ -348,9 +348,9 @@ The marker file has no session ID. Multiple Claude Code sessions sharing a proje
 
 The loop is now self-referential: the loop's own state machine (`meta-state.jsonl`) controls the loop's own audit trail. The agent can record its own modifications, derive the effective status of any finding, ground findings against the live filesystem, and (in SP3) query drift between asserted and derived state across the entire registry.
 
-### Meta-State Tools (10 total)
+### Meta-State Tools (11 total)
 
-The meta-state machinery is decomposed into 4 sub-projects, each adding tools to the MCP server. All 10 tools are agent-callable (read-side; some are agent-writable for new entries).
+The meta-state machinery is decomposed into 4 sub-projects, each adding tools to the MCP server. All 11 tools are agent-callable (read-side; some are agent-writable for new entries).
 
 | Sub-project | Status | Tools | Purpose |
 |---|---|---|---|
@@ -358,10 +358,10 @@ The meta-state machinery is decomposed into 4 sub-projects, each adding tools to
 | **SP1 (Derivation Query)** | SHIPPED (511 tests) | `meta_state_derive_status` | Pure-function verifier: "is this finding's mechanism still live?" (file exists, hash matches, tests pass) |
 | **SP2 (Grounding Check)** | SHIPPED (552 tests) | `meta_state_check_grounding`, `meta_state_refresh_fingerprint` | Pure-function grounding + explicit recovery: hash-mismatch detection + fingerprint refresh on legitimate code change |
 | **SP2 gap closure** | SHIPPED (557 tests) | (no new tools) | `loop_describe` warm-tier surfacing + `agent-manifest.json` backfill |
-| **SP3 (Drift Query)** | PLAN READY (610 tests planned) | `meta_state_query_drift` | Read-only drift aggregation: joins SP1 + SP2 across the registry to surface entries where asserted status disagrees with derived/grounded state |
+| **SP3 (Drift Query)** | SHIPPED (674 tests) | `meta_state_query_drift` | Read-only drift aggregation: joins SP1 + SP2 across the registry to surface entries where asserted status disagrees with derived/grounded state |
 | **Original 5 (260602-self-enforcing-loop)** | SHIPPED (407 tests) | `meta_state_report`, `meta_state_list`, `meta_state_ack`, `meta_state_resolve`, `meta_state_promote_rule` | Foundational CRUD + rule promotion |
 
-**Total: 10 tools in the `meta_state` group of `agent-manifest.json`.** Baseline after SP2 gap closure: 557 tests; after SP3 cooks: 610 tests.
+**Total: 11 tools in the `meta_state` group of `agent-manifest.json`.** Baseline after SP2 gap closure: 557 tests; after SP3 ships: 674 tests.
 
 ### Self-Learning Loop Architecture
 
@@ -386,14 +386,14 @@ flowchart TD
     %% ===== STEP 4: AGENT =====
     S4["<b>4. Agent</b> (Claude / Droid)<br/>the second filter"]:::agent --> S5
 
-    %% ===== STEP 5: 10 META_STATE_* TOOLS =====
-    subgraph S5["<b>5. 10 meta_state_* MCP tools</b>"]
+    %% ===== STEP 5: 11 META_STATE_* TOOLS =====
+    subgraph S5["<b>5. 11 meta_state_* MCP tools</b>"]
         direction LR
         T_SP0["<b>SP0</b> (Self-Modification)<br/>log_change, sweep"]:::sp0
         T_SP1["<b>SP1</b> (Derivation)<br/>derive_status"]:::sp1
         T_SP2["<b>SP2</b> (Grounding)<br/>check_grounding,<br/>refresh_fingerprint"]:::sp2
-        T_SP3["<b>SP3</b> (Drift) [PLANNED]<br/>query_drift"]:::planned
-        T_SP0 --- T_SP1 --- T_SP2 -.-> T_SP3
+        T_SP3["<b>SP3</b> (Drift)<br/>query_drift"]:::sp3
+        T_SP0 --- T_SP1 --- T_SP2 --> T_SP3
     end
 
     S5 --> Registry
@@ -409,9 +409,9 @@ flowchart TD
     Registry --> S6
     S6 --> S7
 
-    %% ===== STEP 7: DRIFT QUERY (SP3 PLANNED) =====
-    S7["<b>7. queryDrift</b> (SP3) [PLANNED]<br/>joins SP1 + SP2 across registry<br/>→ drift events"]:::planned
-    S5 -.->|planned| S7
+    %% ===== STEP 7: DRIFT QUERY (SP3 SHIPPED) =====
+    S7["<b>7. queryDrift</b> (SP3)<br/>joins SP1 + SP2 across registry<br/>→ drift events"]:::purefn
+    S5 --> S7
 
     %% ===== STEP 8: AGENT DECISION =====
     S7 --> S8
@@ -437,7 +437,7 @@ flowchart TD
     classDef sp0 fill:#ede9fe,stroke:#6d28d9
     classDef sp1 fill:#fae8ff,stroke:#a21caf
     classDef sp2 fill:#fce7f3,stroke:#be185d
-    classDef planned stroke-dasharray:5 5,fill:#fef3c7,stroke:#d97706
+    classDef sp3 fill:#d1fae5,stroke:#047857
     classDef registry fill:#fbcfe8,stroke:#be185d,stroke-width:3px
     classDef purefn fill:#d1fae5,stroke:#047857
     classDef decision fill:#f3e8ff,stroke:#7c3aed,stroke-width:2px
@@ -455,8 +455,7 @@ flowchart TD
 | Cylinder | Registry / single source of truth (`meta-state.jsonl`) |
 | Rhombus | Decision point |
 | Solid arrow | Synchronous flow (this step happens next) |
-| Dashed arrow | Planned / optional / async flow |
-| Yellow fill, dashed border | Feature not yet shipped (SP3) |
+| Dashed arrow | Optional / async flow |
 | Pink fill, thick border | The registry (single source of truth) |
 | Green fill | Pure function (no side effects) |
 
@@ -465,7 +464,7 @@ flowchart TD
 - **Self-aware audit trail**: The agent uses `meta_state_log_change` to record any system modification (schema change, tool addition, gate rule promotion, etc.) as a first-class entry. The change-log entries are immutable audit log (no TTL, no auto-resolve).
 - **Verifiable assertions**: For any finding, the agent can call `meta_state_derive_status` to compute the effective status from the live filesystem (without mutating the entry). Drift between the entry's `status` and the derived `derived_status` is surfaced via `drift: true`.
 - **Grounded claims**: For findings with `mechanism_check: true`, the agent can call `meta_state_check_grounding` to verify the file is still live, the SHA-256 hash matches the last check, and (optionally) the referenced tests still pass. Drift is detected via `status: "drifted"`.
-- **Aggregate drift surfacing** (SP3, planned): `meta_state_query_drift` joins SP1's `derived_status` + SP2's `grounding.status` across the entire registry, returning a flat list of drift events with `recommendation` (resolve / investigate). Phase 2 (auto-mutation) is captured as a stub for a follow-up brainstorm after 30 days of drift-rate data.
+- **Aggregate drift surfacing** (SP3, shipped): `meta_state_query_drift` joins SP1's `derived_status` + SP2's `grounding.status` across the entire registry, returning a flat list of drift events with `recommendation` (resolve / investigate). Default `run_grounding: false` (derivation-only); opt-in to join SP2. Phase 2 (auto-mutation) is captured as a stub for a follow-up brainstorm after 30 days of drift-rate data.
 - **Schema-as-source-of-truth** (Approach 2, shipped): The 4 record types (experiment, risk, decision, observation) now derive their tool zod schemas from JSON Schema at runtime via `core/schema-to-zod.js`. This is orthogonal to the meta-state work but the meta-state tools benefit from the field-coverage test that catches drift between schema and tool surface. Approach 3 (full codegen for writers + validators) is sequenced after SP3 per `docs/trajectory.md`.
 
 ### Relationship to the Constraint Gate
@@ -480,6 +479,6 @@ The constraint gate (`core/gate-logic.js`) and the meta-state registry are **sep
 
 - `plans/reports/brainstorm-260602-meta-state-agent-affordances.md` — parent doc, the 4-sub-project decomposition
 - `plans/reports/brainstorm-260603-sp3-drift.md` — SP3 design (status: locked 2026-06-05)
-- `plans/260603-sp3-drift/plan.md` — SP3 plan (status: pending, 4-phase TDD, 10.5h total)
+- `plans/260603-sp3-drift/plan.md` — SP3 plan (status: completed, 4-phase TDD + Phase 4 docs update, 11h total)
 - `docs/observation-vs-meta-state.md` — domain/meta/gate layer separation
 - `docs/trajectory.md` — long-term direction, the four bridges, the fifth bridge (schema as source of truth)
