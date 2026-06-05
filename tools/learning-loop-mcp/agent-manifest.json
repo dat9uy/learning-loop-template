@@ -81,7 +81,8 @@
         "meta_state_log_change",
         "meta_state_derive_status",
         "meta_state_check_grounding",
-        "meta_state_refresh_fingerprint"
+        "meta_state_refresh_fingerprint",
+        "meta_state_query_drift"
       ],
       "ordering": "any"
     },

@@ -134,6 +134,22 @@ describe("loop_describe new behavior", () => {
     }
   });
 
+  test("SP3: warm tier surfaces query_drift", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-sp3-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const result = await loopDescribeTool.handler({ tier: "warm" });
+      const text = JSON.parse(result.content[0].text);
+      const names = text.tools.map((t) => t.name);
+      assert.ok(
+        names.includes("meta_state_query_drift"),
+        "SP3 query_drift tool must appear in warm response"
+      );
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
   test("tier cold returns full history", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-cold-"));
     process.env.GATE_ROOT = tempDir;

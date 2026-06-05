@@ -46,5 +46,6 @@
   { "file": "./tools/meta-state-log-change-tool.js", "export": "metaStateLogChangeTool" },
   { "file": "./tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool" },
   { "file": "./tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool" },
-  { "file": "./tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool" }
+  { "file": "./tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool" },
+  { "file": "./tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool" }
 ]
