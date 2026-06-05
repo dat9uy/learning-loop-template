@@ -201,7 +201,7 @@ async function spawnAndCall(serverCfg, cwd) {
     child.unref();
 
     let buffer = "";
-    let initialized = false;
+    let initSent = false;
     let callSent = false;
     const timeout = setTimeout(() => {
       child.kill();
@@ -213,31 +213,51 @@ async function spawnAndCall(serverCfg, cwd) {
       try { child.kill(); } catch { /* already dead */ }
     };
 
-    child.stdout.on("data", (chunk) => {
-      buffer += chunk.toString();
-      if (buffer.length > 1_000_000) {
-        cleanup();
-        return resolve(null);
-      }
-      if (!initialized) {
+    // Send initialize and tools/call shortly after spawn. The MCP server
+    // imports its tool modules via top-level await and then awaits
+    // server.connect(transport) before logging "MCP server started" on
+    // stderr. A ~200ms delay gives the server time to register the stdin
+    // 'data' listener before we write. This avoids the prior
+    // chicken-and-egg: the old code wrote initialize inside the stdout
+    // 'data' handler, but the first stdout data is the response to
+    // initialize — which could never be sent.
+    const sendInitAndCall = () => {
+      if (initSent) return;
+      initSent = true;
+      try {
         child.stdin.write(JSON.stringify({
           jsonrpc: "2.0",
           id: 1,
           method: "initialize",
           params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "loop-surface-inject", version: "1.0.0" } }
         }) + "\n");
-        initialized = true;
-        setTimeout(() => {
-          if (!callSent) {
-            child.stdin.write(JSON.stringify({
-              jsonrpc: "2.0",
-              id: 2,
-              method: "tools/call",
-              params: { name: "loop_describe", arguments: { tier: "summary" } }
-            }) + "\n");
-            callSent = true;
-          }
-        }, 100);
+      } catch {
+        cleanup();
+        return reject(new Error("stdin_write_failed_at_initialize"));
+      }
+      setTimeout(() => {
+        if (callSent) return;
+        callSent = true;
+        try {
+          child.stdin.write(JSON.stringify({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: { name: "loop_describe", arguments: { tier: "summary" } }
+          }) + "\n");
+        } catch {
+          cleanup();
+          return reject(new Error("stdin_write_failed_at_tools_call"));
+        }
+      }, 100);
+    };
+    setTimeout(sendInitAndCall, 200);
+
+    child.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      if (buffer.length > 1_000_000) {
+        cleanup();
+        return resolve(null);
       }
       const lines = buffer.split("\n").filter((l) => l.trim());
       for (const line of lines) {
