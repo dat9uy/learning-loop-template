@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Phase 1 Validator + meta_state_report"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [1]
@@ -81,15 +81,15 @@ Migrate the source-ref validator from `local:records/meta/evidence/*` to `local:
 
 ## Success Criteria
 
-- [ ] 7 new tests in `lib/source-ref-validator.test.js` pass (2 existing tests are REPLACED to assert the new behavior)
-- [ ] 1 new test in `__tests__/meta-state-report-description.test.js` passes
-- [ ] 1 new test in `__tests__/create-decision-record-tool.test.js` passes (deprecated ref rejection)
-- [ ] 1+ new test in `core/record-validation-rules.test.js` (or new test file) passes (core validator alignment)
-- [ ] `core/record-validation-rules.js#recordLocalRoots` has the `local:meta-state:<id>` branch
-- [ ] `records/meta/evidence/` directory deleted (verify with `ls records/meta/`)
-- [ ] `meta_state_report` tool's `description` field contains `"evidence_code_ref"` AND `"meta_state_derive_status"` AND does NOT contain `"Prefer \`evidence_code_ref\`"`
-- [ ] `create-decision-record-tool` rejects records with deprecated source_refs
-- [ ] Full test suite (`lib/` + `__tests__/`) green
+- [x] 7 new tests in `lib/source-ref-validator.test.js` pass (2 existing tests are REPLACED to assert the new behavior)
+- [x] 1 new test in `__tests__/meta-state-report-description.test.js` passes
+- [x] 1 new test in `__tests__/create-decision-record-tool.test.js` passes (deprecated ref rejection)
+- [x] 1+ new test in `core/record-validation-rules.test.js` (or new test file) passes (core validator alignment)
+- [x] `core/record-validation-rules.js#recordLocalRoots` has the `local:meta-state:<id>` branch
+- [x] `records/meta/evidence/` directory deleted (verify with `ls records/meta/`)
+- [x] `meta_state_report` tool's `description` field contains `"evidence_code_ref"` AND `"meta_state_derive_status"` AND does NOT contain `"Prefer \`evidence_code_ref\`"`
+- [x] `create-decision-record-tool` rejects records with deprecated source_refs
+- [x] Full test suite (`lib/` + `__tests__/`) green
 
 ## Risk Assessment
 

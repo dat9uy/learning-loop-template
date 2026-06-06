@@ -151,6 +151,18 @@ Before executing any `vendor-api` command (e.g., `curl` to vendor APIs, vendor S
    - `evidence_code_ref`: the budget observation path
 6. Only proceed after recording the budget-check meta-state entry
 
+## Internalization Rule (source_refs and evidence_code_ref)
+
+When an agent needs to cite a design, finding, or external reference, **cite the code, not the markdown.** The canonical citation path is:
+
+1. Report a `meta_state_report` finding with `evidence_code_ref` set to the code location (e.g., `tools/learning-loop-mcp/tools/loop-describe-tool.js#buildDiscoverabilityHints`).
+2. In the record's `source_refs`, use `local:meta-state:<id>` where `<id>` is the finding's id.
+3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_refresh_fingerprint` can re-check it after refactors.
+
+Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision`. For designs that have no code point yet, use `meta_state_log_change` with `change_target: '<plan-path>'` and cite the resulting change-log id in `source_refs`.
+
+The SessionStart hook surfaces this rule in its discoverability hints. To suppress hints for context-budgeted sessions, set `LL_LOOP_INJECT_TIER=summary` (default is `warm`). The downgrade is logged as a `hint-downgrade` finding per session.
+
 ## Side-Effect Import Rule (all vendor SDKs)
 
 If any vendor SDK import triggers device registration or authentication (e.g., `import vnstock_data`, `import vendor_data`), do not import it directly. Use `importlib.util.find_spec()` for safe checks. If the gate blocks with `side-effect-import`, respect the block. Do not attempt to bypass it.

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Phase 2 discoverability_hints + SessionStart hook"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [2]
@@ -83,14 +83,14 @@ Build the `discoverability_hints` field on `loop_describe` warm tier + print the
 
 ## Success Criteria
 
-- [ ] 3 new tests in `__tests__/loop-describe-warm-tier.test.js` pass
-- [ ] 3 new tests in `__tests__/loop-surface-inject-format-block.test.cjs` pass (2 from the original plan + 1 new for the security boundary: formatBlock ignores `summary.discoverability_hints` and renders from `LOCAL_DISCOVERABILITY_HINTS` instead)
-- [ ] 1 new test asserting that `formatBlock` with `LL_LOOP_INJECT_TIER=summary` logs a `hint-downgrade` finding
-- [ ] All existing tests still pass (regression boundary)
-- [ ] `AGENTS.md` has the new "Internalization Rule" section + `LL_LOOP_INJECT_TIER` env var documentation
-- [ ] `docs/observation-vs-meta-state.md` has the new "Internalization via Code-Pointed Findings" section
-- [ ] `docs/philosophy.md` pillar 3 has the new sentence
-- [ ] SessionStart hook output (manual smoke test: `echo '{"hook_event_name":"SessionStart","source":"startup"}' | node .factory/hooks/loop-surface-inject.cjs`) shows the new hints section from `LOCAL_DISCOVERABILITY_HINTS`, NOT from the server's response
+- [x] 3 new tests in `__tests__/loop-describe-warm-tier.test.js` pass
+- [x] 3 new tests in `__tests__/loop-surface-inject-format-block.test.cjs` pass (2 from the original plan + 1 new for the security boundary: formatBlock ignores `summary.discoverability_hints` and renders from `LOCAL_DISCOVERABILITY_HINTS` instead)
+- [x] 1 new test asserting that `formatBlock` with `LL_LOOP_INJECT_TIER=summary` logs a `hint-downgrade` finding
+- [x] All existing tests still pass (regression boundary)
+- [x] `AGENTS.md` has the new "Internalization Rule" section + `LL_LOOP_INJECT_TIER` env var documentation
+- [x] `docs/observation-vs-meta-state.md` has the new "Internalization via Code-Pointed Findings" section
+- [x] `docs/philosophy.md` pillar 3 has the new sentence
+- [x] SessionStart hook output (manual smoke test: `echo '{"hook_event_name":"SessionStart","source":"startup"}' | node .factory/hooks/loop-surface-inject.cjs`) shows the new hints section from `LOCAL_DISCOVERABILITY_HINTS`, NOT from the server's response
 
 ## Risk Assessment
 

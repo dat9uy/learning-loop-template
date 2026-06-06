@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Phase 0 Scaffolding"
-status: pending
+status: completed
 priority: P3
 effort: "0.25h"
 dependencies: []
@@ -21,7 +21,7 @@ Scaffold the plan and mark it in_progress. The G8 subcommand-class bug was fully
 None. This phase is purely administrative.
 
 ## Related Code Files
-- Modify: `260606-discoverability-and-meta-evidence-migration/plan.md` (no mutation; frontmatter `status: pending` stays until Phase 5 closeout marks `status: completed`)
+- Modify: `260606-discoverability-and-meta-evidence-migration/plan.md` (no mutation; frontmatter `status: completed` stays until Phase 5 closeout marks `status: completed`)
 
 ## Implementation Steps
 

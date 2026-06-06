@@ -43,7 +43,7 @@ Evidence files are raw material. They do not self-certify. A disproven evidence 
 
 Truth status lives in the machine-extracted index, not in evidence. An index entry is an atomic assertion derived from evidence `## Findings`; it carries dimension, scope, and status. Evidence is referenced by index entries; index entries are never inferred from evidence directly.
 
-Always read the index first. Evidence second. Never the other way around. The index is the single top-level artifact for state queries.
+Always read the index first. Evidence second. Never the other way around. The index is the single top-level artifact for state queries. Internalize by pointing at the code, not by quoting the markdown. A code-pointed finding with `mechanism_check: true` is durable; a markdown citation is the escape hatch.
 
 ## State Machine and Observations
 

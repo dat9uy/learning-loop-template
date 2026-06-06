@@ -1,7 +1,7 @@
 ---
 title: "Discoverability + Meta-Evidence Migration (Position D)"
 description: "Closes the 2 active 2026-06-01 findings by surfacing the existing evidence_code_ref + mechanism_check workflow in loop_describe warm tier. Drops records/meta/evidence/ entirely. Internalization rule becomes 'cite the code, not the markdown.' Cold-session test (Approach 2, real subprocess spawn) is the acceptance gate. No new entry kind, no new MCP tool — the existing SP1/SP2 infrastructure is the answer. TDD structure: tests first for every contract (validator, loop_describe warm tier, SessionStart hook, cold-session acceptance). 11 file changes across 5 phases."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, discoverability, meta-state, evidence_code_ref, mechanism_check, cold-session-test, internalization, code-citation, tdd]

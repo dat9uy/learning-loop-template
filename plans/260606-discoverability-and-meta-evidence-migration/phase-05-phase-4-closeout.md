@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Phase 4 Closeout"
-status: pending
+status: completed
 priority: P3
 effort: "0.25h"
 dependencies: [4]
@@ -62,7 +62,7 @@ Mark the 2 active 2026-06-01 findings resolved and add 1 `meta_state_log_change`
    - New change-log entry exists with `consolidates: "<2 ids>"` and `change_target: "tools/learning-loop-mcp/tools/loop-describe-tool.js#buildDiscoverabilityHints"` and `change_dimension: "surface"`.
    - The 2 archived observations (`obs-mpef2h6z-...`, `obs-mpfnglt7-...`) are unchanged.
    - The 4 vnstock observations are unchanged.
-7. **Mark plan as completed.** Run: `cd /home/datguy/codingProjects/learning-loop-template/260606-discoverability-and-meta-evidence-migration && ck plan check 5` (marks Phase 5 as completed; the prior phases should already be marked). Then mark the plan as a whole: amend `plan.md` frontmatter `status: pending` → `status: completed`.
+7. **Mark plan as completed.** Run: `cd /home/datguy/codingProjects/learning-loop-template/260606-discoverability-and-meta-evidence-migration && ck plan check 5` (marks Phase 5 as completed; the prior phases should already be marked). Then mark the plan as a whole: amend `plan.md` frontmatter `status: completed` → `status: completed`.
 
 ## Success Criteria
 
