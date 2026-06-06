@@ -92,6 +92,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_fingerprint({ id })` to re-hash the code after a refactor.",
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
   "Findings have 5 statuses: `reported` (24h TTL), `active` (operator-acked), `resolved` (closed), `expired` (TTL elapsed), `superseded` (consolidated into a change-log).",
+  "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
 ]);
 
 /**
@@ -160,10 +161,50 @@ export function listAllFindings(root, { categories } = {}) {
  * List promoted rules (active gate-enforced rules).
  * Only returns command-path rules (regex/glob) for discoverability surfaces.
  * resolution-evidence-required rules are not discoverable via command/path matching.
+ *
+ * Phase 4: synthesizes backward-compatible shape from both entry_kind="rule"
+ * (first-class) and legacy finding entries with promoted_to_rule.
  */
 export function listPromotedRules(root) {
   const rules = loadPromotedRules(root);
-  return rules.filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required");
+  return rules
+    .filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required")
+    .map((r) => {
+      if (r.entry_kind === "rule") {
+        return {
+          id: r.id,
+          rule_id: r.id,
+          pattern_type: r.pattern_type,
+          pattern: r.pattern,
+          enforcement: r.enforcement,
+          status: r.status,
+          origin: r.origin,
+          scope_predicate: r.scope_predicate,
+          applies_to_resolution: r.applies_to_resolution,
+          description: r.description,
+        };
+      }
+      return {
+        id: r.id,
+        rule_id: r.promoted_to_rule.rule_id,
+        pattern_type: r.promoted_to_rule.pattern_type,
+        pattern: r.promoted_to_rule.pattern,
+        enforcement: r.promoted_to_rule.enforcement,
+        status: r.status,
+        origin: r.promoted_to_rule.promoted_at,
+      };
+    });
+}
+
+/**
+ * List active loop-design entries from the meta-state registry.
+ * Defaults to active status only.
+ */
+export function listLoopDesigns(root, { statuses = ["active"] } = {}) {
+  const entries = readRegistry(root);
+  return entries.filter(
+    (e) => e.entry_kind === "loop-design" && statuses.includes(e.status)
+  );
 }
 
 /**

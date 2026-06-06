@@ -585,29 +585,57 @@ export function loadPromotedRules(root) {
     return [];
   }
 
-  // Rule status semantics: a finding with `promoted_to_rule` is the source of
-  // an active rule. The finding itself may be `status: "resolved"` (resolved
-  // by rule promotion) OR `status: "active"` (actively enforced). Either
-  // way, the rule is live. The status field tracks the FINDING's lifecycle,
-  // not the RULE's lifecycle. (See plans/260606-g8-subcommand-class-fix for
-  // the empirical proof: 3 historical rule entries had status='resolved'
-  // and were silently not loaded, leaving the gate's promoted-rules check
-  // a no-op.) `status: "disabled"` is an explicit kill switch and is
-  // excluded.
-  let rules = entries.filter(
-    (e) =>
+  // Phase 1 transitional filter: BOTH entry_kind="rule" (new first-class) AND
+  // legacy findings with promoted_to_rule are accepted. Phase 2's migration
+  // moves all promoted_to_rule findings into entry_kind="rule" entries;
+  // the legacy branch is removed after the migration is verified.
+  let rules = entries.filter((e) => {
+    // New first-class rule entries
+    if (e.entry_kind === "rule" && e.status === "active") return true;
+    // Legacy finding entries with promoted_to_rule (still valid until Phase 2)
+    if (
       (e.status === "active" || e.status === "resolved") &&
       e.category === "loop-anti-pattern" &&
       e.promoted_to_rule?.enforcement === "gate"
-  );
+    ) return true;
+    return false;
+  });
+
+  // Synthesis layer: normalize rule entries to the legacy shape so downstream
+  // call sites (applyPromotedRules, checkResolutionEvidence, listPromotedRules)
+  // continue to work without changes. For first-class rule entries, synthesize
+  // promoted_to_rule from the top-level fields. For legacy findings, preserve
+  // the existing shape.
+  rules = rules.map((r) => {
+    if (r.entry_kind === "rule") {
+      return {
+        ...r,
+        category: "loop-anti-pattern",  // synthesized for applyPromotedRules compat
+        promoted_to_rule: {
+          rule_id: r.id,
+          enforcement: r.enforcement,
+          pattern_type: r.pattern_type,
+          pattern: r.pattern,
+          scope_predicate: r.scope_predicate,
+          applies_to_resolution: r.applies_to_resolution,
+          promoted_at: r.promoted_at,
+          promoted_by: r.promoted_by,
+          refined_at: r.refined_at,
+          refined_by: r.refined_by,
+          refinement_reason: r.refinement_reason,
+        },
+      };
+    }
+    return r;
+  });
 
   rules = rules.filter((r) => {
-    const predicate = r.promoted_to_rule?.scope_predicate;
+    const predicate = r.promoted_to_rule?.scope_predicate ?? r.scope_predicate;
     if (!predicate || predicate === "none") return true;
     if (predicate === "project_has_learning_loop_mcp") {
       return projectHasLearningLoopMcp(root);
     }
-    console.warn(`Rule ${r.promoted_to_rule.rule_id}: unknown scope_predicate "${predicate}"`);
+    console.warn(`Rule ${r.promoted_to_rule?.rule_id ?? r.id}: unknown scope_predicate "${predicate}"`);
     return true;
   });
 

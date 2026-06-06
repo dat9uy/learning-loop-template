@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   readRegistry,
+  writeEntry,
   updateEntry,
 } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -19,13 +20,13 @@ function checkOperatorRole() {
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a meta-state entry to an active rule. Requires operator role. Sets status to active and populates promoted_to_rule. Use preview:true to test pattern matches without activating.",
+  description: "Promote a meta-state finding to an active rule. Requires operator role. Writes a new entry_kind: 'rule' entry and updates the source finding's promoted_to_rule to the rule id string. Use preview:true to test pattern matches without activating.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
-    enforcement: z.enum(["gate", "agent", "tool"]).describe("Where the rule is enforced"),
-    pattern_type: z.enum(["regex", "glob"]).describe("Pattern language"),
-    pattern: z.string().describe("Pattern string"),
+    enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
+    pattern_type: z.enum(["regex", "glob", "resolution-evidence-required"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
+    pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for resolution-evidence-required)"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
     preview: z.boolean().optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.array(z.string()).optional().describe("Sample commands to test against (for regex preview)"),
@@ -135,11 +136,14 @@ export const metaStatePromoteRuleTool = {
     }
 
     // Rule ID uniqueness check (RT Finding 10)
+    // Phase 1: checks both new entry_kind: "rule" entries AND legacy findings
     const alreadyActive = entries.find(
       (e) =>
-        e.id !== id &&
-        e.status === "active" &&
-        e.promoted_to_rule?.rule_id === rule_id
+        (e.entry_kind === "rule" && e.id === rule_id && e.status === "active") ||
+        (e.entry_kind === "finding" &&
+         e.id !== id &&
+         e.status === "active" &&
+         e.promoted_to_rule?.rule_id === rule_id)
     );
     if (alreadyActive) {
       const result = { promoted: false, reason: "rule_id_already_active", id, rule_id };
@@ -154,26 +158,33 @@ export const metaStatePromoteRuleTool = {
     }
 
     const now = new Date().toISOString();
-    const patch = {
+
+    // Phase 1: write a new entry_kind: "rule" entry (not a mutated finding)
+    const ruleEntry = {
+      id: rule_id,
+      entry_kind: "rule",
+      origin: id,
+      enforcement,
+      pattern_type,
+      pattern,
+      ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
+      ...(pattern_type === "resolution-evidence-required" && { applies_to_resolution: pattern }),
+      description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",
-      promoted_to_rule: {
-        rule_id,
-        enforcement,
-        pattern_type,
-        pattern,
-        ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
-        promoted_at: now,
-        promoted_by: "operator",
-      },
+      promoted_at: now,
+      promoted_by: "operator",
     };
 
-    await updateEntry(root, id, patch);
+    await writeEntry(root, ruleEntry);
+
+    // Update the source finding's promoted_to_rule and status
+    await updateEntry(root, id, { status: "active", promoted_to_rule: rule_id });
 
     const result = {
       promoted: true,
-      id,
-      status: "active",
       rule_id,
+      rule_entry_id: rule_id,
+      source_finding_id: id,
       enforcement,
       pattern_type,
       pattern,

@@ -36,8 +36,8 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported", "superseded"]).optional()
-    .describe("Status — 'reported' or 'superseded' allowed via this tool. Use meta_state_ack or meta_state_promote_rule for other statuses. 'superseded' is a terminal status indicating the entry is no longer the canonical source; the canonical source is the change-log referenced by consolidated_into."),
+  status: z.enum(["reported", "active", "resolved", "expired", "superseded"]).optional()
+    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log). Use meta_state_ack or meta_state_promote_rule for status transitions."),
   consolidated_into: z.string().optional()
     .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
   session_id: z.string().optional()
@@ -86,12 +86,74 @@ export const metaStateChangeEntrySchema = z.object({
 });
 
 /**
+ * Rule branch schema — promoted gate/agent rules with their own lifecycle.
+ * Has .shape available for tool schema reuse.
+ */
+export const metaStateRuleEntrySchema = z.object({
+  entry_kind: z.literal("rule").default("rule"),
+  id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; not timestamp-based"),
+  origin: z.string().describe("Finding id that originated this rule (preserves historical lineage)"),
+  enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
+  pattern_type: z.enum(["regex", "glob", "resolution-evidence-required"]).describe("Pattern language"),
+  pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
+  scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional()
+    .describe("Optional scope filter: 'none' (default) or 'project_has_learning_loop_mcp'"),
+  applies_to_resolution: z.string().optional()
+    .describe("For pattern_type=resolution-evidence-required: the target finding id this rule gates"),
+  supersedes: z.string().optional()
+    .describe("Prior rule id this rule refined (replaces finding.promoted_to_rule.refined_at metadata)"),
+  description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
+  status: z.enum(["active", "inactive"]).default("active")
+    .describe("Binary per operator decision 2026-06-06. Refined/deprecated rules become inactive and use 'supersedes' to point to the new rule."),
+  promoted_at: z.string().describe("ISO timestamp"),
+  promoted_by: z.string().describe("Operator id"),
+  evidence_code_ref: z.string().optional()
+    .describe("Code reference; SP2 grounding still applies"),
+  code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
+    .describe("SHA-256 of evidence_code_ref; populated by SP2 check_grounding"),
+  refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
+  refined_by: z.string().optional().describe("Operator id of last refinement"),
+  refinement_reason: z.string().optional().describe("Why the rule was last refined"),
+});
+
+/**
+ * Loop-design branch schema — deferred design notes with their own lifecycle.
+ * Has .shape available for tool schema reuse.
+ */
+export const metaStateLoopDesignSchema = z.object({
+  entry_kind: z.literal("loop-design").default("loop-design"),
+  id: z.string().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug or loop-design-<slug>)"),
+  title: z.string().min(10).describe("Short human-readable title"),
+  status: z.enum(["active", "inactive"]).default("active")
+    .describe("Binary. Flips to inactive when the proposed work ships."),
+  proposed_design_for: z.array(z.string()).min(1)
+    .describe("Forward: ids of rules/schemas/tools this design will create or modify"),
+  addresses: z.array(z.string()).default([])
+    .describe("Backward: ids of findings this design responds to (the motivation; the why-this-exists)"),
+  description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
+  affected_system: z.enum([
+    "gate-logic", "record-validation", "index-extractor",
+    "mcp-tools", "workflow-registry", "vnstock_vendor",
+  ]).describe("Which system this design affects"),
+  severity_hint: z.enum(["low", "medium", "high"]).optional()
+    .describe("Operator's read on the urgency of shipping this design"),
+  created_at: z.string().describe("ISO timestamp"),
+  created_by: z.string().describe("Operator id"),
+  shipped_in_plan: z.string().optional()
+    .describe("Plan id (plans/YYMMDD-slug/) that shipped this design; set when status flips to inactive"),
+  shipped_at: z.string().optional()
+    .describe("ISO timestamp of the ship event"),
+});
+
+/**
  * Cross-cutting union validator — for readRegistry validation, loop_describe, etc.
  * Does NOT have .shape (by zod design); use the branch schemas for .shape.
  */
 export const metaStateEntrySchema = z.union([
   metaStateFindingEntrySchema,
   metaStateChangeEntrySchema,
+  metaStateRuleEntrySchema,       // NEW
+  metaStateLoopDesignSchema,      // NEW
 ]);
 
 /** Per-root write queue to prevent read-modify-write races. */

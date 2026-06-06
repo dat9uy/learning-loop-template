@@ -33,12 +33,13 @@ export const loopDescribeTool = {
         result.record_type_count = recordTypes.length;
         result.rule_count = promotedRules.length;
         result.active_finding_count = activeFindings.length;
+        result.loop_design_count = introspect.listLoopDesigns(root).length;
       } else if (tier === "hot") {
         result.tools = tools.map((t) => ({ name: t.name }));
-        result.promoted_rules = promotedRules.map((r) => ({
-          rule_id: r.promoted_to_rule.rule_id,
-          pattern_type: r.promoted_to_rule.pattern_type,
-          pattern: r.promoted_to_rule.pattern,
+        result.rules = promotedRules.map((r) => ({
+          rule_id: r.rule_id,
+          pattern_type: r.pattern_type,
+          pattern: r.pattern,
         }));
         result.rule_count = promotedRules.length;
       } else if (tier === "warm") {
@@ -48,10 +49,10 @@ export const loopDescribeTool = {
         }));
         result.record_types = recordTypes;
         result.gate_patterns = Object.keys(gatePatterns);
-        result.promoted_rules = promotedRules.map((r) => ({
-          rule_id: r.promoted_to_rule.rule_id,
-          pattern_type: r.promoted_to_rule.pattern_type,
-          pattern: r.promoted_to_rule.pattern,
+        result.rules = promotedRules.map((r) => ({
+          rule_id: r.rule_id,
+          pattern_type: r.pattern_type,
+          pattern: r.pattern,
         }));
         result.active_findings = activeFindings.map((f) => ({
           id: f.id,
@@ -65,6 +66,8 @@ export const loopDescribeTool = {
           status: f.status,
           description: f.description,
         }));
+        result.rule_count = promotedRules.length;
+        result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
@@ -73,10 +76,21 @@ export const loopDescribeTool = {
         }));
         result.record_types = recordTypes;
         result.gate_patterns = gatePatterns;
-        result.promoted_rules = promotedRules;
+        result.rules = promotedRules;
         result.active_findings = activeFindings;
         result.all_findings = introspect.listAllFindings(root, { categories });
         result.anti_patterns = antiPatterns;
+        result.loop_designs = introspect.listLoopDesigns(root).map((d) => ({
+          id: d.id,
+          title: d.title,
+          status: d.status,
+          proposed_design_for: d.proposed_design_for,
+          addresses: d.addresses,
+          shipped_in_plan: d.shipped_in_plan,
+          shipped_at: d.shipped_at,
+          severity_hint: d.severity_hint,
+          affected_system: d.affected_system,
+        }));
 
         // Superseded lineage surface (Phase 3 of plan 260605):
         // group all finding entries with status='superseded' and a consolidated_into
@@ -123,7 +137,7 @@ export const loopDescribeTool = {
       result.degraded = true;
       result.warnings = [err.message];
       result.tools = [];
-      result.promoted_rules = [];
+      result.rules = [];
       result.active_findings = [];
     }
 

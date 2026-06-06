@@ -101,7 +101,7 @@ describe("meta-state schema new behavior", () => {
     assert.strictEqual(result.success, true);
   });
 
-  test("status active is rejected", () => {
+  test("status active is accepted (registry compatibility)", () => {
     const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
@@ -109,10 +109,10 @@ describe("meta-state schema new behavior", () => {
       description: "Valid description with enough length to pass.",
       status: "active",
     });
-    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.success, true);
   });
 
-  test("status resolved is rejected", () => {
+  test("status resolved is accepted (registry compatibility)", () => {
     const result = metaStateFindingEntrySchema.safeParse({
       category: "gate-logic-bug",
       severity: "warning",
@@ -120,7 +120,7 @@ describe("meta-state schema new behavior", () => {
       description: "Valid description with enough length to pass.",
       status: "resolved",
     });
-    assert.strictEqual(result.success, false);
+    assert.strictEqual(result.success, true);
   });
 
   test("tool schema matches shared metaStateFindingEntrySchema shape", () => {

@@ -82,7 +82,7 @@ describe("loop_describe new behavior", () => {
       assert.ok(Array.isArray(text.tools));
       assert.ok(text.tools.length > 0);
       assert.strictEqual(text.tools[0].description, undefined);
-      assert.ok(Array.isArray(text.promoted_rules));
+      assert.ok(Array.isArray(text.rules));
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

@@ -240,7 +240,11 @@ describe("gate scope predicate", () => {
       const entries = readRegistry(tempDir);
       const entry = entries.find((e) => e.id === reportText.id);
       assert.ok(entry, "Entry not found in registry");
-      assert.strictEqual(entry.promoted_to_rule.scope_predicate, "project_has_learning_loop_mcp");
+      assert.strictEqual(entry.promoted_to_rule, "rule-test-scope-promote", "finding promoted_to_rule should be the rule id string");
+
+      const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-scope-promote");
+      assert.ok(ruleEntry, "Rule entry not found in registry");
+      assert.strictEqual(ruleEntry.scope_predicate, "project_has_learning_loop_mcp");
 
       // Verify loadPromotedRules sees it in matching project
       writeMcpJson(tempDir, { "learning-loop-mcp": { command: "node", args: ["server.js"] } });

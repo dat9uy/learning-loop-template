@@ -151,7 +151,12 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const listText = JSON.parse(listResult.content[0].text);
       assert.strictEqual(listText.count, 1);
-      assert.strictEqual(listText.entries[0].promoted_to_rule.rule_id, "rule-test-list");
+      // Phase 1: finding promoted_to_rule is now a string id; the rule entry is the canonical source
+      assert.strictEqual(listText.entries[0].promoted_to_rule, "rule-test-list");
+      // Also verify the rule entry exists
+      const entries = readRegistry(tempDir);
+      const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-list");
+      assert.ok(ruleEntry, "Rule entry should exist in registry");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperatorMode;
@@ -183,9 +188,9 @@ describe("integration: promoted rule end-to-end", () => {
 
       const result = await loopDescribeTool.handler({ tier: "hot" });
       const text = JSON.parse(result.content[0].text);
-      assert.ok(Array.isArray(text.promoted_rules));
-      assert.strictEqual(text.promoted_rules.length, 1);
-      assert.strictEqual(text.promoted_rules[0].rule_id, "rule-test-describe");
+      assert.ok(Array.isArray(text.rules));
+      assert.strictEqual(text.rules.length, 1);
+      assert.strictEqual(text.rules[0].rule_id, "rule-test-describe");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperatorMode;
@@ -219,16 +224,16 @@ describe("integration: promoted rule end-to-end", () => {
       let rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
 
-      // Disable the rule
-      await updateEntry(tempDir, reportText.id, { status: "disabled" });
+      // Disable the rule (Phase 1: rule is now a separate entry_kind: "rule" entry)
+      await updateEntry(tempDir, "rule-test-recovery", { status: "inactive" });
 
       // Verify rule is no longer loaded
       rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 0);
 
-      // Gate should return ok
+      // Gate should return ok when fed the inactive rule directly
       const gateResult = applyPromotedRules("anything", null, [
-        { ...readRegistry(tempDir)[0], status: "disabled" },
+        { ...readRegistry(tempDir)[0], status: "inactive" },
       ]);
       assert.strictEqual(gateResult.decision, "ok");
     } finally {

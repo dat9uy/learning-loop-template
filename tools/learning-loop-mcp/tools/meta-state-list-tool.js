@@ -18,10 +18,12 @@ export const metaStateListTool = {
     status: z.string().optional().describe("Filter by status"),
     affected_system: z.string().optional().describe("Filter by affected system"),
     include_expired: z.boolean().optional().default(false).describe("Include terminal statuses in results"),
-    entry_kind: z.enum(["finding", "change-log"]).optional()
-      .describe("Filter by entry kind; default = both"),
+    entry_kind: z.enum(["finding", "change-log", "rule", "loop-design"]).optional()
+      .describe("Filter by a single entry kind; default = both (legacy)"),
+    entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()
+      .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
   },
-  handler: async ({ category, status, affected_system, include_expired, entry_kind }) => {
+  handler: async ({ category, status, affected_system, include_expired, entry_kind, entry_kinds }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -48,10 +50,15 @@ export const metaStateListTool = {
       ...(category && { category }),
       ...(status && { status }),
       ...(affected_system && { affected_system }),
-      ...(entry_kind && { entry_kind }),
+      ...(entry_kind && !entry_kinds && { entry_kind }),
     };
 
-    let result = filterEntries(updated, activeFilters);
+    let result;
+    if (entry_kinds) {
+      result = updated.filter((e) => entry_kinds.includes(e.entry_kind));
+    } else {
+      result = filterEntries(updated, activeFilters);
+    }
 
     if (!include_expired) {
       result = result.filter((e) => !TERMINAL_STATUSES.has(e.status));
@@ -71,6 +78,7 @@ export const metaStateListTool = {
       filters_applied: activeFilters,
       include_expired: include_expired || false,
       entry_kind_filter: entry_kind || null,
+      entry_kinds_filter: entry_kinds || null,
     };
 
     return {
