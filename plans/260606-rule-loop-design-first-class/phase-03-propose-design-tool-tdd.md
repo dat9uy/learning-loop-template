@@ -595,7 +595,7 @@ All 12 test files pass: 4-5 new tool tests + 2-3 new filter tests + the prior 10
 - [ ] Validation works: empty `proposed_design_for` returns `{ proposed: false, reason: "validation_failed" }`
 - [ ] `meta_state_list({ entry_kind: "rule" })` returns 4 entries (the 4 migrated rules from Phase 2)
 - [ ] `meta_state_list({ entry_kind: "loop-design" })` returns 3 entries (the 3 migrated loop-designs from Phase 2)
-- [ ] `meta_state_list({ entry_kinds: ["rule", "loop-design"] })` returns 7 entries (4 rules + 3 loop-designs)
+- [ ] `meta_state_list({ entry_kinds: ["rule", "loop-design"] })` returns 6 entries (4 rules + 2 loop-designs)
 - [ ] `meta_state_list({ entry_kind: "finding" })` returns the same entries as before Phase 1 (the source findings stay; their `promoted_to_rule` is now a string)
 - [ ] `meta_state_list({ entry_kind: "change-log" })` returns the Phase 0 change-log + all prior change-logs
 - [ ] `__tests__/meta-state-propose-design-tool.test.js` has 4-5 tests, all pass

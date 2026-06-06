@@ -235,7 +235,7 @@ test("loop_describe cold tier returns loop_designs list with id, title, proposed
 test("loop_describe summary tier includes rule_count and loop_design_count", async () => {
   const root = setupFixture();
   process.chdir(root);
-  // Write 2 rules and 3 loop-designs
+  // Write 2 rules and 2 loop-designs
   for (let i = 0; i < 2; i++) {
     await writeEntry(root, {
       id: `rule-test-${i}`,
@@ -250,7 +250,7 @@ test("loop_describe summary tier includes rule_count and loop_design_count", asy
       promoted_by: "operator",
     });
   }
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     await writeEntry(root, {
       id: `loop-design-test-${i}`,
       entry_kind: "loop-design",
@@ -461,7 +461,7 @@ All tests pass: 3-4 new + 4 existing loop-describe tests (regression) + 6-8 Phas
 
 ## Risk Assessment
 
-- **Risk 1:** Renaming `promoted_rules` to `rules` is a breaking change for downstream consumers (e.g., the SessionStart hook's `LOCAL_DISCOVERABILITY_HINTS` reads `r.promoted_rules`). Mitigation: search the codebase for `promoted_rules` references and update them in the same commit. The hook in `.factory/hooks/loop-surface-inject.cjs` (per the change-log) is one consumer; verify and update.
+- **Risk 1:** Renaming `promoted_rules` to `rules` is a breaking change for downstream consumers (e.g., the SessionStart hook's `LOCAL_DISCOVERABILITY_HINTS` reads `r.promoted_rules`). Mitigation: search the codebase for `promoted_rules` references and update them in the same commit. The hook in `.factory/hooks/loop-surface-inject.cjs` (per the change-log) is one consumer; verify and update. **Known test breaks:** `integration-promoted-rule.test.js` (line 186 checks `text.promoted_rules`), `loop-describe.test.js` (line 88 checks `text.promoted_rules`), and `loop-describe-warm-tier.test.js` (line 7 checks `discoverability_hints.length === 5` which becomes 6). These tests MUST be updated in the same commit.
 - **Risk 2:** The synthesized shape in `listPromotedRules` (rule_id = id) is a small duplication that might confuse future maintainers. Mitigation: add a JSDoc comment on the function explaining the synthesis.
 - **Risk 3:** The `listLoopDesigns` function returns ALL active loop-designs. If the count grows large, the cold tier's `loop_designs` list could exceed the cold tier's 25-100KB budget. Mitigation: the cold tier is "audit only" per `loop_describe`'s tier table; the budget is generous. If the count exceeds 100, a future plan could paginate or filter.
 - **Risk 4:** The new discoverability hint mentions "Phase 3" and "Phase 4" by their plan-phase numbers. If a future agent reads this hint in 2027, the phase numbers are meaningless. Mitigation: the hint should reference the plan name (`260606-rule-loop-design-first-class`) not the phase numbers.

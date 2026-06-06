@@ -69,6 +69,8 @@ The 4-kind union is the structural foundation: extend `metaStateEntrySchema` fro
    - After: `z.string().describe("Rule id this finding was promoted to. The rule's own entry (entry_kind: 'rule') is the canonical source of enforcement data; the finding's id is the rule's origin (preserved as rule.origin).")`
    - Migration impact: 4 existing findings with object `promoted_to_rule` payloads must be mutated in Phase 2 BEFORE the schema is tightened. Phase 1 ships the narrowing + the union extension in one commit; Phase 2 ships the data migration. Until Phase 2 lands, `metaStateEntrySchema.parse()` will reject the 4 existing findings. Mitigation: Phase 1 wraps the narrowing in a feature flag or documents the breakage window. The plan is to do both in the same release, since the operator decided clean break, no backward-compat layer.
 
+   - **CRITICAL ADDITION: Finding status enum fix.** The existing `metaStateFindingEntrySchema` defines `status: z.enum(["reported", "superseded"]).optional()` — but the actual registry contains findings with `status: "resolved"` (3 source findings), `status: "active"` (1 source finding, `meta-260606T1656Z`), and `status: "expired"` (2 prior findings). The schema is out of sync with the data. Phase 1 MUST add `"active"`, `"resolved"`, and `"expired"` to the finding status enum before any validation against `metaStateEntrySchema` can pass. This is a schema drift fix, not a new feature — the data already uses these values.
+
 5. **`loadPromotedRules` rewrite in `tools/learning-loop-mcp/core/gate-logic.js` lines 566-610:**
    - Before: filters findings by `e.promoted_to_rule?.enforcement === "gate"` and `e.status in [active, resolved]`. Returns findings with the `promoted_to_rule` object attached.
    - After: filters rule entries by `e.entry_kind === "rule"` and `e.status === "active"`. Returns rule entries. The shape returned is the rule entry itself (not a finding with a nested payload).
@@ -212,6 +214,24 @@ test("metaStateEntrySchema union accepts rule entry via discriminator", () => {
   // a valid rule and checking the entry_kind is preserved.
   const parsed = metaStateEntrySchema.parse(validRule);
   assert.equal(parsed.entry_kind, "rule");
+});
+
+// CRITICAL: The finding status enum must include "active", "resolved", "expired"
+// because the registry already contains findings with these statuses.
+// Without this, metaStateEntrySchema.parse() will reject existing entries.
+test("finding status enum accepts 'resolved' and 'active' (registry compatibility)", () => {
+  const finding = {
+    id: "meta-260601T1353Z-test",
+    entry_kind: "finding",
+    category: "loop-anti-pattern",
+    severity: "warning",
+    affected_system: "mcp-tools",
+    description: "Test finding that is resolved (already in registry)",
+    status: "resolved",
+    created_at: "2026-06-01T00:00:00Z",
+  };
+  const parsed = metaStateEntrySchema.parse(finding);
+  assert.equal(parsed.status, "resolved");
 });
 ```
 

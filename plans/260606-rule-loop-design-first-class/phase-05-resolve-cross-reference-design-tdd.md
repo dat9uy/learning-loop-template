@@ -74,7 +74,7 @@ Close the plan by resolving the cross-reference design note (`meta-260606T1543Z-
               • reason: documents the ship
 
 Result: 1 in-place update + 1 new line in meta-state.jsonl.
-The plan is complete: 4 rules are first-class, 3 designs are first-class,
+The plan is complete: 4 rules are first-class, 2 designs are first-class,
 the union is 4 members, the cross-references are typed, the discoverability
 hints are updated, and the closing change-log is the audit trail.
 ```
@@ -124,7 +124,7 @@ const changeLogEntry = {
       "meta_state_list entry_kind filter: extended enum to include rule | loop-design; new entry_kinds[] array filter",
     ],
   },
-  reason: "Shipped the 4-kind discriminated union (finding | change-log | rule | loop-design). Migrated 4 promoted rules from nested findings.promoted_to_rule payloads into standalone entry_kind=rule entries with stable rule ids and origin lineage pointers. Re-emitted 3 deferred design notes as entry_kind=loop-design entries with proposed_design_for (forward) and addresses (backward) cross-references. The new meta_state_propose_design MCP tool is the canonical way to emit loop-design entries (idempotent by addresses+proposed_design_for set equality). The loop_describe warm/cold tiers surface the new entry kinds (rules list, loop_designs list, counts). Clean break: no backward-compat layer; the 7 source findings stay in the registry with promoted_to_rule mutated from object to string id, and consolidated_into backfilled from the Phase 0 placeholder to the new loop-design id. The original cross-reference design note (meta-260606T1543Z) is in a terminal state (superseded) with the resolution narrative recorded. The new schema is discoverable via loop_describe warm tier (new discoverability_hint) and via meta_state_list({ entry_kind: 'rule' | 'loop-design' }).",
+  reason: "Shipped the 4-kind discriminated union (finding | change-log | rule | loop-design). Migrated 4 promoted rules from nested findings.promoted_to_rule payloads into standalone entry_kind=rule entries with stable rule ids and origin lineage pointers. Re-emitted 2 active design notes as entry_kind=loop-design entries with proposed_design_for (forward) and addresses (backward) cross-references. The new meta_state_propose_design MCP tool is the canonical way to emit loop-design entries (idempotent by addresses+proposed_design_for set equality). The loop_describe warm/cold tiers surface the new entry kinds (rules list, loop_designs list, counts). Clean break: no backward-compat layer; the 6 source findings stay in the registry with promoted_to_rule mutated from object to string id, and consolidated_into backfilled from the Phase 0 placeholder to the new loop-design id. The original cross-reference design note (meta-260606T1543Z) is in a terminal state (superseded) with the resolution narrative recorded. The new schema is discoverable via loop_describe warm tier (new discoverability_hint) and via meta_state_list({ entry_kind: 'rule' | 'loop-design' }).",
   applies_to: {
     schemas: ["core/meta-state.js"],
     tools: ["meta_state_propose_design", "meta_state_list", "loop_describe", "meta_state_promote_rule"],
@@ -207,18 +207,18 @@ assert.equal(updatedCrossRef.consolidated_into, "loop-design-cross-reference-fie
 ### Step 5: Plan closeout
 
 The plan is now complete. Summary:
-- Phase 0: change-log added; 3 design-note findings marked superseded
+- Phase 0: change-log added; 2 active design-note findings marked superseded
 - Phase 1: 2 new schemas + union extension + gate-logic rewrite (TDD: 10-14 new tests)
-- Phase 2: migration script extracted 4 rules + 3 design notes (TDD: 4 new tests; idempotent)
+- Phase 2: migration script extracted 4 rules + 2 active design notes (TDD: 4 new tests; idempotent)
 - Phase 3: new `meta_state_propose_design` tool + extended `meta_state_list` filter (TDD: 6-8 new tests)
 - Phase 4: `loop_describe` warm/cold tier surfaces (TDD: 3-4 new tests)
 - Phase 5: closing change-log + cross-reference resolution narrative
 
 Final registry state:
-- 40 + 1 (Phase 0) + 7 (Phase 2: 4 rules + 3 loop-designs) + 1 (Phase 5 closing) = 49 lines in `meta-state.jsonl`
+- 40 + 1 (Phase 0) + 6 (Phase 2: 4 rules + 2 loop-designs) + 1 (Phase 5 closing) = 48 lines in `meta-state.jsonl`
 - 4 `entry_kind: "rule"` entries
-- 3 `entry_kind: "loop-design"` entries (one of which — `loop-design-cross-reference-fields` — has its `addresses: []` and is the structural-fix design itself; this is the design the cross-reference finding proposed)
-- 7 source findings mutated: 4 with `promoted_to_rule` mutated from object to string; 3 with `consolidated_into` backfilled from placeholder to real id
+- 2 `entry_kind: "loop-design"` entries (one of which — `loop-design-cross-reference-fields` — has its `addresses: []` and is the structural-fix design itself; this is the design the cross-reference finding proposed)
+- 6 source findings mutated: 4 with `promoted_to_rule` mutated from object to string; 2 with `consolidated_into` backfilled from placeholder to real id
 - 1 finding with a `resolution` field populated (the cross-reference design note)
 
 ## Success Criteria
@@ -230,7 +230,7 @@ Final registry state:
 - [ ] `git diff --stat meta-state.jsonl` shows 1 added line + 1 in-place edit
 - [ ] `meta_state_list({ entry_kind: "change-log" })` returns the 2 new entries (Phase 0 + Phase 5) + all prior change-logs
 - [ ] `loop_describe({ tier: "warm" })` returns `rule_count: 4` and `loop_design_count: 3`
-- [ ] `loop_describe({ tier: "cold" })` returns 4 rules + 3 loop-designs + the full historical record
+- [ ] `loop_describe({ tier: "cold" })` returns 4 rules + 2 loop-designs + the full historical record
 
 ## Risk Assessment
 

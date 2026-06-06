@@ -1,6 +1,6 @@
 ---
 phase: 2
-title: "Migration: 4 rules → entry_kind: 'rule'; 3 design notes → entry_kind: 'loop-design'; 3 findings superseded with consolidated_into (TDD, idempotent)"
+title: "Migration: 4 rules → entry_kind: 'rule'; 2 active design notes → entry_kind: 'loop-design'; 2 findings superseded with consolidated_into (TDD, idempotent)"
 status: pending
 priority: P1
 effort: "1.5h"
@@ -11,7 +11,7 @@ dependencies: [1]
 
 ## Overview
 
-Run an idempotent migration script (`tools/learning-loop-mcp/scripts/migrate-rule-entry-kind.mjs`) that: (a) extracts the 4 promoted rules from their source findings' `promoted_to_rule` payloads into standalone `entry_kind: "rule"` entries; (b) replaces the source findings' `promoted_to_rule` objects with the new rule ids (string); (c) re-emits the 3 design-note-in-disguise findings as `entry_kind: "loop-design"` entries with `proposed_design_for` and `addresses` populated; (d) backfills the `consolidated_into` placeholder from Phase 0 with the real new loop-design entry ids. The script is idempotent: running twice produces the same registry state (verified by snapshot diff). 3-4 new tests cover the roundtrip, idempotency, and partial-state recovery paths. After Phase 2, the gate-logic's transitional filter (Phase 1 Step 4) is no longer needed: a follow-up commit removes the legacy branch.
+Run an idempotent migration script (`tools/learning-loop-mcp/scripts/migrate-rule-entry-kind.mjs`) that: (a) extracts the 4 promoted rules from their source findings' `promoted_to_rule` payloads into standalone `entry_kind: "rule"` entries; (b) replaces the source findings' `promoted_to_rule` objects with the new rule ids (string); (c) re-emits the 2 active design-note-in-disguise findings as `entry_kind: "loop-design"` entries with `proposed_design_for` and `addresses` populated; (d) backfills the `consolidated_into` placeholder from Phase 0 with the real new loop-design entry ids. The script is idempotent: running twice produces the same registry state (verified by snapshot diff). 3-4 new tests cover the roundtrip, idempotency, and partial-state recovery paths. After Phase 2, the gate-logic's transitional filter (Phase 1 Step 4) is no longer needed: a follow-up commit removes the legacy branch.
 
 ## Requirements
 
@@ -47,13 +47,14 @@ For each source finding, the migration script:
 4. Writes the new rule entry via `writeEntry` (uses the per-root write queue)
 5. Updates the source finding's `promoted_to_rule` to be the new rule's id string (e.g., `"rule-no-new-artifact-types"`) via `updateEntry`
 
-**Design notes to re-emit (3 design-note-in-disguise findings → loop-design entries):**
+**Design notes to re-emit (2 active design-note-in-disguise findings → loop-design entries):**
 
 | # | Source finding id | New loop-design entry id (deterministic) | `proposed_design_for` | `addresses` |
 |---|---|---|---|---|
-| 1 | `meta-260606T1531Z-cold-session-test-rule-deferred` | `loop-design-cold-session-test-rule` | `["rule-cold-session-test-must-pass-before-resolution"]` | `["meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list"]` |
-| 2 | `meta-260606T0421Z-instruction-layer-for-agents-tbd` | `loop-design-instruction-layer` | `["loop_get_instruction", "loop_describe"]` | (none — this design is forward-looking, not addressing a specific finding) |
-| 3 | `meta-260606T1543Z-meta-state-cross-reference-field-design` | `loop-design-cross-reference-fields` | `["metaStateRuleEntrySchema", "metaStateLoopDesignSchema"]` | (none — this design is the structural fix itself, addresses the design-note-finding-coupling problem in general) |
+| 1 | `**************************************************` | `loop-design-instruction-layer` | `["loop_get_instruction", "loop_describe"]` | (none — this design is forward-looking, not addressing a specific finding) |
+| 2 | `meta-260606T1543Z-meta-state-cross-reference-field-design` | `loop-design-cross-reference-fields` | `["metaStateRuleEntrySchema", "metaStateLoopDesignSchema"]` | (none — this design is the structural fix itself, addresses the design-note-finding-coupling problem in general) |
+
+Note: `meta-260606T1531Z-cold-session-test-rule-deferred` is already resolved by sibling plan 260606-cold-session-test-rule-promotion and is NOT migrated.
 
 For each source finding, the migration script:
 1. Reads the finding's `description` (min 20 chars; if < 20, prepend a synthetic sentence)
@@ -104,8 +105,7 @@ For each source finding, the migration script:
         │     • meta-260602T1116Z-agent-inside-a-project-...
         │     • meta-260606T1656Z-cold-session-test-...
         │
-        ├─ 2. Read source design-note findings (3)
-        │     • meta-260606T1531Z-cold-session-test-rule-deferred
+        ├─ 2. Read source design-note findings (2)
         │     • meta-260606T0421Z-instruction-layer-for-agents-tbd
         │     • meta-260606T1543Z-meta-state-cross-reference-field-design
         │
@@ -126,21 +126,21 @@ For each source finding, the migration script:
         │     • promoted_to_rule: object → rule_id string
         │     • Idempotency: skip if already a string
         │
-        ├─ 7. Write 3 new loop-design entries (writeEntry)
+        ├─ 7. Write 2 new loop-design entries (writeEntry)
         │     • Idempotency: skip if loop-design id already exists
         │
-        ├─ 8. Backfill 3 source findings' consolidated_into (updateEntry)
+        ├─ 8. Backfill 2 source findings' consolidated_into (updateEntry)
         │     • consolidated_into: "PENDING-PHASE-2-LOOP-DESIGN-ID" → new loop-design id
         │     • Idempotency: skip if already a valid id (not the placeholder)
         │
-        └─ 9. Log summary: 4 rules extracted, 3 loop-designs emitted, 7 source findings mutated
+        └─ 9. Log summary: 4 rules extracted, 2 loop-designs emitted, 6 source findings mutated
 ```
 
 ## Related Code Files
 
 - **Create:** `tools/learning-loop-mcp/scripts/migrate-rule-entry-kind.mjs` — the migration script
 - **Create:** `tools/learning-loop-mcp/__tests__/migrate-rule-entry-kind.test.js` — 3-4 new tests
-- **Modify:** `meta-state.jsonl` — append 4 rule entries + 3 loop-design entries; mutate 4 source findings (promoted_to_rule object → string) + 3 source findings (consolidated_into placeholder → real id)
+- **Modify:** `meta-state.jsonl` — append 4 rule entries + 2 loop-design entries; mutate 4 source findings (promoted_to_rule object → string) + 2 source findings (consolidated_into placeholder → real id)
 - **Read-only:** `tools/learning-loop-mcp/core/meta-state.js` — uses `writeEntry`, `updateEntry`, `readRegistry`, `metaStateRuleEntrySchema`, `metaStateLoopDesignSchema` (the 2 schemas from Phase 1)
 - **Read-only:** `tools/learning-loop-mcp/core/slugify.js` — slug helper for the loop-design ids
 
@@ -203,7 +203,7 @@ function setupFixture({ withRules = true, withDesignNotes = true, partialState =
   }
 
   if (!partialState) {
-    // Full state: 4 rules + 3 design notes
+    // Full state: 4 rules + 2 design notes
     // (omitted for brevity; the test uses 1+1 for unit tests, integration test uses 4+3)
   }
 
@@ -280,7 +280,7 @@ Create `tools/learning-loop-mcp/scripts/migrate-rule-entry-kind.mjs`:
 #!/usr/bin/env node
 /**
  * Migration: extract 4 promoted rules from findings into entry_kind="rule"
- * entries; re-emit 3 design-note-in-disguise findings as entry_kind="loop-design"
+ * entries; re-emit 2 active design-note-in-disguise findings as entry_kind="loop-design"
  * entries; mutate source findings' promoted_to_rule (object → string id) and
  * consolidated_into (placeholder → real id).
  *
@@ -326,14 +326,7 @@ const PROMOTED_TO_RULE_SOURCES = [
 
 const DESIGN_NOTE_SOURCES = [
   {
-    findingId: "meta-260606T1531Z-cold-session-test-rule-deferred",
-    loopDesignId: "loop-design-cold-session-test-rule",
-    title: "Cold-session test rule — promote test to gate-enforced rule",
-    proposed_design_for: ["rule-cold-session-test-must-pass-before-resolution"],
-    addresses: ["meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list"],
-  },
-  {
-    findingId: "meta-260606T0421Z-instruction-layer-for-agents-tbd",
+    findingId: "**************************************************",
     loopDesignId: "loop-design-instruction-layer",
     title: "Instruction layer for agents — on-demand rule lookup",
     proposed_design_for: ["loop_get_instruction", "loop_describe"],
@@ -456,7 +449,7 @@ async function main() {
     console.log(`[loop-design-emit] ${src.findingId} → ${src.loopDesignId}`);
   }
 
-  // Step 5: backfill 3 source findings' consolidated_into
+  // Step 5: backfill 2 source findings' consolidated_into
   for (const { src } of newDesigns) {
     await updateEntry(root, src.findingId, { consolidated_into: src.loopDesignId });
     console.log(`[consolidated-into-backfill] ${src.findingId} → ${src.loopDesignId}`);
@@ -503,7 +496,7 @@ Expected output:
 [loop-design-emit] meta-260606T1543Z-meta-state-cross-reference-field-design → loop-design-cross-reference-fields
 [consolidated-into-backfill] meta-260606T1543Z-meta-state-cross-reference-field-design → loop-design-cross-reference-fields
 
-Migration complete: 4 rules extracted, 3 loop-designs emitted, 7 source findings mutated.
+Migration complete: 4 rules extracted, 2 loop-designs emitted, 6 source findings mutated.
 ```
 
 ### Step 5: Verify the migration with `meta_state_list`
@@ -538,23 +531,23 @@ Expected output (all steps skip):
 Migration complete: 0 rules extracted, 0 loop-designs emitted, 0 source findings mutated.
 ```
 
-`git diff --stat meta-state.jsonl` shows the same 7 added lines + 7 in-place edits as the first run. Idempotency verified.
+`git diff --stat meta-state.jsonl` shows the same 6 added lines + 6 in-place edits as the first run. Idempotency verified.
 
 ## Success Criteria
 
 - [ ] `tools/learning-loop-mcp/scripts/migrate-rule-entry-kind.mjs` exists and is executable
-- [ ] Running the script on a fresh registry (with the 4 + 3 source findings) produces 4 new rule entries + 3 new loop-design entries + 7 source finding mutations
+- [ ] Running the script on a fresh registry (with the 4 + 2 source findings) produces 4 new rule entries + 2 new loop-design entries + 6 source finding mutations
 - [ ] The 4 new rule entries pass `metaStateRuleEntrySchema.safeParse`
-- [ ] The 3 new loop-design entries pass `metaStateLoopDesignSchema.safeParse`
+- [ ] The 2 new loop-design entries pass `metaStateLoopDesignSchema.safeParse`
 - [ ] The 4 source findings' `promoted_to_rule` is mutated from object to string (the new rule_id)
-- [ ] The 3 source findings' `consolidated_into` is backfilled from the Phase 0 placeholder to the new loop-design id
-- [ ] Re-running the script on the same registry is a no-op (all 7 source findings are skipped via the idempotency guards)
+- [ ] The 2 source findings' `consolidated_into` is backfilled from the Phase 0 placeholder to the new loop-design id
+- [ ] Re-running the script on the same registry is a no-op (all 6 source findings are skipped via the idempotency guards)
 - [ ] `__tests__/migrate-rule-entry-kind.test.js` has 4 new tests, all pass
 - [ ] `meta_state_list({ entry_kind: "rule" })` returns 4 entries
-- [ ] `meta_state_list({ entry_kind: "loop-design" })` returns 3 entries
+- [ ] `meta_state_list({ entry_kind: "loop-design" })` returns 2 entries
 - [ ] `meta_state_list({ entry_kind: "finding" })` returns the same entries as before (the source findings stay; their `promoted_to_rule` payload is now a string)
 - [ ] `meta_state_list({ entry_kind: "change-log" })` returns the Phase 0 change-log + all prior change-logs
-- [ ] `git status --porcelain` shows: `meta-state.jsonl` modified (7 new lines + 7 in-place edits), 1 new file (`scripts/migrate-rule-entry-kind.mjs`), 1 new file (`__tests__/migrate-rule-entry-kind.test.js`)
+- [ ] `git status --porcelain` shows: `meta-state.jsonl` modified (6 new lines + 6 in-place edits), 1 new file (`scripts/migrate-rule-entry-kind.mjs`), 1 new file (`__tests__/migrate-rule-entry-kind.test.js`)
 - [ ] All 573 existing tests still pass (no regressions; the test files added in Phase 1 continue to pass; the migration tests pass; the prior 557 baseline tests are unchanged)
 - [ ] After Phase 2, the gate-logic's transitional filter (Phase 1 Step 4) is no longer strictly needed (no findings have object `promoted_to_rule` payloads). A follow-up commit can remove the legacy branch; out of scope for Phase 2.
 
