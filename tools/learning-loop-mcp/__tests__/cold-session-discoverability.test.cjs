@@ -74,7 +74,11 @@ describe("cold-session discoverability acceptance", () => {
       probe.stderr.on("data", () => {});
       probe.on("error", () => resolve(false));
       probe.on("exit", (code) => {
-        resolve(code === 0 && out.includes("mcp__learning_loop_mcp__"));
+        // Droid formats MCP tools as `learning-loop-mcp___<tool>` (3 underscores) and
+        // `[MCP] learning-loop-mcp:<tool>` (colon) in --list-tools output. Match
+        // the stable server identifier "learning-loop-mcp" to detect exposure
+        // regardless of the formatting detail.
+        resolve(code === 0 && out.includes("learning-loop-mcp"));
       });
     });
     if (!mcpToolsAvailable) {
@@ -460,7 +464,7 @@ describe("cold-session discoverability acceptance", () => {
       return;
     }
 
-    if (toolsList.includes("mcp__learning_loop_mcp__")) {
+    if (toolsList.includes("learning-loop-mcp")) {
       console.error("[cold-session/mcp-client-loading] gap closed: mcp tools listed");
       // Gap closed: check for existing finding and soft-delete it.
       let existing = null;

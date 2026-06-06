@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "learning-loop-mcp": {
+      "command": "node",
+      "args": ["tools/learning-loop-mcp/server.js"]
+    }
+  }
+}
