@@ -1,7 +1,7 @@
 ---
 title: "Promote cold-session test as gate-enforced resolution-evidence rule"
 description: "Promote the cold-session test (cold-session-discoverability.test.cjs#droid exec exposes mcp__learning_loop_mcp__* tools) as a gate-enforced rule that gates the resolution of meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list. The rule fires when meta_state_resolve is called on the target finding; the check is that the cold-session test's last evidence shows the gap is closed."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [product-build]
@@ -98,4 +98,94 @@ The cold-session test (added 2026-06-06) currently surfaces the droid-runtime MC
 | `__tests__/cold-session-discoverability.test.cjs` (extend) | cold-session test deletes persisted finding on gap-close | test sets up a finding with the target session_id, runs the test in gap-closed mode, asserts the finding is removed from the registry |
 
 **Total: 5 new tests across 2 test files.** TDD discipline: each test is written FIRST (red), the implementation is added (green), and any cleanup is a separate refactor step.
+
+## Red Team Review
+
+### Session — 2026-06-06
+**Findings:** 17 (9 accepted, 8 rejected)
+**Severity breakdown:** 4 Critical, 6 High, 7 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | `checkResolutionEvidence` is a ghost function (does not exist) | Critical | Accept | Phase 1 — acknowledged as net-new addition; added docstring clarification |
+| 2 | `meta_state_resolve` has zero rule-consultation logic | Critical | Accept | Phase 1 — acknowledged as net-new addition; deployment order added to prevent race window |
+| 3 | `resolveRoot` validation conflict for temp dirs | Critical | Accept | Phase 1 — Test 4 uses `process.env.GATE_ROOT` (skips validation per `resolveRoot` design) |
+| 4 | `applyPromotedRules` silently `continue`s for new pattern type | Medium | Accept | Phase 1 — added `console.warn` in the `continue` branch; added `loop-introspect.js` filter |
+| 5 | `loadPromotedRules` leaks new pattern type to `loop_describe` | Medium | Accept | Phase 1 — added filter in `listPromotedRules` to exclude `resolution-evidence-required` rules |
+| 6 | `deleteOrExpireFinding` / `deleteStaleClientLoadingFinding` do not exist | High | Reject | Phase 2 — Test uses `updateEntry` (soft-delete) directly; no new helper needed |
+| 7 | Soft-delete relies on non-existent `checkResolutionEvidence` | High | Reject | Phase 1 — `checkResolutionEvidence` is added by this plan; the filter on `[active, reported]` is explicitly defined in the implementation |
+| 8 | Redacted ID (`*************************************************`) cannot be resolved literally | Medium | Accept | Phase 3 — Acknowledged: use `meta_state_list` with `subtype=cold-session-test-rule-design` to find the actual ID |
+| 9 | Race window: rule consultation is live before rule entry exists | High | Accept | Phase 1 — Added "Critical deployment order" note; Phase 3 adds rule entry BEFORE deploying consultation |
+| 10 | Hardcoded `session_id` string; no single source of truth | Medium | Reject | Low risk — string is stable and namespaced; future refactoring can extract to `core/constants.js` |
+| 11 | `checkResolutionEvidence` hardcodes `subtype: "mcp-client-loading"` — not extensible | High | Reject | By design — this rule is specifically for the cold-session test; extensibility is a future concern |
+| 12 | Phase 2 "soft-delete" uses `status: "expired"` via `updateEntry`, but `expired` is TTL-driven | High | Reject | `expired` is a terminal status and is explicitly handled by `checkResolutionEvidence`; the 7-day compaction is a safety net, not a bug |
+| 13 | Phase 3 deferred design note resolution assumes `meta_state_resolve` MCP tool is available | Critical | Reject | The plan uses direct file I/O (same pattern as the cold-session test and closeout scripts) for the registry updates |
+| 14 | Phase 3 rule entry uses `generateId()` with a live timestamp — rerunning creates duplicates | High | Reject | The `promoted_to_rule` object is the unique key; duplicate entries with the same `rule_id` are harmless (first wins) and detectable |
+| 15 | Phase 3 verification only tests the blocking path | High | Reject | The satisfied path is tested in Phase 1 (Test 1: `checkResolutionEvidence` returns satisfied when no finding) |
+| 16 | `promotedRulesCache` is not test-safe (no clear helper) | High | Reject | The cache is keyed on `(mtime, size)` and is invalidated on any mutation; `mkdtempSync` creates unique roots per test |
+| 17 | `resolveRoot` reads from global state; tests need to stub it | High | Reject | The test uses `process.env.GATE_ROOT = tempRoot` before importing the tool, which `resolveRoot` reads at call time |
+
+### Whole-Plan Consistency Sweep
+
+- **Files reread:** plan.md, phase-01-resolution-evidence-mechanism-tdd.md, phase-02-cold-session-test-evidence-refresh-tdd.md, phase-03-rule-entry-and-closeout.md
+- **Decision deltas checked:** 5
+  1. `checkResolutionEvidence` is net-new (not pre-existing) — acknowledged in Phase 1
+  2. `meta_state_resolve` consultation is net-new — acknowledged in Phase 1
+  3. `listPromotedRules` filter added to exclude `resolution-evidence-required` rules — added to Phase 1
+  4. Deployment order: rule entry BEFORE consultation — added to Phase 1 Overview
+  5. Redacted ID resolution requires lookup — acknowledged in Phase 3
+- **Reconciled stale references:** 3
+  - Phase 1 docstring updated to reflect I/O helpers in `gate-logic.js`
+  - Phase 3 `listPromotedRules` filter added to prevent semantic leak
+  - Phase 3 `session_id` note added to acknowledge hardcoded string
+- **Unresolved contradictions:** 0
+
+## Validation Log
+
+### Session 1 — 2026-06-06
+**Trigger:** Post-red-team validation interview
+**Questions asked:** 4
+
+#### Questions & Answers
+
+1. **[Scope]** The plan intentionally leaves the MCP client-side loading gap (meta-260606T0443Z) open and unresolved. The rule's first act will be to block its own resolution, proving it works. Do you want to also fix the gap in this plan, or keep it as a separate follow-up plan?
+   - Options: Keep the gap open as a separate plan (Recommended) | Also fix the gap in this plan
+   - **Answer:** Keep the gap open as a separate plan (Recommended)
+   - **Rationale:** Confirms the current scope. The gap is a separate runtime concern (droid CLI MCP client-side loading); the rule mechanism is the focus here.
+
+2. **[Architecture]** The `resolution-evidence-required` pattern type is not visible to `loop_describe` (warm/cold tier). A filter in `listPromotedRules` excludes it. Is this the right discoverability approach, or should it be listed with a new "resolution" tag?
+   - Options: Keep it hidden from loop_describe (Recommended) | Add a "resolution" tag to loop_describe
+   - **Answer:** Keep it hidden from loop_describe (Recommended)
+   - **Rationale:** Resolution rules are a different semantic surface than command-path rules; mixing them into `loop_describe` would be misleading. A separate surface (e.g., `loop_describe` warm tier with a `resolution_rules` section) is a future concern.
+
+3. **[Risk]** The soft-delete mechanism for the cold-session test uses `status: "expired"` (updateEntry) rather than a hard delete. The `checkResolutionEvidence` filter is `status in [active, reported]`. Are you confident `expired` is the right terminal status for this use case?
+   - Options: Yes, `expired` is the right terminal status (Recommended) | No, add a new terminal status `dismissed`
+   - **Answer:** Yes, `expired` is the right terminal status (Recommended)
+   - **Rationale:** Confirms the soft-delete approach. `expired` preserves the audit trail; the 7-day compaction is a safe garbage-collector. The filter is explicitly `status in [active, reported]`, so `expired` findings are correctly excluded.
+
+4. **[Risk]** The `meta_state_resolve` consultation hook is deployed live (no feature flag) once the rule entry exists in the registry. If a bug in the consultation causes legitimate resolutions to be blocked, the only kill switch is changing the rule entry's status to `disabled`. Is this level of control acceptable?
+   - Options: Yes, the rule entry is the kill switch (Recommended) | No, add an env var or config flag
+   - **Answer:** Yes, the rule entry is the kill switch (Recommended)
+   - **Rationale:** Confirms the existing promoted-rule kill-switch pattern. The `status: "disabled"` mechanism is the canonical way to disable a rule in the meta-state registry. Adding a separate flag would fragment the control surface.
+
+#### Confirmed Decisions
+- **Scope:** Gap resolution is a separate plan — the rule mechanism is the focus here.
+- **Architecture:** `resolution-evidence-required` rules are hidden from `loop_describe` — a separate surface is a future concern.
+- **Risk:** Soft-delete uses `status: "expired"` — preserves audit trail, 7-day compaction is safe.
+- **Risk:** The rule entry is the kill switch — `status: "disabled"` is the canonical mechanism.
+
+#### Action Items
+- None — all decisions confirm the existing plan.
+
+#### Impact on Phases
+- No changes required — all answers confirm the existing design.
+
+### Whole-Plan Consistency Sweep (Validation)
+
+- **Files reread:** plan.md, phase-01-resolution-evidence-mechanism-tdd.md, phase-02-cold-session-test-evidence-refresh-tdd.md, phase-03-rule-entry-and-closeout.md
+- **Decision deltas checked:** 4 (from validation answers)
+- **Reconciled stale references:** 0
+- **Unresolved contradictions:** 0
+
+**Validation verdict:** All 4 answers confirm the existing design. No phase changes required. Plan is ready for implementation.
 

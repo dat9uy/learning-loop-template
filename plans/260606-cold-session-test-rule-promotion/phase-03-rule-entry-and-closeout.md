@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Rule entry and closeout"
-status: pending
+status: completed
 priority: P2
 effort: "0.5h"
 dependencies: [1, 2]
@@ -98,6 +98,8 @@ const ruleEntry = {
     promoted_by: "operator",
   },
 };
+
+**Note on shared session_id constant:** The `pattern` field (`test-cold-session-mcp-client-loading`) and the test's `sessionId` variable (in `cold-session-discoverability.test.cjs`) are the same hardcoded string. There is no shared constant file today. A future refactoring could extract this into `core/constants.js` or the test file's exports. The risk is low: the string is stable and namespaced by the test name.
 ```
 
 Note: `status: "active"` is the canonical status for a rule's source entry. The Phase 1 implementation of `loadPromotedRules` accepts both `active` and `resolved` (with `promoted_to_rule`), so either works. `active` is more explicit.

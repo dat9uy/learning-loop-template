@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Resolution-evidence mechanism (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: []
@@ -12,6 +12,8 @@ dependencies: []
 ## Overview
 
 Ship the gate-side mechanism for the new `resolution-evidence-required` rule pattern type: a `checkResolutionEvidence` helper in `core/gate-logic.js`, a `pattern_type` branch in `applyPromotedRules`, and the consultation hook in `meta_state_resolve`. TDD: 4 new tests in `gate-resolution-evidence.test.js`, written red-first.
+
+**Critical deployment order:** The rule entry MUST be added to `meta-state.jsonl` (Phase 0 of Phase 3) BEFORE the `meta_state_resolve` tool's new consultation is deployed. The `meta_state_resolve` tool is always active; there is no feature flag. The consultation must not be deployed until the rule exists in the registry, otherwise the tool could resolve the target finding during the window between deployment and rule entry creation.
 
 ## Requirements
 
@@ -62,6 +64,8 @@ Ship the gate-side mechanism for the new `resolution-evidence-required` rule pat
 ```
 
 The new pattern type is decoupled from `applyPromotedRules` (the command-path gate). `applyPromotedRules` is a no-op for this pattern type (it cannot match a command or a file path). The pattern type's check is exclusively in `meta_state_resolve`.
+
+**Note:** `loadPromotedRules` currently loads rules for `applyPromotedRules` (command-path) and `loop_describe` (warm/cold tier). The new `resolution-evidence-required` rules will also be loaded by `loop_describe` via `listPromotedRules` → `loadPromotedRules`. This is a semantic leak: `loop_describe` may list rules that are not command-path rules. The plan mitigates this by filtering in `listPromotedRules` to exclude `resolution-evidence-required` rules (add a `pattern_type` filter in `loop-introspect.js#listPromotedRules`). This is a Phase 1 requirement.
 
 ## Related Code Files
 
@@ -153,7 +157,7 @@ Run the test file: `cd tools/learning-loop-mcp && node --test __tests__/gate-res
 
 ### Step 2: GREEN — implement the helper, branch, and consultation
 
-**`core/gate-logic.js` — add `checkResolutionEvidence`:**
+**`core/gate-logic.js` — add `checkResolutionEvidence` (net-new function):**
 ```js
 import { readRegistry } from "./meta-state.js";
 
@@ -178,6 +182,8 @@ export function checkResolutionEvidence(rule, root) {
 }
 ```
 
+**Note:** `checkResolutionEvidence` does not currently exist in the codebase (it is added by this plan). The test imports it from `core/gate-logic.js` after the implementation step. The function does I/O (calls `readRegistry`), which violates the `gate-logic.js` "Pure gate decision logic — no I/O" docstring. The docstring is outdated; the file already contains I/O functions (e.g., `findProjectRoot`, `loadPromotedRules`). The plan updates the docstring to reflect the current reality: gate-logic.js contains both pure logic and I/O helpers.
+
 **`core/gate-logic.js` — add the new pattern type branch in `applyPromotedRules`:**
 ```js
 } else if (pattern_type === "resolution-evidence-required") {
@@ -187,6 +193,16 @@ export function checkResolutionEvidence(rule, root) {
     console.warn(`Rule ${rule_id}: resolution-evidence-required should not have command or filePath set`);
   }
   continue;
+}
+```
+
+**`core/loop-introspect.js` — filter `listPromotedRules` to exclude `resolution-evidence-required` rules:**
+```js
+export function listPromotedRules(root) {
+  const rules = loadPromotedRules(root);
+  // Only return command-path rules (regex/glob) for discoverability surfaces.
+  // resolution-evidence-required rules are not discoverable via command/path matching.
+  return rules.filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required");
 }
 ```
 

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Cold-session test evidence refresh (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [1]
