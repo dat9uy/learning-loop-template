@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Resolve meta-260606T1543Z-meta-state-cross-reference-field-design + closing change-log"
-status: pending
+status: completed
 priority: P2
 effort: "0.25h"
 dependencies: [4]

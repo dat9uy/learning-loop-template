@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Migration: 4 rules → entry_kind: 'rule'; 2 active design notes → entry_kind: 'loop-design'; 2 findings superseded with consolidated_into (TDD, idempotent)"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [1]

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "New tool: meta_state_propose_design + meta_state_list filter accepts new entry_kinds (TDD)"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [2]

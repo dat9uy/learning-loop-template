@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Schema: 2 new branch schemas + union extension + narrowed promoted_to_rule + gate-logic rewrite (TDD)"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [0]

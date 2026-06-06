@@ -1,7 +1,7 @@
 ---
 title: "Promote rule and loop-design to first-class meta-state entry_kinds"
 description: "Extends the meta-state.jsonl discriminated union from 2 members (finding | change-log) to 4 (finding | change-log | rule | loop-design). Today, 4 promoted rules are nested inside findings via the `promoted_to_rule` payload — the rule's pattern lives inside the finding that originated it, and 2 active design notes are buried as findings with `subtype=meta-state-schema-enhancement` with their target relationship expressed only in the description field. The plan extracts rules into a dedicated `entry_kind: \"rule\"` with its own binary status enum and `origin` lineage pointer, re-emits the design notes as `entry_kind: \"loop-design\"` with `proposed_design_for` (forward) and `addresses` (backward) cross-references, and migrates 4 rules + 2 active design notes in one clean break (no backward-compat layer). The 1 active cross-reference design note (meta-260606T1543Z-meta-state-cross-reference-field-design) becomes redundant and is resolved. Outcome: `meta_state_list({ entry_kind: \"rule\" })` and `meta_state_list({ entry_kind: \"loop-design\" })` return what the operator asks for in one query; agents joining a fresh repo can audit the full rule set + design backlog without scanning the registry for nested payloads. Surface: meta (loop's own machinery)."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, meta-state, schema, rule, design-note, entry-kind, first-class, clean-break, tdd]

@@ -1,7 +1,7 @@
 ---
 phase: 0
 title: "Surface the design (change-log + reserve 2 active design-note findings for Phase 2 supersede)"
-status: pending
+status: completed
 priority: P2
 effort: "0.5h"
 dependencies: []

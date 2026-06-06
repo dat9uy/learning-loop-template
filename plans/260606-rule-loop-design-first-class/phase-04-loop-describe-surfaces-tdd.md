@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "loop_describe warm/cold tier surfaces active rule + loop-design lists (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [3]
