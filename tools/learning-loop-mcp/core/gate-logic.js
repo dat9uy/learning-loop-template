@@ -662,10 +662,10 @@ export function applyPromotedRules(command, filePath, rules) {
     try {
       if (pattern_type === "resolution-evidence-required") {
         // This pattern type is not a command-path match. The check happens in
-        // meta_state_resolve (the per-tool gate). Skip here.
-        if (command || filePath) {
-          console.warn(`Rule ${rule_id}: resolution-evidence-required should not have command or filePath set`);
-        }
+        // meta_state_resolve (the per-tool gate). Skip here silently — the
+        // bash gate always has `command` set, so a defensive warning would
+        // fire on every single Execute invocation (regression caught by
+        // gate-resolution-evidence.test.js#does NOT warn when...).
         continue;
       } else if (pattern_type === "regex" && command) {
         if (!isSafeRegexPattern(pattern)) {

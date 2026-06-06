@@ -154,7 +154,45 @@ describe("applyPromotedRules resolution-evidence-required", () => {
     assert.deepStrictEqual(result, { decision: "ok" });
   });
 
-  test("warns when resolution-evidence-required has command or filePath", async () => {
+  test("does NOT warn when resolution-evidence-required is called from the bash gate (command set)", async () => {
+    // Regression: previously this branch emitted `console.warn` on every bash
+    // command because the bash gate always has `command` set. The warning was
+    // misleading — the rule is correctly skipped via `continue`; the warning
+    // just created log spam. Lock in the silent-skip behavior.
+    const { applyPromotedRules } = await importGateLogic();
+    const rule = {
+      status: "active",
+      category: "loop-anti-pattern",
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+      },
+    };
+
+    // Capture stderr/stdout around the call.
+    const origWarn = console.warn;
+    const origErr = console.error;
+    const captured = [];
+    console.warn = (...args) => captured.push(["warn", ...args]);
+    console.error = (...args) => captured.push(["error", ...args]);
+    try {
+      // Realistic bash-gate shape: command set, filePath null, one rule.
+      const result = applyPromotedRules("ls -la", null, [rule]);
+      assert.deepStrictEqual(result, { decision: "ok" });
+    } finally {
+      console.warn = origWarn;
+      console.error = origErr;
+    }
+    // No log spam from the resolution-evidence-required branch in the bash gate.
+    const noisy = captured.filter(([, msg]) =>
+      typeof msg === "string" && msg.includes("resolution-evidence-required should not have"),
+    );
+    assert.deepStrictEqual(noisy, [], `unexpected warning: ${JSON.stringify(noisy)}`);
+  });
+
+  test("legacy alias: skips resolution-evidence-required pattern (test name preserved for history)", async () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       status: "active",
