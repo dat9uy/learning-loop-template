@@ -9,6 +9,7 @@ import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, rename
 import { dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { readRegistry } from "./meta-state.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "..", "core", "patterns.json"), "utf8"));
@@ -618,6 +619,32 @@ export function loadPromotedRules(root) {
  * Apply promoted rules against a command (regex) or file path (glob).
  * Returns escalate with rule provenance on match, ok otherwise.
  */
+/**
+ * Check if a resolution-evidence-required rule is satisfied.
+ * Reads the registry and asserts absence of any active/reported finding
+ * with the matching subtype and session_id.
+ * Returns { satisfied: true } or { satisfied: false, blocking_id, rule_id, applies_to_resolution }.
+ */
+export function checkResolutionEvidence(rule, root) {
+  const { pattern, applies_to_resolution, rule_id } = rule.promoted_to_rule;
+  const entries = readRegistry(root);
+  const blocking = entries.find((e) =>
+    e.entry_kind === "finding"
+    && e.subtype === "mcp-client-loading"
+    && e.session_id === pattern
+    && (e.status === "active" || e.status === "reported"),
+  );
+  if (blocking) {
+    return {
+      satisfied: false,
+      blocking_id: blocking.id,
+      rule_id,
+      applies_to_resolution,
+    };
+  }
+  return { satisfied: true, rule_id };
+}
+
 export function applyPromotedRules(command, filePath, rules) {
   for (const rule of rules) {
     // Defense-in-depth: skip rules that should not have been loaded.
@@ -633,7 +660,14 @@ export function applyPromotedRules(command, filePath, rules) {
     let matched = false;
 
     try {
-      if (pattern_type === "regex" && command) {
+      if (pattern_type === "resolution-evidence-required") {
+        // This pattern type is not a command-path match. The check happens in
+        // meta_state_resolve (the per-tool gate). Skip here.
+        if (command || filePath) {
+          console.warn(`Rule ${rule_id}: resolution-evidence-required should not have command or filePath set`);
+        }
+        continue;
+      } else if (pattern_type === "regex" && command) {
         if (!isSafeRegexPattern(pattern)) {
           console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
           continue;

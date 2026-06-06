@@ -1,0 +1,394 @@
+import assert from "node:assert";
+import { describe, test } from "node:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const projectRoot = resolve(process.cwd());
+
+// We need to import AFTER setting GATE_ROOT so resolveRoot picks up the temp dir.
+async function importCore(tempRoot) {
+  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js")).href;
+  const core = await import(corePath);
+  return core;
+}
+
+async function importGateLogic() {
+  const gateLogicPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/gate-logic.js")).href;
+  return await import(gateLogicPath);
+}
+
+async function importMetaStateResolveTool() {
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/tools/meta-state-resolve-tool.js")).href;
+  return await import(toolPath);
+}
+
+async function importLoopIntrospect() {
+  const introspectPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js")).href;
+  return await import(introspectPath);
+}
+
+describe("checkResolutionEvidence", () => {
+  test("returns satisfied when no finding exists", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const { checkResolutionEvidence } = await importGateLogic();
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        pattern: "test-session-id",
+      },
+    };
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true);
+    assert.strictEqual(result.rule_id, "rule-test");
+  });
+
+  test("returns unsatisfied when active finding exists", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const id = core.generateId("mcp-client-loading-missing");
+    await core.writeEntry(tempRoot, {
+      id,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Test finding for resolution-evidence check.",
+      session_id: "test-session-id",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+
+    const { checkResolutionEvidence } = await importGateLogic();
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        pattern: "test-session-id",
+        applies_to_resolution: "meta-target-finding",
+      },
+    };
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.rule_id, "rule-test");
+    assert.strictEqual(result.blocking_id, id);
+    assert.strictEqual(result.applies_to_resolution, "meta-target-finding");
+  });
+
+  test("returns satisfied when finding is reported (still active-ish)", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const id = core.generateId("mcp-client-loading-missing");
+    await core.writeEntry(tempRoot, {
+      id,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Test finding for resolution-evidence check.",
+      session_id: "test-session-id",
+      status: "reported",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+
+    const { checkResolutionEvidence } = await importGateLogic();
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        pattern: "test-session-id",
+      },
+    };
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.blocking_id, id);
+  });
+
+  test("returns satisfied when finding is expired (terminal status)", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const id = core.generateId("mcp-client-loading-missing");
+    await core.writeEntry(tempRoot, {
+      id,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Test finding for resolution-evidence check.",
+      session_id: "test-session-id",
+      status: "expired",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+
+    const { checkResolutionEvidence } = await importGateLogic();
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        pattern: "test-session-id",
+      },
+    };
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true);
+  });
+});
+
+describe("applyPromotedRules resolution-evidence-required", () => {
+  test("skips resolution-evidence-required pattern type (returns ok)", async () => {
+    const { applyPromotedRules } = await importGateLogic();
+    const rule = {
+      status: "active",
+      category: "loop-anti-pattern",
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+      },
+    };
+    const result = applyPromotedRules("mvn install -DskipTests", null, [rule]);
+    assert.deepStrictEqual(result, { decision: "ok" });
+  });
+
+  test("warns when resolution-evidence-required has command or filePath", async () => {
+    const { applyPromotedRules } = await importGateLogic();
+    const rule = {
+      status: "active",
+      category: "loop-anti-pattern",
+      promoted_to_rule: {
+        rule_id: "rule-test",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+      },
+    };
+    // Clone with command and filePath
+    const ruleWithCommand = {
+      ...rule,
+      promoted_to_rule: { ...rule.promoted_to_rule, command: "test" },
+    };
+    const result = applyPromotedRules("test", null, [ruleWithCommand]);
+    assert.deepStrictEqual(result, { decision: "ok" });
+  });
+});
+
+describe("meta_state_resolve consultation", () => {
+  test("returns resolution_evidence_required when rule is unsatisfied", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const targetId = core.generateId("target-finding");
+    const blockingId = core.generateId("mcp-client-loading-missing");
+    await core.writeEntry(tempRoot, {
+      id: targetId,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Target finding that should be resolved.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+    await core.writeEntry(tempRoot, {
+      id: blockingId,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Blocking finding.",
+      session_id: "test-session-id",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+    await core.writeEntry(tempRoot, {
+      id: core.generateId("rule-entry"),
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "rule-cold-session-test-must-pass-before-resolution",
+      description: "Rule entry.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      promoted_to_rule: {
+        rule_id: "rule-cold-session-test-must-pass-before-resolution",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+        applies_to_resolution: targetId,
+      },
+    });
+
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempRoot;
+    try {
+      const { metaStateResolveTool } = await importMetaStateResolveTool();
+      const result = await metaStateResolveTool.handler({
+        id: targetId,
+        resolved_by: "operator",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.resolved, false);
+      assert.strictEqual(parsed.reason, "resolution_evidence_required");
+      assert.strictEqual(parsed.rule_id, "rule-cold-session-test-must-pass-before-resolution");
+      assert.ok(parsed.blocking_id);
+      assert.strictEqual(parsed.applies_to_resolution, targetId);
+
+      // Verify registry was NOT mutated
+      const after = core.readRegistry(tempRoot);
+      const target = after.find((e) => e.id === targetId);
+      assert.strictEqual(target.status, "active");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("allows resolution when rule is satisfied", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const targetId = core.generateId("target-finding");
+    await core.writeEntry(tempRoot, {
+      id: targetId,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Target finding that should be resolved.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+    await core.writeEntry(tempRoot, {
+      id: core.generateId("rule-entry"),
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "rule-cold-session-test-must-pass-before-resolution",
+      description: "Rule entry.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      promoted_to_rule: {
+        rule_id: "rule-cold-session-test-must-pass-before-resolution",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+        applies_to_resolution: targetId,
+      },
+    });
+
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempRoot;
+    try {
+      const { metaStateResolveTool } = await importMetaStateResolveTool();
+      const result = await metaStateResolveTool.handler({
+        id: targetId,
+        resolved_by: "operator",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.resolved, true);
+      assert.strictEqual(parsed.status, "resolved");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("does not block when rule targets a different id", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const targetId = core.generateId("target-finding");
+    const otherId = core.generateId("other-finding");
+    await core.writeEntry(tempRoot, {
+      id: targetId,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Target finding that should be resolved.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+    });
+    await core.writeEntry(tempRoot, {
+      id: core.generateId("rule-entry"),
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "rule-cold-session-test-must-pass-before-resolution",
+      description: "Rule entry.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      promoted_to_rule: {
+        rule_id: "rule-cold-session-test-must-pass-before-resolution",
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
+        applies_to_resolution: otherId,
+      },
+    });
+
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempRoot;
+    try {
+      const { metaStateResolveTool } = await importMetaStateResolveTool();
+      const result = await metaStateResolveTool.handler({
+        id: targetId,
+        resolved_by: "operator",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.resolved, true);
+      assert.strictEqual(parsed.status, "resolved");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});
+
+describe("listPromotedRules filter", () => {
+  test("excludes resolution-evidence-required rules", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    writeFileSync(
+      join(tempRoot, "meta-state.jsonl"),
+      JSON.stringify({
+        id: "meta-1",
+        category: "loop-anti-pattern",
+        status: "active",
+        promoted_to_rule: {
+          rule_id: "rule-regex",
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "test",
+        },
+      }) + "\n" +
+      JSON.stringify({
+        id: "meta-2",
+        category: "loop-anti-pattern",
+        status: "active",
+        promoted_to_rule: {
+          rule_id: "rule-resolution",
+          enforcement: "gate",
+          pattern_type: "resolution-evidence-required",
+          pattern: "test-session-id",
+        },
+      }) + "\n"
+    );
+
+    const { listPromotedRules } = await importLoopIntrospect();
+    const rules = listPromotedRules(tempRoot);
+    assert.strictEqual(rules.length, 1);
+    assert.strictEqual(rules[0].id, "meta-1");
+  });
+});

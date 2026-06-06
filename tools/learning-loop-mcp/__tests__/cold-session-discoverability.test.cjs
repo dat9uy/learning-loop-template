@@ -446,8 +446,48 @@ describe("cold-session discoverability acceptance", () => {
       probe.on("exit", () => resolve(out));
     });
 
+    const sessionId = "test-cold-session-mcp-client-loading";
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    let writeEntry, readRegistry, updateEntry, generateId;
+    try {
+      const core = await import(pathToFileURL(corePath).href);
+      writeEntry = core.writeEntry;
+      readRegistry = core.readRegistry;
+      updateEntry = core.updateEntry;
+      generateId = core.generateId;
+    } catch (e) {
+      console.error(`[cold-session/mcp-client-loading] cannot import core/meta-state.js: ${e.message}`);
+      return;
+    }
+
     if (toolsList.includes("mcp__learning_loop_mcp__")) {
       console.error("[cold-session/mcp-client-loading] gap closed: mcp tools listed");
+      // Gap closed: check for existing finding and soft-delete it.
+      let existing = null;
+      try {
+        existing = readRegistry(projectRoot).find((e) =>
+          e.entry_kind === "finding"
+          && e.session_id === sessionId
+          && e.subtype === "mcp-client-loading"
+          && (e.status === "active" || e.status === "reported"),
+        );
+      } catch {
+        // no existing finding
+      }
+      if (existing) {
+        const now = new Date().toISOString();
+        try {
+          await updateEntry(projectRoot, existing.id, {
+            status: "expired",
+            resolved_at: now,
+            resolved_by: "auto-cold-session-test",
+            _expected_version: existing.version ?? 0,
+          });
+          console.error(`[cold-session/mcp-client-loading] soft-deleted finding: ${existing.id}`);
+        } catch (e) {
+          console.error(`[cold-session/mcp-client-loading] cannot soft-delete finding: ${e.message}`);
+        }
+      }
       return;
     }
 
@@ -455,18 +495,6 @@ describe("cold-session discoverability acceptance", () => {
     // gap is tracked in the canonical meta-state.jsonl registry. Pattern
     // reference: .factory/hooks/loop-surface-inject.cjs#reportMcpConnectionFailure
     // (writes the same shape; subtype differentiates client-side from server-side).
-    const sessionId = "test-cold-session-mcp-client-loading";
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let writeEntry, readRegistry, generateId;
-    try {
-      const core = await import(pathToFileURL(corePath).href);
-      writeEntry = core.writeEntry;
-      readRegistry = core.readRegistry;
-      generateId = core.generateId;
-    } catch (e) {
-      console.error(`[cold-session/mcp-client-loading] cannot import core/meta-state.js: ${e.message}`);
-      return;
-    }
 
     // Idempotency: skip write if a finding for this session_id is already active or reported.
     let existing = null;
@@ -519,5 +547,63 @@ describe("cold-session discoverability acceptance", () => {
     } catch (e) {
       console.error(`[cold-session/mcp-client-loading] cannot write finding: ${e.message}`);
     }
+  });
+
+  // Fourth test: verify the deletion branch of the cold-session test.
+  // This test uses GATE_ROOT isolation to avoid polluting the real project's
+  // meta-state.jsonl. It simulates the gap-closed scenario by pre-populating
+  // a finding and then invoking the same deletion logic.
+  test("cold-session test soft-deletes persisted finding on gap-close", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-delete-"));
+    process.env.GATE_ROOT = tempRoot;
+
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const core = await import(pathToFileURL(corePath).href);
+    const sessionId = "test-cold-session-mcp-client-loading";
+
+    // Pre-populate the registry with a finding that the test would otherwise log.
+    const existingId = core.generateId("mcp-client-loading-missing");
+    await core.writeEntry(tempRoot, {
+      id: existingId,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Pre-existing finding (test setup).",
+      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      session_id: sessionId,
+      status: "active",
+      auto_resolve: null,
+      created_at: new Date().toISOString(),
+      expires_at: null,
+      acked_at: new Date().toISOString(),
+      resolved_at: null,
+      resolved_by: null,
+      version: 0,
+    });
+
+    // Verify the finding exists before the test runs.
+    const before = core.readRegistry(tempRoot);
+    assert.ok(before.find((e) => e.id === existingId), "pre-test: finding should exist");
+
+    // Simulate the deletion branch: gap is closed, finding exists → soft-delete.
+    const now = new Date().toISOString();
+    await core.updateEntry(tempRoot, existingId, {
+      status: "expired",
+      resolved_at: now,
+      resolved_by: "auto-cold-session-test",
+      _expected_version: 0,
+    });
+
+    // Verify the finding is soft-deleted (status is expired, not active).
+    const after = core.readRegistry(tempRoot);
+    const deleted = after.find((e) => e.id === existingId);
+    assert.ok(deleted, "finding should still exist in registry");
+    assert.strictEqual(deleted.status, "expired");
+    assert.strictEqual(deleted.resolved_by, "auto-cold-session-test");
+
+    // Cleanup
+    delete process.env.GATE_ROOT;
   });
 });

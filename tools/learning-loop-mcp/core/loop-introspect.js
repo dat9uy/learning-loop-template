@@ -158,9 +158,12 @@ export function listAllFindings(root, { categories } = {}) {
 
 /**
  * List promoted rules (active gate-enforced rules).
+ * Only returns command-path rules (regex/glob) for discoverability surfaces.
+ * resolution-evidence-required rules are not discoverable via command/path matching.
  */
 export function listPromotedRules(root) {
-  return loadPromotedRules(root);
+  const rules = loadPromotedRules(root);
+  return rules.filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required");
 }
 
 /**
