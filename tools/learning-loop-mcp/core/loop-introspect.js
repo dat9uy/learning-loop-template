@@ -86,6 +86,22 @@ export function listAllMetaCategories() {
   return [...META_STATE_FINDING_CATEGORIES];
 }
 
+const DISCOVERABILITY_HINTS = Object.freeze([
+  "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
+  "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
+  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_fingerprint({ id })` to re-hash the code after a refactor.",
+  "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
+  "Findings have 5 statuses: `reported` (24h TTL), `active` (operator-acked), `resolved` (closed), `expired` (TTL elapsed), `superseded` (consolidated into a change-log).",
+]);
+
+/**
+ * Return the operator-curated discoverability hints used by loop_describe
+ * warm tier and the SessionStart hook. Pure function — no I/O.
+ */
+export function buildDiscoverabilityHints() {
+  return DISCOVERABILITY_HINTS;
+}
+
 /**
  * List all gate constraint patterns from patterns.json.
  */

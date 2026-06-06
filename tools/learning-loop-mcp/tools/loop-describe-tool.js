@@ -65,6 +65,7 @@ export const loopDescribeTool = {
           status: f.status,
           description: f.description,
         }));
+        result.discoverability_hints = introspect.buildDiscoverabilityHints();
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
           name: t.name,
@@ -111,6 +112,7 @@ export const loopDescribeTool = {
         if (orphans.length > 0) {
           result.orphans = orphans;
         }
+        result.discoverability_hints = introspect.buildDiscoverabilityHints();
       }
 
       result.degraded = degraded || warnings.length > 0;

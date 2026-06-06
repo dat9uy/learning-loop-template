@@ -171,10 +171,12 @@ describe("MCP lifecycle integration", () => {
   test("source ref validation accepts valid refs", () => {
     const tempDir = setupTempProject();
     process.env.GATE_ROOT = tempDir;
+    mkdirSync(join(tempDir, "records", "evidence"), { recursive: true });
+    writeFileSync(join(tempDir, "records", "evidence", "test.md"), "# Test");
 
     try {
       const validation = validateSourceRefs(
-        ["local:records/meta/evidence/test.md"],
+        ["local:records/evidence/test.md"],
         "decision",
         tempDir
       );

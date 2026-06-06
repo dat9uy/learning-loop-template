@@ -11,42 +11,41 @@ import { resolveRoot } from "#lib/resolve-root.js";
 describe("SP3 query_drift acceptance", () => {
   const originalEnv = process.env.GATE_ROOT;
 
-  // AT-1: Acceptance — real SP1-resolved finding → drift with recommendation: resolve
-  test("AT-1: acceptance — SP1-resolved finding on real codebase → drift with recommendation resolve", async () => {
-    const root = resolveRoot();
-    const entries = readRegistry(root);
-    // Find the source-ref-validator finding (mirrors SP1 acceptance test)
-    const realEntry = entries.find((e) =>
-      e.entry_kind === "finding" &&
-      e.description &&
-      e.description.includes("internalization rule")
-    );
-    assert.ok(realEntry, "Expected to find the source-ref-validator finding in meta-state.jsonl");
+  // AT-1: Acceptance — active code-pointed finding → drift with recommendation: resolve
+  test("AT-1: acceptance — active code-pointed finding → drift with recommendation resolve", async () => {
+    // Synthetic active finding so this acceptance test is not coupled to the real
+    // registry's lifecycle. The real "internalization rule" finding was resolved by
+    // plan 260606; this test locks the query_drift contract independently.
+    const codeRef = "tools/learning-loop-mcp/lib/source-ref-validator.js";
+    const syntheticEntry = {
+      id: "meta-260606T0000Z-sp3-acceptance-synthetic",
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Synthetic acceptance finding: internalization rule coverage.",
+      evidence: { code_ref: codeRef },
+      evidence_code_ref: codeRef,
+      mechanism_check: true,
+      status: "active",
+      created_at: "2026-06-06T00:00:00Z",
+      expires_at: "2026-06-07T00:00:00Z",
+      version: 0,
+    };
 
     const tempDir = mkdtempSync(join(tmpdir(), "sp3-acceptance-1-"));
     process.env.GATE_ROOT = tempDir;
     try {
-      const codeRef = realEntry.evidence?.code_ref || realEntry.evidence_code_ref;
-      assert.ok(codeRef, "Expected the finding to have a code_ref");
-
-      // Recreate the code_ref path in temp dir so SP1 returns resolved-by-mechanism
       const refPath = join(tempDir, codeRef);
       mkdirSync(join(tempDir, "tools", "learning-loop-mcp", "lib"), { recursive: true });
       writeFileSync(refPath, "// real file exists", "utf8");
-      // Recreate the test file path too if it was referenced
-      if (realEntry.evidence_test) {
-        const testPath = join(tempDir, realEntry.evidence_test);
-        mkdirSync(join(tempDir, "tools", "learning-loop-mcp", "__tests__"), { recursive: true });
-        writeFileSync(testPath, "// real test file exists", "utf8");
-      }
 
-      // Write the entry to temp registry (preserve entry as-is)
-      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(realEntry) + "\n", "utf8");
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(syntheticEntry) + "\n", "utf8");
 
       const result = await metaStateQueryDriftTool.handler({});
       assert.strictEqual(result.drift_count, 1);
       const ev = result.drift_events[0];
-      assert.strictEqual(ev.id, realEntry.id);
+      assert.strictEqual(ev.id, syntheticEntry.id);
       assert.strictEqual(ev.derived_status, "resolved-by-mechanism");
       assert.strictEqual(ev.recommendation, "resolve");
     } finally {

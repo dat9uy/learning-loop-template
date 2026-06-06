@@ -35,6 +35,12 @@ export const recordCreateDecisionTool = {
           isError: true,
         };
       }
+      if (validation.deprecated.length > 0) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ created: false, reason: "deprecated_source_refs", deprecated: validation.deprecated, message: "Markdown paths in source_refs are deprecated. Use `meta_state_report` with `evidence_code_ref` and cite `local:meta-state:<id>`." }) }],
+          isError: true,
+        };
+      }
     }
 
     const result = createDecision({

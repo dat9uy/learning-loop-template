@@ -5,6 +5,10 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+function writeMetaStateEntry(root, entry) {
+  writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(entry) + "\n", "utf8");
+}
+
 describe("validateSourceRef", () => {
   let tempDir;
 
@@ -19,12 +23,84 @@ describe("validateSourceRef", () => {
     assert.strictEqual(result.valid, true);
   });
 
-  test("accepts valid local:records/meta/evidence path", () => {
+  test("rejects local:records/meta/evidence path", () => {
     tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
     mkdirSync(join(tempDir, "records", "meta", "evidence"), { recursive: true });
     writeFileSync(join(tempDir, "records", "meta", "evidence", "test.md"), "# Test");
     const result = validateSourceRef("local:records/meta/evidence/test.md", "decision", tempDir);
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("source ref must be `local:meta-state:<id>`"));
+  });
+
+  test("accepts valid local:meta-state:<id> when entry exists", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    writeMetaStateEntry(tempDir, {
+      id: "meta-260601T1339Z-the-learning-loop-has-no-mechanism-to-surface-the-internaliz",
+      entry_kind: "finding",
+      status: "active",
+      created_at: "2026-06-01T13:39:00Z",
+    });
+    const result = validateSourceRef(
+      "local:meta-state:meta-260601T1339Z-the-learning-loop-has-no-mechanism-to-surface-the-internaliz",
+      "decision",
+      tempDir,
+    );
     assert.strictEqual(result.valid, true);
+  });
+
+  test("rejects local:meta-state:<id> when entry not found", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    writeMetaStateEntry(tempDir, {
+      id: "meta-260601T1339Z-existing-entry",
+      entry_kind: "finding",
+      status: "active",
+      created_at: "2026-06-01T13:39:00Z",
+    });
+    const result = validateSourceRef(
+      "local:meta-state:meta-260601T1339Z-missing-entry",
+      "decision",
+      tempDir,
+    );
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("not found in registry"));
+  });
+
+  test("rejects local:meta-state: with empty id", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    const result = validateSourceRef("local:meta-state:", "decision", tempDir);
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("must contain a meta-state entry ID"));
+  });
+
+  test("rejects local:meta-state: with non-meta prefix", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    const result = validateSourceRef(
+      "local:meta-state:obs-mpef2h6z-9fefeed8",
+      "decision",
+      tempDir,
+    );
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("id prefix must be 'meta-'"));
+  });
+
+  test("rejects local:meta-state: with path traversal", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    const result = validateSourceRef(
+      "local:meta-state:meta-../../etc/passwd",
+      "decision",
+      tempDir,
+    );
+    assert.strictEqual(result.valid, false);
+    assert.ok(result.error.includes("path-traversal"));
+  });
+
+  test("accepts local:plans/... as deprecated", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "srv-test-"));
+    mkdirSync(join(tempDir, "plans"), { recursive: true });
+    writeFileSync(join(tempDir, "plans", "x.md"), "# Plan");
+    const result = validateSourceRef("local:plans/x.md", "decision", tempDir);
+    assert.strictEqual(result.valid, true);
+    assert.strictEqual(result.deprecated, true);
   });
 
   test("rejects local: path outside allowed roots", () => {

@@ -9,6 +9,17 @@ const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawn } = require("node:child_process");
 
+// SECURITY: hints are operator-curated and rendered from a local hardcoded copy.
+// The server's discoverability_hints field is not trusted at render time.
+// To update the hints, edit this file and commit.
+const LOCAL_DISCOVERABILITY_HINTS = Object.freeze([
+  "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
+  "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
+  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_fingerprint({ id })` to re-hash the code after a refactor.",
+  "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
+  "Findings have 5 statuses: `reported` (24h TTL), `active` (operator-acked), `resolved` (closed), `expired` (TTL elapsed), `superseded` (consolidated into a change-log).",
+]);
+
 async function main(inputArg, envArg, spawnImpl) {
   const input = inputArg || (() => {
     try {
@@ -50,11 +61,17 @@ async function main(inputArg, envArg, spawnImpl) {
   const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mcp"];
   if (!serverCfg) return null;
 
+  const tier = env.LL_LOOP_INJECT_TIER === "summary" ? "summary" : "warm";
+
+  if (tier === "summary") {
+    await reportHintDowngrade(input, env, cwd, "env_LL_LOOP_INJECT_TIER=summary");
+  }
+
   const spawnFn = spawnImpl || spawnAndCall;
   try {
-    const summary = await spawnFn(serverCfg, cwd);
+    const summary = await spawnFn(serverCfg, cwd, tier);
     if (summary) {
-      return formatBlock(summary);
+      return formatBlock(summary, tier);
     }
     // spawnAndCall returned null (e.g., child exited without responding).
     // This is also a failure — report it.
@@ -152,6 +169,81 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
   console.log(formatMcpFailureBanner(sessionId, reason));
 }
 
+/**
+ * Log a meta_state_report finding when the operator downgrades the SessionStart
+ * hook tier via LL_LOOP_INJECT_TIER=summary. The downgrade is auditable, not silent.
+ */
+async function reportHintDowngrade(input, env, cwd, reason) {
+  if (env && env.LL_DISABLE_MCP_FAILURE_REPORTING === "1") return;
+
+  const sessionId = input?.session_id
+    || env?.DROID_SESSION_ID
+    || `unknown-${Date.now()}`;
+
+  let corePath;
+  try {
+    const path = require("node:path");
+    const projectRoot = path.resolve(__dirname, "..", "..");
+    corePath = path.join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+  } catch (e) {
+    console.error(`[loop-surface-inject] cannot resolve core path: ${e.message}`);
+    return;
+  }
+
+  let writeEntry, readRegistry, generateId;
+  try {
+    const core = await import(corePath);
+    writeEntry = core.writeEntry;
+    readRegistry = core.readRegistry;
+    generateId = core.generateId;
+  } catch (e) {
+    console.error(`[loop-surface-inject] cannot import core/meta-state.js: ${e.message}`);
+    return;
+  }
+
+  let existing = null;
+  try {
+    existing = readRegistry(cwd).find((e) =>
+      e.entry_kind === "finding"
+      && e.session_id === sessionId
+      && e.subtype === "hint-downgrade"
+      && (e.status === "active" || e.status === "reported"),
+    );
+  } catch {
+    // registry may not exist yet
+  }
+  if (existing) return;
+
+  const id = generateId("hint-downgrade");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const entry = {
+    id,
+    entry_kind: "finding",
+    category: "loop-anti-pattern",
+    severity: "warning",
+    affected_system: "mcp-tools",
+    subtype: "hint-downgrade",
+    description: `SessionStart hook tier downgraded to summary (reason=${reason}, session_id=${sessionId}). Discoverability hints were not rendered. To re-enable hints, unset LL_LOOP_INJECT_TIER or set it to 'warm'.`,
+    evidence_code_ref: ".factory/hooks/loop-surface-inject.cjs",
+    session_id: sessionId,
+    status: "reported",
+    auto_resolve: null,
+    created_at: now.toISOString(),
+    expires_at: expiresAt,
+    acked_at: null,
+    resolved_at: null,
+    resolved_by: null,
+    version: 0,
+  };
+
+  try {
+    await writeEntry(cwd, entry);
+  } catch (e) {
+    console.error(`[loop-surface-inject] cannot write hint-downgrade finding: ${e.message}`);
+  }
+}
+
 function formatMcpFailureBanner(sessionId, reason) {
   return [
     "=== MCP connection probe failed (loop-surface-inject) ===",
@@ -172,21 +264,30 @@ function formatMcpFailureBanner(sessionId, reason) {
   ].join("\n");
 }
 
-function formatBlock(summary) {
-  return [
+function formatBlock(summary, tier = "warm") {
+  const lines = [
     "=== loop surface (auto-injected at session start) ===",
     `tools: ${summary.tool_count ?? "?"}`,
     `record types: ${summary.record_type_count ?? "?"}`,
     `active rules: ${summary.rule_count ?? "?"}`,
     `active findings: ${summary.active_finding_count ?? "?"}`,
-    "",
-    "Use mcp__learning_loop_mcp__* tools directly. Do not invoke ck:use-mcp from",
-    "a project that has its own .mcp.json — that skill is for cross-project discovery.",
-    "========================================================",
-  ].join("\n");
+  ];
+
+  if (tier !== "summary" && LOCAL_DISCOVERABILITY_HINTS.length > 0) {
+    lines.push("");
+    for (const hint of LOCAL_DISCOVERABILITY_HINTS) {
+      lines.push(hint);
+    }
+  }
+
+  lines.push("");
+  lines.push("Use mcp__learning_loop_mcp__* tools directly. Do not invoke ck:use-mcp from");
+  lines.push("a project that has its own .mcp.json — that skill is for cross-project discovery.");
+  lines.push("========================================================");
+  return lines.join("\n");
 }
 
-async function spawnAndCall(serverCfg, cwd) {
+async function spawnAndCall(serverCfg, cwd, tier = "summary") {
   return new Promise((resolve, reject) => {
     const ALLOWED_COMMANDS = new Set(["node", "bun", "deno"]);
     const command = serverCfg.command || "node";
@@ -243,7 +344,7 @@ async function spawnAndCall(serverCfg, cwd) {
             jsonrpc: "2.0",
             id: 2,
             method: "tools/call",
-            params: { name: "loop_describe", arguments: { tier: "summary" } }
+            params: { name: "loop_describe", arguments: { tier } }
           }) + "\n");
         } catch {
           cleanup();

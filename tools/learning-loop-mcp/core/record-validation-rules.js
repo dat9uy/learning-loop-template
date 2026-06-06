@@ -3,6 +3,7 @@ import { join, normalize } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { validateClaimVerification } from "./claim-verification-rules.js";
+import { readRegistry } from "./meta-state.js";
 
 const compiledValidatorsBySchemas = new WeakMap();
 
@@ -171,6 +172,37 @@ export function validateRecords(records, schemas, root, allowDisallowedFixtures 
   return errors;
 }
 
+const META_STATE_ID_PATTERN = /^meta-\d{6}T\d{4}Z-[a-z0-9-]{1,200}$/;
+const META_STATE_PATH_TRAVERSAL_PATTERN = /\.\.|\/|\\|\0/;
+
+function validateMetaStateRefCore(record, ref, root, errors) {
+  const entryId = ref.slice("local:meta-state:".length);
+  if (!entryId || entryId.length === 0) {
+    errors.push(`${record.__file}: meta-state source ref must contain an entry ID`);
+    return;
+  }
+  if (entryId.length > 200) {
+    errors.push(`${record.__file}: meta-state entry ID exceeds 200 characters`);
+    return;
+  }
+  if (META_STATE_PATH_TRAVERSAL_PATTERN.test(entryId)) {
+    errors.push(`${record.__file}: meta-state id contains path-traversal characters`);
+    return;
+  }
+  if (!entryId.startsWith("meta-")) {
+    errors.push(`${record.__file}: meta-state id prefix must be 'meta-'`);
+    return;
+  }
+  if (!META_STATE_ID_PATTERN.test(entryId)) {
+    errors.push(`${record.__file}: meta-state id does not match the expected format`);
+    return;
+  }
+  const registry = readRegistry(root);
+  if (!registry.some((e) => e.id === entryId)) {
+    errors.push(`${record.__file}: meta-state entry ${entryId} not found in registry`);
+  }
+}
+
 const recordLocalRoots = {
   default: ["records/evidence", "records/*/evidence"],
   capability: ["records/evidence", "records/*/evidence", "product/*/capabilities"],
@@ -187,6 +219,10 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
       }
       if (fileRef.startsWith("legacy:")) {
         if (!allowDisallowedFixtures) errors.push(`${record.__file}: disallowed legacy source ${fileRef.slice("legacy:".length)}`);
+        continue;
+      }
+      if (fileRef.startsWith("local:meta-state:")) {
+        validateMetaStateRefCore(record, fileRef, root, errors);
         continue;
       }
       if (fileRef.startsWith("local:")) {
@@ -207,6 +243,10 @@ function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) 
     }
     if (sourceRef.startsWith("legacy:")) {
       if (!allowDisallowedFixtures) errors.push(`${record.__file}: disallowed legacy source ${sourceRef.slice("legacy:".length)}`);
+      continue;
+    }
+    if (sourceRef.startsWith("local:meta-state:")) {
+      validateMetaStateRefCore(record, sourceRef, root, errors);
       continue;
     }
     if (sourceRef.startsWith("local:")) {

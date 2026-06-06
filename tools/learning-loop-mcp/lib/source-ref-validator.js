@@ -5,6 +5,7 @@
  */
 
 import { validateLocalRef as validateLocalRefCore, validateAllowedLocalPath } from "#mcp/core/record-validation-rules.js";
+import { readRegistry } from "#mcp/core/meta-state.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -13,6 +14,9 @@ const ALLOWED_LOCAL_ROOTS = {
   capability: ["records/evidence", "records/*/evidence", "product/*/capabilities"],
 };
 
+const META_STATE_ID_PATTERN = /^meta-\d{6}T\d{4}Z-[a-z0-9-]{1,200}$/;
+const PATH_TRAVERSAL_PATTERN = /\.\.|\/|\\|\0/;
+
 function getAllowedRoots(recordType) {
   return ALLOWED_LOCAL_ROOTS[recordType] || ALLOWED_LOCAL_ROOTS.default;
 }
@@ -20,6 +24,29 @@ function getAllowedRoots(recordType) {
 function getAllowedDescription(recordType) {
   const roots = getAllowedRoots(recordType);
   return roots.join(", ");
+}
+
+function validateMetaStateRef(entryId, root) {
+  if (!entryId || entryId.length === 0) {
+    return { valid: false, error: "must contain a meta-state entry ID" };
+  }
+  if (entryId.length > 200) {
+    return { valid: false, error: "meta-state entry ID exceeds 200 characters" };
+  }
+  if (PATH_TRAVERSAL_PATTERN.test(entryId)) {
+    return { valid: false, error: "id contains path-traversal characters ('..' or '/')" };
+  }
+  if (!entryId.startsWith("meta-")) {
+    return { valid: false, error: `id prefix must be 'meta-' (got '${entryId.split("-")[0]}-'; observation ids are not meta-state entries)` };
+  }
+  if (!META_STATE_ID_PATTERN.test(entryId)) {
+    return { valid: false, error: "id does not match the meta-state entry format (meta-YYMMDDTHHMMZ-slug)" };
+  }
+  const registry = readRegistry(root);
+  if (!registry.some((e) => e.id === entryId)) {
+    return { valid: false, error: `meta-state entry ${entryId} not found in registry` };
+  }
+  return { valid: true };
 }
 
 /**
@@ -47,8 +74,25 @@ export function validateSourceRef(ref, recordType, root) {
     return { valid: true, deprecated: true };
   }
 
+  if (ref.startsWith("local:meta-state:")) {
+    const entryId = ref.slice("local:meta-state:".length);
+    return validateMetaStateRef(entryId, root);
+  }
+
   if (ref.startsWith("local:")) {
     const relativePath = ref.slice("local:".length);
+
+    if (relativePath.startsWith("records/meta/evidence/")) {
+      return {
+        valid: false,
+        error: "source ref must be `local:meta-state:<id>` for code citations; markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged. Use `meta_state_report` with `evidence_code_ref` to cite code.",
+      };
+    }
+
+    if (relativePath.startsWith("plans/") || relativePath.startsWith("docs/")) {
+      return { valid: true, deprecated: true };
+    }
+
     const errors = [];
     validateAllowedLocalPath(
       "source_ref",
