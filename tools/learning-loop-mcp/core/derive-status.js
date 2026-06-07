@@ -62,9 +62,8 @@ export function deriveStatus(entry, codeContext) {
     };
   }
 
-  // Signal extraction (per C-1 mitigation: legacy fallback)
-  const rawCodeRef = entry.evidence_code_ref ?? entry.evidence?.code_ref;
-  const codeRef = typeof rawCodeRef === "string" ? rawCodeRef : null;
+  // Signal extraction: top-level evidence fields only (nested form removed by migration)
+  const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
   const testPath = typeof entry.evidence_test === "string" ? entry.evidence_test : null;
 
   const codeRefExists = codeRef ? checkExists(root, codeRef) : null;

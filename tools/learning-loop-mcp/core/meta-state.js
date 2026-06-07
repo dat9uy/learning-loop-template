@@ -19,7 +19,9 @@ export const META_STATE_FINDING_CATEGORIES = [
  * Has .shape available for tool schema reuse.
  */
 export const metaStateFindingEntrySchema = z.object({
+  id: z.string().optional().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug or rule-<slug>)"),
   entry_kind: z.literal("finding").default("finding"),
+  created_at: z.string().optional().describe("ISO timestamp"),
   category: z.enum([
     "gate-logic-bug", "record-repair-gap", "schema-drift",
     "stale-ref", "mcp-tool-missing", "budget-check",
@@ -36,8 +38,8 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported", "active", "resolved", "expired", "superseded"]).optional()
-    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log). Use meta_state_ack or meta_state_promote_rule for status transitions."),
+  status: z.enum(["reported", "active", "resolved", "expired", "superseded", "auto-resolved"]).optional()
+    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). Use meta_state_ack or meta_state_promote_rule for status transitions."),
   consolidated_into: z.string().optional()
     .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
   session_id: z.string().optional()
@@ -46,6 +48,20 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Opt-in flag (SP2): include this finding in grounding checks. Default false. When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
     .describe("SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; updated by meta_state_refresh_fingerprint on explicit refresh."),
+  expires_at: z.string().nullable().optional()
+    .describe("ISO timestamp when a reported entry expires (24h TTL). Set by writeEntry; cleared by meta_state_ack."),
+  acked_at: z.string().nullable().optional()
+    .describe("ISO timestamp when operator acked the entry (status → active). Set by meta_state_ack."),
+  resolved_at: z.string().nullable().optional()
+    .describe("ISO timestamp when the entry was resolved. Set by meta_state_resolve."),
+  resolved_by: z.string().nullable().optional()
+    .describe("Operator or rule id that resolved the entry. Set by meta_state_resolve."),
+  resolution: z.string().nullable().optional()
+    .describe("Human-readable resolution note. Set by meta_state_resolve."),
+  promoted_to_rule: z.string().nullable().optional()
+    .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
+  auto_resolve: z.boolean().nullable().optional()
+    .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
 });
 
 /**
@@ -53,6 +69,7 @@ export const metaStateFindingEntrySchema = z.object({
  * Has .shape available for tool schema reuse.
  */
 export const metaStateChangeEntrySchema = z.object({
+  id: z.string().optional().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug)"),
   entry_kind: z.literal("change-log").describe("Discriminator — always 'change-log' for this schema"),
   change_dimension: z.enum(["semantic", "mechanical", "surface"])
     .describe("What kind of change"),
@@ -76,13 +93,19 @@ export const metaStateChangeEntrySchema = z.object({
     .describe("ID of a previous change-log entry this one replaces"),
   consolidates: z.string().optional()
     .describe("Comma-separated list of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
-  evidence: z.object({
-    code_ref: z.string().optional(),
-    journal: z.string().optional(),
-  }).optional().describe("Path to related journal/plans/reports file"),
+  evidence_code_ref: z.string().optional()
+    .describe("Code reference, e.g. path/to/file.js:line"),
+  evidence_journal: z.string().optional()
+    .describe("Path to related journal file"),
+  evidence_test: z.string().optional()
+    .describe("Test file reference"),
+  evidence: z.never().optional()
+    .describe("Nested evidence block is no longer supported; use top-level evidence_code_ref, evidence_journal, evidence_test"),
   status: z.literal("active").default("active").describe("Status — change-log entries are always 'active' (immutable audit log)"),
   created_at: z.string().describe("ISO timestamp"),
   version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
+  expires_at: z.string().optional()
+    .describe("Forward-compat: optional TTL for future change-log subtypes that may expire."),
 });
 
 /**
@@ -109,11 +132,16 @@ export const metaStateRuleEntrySchema = z.object({
   promoted_by: z.string().describe("Operator id"),
   evidence_code_ref: z.string().optional()
     .describe("Code reference; SP2 grounding still applies"),
+  evidence_journal: z.string().optional()
+    .describe("Path to related journal file"),
+  evidence_test: z.string().optional()
+    .describe("Test file reference"),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
     .describe("SHA-256 of evidence_code_ref; populated by SP2 check_grounding"),
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
+  created_at: z.string().optional().describe("ISO timestamp"),
 });
 
 /**
@@ -152,9 +180,27 @@ export const metaStateLoopDesignSchema = z.object({
 export const metaStateEntrySchema = z.union([
   metaStateFindingEntrySchema,
   metaStateChangeEntrySchema,
-  metaStateRuleEntrySchema,       // NEW
-  metaStateLoopDesignSchema,      // NEW
+  metaStateRuleEntrySchema,
+  metaStateLoopDesignSchema,
 ]);
+
+/**
+ * Patch validator — accepts any top-level key because patches are partial
+ * by definition and may contain any subset of the union fields.
+ */
+export const metaStateEntryPatchSchema = z.object({}).passthrough();
+
+/**
+ * Thrown when writeEntry receives an entry that fails validation against
+ * metaStateEntrySchema.
+ */
+export class InvalidEntryError extends Error {
+  constructor(validationErrors) {
+    super("Invalid meta-state entry: " + validationErrors.message);
+    this.name = "InvalidEntryError";
+    this.errors = validationErrors.format();
+  }
+}
 
 /** Per-root write queue to prevent read-modify-write races. */
 const writeQueues = new Map();
@@ -162,9 +208,10 @@ const writeQueues = new Map();
 function enqueue(root, fn) {
   const key = root;
   const prev = writeQueues.get(key) || Promise.resolve();
-  const next = prev.then(fn).catch(() => {}); // swallow errors to keep chain alive
+  const result = prev.then(fn);
+  const next = result.catch(() => {}); // keep chain alive regardless of failure
   writeQueues.set(key, next);
-  return next;
+  return result;
 }
 
 function getRegistryPath(root) {
@@ -195,11 +242,15 @@ export function readRegistry(root) {
  */
 export function writeEntry(root, entry) {
   return enqueue(root, () => {
+    const validation = metaStateEntrySchema.safeParse(entry);
+    if (!validation.success) {
+      throw new InvalidEntryError(validation.error);
+    }
     const path = getRegistryPath(root);
     const lines = existsSync(path)
       ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
       : [];
-    lines.push(JSON.stringify(entry));
+    lines.push(JSON.stringify(validation.data));
     const tmpPath = path + ".tmp";
     writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
     renameSync(tmpPath, path);
@@ -228,6 +279,11 @@ export function updateEntry(root, id, patch) {
       }
     }
     if (!found) return null;
+
+    const patchValidation = metaStateEntryPatchSchema.safeParse(patch);
+    if (!patchValidation.success) {
+      return "validation_failed";
+    }
 
     // CAS check
     if ("_expected_version" in patch) {

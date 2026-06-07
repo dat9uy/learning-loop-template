@@ -21,8 +21,8 @@ import { join, isAbsolute } from "node:path";
  * Strict equality: `mechanism_check === true` is the opt-in condition.
  * Any other value (false, "true", 1, null, undefined) yields `skipped`.
  *
- * Legacy fallback: reads `entry.evidence_code_ref ?? entry.evidence?.code_ref`
- * (8 of 18 existing findings use the nested form per the SP0 schema).
+ * Top-level evidence fields: reads `entry.evidence_code_ref` (nested form was
+ * removed by migration in plan 260607-dual-field-schema-unification).
  *
  * Path safety: the function does not validate path safety — callers should
  * sanitize paths. Relative paths are joined with `codeContext.root` using
@@ -113,9 +113,8 @@ export function checkGrounding(entry, codeContext) {
     };
   }
 
-  // Signal extraction (per C-1 mitigation: legacy fallback)
-  const rawCodeRef = entry.evidence_code_ref ?? entry.evidence?.code_ref;
-  const codeRef = typeof rawCodeRef === "string" ? rawCodeRef : null;
+  // Signal extraction: top-level evidence fields only (nested form removed by migration)
+  const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
 
   // Unknown: opted in but no evidence to ground on
   if (codeRef === null) {

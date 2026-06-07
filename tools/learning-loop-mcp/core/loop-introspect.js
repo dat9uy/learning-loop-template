@@ -394,6 +394,9 @@ export function summarize(entry) {
   if (entry.resolved_by) compact.resolved_by = entry.resolved_by;
   if (entry.resolved_at) compact.resolved_at = entry.resolved_at;
   if (entry.version !== undefined) compact.version = entry.version;
+  if (entry.evidence_code_ref) compact.evidence_code_ref = entry.evidence_code_ref;
+  if (entry.evidence_journal) compact.evidence_journal = entry.evidence_journal;
+  if (entry.evidence_test) compact.evidence_test = entry.evidence_test;
 
   // Description preview.
   // m3: `summarize` ALWAYS sets `description_preview` (it is the contract of

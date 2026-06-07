@@ -6,10 +6,11 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
  */
 
 import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
-import { dirname, join, normalize } from "node:path";
+import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { readRegistry } from "./meta-state.js";
+import { computeFileHash } from "./check-grounding.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "..", "core", "patterns.json"), "utf8"));
@@ -654,7 +655,41 @@ export function loadPromotedRules(root) {
  * Returns { satisfied: true } or { satisfied: false, blocking_id, rule_id, applies_to_resolution }.
  */
 export function checkResolutionEvidence(rule, root) {
-  const { pattern, applies_to_resolution, rule_id } = rule.promoted_to_rule;
+  const rule_id = rule.promoted_to_rule?.rule_id;
+
+  // Branch 1: global orphan-evidence rule
+  if (rule_id === "rule-no-orphaned-evidence") {
+    const entries = readRegistry(root);
+    const activeGrounded = entries.filter(
+      (e) => e.entry_kind === "finding" && (e.status === "active" || e.status === "reported") && e.mechanism_check === true
+    );
+    const orphans = [];
+    for (const entry of activeGrounded) {
+      const codeRef = entry.evidence_code_ref;
+      if (!codeRef) {
+        orphans.push({ id: entry.id, reason: "no_evidence_code_ref" });
+        continue;
+      }
+      const absPath = isAbsolute(codeRef) ? codeRef : join(root, codeRef.split("#")[0]);
+      let currentHash;
+      try {
+        currentHash = computeFileHash(absPath);
+      } catch {
+        orphans.push({ id: entry.id, reason: "code_ref_missing" });
+        continue;
+      }
+      if (entry.code_fingerprint && entry.code_fingerprint !== currentHash) {
+        orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected: entry.code_fingerprint, actual: currentHash });
+      }
+    }
+    if (orphans.length > 0) {
+      return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.promoted_to_rule?.applies_to_resolution, orphans };
+    }
+    return { satisfied: true, rule_id: "rule-no-orphaned-evidence" };
+  }
+
+  // Branch 2: existing per-finding resolution-evidence-required rules
+  const { pattern, applies_to_resolution } = rule.promoted_to_rule;
   const entries = readRegistry(root);
   const blocking = entries.find((e) =>
     e.entry_kind === "finding"
