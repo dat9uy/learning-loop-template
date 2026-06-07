@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "6 — New consult-gate rule (rule-no-orphaned-evidence)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: ["5"]

@@ -1,7 +1,7 @@
 ---
 title: "Dual-Field Schema Unification: evidence_code_ref (top-level) as Single Source of Truth + Gate Hardening"
 description: "Closes meta-260607T0008Z-dual-field-schema-risk: queryDrift skips SP2 grounding for 30 entries that carry only the nested evidence.code_ref form. Migrates 30 entries in-place to top-level evidence_code_ref, validates writes against the 4-kind Zod union, and adds a new consult-gate rule (rule-no-orphaned-evidence) to prevent silent divergence."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, meta-state, schema-drift, registry-mutation, gate-hardening, zod-validation, consult-gate, tdd]

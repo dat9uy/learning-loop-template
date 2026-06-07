@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "0 — Surface declaration + validation"
-status: pending
+status: completed
 priority: P1
 effort: "15m"
 dependencies: []

@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "5 — Update 4 writers to top-level only"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: ["4"]

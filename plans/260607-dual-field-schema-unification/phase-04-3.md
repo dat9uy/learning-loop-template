@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "3 — In-place migration (30 entries)"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: ["2"]

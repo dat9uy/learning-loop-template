@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "4 — Zod validate at writeEntry + updateEntry"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["3"]
