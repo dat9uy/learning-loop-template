@@ -102,6 +102,16 @@ Key workflow tools: `workflow_classify_prompt`, `workflow_intake_orient`, `workf
 
 See `tools/learning-loop-mcp/agent-manifest.json` for the full tool list, schemas, and quickstart recipes.
 
+## Resolving Findings (Consult-Gate)
+
+The global rule `rule-no-orphaned-evidence` gates `meta_state_resolve`. Before a finding can be resolved, the consult-gate scans all active findings with `mechanism_check: true` and verifies that each `evidence_code_ref` still hashes to its stored `code_fingerprint`. If any finding's source code has drifted (hash mismatch), resolution is blocked with:
+
+```
+{ resolved: false, reason: "resolution_evidence_required", orphans: [...] }
+```
+
+To unblock: refresh the fingerprint (`meta_state_refresh_fingerprint`) or update the evidence reference, then retry resolution. This ensures grounded findings stay grounded and prevents resolving against stale evidence.
+
 ## Runtime Validation
 
 Runtime validation is managed through workflow tools. Use `workflow_prepare_runtime_request` to prepare bounded runtime/install proofs.

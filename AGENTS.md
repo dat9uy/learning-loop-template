@@ -18,6 +18,7 @@ Shared coordination rules for both Claude Code and Droid CLI. All gate logic liv
 - **Bash/Execute gate** — blocks commands matching constraint patterns (docker, sudo, package-manager, vendor-api, side-effect-import) without active observations, and blocks all direct writes to `records/**` via redirects/heredocs/tee.
 - **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files.
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
+- **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_fingerprint` to unblock.
 - **MCP server** (`tools/learning-loop-mcp/server.js`) — 35 tools for constraint checks, record CRUD, preflight gating, and workflow orchestration.
 
 ### Inbound State Gate — Meta-State First

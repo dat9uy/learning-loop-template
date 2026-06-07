@@ -8,7 +8,7 @@ verdict: "PASS with 3 GAPS — production-ready after closing missing tests"
 status:
   gap-1: resolved 2026-06-07T14:25 — see Resolution Log below
   gap-2: resolved 2026-06-07T15:10 — see Resolution Log below
-  gap-3: open
+  gap-3: resolved 2026-06-07T15:40 — see Resolution Log below
 resolution_log:
   - date: 2026-06-07T14:25
     gap: gap-1
@@ -136,7 +136,7 @@ These structural counts must never drift without an explicit baseline bump.
 - **Plan count mismatch:** Plan claimed "migrate 30 entries" but actual commit affected 42 entry lines. The plan's pre-migration survey was an estimate; the real number is higher because more change-logs had evidence than initially counted. This is fine — the migration was data-driven, not target-driven.
 - **`summarize()` change ordering:** The 3 new `if (entry.evidence_*)` lines were appended at the end of the metadata block, not grouped with other relationship fields. Trivial — no semantic impact, just style.
 - **Migration script console output:** Uses `console.log` not structured logging. Fine for a one-shot operator-invoked script; would need a logger for CI integration.
-- **enqueue() refactor:** Changed from `return next` to `return result`. This is a real fix (callers now see errors), not just refactor. Worth calling out in commit message — it could be missed by reviewers skimming for "what broke?"
+- **enqueue() refactor:** Changed from `return next` to `return result`. This is a real fix (callers now see errors), not just refactor. Addressed post-review with an inline code comment at `meta-state.js:214` documenting the behavioral significance (commit `039798b` already pushed, history rewrite avoided).
 
 ---
 
@@ -158,7 +158,7 @@ These structural counts must never drift without an explicit baseline bump.
 1. **Add the 3 missing query-drift tests (T-25, T-26, T-27)** — closes the most-visible gap vs plan's success criteria. 30 minutes.
 2. **Add the 2 missing cold-tier regression buckets** — closes the second gap. 15 minutes.
 3. **Add 1 paragraph to `docs/operator-guide.md`** describing the new consult-gate behavior. 10 minutes.
-4. **Update the 039798b commit message** to call out the enqueue() behavior change (now propagates errors) — currently a quiet fix.
+4. **Update the 039798b commit message** to call out the enqueue() behavior change (now propagates errors) — currently a quiet fix. **Addressed via inline code comment** (`meta-state.js:214`) since commit is already pushed; rewriting history on `main` would disrupt 45 downstream commits.
 
 **No additional code-reviewer subagent dispatch needed.** All critical paths are tested; remaining gaps are documentation/coverage, not correctness.
 
@@ -210,3 +210,23 @@ None. The implementation is sound. The 3 gaps are clearly scoped, low-effort, an
 **Test results:** 837/837 pass. 0 regressions.
 
 **Outstanding:** Gap 3 (operator-guide consult-gate section) remains open per `status:` frontmatter.
+
+### 2026-06-07T15:40 — Gap 3 closed
+
+**Action:** Updated user-facing documentation to reflect the new schema shape and consult-gate behavior.
+
+**What changed:**
+
+| File | Change |
+|---|---|
+| `docs/operator-guide.md` | Added new section "Resolving Findings (Consult-Gate)" after "Resource Budget & State-Machine". Documents: (1) `rule-no-orphaned-evidence` gates `meta_state_resolve`, (2) the gate scans all `mechanism_check: true` active findings and verifies `evidence_code_ref` hashes match stored `code_fingerprint`, (3) resolution returns `{ resolved: false, reason: "resolution_evidence_required" }` when blocked, (4) unblock path is `meta_state_refresh_fingerprint`. |
+| `AGENTS.md` | Added **Consult-gate `rule-no-orphaned-evidence`** to the Gate Descriptions list (between Inbound gate and MCP server). Briefly describes the block condition and unblock path. |
+
+**Test results:** 837/837 pass. 0 regressions.
+
+**Verification:**
+- `docs/operator-guide.md` now surfaces the consult-gate in the operator-facing guide (was completely absent).
+- `AGENTS.md` now lists `rule-no-orphaned-evidence` alongside the other gates (Bash, Write, Inbound).
+- No code changes; documentation only.
+
+**Plan promise verification:** The dual-field schema unification plan's documentation gaps are now closed. All 3 gaps from the code-review report are resolved.

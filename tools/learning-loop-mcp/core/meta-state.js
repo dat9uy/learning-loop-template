@@ -211,6 +211,8 @@ function enqueue(root, fn) {
   const result = prev.then(fn);
   const next = result.catch(() => {}); // keep chain alive regardless of failure
   writeQueues.set(key, next);
+  // Return `result` (not `next`) so callers receive rejection reasons.
+  // Prior code returned `next`, which swallowed errors silently.
   return result;
 }
 
