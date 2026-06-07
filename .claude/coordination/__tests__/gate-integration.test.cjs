@@ -85,6 +85,16 @@ function updateTimestamp(tmpDir, filename, newTimestamp) {
   fs.writeFileSync(p, content);
 }
 
+function updateStatus(tmpDir, filename, newStatus) {
+  const p = path.join(tmpDir, 'records', 'observations', filename);
+  let content = fs.readFileSync(p, 'utf8');
+  content = content.replace(
+    /^status: .*/m,
+    `status: ${newStatus}`
+  );
+  fs.writeFileSync(p, content);
+}
+
 function clearMarker(tmpDir) {
   const markerPath = path.join(tmpDir, '.claude', 'coordination', '.last-operator-message');
   try { fs.unlinkSync(markerPath); } catch {}
@@ -148,6 +158,11 @@ console.log('\n=== Integration: Inbound Gate with Real Observations ===');
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const files = copyRealObservations(tmpDir);
   assert(files.length >= 1, 'copied real observation files to temp dir');
+
+  // Real observations are inactive/archived; activate them for this integration test
+  for (const f of files) {
+    updateStatus(tmpDir, f, 'active');
+  }
 
   // All real observations are stale (hours old) → marker written + context injected
   const t1 = runInboundHook('I cleared the device', env);
@@ -284,7 +299,12 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
   console.log('\n=== Integration: MCP Server with Real Budget + Observations ===');
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  copyRealObservations(tmpDir);
+  const files = copyRealObservations(tmpDir);
+
+  // Real observations are inactive/archived; activate them for this integration test
+  for (const f of files) {
+    updateStatus(tmpDir, f, 'active');
+  }
 
   const { client, transport } = await startMcpServer(tmpDir);
   try {
