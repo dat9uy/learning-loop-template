@@ -16,7 +16,7 @@ Captures the pre-refactor cold-tier JSON as a regression baseline fixture, sets 
 ## Requirements
 
 - **Functional**: a `loop_describe({ tier: 'cold' })` call returns JSON; that JSON is captured to a fixture file; a regression test compares current cold-tier output against the fixture.
-- **Non-functional**: the fixture is ~109KB (the size of the current cold tier); the harness runs in <2 seconds; the harness diff is human-readable when it fails.
+- **Non-functional**: the fixture is ~118KB (the size of the current cold tier); the harness runs in <2 seconds; the harness diff is human-readable when it fails.
 
 ## Architecture
 
@@ -33,8 +33,8 @@ test runner (npm test)
 
 ## Related Code Files
 
-- **Create**: `tools/learning-loop-mcp/__tests__/fixtures/cold-tier-pre-refactor.json` (the 109KB baseline)
-- **Create**: `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.cjs` (the harness, ~40 lines)
+- **Create**: `tools/learning-loop-mcp/__tests__/fixtures/cold-tier-pre-refactor.json` (the 118KB baseline)
+- **Create**: `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js` (the harness, ~40 lines)
 - **Read** (no modify): all 6 target files (verify they exist):
   - `tools/learning-loop-mcp/core/meta-state.js`
   - `tools/learning-loop-mcp/core/loop-introspect.js`
@@ -47,7 +47,7 @@ test runner (npm test)
 
 ### Red: write the failing harness (TDD step 1)
 
-1. Create `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.cjs` with the diff logic. The fixture file does not exist yet → the test fails (red).
+1. Create `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js` with the diff logic. The fixture file does not exist yet → the test fails (red).
 2. Run `cd tools/learning-loop-mcp && npm test -- cold-tier-regression` to confirm the test fails for the right reason ("fixture not found").
 
 ### Green: capture the fixture (TDD step 2)
@@ -56,7 +56,7 @@ test runner (npm test)
    - Loads `loop-describe-tool.js` (or imports the handler directly).
    - Calls `handler({ tier: 'cold' })`.
    - Writes the result to `__tests__/fixtures/cold-tier-pre-refactor.json`.
-4. Run the capture script. Verify the file is ~109KB and contains the 51 entries + 4 inverse map slots (empty for now).
+4. Run the capture script. Verify the file is ~118KB and contains the 53 entries + 4 inverse map slots (empty for now).
 5. Re-run the regression test → it should pass (green).
 
 ### Refactor + accept (TDD steps 3-4)
@@ -67,8 +67,8 @@ test runner (npm test)
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/__tests__/fixtures/cold-tier-pre-refactor.json` exists and is ~109KB
-- [ ] `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.cjs` exists and passes
+- [ ] `tools/learning-loop-mcp/__tests__/fixtures/cold-tier-pre-refactor.json` exists and is ~118KB
+- [ ] `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js` exists and passes
 - [ ] `cd tools/learning-loop-mcp && npm test` runs the new test alongside existing tests with no failures
 - [ ] All 6 target files exist (verified via `ls -la` of each path)
 - [ ] The fixture is committed to git (a separate commit, so future diffs are easy to attribute)
@@ -77,4 +77,4 @@ test runner (npm test)
 
 - **Risk**: the fixture contains runtime data (timestamps, ephemeral ids) that varies per run. → **Mitigation**: the `serialize()` helper strips volatile fields. If a field is missed, the diff will fail loudly and the field can be added to the strip list.
 - **Risk**: the harness depends on a working `loop_describe` tool; if the tool is broken, the harness fails. → **Mitigation**: this is the desired behavior (the harness IS the smoke test). The fixture is the "known good" baseline.
-- **Risk**: the fixture is too large to review in PRs (~109KB). → **Mitigation**: future phases update the fixture; PRs that touch the fixture show only the diff (the new fixture vs the old), not the full 109KB. The fixture file is `.gitignore`-able for human review but committed for test reproducibility.
+- **Risk**: the fixture is too large to review in PRs (~118KB). → **Mitigation**: future phases update the fixture; PRs that touch the fixture show only the diff (the new fixture vs the old), not the full 118KB. The fixture file is `.gitignore`-able for human review but committed for test reproducibility.

@@ -15,7 +15,7 @@ Adds an opt-in `compact: boolean` flag to `meta_state_list` that returns only `i
 
 ## Requirements
 
-- **Functional**: `meta_state_list({ compact: true, include_expired: true })` returns 51 entries × ~80 bytes = ~4KB total. Existing callers (no `compact` flag) see no diff.
+- **Functional**: `meta_state_list({ compact: true, include_expired: true })` returns 53 entries × ~80 bytes = ~4.2KB total. Existing callers (no `compact` flag) see no diff.
 - **Non-functional**: the compact shape is a subset of the full shape; the projection is a pure function (testable in isolation); the response is JSON-stable (deterministic key order for diff-friendly output).
 
 ## Architecture
@@ -78,8 +78,8 @@ meta_state_list({ compact: true, ... })
 
 ## Success Criteria
 
-- [ ] `meta_state_list({ compact: true, include_expired: true })` returns 51 entries × ~80 bytes = ~4KB total
-- [ ] `meta_state_list({ compact: true })` (default exclude_expired) returns 27 non-terminal entries
+- [ ] `meta_state_list({ compact: true, include_expired: true })` returns 53 entries × ~80 bytes = ~4.2KB total
+- [ ] `meta_state_list({ compact: true })` (default exclude_expired) returns 29 non-terminal entries (active + reported; `superseded` is not in `TERMINAL_STATUSES`)
 - [ ] 3-4 tests pass in `__tests__/meta-state-list-compact.test.js`
 - [ ] Existing tests (no `compact` flag) pass unchanged
 - [ ] The cold-tier regression test (Phase 0) is updated to also assert the compact shape

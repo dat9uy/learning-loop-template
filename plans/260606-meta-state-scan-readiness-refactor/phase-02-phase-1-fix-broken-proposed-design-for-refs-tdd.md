@@ -16,11 +16,11 @@ Fixes the 4 broken `proposed_design_for` forward refs on the 2 `entry_kind: "loo
 ## Requirements
 
 - **Functional**: post-migration, `loop_describe({ tier: 'cold' })` shows 0 broken `proposed_design_for` refs.
-- **Non-functional**: the migration is idempotent (running twice produces no changes); the migration emits a `change-log` entry documenting the fix; the migration never throws on bad data (strip + log instead).
+- **Non-functional**: the migration is idempotent for entry mutations (no duplicate IDs; `updateEntry` is CAS-safe); the migration emits a `change-log` entry documenting the fix (append-only by design, so the second run adds a new change-log line); the migration never throws on bad data (strip + log instead).
 
 ## Architecture
 
-The migration script is a Node ES module that reads `meta-state.jsonl`, finds `entry_kind: "loop-design"` entries, attempts to resolve each `proposed_design_for` value against the registry, and either keeps (if resolved), strips + logs (if not), or keeps as-is (if a known code symbol like `loop_describe` MCP tool name). The script uses `core/meta-state.js#readRegistry` and `core/meta-state.js#writeEntry` to avoid direct file I/O.
+The migration script is a Node ES module that reads `meta-state.jsonl`, finds `entry_kind: "loop-design"` entries, attempts to resolve each `proposed_design_for` value against the registry, and either keeps (if resolved), strips + logs (if not), or keeps as-is (if a known code symbol like `loop_describe` MCP tool name). The script uses `core/meta-state.js#readRegistry` and `core/meta-state.js#updateEntry` (not `writeEntry`, which is append-only) to avoid direct file I/O.
 
 ```
 scripts/fix-loop-design-refs.mjs
@@ -31,7 +31,7 @@ scripts/fix-loop-design-refs.mjs
       → elif value is a known code symbol (whitelist: MCP tool names) → keep
       → else → strip + append to fix_log array
   → for each entry with changes:
-    → writeEntry(root, mutated_entry)
+    → updateEntry(root, entry.id, { proposed_design_for: [...], fix_log: [...] })
   → emit change-log entry documenting the fix
 ```
 
@@ -74,7 +74,7 @@ scripts/fix-loop-design-refs.mjs
 
 ## Success Criteria
 
-- [ ] `fix-loop-design-refs.mjs` runs idempotently (snapshot before/after diff is empty on second run)
+- [ ] `fix-loop-design-refs.mjs` runs idempotently for entry mutations (no duplicate IDs on second run; change-log emission is append-only by design)
 - [ ] Post-fix cold-tier shows 0 broken `proposed_design_for` refs (was 4)
 - [ ] 2-3 tests pass in `__tests__/fix-loop-design-refs.test.js`
 - [ ] 1 `change-log` entry exists in `meta-state.jsonl` documenting the fix

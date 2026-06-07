@@ -17,7 +17,7 @@ Two coupled refactors: (a) a pure function `buildInverseIndexes(entries)` that p
 
 - **Functional (Refactor #3)**: `buildInverseIndexes(entries)` returns 4 maps; cold tier response includes `inverse_indexes`; verified counts match expected (e.g., `origin_inverse.get('meta-260601T1353Z-sanitizeslug-...')` returns `['rule-short-slug-for-risk-records']`).
 - **Non-functional (Refactor #3)**: the function is pure (no I/O, no side effects); cold tier size increases by ≤2KB; the function handles empty registries and registries with orphans.
-- **Functional (Refactor #4)**: `meta_state_relationships` tool is registered in `tools/manifest.json` and `tools/server.js`; tool returns expected inbound + outbound + both for a sample entry.
+- **Functional (Refactor #4)**: `meta_state_relationships` tool is registered in `tools/manifest.json` (server.js auto-discovers from manifest, no manual edit needed); tool returns expected inbound + outbound + both for a sample entry.
 - **Non-functional (Refactor #4)**: tool follows the same idempotency pattern as `meta_state_log_change` (gate log + append-only); tool size is ~80 lines; tool has 3-4 unit tests.
 
 ## Architecture
@@ -47,9 +47,9 @@ function buildInverseIndexes(entries) {
       origin_inverse.get(e.origin).push(e.id);
     }
     if (e.entry_kind === "finding" && e.promoted_to_rule) {
-      const ruleId = typeof e.promoted_to_rule === "string" ? e.promoted_to_rule : e.promoted_to_rule.rule_id;
-      if (!promoted_to_rule_inverse.has(ruleId)) promoted_to_rule_inverse.set(ruleId, []);
-      promoted_to_rule_inverse.get(ruleId).push(e.id);
+      // promoted_to_rule is always a string in current registry (migrated in 260606-rule-loop-design-first-class)
+      if (!promoted_to_rule_inverse.has(e.promoted_to_rule)) promoted_to_rule_inverse.set(e.promoted_to_rule, []);
+      promoted_to_rule_inverse.get(e.promoted_to_rule).push(e.id);
     }
   }
 
@@ -86,7 +86,7 @@ meta_state_relationships({ id, direction: 'inbound' | 'outbound' | 'both' })
   → return result
 ```
 
-The tool is registered in `tools/manifest.json` and `tools/server.js` alongside other meta-state tools. The handler is ~50 lines; the schema is ~10 lines.
+The tool is registered in `tools/manifest.json` alongside other meta-state tools (server.js auto-discovers from manifest). The handler is ~50 lines; the schema is ~10 lines.
 
 ## Related Code Files
 
@@ -96,7 +96,7 @@ The tool is registered in `tools/manifest.json` and `tools/server.js` alongside 
 - **Create**: `tools/learning-loop-mcp/__tests__/build-inverse-indexes.test.js` (~80 lines; 3-4 tests)
 - **Create**: `tools/learning-loop-mcp/__tests__/meta-state-relationships.test.js` (~80 lines; 3-4 tests)
 - **Modify**: `tools/learning-loop-mcp/tools/manifest.json` (register new tool, 1 line)
-- **Modify**: `tools/learning-loop-mcp/server.js` (register new tool, 1 line)
+- **Modify**: `tools/learning-loop-mcp/server.js` (no edit needed — server.js auto-discovers from manifest)
 
 ## Implementation Steps
 
@@ -127,7 +127,7 @@ The tool is registered in `tools/manifest.json` and `tools/server.js` alongside 
 7. Create `tools/meta-state-relationships-tool.js`:
    - Schema: `{ id: z.string().min(1), direction: z.enum(['inbound', 'outbound', 'both']).default('both') }`.
    - Handler: as above.
-8. Edit `tools/manifest.json` and `tools/server.js` to register the tool (1 line each).
+8. Edit `tools/manifest.json` to register the tool (1 line). `server.js` auto-discovers from manifest; no edit needed.
 9. Re-run `meta-state-relationships.test.js` → green.
 
 ### Refactor + accept (TDD steps 3-4)
@@ -141,7 +141,7 @@ The tool is registered in `tools/manifest.json` and `tools/server.js` alongside 
 
 - [ ] `buildInverseIndexes(entries)` returns 4 maps; verified counts match expected (`origin_inverse` for `meta-260601T1353Z-sanitizeslug-...` = 1 = the rule `rule-short-slug-for-risk-records`)
 - [ ] Cold tier response includes `inverse_indexes` field with the 4 maps (serialized as objects)
-- [ ] `meta_state_relationships` tool is registered in `tools/manifest.json` and `tools/server.js`
+- [ ] `meta_state_relationships` tool is registered in `tools/manifest.json` (server.js auto-discovers from manifest, no manual edit needed)
 - [ ] Tool returns expected inbound + outbound + both for a sample entry
 - [ ] 3-4 tests pass in each of `__tests__/build-inverse-indexes.test.js` and `__tests__/meta-state-relationships.test.js`
 - [ ] The cold-tier regression fixture is updated to include the new field
@@ -149,7 +149,7 @@ The tool is registered in `tools/manifest.json` and `tools/server.js` alongside 
 
 ## Risk Assessment
 
-- **Risk**: `buildInverseIndexes` is O(N) per cold-tier read; performance degrades at scale. → **Mitigation**: documented in design; revisit at ~500 entries. At 51 entries, ~1ms. Acceptable.
-- **Risk**: the `promoted_to_rule` field shape varies (object or string). → **Mitigation**: the function handles both shapes (line `typeof e.promoted_to_rule === "string" ? e.promoted_to_rule : e.promoted_to_rule.rule_id`). A 4th test asserts both shapes work.
+- **Risk**: `buildInverseIndexes` is O(N) per cold-tier read; performance degrades at scale. → **Mitigation**: documented in design; revisit at ~500 entries. At 53 entries, ~1ms. Acceptable.
+- **Risk**: the `promoted_to_rule` field shape varies (object or string). → **Mitigation**: the current registry only contains string values (migrated in 260606-rule-loop-design-first-class). The function uses `e.promoted_to_rule` directly. If a future migration introduces object shapes, the logic should be centralized in `core/loop-introspect.js` rather than duplicated here.
 - **Risk**: the new tool's `inbound`/`outbound` shape confuses callers (which is which?). → **Mitigation**: shape is documented in the tool's `description` field; a code comment in the handler makes it explicit; a test asserts the directional semantics.
 - **Risk**: the tool exposes cross-references that an agent shouldn't see (e.g., design intent for a future rule). → **Mitigation**: the tool is read-only and doesn't write; agents see what the registry contains. The `rule-cold-session-test-must-pass-before-resolution` consult pattern can be extended to gate sensitive relationship queries in a future plan (out of scope here).

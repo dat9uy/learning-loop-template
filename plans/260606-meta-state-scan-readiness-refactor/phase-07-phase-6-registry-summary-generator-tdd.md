@@ -45,8 +45,12 @@ meta_state_sweep({ apply: true, emit_summary: true })
 
 `tools/loop-describe-tool.js` warm tier gains:
 ```js
-registry_summary: renderRegistrySummary({ entries: warmEntries, indexes: warmIndexes, now: new Date() })
+const allEntries = readRegistry(root);
+const warmIndexes = buildInverseIndexes(allEntries);
+registry_summary: renderRegistrySummary({ entries: allEntries, indexes: warmIndexes, now: new Date() })
 ```
+
+The warm tier must load the full registry (not just active subsets) because the `Counts` table requires resolved, superseded, and change-log entries.
 
 `renderRegistrySummary` is exported from a shared module (e.g., `core/registry-summary.js`, new) so both the sweep and the warm tier call the same function.
 
@@ -94,7 +98,7 @@ _Last generated: 2026-06-06T15:30:00.000Z_
 
 - **Create**: `tools/learning-loop-mcp/core/registry-summary.js` (~80 lines; pure functions `renderRegistrySummary` and helpers)
 - **Modify**: `tools/learning-loop-mcp/tools/meta-state-sweep-tool.js` (handler extension, ~40 lines)
-- **Modify**: `tools/learning-loop-mcp/tools/loop-describe-tool.js` (warm tier field, ~15 lines)
+- **Modify**: `tools/learning-loop-mcp/tools/loop-describe-tool.js` (warm tier field + full-registry read, ~20 lines)
 - **Create**: `docs/registry-summary.md` (the new artifact, auto-generated on first sweep)
 - **Create**: `tools/learning-loop-mcp/__tests__/registry-summary.test.js` (~80 lines; 3-4 tests for `renderRegistrySummary`)
 - **Create**: `tools/learning-loop-mcp/__tests__/meta-state-sweep-summary.test.js` (~80 lines; 3-4 tests for the sweep extension)
@@ -131,7 +135,8 @@ _Last generated: 2026-06-06T15:30:00.000Z_
 ### Green: wire the renderer into warm tier (TDD step 2 cont.)
 
 8. Edit `tools/loop-describe-tool.js`:
-   - In the warm tier branch, after loading entries + indexes, add `registry_summary: renderRegistrySummary({ entries, indexes, now: new Date() })` to the response.
+   - In the warm tier branch, call `const allEntries = readRegistry(root)` and `const warmIndexes = buildInverseIndexes(allEntries)`.
+   - Add `registry_summary: renderRegistrySummary({ entries: allEntries, indexes: warmIndexes, now: new Date() })` to the response.
 9. Re-run all tests → green.
 
 ### Refactor + accept (TDD steps 3-4)
@@ -150,7 +155,7 @@ _Last generated: 2026-06-06T15:30:00.000Z_
 - [ ] The warm-tier regression fixture is updated
 - [ ] The final post-Phase-7 cold-tier output (summary mode from Phase 6) is ~8K tokens (down from 27K)
 - [ ] The final post-Phase-7 fixture is committed as `cold-tier-post-refactor.json`
-- [ ] `npm test` passes (all phases' tests + existing 580+ baseline)
+- [ ] `npm test` passes (all phases' tests + existing 433 baseline)
 
 ## Risk Assessment
 
