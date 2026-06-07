@@ -56,10 +56,8 @@ export const metaStateLogChangeTool = {
       reason,
       ...(applies_to && { applies_to }),
       ...(supersedes && { supersedes }),
-      evidence: {
-        ...(evidence_code_ref && { code_ref: evidence_code_ref }),
-        ...(evidence_journal && { journal: evidence_journal }),
-      },
+      ...(evidence_code_ref && { evidence_code_ref }),
+      ...(evidence_journal && { evidence_journal }),
       status: "active",
       created_at: now.toISOString(),
       version: 0,

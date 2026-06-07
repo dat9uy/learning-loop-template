@@ -37,13 +37,8 @@ export const metaStateReportTool = {
       description,
       // Top-level evidence fields (per schema; consumed by SP1 derive-status + SP2 check-grounding)
       ...(evidence_code_ref && { evidence_code_ref }),
+      ...(evidence_journal && { evidence_journal }),
       ...(evidence_test && { evidence_test }),
-      // Nested evidence block (legacy form; the 8 of 18 pre-SP1 findings use this)
-      evidence: {
-        ...(evidence_journal && { journal: evidence_journal }),
-        ...(evidence_code_ref && { code_ref: evidence_code_ref }),
-        ...(evidence_test && { test: evidence_test }),
-      },
       ...(mechanism_check !== undefined && { mechanism_check }),
       status: "reported",
       created_at: now.toISOString(),

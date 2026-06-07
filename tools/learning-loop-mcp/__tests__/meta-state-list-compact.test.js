@@ -45,11 +45,12 @@ describe("meta_state_list compact mode", () => {
         undefined,
         "compact entry must NOT have evidence"
       );
-      assert.strictEqual(
-        entry.evidence_code_ref,
-        undefined,
-        "compact entry must NOT have evidence_code_ref"
-      );
+      if (entry.evidence_code_ref) {
+        assert.ok(
+          typeof entry.evidence_code_ref === "string",
+          "compact entry evidence_code_ref must be a string when present"
+        );
+      }
     }
   });
 

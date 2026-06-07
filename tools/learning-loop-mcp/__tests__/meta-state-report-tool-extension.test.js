@@ -50,4 +50,30 @@ describe("metaStateReportTool mechanism_check extension", () => {
       else process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  test("writes no nested evidence block (only top-level fields)", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-top-level-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test report tool writes only top-level evidence fields.",
+        evidence_code_ref: "test.js",
+        evidence_journal: "journal.md",
+        evidence_test: "test.js",
+      });
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.evidence_code_ref, "test.js");
+      assert.strictEqual(entry.evidence_journal, "journal.md");
+      assert.strictEqual(entry.evidence_test, "test.js");
+      assert.strictEqual(entry.evidence, undefined, "report tool must NOT write nested evidence block");
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });

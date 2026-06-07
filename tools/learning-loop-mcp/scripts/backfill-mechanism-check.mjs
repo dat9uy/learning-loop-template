@@ -42,8 +42,7 @@ for (const entry of resolvedFindings) {
     continue;
   }
 
-  const rawCodeRef = entry.evidence_code_ref ?? entry.evidence?.code_ref;
-  const codeRef = typeof rawCodeRef === "string" ? rawCodeRef : null;
+  const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
 
   if (!codeRef) {
     skippedNoEvidence++;

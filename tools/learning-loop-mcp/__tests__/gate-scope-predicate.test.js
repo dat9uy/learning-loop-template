@@ -218,7 +218,7 @@ describe("gate scope predicate", () => {
         category: "loop-anti-pattern",
         subtype: "tool-misrouting",
         severity: "warning",
-        affected_system: "agent-prompt",
+        affected_system: "mcp-tools",
         description: "Cross-project skill invocation from learning-loop project test entry.",
       });
       const reportText = JSON.parse(report.content[0].text);
@@ -266,7 +266,7 @@ describe("gate scope predicate", () => {
         category: "loop-anti-pattern",
         subtype: "tool-misrouting",
         severity: "warning",
-        affected_system: "agent-prompt",
+        affected_system: "mcp-tools",
         description: "Whitelist test entry with enough chars.",
       });
       const reportText = JSON.parse(report.content[0].text);
@@ -299,7 +299,7 @@ describe("gate scope predicate", () => {
         category: "loop-anti-pattern",
         subtype: "tool-misrouting",
         severity: "warning",
-        affected_system: "agent-prompt",
+        affected_system: "mcp-tools",
         description: "First duplicate test entry with enough chars.",
       });
       const report1Text = JSON.parse(report1.content[0].text);
@@ -317,7 +317,7 @@ describe("gate scope predicate", () => {
         category: "loop-anti-pattern",
         subtype: "tool-misrouting",
         severity: "warning",
-        affected_system: "agent-prompt",
+        affected_system: "mcp-tools",
         description: "Second duplicate test entry with enough chars.",
       });
       const report2Text = JSON.parse(report2.content[0].text);

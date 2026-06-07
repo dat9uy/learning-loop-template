@@ -168,11 +168,11 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.drift, true);
   });
 
-  test("reads evidence_code_ref from legacy nested evidence.code_ref field", () => {
+  test("reads evidence_code_ref from top-level field only", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "legacy.js"), "// code");
     const entry = baseEntry({
-      evidence: { code_ref: "legacy.js" },
+      evidence_code_ref: "legacy.js",
     });
     const result = deriveStatus(entry, ctx);
     assert.strictEqual(result.derivation.signals.code_ref_exists, true);

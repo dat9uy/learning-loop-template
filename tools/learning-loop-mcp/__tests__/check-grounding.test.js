@@ -359,13 +359,13 @@ describe("checkGrounding pure function", () => {
     assert.strictEqual(result.grounding.duration_ms, 1);
   });
 
-  // T-27: legacy fallback (entry.evidence_code_ref ?? entry.evidence?.code_ref)
-  test("reads evidence_code_ref from legacy nested evidence.code_ref field", () => {
+  // T-27: top-level evidence_code_ref only (nested form removed by migration)
+  test("reads evidence_code_ref from top-level field only", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "legacy.js"), "// code");
     const entry = baseEntry({
       mechanism_check: true,
-      evidence: { code_ref: "legacy.js" },
+      evidence_code_ref: "legacy.js",
     });
     const result = checkGrounding(entry, ctx);
     assert.strictEqual(result.grounding.code_ref_exists, true);

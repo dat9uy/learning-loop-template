@@ -175,4 +175,28 @@ describe("meta_state_log_change tool", () => {
       process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  test("writes top-level evidence_code_ref, not nested evidence.code_ref", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const result = await metaStateLogChangeTool.handler({
+        change_dimension: "semantic",
+        change_target: "core/meta-state.js",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Change-log tool now writes top-level evidence fields only.",
+        evidence_code_ref: "test.js",
+        evidence_journal: "journal.md",
+      });
+      const text = JSON.parse(result.content[0].text);
+      assert.strictEqual(text.logged, true);
+
+      const entries = readRegistry(tempDir);
+      assert.strictEqual(entries[0].evidence_code_ref, "test.js");
+      assert.strictEqual(entries[0].evidence_journal, "journal.md");
+      assert.strictEqual(entries[0].evidence, undefined, "log-change tool must NOT write nested evidence block");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });

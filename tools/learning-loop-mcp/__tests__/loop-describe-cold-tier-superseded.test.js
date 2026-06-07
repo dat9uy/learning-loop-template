@@ -50,7 +50,7 @@ async function seedRegistry(root) {
     reason: "Consolidate 3 G8 test subcommand-class false-positive finding entries into a single change-log for the Phase 3 test fixture.",
     applies_to: { tools: ["meta_state_query_drift"], rules: ["rule-no-new-artifact-types"], statuses: ["superseded"] },
     consolidates: [finding1Id, finding2Id, finding3Id].join(","),
-    evidence: { code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules" },
+    evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
     status: "active",
     created_at: "2026-06-06T00:30:00.000Z",
     version: 0,

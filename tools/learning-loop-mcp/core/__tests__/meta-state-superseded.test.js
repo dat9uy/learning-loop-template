@@ -35,11 +35,14 @@ describe("Phase 1: superseded status enum", () => {
   // Test 1: status enum roundtrip
   test("status 'superseded' is accepted on a finding entry", () => {
     const result = metaStateFindingEntrySchema.safeParse({
+      id: "meta-test-superseded-status",
+      entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
       description: "Marking a stale entry as superseded for audit trail purposes.",
       status: "superseded",
+      created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.status, "superseded");
@@ -48,6 +51,8 @@ describe("Phase 1: superseded status enum", () => {
   // Test 2: consolidated_into + session_id field roundtrips
   test("consolidated_into + session_id fields roundtrip on a finding entry", () => {
     const result = metaStateFindingEntrySchema.safeParse({
+      id: "meta-test-superseded-consolidated-into",
+      entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
@@ -55,6 +60,7 @@ describe("Phase 1: superseded status enum", () => {
       status: "superseded",
       consolidated_into: "meta-260606T0000Z-g8-subcommand-class-false-positive-supersede",
       session_id: "droid-abc-123",
+      created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.consolidated_into, "meta-260606T0000Z-g8-subcommand-class-false-positive-supersede");
@@ -64,6 +70,7 @@ describe("Phase 1: superseded status enum", () => {
   // Test 3: change-log field roundtrip (consolidates)
   test("consolidates field roundtrips on a change-log entry", () => {
     const result = metaStateChangeEntrySchema.safeParse({
+      id: "meta-test-superseded-consolidates",
       entry_kind: "change-log",
       change_dimension: "mechanical",
       change_target: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
@@ -71,7 +78,8 @@ describe("Phase 1: superseded status enum", () => {
       reason: "Consolidate 4 G8 subcommand-class false-positive finding entries (recurrences 1, 3, 4, 5) into a single change-log entry.",
       applies_to: { tools: ["meta_state_query_drift"], rules: ["rule-no-new-artifact-types"], statuses: ["superseded"] },
       consolidates: "meta-260602T1112Z-live-g8-subcommand-class-false-positive-rule-no-new-artifact,meta-260602T1635Z-third-documented-g8-subcommand-class-recurrence-rule-no-new,meta-260602T1635Z-fourth-documented-g8-recurrence-and-a-partial-regression-of,meta-260603T1435Z-g8-subcommand-class-false-positive-5th-recurrence-hit-ck-pla",
-      evidence: { code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules", journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md" },
+      evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
+      evidence_journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md",
       status: "active",
       created_at: new Date().toISOString(),
     });

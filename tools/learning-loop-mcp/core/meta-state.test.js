@@ -19,11 +19,14 @@ function makeEntry(overrides = {}) {
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return {
     id: overrides.id ?? generateId("test"),
+    entry_kind: overrides.entry_kind ?? "finding",
     category: overrides.category ?? "gate-logic-bug",
     severity: overrides.severity ?? "warning",
     affected_system: overrides.affected_system ?? "gate-logic",
     description: overrides.description ?? "Test meta-state entry description",
-    evidence: overrides.evidence ?? { journal: "docs/journals/test.md" },
+    evidence_journal: overrides.evidence_journal ?? "docs/journals/test.md",
+    ...(overrides.evidence_code_ref && { evidence_code_ref: overrides.evidence_code_ref }),
+    ...(overrides.evidence_test && { evidence_test: overrides.evidence_test }),
     status: overrides.status ?? "reported",
     created_at: overrides.created_at ?? now.toISOString(),
     expires_at: overrides.expires_at ?? tomorrow.toISOString(),
@@ -53,8 +56,8 @@ describe("meta-state registry core", () => {
   test("writeEntry creates valid JSONL with one line per entry", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
     process.env.GATE_ROOT = tempDir;
-    const e1 = makeEntry({ id: generateId("first"), description: "First entry" });
-    const e2 = makeEntry({ id: generateId("second"), description: "Second entry" });
+    const e1 = makeEntry({ id: generateId("first"), description: "First entry for write test" });
+    const e2 = makeEntry({ id: generateId("second"), description: "Second entry for write test" });
     await writeEntry(tempDir, e1);
     await writeEntry(tempDir, e2);
     const entries = readRegistry(tempDir);
@@ -161,7 +164,7 @@ describe("meta-state registry core", () => {
     await writeEntry(tempDir, oldTerminal);
     await writeEntry(tempDir, freshReported);
     // Trigger compaction via update on the fresh entry
-    await updateEntry(tempDir, freshReported.id, { description: "Updated description" });
+    await updateEntry(tempDir, freshReported.id, { description: "Updated description for compaction test." });
     const entries = readRegistry(tempDir);
     assert.strictEqual(entries.length, 1);
     assert.strictEqual(entries[0].id, freshReported.id);
@@ -173,7 +176,7 @@ describe("meta-state registry core", () => {
     process.env.GATE_ROOT = tempDir;
     const promises = [];
     for (let i = 0; i < 5; i++) {
-      const e = makeEntry({ id: generateId(`concurrent-${i}`), description: `Concurrent ${i}` });
+      const e = makeEntry({ id: generateId(`concurrent-${i}`), description: `Concurrent write test entry ${i}` });
       promises.push(writeEntry(tempDir, e));
     }
     await Promise.all(promises);
@@ -225,11 +228,14 @@ describe("meta-state T4 auto_resolve removal", () => {
   test("metaStateEntrySchema strips unknown auto_resolve_file input", async () => {
     const { metaStateEntrySchema } = await import("./meta-state.js");
     const result = metaStateEntrySchema.safeParse({
+      id: "meta-test-auto-resolve-strip",
+      entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
       description: "Test with auto_resolve_file should have it stripped",
       auto_resolve_file: "tools/test.js",
+      created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.auto_resolve_file, undefined);
@@ -238,10 +244,13 @@ describe("meta-state T4 auto_resolve removal", () => {
   test("metaStateEntrySchema accepts input without auto_resolve fields", async () => {
     const { metaStateEntrySchema } = await import("./meta-state.js");
     const result = metaStateEntrySchema.safeParse({
+      id: "meta-test-auto-resolve-accept",
+      entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
       description: "Test without auto_resolve fields should pass",
+      created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
   });
@@ -281,12 +290,13 @@ describe("meta-state change-log compaction guard", () => {
         change_target: "core/test.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Old change-log entry that must NOT be compacted even if terminal.",
-        status: "resolved",
+        status: "active",
         created_at: eightDaysAgo.toISOString(),
-        resolved_at: eightDaysAgo.toISOString(),
       };
       await writeEntry(tempDir, oldTerminal);
       await writeEntry(tempDir, oldChangeLog);
+      // Simulate a hypothetical future change-log subtype with terminal status
+      await updateEntry(tempDir, oldChangeLog.id, { status: "resolved", resolved_at: eightDaysAgo.toISOString() });
 
       // Trigger compaction via update on any entry
       const fresh = {

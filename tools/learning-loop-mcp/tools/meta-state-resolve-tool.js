@@ -65,6 +65,19 @@ export const metaStateResolveTool = {
 
     // Consult resolution-evidence-required rules before resolving
     const rules = loadPromotedRules(root);
+
+    // Consult global rules (applies_to_resolution === "*") for every resolution
+    for (const rule of rules) {
+      if (rule.promoted_to_rule?.pattern_type !== "resolution-evidence-required") continue;
+      if (rule.promoted_to_rule?.applies_to_resolution !== "*") continue;
+      const evidence = checkResolutionEvidence(rule, root);
+      if (!evidence.satisfied) {
+        const result = { resolved: false, reason: "resolution_evidence_required", ...evidence };
+        appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      }
+    }
+
     for (const rule of rules) {
       if (rule.promoted_to_rule?.pattern_type !== "resolution-evidence-required") continue;
       if (rule.promoted_to_rule?.applies_to_resolution !== id) continue;

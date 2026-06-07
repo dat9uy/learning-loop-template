@@ -73,7 +73,7 @@ describe("meta_state_derive_status tool", () => {
         affected_system: "mcp-tools",
         description: "Known derivable finding for acceptance test simulation.",
         status: "active",
-        evidence: { code_ref: "tools/learning-loop-mcp/lib/source-ref-validator.js" },
+        evidence_code_ref: "tools/learning-loop-mcp/lib/source-ref-validator.js",
         evidence_test: "tools/learning-loop-mcp/__tests__/source-ref-validator.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };

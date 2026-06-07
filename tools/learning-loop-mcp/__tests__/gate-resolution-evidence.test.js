@@ -29,6 +29,11 @@ async function importLoopIntrospect() {
   return await import(introspectPath);
 }
 
+async function importCheckGrounding() {
+  const groundingPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/check-grounding.js")).href;
+  return await import(groundingPath);
+}
+
 describe("checkResolutionEvidence", () => {
   test("returns satisfied when no finding exists", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
@@ -135,6 +140,126 @@ describe("checkResolutionEvidence", () => {
     const result = checkResolutionEvidence(rule, tempRoot);
     assert.strictEqual(result.satisfied, true);
   });
+
+  test("rule-no-orphaned-evidence blocks resolution when an active finding has mechanism_check=true and code_fingerprint mismatch", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { computeFileHash } = await importCheckGrounding();
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const x = 1;");
+
+    const findingId = core.generateId("orphan-test");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for orphan check.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js",
+      code_fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+    assert.ok(result.orphans);
+    assert.strictEqual(result.orphans.length, 1);
+    assert.strictEqual(result.orphans[0].id, findingId);
+    assert.strictEqual(result.orphans[0].reason, "fingerprint_mismatch");
+    assert.strictEqual(result.orphans[0].expected, "sha256:0000000000000000000000000000000000000000000000000000000000000000");
+    assert.ok(result.orphans[0].actual);
+    assert.ok(result.orphans[0].actual.startsWith("sha256:"));
+  });
+
+  test("rule-no-orphaned-evidence allows resolution when all active findings are grounded (fingerprint matches)", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { computeFileHash } = await importCheckGrounding();
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const y = 2;");
+    const hash = computeFileHash(dummyFile);
+
+    const findingId = core.generateId("orphan-test");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for orphan check.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js",
+      code_fingerprint: hash,
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+  });
+
+  test("rule-no-orphaned-evidence allows resolution when active finding has mechanism_check=true but no code_fingerprint", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const z = 3;");
+
+    const findingId = core.generateId("orphan-test");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for orphan check.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js",
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+  });
 });
 
 describe("applyPromotedRules resolution-evidence-required", () => {
@@ -227,7 +352,7 @@ describe("meta_state_resolve consultation", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Target finding that should be resolved.",
+      description: "Target finding that should be resolved by operator.",
       status: "active",
       created_at: new Date().toISOString(),
       version: 0,
@@ -239,30 +364,26 @@ describe("meta_state_resolve consultation", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Blocking finding.",
+      description: "Blocking finding for resolution test.",
       session_id: "test-session-id",
       status: "active",
       created_at: new Date().toISOString(),
       version: 0,
     });
     await core.writeEntry(tempRoot, {
-      id: core.generateId("rule-entry"),
-      entry_kind: "finding",
-      category: "loop-anti-pattern",
-      severity: "warning",
-      affected_system: "mcp-tools",
-      subtype: "rule-cold-session-test-must-pass-before-resolution",
-      description: "Rule entry.",
+      id: "rule-cold-session-test-must-pass-before-resolution",
+      entry_kind: "rule",
+      origin: targetId,
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
+      applies_to_resolution: targetId,
+      description: "Rule entry for resolution evidence test.",
       status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "test",
       created_at: new Date().toISOString(),
       version: 0,
-      promoted_to_rule: {
-        rule_id: "rule-cold-session-test-must-pass-before-resolution",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-        applies_to_resolution: targetId,
-      },
     });
 
     const originalEnv = process.env.GATE_ROOT;
@@ -300,29 +421,25 @@ describe("meta_state_resolve consultation", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Target finding that should be resolved.",
+      description: "Target finding that should be resolved by operator.",
       status: "active",
       created_at: new Date().toISOString(),
       version: 0,
     });
     await core.writeEntry(tempRoot, {
-      id: core.generateId("rule-entry"),
-      entry_kind: "finding",
-      category: "loop-anti-pattern",
-      severity: "warning",
-      affected_system: "mcp-tools",
-      subtype: "rule-cold-session-test-must-pass-before-resolution",
-      description: "Rule entry.",
+      id: "rule-cold-session-test-must-pass-before-resolution",
+      entry_kind: "rule",
+      origin: targetId,
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
+      applies_to_resolution: targetId,
+      description: "Rule entry for resolution evidence test.",
       status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "test",
       created_at: new Date().toISOString(),
       version: 0,
-      promoted_to_rule: {
-        rule_id: "rule-cold-session-test-must-pass-before-resolution",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-        applies_to_resolution: targetId,
-      },
     });
 
     const originalEnv = process.env.GATE_ROOT;
@@ -353,29 +470,25 @@ describe("meta_state_resolve consultation", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Target finding that should be resolved.",
+      description: "Target finding that should be resolved by operator.",
       status: "active",
       created_at: new Date().toISOString(),
       version: 0,
     });
     await core.writeEntry(tempRoot, {
-      id: core.generateId("rule-entry"),
-      entry_kind: "finding",
-      category: "loop-anti-pattern",
-      severity: "warning",
-      affected_system: "mcp-tools",
-      subtype: "rule-cold-session-test-must-pass-before-resolution",
-      description: "Rule entry.",
+      id: "rule-cold-session-test-must-pass-before-resolution",
+      entry_kind: "rule",
+      origin: targetId,
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
+      applies_to_resolution: targetId,
+      description: "Rule entry for resolution evidence test.",
       status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "test",
       created_at: new Date().toISOString(),
       version: 0,
-      promoted_to_rule: {
-        rule_id: "rule-cold-session-test-must-pass-before-resolution",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-        applies_to_resolution: otherId,
-      },
     });
 
     const originalEnv = process.env.GATE_ROOT;

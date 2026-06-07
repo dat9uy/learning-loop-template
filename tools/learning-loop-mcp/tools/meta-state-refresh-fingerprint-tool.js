@@ -47,8 +47,8 @@ export const metaStateRefreshFingerprintTool = {
       };
     }
 
-    // Per H-4: cannot refresh without evidence_code_ref (legacy fallback)
-    const rawCodeRef = entry.evidence_code_ref ?? entry.evidence?.code_ref;
+    // Per H-4: cannot refresh without evidence_code_ref
+    const rawCodeRef = entry.evidence_code_ref;
     if (typeof rawCodeRef !== "string") {
       return {
         content: [{ type: "text", text: JSON.stringify({

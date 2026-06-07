@@ -39,10 +39,8 @@ async function applyG8Supersede(root, changeLogId) {
       statuses: ["superseded"],
     },
     consolidates: G8_IDS.join(","),
-    evidence: {
-      code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
-      journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md",
-    },
+    evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
+    evidence_journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md",
     status: "active",
     created_at: new Date().toISOString(),
     version: 0,

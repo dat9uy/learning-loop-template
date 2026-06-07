@@ -166,6 +166,74 @@ describe("meta-state schema new behavior", () => {
       process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  test("change-log schema accepts top-level evidence_code_ref", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "core/meta-state.js",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Change-log schema now accepts top-level evidence_code_ref per dual-field unification.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      evidence_code_ref: "core/meta-state.js:55",
+    });
+    assert.strictEqual(result.success, true);
+  });
+
+  test("change-log schema rejects nested evidence.code_ref", () => {
+    const result = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "core/meta-state.js",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "Nested evidence.code_ref is no longer accepted after schema flatten.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      evidence: { code_ref: "core/meta-state.js:55" },
+    });
+    assert.strictEqual(result.success, false);
+  });
+
+  test("3 of 3 applicable union branches expose evidence_code_ref top-level (loop-design exempt)", () => {
+    const stub = { evidence_code_ref: "x.js" };
+
+    const finding = metaStateFindingEntrySchema.safeParse({
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "A test finding for evidence coverage test",
+      ...stub,
+    });
+    assert.ok(finding.success, "finding schema accepts evidence_code_ref");
+
+    const changeLog = metaStateChangeEntrySchema.safeParse({
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "test",
+      change_diff: { added: [], removed: [], changed: [] },
+      reason: "A test change-log for evidence coverage test",
+      status: "active",
+      created_at: new Date().toISOString(),
+      ...stub,
+    });
+    assert.ok(changeLog.success, "change-log schema accepts evidence_code_ref");
+
+    const rule = metaStateEntrySchema.safeParse({
+      entry_kind: "rule",
+      id: "rule-test-evidence-coverage",
+      origin: "meta-260607T0008Z-dual-field-schema-risk",
+      enforcement: "agent",
+      pattern_type: "regex",
+      pattern: "test",
+      description: "A test rule for evidence coverage test",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "test",
+      ...stub,
+    });
+    assert.ok(rule.success, "rule schema accepts evidence_code_ref");
+  });
 });
 
 describe("meta-state change-log schema", () => {
@@ -266,6 +334,7 @@ describe("meta-state change-log schema", () => {
 describe("meta-state discriminated union", () => {
   test("metaStateEntrySchema (union) picks finding branch and ignores change-log fields", () => {
     const result = metaStateEntrySchema.safeParse({
+      id: "meta-test-finding-union",
       entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
@@ -275,6 +344,7 @@ describe("meta-state discriminated union", () => {
       change_target: "mixed",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "This is a mixed entry that should be parsed as finding.",
+      created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.entry_kind, "finding");
@@ -283,6 +353,7 @@ describe("meta-state discriminated union", () => {
 
   test("metaStateEntrySchema (union) picks change-log branch and ignores finding fields", () => {
     const result = metaStateEntrySchema.safeParse({
+      id: "meta-test-change-log-union",
       entry_kind: "change-log",
       change_dimension: "semantic",
       change_target: "core/meta-state.js",
