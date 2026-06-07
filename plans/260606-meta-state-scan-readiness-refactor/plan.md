@@ -1,7 +1,7 @@
 ---
 title: "Meta-State Scan-Readiness: 6 Relationship-First Refactors"
 description: "Closes the cold-state scan-readiness gaps surfaced in the 2026-06-06 cold-tier test: 2 broken loop-design proposed_design_for refs (4 broken forward refs total), 27 of 31 findings (87%) with no incoming relationship, only 3 of 53 entries (5.7%) carrying mechanism_check=true, zero resolved findings drift-checkable, no inverse indexes (addresses_inverse, supersedes_inverse), and the cold tier shipping full descriptions on terminal-status findings (~12K tokens of audit-trail double-charge). 6 refactors, all reusing existing kinds, tools, and surfaces. Zero new schema, zero new MCP tools, zero new artifact types (rule-no-new-artifact-types is active). Tests-first per phase (TDD). Surface: meta (loop's own machinery)."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta, meta-state, scan-readiness, relationship, inverse-index, mechanism-check, drift, token-cost, registry-summary, tdd]
