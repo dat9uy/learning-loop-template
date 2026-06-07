@@ -2,7 +2,7 @@
 
 # Registry Summary
 
-**Generated:** 2026-06-07T00:12:19.402Z
+**Generated:** 2026-06-07T00:54:31.643Z
 
 ## Counts
 
@@ -11,7 +11,7 @@
 | finding | resolved | 16 |
 | finding | expired | 3 |
 | finding | superseded | 5 |
-| finding | reported | 7 |
+| finding | reported | 8 |
 | finding | active | 1 |
 | change-log | active | 17 |
 | rule | active | 4 |
@@ -20,9 +20,9 @@
 ## Coverage
 
 - **Resolved findings:** 16
-- **With mechanism_check:** 12 (75%)
+- **With mechanism_check:** 14 (88%)
 - **Broken refs:** 0
-- **Orphan findings:** 22
+- **Orphan findings:** 23
 
 ## Top References
 
@@ -38,6 +38,7 @@
 
 | ID | Status | Created At | Fingerprint |
 |----|--------|------------|-------------|
+| meta-260607T0715Z-inbound-state-gate-integration-test-has-3-persistent-failure | reported | 2026-06-07T00:15:23.068Z | — |
 | meta-260607T0008Z-dual-field-schema-risk-evidence-code-ref-top-level-vs-eviden | reported | 2026-06-06T17:08:24.284Z | — |
 | meta-260606T2106Z-agent-called-meta-state-log-change-mcp-tool-5-times-in-succe | reported | 2026-06-06T14:06:20.751Z | — |
 | meta-260606T2102Z-agent-used-direct-file-i-o-node-e-scripts-importing-core-met | reported | 2026-06-06T14:02:05.417Z | — |
