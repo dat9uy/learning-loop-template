@@ -55,3 +55,31 @@ test("Phase 1: fix-loop-design-refs emits change-log entry", () => {
   const latest = changeLogs[changeLogs.length - 1];
   assert.ok(latest.reason.includes("loop-design"), "Change-log reason should mention loop-design");
 });
+
+test("Phase 1: fix-loop-design-refs change-log is CAS-consistent (C2)", () => {
+  // C2 regression guard: the change-log's `removed` list must match the
+  // refs that were ACTUALLY stripped from the registry. A CAS-blind
+  // script could claim a strip succeeded when the update was overwritten
+  // by a concurrent writer; this assertion catches that drift.
+  const entries = readRegistry(root);
+  const changeLogs = entries.filter(
+    (e) => e.entry_kind === "change-log" && e.change_target?.includes("loop-design.proposed_design_for")
+  );
+  if (changeLogs.length === 0) return; // no fix was run; nothing to verify
+  const latest = changeLogs[changeLogs.length - 1];
+  const removed = latest.change_diff?.removed ?? [];
+
+  // For each claimed-stripped ref, verify it does NOT currently appear
+  // in any loop-design entry's proposed_design_for. If a CAS mismatch
+  // occurred, the ref would still be in the registry and this would fail.
+  for (const ref of removed) {
+    const stillPresent = entries.some(
+      (e) => e.entry_kind === "loop-design" && (e.proposed_design_for ?? []).includes(ref)
+    );
+    assert.strictEqual(
+      stillPresent,
+      false,
+      `C2 regression: change-log claims ${ref} was stripped, but it's still in the registry (CAS may have failed silently)`
+    );
+  }
+});
