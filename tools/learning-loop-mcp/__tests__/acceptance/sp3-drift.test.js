@@ -55,11 +55,19 @@ describe("SP3 query_drift acceptance", () => {
     }
   });
 
-  // AT-2: Acceptance — real stable finding → no drift
-  test("AT-2: acceptance — stable SP1 finding on real codebase → no drift event", async () => {
+  // AT-2: Acceptance — real change-log with evidence_code_ref → drift
+  // Post-migration: change-logs carry top-level evidence_code_ref and are
+  // evaluated normally. The SP0 self-log change-log points to its own file
+  // (evidence_code_ref = "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js")
+  // but has no evidence_test. In the test's temp dir, the referenced file
+  // is not copied, so SP1 returns kind: "code-missing" → derived_status:
+  // "active-no-signal" → case 6 (code-missing) → drift with recommendation
+  // "investigate". This locks in the post-migration behavior: change-logs
+  // with evidence_code_ref are no longer silently skipped.
+  test("AT-2: acceptance — change-log with evidence_code_ref → drift (code-missing case)", async () => {
     const root = resolveRoot();
     const entries = readRegistry(root);
-    // Find the SP1 self-log change-log entry (kind: no-signals → fast path skip → no drift)
+    // Find the SP0 self-log change-log entry.
     const realEntry = entries.find((e) =>
       e.entry_kind === "change-log" &&
       e.change_target === "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js"
@@ -71,7 +79,13 @@ describe("SP3 query_drift acceptance", () => {
     try {
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(realEntry) + "\n", "utf8");
       const result = await metaStateQueryDriftTool.handler({});
-      assert.strictEqual(result.drift_count, 0);
+      // Change-log is now evaluated. Referenced file is not present in tempDir
+      // → kind: code-missing → active-no-signal → drift (case 6) → investigate.
+      assert.strictEqual(result.drift_count, 1);
+      const ev = result.drift_events[0];
+      assert.strictEqual(ev.id, realEntry.id);
+      assert.strictEqual(ev.derived_status, "active-no-signal");
+      assert.strictEqual(ev.recommendation, "investigate");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
       if (originalEnv === undefined) delete process.env.GATE_ROOT;

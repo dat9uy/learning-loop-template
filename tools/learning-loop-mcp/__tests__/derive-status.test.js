@@ -240,7 +240,10 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(deriveStatus(entry2, ctx2).drift, false);
   });
 
-  test("returns kind: no-signals (fast-path) and drift: false for change-log entries", () => {
+  test("change-log with no evidence_code_ref returns kind: no-signals (post-migration, no entry-kind fast path)", () => {
+    // Post-migration: change-logs flow through the same evaluation as findings.
+    // A change-log without evidence_code_ref or evidence_test naturally resolves
+    // to kind: "no-signals" (same as a finding without those fields).
     const ctx = baseContext();
     const entry = baseEntry({ entry_kind: "change-log" });
     const result = deriveStatus(entry, ctx);

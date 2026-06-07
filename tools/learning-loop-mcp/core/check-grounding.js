@@ -14,9 +14,11 @@ import { join, isAbsolute } from "node:path";
  * same concept; the names diverge by design (different tool, different shape).
  * See plans/260602-sp1-derive-status/plan.md for the SP1 sibling.
  *
- * Change-log fast path: when `entry.entry_kind === "change-log"`, returns
- * `status: "skipped"` and `grounding: { checked_at, duration_ms }` only.
- * Applied BEFORE the `mechanism_check` check (per I-8 in the plan).
+ * All entry kinds flow through the same evaluation path. The previous
+ * change-log fast path (returning `status: "skipped"` for any change-log)
+ * was removed when the dual-field migration established top-level
+ * `evidence_code_ref` on change-log entries — change-logs now carry
+ * evidence and must be grounded normally so SP3 drift detection covers them.
  *
  * Strict equality: `mechanism_check === true` is the opt-in condition.
  * Any other value (false, "true", 1, null, undefined) yields `skipped`.
@@ -82,21 +84,6 @@ export function checkGrounding(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
   const t0 = now();
-
-  // Change-log fast path (per I-8) — applied BEFORE mechanism_check check
-  if (entry.entry_kind === "change-log") {
-    return {
-      id: entry.id,
-      raw_status: entry.status ?? "active",
-      grounding: {
-        checked_at: new Date(t0).toISOString(),
-        duration_ms: now() - t0,
-      },
-      status: "skipped",
-      drift_kind: null,
-      fingerprint_was_recorded: false,
-    };
-  }
 
   // Strict equality opt-in (per I-2)
   if (entry.mechanism_check !== true) {

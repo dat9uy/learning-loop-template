@@ -96,7 +96,7 @@ describe("meta_state_derive_status tool", () => {
     }
   });
 
-  test("returns kind: no-signals fast path for change-log entries", async () => {
+  test("change-log with no evidence_code_ref returns kind: no-signals (post-migration, no entry-kind fast path)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "derive-status-changelog-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -104,7 +104,7 @@ describe("meta_state_derive_status tool", () => {
         change_dimension: "surface",
         change_target: "test/tool.js",
         change_diff: { added: ["x"], removed: [], changed: [] },
-        reason: "Test change-log entry for derive status fast path.",
+        reason: "Test change-log entry for derive status (no evidence_code_ref → no-signals).",
       });
 
       const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
@@ -304,7 +304,7 @@ describe("meta_state_derive_status tool", () => {
     }
   });
 
-  test("writes a gate-log line on the change-log fast path", async () => {
+  test("writes a gate-log line for a change-log entry (post-migration, no entry-kind fast path)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "derive-status-changelog-gatelog-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -312,7 +312,7 @@ describe("meta_state_derive_status tool", () => {
         change_dimension: "surface",
         change_target: "test/fast.js",
         change_diff: { added: ["x"], removed: [], changed: [] },
-        reason: "Test change-log entry for gate log on fast path.",
+        reason: "Test change-log entry for gate log (no evidence_code_ref → no-signals).",
       });
 
       const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");

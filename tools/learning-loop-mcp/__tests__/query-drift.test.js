@@ -316,8 +316,11 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_count, 50);
   });
 
-  // T-20: Change-log fast path
-  test("T-20: change-log entries are skipped via kind: no-signals fast path", () => {
+  // T-20: Change-log with no evidence_code_ref → no-signals → no drift
+  // Post-migration: change-logs flow through the same evaluation as findings.
+  // A change-log without evidence_code_ref or evidence_test naturally resolves
+  // to kind: "no-signals" → queryDrift skips (no drift event).
+  test("T-20: change-log with no evidence_code_ref yields no-signals kind → no drift", () => {
     const ctx = baseContext();
     const entry = baseEntry({ entry_kind: "change-log" });
     const result = queryDrift([entry], ctx);
@@ -373,6 +376,72 @@ describe("queryDrift pure function", () => {
     // Actually code_fingerprint won't match the actual file hash → SP2 returns drifted
     // So this should be case 2 (resolved + drifted) → resolve
     const result = queryDrift([entry], ctx);
+    assert.strictEqual(result.drift_count, 1);
+    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+  });
+
+  // T-25: Post-migration contract — finding entries with top-level evidence_code_ref
+  // get SP2 grounding called (locks in that the 30 previously-skipped entries
+  // are now covered by the SP1+SP2 join, not just SP1).
+  test("T-25: post-migration top-level evidence_code_ref on finding triggers full SP1+SP2 join (no nested form)", async () => {
+    const ctx = baseContext({ run_grounding: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const { computeFileHash } = await import("../core/check-grounding.js");
+    const actualHash = computeFileHash(join(ctx.root, "src.js"));
+    const entry = baseEntry({
+      // Post-migration shape: top-level field ONLY, no nested `evidence: { code_ref }` block.
+      // This is the contract the migration established.
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      mechanism_check: true,
+      code_fingerprint: actualHash,
+    });
+    const result = queryDrift([entry], ctx);
+    assert.strictEqual(result.drift_count, 1);
+    // SP1 says resolved-by-mechanism + SP2 says grounded (matching hash) → case 1 → resolve
+    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+  });
+
+  // T-26: Post-migration — change-log entries with top-level evidence_code_ref
+  // are evaluated, not skipped by the entry_kind: "change-log" fast path.
+  // Locks in that the change-log fast path in deriveStatus (and any checkGrounding
+  // fast path) is no longer correct post-migration: change-logs now carry
+  // evidence_code_ref and must flow through the normal evaluation.
+  test("T-26: change-log with evidence_code_ref is evaluated, not skipped by kind fast-path", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      entry_kind: "change-log",
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+    });
+    const result = queryDrift([entry], ctx);
+    // Post-migration: change-log is no longer special-cased.
+    // With code+test present, SP1 returns mechanism-shipped. An active entry whose
+    // mechanism is shipped is drift (recommendation: resolve).
+    assert.strictEqual(result.drift_count, 1);
+    assert.strictEqual(result.drift_events[0].derived_status, "resolved-by-mechanism");
+    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+  });
+
+  // T-27: Rule entries (entry_kind: "rule") with top-level evidence_code_ref
+  // get SP2 grounding called. There is no rule fast path in deriveStatus or
+  // checkGrounding; this test guards against accidentally adding one.
+  test("T-27: rule entry with evidence_code_ref gets SP2 grounding (no rule fast-path)", () => {
+    const ctx = baseContext({ run_grounding: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      entry_kind: "rule",
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      mechanism_check: true,
+      // No code_fingerprint — SP2 should return "unknown" (not "drifted")
+    });
+    const result = queryDrift([entry], ctx);
+    // SP1 says mechanism-shipped + SP2 says unknown → case 1 → resolve
     assert.strictEqual(result.drift_count, 1);
     assert.strictEqual(result.drift_events[0].recommendation, "resolve");
   });

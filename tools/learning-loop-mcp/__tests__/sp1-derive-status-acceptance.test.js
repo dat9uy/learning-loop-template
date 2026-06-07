@@ -59,7 +59,7 @@ describe("SP1 derive_status acceptance", () => {
     }
   });
 
-  test("acceptance: meta_state_derive_status on the SP0 self-log change-log entry returns the fast-path response", async () => {
+  test("acceptance: meta_state_derive_status on the SP0 self-log change-log entry evaluates normally post-migration", async () => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const realEntry = entries.find((e) =>
@@ -76,10 +76,12 @@ describe("SP1 derive_status acceptance", () => {
       const result = await metaStateDeriveStatusTool.handler({ id: realEntry.id });
       const parsed = JSON.parse(result.content[0].text);
 
-      assert.strictEqual(parsed.derivation.kind, "no-signals");
+      // Post-migration: change-log has top-level evidence_code_ref → evaluated normally.
+      // Referenced file is not present in tempDir → kind: code-missing → investigate.
+      assert.strictEqual(parsed.derivation.kind, "code-missing");
       assert.strictEqual(parsed.derived_status, "active-no-signal");
       assert.strictEqual(parsed.drift, false);
-      assert.strictEqual(parsed.recommendation, "no_action");
+      assert.strictEqual(parsed.recommendation, "investigate");
     } finally {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;

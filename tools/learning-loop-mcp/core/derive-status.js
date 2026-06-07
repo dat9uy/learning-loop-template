@@ -32,9 +32,11 @@ const TERMINAL_RAW_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
  * `evidence` is reserved for `records/meta/evidence/` artifacts in the
  * parent doc (per the locked design, brainstorm-260602-sp1-derive-status.md).
  *
- * Change-log fast path: when `entry.entry_kind === "change-log"`, returns
- * `kind: "no-signals"` and `derived_status: "active-no-signal"` (reuses the
- * locked enums; semantically accurate — change-logs have no `evidence_code_ref`).
+ * All entry kinds flow through the same evaluation path. The previous
+ * change-log fast path (returning `kind: "no-signals"` for any change-log)
+ * was removed when the dual-field migration established top-level
+ * `evidence_code_ref` on change-log entries — change-logs now carry
+ * evidence and must be evaluated normally so SP3 drift detection covers them.
  *
  * Path safety: the function does not validate path safety — callers should
  * sanitize paths. Relative paths are joined with `codeContext.root` using
@@ -44,23 +46,6 @@ export function deriveStatus(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
   const t0 = now();
-
-  // Change-log fast path (per C-3 mitigation)
-  if (entry.entry_kind === "change-log") {
-    return {
-      id: entry.id,
-      raw_status: entry.status ?? "active",
-      derived_status: "active-no-signal",
-      derivation: {
-        kind: "no-signals",
-        signals: {},
-        checked_at: new Date(t0).toISOString(),
-        duration_ms: now() - t0,
-      },
-      drift: false,
-      recommendation: "no_action",
-    };
-  }
 
   // Signal extraction: top-level evidence fields only (nested form removed by migration)
   const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
