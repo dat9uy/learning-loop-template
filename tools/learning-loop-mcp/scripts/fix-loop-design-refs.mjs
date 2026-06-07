@@ -42,15 +42,29 @@ for (const entry of entries) {
   }
 
   if (stripped.length > 0) {
+    const expectedVersion = entry.version ?? 0;
+    const r = await updateEntry(root, entry.id, {
+      proposed_design_for: cleaned,
+      _expected_version: expectedVersion,
+    });
+    if (r === "version_mismatch") {
+      console.warn(
+        `CAS: version mismatch for ${entry.id} (expected ${expectedVersion}); skipping`
+      );
+      continue;
+    }
+    if (r !== true) {
+      console.warn(
+        `CAS: entry ${entry.id} update failed (r=${r}); skipping`
+      );
+      continue;
+    }
     changes++;
     fixLog.push({
       id: entry.id,
       stripped,
       kept: cleaned,
       before: entry.proposed_design_for,
-    });
-    await updateEntry(root, entry.id, {
-      proposed_design_for: cleaned,
     });
   }
 }

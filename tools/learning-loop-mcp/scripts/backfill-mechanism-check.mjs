@@ -50,14 +50,39 @@ for (const entry of resolvedFindings) {
     continue;
   }
 
-  const absPath = isAbsolute(codeRef) ? codeRef : join(root, codeRef);
+  // Strip #fragment suffix (e.g., "path/to/file.js#functionName") so the path
+  // resolves to a real file. evidence_code_ref and evidence.code_ref often
+  // include a function/method anchor; only the file part is a valid filesystem
+  // path. Without this, 2 of the 16 resolved findings would be incorrectly
+  // skipped (gate-logic.js#splitSegments, loop-surface-inject.cjs#spawnAndCall).
+  const codeRefPath = codeRef.split("#")[0];
+  if (!codeRefPath) {
+    skippedNoEvidence++;
+    continue;
+  }
+
+  const absPath = isAbsolute(codeRefPath) ? codeRefPath : join(root, codeRefPath);
   const fingerprint = computeFileHash(absPath);
 
   if (fingerprint) {
-    await updateEntry(root, entry.id, {
+    const expectedVersion = entry.version ?? 0;
+    const r = await updateEntry(root, entry.id, {
       mechanism_check: true,
       code_fingerprint: fingerprint,
+      _expected_version: expectedVersion,
     });
+    if (r === "version_mismatch") {
+      console.warn(
+        `CAS: version mismatch for ${entry.id} (expected ${expectedVersion}); skipping`
+      );
+      continue;
+    }
+    if (r !== true) {
+      console.warn(
+        `CAS: entry ${entry.id} update failed (r=${r}); skipping`
+      );
+      continue;
+    }
     backfilled++;
     backfillLog.push({
       id: entry.id,

@@ -5,28 +5,28 @@ import {
   filterEntries,
   updateEntry,
 } from "#mcp/core/meta-state.js";
+import { summarize } from "#mcp/core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
 
-/** Compact projection: only id, entry_kind, status, and ref fields. */
+/**
+ * Compact projection: same field whitelist as `summarize` in
+ * core/loop-introspect.js, minus `description_preview`.
+ *
+ * Why share with `summarize` (not maintain a parallel 8-field list):
+ * the gap-resolution work relies on both `meta_state_list({ compact: true })`
+ * and `loop_describe({ tier: 'cold', description_mode: 'summary' })` returning
+ * consistent shapes for the same entry id. The two callers (list API and
+ * cold-tier summary) have different token-cost targets — `toCompact` saves
+ * by stripping `description_preview` (200 chars × N entries); `summarize`
+ * keeps the preview for cold-tier relationship-scan context. Field set
+ * is identical otherwise.
+ */
 function toCompact(entry) {
-  const compact = {
-    id: entry.id,
-    entry_kind: entry.entry_kind,
-    status: entry.status,
-  };
-  if (entry.origin) compact.origin = entry.origin;
-  if (entry.addresses) compact.addresses = entry.addresses;
-  if (entry.consolidated_into) compact.consolidated_into = entry.consolidated_into;
-  if (entry.supersedes) compact.supersedes = entry.supersedes;
-  if (entry.promoted_to_rule) compact.promoted_to_rule = entry.promoted_to_rule;
-  if (entry.proposed_design_for) compact.proposed_design_for = entry.proposed_design_for;
-  if (entry.created_at) compact.created_at = entry.created_at;
-  if (entry.severity) compact.severity = entry.severity;
-  if (entry.affected_system) compact.affected_system = entry.affected_system;
-  return compact;
+  const { description_preview, ...rest } = summarize(entry);
+  return rest;
 }
 
 export const metaStateListTool = {
