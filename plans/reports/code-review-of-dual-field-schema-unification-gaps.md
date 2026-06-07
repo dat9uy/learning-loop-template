@@ -7,7 +7,7 @@ reviewer: claude
 verdict: "PASS with 3 GAPS — production-ready after closing missing tests"
 status:
   gap-1: resolved 2026-06-07T14:25 — see Resolution Log below
-  gap-2: open
+  gap-2: resolved 2026-06-07T15:10 — see Resolution Log below
   gap-3: open
 resolution_log:
   - date: 2026-06-07T14:25
@@ -194,4 +194,19 @@ None. The implementation is sound. The 3 gaps are clearly scoped, low-effort, an
 
 **Plan promise verification:** The plan's success criteria — *"drift detection now covers all 30 previously-skipped entries"* — is now actually delivered. Pre-fix, the 17 change-logs (subset of the 30) were still being skipped by the change-log fast paths despite carrying top-level `evidence_code_ref`. Post-fix, all 30 entries flow through normal evaluation. T-26 + AT-2 lock this in.
 
-**Outstanding:** Gap 2 (cold-tier regression buckets) and Gap 3 (operator-guide consult-gate section) remain open per `status:` frontmatter.
+### 2026-06-07T15:10 — Gap 2 closed
+
+**Action:** Added 2 structural count buckets to cold-tier regression test.
+
+**What changed:**
+
+| File | Change |
+|---|---|
+| `tools/learning-loop-mcp/tools/loop-describe-tool.js` | Added `findings_with_evidence_code_ref` and `change_logs_with_evidence_code_ref` arrays to cold-tier response (after `inverse_indexes`). Arrays contain `{ id }` only (not the full `evidence_code_ref` path) so the baseline stays stable across refactors that move files. |
+| `tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js` | Added `findings_with_evidence_code_ref: 0` and `change_logs_with_evidence_code_ref: 0` to `TOLERANCES` (structural — must never drift without baseline bump). |
+| `tools/learning-loop-mcp/__tests__/fixtures/cold-tier-pre-refactor.json` | Baseline updated: 9 active findings with `evidence_code_ref`, 17 change-logs with `evidence_code_ref`. |
+| `tools/learning-loop-mcp/__tests__/loop-describe-description-mode.test.js` | Bumped summary-mode size guard from 80KB to 90KB. Registry growth (new findings + the new coverage arrays) legitimately expanded the cold-tier payload; summary mode still achieves ~40% reduction vs full mode. |
+
+**Test results:** 837/837 pass. 0 regressions.
+
+**Outstanding:** Gap 3 (operator-guide consult-gate section) remains open per `status:` frontmatter.

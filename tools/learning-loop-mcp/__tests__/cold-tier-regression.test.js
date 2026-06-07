@@ -38,6 +38,8 @@ const TOLERANCES = {
   record_types: 0,
   gate_patterns: 0,
   discoverability_hints: 0,
+  findings_with_evidence_code_ref: 0,
+  change_logs_with_evidence_code_ref: 0,
 };
 
 function countDelta(name, current, expected) {

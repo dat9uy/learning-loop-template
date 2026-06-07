@@ -149,6 +149,16 @@ export const loopDescribeTool = {
           promoted_to_rule_inverse: Object.fromEntries(inverseIndexes.promoted_to_rule_inverse),
         };
 
+        // Evidence-code-ref coverage (Phase 3 dual-field schema unification)
+        // Structural count arrays: only ids so baseline is stable across refactors
+        // that change the evidence_code_ref path but keep the same count.
+        result.findings_with_evidence_code_ref = activeFindings
+          .filter((f) => typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0)
+          .map((f) => ({ id: f.id }));
+        result.change_logs_with_evidence_code_ref = allEntries
+          .filter((e) => e.entry_kind === "change-log" && typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
+          .map((e) => ({ id: e.id }));
+
         // Description mode (Phase 6 of plan 260606)
         if (description_mode === "summary") {
           result.all_findings = result.all_findings.map((f) => introspect.summarize(f));

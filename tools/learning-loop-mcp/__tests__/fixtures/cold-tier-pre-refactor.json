@@ -1477,5 +1477,87 @@
     "Findings have 5 statuses: `reported` (24h TTL), `active` (operator-acked), `resolved` (closed), `expired` (TTL elapsed), `superseded` (consolidated into a change-log).",
     "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`."
   ],
-  "degraded": false
+  "degraded": false,
+  "findings_with_evidence_code_ref": [
+    {
+      "id": "meta-260606T1500Z-closeout-script-idempotency-bug"
+    },
+    {
+      "id": "meta-260606T1656Z-cold-session-test-must-pass-before-resolution"
+    },
+    {
+      "id": "meta-260606T1830Z-context-pollution-stale-workaround-language-audit-trail-nois"
+    },
+    {
+      "id": "meta-260606T2102Z-agent-used-direct-file-i-o-node-e-scripts-importing-core-met"
+    },
+    {
+      "id": "meta-260606T2106Z-agent-called-meta-state-log-change-mcp-tool-5-times-in-succe"
+    },
+    {
+      "id": "meta-260606T2200Z-deferred-design-concrete-adoption-of-loop-design-instruction"
+    },
+    {
+      "id": "meta-260606T2202Z-top-level-array-and-boolean-parameters-in-mcp-tool-schemas-g"
+    },
+    {
+      "id": "meta-260607T0008Z-dual-field-schema-risk-evidence-code-ref-top-level-vs-eviden"
+    },
+    {
+      "id": "meta-260607T1048Z-stale-agents-md-language-biases-agents-toward-creating-decis"
+    }
+  ],
+  "change_logs_with_evidence_code_ref": [
+    {
+      "id": "meta-260602T1705Z-tools-learning-loop-mcp-tools-meta-state-log-change-tool-js"
+    },
+    {
+      "id": "meta-260603T1548Z-tools-learning-loop-mcp-tools-meta-state-derive-status-tool"
+    },
+    {
+      "id": "meta-260605T1210Z-tools-learning-loop-mcp-core-gate-logic-js-applypromotedrule"
+    },
+    {
+      "id": "meta-260606T0023Z-tools-learning-loop-mcp-core-gate-logic-js-applypromotedrule-7th-recurrence"
+    },
+    {
+      "id": "meta-260606T0028Z-g8-subcommand-class-false-positive-supersede"
+    },
+    {
+      "id": "meta-260606T0200Z-loop-surface-inject-spawnandcall-chicken-egg-fix"
+    },
+    {
+      "id": "meta-260606T0225Z-g8-subcommand-class-false-positive-fixed"
+    },
+    {
+      "id": "meta-260606T0310Z-splitsegments-quote-aware-fix"
+    },
+    {
+      "id": "meta-260606T1433Z-discoverability-meta-evidence-migration"
+    },
+    {
+      "id": "meta-260606T1656Z-cold-session-test-rule-mechanism-shipped"
+    },
+    {
+      "id": "meta-260606T1805Z-factory-mcp-json-tools-learning-loop-mcp-tests-cold-session"
+    },
+    {
+      "id": "meta-260606T1818Z-tools-learning-loop-mcp-core-gate-logic-js-applypromotedrule"
+    },
+    {
+      "id": "meta-260606T2023Z-rule-and-loop-design-entry-kinds"
+    },
+    {
+      "id": "meta-260606T2055Z-tools-learning-loop-mcp-core-meta-state-js-metastateentrysch"
+    },
+    {
+      "id": "meta-260606T2059Z-meta-state-jsonl"
+    },
+    {
+      "id": "meta-260606T2106Z-tools-learning-loop-mcp-tools-meta-state-log-change-tool-js"
+    },
+    {
+      "id": "meta-260607T1425Z-tools-learning-loop-mcp-core-derive-status-js-tools-learning"
+    }
+  ]
 }
