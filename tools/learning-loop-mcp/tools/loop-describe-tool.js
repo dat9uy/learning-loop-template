@@ -10,8 +10,10 @@ export const loopDescribeTool = {
       .describe("Read tier: hot=active rules only (~5KB), warm=active surface (default, 10-25KB), cold=full history (25-100KB), summary=counts only (<1KB)"),
     categories: z.array(z.string()).optional()
       .describe("Optional filter: only return entries matching these meta-state categories"),
+    description_mode: z.enum(["summary", "full"]).optional().default("full")
+      .describe("Cold tier only: 'summary' returns 200-char description preview; 'full' returns full descriptions. Default: 'full' (no breaking change)"),
   },
-  handler: async ({ tier = "warm", categories }) => {
+  handler: async ({ tier = "warm", categories, description_mode = "full" }) => {
     const root = resolveRoot();
     const result = { tier };
     const warnings = [];
@@ -69,6 +71,10 @@ export const loopDescribeTool = {
         result.rule_count = promotedRules.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
+
+        // Registry summary (Phase 7 of plan 260606)
+        const allEntries = introspect.readAllEntriesForLineage(root);
+        result.registry_summary = introspect.buildRegistrySummary(allEntries);
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
           name: t.name,
@@ -126,6 +132,26 @@ export const loopDescribeTool = {
         if (orphans.length > 0) {
           result.orphans = orphans;
         }
+
+        // Inverse indexes (Phase 3 of plan 260606)
+        const inverseIndexes = introspect.buildInverseIndexes(allEntries);
+        result.inverse_indexes = {
+          addresses_inverse: Object.fromEntries(inverseIndexes.addresses_inverse),
+          supersedes_inverse: Object.fromEntries(inverseIndexes.supersedes_inverse),
+          origin_inverse: Object.fromEntries(inverseIndexes.origin_inverse),
+          promoted_to_rule_inverse: Object.fromEntries(inverseIndexes.promoted_to_rule_inverse),
+        };
+
+        // Description mode (Phase 6 of plan 260606)
+        if (description_mode === "summary") {
+          result.all_findings = result.all_findings.map((f) => introspect.summarize(f));
+          result.active_findings = result.active_findings.map((f) => introspect.summarize(f));
+          result.anti_patterns = result.anti_patterns.map((f) => introspect.summarize(f));
+          result.loop_designs = result.loop_designs.map((d) => introspect.summarize(d));
+          result.rules = result.rules.map((r) => introspect.summarize(r));
+        }
+        result.description_mode = description_mode;
+
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
       }
 

@@ -10,6 +10,25 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
 
+/** Compact projection: only id, entry_kind, status, and ref fields. */
+function toCompact(entry) {
+  const compact = {
+    id: entry.id,
+    entry_kind: entry.entry_kind,
+    status: entry.status,
+  };
+  if (entry.origin) compact.origin = entry.origin;
+  if (entry.addresses) compact.addresses = entry.addresses;
+  if (entry.consolidated_into) compact.consolidated_into = entry.consolidated_into;
+  if (entry.supersedes) compact.supersedes = entry.supersedes;
+  if (entry.promoted_to_rule) compact.promoted_to_rule = entry.promoted_to_rule;
+  if (entry.proposed_design_for) compact.proposed_design_for = entry.proposed_design_for;
+  if (entry.created_at) compact.created_at = entry.created_at;
+  if (entry.severity) compact.severity = entry.severity;
+  if (entry.affected_system) compact.affected_system = entry.affected_system;
+  return compact;
+}
+
 export const metaStateListTool = {
   name: "meta_state_list",
   description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, expired, resolved). Runs auto-resolve and expiry checks before returning.",
@@ -22,8 +41,9 @@ export const metaStateListTool = {
       .describe("Filter by a single entry kind; default = both (legacy)"),
     entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
+    compact: z.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
   },
-  handler: async ({ category, status, affected_system, include_expired, entry_kind, entry_kinds }) => {
+  handler: async ({ category, status, affected_system, include_expired, entry_kind, entry_kinds, compact }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -73,12 +93,13 @@ export const metaStateListTool = {
     });
 
     const output = {
-      entries: result,
+      entries: compact ? result.map(toCompact) : result,
       count: result.length,
       filters_applied: activeFilters,
       include_expired: include_expired || false,
       entry_kind_filter: entry_kind || null,
       entry_kinds_filter: entry_kinds || null,
+      compact: compact || false,
     };
 
     return {
