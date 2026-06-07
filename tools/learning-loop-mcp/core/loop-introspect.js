@@ -395,7 +395,15 @@ export function summarize(entry) {
   if (entry.resolved_at) compact.resolved_at = entry.resolved_at;
   if (entry.version !== undefined) compact.version = entry.version;
 
-  // Description preview
+  // Description preview.
+  // m3: `summarize` ALWAYS sets `description_preview` (it is the contract of
+  // this pure function: any caller going through summarize gets the field,
+  // full or truncated). However, callers that bypass `summarize` (e.g. the
+  // cold-tier `description_mode: 'full'` branch in loop-describe-tool.js,
+  // which returns raw entries) will NOT have `description_preview` set.
+  // Downstream code that reads `description_preview` should fall back to
+  // `description` (e.g. `entry.description ?? entry.description_preview`),
+  // not the reverse, since the absent case is the raw-entry path.
   const desc = entry.description || "";
   if (desc.length > 200) {
     compact.description_preview = desc.slice(0, 200) + "...";

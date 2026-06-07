@@ -73,8 +73,13 @@ export const loopDescribeTool = {
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
         // Registry summary (Phase 7 of plan 260606)
+        const lineageStart = Date.now();
         const allEntries = introspect.readAllEntriesForLineage(root);
+        const lineageMs = Date.now() - lineageStart;
         result.registry_summary = introspect.buildRegistrySummary(allEntries);
+        // M5: surface readAllEntriesForLineage cost so operators can monitor
+        // warm-tier latency growth as the registry grows.
+        result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
           name: t.name,
@@ -102,7 +107,9 @@ export const loopDescribeTool = {
         // group all finding entries with status='superseded' and a consolidated_into
         // pointer by their canonical change-log entry. Orphans (consolidated_into
         // points to a non-existent change-log) are surfaced in a separate array.
+        const lineageStart = Date.now();
         const allEntries = introspect.readAllEntriesForLineage(root);
+        const lineageMs = Date.now() - lineageStart;
         const changeLogMap = new Map(
           allEntries
             .filter((e) => e.entry_kind === "change-log")
@@ -153,6 +160,8 @@ export const loopDescribeTool = {
         result.description_mode = description_mode;
 
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
+        // M5: surface readAllEntriesForLineage cost for cold tier too.
+        result.timing = { readAllEntriesForLineage_ms: lineageMs };
       }
 
       result.degraded = degraded || warnings.length > 0;

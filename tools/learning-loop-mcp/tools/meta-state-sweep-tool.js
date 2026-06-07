@@ -106,6 +106,6 @@ export const metaStateSweepTool = {
       return { content: [{ type: "text", text: JSON.stringify({ swept: true, results }) }] };
     }
 
-    return { content: [{ type: "text", text: JSON.stringify({ swept: false, dry_run: true, transitions }) }] };
+    return { content: [{ type: "text", text: JSON.stringify({ swept: false, dry_run: true, transitions, summary_preview: buildRegistrySummary(entries) }) }] };
   },
 };

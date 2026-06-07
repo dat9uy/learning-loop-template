@@ -13,9 +13,9 @@
 | Severity | Count | Headline |
 |----------|-------|----------|
 | Critical | 0 | All 3 critical defects resolved (C1, C2, C3 — see RESOLVED sections) |
-| Important | 1 | gate docstring gap (I1 field drift RESOLVED; I3 fixture brittleness RESOLVED via C1) |
-| Medium | 4 | tracked artifact merge-conflict path, capture script no-confirm, no dry-run preview, warm-tier cost (M1 coverage ceiling REVISED — see below) |
-| Minor/Nit | 3 | 200-char boundary test, change-log id collision risk, `description_preview` field-name clarity |
+| Important | 0 | I1, I3 resolved previously; I2 resolved in this pass (docstring on `meta_state_relationships`) |
+| Medium | 0 | M1, M2 resolved previously; M3, M4, M5 resolved in this pass |
+| Minor/Nit | 0 | All 3 minor items (m1, m2, m3) resolved in this pass |
 | Spec compliance | 0 | Phase 5 coverage locked at 14/16 (87.5%) — realistic ceiling, not 15/16 plan target; see M1 REVISED |
 
 **Pre-existing (not from this commit):** 1 test failure (`gate-integration.test.cjs`, 3 persistent) — correctly recorded as `meta-260607T0715Z-...` in this commit. Not blocking.
@@ -113,12 +113,15 @@
 - `node --test tools/learning-loop-mcp/__tests__/meta-state-list-compact.test.js` → 5 pass
 - `pnpm test` → 809/810 pass (the 1 fail is the pre-existing P1)
 
-### I2. `meta_state_relationships` has no docstring explaining its gate posture
+### I2. ~~`meta_state_relationships` has no docstring explaining its gate posture~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/tools/meta-state-relationships-tool.js:7-9`
 **Defect:** New tool reads the full registry and exposes cross-reference topology. Other registry-mutating tools (`meta_state_sweep`, `meta_state_resolve`) gate on `OPERATOR_MODE`. Read-only tools (`meta_state_list`) don't. The plan's lock-in 4(d) says "Reuse `checkResolutionEvidence` consult pattern" with operator ack noted as "out of scope" follow-up.
 **Defect:** No docstring marker explaining why a read-only tool doesn't need the inbound gate. A casual reader would assume it inherits gate protection by virtue of being a new tool.
-**Fix:** Add `// Read-only, no operator gate required` to the tool's `description` field with a one-line rationale.
+**Resolution (applied 2026-06-07, post-review):** Added a docblock above the export explaining why the tool needs no operator gate (read-only; `appendGateLog` is the only side effect, and is an audit trail, not a registry mutation). Also added "Read-only, no operator gate required." to the `description` field for tool-card visibility.
+
+**What changed:**
+- `tools/learning-loop-mcp/tools/meta-state-relationships-tool.js`: 5-line docblock + 1 phrase added to the description.
 
 ### I3. ~~Fixture brittleness: cold-tier-regression will fail on any new tool or finding~~ — RESOLVED via C1 fix
 
@@ -171,45 +174,79 @@
 - `node --test tools/learning-loop-mcp/__tests__/meta-state-sweep-summary.test.js` → 3 pass (tests assert `existsSync`; untracking does not affect generation)
 - `pnpm test` → 809/810 pass (the 1 fail is the pre-existing P1 `gate-integration` failure, not a regression)
 
-### M3. `capture-cold-tier.mjs` writes a 127KB fixture without a confirmation prompt
+### M3. ~~`capture-cold-tier.mjs` writes a 127KB fixture without a confirmation prompt~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/scripts/capture-cold-tier.mjs:7-22`
 **Defect:** Writes a 118KB JSON file with no `--force` flag, no confirmation prompt, no `git diff` summary. If run accidentally against a "post-refactor" cold tier, it overwrites the baseline.
-**Fix:** Require an explicit `--confirm-overwrite` flag. Or assert that no `inverse_indexes` field exists in the output before writing (would prevent post-refactor overwrites).
+**Resolution (applied 2026-06-07, post-review):** Both fixes from the original recommendation were applied for defense in depth:
+1. **Explicit `--confirm-overwrite` flag**: the script exits with code 2 if the fixture already exists and the flag is not set.
+2. **Structural guard**: the script also exits with code 3 if the cold-tier output already contains an `inverse_indexes` field (which the pre-refactor fixture is expected NOT to have). This prevents accidental capture of a "post-refactor" cold tier as a "pre-refactor" baseline.
 
-### M4. `meta_state_sweep` dry-run does not include the summary preview
+**What changed:**
+- `tools/learning-loop-mcp/scripts/capture-cold-tier.mjs`: added arg parsing, `existsSync` check, and structural guard.
+
+**Verification:**
+- `node tools/learning-loop-mcp/scripts/capture-cold-tier.mjs` (without flag, against existing fixture) → exit 2 with "Refusing to overwrite" message.
+
+### M4. ~~`meta_state_sweep` dry-run does not include the summary preview~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/tools/meta-state-sweep-tool.js:108-109`
 **Defect:** The dry-run path returns `{ swept: false, dry_run: true, transitions }` with no summary preview. An operator doing a dry-run to preview gets no visibility into the artifact.
-**Fix:** Include a `summary_preview` field (computed but not written to disk) in the dry-run response. Minor UX concern.
+**Resolution (applied 2026-06-07, post-review):** Added a `summary_preview` field to the dry-run response by reusing the existing `buildRegistrySummary` function. The dry-run now shows what the post-sweep `docs/registry-summary.md` would look like without writing to disk.
 
-### M5. Warm-tier `readAllEntriesForLineage` cost is untracked
+**What changed:**
+- `tools/learning-loop-mcp/tools/meta-state-sweep-tool.js`: dry-run branch now returns `{ swept: false, dry_run: true, transitions, summary_preview: buildRegistrySummary(entries) }`.
+
+**Verification:**
+- `metaStateSweepTool.handler({ apply: false })` → response has `summary_preview` with all 5 expected keys (`counts`, `coverage`, `top_references`, `drift`, `last_generated_at`).
+- Sweep tests still pass (3/3).
+
+### M5. ~~Warm-tier `readAllEntriesForLineage` cost is untracked~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/tools/loop-describe-tool.js:76-77`
 **Defect:** Warm tier now ALWAYS calls `readAllEntriesForLineage` to build `registry_summary`. Plan lock-in 9(b) says "warm tier computes inline, not read from disk" — satisfied. But the cost is duplicated compute (warm tier + sweep both compute).
-**Fix:** Add a `timing` field to the result with `readAllEntriesForLineage` duration. Not blocking.
+**Resolution (applied 2026-06-07, post-review):** Wrapped the `readAllEntriesForLineage(root)` call in `Date.now()` measurement on both the warm tier and cold tier paths. The result includes a `timing.readAllEntriesForLineage_ms` field so operators can monitor cost growth as the registry scales.
+
+**What changed:**
+- `tools/learning-loop-mcp/tools/loop-describe-tool.js`: warm tier (line ~62) and cold tier (line ~85) each wrap the `readAllEntriesForLineage` call in a `Date.now()` measurement and surface `result.timing.readAllEntriesForLineage_ms`.
+
+**Verification:**
+- `loopDescribeTool.handler({ tier: 'warm' })` → `timing.readAllEntriesForLineage_ms` is a number.
+- `loopDescribeTool.handler({ tier: 'cold' })` → same field present.
 
 ---
 
 ## Minor / Nit
 
-### m1. Boundary test missing for `description_preview` 200-char limit
+### m1. ~~Boundary test missing for `description_preview` 200-char limit~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/__tests__/loop-describe-description-mode.test.js`
 **Defect:** Test asserts `<= 203` but the boundary cases (exactly 200, exactly 201) are not pinned. Future regression risk if the slice logic changes.
-**Fix:** Add tests for `description.length === 200` (returns 200, no ellipsis) and `description.length === 201` (returns 203 with ellipsis).
+**Resolution (applied 2026-06-07, post-review):** Added two boundary tests calling `summarize()` directly with controlled inputs (avoiding dependence on live registry data length).
+- `description.length === 200` → returns 200 chars, no ellipsis (exact-equal to source).
+- `description.length === 201` → returns 200 chars + `"..."` = 203 total.
 
-### m2. Change-log id collision risk on rapid re-runs of fix script
+**Verification:**
+- `node --test tools/learning-loop-mcp/__tests__/loop-describe-description-mode.test.js` → 5 pass (was 3, +2 new m1 tests).
+- `pnpm test` → 811/812 pass (1 fail is the pre-existing P1 `gate-integration` failure, not a regression).
+
+### m2. ~~Change-log id collision risk on rapid re-runs of fix script~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/scripts/fix-loop-design-refs.mjs:60-62`
 **Defect:** `id` uses `slice(0, 12)` of timestamp = `YYYYMMDDHHMM` (12 chars). Two runs in the same minute produce identical ids. The script is idempotent on the data fix (gated on `changes > 0`), so the collision is harmless in practice. But the comment claims "re-run produces no changes" which would be wrong if a future change to the script made the data fix rerun within a minute.
-**Fix:** Include seconds in the id (`slice(0, 14)`) or include a random suffix. Defensive only.
+**Resolution (applied 2026-06-07, post-review):** Changed `slice(0, 12)` to `slice(0, 14)` (includes seconds, so id format is now `YYYYMMDDHHMMSS`). The script remains data-idempotent (gated on `changes > 0`), but rapid re-runs can no longer race on id collision.
 
-### m3. `description_preview` field is only set in summary mode
+**What changed:**
+- `tools/learning-loop-mcp/scripts/fix-loop-design-refs.mjs:60`: `id` slice widened to 14 chars with an inline comment explaining the m2 rationale.
+
+### m3. ~~`description_preview` field is only set in summary mode~~ — RESOLVED
 
 **File:** `tools/learning-loop-mcp/core/loop-introspect.js:398-404`
 **Defect:** In full mode, callers reading `entry.description_preview` will get `undefined`. A downstream caller doing `entry.description || entry.description_preview` will see the full description, but a caller doing `entry.description_preview` first will get undefined.
-**Fix:** Add a comment in `summarize` explaining "description_preview is only set when description_mode='summary' is requested."
+**Resolution (applied 2026-06-07, post-review):** Added a 6-line docblock in `summarize` explaining the contract: `summarize` always sets `description_preview`, but callers that bypass `summarize` (cold-tier `description_mode: 'full'`) won't have the field. The comment tells future readers to fall back via `entry.description ?? entry.description_preview`, not the reverse.
+
+**What changed:**
+- `tools/learning-loop-mcp/core/loop-introspect.js`: 6-line docblock above the `description_preview` block in `summarize()`.
 
 ---
 

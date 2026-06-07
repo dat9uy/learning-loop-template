@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { loopDescribeTool } from "#mcp/tools/loop-describe-tool.js";
+import { summarize } from "#mcp/core/loop-introspect.js";
 
 const TIER = "cold";
 
@@ -63,4 +64,26 @@ test("Phase 6: summary mode reduces cold-tier size", async () => {
     summaryBytes < 80000,
     `Summary mode should be <80KB (target 64KB), got ${summaryBytes}`
   );
+});
+
+// m1: boundary cases for the 200-char description preview slice.
+// These pin the behavior at the exact threshold so a future regression
+// in the slice logic (e.g. off-by-one, accidental +1 to the cutoff)
+// is caught immediately.
+test("m1: summarize description length === 200 returns full text with no ellipsis", () => {
+  const desc = "a".repeat(200);
+  const entry = { id: "test-200", entry_kind: "finding", status: "active", description: desc };
+  const result = summarize(entry);
+  assert.strictEqual(result.description_preview.length, 200, "Should return full 200 chars, no slice");
+  assert.ok(!result.description_preview.endsWith("..."), "Boundary case (200) should NOT add ellipsis");
+  assert.strictEqual(result.description_preview, desc, "Should be byte-identical to source");
+});
+
+test("m1: summarize description length === 201 returns 200 chars + '...' (203 total)", () => {
+  const desc = "a".repeat(201);
+  const entry = { id: "test-201", entry_kind: "finding", status: "active", description: desc };
+  const result = summarize(entry);
+  assert.strictEqual(result.description_preview.length, 203, "Should return 200 chars + '...' (3 chars)");
+  assert.ok(result.description_preview.endsWith("..."), "Off-by-one case (201) SHOULD add ellipsis");
+  assert.strictEqual(result.description_preview, "a".repeat(200) + "...", "Should be exactly 200 a's plus '...'");
 });

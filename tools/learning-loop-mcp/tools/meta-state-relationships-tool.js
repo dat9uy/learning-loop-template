@@ -4,9 +4,17 @@ import { buildInverseIndexes } from "#mcp/core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
+/**
+ * Read-only tool: queries the relationship graph without mutating the registry.
+ * Unlike registry-mutating tools (`meta_state_sweep`, `meta_state_resolve`,
+ * `meta_state_promote_rule`) which gate on `OPERATOR_MODE`, this tool exposes
+ * only the topology of already-existing refs (inbound + outbound). No state
+ * is changed by a read; an `appendGateLog` call is the only side effect
+ * (an audit trail, not a registry mutation), so no operator gate is required.
+ */
 export const metaStateRelationshipsTool = {
   name: "meta_state_relationships",
-  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only).",
+  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). Read-only, no operator gate required.",
   schema: {
     id: z.string().min(1).describe("Entry id to query relationships for"),
     direction: z.enum(["inbound", "outbound", "both"]).optional().default("both")

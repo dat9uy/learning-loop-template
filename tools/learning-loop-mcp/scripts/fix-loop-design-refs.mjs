@@ -72,7 +72,10 @@ for (const entry of entries) {
 if (changes > 0) {
   const now = new Date().toISOString();
   const changeLogEntry = {
-    id: `meta-${now.replace(/[-:T.Z]/g, "").slice(0, 12)}Z-fix-loop-design-refs`,
+    // m2: include seconds (slice 14 instead of 12) so two runs in the same
+    // minute produce distinct ids. The script is data-idempotent (gated on
+    // changes > 0), but rapid re-runs could still race on id collision.
+    id: `meta-${now.replace(/[-:T.Z]/g, "").slice(0, 14)}Z-fix-loop-design-refs`,
     entry_kind: "change-log",
     change_dimension: "mechanical",
     change_target: "meta-state.jsonl#loop-design.proposed_design_for",
