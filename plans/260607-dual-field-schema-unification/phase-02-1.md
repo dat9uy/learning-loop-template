@@ -18,7 +18,7 @@ Write the first test that captures the current (broken) state. **RED:** 30 entri
 - **Functional:** 3 tests in `__tests__/meta-state-evidence-coverage.test.js`:
   1. `T-1`: 0 entries carry nested `evidence.code_ref` (currently fails: 30)
   2. `T-2`: all active findings with `mechanism_check === true` have either `evidence_code_ref` or `evidence.code_ref` set
-  3. `T-3`: 4 of 4 union branches expose `evidence_code_ref` as a top-level field (currently fails: 2 of 4 — change-log and rule have it; loop-design doesn't have evidence; the failing one is change-log uses nested)
+  3. `T-3`: 3 of 4 union branches expose `evidence_code_ref` as a top-level field (finding, change-log, rule; loop-design exempt — loop-designs don't have evidence). Currently fails: 1 of 3 — change-log uses nested.
 - **Non-functional:** test is read-only (no registry mutation). Uses `mkdtempSync` + a fixture with 4 representative entries (one per kind). Also a real-registry test that reads the project's `meta-state.jsonl`.
 
 ## Architecture
@@ -31,10 +31,10 @@ Pure test scaffolding. No production code changes. The "red" state is captured i
 
 ## Implementation Steps
 
-1. **Test fixture (4 entries, one per kind).** Create a function `buildFixtureRegistry()` that returns a fresh `mkdtempSync` directory with 4 entries: 1 finding (with `evidence_code_ref` top-level + `evidence.code_ref` nested — backward-compat shim), 1 change-log (with only `evidence.code_ref` nested), 1 rule (with `evidence_code_ref` top-level), 1 loop-design (no `evidence` field).
+1. **Test fixture (4 entries, one per kind).** Create a function `buildFixtureRegistry()` that returns a fresh `mkdtempSync` directory with 4 entries: 1 finding (with `evidence_code_ref` top-level only), 1 change-log (with only `evidence.code_ref` nested), 1 rule (with `evidence_code_ref` top-level), 1 loop-design (no `evidence` field).
 2. **T-1: 0 nested `evidence.code_ref`.** Read fixture, count entries with `e.evidence?.code_ref`, assert === 0. Currently: 2 (finding + change-log).
 3. **T-2: all active findings with mechanism_check have a code_ref.** Read project's `meta-state.jsonl` via `readRegistry(root)`, filter `entry_kind: "finding" && status in {active, reported} && mechanism_check === true`, assert every entry has `e.evidence_code_ref || e.evidence?.code_ref`. Currently passes (no false negatives).
-4. **T-3: 4 of 4 union branches expose `evidence_code_ref` top-level.** Inspect the 4 zod schemas: `metaStateFindingEntrySchema`, `metaStateChangeEntrySchema`, `metaStateRuleEntrySchema`, `metaStateLoopDesignSchema`. For each, parse a stub entry that includes `evidence_code_ref: "x.js"`; assert the schema accepts it. Currently: 2 of 4 (finding + rule; change-log rejects because its schema doesn't have the field; loop-design accepts but doesn't define it).
+4. **T-3: 3 of 4 union branches expose `evidence_code_ref` top-level.** Inspect the 3 zod schemas that should have the field: `metaStateFindingEntrySchema`, `metaStateChangeEntrySchema`, `metaStateRuleEntrySchema`. For each, parse a stub entry that includes `evidence_code_ref: "x.js"`; assert the schema accepts it. For `metaStateLoopDesignSchema`, assert it does NOT require `evidence_code_ref` (the field is absent by design). Currently: 1 of 3 fails (change-log rejects because its schema doesn't have the field).
 5. **Run tests.** Expect T-1 and T-3 to fail (RED); T-2 to pass (it's a safety net).
 
 ## Success Criteria
@@ -42,7 +42,7 @@ Pure test scaffolding. No production code changes. The "red" state is captured i
 - [ ] `node --test tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js` runs
 - [ ] T-1 fails (30 nested entries)
 - [ ] T-2 passes (no orphan findings)
-- [ ] T-3 fails (2 of 4 union branches lack top-level `evidence_code_ref`)
+- [ ] T-3 fails (change-log schema lacks top-level `evidence_code_ref`)
 
 ## Risk Assessment
 

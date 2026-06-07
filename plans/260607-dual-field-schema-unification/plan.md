@@ -35,7 +35,7 @@ related_findings:
 
 ## TL;DR
 
-Two equivalent fields in the meta-state registry (`evidence_code_ref` top-level vs `evidence.code_ref` nested) cause `core/query-drift.js:37` to silently skip 30 entries from SP2 grounding. 4 writers, 2 shapes, no canonical source. 5 of 6 consumers use a legacy fallback chain; the 6th (`queryDrift`) doesn't.
+Two equivalent fields in the meta-state registry (`evidence_code_ref` top-level vs `evidence.code_ref` nested) cause `core/query-drift.js:37` to silently skip 30 entries from SP2 grounding. 4 writers, 2 shapes, no canonical source. 4 of 5 consumers use a legacy fallback chain; the 5th (`queryDrift`) doesn't. `summarize()` in `loop-introspect.js` omits the field entirely.
 
 **Fix:** make top-level canonical, migrate 30 entries in-place, validate at `writeEntry` + `updateEntry`, add a new consult-gate rule `rule-no-orphaned-evidence`. 7 TDD phases. ~5KB code deletion, ~3KB new code, 30 registry entries flattened. Zero new schema types, zero new MCP tools (rule-no-new-artifact-types is active).
 
@@ -60,7 +60,7 @@ Two equivalent fields in the meta-state registry (`evidence_code_ref` top-level 
                   meta_state_propose_design, meta_state_promote_rule
 ```
 
-5 consumers (query-drift, derive-status, check-grounding, refresh-fingerprint, backfill-mechanism-check) read top-level only. Legacy fallback `entry.evidence_code_ref ?? entry.evidence?.code_ref` removed.
+5 consumers (query-drift, derive-status, check-grounding, refresh-fingerprint, backfill-mechanism-check) read top-level only. Legacy fallback `entry.evidence_code_ref ?? entry.evidence?.code_ref` removed from the 4 consumers that used it. `summarize()` in `loop-introspect.js` adds `evidence_code_ref` to the whitelist.
 
 ## Phases
 
@@ -81,14 +81,14 @@ Two equivalent fields in the meta-state registry (`evidence_code_ref` top-level 
 
 ## Success Criteria
 
-- `pnpm test` passes (allow 1 pre-existing failure: `gate-integration.test.cjs` per `meta-260607T0715Z-...`)
-- `meta-state-evidence-coverage.test.js` (Phase 2): 0 entries with nested `evidence.code_ref`; 0 active findings missing `evidence_code_ref`; 4 of 4 union branches expose `evidence_code_ref` top-level
+- `pnpm test` passes (0 failures expected)
+- `meta-state-evidence-coverage.test.js` (Phase 2): 0 entries with nested `evidence.code_ref`; 0 active findings missing `evidence_code_ref`; 3 of 4 union branches expose `evidence_code_ref` top-level (loop-design exempt)
 - `meta-state-schema.test.js` (Phase 3): 4 union members; change-log schema rejects nested `evidence.code_ref`
 - `flatten-evidence-fields.test.js` (Phase 4): roundtrip + idempotency + partial-state recovery pass; `meta-state.jsonl` has 0 entries with nested `evidence.code_ref`
-- `meta-state.test.js` (Phase 5): 4 new tests pass (writeEntry rejects, accepts 4 union members; updateEntry rejects, accepts)
+- `meta-state-write-validation.test.js` (Phase 5): 4 new tests pass (writeEntry rejects, accepts 4 union members; updateEntry rejects, accepts)
 - `meta-state-report-tool-extension.test.js` + `meta-state-log-change.test.js` (Phase 6): both writers output top-level only
 - `gate-resolution-evidence.test.js` (Phase 7): 2 new tests pass; `meta_state_resolve` blocks resolution on ungrounded findings
-- `query-drift.test.js` T-25..T-27: drift detection now covers all 30 previously-skipped entries
+- `query-drift.test.js`: 3 new tests added — drift detection now covers all 30 previously-skipped entries
 - `cold-tier-regression.test.js` extended: 2 new buckets with tolerance 0
 
 ## Out of Scope
@@ -103,11 +103,42 @@ Two equivalent fields in the meta-state registry (`evidence_code_ref` top-level 
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Migration script corrupts registry | High | CAS via `_expected_version`; snapshot diff test; defer writes until all validations pass; abort on first failure |
-| Phase 3 schema flatten breaks `meta-state-list-compact.test.js` fixtures | Med | Update fixtures; Phase 2 tests as gate |
+| Phase 3 schema flatten breaks `meta-state-list-compact.test.js` fixtures | Low | `summarize()` already omits `evidence_code_ref`; compact test unaffected. Add `evidence_code_ref` to `summarize()` whitelist in Phase 2. |
 | Zod union `.partial()` rejects valid patches | Med | Test with realistic patches from `meta_state_resolve`/`sweep`/`promote_rule` |
 | Consult-gate rule fires on legitimate findings | Med | Rule exempts findings where `mechanism_check !== true` |
 | Cold-tier regression test fixture gets stale | Low | Same `TOLERANCES` pattern from code review C1 fix; new buckets tolerance 0 after Phase 4 |
 | The 1 entry with `evidence_journal` only | Low | Migration script's journal/test branches handle it |
+
+## Red Team Review
+
+### Session — 2026-06-07
+**Findings:** 15 (15 accepted, 0 rejected)
+**Severity breakdown:** 6 Critical, 9 High
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Zod union `.partial()` does not exist — `updateEntry` validation will crash | Critical | Accept | Phase 5 |
+| 2 | `metaStateEntrySchema` strips 7 real fields used in registry | Critical | Accept | Phase 3 / Phase 5 |
+| 3 | `checkResolutionEvidence` return contract mismatch (`resolved` vs `satisfied`) | Critical | Accept | Phase 7 |
+| 4 | Phase 6 consult-gate rule wired to dead circuit (`applies_to_resolution` gap) | Critical | Accept | Phase 7 |
+| 5 | Pre-existing failure claim is stale — `gate-integration.test.cjs` passes 0 failures | Critical | Accept | plan.md + all phases |
+| 6 | `checkResolutionEvidence` needs restructuring before adding new branch | Critical | Accept | Phase 7 |
+| 7 | `metaStateFindingEntrySchema` already has `evidence_journal` and `evidence_test` | High | Accept | Phase 2 |
+| 8 | `summarize()` does NOT include `evidence_code_ref` | High | Accept | Phase 2 |
+| 9 | `query-drift.test.js` T-25..T-27 do not exist | High | Accept | plan.md |
+| 10 | Phase 1 T-3 test claims 4 of 4 but loop-design exempt | High | Accept | Phase 1 / Phase 2 |
+| 11 | Phase 4 references `meta-state.test.js` but file doesn't exist | High | Accept | Phase 4 |
+| 12 | Phase 4 migration forward-compat conflicts with Phase 3 clean break | High | Accept | Phase 3 / Phase 4 |
+| 13 | Phase 5 falsely claims `metaStatePromoteRuleTool` writes top-level evidence | High | Accept | Phase 5 |
+| 14 | 7 dual-form entries will retain nested `evidence` after migration | High | Accept | Phase 4 |
+| 15 | Wrong file path for refresh-fingerprint tool | High | Accept | plan.md |
+
+### Whole-Plan Consistency Sweep
+- Files reread: plan.md, phase-01-0.md, phase-02-1.md, phase-03-2.md, phase-04-3.md, phase-05-4.md, phase-06-5.md, phase-07-6.md
+- Decision deltas checked: 15
+- Reconciled stale references: all 15 findings applied inline
+- Stale terms scrubbed: "allow 1 pre-existing failure", "meta-state.test.js", "union.partial()", "resolved: false" (internal function), "5 of 6 consumers", "T-25..T-27"
+- Unresolved contradictions: 0
 
 ## Plan Handoff
 

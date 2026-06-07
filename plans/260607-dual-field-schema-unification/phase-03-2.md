@@ -38,27 +38,29 @@ The 4 branch schemas converge on the same field set: `evidence_code_ref`, `evide
 ## Implementation Steps
 
 1. **Modify `metaStateChangeEntrySchema`.** Remove the `evidence: z.object({...}).optional()` block. Add 3 top-level optional fields: `evidence_code_ref`, `evidence_journal`, `evidence_test`. Update the schema's docstring to mention top-level.
-2. **Modify `metaStateFindingEntrySchema`.** Add 2 new top-level optional fields: `evidence_journal`, `evidence_test`. (Already has `evidence_code_ref`.)
+2. **Verify `metaStateFindingEntrySchema`.** Confirm `evidence_journal`, `evidence_code_ref`, `evidence_test` already exist as top-level optional fields. (No change needed — already correct.)
 3. **Modify `metaStateRuleEntrySchema`.** Add 2 new top-level optional fields: `evidence_journal`, `evidence_test`. (Already has `evidence_code_ref`.)
-4. **Verify `summarize()` in `loop-introspect.js`.** Read the function. Confirm it reads `entry.evidence_code_ref` directly (not `entry.evidence?.code_ref`). The existing 24+ field whitelist should already be top-level.
+4. **Add `evidence_code_ref` to `summarize()` in `loop-introspect.js`.** The current `summarize()` whitelist does NOT include `evidence_code_ref` at all. Add it (and `evidence_journal`, `evidence_test`) to the whitelist so compact mode exposes evidence references. Add a regression test in `meta-state-list-compact.test.js` that asserts the field is present after the change.
 5. **Update `meta-state-schema.test.js`.** Add 3 new tests:
    - "change-log schema accepts top-level `evidence_code_ref`"
    - "change-log schema rejects nested `evidence.code_ref` (after clean break)"
-   - "all 4 union branches expose `evidence_code_ref` top-level"
+   - "3 of 3 applicable union branches expose `evidence_code_ref` top-level (loop-design exempt)"
 6. **Run Phase 1's coverage test.** T-1 still fails (30 entries unchanged). T-3 turns GREEN. Confirm no regressions in `meta-state-rule-schema.test.js` and `meta-state-loop-design-schema.test.js`.
 
 ## Success Criteria
 
-- [ ] 4 schema definitions updated; all expose `evidence_code_ref` as top-level optional
+- [ ] 3 schema definitions updated (change-log, rule; finding already correct); all expose `evidence_code_ref` as top-level optional
+- [ ] `summarize()` in `loop-introspect.js` includes `evidence_code_ref`, `evidence_journal`, `evidence_test`
 - [ ] T-3 from Phase 1 turns GREEN
 - [ ] T-1 from Phase 1 still RED (entries not migrated yet)
 - [ ] `pnpm test tools/learning-loop-mcp/__tests__/meta-state-schema.test.js` passes
 - [ ] `pnpm test tools/learning-loop-mcp/__tests__/meta-state-rule-schema.test.js` passes (regression guard)
 - [ ] `pnpm test tools/learning-loop-mcp/__tests__/meta-state-loop-design-schema.test.js` passes (regression guard)
 - [ ] `pnpm test tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js` shows T-3 GREEN
+- [ ] `pnpm test tools/learning-loop-mcp/__tests__/meta-state-list-compact.test.js` passes (updated to assert `evidence_code_ref` is present)
 
 ## Risk Assessment
 
-- **Risk:** `summarize()` silently reads nested form, producing wrong output for 30 entries. **Mitigation:** add a unit test in `__tests__/loop-introspect.test.js` that asserts `summarize(entry)` returns top-level `evidence_code_ref` (not nested). Run before Phase 4.
+- **Risk:** `summarize()` omits `evidence_code_ref` entirely, so compact mode never exposes it. **Mitigation:** add `evidence_code_ref`, `evidence_journal`, `evidence_test` to the `summarize()` whitelist in this phase. Add a regression test in `meta-state-list-compact.test.js`.
 - **Risk:** The change-log entries still carry the old shape and now FAIL `metaStateChangeEntrySchema.safeParse`. **Mitigation:** acceptable — `writeEntry` and `updateEntry` are still unvalidated in Phase 3 (validation is Phase 5). Phase 4 (migration) must complete before Phase 5.
 - **Risk:** A test fixture in some other test file uses nested form. **Mitigation:** `grep -r "evidence?.code_ref\|evidence.code_ref" tools/learning-loop-mcp/__tests__/` to find all fixtures. Update them in this phase (small diffs).
