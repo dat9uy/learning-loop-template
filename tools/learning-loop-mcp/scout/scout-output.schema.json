@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://learning-loop-mcp.local/scout/scout-output.schema.json",
+  "title": "Test Codebase Scout Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "scout_version",
+    "run_timestamp",
+    "project_root",
+    "inventory",
+    "bucket_distribution",
+    "dangling_matches",
+    "gap_table",
+    "budget_table"
+  ],
+  "properties": {
+    "scout_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "run_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "project_root": {
+      "type": "string"
+    },
+    "inventory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "last_modified",
+          "test_count",
+          "bucket",
+          "dangling",
+          "gap"
+        ],
+        "properties": {
+          "file": { "type": "string" },
+          "last_modified": { "type": "string", "format": "date-time" },
+          "test_count": { "type": "integer", "minimum": 0 },
+          "bucket": { "enum": ["A", "B", "C", "D", "error"] },
+          "bucket_reason": { "type": "string" },
+          "dangling": { "type": "boolean" },
+          "dangling_patterns": {
+            "type": "array",
+            "items": { "enum": ["D1", "D2", "D3", "D4", "D5"] }
+          },
+          "gap": { "type": "boolean" }
+        }
+      }
+    },
+    "bucket_distribution": {
+      "type": "object",
+      "required": ["A", "B", "C", "D", "error"],
+      "properties": {
+        "A": { "type": "integer", "minimum": 0 },
+        "B": { "type": "integer", "minimum": 0 },
+        "C": { "type": "integer", "minimum": 0 },
+        "D": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "dangling_matches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "pattern", "line", "match", "suggested_fix"],
+        "properties": {
+          "file": { "type": "string" },
+          "pattern": { "enum": ["D1", "D2", "D3", "D4", "D5"] },
+          "line": { "type": "integer", "minimum": 1 },
+          "match": { "type": "string" },
+          "suggested_fix": { "type": "string" },
+          "requires_runtime_check": { "type": "boolean" }
+        }
+      }
+    },
+    "gap_table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["surface", "total", "covered", "percent", "missing"],
+        "properties": {
+          "surface": {
+            "enum": [
+              "mcp-tools",
+              "schemas",
+              "gate-patterns",
+              "entry-kinds",
+              "error-paths"
+            ]
+          },
+          "total": { "type": "integer", "minimum": 0 },
+          "covered": { "type": "integer", "minimum": 0 },
+          "percent": { "type": "number", "minimum": 0, "maximum": 100 },
+          "missing": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "budget_table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "test",
+          "expected_file_reads",
+          "expected_mcp_calls",
+          "wall_clock_estimate",
+          "timeout",
+          "utilization",
+          "risk"
+        ],
+        "properties": {
+          "file": { "type": "string" },
+          "test": { "type": "string" },
+          "expected_file_reads": { "type": "integer", "minimum": 0 },
+          "expected_mcp_calls": { "type": "integer", "minimum": 0 },
+          "wall_clock_estimate": { "type": "number", "minimum": 0 },
+          "timeout": { "type": "number", "minimum": 0 },
+          "utilization": { "type": "number", "minimum": 0 },
+          "risk": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    }
+  }
+}
