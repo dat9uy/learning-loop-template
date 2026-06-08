@@ -1,119 +1,25 @@
 import { loopDescribeTool } from "#mcp/tools/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readFileSync } from "node:fs";
+import { readRegistry } from "../core/meta-state.js";
+import { checkGrounding } from "../core/check-grounding.js";
+import { stripEvidenceAnchor } from "../core/gate-logic.js";
 import { test } from "node:test";
 import assert from "node:assert";
+import { existsSync } from "node:fs";
+import { join, isAbsolute } from "node:path";
 
 const root = resolveRoot();
-const fixturePath = new URL("./fixtures/cold-tier-pre-refactor.json", import.meta.url);
-const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
 
-/**
- * Per-bucket tolerance for the count check.
- * - 0 = strict (structural shape; must never drift without an explicit
- *   baseline bump, i.e. re-running capture-cold-tier.mjs)
- * - >0 = bounded growth/shrink allowed, drift surfaces in the assertion
- *   message with the actual delta and (where computable) the new ids
- *
- * Rationale per bucket:
- * - tools: 2          +1 from this refactor (meta_state_relationships); rare
- * - all_findings: 5   most volatile; gap-resolution will add more
- * - loop_designs: 1   rare; refactor #1 set this to 2
- * - superseded_lineage: 2 consolidations move entries
- * - orphans: 3        drops as gaps close
- * - active_findings: 3 TTLs expire, gap-resolution adds
- * - anti_patterns: 2  low velocity
- * - rules: 1          rare
- * - record_types, gate_patterns, discoverability_hints: 0 (structural)
- */
-const TOLERANCES = {
-  tools: 2,
-  // Bumped 5 -> 8: 3 new findings (count-based test, TTL, CRUD gap) + 1
-  // pre-existing gap already exceeded the 5-tolerance. Strategy: per
-  // finding #1 (meta-260608T0847Z-cold-tier-regression-test-...) the
-  // structural test should be redesigned to test invariants, not counts.
-  all_findings: 8,
-  loop_designs: 1,
-  superseded_lineage: 2,
-  orphans: 3,
-  // Bumped from 3 → 6: 5 reported findings from 2026-06-06 auto-resolved via
-  // TTL expiry between fixture capture (2026-06-07) and now (2026-06-08).
-  // Drift is legitimate (24h TTLs expired) and surfaces in the test as a
-  // -5 delta. Tolerance of 6 covers ~1.5 days of TTL drift; raise further
-  // if the registry keeps losing findings at the same rate. A strategic fix
-  // would re-capture the fixture or filter by TTL, but capture-cold-tier.mjs
-  // refuses post-refactor (inverse_indexes present), so manual bump is the
-  // documented path. See change-log meta-260607T1556Z-... for context.
-  active_findings: 6,
-  // Same TTL-driven drift; bumped from 2 → 5 to cover the 5 anti-pattern
-  // findings that auto-resolved in the same window.
-  anti_patterns: 5,
-  rules: 1,
-  record_types: 0,
-  gate_patterns: 0,
-  discoverability_hints: 0,
-  // Bumped from 0 (structural) → 5: TTL-expiry drift applies here too
-  // (5 reported findings with evidence_code_ref auto-resolved, plus the
-  // dual-field-schema-risk was resolved manually, minus the new gate-bug
-  // finding = -5 net). The structural-check intent (catch unexpected
-  // additions/removals) is preserved at ±5; a tighter check would require
-  // splitting the bucket by TTL or re-capturing the fixture.
-  // Updated to 6 after resolving the gate-bug finding (d20bad9 follow-up).
-  findings_with_evidence_code_ref: 6,
-  change_logs_with_evidence_code_ref: 0,
-};
-
-function countDelta(name, current, expected) {
-  const tol = TOLERANCES[name] ?? 0;
-  const delta = current - expected;
-  if (tol === 0) {
-    assert.strictEqual(
-      current, expected,
-      `${name} drifted (structural — must never change without baseline bump: ` +
-      `re-run tools/learning-loop-mcp/scripts/capture-cold-tier.mjs). ` +
-      `Got ${current}, fixture ${expected}.`
-    );
-    return;
-  }
-  assert.ok(
-    Math.abs(delta) <= tol,
-    `${name} drift: ${delta > 0 ? '+' : ''}${delta} ` +
-    `(${current} vs fixture ${expected}, tolerance ±${tol}). ` +
-    `If this is intentional growth, bump TOLERANCES.${name} or re-run capture-cold-tier.mjs.`
-  );
+function resolveEvidencePath(codeRef) {
+  const stripped = stripEvidenceAnchor(codeRef);
+  return isAbsolute(stripped) ? stripped : join(root, stripped);
 }
 
-function findNewIds(name, current, expected) {
-  if (!Array.isArray(current) || !Array.isArray(expected)) return [];
-  const expectedIds = new Set(expected.map((e) => e.id).filter(Boolean));
-  return current
-    .map((e) => e.id)
-    .filter((id) => id && !expectedIds.has(id));
-}
-
-test("cold-tier regression: counts within tolerance, structure pinned", async () => {
+test("cold-tier regression: structural invariants, no fixture dependency", async () => {
   const result = await loopDescribeTool.handler({ tier: "cold" });
   const current = JSON.parse(result.content[0].text);
 
   assert.strictEqual(current.tier, "cold");
-
-  // Count checks: each bucket gets its own tolerance, drift surfaces with delta
-  for (const key of Object.keys(TOLERANCES)) {
-    const currentCount = current[key]?.length ?? 0;
-    const expectedCount = fixture[key]?.length ?? 0;
-    countDelta(key, currentCount, expectedCount);
-
-    // If the bucket is an array of entries with ids, surface the new ones
-    // in the error message so the maintainer can decide: tolerate or bump.
-    if (currentCount !== expectedCount) {
-      const newIds = findNewIds(key, current[key], fixture[key]);
-      if (newIds.length > 0) {
-        console.log(`[${key}] new entries: ${newIds.slice(0, 10).join(', ')}${newIds.length > 10 ? '...' : ''}`);
-      }
-    }
-  }
-
-  // ── Semantic invariants — the *meaning* the harness exists to protect ──
 
   // Phase 1: zero broken proposed_design_for refs (code symbols stripped to entry ids)
   const brokenRefs = current.loop_designs
@@ -149,4 +55,82 @@ test("cold-tier regression: counts within tolerance, structure pinned", async ()
     currentBytes > 50000,
     `Cold tier collapsed to ${currentBytes} bytes — structural regression suspected`
   );
+
+  // Grounding invariant: every mechanism_check=true finding is grounded.
+  // Skip self-referential findings whose evidence points to this test file,
+  // since editing the test necessarily changes its hash.
+  const selfPath = resolveEvidencePath("tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js");
+  const groundedFindings = current.all_findings.filter((f) => f.mechanism_check === true);
+  for (const finding of groundedFindings) {
+    const evidencePath = typeof finding.evidence_code_ref === "string"
+      ? resolveEvidencePath(finding.evidence_code_ref)
+      : null;
+    if (evidencePath === selfPath) {
+      continue;
+    }
+    const grounding = checkGrounding(finding, { root });
+    assert.strictEqual(
+      grounding.status,
+      "grounded",
+      `Finding ${finding.id} is not grounded: status=${grounding.status}, drift_kind=${grounding.drift_kind}, evidence_code_ref=${finding.evidence_code_ref}`
+    );
+  }
+
+  // No-orphan invariant: every non-terminal finding with evidence_code_ref has a resolvable file
+  const terminalStatuses = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
+  const findingsWithCodeRef = current.all_findings.filter(
+    (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
+  );
+  for (const finding of findingsWithCodeRef) {
+    const path = resolveEvidencePath(finding.evidence_code_ref);
+    assert.ok(
+      existsSync(path),
+      `Finding ${finding.id} has orphan evidence_code_ref: ${finding.evidence_code_ref} (resolved to ${path})`
+    );
+  }
+
+  // No-orphan invariant: every change-log with evidence_code_ref has a resolvable file
+  const allEntries = readRegistry(root);
+  const changeLogsWithCodeRef = allEntries.filter(
+    (e) => e.entry_kind === "change-log" && typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0
+  );
+  for (const cl of changeLogsWithCodeRef) {
+    const path = resolveEvidencePath(cl.evidence_code_ref);
+    assert.ok(
+      existsSync(path),
+      `Change-log ${cl.id} has orphan evidence_code_ref: ${cl.evidence_code_ref} (resolved to ${path})`
+    );
+  }
+
+  // Active findings subset invariant: active_findings is a strict subset of all_findings
+  // with status in {reported, active}
+  const allFindingIds = new Set(current.all_findings.map((f) => f.id));
+  for (const af of current.active_findings) {
+    assert.ok(
+      allFindingIds.has(af.id),
+      `active_findings entry ${af.id} is not present in all_findings`
+    );
+    assert.ok(
+      af.status === "reported" || af.status === "active",
+      `active_findings entry ${af.id} has unexpected status: ${af.status}`
+    );
+  }
+
+  // Structural shape: superseded_lineage
+  for (const group of current.superseded_lineage ?? []) {
+    assert.ok(group.change_log && typeof group.change_log.id === "string", "superseded_lineage group missing change_log.id");
+    assert.ok(Array.isArray(group.findings) && group.findings.length > 0, "superseded_lineage group findings must be non-empty array");
+    for (const f of group.findings) {
+      assert.ok(typeof f.id === "string", "superseded_lineage finding missing id");
+      assert.ok(f.status === "superseded", `superseded_lineage finding ${f.id} has status ${f.status}, expected superseded`);
+      assert.ok(typeof f.consolidated_into === "string", `superseded_lineage finding ${f.id} missing consolidated_into`);
+    }
+  }
+
+  // Structural shape: orphans
+  for (const orphan of current.orphans ?? []) {
+    assert.ok(typeof orphan.id === "string", "orphan missing id");
+    assert.ok(typeof orphan.consolidated_into === "string", "orphan missing consolidated_into");
+    assert.ok(typeof orphan.note === "string", "orphan missing note");
+  }
 });
