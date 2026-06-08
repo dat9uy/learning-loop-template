@@ -1,7 +1,7 @@
 ---
 title: "meta_state_patch MCP tool + tool-registry wire-format coercion fix"
 description: "Ships meta_state_patch (a thin MCP wrapper over the existing updateEntry primitive with CAS) and a generic coerceParamsToSchema helper in tool-registry.js that re-hydrates top-level array/boolean/number params coerced by MCP SDK wire framing. Closes meta-260608T0848Z-crud-coverage-gap (CRUD coverage); addresses the structural gap documented in meta-260606T2102Z (escape-hatch abuse) and meta-260606T2202Z (wire-format coercion root cause) — both of which are already auto-resolved as of 2026-06-08T01:11:42.524Z. 12 new tests, 1 new tool, 1 generic helper, 1 named closeout script, 1 loop-design update (the recursive proof)."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, crud, escape-hatch, wire-format, coercion, zod, mcp-sdk, tdd]
@@ -43,9 +43,9 @@ Plus: 2102Z/2202Z/2106Z lineage referenced in the new change-log (factually: tho
 
 | Phase | Name | Status | Effort | Dependencies |
 |-------|------|--------|--------|--------------|
-| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Pending | ~1.5h | — |
-| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Pending | ~1h | Phase 1 |
-| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Pending | ~0.5h | Phase 2 |
+| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Completed | ~1.5h | — |
+| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Completed | ~1h | Phase 1 |
+| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Completed | ~0.5h | Phase 2 |
 
 **Total effort:** ~3h
 
@@ -86,14 +86,14 @@ TDD structure locks current behavior before changes. Phase 1 is tests-only (12 n
 
 ## Success Criteria (Plan-Level)
 
-- [ ] All 487+ existing tests pass
-- [ ] 12 new tests pass (7 patch tool + 5 wire-format coercion)
-- [ ] `meta_state_propose_design` and `meta_state_report` no longer reject top-level array/boolean params (verified by new wire-format tests + real-schema regression test)
-- [ ] The 4 documented escape-hatch use cases can be done via `meta_state_patch` (no `node -e` escape hatch)
-- [ ] `loop-design-cross-reference-fields.proposed_design_for` = `["meta_state_patch"]`
-- [ ] `meta-260608T0848Z-crud-coverage-gap-...` resolved after explicit ack → check_grounding → refresh_fingerprint sequence (per F11)
-- [ ] No `node -e "import('./...')"` escape-hatch usage in any closeout step (per F3; all calls go through canonical tools via the named `tools/scripts/closeout-260608-1015-patch-loop-design.mjs` script)
-- [ ] `pnpm check` passes (validate records + extract index + tests)
+- [x] All 852 existing tests pass (baseline grew since plan creation)
+- [x] 12 new tests pass (7 patch tool + 5 wire-format coercion)
+- [x] `meta_state_propose_design` and `meta_state_report` no longer reject top-level array/boolean params (verified by new wire-format tests + real-schema regression test)
+- [x] The 4 documented escape-hatch use cases can be done via `meta_state_patch` (no `node -e` escape hatch)
+- [~] `loop-design-cross-reference-fields.proposed_design_for` = `["meta_state_patch"]` — **reverted**: value is not a valid registry entry ID per `fix-loop-design-refs` validation; tool was successfully exercised by patching and reverting
+- [x] `meta-260608T0848Z-crud-coverage-gap-...` resolved after explicit ack → check_grounding → refresh_fingerprint sequence (per F11)
+- [x] No `node -e "import('./...')"` escape-hatch usage in any closeout step (per F3; all calls used canonical tool handlers directly)
+- [~] `pnpm check` passes (validate records + extract index + tests) — `generate:capabilities --dry-run` fails due to pre-existing product capability drift, unrelated to this plan; `pnpm test`, `validate:records`, `validate:plan-loop` all pass
 - [ ] **Cold-session test is NOT a precondition** for this plan — it gates the *resolution* of `meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list` (a different bug class: agent tool list loading, not wire-format coercion). The wire-format fix is a pure function verified by the 5 unit tests in Phase 1 (including the real-schema regression per F7). The cold-session test should still pass after the plan (the patch tool is added to the manifest, not the connection layer); if it doesn't, that's a separate finding.
 
 ## Dependencies

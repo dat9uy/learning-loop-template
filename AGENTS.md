@@ -81,6 +81,8 @@ The universal hooks handle tool name differences between surfaces:
 
 See `tools/learning-loop-mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
 
+**Use `meta_state_patch` for any field-level update to an existing meta-state entry.** Do not use `node -e` scripts importing `core/meta-state.js` directly — this is the escape-hatch abuse closed in plan `260608-1015-meta-state-patch-tool-and-wire-format-fix`.
+
 ### Record ID Convention
 
 `{type}-{surface}-{YYMMDD}T{HHmm}Z-{slug}` — e.g., `decision-product-260522T0930Z-use-vnstock-sdk`
