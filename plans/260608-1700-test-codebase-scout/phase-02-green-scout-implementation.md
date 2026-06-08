@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Green (scout implementation)"
-status: pending
+status: completed
 effort: ~2.5h
 dependencies: [1]
 ---

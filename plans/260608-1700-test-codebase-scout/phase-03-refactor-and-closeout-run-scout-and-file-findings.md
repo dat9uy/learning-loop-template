@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refactor and closeout (run scout and file findings)"
-status: pending
+status: completed
 effort: ~1.5h
 dependencies: [2]
 ---
