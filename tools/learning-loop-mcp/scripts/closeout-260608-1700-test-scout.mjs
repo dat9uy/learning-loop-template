@@ -63,8 +63,12 @@ function collectFindings(scoutOutput) {
   const seenIds = new Set();
 
   // Bucket C (Bypass-MCP) — one finding per bucket-C test
+  // Skip test files in __tests__/ directories: they legitimately import
+  // internal functions to test them, so the bypass-MCP heuristic is a
+  // false positive for test code.
   for (const inv of scoutOutput.inventory) {
     if (inv.bucket !== "C") continue;
+    if (inv.file.includes("/__tests__/")) continue;
     const subId = shortHash(inv.file);
     const id = buildFindingId("bucket-c", subId);
     if (seenIds.has(id)) continue;

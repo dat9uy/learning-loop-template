@@ -138,8 +138,10 @@ function detectD3(sourceCode, currentToolNames) {
       if (symbolMatchesToolSet(sym, currentToolNames)) return;
       // Skip Node.js builtins entirely
       if (isNodeBuiltin) return;
-      // For relative imports, only flag if the path looks like a tool module
-      if (isRelative && !looksLikeToolPath) return;
+      // Only flag imports that look like they are importing a tool module.
+      // Relative imports are already scoped to tool-like paths; non-relative
+      // imports (packages, #mcp/core/, #lib/) must also look like a tool path.
+      if (!looksLikeToolPath) return;
       matches.push({
         file: "",
         pattern: "D3",

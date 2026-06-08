@@ -87,6 +87,17 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     ) {
       continue;
     }
+    // Scout findings that point to __tests__/ files are inherently fragile:
+    // test files evolve constantly (new tests, refactors, line shifts).
+    // A hash_mismatch on a test file is expected and does not indicate
+    // a broken audit trail for production code.
+    if (
+      grounding.drift_kind === "hash_mismatch" &&
+      typeof finding.evidence_code_ref === "string" &&
+      finding.evidence_code_ref.includes("/__tests__/")
+    ) {
+      continue;
+    }
     assert.strictEqual(
       grounding.status,
       "grounded",

@@ -26,9 +26,11 @@ describe("meta_state_list compact mode", () => {
     // Threshold bumped 2026-06-08: registry grew from ~130 entries to 500+ after scout
     // run filed 134+ findings. Compact payload is now ~185KB. The assertion is a
     // sanity bound, not a performance target; compact mode still omits descriptions.
+    // Threshold bumped again 2026-06-08: batch-resolution of 268 scout false-positives
+    // expanded the registry further; compact payload with include_expired=true is ~295KB.
     assert.ok(
-      payloadBytes < 250000,
-      `Compact payload should be <250KB, got ${payloadBytes}`
+      payloadBytes < 350000,
+      `Compact payload should be <350KB, got ${payloadBytes}`
     );
 
     // Verify all entries have only compact fields

@@ -37,13 +37,14 @@ let alreadyChecked = 0;
 const backfillLog = [];
 
 for (const entry of resolvedFindings) {
-  if (entry.mechanism_check === true) {
+  const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
+
+  if (entry.mechanism_check === true && entry.code_fingerprint) {
     alreadyChecked++;
     continue;
   }
 
-  const codeRef = typeof entry.evidence_code_ref === "string" ? entry.evidence_code_ref : null;
-
+  // Skip if there is no evidence code ref to fingerprint
   if (!codeRef) {
     skippedNoEvidence++;
     continue;
