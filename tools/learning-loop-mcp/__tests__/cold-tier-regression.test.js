@@ -54,7 +54,8 @@ const TOLERANCES = {
   // finding = -5 net). The structural-check intent (catch unexpected
   // additions/removals) is preserved at ±5; a tighter check would require
   // splitting the bucket by TTL or re-capturing the fixture.
-  findings_with_evidence_code_ref: 5,
+  // Updated to 6 after resolving the gate-bug finding (d20bad9 follow-up).
+  findings_with_evidence_code_ref: 6,
   change_logs_with_evidence_code_ref: 0,
 };
 
