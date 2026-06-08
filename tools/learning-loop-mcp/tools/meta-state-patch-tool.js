@@ -1,0 +1,129 @@
+import { z } from "zod";
+import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
+import { appendGateLog } from "#lib/gate-logging.js";
+import { resolveRoot } from "#lib/resolve-root.js";
+
+const IMMUTABLE_PATCH_FIELDS = new Set([
+  "id",
+  "entry_kind",
+  "version",
+  "created_at",
+  "created_by",
+  "code_fingerprint",
+  "promoted_to_rule",
+  "consolidated_into",
+  "acked_at",
+  "resolved_at",
+  "resolved_by",
+  "resolution",
+]);
+
+export const metaStatePatchTool = {
+  name: "meta_state_patch",
+  description: "Patch an existing meta-state entry. Unifies update_finding / update_design / update_change_log / backfill_fingerprint into one tool. CAS via _expected_version (auto-captured if omitted). Idempotency by CAS (existing pattern in updateEntry). Wire-format safe: nest complex-typed fields inside the `patch` object to avoid top-level array/boolean coercion by the MCP wire layer. Closes the CRUD gap and the parent escape-hatch abuse. Identity and audit-trail fields are deny-listed and cannot be patched.",
+  schema: {
+    id: z.string().describe("Exact entry id to patch"),
+    entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
+      .describe("Entry kind branch — used to validate patch shape. `change-log` is handler-level immutable; the schema allows it so the immutability branch is reachable."),
+    patch: z.object({}).passthrough()
+      .describe("Partial fields to update. Nest arrays/booleans in this object. Use core/meta-state.js#metaStateEntryPatchSchema's passthrough semantics: any subset of union fields is valid. Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler."),
+    _expected_version: z.number().optional()
+      .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
+  },
+  handler: async ({ id, entry_kind, patch, _expected_version }) => {
+    const root = resolveRoot();
+    const entries = readRegistry(root);
+    const entry = entries.find((e) => e.id === id);
+
+    if (!entry) {
+      const result = { patched: false, reason: "not_found", id };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    if (entry.entry_kind !== entry_kind) {
+      const result = {
+        patched: false,
+        reason: "branch_mismatch",
+        id,
+        expected: entry_kind,
+        actual: entry.entry_kind,
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    if (entry.entry_kind === "change-log") {
+      const result = { patched: false, reason: "change_log_immutable", id };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    const deniedFields = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+    if (deniedFields.length > 0) {
+      const result = {
+        patched: false,
+        reason: "immutable_field",
+        id,
+        denied_fields: deniedFields,
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    const currentVersion = entry.version ?? 0;
+    const effectiveExpectedVersion = _expected_version !== undefined
+      ? _expected_version
+      : currentVersion;
+    const patchWithCAS = { ...patch, _expected_version: effectiveExpectedVersion };
+
+    const updateResult = await updateEntry(root, id, patchWithCAS);
+
+    if (updateResult === "version_mismatch") {
+      const freshEntries = readRegistry(root);
+      const fresh = freshEntries.find((e) => e.id === id);
+      const result = {
+        patched: false,
+        reason: "version_mismatch",
+        id,
+        current_version: fresh?.version ?? 0,
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    if (updateResult === "validation_failed") {
+      const result = { patched: false, reason: "validation_failed", id };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    if (updateResult !== true) {
+      throw new Error(
+        `meta_state_patch: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`
+      );
+    }
+
+    const updatedEntries = readRegistry(root);
+    const updated = updatedEntries.find((e) => e.id === id);
+
+    const result = {
+      patched: true,
+      id,
+      entry_kind: updated.entry_kind,
+      version: updated.version,
+      entry: updated,
+    };
+
+    appendGateLog(root, {
+      timestamp: new Date().toISOString(),
+      tool: "meta_state_patch",
+      id,
+      entry_kind: updated.entry_kind,
+      fields_patched: Object.keys(patch),
+      version: updated.version,
+    });
+
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  },
+};

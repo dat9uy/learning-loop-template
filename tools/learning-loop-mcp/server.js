@@ -33,7 +33,7 @@ let failed = 0;
 for (const mod of TOOL_MODULES) {
   const imported = await safeImport(mod.file, root);
   if (imported && imported[mod.export]) {
-    registerTool(server, imported[mod.export]);
+    registerTool(server, imported[mod.export], root);
     registered++;
   } else {
     console.error(`safeImport: skipped ${mod.file} (missing export "${mod.export}")`);

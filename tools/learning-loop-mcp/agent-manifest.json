@@ -79,6 +79,7 @@
         "meta_state_promote_rule",
         "meta_state_sweep",
         "meta_state_log_change",
+        "meta_state_patch",
         "meta_state_derive_status",
         "meta_state_check_grounding",
         "meta_state_refresh_fingerprint",
