@@ -182,3 +182,35 @@ Open questions filed from the revised finding:
 - A "substrate properties" document specifying the three required properties (irreversible operations to gate, non-deterministic failure modes, evidence files the loop can fingerprint) so the substrate can be rotated when vnstock stabilizes.
 - A "findings-per-week" trend to answer: "is vnstock still generating novel findings, or has the loop learned enough about it that findings have dried up?"
 - A "learning trajectory" reflection written periodically by the operator from the meta-state — outside the loop — to catch the operator-capture signal early.
+
+## What Has Happened Since (2026-06-08 — index-extractor optimization, Approaching the Storage Layer)
+
+The scout closeout (plan 260608-1700) added 134+ findings, growing the meta-state registry from ~130 entries to 500+. This exposed a structural performance class: the cold tier, compact mode, and `readRegistry()` hot path all re-parse the 540KB `meta-state.jsonl` on every call. The symptom was the family of `*size-overrun*` findings (subtypes: `cold-tier-size-overrun`, `registry-size-overrun`, `test-failure-size-sensitive`). The prior cure was threshold bumps (30KB → 350KB, 90KB → 1MB), which the resolution log itself flags as "the assertion is a sanity bound, not a performance target."
+
+A brainstorm (`plans/reports/brainstorm-260608-index-extractor-overrun.md`) identified three layers needing work and proposed Approach A as the bridge to a future storage layer.
+
+**Why this matters for trajectory, not just performance:** The gradient's destination sentence is "knowledge moves from hand-written tools into self-deriving tools, and from self-deriving tools into self-driving workflow." The current `readRegistry()` is a hand-written re-parse on every call — the antithesis of self-deriving. The fix is not "parse faster" (mtime-checked LRU) but "stop re-parsing" (materialized cold-tier cache) — and the long-term destination is "stop re-shaping a text file at all" (a real storage engine).
+
+### The three layers, by design
+
+1. **`index_extract` pipeline** (the record-level extractor): content-hash-keyed skip. Reuse `evidence_immutable_hash` from existing index entries to skip re-parsing unchanged evidence MDs.
+2. **`readRegistry()` hot path** (30+ call sites): process-lifetime LRU keyed on `root` + file mtime. Invalidation hooked into every `writeEntry`/`updateEntry`/batch operation. Soft-enforcement rule documented in `AGENTS.md` (production CRUD must go through MCP tools).
+3. **`loop_describe` cold/compact tier** (the LLM-facing read surface): pre-computed `records/meta/.cache/loop-describe-cold.json` sidecar. Built eagerly on every write; rebuilt on first read after registry mtime change. Drops the cold tier from ~250ms to <10ms.
+
+### The batch primitive (Layer 2.5)
+
+`meta_state_batch` MCP tool takes a JSON array of operations and applies them under a single file lock with a single cache invalidation. This is the precondition for keeping the LRU cache provably consistent under bulk write workloads (closeout scripts that resolve 200+ findings at once). The shape mirrors SQLite/Prisma transactions: one tool, atomic, no new state in the registry.
+
+### `meta_state_archive` tool (structural fix for the size-overrun findings)
+
+The two reported `*size-overrun*` findings both suggest adding an archive capability. The tool moves entries to `records/observations/.archive/YYYY-MM/` and sets `status: archived` on the line in `meta-state.jsonl`. Trigger: the agent decides per call (no operator prompt needed); operator can override with explicit ids. Compact and warm tiers exclude archived by default.
+
+### Why the storage layer is parked, not jumped to
+
+Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive.jsonl`) and Approach C (SQLite via `better-sqlite3`) were both rejected for the same reason: migration risk on 490 existing entries, the 30+ call-site touch surface, and `better-sqlite3`'s native build cost on WSL2. Approach A bridges them — once the LRU + materialized cache are stable, the SQLite trajectory becomes a 1-release migration:
+
+- **Pre-conditions to un-park:** registry > 2x current size (~1000 entries), inverse-index computation > 50ms, drift query > 200ms.
+- **Schema sketch (parked):** 3 tables — `entries(id, kind, status, ...)`, `refs(from_id, to_id, kind)`, `fingerprint(entry_id, code_ref, sha)`.
+- **Migration path:** dual-write JSONL + SQLite for 1 release (so the JSONL stays the source of truth during the validation window), then flip the default reader to SQLite and demote the JSONL to a write-archive.
+
+This is structurally consistent with Bridge 5 (schema as source of truth) and Bridge 6 (self-model as product): the storage layer is the *substrate of the self-model*. Replacing it is a substrate rotation, not a redesign.
