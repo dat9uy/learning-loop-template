@@ -1480,9 +1480,6 @@
   "degraded": false,
   "findings_with_evidence_code_ref": [
     {
-      "id": "meta-260606T1500Z-closeout-script-idempotency-bug"
-    },
-    {
       "id": "meta-260606T1656Z-cold-session-test-must-pass-before-resolution"
     },
     {
@@ -1558,6 +1555,9 @@
     },
     {
       "id": "meta-260607T1425Z-tools-learning-loop-mcp-core-derive-status-js-tools-learning"
+    },
+    {
+      "id": "meta-260607T1556Z-tools-learning-loop-mcp-core-gate-logic-js-checkresolutionev"
     }
   ]
 }

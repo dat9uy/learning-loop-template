@@ -654,6 +654,27 @@ export function loadPromotedRules(root) {
  * with the matching subtype and session_id.
  * Returns { satisfied: true } or { satisfied: false, blocking_id, rule_id, applies_to_resolution }.
  */
+
+/**
+ * Strip the two documented suffix forms from an evidence_code_ref:
+ *   - `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
+ *     and loop-introspect.js discoverability hint)
+ *   - `#anchor` (function/symbol identifier)
+ * Returns the bare file path. Both regexes are anchored to the end of the
+ * string and only match the documented syntax, so paths with no suffix
+ * (e.g., "tools/foo.js") are returned unchanged. See finding
+ * meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref
+ * for the gate-bug this helper closes.
+ */
+export function stripEvidenceAnchor(codeRef) {
+  if (typeof codeRef !== "string") return codeRef;
+  // Strip :line suffix (digits only — keeps Windows drive letters safe)
+  let stripped = codeRef.replace(/:\d+$/, "");
+  // Strip #anchor suffix (identifier chars: word, dot, dollar, dash, underscore)
+  stripped = stripped.replace(/#[\w$.-]+$/, "");
+  return stripped;
+}
+
 export function checkResolutionEvidence(rule, root) {
   const rule_id = rule.promoted_to_rule?.rule_id;
 
@@ -670,7 +691,13 @@ export function checkResolutionEvidence(rule, root) {
         orphans.push({ id: entry.id, reason: "no_evidence_code_ref" });
         continue;
       }
-      const absPath = isAbsolute(codeRef) ? codeRef : join(root, codeRef.split("#")[0]);
+      // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
+      // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
+      // resolving the file path. Without the `:line` strip, the gate treated
+      // `path/to/file.js:37` as a literal file path and flagged it as
+      // code_ref_missing even when the file existed. See finding
+      // meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref.
+      const absPath = isAbsolute(codeRef) ? codeRef : join(root, stripEvidenceAnchor(codeRef));
       let currentHash;
       try {
         currentHash = computeFileHash(absPath);

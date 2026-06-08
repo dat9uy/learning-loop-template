@@ -260,6 +260,119 @@ describe("checkResolutionEvidence", () => {
     assert.strictEqual(result.satisfied, true);
     assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
   });
+
+  // Regression for meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref:
+  // The gate must strip `:line` suffixes (the documented canonical syntax in
+  // meta-state.js#metaStateFindingEntrySchema and loop-introspect.js discoverability
+  // hint) before resolving the file path. Without this, every finding that uses
+  // `:line` syntax is treated as code_ref_missing and the consult-gate blocks
+  // resolution even when the file exists.
+  test("rule-no-orphaned-evidence strips :line suffix from evidence_code_ref", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const w = 4;");
+
+    const findingId = core.generateId("orphan-line-suffix");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding with :line suffix in evidence_code_ref.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js:42",
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true, `gate should strip :line suffix; orphans=${JSON.stringify(result.orphans)}`);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+  });
+
+  test("rule-no-orphaned-evidence strips #anchor suffix from evidence_code_ref", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const v = 5;");
+
+    const findingId = core.generateId("orphan-anchor-suffix");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding with #anchor suffix in evidence_code_ref.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js#someFunction",
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, true, `gate should strip #anchor suffix; orphans=${JSON.stringify(result.orphans)}`);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+  });
+
+  test("rule-no-orphaned-evidence flags code_ref_missing when :line suffix points to a real missing file", async () => {
+    // Negative case: when neither the bare path nor the :line-stripped path
+    // exists, the gate should still flag the finding as code_ref_missing.
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const findingId = core.generateId("orphan-real-missing");
+    await core.writeEntry(tempRoot, {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding pointing at a non-existent file with :line suffix.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "does-not-exist.js:99",
+    });
+
+    const rule = {
+      promoted_to_rule: {
+        rule_id: "rule-no-orphaned-evidence",
+        pattern: "*",
+        applies_to_resolution: "*",
+      },
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    assert.strictEqual(result.satisfied, false);
+    assert.strictEqual(result.orphans[0].reason, "code_ref_missing");
+  });
 });
 
 describe("applyPromotedRules resolution-evidence-required", () => {

@@ -126,8 +126,18 @@ export function checkGrounding(entry, codeContext) {
     };
   }
 
-  // Resolve path: absolute -> as-is, relative -> join with root
-  const absPath = isAbsolute(codeRef) ? codeRef : join(root, codeRef);
+  // Resolve path: absolute -> as-is, relative -> join with root.
+  // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
+  // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
+  // resolving the file path. Without this, `path/to/file.js:37` and
+  // `path/to/file.js#functionName` would both be reported as missing even when
+  // the file exists. Mirrors the strip applied in
+  // core/gate-logic.js#checkResolutionEvidence (consistency invariant). See
+  // finding meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
+  // for the gate-bug class this closes.
+  const absPath = isAbsolute(codeRef)
+    ? codeRef.replace(/:\d+$/, "").replace(/#[\w$.-]+$/, "")
+    : join(root, codeRef.replace(/:\d+$/, "").replace(/#[\w$.-]+$/, ""));
   const codeRefExists = existsSync(absPath);
 
   // Compute hash if file exists (catch read race)

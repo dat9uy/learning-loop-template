@@ -49,12 +49,17 @@ for (const entry of resolvedFindings) {
     continue;
   }
 
-  // Strip #fragment suffix (e.g., "path/to/file.js#functionName") so the path
-  // resolves to a real file. evidence_code_ref and evidence.code_ref often
-  // include a function/method anchor; only the file part is a valid filesystem
-  // path. Without this, 2 of the 16 resolved findings would be incorrectly
-  // skipped (gate-logic.js#splitSegments, loop-surface-inject.cjs#spawnAndCall).
-  const codeRefPath = codeRef.split("#")[0];
+  // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
+  // and loop-introspect.js discoverability hint) and `#fragment` suffixes (e.g.,
+  // "path/to/file.js#functionName" or "path/to/file.js:37") so the path resolves
+  // to a real file. evidence_code_ref often includes a function/method anchor
+  // OR a line number; only the file part is a valid filesystem path. Without
+  // the `:line` strip, 1 resolved finding (meta-260607T0008Z-dual-field-schema-risk)
+  // would be incorrectly skipped. Mirrors the strip applied in
+  // core/gate-logic.js#checkResolutionEvidence and core/check-grounding.js.
+  const codeRefPath = codeRef
+    .replace(/:\d+$/, "")
+    .replace(/#[\w$.-]+$/, "");
   if (!codeRefPath) {
     skippedNoEvidence++;
     continue;
