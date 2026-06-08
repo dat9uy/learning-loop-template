@@ -21,6 +21,7 @@ export const metaStateReportTool = {
     evidence_code_ref,
     evidence_test,
     mechanism_check,
+    session_id,
   }) => {
     const root = resolveRoot();
     const id = generateId(slugify(description));
@@ -40,6 +41,11 @@ export const metaStateReportTool = {
       ...(evidence_journal && { evidence_journal }),
       ...(evidence_test && { evidence_test }),
       ...(mechanism_check !== undefined && { mechanism_check }),
+      // session_id is the idempotency key for hook-emitted findings. The schema
+      // and the prior hook (`.factory/hooks/loop-surface-inject.cjs`,
+      // `cold-session-discoverability.test.cjs`) all assume the tool persists
+      // this; honor it here so callers can use the canonical MCP surface.
+      ...(session_id && { session_id }),
       status: "reported",
       created_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),

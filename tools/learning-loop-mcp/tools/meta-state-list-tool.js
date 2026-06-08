@@ -36,6 +36,7 @@ export const metaStateListTool = {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
     affected_system: z.string().optional().describe("Filter by affected system"),
+    session_id: z.string().optional().describe("Filter by session_id (idempotency key for hook-emitted findings)"),
     include_expired: z.boolean().optional().default(false).describe("Include terminal statuses in results"),
     entry_kind: z.enum(["finding", "change-log", "rule", "loop-design"]).optional()
       .describe("Filter by a single entry kind; default = both (legacy)"),
@@ -43,7 +44,7 @@ export const metaStateListTool = {
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
     compact: z.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
   },
-  handler: async ({ category, status, affected_system, include_expired, entry_kind, entry_kinds, compact }) => {
+  handler: async ({ category, status, affected_system, session_id, include_expired, entry_kind, entry_kinds, compact }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -70,6 +71,7 @@ export const metaStateListTool = {
       ...(category && { category }),
       ...(status && { status }),
       ...(affected_system && { affected_system }),
+      ...(session_id && { session_id }),
       ...(entry_kind && !entry_kinds && { entry_kind }),
     };
 

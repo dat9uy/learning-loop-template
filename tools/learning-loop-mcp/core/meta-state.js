@@ -341,13 +341,14 @@ export function checkExpiry(entry) {
 }
 
 /**
- * Filter entries by optional criteria (category, status, affected_system).
+ * Filter entries by optional criteria (category, status, affected_system, session_id).
  * All provided filters must match (AND logic).
  */
 export function filterEntries(entries, filters) {
   return entries.filter((entry) => {
     if (filters.entry_kind && entry.entry_kind !== filters.entry_kind) return false;
     if (filters.category && entry.category !== filters.category) return false;
+    if (filters.session_id && entry.session_id !== filters.session_id) return false;
     if (filters.status && entry.status !== filters.status) return false;
     if (filters.affected_system && entry.affected_system !== filters.affected_system) return false;
     return true;
