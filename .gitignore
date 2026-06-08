@@ -7,6 +7,7 @@ package-lock.json
 __pycache__/
 *.egg-info/
 product/*/.cache/
+records/meta/.cache/
 product/*/.local/
 product/*/.vnstock/
 product/*/dist/

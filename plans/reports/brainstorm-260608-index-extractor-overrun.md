@@ -23,7 +23,6 @@ related:
   - tools/learning-loop-mcp/tools/manifest.json (registration of 2 new tools)
   - tools/learning-loop-mcp/agent-manifest.json (meta_state group registration)
   - records/meta/.cache/loop-describe-cold.json (NEW: sidecar; gitignored)
-  - AGENTS.md (soft-enforcement rule documentation)
   - docs/trajectory.md (NEW "What Has Happened Since" section; SQLite trajectory parked)
 related_findings:
   - meta-260608T1826Z-phase-6-summary-mode-size-assertion-fails-because-the-cold-t (cold-tier-size-overrun, reported, active)
