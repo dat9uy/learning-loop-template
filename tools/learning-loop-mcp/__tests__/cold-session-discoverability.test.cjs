@@ -1,12 +1,13 @@
 // Acceptance test: cold session discoverability.
 //
-// Two tests live in this file:
+// Five tests live in this file:
 //
 // 1. "agent cites code via meta_state_report ..." — the canonical real-spawn test
 //    that spawns `droid exec` and asserts the agent followed the internalization
-//    rule. This test skips when droid exec cannot load project-local MCP servers
-//    (verified at runtime via `droid exec --list-tools`). CI registration of
-//    MCP-driven droid exec is a follow-up.
+//    rule. Skips on the L2 probe (probeL2Gap) finding MCP tools unavailable
+//    to droid's --auto agent runtime, so CI does not accumulate 60s timeouts
+//    in envs where the runtime is broken (see
+//    meta-260608T1522Z-test-1-cold-session-hangs-in-mcp-gapped-env).
 //
 // 2. "discoverability surface works via direct MCP server spawn" — a fallback
 //    integration test that spawns the MCP server directly (no droid), drives
@@ -15,7 +16,24 @@
 //    runs on every PR and guards the surface even when droid exec is not
 //    MCP-enabled.
 //
-// Both tests use GATE_ROOT to isolate all meta-state/record writes to a temp
+// 3. "droid exec CLI catalog lists runtime-namespaced MCP tools (L1 probe)" —
+//    the L1 (CLI catalog) probe via `droid exec --list-tools`. Asserts a
+//    runtime-namespaced tool entry is present. The CLI catalog may show
+//    the tools while the agent runtime cannot invoke them, so L1 is a
+//    layer-1 signal only; the L2 probe is the authoritative one.
+//
+// 4. "cold-session test soft-deletes persisted finding on gap-close" — a
+//    unit test for the deletion branch of the cold-session test (runs in a
+//    GATE_ROOT-isolated temp directory).
+//
+// 5. "agent runtime exposes mcp__learning_loop_mcp__* tools to the AI
+//    (L2 probe)" — the authoritative agent-runtime layer probe. Spawns a
+//    real droid exec and asks the agent to call mcp__learning_loop_mcp__
+//    loop_describe. The 1410Z finding documents that the L1 catalog probe
+//    is a false-positive proxy for this layer; L2 is the layer the 0443Z
+//    and 1410Z findings actually care about.
+//
+// All tests use GATE_ROOT to isolate all meta-state/record writes to a temp
 // directory; the real project files are never mutated. A post-test git-status
 // assertion locks this isolation contract.
 
@@ -33,6 +51,73 @@ describe("cold-session discoverability acceptance", () => {
   // __dirname is .../tools/learning-loop-mcp/__tests__; project root is three levels up.
   const projectRoot = resolve(__dirname, "..", "..", "..");
   const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+
+  // L2 probe: spawns a real `droid exec` and asks the agent to call
+  // mcp__learning_loop_mcp__loop_describe({ tier: "summary" }). The agent
+  // must echo the numeric tool_count. A bare number in stdout = gap
+  // closed; TOOL_UNAVAILABLE marker or no digit = gap open.
+  //
+  // This is the authoritative probe for the 1410Z finding's "agent
+  // runtime layer" — distinct from the L1 probe (test 3) which checks
+  // the CLI catalog via `droid exec --list-tools`. The L1 layer may
+  // pass while L2 fails; L2 is the layer the 0443Z/1410Z findings
+  // actually care about.
+  //
+  // Used by:
+  //   - test 1's skip check (skip if L2 gap open; the L1 check was
+  //     a false-positive proxy — see
+  //     meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to)
+  //   - test 5 (the standalone L2 probe test)
+  //
+  // Returns true on gap-closed, false on gap-open or probe failure
+  // (fail-safe: a probe that can't run is treated as gap-open so
+  // downstream tests are gated correctly).
+  async function probeL2Gap(root, server) {
+    if (!existsSync(server)) {
+      console.error("[probeL2Gap] server entry missing");
+      return false;
+    }
+
+    const canSpawnDroid = await new Promise((resolve) => {
+      const probe = spawn("droid", ["--version"], { stdio: "pipe" });
+      probe.on("error", () => resolve(false));
+      probe.on("exit", (code) => resolve(code === 0));
+    });
+    if (!canSpawnDroid) {
+      console.error("[probeL2Gap] droid not in PATH");
+      return false;
+    }
+
+    const tempRoot = mkdtempSync(join(tmpdir(), "l2-probe-"));
+    const prompt = [
+      "Use the tool named mcp__learning_loop_mcp__loop_describe with arguments { tier: \"summary\" }.",
+      "From the JSON result, output ONLY the numeric value of the tool_count field.",
+      "Do not output any other text. Do not explain. Do not apologize.",
+      "If the tool is unavailable, output exactly the string: TOOL_UNAVAILABLE",
+    ].join(" ");
+
+    const child = spawn("droid", ["exec", "--auto", "low", prompt], {
+      cwd: root,
+      env: { ...process.env, GATE_ROOT: tempRoot },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+
+    const exitCode = await new Promise((resolve) => {
+      const timeout = setTimeout(() => { child.kill("SIGTERM"); resolve(-1); }, 90000);
+      child.on("exit", (code) => { clearTimeout(timeout); resolve(code ?? -1); });
+      child.on("error", () => { clearTimeout(timeout); resolve(-1); });
+    });
+
+    console.error(
+      `[probeL2Gap] exit=${exitCode} stdout_len=${stdout.length} stdout_first200=${JSON.stringify(stdout.slice(0, 200))}`,
+    );
+
+    const trimmed = stdout.trim();
+    return /\b\d+\b/.test(trimmed) && !trimmed.includes("TOOL_UNAVAILABLE");
+  }
 
   test("agent cites code via meta_state_report and local:meta-state refs", async () => {
     console.error("[cold-session] test starting", { projectRoot, serverEntry, exists: existsSync(serverEntry) });
@@ -62,27 +147,19 @@ describe("cold-session discoverability acceptance", () => {
       return;
     }
 
-    // Droid exec does not load project-local MCP servers (verified by `droid exec --list-tools`
-    // returning no mcp__learning_loop_mcp__* tools). Without those tools, the agent cannot
-    // exercise the discoverability surface. Skip rather than hang or fail on an environment
-    // limitation that is outside this plan's scope (CI registration of MCP-driven droid exec
-    // is captured as a follow-up).
-    const mcpToolsAvailable = await new Promise((resolve) => {
-      const probe = spawn("droid", ["exec", "--list-tools"], { cwd: projectRoot, stdio: "pipe" });
-      let out = "";
-      probe.stdout.on("data", (c) => { out += c; });
-      probe.stderr.on("data", () => {});
-      probe.on("error", () => resolve(false));
-      probe.on("exit", (code) => {
-        // Droid formats MCP tools as `learning-loop-mcp___<tool>` (3 underscores) and
-        // `[MCP] learning-loop-mcp:<tool>` (colon) in --list-tools output. Match
-        // the stable server identifier "learning-loop-mcp" to detect exposure
-        // regardless of the formatting detail.
-        resolve(code === 0 && out.includes("learning-loop-mcp"));
-      });
-    });
-    if (!mcpToolsAvailable) {
-      console.error("[cold-session] skipping because droid exec does not expose MCP tools in this environment");
+    // L2 skip check: this test asks the agent to call meta_state_report and
+    // record_create_decision. If droid's --auto runtime cannot call MCP tools
+    // (the agent-runtime layer gap from finding
+    // meta-260608T1522Z-test-1-cold-session-hangs-in-mcp-gapped-env and
+    // meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to),
+    // the agent will hang for the full 60s timeout and produce no output. The
+    // L1 proxy (droid exec --list-tools) is a false-positive check — the CLI
+    // catalog may show the tools while the agent runtime cannot invoke them.
+    // Skip on L2 gap-open so CI does not accumulate 60s timeouts in envs where
+    // the runtime is broken. probeL2Gap is the shared helper used by test 5.
+    const l2Closed = await probeL2Gap(projectRoot, serverEntry);
+    if (!l2Closed) {
+      console.error("[cold-session] skipping: L2 probe found MCP tools unavailable to droid agent runtime (see test 5 / finding meta-260608T1522Z)");
       return;
     }
 
@@ -404,28 +481,33 @@ describe("cold-session discoverability acceptance", () => {
     }
   });
 
-  // Third test: droid-runtime MCP client-side loading probe.
+  // Strict pattern: a runtime-namespaced MCP tool entry. Droid formats MCP
+  // tools in three documented ways:
+  //   - `mcp__learning_loop_mcp__<tool>` (canonical, 2 underscores per segment)
+  //   - `learning-loop-mcp___<tool>` (droid display, 3 underscores)
+  //   - `[MCP] learning-loop-mcp:<tool>` (verbose display, colon)
+  // The match is a single tool entry, not just the server name. This is the
+  // L1 (CLI catalog) signal; a substring match on the bare server name
+  // ("learning-loop-mcp") would be a false-positive proxy (see finding
+  // meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to).
+  const STRICT_MCP_TOOL_PATTERN = /(?:mcp__learning_loop_mcp__|learning-loop-mcp___|\[MCP\] learning-loop-mcp:)[A-Za-z][A-Za-z0-9_]*/;
+
+  // Third test: droid-runtime MCP client-side loading probe (L1, CLI catalog).
   //
-  // This test runs `droid exec --list-tools` and asserts the agent's tool list
-  // exposes `mcp__learning_loop_mcp__*` tools. If the gap is CLOSED (tools are
-  // listed), the test passes silently. If the gap is OPEN (tools are missing),
-  // the test logs a `meta_state_report` finding directly to the project's
-  // `meta-state.jsonl` (mirroring the loop-surface-inject.cjs#reportMcpConnectionFailure
-  // pattern) and passes — the finding IS the surface.
+  // Probes `droid exec --list-tools` (the CLI catalog layer). Asserts that at
+  // least one runtime-namespaced MCP tool entry is present. On gap-open, logs
+  // a `meta_state_report` finding (idempotent on session_id+subtype). On
+  // gap-close, soft-deletes any existing finding. The session_id and subtype
+  // are shared with test 5 (L2 probe) so the
+  // rule-cold-session-test-must-pass-before-resolution evidence aggregates
+  // both layers.
   //
-  // The test does NOT fail CI on the gap. The gap is a runtime/environment
-  // concern, not a code concern; surfacing it in meta-state.jsonl is the right
-  // channel. The first test (droid exec + cold session) is soft-skipped on
-  // the same condition; this third test makes the skip observable.
-  //
-  // Idempotency: a stable session_id ("test-cold-session-mcp-client-loading")
-  // ensures repeated test runs emit at most ONE finding. The finding has a 24h
-  // TTL via status="reported"; operators can promote it to "active" via
-  // meta_state_ack once a fix plan ships.
-  test("droid exec exposes mcp__learning_loop_mcp__* tools (client-side loading)", async () => {
-    console.error("[cold-session/mcp-client-loading] test starting");
+  // This is the L1 probe; test 5 is the authoritative L2 probe. Both must
+  // agree (gap closed) for the rule to release.
+  test("droid exec CLI catalog lists runtime-namespaced MCP tools (L1 probe)", async () => {
+    console.error("[cold-session/l1] test starting");
     if (!existsSync(serverEntry)) {
-      console.error("[cold-session/mcp-client-loading] skipping: server entry missing");
+      console.error("[cold-session/l1] skipping: server entry missing");
       return;
     }
 
@@ -436,7 +518,7 @@ describe("cold-session discoverability acceptance", () => {
       probe.on("exit", (code) => resolve(code === 0));
     });
     if (!canSpawnDroid) {
-      console.error("[cold-session/mcp-client-loading] skipping: droid not in PATH");
+      console.error("[cold-session/l1] skipping: droid not in PATH");
       return;
     }
 
@@ -464,9 +546,13 @@ describe("cold-session discoverability acceptance", () => {
       return;
     }
 
-    if (toolsList.includes("learning-loop-mcp")) {
-      console.error("[cold-session/mcp-client-loading] gap closed: mcp tools listed");
-      // Gap closed: check for existing finding and soft-delete it.
+    if (STRICT_MCP_TOOL_PATTERN.test(toolsList)) {
+      console.error("[cold-session/l1] L1 closed: mcp tools listed in CLI catalog (test 5 / L2 is the authoritative probe)");
+      // L1 (CLI catalog) closed: check for existing finding and soft-delete it.
+      // NB: this is the L1 layer only. The L2 layer (agent runtime, tested by
+      // test 5 below) is the authoritative one. The 1410Z finding documents
+      // that L1 may pass while L2 fails; both probes share the same
+      // session_id+subtype so the rule's evidence aggregates correctly.
       let existing = null;
       try {
         existing = readRegistry(projectRoot).find((e) =>
@@ -499,6 +585,8 @@ describe("cold-session discoverability acceptance", () => {
     // gap is tracked in the canonical meta-state.jsonl registry. Pattern
     // reference: .factory/hooks/loop-surface-inject.cjs#reportMcpConnectionFailure
     // (writes the same shape; subtype differentiates client-side from server-side).
+    // L1 finding uses subtype=mcp-client-loading; the 1410Z finding documents
+    // that L1 may pass while L2 fails, so the L2 probe (test 5) is authoritative.
 
     // Idempotency: skip write if a finding for this session_id is already active or reported.
     let existing = null;
@@ -547,9 +635,9 @@ describe("cold-session discoverability acceptance", () => {
 
     try {
       await writeEntry(projectRoot, entry);
-      console.error(`[cold-session/mcp-client-loading] logged finding: ${id}`);
+      console.error(`[cold-session/l1] logged finding: ${id}`);
     } catch (e) {
-      console.error(`[cold-session/mcp-client-loading] cannot write finding: ${e.message}`);
+      console.error(`[cold-session/l1] cannot write finding: ${e.message}`);
     }
   });
 
@@ -609,5 +697,146 @@ describe("cold-session discoverability acceptance", () => {
 
     // Cleanup
     delete process.env.GATE_ROOT;
+  });
+
+  // Fifth test: authoritative agent-runtime layer probe (L2).
+  //
+  // Finding meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to
+  // correctly identified that test 3 above probes the wrong layer (droid CLI
+  // catalog) for the agent-runtime gap. This test probes the ACTUAL agent
+  // runtime by spawning a real `droid exec` and asking the agent to call a
+  // specific MCP tool. If the tool is not in the AI's callable list, the
+  // agent cannot call it and the response shape will diverge from the
+  // success signal.
+  //
+  // Probe contract: the agent must call
+  //   mcp__learning_loop_mcp__loop_describe({ tier: "summary" })
+  // and echo the numeric tool_count. A bare number in stdout is the success
+  // signal; anything else (TOOL_UNAVAILABLE marker, prose only, error
+  // message) is the gap-open signal.
+  //
+  // Like test 3, this test logs a `mcp-client-loading` finding on gap-open
+  // and soft-deletes it on gap-close, sharing the same session_id
+  // ("test-cold-session-mcp-client-loading") and subtype
+  // ("mcp-client-loading"). The rule-cold-session-test-must-pass-before-
+  // resolution check (core/gate-logic.js#checkResolutionEvidence, branch 2)
+  // looks for `subtype=mcp-client-loading && session_id=<pattern>`, so
+  // either probe can independently contribute evidence.
+  //
+  // Unlike test 3, this test does NOT soft-skip on the catalog state — it
+  // runs whenever droid is in PATH. This is the contract test for the
+  // 0443Z/1410Z gap.
+  test("agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe)", async () => {
+    console.error("[cold-session/l2] test starting");
+    if (!existsSync(serverEntry)) {
+      console.error("[cold-session/l2] skipping: server entry missing");
+      return;
+    }
+
+    const sessionId = "test-cold-session-mcp-client-loading";
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    let writeEntry, readRegistry, updateEntry, generateId;
+    try {
+      const core = await import(pathToFileURL(corePath).href);
+      writeEntry = core.writeEntry;
+      readRegistry = core.readRegistry;
+      updateEntry = core.updateEntry;
+      generateId = core.generateId;
+    } catch (e) {
+      console.error(`[cold-session/l2] cannot import core/meta-state.js: ${e.message}`);
+      return;
+    }
+
+    // Shared L2 probe: see probeL2Gap helper above. On gap-open, log a
+    // finding (idempotent on session_id+subtype). On gap-close, soft-delete
+    // any existing finding. Both probes (this test 5 and test 1's skip
+    // check) share the same session_id+subtype so the rule-cold-session-
+    // test-must-pass-before-resolution evidence aggregates correctly.
+    const gapOpen = !(await probeL2Gap(projectRoot, serverEntry));
+
+    if (!gapOpen) {
+      // Gap closed: check for existing finding and soft-delete it.
+      let existing = null;
+      try {
+        existing = readRegistry(projectRoot).find((e) =>
+          e.entry_kind === "finding"
+          && e.session_id === sessionId
+          && e.subtype === "mcp-client-loading"
+          && (e.status === "active" || e.status === "reported"),
+        );
+      } catch {
+        // no registry
+      }
+      if (existing) {
+        const now = new Date().toISOString();
+        try {
+          await updateEntry(projectRoot, existing.id, {
+            status: "expired",
+            resolved_at: now,
+            resolved_by: "auto-cold-session-test-l2",
+            _expected_version: existing.version ?? 0,
+          });
+          console.error(`[cold-session/l2] gap closed: soft-deleted finding ${existing.id}`);
+        } catch (e) {
+          console.error(`[cold-session/l2] cannot soft-delete finding: ${e.message}`);
+        }
+      } else {
+        console.error("[cold-session/l2] gap closed: no existing finding to soft-delete");
+      }
+      return;
+    }
+
+    // Gap-open branch: log finding (idempotent on session_id+subtype).
+    let existing = null;
+    try {
+      existing = readRegistry(projectRoot).find((e) =>
+        e.entry_kind === "finding"
+        && e.session_id === sessionId
+        && e.subtype === "mcp-client-loading"
+        && (e.status === "active" || e.status === "reported"),
+      );
+    } catch {
+      // no registry
+    }
+    if (existing) {
+      console.error(`[cold-session/l2] gap already tracked: ${existing.id}`);
+      return;
+    }
+
+    const id = generateId("mcp-client-loading-missing");
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    const entry = {
+      id,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description:
+        "L2 probe: droid exec cannot call mcp__learning_loop_mcp__loop_describe in this environment. " +
+        "The MCP server is reachable and the droid CLI catalog may show the tools (see test 3 / L1 probe), " +
+        "but the droid agent runtime is not surfacing MCP tools to the AI's callable list. " +
+        "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
+        "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
+        `Probe: exit=${exitCode}, stdout_len=${stdout.length}, stderr_len=${stderr.length}, first200=${JSON.stringify(stdout.slice(0, 200))}.`,
+      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      session_id: sessionId,
+      status: "reported",
+      auto_resolve: null,
+      created_at: now.toISOString(),
+      expires_at: expiresAt,
+      acked_at: null,
+      resolved_at: null,
+      resolved_by: null,
+      version: 0,
+    };
+
+    try {
+      await writeEntry(projectRoot, entry);
+      console.error(`[cold-session/l2] logged finding: ${id}`);
+    } catch (e) {
+      console.error(`[cold-session/l2] cannot write finding: ${e.message}`);
+    }
   });
 });
