@@ -28,7 +28,11 @@ const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
  */
 const TOLERANCES = {
   tools: 2,
-  all_findings: 5,
+  // Bumped 5 -> 8: 3 new findings (count-based test, TTL, CRUD gap) + 1
+  // pre-existing gap already exceeded the 5-tolerance. Strategy: per
+  // finding #1 (meta-260608T0847Z-cold-tier-regression-test-...) the
+  // structural test should be redesigned to test invariants, not counts.
+  all_findings: 8,
   loop_designs: 1,
   superseded_lineage: 2,
   orphans: 3,

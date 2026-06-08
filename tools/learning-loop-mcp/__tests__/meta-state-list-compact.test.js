@@ -23,11 +23,14 @@ describe("meta_state_list compact mode", () => {
     // Full registry compact should be << full registry (130KB). After I1 unification
     // with `summarize`, compact adds ~250 bytes/entry (more relationship fields like
     // `category`, `title`, `enforcement`, `pattern_type`) but drops `description_preview`.
-    // Threshold: < 30KB (still ~4.5x smaller than full). Plan's original "~4-12KB" was
-    // a pre-unification estimate; the unified shape is the correct design per I1.
+    // Threshold: < 35KB (still ~3.7x smaller than full). Bumped from 30KB 2026-06-08
+    // to accommodate 3 new findings (count-based test, TTL, CRUD gap) and the updated
+    // loop-design-cross-reference-fields description with the GAP ADDED narrative.
+    // Compact mode still achieves ~3.7x reduction; the 30KB threshold was tight given
+    // the natural growth pattern of the registry.
     assert.ok(
-      payloadBytes < 30000,
-      `Compact payload should be <30KB (vs 130KB full), got ${payloadBytes}`
+      payloadBytes < 35000,
+      `Compact payload should be <35KB (vs 130KB full), got ${payloadBytes}`
     );
 
     // Verify all entries have only compact fields
