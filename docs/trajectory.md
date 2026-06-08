@@ -4,9 +4,14 @@ The long-term direction of the learning loop. This document states the destinati
 
 ## Destination
 
-An autonomous verification loop: vendor documentation flows into candidate assertions, candidates become planned experiments, experiments run inside class-level approval gates and budget bounds, validated assertions land in the index, and product consumes only validated assertions. The human operator approves classes of work, not individual experiments, and stays in the loop for judgment calls (product scope, irreversible operations, gate definitions).
+A self-referential learning loop with two stacked dimensions:
 
-The destination also means **docs are not operational dependencies**. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow.
+1. **Verification autonomy (in progress).** Vendor documentation flows into candidate assertions, candidates become planned experiments, experiments run inside class-level approval gates and budget bounds, validated assertions land in the index, and product consumes only validated assertions. The human operator approves classes of work, not individual experiments, and stays in the loop for judgment calls (product scope, irreversible operations, gate definitions).
+2. **Self-referential memory (active, growing).** The loop maintains a self-model of its own correctness through the meta-state registry. Loop modifications are logged as change-log entries paired with their code changes. Drift between recorded state and actual state is detected mechanically. Findings promote to rules; rules enforce invariants. A real substrate (e.g. vnstock) provokes findings; the findings shape the loop; the loop runs against the substrate.
+
+**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** The template is the static rules of the game. The substrate is the surface the loop operates against. The meta-state is what the loop learns from doing so.
+
+The destination also means **docs are not operational dependencies**. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow — and from self-driving workflow into a self-modeling system that improves the workflow it runs.
 
 ## Why This Is the Natural Endpoint
 
@@ -79,6 +84,41 @@ SP3 introduces 1+ new tools to the manifest, a new drift-aggregation query, and 
 - The 183 existing records must keep validating. AJV's strict mode (already in `record-validation-rules.js`) is the test surface.
 - A field-coverage test that catches drift can itself be skipped or weakened. The test must be wired into the same negative-fixture runner that already gates `validate:records` in CI, not a separate opt-in check.
 
+## The Sixth Bridge: Self-Model as Product
+
+Bridges 1–4 move *content* from docs into machine-actionable records. Bridge 5 moves the loop's own code from hand-written to schema-derived. The sixth bridge moves the loop's own *runtime state* from operator-memory to a machine-queryable self-model: the meta-state registry.
+
+**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** Bridges 1–5 reduce the *content* the operator must author. Bridge 6 reduces the *cognition* the operator must hold — the operator stops remembering "which gate changed when" because the registry remembers, and stops reasoning "is this finding still valid" because `meta_state_derive_status` reasons instead.
+
+Substrate vs. product vs. template:
+
+| Layer | Role | Lifespan | Lives in |
+|---|---|---|---|
+| **Template** | Static rules of the game — gates, hooks, schemas, MCP tools | Frozen-ish; evolves through formal change-log entries | `tools/learning-loop-mcp/`, `schemas/`, `.claude/coordination/` |
+| **Self-model (product)** | The loop's learning about itself — findings, rules, drift, lifecycle | Grows continuously per operator; change-log tier is durable | `meta-state.jsonl` + 11 `meta_state_*` MCP tools |
+| **Substrate** | Real surface area the loop operates against so it generates real findings. Replaceable. | Disposable — exists to provoke learning, not to be learned *about* | `records/vnstock/`, `product/api/` |
+
+The substrate exists to provoke learning; the learning is not *about* the substrate. A recent example: `meta-260606T2106Z-agent-called-meta-state-log-change-mcp-tool-5-times-in-succe` (category `loop-anti-pattern`, subtype `tool-retry-loop`) is the loop noticing its own retry pathology. That finding has no relationship to vnstock. It is the loop learning about the loop.
+
+### Why this is sequenced after Bridge 5
+
+Schema-derived code (Bridge 5) and self-model queryability (Bridge 6) share an assumption: the schema of the loop's own state is stable. If schemas are still being hand-edited, the meta-state tools that read them will drift. Bridge 5 stabilizes the loop's static rules; Bridge 6 turns the dynamic state into a first-class product.
+
+### The loss function question
+
+Self-referential learning needs a target. Proposed composite (not yet measured):
+
+- **Drift recovery rate** — findings caught + resolved vs. drifted. Direct measure of self-correction.
+- **Findings-per-promoted-rule ratio** — efficiency of the finding → rule → enforced-invariant pipeline. A high ratio of findings that never promote is noise; a high ratio of findings that do promote is learning.
+
+A loop with no stated loss function optimizes whatever is easiest to measure. Better to state the target and let the metric be approximate than to leave it implicit.
+
+### The operator-capture guard
+
+When the operator's corrections shape what the loop learns, and the loop's gates shape what the operator sees, they co-adapt. The meta-state becomes a record of operator preferences, not system truths. Charter rule #1 ("operator is final authority") makes this worse — it cedes truth to the operator.
+
+Proposed mitigation: a `loop_discovered` vs `operator_ack` annotation on change-log entries. The ratio of these over time is the "operator-capture index." A high ratio means the operator is the system's brain, not the loop. This is not yet implemented; the schema decision is open.
+
 ## What Stays Human Forever
 
 Autonomy is on the verification axis, not the judgment axis. The destination keeps humans in the loop for:
@@ -88,6 +128,7 @@ Autonomy is on the verification axis, not the judgment axis. The destination kee
 - **Class-approval definitions.** Operators write the pre-approval patterns. The loop does not propose its own expansion of authority.
 - **Decisions and risks.** Both record types remain human-authored.
 - **Philosophy.** The "why" behind loop design stays in docs. The "what" and "how" move to the loop.
+- **The loop's self-model boundaries.** The operator decides what counts as a "loss function" and what counts as "operator capture." The loop may surface signals; it does not redefine its own success criteria without operator sign-off. This is the limit that prevents the self-referential system from optimizing itself out of alignment with the operator's intent. The meta-state system is the most dangerous component to give full autonomy to, because it is the one that decides what the rest of the loop learns. The operator remains the authority on what the loop is allowed to learn about itself.
 
 Vision documents that do not name their limits get cited to justify removing safety gates the author never meant to remove. These limits are the limits.
 
@@ -122,3 +163,22 @@ The meta-state agent-affordances decomposition (`plans/reports/brainstorm-260602
 - The 4-phase TDD plan for SP3 was extended with a Phase 4 (docs-update phase, added 2026-06-05 per operator request) to keep the user-facing docs aligned with the loop's actual state. SP3 closed the drift-surfacing gap: the agent can now ask "which entries disagree with their derived/grounded state?" and get a flat list of drift events.
 - The brainstorm that made atomicity load-bearing: `plans/reports/brainstorm-20260518-machine-extracted-index.md`.
 - The design for schema-derived code generation (the fifth bridge): `plans/reports/brainstorm-260603-field-coverage.md`.
+
+## What Has Happened Since (2026-06-08 revision)
+
+The trajectory document was revised to reflect a corrected understanding surfaced in `plans/reports/predict-revised-loop-memory-correction-260608-1012-vnstock-as-substrate-meta-state-as-product-report.md`: the meta-state registry is the product, not the template's bookkeeping. The substrate (currently vnstock) is replaceable; what makes it valuable is its non-determinism, not its identity.
+
+Three structural decisions identified but not yet implemented:
+
+1. **Tiered meta-state migration (Model C).** Template ships clean. Findings stay operator-local. Promoted rules can be exported as a YAML bundle and PR'd back to the template. The template itself becomes a snapshot of "rules the loop has learned are worth enforcing." Implementation: a new `meta_state_export_rules` MCP tool that emits a template-importable YAML bundle of promoted rules.
+2. **Composite loss function for self-referential learning.** Drift recovery rate + findings-per-promoted-rule ratio. The point is not to optimize; it is to make the learning trajectory visible. Extension target: surface these metrics through `meta_state_query_drift`.
+3. **Operator-capture guard.** A `loop_discovered` vs `operator_ack` annotation on change-log entries. The ratio is the operator-capture index. Schema decision is open; the question is whether the annotation lives in the change-log entry, in a derived metric, or both.
+
+The destination sentence now reads: "A self-referential learning loop with verification autonomy *and* a self-model that the loop maintains and that influences its own behavior." The fifth bridge (schema as source of truth) is unchanged; the sixth bridge (self-model as product) is added above.
+
+Open questions filed from the revised finding:
+
+- A `LIVE.md` declaration in the repo root distinguishing template content from substrate work, so future operators (and future selves) have a clean handoff path.
+- A "substrate properties" document specifying the three required properties (irreversible operations to gate, non-deterministic failure modes, evidence files the loop can fingerprint) so the substrate can be rotated when vnstock stabilizes.
+- A "findings-per-week" trend to answer: "is vnstock still generating novel findings, or has the loop learned enough about it that findings have dried up?"
+- A "learning trajectory" reflection written periodically by the operator from the meta-state — outside the loop — to catch the operator-capture signal early.
