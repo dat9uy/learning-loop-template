@@ -254,6 +254,12 @@ export function buildInverseIndexes(entries) {
       const findingId = entry.origin;
       if (!originInverse.has(findingId)) originInverse.set(findingId, []);
       originInverse.get(findingId).push(entry.id);
+      // Dual-field unification: rule.origin is the canonical promoted_to_rule ref.
+      // Populate promoted_to_rule_inverse from the rule side so inverse indexes
+      // stay complete after migration from finding.promoted_to_rule -> rule.origin.
+      if (!promotedToRuleInverse.has(entry.id)) promotedToRuleInverse.set(entry.id, []);
+      const ptrArr = promotedToRuleInverse.get(entry.id);
+      if (!ptrArr.includes(findingId)) ptrArr.push(findingId);
     }
 
     // promoted_to_rule: rule.id -> findings that promoted it

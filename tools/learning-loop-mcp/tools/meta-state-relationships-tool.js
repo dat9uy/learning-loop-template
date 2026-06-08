@@ -40,7 +40,17 @@ export const metaStateRelationshipsTool = {
     if (entry.addresses && Array.isArray(entry.addresses)) outbound.addresses = entry.addresses;
     if (entry.consolidated_into && typeof entry.consolidated_into === "string") outbound.consolidated_into = entry.consolidated_into;
     if (entry.supersedes && typeof entry.supersedes === "string") outbound.supersedes = entry.supersedes;
-    if (entry.promoted_to_rule && typeof entry.promoted_to_rule === "string") outbound.promoted_to_rule = entry.promoted_to_rule;
+    if (entry.promoted_to_rule && typeof entry.promoted_to_rule === "string") {
+      outbound.promoted_to_rule = entry.promoted_to_rule;
+    } else if (entry.entry_kind === "finding") {
+      // Dual-field unification: after migration, findings no longer store
+      // promoted_to_rule; the rule stores origin. Look up origin_inverse to
+      // find the rule(s) that originated from this finding.
+      const rulesFromOrigin = inverse.origin_inverse.get(id);
+      if (rulesFromOrigin && rulesFromOrigin.length > 0) {
+        outbound.promoted_to_rule = rulesFromOrigin[0];
+      }
+    }
     if (entry.proposed_design_for && Array.isArray(entry.proposed_design_for)) outbound.proposed_design_for = entry.proposed_design_for;
 
     // Inbound refs (inverse maps)
