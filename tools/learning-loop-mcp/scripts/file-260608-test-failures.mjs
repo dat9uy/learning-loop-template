@@ -11,10 +11,19 @@
  */
 
 import { metaStateReportTool } from "#mcp/tools/meta-state-report-tool.js";
+import { readRegistry } from "#mcp/core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();
 const SESSION_ID = "test-failures-260608T1800Z";
+
+// Idempotency: skip if a finding with the same session_id + evidence_code_ref already exists.
+const existing = readRegistry(root);
+const alreadyFiled = new Set(
+  existing
+    .filter((e) => e.entry_kind === "finding" && e.session_id === SESSION_ID)
+    .map((e) => e.evidence_code_ref)
+);
 
 const findings = [
   {
@@ -86,6 +95,11 @@ let filed = 0;
 let skipped = 0;
 
 for (const f of findings) {
+  if (alreadyFiled.has(f.file)) {
+    console.log(`skipped (existing): ${f.test}`);
+    skipped++;
+    continue;
+  }
   try {
     const result = await metaStateReportTool.handler({
       category: f.category,
