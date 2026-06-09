@@ -116,7 +116,7 @@ When the gate blocks with `decision: block`:
 
 ### Product-Build Plans
 - All plans with `tags: [product-build]` MUST declare surfaces in Phase 0.
-- Decision records MUST exist in `records/<surface>/decisions/` before implementation phases begin. Use `record_create_decision` MCP tool.
+- Decision records MUST exist in `records/<surface>/decisions/` before implementation phases begin **(product-build plans only)**. Use `record_create_decision` MCP tool.
 - Missing decision records **always block** (exit 2) — regardless of `GATE_RESPONSE_MODE`.
 
 ### Product Code Writes

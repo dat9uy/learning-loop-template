@@ -1,7 +1,7 @@
 ---
 title: "Index-extractor + readRegistry + cold-tier optimization (Approach A: sidecar + LRU + L2 cache + batch + archive)"
 description: "Ships 5 structural improvements across 3 layers to resolve the 6 overrun findings in meta-state.jsonl (subtypes cold-tier-size-overrun, registry-size-overrun, test-failure-size-sensitive): (1) Layer 1 index_extract content-hash skip (acknowledges the existing shouldWrite skip in file-writer.js#15-22; plan adds the directory-mtime map + cache_hits/cache_misses stats on top), (2) Layer 2 readRegistry process-lifetime LRU with mtime+size invalidation, (3) Layer 2.5 meta_state_batch atomic primitive (cap 500 ops, covers the documented 268-finding closeout with 1.87x headroom), (4) Layer 3 records/meta/.cache/loop-describe-cold.json sidecar with sha-keyed rebuild, (5) meta_state_archive tool for structural closure of the 2 active size-overrun findings. Closes meta-260608T1826Z-{phase-6-summary-mode,compact-mode-size,test-buildinverseindexes} structurally (the prior threshold-bump cures at the 1909Z session are reversed by the L2 cache). 26 new test cases across 5 new test files + 2 existing-test rewrites; 2 new MCP tools; 2 new core helpers; 1 cache file (gitignored via .gitignore update); 1 named closeout script; 1 loop-design update; 1 change-log entry."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, performance, index-extractor, readRegistry, cold-tier, cache, lru, batch, archive, sqlite-trajectory, tdd]

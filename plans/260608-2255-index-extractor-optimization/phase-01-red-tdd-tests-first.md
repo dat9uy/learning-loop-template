@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Red: TDD tests first"
-status: pending
+status: completed
 effort: "2h"
 dependencies: []
 ---
