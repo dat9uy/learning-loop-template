@@ -21,7 +21,7 @@ const schema = schemaShape;
 
 export const recordCreateDecisionTool = {
   name: "record_create_decision",
-  description: "Create a decision record YAML file. Use this before writing product-build plans. The record starts in draft status. For product/** writes, the write gate now requires a preflight marker (via mark_preflight_complete) instead of decision records. Decision records are still required for product-build plan.md files.",
+  description: "Create a decision record YAML file. Use this before writing product-build plans. The record starts in draft status. For product/** writes, the write gate now requires a preflight marker (via mark_preflight_complete) instead of decision records. Decision records are still required for product-build plan.md files. Use when you make a plan-time choice that needs to be auditable (frame shift, scope boundary, library pick). Markdown refs in `source_refs` are rejected — use `local:meta-state:<id>` or the canonical MCP tool chain. Not for log-style state (use `meta_state_log_change` instead) or for risks (use `record_create_risk` instead).",
   schema,
   handler: async ({ surface, question, decision, rationale, alternatives, tradeoffs, source_refs, supersedes, decision_effect }) => {
     const root = resolveRoot();

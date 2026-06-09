@@ -35,7 +35,7 @@ function runTest(root, testPath) {
 
 export const metaStateDeriveStatusTool = {
   name: "meta_state_derive_status",
-  description: "Derive the effective status of a meta-state entry by reading its stored references + the current filesystem state. Returns the locked shape: { id, raw_status, derived_status, derivation { kind, signals, checked_at, duration_ms }, drift, recommendation }. The agent decides what to do with the answer; this tool does NOT mutate entries.",
+  description: "Derive the effective status of a meta-state entry by reading its stored references + the current filesystem state. Returns the locked shape: { id, raw_status, derived_status, derivation { kind, signals, checked_at, duration_ms }, drift, recommendation }. The agent decides what to do with the answer; this tool does NOT mutate entries. Use when you need to ask \"is this finding still true?\" before resolving it. Not for recording a new finding (use `meta_state_report` instead) or for closing one (use `meta_state_resolve` instead).",
   schema: {
     id: z.string().min(1).describe("Entry id to derive status for"),
     run_tests: z.boolean().optional().default(false)

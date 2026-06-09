@@ -12,7 +12,7 @@ import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
 
 export const gateCheckTool = {
   name: "gate_check",
-  description: "Check if a command is allowed by constraint gate. Returns ok/block/escalate.",
+  description: "Check if a command is allowed by constraint gate. Returns ok/block/escalate. Use BEFORE running any side-effect command (vendor API, package install, sudo, docker, side-effect import). The gate is the single source of truth for \"is this safe?\" — do not rely on memory. Not for actual execution (this is a dry-run check) and not for unlocking product/** writes (use `gate_mark_preflight` instead).",
   schema: {
     command: z.string().optional().describe("The command to check against constraint patterns"),
     file_path: z.string().optional().describe("Optional file path to check against write-path observations"),

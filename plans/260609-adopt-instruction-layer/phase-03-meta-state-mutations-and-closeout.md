@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Meta-State-Mutations-and-Closeout"
-status: pending
+status: completed
 priority: P2
 effort: 30m
 dependencies:

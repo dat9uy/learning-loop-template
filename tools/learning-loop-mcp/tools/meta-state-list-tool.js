@@ -31,7 +31,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, expired, resolved). Runs auto-resolve and expiry checks before returning.",
+  description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, expired, resolved). Runs auto-resolve and expiry checks before returning. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead).",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),

@@ -384,9 +384,32 @@ describe("cold-session discoverability acceptance", () => {
       // 1. loop_describe warm tier returns discoverability hints.
       const warm = await call(1, "loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      assert.strictEqual(warm.discoverability_hints.length, 6);
+      assert.strictEqual(warm.discoverability_hints.length, 8);
       const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
       assert.ok(citationHint, "citation hint should mention evidence_code_ref");
+
+      // Track A — new hints A4 + A5 (Plan 260609-adopt-instruction-layer)
+      const hints = warm.discoverability_hints;
+      assert.ok(
+        hints.some((h) => h.includes("canonical MCP tool") && h.includes("4-question framework")),
+        "Hint A4 (tool selection — 4-question framework) must be present",
+      );
+      assert.ok(
+        hints.some((h) => h.includes("priority-1 prompt") && h.includes("AGENTS.md")),
+        "Hint A5 (4-layer role split) must be present",
+      );
+      assert.ok(
+        hints.length === 8,
+        `Expected 8 hints (6 original + 2 new), got ${hints.length}`,
+      );
+      const totalHintsByteLength = hints.reduce(
+        (sum, h) => sum + Buffer.byteLength(h, "utf8"),
+        0,
+      );
+      assert.ok(
+        totalHintsByteLength < 5000,
+        `Warm tier hints must be <5KB; got ${totalHintsByteLength} bytes`,
+      );
 
       // 2. meta_state_report with evidence_code_ref + mechanism_check: true succeeds.
       const reportResult = await call(2, "meta_state_report", {

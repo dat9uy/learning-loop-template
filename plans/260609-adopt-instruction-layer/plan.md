@@ -14,7 +14,7 @@ description: >-
   2026-06-10T14:02:41.798Z). All registry mutations go through MCP tools; no
   `node -e` escape hatch; the `meta-260606T2102Z-agent-used-direct-file-i-o-...`
   finding stays clean.
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags:

@@ -31,8 +31,14 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
   const crossRefFields = after.find((e) => e.id === "loop-design-cross-reference-fields");
   assert.ok(instructionLayer, "loop-design-instruction-layer must exist");
   assert.ok(crossRefFields, "loop-design-cross-reference-fields must exist");
-  assert.deepStrictEqual(instructionLayer.proposed_design_for, [],
-    "instruction-layer should have empty proposed_design_for after fix");
+  // instruction-layer may have valid refs backfilled by design adoption (plan
+  // 260609-adopt-instruction-layer); assert no broken refs remain rather than
+  // asserting emptiness
+  const brokenInstruction = (instructionLayer.proposed_design_for ?? []).filter(
+    (ref) => !after.some((e) => e.id === ref)
+  );
+  assert.deepStrictEqual(brokenInstruction, [],
+    "instruction-layer should have no broken refs after fix");
   // cross-reference-fields may have valid refs backfilled by design adoption;
   // assert no broken refs remain rather than asserting emptiness
   const brokenCrossRef = (crossRefFields.proposed_design_for ?? []).filter(

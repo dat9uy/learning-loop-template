@@ -6,7 +6,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateLogChangeTool = {
   name: "meta_state_log_change",
-  description: "Log a system change (schema, rule, tool, policy, surface, lifecycle, manifest) as a change-log entry in the meta-state registry. The entry is immutable, status=active, no TTL. Use supersedes to replace a prior change entry.",
+  description: "Log a system change (schema, rule, tool, policy, surface, lifecycle, manifest) as a change-log entry in the meta-state registry. The entry is immutable, status=active, no TTL. Use supersedes to replace a prior change entry. Use when you ship a meaningful code or rule change that should appear in the durable audit log. Not for operator-observed issues (use `meta_state_report` instead) or for closing a finding (use `meta_state_resolve` instead).",
   schema: {
     change_dimension: z.enum(["semantic", "mechanical", "surface"])
       .describe("What kind of change: semantic (schemas/taxonomies/contracts) | mechanical (rules/policies/enforcement) | surface (tools/surfaces/lifecycles/manifests)"),
