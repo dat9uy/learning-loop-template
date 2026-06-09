@@ -103,7 +103,9 @@ describe("cold-session discoverability acceptance", () => {
     });
 
     let stdout = "";
+    let stderr = "";
     child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
 
     const exitCode = await new Promise((resolve) => {
       const timeout = setTimeout(() => { child.kill("SIGTERM"); resolve(-1); }, 90000);
@@ -116,7 +118,8 @@ describe("cold-session discoverability acceptance", () => {
     );
 
     const trimmed = stdout.trim();
-    return /\b\d+\b/.test(trimmed) && !trimmed.includes("TOOL_UNAVAILABLE");
+    const gapClosed = /\b\d+\b/.test(trimmed) && !trimmed.includes("TOOL_UNAVAILABLE");
+    return { gapClosed, exitCode, stdout, stderr };
   }
 
   test("agent cites code via meta_state_report and local:meta-state refs", async () => {
@@ -157,8 +160,8 @@ describe("cold-session discoverability acceptance", () => {
     // catalog may show the tools while the agent runtime cannot invoke them.
     // Skip on L2 gap-open so CI does not accumulate 60s timeouts in envs where
     // the runtime is broken. probeL2Gap is the shared helper used by test 5.
-    const l2Closed = await probeL2Gap(projectRoot, serverEntry);
-    if (!l2Closed) {
+    const l2Result = await probeL2Gap(projectRoot, serverEntry);
+    if (!l2Result.gapClosed) {
       console.error("[cold-session] skipping: L2 probe found MCP tools unavailable to droid agent runtime (see test 5 / finding meta-260608T1522Z)");
       return;
     }
@@ -752,7 +755,8 @@ describe("cold-session discoverability acceptance", () => {
     // any existing finding. Both probes (this test 5 and test 1's skip
     // check) share the same session_id+subtype so the rule-cold-session-
     // test-must-pass-before-resolution evidence aggregates correctly.
-    const gapOpen = !(await probeL2Gap(projectRoot, serverEntry));
+    const l2Result = await probeL2Gap(projectRoot, serverEntry);
+    const gapOpen = !l2Result.gapClosed;
 
     if (!gapOpen) {
       // Gap closed: check for existing finding and soft-delete it.
@@ -819,7 +823,7 @@ describe("cold-session discoverability acceptance", () => {
         "but the droid agent runtime is not surfacing MCP tools to the AI's callable list. " +
         "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
         "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
-        `Probe: exit=${exitCode}, stdout_len=${stdout.length}, stderr_len=${stderr.length}, first200=${JSON.stringify(stdout.slice(0, 200))}.`,
+        `Probe: exit=${l2Result.exitCode}, stdout_len=${l2Result.stdout.length}, stderr_len=${l2Result.stderr.length}, first200=${JSON.stringify(l2Result.stdout.slice(0, 200))}.`,
       evidence_code_ref: "tools/learning-loop-mcp/server.js",
       session_id: sessionId,
       status: "reported",
