@@ -94,7 +94,7 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     if (
       grounding.drift_kind === "hash_mismatch" &&
       typeof finding.evidence_code_ref === "string" &&
-      finding.evidence_code_ref.includes("/__tests__/")
+      (finding.evidence_code_ref.includes("/__tests__/") || finding.evidence_code_ref.endsWith(".test.js"))
     ) {
       continue;
     }

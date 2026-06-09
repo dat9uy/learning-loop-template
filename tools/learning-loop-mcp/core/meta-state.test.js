@@ -83,7 +83,7 @@ describe("meta-state registry core", () => {
     process.env.GATE_ROOT = originalEnv;
   });
 
-  test("checkExpiry returns expired when 24h passed on reported entry", async () => {
+  test("checkExpiry returns stale when 24h passed on reported entry", async () => {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 25 * 60 * 60 * 1000);
     const e = makeEntry({
@@ -92,7 +92,7 @@ describe("meta-state registry core", () => {
       expires_at: yesterday.toISOString(),
     });
     const result = checkExpiry(e);
-    assert.strictEqual(result, "expired");
+    assert.strictEqual(result, "stale");
   });
 
   test("checkExpiry returns null on active entry with no TTL", async () => {

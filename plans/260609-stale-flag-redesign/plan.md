@@ -14,7 +14,7 @@ description: >-
   entries on every list call). 15+ new TDD tests; 1 new status; 1 new core
   module; 1 cmd-allowlist; 2 new MCP tools; 1 loop-design entry; 1
   implementation change-log; 1 journal.
-status: pending
+status: completed
 priority: P1
 branch: main
 tags:
@@ -105,9 +105,9 @@ This plan ships a structural fix:
 
 | Phase | Name | Status | Effort | Dependencies |
 |-------|------|--------|--------|--------------|
-| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Pending | ~2.5h | In Progress |
-| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Pending | ~3h | Phase 1 |
-| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Pending | ~1.5h | Phase 2 |
+| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Completed | ~2.5h | n/a |
+| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Completed | ~3h | Phase 1 |
+| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Completed | ~1.5h | Phase 2 |
 
 **Total effort:** ~7h
 

@@ -17,7 +17,7 @@
     "validate:plan-loop": "node tools/validate-plan-loop-cli.js",
     "verify:claim": "node tools/verify-claim-cli.js",
     "list:verified": "node tools/list-verified-cli.js",
-    "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
+    "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/core/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
     "check:budget": "node tools/check-budget-cli.js",
     "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
     "generate:capabilities": "node tools/generate-capabilities-cli.js",

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refactor and closeout"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [phase-02-green-implementation]
@@ -285,16 +285,16 @@ Run in order:
 
 ## Success Criteria
 
-- [ ] The 2 affected findings (`meta-260608T0847Z-...` and `meta-260606T1500Z-...`) are now `status: "superseded"` with `consolidated_into` pointing at the implementation change-log.
-- [ ] The existing change-log `meta-260609T1817Z-...` has a `consolidates` field listing the 2 findings.
-- [ ] The implementation change-log is `status: "active"` and surfaces in `meta_state_list({ entry_kind: "change-log" })`.
-- [ ] The loop-design entry is `status: "inactive"` with `shipped_in_plan: "plans/260609-stale-flag-redesign"`.
-- [ ] `docs/journals/260609-stale-flag-redesign.md` exists and is well-formed.
-- [ ] `pnpm test` passes (~855 tests, 0 fail).
-- [ ] `loop_describe({ tier: "warm" })` lists `meta_state_re_verify` and `meta_state_supersede`.
-- [ ] `meta_state_relationships` on the implementation change-log returns the 2 superseded finding ids in the `consolidates` field.
-- [ ] `meta_state_query_drift` no longer reports the 2 backfilled findings as drift.
-- [ ] Single commit on `main` with the full plan's work.
+- [x] The 2 affected findings (`meta-260608T0847Z-...` and `meta-260606T1500Z-...`) are now `status: "superseded"` with `consolidated_into` pointing at the implementation change-log.
+- [x] The existing change-log `meta-260609T1817Z-...` has a `consolidates` field listing the 2 findings.
+- [x] The implementation change-log is `status: "active"` and surfaces in `meta_state_list({ entry_kind: "change-log" })`.
+- [x] The loop-design entry is `status: "inactive"` with `shipped_in_plan: "plans/260609-stale-flag-redesign"`.
+- [x] `docs/journals/260609-stale-flag-redesign.md` exists and is well-formed.
+- [x] `pnpm test` passes (~855 tests, 0 fail).
+- [x] `loop_describe({ tier: "warm" })` lists `meta_state_re_verify` and `meta_state_supersede`.
+- [x] `meta_state_relationships` on the implementation change-log returns the 2 superseded finding ids in the `consolidates` field.
+- [x] `meta_state_query_drift` no longer reports the 2 backfilled findings as drift.
+- [x] Single commit on `main` with the full plan's work.
 
 ## Risk Assessment
 

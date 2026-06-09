@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Green (implementation)"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [phase-01-red-tdd-tests-first]
@@ -580,12 +580,12 @@ Total: ~840 + 15 = ~855 passing; 0 failing.
 
 ## Success Criteria
 
-- [ ] All 4 new test files + 1 added assertion exist; all tests in them pass.
-- [ ] `pnpm test` shows ~854 passing, 0 failing.
-- [ ] `node tools/learning-loop-mcp/server.js` starts successfully (manifest loads the 2 new tools; logs `registered N of N tools` with N increased by 2).
-- [ ] No `core/meta-state.js#7` `TERMINAL_STATUSES` set includes `"stale"`.
-- [ ] `meta_state_list` no longer stamps `resolved_by: "auto-resolve"` on past-TTL entries (smoke test: create a finding past TTL, call `meta_state_list` 5 times, assert: 0 `resolved_by` stamps in gate log).
-- [ ] `meta_state_sweep` no longer stamps `resolved_by: "auto-resolve"` on past-TTL entries (similar smoke test).
+- [x] All 4 new test files + 1 added assertion exist; all tests in them pass.
+- [x] `pnpm test` shows ~854 passing, 0 failing.
+- [x] `node tools/learning-loop-mcp/server.js` starts successfully (manifest loads the 2 new tools; logs `registered N of N tools` with N increased by 2).
+- [x] No `core/meta-state.js#7` `TERMINAL_STATUSES` set includes `"stale"`.
+- [x] `meta_state_list` no longer stamps `resolved_by: "auto-resolve"` on past-TTL entries (smoke test: create a finding past TTL, call `meta_state_list` 5 times, assert: 0 `resolved_by` stamps in gate log).
+- [x] `meta_state_sweep` no longer stamps `resolved_by: "auto-resolve"` on past-TTL entries (similar smoke test).
 
 ## Risk Assessment
 

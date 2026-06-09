@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: Red (TDD tests first)
-status: in-progress
+status: completed
 priority: P1
 effort: 2.5h
 dependencies: []
@@ -183,12 +183,12 @@ Total expected: 13 new failures + 1 new pass = 14 new test cases. The full suite
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/__tests__/meta-state-stale-flag.test.js` exists with 10 tests, all currently failing.
-- [ ] `tools/learning-loop-mcp/__tests__/meta-state-sweep-stale-transition.test.js` exists with 3 tests, all currently failing.
-- [ ] `tools/learning-loop-mcp/__tests__/index-validate-smoke.test.js` exists with 1 test, currently passing or failing per design.
-- [ ] `tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs` has 1 added assertion (currently passing trivially).
-- [ ] `pnpm test` shows ~13 new failures (TDD red), no regressions in the existing ~840 tests.
-- [ ] No new modules exported from `core/` or `tools/` — only test files created (the test files import modules that don't exist yet, which is the red).
+- [x] `tools/learning-loop-mcp/__tests__/meta-state-stale-flag.test.js` exists with 10 tests, all currently failing.
+- [x] `tools/learning-loop-mcp/__tests__/meta-state-sweep-stale-transition.test.js` exists with 3 tests, all currently failing.
+- [x] `tools/learning-loop-mcp/__tests__/index-validate-smoke.test.js` exists with 1 test, currently passing or failing per design.
+- [x] `tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs` has 1 added assertion (currently passing trivially).
+- [x] `pnpm test` shows ~13 new failures (TDD red), no regressions in the existing ~840 tests.
+- [x] No new modules exported from `core/` or `tools/` — only test files created (the test files import modules that don't exist yet, which is the red).
 
 ## Risk Assessment
 
