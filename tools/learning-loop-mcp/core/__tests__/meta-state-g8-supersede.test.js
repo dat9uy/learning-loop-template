@@ -60,6 +60,7 @@ async function applyG8Supersede(root, changeLogId) {
 }
 
 async function seedG8Findings(root) {
+  const now = new Date().toISOString();
   for (const id of G8_IDS) {
     await writeEntry(root, {
       id,
@@ -69,10 +70,10 @@ async function seedG8Findings(root) {
       severity: "warning",
       affected_system: "gate-logic",
       description: `G8 subcommand-class false positive recurrence for id ${id}.`,
-      evidence: { code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules" },
+      evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
       status: "expired",
-      created_at: "2026-06-02T04:12:54.031Z",
-      expires_at: "2026-06-03T04:12:54.031Z",
+      created_at: now,
+      expires_at: now,
       acked_at: null,
       version: 0,
     });

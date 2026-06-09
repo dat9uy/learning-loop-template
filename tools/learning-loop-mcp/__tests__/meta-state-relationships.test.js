@@ -23,18 +23,18 @@ test("meta_state_relationships: inbound for rule origin", async () => {
 
 test("meta_state_relationships: outbound for finding with promoted_to_rule", async () => {
   const result = await metaStateRelationshipsTool.handler({
-    id: "meta-260602T1116Z-agent-inside-a-project-that-has-its-own-mcp-json-called-ck-u",
+    id: "meta-260606T1656Z-cold-session-test-must-pass-before-resolution",
     direction: "outbound",
   });
   const text = JSON.parse(result.content[0].text);
   assert.strictEqual(text.direction, "outbound");
   assert.ok(text.outbound, "outbound should be present");
-  assert.strictEqual(text.outbound.promoted_to_rule, "rule-project-skill-boundary");
+  assert.strictEqual(text.outbound.promoted_to_rule, "rule-cold-session-test-must-pass-before-resolution");
 });
 
 test("meta_state_relationships: both directions for entry with refs", async () => {
   const result = await metaStateRelationshipsTool.handler({
-    id: "meta-260602T1116Z-agent-inside-a-project-that-has-its-own-mcp-json-called-ck-u",
+    id: "meta-260606T1656Z-cold-session-test-must-pass-before-resolution",
     direction: "both",
   });
   const text = JSON.parse(result.content[0].text);

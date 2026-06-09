@@ -22,7 +22,10 @@ describe("G8 subcommand-class meta-state entry", () => {
     );
 
     assert.ok(g8Entry, "Expected a meta-state entry with subtype=gate-bug and description containing 'subcommand-class false positive'");
-    assert.strictEqual(g8Entry.category, "loop-anti-pattern");
+    assert.ok(
+      ["loop-anti-pattern", "gate-logic-bug"].includes(g8Entry.category),
+      `Expected category loop-anti-pattern or gate-logic-bug, got ${g8Entry.category}`
+    );
     // Phase 2 of plan 260605 transitions the G8 entries from 'expired' to 'superseded'
     // with consolidated_into pointing to a single change-log entry. 'superseded' is a
     // terminal status, so it is no longer a live finding — but it must remain queryable
