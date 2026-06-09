@@ -43,8 +43,9 @@ export const metaStateListTool = {
     entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
     compact: z.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
+    include_archived: z.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
   },
-  handler: async ({ category, status, affected_system, session_id, include_expired, entry_kind, entry_kinds, compact }) => {
+  handler: async ({ category, status, affected_system, session_id, include_expired, entry_kind, entry_kinds, compact, include_archived }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -85,6 +86,9 @@ export const metaStateListTool = {
     if (!include_expired) {
       result = result.filter((e) => !TERMINAL_STATUSES.has(e.status));
     }
+    if (!include_archived) {
+      result = result.filter((e) => e.status !== "archived");
+    }
 
     appendGateLog(root, {
       timestamp: now,
@@ -99,6 +103,7 @@ export const metaStateListTool = {
       count: result.length,
       filters_applied: activeFilters,
       include_expired: include_expired || false,
+      include_archived: include_archived || false,
       entry_kind_filter: entry_kind || null,
       entry_kinds_filter: entry_kinds || null,
       compact: compact || false,

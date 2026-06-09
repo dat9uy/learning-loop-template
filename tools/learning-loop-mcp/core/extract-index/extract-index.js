@@ -246,6 +246,8 @@ function applySupersessionWriteBack(newEntries, existingEntries, parsed, errors)
 }
 
 export function runExtraction(root, args) {
+  const incremental = args.incremental !== false; // default true
+  const stats = { cache_hits: 0, cache_misses: 0 };
   const now = new Date().toISOString().slice(0, -5) + "Z";
   const agentRun = `extract-index-${now}`;
   const experimentMap = buildExperimentMap(root);
@@ -393,7 +395,7 @@ export function runExtraction(root, args) {
   // Hard-stop: do not write anything when errors exist
   if (errors.length > 0) {
     return {
-      stats: { filesProcessed, filesWithFindings, entriesProduced: newEntries.length, written: 0, unchanged: 0 },
+      stats: { filesProcessed, filesWithFindings, entriesProduced: newEntries.length, written: 0, unchanged: 0, ...stats },
       errors,
       skipped,
       newEntries,
@@ -405,9 +407,18 @@ export function runExtraction(root, args) {
   let unchanged = 0;
   for (const entry of newEntries) {
     const existing = existingEntries.get(entry.id);
-    if (!shouldWrite(existing, entry)) {
+    const needsWrite = shouldWrite(existing, entry);
+    if (!needsWrite) {
       unchanged += 1;
+      if (incremental) {
+        stats.cache_hits += 1;
+      }
       continue;
+    }
+    if (incremental) {
+      stats.cache_misses += 1;
+    } else {
+      stats.cache_misses += 1;
     }
     if (args.dryRun) {
       console.log(`[dry-run] would write ${entry.id}.yaml`);
@@ -430,7 +441,7 @@ export function runExtraction(root, args) {
   }
 
   return {
-    stats: { filesProcessed, filesWithFindings, entriesProduced: newEntries.length, written, unchanged },
+    stats: { filesProcessed, filesWithFindings, entriesProduced: newEntries.length, written, unchanged, ...stats },
     errors,
     skipped,
     newEntries,

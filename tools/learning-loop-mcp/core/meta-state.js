@@ -1,6 +1,7 @@
-import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
 const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
@@ -220,11 +221,7 @@ function getRegistryPath(root) {
   return join(root, REGISTRY_FILENAME);
 }
 
-/**
- * Read the JSONL registry and return an array of parsed entries.
- * Returns empty array if the file does not exist.
- */
-export function readRegistry(root) {
+function _readAndParseRegistry(root) {
   const path = getRegistryPath(root);
   if (!existsSync(path)) return [];
   const raw = readFileSync(path, "utf8");
@@ -236,6 +233,15 @@ export function readRegistry(root) {
     }
     return entry;
   });
+}
+
+/**
+ * Read the JSONL registry and return an array of parsed entries.
+ * Returns empty array if the file does not exist.
+ * Uses process-lifetime LRU cache keyed on mtimeMs + size.
+ */
+export function readRegistry(root) {
+  return readRegistryWithCache(root, _readAndParseRegistry);
 }
 
 /**
@@ -256,6 +262,7 @@ export function writeEntry(root, entry) {
     const tmpPath = path + ".tmp";
     writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
     renameSync(tmpPath, path);
+    invalidateCache(root);
   });
 }
 
@@ -322,7 +329,141 @@ export function updateEntry(root, id, patch) {
     const tmpPath = path + ".tmp";
     writeFileSync(tmpPath, updated.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
     renameSync(tmpPath, path);
+    invalidateCache(root);
     return true;
+  });
+}
+
+/**
+ * Atomically archive an entry by id. Sets status=archived and adds
+ * archived_at, archived_by, archived_reason fields.
+ */
+export function archiveEntry(root, id, reason, archivedBy) {
+  return enqueue(root, () => {
+    const entries = readRegistry(root);
+    const idx = entries.findIndex((e) => e.id === id);
+    if (idx === -1) return { archived: false, reason: "not_found", id };
+    if (entries[idx].status === "archived") {
+      return { archived: false, reason: "already_archived", id };
+    }
+    entries[idx] = {
+      ...entries[idx],
+      status: "archived",
+      archived_at: new Date().toISOString(),
+      archived_by: archivedBy,
+      archived_reason: reason,
+    };
+    const path = getRegistryPath(root);
+    const tmpPath = path + ".tmp";
+    writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+    renameSync(tmpPath, path);
+    invalidateCache(root);
+    return { archived: true, id, archived_at: entries[idx].archived_at };
+  });
+}
+
+/**
+ * Atomically delete an entry by id (soft CRUD enforcement).
+ */
+export function deleteEntry(root, id) {
+  return enqueue(root, () => {
+    const entries = readRegistry(root);
+    const filtered = entries.filter((e) => e.id !== id);
+    if (filtered.length === entries.length) return { deleted: false, reason: "not_found", id };
+    const path = getRegistryPath(root);
+    const tmpPath = path + ".tmp";
+    writeFileSync(tmpPath, filtered.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+    renameSync(tmpPath, path);
+    invalidateCache(root);
+    return { deleted: true, id };
+  });
+}
+
+const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
+const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
+
+/**
+ * Atomically apply a batch of meta-state operations.
+ * All-or-nothing rollback on any failure. Single cache invalidation.
+ */
+export function metaStateBatch(root, operations) {
+  if (!Array.isArray(operations)) {
+    return Promise.resolve({ applied: 0, failed_at: 0, reason: "operations_not_array" });
+  }
+  if (operations.length > BATCH_SIZE_LIMIT) {
+    return Promise.resolve({ applied: 0, failed_at: 0, reason: "batch_size_exceeded", limit: BATCH_SIZE_LIMIT });
+  }
+  return enqueue(root, async () => {
+    const path = getRegistryPath(root);
+    const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
+
+    let entries = readRegistry(root);
+    for (let i = 0; i < operations.length; i++) {
+      const op = operations[i];
+      if (!BATCH_OP_TYPES.has(op.op)) {
+        if (preBatchContent) {
+          writeFileSync(path, preBatchContent, "utf8");
+        } else if (existsSync(path)) {
+          unlinkSync(path);
+        }
+        invalidateCache(root);
+        return { applied: i, failed_at: i, reason: "unknown_op_type", op_type: op.op };
+      }
+      try {
+        switch (op.op) {
+          case "write": {
+            const validation = metaStateEntrySchema.safeParse(op.entry);
+            if (!validation.success) throw new Error("validation_failed");
+            entries.push(validation.data);
+            break;
+          }
+          case "update": {
+            const idx = entries.findIndex((e) => e.id === op.id);
+            if (idx === -1) throw new Error("not_found");
+            if (op._expected_version !== undefined) {
+              const current = entries[idx].version ?? 0;
+              if (current !== op._expected_version) throw new Error("version_mismatch");
+            }
+            const { _expected_version, ...patch } = op;
+            Object.assign(entries[idx], patch);
+            entries[idx].version = (entries[idx].version ?? 0) + 1;
+            break;
+          }
+          case "delete": {
+            const idx = entries.findIndex((e) => e.id === op.id);
+            if (idx === -1) throw new Error("not_found");
+            entries.splice(idx, 1);
+            break;
+          }
+          case "archive": {
+            const idx = entries.findIndex((e) => e.id === op.id);
+            if (idx === -1) throw new Error("not_found");
+            entries[idx] = {
+              ...entries[idx],
+              status: "archived",
+              archived_at: new Date().toISOString(),
+              archived_by: op.archived_by ?? "operator",
+              archived_reason: op.reason ?? "batch_archive",
+            };
+            break;
+          }
+        }
+      } catch (err) {
+        if (preBatchContent) {
+          writeFileSync(path, preBatchContent, "utf8");
+        } else if (existsSync(path)) {
+          unlinkSync(path);
+        }
+        invalidateCache(root);
+        return { applied: 0, failed_at: i, reason: err.message, op };
+      }
+    }
+
+    const tmpPath = path + ".tmp";
+    writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+    renameSync(tmpPath, path);
+    invalidateCache(root);
+    return { applied: operations.length, failed_at: null };
   });
 }
 

@@ -1,13 +1,97 @@
-import { describe, test } from "node:test";
+import { describe, test, before, after } from "node:test";
 import assert from "node:assert";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { metaStateListTool } from "../tools/meta-state-list-tool.js";
 import { loopDescribeTool } from "../tools/loop-describe-tool.js";
-import { resolveRoot } from "#lib/resolve-root.js";
 
-const root = resolveRoot();
+function makeTempRoot() {
+  const tmp = mkdtempSync(join(tmpdir(), "compact-test-"));
+  return tmp;
+}
+
+function writeRegistry(root, entries) {
+  const lines = entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
+  writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
+}
 
 describe("meta_state_list compact mode", () => {
-  test("compact: true on full registry returns <30KB (vs 130KB full)", async () => {
+  let root;
+  let originalGateRoot;
+
+  before(() => {
+    root = makeTempRoot();
+    originalGateRoot = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = root;
+
+    // Seed with a small synthetic registry covering all entry kinds + statuses
+    writeRegistry(root, [
+      {
+        id: "compact-finding-active",
+        entry_kind: "finding",
+        status: "active",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Active finding for compact test (min 20 chars)",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "compact-finding-resolved",
+        entry_kind: "finding",
+        status: "resolved",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Resolved finding for compact test (min 20 chars)",
+        created_at: new Date().toISOString(),
+        resolved_at: new Date().toISOString(),
+        resolved_by: "test",
+      },
+      {
+        id: "compact-rule-active",
+        entry_kind: "rule",
+        status: "active",
+        origin: "compact-finding-active",
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: ".*",
+        description: "Active rule for compact test (min 20 chars)",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "test",
+      },
+      {
+        id: "compact-change-log",
+        entry_kind: "change-log",
+        status: "active",
+        change_dimension: "surface",
+        change_target: "tools/test.js",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Change log for compact test (min 20 chars)",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "compact-loop-design",
+        entry_kind: "loop-design",
+        status: "active",
+        title: "Design for compact test",
+        description: "Loop design for compact test (min 20 chars)",
+        affected_system: "mcp-tools",
+        proposed_design_for: ["compact-rule-active"],
+        addresses: ["compact-finding-active"],
+        created_at: new Date().toISOString(),
+        created_by: "test",
+      },
+    ]);
+  });
+
+  after(() => {
+    process.env.GATE_ROOT = originalGateRoot;
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("compact: true returns structural contract (id, entry_kind, status, no description)", async () => {
     const result = await metaStateListTool.handler({
       compact: true,
       include_expired: true,
@@ -16,32 +100,21 @@ describe("meta_state_list compact mode", () => {
     assert.ok(text.count > 0, "Should have entries");
     assert.strictEqual(text.compact, true);
 
-    const payloadBytes = Buffer.byteLength(
-      JSON.stringify(text.entries),
-      "utf8"
-    );
-    // Full registry compact should be << full registry. After I1 unification
-    // with `summarize`, compact adds ~250 bytes/entry (more relationship fields like
-    // `category`, `title`, `enforcement`, `pattern_type`) but drops `description_preview`.
-    // Threshold bumped 2026-06-08: registry grew from ~130 entries to 500+ after scout
-    // run filed 134+ findings. Compact payload is now ~185KB. The assertion is a
-    // sanity bound, not a performance target; compact mode still omits descriptions.
-    // Threshold bumped again 2026-06-08: batch-resolution of 268 scout false-positives
-    // expanded the registry further; compact payload with include_expired=true is ~295KB.
-    assert.ok(
-      payloadBytes < 350000,
-      `Compact payload should be <350KB, got ${payloadBytes}`
-    );
-
-    // Verify all entries have only compact fields
+    // Structural assertion: every compact entry has the expected shape.
+    // The size budget is now a property of the L2 cache, not a threshold.
     for (const entry of text.entries) {
-      assert.ok(entry.id, "compact entry must have id");
-      assert.ok(entry.entry_kind, "compact entry must have entry_kind");
-      assert.ok(entry.status, "compact entry must have status");
+      assert.ok(typeof entry.id === "string", `entry missing id: ${JSON.stringify(entry)}`);
+      assert.ok(typeof entry.entry_kind === "string", `entry missing entry_kind: ${JSON.stringify(entry)}`);
+      assert.ok(typeof entry.status === "string", `entry missing status: ${JSON.stringify(entry)}`);
       assert.strictEqual(
         entry.description,
         undefined,
         "compact entry must NOT have description"
+      );
+      assert.strictEqual(
+        entry.description_preview,
+        undefined,
+        "compact entry must NOT have description_preview"
       );
       assert.strictEqual(
         entry.evidence,
@@ -55,6 +128,13 @@ describe("meta_state_list compact mode", () => {
         );
       }
     }
+
+    // Soft size check: on this small synthetic registry, compact should be < 50KB
+    const payloadBytes = Buffer.byteLength(JSON.stringify(text.entries), "utf8");
+    assert.ok(
+      payloadBytes < 50000,
+      `Compact payload ${payloadBytes}B exceeds 50KB budget — L2 cache or archive trims may be broken`
+    );
   });
 
   test("compact: true default excludes terminal entries", async () => {

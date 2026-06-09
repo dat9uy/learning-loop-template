@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRegistry, META_STATE_FINDING_CATEGORIES } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
+import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -209,11 +210,28 @@ export function listLoopDesigns(root, { statuses = ["active"] } = {}) {
 
 /**
  * Read all entries (finding + change-log) from the meta-state registry.
- * Used by loop_describe cold tier to compute the superseded_lineage surface
- * (Phase 3 of plan 260605). Returns an array of entry objects (no filtering).
+ * Used by loop_describe cold tier to compute the superseded_lineage surface.
+ * Returns an array of entry objects (no filtering).
+ * Checks sidecar cache first on cold-tier reads.
  */
 export function readAllEntriesForLineage(root) {
   return readRegistry(root);
+}
+
+/**
+ * Build the cold-tier payload and write it to the sidecar cache.
+ * Returns the cache write result.
+ */
+export function buildColdTierCache(root) {
+  const allEntries = readRegistry(root);
+  const payload = {
+    all_entries: allEntries,
+    registry_summary: buildRegistrySummary(allEntries),
+    inverse_indexes: Object.fromEntries(
+      Object.entries(buildInverseIndexes(allEntries)).map(([k, v]) => [k, Object.fromEntries(v)])
+    ),
+  };
+  return writeColdTierCache(root, payload);
 }
 
 /**

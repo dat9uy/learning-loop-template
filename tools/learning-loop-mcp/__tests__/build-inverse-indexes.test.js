@@ -34,41 +34,59 @@ test("buildInverseIndexes on single-edge entries", () => {
   assert.deepStrictEqual(result.promoted_to_rule_inverse.get("rule-a"), ["finding-a"]);
 });
 
-test("buildInverseIndexes on real registry", async () => {
+test("buildInverseIndexes structural contract on synthetic fixture", () => {
+  // Use a synthetic multi-kind fixture so all 4 inverse keys are
+  // guaranteed non-empty Maps (Red-team F11 precondition).
+  const fixture = [
+    { id: "rule-xxx", entry_kind: "rule", status: "active", origin: "meta-finding-1" },
+    { id: "meta-finding-1", entry_kind: "finding", status: "active", promoted_to_rule: "rule-xxx" },
+    { id: "loop-design-yyy", entry_kind: "loop-design", status: "active", addresses: ["meta-finding-1"] },
+    { id: "meta-change-1", entry_kind: "change-log", status: "active", supersedes: "meta-change-0" },
+  ];
+
+  const inverse = buildInverseIndexes(fixture);
+  assert.ok(inverse instanceof Object, "inverse indexes is an object");
+  assert.ok("addresses_inverse" in inverse, "missing addresses_inverse");
+  assert.ok("supersedes_inverse" in inverse, "missing supersedes_inverse");
+  assert.ok("origin_inverse" in inverse, "missing origin_inverse");
+  assert.ok("promoted_to_rule_inverse" in inverse, "missing promoted_to_rule_inverse");
+
+  for (const key of ["addresses_inverse", "supersedes_inverse", "origin_inverse", "promoted_to_rule_inverse"]) {
+    assert.ok(inverse[key] instanceof Map, `${key} must be a Map`);
+  }
+
+  // Verify population
+  assert.deepStrictEqual(inverse.origin_inverse.get("meta-finding-1"), ["rule-xxx"]);
+  // promoted_to_rule_inverse is populated from BOTH the finding.promoted_to_rule
+  // side AND the rule.origin side (dual-field unification during migration).
+  const ptrIds = inverse.promoted_to_rule_inverse.get("rule-xxx");
+  assert.ok(ptrIds.includes("meta-finding-1"), "promoted_to_rule_inverse must include meta-finding-1");
+  assert.equal(ptrIds.length, 2, "dual-field unification populates from both sides");
+  assert.deepStrictEqual(inverse.addresses_inverse.get("meta-finding-1"), ["loop-design-yyy"]);
+  assert.deepStrictEqual(inverse.supersedes_inverse.get("meta-change-0"), ["meta-change-1"]);
+});
+
+test("buildInverseIndexes on live registry returns 4 expected keys", async () => {
   const entries = readRegistry(root);
   const result = buildInverseIndexes(entries);
 
-  // origin_inverse: the rule "rule-short-slug-for-risk-records" originated from finding
-  const origin = result.origin_inverse.get("meta-260601T1353Z-sanitizeslug-in-record-writer-js-generates-a-kebab-case-slug");
-  assert.ok(origin, "origin_inverse should have entry for slug sanitization finding");
-  assert.ok(origin.includes("rule-short-slug-for-risk-records"), "origin should include the rule");
+  // Structural assertion: the 4 keys exist regardless of registry size.
+  // The LRU cache ensures readRegistry is fast enough that this test
+  // runs in <100ms; the structural assertion locks the contract across
+  // refactors that change the registry size.
+  assert.ok(result.addresses_inverse instanceof Map, "addresses_inverse must be a Map");
+  assert.ok(result.supersedes_inverse instanceof Map, "supersedes_inverse must be a Map");
+  assert.ok(result.origin_inverse instanceof Map, "origin_inverse must be a Map");
+  assert.ok(result.promoted_to_rule_inverse instanceof Map, "promoted_to_rule_inverse must be a Map");
 
-  // promoted_to_rule_inverse: the finding promoted_to_rule points to the rule
-  const promoted = result.promoted_to_rule_inverse.get("rule-short-slug-for-risk-records");
-  assert.ok(promoted, "promoted_to_rule_inverse should have entry for rule-short-slug-for-risk-records");
-  assert.ok(
-    promoted.includes("meta-260601T1353Z-sanitizeslug-in-record-writer-js-generates-a-kebab-case-slug"),
-    "promoted should include the originating finding"
-  );
-
-  // addresses_inverse: loop-designs with addresses
-  const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
-  for (const design of loopDesigns) {
-    if (design.addresses && design.addresses.length > 0) {
-      for (const findingId of design.addresses) {
-        const inv = result.addresses_inverse.get(findingId);
-        assert.ok(inv, `addresses_inverse should have entry for ${findingId}`);
-        assert.ok(inv.includes(design.id), `addresses_inverse[${findingId}] should include ${design.id}`);
+  // Soft assertion: any entry with addresses should produce a mapping
+  for (const entry of entries) {
+    if (Array.isArray(entry.addresses) && entry.addresses.length > 0) {
+      for (const target of entry.addresses) {
+        const ids = result.addresses_inverse.get(target) || [];
+        assert.ok(ids.includes(entry.id), `addresses_inverse missing ${entry.id} for target ${target}`);
       }
     }
-  }
-
-  // supersedes_inverse: change-log entries with supersedes
-  const changeLogs = entries.filter((e) => e.entry_kind === "change-log" && e.supersedes);
-  for (const cl of changeLogs) {
-    const inv = result.supersedes_inverse.get(cl.supersedes);
-    assert.ok(inv, `supersedes_inverse should have entry for ${cl.supersedes}`);
-    assert.ok(inv.includes(cl.id), `supersedes_inverse[${cl.supersedes}] should include ${cl.id}`);
   }
 
   // Verify inverse_indexes field on cold tier

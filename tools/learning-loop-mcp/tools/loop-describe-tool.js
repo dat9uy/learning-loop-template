@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
 import * as introspect from "#mcp/core/loop-introspect.js";
+import { readColdTierCache, writeColdTierCache } from "#mcp/core/loop-introspect-cache.js";
 
 export const loopDescribeTool = {
   name: "loop_describe",
@@ -103,13 +104,41 @@ export const loopDescribeTool = {
           affected_system: d.affected_system,
         }));
 
+        // Sidecar cache for cold tier: check cache first, fall back to compute
+        const cached = readColdTierCache(root);
+        let allEntries;
+        let lineageMs = 0;
+        let cacheHit = false;
+        let builtAt = new Date().toISOString();
+
+        if (cached.hit) {
+          allEntries = cached.payload.all_entries;
+          cacheHit = true;
+          builtAt = cached.built_at;
+        } else {
+          const lineageStart = Date.now();
+          allEntries = introspect.readAllEntriesForLineage(root);
+          lineageMs = Date.now() - lineageStart;
+
+          // Write cache for next call
+          try {
+            const payload = {
+              all_entries: allEntries,
+              registry_summary: introspect.buildRegistrySummary(allEntries),
+              inverse_indexes: Object.fromEntries(
+                Object.entries(introspect.buildInverseIndexes(allEntries)).map(([k, v]) => [k, Object.fromEntries(v)])
+              ),
+            };
+            writeColdTierCache(root, payload);
+          } catch (cacheErr) {
+            warnings.push(`Cache write failed: ${cacheErr.message}`);
+          }
+        }
+
         // Superseded lineage surface (Phase 3 of plan 260605):
         // group all finding entries with status='superseded' and a consolidated_into
         // pointer by their canonical change-log entry. Orphans (consolidated_into
         // points to a non-existent change-log) are surfaced in a separate array.
-        const lineageStart = Date.now();
-        const allEntries = introspect.readAllEntriesForLineage(root);
-        const lineageMs = Date.now() - lineageStart;
         const changeLogMap = new Map(
           allEntries
             .filter((e) => e.entry_kind === "change-log")
@@ -170,7 +199,8 @@ export const loopDescribeTool = {
         result.description_mode = description_mode;
 
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        // M5: surface readAllEntriesForLineage cost for cold tier too.
+        result.cache_hit = cacheHit;
+        result.built_at = builtAt;
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       }
 

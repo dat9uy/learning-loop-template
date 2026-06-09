@@ -81,7 +81,7 @@ The universal hooks handle tool name differences between surfaces:
 
 See `tools/learning-loop-mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
 
-**Use `meta_state_patch` for any field-level update to an existing meta-state entry.** Do not use `node -e` scripts importing `core/meta-state.js` directly — this is the escape-hatch abuse closed in plan `260608-1015-meta-state-patch-tool-and-wire-format-fix`.
+**Use the canonical MCP tools (`meta_state_report`, `meta_state_patch`, `meta_state_batch`, `meta_state_archive`, `meta_state_log_change`, `meta_state_resolve`) for all meta-state mutations.** Do not use `node -e` scripts importing `core/meta-state.js` directly — this is the escape-hatch abuse closed in plans `260608-1015-meta-state-patch-tool-and-wire-format-fix` and `260608-2255-index-extractor-optimization`.
 
 ### Record ID Convention
 
