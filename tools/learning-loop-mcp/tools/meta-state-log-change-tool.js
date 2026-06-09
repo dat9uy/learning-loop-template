@@ -28,6 +28,8 @@ export const metaStateLogChangeTool = {
     }).optional().describe("Wider impact scope"),
     supersedes: z.string().optional()
       .describe("ID of a previous change-log entry this one replaces"),
+    consolidates: z.string().optional()
+      .describe("ID of a finding entry this change-log consolidates (inverse of finding's consolidated_into)"),
     evidence_code_ref: z.string().optional()
       .describe("Path to the change in code (e.g., commit hash or file:line)"),
     evidence_journal: z.string().optional()
@@ -40,6 +42,7 @@ export const metaStateLogChangeTool = {
     reason,
     applies_to,
     supersedes,
+    consolidates,
     evidence_code_ref,
     evidence_journal,
   }) => {
@@ -56,6 +59,7 @@ export const metaStateLogChangeTool = {
       reason,
       ...(applies_to && { applies_to }),
       ...(supersedes && { supersedes }),
+      ...(consolidates && { consolidates }),
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
       status: "active",
