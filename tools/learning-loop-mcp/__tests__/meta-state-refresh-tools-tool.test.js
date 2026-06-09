@@ -14,6 +14,12 @@ function fakeServer(initialTools = {}) {
     _registeredTools: registered,
     setToolRequestHandlers() {},
     sendToolListChanged() {},
+    // Mimic the real MCP SDK's registerTool contract: store the config
+    // by name in _registeredTools. Tests inspect the map to verify
+    // bookkeeping; they do not exercise the actual MCP dispatch.
+    tool(name, _description, _schema, _handler) {
+      registered[name] = { name, handler: _handler };
+    },
   };
   return server;
 }
@@ -91,22 +97,31 @@ describe("meta_state_refresh_tools tool", () => {
   });
 
   test("T4: refresh is symmetric — re-imports same modules server.js loaded", async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "sp-refresh-tools-4-"));
-    process.env.GATE_ROOT = tempDir;
+    // T4 exercises the production reload path. Several manifest tools
+    // (e.g. record-observation-tool.js) call `resolveRoot()` at module
+    // top level to load schemas. Hijacking GATE_ROOT to a temp dir (as T1/T2
+    // do) makes those module loads throw ENOENT on schema paths, which is
+    // a test-harness artifact — not a real reload failure. Production
+    // always runs with GATE_ROOT unset, so we mirror that here.
+    const savedGateRoot = process.env.GATE_ROOT;
+    delete process.env.GATE_ROOT;
 
-    // The manifest under test reads from the real manifest.json shipped in
-    // tools/learning-loop-mcp/tools/manifest.json. Every entry should
-    // resolve to a real file under the project's tools/ directory.
     const server = fakeServer();
     globalThis.__loopMcpServer = server;
 
     try {
       const result = await metaStateRefreshToolsTool.handler({});
       const parsed = JSON.parse(result.content[0].text);
-      // Either fully refreshed, or partial (a small number of tools fail);
-      // a partial reload is still acceptable for the test invariant.
       assert.ok(parsed.manifest_count > 0, "manifest should have at least one entry");
-      assert.ok(parsed.refreshed_count + parsed.failed_count > 0, "should attempt something");
+      // Regression guard: paths in manifest.json are relative to
+      // server.js (server/), not the project root. A previous bug joined
+      // them with root and produced "<root>/tools/gate-tool.js" — non-
+      // existent, so all imports failed. Asserting refreshed_count > 0
+      // catches that regression.
+      assert.ok(parsed.refreshed_count > 0,
+        `reloader should successfully re-import real manifest entries; got refreshed_count=${parsed.refreshed_count}, failed_count=${parsed.failed_count}, first_failure=${JSON.stringify(parsed.failed?.[0])}`);
+      assert.strictEqual(parsed.failed_count, 0,
+        `real manifest reload should produce zero failures; got ${JSON.stringify(parsed.failed?.[0])}`);
       // The on-disk _registeredTools count should match refreshed_count
       assert.strictEqual(
         Object.keys(server._registeredTools).length,
@@ -114,8 +129,8 @@ describe("meta_state_refresh_tools tool", () => {
         "registered tool count should equal refreshed count",
       );
     } finally {
-      if (originalEnv === undefined) delete process.env.GATE_ROOT;
-      else process.env.GATE_ROOT = originalEnv;
+      if (savedGateRoot === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = savedGateRoot;
       globalThis.__loopMcpServer = originalServer;
     }
   });

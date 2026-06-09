@@ -9,21 +9,26 @@ import { appendGateLog } from "#lib/gate-logging.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const MANIFEST_PATH = join(__dirname, "..", "tools", "manifest.json");
+// Manifest paths (e.g., "./tools/gate-tool.js") are relative to `server.js`,
+// which lives at `<server>/`. The reloader must resolve them the same way
+// Node resolves them when server.js calls `import("./tools/gate-tool.js")`.
+const SERVER_DIR = join(__dirname, "..");
 
 /**
  * Resolve a manifest entry's `file` (e.g., "./tools/gate-tool.js") to an
  * absolute path on disk, mirroring the resolution used by `server.js`.
  *
- * The manifest paths are relative to the project root (e.g.,
- * `tools/learning-loop-mcp/tools/manifest.json` contains
- * `{ file: "./tools/gate-tool.js" }`, which resolves to
- * `<root>/tools/gate-tool.js` from the repo root). The "tools/" prefix in
- * the manifest path is part of the relative reference, not a separate join.
+ * The manifest lives at `<server>/tools/manifest.json` and its entries
+ * use paths relative to `server.js` (which sits at `<server>/`). For
+ * example, `{ file: "./tools/gate-tool.js" }` resolves to
+ * `<server>/tools/gate-tool.js`. The reloader must reproduce that
+ * resolution by joining against the server directory, not the project
+ * root.
  */
-function resolveAbsoluteFile(root, file) {
+function resolveAbsoluteFile(_root, file, serverDir) {
   if (isAbsolute(file)) return file;
   const cleaned = file.replace(/^\.\//, "");
-  return join(root, cleaned);
+  return join(serverDir, cleaned);
 }
 
 /**
@@ -89,7 +94,7 @@ export const metaStateRefreshToolsTool = {
     // Pre-flight: report what would change without mutating.
     if (dry_run) {
       const plan = manifest.map((mod) => {
-        const abs = resolveAbsoluteFile(root, mod.file);
+        const abs = resolveAbsoluteFile(root, mod.file, SERVER_DIR);
         return {
           file: mod.file,
           export: mod.export,
@@ -125,7 +130,7 @@ export const metaStateRefreshToolsTool = {
     const refreshed = [];
     const failed = [];
     for (const mod of manifest) {
-      const abs = resolveAbsoluteFile(root, mod.file);
+      const abs = resolveAbsoluteFile(root, mod.file, SERVER_DIR);
       if (!existsSync(abs) && !_deps?.skipExistsCheck) {
         failed.push({ file: mod.file, export: mod.export, error: "module_not_found", abs_path: abs });
         continue;
