@@ -290,7 +290,7 @@ describe("deriveStatus pure function", () => {
       "resolved-by-mechanism", "active-no-signal", "active-uncertain",
     ]);
     assert.deepStrictEqual(META_STATE_RECOMMENDATIONS, [
-      "no_action", "resolve", "investigate", "log_drift",
+      "no_action", "resolve", "investigate", "log_drift", "re_verify",
     ]);
   });
 });

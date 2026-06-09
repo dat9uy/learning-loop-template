@@ -305,8 +305,8 @@ describe("listAntiPatterns G9 status filter", () => {
     }
   });
 
-  test("excludes expired entries", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-exp-"));
+  test("stale entries are included in anti-patterns (non-terminal)", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-stale-"));
     process.env.GATE_ROOT = tempDir;
     try {
       const report = await metaStateReportTool.handler({
@@ -314,18 +314,19 @@ describe("listAntiPatterns G9 status filter", () => {
         subtype: "escape-hatch-abuse",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "Expired anti-pattern entry for G9 testing",
+        description: "Stale anti-pattern entry for G9 testing",
       });
       const id = JSON.parse(report.content[0].text).id;
       // Force expiry by setting expires_at to past
       const { updateEntry } = await import("../core/meta-state.js");
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
-      // metaStateListTool auto-applies expiry
+      // metaStateListTool auto-applies expiry -> transitions to stale
       await metaStateListTool.handler({ include_expired: true });
 
       const result = listAntiPatterns(tempDir);
-      assert.strictEqual(result.length, 0);
+      assert.strictEqual(result.length, 1, "stale anti-patterns should be included");
+      assert.strictEqual(result[0].status, "stale");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

@@ -60,10 +60,8 @@ export const metaStateListTool = {
       }
 
       if (newStatus && newStatus !== entry.status) {
-        await updateEntry(root, entry.id, { status: newStatus, resolved_at: now, resolved_by: "auto-resolve" });
+        await updateEntry(root, entry.id, { status: newStatus });
         entry.status = newStatus;
-        entry.resolved_at = now;
-        entry.resolved_by = "auto-resolve";
       }
       updated.push(entry);
     }

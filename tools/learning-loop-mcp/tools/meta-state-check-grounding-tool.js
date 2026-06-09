@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { checkGrounding } from "#mcp/core/check-grounding.js";
 import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
+import { runVerification } from "#mcp/core/verification-runner.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -18,19 +18,22 @@ function runTest(root, testPath) {
   const mtime = statSync(fullPath).mtimeMs;
   const key = `${fullPath}:${mtime}`;
   if (testRunCache.has(key)) return testRunCache.get(key);
-  try {
-    const result = spawnSync("pnpm", ["test", "--", fullPath], {
-      cwd: root,
-      timeout: 30_000,
-      encoding: "utf8",
-    });
-    const passed = result.status === 0;
-    testRunCache.set(key, passed);
-    return passed;
-  } catch {
-    testRunCache.set(key, null);
-    return null;
+  const result = runVerification(root, {
+    cmd: "pnpm",
+    args: ["test", "--", fullPath],
+    cwd: root,
+    timeout_ms: 30_000,
+  });
+  if (result.status === "passed") {
+    testRunCache.set(key, true);
+    return true;
   }
+  if (result.status === "failed") {
+    testRunCache.set(key, false);
+    return false;
+  }
+  testRunCache.set(key, null);
+  return null;
 }
 
 export const metaStateCheckGroundingTool = {

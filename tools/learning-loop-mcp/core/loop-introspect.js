@@ -92,7 +92,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
   "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_fingerprint({ id })` to re-hash the code after a refactor.",
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
-  "Findings have 5 statuses: `reported` (24h TTL), `active` (operator-acked), `resolved` (closed), `expired` (TTL elapsed), `superseded` (consolidated into a change-log).",
+  "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `expired` (legacy — kept for backward compat; new TTL semantics use `stale`), `superseded` (consolidated into a change-log).",
   "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
 ]);
 
@@ -417,6 +417,7 @@ export function summarize(entry) {
   if (entry.resolution) compact.resolution = entry.resolution;
   if (entry.resolved_by) compact.resolved_by = entry.resolved_by;
   if (entry.resolved_at) compact.resolved_at = entry.resolved_at;
+  if (entry.last_verified_at) compact.last_verified_at = entry.last_verified_at;
   if (entry.version !== undefined) compact.version = entry.version;
   if (entry.evidence_code_ref) compact.evidence_code_ref = entry.evidence_code_ref;
   if (entry.evidence_journal) compact.evidence_journal = entry.evidence_journal;

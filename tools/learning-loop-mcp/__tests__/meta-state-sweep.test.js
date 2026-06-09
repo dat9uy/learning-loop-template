@@ -37,7 +37,7 @@ describe("meta_state_sweep", () => {
       assert.strictEqual(sweepText.swept, false);
       assert.strictEqual(sweepText.dry_run, true);
       assert.strictEqual(sweepText.transitions.length, 1);
-      assert.strictEqual(sweepText.transitions[0].to, "expired");
+      assert.strictEqual(sweepText.transitions[0].to, "stale");
 
       // Verify registry unchanged
       const after = readRegistry(tempDir);
@@ -71,10 +71,10 @@ describe("meta_state_sweep", () => {
       assert.strictEqual(sweepText.swept, true);
       assert.strictEqual(sweepText.results.length, 1);
       assert.strictEqual(sweepText.results[0].applied, true);
-      assert.strictEqual(sweepText.results[0].to, "expired");
+      assert.strictEqual(sweepText.results[0].to, "stale");
 
       const after = readRegistry(tempDir);
-      assert.strictEqual(after.find((e) => e.id === id).status, "expired");
+      assert.strictEqual(after.find((e) => e.id === id).status, "stale");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperator;

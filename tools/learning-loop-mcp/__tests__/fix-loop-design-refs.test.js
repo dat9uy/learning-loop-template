@@ -38,7 +38,7 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
 
   // If there were broken refs before, first run should have made changes
   if (brokenBefore > 0) {
-    assert.ok(firstRun.includes("Fixed 2 loop-design entries"), "First run should make changes");
+    assert.ok(/Fixed \d+ loop-design entries/.test(firstRun), "First run should make changes");
   }
 
   // Second run should be idempotent

@@ -1,18 +1,41 @@
 import { z } from "zod";
-import { readRegistry, checkExpiry, updateEntry } from "#mcp/core/meta-state.js";
+import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "#mcp/core/meta-state.js";
 import { buildRegistrySummary } from "#mcp/core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "stale"]);
+
+/**
+ * Check if an entry is past its staleness window.
+ * Returns "stale" if `status: "active"` and last update is older than STALENESS_WINDOW_MS.
+ * Returns null otherwise.
+ *
+ * Two stale paths:
+ *   1. status: "reported" past expires_at -> "stale" (handled by checkExpiry in core/meta-state.js)
+ *   2. status: "active" past STALENESS_WINDOW_MS -> "stale" (this function, NEW)
+ *
+ * The file-modification case (active finding whose evidence_code_ref file mtime
+ * > last_verified_at) is preserved as auto-resolve; not part of this function.
+ */
+function checkStaleness(entry) {
+  if (entry.entry_kind !== "finding") return null;
+  if (entry.status !== "active") return null;
+  const referenceTime = entry.acked_at || entry.created_at;
+  if (!referenceTime) return null;
+  const windowMs = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || STALENESS_WINDOW_MS;
+  const age = Date.now() - new Date(referenceTime).getTime();
+  if (age > windowMs) return "stale";
+  return null;
+}
 
 /**
  * Emit docs/registry-summary.md from the computed summary.
  * Overwrites any existing content (auto-generated, never edited by humans).
  */
-function emitRegistrySummaryMd(root, summary) {
+function emitRegistrySummaryMd(root, entries, summary) {
   const docsDir = join(root, "docs");
   mkdirSync(docsDir, { recursive: true });
   const outPath = join(docsDir, "registry-summary.md");
@@ -56,6 +79,15 @@ function emitRegistrySummaryMd(root, summary) {
     md += `| ${entry.id} | ${entry.status} | ${entry.created_at} | ${entry.code_fingerprint || "—"} |\n`;
   }
 
+  // Section: Stale Findings
+  md += `\n## Stale Findings\n\n`;
+  md += `| ID | Status | Last Verified | Created At |\n`;
+  md += `|----|--------|---------------|------------|\n`;
+  const staleEntries = entries.filter((e) => e.status === "stale").slice(0, 10);
+  for (const entry of staleEntries) {
+    md += `| ${entry.id} | ${entry.status} | ${entry.last_verified_at || "—"} | ${entry.created_at} |\n`;
+  }
+
   writeFileSync(outPath, md, "utf8");
   return outPath;
 }
@@ -76,21 +108,27 @@ export const metaStateSweepTool = {
 
     for (const entry of entries) {
       if (TERMINAL_STATUSES.has(entry.status)) continue;
-      const exp = checkExpiry(entry);
-      if (exp && exp !== entry.status) {
-        transitions.push({ id: entry.id, from: entry.status, to: exp, expected_version: entry.version ?? 0 });
+      const fromCheckExpiry = checkExpiry(entry);
+      const fromCheckStaleness = checkStaleness(entry);
+      const targetStatus = fromCheckExpiry || fromCheckStaleness;
+      if (targetStatus && targetStatus !== entry.status) {
+        transitions.push({ id: entry.id, from: entry.status, to: targetStatus, expected_version: entry.version ?? 0 });
       }
     }
 
     if (apply) {
       const results = [];
       for (const t of transitions) {
-        const r = await updateEntry(root, t.id, {
+        const isStaleTransition = t.to === "stale";
+        const patch = {
           status: t.to,
-          resolved_at: new Date().toISOString(),
-          resolved_by: "auto-resolve",
           _expected_version: t.expected_version,
-        });
+        };
+        if (!isStaleTransition) {
+          patch.resolved_at = new Date().toISOString();
+          patch.resolved_by = "auto-resolve";
+        }
+        const r = await updateEntry(root, t.id, patch);
         if (r === "version_mismatch") {
           results.push({ id: t.id, applied: false, reason: "version_mismatch" });
         } else if (r === true) {
@@ -101,7 +139,7 @@ export const metaStateSweepTool = {
 
       // Emit registry-summary.md (Phase 7 of plan 260606)
       const summary = buildRegistrySummary(entries);
-      emitRegistrySummaryMd(root, summary);
+      emitRegistrySummaryMd(root, entries, summary);
 
       return { content: [{ type: "text", text: JSON.stringify({ swept: true, results }) }] };
     }

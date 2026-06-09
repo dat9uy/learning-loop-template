@@ -14,7 +14,7 @@ export const META_STATE_DERIVED_STATUSES = [
 ];
 
 export const META_STATE_RECOMMENDATIONS = [
-  "no_action", "resolve", "investigate", "log_drift",
+  "no_action", "resolve", "investigate", "log_drift", "re_verify",
 ];
 
 /** Terminal raw_status values: a `resolved-by-mechanism` derivation is NOT drift
@@ -102,6 +102,9 @@ function computeDerivedStatus(kind) {
 function computeRecommendation(derivedStatus, kind, rawStatus) {
   if (kind === "mechanism-shipped" && (rawStatus === "reported" || rawStatus === "active")) {
     return "resolve";
+  }
+  if (kind === "mechanism-shipped" && rawStatus === "stale") {
+    return "re_verify";
   }
   if (kind === "mechanism-shipped" && TERMINAL_RAW_STATUSES.has(rawStatus)) {
     return "log_drift";

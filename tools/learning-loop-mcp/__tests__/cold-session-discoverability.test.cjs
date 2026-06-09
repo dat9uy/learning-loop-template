@@ -571,7 +571,7 @@ describe("cold-session discoverability acceptance", () => {
         const now = new Date().toISOString();
         try {
           await updateEntry(projectRoot, existing.id, {
-            status: "expired",
+            status: "stale",
             resolved_at: now,
             resolved_by: "auto-cold-session-test",
             _expected_version: existing.version ?? 0,
@@ -685,17 +685,17 @@ describe("cold-session discoverability acceptance", () => {
     // Simulate the deletion branch: gap is closed, finding exists → soft-delete.
     const now = new Date().toISOString();
     await core.updateEntry(tempRoot, existingId, {
-      status: "expired",
+      status: "stale",
       resolved_at: now,
       resolved_by: "auto-cold-session-test",
       _expected_version: 0,
     });
 
-    // Verify the finding is soft-deleted (status is expired, not active).
+    // Verify the finding is soft-deleted (status is stale, not active).
     const after = core.readRegistry(tempRoot);
     const deleted = after.find((e) => e.id === existingId);
     assert.ok(deleted, "finding should still exist in registry");
-    assert.strictEqual(deleted.status, "expired");
+    assert.strictEqual(deleted.status, "stale");
     assert.strictEqual(deleted.resolved_by, "auto-cold-session-test");
 
     // Cleanup
@@ -775,7 +775,7 @@ describe("cold-session discoverability acceptance", () => {
         const now = new Date().toISOString();
         try {
           await updateEntry(projectRoot, existing.id, {
-            status: "expired",
+            status: "stale",
             resolved_at: now,
             resolved_by: "auto-cold-session-test-l2",
             _expected_version: existing.version ?? 0,
@@ -842,5 +842,47 @@ describe("cold-session discoverability acceptance", () => {
     } catch (e) {
       console.error(`[cold-session/l2] cannot write finding: ${e.message}`);
     }
+  });
+
+  test("stale entries do not trigger session-id churn (regression for TTL recursion)", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-stale-"));
+    process.env.GATE_ROOT = tempRoot;
+
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const core = await import(pathToFileURL(corePath).href);
+    const sessionId = `test-cold-session-stale-${Date.now()}`;
+
+    // Pre-populate with a stale entry (the new model for past-TTL findings)
+    const id = core.generateId("stale-test");
+    await core.writeEntry(tempRoot, {
+      id,
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Synthetic stale entry for churn regression testing.",
+      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      session_id: sessionId,
+      status: "stale",
+      auto_resolve: null,
+      created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+      expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      acked_at: null,
+      resolved_at: null,
+      resolved_by: null,
+      version: 0,
+    });
+
+    // Verify the stale entry exists
+    const before = core.readRegistry(tempRoot);
+    assert.strictEqual(before.filter((e) => e.session_id === sessionId).length, 1, "pre-test: exactly one stale entry");
+
+    // Simulate what meta_state_list does: checkExpiry on stale should return null
+    // so no transition happens. The entry stays stale.
+    const staleEntry = before.find((e) => e.id === id);
+    assert.strictEqual(core.checkExpiry(staleEntry), null, "stale entries should not re-expire");
+
+    delete process.env.GATE_ROOT;
   });
 });

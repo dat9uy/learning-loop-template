@@ -4,8 +4,9 @@ import { z } from "zod";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
+export const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
 
 // Source-of-truth categories for finding entries. Export so introspection
 // layers (e.g. core/loop-introspect.js) can derive from the same source.
@@ -39,10 +40,18 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported", "active", "resolved", "expired", "superseded", "auto-resolved"]).optional()
-    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). Use meta_state_ack or meta_state_promote_rule for status transitions."),
+  status: z.enum(["reported", "active", "resolved", "expired", "superseded", "auto-resolved", "stale"]).optional()
+    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'stale' (past TTL or past staleness window; re-verifiable via meta_state_re_verify), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). Use meta_state_ack or meta_state_promote_rule for status transitions."),
   consolidated_into: z.string().optional()
     .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
+  last_verified_at: z.string().optional()
+    .describe("ISO timestamp of the most recent successful verification step. Set by meta_state_re_verify on a passing run."),
+  verification: z.object({}).passthrough().optional()
+    .describe("Self-contained reproduction spec. Inner shape is JSDoc-typed (loose outer / object-form inner / cmd allowlist). See plans/260609-stale-flag-redesign/plan.md Resolved Q3."),
+  superseded_at: z.string().optional()
+    .describe("ISO timestamp set by meta_state_supersede."),
+  superseded_by: z.string().optional()
+    .describe("Operator id set by meta_state_supersede. Default 'operator'."),
   session_id: z.string().optional()
     .describe("Idempotency key for hook-emitted findings. When set, the entry is unique per session. The MCP connection hook (Phase 4) uses this to avoid emitting the same finding twice in one session."),
   mechanism_check: z.boolean().optional()
@@ -469,17 +478,20 @@ export function metaStateBatch(root, operations) {
 
 /**
  * Check if a reported entry has expired (24h TTL without ack).
- * Returns "expired" if past expires_at and status is reported,
+ * Returns "stale" if past expires_at and status is reported,
  * null otherwise.
  */
 export function checkExpiry(entry) {
+  if (entry.status === "stale") return null;
   if (entry.status !== "reported") return null;
   if (!entry.expires_at) return null;
   if (Date.now() > new Date(entry.expires_at).getTime()) {
-    return "expired";
+    return "stale";
   }
   return null;
 }
+
+export { STALENESS_WINDOW_MS };
 
 /**
  * Filter entries by optional criteria (category, status, affected_system, session_id).
