@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isAbsolute, join } from "node:path";
 import { computeFileHash } from "#mcp/core/check-grounding.js";
 import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
+import { stripEvidenceAnchor } from "#mcp/core/gate-logic.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -59,7 +60,12 @@ export const metaStateRefreshFingerprintTool = {
       };
     }
 
-    const absPath = isAbsolute(rawCodeRef) ? rawCodeRef : join(root, rawCodeRef);
+    // Strip both `:line` and `#anchor` suffixes before resolving the file
+    // path, consistent with checkGrounding and checkResolutionEvidence.
+    // Without this, `path/to/file.js:37` and `path/to/file.js#functionName`
+    // would be treated as literal file paths and fail with code_missing.
+    const strippedCodeRef = stripEvidenceAnchor(rawCodeRef);
+    const absPath = isAbsolute(strippedCodeRef) ? strippedCodeRef : join(root, strippedCodeRef);
     let hash;
     try {
       hash = computeFileHash(absPath);

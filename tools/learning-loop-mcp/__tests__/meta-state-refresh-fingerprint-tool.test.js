@@ -75,4 +75,39 @@ describe("meta_state_refresh_fingerprint tool", () => {
       else process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  // T3: strips :line and #anchor suffixes before computing the hash
+  test("strips :line and #anchor suffixes from evidence_code_ref", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "sp2-refresh-tool-3-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      writeFileSync(join(tempDir, "src.js"), "// code with line suffix");
+
+      await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Refresh with line suffix.",
+        evidence_code_ref: "src.js:18",
+        mechanism_check: true,
+      });
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const id = JSON.parse(raw.trim().split("\n")[0]).id;
+
+      const result = await metaStateRefreshFingerprintTool.handler({ id });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.status, "refreshed");
+      assert.strictEqual(parsed.id, id);
+      assert.ok(parsed.code_fingerprint?.startsWith("sha256:"));
+
+      // Verify entry was updated
+      const rawAfter = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entryAfter = JSON.parse(rawAfter.trim().split("\n")[0]);
+      assert.strictEqual(entryAfter.code_fingerprint, parsed.code_fingerprint);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });
