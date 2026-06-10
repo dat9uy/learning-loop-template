@@ -223,6 +223,10 @@ For features requiring research:
 
 **Never ignore gate block decisions.** If blocked by preflight gate, use `gate_mark_preflight` MCP tool and retry. If blocked by records gate, use MCP CRUD tools to create the missing record. Do not use Bash to circumvent a gate block.
 
+### Cold-session Test Onboarding
+
+Fresh clones require `pnpm test:cold-session` once to seed `.cold-session-sentinel.json`. The freshness test in normal `pnpm test` enforces a 3-day cadence. Run `pnpm test:cold-session` whenever the sentinel asserts stale.
+
 ## Where This Project Is Heading
 
 The long-term direction lives in `docs/trajectory.md` (read it before reasoning about loop design). This section is the AGENTS-level summary that agents need on every session.
