@@ -1,7 +1,7 @@
 ---
 title: "meta_state_patch wire-format recursion hot fix + Bridge 5 deferral"
 description: "Closes meta-260610T0115Z-meta-state-patch-array-wrap-and-passthrough-recursion-bug (the meta_state_patch tool corrupts data via {item:[...]} wrapping when patch contains array + scalars, and coerceParamsToSchema does not recurse into passthrough ZodObjects). Ships 1 helper (unwrapItemWrap) in tool-registry.js#coerceParamsToSchema, adds 4 stdio regression tests (3 + 1 pre-validation for empty arrays), and files a separate Bridge 5 loop-design (loop-design-schema-source-of-truth) as pure deferral. Zero changes to meta-state-patch-tool.js — Bridge 5 reads coerceParamsToSchema later and deletes the unwrap branch when schema-derived schemas replace passthrough. Zero constant changes (MAX_RECURSION_DEPTH stays at 2; the 3-iter unwrap bound is inlined)."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, wire-format, recursion, recursion-bug, bridge-5, deferral, tdd, red-team-amended]
@@ -102,22 +102,22 @@ TDD structure locks current behavior before changes. Phase 1 is tests-only (4 ne
 
 ## Success Criteria (Plan-Level)
 
-- [ ] All 898 existing tests pass (baseline; new test file uses `.test.js` so it's in the persistent suite)
-- [ ] 4 new tests pass (1 stdio combined-patch + 1 unit test on `coerceParamsToSchema` + 1 stdio `meta_state_propose_design` + 1 pre-validation for empty arrays)
-- [ ] Single combined `meta_state_patch` call with array + scalars stores a flat array (no `{item: ...}` wrap)
-- [ ] `meta_state_propose_design` with `proposed_design_for` + scalars round-trips a flat array
-- [ ] `meta_state_propose_design` with `proposed_design_for: []` + `addresses: []` (empty arrays) round-trips a flat empty array (pre-validation; gates Bridge 5 deferral mechanism)
-- [ ] `item_wrap_unwrapped` audit log line visible in `gate.log` for the test cases
-- [ ] Finding #509 (`meta-260610T0115Z-...`) `evidence_code_ref` updated from `meta-state-patch-tool.js#handler` → `tool-registry.js#coerceParamsToSchema` BEFORE fingerprint refresh
-- [ ] Finding #509 (`meta-260610T0115Z-...`) resolved with "Resolved:" narrative
-- [ ] Loop-design #508 (`loop-design-meta-state-patch-wire-format-recursion`) status `active` → `inactive`, `shipped_in_plan` populated, **`addresses: []` round-trips flat in the closeout patch** (Option B recursive proof)
-- [ ] New loop-design `loop-design-schema-source-of-truth` exists with status `active` and 200-char deferral paragraph (only if pre-validation passes; otherwise deferral is filed via `meta_state_log_change`)
-- [ ] Change-log #510 (`meta-20260609185059Z-...`) formally superseded by the new Step 1 change-log via the `supersedes` field
-- [ ] `pnpm check` passes (validate records + extract index + tests)
-- [ ] **Zero changes to `meta-state-patch-tool.js`** (Bridge 5 reads `coerceParamsToSchema` later; the patch tool schema stays `passthrough` until then)
-- [ ] `core/gate-logic.js` is **UNCHANGED** (fix stays in registry layer)
-- [ ] `MAX_RECURSION_DEPTH` in `tool-registry.js` is **UNCHANGED** (stays at 2; depth bump dropped per red-team amendment 2)
-- [ ] Cold-session test (`rule-cold-session-test-must-pass-before-resolution`) passes after the change-log mutation (the cold-session test checks MCP tool availability, not registry content)
+- [x] All 898 existing tests pass (baseline; new test file uses `.test.js` so it's in the persistent suite)
+- [x] 4 new tests pass (1 stdio combined-patch + 1 unit test on `coerceParamsToSchema` + 1 stdio `meta_state_propose_design` + 1 pre-validation for empty arrays)
+- [x] Single combined `meta_state_patch` call with array + scalars stores a flat array (no `{item: ...}` wrap)
+- [x] `meta_state_propose_design` with `proposed_design_for` + scalars round-trips a flat array
+- [x] `meta_state_propose_design` with `proposed_design_for: []` + `addresses: []` (empty arrays) round-trips a flat empty array (pre-validation; gates Bridge 5 deferral mechanism)
+- [x] `item_wrap_unwrapped` audit log line visible in `gate.log` for the test cases
+- [x] Finding #509 (`meta-260610T0115Z-...`) `evidence_code_ref` updated from `meta-state-patch-tool.js#handler` → `tool-registry.js#coerceParamsToSchema` BEFORE fingerprint refresh
+- [x] Finding #509 (`meta-260610T0115Z-...`) resolved with "Resolved:" narrative
+- [x] Loop-design #508 (`loop-design-meta-state-patch-wire-format-recursion`) status `active` → `inactive`, `shipped_in_plan` populated, **`addresses: []` round-trips flat in the closeout patch** (Option B recursive proof)
+- [x] New loop-design `loop-design-schema-source-of-truth` exists with status `active` and 200-char deferral paragraph (only if pre-validation passes; otherwise deferral is filed via `meta_state_log_change`)
+- [x] Change-log #510 (`meta-20260609185059Z-...`) formally superseded by the new Step 1 change-log via the `supersedes` field
+- [x] `pnpm check` passes (validate records + extract index + tests)
+- [x] **Zero changes to `meta-state-patch-tool.js`** (Bridge 5 reads `coerceParamsToSchema` later; the patch tool schema stays `passthrough` until then)
+- [x] `core/gate-logic.js` is **UNCHANGED** (fix stays in registry layer)
+- [x] `MAX_RECURSION_DEPTH` in `tool-registry.js` is **UNCHANGED** (stays at 2; depth bump dropped per red-team amendment 2)
+- [x] Cold-session test (`rule-cold-session-test-must-pass-before-resolution`) passes after the change-log mutation (the cold-session test checks MCP tool availability, not registry content)
 
 ## Dependencies
 

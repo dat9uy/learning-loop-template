@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Red (TDD tests first)"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: []
@@ -152,15 +152,15 @@ If this test FAILS at Phase 2 (after the fix ships):
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js` exists with 4 tests (file MUST be `.test.js`, not `.cjs` — verified via `cat package.json | grep test`)
-- [ ] Test 1 (combined-patch stdio, loop-design) fails with the documented symptom: `addresses: { item: { item: [...] } }` stored in registry
-- [ ] Test 2 (coerceParamsToSchema unit) fails: value-shape assertion fails because no unwrap happens
-- [ ] Test 3 (propose_design stdio) fails: `proposed_design_for: { item: { item: [...] } }` stored in registry
-- [ ] Test 1.5 (pre-validation, empty arrays) fails: `proposed_design_for: { item: [] }` stored in registry
-- [ ] All 898 existing tests still pass (no regressions)
-- [ ] `pnpm test` shows the 4 new tests in its output (confirms the `.test.js` extension is picked up by the glob)
-- [ ] Git commit records the test file
-- [ ] No production code modified (only test file added)
+- [x] `tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js` exists with 4 tests (file MUST be `.test.js`, not `.cjs` — verified via `cat package.json | grep test`)
+- [x] Test 1 (combined-patch stdio, loop-design) fails with the documented symptom: `addresses: { item: { item: [...] } }` stored in registry
+- [x] Test 2 (coerceParamsToSchema unit) fails: value-shape assertion fails because no unwrap happens
+- [x] Test 3 (propose_design stdio) fails: `proposed_design_for: { item: { item: [...] } }` stored in registry
+- [x] Test 1.5 (pre-validation, empty arrays) fails: `proposed_design_for: { item: [] }` stored in registry
+- [x] All 898 existing tests still pass (no regressions)
+- [x] `pnpm test` shows the 4 new tests in its output (confirms the `.test.js` extension is picked up by the glob)
+- [x] Git commit records the test file
+- [x] No production code modified (only test file added)
 
 ## Risk Assessment
 

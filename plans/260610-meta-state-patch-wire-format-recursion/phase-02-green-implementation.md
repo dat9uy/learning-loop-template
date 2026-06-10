@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Green (implementation)"
-status: pending
+status: completed
 priority: P1
 effort: "0.5h"
 dependencies: [1]
@@ -134,16 +134,16 @@ if (unwrapResult.unwrapped > 0) {
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/tool-registry.js` has the new `unwrapItemWrap` helper (3-iter bound inlined)
-- [ ] `MAX_RECURSION_DEPTH` is **UNCHANGED** (stays at 2; no depth bump)
-- [ ] No new constants added (verified by `git diff tools/learning-loop-mcp/tool-registry.js` showing no `const.*=.*3` additions)
-- [ ] `unwrapItemWrap` is wired into `coerceParamsToSchema` after the `coerceValue` call
-- [ ] `pnpm test` shows all 4 new tests passing
-- [ ] All 898 existing tests still pass
-- [ ] `meta-state-patch-tool.js` is UNCHANGED (git diff shows zero changes)
-- [ ] `core/gate-logic.js` is UNCHANGED (git diff shows zero changes)
-- [ ] Git commit records the production code change
-- [ ] `pnpm check` passes (validate records + extract index + tests)
+- [x] `tools/learning-loop-mcp/tool-registry.js` has the new `unwrapItemWrap` helper (3-iter bound inlined)
+- [x] `MAX_RECURSION_DEPTH` is **UNCHANGED** (stays at 2; no depth bump)
+- [x] No new constants added (verified by `git diff tools/learning-loop-mcp/tool-registry.js` showing no `const.*=.*3` additions)
+- [x] `unwrapItemWrap` is wired into `coerceParamsToSchema` after the `coerceValue` call
+- [x] `pnpm test` shows all 4 new tests passing
+- [x] All 898 existing tests still pass
+- [x] `meta-state-patch-tool.js` is UNCHANGED (git diff shows zero changes)
+- [x] `core/gate-logic.js` is UNCHANGED (git diff shows zero changes)
+- [x] Git commit records the production code change
+- [x] `pnpm check` passes (validate records + extract index + tests)
 
 ## Risk Assessment
 

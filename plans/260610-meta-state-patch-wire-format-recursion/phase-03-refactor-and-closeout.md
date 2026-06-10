@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refactor and closeout"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2]
@@ -242,19 +242,19 @@ Create `docs/journals/260610-meta-state-patch-wire-format-recursion-closeout.md`
 
 ## Success Criteria
 
-- [ ] All 902 tests pass (898 baseline + 4 new from Phase 1)
-- [ ] `pnpm check` passes (validate records + extract index + tests)
-- [ ] Cold-session test passes (the rule `rule-cold-session-test-must-pass-before-resolution` is satisfied)
-- [ ] Finding #509 (`meta-260610T0115Z-...`) `evidence_code_ref` updated to `tools/learning-loop-mcp/tool-registry.js#coerceParamsToSchema` (via Step 2.5)
-- [ ] Finding #509 (`meta-260610T0115Z-...`) status: `resolved`, `resolved_by: operator`
-- [ ] Loop-design #508 (`loop-design-meta-state-patch-wire-format-recursion`) status: `inactive`, `shipped_in_plan: "plans/260610-meta-state-patch-wire-format-recursion/"`, `shipped_at: <current-timestamp>`, **AND `addresses: []` round-trips flat in the closeout patch** (Option B recursive proof)
-- [ ] Loop-design `loop-design-schema-source-of-truth` exists with status `active` and ~200-char deferral paragraph (only if Test 1.5 passes; otherwise the deferral is filed via `meta_state_log_change` and a new finding is filed for the empty-array edge case)
-- [ ] Change-log entry for the hot fix ship exists in `meta-state.jsonl` with `supersedes: "meta-20260609185059Z-..."` (formally corrects the stale change-target in change-log #510)
-- [ ] `meta-state-patch-tool.js` is UNCHANGED
-- [ ] `core/gate-logic.js` is UNCHANGED
-- [ ] `MAX_RECURSION_DEPTH` in `tool-registry.js` is UNCHANGED (stays at 2; depth bump dropped)
-- [ ] `git status` shows only the expected 3 file changes (2 from Phases 1+2, 1 from Phase 3)
-- [ ] Journal entry created at `docs/journals/260610-meta-state-patch-wire-format-recursion-closeout.md`
+- [x] All 902 tests pass (898 baseline + 4 new from Phase 1)
+- [x] `pnpm check` passes (validate records + extract index + tests)
+- [x] Cold-session test passes (the rule `rule-cold-session-test-must-pass-before-resolution` is satisfied)
+- [x] Finding #509 (`meta-260610T0115Z-...`) `evidence_code_ref` updated to `tools/learning-loop-mcp/tool-registry.js#coerceParamsToSchema` (via Step 2.5)
+- [x] Finding #509 (`meta-260610T0115Z-...`) status: `resolved`, `resolved_by: operator`
+- [x] Loop-design #508 (`loop-design-meta-state-patch-wire-format-recursion`) status: `inactive`, `shipped_in_plan: "plans/260610-meta-state-patch-wire-format-recursion/"`, `shipped_at: <current-timestamp>`, **AND `addresses: []` round-trips flat in the closeout patch** (Option B recursive proof)
+- [x] Loop-design `loop-design-schema-source-of-truth` exists with status `active` and ~200-char deferral paragraph (only if Test 1.5 passes; otherwise the deferral is filed via `meta_state_log_change` and a new finding is filed for the empty-array edge case)
+- [x] Change-log entry for the hot fix ship exists in `meta-state.jsonl` with `supersedes: "meta-20260609185059Z-..."` (formally corrects the stale change-target in change-log #510)
+- [x] `meta-state-patch-tool.js` is UNCHANGED
+- [x] `core/gate-logic.js` is UNCHANGED
+- [x] `MAX_RECURSION_DEPTH` in `tool-registry.js` is UNCHANGED (stays at 2; depth bump dropped)
+- [x] `git status` shows only the expected 3 file changes (2 from Phases 1+2, 1 from Phase 3)
+- [x] Journal entry created at `docs/journals/260610-meta-state-patch-wire-format-recursion-closeout.md`
 
 ## Risk Assessment
 
