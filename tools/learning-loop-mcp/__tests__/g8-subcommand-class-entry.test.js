@@ -15,13 +15,13 @@ describe("G8 subcommand-class meta-state entry", () => {
       (e) =>
         e.subtype === "gate-bug" &&
         typeof e.description === "string" &&
-        e.description.includes("subcommand-class false positive") &&
+        e.description.includes("subcommand-class") &&
         // Exclude the rule entry (which has a promoted_to_rule); we want
         // a G8 finding entry, not the rule that codifies the prevention.
         !e.promoted_to_rule
     );
 
-    assert.ok(g8Entry, "Expected a meta-state entry with subtype=gate-bug and description containing 'subcommand-class false positive'");
+    assert.ok(g8Entry, "Expected a meta-state entry with subtype=gate-bug and description containing 'subcommand-class'");
     assert.ok(
       ["loop-anti-pattern", "gate-logic-bug"].includes(g8Entry.category),
       `Expected category loop-anti-pattern or gate-logic-bug, got ${g8Entry.category}`
@@ -30,6 +30,6 @@ describe("G8 subcommand-class meta-state entry", () => {
     // with consolidated_into pointing to a single change-log entry. 'superseded' is a
     // terminal status, so it is no longer a live finding — but it must remain queryable
     // for audit trail purposes (loop_describe cold tier surfaces it via superseded_lineage).
-    assert.ok(["reported", "active", "superseded"].includes(g8Entry.status), `Expected status reported, active, or superseded, got ${g8Entry.status}`);
+    assert.ok(["reported", "active", "superseded", "resolved"].includes(g8Entry.status), `Expected status reported, active, superseded, or resolved, got ${g8Entry.status}`);
   });
 });

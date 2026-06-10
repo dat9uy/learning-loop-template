@@ -76,4 +76,163 @@ describe("metaStateReportTool mechanism_check extension", () => {
       else process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  // T5: auto-defaults mechanism_check to true when evidence_code_ref is provided
+  test("auto-defaults mechanism_check to true when evidence_code_ref is provided", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t5-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test auto-default mechanism_check when evidence_code_ref is set.",
+        evidence_code_ref: "tools/foo.js:1",
+        // No mechanism_check
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.strictEqual(parsed.warnings, undefined);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, true);
+      assert.strictEqual(entry.evidence_code_ref, "tools/foo.js:1");
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T6: explicit mechanism_check: true with evidence_code_ref stores true and emits no warning
+  test("explicit mechanism_check: true with evidence_code_ref stores true and emits no warning", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t6-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test explicit mechanism_check true with evidence_code_ref.",
+        evidence_code_ref: "tools/foo.js:1",
+        mechanism_check: true,
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.strictEqual(parsed.warnings, undefined);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, true);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T7: explicit mechanism_check: false with evidence_code_ref stores false and emits a warning
+  test("explicit mechanism_check: false with evidence_code_ref stores false and emits a warning", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t7-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test explicit mechanism_check false with evidence_code_ref warning.",
+        evidence_code_ref: "tools/foo.js:1",
+        mechanism_check: false,
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.ok(Array.isArray(parsed.warnings));
+      assert.strictEqual(parsed.warnings.length, 1);
+      assert.strictEqual(parsed.warnings[0].code, "evidence_without_mechanism_check");
+      assert.ok(typeof parsed.warnings[0].message === "string" && parsed.warnings[0].message.length > 20);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, false);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T8: omits mechanism_check when neither field is provided
+  test("omits mechanism_check when neither field is provided", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t8-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test mechanism_check omission when neither field is provided.",
+        // No evidence_code_ref, no mechanism_check
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.strictEqual(parsed.warnings, undefined);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, undefined);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T9: explicit mechanism_check: true without evidence_code_ref is the escape hatch
+  test("explicit mechanism_check: true without evidence_code_ref is the escape hatch", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t9-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test explicit mechanism_check true without evidence_code_ref escape hatch.",
+        mechanism_check: true,
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.strictEqual(parsed.warnings, undefined);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, true);
+      assert.strictEqual(entry.evidence_code_ref, undefined);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T10: mechanism_check: null behaves as if omitted
+  test("mechanism_check: null behaves as if omitted", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-auto-default-t10-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const response = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test mechanism_check null behaves as omitted with evidence_code_ref.",
+        evidence_code_ref: "x.js:1",
+        mechanism_check: null,
+      });
+
+      const parsed = JSON.parse(response.content[0].text);
+      assert.strictEqual(parsed.warnings, undefined);
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.mechanism_check, true);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });
