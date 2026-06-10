@@ -40,7 +40,7 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { spawn } = require("node:child_process");
-const { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync } = require("node:fs");
+const { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -78,13 +78,19 @@ describe("cold-session discoverability acceptance", () => {
       return false;
     }
 
-    const canSpawnDroid = await new Promise((resolve) => {
-      const probe = spawn("droid", ["--version"], { stdio: "pipe" });
+    const cli = await detectAgentCli();
+    if (!cli) {
+      console.error("[probeL2Gap] no agent CLI in PATH");
+      return false;
+    }
+
+    const canSpawn = await new Promise((resolve) => {
+      const probe = spawn(cli, ["--version"], { stdio: "pipe" });
       probe.on("error", () => resolve(false));
       probe.on("exit", (code) => resolve(code === 0));
     });
-    if (!canSpawnDroid) {
-      console.error("[probeL2Gap] droid not in PATH");
+    if (!canSpawn) {
+      console.error(`[probeL2Gap] ${cli} not in PATH`);
       return false;
     }
 
@@ -96,7 +102,7 @@ describe("cold-session discoverability acceptance", () => {
       "If the tool is unavailable, output exactly the string: TOOL_UNAVAILABLE",
     ].join(" ");
 
-    const child = spawn("droid", ["exec", "--auto", "low", prompt], {
+    const child = spawn(cli, ["exec", "--auto", "low", prompt], {
       cwd: root,
       env: { ...process.env, GATE_ROOT: tempRoot },
       stdio: ["ignore", "pipe", "pipe"],
@@ -122,6 +128,30 @@ describe("cold-session discoverability acceptance", () => {
     return { gapClosed, exitCode, stdout, stderr };
   }
 
+  // Detect which agent CLI is available: droid first, then claude.
+  // Returns the first CLI whose --version probe exits 0, or null if neither.
+  async function detectAgentCli() {
+    for (const cli of ["droid", "claude"]) {
+      const ok = await new Promise((resolve) => {
+        const probe = spawn(cli, ["--version"], { stdio: "pipe" });
+        probe.on("error", () => resolve(false));
+        probe.on("exit", (code) => resolve(code === 0));
+      });
+      if (ok) return cli;
+    }
+    return null;
+  }
+
+  // Write freshness sentinel so normal `pnpm test` knows cold-session was run.
+  function writeSentinel(cli, layer) {
+    const sentinelPath = join(__dirname, ".cold-session-sentinel.json");
+    writeFileSync(sentinelPath, JSON.stringify({
+      last_pass_at: new Date().toISOString(),
+      cli: cli ?? "droid",
+      layer,
+    }, null, 2));
+  }
+
   test("agent cites code via meta_state_report and local:meta-state refs", async () => {
     console.error("[cold-session] test starting", { projectRoot, serverEntry, exists: existsSync(serverEntry) });
     if (!existsSync(serverEntry)) {
@@ -129,24 +159,30 @@ describe("cold-session discoverability acceptance", () => {
       return;
     }
 
-    // Verify droid is in PATH by trying to spawn it (more forgiving than execFileSync).
-    const canSpawnDroid = await new Promise((resolve) => {
-      const probe = spawn("droid", ["--version"], { stdio: "pipe" });
+    const cli = await detectAgentCli();
+    if (!cli) {
+      console.error("[cold-session] skipping because no agent CLI in PATH");
+      return;
+    }
+
+    // Verify agent CLI is in PATH by trying to spawn it.
+    const canSpawn = await new Promise((resolve) => {
+      const probe = spawn(cli, ["--version"], { stdio: "pipe" });
       let out = "";
       let err = "";
       probe.stdout.on("data", (c) => { out += c; });
       probe.stderr.on("data", (c) => { err += c; });
       probe.on("error", (e) => {
-        console.error("[cold-session] droid probe error:", e.message);
+        console.error(`[cold-session] ${cli} probe error:`, e.message);
         resolve(false);
       });
       probe.on("exit", (code) => {
-        console.error("[cold-session] droid probe exit:", code, out, err);
+        console.error(`[cold-session] ${cli} probe exit:`, code, out, err);
         resolve(code === 0);
       });
     });
-    if (!canSpawnDroid) {
-      console.error("[cold-session] skipping because droid probe failed");
+    if (!canSpawn) {
+      console.error(`[cold-session] skipping because ${cli} probe failed`);
       return;
     }
 
@@ -176,7 +212,7 @@ describe("cold-session discoverability acceptance", () => {
       "the relevant code (tools/learning-loop-mcp/tools/loop-describe-tool.js) and mechanism_check: true. " +
       "Then create the decision with source_refs using local:meta-state:<id> of the finding you just reported.";
 
-    const child = spawn("droid", ["exec", "--auto", "medium", prompt], {
+    const child = spawn(cli, ["exec", "--auto", "medium", prompt], {
       cwd: projectRoot,
       env: {
         ...process.env,
@@ -296,6 +332,9 @@ describe("cold-session discoverability acceptance", () => {
       startMetaStateSize,
       `real project meta-state.jsonl was mutated by subprocess (size ${startMetaStateSize} -> ${endMetaStateSize})`,
     );
+
+    // Freshness sentinel: record that the cold-session test ran.
+    writeSentinel(cli, "L1");
   });
 
   test("discoverability surface works via direct MCP server spawn", async () => {
@@ -537,20 +576,15 @@ describe("cold-session discoverability acceptance", () => {
       return;
     }
 
-    // Probe droid CLI availability.
-    const canSpawnDroid = await new Promise((resolve) => {
-      const probe = spawn("droid", ["--version"], { stdio: "pipe" });
-      probe.on("error", () => resolve(false));
-      probe.on("exit", (code) => resolve(code === 0));
-    });
-    if (!canSpawnDroid) {
-      console.error("[cold-session/l1] skipping: droid not in PATH");
+    const cli = await detectAgentCli();
+    if (!cli) {
+      console.error("[cold-session/l1] skipping: no agent CLI in PATH");
       return;
     }
 
-    // Probe droid exec --list-tools.
+    // Probe agent CLI exec --list-tools.
     const toolsList = await new Promise((resolve) => {
-      const probe = spawn("droid", ["exec", "--list-tools"], { cwd: projectRoot, stdio: "pipe" });
+      const probe = spawn(cli, ["exec", "--list-tools"], { cwd: projectRoot, stdio: "pipe" });
       let out = "";
       probe.stdout.on("data", (c) => { out += c; });
       probe.stderr.on("data", () => {});
@@ -560,13 +594,14 @@ describe("cold-session discoverability acceptance", () => {
 
     const sessionId = "test-cold-session-mcp-client-loading";
     const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let writeEntry, readRegistry, updateEntry, generateId;
+    let writeEntry, readRegistry, updateEntry, generateId, tryClaimSessionId;
     try {
       const core = await import(pathToFileURL(corePath).href);
       writeEntry = core.writeEntry;
       readRegistry = core.readRegistry;
       updateEntry = core.updateEntry;
       generateId = core.generateId;
+      tryClaimSessionId = core.tryClaimSessionId;
     } catch (e) {
       console.error(`[cold-session/mcp-client-loading] cannot import core/meta-state.js: ${e.message}`);
       return;
@@ -574,18 +609,17 @@ describe("cold-session discoverability acceptance", () => {
 
     if (STRICT_MCP_TOOL_PATTERN.test(toolsList)) {
       console.error("[cold-session/l1] L1 closed: mcp tools listed in CLI catalog (test 5 / L2 is the authoritative probe)");
-      // L1 (CLI catalog) closed: check for existing finding and soft-delete it.
-      // NB: this is the L1 layer only. The L2 layer (agent runtime, tested by
-      // test 5 below) is the authoritative one. The 1410Z finding documents
-      // that L1 may pass while L2 fails; both probes share the same
-      // session_id+subtype so the rule's evidence aggregates correctly.
+      // L1 (CLI catalog) closed: soft-delete ONLY the L1 finding.
+      // Exact filter on runtime+layer prevents L1 from resolving L2 findings.
       let existing = null;
       try {
         existing = readRegistry(projectRoot).find((e) =>
           e.entry_kind === "finding"
           && e.session_id === sessionId
           && e.subtype === "mcp-client-loading"
-          && (e.status === "active" || e.status === "reported"),
+          && (e.status === "active" || e.status === "reported")
+          && e.description.includes(`runtime: ${cli}`)
+          && e.description.includes("layer: L1"),
         );
       } catch {
         // no existing finding
@@ -599,71 +633,55 @@ describe("cold-session discoverability acceptance", () => {
             resolved_by: "auto-cold-session-test",
             _expected_version: existing.version ?? 0,
           });
-          console.error(`[cold-session/mcp-client-loading] soft-deleted finding: ${existing.id}`);
+          console.error(`[cold-session/mcp-client-loading] soft-deleted L1 finding: ${existing.id}`);
         } catch (e) {
-          console.error(`[cold-session/mcp-client-loading] cannot soft-delete finding: ${e.message}`);
+          console.error(`[cold-session/mcp-client-loading] cannot soft-delete L1 finding: ${e.message}`);
         }
       }
       return;
     }
 
-    // Gap detected. Log a meta_state_report finding via direct file I/O so the
-    // gap is tracked in the canonical meta-state.jsonl registry. Pattern
-    // reference: .factory/hooks/loop-surface-inject.cjs#reportMcpConnectionFailure
-    // (writes the same shape; subtype differentiates client-side from server-side).
-    // L1 finding uses subtype=mcp-client-loading; the 1410Z finding documents
-    // that L1 may pass while L2 fails, so the L2 probe (test 5) is authoritative.
-
-    // Idempotency: skip write if a finding for this session_id is already active or reported.
-    let existing = null;
-    try {
-      existing = readRegistry(projectRoot).find((e) =>
-        e.entry_kind === "finding"
-        && e.session_id === sessionId
-        && e.subtype === "mcp-client-loading"
-        && (e.status === "active" || e.status === "reported"),
-      );
-    } catch {
-      // registry may not exist yet — treat as no existing finding
-    }
-    if (existing) {
-      console.error(`[cold-session/mcp-client-loading] gap already tracked: ${existing.id}`);
-      return;
-    }
-
-    const id = generateId("mcp-client-loading-missing");
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    const entry = {
-      id,
-      entry_kind: "finding",
-      category: "mcp-tool-missing",
-      severity: "warning",
-      affected_system: "mcp-tools",
+    // Gap detected. Use atomic tryClaimSessionId to eliminate TOCTOU race.
+    const claim = await tryClaimSessionId(projectRoot, {
+      sessionId,
       subtype: "mcp-client-loading",
-      description:
-        "droid exec --list-tools does not expose mcp__learning_loop_mcp__* tools in this environment. " +
-        "The MCP server is reachable (server-side probe works — see meta-260606T0200Z-loop-surface-inject-spawnandcall-chicken-egg-fix), " +
-        "but the droid agent runtime is not loading project-local MCP servers into its tool list. " +
-        "This is the client-side gap described in meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list. " +
-        "Detected by cold-session-discoverability.test.cjs#droid exec exposes mcp__learning_loop_mcp__* tools.",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
-      session_id: sessionId,
-      status: "reported",
-      auto_resolve: null,
-      created_at: now.toISOString(),
-      expires_at: expiresAt,
-      acked_at: null,
-      resolved_at: null,
-      resolved_by: null,
-      version: 0,
-    };
+      runtime: cli,
+      layer: "L1",
+    }, () => {
+      const id = generateId("mcp-client-loading-missing");
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      return {
+        id,
+        entry_kind: "finding",
+        category: "mcp-tool-missing",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        subtype: "mcp-client-loading",
+        description:
+          `${cli} exec --list-tools does not expose mcp__learning_loop_mcp__* tools in this environment. ` +
+          "The MCP server is reachable (server-side probe works — see meta-260606T0200Z-loop-surface-inject-spawnandcall-chicken-egg-fix), " +
+          `but the ${cli} agent runtime is not loading project-local MCP servers into its tool list. ` +
+          "This is the client-side gap described in meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list. " +
+          "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
+          `runtime: ${cli}; layer: L1;`,
+        evidence_code_ref: "tools/learning-loop-mcp/server.js",
+        session_id: sessionId,
+        status: "reported",
+        auto_resolve: null,
+        created_at: now.toISOString(),
+        expires_at: expiresAt,
+        acked_at: null,
+        resolved_at: null,
+        resolved_by: null,
+        version: 0,
+      };
+    });
 
-    try {
-      await writeEntry(projectRoot, entry);
-      console.error(`[cold-session/l1] logged finding: ${id}`);
-    } catch (e) {
-      console.error(`[cold-session/l1] cannot write finding: ${e.message}`);
+    if (claim.claimed) {
+      console.error(`[cold-session/l1] logged L1 finding: ${claim.id}`);
+    } else {
+      console.error(`[cold-session/l1] L1 gap already tracked: ${claim.existing.id}`);
     }
   });
 
@@ -756,40 +774,42 @@ describe("cold-session discoverability acceptance", () => {
     console.error("[cold-session/l2] test starting");
     if (!existsSync(serverEntry)) {
       console.error("[cold-session/l2] skipping: server entry missing");
+      writeSentinel(cli, "L2");
       return;
     }
 
     const sessionId = "test-cold-session-mcp-client-loading";
+    const cli = await detectAgentCli() ?? "droid";
     const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let writeEntry, readRegistry, updateEntry, generateId;
+    let readRegistry, updateEntry, generateId, tryClaimSessionId;
     try {
       const core = await import(pathToFileURL(corePath).href);
-      writeEntry = core.writeEntry;
       readRegistry = core.readRegistry;
       updateEntry = core.updateEntry;
       generateId = core.generateId;
+      tryClaimSessionId = core.tryClaimSessionId;
     } catch (e) {
       console.error(`[cold-session/l2] cannot import core/meta-state.js: ${e.message}`);
       return;
     }
 
     // Shared L2 probe: see probeL2Gap helper above. On gap-open, log a
-    // finding (idempotent on session_id+subtype). On gap-close, soft-delete
-    // any existing finding. Both probes (this test 5 and test 1's skip
-    // check) share the same session_id+subtype so the rule-cold-session-
-    // test-must-pass-before-resolution evidence aggregates correctly.
+    // finding via atomic tryClaimSessionId. On gap-close, soft-delete ONLY
+    // the L2 finding (exact runtime+layer filter prevents cross-resolution).
     const l2Result = await probeL2Gap(projectRoot, serverEntry);
     const gapOpen = !l2Result.gapClosed;
 
     if (!gapOpen) {
-      // Gap closed: check for existing finding and soft-delete it.
+      // Gap closed: soft-delete ONLY the L2 finding.
       let existing = null;
       try {
         existing = readRegistry(projectRoot).find((e) =>
           e.entry_kind === "finding"
           && e.session_id === sessionId
           && e.subtype === "mcp-client-loading"
-          && (e.status === "active" || e.status === "reported"),
+          && (e.status === "active" || e.status === "reported")
+          && e.description.includes(`runtime: ${cli}`)
+          && e.description.includes("layer: L2"),
         );
       } catch {
         // no registry
@@ -803,68 +823,61 @@ describe("cold-session discoverability acceptance", () => {
             resolved_by: "auto-cold-session-test-l2",
             _expected_version: existing.version ?? 0,
           });
-          console.error(`[cold-session/l2] gap closed: soft-deleted finding ${existing.id}`);
+          console.error(`[cold-session/l2] gap closed: soft-deleted L2 finding ${existing.id}`);
         } catch (e) {
-          console.error(`[cold-session/l2] cannot soft-delete finding: ${e.message}`);
+          console.error(`[cold-session/l2] cannot soft-delete L2 finding: ${e.message}`);
         }
       } else {
-        console.error("[cold-session/l2] gap closed: no existing finding to soft-delete");
+        console.error("[cold-session/l2] gap closed: no L2 finding to soft-delete");
       }
+      writeSentinel(cli, "L2");
       return;
     }
 
-    // Gap-open branch: log finding (idempotent on session_id+subtype).
-    let existing = null;
-    try {
-      existing = readRegistry(projectRoot).find((e) =>
-        e.entry_kind === "finding"
-        && e.session_id === sessionId
-        && e.subtype === "mcp-client-loading"
-        && (e.status === "active" || e.status === "reported"),
-      );
-    } catch {
-      // no registry
-    }
-    if (existing) {
-      console.error(`[cold-session/l2] gap already tracked: ${existing.id}`);
-      return;
-    }
-
-    const id = generateId("mcp-client-loading-missing");
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    const entry = {
-      id,
-      entry_kind: "finding",
-      category: "mcp-tool-missing",
-      severity: "warning",
-      affected_system: "mcp-tools",
+    // Gap-open branch: use atomic tryClaimSessionId to eliminate TOCTOU race.
+    const claim = await tryClaimSessionId(projectRoot, {
+      sessionId,
       subtype: "mcp-client-loading",
-      description:
-        "L2 probe: droid exec cannot call mcp__learning_loop_mcp__loop_describe in this environment. " +
-        "The MCP server is reachable and the droid CLI catalog may show the tools (see test 3 / L1 probe), " +
-        "but the droid agent runtime is not surfacing MCP tools to the AI's callable list. " +
-        "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
-        "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
-        `Probe: exit=${l2Result.exitCode}, stdout_len=${l2Result.stdout.length}, stderr_len=${l2Result.stderr.length}, first200=${JSON.stringify(l2Result.stdout.slice(0, 200))}.`,
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
-      session_id: sessionId,
-      status: "reported",
-      auto_resolve: null,
-      created_at: now.toISOString(),
-      expires_at: expiresAt,
-      acked_at: null,
-      resolved_at: null,
-      resolved_by: null,
-      version: 0,
-    };
+      runtime: cli,
+      layer: "L2",
+    }, () => {
+      const id = generateId("mcp-client-loading-missing");
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      return {
+        id,
+        entry_kind: "finding",
+        category: "mcp-tool-missing",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        subtype: "mcp-client-loading",
+        description:
+          `L2 probe: ${cli} exec cannot call mcp__learning_loop_mcp__loop_describe in this environment. ` +
+          `The MCP server is reachable and the ${cli} CLI catalog may show the tools (see test 3 / L1 probe), ` +
+          `but the ${cli} agent runtime is not surfacing MCP tools to the AI's callable list. ` +
+          "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
+          "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
+          `Probe: exit=${l2Result.exitCode}, stdout_len=${l2Result.stdout.length}, stderr_len=${l2Result.stderr.length}, first200=${JSON.stringify(l2Result.stdout.slice(0, 200))}. ` +
+          `runtime: ${cli}; layer: L2;`,
+        evidence_code_ref: "tools/learning-loop-mcp/server.js",
+        session_id: sessionId,
+        status: "reported",
+        auto_resolve: null,
+        created_at: now.toISOString(),
+        expires_at: expiresAt,
+        acked_at: null,
+        resolved_at: null,
+        resolved_by: null,
+        version: 0,
+      };
+    });
 
-    try {
-      await writeEntry(projectRoot, entry);
-      console.error(`[cold-session/l2] logged finding: ${id}`);
-    } catch (e) {
-      console.error(`[cold-session/l2] cannot write finding: ${e.message}`);
+    if (claim.claimed) {
+      console.error(`[cold-session/l2] logged L2 finding: ${claim.id}`);
+    } else {
+      console.error(`[cold-session/l2] L2 gap already tracked: ${claim.existing.id}`);
     }
+    writeSentinel(cli, "L2");
   });
 
   test("stale entries do not trigger session-id churn (regression for TTL recursion)", async () => {
