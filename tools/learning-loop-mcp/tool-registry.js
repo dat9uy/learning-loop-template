@@ -45,6 +45,35 @@ function coerceValue(value, typeName) {
   return undefined;
 }
 
+/**
+ * Unwrap {item: X} envelopes produced by MCP SDK wire framing.
+ * TypeName-gated: only unwraps when target type is ZodArray or ZodObject.
+ * Bounded to 3 iterations to prevent infinite loops on self-referential
+ * passthrough schemas.
+ *
+ * @param {*} value - The value to potentially unwrap
+ * @param {string} typeName - The Zod type name of the target field
+ * @returns {{ value: *, unwrapped: number }} - The (potentially) unwrapped value and count
+ */
+function unwrapItemWrap(value, typeName) {
+  if (typeName !== "ZodArray" && typeName !== "ZodObject") {
+    return { value, unwrapped: 0 };
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { value, unwrapped: 0 };
+  }
+
+  let cur = value;
+  let depth = 0;
+  while (depth < 3) {
+    const keys = Object.keys(cur);
+    if (keys.length !== 1 || keys[0] !== "item") break;
+    cur = cur.item;
+    depth++;
+  }
+  return { value: cur, unwrapped: depth };
+}
+
 export function coerceParamsToSchema(args, schema, root = null, depth = 0) {
   if (!schema || !args || typeof args !== "object") return args;
   const shape = schema.shape || schema;
@@ -73,6 +102,22 @@ export function coerceParamsToSchema(args, schema, root = null, depth = 0) {
     if (next !== undefined) {
       coerced[key] = next;
       didCoerce = didCoerce || next !== value;
+    }
+
+    // Unwrap {item: X} envelopes produced by MCP SDK wire framing.
+    const unwrapResult = unwrapItemWrap(coerced[key], typeName);
+    if (unwrapResult.unwrapped > 0) {
+      coerced[key] = unwrapResult.value;
+      didCoerce = true;
+      if (root) {
+        try {
+          appendGateLog(root, {
+            action: "item_wrap_unwrapped",
+            field: key,
+            depth: unwrapResult.unwrapped,
+          });
+        } catch { /* logging is best-effort */ }
+      }
     }
 
     if (
