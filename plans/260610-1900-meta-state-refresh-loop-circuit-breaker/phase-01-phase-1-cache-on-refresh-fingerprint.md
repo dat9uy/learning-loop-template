@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Cache on refresh fingerprint (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: []

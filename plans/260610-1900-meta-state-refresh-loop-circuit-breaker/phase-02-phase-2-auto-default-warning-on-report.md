@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Auto-default + warning on report (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: []

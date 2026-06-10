@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Discoverability + test verification"
-status: pending
+status: completed
 priority: P2
 effort: "0.75h"
 dependencies: ["phase-01-phase-1-cache-on-refresh-fingerprint", "phase-02-phase-2-auto-default-warning-on-report"]
