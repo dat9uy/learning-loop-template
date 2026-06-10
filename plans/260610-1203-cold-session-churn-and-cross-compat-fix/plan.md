@@ -1,14 +1,19 @@
 ---
-title: "Cold-session test churn fix + cross-compat (atomic tryClaimSessionId helper)"
-description: "Eliminate finding churn in meta-state.jsonl from the cold-session test by introducing a server-side atomic tryClaimSessionId helper under the existing enqueue lock, refactoring tests 3+5 to use it, adding a 3-day freshness sentinel, and adding cross-compat detection for both droid and claude CLIs. Rule pattern unchanged. No new dependencies."
-status: pending
+title: Cold-session test churn fix + cross-compat (atomic tryClaimSessionId helper)
+description: >-
+  Eliminate finding churn in meta-state.jsonl from the cold-session test by
+  introducing a server-side atomic tryClaimSessionId helper under the existing
+  enqueue lock, refactoring tests 3+5 to use it, adding a 3-day freshness
+  sentinel, and adding cross-compat detection for both droid and claude CLIs.
+  Rule pattern unchanged. No new dependencies.
+status: completed
 priority: P2
-branch: "main"
+branch: main
 tags: []
 blockedBy: []
 blocks: []
-created: "2026-06-10T05:05:11.825Z"
-createdBy: "ck:plan"
+created: '2026-06-10T05:05:11.825Z'
+createdBy: 'ck:plan'
 source: skill
 ---
 
@@ -29,9 +34,9 @@ This plan ships an atomic `tryClaimSessionId(root, {sessionId, subtype, runtime,
 
 | Phase | Name | Status | Effort |
 |-------|------|--------|--------|
-| 1 | [Atomic helper + L1/L2 refactor (TDD)](./phase-01-phase-1-atomic-helper-l1-l2-refactor-tdd.md) | Pending | 2-3h |
-| 2 | [Freshness sentinel + cross-compat (TDD)](./phase-02-phase-2-freshness-sentinel-cross-compat-tdd.md) | Pending | 1-2h |
-| 3 | [End-to-end verification + closeout](./phase-03-phase-3-end-to-end-verification-closeout.md) | Pending | 1h |
+| 1 | [Atomic helper + L1/L2 refactor (TDD)](./phase-01-phase-1-atomic-helper-l1-l2-refactor-tdd.md) | Completed | 2-3h |
+| 2 | [Freshness sentinel + cross-compat (TDD)](./phase-02-phase-2-freshness-sentinel-cross-compat-tdd.md) | Completed | 1-2h |
+| 3 | [End-to-end verification + closeout](./phase-03-phase-3-end-to-end-verification-closeout.md) | Completed | 1h |
 
 ## Touchpoints (canonical, from report §Implementation plan)
 

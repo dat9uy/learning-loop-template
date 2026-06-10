@@ -1,9 +1,9 @@
 ---
 phase: 1
-title: "Phase 1: Atomic helper + L1/L2 refactor (TDD)"
-status: pending
+title: 'Phase 1: Atomic helper + L1/L2 refactor (TDD)'
+status: completed
 priority: P2
-effort: "2-3h"
+effort: 2-3h
 dependencies: []
 ---
 

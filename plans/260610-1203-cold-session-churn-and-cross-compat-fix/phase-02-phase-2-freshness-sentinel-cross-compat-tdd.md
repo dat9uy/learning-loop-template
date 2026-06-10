@@ -1,10 +1,11 @@
 ---
 phase: 2
-title: "Phase 2: Freshness sentinel + cross-compat (TDD)"
-status: pending
+title: 'Phase 2: Freshness sentinel + cross-compat (TDD)'
+status: completed
 priority: P2
-effort: "1-2h"
-dependencies: ["1"]
+effort: 1-2h
+dependencies:
+  - '1'
 ---
 
 # Phase 2: Freshness sentinel + cross-compat (TDD)
