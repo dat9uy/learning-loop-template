@@ -509,6 +509,58 @@ export function filterEntries(entries, filters) {
 }
 
 /**
+ * Atomically claim a session-id-keyed finding entry.
+ *
+ * Under the existing per-root `enqueue` lock, reads the registry and checks
+ * whether an active/reported finding already exists for the exact
+ * (sessionId, subtype, runtime, layer) key. If yes, returns the existing
+ * entry without writing. If no, calls `entryBuilder()` to produce a new
+ * entry, validates it, appends it to the registry, and returns the new id.
+ *
+ * The `enqueue` lock is per-process. `pnpm test` and the cold-session test
+ * are single-process, so this is sufficient. If multi-process testing is
+ * ever introduced, wrap this in a file-system lock (e.g., `flock`).
+ *
+ * @param {string} root — project root containing meta-state.jsonl
+ * @param {object} key — { sessionId, subtype, runtime, layer }
+ * @param {function} entryBuilder — () => entry object (called only on claim success)
+ * @returns {Promise<{claimed: true, id: string} | {claimed: false, existing: object}>>}
+ */
+export function tryClaimSessionId(root, key, entryBuilder) {
+  return enqueue(root, () => {
+    const entries = readRegistry(root);
+    const match = entries.find((e) =>
+      e.entry_kind === "finding"
+      && e.session_id === key.sessionId
+      && e.subtype === key.subtype
+      && (e.status === "active" || e.status === "reported")
+      && e.description.includes(`runtime: ${key.runtime}`)
+      && e.description.includes(`layer: ${key.layer}`),
+    );
+    if (match) {
+      return { claimed: false, existing: match };
+    }
+
+    const entry = entryBuilder();
+    const validation = metaStateEntrySchema.safeParse(entry);
+    if (!validation.success) {
+      throw new InvalidEntryError(validation.error);
+    }
+
+    const path = getRegistryPath(root);
+    const lines = existsSync(path)
+      ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
+      : [];
+    lines.push(JSON.stringify(validation.data));
+    const tmpPath = path + ".tmp";
+    writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
+    renameSync(tmpPath, path);
+    invalidateCache(root);
+    return { claimed: true, id: entry.id };
+  });
+}
+
+/**
  * Generate a meta-state entry id: meta-{YYMMDD}T{HHmm}Z-{slug}
  */
 export function generateId(slug) {

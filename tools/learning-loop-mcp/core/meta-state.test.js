@@ -7,10 +7,11 @@ import {
   checkExpiry,
   filterEntries,
   generateId,
+  tryClaimSessionId,
 } from "./meta-state.js";
 import { mkdtempSync, writeFileSync, utimesSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
 
@@ -222,6 +223,56 @@ describe("meta-state registry core", () => {
     const result = filterEntries(entries, {});
     assert.strictEqual(result.length, 2);
   });
+
+  test("tryClaimSessionId: 5 concurrent calls with same key yield 1 finding", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-claim-"));
+    process.env.GATE_ROOT = tempDir;
+
+    const key = {
+      sessionId: "test-session-123",
+      subtype: "mcp-client-loading",
+      runtime: "droid",
+      layer: "L2",
+    };
+
+    const entryBuilder = () => ({
+      id: generateId("claim-test"),
+      entry_kind: "finding",
+      category: "mcp-tool-missing",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      subtype: "mcp-client-loading",
+      description: "Claim test finding. runtime: droid; layer: L2;",
+      evidence_code_ref: "tools/test.js",
+      session_id: key.sessionId,
+      status: "reported",
+      created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      version: 0,
+    });
+
+    const results = await Promise.all([
+      tryClaimSessionId(tempDir, key, entryBuilder),
+      tryClaimSessionId(tempDir, key, entryBuilder),
+      tryClaimSessionId(tempDir, key, entryBuilder),
+      tryClaimSessionId(tempDir, key, entryBuilder),
+      tryClaimSessionId(tempDir, key, entryBuilder),
+    ]);
+
+    const claimed = results.filter((r) => r.claimed);
+    assert.strictEqual(claimed.length, 1, `expected exactly 1 claim, got ${claimed.length}`);
+
+    const entries = readRegistry(tempDir);
+    const matches = entries.filter((e) =>
+      e.session_id === key.sessionId
+      && e.subtype === key.subtype
+      && e.description.includes(`runtime: ${key.runtime}`)
+      && e.description.includes(`layer: ${key.layer}`),
+    );
+    assert.strictEqual(matches.length, 1, `expected exactly 1 registry entry, got ${matches.length}`);
+
+    process.env.GATE_ROOT = originalEnv;
+  });
 });
 
 describe("meta-state T4 auto_resolve removal", () => {
@@ -320,6 +371,31 @@ describe("meta-state change-log compaction guard", () => {
       assert.ok(ids.includes(fresh.id), "Fresh entry should remain");
     } finally {
       process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});
+
+describe("meta-state description marker drift detector", () => {
+  test("every active mcp-client-loading finding has runtime: and layer: markers", async () => {
+    const { readRegistry } = await import("./meta-state.js");
+    const projectRoot = resolve(process.cwd());
+    const entries = readRegistry(projectRoot);
+    const active = entries.filter((e) =>
+      e.entry_kind === "finding"
+      && e.subtype === "mcp-client-loading"
+      && (e.status === "active" || e.status === "reported"),
+    );
+
+    // If no active entries, the test trivially passes.
+    for (const e of active) {
+      assert.ok(
+        e.description.includes("runtime:"),
+        `finding ${e.id} is missing runtime: marker in description`,
+      );
+      assert.ok(
+        e.description.includes("layer:"),
+        `finding ${e.id} is missing layer: marker in description`,
+      );
     }
   });
 });
