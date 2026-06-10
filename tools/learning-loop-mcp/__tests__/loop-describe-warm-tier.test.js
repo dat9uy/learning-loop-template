@@ -4,11 +4,11 @@ import { loopDescribeTool } from "../tools/loop-describe-tool.js";
 import { buildDiscoverabilityHints } from "../core/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
-  test("warm tier returns discoverability_hints with 8 strings", async () => {
+  test("warm tier returns discoverability_hints with 9 strings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 8);
+    assert.strictEqual(parsed.discoverability_hints.length, 9);
     for (const hint of parsed.discoverability_hints) {
       assert.strictEqual(typeof hint, "string");
       assert.ok(hint.length > 0);
@@ -18,7 +18,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
   test("each hint contains the documented substrings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
-    const [citation, sourceRef, grounding, noCode, statusLifecycle, ruleLifecycle, toolSelection, layerSplit] = parsed.discoverability_hints;
+    const [citation, sourceRef, grounding, noCode, statusLifecycle, reopensHint, ruleLifecycle, toolSelection, layerSplit] = parsed.discoverability_hints;
 
     assert.ok(citation.includes("meta_state_report"));
     assert.ok(citation.includes("evidence_code_ref"));
@@ -36,6 +36,9 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(statusLifecycle.includes("resolved"));
     assert.ok(statusLifecycle.includes("expired"));
     assert.ok(statusLifecycle.includes("superseded"));
+
+    assert.ok(reopensHint.includes("reopens"));
+    assert.ok(reopensHint.includes("cascade-resolve"));
 
     assert.ok(ruleLifecycle.includes("meta_state_list"));
     assert.ok(ruleLifecycle.includes("loop_describe"));
@@ -58,12 +61,12 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const result = await loopDescribeTool.handler({ tier: "cold" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 8);
+    assert.strictEqual(parsed.discoverability_hints.length, 9);
   });
 
   test("buildDiscoverabilityHints is exported as a pure function", () => {
     const hints = buildDiscoverabilityHints();
-    assert.strictEqual(hints.length, 8);
+    assert.strictEqual(hints.length, 9);
     assert.ok(Object.isFrozen(hints));
   });
 });

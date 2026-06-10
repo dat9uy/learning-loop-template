@@ -30,9 +30,9 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     `Phase 1 invariant broken: ${brokenRefs.length} broken proposed_design_for refs: ${brokenRefs.join(", ")}`
   );
 
-  // Phase 3: inverse_indexes is present and has the 4 documented maps
+  // Phase 3: inverse_indexes is present and has the 5 documented maps
   assert.ok(current.inverse_indexes, "Phase 3: cold tier missing inverse_indexes");
-  for (const mapName of ["addresses_inverse", "supersedes_inverse", "origin_inverse", "promoted_to_rule_inverse"]) {
+  for (const mapName of ["addresses_inverse", "supersedes_inverse", "origin_inverse", "promoted_to_rule_inverse", "reopens_inverse"]) {
     assert.ok(
       current.inverse_indexes[mapName] && typeof current.inverse_indexes[mapName] === "object",
       `Phase 3: inverse_indexes.${mapName} missing or wrong type`

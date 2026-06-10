@@ -423,7 +423,7 @@ describe("cold-session discoverability acceptance", () => {
       // 1. loop_describe warm tier returns discoverability hints.
       const warm = await call(1, "loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      assert.strictEqual(warm.discoverability_hints.length, 8);
+      assert.strictEqual(warm.discoverability_hints.length, 9);
       const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
       assert.ok(citationHint, "citation hint should mention evidence_code_ref");
 
@@ -438,8 +438,12 @@ describe("cold-session discoverability acceptance", () => {
         "Hint A5 (4-layer role split) must be present",
       );
       assert.ok(
-        hints.length === 8,
-        `Expected 8 hints (6 original + 2 new), got ${hints.length}`,
+        hints.some((h) => h.includes("reopens")),
+        "DISCOVERABILITY_HINTS should include a hint about reopens",
+      );
+      assert.ok(
+        hints.length === 9,
+        `Expected 9 hints, got ${hints.length}`,
       );
       const totalHintsByteLength = hints.reduce(
         (sum, h) => sum + Buffer.byteLength(h, "utf8"),

@@ -123,6 +123,29 @@ describe("meta-state schema new behavior", () => {
     assert.strictEqual(result.success, true);
   });
 
+  test("finding schema accepts reopens field", () => {
+    const result = metaStateFindingEntrySchema.safeParse({
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "A finding that reopens a previously expired finding.",
+      reopens: ["meta-260606T2202Z-original-id"],
+    });
+    assert.strictEqual(result.success, true);
+    assert.deepStrictEqual(result.data.reopens, ["meta-260606T2202Z-original-id"]);
+  });
+
+  test("finding schema validates without reopens field (backward compat)", () => {
+    const result = metaStateFindingEntrySchema.safeParse({
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "A finding without the reopens field should still validate.",
+    });
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.data.reopens, undefined);
+  });
+
   test("tool schema matches shared metaStateFindingEntrySchema shape", () => {
     const toolKeys = Object.keys(metaStateReportTool.schema).sort();
     const sharedKeys = Object.keys(metaStateFindingEntrySchema.shape).sort();
