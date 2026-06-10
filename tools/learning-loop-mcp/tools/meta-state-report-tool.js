@@ -9,7 +9,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateReportTool = {
   name: "meta_state_report",
-  description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator. Use this to internalize external references for `source_refs`. Optional but recommended: pass `evidence_code_ref` (code location) so the loop can hash and re-check it on demand via `meta_state_derive_status`. Markdown paths in `source_refs` are deprecated and will be rejected by `record_create_decision`. Use when you observe a loop issue (gate bug, missing tool, anti-pattern) that needs operator review. Not for system changes (use `meta_state_log_change` instead) or for closing a finding (use `meta_state_resolve` instead).",
+  description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator. Use this to internalize external references for `source_refs`. Optional but recommended: pass `evidence_code_ref` (code location) so the loop can hash and re-check it on demand via `meta_state_derive_status`. Markdown paths in `source_refs` are deprecated and will be rejected by `record_create_decision`. Use when you observe a loop issue (gate bug, missing tool, anti-pattern) that needs operator review. Not for system changes (use `meta_state_log_change` instead) or for closing a finding (use `meta_state_resolve` instead). When `evidence_code_ref` is provided, `mechanism_check` defaults to `true`; pass `mechanism_check: false` explicitly to opt out (a warning is returned).",
   schema: metaStateFindingEntrySchema.shape,
   handler: async ({
     category,
@@ -28,6 +28,23 @@ export const metaStateReportTool = {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
+    // Auto-default: if caller provides evidence_code_ref, opt them into
+    // mechanism_check unless they explicitly opted out.
+    // ?? (not ||) preserves an explicit mechanism_check: false.
+    const effective_mechanism_check = mechanism_check ?? Boolean(evidence_code_ref);
+
+    // Build warnings based on caller intent vs. tool default.
+    const warnings = [];
+    if (evidence_code_ref && mechanism_check === false) {
+      warnings.push({
+        code: "evidence_without_mechanism_check",
+        message:
+          "evidence_code_ref is set but mechanism_check is false; the fingerprint will not be tracked. " +
+          "Pass mechanism_check: true to opt in to grounding checks via meta_state_refresh_fingerprint.",
+        suggestion: "Remove mechanism_check or set it to true to opt in to grounding checks.",
+      });
+    }
+
     const entry = {
       id,
       entry_kind: "finding",
@@ -40,7 +57,14 @@ export const metaStateReportTool = {
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
       ...(evidence_test && { evidence_test }),
-      ...(mechanism_check !== undefined && { mechanism_check }),
+      // Store explicit `false` so the opt-out is preserved in the registry.
+      // Store `true` when auto-defaulted or explicitly passed.
+      // Omit the field entirely when neither is provided.
+      ...(mechanism_check === false
+        ? { mechanism_check: false }
+        : effective_mechanism_check === true
+          ? { mechanism_check: true }
+          : {}),
       // session_id is the idempotency key for hook-emitted findings. The schema
       // and the prior hook (`.factory/hooks/loop-surface-inject.cjs`,
       // `cold-session-discoverability.test.cjs`) all assume the tool persists
@@ -70,6 +94,7 @@ export const metaStateReportTool = {
       id,
       status: "reported",
       expires_at: expiresAt.toISOString(),
+      ...(warnings.length > 0 && { warnings }),
     };
 
     return {
