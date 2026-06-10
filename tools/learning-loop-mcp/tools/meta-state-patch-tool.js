@@ -3,7 +3,7 @@ import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-const IMMUTABLE_PATCH_FIELDS = new Set([
+export const IMMUTABLE_PATCH_FIELDS = new Set([
   "id",
   "entry_kind",
   "version",
@@ -66,6 +66,7 @@ export const metaStatePatchTool = {
         reason: "immutable_field",
         id,
         denied_fields: deniedFields,
+        immutable_fields: [...IMMUTABLE_PATCH_FIELDS],
       };
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };

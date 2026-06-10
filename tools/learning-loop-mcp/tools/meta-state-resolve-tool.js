@@ -16,8 +16,10 @@ export const metaStateResolveTool = {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
+    cascade_from: z.array(z.string()).optional()
+      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided AND this entry's status is 'expired': validate each child (exists, reopens includes parent, status is 'active' or 'resolved'), then transition this entry to 'resolved' and stamp `cascade_resolved_by`. Mirrors the inverse of `meta_state_supersede`. Operator gate still applies."),
   },
-  handler: async ({ id, resolution, resolved_by }) => {
+  handler: async ({ id, resolution, resolved_by, cascade_from }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -46,7 +48,7 @@ export const metaStateResolveTool = {
       };
     }
 
-    if (TERMINAL_STATUSES.has(entry.status)) {
+    if (TERMINAL_STATUSES.has(entry.status) && !(entry.status === "expired" && cascade_from?.length > 0)) {
       const result = {
         resolved: false,
         reason: "already_terminal",
@@ -99,6 +101,13 @@ export const metaStateResolveTool = {
       }
     }
 
+    // Cascade branch: only when entry is expired AND cascade_from is provided
+    if (entry.status === "expired" && cascade_from?.length > 0) {
+      const result = await validateAndApplyCascade(root, entry, cascade_from, entries, resolution, resolved_by);
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
     const now = new Date().toISOString();
     const patch = {
       status: "resolved",
@@ -127,3 +136,72 @@ export const metaStateResolveTool = {
     };
   },
 };
+
+/**
+ * Validate cascade children and apply the cascade resolution.
+ * Each child must exist, have `reopens` containing the parent id, and be
+ * in `active` or `resolved` status. Superseded children are rejected.
+ *
+ * Forward-compat note: if `expired` is deprecated, this cascade becomes
+ * unreachable. Future migration path is to accept `stale` or remove.
+ */
+async function validateAndApplyCascade(root, parent, childIds, entries, resolution, resolvedBy) {
+  const validChildren = [];
+  const missingIds = [];
+  const badChildren = [];
+
+  for (const childId of childIds) {
+    const child = entries.find((e) => e.id === childId);
+    if (!child) {
+      missingIds.push(childId);
+      continue;
+    }
+    if (!Array.isArray(child.reopens) || !child.reopens.includes(parent.id)) {
+      badChildren.push({
+        child_id: childId,
+        reason: "not_reopening",
+        expected_reopens: parent.id,
+        actual_reopens: child.reopens ?? null,
+      });
+      continue;
+    }
+    if (child.status !== "active" && child.status !== "resolved") {
+      badChildren.push({
+        child_id: childId,
+        reason: "unresolved",
+        child_status: child.status,
+      });
+      continue;
+    }
+    validChildren.push(childId);
+  }
+
+  if (missingIds.length > 0) {
+    return { resolved: false, reason: "cascade_child_not_found", id: parent.id, missing_ids: missingIds };
+  }
+  if (badChildren.length > 0) {
+    const reason = badChildren[0].reason === "not_reopening"
+      ? "cascade_child_not_reopening"
+      : "cascade_child_unresolved";
+    return { resolved: false, reason, id: parent.id, bad_children: badChildren };
+  }
+
+  // All children valid — apply the cascade
+  const now = new Date().toISOString();
+  const patch = {
+    status: "resolved",
+    resolved_at: now,
+    resolved_by: resolvedBy,
+    cascade_resolved_by: validChildren,
+    ...(resolution && { resolution }),
+  };
+  await updateEntry(root, parent.id, patch);
+  return {
+    resolved: true,
+    id: parent.id,
+    status: "resolved",
+    resolved_by: resolvedBy,
+    cascade_resolved_by: validChildren,
+    ...(resolution && { resolution }),
+  };
+}

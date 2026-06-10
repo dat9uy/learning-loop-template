@@ -72,6 +72,8 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
   auto_resolve: z.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
+  reopens: z.array(z.string()).optional()
+    .describe("Finding ids whose `expired` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue that was auto-resolved by TTL. Cascade-resolve the parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})`."),
 });
 
 /**
