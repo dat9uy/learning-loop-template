@@ -213,4 +213,18 @@ Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive
 - **Schema sketch (parked):** 3 tables — `entries(id, kind, status, ...)`, `refs(from_id, to_id, kind)`, `fingerprint(entry_id, code_ref, sha)`.
 - **Migration path:** dual-write JSONL + SQLite for 1 release (so the JSONL stays the source of truth during the validation window), then flip the default reader to SQLite and demote the JSONL to a write-archive.
 
+### Inverse-index baseline (5 maps as of 2026-06-10)
+
+`core/loop-introspect.js#buildInverseIndexes` emits the following maps. The set grows only when a new back-reference field is added to the schema; each addition is a constant-factor change to the build (O(n) scan, O(1) insert per entry), not a complexity shift.
+
+| Map | Key (id) | Value (entries that point AT key) | Backed by field | Set on entry kind |
+|-----|----------|------------------------------------|-----------------|-------------------|
+| `addresses_inverse` | finding | loop-designs that address it | `loop-design.addresses` | loop-design |
+| `supersedes_inverse` | target | change-logs that supersede it | `change-log.supersedes` | change-log |
+| `origin_inverse` | finding | rules that originated from it | `rule.origin` | rule |
+| `promoted_to_rule_inverse` | rule | findings that promoted to it | `finding.promoted_to_rule` | finding (legacy) |
+| `reopens_inverse` | expired finding | reopen findings that re-surface it | `finding.reopens` | finding |
+
+The 5th map (`reopens_inverse`) is the result of plan `260610-1535-meta-state-reopen-path`. Pre-conditions for SQLite remain un-tripped: ~500 entries, 5 maps, build <1ms.
+
 This is structurally consistent with Bridge 5 (schema as source of truth) and Bridge 6 (self-model as product): the storage layer is the *substrate of the self-model*. Replacing it is a substrate rotation, not a redesign.
