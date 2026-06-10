@@ -55,14 +55,14 @@ test("bucket A: real meta-state-patch-tool.test.js is MCP-only", () => {
   assert.ok(["A", "C"].includes(result.bucket), `expected A or C, got ${result.bucket}`);
 });
 
-test("bucket D: real cold-session-discoverability.test.cjs spawns droid", () => {
+test("bucket C: real cold-session-discoverability.test.cjs imports core/meta-state.js", () => {
   const realPath = join(
     __dirname,
     "cold-session-discoverability.test.cjs"
   );
   const source = readFileSync(realPath, "utf8");
   const result = classifyBucket("cold-session-discoverability.test.cjs", source);
-  assert.equal(result.bucket, "D");
+  assert.equal(result.bucket, "C");
 });
 
 test("classifier returns bucket_reason with line citation", () => {

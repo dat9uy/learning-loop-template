@@ -55,12 +55,13 @@ test("run-scout against the real test code base produces a non-empty inventory",
 
 test("run-scout against the real test code base surfaces the cold-session test 1 in budget table", () => {
   const result = runScout({ projectRoot: realTestPath, writeJson: false });
-  // The cold-session test should be classified as bucket D
+  // The cold-session test imports core/meta-state.js (tryClaimSessionId)
+  // so it is classified as bucket C (imports core modules).
   const coldSession = result.inventory.find((i) =>
     i.file.includes("cold-session-discoverability.test.cjs")
   );
   assert.ok(coldSession, "cold-session-discoverability.test.cjs should be in inventory");
-  assert.equal(coldSession.bucket, "D");
+  assert.equal(coldSession.bucket, "C");
 });
 
 test("idempotency: re-running run-scout produces the same output (modulo run_timestamp and last_modified)", () => {
