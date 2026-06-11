@@ -28,12 +28,21 @@ const fixLog = [];
 
 for (const entry of entries) {
   if (entry.entry_kind !== "loop-design") continue;
-  if (!entry.proposed_design_for || entry.proposed_design_for.length === 0) continue;
+  // Unwrap {item: [...]} wire-format envelope (MCP SDK wraps top-level
+  // array params when nested under passthrough ZodObject fields like
+  // meta_state_patch#patch). Both shapes (flat array, {item: [...]}) are
+  // valid in the registry; the script tolerates both.
+  const refs = Array.isArray(entry.proposed_design_for)
+    ? entry.proposed_design_for
+    : (entry.proposed_design_for && Array.isArray(entry.proposed_design_for.item)
+        ? entry.proposed_design_for.item
+        : null);
+  if (!refs || refs.length === 0) continue;
 
   const cleaned = [];
   const stripped = [];
 
-  for (const ref of entry.proposed_design_for) {
+  for (const ref of refs) {
     if (entryIds.has(ref) || ruleIds.has(ref) || loopDesignIds.has(ref)) {
       cleaned.push(ref);
     } else {

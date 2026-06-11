@@ -12,7 +12,12 @@ function countBrokenRefs(entries) {
   const entryIds = new Set(entries.map((e) => e.id));
   return entries
     .filter((e) => e.entry_kind === "loop-design")
-    .flatMap((e) => e.proposed_design_for ?? [])
+    .flatMap((e) => {
+      // Tolerate the wire-format wrap {item: [...]} that meta_state_patch
+      // can produce on top-level arrays under passthrough ZodObject fields.
+      const v = e.proposed_design_for;
+      return Array.isArray(v) ? v : (v && Array.isArray(v.item) ? v.item : []);
+    })
     .filter((ref) => !entryIds.has(ref)).length;
 }
 
@@ -34,14 +39,20 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
   // instruction-layer may have valid refs backfilled by design adoption (plan
   // 260609-adopt-instruction-layer); assert no broken refs remain rather than
   // asserting emptiness
-  const brokenInstruction = (instructionLayer.proposed_design_for ?? []).filter(
+  const instructionRefs = Array.isArray(instructionLayer.proposed_design_for)
+    ? instructionLayer.proposed_design_for
+    : (instructionLayer.proposed_design_for?.item ?? []);
+  const brokenInstruction = instructionRefs.filter(
     (ref) => !after.some((e) => e.id === ref)
   );
   assert.deepStrictEqual(brokenInstruction, [],
     "instruction-layer should have no broken refs after fix");
   // cross-reference-fields may have valid refs backfilled by design adoption;
   // assert no broken refs remain rather than asserting emptiness
-  const brokenCrossRef = (crossRefFields.proposed_design_for ?? []).filter(
+  const crossRefRefs = Array.isArray(crossRefFields.proposed_design_for)
+    ? crossRefFields.proposed_design_for
+    : (crossRefFields.proposed_design_for?.item ?? []);
+  const brokenCrossRef = crossRefRefs.filter(
     (ref) => !after.some((e) => e.id === ref)
   );
   assert.deepStrictEqual(brokenCrossRef, [],
@@ -84,9 +95,12 @@ test("Phase 1: fix-loop-design-refs change-log is CAS-consistent (C2)", () => {
   // in any loop-design entry's proposed_design_for. If a CAS mismatch
   // occurred, the ref would still be in the registry and this would fail.
   for (const ref of removed) {
-    const stillPresent = entries.some(
-      (e) => e.entry_kind === "loop-design" && (e.proposed_design_for ?? []).includes(ref)
-    );
+    const stillPresent = entries.some((e) => {
+      if (e.entry_kind !== "loop-design") return false;
+      const v = e.proposed_design_for;
+      const refs = Array.isArray(v) ? v : (v && Array.isArray(v.item) ? v.item : []);
+      return refs.includes(ref);
+    });
     assert.strictEqual(
       stillPresent,
       false,

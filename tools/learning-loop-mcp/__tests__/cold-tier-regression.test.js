@@ -23,7 +23,10 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
 
   // Phase 1: zero broken proposed_design_for refs (code symbols stripped to entry ids)
   const brokenRefs = current.loop_designs
-    .flatMap((d) => d.proposed_design_for ?? [])
+    .flatMap((d) => {
+      const v = d.proposed_design_for;
+      return Array.isArray(v) ? v : (v && Array.isArray(v.item) ? v.item : []);
+    })
     .filter((ref) => !ref.startsWith("meta-") && !ref.startsWith("rule-") && !ref.startsWith("loop-design-"));
   assert.strictEqual(
     brokenRefs.length, 0,
