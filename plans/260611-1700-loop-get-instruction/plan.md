@@ -7,7 +7,7 @@ description: >-
   Updates the SessionStart hook mirror and adds a regression test file. Closes
   the reported finding meta-260611T1253Z-next-up-promote-loop-design-instruction-
   layer-from-inactive before its 24h TTL flips to stale.
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags:

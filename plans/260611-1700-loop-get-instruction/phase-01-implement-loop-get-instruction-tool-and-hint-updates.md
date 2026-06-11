@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Implement loop_get_instruction tool and hint updates"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: []

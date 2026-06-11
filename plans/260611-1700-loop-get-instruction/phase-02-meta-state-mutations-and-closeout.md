@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Meta-state mutations and closeout"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
