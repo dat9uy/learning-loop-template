@@ -285,6 +285,40 @@ Each phase is independently shippable. Phases 0–2 are pure refactors (no behav
 - **One MCP server becomes two surfaces under one Mastra app:** tools (procedural), agents (LLM-driven), workflows (multi-step). Each is registered on the same `MCPServer`.
 - **Model selection becomes a per-deployment env var.** `MASTRA_AGENT_MODEL=anthropic/claude-sonnet-4-6` (or whatever) flips the model for all agents. Today, the model is implicitly the outer agent's model.
 
+### 3.7 Storage Layer sequencing decision (deferral)
+
+`AGENTS.md` § "The Storage Layer Trajectory (Approach A → SQLite)" describes a pending migration of the meta-state registry from JSONL to SQLite. The pre-conditions for un-parking it are: registry > 2x current size (~1000 entries), inverse-index > 50ms, drift query > 200ms. None have fired (current: ~500 entries, inverse-index <1ms).
+
+**The operator's concern (2026-06-11):** if we build the Storage Layer first and migrate to Mastra afterwards, we may reinvent the wheel — both would use SQLite, both would need schema management, both would need read/write paths with cache invalidation.
+
+**Decision (2026-06-11): defer the Storage Layer. Do not ship it as a standalone plan. Fold it into the Mastra migration at Phase 3.**
+
+Reasoning:
+
+- **Both migrations want SQLite.** The Storage Layer targets `better-sqlite3`. Mastra's storage config supports LibSQL (which is SQLite). Picking the same engine for both eliminates the duplicated plumbing.
+- **Mastra's storage can subsume the meta-state registry.** Mastra's `storage` config can host structured data; the meta-state entries/refs/fingerprints map onto Mastra's storage primitives. The Storage Layer migration becomes a "map meta-state onto Mastra storage" sub-step, not a separate project.
+- **The LRU fix already gives 50x headroom on the cold path.** `plans/260608-2255-index-extractor-optimization` shipped a structural fix that drops the cold tier from 250ms to <10ms. At 1000, 2000, 5000 entries the LRU-cached path stays <10ms. The Storage Layer's main value is *durability* (write-ahead log, atomicity) and *query expressivity* (SQL joins), not raw read speed.
+- **Phase 3 is when storage becomes necessary anyway.** The Mastra migration's Phase 3 adds agents that need memory (Observational Memory, conversation history). At that point, a storage backend is mandatory. The meta-state storage decision can be made alongside it.
+
+**Sequencing decision rule (operator-stated, easy to revise):**
+
+> **Storage Layer ships iff (a) the LRU fix doesn't hold AND (b) the Mastra migration is blocked on it. Otherwise, it lives inside the Mastra migration as a sub-step.**
+
+**Where this prediction is wrong — three failure modes:**
+
+1. **Mastra's storage doesn't fit the meta-state shape cleanly.** Mastra's `storage` is optimized for conversation history (threads, messages, resources), not flat key-value registries with rich cross-references. If the mapping is awkward, the Storage Layer migration becomes a necessary interim fix. *Test: prototype the mapping at Phase 0/1 before committing to deferral.*
+2. **The LRU fix doesn't hold at production scale.** If the cold tier degrades faster than predicted, the Storage Layer migration may be needed as a Bridge 6 deliverable independent of Mastra. *Test: monitor the cold tier at 1000, 2000, 5000 entries; trip the pre-conditions before deferring.*
+3. **The operator wants the Storage Layer as a Bridge 6 product deliverable.** The trajectory doc frames meta-state as the product; a more robust storage layer is on-mission for Bridge 6 even without Mastra. *Test: confirm with operator whether Storage Layer is a Bridge 6 deliverable or a perf optimization. (Confirmed 2026-06-11: defer; not a Bridge 6 deliverable in its own right.)*
+
+**Concrete plan (post-deferral):**
+
+1. Storage Layer stays parked. No new work.
+2. At Phase 3 of the Mastra migration (when agents need memory), pick LibSQL as the Mastra storage backend.
+3. At that point, decide: same SQLite file as Mastra's memory, or separate file, same engine. **Likely separate file, same engine** — schemas are unrelated (meta-state = entries/refs/fingerprints; Mastra memory = threads/messages/observations).
+4. The dual-write window (per trajectory doc) collapses to a single Mastra-side concern.
+
+**Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
+
 ## 4. Risks & Mitigations
 
 | Risk | Severity | Mitigation |
