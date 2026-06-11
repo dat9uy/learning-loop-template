@@ -1,7 +1,7 @@
 ---
 title: "Reopen path for expired meta-state findings"
 description: "Reopen path for expired meta-state findings via 1 new field (reopens) + 1 new tool parameter (cascade_from) + 2 discoverability fixes. Storage-agnostic. SQLite-ready by construction. 4 maps → 5 inverse maps. No new entry kinds."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: ["meta-state", "mcp-tools", "discoverability", "tdd"]
