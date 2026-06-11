@@ -60,8 +60,11 @@ describe("loop_describe warm tier discoverability_hints", () => {
 
     assert.ok(relationshipScript.includes("relationship_validate"));
     assert.ok(relationshipScript.includes("meta_state_report"));
-    assert.ok(relationshipScript.includes("migrate_expired_to_stale"));
-    assert.ok(relationshipScript.includes("2-step"));
+    // Plan 260611-1000-remove-expired-status retargeted the cascade to a
+    // 1-step path. The legacy 2-step 'migrate then resolve' script was
+    // removed; the canonical script is now lint -> report -> resolve.
+    assert.ok(relationshipScript.includes("meta_state_resolve"));
+    assert.ok(relationshipScript.includes("1 step"));
   });
 
   test("summary tier does NOT include discoverability_hints", async () => {

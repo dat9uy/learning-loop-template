@@ -223,7 +223,7 @@ Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive
 | `supersedes_inverse` | target | change-logs that supersede it | `change-log.supersedes` | change-log |
 | `origin_inverse` | finding | rules that originated from it | `rule.origin` | rule |
 | `promoted_to_rule_inverse` | rule | findings that promoted to it | `finding.promoted_to_rule` | finding (legacy) |
-| `reopens_inverse` | expired finding | reopen findings that re-surface it | `finding.reopens` | finding |
+| `reopens_inverse` | stale finding | reopen findings that re-surface it | `finding.reopens` | finding |
 
 The 5th map (`reopens_inverse`) is the result of plan `260610-1535-meta-state-reopen-path`. Pre-conditions for SQLite remain un-tripped: ~500 entries, 5 maps, build <1ms.
 

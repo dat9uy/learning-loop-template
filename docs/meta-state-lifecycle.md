@@ -13,7 +13,7 @@ The registry is a discriminated union on `entry_kind`. Each kind has its own sta
 
 | Entry Kind | Purpose | Status Model | Durability |
 |---|---|---|---|
-| `finding` | Bug reports, design gaps, observed anti-patterns | 7-state enumerated lifecycle | Ephemeral: TTL on `reported`; otherwise operator-managed |
+| `finding` | Bug reports, design gaps, observed anti-patterns | 6-state enumerated lifecycle | Ephemeral: TTL on `reported`; otherwise operator-managed |
 | `change-log` | Immutable audit log of system changes | Always `active` | Permanent: no TTL, no auto-resolve |
 | `rule` | Promoted findings that enforce invariants | Binary `active / inactive` | Permanent: operator-managed |
 | `loop-design` | Deferred designs (not yet shipped) | Binary `active / inactive` | Permanent: operator-managed |
@@ -32,7 +32,6 @@ Findings are the only entry kind with a multi-state lifecycle. The canonical sta
 | `active` | Operator has acknowledged the finding | `meta_state_ack` transitions from `reported`; clears TTL |
 | `stale` | Past TTL or past staleness window (7d) | TTL sweep or `meta_state_sweep`; re-verifiable via `meta_state_re_verify` |
 | `resolved` | Closed by operator or agent with resolution note | `meta_state_resolve` |
-| `expired` | TTL elapsed without ack (legacy terminal state) | Auto-sweep (being replaced by `stale`) |
 | `superseded` | Consolidated into a change-log entry | `meta_state_supersede` |
 | `auto-resolved` | Closed automatically by mechanism (test pass, file modified, etc.) | Auto-sweep or cold-session test on gap-close |
 
@@ -40,7 +39,7 @@ Findings are the only entry kind with a multi-state lifecycle. The canonical sta
 
 ```
 reported --[meta_state_ack]--> active
-reported --[TTL elapsed]--> stale         (new semantics; replaces expired/auto-resolved)
+reported --[TTL elapsed]--> stale
 active   --[meta_state_resolve]--> resolved
 active   --[meta_state_supersede]--> superseded
 stale    --[meta_state_re_verify pass]--> active
@@ -49,20 +48,19 @@ resolved --[meta_state_archive]--> archived
 superseded --[meta_state_archive]--> archived
 ```
 
-`expired` and `auto-resolved` are legacy terminal statuses from the old TTL sweep. The stale-flag redesign (plan 260609-stale-flag-redesign) replaces auto-resolve-by-clock with `stale` (non-terminal) plus explicit re-verification.
+The `expired` status was removed in plan 260611-1000-remove-expired-status. The stale-flag redesign (plan 260609-stale-flag-redesign) had already replaced auto-resolve-by-clock with `stale` (non-terminal) plus explicit re-verification; the schema enum shrink completes that migration. The data layer is already stale-only (0 entries with `status: "expired"` in `meta-state.jsonl`).
 
 ### Terminal vs Non-Terminal
 
 **Terminal statuses** (hard-coded in `core/meta-state.js` as `TERMINAL_STATUSES`):
 - `resolved`
 - `superseded`
-- `expired`
 - `auto-resolved`
 
 **Non-terminal statuses**:
 - `reported` (has TTL pressure)
 - `active` (stable)
-- `stale` (has re-verification pressure)
+- `stale` (has re-verification pressure; cascade-closeable to `resolved` in 1 step)
 
 `archived` is effectively terminal but is not in the `TERMINAL_STATUSES` set because it is applied outside the schema enum as a runtime-only status.
 
@@ -126,7 +124,7 @@ These three kinds have simpler, binary or fixed status models.
 | `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected |
 | `meta_state_supersede` | finding | -> `superseded` | Sets `consolidated_into`, `superseded_at`, `superseded_by` |
 | `meta_state_re_verify` | finding | `stale` -> `active` | Runs `verification.steps`; updates `last_verified_at` on pass |
-| `meta_state_sweep` | finding | -> `stale` / `expired` / `auto-resolved` | Batch lifecycle sweep; dry-run by default |
+| `meta_state_sweep` | finding | -> `stale` / `auto-resolved` | Batch lifecycle sweep; dry-run by default |
 | `meta_state_archive` | any | -> `archived` | Decision rule + operator override |
 | `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
 | `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
@@ -152,7 +150,7 @@ The consult-gate `rule-no-orphaned-evidence` blocks `meta_state_resolve` when an
 
 1. **Why `archived` is outside the schema enum**: It allows the archive tool to operate without a schema migration. The trade-off is that archived entries bypass Zod validation on read.
 
-2. **Why `stale` replaces `expired`**: The old TTL sweep auto-resolved findings on expiry, which silenced bugs without trace. `stale` is non-terminal and requires explicit re-verification via `meta_state_re_verify`.
+2. **Why `stale` replaces `expired`**: The old TTL sweep auto-resolved findings on expiry, which silenced bugs without trace. `stale` is non-terminal and requires explicit re-verification via `meta_state_re_verify`. Plan 260611-1000-remove-expired-status completed the migration by dropping the `expired` enum value from the schema, deleting the legacy migrate tool, and retargeting the cascade to operate on `stale` parents in 1 step.
 
 3. **Why change-logs have no TTL**: They are the immutable audit trail. A change-log entry records that a system change happened; time does not invalidate that fact.
 

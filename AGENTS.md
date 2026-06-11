@@ -97,7 +97,7 @@ The `meta_state` group is the loop's self-model, not bookkeeping. It carries fin
 | `meta_state_ack` | Promote a finding from `reported` to `active` (removes 24h TTL) |
 | `meta_state_resolve` | Mark a finding as resolved (consults active rules; may require fingerprint refresh) |
 | `meta_state_promote_rule` | Promote a finding into a `rule` entry (enforcement: gate \| agent) |
-| `meta_state_sweep` | Auto-resolve expired findings; auto-resolve findings whose file was modified |
+| `meta_state_sweep` | Mark past-TTL findings stale; auto-resolve findings whose file was modified |
 | `meta_state_log_change` | Create a `change-log` entry (immutable audit log; no TTL) |
 | `meta_state_patch` | Update an existing entry with CAS via `_expected_version` (closes the CRUD-U gap documented in `meta-260608T0848Z-crud-coverage-gap-...`) |
 | `meta_state_derive_status` | Compute derived status of a finding (SP1; pure function over `evidence_code_ref`) |
@@ -196,7 +196,7 @@ Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, n
 
 The SessionStart hook surfaces this rule in its discoverability hints. To suppress hints for context-budgeted sessions, set `LL_LOOP_INJECT_TIER=summary` (default is `warm`). The downgrade is logged as a `hint-downgrade` finding per session.
 
-**Cross-reference script** (for "X is related to Y" prompts): before patching a finding with cross-references, read the 11th hint in `loop_describe({tier: "warm"}).discoverability_hints`. The canonical script is `(1) meta_state_relationship_validate to lint, (2) meta_state_report({reopens: [orphan_ids]}), (3) meta_state_migrate_expired_to_stale per expired parent, (4) meta_state_resolve({cascade_from}) to close`. The hint is the source of truth; this sentence is just a pointer so the agent does not skip it.
+**Cross-reference script** (for "X is related to Y" prompts): before patching a finding with cross-references, read the 11th hint in `loop_describe({tier: "warm"}).discoverability_hints`. The canonical script is `(1) meta_state_relationship_validate to lint, (2) meta_state_report({reopens: [orphan_ids]}), (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step`. The hint is the source of truth; this sentence is just a pointer so the agent does not skip it. The legacy 2-step `meta_state_migrate_expired_to_stale` call was removed in plan 260611-1000-remove-expired-status.
 
 ## Side-Effect Import Rule (all vendor SDKs)
 
