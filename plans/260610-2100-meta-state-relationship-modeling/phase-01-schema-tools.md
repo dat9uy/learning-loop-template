@@ -1,10 +1,11 @@
 ---
 phase: 1
 title: "Schema + Tool: reopens field on meta_state_report"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: ["260610-1535-meta-state-reopen-path"]
+completed_at: "2026-06-11T05:33:24.995Z"
 ---
 
 # Phase 1: Schema + Tool — reopens field on meta_state_report

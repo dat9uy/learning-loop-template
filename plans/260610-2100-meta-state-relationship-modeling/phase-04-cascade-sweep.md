@@ -1,10 +1,11 @@
 ---
 phase: 4
 title: "Cascade Rewire + Discoverability Hint + Hook Backfill"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: ["phase-03-lint-tool"]
+completed_at: "2026-06-11T05:33:24.995Z"
 ---
 
 # Phase 4: Cascade Rewire + Discoverability Hint + Hook Backfill

@@ -1,7 +1,7 @@
 ---
 title: "Meta-state relationship modeling: agent affordance + legacy migration"
 description: "Closes 2 gaps from session c319eb97 (reopens field propagation, expired-findings legacy migration). Adds 2 MCP tools (meta_state_migrate_expired_to_stale, meta_state_relationship_validate), reopens field on meta_state_report, and rewires meta_state_resolve cascade to delegate to the migration primitive. 5-phase TDD layout, ~440 lines."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: ["meta-state", "mcp-tools", "discoverability", "tdd", "self-model"]
@@ -9,6 +9,8 @@ blockedBy: ["260610-1535-meta-state-reopen-path"]
 blocks: []
 created: "2026-06-11T03:44:48.401Z"
 createdBy: "ck:plan"
+completed_at: "2026-06-11T05:33:24.995Z"
+completedBy: "operator"
 source: skill
 ---
 
@@ -45,11 +47,11 @@ Two gaps surfaced in session `c319eb97-a5d7-44ee-a7e1-fe39e56baf6e` (meta-state 
 
 | Phase | Name | Status | Effort | TDD |
 |-------|------|--------|--------|-----|
-| 1 | [Schema + Tool: reopens field on meta_state_report](./phase-01-schema-tools.md) | Pending | 1h | RED → GREEN |
-| 2 | [Migrate Tool: meta_state_migrate_expired_to_stale](./phase-02-migrate-tool.md) | Pending | 1.5h | RED → GREEN |
-| 3 | [Lint Tool: meta_state_relationship_validate](./phase-03-lint-tool.md) | Pending | 1.5h | RED → GREEN |
-| 4 | [Cascade Rewire + Discoverability Hint + Hook Backfill](./phase-04-cascade-sweep.md) | Pending | 1.5h | RED → GREEN |
-| 5 | [Backfill + E2E Cold-Session Replay + Closeout](./phase-05-backfill-closeout.md) | Pending | 1.5h | E2E gated |
+| 1 | [Schema + Tool: reopens field on meta_state_report](./phase-01-schema-tools.md) | Completed | 1h | RED → GREEN |
+| 2 | [Migrate Tool: meta_state_migrate_expired_to_stale](./phase-02-migrate-tool.md) | Completed | 1.5h | RED → GREEN |
+| 3 | [Lint Tool: meta_state_relationship_validate](./phase-03-lint-tool.md) | Completed | 1.5h | RED → GREEN |
+| 4 | [Cascade Rewire + Discoverability Hint + Hook Backfill](./phase-04-cascade-sweep.md) | Completed | 1.5h | RED → GREEN |
+| 5 | [Backfill + E2E Cold-Session Replay + Closeout](./phase-05-backfill-closeout.md) | Completed | 1.5h | E2E gated |
 
 ## Touchpoints (per brainstorm §Final Recommended Solution)
 

@@ -1,10 +1,11 @@
 ---
 phase: 2
 title: "Migrate Tool: meta_state_migrate_expired_to_stale"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: ["phase-01-schema-tools"]
+completed_at: "2026-06-11T05:33:24.995Z"
 ---
 
 # Phase 2: Migrate Tool — meta_state_migrate_expired_to_stale
