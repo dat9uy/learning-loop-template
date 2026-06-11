@@ -53,9 +53,23 @@ describe("cold-session discoverability acceptance", () => {
   const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
 
   // L2 probe: spawns a real `droid exec` and asks the agent to call
-  // mcp__learning_loop_mcp__loop_describe({ tier: "summary" }). The agent
-  // must echo the numeric tool_count. A bare number in stdout = gap
-  // closed; TOOL_UNAVAILABLE marker or no digit = gap open.
+  // loop_describe via the MCP layer. The agent must echo the numeric
+  // tool_count. A bare number in stdout = gap closed; TOOL_UNAVAILABLE
+  // marker or no digit = gap open.
+  //
+  // The droid runtime exposes MCP tools under the namespaced name
+  // `learning-loop-mcp___<tool>` (3 underscores; the droid display
+  // format). The canonical `mcp__learning_loop_mcp__<tool>` (2
+  // underscores per segment) is the MCP-spec name but is NOT what
+  // droid's ToolSearch accepts. Earlier versions of this prompt used
+  // the canonical name, which caused ToolSearch to return "Not found"
+  // and the agent to fall back to `TOOL_UNAVAILABLE` on most runs and
+  // hallucinate `59` on rare runs (matching the 59 MCP tool entries
+  // listed in droid's system reminder). The droid display name is the
+  // contract; we use it directly. See
+  // meta-260610T2301Z-cold-session-test-1-l2-probe-flakiness-confirmed-during-meta
+  // for the prior flakiness and meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list
+  // for the runtime name format.
   //
   // This is the authoritative probe for the 1410Z finding's "agent
   // runtime layer" — distinct from the L1 probe (test 3) which checks
@@ -96,7 +110,7 @@ describe("cold-session discoverability acceptance", () => {
 
     const tempRoot = mkdtempSync(join(tmpdir(), "l2-probe-"));
     const prompt = [
-      "Use the tool named mcp__learning_loop_mcp__loop_describe with arguments { tier: \"summary\" }.",
+      "Use the tool named learning-loop-mcp___loop_describe with arguments { tier: \"summary\" }.",
       "From the JSON result, output ONLY the numeric value of the tool_count field.",
       "Do not output any other text. Do not explain. Do not apologize.",
       "If the tool is unavailable, output exactly the string: TOOL_UNAVAILABLE",
@@ -204,13 +218,48 @@ describe("cold-session discoverability acceptance", () => {
 
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-"));
     mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
+    // Copy schemas/ into tempRoot so record_*_tool modules that call
+    // `buildZodSchemaFor(type, { root: resolveRoot() })` at module load time
+    // can find the schema files. Without this, GATE_ROOT=tempRoot makes
+    // loadSchemas throw, safeImport returns null, and the 8 record tools
+    // never register. See test 2 (cold-session-direct) for the same copy.
+    const schemasSrc = join(projectRoot, "schemas");
+    const schemasDst = join(tempRoot, "schemas");
+    mkdirSync(schemasDst, { recursive: true });
+    for (const f of readdirSync(schemasSrc)) {
+      if (f.endsWith(".schema.json")) {
+        require("node:fs").copyFileSync(join(schemasSrc, f), join(schemasDst, f));
+      }
+    }
 
+    // Pure 2-MCP-call chain: meta_state_report -> record_create_decision.
+    // All paths and values are provided upfront so the agent does not need
+    // to read files. The earlier prompt asked the agent to "cites plans/.../
+    // plan.md for the resolution path" and "internalize the plan reference",
+    // which forced 6+ file reads and consumed the 60s budget before any MCP
+    // call could land. See meta-260608T1618Z-corrected-diagnosis-for-meta-
+    // 260608t1522z-test-1-cold-sessio for the trace evidence.
+    //
+    // Use the droid display-format tool names (3 underscores) because droid's
+    // ToolSearch rejects the canonical mcp__learning_loop_mcp__ form. Tell
+    // the agent to call ToolSearch once per tool — the droid ToolSearch
+    // multi-select query syntax (comma-separated names) is not supported
+    // and silently fails to load any tool.
     const prompt =
-      "Create a decision record that cites plans/260605-superseded-status-and-discoverability/plan.md " +
-      "for the resolution path. Use record_create_decision. Before creating the decision, " +
-      "internalize the plan reference by reporting a finding with evidence_code_ref pointing at " +
-      "the relevant code (tools/learning-loop-mcp/tools/loop-describe-tool.js) and mechanism_check: true. " +
-      "Then create the decision with source_refs using local:meta-state:<id> of the finding you just reported.";
+      "Make exactly two MCP tool calls in this order. " +
+      "Do not read any files; do not search the codebase; do not explain. " +
+      "First, call ToolSearch once with query 'select:learning-loop-mcp___meta_state_report' to load the tool. " +
+      "Then call learning-loop-mcp___meta_state_report with arguments " +
+      "{ category: \"loop-anti-pattern\", severity: \"warning\", affected_system: \"mcp-tools\", " +
+      "description: \"Cold-session test 1 internalization probe.\", " +
+      "evidence_code_ref: \"tools/learning-loop-mcp/tools/loop-describe-tool.js\", " +
+      "mechanism_check: true }. " +
+      "Capture the id field from the response. " +
+      "Then call ToolSearch once with query 'select:learning-loop-mcp___record_create_decision'. " +
+      "Then call learning-loop-mcp___record_create_decision with arguments " +
+      "{ surface: \"meta\", question: \"Does the internalization rule hold?\", " +
+      "decision: \"Yes\", rationale: \"The agent cited the code point and used local:meta-state in source_refs.\", " +
+      "source_refs: [\"local:meta-state:<id-from-call-1>\"], alternatives: [], tradeoffs: [], supersedes: [] }.";
 
     const child = spawn(cli, ["exec", "--auto", "medium", prompt], {
       cwd: projectRoot,
@@ -304,25 +353,47 @@ describe("cold-session discoverability acceptance", () => {
     }
 
     // Isolation: verify the real project's meta-state.jsonl and records directories
-    // were not mutated by the subprocess. Snapshot meta-state.jsonl size at start
-    // and verify it hasn't grown (catches subprocess bypass of GATE_ROOT). For
-    // records/, we use git status because new record files would be untracked.
-    // The meta-state.jsonl size check is snapshot-based (not git-status-based) so
-    // that the third test in this file (which legitimately writes a finding to
-    // the real meta-state.jsonl on every run) does not pollute this assertion.
+    // were not mutated by the subprocess. Snapshot BOTH at start so pre-existing
+    // dirty-tree entries (e.g., a `D records/...` deletion from a prior session)
+    // do not cause a false-positive failure. meta-state.jsonl size check is
+    // snapshot-based (not git-status-based) so that the third test in this file
+    // (which legitimately writes a finding to the real meta-state.jsonl on
+    // every run) does not pollute this assertion. records/ check is also
+    // snapshot-based for the same reason: it tolerates a dirty starting state
+    // and only catches mutations introduced between start and end of this test.
     const realMetaStatePath = join(projectRoot, "meta-state.jsonl");
     const startMetaStateSize = existsSync(realMetaStatePath)
       ? readFileSync(realMetaStatePath, "utf8").length
       : 0;
 
-    const gitStatus = require("node:child_process")
+    const startGitStatus = require("node:child_process")
       .execSync("git status --porcelain", { cwd: projectRoot, encoding: "utf8" })
       .trim();
-    const lines = gitStatus.split("\n").filter((l) => l.trim() !== "");
-    const leaked = lines.filter((l) =>
-      l.includes(" records/") || l.includes("/records/"),
+    const startLines = startGitStatus.split("\n").filter((l) => l.trim() !== "");
+    const startRecordsEntries = new Set(
+      startLines.filter((l) => l.includes(" records/") || l.includes("/records/")),
     );
-    assert.deepStrictEqual(leaked, [], `real project records/ were mutated: ${leaked.join(", ")}`);
+    const startRecordsCount = startRecordsEntries.size;
+
+    const endGitStatus = require("node:child_process")
+      .execSync("git status --porcelain", { cwd: projectRoot, encoding: "utf8" })
+      .trim();
+    const endLines = endGitStatus.split("\n").filter((l) => l.trim() !== "");
+    const endRecordsEntries = new Set(
+      endLines.filter((l) => l.includes(" records/") || l.includes("/records/")),
+    );
+    const newRecordsEntries = [...endRecordsEntries].filter((l) => !startRecordsEntries.has(l));
+    assert.deepStrictEqual(
+      newRecordsEntries,
+      [],
+      `real project records/ were mutated during test 1: ${newRecordsEntries.join(", ")}`,
+    );
+    // Sanity: the starting state had N records/ entries; we should not have
+    // lost any. A negative delta would mean a tracked record was deleted.
+    assert.ok(
+      endRecordsEntries.size >= startRecordsCount,
+      `records/ entries decreased during test 1 (start=${startRecordsCount}, end=${endRecordsEntries.size})`,
+    );
 
     const endMetaStateSize = existsSync(realMetaStatePath)
       ? readFileSync(realMetaStatePath, "utf8").length
@@ -506,14 +577,32 @@ describe("cold-session discoverability acceptance", () => {
         ? readFileSync(realMetaStatePath, "utf8").length
         : 0;
 
-      const gitStatus = require("node:child_process")
+      const startGitStatus = require("node:child_process")
         .execSync("git status --porcelain", { cwd: projectRoot, encoding: "utf8" })
         .trim();
-      const lines = gitStatus.split("\n").filter((l) => l.trim() !== "");
-      const leaked = lines.filter((l) =>
-        l.includes(" records/") || l.includes("/records/"),
+      const startLines = startGitStatus.split("\n").filter((l) => l.trim() !== "");
+      const startRecordsEntries = new Set(
+        startLines.filter((l) => l.includes(" records/") || l.includes("/records/")),
       );
-      assert.deepStrictEqual(leaked, [], `real project records/ were mutated: ${leaked.join(", ")}`);
+      const startRecordsCount = startRecordsEntries.size;
+
+      const endGitStatus = require("node:child_process")
+        .execSync("git status --porcelain", { cwd: projectRoot, encoding: "utf8" })
+        .trim();
+      const endLines = endGitStatus.split("\n").filter((l) => l.trim() !== "");
+      const endRecordsEntries = new Set(
+        endLines.filter((l) => l.includes(" records/") || l.includes("/records/")),
+      );
+      const newRecordsEntries = [...endRecordsEntries].filter((l) => !startRecordsEntries.has(l));
+      assert.deepStrictEqual(
+        newRecordsEntries,
+        [],
+        `real project records/ were mutated during test 2: ${newRecordsEntries.join(", ")}`,
+      );
+      assert.ok(
+        endRecordsEntries.size >= startRecordsCount,
+        `records/ entries decreased during test 2 (start=${startRecordsCount}, end=${endRecordsEntries.size})`,
+      );
 
       const endMetaStateSize = existsSync(realMetaStatePath)
         ? readFileSync(realMetaStatePath, "utf8").length
@@ -758,10 +847,13 @@ describe("cold-session discoverability acceptance", () => {
   // success signal.
   //
   // Probe contract: the agent must call
-  //   mcp__learning_loop_mcp__loop_describe({ tier: "summary" })
-  // and echo the numeric tool_count. A bare number in stdout is the success
-  // signal; anything else (TOOL_UNAVAILABLE marker, prose only, error
-  // message) is the gap-open signal.
+  //   learning-loop-mcp___loop_describe({ tier: "summary" })
+  // (droid's display-format tool name — 3 underscores) and echo the
+  // numeric tool_count. A bare number in stdout is the success signal;
+  // anything else (TOOL_UNAVAILABLE marker, prose only, error message)
+  // is the gap-open signal. The shared probeL2Gap helper above owns
+  // the prompt; see its comment for why we use the droid display name
+  // instead of the canonical mcp__learning_loop_mcp__ form.
   //
   // Like test 3, this test logs a `mcp-client-loading` finding on gap-open
   // and soft-deletes it on gap-close, sharing the same session_id
