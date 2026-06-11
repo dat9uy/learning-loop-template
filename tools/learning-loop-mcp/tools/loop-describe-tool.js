@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
 import * as introspect from "#mcp/core/loop-introspect.js";
+import { readRegistry } from "#mcp/core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "#mcp/core/loop-introspect-cache.js";
 
 export const loopDescribeTool = {
@@ -73,9 +74,22 @@ export const loopDescribeTool = {
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
+        // Warm-tier advisory: surface expired backlog when it exists and is stale (>7d)
+        const allEntries = readRegistry(root);
+        const expired = allEntries.filter((e) => e.entry_kind === "finding" && e.status === "expired");
+        if (expired.length > 0) {
+          const oldestAge = Math.max(...expired.map((e) => Date.now() - new Date(e.created_at).getTime()));
+          if (oldestAge > 7 * 24 * 60 * 60 * 1000) {
+            result.pending_expired_migration = {
+              count: expired.length,
+              oldest_age_days: Math.floor(oldestAge / (24 * 60 * 60 * 1000)),
+              hint: "Run meta_state_migrate_expired_to_stale per finding. See plans/260610-2100-meta-state-relationship-modeling/runbooks/expired-migration.md",
+            };
+          }
+        }
+
         // Registry summary (Phase 7 of plan 260606)
         const lineageStart = Date.now();
-        const allEntries = introspect.readAllEntriesForLineage(root);
         const lineageMs = Date.now() - lineageStart;
         result.registry_summary = introspect.buildRegistrySummary(allEntries);
         // M5: surface readAllEntriesForLineage cost so operators can monitor
