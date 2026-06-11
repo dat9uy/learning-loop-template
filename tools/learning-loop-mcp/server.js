@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerTool, safeImport } from "./tool-registry.js";
+import { registerTool, safeImport, installWireFormatCoercion } from "./tool-registry.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -26,6 +26,8 @@ const server = new McpServer({
   name: "learning-loop-mcp",
   version: "1.0.0",
 });
+
+installWireFormatCoercion(server, root);
 
 let registered = 0;
 let failed = 0;

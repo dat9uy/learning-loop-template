@@ -194,6 +194,48 @@ export async function safeImport(path, root) {
 }
 
 /**
+ * Install wire-format coercion before the MCP SDK's validateToolInput.
+ * Must be called after `new McpServer()` and before registering tools.
+ *
+ * The patch intercepts `validateToolInput(tool, args, toolName)` and runs
+ * `coerceParamsToSchema(args, tool._coerceSchema)` before the original Zod
+ * parse. This fixes top-level array/boolean coercion for stdio transport
+ * where the SDK validates before our handler-level coercion runs.
+ */
+export function installWireFormatCoercion(server, root) {
+  const original = server.validateToolInput.bind(server);
+
+  server.validateToolInput = async function (tool, args, toolName) {
+    let coercedArgs = args;
+    if (tool?._coerceSchema && args && typeof args === "object") {
+      try {
+        coercedArgs = coerceParamsToSchema(args, tool._coerceSchema, root);
+      } catch (err) {
+        if (root) {
+          try {
+            appendGateLog(root, {
+              action: "wire_format_coercion_failed",
+              tool: toolName,
+              error: err.message,
+            });
+          } catch { /* logging is best-effort */ }
+        }
+      }
+    }
+    return original(tool, coercedArgs, toolName);
+  };
+
+  if (
+    typeof server.validateToolInput !== "function" ||
+    server.validateToolInput === original
+  ) {
+    throw new Error(
+      "installWireFormatCoercion failed: validateToolInput was not patched",
+    );
+  }
+}
+
+/**
  * Register a tool on an MCP server with error boundary and name collision check.
  */
 export function registerTool(server, config, root) {
@@ -233,5 +275,13 @@ export function registerTool(server, config, root) {
     }
   };
 
-  server.tool(config.name, config.description, config.schema, wrappedHandler);
+  const registeredTool = server.tool(
+    config.name,
+    config.description,
+    config.schema,
+    wrappedHandler,
+  );
+  if (registeredTool) {
+    registeredTool._coerceSchema = config.schema;
+  }
 }
