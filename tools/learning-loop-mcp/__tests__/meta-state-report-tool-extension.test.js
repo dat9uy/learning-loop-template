@@ -236,3 +236,75 @@ describe("metaStateReportTool mechanism_check extension", () => {
     }
   });
 });
+
+describe("meta_state_report reopens field", () => {
+  const originalEnv = process.env.GATE_ROOT;
+
+  // T11: round-trip with valid array
+  test("persists reopens when passed as array", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-extension-reopens-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const result = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test reopens round-trip with two expired parents (min 20 chars).",
+        reopens: ["meta-260608T1522Z-test-parent-1", "meta-260608T1618Z-test-parent-2"],
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.reported, true);
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.deepStrictEqual(entry.reopens, [
+        "meta-260608T1522Z-test-parent-1",
+        "meta-260608T1618Z-test-parent-2",
+      ]);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T12: omitted = no field
+  test("omits reopens field when not passed", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-extension-reopens-omit-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const result = await metaStateReportTool.handler({
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Test reopens omission - no reopens field (min 20 chars).",
+      });
+      const parsed = JSON.parse(result.content[0].text);
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.reopens, undefined);
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  // T13: invalid type rejection
+  test("rejects reopens as non-array", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "report-extension-reopens-type-"));
+    process.env.GATE_ROOT = tempDir;
+    try {
+      await assert.rejects(
+        metaStateReportTool.handler({
+          category: "loop-anti-pattern",
+          severity: "warning",
+          affected_system: "mcp-tools",
+          description: "Test reopens type rejection (min 20 chars).",
+          reopens: "meta-260608T1522Z-not-an-array",
+        }),
+        (err) => /expected array/.test(err.message),
+      );
+    } finally {
+      if (originalEnv === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = originalEnv;
+    }
+  });
+});

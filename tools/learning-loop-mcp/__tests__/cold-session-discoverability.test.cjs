@@ -423,7 +423,7 @@ describe("cold-session discoverability acceptance", () => {
       // 1. loop_describe warm tier returns discoverability hints.
       const warm = await call(1, "loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      assert.strictEqual(warm.discoverability_hints.length, 10);
+      assert.strictEqual(warm.discoverability_hints.length, 11);
       const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
       assert.ok(citationHint, "citation hint should mention evidence_code_ref");
 
@@ -442,8 +442,8 @@ describe("cold-session discoverability acceptance", () => {
         "DISCOVERABILITY_HINTS should include a hint about reopens",
       );
       assert.ok(
-        hints.length === 10,
-        `Expected 10 hints, got ${hints.length}`,
+        hints.length === 11,
+        `Expected 11 hints, got ${hints.length}`,
       );
       const totalHintsByteLength = hints.reduce(
         (sum, h) => sum + Buffer.byteLength(h, "utf8"),
@@ -924,5 +924,27 @@ describe("cold-session discoverability acceptance", () => {
     assert.strictEqual(core.checkExpiry(staleEntry), null, "stale entries should not re-expire");
 
     delete process.env.GATE_ROOT;
+  });
+
+  test("hook mirror matches canonical hint count (drift prevention)", async () => {
+    const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
+    const hookSource = readFileSync(hookPath, "utf8");
+    const canonicalPath = join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js");
+    const canonicalSource = readFileSync(canonicalPath, "utf8");
+
+    const hookMatch = hookSource.match(/LOCAL_DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+    const canonicalMatch = canonicalSource.match(/DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+
+    assert.ok(hookMatch, "hook should contain LOCAL_DISCOVERABILITY_HINTS array");
+    assert.ok(canonicalMatch, "canonical should contain DISCOVERABILITY_HINTS array");
+
+    const hookCount = (hookMatch[1].match(/"/g) || []).length / 2;
+    const canonicalCount = (canonicalMatch[1].match(/"/g) || []).length / 2;
+
+    assert.strictEqual(
+      hookCount,
+      canonicalCount,
+      `Hook hint count (${hookCount}) must match canonical (${canonicalCount}). The hook mirror has drifted.`,
+    );
   });
 });
