@@ -87,7 +87,6 @@
         "meta_state_query_drift",
         "meta_state_batch",
         "meta_state_archive",
-        "meta_state_migrate_expired_to_stale",
         "meta_state_relationship_validate"
       ],
       "ordering": "any"

@@ -74,19 +74,8 @@ export const loopDescribeTool = {
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
-        // Warm-tier advisory: surface expired backlog when it exists and is stale (>7d)
+        // No expired-status advisory; status was removed in plan 260611-1000-remove-expired-status.
         const allEntries = readRegistry(root);
-        const expired = allEntries.filter((e) => e.entry_kind === "finding" && e.status === "expired");
-        if (expired.length > 0) {
-          const oldestAge = Math.max(...expired.map((e) => Date.now() - new Date(e.created_at).getTime()));
-          if (oldestAge > 7 * 24 * 60 * 60 * 1000) {
-            result.pending_expired_migration = {
-              count: expired.length,
-              oldest_age_days: Math.floor(oldestAge / (24 * 60 * 60 * 1000)),
-              hint: "Run meta_state_migrate_expired_to_stale per finding. See plans/260610-2100-meta-state-relationship-modeling/runbooks/expired-migration.md",
-            };
-          }
-        }
 
         // Registry summary (Phase 7 of plan 260606)
         const lineageStart = Date.now();
