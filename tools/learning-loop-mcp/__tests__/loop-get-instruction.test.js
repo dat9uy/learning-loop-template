@@ -46,6 +46,17 @@ describe("loop_get_instruction", () => {
     assert.ok(parsed.results[0].error.includes("no-such-hint"));
   });
 
+  test("returns hint by named slug 'narrow-query'", async () => {
+    const result = await loopGetInstructionTool.handler({ key: "narrow-query" });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.strictEqual(parsed.count, 1);
+    assert.strictEqual(parsed.results[0].key, "narrow-query");
+    assert.strictEqual(parsed.results[0].index, 12);
+    assert.ok(parsed.results[0].hint.includes("meta_state_list"));
+    assert.ok(parsed.results[0].hint.includes("id:"));
+    assert.ok(parsed.results[0].suggestion.length > 0);
+  });
+
   test("schema advertises key as string | number | array", () => {
     const keySchema = loopGetInstructionTool.schema.key;
     assert.ok(keySchema, "schema.key should be defined");

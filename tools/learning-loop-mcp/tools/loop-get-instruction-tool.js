@@ -15,6 +15,7 @@ export const HINT_KEY_MAP = {
   "reopens-script": 10,
   "meta-vs-product-split": 11,
   "loop-get-instruction": 11,
+  "narrow-query": 12,
 };
 
 const HINT_SUGGESTIONS = [
@@ -30,6 +31,7 @@ const HINT_SUGGESTIONS = [
   "AGENTS.md is the steering prompt; the tool manifest is deterministic; warm hints are at-start; the skill is prompt-author docs.",
   "For cross-references, run `meta_state_relationship_validate`, report with `reopens`, then `meta_state_resolve({ cascade_from: [child] })`.",
   "Use `loop_get_instruction` for on-demand lookup. Keep `meta-state.jsonl` (self-model), `product/**` (substrate), and template code separate when citing evidence.",
+  "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only.",
 ];
 
 export const loopGetInstructionTool = {
