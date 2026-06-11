@@ -22,8 +22,8 @@
 //    the tools while the agent runtime cannot invoke them, so L1 is a
 //    layer-1 signal only; the L2 probe is the authoritative one.
 //
-// 4. "cold-session test soft-deletes persisted finding on gap-close" — a
-//    unit test for the deletion branch of the cold-session test (runs in a
+// 4. "cold-session test resolves persisted finding on gap-close" — a
+//    unit test for the resolution branch of the cold-session test (runs in a
 //    GATE_ROOT-isolated temp directory).
 //
 // 5. "agent runtime exposes mcp__learning_loop_mcp__* tools to the AI
@@ -46,6 +46,7 @@ const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const { parse: parseYaml } = require("yaml");
+const { probeL1, probeL2 } = require("./probe-helpers.cjs");
 
 describe("cold-session discoverability acceptance", () => {
   // __dirname is .../tools/learning-loop-mcp/__tests__; project root is three levels up.
@@ -357,10 +358,10 @@ describe("cold-session discoverability acceptance", () => {
     // dirty-tree entries (e.g., a `D records/...` deletion from a prior session)
     // do not cause a false-positive failure. meta-state.jsonl size check is
     // snapshot-based (not git-status-based) so that the third test in this file
-    // (which legitimately writes a finding to the real meta-state.jsonl on
-    // every run) does not pollute this assertion. records/ check is also
-    // snapshot-based for the same reason: it tolerates a dirty starting state
-    // and only catches mutations introduced between start and end of this test.
+    // (which writes a finding only on gap-open novel failure) does not
+    // pollute this assertion. records/ check is also snapshot-based for the
+    // same reason: it tolerates a dirty starting state and only catches
+    // mutations introduced between start and end of this test.
     const realMetaStatePath = join(projectRoot, "meta-state.jsonl");
     const startMetaStateSize = existsSync(realMetaStatePath)
       ? readFileSync(realMetaStatePath, "utf8").length
@@ -570,8 +571,8 @@ describe("cold-session discoverability acceptance", () => {
       // verify it hasn't grown (catches subprocess bypass of GATE_ROOT). For
       // records/, we use git status because new record files would be untracked.
       // The meta-state.jsonl size check is snapshot-based (not git-status-based) so
-      // that the third test in this file (which legitimately writes a finding to
-      // the real meta-state.jsonl on every run) does not pollute this assertion.
+      // that the third test in this file (which writes a finding only on gap-open
+      // novel failure) does not pollute this assertion.
       const realMetaStatePath = join(projectRoot, "meta-state.jsonl");
       const startMetaStateSize = existsSync(realMetaStatePath)
         ? readFileSync(realMetaStatePath, "utf8").length
@@ -655,7 +656,7 @@ describe("cold-session discoverability acceptance", () => {
   // Probes `droid exec --list-tools` (the CLI catalog layer). Asserts that at
   // least one runtime-namespaced MCP tool entry is present. On gap-open, logs
   // a `meta_state_report` finding (idempotent on session_id+subtype). On
-  // gap-close, soft-deletes any existing finding. The session_id and subtype
+  // gap-close, resolves any active finding. The session_id and subtype
   // are shared with test 5 (L2 probe) so the
   // rule-cold-session-test-must-pass-before-resolution evidence aggregates
   // both layers.
@@ -686,109 +687,34 @@ describe("cold-session discoverability acceptance", () => {
     });
 
     const sessionId = "test-cold-session-mcp-client-loading";
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let writeEntry, readRegistry, updateEntry, generateId, tryClaimSessionId;
-    try {
-      const core = await import(pathToFileURL(corePath).href);
-      writeEntry = core.writeEntry;
-      readRegistry = core.readRegistry;
-      updateEntry = core.updateEntry;
-      generateId = core.generateId;
-      tryClaimSessionId = core.tryClaimSessionId;
-    } catch (e) {
-      console.error(`[cold-session/mcp-client-loading] cannot import core/meta-state.js: ${e.message}`);
-      return;
-    }
+    const gapOpen = !STRICT_MCP_TOOL_PATTERN.test(toolsList);
 
-    if (STRICT_MCP_TOOL_PATTERN.test(toolsList)) {
+    if (!gapOpen) {
       console.error("[cold-session/l1] L1 closed: mcp tools listed in CLI catalog (test 5 / L2 is the authoritative probe)");
-      // L1 (CLI catalog) closed: soft-delete ONLY the L1 finding.
-      // Exact filter on runtime+layer prevents L1 from resolving L2 findings.
-      let existing = null;
-      try {
-        existing = readRegistry(projectRoot).find((e) =>
-          e.entry_kind === "finding"
-          && e.session_id === sessionId
-          && e.subtype === "mcp-client-loading"
-          && (e.status === "active" || e.status === "reported")
-          && e.description.includes(`runtime: ${cli}`)
-          && e.description.includes("layer: L1"),
-        );
-      } catch {
-        // no existing finding
-      }
-      if (existing) {
-        const now = new Date().toISOString();
-        try {
-          await updateEntry(projectRoot, existing.id, {
-            status: "stale",
-            resolved_at: now,
-            resolved_by: "auto-cold-session-test",
-            _expected_version: existing.version ?? 0,
-          });
-          console.error(`[cold-session/mcp-client-loading] soft-deleted L1 finding: ${existing.id}`);
-        } catch (e) {
-          console.error(`[cold-session/mcp-client-loading] cannot soft-delete L1 finding: ${e.message}`);
-        }
-      }
-      return;
     }
 
-    // Gap detected. Use atomic tryClaimSessionId to eliminate TOCTOU race.
-    const claim = await tryClaimSessionId(projectRoot, {
-      sessionId,
-      subtype: "mcp-client-loading",
-      runtime: cli,
-      layer: "L1",
-    }, () => {
-      const id = generateId("mcp-client-loading-missing");
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-      return {
-        id,
-        entry_kind: "finding",
-        category: "mcp-tool-missing",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        subtype: "mcp-client-loading",
-        description:
-          `${cli} exec --list-tools does not expose mcp__learning_loop_mcp__* tools in this environment. ` +
-          "The MCP server is reachable (server-side probe works — see meta-260606T0200Z-loop-surface-inject-spawnandcall-chicken-egg-fix), " +
-          `but the ${cli} agent runtime is not loading project-local MCP servers into its tool list. ` +
-          "This is the client-side gap described in meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list. " +
-          "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
-          `runtime: ${cli}; layer: L1;`,
-        evidence_code_ref: "tools/learning-loop-mcp/server.js",
-        session_id: sessionId,
-        status: "reported",
-        auto_resolve: null,
-        created_at: now.toISOString(),
-        expires_at: expiresAt,
-        acked_at: null,
-        resolved_at: null,
-        resolved_by: null,
-        version: 0,
-      };
-    });
-
-    if (claim.claimed) {
-      console.error(`[cold-session/l1] logged L1 finding: ${claim.id}`);
-    } else {
-      console.error(`[cold-session/l1] L1 gap already tracked: ${claim.existing.id}`);
+    const claim = await probeL1(projectRoot, { sessionId, runtime: cli, gapOpen });
+    if (gapOpen && claim) {
+      if (claim.claimed) {
+        console.error(`[cold-session/l1] logged L1 finding: ${claim.id}`);
+      } else {
+        console.error(`[cold-session/l1] L1 gap already tracked: ${claim.existing.id}`);
+      }
     }
   });
 
-  // Fourth test: verify the deletion branch of the cold-session test.
+  // Fourth test: verify the gap-close resolution branch.
   // This test uses GATE_ROOT isolation to avoid polluting the real project's
   // meta-state.jsonl. It simulates the gap-closed scenario by pre-populating
-  // a finding and then invoking the same deletion logic.
-  test("cold-session test soft-deletes persisted finding on gap-close", async () => {
+  // a finding and then invoking the probeL1 helper with gapOpen=false.
+  test("cold-session test resolves persisted finding on gap-close", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-delete-"));
     process.env.GATE_ROOT = tempRoot;
 
     const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const sessionId = "test-cold-session-mcp-client-loading";
+    const runtime = "droid";
 
     // Pre-populate the registry with a finding that the test would otherwise log.
     const existingId = core.generateId("mcp-client-loading-missing");
@@ -799,7 +725,7 @@ describe("cold-session discoverability acceptance", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
-      description: "Pre-existing finding (test setup).",
+      description: `Pre-existing finding (test setup). runtime: ${runtime}; layer: L1;`,
       evidence_code_ref: "tools/learning-loop-mcp/server.js",
       session_id: sessionId,
       status: "active",
@@ -816,21 +742,16 @@ describe("cold-session discoverability acceptance", () => {
     const before = core.readRegistry(tempRoot);
     assert.ok(before.find((e) => e.id === existingId), "pre-test: finding should exist");
 
-    // Simulate the deletion branch: gap is closed, finding exists → soft-delete.
-    const now = new Date().toISOString();
-    await core.updateEntry(tempRoot, existingId, {
-      status: "stale",
-      resolved_at: now,
-      resolved_by: "auto-cold-session-test",
-      _expected_version: 0,
-    });
+    // Simulate the gap-close branch: probeL1 resolves the active finding.
+    await probeL1(tempRoot, { sessionId, runtime, gapOpen: false });
 
-    // Verify the finding is soft-deleted (status is stale, not active).
+    // Verify the finding is resolved (status is resolved, not active or stale).
     const after = core.readRegistry(tempRoot);
-    const deleted = after.find((e) => e.id === existingId);
-    assert.ok(deleted, "finding should still exist in registry");
-    assert.strictEqual(deleted.status, "stale");
-    assert.strictEqual(deleted.resolved_by, "auto-cold-session-test");
+    const resolved = after.find((e) => e.id === existingId);
+    assert.ok(resolved, "finding should still exist in registry");
+    assert.strictEqual(resolved.status, "resolved");
+    assert.strictEqual(resolved.resolved_by, "auto-cold-session-test");
+    assert.ok(resolved.resolution.includes("conditional emission"), "resolution should mention conditional emission");
 
     // Cleanup
     delete process.env.GATE_ROOT;
@@ -856,7 +777,7 @@ describe("cold-session discoverability acceptance", () => {
   // instead of the canonical mcp__learning_loop_mcp__ form.
   //
   // Like test 3, this test logs a `mcp-client-loading` finding on gap-open
-  // and soft-deletes it on gap-close, sharing the same session_id
+  // and resolves it on gap-close, sharing the same session_id
   // ("test-cold-session-mcp-client-loading") and subtype
   // ("mcp-client-loading"). The rule-cold-session-test-must-pass-before-
   // resolution check (core/gate-logic.js#checkResolutionEvidence, branch 2)
@@ -876,104 +797,94 @@ describe("cold-session discoverability acceptance", () => {
 
     const sessionId = "test-cold-session-mcp-client-loading";
     const cli = await detectAgentCli() ?? "droid";
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let readRegistry, updateEntry, generateId, tryClaimSessionId;
-    try {
-      const core = await import(pathToFileURL(corePath).href);
-      readRegistry = core.readRegistry;
-      updateEntry = core.updateEntry;
-      generateId = core.generateId;
-      tryClaimSessionId = core.tryClaimSessionId;
-    } catch (e) {
-      console.error(`[cold-session/l2] cannot import core/meta-state.js: ${e.message}`);
-      return;
-    }
 
     // Shared L2 probe: see probeL2Gap helper above. On gap-open, log a
-    // finding via atomic tryClaimSessionId. On gap-close, soft-delete ONLY
+    // finding via atomic tryClaimSessionId. On gap-close, resolve ONLY
     // the L2 finding (exact runtime+layer filter prevents cross-resolution).
     const l2Result = await probeL2Gap(projectRoot, serverEntry);
     const gapOpen = !l2Result.gapClosed;
 
-    if (!gapOpen) {
-      // Gap closed: soft-delete ONLY the L2 finding.
-      let existing = null;
-      try {
-        existing = readRegistry(projectRoot).find((e) =>
-          e.entry_kind === "finding"
-          && e.session_id === sessionId
-          && e.subtype === "mcp-client-loading"
-          && (e.status === "active" || e.status === "reported")
-          && e.description.includes(`runtime: ${cli}`)
-          && e.description.includes("layer: L2"),
-        );
-      } catch {
-        // no registry
-      }
-      if (existing) {
-        const now = new Date().toISOString();
-        try {
-          await updateEntry(projectRoot, existing.id, {
-            status: "stale",
-            resolved_at: now,
-            resolved_by: "auto-cold-session-test-l2",
-            _expected_version: existing.version ?? 0,
-          });
-          console.error(`[cold-session/l2] gap closed: soft-deleted L2 finding ${existing.id}`);
-        } catch (e) {
-          console.error(`[cold-session/l2] cannot soft-delete L2 finding: ${e.message}`);
-        }
-      } else {
-        console.error("[cold-session/l2] gap closed: no L2 finding to soft-delete");
-      }
-      writeSentinel(cli, "L2");
-      return;
-    }
-
-    // Gap-open branch: use atomic tryClaimSessionId to eliminate TOCTOU race.
-    const claim = await tryClaimSessionId(projectRoot, {
+    const claim = await probeL2(projectRoot, {
       sessionId,
-      subtype: "mcp-client-loading",
       runtime: cli,
-      layer: "L2",
-    }, () => {
-      const id = generateId("mcp-client-loading-missing");
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-      return {
-        id,
-        entry_kind: "finding",
-        category: "mcp-tool-missing",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        subtype: "mcp-client-loading",
-        description:
-          `L2 probe: ${cli} exec cannot call mcp__learning_loop_mcp__loop_describe in this environment. ` +
-          `The MCP server is reachable and the ${cli} CLI catalog may show the tools (see test 3 / L1 probe), ` +
-          `but the ${cli} agent runtime is not surfacing MCP tools to the AI's callable list. ` +
-          "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
-          "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
-          `Probe: exit=${l2Result.exitCode}, stdout_len=${l2Result.stdout.length}, stderr_len=${l2Result.stderr.length}, first200=${JSON.stringify(l2Result.stdout.slice(0, 200))}. ` +
-          `runtime: ${cli}; layer: L2;`,
-        evidence_code_ref: "tools/learning-loop-mcp/server.js",
-        session_id: sessionId,
-        status: "reported",
-        auto_resolve: null,
-        created_at: now.toISOString(),
-        expires_at: expiresAt,
-        acked_at: null,
-        resolved_at: null,
-        resolved_by: null,
-        version: 0,
-      };
+      gapOpen,
+      entryBuilder: gapOpen ? (() => {
+        const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+        const { generateId } = require(corePath);
+        const id = generateId("mcp-client-loading-missing");
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        return {
+          id,
+          entry_kind: "finding",
+          category: "mcp-tool-missing",
+          severity: "warning",
+          affected_system: "mcp-tools",
+          subtype: "mcp-client-loading",
+          description:
+            `L2 probe: ${cli} exec cannot call mcp__learning_loop_mcp__loop_describe in this environment. ` +
+            `The MCP server is reachable and the ${cli} CLI catalog may show the tools (see test 3 / L1 probe), ` +
+            `but the ${cli} agent runtime is not surfacing MCP tools to the AI's callable list. ` +
+            "This is the agent-runtime layer gap described in meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to. " +
+            "Detected by cold-session-discoverability.test.cjs#agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe). " +
+            `Probe: exit=${l2Result.exitCode}, stdout_len=${l2Result.stdout.length}, stderr_len=${l2Result.stderr.length}, first200=${JSON.stringify(l2Result.stdout.slice(0, 200))}. ` +
+            `runtime: ${cli}; layer: L2;`,
+          evidence_code_ref: "tools/learning-loop-mcp/server.js",
+          session_id: sessionId,
+          status: "reported",
+          auto_resolve: null,
+          created_at: now.toISOString(),
+          expires_at: expiresAt,
+          acked_at: null,
+          resolved_at: null,
+          resolved_by: null,
+          version: 0,
+        };
+      }) : undefined,
     });
 
-    if (claim.claimed) {
-      console.error(`[cold-session/l2] logged L2 finding: ${claim.id}`);
-    } else {
-      console.error(`[cold-session/l2] L2 gap already tracked: ${claim.existing.id}`);
+    if (gapOpen && claim) {
+      if (claim.claimed) {
+        console.error(`[cold-session/l2] logged L2 finding: ${claim.id}`);
+      } else {
+        console.error(`[cold-session/l2] L2 gap already tracked: ${claim.existing.id}`);
+      }
+    } else if (!gapOpen) {
+      console.error("[cold-session/l2] gap closed: no L2 finding to resolve");
     }
     writeSentinel(cli, "L2");
+  });
+
+  // Regression-guard test: asserts the conditional-emission invariant.
+  // On a synthetic pass (gapOpen=false) with no prior finding, the probe
+  // must write NOTHING to the registry. A future contributor who re-introduces
+  // unconditional writes will break this test.
+  test("probeL1 and probeL2 do not write on synthetic pass", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-pass-"));
+    process.env.GATE_ROOT = tempRoot;
+
+    const sessionId = "test-synthetic-pass";
+    const runtime = "test";
+
+    // Call both probes with gapOpen=false on a fresh registry.
+    await probeL1(tempRoot, { sessionId, runtime, gapOpen: false });
+    await probeL2(tempRoot, { sessionId, runtime, gapOpen: false });
+
+    // Assert the tempRoot registry is empty (no findings written).
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const core = await import(pathToFileURL(corePath).href);
+    const entries = core.readRegistry(tempRoot);
+    const findings = entries.filter((e) =>
+      e.entry_kind === "finding" && e.subtype === "mcp-client-loading",
+    );
+    assert.strictEqual(
+      findings.length,
+      0,
+      `probe wrote ${findings.length} finding(s) on synthetic pass; expected 0. ` +
+        "Conditional-emission invariant violated: pass path must be silent.",
+    );
+
+    delete process.env.GATE_ROOT;
   });
 
   test("stale entries do not trigger session-id churn (regression for TTL recursion)", async () => {

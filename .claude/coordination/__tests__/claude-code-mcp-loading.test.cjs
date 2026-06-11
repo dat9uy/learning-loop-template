@@ -21,6 +21,8 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
+const { probeL1 } = require("../../../tools/learning-loop-mcp/__tests__/probe-helpers.cjs");
+
 describe("Claude Code MCP client-side loading acceptance", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..");
   const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
@@ -229,112 +231,87 @@ describe("Claude Code MCP client-side loading acceptance", () => {
   // project's meta-state.jsonl (mirroring the cold-session test pattern for Droid).
   //
   // The test does NOT fail CI on the gap. The finding IS the surface.
+  // Refactored to use probeL1 helper (conditional emission + atomic dedup).
   test("Claude Code .mcp.json exposes learning-loop-mcp (client-side loading)", async () => {
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
-    let writeEntry, readRegistry, updateEntry, generateId;
-    try {
-      const core = await import(pathToFileURL(corePath).href);
-      writeEntry = core.writeEntry;
-      readRegistry = core.readRegistry;
-      updateEntry = core.updateEntry;
-      generateId = core.generateId;
-    } catch (e) {
-      console.error(`[claude-mcp] cannot import core/meta-state.js: ${e.message}`);
-      return;
+    const sessionId = "test-claude-code-mcp-client-loading";
+    const runtime = "claude";
+    const gapOpen = !(existsSync(mcpConfigPath) &&
+      JSON.parse(readFileSync(mcpConfigPath, "utf8")).mcpServers?.["learning-loop-mcp"]);
+
+    if (!gapOpen) {
+      console.error("[claude-mcp] gap closed: .mcp.json has learning-loop-mcp");
     }
 
-    const sessionId = "test-claude-code-mcp-client-loading";
+    const claim = await probeL1(projectRoot, {
+      sessionId,
+      runtime,
+      gapOpen,
+      entryBuilder: gapOpen ? (() => {
+        const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+        const { generateId } = require(corePath);
+        const id = generateId("mcp-client-loading-missing");
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        return {
+          id,
+          entry_kind: "finding",
+          category: "mcp-tool-missing",
+          severity: "warning",
+          affected_system: "mcp-tools",
+          subtype: "mcp-client-loading",
+          description:
+            "Claude Code .mcp.json does not expose learning-loop-mcp in this environment. " +
+            "The MCP server is reachable (server-side probe works), " +
+            "but Claude Code is not configured to load the project-local MCP server. " +
+            "Detected by claude-code-mcp-loading.test.cjs#Claude Code .mcp.json exposes learning-loop-mcp. " +
+            `runtime: ${runtime}; layer: L1;`,
+          evidence_code_ref: "tools/learning-loop-mcp/server.js",
+          session_id: sessionId,
+          status: "reported",
+          auto_resolve: null,
+          created_at: now.toISOString(),
+          expires_at: expiresAt,
+          acked_at: null,
+          resolved_at: null,
+          resolved_by: null,
+          version: 0,
+        };
+      }) : undefined,
+    });
 
-    if (existsSync(mcpConfigPath)) {
-      const config = JSON.parse(readFileSync(mcpConfigPath, "utf8"));
-      if (config.mcpServers && config.mcpServers["learning-loop-mcp"]) {
-        console.error("[claude-mcp] gap closed: .mcp.json has learning-loop-mcp");
-        // Gap closed: check for existing finding and soft-delete it
-        let existing = null;
-        try {
-          existing = readRegistry(projectRoot).find((e) =>
-            e.entry_kind === "finding"
-            && e.session_id === sessionId
-            && e.subtype === "mcp-client-loading"
-            && (e.status === "active" || e.status === "reported"),
-          );
-        } catch {
-          // no existing finding
-        }
-        if (existing) {
-          const now = new Date().toISOString();
-          try {
-            // Plan 260611-1000-remove-expired-status: rename 'expired' to
-            // 'stale' here too. The patch validation is passthrough, so
-            // 'expired' was technically allowed; but the registry no longer
-            // accepts 'expired' in the status enum, and writing it would
-            // create an orphan status. Use 'stale' for consistency with
-            // the new enum.
-            await updateEntry(projectRoot, existing.id, {
-              status: "stale",
-              resolved_at: now,
-              resolved_by: "auto-claude-mcp-test",
-              _expected_version: existing.version ?? 0,
-            });
-            console.error(`[claude-mcp] soft-deleted finding: ${existing.id}`);
-          } catch (e) {
-            console.error(`[claude-mcp] cannot soft-delete finding: ${e.message}`);
-          }
-        }
-        return;
+    if (gapOpen && claim) {
+      if (claim.claimed) {
+        console.error(`[claude-mcp] logged finding: ${claim.id}`);
+      } else {
+        console.error(`[claude-mcp] gap already tracked: ${claim.existing.id}`);
       }
     }
+  });
 
-    // Gap detected. Log a meta_state_report finding via direct file I/O
-    const id = generateId("mcp-client-loading-missing");
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    const entry = {
-      id,
-      entry_kind: "finding",
-      category: "mcp-tool-missing",
-      severity: "warning",
-      affected_system: "mcp-tools",
-      subtype: "mcp-client-loading",
-      description:
-        "Claude Code .mcp.json does not expose learning-loop-mcp in this environment. " +
-        "The MCP server is reachable (server-side probe works), " +
-        "but Claude Code is not configured to load the project-local MCP server. " +
-        "Detected by claude-code-mcp-loading.test.cjs#Claude Code .mcp.json exposes learning-loop-mcp.",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
-      session_id: sessionId,
-      status: "reported",
-      auto_resolve: null,
-      created_at: now.toISOString(),
-      expires_at: expiresAt,
-      acked_at: null,
-      resolved_at: null,
-      resolved_by: null,
-      version: 0,
-    };
+  // Regression-guard test: asserts the conditional-emission invariant for
+  // the claude-code probe. On a synthetic pass, the probe must write NOTHING.
+  test("claude-code probeL1 does not write on synthetic pass", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "claude-mcp-pass-"));
+    process.env.GATE_ROOT = tempRoot;
 
-    // Idempotency: skip write if a finding for this session_id is already active or reported
-    let existing = null;
-    try {
-      existing = readRegistry(projectRoot).find((e) =>
-        e.entry_kind === "finding"
-        && e.session_id === sessionId
-        && e.subtype === "mcp-client-loading"
-        && (e.status === "active" || e.status === "reported"),
-      );
-    } catch {
-      // registry may not exist yet
-    }
-    if (existing) {
-      console.error(`[claude-mcp] gap already tracked: ${existing.id}`);
-      return;
-    }
+    const sessionId = "test-synthetic-claude";
+    const runtime = "claude";
 
-    try {
-      await writeEntry(projectRoot, entry);
-      console.error(`[claude-mcp] logged finding: ${id}`);
-    } catch (e) {
-      console.error(`[claude-mcp] cannot write finding: ${e.message}`);
-    }
+    await probeL1(tempRoot, { sessionId, runtime, gapOpen: false });
+
+    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const core = await import(pathToFileURL(corePath).href);
+    const entries = core.readRegistry(tempRoot);
+    const findings = entries.filter((e) =>
+      e.entry_kind === "finding" && e.subtype === "mcp-client-loading",
+    );
+    assert.strictEqual(
+      findings.length,
+      0,
+      `claude-code probe wrote ${findings.length} finding(s) on synthetic pass; expected 0. ` +
+        "Conditional-emission invariant violated: pass path must be silent.",
+    );
+
+    delete process.env.GATE_ROOT;
   });
 });
