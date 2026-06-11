@@ -364,6 +364,94 @@ Reasoning:
 
 **Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
 
+### 3.9 Hook layer interaction with the Mastra migration
+
+**Operator question (2026-06-11):** with our direction (Bridge 5 + Mastra + Bridge 6), what replaces the runtime "hooks" mechanism? Do Mastra workflows replace them, or do we still need hooks?
+
+**Short answer:** hooks are not replaced by Mastra workflows. They are still needed as long as the calling agent is an external MCP client (Droid, Claude Code). The hook layer and the MCP server layer are different layers; they intercept at different points in the call chain. The Mastra migration (Phases 0-4) does not touch the runtime hook layer in Mode 1.
+
+**The two enforcement layers (today):**
+
+| Layer | Where it runs | What it does | Files (today) |
+|---|---|---|---|
+| **Runtime hooks** | Outer agent's process (Droid / Claude Code) | Pre-tool-call interception; can **hard-block** (exit 2) | `.factory/hooks/**`, `.claude/coordination/**` → `tools/learning-loop-mcp/hooks/{bash,write,inbound}-gate.js` |
+| **Consult-gates** | Inside the MCP server | Per-tool-call rule checks; **soft-block** (return error) | `core/meta-state.js` rule enforcement inside `meta_state_resolve`, `gate_check`, etc. |
+
+**The call chain (today):**
+
+```
+[Operator message]
+        ↓
+[Runtime hooks layer]   ← PreToolUse intercept: bash-gate.js, write-gate.js, inbound-gate.js
+        ↓ (if not blocked)
+[Agent decides to call tool]   ← LLM picks tool + args
+        ↓
+[Tool dispatched to MCP server]   ← stdio to learning-loop-mcp
+        ↓
+[MCP tool handler runs]   ← consult-gates (4 rules) fire here
+        ↓
+[Result returned to agent]
+```
+
+**The matrix (resolved 2026-06-11):**
+
+| Hook | Mode 1 (peer MCP, current decision) | Mode 2 (Mastra Code embedded, deferred) |
+|---|---|---|
+| **Bash/Execute gate** | **Stays at runtime** (Droid / Claude) | Moves to Mastra `beforeToolCall` on the agent |
+| **Write gate** | **Stays at runtime** | Moves to Mastra `beforeToolCall` |
+| **Inbound gate** | **Stays at runtime** | Moves to Mastra message handler |
+| **Consult-gates (4 rules)** | Moves to Mastra tool `execute` (re-implement in TS) — **Phase 1 of the Mastra migration** | Same (already in MCP server) |
+
+**Why workflows don't replace hooks:**
+
+- A Mastra `createWorkflow` is a state machine: it has state, steps, and resumability. It orchestrates a sequence.
+- A hook is a point-in-time interceptor: a function that runs before/after a tool call.
+- A workflow uses a hook; a workflow doesn't replace a hook.
+
+**Why Mode 1 (peer MCP) cannot collapse the hook layer into Mastra:**
+
+- The runtime hook fires *before* the LLM's tool dispatch. It is the only layer that can hard-block the call before it reaches the MCP server.
+- A Mastra `beforeToolCall` runs *inside* the Mastra agent's process. If the calling agent is an external MCP client (Droid, Claude), the Mastra `beforeToolCall` runs in the MCP server process, not the caller's. It cannot intercept before the runtime hook.
+- The runtime hook is the *first* thing that happens. Mastra sees the call only after the runtime hook lets it through.
+
+**What the Mastra migration (Phases 0-4, Mode 1) actually changes:**
+
+- **Phase 0** (coexistence): no hook-layer change. The new Mastra `MCPServer` runs in parallel; the runtime hooks continue to fire on the existing server.
+- **Phase 1** (mastrafy deterministic tools): the **consult-gate logic re-implements** inside the Mastra tool's `execute` function (TypeScript). The runtime hooks are unchanged. The consult-gate code moves from `core/meta-state.js` to the Mastra tool wrapper.
+- **Phases 2-4** (workflows, agents, cut over): no hook-layer changes. The cut-over swaps the MCP server implementation; the runtime hooks don't care which server they're talking to.
+- **Phase 5** (Mastra Code, Mode 1): Mastra Code is a new runtime with its own hook surface. The existing runtime hooks continue to fire for Droid. Mastra Code may need its own hook layer (`.mastracode/hooks/**` or whatever its hook surface is) — a parallel duplication, not a consolidation.
+
+**What changes in Mode 2 (deferred per Q6):**
+
+- **Move runtime gate logic into Mastra `beforeToolCall`.** TypeScript re-implementation of `core/gate-logic.js` semantics. The `.factory/hooks/**` and `.claude/coordination/**` shim files are deleted.
+- **Move inbound gate logic into Mastra message handler.** TypeScript re-implementation of `core/inbound-state.js` staleness check.
+- **Mastra Code becomes the only runtime.** Droid is no longer used (or is used as a fallback). The runtime hooks are gone; the Mastra `beforeToolCall` and message handler are the only enforcement layer.
+
+**The `core/gate-logic.js` source of truth:**
+
+- The gate logic itself (`core/gate-logic.js`, `core/inbound-state.js`, `core/patterns.json`) does NOT move between modes.
+- What changes is the **call site**: from the runtime hook files (Mode 1) to the Mastra `beforeToolCall` (Mode 2).
+- The logic is identical; the host is different.
+
+**YAGNI / KISS / DRY check:**
+
+- **YAGNI:** Don't build a Mastra `beforeToolCall` re-implementation of the runtime gates until you need to (Mode 2). The runtime hooks work today.
+- **KISS:** The hooks are simple (pattern-match, read observations, decide). Don't over-engineer the Mastra port until it ships.
+- **DRY:** The hooks are already de-duplicated at the universal-script level (`.cjs` shims call into shared `*.js` files). The DRY win from Mode 2 is small — the call sites collapse, not the logic.
+
+**Triggers to revisit:**
+
+- **Mode 2 hooks decision:** operator commits to Mode 2 (deferred per Q6), OR a new MCP client appears whose hook surface differs from Droid/Claude's (parallel duplication unsustainable), OR the runtime gate logic gets a new rule that needs to be re-implemented in TypeScript.
+- **Mode 1 hooks decision (probably never):** runtime hooks become a maintenance burden, OR a new runtime appears with no hook mechanism.
+
+**Architectural validation points:**
+
+- **Phase 0:** confirm the new Mastra `MCPServer` does not need runtime gate re-implementation. The call chain is identical to today.
+- **Phase 1:** confirm the consult-gate re-implementation in the Mastra tool's `execute` is bit-equivalent to the current behavior. The existing test suite (especially the cold-session discoverability test and the resolution-evidence-required consult-gate) is the gate.
+- **Phase 5 (Mode 1):** confirm Mastra Code has an equivalent hook layer; if not, document the gap and decide case-by-case.
+
+**Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
+
 ## 4. Risks & Mitigations
 
 | Risk | Severity | Mitigation |
