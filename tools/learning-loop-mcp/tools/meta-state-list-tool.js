@@ -9,7 +9,9 @@ import { summarize } from "#mcp/core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+// The legacy 'expired' status was removed in plan 260611-1000. This set
+// mirrors the canonical TERMINAL_STATUSES in core/meta-state.js.
+const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
 
 /**
  * Compact projection: same field whitelist as `summarize` in
@@ -37,7 +39,7 @@ export const metaStateListTool = {
     status: z.string().optional().describe("Filter by status"),
     affected_system: z.string().optional().describe("Filter by affected system"),
     session_id: z.string().optional().describe("Filter by session_id (idempotency key for hook-emitted findings)"),
-    include_expired: z.boolean().optional().default(false).describe("Include terminal statuses in results"),
+    include_expired: z.boolean().optional().default(false).describe("DEPRECATED: legacy alias kept for backward compat. The 'expired' status was removed in plan 260611-1000; new callers should use the default behavior (terminal statuses are excluded by default) and not pass this flag. Phase 3 of that plan removes this parameter entirely."),
     entry_kind: z.enum(["finding", "change-log", "rule", "loop-design"]).optional()
       .describe("Filter by a single entry kind; default = both (legacy)"),
     entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()

@@ -141,7 +141,10 @@ export function listActiveFindings(root, { categories } = {}) {
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+  // The legacy 'expired' status was removed in plan 260611-1000; anti-patterns
+  // are surfaced in reported/active states. The set below mirrors the canonical
+  // TERMINAL_STATUSES in core/meta-state.js minus 'expired'.
+  const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved"]);
   let findings = entries.filter(
     (e) => e.category === "loop-anti-pattern" && !TERMINAL_STATUSES.has(e.status)
   );
@@ -293,11 +296,13 @@ export function buildInverseIndexes(entries) {
       promotedToRuleInverse.get(ruleId).push(entry.id);
     }
 
-    // reopens: finding -> expired findings it re-surfaces (inverse direction)
+    // reopens: finding -> stale findings it re-surfaces (inverse direction).
+    // The legacy 'expired' status was removed in plan 260611-1000; only stale
+    // parents are cascade-closeable today.
     if (entry.entry_kind === "finding" && Array.isArray(entry.reopens)) {
-      for (const expiredId of entry.reopens) {
-        if (!reopensInverse.has(expiredId)) reopensInverse.set(expiredId, []);
-        reopensInverse.get(expiredId).push(entry.id);
+      for (const staleId of entry.reopens) {
+        if (!reopensInverse.has(staleId)) reopensInverse.set(staleId, []);
+        reopensInverse.get(staleId).push(entry.id);
       }
     }
   }

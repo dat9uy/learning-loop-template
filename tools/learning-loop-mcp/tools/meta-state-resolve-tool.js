@@ -6,19 +6,21 @@ import {
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "#mcp/core/gate-logic.js";
-import { metaStateMigrateExpiredToStaleTool } from "./meta-state-migrate-expired-to-stale-tool.js";
 
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+// The legacy 'expired' status was removed in plan 260611-1000. This set
+// mirrors the canonical TERMINAL_STATUSES in core/meta-state.js. Used to
+// short-circuit cascade paths on already-terminal parents.
+const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state entry as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path for expired parents is 2-step: cascade_from triggers migration to stale, then a second call (without cascade_from) applies the consult-gate and closes.",
+  description: "Mark a meta-state entry as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. Only `stale` and `active` parents are cascade-closeable; `reported` parents must be acked first (canonical `meta_state_ack` flow). The legacy 2-step `expired -> stale -> resolved` path was removed in plan 260611-1000.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
     cascade_from: z.array(z.string()).optional()
-      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided AND this entry's status is 'expired': the entry is migrated to 'stale' (via the migrate primitive). The operator must call meta_state_resolve again WITHOUT cascade_from to apply the consult-gate and close the now-stale entry. This is a 2-step path (3-step if gated). Mirrors the inverse of meta_state_supersede."),
+      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided, each child must exist, have `reopens` containing this entry's id, and be in `active` or `resolved` status. The parent is closed in 1 call. Only `stale` and `active` parents are cascade-closeable; `reported` parents return `cascade_parent_is_reported` and must be acked first via `meta_state_ack`."),
   },
   handler: async ({ id, resolution, resolved_by, cascade_from }) => {
     const root = resolveRoot();
@@ -49,7 +51,7 @@ export const metaStateResolveTool = {
       };
     }
 
-    if (TERMINAL_STATUSES.has(entry.status) && !(entry.status === "expired" && cascade_from?.length > 0)) {
+    if (TERMINAL_STATUSES.has(entry.status)) {
       const result = {
         resolved: false,
         reason: "already_terminal",
@@ -102,38 +104,37 @@ export const metaStateResolveTool = {
       }
     }
 
-    // Cascade branch: only when entry is expired AND cascade_from is provided.
-    // New behavior (post-relationship-modeling plan): delegate to migrate_expired_to_stale.
-    // The parent transitions expired -> stale; the operator must call meta_state_resolve
-    // again (no cascade_from) to close. The 2-step path is documented in the
-    // tool description and the 11th discoverability hint.
-    if (entry.status === "expired" && cascade_from?.length > 0) {
+    // Cascade branch: when cascade_from is provided, validate children, then
+    // close the parent in 1 step. Only `stale` and `active` parents are
+    // cascade-closeable. `reported` parents are rejected explicitly to
+    // preserve the canonical reported -> active -> resolved flow
+    // (meta_state_ack must run first). Terminal parents hit the early-return
+    // above; `superseded` parents are terminal. The legacy 2-step
+    // `expired -> stale -> resolved` path was removed in plan 260611-1000
+    // because no entry in the registry carries `status: "expired"` anymore
+    // (the 13 historical entries were migrated to `stale` in commit 4be590f).
+    if (cascade_from?.length > 0) {
       const childValidation = validateCascadeChildren(root, entry, cascade_from, entries);
       if (!childValidation.valid) {
         appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", id: entry.id, ...childValidation });
         return { content: [{ type: "text", text: JSON.stringify({ resolved: false, ...childValidation }) }] };
       }
 
-      // Delegate to the migration primitive (state-machine transition; bypasses consult-gate)
-      const migrateResult = await metaStateMigrateExpiredToStaleTool.handler({ id: entry.id });
-      const migrateParsed = JSON.parse(migrateResult.content[0].text);
-
-      if (!migrateParsed.migrated) {
-        const result = { resolved: false, cascade_migration_failed: true, ...migrateParsed };
+      if (entry.status === "reported") {
+        const result = {
+          resolved: false,
+          reason: "cascade_parent_is_reported",
+          id: entry.id,
+          hint: "ack the parent via meta_state_ack before cascade-resolving",
+        };
         appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
 
-      const result = {
-        resolved: false, // NOT resolved yet; 2-step path
-        migrated_via_cascade: true,
-        id: entry.id,
-        status: "stale",
-        cascade_from: childValidation.valid_children,
-        suggestion: "Parent migrated to 'stale'. Call meta_state_resolve again (without cascade_from) to apply the consult-gate and close.",
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      // Parent is `stale` or `active` — fall through to the normal resolve
+      // path below. The consult-gate was already consulted above (it does
+      // not gate on `cascade_from`). The patch sets `status: "resolved"`,
+      // `resolved_at`, `resolved_by`, optional `resolution` in 1 call.
     }
 
     const now = new Date().toISOString();
@@ -171,8 +172,9 @@ export const metaStateResolveTool = {
  * Each child must exist, have `reopens` containing the parent id, and be
  * in `active` or `resolved` status. Superseded children are rejected.
  *
- * Forward-compat note: if `expired` is deprecated, this cascade becomes
- * unreachable. Future migration path is to accept `stale` or remove.
+ * Plan 260611-1000 retargeted the cascade to operate on `stale` parents
+ * (the legacy `expired` status was removed). The cascade is reachable
+ * today via stale or active parents only.
  */
 function validateCascadeChildren(root, parent, childIds, entries) {
   const validChildren = [];

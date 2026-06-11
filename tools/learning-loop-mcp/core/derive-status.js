@@ -18,8 +18,10 @@ export const META_STATE_RECOMMENDATIONS = [
 ];
 
 /** Terminal raw_status values: a `resolved-by-mechanism` derivation is NOT drift
- *  if the entry is already in a terminal state (the agent's claim is consistent). */
-const TERMINAL_RAW_STATUSES = new Set(["auto-resolved", "expired", "resolved"]);
+ *  if the entry is already in a terminal state (the agent's claim is consistent).
+ *  The legacy 'expired' status was removed in plan 260611-1000; 'stale' is
+ *  non-terminal (cascade-closeable) so it is not in this set. */
+const TERMINAL_RAW_STATUSES = new Set(["auto-resolved", "resolved"]);
 
 /**
  * Derive the effective status of a meta-state finding entry.

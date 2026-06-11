@@ -4,7 +4,11 @@ import { z } from "zod";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
-export const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
+// `expired` was removed in plan 260611-1000-remove-expired-status. The legacy
+// past-TTL status was migrated to `stale` (a non-terminal, re-verifiable state
+// closed via meta_state_resolve with cascade_from). `superseded` is terminal
+// (consolidated into a change-log); `auto-resolved` is closed by mechanism.
+export const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
 
@@ -40,8 +44,8 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported", "active", "resolved", "expired", "superseded", "auto-resolved", "stale"]).optional()
-    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'stale' (past TTL or past staleness window; re-verifiable via meta_state_re_verify), 'resolved' (closed), 'expired' (TTL elapsed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). Use meta_state_ack or meta_state_promote_rule for status transitions."),
+  status: z.enum(["reported", "active", "resolved", "superseded", "auto-resolved", "stale"]).optional()
+    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'stale' (past TTL or past staleness window; re-verifiable via meta_state_re_verify), 'resolved' (closed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). The legacy 'expired' status was removed in plan 260611-1000; new entries use 'stale' instead. Use meta_state_ack or meta_state_promote_rule for status transitions."),
   consolidated_into: z.string().optional()
     .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
   last_verified_at: z.string().optional()
@@ -73,7 +77,7 @@ export const metaStateFindingEntrySchema = z.object({
   auto_resolve: z.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
   reopens: z.array(z.string()).optional()
-    .describe("Finding ids whose `expired` or `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue that was auto-resolved by TTL (expired) or whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve expired parents via `meta_state_resolve({id: parent, cascade_from: [this_id]})`; stale parents via the same cascade, since `meta_state_resolve` consults the same gate for both statuses. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
+    .describe("Finding ids whose `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve the stale parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})` in 1 step. The legacy 'expired' status was removed in plan 260611-1000; only `stale` parents are cascade-closeable. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
 });
 
 /**
@@ -316,9 +320,9 @@ export function updateEntry(root, id, patch) {
 
     // Compaction invariant: change-log entries are never compacted.
     // They are immutable audit log with status="active" (terminal statuses
-    // like "auto-resolved" or "expired" don't apply). The explicit
-    // entry_kind guard below enforces this. If a future change-log subtype
-    // evolves to have a terminal status, this invariant must be re-verified.
+    // like "auto-resolved" don't apply). The explicit entry_kind guard below
+    // enforces this. If a future change-log subtype evolves to have a
+    // terminal status, this invariant must be re-verified.
     const updated = entries.filter((entry) => {
       const age = now - new Date(entry.created_at).getTime();
       if (entry.entry_kind !== "change-log" && TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {

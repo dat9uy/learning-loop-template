@@ -6,7 +6,11 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-const TERMINAL_STATUSES = new Set(["auto-resolved", "expired", "resolved", "stale"]);
+// The legacy 'expired' status was removed in plan 260611-1000; the past-TTL
+// state is now 'stale' (non-terminal, cascade-closeable in 1 step). This set
+// mirrors TERMINAL_STATUSES in core/meta-state.js plus 'stale' for sweep's
+// skip-terminal-or-stale iteration.
+const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded", "stale"]);
 
 /**
  * Check if an entry is past its staleness window.

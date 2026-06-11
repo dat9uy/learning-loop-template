@@ -3,13 +3,16 @@ import { readRegistry } from "#mcp/core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const FINDING_ID_REGEX = /meta-\d{6}T\d{4}Z-[a-z0-9-]+/g;
-const ORPHAN_STATUSES = new Set(["expired", "stale"]);
+// The legacy 'expired' status was removed in plan 260611-1000. Only 'stale'
+// parents are now considered orphans (linter warns when a new finding
+// references a stale id without declaring it in `reopens`).
+const ORPHAN_STATUSES = new Set(["stale"]);
 
 export const metaStateRelationshipValidateTool = {
   name: "meta_state_relationship_validate",
   description:
     "Read-only lint: scan a description for finding-id references and warn when any referenced " +
-    "id is `expired` or `stale` and the caller has not declared a structural field referencing it. " +
+    "id is `stale` and the caller has not declared a structural field referencing it. " +
     "Use before meta_state_report to catch orphan cross-references early. " +
     "Returns { warned, orphans, unknown_refs, referenced, suggestion }. " +
     "Pure read; safe to call repeatedly. " +
@@ -54,9 +57,8 @@ export const metaStateRelationshipValidateTool = {
 
     if (orphans.length > 0) {
       result.suggestion = `Pass reopens: ${JSON.stringify(orphans)} on your meta_state_report call. ` +
-        `For each expired parent, follow with meta_state_migrate_expired_to_stale({ id: '<parent_id>' }) ` +
-        `to bring it into the new lifecycle, then meta_state_resolve({ id: '<parent_id>', cascade_from: ['<new_finding_id>'] }) ` +
-        `to close.`;
+        `Then call meta_state_resolve({ id: '<parent_id>', cascade_from: ['<new_finding_id>'] }) ` +
+        `to close each stale parent in 1 step.`;
     } else if (unknown_refs.length > 0) {
       result.suggestion = `${unknown_refs.join(", ")} not in registry. Did you typo? If intentional, ignore.`;
     }
