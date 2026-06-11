@@ -1,5 +1,16 @@
 # Research: Mastra-Based Runtime/Model-Agnostic Productization
 
+> **⚠️ Status as of 2026-06-11 (snapshot, not a contract):**
+> This report was committed to main on 2026-06-11 (merge commit `56e4267`). During the same session, `2315341 feat(mcp-tools): patch validateToolInput for top-level array/boolean wire-format coercion` landed on main, which **partially supersedes the Q3 framing** (drop the coercion in Phase 1, gated on Phase 0 parity test). The Q3 direction is still correct (coercion logic moves upstream), but the "drop in Phase 1" assertion needs revisiting once `validateToolInput` is integrated.
+>
+> **What the operator is doing:** resolving additional minor gaps in `meta-state.jsonl` (the self-model) before coming back to refine this report.
+>
+> **What the next agent should do, before starting Phase 0:**
+> 1. **Read `meta-state.jsonl`** (last 50 lines, or filter `entry_kind` via `meta_state_list`) for any new operator-side resolutions that supersede the decisions captured here.
+> 2. **Re-verify the locked implementation order (steps 1–8 in §3.8 + §3.10)** against `main`'s current state — the upstream `validateToolInput` patch may have moved Q3's framing.
+> 3. **Treat this report as a snapshot, not a contract.** The resolved decisions (Q3–Q9, §3.7–§3.10) were correct at the time of writing but may be partially superseded by upstream changes or new operator decisions.
+> 4. **Refine in place** when the operator returns — edit the report's sections, not just add a new one. The Q3 section (§8 Q3, §3.6 "What changes") is the most likely candidate.
+
 **Type:** research
 **Date:** 2026-06-11
 **Slug:** mastra-runtime-model-agnostic-productization
