@@ -73,7 +73,7 @@ export const metaStateFindingEntrySchema = z.object({
   auto_resolve: z.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
   reopens: z.array(z.string()).optional()
-    .describe("Finding ids whose `expired` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue that was auto-resolved by TTL. Cascade-resolve the parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})`."),
+    .describe("Finding ids whose `expired` or `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue that was auto-resolved by TTL (expired) or whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve expired parents via `meta_state_resolve({id: parent, cascade_from: [this_id]})`; stale parents via the same cascade, since `meta_state_resolve` consults the same gate for both statuses. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
 });
 
 /**

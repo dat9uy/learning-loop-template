@@ -196,6 +196,8 @@ Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, n
 
 The SessionStart hook surfaces this rule in its discoverability hints. To suppress hints for context-budgeted sessions, set `LL_LOOP_INJECT_TIER=summary` (default is `warm`). The downgrade is logged as a `hint-downgrade` finding per session.
 
+**Cross-reference script** (for "X is related to Y" prompts): before patching a finding with cross-references, read the 11th hint in `loop_describe({tier: "warm"}).discoverability_hints`. The canonical script is `(1) meta_state_relationship_validate to lint, (2) meta_state_report({reopens: [orphan_ids]}), (3) meta_state_migrate_expired_to_stale per expired parent, (4) meta_state_resolve({cascade_from}) to close`. The hint is the source of truth; this sentence is just a pointer so the agent does not skip it.
+
 ## Side-Effect Import Rule (all vendor SDKs)
 
 If any vendor SDK import triggers device registration or authentication (e.g., `import vnstock_data`, `import vendor_data`), do not import it directly. Use `importlib.util.find_spec()` for safe checks. If the gate blocks with `side-effect-import`, respect the block. Do not attempt to bypass it.
