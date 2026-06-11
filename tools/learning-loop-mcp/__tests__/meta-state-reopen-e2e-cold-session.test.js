@@ -3,7 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRegistry, writeEntry } from "../core/meta-state.js";
+import { readRegistry, writeEntry, updateEntry } from "../core/meta-state.js";
+import { invalidateCache } from "../core/read-registry-cache.js";
 import { metaStateRelationshipValidateTool } from "../tools/meta-state-relationship-validate-tool.js";
 import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
 import { metaStateRelationshipsTool } from "../tools/meta-state-relationships-tool.js";
@@ -18,12 +19,14 @@ import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
 // Synthetic fixture ids (not the live `meta-260608T1522Z-...` and
 // `meta-260608T1618Z-...` ids in the live registry). The live ids are
 // covered by the unit tests in meta-state-resolve-cascade-stale.test.js.
+// Ids follow the meta-YYMMDDTHHmmZ-slug format so the validator's
+// FINDING_ID_REGEX matches them.
 const FIXTURE_IDS = [
-  "meta-e2e-cascade-parent-001",
-  "meta-e2e-cascade-parent-002",
+  "meta-260611T0900Z-e2e-cascade-parent-one-stale-fixture",
+  "meta-260611T0900Z-e2e-cascade-parent-two-stale-fixture",
 ];
 
-test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale parents)", async () => {
+test("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale parents)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "e2e-cold-session-"));
   process.env.GATE_ROOT = tempRoot;
   try {
@@ -39,6 +42,10 @@ test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale
     // Write the 2 fixtures as stale findings in the temp registry.
     // (Plan 260611-1000: 'expired' was removed; 'stale' is the modern
     // past-TTL/non-terminal equivalent.)
+    // Note: created_at is recent (<7 days) so the registry's compaction
+    // invariant does not remove the resolved fixtures when cascade 2 fires
+    // updateEntry. The 'stale' state is asserted via last_verified_at, not
+    // created_at age.
     const now = Date.now();
     for (const fid of FIXTURE_IDS) {
       await writeEntry(tempRoot, {
@@ -49,7 +56,7 @@ test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale
         affected_system: "mcp-tools",
         description: `E2E fixture for ${fid} (min 20 chars)`,
         status: "stale",
-        created_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date(now - 60 * 60 * 1000).toISOString(),
         last_verified_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
         version: 0,
       });
@@ -74,6 +81,16 @@ test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale
     const reportParsed = JSON.parse(reportResult.content[0].text);
     assert.equal(reportParsed.reported, true);
     const newId = reportParsed.id;
+
+    // Ack the new finding so it becomes `active` (the cascade child validator
+    // requires `active` or `resolved`; the canonical reported -> active flow
+    // uses meta_state_ack but we update directly here to keep the test
+    // hermetic — the cascade_child_unresolved gate is the focus).
+    await updateEntry(tempRoot, newId, {
+      status: "active",
+      acked_at: new Date().toISOString(),
+      expires_at: null,
+    });
 
     // Step 3: relationships inbound shows reopened_by on the first parent.
     const relResult = await metaStateRelationshipsTool.handler({
@@ -103,6 +120,7 @@ test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale
     assert.equal(cascadeParsed2.status, "resolved");
 
     // Step 6: verify both parents are resolved in the registry.
+    invalidateCache(tempRoot);
     const finalEntries = readRegistry(tempRoot);
     for (const fid of FIXTURE_IDS) {
       const parent = finalEntries.find((e) => e.id === fid);
