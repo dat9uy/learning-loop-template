@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "TDD: implement id + ref_by/ref_field filters"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies:
@@ -568,13 +568,13 @@ Expected: all green (the `filters_applied` shape gained new fields; existing tes
 
 ## Success Criteria
 
-- [ ] Step 2.1 + 2.2 test files created and initially fail (red).
-- [ ] Step 2.3 schema + handler extended; tests pass (green).
-- [ ] Step 2.5 + 2.6 13th hint added to canonical + hook + loop_get_instruction surfaces.
-- [ ] Step 2.7 warm-tier + cold-session + loop-get-instruction tests updated to 13.
-- [ ] Step 2.8 all targeted tests pass.
-- [ ] Step 2.9 existing list tests pass (no regression).
-- [ ] No schema or feature removal; additive changes only.
+- [x] Step 2.1 + 2.2 test files created and initially fail (red).
+- [x] Step 2.3 schema + handler extended; tests pass (green).
+- [x] Step 2.5 + 2.6 13th hint added to canonical + hook + loop_get_instruction surfaces.
+- [x] Step 2.7 warm-tier + cold-session + loop-get-instruction tests updated to 13.
+- [x] Step 2.8 all targeted tests pass.
+- [x] Step 2.9 existing list tests pass (no regression).
+- [x] No schema or feature removal; additive changes only.
 
 ## Risk Assessment
 

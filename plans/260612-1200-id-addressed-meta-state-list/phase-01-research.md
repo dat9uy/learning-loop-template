@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Research and contract design"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: []
@@ -170,15 +170,15 @@ Target length: <280 chars (warm-tier budget).
 
 ## Success Criteria
 
-- [ ] Step 1.1 design entry + finding confirmed present with the expected statuses.
-- [ ] Step 1.2 wire-format fix confirmed resolved.
-- [ ] Step 1.3 every hint-length assertion site enumerated.
-- [ ] Step 1.4 Zod schema locked in this file.
-- [ ] Step 1.5 inverse-index / scan mapping locked in this file.
-- [ ] Step 1.6 response shape additions locked in this file.
-- [ ] Step 1.7 error response locked in this file.
-- [ ] Step 1.8 13th hint text locked in this file.
-- [ ] Phase output: a single inline code block of the locked Zod schema, the inverse map table, the response shape diff, the error response, and the 13th hint text.
+- [x] Step 1.1 design entry + finding confirmed present with the expected statuses.
+- [x] Step 1.2 wire-format fix confirmed resolved.
+- [x] Step 1.3 every hint-length assertion site enumerated.
+- [x] Step 1.4 Zod schema locked in this file.
+- [x] Step 1.5 inverse-index / scan mapping locked in this file.
+- [x] Step 1.6 response shape additions locked in this file.
+- [x] Step 1.7 error response locked in this file.
+- [x] Step 1.8 13th hint text locked in this file.
+- [x] Phase output: a single inline code block of the locked Zod schema, the inverse map table, the response shape diff, the error response, and the 13th hint text.
 
 ## Risk Assessment
 

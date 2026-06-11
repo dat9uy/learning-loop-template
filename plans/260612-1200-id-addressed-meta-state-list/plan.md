@@ -10,7 +10,7 @@ description: >-
   `meta_state_derive_status` (single-entry truth) to form a 3-tier read
   surface: per-entry, neighborhood, full. TDD-first; all mutations go
   through MCP tools; no direct file I/O to `meta-state.jsonl`.
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags:
@@ -104,24 +104,24 @@ Path-of-least-resistance scope (per the design's "path B"): add `id` + `ref_by`/
 
 ## Success Criteria
 
-- [ ] Phase 1: contract document `id` and `ref_by`/`ref_field` semantics, error paths, composition rules, and the 3-tier read surface table.
-- [ ] Phase 2: `meta_state_list({ id: 'a' })` returns entries whose id is 'a' (or empty if not found).
-- [ ] Phase 2: `meta_state_list({ id: ['a', 'b', 'c'] })` returns matching entries in one call; missing ids are silently skipped.
-- [ ] Phase 2: `meta_state_list({ ref_by: 'finding-x', ref_field: 'addresses' })` returns the loop-designs that cite `finding-x` in `addresses`.
-- [ ] Phase 2: `meta_state_list({ ref_by, ref_field })` covers all 6 supported ref_field values: `consolidated_into`, `supersedes`, `addresses`, `proposed_design_for`, `origin`, `reopens`.
-- [ ] Phase 2: combining `id` + `ref_by`/`ref_field` applies both filters (AND).
-- [ ] Phase 2: combining `id` with existing filters (status, category, entry_kind) still works.
-- [ ] Phase 2: invalid `ref_field` value returns a clear error (not a silent no-op).
-- [ ] Phase 2: response includes `id_filter`, `ref_by_filter`, `ref_field_filter` fields in `filters_applied` for read-back observability.
-- [ ] Phase 3: all new tests pass; all existing tests still pass; `pnpm check` exit 0.
-- [ ] Phase 3: stdio round-trip test for `id: string[]` passes (no `{item: [...]}` wrap).
-- [ ] Phase 3: hint-count parity (12 → 13) in canonical array + hook mirror + warm-tier test.
-- [ ] Phase 4: `loop-design-id-addressed-meta-state-list` is `inactive` with `shipped_in_plan: plans/260612-1200-id-addressed-meta-state-list/`.
-- [ ] Phase 4: `meta-260610T1457Z-...` is `resolved` with `resolved_by: "operator"`.
-- [ ] Phase 4: 2 change-logs appended (tool ship + design adoption closeout).
-- [ ] Phase 4: closeout journal written.
-- [ ] Zero direct file I/O to `meta-state.jsonl`.
-- [ ] Zero `node -e` escape hatches for registry mutations.
+- [x] Phase 1: contract document `id` and `ref_by`/`ref_field` semantics, error paths, composition rules, and the 3-tier read surface table.
+- [x] Phase 2: `meta_state_list({ id: 'a' })` returns entries whose id is 'a' (or empty if not found).
+- [x] Phase 2: `meta_state_list({ id: ['a', 'b', 'c'] })` returns matching entries in one call; missing ids are silently skipped.
+- [x] Phase 2: `meta_state_list({ ref_by: 'finding-x', ref_field: 'addresses' })` returns the loop-designs that cite `finding-x` in `addresses`.
+- [x] Phase 2: `meta_state_list({ ref_by, ref_field })` covers all 6 supported ref_field values: `consolidated_into`, `supersedes`, `addresses`, `proposed_design_for`, `origin`, `reopens`.
+- [x] Phase 2: combining `id` + `ref_by`/`ref_field` applies both filters (AND).
+- [x] Phase 2: combining `id` with existing filters (status, category, entry_kind) still works.
+- [x] Phase 2: invalid `ref_field` value returns a clear error (not a silent no-op).
+- [x] Phase 2: response includes `id_filter`, `ref_by_filter`, `ref_field_filter` fields in `filters_applied` for read-back observability.
+- [x] Phase 3: all new tests pass; all existing tests still pass; `pnpm check` exit 0.
+- [x] Phase 3: stdio round-trip test for `id: string[]` passes (no `{item: [...]}` wrap).
+- [x] Phase 3: hint-count parity (12 → 13) in canonical array + hook mirror + warm-tier test.
+- [x] Phase 4: `loop-design-id-addressed-meta-state-list` is `inactive` with `shipped_in_plan: plans/260612-1200-id-addressed-meta-state-list/`.
+- [x] Phase 4: `meta-260610T1457Z-...` is `resolved` with `resolved_by: "operator"`.
+- [x] Phase 4: 2 change-logs appended (tool ship + design adoption closeout).
+- [x] Phase 4: closeout journal written.
+- [x] Zero direct file I/O to `meta-state.jsonl`.
+- [x] Zero `node -e` escape hatches for registry mutations.
 
 ## Out of Scope
 

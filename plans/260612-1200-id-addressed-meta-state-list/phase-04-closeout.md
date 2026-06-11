@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Registry mutations, closeout journal, design adoption"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
@@ -259,20 +259,20 @@ The remaining active loop-designs should be:
 
 ## Success Criteria
 
-- [ ] Step 4.1 read captured `version` and the finding's `status: "stale"`, `evidence_code_ref`, `mechanism_check`.
-- [ ] Step 4.2 tool ship change-log returned a new id (recorded for Step 4.5 as `TOOL_CHANGE_LOG_ID`).
-- [ ] Step 4.3 ack response: `status: "active"`, `acked_at` populated.
-- [ ] Step 4.4 check_grounding: `status: "grounded"` (or drifted → refresh → grounded); resolve response: `status: "resolved"`, `resolved_by: "operator"`.
-- [ ] Step 4.5 closeout patch: `patched: true, version: <captured+1>`.
-- [ ] Step 4.6 design adoption change-log returned with `consolidates` set to the finding id.
-- [ ] Step 4.7 all read-back assertions pass; `derived_status === "active-no-signal"` AND `drift === false`.
-- [ ] Step 4.8 `pnpm check` exit 0.
-- [ ] Step 4.9 `git diff meta-state.jsonl` matches expected mutations.
-- [ ] Step 4.10 journal created.
-- [ ] Step 4.11 `ck plan check 1/2/3/4` exit 0; `plan.md` status flipped to `completed`.
-- [ ] Step 4.12 sweep confirms design is inactive with new ship metadata and finding is resolved.
-- [ ] Zero `node -e` invocations during this phase.
-- [ ] Zero `Edit`/`Write`/`Create` to `meta-state.jsonl` during this phase.
+- [x] Step 4.1 read captured `version` and the finding's `status: "stale"`, `evidence_code_ref`, `mechanism_check`.
+- [x] Step 4.2 tool ship change-log returned a new id (recorded for Step 4.5 as `TOOL_CHANGE_LOG_ID`).
+- [x] Step 4.3 ack response: `status: "active"`, `acked_at` populated.
+- [x] Step 4.4 check_grounding: `status: "grounded"` (or drifted → refresh → grounded); resolve response: `status: "resolved"`, `resolved_by: "operator"`.
+- [x] Step 4.5 closeout patch: `patched: true, version: <captured+1>`.
+- [x] Step 4.6 design adoption change-log returned with `consolidates` set to the finding id.
+- [x] Step 4.7 all read-back assertions pass; `derived_status === "active-no-signal"` AND `drift === false`.
+- [x] Step 4.8 `pnpm check` exit 0.
+- [x] Step 4.9 `git diff meta-state.jsonl` matches expected mutations.
+- [x] Step 4.10 journal created.
+- [x] Step 4.11 `ck plan check 1/2/3/4` exit 0; `plan.md` status flipped to `completed`.
+- [x] Step 4.12 sweep confirms design is inactive with new ship metadata and finding is resolved.
+- [x] Zero `node -e` invocations during this phase.
+- [x] Zero `Edit`/`Write`/`Create` to `meta-state.jsonl` during this phase.
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Tests, regression sweep, and stdio round-trip"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies:
@@ -241,12 +241,12 @@ Expected: `meta-state.jsonl` should not appear in the diff (Phase 3 makes no reg
 
 ## Success Criteria
 
-- [ ] Step 3.1 stdio test file created.
-- [ ] Step 3.2 stdio test passes (green); no `{item: [...]}` wrap.
-- [ ] Step 3.3 full `pnpm test` passes; test count delta recorded.
-- [ ] Step 3.4 full `pnpm check` exits 0.
-- [ ] Step 3.5 no stale `12` references in hint-length assertions.
-- [ ] Step 3.6 `meta-state.jsonl` is untouched (no diff).
+- [x] Step 3.1 stdio test file created.
+- [x] Step 3.2 stdio test passes (green); no `{item: [...]}` wrap.
+- [x] Step 3.3 full `pnpm test` passes; test count delta recorded.
+- [x] Step 3.4 full `pnpm check` exits 0.
+- [x] Step 3.5 no stale `12` references in hint-length assertions.
+- [x] Step 3.6 `meta-state.jsonl` is untouched (no diff).
 
 ## Risk Assessment
 
