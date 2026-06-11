@@ -112,7 +112,11 @@ describe("checkResolutionEvidence", () => {
     assert.strictEqual(result.blocking_id, id);
   });
 
-  test("returns satisfied when finding is expired (terminal status)", async () => {
+  test("returns satisfied when finding is in a terminal status (no longer in active || reported)", async () => {
+    // Plan 260611-1000 removed the 'expired' status. Terminal statuses that
+    // remove the finding from the active/reported filter are now 'resolved',
+    // 'superseded', and 'auto-resolved'. Use 'resolved' as the canonical
+    // terminal status in the test fixture.
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
     const core = await importCore(tempRoot);
     const id = core.generateId("mcp-client-loading-missing");
@@ -125,7 +129,7 @@ describe("checkResolutionEvidence", () => {
       subtype: "mcp-client-loading",
       description: "Test finding for resolution-evidence check.",
       session_id: "test-session-id",
-      status: "expired",
+      status: "resolved",
       created_at: new Date().toISOString(),
       version: 0,
     });

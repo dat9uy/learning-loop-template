@@ -1,26 +1,29 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readRegistry, writeEntry } from "../core/meta-state.js";
 import { metaStateRelationshipValidateTool } from "../tools/meta-state-relationship-validate-tool.js";
 import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateMigrateExpiredToStaleTool } from "../tools/meta-state-migrate-expired-to-stale-tool.js";
 import { metaStateRelationshipsTool } from "../tools/meta-state-relationships-tool.js";
 import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
 
+// Plan 260611-1000 retargeted the cascade to a 1-step path. The legacy
+// 'expired' status was removed; the migrate tool (used by the old 2-step
+// path) was deleted in phase 2. This E2E test exercises the operator's
+// exact scenario: 2 stale parents reopens'd by a single new finding, then
+// each parent cascade-resolved in 1 step. Phase 5 un-skips this test.
+//
+// Synthetic fixture ids (not the live `meta-260608T1522Z-...` and
+// `meta-260608T1618Z-...` ids in the live registry). The live ids are
+// covered by the unit tests in meta-state-resolve-cascade-stale.test.js.
 const FIXTURE_IDS = [
-  "meta-260608T1522Z-test-1-cold-session-hangs-in-mcp-gapped-env",
-  "meta-260608T1618Z-corrected-diagnosis-for-meta-260608t1522z-test-1-cold-sessio",
+  "meta-e2e-cascade-parent-001",
+  "meta-e2e-cascade-parent-002",
 ];
 
-// Real-registry test — gated. The operator runs this AFTER implementing the
-// new tools (Phase 2 + 3) and rewiring the cascade (Phase 4).
-test.skip("e2e: cold-session 'X is related to Y' script", async () => {
-  if (process.env.META_STATE_E2E !== "1") return;
-
-  // Use a temp GATE_ROOT to isolate the test from the live registry.
+test.skip("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale parents)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "e2e-cold-session-"));
   process.env.GATE_ROOT = tempRoot;
   try {
@@ -33,7 +36,9 @@ test.skip("e2e: cold-session 'X is related to Y' script", async () => {
       }
     }
 
-    // Write the 2 fixtures as expired findings in the temp registry.
+    // Write the 2 fixtures as stale findings in the temp registry.
+    // (Plan 260611-1000: 'expired' was removed; 'stale' is the modern
+    // past-TTL/non-terminal equivalent.)
     const now = Date.now();
     for (const fid of FIXTURE_IDS) {
       await writeEntry(tempRoot, {
@@ -43,9 +48,9 @@ test.skip("e2e: cold-session 'X is related to Y' script", async () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: `E2E fixture for ${fid} (min 20 chars)`,
-        status: "expired",
-        created_at: new Date(now - 48 * 60 * 60 * 1000).toISOString(),
-        expires_at: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
+        status: "stale",
+        created_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
+        last_verified_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
         version: 0,
       });
     }
@@ -58,7 +63,7 @@ test.skip("e2e: cold-session 'X is related to Y' script", async () => {
     assert.equal(validateParsed.warned, true);
     assert.ok(validateParsed.orphans.length >= 1);
 
-    // Step 2: report a new finding with reopens.
+    // Step 2: report a new finding with reopens referencing both parents.
     const reportResult = await metaStateReportTool.handler({
       category: "loop-anti-pattern",
       severity: "warning",
@@ -70,15 +75,7 @@ test.skip("e2e: cold-session 'X is related to Y' script", async () => {
     assert.equal(reportParsed.reported, true);
     const newId = reportParsed.id;
 
-    // Step 3: migrate each expired fixture to stale.
-    for (const fid of FIXTURE_IDS) {
-      const migrateResult = await metaStateMigrateExpiredToStaleTool.handler({ id: fid });
-      const migrateParsed = JSON.parse(migrateResult.content[0].text);
-      assert.equal(migrateParsed.migrated, true);
-      assert.equal(migrateParsed.status, "stale");
-    }
-
-    // Step 4: relationships inbound shows reopened_by.
+    // Step 3: relationships inbound shows reopened_by on the first parent.
     const relResult = await metaStateRelationshipsTool.handler({
       id: FIXTURE_IDS[0],
       direction: "inbound",
@@ -86,23 +83,32 @@ test.skip("e2e: cold-session 'X is related to Y' script", async () => {
     const relParsed = JSON.parse(relResult.content[0].text);
     assert.ok(relParsed.inbound.reopened_by.includes(newId));
 
-    // Step 5: cascade-resolve the first fixture (migrates to stale via cascade).
-    const cascadeResult = await metaStateResolveTool.handler({
+    // Step 4: cascade-resolve the first parent in 1 step (1-step path;
+    // the legacy 2-step migrate-then-resolve path was removed).
+    const cascadeResult1 = await metaStateResolveTool.handler({
       id: FIXTURE_IDS[0],
       cascade_from: [newId],
     });
-    const cascadeParsed = JSON.parse(cascadeResult.content[0].text);
-    assert.equal(cascadeParsed.migrated_via_cascade, true);
-    assert.equal(cascadeParsed.status, "stale");
+    const cascadeParsed1 = JSON.parse(cascadeResult1.content[0].text);
+    assert.equal(cascadeParsed1.resolved, true);
+    assert.equal(cascadeParsed1.status, "resolved");
 
-    // Step 6: second resolve (no cascade_from) closes the fixture.
-    const closeResult = await metaStateResolveTool.handler({
-      id: FIXTURE_IDS[0],
-      resolution: "E2E test close",
+    // Step 5: cascade-resolve the second parent in 1 step.
+    const cascadeResult2 = await metaStateResolveTool.handler({
+      id: FIXTURE_IDS[1],
+      cascade_from: [newId],
     });
-    const closeParsed = JSON.parse(closeResult.content[0].text);
-    assert.equal(closeParsed.resolved, true);
-    assert.equal(closeParsed.status, "resolved");
+    const cascadeParsed2 = JSON.parse(cascadeResult2.content[0].text);
+    assert.equal(cascadeParsed2.resolved, true);
+    assert.equal(cascadeParsed2.status, "resolved");
+
+    // Step 6: verify both parents are resolved in the registry.
+    const finalEntries = readRegistry(tempRoot);
+    for (const fid of FIXTURE_IDS) {
+      const parent = finalEntries.find((e) => e.id === fid);
+      assert.ok(parent);
+      assert.equal(parent.status, "resolved");
+    }
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
     delete process.env.GATE_ROOT;

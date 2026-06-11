@@ -54,13 +54,13 @@ test("meta_state_relationships: inbound reopened_by for finding with reopens", a
     const corePath = join(tempRoot, "meta-state.jsonl");
     // Pre-populate: parent expired + child that reopens it
     const parent = {
-      id: "meta-parent-expired",
+      id: "meta-parent-stale",
       entry_kind: "finding",
       category: "gate-logic-bug",
       severity: "warning",
       affected_system: "gate-logic",
-      description: "A parent finding that has expired.",
-      status: "expired",
+      description: "A parent finding that is past its staleness window.",
+      status: "stale",
     };
     const child = {
       id: "meta-child-reopens",
@@ -70,17 +70,17 @@ test("meta_state_relationships: inbound reopened_by for finding with reopens", a
       affected_system: "gate-logic",
       description: "A child finding that reopens the parent.",
       status: "active",
-      reopens: ["meta-parent-expired"],
+      reopens: ["meta-parent-stale"],
     };
     const fs = await import("node:fs");
     fs.writeFileSync(corePath, [parent, child].map((e) => JSON.stringify(e)).join("\n") + "\n");
 
     const result = await metaStateRelationshipsTool.handler({
-      id: "meta-parent-expired",
+      id: "meta-parent-stale",
       direction: "inbound",
     });
     const text = JSON.parse(result.content[0].text);
-    assert.strictEqual(text.id, "meta-parent-expired");
+    assert.strictEqual(text.id, "meta-parent-stale");
     assert.strictEqual(text.direction, "inbound");
     assert.ok(text.inbound, "inbound should be present");
     assert.ok(text.inbound.reopened_by, "inbound should have reopened_by");

@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+// Plan 260611-1000 retargeted the cascade to a 1-step path. Stale parents
+// (the legacy 'expired' status was removed) are closed in 1 call.
+
 const projectRoot = resolve(process.cwd());
 
 async function importCore(tempRoot) {
@@ -17,24 +20,23 @@ async function importMetaStateResolveTool() {
   return await import(toolPath);
 }
 
-test("cascade_from delegates to migrate and produces stale status (2-step path)", async () => {
-  const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
-  const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
-  const childId = core.generateId("child-reopens");
-
+async function writeStaleParent(core, tempRoot, id, opts = {}) {
   await core.writeEntry(tempRoot, {
-    id: parentId,
+    id,
     entry_kind: "finding",
     category: "gate-logic-bug",
     severity: "warning",
     affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
-    created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    description: "A parent finding that is past its staleness window.",
+    status: "stale",
+    created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    last_verified_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     version: 0,
+    ...opts,
   });
+}
+
+async function writeChild(core, tempRoot, childId, parentId, status = "active") {
   await core.writeEntry(tempRoot, {
     id: childId,
     entry_kind: "finding",
@@ -42,11 +44,21 @@ test("cascade_from delegates to migrate and produces stale status (2-step path)"
     severity: "warning",
     affected_system: "gate-logic",
     description: "A child finding that reopens the parent.",
-    status: "active",
+    status,
     reopens: [parentId],
     created_at: new Date().toISOString(),
     version: 0,
   });
+}
+
+test("cascade_from on stale parent closes in 1 step (no 2-step migrate)", async () => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
+  const core = await importCore(tempRoot);
+  const parentId = core.generateId("parent-stale");
+  const childId = core.generateId("child-reopens");
+
+  await writeStaleParent(core, tempRoot, parentId);
+  await writeChild(core, tempRoot, childId, parentId);
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -58,17 +70,15 @@ test("cascade_from delegates to migrate and produces stale status (2-step path)"
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
-    // New behavior (post-relationship-modeling): 2-step path, migrated to stale
-    assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.status, "stale");
-    assert.strictEqual(parsed.migrated_via_cascade, true);
+    assert.strictEqual(parsed.resolved, true);
+    assert.strictEqual(parsed.status, "resolved");
+    assert.strictEqual(parsed.migrated_via_cascade, undefined, "2-step shape must be gone");
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "stale");
-    assert.strictEqual(parent.expires_at, null);
-    assert.ok(parent.last_verified_at);
-    assert.strictEqual(parent.resolved_at, undefined);
+    assert.strictEqual(parent.status, "resolved");
+    assert.ok(parent.resolved_at);
+    assert.strictEqual(parent.resolved_by, "operator");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
@@ -77,19 +87,9 @@ test("cascade_from delegates to migrate and produces stale status (2-step path)"
 test("cascade_from with missing child returns cascade_child_not_found", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
+  const parentId = core.generateId("parent-stale-missing-child");
 
-  await core.writeEntry(tempRoot, {
-    id: parentId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
+  await writeStaleParent(core, tempRoot, parentId);
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -107,7 +107,7 @@ test("cascade_from with missing child returns cascade_child_not_found", async ()
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "expired");
+    assert.strictEqual(parent.status, "stale");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
@@ -116,32 +116,11 @@ test("cascade_from with missing child returns cascade_child_not_found", async ()
 test("cascade_from with child not reopening parent returns cascade_child_not_reopening", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
+  const parentId = core.generateId("parent-stale-not-reopening");
   const childId = core.generateId("child-other");
 
-  await core.writeEntry(tempRoot, {
-    id: parentId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
-  await core.writeEntry(tempRoot, {
-    id: childId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A child finding that reopens a different parent.",
-    status: "active",
-    reopens: ["some-other-parent"],
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
+  await writeStaleParent(core, tempRoot, parentId);
+  await writeChild(core, tempRoot, childId, "some-other-parent");
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -167,38 +146,19 @@ test("cascade_from with child not reopening parent returns cascade_child_not_reo
 test("cascade_from with unresolved child returns cascade_child_unresolved", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
 
-  for (const badStatus of ["reported", "expired", "stale", "superseded"]) {
+  // After plan 260611-1000, only `stale`, `reported`, and `superseded` are
+  // non-validating statuses. The legacy `expired` was removed.
+  for (const badStatus of ["reported", "stale", "superseded"]) {
+    const parentId = core.generateId(`parent-stale-${badStatus}`);
     const childId = core.generateId(`child-${badStatus}`);
 
     // Clear registry for each iteration
     const metaStatePath = join(tempRoot, "meta-state.jsonl");
     writeFileSync(metaStatePath, "", { flag: "w" });
 
-    await core.writeEntry(tempRoot, {
-      id: parentId,
-      entry_kind: "finding",
-      category: "gate-logic-bug",
-      severity: "warning",
-      affected_system: "gate-logic",
-      description: "A parent finding that has expired.",
-      status: "expired",
-      created_at: new Date().toISOString(),
-      version: 0,
-    });
-    await core.writeEntry(tempRoot, {
-      id: childId,
-      entry_kind: "finding",
-      category: "gate-logic-bug",
-      severity: "warning",
-      affected_system: "gate-logic",
-      description: `A child finding with status ${badStatus}.`,
-      status: badStatus,
-      reopens: [parentId],
-      created_at: new Date().toISOString(),
-      version: 0,
-    });
+    await writeStaleParent(core, tempRoot, parentId);
+    await writeChild(core, tempRoot, childId, parentId, badStatus);
 
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempRoot;
@@ -221,49 +181,16 @@ test("cascade_from with unresolved child returns cascade_child_unresolved", asyn
   }
 });
 
-test("cascade_from with multiple children migrates to stale (2-step path)", async () => {
+test("cascade_from with multiple stale-parent children closes in 1 step (multi-reopens)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
+  const parentId = core.generateId("parent-stale-multi");
   const childA = core.generateId("child-a");
   const childB = core.generateId("child-b");
 
-  await core.writeEntry(tempRoot, {
-    id: parentId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
-    created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    version: 0,
-  });
-  await core.writeEntry(tempRoot, {
-    id: childA,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "Child A that reopens the parent.",
-    status: "resolved",
-    reopens: [parentId],
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
-  await core.writeEntry(tempRoot, {
-    id: childB,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "Child B that reopens the parent.",
-    status: "resolved",
-    reopens: [parentId],
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
+  await writeStaleParent(core, tempRoot, parentId);
+  await writeChild(core, tempRoot, childA, parentId, "resolved");
+  await writeChild(core, tempRoot, childB, parentId, "resolved");
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -275,52 +202,28 @@ test("cascade_from with multiple children migrates to stale (2-step path)", asyn
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
-    // New behavior: 2-step path, migrated to stale, not resolved
-    assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.status, "stale");
-    assert.strictEqual(parsed.migrated_via_cascade, true);
+    assert.strictEqual(parsed.resolved, true);
+    assert.strictEqual(parsed.status, "resolved");
+    assert.strictEqual(parsed.migrated_via_cascade, undefined);
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "stale");
-    assert.strictEqual(parent.expires_at, null);
-    assert.ok(parent.last_verified_at);
-    assert.strictEqual(parent.resolved_at, undefined);
+    assert.strictEqual(parent.status, "resolved");
+    assert.ok(parent.resolved_at);
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
 });
 
-test("cascade_from fails the operator gate before child validation", async () => {
+test("cascade_from fails the operator gate before child validation (consult-gate fires first)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
+  const parentId = core.generateId("parent-stale-gated");
   const childId = core.generateId("child-valid");
   const blockingId = core.generateId("blocking-finding");
 
-  await core.writeEntry(tempRoot, {
-    id: parentId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
-  await core.writeEntry(tempRoot, {
-    id: childId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A valid child that reopens the parent.",
-    status: "active",
-    reopens: [parentId],
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
+  await writeStaleParent(core, tempRoot, parentId);
+  await writeChild(core, tempRoot, childId, parentId);
   await core.writeEntry(tempRoot, {
     id: blockingId,
     entry_kind: "finding",
@@ -365,13 +268,13 @@ test("cascade_from fails the operator gate before child validation", async () =>
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "expired");
+    assert.strictEqual(parent.status, "stale");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
 });
 
-test("cascade_from on non-expired parent falls through to normal resolution", async () => {
+test("cascade_from on active parent closes in 1 step (sanity check)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
   const parentId = core.generateId("parent-active");
@@ -388,18 +291,7 @@ test("cascade_from on non-expired parent falls through to normal resolution", as
     created_at: new Date().toISOString(),
     version: 0,
   });
-  await core.writeEntry(tempRoot, {
-    id: childId,
-    entry_kind: "finding",
-    category: "gate-logic-bug",
-    severity: "warning",
-    affected_system: "gate-logic",
-    description: "A child that reopens the parent.",
-    status: "active",
-    reopens: [parentId],
-    created_at: new Date().toISOString(),
-    version: 0,
-  });
+  await writeChild(core, tempRoot, childId, parentId);
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -413,20 +305,16 @@ test("cascade_from on non-expired parent falls through to normal resolution", as
     const parsed = JSON.parse(result.content[0].text);
     assert.strictEqual(parsed.resolved, true);
     assert.strictEqual(parsed.status, "resolved");
-    assert.strictEqual(parsed.cascade_resolved_by, undefined);
-
-    const after = core.readRegistry(tempRoot);
-    const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "resolved");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
 });
 
-test("meta_state_resolve with no cascade_from and expired status still returns already_terminal", async () => {
+test("cascade_from on reported parent returns cascade_parent_is_reported (preserves ack flow)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-expired");
+  const parentId = core.generateId("parent-reported-cascade");
+  const childId = core.generateId("child-of-reported");
 
   await core.writeEntry(tempRoot, {
     id: parentId,
@@ -434,11 +322,13 @@ test("meta_state_resolve with no cascade_from and expired status still returns a
     category: "gate-logic-bug",
     severity: "warning",
     affected_system: "gate-logic",
-    description: "A parent finding that has expired.",
-    status: "expired",
+    description: "A parent in the 24h TTL reported window.",
+    status: "reported",
     created_at: new Date().toISOString(),
+    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     version: 0,
   });
+  await writeChild(core, tempRoot, childId, parentId);
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -446,12 +336,13 @@ test("meta_state_resolve with no cascade_from and expired status still returns a
     const { metaStateResolveTool } = await importMetaStateResolveTool();
     const result = await metaStateResolveTool.handler({
       id: parentId,
+      cascade_from: [childId],
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
     assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.reason, "already_terminal");
-    assert.strictEqual(parsed.current_status, "expired");
+    assert.strictEqual(parsed.reason, "cascade_parent_is_reported");
+    assert.ok(parsed.hint);
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }

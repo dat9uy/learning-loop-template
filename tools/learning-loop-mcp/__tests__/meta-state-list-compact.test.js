@@ -94,7 +94,6 @@ describe("meta_state_list compact mode", () => {
   test("compact: true returns structural contract (id, entry_kind, status, no description)", async () => {
     const result = await metaStateListTool.handler({
       compact: true,
-      include_expired: true,
     });
     const text = JSON.parse(result.content[0].text);
     assert.ok(text.count > 0, "Should have entries");
@@ -142,9 +141,10 @@ describe("meta_state_list compact mode", () => {
       compact: true,
     });
     const text = JSON.parse(result.content[0].text);
-    assert.strictEqual(text.include_expired, false);
 
-    const terminalStatuses = new Set(["auto-resolved", "expired", "resolved"]);
+    // Plan 260611-1000: the legacy 'expired' status was removed. Terminal
+    // statuses are now auto-resolved, resolved, and superseded.
+    const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded"]);
     const hasTerminal = text.entries.some((e) => terminalStatuses.has(e.status));
     assert.strictEqual(
       hasTerminal,
@@ -156,7 +156,6 @@ describe("meta_state_list compact mode", () => {
   test("compact: false returns full entries with descriptions", async () => {
     const result = await metaStateListTool.handler({
       compact: false,
-      include_expired: true,
     });
     const text = JSON.parse(result.content[0].text);
     assert.strictEqual(text.compact, false);
@@ -171,7 +170,6 @@ describe("meta_state_list compact mode", () => {
   test("compact entry preserves ref fields", async () => {
     const result = await metaStateListTool.handler({
       compact: true,
-      include_expired: true,
     });
     const text = JSON.parse(result.content[0].text);
 
@@ -200,7 +198,6 @@ describe("meta_state_list compact mode", () => {
     // which shape they're getting.
     const listResult = await metaStateListTool.handler({
       compact: true,
-      include_expired: true,
     });
     const describeResult = await loopDescribeTool.handler({
       tier: "cold",

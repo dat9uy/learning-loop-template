@@ -102,7 +102,7 @@ describe("meta_state_list entry_kind filter", () => {
       const resolvedEntry = entries.find((e) => e.category === "schema-drift");
       await updateEntry(tempDir, resolvedEntry.id, { status: "resolved", resolved_at: new Date().toISOString(), resolved_by: "operator" });
 
-      const result = await metaStateListTool.handler({ entry_kind: "finding", include_expired: false });
+      const result = await metaStateListTool.handler({ entry_kind: "finding" });
       const text = JSON.parse(result.content[0].text);
       assert.strictEqual(text.count, 1);
       assert.strictEqual(text.entries[0].entry_kind, "finding");

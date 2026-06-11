@@ -338,11 +338,11 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_count, 0);
   });
 
-  // T-22: Terminal status (expired) → not drift
-  test("T-22: terminal status (expired) is filtered out before drift check", () => {
+  // T-22: Terminal status (superseded) → not drift
+  test("T-22: terminal status (superseded) is filtered out before drift check", () => {
     const ctx = baseContext();
     const entry = baseEntry({
-      status: "expired",
+      status: "superseded",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });

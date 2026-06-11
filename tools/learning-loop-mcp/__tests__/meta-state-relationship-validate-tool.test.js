@@ -20,7 +20,6 @@ async function writeFixture(root, id, status) {
     description: `Fixture for lint test (id=${id}, status=${status}) (min 20 chars)`,
     status,
     created_at: new Date().toISOString(),
-    expires_at: status === "expired" ? new Date(Date.now() - 60 * 60 * 1000).toISOString() : null,
     acked_at: null,
     resolved_at: null,
     resolved_by: null,
@@ -42,8 +41,8 @@ describe("meta_state_relationship_validate", () => {
   });
 
   // L1: orphan id + no field -> warned
-  it("warns when description references an expired id with no reopens field", async () => {
-    await writeFixture(root, "meta-260608T1522Z-orphan", "expired");
+  it("warns when description references a stale id with no reopens field", async () => {
+    await writeFixture(root, "meta-260608T1522Z-orphan", "stale");
     const description = "This is related to meta-260608T1522Z-orphan (min 20 chars).";
 
     const result = await metaStateRelationshipValidateTool.handler({ description });
@@ -55,7 +54,7 @@ describe("meta_state_relationship_validate", () => {
 
   // L2: orphan id + field set -> not warned (for the orphan)
   it("does not warn when entry_id has reopens referencing the orphan", async () => {
-    await writeFixture(root, "meta-260608T1522Z-claimed", "expired");
+    await writeFixture(root, "meta-260608T1522Z-claimed", "stale");
     await writeEntry(root, {
       id: "meta-new-finding",
       entry_kind: "finding",
@@ -98,7 +97,8 @@ describe("meta_state_relationship_validate", () => {
     assert.deepEqual(parsed.unknown_refs, ["meta-999999T9999Z-does-not-exist"]);
   });
 
-  // L5: stale (not just expired) also flagged as orphan
+  // L5: stale flagged as orphan (the only orphan-eligible status; the legacy
+  // 'expired' status was removed in plan 260611-1000).
   it("flags stale ids as orphans", async () => {
     await writeFixture(root, "meta-260608T1522Z-stale-orphan", "stale");
     const description = "References meta-260608T1522Z-stale-orphan (min 20 chars).";

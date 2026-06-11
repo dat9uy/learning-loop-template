@@ -322,7 +322,7 @@ describe("listAntiPatterns G9 status filter", () => {
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
       // metaStateListTool auto-applies expiry -> transitions to stale
-      await metaStateListTool.handler({ include_expired: true });
+      await metaStateListTool.handler({});
 
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 1, "stale anti-patterns should be included");

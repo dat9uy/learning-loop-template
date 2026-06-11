@@ -209,9 +209,10 @@ describe("stale status schema + behavior (TDD red)", () => {
       });
       const changeLogId = JSON.parse(change.content[0].text).id;
 
-      // Manually expire the finding
+      // Manually transition the finding to stale (the modern past-TTL state;
+      // 'expired' was removed in plan 260611-1000).
       await import("../core/meta-state.js").then(({ updateEntry }) =>
-        updateEntry(tempDir, findingId, { status: "expired" })
+        updateEntry(tempDir, findingId, { status: "stale" })
       );
 
       // Subtest A: supersede

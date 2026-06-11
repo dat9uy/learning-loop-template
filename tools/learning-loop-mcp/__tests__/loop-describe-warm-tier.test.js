@@ -40,8 +40,10 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(statusLifecycle.includes("reported"));
     assert.ok(statusLifecycle.includes("active"));
     assert.ok(statusLifecycle.includes("resolved"));
-    assert.ok(statusLifecycle.includes("expired"));
     assert.ok(statusLifecycle.includes("superseded"));
+    // Plan 260611-1000 phase 4 removes "expired" from the statusLifecycle
+    // hint (the legacy 'expired' status was removed). The string still
+    // mentions 6 statuses but no longer enumerates 'expired'.
 
     assert.ok(reopensHint.includes("reopens"));
     assert.ok(reopensHint.includes("cascade-resolve"));
@@ -79,39 +81,5 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const hints = buildDiscoverabilityHints();
     assert.strictEqual(hints.length, 11);
     assert.ok(Object.isFrozen(hints));
-  });
-
-  test("warm tier surfaces pending_expired_migration advisory when backlog > 7d", async () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), "warm-advisory-test-"));
-    process.env.GATE_ROOT = tempRoot;
-    try {
-      // Write an expired finding older than 7 days
-      const oldDate = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
-      writeFileSync(
-        join(tempRoot, "meta-state.jsonl"),
-        JSON.stringify({
-          id: "meta-old-expired",
-          entry_kind: "finding",
-          status: "expired",
-          category: "loop-anti-pattern",
-          severity: "warning",
-          affected_system: "mcp-tools",
-          description: "Old expired finding for advisory test (min 20 chars)",
-          created_at: oldDate,
-          expires_at: oldDate,
-          version: 0,
-        }) + "\n",
-        "utf8",
-      );
-
-      const result = await loopDescribeTool.handler({ tier: "warm" });
-      const parsed = JSON.parse(result.content[0].text);
-      assert.ok(parsed.pending_expired_migration);
-      assert.equal(parsed.pending_expired_migration.count, 1);
-      assert.ok(parsed.pending_expired_migration.oldest_age_days >= 7);
-    } finally {
-      rmSync(tempRoot, { recursive: true, force: true });
-      delete process.env.GATE_ROOT;
-    }
   });
 });

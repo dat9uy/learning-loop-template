@@ -143,7 +143,7 @@ describe("meta_state_archive", () => {
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
-    const result = await metaStateListTool.handler({ compact: true, include_expired: true });
+    const result = await metaStateListTool.handler({ compact: true });
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.entries.length, 1, "must return only 1 entry (active)");
     assert.equal(parsed.entries[0].id, "archive-active-1");
@@ -177,7 +177,7 @@ describe("meta_state_archive", () => {
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
-    const result = await metaStateListTool.handler({ compact: true, include_expired: true, include_archived: true });
+    const result = await metaStateListTool.handler({ compact: true, include_archived: true });
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.entries.length, 2, "must return 2 entries with include_archived");
     assert.ok(parsed.entries.find((e) => e.id === "archive-active-2"));

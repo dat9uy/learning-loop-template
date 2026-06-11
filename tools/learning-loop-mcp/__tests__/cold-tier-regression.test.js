@@ -121,7 +121,8 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // Skip scout-generated descriptive references (e.g., "file.js:writes via... at line N")
   // and known probe artifacts (tools/test.js) — these are transient findings whose refs
   // intentionally describe behavior rather than point to stable code locations.
-  const terminalStatuses = new Set(["auto-resolved", "expired", "resolved", "superseded"]);
+  // Plan 260611-1000 removed the 'expired' status; 'stale' is non-terminal.
+  const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded"]);
   const findingsWithCodeRef = current.all_findings.filter(
     (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
   );

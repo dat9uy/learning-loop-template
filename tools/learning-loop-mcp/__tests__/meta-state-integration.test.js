@@ -68,8 +68,10 @@ describe("meta-state end-to-end lifecycle", () => {
       const listText3 = JSON.parse(listResult3.content[0].text);
       assert.strictEqual(listText3.count, 0);
 
-      // 7. List with include_expired shows resolved
-      const listResult4 = await metaStateListTool.handler({ include_expired: true });
+      // 7. List with status filter shows resolved (the include_expired param
+      // was removed in plan 260611-1000-remove-expired-status phase 3; use
+      // status filter to access terminal entries).
+      const listResult4 = await metaStateListTool.handler({ status: "resolved" });
       const listText4 = JSON.parse(listResult4.content[0].text);
       assert.strictEqual(listText4.count, 1);
       assert.strictEqual(listText4.entries[0].status, "resolved");

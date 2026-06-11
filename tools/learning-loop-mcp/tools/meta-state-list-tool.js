@@ -33,13 +33,12 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, expired, resolved). Runs auto-resolve and expiry checks before returning. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead).",
+  description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, resolved, superseded). Runs auto-resolve and expiry checks before returning. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
     affected_system: z.string().optional().describe("Filter by affected system"),
     session_id: z.string().optional().describe("Filter by session_id (idempotency key for hook-emitted findings)"),
-    include_expired: z.boolean().optional().default(false).describe("DEPRECATED: legacy alias kept for backward compat. The 'expired' status was removed in plan 260611-1000; new callers should use the default behavior (terminal statuses are excluded by default) and not pass this flag. Phase 3 of that plan removes this parameter entirely."),
     entry_kind: z.enum(["finding", "change-log", "rule", "loop-design"]).optional()
       .describe("Filter by a single entry kind; default = both (legacy)"),
     entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()
@@ -47,7 +46,7 @@ export const metaStateListTool = {
     compact: z.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
     include_archived: z.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
   },
-  handler: async ({ category, status, affected_system, session_id, include_expired, entry_kind, entry_kinds, compact, include_archived }) => {
+  handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, compact, include_archived }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -83,7 +82,11 @@ export const metaStateListTool = {
       result = filterEntries(updated, activeFilters);
     }
 
-    if (!include_expired) {
+    // Plan 260611-1000: terminal statuses are excluded by default. If the
+    // caller explicitly filters by a terminal status (e.g., status="resolved"),
+    // honor that filter — the user is opting in to terminal entries.
+    const isExplicitStatusFilter = typeof status === "string" && TERMINAL_STATUSES.has(status);
+    if (!isExplicitStatusFilter) {
       result = result.filter((e) => !TERMINAL_STATUSES.has(e.status));
     }
     if (!include_archived) {
@@ -95,14 +98,12 @@ export const metaStateListTool = {
       tool: "meta_state_list",
       count: result.length,
       filters_applied: activeFilters,
-      include_expired,
     });
 
     const output = {
       entries: compact ? result.map(toCompact) : result,
       count: result.length,
       filters_applied: activeFilters,
-      include_expired: include_expired || false,
       include_archived: include_archived || false,
       entry_kind_filter: entry_kind || null,
       entry_kinds_filter: entry_kinds || null,
