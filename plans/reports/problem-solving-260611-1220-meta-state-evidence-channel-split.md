@@ -1,13 +1,18 @@
 ---
 type: problem-solving
+status: superseded
+status_reason: the channel-split prescription (option A: parallel records/meta/probe-evidence/ JSONL) was rejected by operator review as over-engineered; building another registry for one test's outputs "defeated the self purpose of 'self-learning' loop." The diagnosis (test evidence is not self-knowledge) is preserved as historical context, but the recommended shape is replaced by the simpler conditional-emission fix in the superseding report.
+date: 2026-06-11
 technique: simplification-cascades + meta-pattern-recognition
 target: cold-session probe misusing meta-state.jsonl as a test-execution event log
 triggered_by: review feedback on plans/reports/problem-solving-260611-0940-mcp-client-loading-slug-bloat.md (deleted; superseded by this report)
-date: 2026-06-11
 context: a 6-turn conversation surfaced six symptoms of the same root cause. The earlier 0940 slug-bloat report and the 1130 probe-vs-real-registry report both chased individual symptoms (slug noise, lifecycle misuse, dead reference chain, temporal race) without naming the underlying confusion. This report names it: test evidence is not self-knowledge. The fix is to split the evidence channels.
 supersedes:
   - plans/reports/problem-solving-260611-0940-mcp-client-loading-slug-bloat.md (deleted; slug cascade is downstream of the channel split)
   - plans/reports/problem-solving-260611-1130-why-probe-writes-to-real-meta-state.md (deleted; option A is the recommended shape)
+superseded_by:
+  - plans/reports/problem-solving-260611-1300-cold-session-fail-to-finding-promotion.md (the conditional-emission fix: pass → silent, fail → one finding via tryClaimSessionId; ~50 LOC vs ~400 LOC; no new schema, no new channel, no migration of the 18 entries)
+DO_NOT_IMPLEMENT: this report's option A (records/meta/probe-evidence/ JSONL channel + rule rewrite) is not the agreed fix. If a future agent or contributor lands here and treats it as live guidance, they will build a parallel evidence channel that the loop does not need. Read the 1300 report first; this report is preserved only for the historical diagnosis (six-symptom cascade) that motivated the conditional-emission refactor.
 related_findings:
   - meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list (`status: "resolved"`, then re-corrected as still-open by 2026-06-08, then re-resolved 2026-06-09. The probe description cites this finding, but it is a historical artifact, not a live piece of self-knowledge.)
   - meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to (the "premature resolution" correction finding, also `status: "resolved"`. The probe description cites *this* finding, which cites the original — both ends of the chain are dead.)
@@ -22,6 +27,10 @@ related_plans:
 # Cold-session probe evidence-channel split
 
 ## Frame
+
+> **STATUS: SUPERSEDED — DO NOT IMPLEMENT.** The option A recommendation in this report (build a `records/meta/probe-evidence/` JSONL channel and rewrite the rule to consult it) was rejected by operator review as over-engineered. The agreed fix is the conditional-emission refactor in [`plans/reports/problem-solving-260611-1300-cold-session-fail-to-finding-promotion.md`](./problem-solving-260611-1300-cold-session-fail-to-finding-promotion.md): the test writes a `finding` only on novel failure (pass → silent, fail → one entry via the existing `tryClaimSessionId` dedup). This report is preserved for its diagnosis (the six-symptom cascade) which the 1300 report inherits, but its prescription is replaced. If you are reading this and considering implementing option A, stop and read the 1300 report first.
+
+---
 
 The cold-session test (`tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs`) currently writes runtime-probe evidence to `meta-state.jsonl` as if it were a sequence of `finding` entries. The visible artifact is 18 entries with `subtype: "mcp-client-loading"`, `session_id: "test-cold-session-mcp-client-loading"`, `status: "stale"` (mostly), all sharing the same description (which itself points at a historical resolved finding via `meta-260608T1410Z-finding-meta-260606t0443z-...`).
 

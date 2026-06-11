@@ -1,10 +1,11 @@
 ---
 phase: 5
-title: "E2E coverage: cascade-close 2 stale parents from meta-260610T2301Z in 1 step"
-status: pending
+title: 'E2E coverage: cascade-close 2 stale parents from meta-260610T2301Z in 1 step'
+status: completed
 priority: P1
-effort: "1h"
-dependencies: [4]
+effort: 1h
+dependencies:
+  - 4
 ---
 
 # Phase 5: E2E coverage — cascade-close 2 stale parents from meta-260610T2301Z in 1 step

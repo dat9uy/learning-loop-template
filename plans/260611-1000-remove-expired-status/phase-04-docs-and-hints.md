@@ -1,10 +1,11 @@
 ---
 phase: 4
-title: "Docs and DISCOVERABILITY_HINTS rewrite"
-status: pending
+title: Docs and DISCOVERABILITY_HINTS rewrite
+status: completed
 priority: P2
-effort: "1.5h"
-dependencies: [3]
+effort: 1.5h
+dependencies:
+  - 3
 ---
 
 # Phase 4: Docs and DISCOVERABILITY_HINTS rewrite

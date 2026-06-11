@@ -1,10 +1,11 @@
 ---
 phase: 2
-title: "Delete migrate tool, script, runbook, and manifest entries"
-status: pending
+title: 'Delete migrate tool, script, runbook, and manifest entries'
+status: completed
 priority: P2
-effort: "30m"
-dependencies: [1]
+effort: 30m
+dependencies:
+  - 1
 ---
 
 # Phase 2: Delete migrate tool, script, runbook, and manifest entries

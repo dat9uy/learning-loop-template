@@ -1,10 +1,11 @@
 ---
 phase: 3
-title: "Rewrite 16 test files to stale-only"
-status: pending
+title: Rewrite 16 test files to stale-only
+status: completed
 priority: P2
-effort: "3h"
-dependencies: [2]
+effort: 3h
+dependencies:
+  - 2
 ---
 
 # Phase 3: Rewrite 16 test files to stale-only

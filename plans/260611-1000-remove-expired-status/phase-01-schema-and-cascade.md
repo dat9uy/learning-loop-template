@@ -1,9 +1,9 @@
 ---
 phase: 1
-title: "Schema enum and cascade retarget"
-status: pending
+title: Schema enum and cascade retarget
+status: completed
 priority: P2
-effort: "2h"
+effort: 2h
 dependencies: []
 ---
 

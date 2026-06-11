@@ -1,14 +1,24 @@
 ---
-title: "Remove the expired finding status — stale-only lifecycle"
-description: "Retires the legacy `expired` finding status. The schema enum shrinks, the migrate tool is deleted, the cascade retargets `stale` parents (so meta-260610T2301Z can close its 2 stale reopens in 1 step), and 16 test files + 4 docs + 4 hint lines are rewritten."
-status: pending
+title: Remove the expired finding status — stale-only lifecycle
+description: >-
+  Retires the legacy `expired` finding status. The schema enum shrinks, the
+  migrate tool is deleted, the cascade retargets `stale` parents (so
+  meta-260610T2301Z can close its 2 stale reopens in 1 step), and 16 test files
+  + 4 docs + 4 hint lines are rewritten.
+status: completed
 priority: P2
-branch: "main"
-tags: ["meta-state", "lifecycle", "schema", "tdd", "self-model"]
-blockedBy: ["260610-2100-meta-state-relationship-modeling"]
+branch: main
+tags:
+  - meta-state
+  - lifecycle
+  - schema
+  - tdd
+  - self-model
+blockedBy:
+  - 260610-2100-meta-state-relationship-modeling
 blocks: []
-created: "2026-06-11T09:55:53.711Z"
-createdBy: "ck:plan"
+created: '2026-06-11T09:55:53.711Z'
+createdBy: 'ck:plan'
 source: skill
 ---
 
@@ -71,11 +81,11 @@ The 16 affected test files use `status: "expired"` as a fixture because the orig
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Schema enum and cascade retarget](./phase-01-schema-and-cascade.md) | Pending |
-| 2 | [Delete migrate tool + script + runbook + manifest entries](./phase-02-delete-migrate-tool.md) | Pending |
-| 3 | [Rewrite 16 test files to stale-only](./phase-03-rewrite-tests.md) | Pending |
-| 4 | [Docs + DISCOVERABILITY_HINTS rewrite](./phase-04-docs-and-hints.md) | Pending |
-| 5 | [E2E coverage: cascade-close 2 stale parents from meta-260610T2301Z in 1 step](./phase-05-e2e-coverage-2-stale-parents.md) | Pending |
+| 1 | [Schema enum and cascade retarget](./phase-01-schema-and-cascade.md) | Completed |
+| 2 | [Delete migrate tool + script + runbook + manifest entries](./phase-02-delete-migrate-tool.md) | Completed |
+| 3 | [Rewrite 16 test files to stale-only](./phase-03-rewrite-tests.md) | Completed |
+| 4 | [Docs + DISCOVERABILITY_HINTS rewrite](./phase-04-docs-and-hints.md) | Completed |
+| 5 | [E2E coverage: cascade-close 2 stale parents from meta-260610T2301Z in 1 step](./phase-05-e2e-coverage-2-stale-parents.md) | Completed |
 
 ## Risk Assessment
 
@@ -132,11 +142,11 @@ The 16 affected test files use `status: "expired"` as a fixture because the orig
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
-| 1 | Phase 5 E2E is a self-blocker (fixture ids collide with live registry) | Critical | Accept | Phase 5 |
-| 2 | Fabricated `validateCascadeChildren` rejection loop | Critical | Accept | Phase 1 |
-| 3 | Cascade retarget enables closing `reported` parents, bypassing `meta_state_ack` | Critical | Accept | Phase 1 (added explicit `reported`-parent guard) |
-| 4 | "16 test files" is actually 19+; 3 missed | High | Accept | Phase 3 |
-| 5 | "4 TERMINAL_STATUSES sets" is actually 5; resolve-tool local set missed | High | Accept | Phase 1 |
+| 1 | Phase 5 E2E is a self-blocker (fixture ids collide with live registry) | Critical | Accept | Completed |
+| 2 | Fabricated `validateCascadeChildren` rejection loop | Critical | Accept | Completed |
+| 3 | Cascade retarget enables closing `reported` parents, bypassing `meta_state_ack` | Critical | Accept | Completed |
+| 4 | "16 test files" is actually 19+; 3 missed | High | Accept | Completed |
+| 5 | "4 TERMINAL_STATUSES sets" is actually 5; resolve-tool local set missed | High | Accept | Completed |
 | 6 | Phase ordering breaks the E2E between Phase 2 and Phase 5 | High | Accept | Phase 3 (E2E rewrite moves up from Phase 5) |
 | 7 | Consult-gate not enumerated by Phase 1 step 2 | High | Accept | Phase 1 (added `meta_state_list({entry_kind:"rule",status:"active"})` verification) |
 | 8 | `include_expired` "deprecated alias for `include_stale: true`" not implemented | Medium | Accept | Phase 1, Phase 3 |
