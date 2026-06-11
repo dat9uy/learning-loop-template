@@ -264,8 +264,14 @@ describe("Claude Code MCP client-side loading acceptance", () => {
         if (existing) {
           const now = new Date().toISOString();
           try {
+            // Plan 260611-1000-remove-expired-status: rename 'expired' to
+            // 'stale' here too. The patch validation is passthrough, so
+            // 'expired' was technically allowed; but the registry no longer
+            // accepts 'expired' in the status enum, and writing it would
+            // create an orphan status. Use 'stale' for consistency with
+            // the new enum.
             await updateEntry(projectRoot, existing.id, {
-              status: "expired",
+              status: "stale",
               resolved_at: now,
               resolved_by: "auto-claude-mcp-test",
               _expected_version: existing.version ?? 0,
