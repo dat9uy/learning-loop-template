@@ -319,6 +319,55 @@ Reasoning:
 
 **Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
 
+### 3.8 Bridge 5 (Approach 3) sequencing decision — ship before Mastra
+
+**Status check (2026-06-11):** Bridge 5 is *partially* shipped. Per `AGENTS.md` § "What Has Happened Since (2026-06-05 update)":
+- **Approach 2** (tool zod generated from JSON Schema via `core/schema-to-zod.js`) — **SHIPPED** for 4 record types (experiment, risk, decision, observation)
+- **Approach 3** (full codegen for writers + validators) — **pending**, sequenced after SP3 schemas stabilize
+
+The Bridges table in `AGENTS.md` § "The Six Bridges" inconsistently lists Bridge 5 as "Not shipped" — that table pre-dates the 2026-06-05 update. Approach 3 is the remaining work.
+
+**The operator's concern (2026-06-11):** how should Bridge 5 Approach 3 be ordered relative to (a) the SQLite Storage Layer, (b) the Mastra migration?
+
+**Decision (2026-06-11): ship Bridge 5 Approach 3 BEFORE the Mastra migration starts. Bridge 5 and Storage Layer are independent.**
+
+Reasoning:
+
+- **Mastra's `createTool({ inputSchema, outputSchema })` accepts Standard JSON Schema** (Zod, Valibot, ArkType, or any library implementing the spec). The current `core/schema-to-zod.js` already converts JSON Schema to Zod at runtime. **Bridge 5 Approach 3's output is exactly what Mastra's `createTool` consumes.** No translation layer is needed.
+- **The hand-maintenance problem the trajectory doc names is 4 parallel field catalogues per record type today (JSON schema, tool zod, writer output, validator paths).** Shipping Mastra Phase 1 *before* Bridge 5 Approach 3 adds a **5th catalogue** — the Mastra tool's `inputSchema`/`outputSchema`. The 11 drift cells (8 in experiment, 3 in risk) grow. The original Bridge 5 problem gets *worse*, not better.
+- **Mastra migration Phase 1 shrinks dramatically** with Bridge 5 done first. Each Mastra tool becomes a 3-line wrapper that pulls the Zod from `buildZodFor('<type>')`. The hand-maintenance surface for 4 record types drops from ~16 files to ~4 schema files + ~4 thin wrappers (50% reduction); the drift is *structurally impossible* (codegen runs at build, the `field-coverage.test.js` CI gate catches regressions).
+- **Bridge 5 is independent of storage backend.** Approach 3 generates TypeScript code from JSON Schema; it doesn't care whether the registry lives in JSONL or SQLite. The two are orthogonal. Storage Layer stays deferred to Mastra Phase 3 (per §3.7).
+- **The dependency that does matter is SP3 schema stability.** Approach 3 needs the meta-state / record schemas to be stable. SP3 shipped 2026-06-05. We need ~1 release cycle of post-SP3 schema immutability before Approach 3 ships. *Check the git diff on `schemas/*.schema.json` since 2026-06-05; if the diff is non-trivial, defer Approach 3.*
+
+**Updated implementation order (replaces §3.4 Phasing for the Bridge 5 axis):**
+
+1. **Declare SP3 schema stability.** Mechanical check + 1 release cycle.
+2. **Bridge 5 Approach 3** — full codegen for writers + validators. Extends the existing `core/schema-to-zod.js`. Ships its own plan.
+3. **Mastra migration Phase 0** — coexistence (no Bridge 5 dependency; just registers deterministic tools).
+4. **Mastra migration Phase 1** — mastrafy deterministic tools. **Now this phase is dramatically smaller**: thin wrappers that consume the Bridge 5 output. No per-tool zod hand-written.
+5. **Mastra migration Phase 2-3** — workflows + agents (Phase 3 is where Storage Layer folds in per §3.7).
+6. **Mastra migration Phase 4-5** — cut over + embed in Mastra Code.
+
+**Quantitative impact (per record type):**
+
+| Record types | Hand-written files (today) | After Bridge 5 + Mastra (out of order) | After Bridge 5 + Mastra (in order) |
+|---|---|---|---|
+| 4 (current) | 16 | 16 + 4 Mastra wrappers = 20 | 8 + 4 Mastra wrappers = 12 |
+| 10 (near-term growth) | 40 | 40 + 10 Mastra wrappers = 50 | 8 + 10 Mastra wrappers = 18 |
+| 20 (long-term) | 80 | 80 + 20 Mastra wrappers = 100 | 8 + 20 Mastra wrappers = 28 |
+
+**Sequencing decision rule (operator-stated, easy to revise):**
+
+> **Bridge 5 Approach 3 ships before Mastra migration starts. The Mastra tool surface consumes Bridge 5's output. Storage Layer is deferred to Mastra Phase 3 (per §3.7).**
+
+**Where this prediction is wrong — three failure modes:**
+
+1. **SP3 schemas are still in flux.** The trajectory says Approach 3 is "sequenced after SP3 — SP3's schemas need to stabilize first." If the SP3 schemas are still being edited (e.g., new fields, status enum changes), Approach 3 will need to be redone as SP3 settles. *Test: check the git history on `schemas/*.schema.json` since 2026-06-05; if the diff is non-trivial, defer Approach 3.*
+2. **The Mastra migration adds tools for record types not in the 4 covered by Bridge 5.** Today: experiment, risk, decision, observation are schema-derived. Claim, evidence, capability, index, observation-schema-override are not. If Phase 1 needs to mastrafy a tool for, say, `record_create_claim`, the 5th-field-catalogue problem returns *for that record type*. *Test: at Mastra Phase 0, audit which tools map to non-derived record types; either extend Bridge 5 first, or accept the drift for those types.*
+3. **The operator values the Mastra destination (Bridge 6 alignment) over the Bridge 5 means (internal cleanup).** If the operator wants to ship the Mastra migration as a Bridge 6 deliverable, the order reverses and we accept the 5th-field-catalogue cost as the price of progress. *Test: confirm with operator whether Bridge 6 is a destination (Mastra) or a means (codegen + no-drift invariant). (Confirmed 2026-06-11: means matter; Bridge 5 ships first.)*
+
+**Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
+
 ## 4. Risks & Mitigations
 
 | Risk | Severity | Mitigation |
