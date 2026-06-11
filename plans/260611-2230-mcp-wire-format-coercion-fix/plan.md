@@ -1,7 +1,7 @@
 ---
 title: "Fix MCP top-level array/boolean wire-format coercion (meta-260610T1458Z)"
 description: "Installs wire-format coercion before MCP SDK validation so top-level arrays and booleans round-trip correctly over stdio. Closes meta-260610T1458Z-next-session-target-fix-the-mcp-wire-format-coercion-bug-blo and its reopened parent meta-260606T2202Z-top-level-array-and-boolean-parameters-in-mcp-tool-schemas-g. 3-phase TDD: red stdio tests, green patch of McpServer.validateToolInput, closeout with fingerprint refresh and finding resolution."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, wire-format, coercion, tdd]
@@ -40,9 +40,9 @@ This plan moves coercion to the SDK's validation boundary by patching `McpServer
 
 | Phase | Name | Status | Effort | Dependencies |
 |-------|------|--------|--------|--------------|
-| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Pending | ~1h | — |
-| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Pending | ~0.75h | Phase 1 |
-| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Pending | ~0.75h | Phase 2 |
+| 1 | [Red (TDD tests first)](./phase-01-red-tdd-tests-first.md) | Completed | ~1h | — |
+| 2 | [Green (implementation)](./phase-02-green-implementation.md) | Completed | ~0.75h | Phase 1 |
+| 3 | [Refactor and closeout](./phase-03-refactor-and-closeout.md) | Completed | ~0.75h | Phase 2 |
 
 **Total effort:** ~2.5h
 
@@ -84,17 +84,17 @@ TDD structure locks the failing behavior first. Phase 1 adds stdio regression te
 
 ## Success Criteria (Plan-Level)
 
-- [ ] `meta_state_propose_design` via stdio with `proposed_design_for: {item: ["rule-A"]}` and `addresses: {item: ["finding-C"]}` succeeds and stores flat arrays.
-- [ ] `meta_state_propose_design` via stdio with `proposed_design_for: {item: []}` and `addresses: {item: []}` succeeds and stores flat empty arrays.
-- [ ] `meta_state_report` via stdio with `mechanism_check: "true"` stores boolean `true`.
-- [ ] `meta_state_report` via stdio with `mechanism_check: "false"` stores boolean `false`.
-- [ ] Existing `wire-format-coercion-fix.test.js` and `wire-format-patch-recursion.test.js` still pass.
-- [ ] `tools/list` still advertises the real input schemas for `meta_state_propose_design` and `meta_state_report`.
-- [ ] `meta-260610T1458Z` `evidence_code_ref` updated to the fix site before fingerprint refresh.
-- [ ] `meta-260610T1458Z` fingerprint refreshed and grounding check passes.
-- [ ] `meta-260610T1458Z` resolved with structural justification.
-- [ ] `pnpm test` green.
-- [ ] `pnpm validate:records` green.
+- [x] `meta_state_propose_design` via stdio with `proposed_design_for: {item: ["rule-A"]}` and `addresses: {item: ["finding-C"]}` succeeds and stores flat arrays.
+- [x] `meta_state_propose_design` via stdio with `proposed_design_for: {item: []}` and `addresses: {item: []}` succeeds and stores flat empty arrays.
+- [x] `meta_state_report` via stdio with `mechanism_check: "true"` stores boolean `true`.
+- [x] `meta_state_report` via stdio with `mechanism_check: "false"` stores boolean `false`.
+- [x] Existing `wire-format-coercion-fix.test.js` and `wire-format-patch-recursion.test.js` still pass.
+- [x] `tools/list` still advertises the real input schemas for `meta_state_propose_design` and `meta_state_report`.
+- [x] `meta-260610T1458Z` `evidence_code_ref` updated to the fix site before fingerprint refresh.
+- [x] `meta-260610T1458Z` fingerprint refreshed and grounding check passes.
+- [x] `meta-260610T1458Z` resolved with structural justification.
+- [x] `pnpm test` green.
+- [x] `pnpm validate:records` green.
 
 ## Dependencies
 

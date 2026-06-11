@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refactor and closeout"
-status: pending
+status: completed
 priority: P1
 effort: "0.75h"
 dependencies: [2]
@@ -79,13 +79,13 @@ The parent finding `meta-260606T2202Z` is already `resolved` (terminal), so no `
 
 ## Success Criteria
 
-- [ ] MCP readiness check passed before any registry mutation.
-- [ ] `meta-260610T1458Z` `evidence_code_ref` points to `tools/learning-loop-mcp/tool-registry.js#installWireFormatCoercion`.
-- [ ] `meta_state_check_grounding` for `meta-260610T1458Z` returns `grounded`.
-- [ ] `meta-260610T1458Z` status is `resolved`.
-- [ ] Change-log entry created with `applies_to.tools` documenting the fix.
-- [ ] Optional loop-design re-emission attempted; if skipped, a note is recorded.
-- [ ] All verification commands pass.
+- [x] MCP readiness check passed before any registry mutation.
+- [x] `meta-260610T1458Z` `evidence_code_ref` points to `tools/learning-loop-mcp/tool-registry.js#installWireFormatCoercion`.
+- [x] `meta_state_check_grounding` for `meta-260610T1458Z` returns `grounded`.
+- [x] `meta-260610T1458Z` status is `resolved`.
+- [x] Change-log entry created with `applies_to.tools` documenting the fix.
+- [x] Optional loop-design re-emission attempted; if skipped, a note is recorded.
+- [x] All verification commands pass.
 
 ## Risk Assessment
 

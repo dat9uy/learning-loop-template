@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Red (TDD tests first)"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []
@@ -59,11 +59,11 @@ The new test file spawns the MCP server as a child process, sends JSON-RPC `tool
 
 ## Success Criteria
 
-- [ ] New test file created with 5 tests.
-- [ ] Tests 1-4 fail before Phase 2 with errors containing the Zod messages from the finding.
-- [ ] Test 5 passes before Phase 2 (schema is currently preserved).
-- [ ] No new dependencies introduced.
-- [ ] Existing test suite still passes at Phase 1 (only the new tests are red).
+- [x] New test file created with 5 tests.
+- [x] Tests 1-4 fail before Phase 2 with errors containing the Zod messages from the finding.
+- [x] Test 5 passes before Phase 2 (schema is currently preserved).
+- [x] No new dependencies introduced.
+- [x] Existing test suite still passes at Phase 1 (only the new tests are red).
 
 ## Risk Assessment
 

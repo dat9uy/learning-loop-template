@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Green (implementation)"
-status: pending
+status: completed
 priority: P1
 effort: "0.75h"
 dependencies: [1]
@@ -73,13 +73,13 @@ config.handler receives flat, typed args
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/tool-registry.js` exports `installWireFormatCoercion` and attaches `_coerceSchema`.
-- [ ] `tools/learning-loop-mcp/server.js` calls `installWireFormatCoercion` after server creation.
-- [ ] `meta_state_propose_design` via stdio with `{item: [...]}` arrays succeeds.
-- [ ] `meta_state_report` via stdio with `"true"`/`"false"` mechanism_check succeeds.
-- [ ] `tools/list` still advertises array-typed `proposed_design_for` and `addresses`.
-- [ ] Unit test confirms `installWireFormatCoercion` actually replaces `server.validateToolInput`.
-- [ ] `pnpm test` green.
+- [x] `tools/learning-loop-mcp/tool-registry.js` exports `installWireFormatCoercion` and attaches `_coerceSchema`.
+- [x] `tools/learning-loop-mcp/server.js` calls `installWireFormatCoercion` after server creation.
+- [x] `meta_state_propose_design` via stdio with `{item: [...]}` arrays succeeds.
+- [x] `meta_state_report` via stdio with `"true"`/`"false"` mechanism_check succeeds.
+- [x] `tools/list` still advertises array-typed `proposed_design_for` and `addresses`.
+- [x] Unit test confirms `installWireFormatCoercion` actually replaces `server.validateToolInput`.
+- [x] `pnpm test` green.
 
 ## Risk Assessment
 
