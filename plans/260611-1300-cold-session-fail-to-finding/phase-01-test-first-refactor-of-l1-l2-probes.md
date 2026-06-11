@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Test-first refactor of L1+L2 probes"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Regression guard + cross-CLI parity"
-status: pending
+status: completed
 priority: P2
 effort: "2h"  # Red-team Finding 8: 1h → 2h to account for claude-code probe refactor scope expansion
 dependencies: [1, 2]

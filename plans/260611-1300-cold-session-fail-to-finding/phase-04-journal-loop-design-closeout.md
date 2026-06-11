@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Journal + loop-design closeout"
-status: pending
+status: completed
 priority: P3
 effort: "20m"
 dependencies: [1, 2, 3]

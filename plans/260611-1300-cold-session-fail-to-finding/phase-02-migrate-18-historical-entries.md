@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Migrate 9 stale historical entries"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: [1]

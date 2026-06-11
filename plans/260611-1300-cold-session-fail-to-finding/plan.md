@@ -1,7 +1,7 @@
 ---
 title: "Cold-session probe: fail-to-finding conditional emission"
 description: "Refactor cold-session-discoverability.test.cjs (L1 test 3, L2 test 5) and claude-code-mcp-loading.test.cjs to write a meta-state finding only on novel failure. Pass path: write nothing. Fail path: dedup-write via tryClaimSessionId. Remove the soft-delete-on-gap-close branch. Migrates the 9 stale mcp-client-loading entries to a single change-log via meta_state_supersede. Implements the loop-design loop-design-cold-session-fail-to-finding-conditional-emission and ships with TDD coverage: a regression-guard test asserting the probe does NOT write to meta-state.jsonl on pass."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: ["meta-state", "test", "conditional-emission", "tdd", "self-model"]
@@ -97,17 +97,17 @@ The design's `addresses` lists three findings this plan responds to:
 
 ## Success Criteria
 
-- [ ] Phase 1: probe logic extracted into `tools/learning-loop-mcp/__tests__/probe-helpers.cjs` with `probeL1(root, opts)` and `probeL2(root, opts)` accepting a `root` parameter.
-- [ ] Phase 1: `cold-session-discoverability.test.cjs` tests 3 and 5 emit a `finding` only on novel failure via `tryClaimSessionId` (atomic). The gap-close branch calls `meta_state_resolve` on the active finding (one registry mutation per session). The TOCTOU-vulnerable `readRegistry + writeEntry` pattern is NOT introduced.
-- [ ] Phase 1: regression-guard test added (imports `probeL1`/`probeL2` from `probe-helpers.cjs`, calls with `root=tempRoot` and `gapOpen=false`, asserts registry is empty).
-- [ ] Phase 3: `claude-code-mcp-loading.test.cjs` is refactored to use the `probeL1` helper (replacing the `writeEntry + readRegistry.find` pattern; Finding 8).
-- [ ] Phase 2: 9 stale `mcp-client-loading` entries superseded by a single change-log via `meta_state_supersede` (8 archived + 1 resolved entries are skipped; Finding 5).
-- [ ] Phase 2: migration script aborts without `OPERATOR_MODE=1`; idempotency is enforced via a Step 2 registry lookup (not relying on `meta_state_log_change`'s non-existent idempotency; Finding 4).
-- [ ] Phase 3: regression-guard test in `claude-code-mcp-loading.test.cjs` mirrors the cold-session pattern.
-- [ ] Phase 3: `pnpm test` reports 100% pass with no new failures.
-- [ ] Phase 4: `meta_state_list` is called to fetch the loop-design's current version before `meta_state_patch`; the return value is explicitly checked for `patched: false` (Finding 11).
-- [ ] Phase 4: `meta_state_patch` flips `loop-design-cold-session-fail-to-finding-conditional-emission` to `status: "inactive"` with `shipped_in_plan: "plans/260611-1300-cold-session-fail-to-finding"`.
-- [ ] Phase 4: a journal entry in `docs/journals/260611-cold-session-fail-to-finding.md` records the conditional-emission refactor, the operator's pushback on the channel-split plan, and the loop-design's ship event.
+- [x] Phase 1: probe logic extracted into `tools/learning-loop-mcp/__tests__/probe-helpers.cjs` with `probeL1(root, opts)` and `probeL2(root, opts)` accepting a `root` parameter.
+- [x] Phase 1: `cold-session-discoverability.test.cjs` tests 3 and 5 emit a `finding` only on novel failure via `tryClaimSessionId` (atomic). The gap-close branch calls `meta_state_resolve` on the active finding (one registry mutation per session). The TOCTOU-vulnerable `readRegistry + writeEntry` pattern is NOT introduced.
+- [x] Phase 1: regression-guard test added (imports `probeL1`/`probeL2` from `probe-helpers.cjs`, calls with `root=tempRoot` and `gapOpen=false`, asserts registry is empty).
+- [x] Phase 3: `claude-code-mcp-loading.test.cjs` is refactored to use the `probeL1` helper (replacing the `writeEntry + readRegistry.find` pattern; Finding 8).
+- [x] Phase 2: 9 stale `mcp-client-loading` entries superseded by a single change-log via `meta_state_supersede` (8 archived + 1 resolved entries are skipped; Finding 5).
+- [x] Phase 2: migration script aborts without `OPERATOR_MODE=1`; idempotency is enforced via a Step 2 registry lookup (not relying on `meta_state_log_change`'s non-existent idempotency; Finding 4).
+- [x] Phase 3: regression-guard test in `claude-code-mcp-loading.test.cjs` mirrors the cold-session pattern.
+- [x] Phase 3: `pnpm test` reports 100% pass with no new failures.
+- [x] Phase 4: `meta_state_list` is called to fetch the loop-design's current version before `meta_state_patch`; the return value is explicitly checked for `patched: false` (Finding 11).
+- [x] Phase 4: `meta_state_patch` flips `loop-design-cold-session-fail-to-finding-conditional-emission` to `status: "inactive"` with `shipped_in_plan: "plans/260611-1300-cold-session-fail-to-finding"`.
+- [x] Phase 4: a journal entry in `docs/journals/260611-cold-session-fail-to-finding.md` records the conditional-emission refactor, the operator's pushback on the channel-split plan, and the loop-design's ship event.
 
 ## Risk Assessment
 
