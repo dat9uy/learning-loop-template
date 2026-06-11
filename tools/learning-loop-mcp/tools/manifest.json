@@ -42,6 +42,7 @@
   { "file": "./tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool" },
   { "file": "./tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool" },
   { "file": "./tools/loop-describe-tool.js", "export": "loopDescribeTool" },
+  { "file": "./tools/loop-get-instruction-tool.js", "export": "loopGetInstructionTool" },
   { "file": "./tools/meta-state-sweep-tool.js", "export": "metaStateSweepTool" },
   { "file": "./tools/meta-state-log-change-tool.js", "export": "metaStateLogChangeTool" },
   { "file": "./tools/meta-state-patch-tool.js", "export": "metaStatePatchTool" },

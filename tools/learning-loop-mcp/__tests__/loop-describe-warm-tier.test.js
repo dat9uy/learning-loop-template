@@ -7,11 +7,11 @@ import { loopDescribeTool } from "../tools/loop-describe-tool.js";
 import { buildDiscoverabilityHints } from "../core/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
-  test("warm tier returns discoverability_hints with 11 strings", async () => {
+  test("warm tier returns discoverability_hints with 12 strings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 11);
+    assert.strictEqual(parsed.discoverability_hints.length, 12);
     for (const hint of parsed.discoverability_hints) {
       assert.strictEqual(typeof hint, "string");
       assert.ok(hint.length > 0);
@@ -21,7 +21,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
   test("each hint contains the documented substrings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
-    const [citation, autoDefault, sourceRef, grounding, noCode, statusLifecycle, reopensHint, ruleLifecycle, toolSelection, layerSplit, relationshipScript] = parsed.discoverability_hints;
+    const [citation, autoDefault, sourceRef, grounding, noCode, statusLifecycle, reopensHint, ruleLifecycle, toolSelection, layerSplit, relationshipScript, onDemandLookup] = parsed.discoverability_hints;
 
     assert.ok(citation.includes("meta_state_report"));
     assert.ok(citation.includes("evidence_code_ref"));
@@ -65,6 +65,10 @@ describe("loop_describe warm tier discoverability_hints", () => {
     // removed; the canonical script is now lint -> report -> resolve.
     assert.ok(relationshipScript.includes("meta_state_resolve"));
     assert.ok(relationshipScript.includes("1 step"));
+
+    assert.ok(onDemandLookup.includes("loop_get_instruction"));
+    assert.ok(onDemandLookup.includes("product/**"));
+    assert.ok(onDemandLookup.includes("meta-state.jsonl"));
   });
 
   test("summary tier does NOT include discoverability_hints", async () => {
@@ -77,12 +81,12 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const result = await loopDescribeTool.handler({ tier: "cold" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 11);
+    assert.strictEqual(parsed.discoverability_hints.length, 12);
   });
 
   test("buildDiscoverabilityHints is exported as a pure function", () => {
     const hints = buildDiscoverabilityHints();
-    assert.strictEqual(hints.length, 11);
+    assert.strictEqual(hints.length, 12);
     assert.ok(Object.isFrozen(hints));
   });
 });

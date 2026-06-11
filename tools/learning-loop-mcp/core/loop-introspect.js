@@ -99,6 +99,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mcp/references/tool-selection-guide.md` for the intent to tool mapping.",
   "AGENTS.md is the priority-1 prompt (the steering layer: shape of the loop, rules, canonical paths). The tool manifest is the deterministic tool-selection surface. `loop_describe` warm tier `discoverability_hints` is the at-start-up injection. The `learning-loop` skill is the prompt-author docs. Each surface has a distinct role; do not duplicate content across them.",
   "For 'X is related to Y' prompts: (1) meta_state_relationship_validate to lint; (2) meta_state_report({..., reopens: ['<orphan_id>']}); (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step.",
+  "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mcp/**` and `schemas/**` are the template rules. Cite the correct surface.",
 ]);
 
 /**
@@ -345,7 +346,12 @@ export function buildRegistrySummary(entries) {
   const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
   for (const design of loopDesigns) {
     if (design.proposed_design_for) {
-      for (const ref of design.proposed_design_for) {
+      // Tolerate the wire-format wrap {item: [...]} that meta_state_patch
+      // can produce on top-level arrays under passthrough ZodObject fields.
+      const refs = Array.isArray(design.proposed_design_for)
+        ? design.proposed_design_for
+        : (design.proposed_design_for.item ?? []);
+      for (const ref of refs) {
         if (!entryIds.has(ref)) coverage.broken_refs++;
       }
     }

@@ -495,7 +495,7 @@ describe("cold-session discoverability acceptance", () => {
       // 1. loop_describe warm tier returns discoverability hints.
       const warm = await call(1, "loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
-      assert.strictEqual(warm.discoverability_hints.length, 11);
+      assert.strictEqual(warm.discoverability_hints.length, 12);
       const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
       assert.ok(citationHint, "citation hint should mention evidence_code_ref");
 
@@ -513,9 +513,15 @@ describe("cold-session discoverability acceptance", () => {
         hints.some((h) => h.includes("reopens")),
         "DISCOVERABILITY_HINTS should include a hint about reopens",
       );
+      // Plan 260611-1700-loop-get-instruction: hint H12 advertises the new
+      // loop_get_instruction tool and teaches the meta-vs-product surface split.
       assert.ok(
-        hints.length === 11,
-        `Expected 11 hints, got ${hints.length}`,
+        hints.some((h) => h.includes("loop_get_instruction") && h.includes("product/**")),
+        "Hint H12 (loop_get_instruction + meta-vs-product split) must be present",
+      );
+      assert.ok(
+        hints.length === 12,
+        `Expected 12 hints, got ${hints.length}`,
       );
       const totalHintsByteLength = hints.reduce(
         (sum, h) => sum + Buffer.byteLength(h, "utf8"),

@@ -92,10 +92,10 @@
       "ordering": "any"
     },
     "introspection": {
-      "description": "Discover the loop's operational surface and active rules",
-      "tools": ["loop_describe"],
+      "description": "Discover the loop's operational surface, active rules, and curated instructions",
+      "tools": ["loop_describe", "loop_get_instruction"],
       "ordering": "any",
-      "typical_chain": ["loop_describe"]
+      "typical_chain": ["loop_describe", "loop_get_instruction"]
     }
   },
   "quickstart": {
