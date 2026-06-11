@@ -10,18 +10,18 @@
 
 The current `learning-loop-mcp` is **already runtime-agnostic at the MCP transport layer** (Droid CLI connects via stdio to the same server). The runtime-coupling the user perceives is at the *agent-loop coupling* level — the agent that runs the loop must know which MCP server to call, but it doesn't know the underlying runtime.
 
-The main target is **Droid + a Mastra-fy of the whole agentic coding setup + learning loop** (per operator clarification 2026-06-11). The end-state is that the agentic coding workflow *and* the learning loop are both Mastra apps, sharing primitives, talking via MCP. "Mastra Code" is the operator's working name for the agentic-coding surface once it's Mastra-native.
+The main target is **Droid + Mastra Code** (per operator clarification 2026-06-11). **Mastra Code is the official Mastra product for coding agent runtime** — a TUI-based reference application at `https://github.com/mastra-ai/mastra/tree/main/mastracode`, installable as `npm install -g mastracode` / `npx mastracode`, built on top of the Mastra framework, and embeddable programmatically via `createMastraCode({...})`. The end-state vision is that the agentic coding workflow *and* the learning loop are both built on Mastra: the learning loop ships as a Mastra app (exposing tools/agents/workflows via `MCPServer`), and the runtime is either Droid (today) or Mastra Code (final Mastra-fy of the whole agentic coding setup + learning loop).
 
 Mastra gives us a higher-level framework (Agent / Tool / Workflow / MCPServer) that:
 
-1. **Keeps the runtime-agnostic claim intact** — `MCPServer` exposes the same stdio/HTTP/SSE transports, so Droid (today) and Mastra Code (future) can both connect.
+1. **Keeps the runtime-agnostic claim intact** — `MCPServer` exposes the same stdio/HTTP/SSE transports, so Droid (today) and Mastra Code (final target) can both connect to the same learning-loop server.
 2. **Promotes the loop's own workflows to first-class objects** — `createWorkflow()` with `.then()/.commit()/.suspend()/.resume()` is more powerful than the current `workflow_*` MCP tools (which are one-shot planning calls, not state machines).
-3. **Unifies the agentic coding workflow and the learning loop under one framework** — same `createTool`, same `Agent`, same `createWorkflow`. The learning loop stops being a bespoke MCP server and becomes one Mastra app among many.
+3. **Aligns the loop with Mastra Code's architecture** — Mastra Code is a TUI + Harness + Mastra Agent + LibSQL storage. The learning loop, once Mastrafy'd, can be embedded into Mastra Code via `createMastraCode({...})` with its tools/agents/workflows registered as part of the same Mastra instance. The loop and the coding workflow share primitives, storage, and memory.
 4. **Maps cleanly onto Bridge 6's destination** — the loop's self-model (meta-state registry) becomes the substrate an Agent reasons about; the operator stops caring which runtime calls the loop.
 
-**Model-agnosticism is a weaker concern** than runtime-agnosticism for this user (per operator clarification 2026-06-11). Droid already configures the model per-session via `/model`; the loop does not need to police which model is in use. The Mastra router's `"provider/model-name"` format is a free bonus, not a primary driver.
+**Model-agnosticism is a weaker concern** than runtime-agnosticism for this user (per operator clarification 2026-06-11). Droid already configures the model per-session via `/model`; the loop does not need to police which model is in use. The Mastra router's `"provider/model-name"` format is a free bonus, not a primary driver. (Mastra Code's own multi-model support is part of the same picture: Claude, GPT, Gemini, plus custom OpenAI-compatible providers.)
 
-Recommended phasing: **coexistence → mastrafy-deterministic-tools → mastrafy-workflows → new-agents-on-top → unify-with-Mastra-Code**. Stop short of ripping out the existing server until the parallel Mastra server has full test parity and the operator has decided which surface is canonical.
+Recommended phasing: **coexistence → mastrafy-deterministic-tools → mastrafy-workflows → new-agents-on-top → embed-in-Mastra-Code**. Stop short of ripping out the existing server until the parallel Mastra server has full test parity and the operator has decided which surface is canonical.
 
 ## 1. Current State
 
@@ -35,20 +35,22 @@ The current setup is already runtime-agnostic at the IPC level:
 // .factory/mcp.json  (Droid CLI) — identical shape
 ```
 
-Both surfaces spawn the same `server.js` over stdio. The `McpServer` from `@modelcontextprotocol/sdk@1.29.0` is the same SDK used by any MCP-compatible client. The end-state target is **Droid (today) + Mastra Code (future, the Mastra-fy of the whole agentic coding setup)** — both connect to the same MCP server.
+Both surfaces spawn the same `server.js` over stdio. The `McpServer` from `@modelcontextprotocol/sdk@1.29.0` is the same SDK used by any MCP-compatible client. The end-state target is **Droid (today) + Mastra Code (final Mastra-fy of the whole agentic coding setup + learning loop)** — both connect to the same MCP server.
 
-"Pi" (`https://github.com/earendil-works/pi`) was mentioned as a placeholder for any future MCP-compatible runtime; it is not a concrete integration target. The runtime-agnostic claim is forward-looking: as long as the client speaks MCP, it works.
+**Mastra Code** (`https://github.com/mastra-ai/mastra/tree/main/mastracode`, npm `mastracode`) is the **official Mastra product for coding agent runtime** — a TUI-based reference application built on top of the Mastra framework, embeddable programmatically via `createMastraCode({...})`. Its 4-layer architecture is TUI → Harness → Mastra Agent → LibSQL storage. The final Mastra-fy of the agentic coding setup is to use Mastra Code (or a Mastra-Code-embedded harness) as the runtime, with the learning loop registered as part of the same Mastra instance.
+
+"Pi" (`https://github.com/earendil-works/pi`) was mentioned as a placeholder in the user's original prompt; it is not a concrete integration target. The runtime-agnostic claim is forward-looking: as long as the client speaks MCP, it works. **Mastra Code is the real target** — it is itself an MCP-compatible client and shares primitives (Agent, Tool, Workflow, Memory) with the learning loop.
 
 **What is NOT runtime-agnostic today:**
 
 - The agent's *prompts and skill manifest* (`.factory/skills/**` vs `.claude/skills/**`) are duplicated per surface; the agent's prompt engineering assumes a specific Claude/Droid tool vocabulary (`Edit` vs `Create`, `Bash` vs `Execute`).
 - The hook matrix (`.claude/coordination/**` vs `.factory/coordination/**`) is mirrored but the runtime hook surface differs.
-- The agentic-coding workflow itself is hand-rolled and tightly coupled to the outer agent's tool grammar. This is the gap "Mastra Code" is meant to close.
+- The agentic-coding workflow itself is hand-rolled and tightly coupled to the outer agent's tool grammar. This is the gap **Mastra Code** is meant to close: it is itself a Mastra-native coding agent with its own tool layer (view / edit / bash / goals / plan persistence / observational memory) and it can register the learning loop's tools/agents/workflows into the same `Mastra` instance via `createMastraCode({...})`.
 - Some MCP-tool logic implicitly assumes the calling agent is a particular Claude/Droid class (e.g., `meta_state_relationships` was originally written to traverse fields Claude agents tend to ask about).
 
 ### 1.2 What "model-agnostic" currently means
 
-There is **no model coupling at the MCP server level** — the server does no LLM work. Model coupling lives entirely in the agent runtime, where the agent picks a single model per session (Droid configures this via `/model` at session start) and the loop's tools assume that model's tool-use grammar.
+There is **no model coupling at the MCP server level** — the server does no LLM work. Model coupling lives entirely in the agent runtime, where the agent picks a single model per session (Droid configures this via `/model` at session start; Mastra Code exposes per-prompt model switching plus OAuth login for Anthropic and OpenAI).
 
 **Model selection is a session-level concern, not a loop-level concern.** The operator picks the model once at the start of a Droid session; the loop's tools do not need to know or care which model is in use. This is a *weaker* claim than "the loop itself is model-agnostic" — it is "the loop is model-agnostic because it does not invoke models itself."
 
@@ -58,7 +60,7 @@ Mastra would add a *stronger* claim: the loop could host its own agents (`Agent`
 new Agent({ model: "anthropic/claude-sonnet-4-6" })  // or any "provider/model"
 ```
 
-For the current scope (Droid + Mastra Code), this is a **free bonus, not a primary driver**. The migration does not need to optimize for per-deployment model flips; the model's per-session choice in the outer agent is enough.
+For the current scope (Droid + Mastra Code), this is a **free bonus, not a primary driver**. The migration does not need to optimize for per-deployment model flips; the model's per-session choice in the outer agent is enough. (Mastra Code's own multi-provider support — Claude / GPT / Gemini / custom OpenAI-compatible — is the runtime-side analog of the same model-agnostic property.)
 
 ### 1.3 Inventory of current MCP tools (58 tools, 7 groups)
 
@@ -183,11 +185,18 @@ The "agent" tier is *new capability* — today, LLM decisions are made by the *o
 After migration, the runtime surface is:
 
 ```
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐
-│ Claude Code  │  │ Droid CLI    │  │ Pi (future)  │  │ Web UI   │
-└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └─────┬────┘
-       │ MCP (stdio)     │ MCP (stdio)     │ MCP (HTTP)    │ MCP (HTTP)
-       └────────────────┴─────────────────┴───────────────┘
+┌──────────────┐  ┌──────────────────┐  ┌────────────────────────┐
+│ Claude Code  │  │ Droid CLI        │  │ Mastra Code (final)    │
+│              │  │ (today's primary)│  │ = TUI + Harness +      │
+│              │  │                  │  │   Mastra Agent +       │
+│              │  │                  │  │   LibSQL storage       │
+└──────┬───────┘  └──────┬───────────┘  └──────────┬─────────────┘
+       │ MCP (stdio)     │ MCP (stdio)             │ createMastraCode({...})
+       │                 │                         │   (loop tools/agents/
+       │                 │                         │    workflows registered
+       │                 │                         │    into the same Mastra
+       │                 │                         │    instance)
+       └─────────────────┴─────────────────────────┘
                                 │
                   ┌─────────────▼──────────────┐
                   │ Mastra MCPServer           │
@@ -197,7 +206,9 @@ After migration, the runtime surface is:
                   └────────────────────────────┘
 ```
 
-Runtime-agnostic at the MCP transport layer (today: ✅ ; after: ✅). The agent prompts inside Mastra are decoupled from the calling agent's vocabulary — Mastra's agents don't care whether their caller is Claude or Pi.
+Runtime-agnostic at the MCP transport layer (today: ✅ for Droid/Claude; after: ✅ for Droid/Claude/Mastra Code). The agent prompts inside Mastra are decoupled from the calling agent's vocabulary — Mastra's agents don't care whether their caller is Droid, Claude, or Mastra Code.
+
+**The Mastra Code path is structurally different from the Droid/Claude path.** Droid and Claude are *external* MCP clients; they call the loop over stdio. Mastra Code is *itself* a Mastra app — the loop and the coding workflow can be **embedded** into a single `Mastra` instance via `createMastraCode({...})`, sharing storage (LibSQL), memory (Observational Memory), and agent engine. In this mode, the "MCP transport" is effectively bypassed — both halves run inside the same process and call each other as native Mastra tools/agents.
 
 ### 3.3 The model-agnostic claim is strengthened
 
@@ -247,10 +258,14 @@ Both use the same tools, the same instructions, the same memory. Swap the model 
 - Update `.claude/skills/learning-loop/SKILL.md` and `.factory/skills/learning-loop/SKILL.md` to point at the new tool surface.
 - Update `agent-manifest.json` to the new group names.
 
-**Phase 5 — Unify with Mastra Code (long-term, post-Phase 4).**
-- "Mastra Code" is the Mastra-native agentic coding surface (per operator's working definition 2026-06-11).
-- Phase 5 explores how the learning loop's Mastra app and the agentic coding Mastra app share primitives — `createTool` definitions, `Agent` instructions, storage, etc.
-- Out of scope for this research report. The boundary between "loop" and "agentic coding" is the largest open question (Q6 in §8).
+**Phase 5 — Embed in Mastra Code (long-term, post-Phase 4).**
+- **Mastra Code** (`https://github.com/mastra-ai/mastra/tree/main/mastracode`, npm `mastracode`) is the **official Mastra product for coding agent runtime** — a TUI-based reference application built on top of the Mastra framework. It exposes `createMastraCode({...})` for programmatic embedding.
+- Phase 5 explores how the learning loop's Mastra app gets embedded into a `createMastraCode({...})` instance: the loop's tools, agents, and workflows register into the same `Mastra` instance as the coding workflow, sharing the LibSQL storage layer and the Observational Memory primitive.
+- **Two integration modes are plausible** (and worth a brainstorm before Phase 5 starts):
+  1. **Peer MCP servers** — Mastra Code runs the coding workflow's `MCPServer`; the learning loop runs its own `MCPServer`; they talk via MCP. Same as today, just both Mastra-based.
+  2. **Same Mastra instance** — `createMastraCode({...})` is invoked with the learning loop's tools/agents/workflows registered alongside the coding workflow's. They share storage and memory. The "MCP" boundary collapses to in-process function calls.
+- Mode 2 is the more aggressive structural shift; Mode 1 is the safer middle ground.
+- Out of scope for this research report. The exact integration shape is the largest open question (Q6 in §8).
 
 Each phase is independently shippable. Phases 0–2 are pure refactors (no behavior change). Phases 3–5 are capability additions and require a new plan with separate review.
 
@@ -291,9 +306,9 @@ Each phase is independently shippable. Phases 0–2 are pure refactors (no behav
 - The product (meta-state registry) is unchanged.
 - The transport (the MCP server implementation) becomes Mastra-based.
 - The product gains a *reasoning layer* (the new agents in Phase 3) that can self-derive status, propose designs, and explain drift — without requiring the outer agent to do all the LLM work.
-- The "Mastra Code" unification (Phase 5) extends this further: the loop and the agentic-coding workflow share primitives, so the loop's self-model can influence the agentic-coding workflow and vice versa.
+- The **Mastra Code embedding (Phase 5)** extends this further: the loop and the agentic-coding workflow share primitives, storage (LibSQL), and memory (Observational Memory). The loop's self-model can influence the agentic-coding workflow and vice versa. Critically, the loop's own findings become part of the same conversation memory the coding workflow reads from — making "self-learning about self" a first-class property of the coding session, not a side-channel MCP call.
 
-Concretely: today, "is this finding still valid?" requires the outer agent to read `meta-state.jsonl`, call `meta_state_derive_status`, interpret the result. With a Mastra Agent, the loop itself answers: "is finding X still valid?" returns `{ valid: true, reason: "...", evidence: [...] }` directly, and the outer agent just calls the `ask_self_model_agent` tool.
+Concretely: today, "is this finding still valid?" requires the outer agent to read `meta-state.jsonl`, call `meta_state_derive_status`, interpret the result. With a Mastra Agent embedded in Mastra Code, the loop itself answers: "is finding X still valid?" returns `{ valid: true, reason: "...", evidence: [...] }` directly, and the coding workflow reads the answer as part of its own observational memory. The self-model becomes ambient context, not a side-channel call.
 
 This is exactly the destination sentence in `docs/trajectory.md`: *"a self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior."* The Mastra migration is the implementation path; the trajectory is unchanged.
 
@@ -319,6 +334,7 @@ The new agents (Phase 3) and the "Mastra Code" unification (post-Phase 4) are th
 - `tools/learning-loop-mcp/tool-registry.js` — current tool registration + wire-format coercion
 - `.mcp.json` + `.factory/mcp.json` — runtime-agnostic MCP transport
 - `.agents/skills/mastra/SKILL.md` — Mastra skill overview
+- `https://github.com/mastra-ai/mastra/tree/main/mastracode` — **Mastra Code** (official Mastra product for coding agent runtime; TUI + Harness + Mastra Agent + LibSQL; npm `mastracode`; `createMastraCode({...})` factory; verified 2026-06-11)
 - `https://mastra.ai/reference/tools/mcp-server` — `MCPServer` reference (verified 2026-06-11)
 - `https://mastra.ai/reference/tools/create-tool` — `createTool()` reference (verified 2026-06-11)
 - `https://mastra.ai/reference/agents/agent` — `Agent` reference (verified 2026-06-11)
@@ -330,10 +346,13 @@ The new agents (Phase 3) and the "Mastra Code" unification (post-Phase 4) are th
 
 ## 8. Unresolved Questions (post-clarification)
 
-1. ~~What is "Pi"?~~ **RESOLVED 2026-06-11**: placeholder for any future MCP-compatible runtime. Concrete target is Droid + a future "Mastra Code" (Mastra-native agentic coding surface).
-2. ~~Per-deployment model selection vs per-agent.~~ **RESOLVED 2026-06-11**: model selection is a session-level concern handled by Droid's `/model`. The loop does not need its own model config; per-agent config is unnecessary.
+1. ~~What is "Pi"?~~ **RESOLVED 2026-06-11**: Pi (`https://github.com/earendil-works/pi`) was a placeholder mentioned in the original prompt. Concrete runtime targets are **Droid (today) and Mastra Code (final Mastra-fy)**.
+2. ~~Per-deployment model selection vs per-agent.~~ **RESOLVED 2026-06-11**: model selection is a session-level concern handled by Droid's `/model` (and Mastra Code's per-prompt model switching). The loop does not need its own model config.
 3. **Should the existing `coerceParamsToSchema` semantics be preserved 1-to-1 in Mastra, or is this the moment to clean them up?** The semantics were added to work around the raw SDK's wire format; Mastra may not need them. Recommend: drop them in Phase 1 and let the test suite catch any client that depends on the looseness.
-4. **License compatibility.** `@mastra/mcp` is Apache-2.0. Our project is "private / not published." No conflict, but worth recording in `meta_state_log_change` once we adopt.
-5. **Phase 3 agents' memory.** The `intakeAgent` and `selfImprovementAgent` benefit from memory (a thread that persists across the same conversation). Mastra's `Memory` requires a storage backend (Postgres/LibSQL/Mongo). Do we want to add a storage dependency? Or use `memory: false` and rely on the outer agent's context? Recommend defer to Phase 3 plan.
-6. **Mastra Code scope.** What does "Mastra Code" actually contain? A separate Mastra app for agentic coding? A shared library that the loop depends on? The exact boundary between "learning loop" and "agentic coding workflow" is the largest open question and deserves its own brainstorm when Phase 0 is ready to start.
-7. **Is `MastraServer` (HTTP, OpenAPI) in scope?** It would let us expose the loop to non-MCP clients (e.g., a future web UI). Out of scope for the loop today but worth a follow-up question to the operator.
+4. **License compatibility.** `@mastra/mcp` is Apache-2.0. Our project is "private / not published." No conflict, but worth recording in `meta_state_log_change` once we adopt. **Mastra Code itself is part of the `mastra-ai/mastra` monorepo (Apache-2.0)** — same considerations.
+5. **Phase 3 agents' memory.** The `intakeAgent` and `selfImprovementAgent` benefit from memory (a thread that persists across the same conversation). Mastra's `Memory` requires a storage backend (Postgres/LibSQL/Mongo). **If we go with Mastra Code as the final runtime, its built-in LibSQL storage + Observational Memory cover this for free** — the loop's agents share the Mastra Code instance's memory primitive. If we stay MCP-coupled, we add the storage dependency ourselves. Recommend defer to Phase 3 plan; flag that Mastra Code embedding would make this free.
+6. **Mastra Code integration mode (Phase 5).** Two plausible modes:
+   - **Mode 1 — Peer MCP servers**: Mastra Code runs its own `MCPServer` for coding tools; the learning loop runs its own `MCPServer`; they talk via MCP. Same as today, both Mastra-based.
+   - **Mode 2 — Same Mastra instance**: `createMastraCode({...})` is invoked with the learning loop's tools/agents/workflows registered into the same `Mastra` instance as the coding workflow. They share LibSQL storage and Observational Memory. The "MCP" boundary collapses to in-process calls.
+   Mode 1 is safer; Mode 2 is the more aggressive structural shift. **The decision affects Phase 5's scope and the value of the earlier phases' work.** Recommend a brainstorm before Phase 0 starts, since the answer influences which abstractions Phase 1 should preserve.
+7. **Is `MastraServer` (HTTP, OpenAPI) in scope?** It would let us expose the loop to non-MCP clients (e.g., a future web UI). Out of scope for the loop today but worth a follow-up question to the operator. **Mastra Code's TUI is the primary UX surface; HTTP/OpenAPI would be a parallel surface for non-terminal clients.**
