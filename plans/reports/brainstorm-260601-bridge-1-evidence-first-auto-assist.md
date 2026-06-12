@@ -3,7 +3,8 @@
 **Date:** 2026-06-01
 **Skill:** ck:brainstorm
 **Scope:** Bridge 1 (Doc → Candidate Assertion) of `docs/trajectory.md`
-**Status:** Design approved, awaiting plan
+**Status (original 2026-06-01):** Design approved, awaiting plan
+**Status (2026-06-12):** **VOIDED BY RE-DEBATE, 2026-06-12.** Per the operator reframe in `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and the consistency report at `plans/reports/consistency-260612-1300-mastra-research-report.md`, the product-surface schemas this report was designing against (`claim.schema.json`, `index-entry.schema.json`) are **unbound** — the loop, using its own meta-surface as substrate, will re-debate the product surface from scratch. The engineering content of this report (the pipeline design, the candidate-assertion shape, the snapshot-migration deferral) remains in the repo as historical record, but the *status* and the *contract* are voided. Do not act on this report as a build spec. See §3.8.2 of the Mastra research report for the full list of voided reports.
 
 ---
 

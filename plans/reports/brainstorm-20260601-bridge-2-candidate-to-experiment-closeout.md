@@ -4,6 +4,7 @@
 - source: `/ck:brainstorm` session on `docs/journals/260601-bridge-2-candidate-to-experiment-closeout.md`
 - input: request to expand Post-Implementation Reflections from snapshot-migration deferral to full meta-process reflection
 - status: approved, ready for `/ck:plan`
+- **status (2026-06-12):** **VOIDED BY RE-DEBATE, 2026-06-12.** Per the operator reframe in `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and the consistency report at `plans/reports/consistency-260612-1300-mastra-research-report.md`, the candidate-to-experiment pipeline this report was validating is **product-surface design** that needs re-debate. The report's own self-flag (line 101: "Bridge 2 is marketed as 'complete' while untested end-to-end") is consistent with the operator reframe. The engineering content (the 4 dimension templates, the MCP tool, the schema changes, the promotion workflow) remains in the repo as historical record, but the *status* ("approved, ready for /ck:plan") and the *contract* (the pipeline as built) are voided. Do not act on this report as a build spec. See §3.8.2 of the Mastra research report for the full list of voided reports.
 
 ## Problem Statement
 
