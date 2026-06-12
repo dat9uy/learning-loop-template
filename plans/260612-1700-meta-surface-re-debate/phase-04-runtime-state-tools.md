@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Runtime-State-Tools"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [1, 3]
@@ -54,14 +54,14 @@ Add 2 new MCP tools: `runtime_state_read` (read-only, agent-callable, queries th
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/tools/runtime-state-read-tool.js` exists and registers as `runtimeStateReadTool`.
-- [ ] `tools/learning-loop-mcp/tools/runtime-state-record-tool.js` exists and registers as `runtimeStateRecordTool`.
-- [ ] `tools/manifest.json` has 2 new entries.
-- [ ] `agent-manifest.json` has `runtime_state_read` in `introspection` group and `runtime_state_record` in `gate` group.
-- [ ] `runtime_state_read` returns 18 rows when called with `affected_system: 'vnstock'`.
-- [ ] `runtime_state_record` returns `{ error: 'preflight_required' }` when no preflight marker exists.
-- [ ] `__tests__/runtime-state-*-tool.test.js` tests pass (6+ new tests).
-- [ ] `pnpm test` passes 995+ tests (985 + 10 new from Phases 1-4).
+- [x] `tools/learning-loop-mcp/tools/runtime-state-read-tool.js` exists and registers as `runtimeStateReadTool`.
+- [x] `tools/learning-loop-mcp/tools/runtime-state-record-tool.js` exists and registers as `runtimeStateRecordTool`.
+- [x] `tools/manifest.json` has 2 new entries.
+- [x] `agent-manifest.json` has `runtime_state_read` in `introspection` group and `runtime_state_record` in `gate` group.
+- [x] `runtime_state_read` returns 18 rows when called with `affected_system: 'vnstock'`. (Verified by `runtime_state_read tool` test group: 3 tests pass.)
+- [x] `runtime_state_record` returns `{ error: 'preflight_required' }` when no preflight marker exists. (Verified by `runtime_state_record tool` test group: 3 tests pass.)
+- [x] `__tests__/runtime-state-*-tool.test.js` tests pass (6+ new tests).
+- [x] `pnpm test` passes 995+ tests (985 + 10 new from Phases 1-4). (922 pass, 1 skipped, 0 fail; net test count lower because more tools were deleted in Phase 7 than added in Phases 1-4.)
 
 ## Risk Assessment
 

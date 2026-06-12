@@ -1,7 +1,7 @@
 ---
 title: "Phase A — Meta-Surface Re-Debate (one consolidated file + sidecar)"
 description: "Extend meta-state.jsonl with affected_system + code_ref + ledger_ref; add runtime-state.jsonl sidecar; convert 18 ledger events; archive 40+ product records to records/_unbound/; delete 8 schemas + 13 product-surface tools. Net: 56 → 43 MCP tools; meta-surface becomes the only bound surface; product surface is unbound and re-debated from the meta-surface."
-status: pending
+status: in-progress
 priority: P2
 branch: "main"
 tags: [meta-surface, phase-a, product-surface-re-debate, bridge-7]
@@ -46,14 +46,16 @@ Implements the re-debate of the product surface using the meta-surface as substr
 
 | Phase | Name | Status | Effort | Dependencies |
 |-------|------|--------|--------|--------------|
-| 1 | [Schema-Extension](./phase-01-schema-extension.md) | Pending | 3h | — |
-| 2 | [Ledger-Conversion](./phase-02-ledger-conversion.md) | Pending | 2h | 1 |
-| 3 | [Runtime-State-Sidecar](./phase-03-runtime-state-sidecar.md) | Pending | 2h | 1 |
-| 4 | [Runtime-State-Tools](./phase-04-runtime-state-tools.md) | Pending | 4h | 1, 3 |
-| 5 | [Archive-Product-Records](./phase-05-archive-product-records.md) | Pending | 4h | 1 |
-| 6 | [Wire-Format-and-Gate-Patterns](./phase-06-wire-format-and-gate-patterns.md) | Pending | 3h | 4 |
-| 7 | [Delete-Product-Tools](./phase-07-delete-product-tools.md) | Pending | 2h | 5, 6 |
-| 8 | [Delete-Product-Schemas](./phase-08-delete-product-schemas.md) | Pending | 1h | 7 |
+| 1 | [Schema-Extension](./phase-01-schema-extension.md) | Completed | 3h | — |
+| 2 | [Ledger-Conversion](./phase-02-ledger-conversion.md) | Completed | 2h | 1 |
+| 3 | [Runtime-State-Sidecar](./phase-03-runtime-state-sidecar.md) | Completed | 2h | 1 |
+| 4 | [Runtime-State-Tools](./phase-04-runtime-state-tools.md) | Completed | 4h | 1, 3 |
+| 5 | [Archive-Product-Records](./phase-05-archive-product-records.md) | Completed | 4h | 1 |
+| 6 | [Wire-Format-and-Gate-Patterns](./phase-06-wire-format-and-gate-patterns.md) | Completed | 3h | 4 |
+| 7 | [Delete-Product-Tools](./phase-07-delete-product-tools.md) | Completed (deviations) | 2h | 5, 6 |
+| 8 | [Delete-Product-Schemas](./phase-08-delete-product-schemas.md) | Completed (regressions + deferrals) | 1h | 7 |
+
+**Remaining work (post-Phase 8):** see [phase-a-remaining-work.md](./phase-a-remaining-work.md) for the deferred audit-trail entries, the cold-session test fix, the master-tracker flip, and the deferred schema-import + LRU cache refactors.
 
 **Total effort:** ~21h
 

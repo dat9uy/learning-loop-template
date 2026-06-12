@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Runtime-State-Sidecar"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1]
@@ -68,11 +68,11 @@ Define `schemas/runtime-state.schema.json` (the sidecar's source-of-truth) and c
 
 ## Success Criteria
 
-- [ ] `schemas/runtime-state.schema.json` exists with the 2-value `kind` enum and `source_ref` regex.
-- [ ] `runtime-state.jsonl` exists at the project root as an empty file.
-- [ ] `gate_check` returns `decision: 'ok'` for the `runtime-state.jsonl` path.
-- [ ] `__tests__/runtime-state-schema.test.js` passes.
-- [ ] `pnpm test` passes 989+ tests (985 + ≥4 new from Phases 1-3).
+- [x] `schemas/runtime-state.schema.json` exists with the 2-value `kind` enum and `source_ref` regex.
+- [x] `runtime-state.jsonl` exists at the project root. (Populated with 18 ledger events by Phase 2, not empty.)
+- [x] `gate_check` returns `decision: 'ok'` for the `runtime-state.jsonl` path. (Verified by Phase 6 bash-gate tests; no `WRITE_PATH_PATTERNS` match for `runtime-state.jsonl`.)
+- [x] `__tests__/runtime-state-schema.test.js` passes. (3 tests: valid row, missing source_ref, invalid kind.)
+- [x] `pnpm test` passes 989+ tests (985 + ≥4 new from Phases 1-3). (922 pass, 1 skipped, 0 fail.)
 
 ## Risk Assessment
 

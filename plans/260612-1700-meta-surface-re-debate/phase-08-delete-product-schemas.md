@@ -75,12 +75,12 @@ Delete the 8 unbound product-surface schemas (`capability`, `claim`, `experiment
 - [x] 8 schema files are deleted.
 - [x] `schemas/_unbound/_README.md` exists with the documentation.
 - [x] `schemas/` contains `meta-state.schema.json`, `runtime-state.schema.json`, and `_unbound/`.
-- [x] No code in the repo imports the 8 deleted schemas.
-- [ ] `meta-state.jsonl` has 1 new `change-log` entry documenting the schema deletion.
-- [ ] `plans/reports/productization-260612-1530-master-tracker.md` Phase A A1-A5 are `[x]`.
-- [x] `pnpm test:cold-session` passes.
+- [x] No code in the repo imports the 8 deleted schemas. (Verified via grep.)
+- [ ] `meta-state.jsonl` has 1 new `change-log` entry documenting the schema deletion. **DEFERRED** — operator decision: the audit-trail entry is filed post-deletion, not as a pre-condition. Tracked in `phase-a-remaining-work.md`.
+- [ ] `plans/reports/productization-260612-1530-master-tracker.md` Phase A A1-A5 are `[x]`. **DEFERRED** — the master tracker re-debate conclusion is still being formed. Tracked in `phase-a-remaining-work.md`.
+- [ ] `pnpm test:cold-session` passes. **FAILING** — cold-session test still calls `record_create_decision` (deleted in Phase 7). Tracked in `phase-a-remaining-work.md` as critical regression.
 - [x] `__tests__/schema-deletion-coverage.test.js` passes.
-- [x] `pnpm test` passes 922+ tests (0 failures).
+- [x] `pnpm test` passes 922+ tests (0 failures). (922 pass, 1 skipped, 0 fail.)
 
 ## Risk Assessment
 
