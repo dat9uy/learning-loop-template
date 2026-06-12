@@ -6,13 +6,15 @@
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
 **Last updated:** 2026-06-12 (this session)
-**Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface
+**Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
 
 ## Why this report exists
 
 The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front called the **meta-surface**, voided Bridges 1-4, and locked a 7-step implementation order (Step 0 → Step 7, per research report §3.8). The two source documents (Mastra research report + consistency report) are **contracts**, not trackers — they tell you *what* to do, not *where you are right now*. This report is the **canonical tracker**: one file that says which phases are open, which are closed, which are blocked, and what the next checkbox is.
+
+**Phases A-F** are the content/code/self-model phases (what the loop records, what the loop builds, what the loop learns about itself). **Phase G** is the mechanics phase (how the work gets done in a single session — the `ck:*` skill migration track). Phase G is a parallel dimension: it does not gate any of A-F and A-F do not gate it. The two halves of the tracker are independent.
 
 **Update rule:** when a phase advances, edit this report FIRST, commit, then run `meta_state_log_change` with `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` and a one-line `reason`. The tracker is canonical; `meta-state.jsonl` is the audit trail.
 
@@ -110,6 +112,43 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 
 ---
 
+## Phase G — Skill Migration Track (post-productization, parallel dimension)
+
+**Bucket:** move the `ck:*` skill family from session-scoped markdown skills into loop-owned MCP tools. This is a **mechanics** track, not a content/code/self-model track — Phases A-F are about *what the loop records / builds*; Phase G is about *how the work gets done* in a single session. **It can ship before, alongside, or after any of A-F, in any order** — the migration does not depend on the product surface binding.
+
+**Why this is its own phase, not a sub-phase of A-F:** none of A-F constrain the skill-migration shape. Phase A re-debates the product surface. Phase B ships the codegen engine. Phase C-E is the Mastra migration. Phase F binds the product surface. None of these touch the question of whether `ck:plan` should be an MCP tool — that's a different axis entirely (mechanics vs. content).
+
+**Origin (2026-06-12):** operator-confirmed in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 closeout (the dependency-balance convention + the post-productization migration target). Full design lives in `docs/trajectory.md` §4.7. Pillar-level framing: `docs/philosophy.md` Pillar 4 (Skill Authority vs. Loop Authority).
+
+**Migration sequence (smallest-first, lowest-risk-first):**
+
+- [ ] **G1 — `ck:plan` → `loop_plan_create` (and related) MCP tool(s).** The smallest surface, the lowest risk, the highest citation value. The MCP tool writes the plan file *and* creates a `loop-design` entry with `proposed_design_for` + the plan path as `evidence_journal`. The plan file is no longer an escape-hatch artifact the loop encounters later; it is loop-citable at creation time. The markdown skill stays as the readable spec.
+- [ ] **G2 — `ck:journal` → `loop_journal_record` MCP tool.** Citation-only, no execution. The MCP tool writes to `docs/journals/...` *and* files a `finding` (or `change-log` if the journal is post-implementation) with `evidence_journal` pointing at the journal file. The journal stays a journal; what changes is that it is loop-cited.
+- [ ] **G3 — `ck:cook` → `loop_cook` MCP tool.** The largest surface, the highest risk. The MCP tool reads the plan file, executes phases, files `change-log` entries per phase boundary, and checks the consult-gates (including `mechanism_check` + fingerprint freshness) before each phase. The execution is *recorded*, not *witnessed*. This is the migration that closes the 2026-05-22 `/ck:cook` bypass gap (experiment: `experiment-product-macro-cook-no-loop-20260522T055121Z.yaml`).
+
+**Stop condition (what "owned" means for a skill):**
+
+- (a) The MCP tool creates the loop-citable artifact.
+- (b) The MCP tool records the meta-surface event at creation (a `loop-design`, `finding`, or `change-log` entry).
+- (c) The MCP tool enforces the consult-gates the markdown skill was skipping (preflight markers, fingerprint freshness, plan-phase 0, etc.).
+
+When all three are true for a given skill, that skill is loop-owned. The markdown skill remains as the readable spec and the prompt-author docs. The two-tier governance model shifts: the *citation* of a skill invocation moves into the loop, but the *execution mechanics* of internal-implementation work stays in the skill layer. The shift is citation, not replacement.
+
+**Pre-conditions to start the track:**
+
+- Phase A of this tracker ships (the meta-surface is stable, the sidecar is in place, the 4-kind union remains load-bearing). G1/G2 can technically start in parallel with Phase A — the convention is already in `docs/philosophy.md` Pillar 4 — but the implementation plan should be authored after Phase A's plan exists, so the codegen engine (Phase B) is available to generate the tool surface.
+- The dependency-balance convention is operational — plan-file authoring is internalizing cleanly, `ck:*` skills are being cited, the contract stays meta-surface-owned. (This is a self-check: the cold-session test can grow a probe that verifies `evidence_journal` citations land on real plan files.)
+
+**What this track is NOT:**
+
+- **Not a replacement for skills.** The skill markdown stays. The migration is additive: the MCP tool gains authoritative ownership (cite-or-else semantics), the skill keeps its role as the readable spec.
+- **Not a refactor of the 4-kind union.** The track may add a `kind: 'tool-version'` or similar to the meta-surface for MCP-tool release tracking, but it does not touch the 4-kind union. The 4 kinds stay load-bearing.
+- **Not Bridge 1-4.** The product surface is unbound; the track does not depend on it shipping.
+- **Not a Phase A concern.** Phase A closes the convention; the migration itself is this track. Phase A and Phase G share the convention but not the scope.
+- **Not a sequential dependency for A-F.** This track can ship in parallel with any other phase.
+
+---
+
 ## Cross-References
 
 - **Mastra research report (contract):** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` (operator-approved contract, 2026-06-12 reframe). Source of truth for §3.7, §3.8, §3.9, §3.10, §8.
@@ -117,6 +156,9 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 - **Bridge 5 design proposal:** `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2; the proposal text for the existing `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` entry).
 - **`meta-state.jsonl` (status mirror):** do not edit from here. The tracker is canonical; the registry is the audit trail.
 - **`AGENTS.md` §10** "Where This Project Is Heading" — the 2026-06-12 reframe that makes this tracker possible (meta-surface as the only bound surface; Bridges 1-4 voided; 7-step implementation order).
+- **Skill-migration design:** `docs/trajectory.md` §4.7 (origin, sequence, stop condition, pre-conditions, NOTs). Phase G of this tracker operationalizes it.
+- **Skill-migration pillar:** `docs/philosophy.md` Pillar 4 (Skill Authority vs. Loop Authority). The convention that Phase G implements.
+- **Skill-migration closeout:** `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 (the operator-confirmed consensus that produced the dependency-balance convention and the post-productization migration target).
 - **Active loop-design entry:** `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` (status: active; `proposed_design_for` and `addresses` empty; targeted by Report 2).
 - **Active next-up finding:** `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (status: reported; expires 2026-06-13; cost estimate ~6h).
 - **Wire-format quirk finding:** `meta-260612T0058Z-next-up-wire-format-quirk-on-meta-state-patch-proposed-desig` (the latest empirical confirmation that the passthrough ZodObject is the structural blocker).
@@ -142,6 +184,7 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 - **Not a brainstorm.** The Phase A re-debate is *upcoming* work, not done work. The 5 sub-phases are open questions, not conclusions.
 - **Not a plan.** A plan (`plans/.../plan.md`) ships code; the tracker surfaces state. Each phase will eventually get its own plan directory; the tracker links out to those plans when they exist.
 - **Not a substitute for `meta-state.jsonl`.** The registry is the source of truth for *status*; the tracker is the source of truth for *what's next*. They are co-equal canonicals, each for its own concern.
+- **Not a single-dimension tracker.** Phases A-F are content/code/self-model. Phase G is mechanics (the `ck:*` skill migration track). The two halves share a tracker but are otherwise independent.
 
 ---
 

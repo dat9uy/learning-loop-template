@@ -15,7 +15,9 @@ A self-referential learning loop with two stacked dimensions:
 
 **The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** The template is the static rules of the game. The substrate is the surface the loop operates against. The meta-surface is what the loop learns from doing so.
 
-The destination also means **docs are not operational dependencies**. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow — and from self-driving workflow into a self-modeling system that improves the workflow it runs. The meta-surface is the terminus of that gradient.
+The destination also means **docs are not operational dependencies**, and the same rule applies to the skill family. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed; any `ck:*` skill invocation that runs without being cited in the resulting meta-state event is an invisible skill run the next agent cannot see. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow, and from skill markdown into loop-owned MCP tools — and from self-driving workflow into a self-modeling system that improves the workflow it runs. The meta-surface is the terminus of that gradient. The skill-migration track (see §4.7) is the post-productization extension of the same gradient.
+
+**The skill-migration track, in one sentence:** after the meta-surface productizes, the loop owns `ck:plan`, `ck:cook`, and `ck:journal` as MCP tools. The markdown skills become readable specs; the MCP tools become authoritative executors. The escape hatch becomes a tool.
 
 ## 2. Why this is the natural endpoint
 
@@ -103,6 +105,41 @@ When the operator's corrections shape what the loop learns, and the loop's gates
 
 Proposed mitigation: a `loop_discovered` vs `operator_ack` annotation on change-log entries. The ratio of these over time is the "operator-capture index." A high ratio means the operator is the system's brain, not the loop. This is not yet implemented; the schema decision is open.
 
+### 4.7 The skill-migration track (post-productization)
+
+Bridges 1-4 are product-surface (content). Bridges 5+6 are meta-surface (code + self-model). The skill-migration track is a third category: **mechanics**. It is not about what the loop records (the meta-surface) or what the loop builds (the product surface, unbound); it is about *how the work gets done* in a single session. The markdown skills (`ck:*`) are session-scoped mechanics; the migration moves them into loop-owned MCP tools.
+
+**Origin of the track (2026-06-12):** the operator's §11 closeout in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` named the dependency-balance convention — plan-file authoring internalizes, code execution depends on `ck:*` skills (cited), the contract itself internalizes. The migration is the next step past that convention: convert the cited `ck:*` helpers into authoritative loop executors. Canonical phase state for the migration: `plans/reports/productization-260612-1530-master-tracker.md` **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase, not a child of any of Phases A-F).
+
+**Migration sequence (smallest-first, lowest-risk-first):**
+
+1. **`ck:plan` → `loop_plan_create` (and related) MCP tool(s).** The smallest surface, the lowest risk, the highest citation value. The MCP tool writes the plan file *and* creates a `loop-design` entry with `proposed_design_for` + the plan path as `evidence_journal`. The plan file is no longer an escape-hatch artifact the loop encounters later; it is loop-citable at creation time. The markdown skill stays as the readable spec.
+2. **`ck:journal` → `loop_journal_record` MCP tool.** Citation-only, no execution. The MCP tool writes to `docs/journals/...` *and* files a `finding` (or `change-log` if the journal is post-implementation) with `evidence_journal` pointing at the journal file. The journal stays a journal; what changes is that it is loop-cited.
+3. **`ck:cook` → `loop_cook` MCP tool.** The largest surface, the highest risk. The MCP tool reads the plan file, executes phases, files `change-log` entries per phase boundary, and checks the consult-gates (including `mechanism_check` + fingerprint freshness) before each phase. The execution is *recorded*, not *witnessed*. This is the migration that closes the 2026-05-22 `/ck:cook` bypass gap (experiment: `experiment-product-macro-cook-no-loop-20260522T055121Z.yaml`).
+
+**Stop condition (what "owned" means for a skill):**
+
+- (a) The MCP tool creates the loop-citable artifact (plan file, journal, code change).
+- (b) The MCP tool records the meta-surface event at creation (a `loop-design`, `finding`, or `change-log` entry).
+- (c) The MCP tool enforces the consult-gates the markdown skill was skipping (preflight markers, fingerprint freshness, plan-phase 0, etc.).
+
+When all three are true, the skill is loop-owned. The markdown skill remains as the readable spec and the prompt-author docs (per the learning-loop skill's stated role). The two-tier governance model (external-boundary → loop; internal-implementation → skill) shifts: the *citation* of a skill invocation moves into the loop, but the *execution mechanics* of internal-implementation work stays in the skill layer. The shift is citation, not replacement.
+
+**Pre-conditions to start the track (per the operator-confirmed 2026-06-12 ordering):**
+
+- Phase A of the productization master tracker ships (the meta-surface is stable, the sidecar is in place, the 4-kind union remains load-bearing).
+- The meta-surface is the only bound surface; the product surface is re-debated from the meta-surface.
+- The dependency-balance convention (pillar 4 of `docs/philosophy.md`) is operational — i.e. plan-file authoring is internalizing cleanly, `ck:*` skills are being cited, and the contract stays meta-surface-owned.
+
+**What this track is NOT:**
+
+- **Not a replacement for skills.** The skill markdown stays. The migration is additive: the MCP tool gains authoritative ownership (cite-or-else semantics), the skill keeps its role as the readable spec. If "owning" is read as "deleting," the analysis is wrong; the escape-hatch pattern is the philosophy.
+- **Not a refactor of the 4-kind union.** The skill-migration track may add a `kind: 'tool-version'` or similar to the meta-surface for MCP-tool release tracking, but it does not touch the 4-kind union. The 4 kinds stay load-bearing.
+- **Not Bridge 1-4.** The product surface they were building toward is unbound; the skill-migration track does not depend on it shipping. The track can ship before, alongside, or after the product surface binds, in any order.
+- **Not in Phase A scope.** The Phase A re-debate in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 closes the convention; the migration itself is the master tracker's **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase). The two are not the same: §11 of the Phase A report names the *target* (the convention + the migration direction); Phase G owns the *implementation* (sequence, stop condition, pre-conditions). The split keeps the Phase A re-debate from carrying content that does not belong there.
+
+**Why this matters for trajectory, not just for the skill family:** the same gradient that moved procedural knowledge from docs to records to tools to self-driving workflow now extends one more step: from skill markdown (session-loaded markdown) to loop-owned MCP tools (session-citable meta-surface events). The destination sentence does not change. The gradient gets one more step.
+
 ## 5. What Stays Human Forever
 
 Autonomy is on the meta-surface axis, not the judgment axis. The destination keeps humans in the loop for:
@@ -114,6 +151,8 @@ Autonomy is on the meta-surface axis, not the judgment axis. The destination kee
 - **Philosophy.** The "why" behind loop design stays in docs. The "what" and "how" move to the loop.
 
 **What is no longer in scope as a human-only concern (2026-06-12 reframe):** product scope, vendor records, capability records, observation records, decision records, experiment records, risk records, index entries, resource budgets. These are product-surface concerns, unbound, and re-debated from the meta-surface. The operator's authority over them is *not* removed; the operator is just not the only designer — the loop, using its own meta-surface as substrate, will re-debate the product surface. The operator retains veto power over any product-surface binding the loop proposes.
+
+**What is no longer in scope as a skill-only concern (2026-06-12 reframe):** plan-file scaffolding, journal writing, code-execution orchestration — the `ck:plan`, `ck:journal`, `ck:cook` skills. These are session-scoped mechanics; the loop's skill-migration track (§4.7) will own them as MCP tools after the meta-surface productizes. The skill markdown stays as the readable spec; the MCP tool gains authoritative ownership (cite-or-else). The operator's authority over the migration is *not* removed — the operator approves the sequence, the stop conditions, and the boundary between skill and loop. The operator is just not the only author of the migration: the loop, using its own meta-surface as substrate, will surface the candidates via `meta_state_query_drift` + `loop_describe` agent-affordance reports.
 
 Vision documents that do not name their limits get cited to justify removing safety gates the author never meant to remove. These limits are the limits.
 
@@ -182,3 +221,10 @@ This rewrite is a from-scratch replacement of the previous `docs/trajectory.md`.
 - **Reorganized:** the doc now leads with §1 "Destination" (the meta-surface autonomy + self-referential memory framing) and §2 "Why this is the natural endpoint" (the precondition chain that got us here). §3 is the gradient (autonomy is incremental). §4 is the Bridges (the 2026-06-12 reframe, the engine/instance split, the Bridges 1-4 voiding, the fifth bridge scoped to the meta-surface, the sixth bridge unified with the fifth, the loss function question, the operator-capture guard). §5 is "What Stays Human Forever" (meta-surface scope, irreversible operations, the meta-surface system itself, philosophy — **not** product scope, vendor records, etc.). §6 is the storage layer trajectory (preserved from the previous version, since the storage layer is meta-surface infrastructure). §7 is cross-references. §8 is what changed in this rewrite.
 - **Added:** the from-scratch rewrite header at the top, pointing at the backup, the reframe, the consistency report, and AGENTS.md §10 as the gate-truth. §4.1 (engine vs instance inversion). §4.2 (Bridges 1-4 voided, with the in-place header edit policy and the list of voided reports). §4.3 (the fifth bridge, scoped to the meta-surface; the new risk that the meta-surface engine must reproduce the in-production `coerceParamsToSchema` / `installWireFormatCoercion` behavior). §4.4 (the sixth bridge, unified with the fifth). §5's sharpened "What is no longer in scope as a human-only concern" — the operator retains veto power over product-surface binding, but is not the only designer. §8 (what changed).
 - **Net effect:** the document is now ~50% the length of the previous version (230 lines → 230 lines, but the changelogs alone were ~80 lines). The product surface is mentioned only in the §1 destination and §4.2 voiding, both of which frame it as unbound. The trajectory is the trajectory of the meta-surface, not the trajectory of any substrate.
+
+## 9. What changed in the 2026-06-12 skill-migration addendum
+
+- **Added to §1 (Destination):** the skill-migration track is named as the post-productization extension of the same gradient that moved procedural knowledge from docs to records to tools. The destination sentence does not change; the gradient gets one more step.
+- **Added §4.7 (The skill-migration track):** origin (operator's §11 consensus in the Phase A re-debate report), migration sequence (`ck:plan` → `ck:journal` → `ck:cook`), stop condition (cite-or-else semantics), pre-conditions to start (Phase A ships; convention operational), and the four explicit "NOTs" (not replacement, not 4-kind refactor, not Bridge 1-4, not in Phase A scope — Phase A names the *target*, the master tracker's Phase G owns the *implementation*).
+- **Added to §5 (What Stays Human Forever):** the matching "no longer in scope as a skill-only concern" subsection, mirroring the existing "no longer in scope as a human-only concern" language. The operator retains authority over the sequence, stop conditions, and boundary; the loop surfaces candidates.
+- **Why this is an addendum, not a rewrite:** the 2026-06-12 from-scratch rewrite is still correct in its bones. The skill-migration track is a new direction the operator has confirmed since the rewrite; the addition preserves the rewrite's structure and the §8 "what changed" entry that already records it.

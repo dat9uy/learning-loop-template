@@ -1,6 +1,6 @@
 # Brainstorm: Phase A — Product-Surface Re-Debate (one-file-per-surface, code-as-source)
 
-> **Status:** approved by operator 2026-06-12 16:10. Aligned to the productization master tracker at `plans/reports/productization-260612-1530-master-tracker.md` § Phase A. Refines the locked 2026-06-12 reframe (meta-surface as the only bound surface) into a concrete Phase A design.
+> **Status:** approved by operator 2026-06-12 16:10; **§11 closed 2026-06-12 second-pass consensus** (operator intent + skill authority). The dependency-balance convention, pre-mortem channel, and revision loop are operator-confirmed. The post-productization skill-migration target has been **moved to the master tracker as Phase G** (mechanics, not content — does not belong in a Phase A re-debate report). Phase A scope is unchanged. Aligned to the productization master tracker at `plans/reports/productization-260612-1530-master-tracker.md` § Phase A. Refines the locked 2026-06-12 reframe (meta-surface as the only bound surface) into a concrete Phase A design.
 
 **Type:** brainstorm (design report)
 **Date:** 2026-06-12
@@ -232,7 +232,104 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 - **Not a migration of legacy `records/<vendor>/` content.** Those stay unbound. The forensic stub pattern is the same one used for `AGENTS.old.260612-1300.md` and the voided Bridge 1-4 reports.
 - **Not a sub-tool of `/ck:plan`.** This is a brainstorm; `/ck:plan` is the next step *if* the operator wants to plan now (operator declined per the closing conversation; will plan later).
 
-## 11. References
+## 11. Consensus on operator intent + skill authority (260612 closeout)
+
+**Status:** **closed 2026-06-12, second-pass consensus.** The original §11 ("Open question from operator (260612): operator intent + revision loop") was a multi-section open question across several iterations of self-correction. The closeout is the result of the operator's confirmation on 2026-06-12 of the dependency-balance convention and the post-productization skill-migration track.
+
+The full pre-consensus draft is preserved in §11.6 (Archived open-question drafts) for forensic continuity. The current section is the consensus.
+
+### 11.1 The dependency-balance convention (operator-confirmed 2026-06-12)
+
+The operator's two-pronged §11 question (where does operator intent live, and how does the loop revise/improve a prior decision?) resolves into three dependency-balance rules:
+
+| Concern | Authority | Rationale |
+|---|---|---|
+| **Plan-file authoring** (the pre-mortem) | The loop | The plan file is the contract. `ck:plan` is one way to write a plan file, not the only way. Whatever tool scaffolds the plan, the resulting `change-log` entry with `change_target: 'plans/.../plan.md'` is what makes the plan loop-citable. The skill is a helper, not the authority. |
+| **Code execution mechanics** (scaffolding, cooking, testing, review) | The skill (with citation) | The `ck:*` skills are session-scoped, execution-focused. The rule: every skill invocation must be cited in the resulting `finding` or `change-log` entry's `evidence_journal`. A skill run the loop does not know about is a bypass waiting to happen. |
+| **The contract itself** (the rule, the decision boundary, the consult-gate pattern) | The loop, no exceptions | The meta-surface is the only authoritative source. Skills may *apply* the contract; they do not *define* it. The rule's `pattern` + `enforcement` is the contract. |
+
+**Single-sentence summary:** *Skills execute; the loop records; the meta-surface is the only thing that survives.* The plan-file convention is what makes that sentence operational — it is the artifact where operator intent meets agent execution without either one bypassing the loop.
+
+### 11.2 The pre-mortem channel is the plan file (no schema change)
+
+The 4-kind union is locked. No `method: []` field on `finding`; no `effect: {}` field on `rule`. The pre-mortem already has a home:
+
+1. Operator (or agent on operator's behalf) writes `plans/<date>-<slug>/plan.md` *before* running the investigation. This is the pre-mortem: the hypothesis, the method, the success metrics, the boundaries.
+2. The investigation runs (experiment, vendor interaction, code change).
+3. The post-hit finding is filed via `meta_state_report`, with `evidence_journal: 'plans/<date>-<slug>/plan.md'` pointing back at the pre-mortem file.
+4. The rule (if the finding is promoted) carries the contract via `pattern` + `enforcement`, citing the plan via `evidence_journal` or `addresses`.
+
+The convention is in **active use today** (e.g., `evidence_journal: 'plans/260603-sp3-drift/plan.md'`, `evidence_journal: 'plans/260605-superseded-status-and-discoverability/plan.md'`, `evidence_journal: 'plans/reports/brainstorm-260602-sp0-log-change.md'` — three different real examples spanning change-log, finding, and rule entries). The convention is honored, not enforced.
+
+**The enforcement question is deferred to the cold-session test** (post-Phase A) with a single mechanical guard: "for every active `finding` with `affected_system != 'meta'`, `evidence_journal` points at a file that exists on disk." This catches the actual failure mode (a citation that has been renamed/archived/deleted) without dictating the plan format. Required for Phase A: no. Recommended post-Phase A: yes.
+
+### 11.3 The revision loop is the meta-surface's existing supersede + promote machinery
+
+The operator's revision question ("how do we revise a prior decision?") resolves into two cases:
+
+- **Revise the recipe (the pre-mortem was wrong):** the plan file is mutable. Edit it and file a `change-log` entry with `change_target: 'plans/.../plan.md'`. No schema change. The Internalization Rule is preserved.
+- **Revise the contract (the rule is wrong):** the meta-surface has `meta_state_supersede` (a rule can be superseded by another rule with `supersedes: <old-rule-id>`). The superseded rule stays in the registry for lineage. The new rule is the new contract.
+
+**What the loop *cannot* do today:** revise a *conclusion* the operator disagrees with, on the operator's authority alone, without going through the finding's `mechanism_check`. The fingerprint check (`meta_state_check_grounding`) and the `rule-no-orphaned-evidence` consult-gate are exactly the protections that prevent operator overrule from quietly invalidating empirical claims. This is the philosophical position of `docs/philosophy.md` ("Decisions Are Boundaries, Not Permissions"): a decision's blocked actions matter more than its allowed actions, and the loop's job is to keep the boundary visible.
+
+### 11.4 The skill-migration target (moved to master tracker Phase G, 2026-06-12)
+
+The operator confirmed the long-term intent: **after the meta-surface productizes, the loop will own `ck:plan`, `ck:cook`, and `ck:journal` as MCP tools.** This is the natural extension of the §11.1 dependency-balance convention.
+
+**This sub-section has been moved to the productization master tracker as Phase G — Skill Migration Track** (see `plans/reports/productization-260612-1530-master-tracker.md` Phase G). The reason: the skill migration is a **mechanics** concern, not a **content/code/self-model** concern. Phases A-F of the master tracker are about *what the loop records / builds / learns about itself*; Phase G is about *how the work gets done in a single session*. The migration does not belong in a Phase A re-debate report; it belongs in its own parallel-dimension phase.
+
+**What this sub-section keeps in the Phase A report (the operator-confirmed intent):**
+
+- The dependency-balance convention (§11.1) names the migration target. The plan-file convention is internalizing, the `ck:*` skills are session-cited helpers, the contract is meta-surface-owned.
+- The post-productization direction is operator-confirmed: the loop will own `ck:plan`, `ck:cook`, and `ck:journal` as MCP tools.
+- The full design (migration sequence, stop condition, pre-conditions, NOTs) lives in three places: the master tracker (Phase G), `docs/trajectory.md` §4.7, and `docs/philosophy.md` Pillar 4.
+
+**What this sub-section no longer contains (moved to the master tracker):**
+
+- The migration sequence (`ck:plan` → `ck:journal` → `ck:cook`) — see Phase G1, G2, G3.
+- The stop condition (cite-or-else semantics, three conditions) — see Phase G preamble.
+- The pre-conditions to start the track — see Phase G preamble.
+- The four "NOTs" (not replacement, not 4-kind refactor, not Bridge 1-4, not in Phase A scope) — see Phase G preamble.
+
+**Cross-references for the moved content:**
+
+- **Master tracker (canonical phase state):** `plans/reports/productization-260612-1530-master-tracker.md` Phase G — Skill Migration Track.
+- **Trajectory (long-term direction):** `docs/trajectory.md` §4.7 — The skill-migration track.
+- **Philosophy (pillar-level framing):** `docs/philosophy.md` Pillar 4 — Skill Authority vs. Loop Authority.
+
+### 11.5 Phase A scope is unchanged (the consensus confirms it)
+
+The consensus does **not** expand Phase A scope. Phase A remains:
+
+- §5.1 storage shape (extend `meta-state.jsonl` with `affected_system` + `code_ref` + `ledger_ref`; add `runtime-state.jsonl` sidecar).
+- §5.2 state-machine semantics (counter pattern, conversion of `observation-vnstock-device-slot-ledger.yaml`).
+- §5.3 capabilities as derived view (delete `schemas/capability.schema.json` + 3 `capability_*` tools).
+- §5.4 evidence + claim (delete `claim.schema.json` + `index-entry.schema.json`; reduce 5 `index_*` tools to 2).
+- §5.5 engine binding (no binding to product-surface types; 3 schemas remain, 8 deleted).
+- §5.6 touchpoints (per the dependency-ordered phase list).
+
+**What Phase A also commits to, in light of the consensus:**
+
+- The plan-file + `evidence_journal` convention is named as the pre-mortem channel in the §5.1 design rationale. No new field on `finding` or `rule`.
+- The skill-migration target is **not in Phase A** — it is **Phase G** of the productization master tracker (a parallel-dimension mechanics phase; see §11.4 for the move note). The convention is the bridge: §11.1 lives in Phase A; the implementation lives in Phase G.
+- The cold-session test's planned §11.2 enforcement check ("for every active `finding` with `affected_system != 'meta'`, `evidence_journal` points at a file that exists on disk") is **also out of scope** for Phase A. It is recommended post-Phase A.
+
+**Net effect of the consensus on Phase A:** zero scope change. The consensus is a *philosophical + trajectory* commitment, not a *Phase A* commitment. Phase A still ships the 8 sub-phases named in §5.6 and §13. The skill-migration *target* is captured by Phase G of the master tracker; the *convention* that motivates it is captured here.
+
+### 11.6 Archived open-question drafts (forensic continuity)
+
+The original §11 was a multi-section open question. Its drafts are preserved here for forensic continuity, so the closeout is auditable. The drafts are not part of the consensus; they are the conversation that produced the consensus.
+
+- **§11.1 (legacy 3-stage pipeline):** identified that the legacy `claim → experiment → decision` workflow had a recipe (the experiment) and a contract (the decision) on top of the result. *Resolution:* the recipe is the plan file; the contract is the rule's `pattern` + `enforcement`. No new schema fields needed.
+- **§11.2 (the inversion insight):** legacy model is top-down (operator hypothesis → agent verification → operator commitment); the meta-surface is bottom-up (agent observation → operator ack). The 4 kinds describe *states of the loop's self-model*, not *stages of an investigation*. *Resolution:* the operator's "I want to test if X" is a *question* the operator asks the loop, not a *command* to it. The pre-mortem is the plan file.
+- **§11.3 (the pre-mortem lifecycle problem, corrected):** every meta-surface entry is post-hit, retrospective, audit-trail-shaped. A `method: []` field on a `finding` is structurally wrong, not just "deferred" — at the moment the finding is created, the agent has *already* hit the thing. *Resolution:* the pre-mortem has a home (the plan file), and it is not in the meta-surface. The Internalization Rule is preserved.
+- **§11.4 (what Phase A clears the way for, revised, sharper):** Phase A does not add a `method` field, does not add an `effect` field, does not pre-design a revision workflow. Phase A confirms the meta-surface lifecycle is correct as documented, confirms the plan-file + `evidence_journal` convention is the pre-mortem channel, and names the open questions as *convention-enforcement* + *context-engineering* problems, not *meta-surface-schema* problems. *Resolution:* the consensus agrees; the open questions are deferred to post-Phase A tracks (cold-session test enforcement; `/ck:context-engineering` for cross-surface isolation; the skill-migration track for the cited-helpers question).
+- **§11.4 (post-productization skill-migration target, original draft, **moved**):** the original §11.4 was the full design of the skill-migration track (sequence, stop condition, pre-conditions, NOTs). On 2026-06-12 second-pass review, the operator confirmed that the skill-migration content is a *mechanics* concern, not a *content/code/self-model* concern, and therefore does not belong in a Phase A re-debate report. **The content has been moved to the productization master tracker as Phase G — Skill Migration Track** (`plans/reports/productization-260612-1530-master-tracker.md` Phase G), with cross-references to `docs/trajectory.md` §4.7 and `docs/philosophy.md` Pillar 4. The §11.4 in this report is now a thin pointer to the canonical home.
+- **§11.5 (open sub-questions, final minimum set):** three sub-questions: (1) is the pre-mortem channel correctly identified? (2) should the pre-mortem convention be enforced or stay honored-by-convention? (3) is the cross-surface isolation problem a Phase A concern? *Resolution:* (1) yes (the plan file); (2) stay honored-by-convention for Phase A, with the cold-session test check as a post-Phase A recommendation; (3) no (it is a context-engineering problem, correctly deferred to `/ck:context-engineering`).
+
+---
+
+## 12. References
 
 - `plans/reports/productization-260612-1530-master-tracker.md` § Phase A — the canonical tracker; this report advances A1-A5 from open to designed.
 - `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.10 — the 2026-06-12 reframe that locked the meta-surface as the only bound surface.
@@ -244,12 +341,16 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 - `records/observations/observation-vnstock-device-slot-ledger.yaml` — the 19-event ledger that becomes the seed data for `runtime-state.jsonl`.
 - `schemas/{capability,claim,experiment,risk,decision,observation,resource-budget,index-entry}.schema.json` — the 8 schemas to be deleted.
 
-## 12. Next steps (when the operator is ready to plan)
+## 13. Next steps (when the operator is ready to plan)
 
-1. Open a `plans/260612-1700-meta-surface-re-debate/plan.md` (or similar) with 8 sub-phases (one per touchpoint category in Section 5.6).
-2. The plan's Phase 0 declares the 4-kind union stability check (the SP3 lock per the master tracker § Phase B1).
-3. The plan's Phase 1-7 ships the changes in dependency order: meta-state schema → ledger conversion → runtime-state.jsonl → 2 new tools → 6 deletions.
-4. The plan's Phase 8 updates the master tracker: A1-A5 flip from `[ ]` to `[x]`.
-5. `meta_state_log_change` with `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` and `change_dimension: 'semantic'` documents the Phase A closure.
+1. **§11 is closed (consensus reached 2026-06-12).** The dependency-balance convention, the pre-mortem channel, and the revision loop are all operator-confirmed. The post-productization skill-migration target has been moved to the master tracker as **Phase G** (mechanics, not content — does not belong in a Phase A re-debate report; see §11.4 for the move note). The consensus does **not** expand Phase A scope; Phase A is unchanged.
+2. Open a `plans/260612-1700-meta-surface-re-debate/plan.md` (or similar) with 8 sub-phases (one per touchpoint category in Section 5.6).
+3. The plan's Phase 0 declares the 4-kind union stability check (the SP3 lock per the master tracker § Phase B1) and the §11.5 closed-consensus check (no `method` field on `finding`, no `effect` field on `rule`, plan-file + `evidence_journal` is the pre-mortem channel).
+4. The plan's Phase 1-7 ships the changes in dependency order: meta-state schema → ledger conversion → runtime-state.jsonl → 2 new tools → 6 deletions. (No `method` / `effect` field additions; those are structurally wrong by the meta-state lifecycle, not just deferred.)
+5. The plan's Phase 8 updates the master tracker: A1-A5 flip from `[ ]` to `[x]`. Phase A closure is recorded via `meta_state_log_change` with `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` and `change_dimension: 'semantic'`.
+6. **Other tracks (not in this plan, not in Phase A scope):**
+   - **Phase G — Skill Migration Track** (per master tracker Phase G, `docs/trajectory.md` §4.7, `docs/philosophy.md` Pillar 4): `ck:plan` → `ck:journal` → `ck:cook` migration as MCP tools. **Canonical home is the master tracker Phase G**, not this report. Pre-conditions: Phase A ships, the dependency-balance convention is operational. Can ship in parallel with any of Phases A-F.
+   - **Cold-session test enforcement check** (per §11.2): "for every active `finding` with `affected_system != 'meta'`, `evidence_journal` points at a file that exists on disk." Scheduled after Phase A. Mechanical, non-prescriptive.
+   - **Cross-surface isolation** (per §11.5.3): context-engineering problem, correctly deferred to `/ck:context-engineering`. Not a Phase A concern.
 
-**Operator declined `/ck:plan` handoff for this session** (closing conversation). The report is the deliverable. When the operator is ready, the planning will pick up at Section 12.
+**Operator declined `/ck:plan` handoff for this session** (closing conversation). The report is the deliverable. When the operator is ready, the planning will pick up at step 2; the post-Phase A tracks (cold-session enforcement, cross-surface isolation) and the parallel-dimension Phase G skill-migration track are tracked in the productization master tracker.

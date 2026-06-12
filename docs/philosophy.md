@@ -14,7 +14,27 @@ Without the loop, every session repeats the same discoveries, re-runs the same e
 
 This document exists for irreducible judgment: the "why" behind loop design, not the "what" of loop operation. Procedural knowledge (naming conventions, intake steps, approval protocols, experiment formats) belongs in encoded artifacts. Philosophy belongs here. When you find yourself writing "Step 1, do X; Step 2, do Y" in a doc, stop. That is a loop gap. Encode it.
 
-## Three Philosophical Pillars
+### The Escape Hatch Has a Trajectory
+
+The escape-hatch rule is not static. It is a gradient.
+
+**Today:** Some things are loop-encoded (the meta-surface, observations, the gate, the consult-rules, the workflow tools). Some things are still escape hatches (the operator guide, this philosophy doc, the skill markdown). The split is not arbitrary; it tracks what the loop has internalized and what it has not.
+
+**The direction of travel:** as the meta-surface productizes, more things move from `docs/` into the loop. The agent stops reading the operator guide mid-task because the consult-gate surfaces the relevant rule. The agent stops asking the operator about device-slot state because the observation is cited at the right time. The agent stops reading the philosophy doc to remember "decisions are boundaries" because the `decision_effect.*` fields enforce it mechanically.
+
+**What this means for the agent:** treat every `docs/` read as a candidate gap-fill. If the same doc gets read by 3 different agents in 3 different sessions, the answer probably belongs in the loop. File a finding. Promote to a rule when the pattern recurs.
+
+**What this means for the operator:** expect to *rewrite* docs as the loop absorbs their content. The doc that survives the rewrite is the doc that captures irreducible judgment — the "why" the loop cannot proceduralize. Everything else moves.
+
+### Skills Are the Same Kind of Escape Hatch
+
+`docs/` is not the only escape hatch. **The `ck:*` skill family is the same shape, in a different filename.** Skill markdown is human-readable, session-loaded, not recorded in the meta-surface as authoritative, and consumed by the agent to know how to execute.
+
+The skill escape-hatch rule is the same as the doc escape-hatch rule: **anything an agent must open to know what to do next is a gap**. The escape hatch is not wrong; it is *temporary*. The trajectory is to internalize the skill into the loop as an MCP tool. The skill markdown becomes the readable spec; the MCP tool becomes the authoritative executor.
+
+See "Pillar 4 — Skill Authority vs. Loop Authority" below for the dependency-balance convention and the post-productization migration plan.
+
+## Four Philosophical Pillars
 
 ### 1. Verification Is Dimensional, Not Binary
 
@@ -44,6 +64,24 @@ Evidence files are raw material. They do not self-certify. A disproven evidence 
 Truth status lives in the machine-extracted index, not in evidence. An index entry is an atomic assertion derived from evidence `## Findings`; it carries dimension, scope, and status. Evidence is referenced by index entries; index entries are never inferred from evidence directly.
 
 Always read the index first. Evidence second. Never the other way around. The index is the single top-level artifact for state queries. Internalize by pointing at the code, not by quoting the markdown. A code-pointed finding with `mechanism_check: true` is durable; a markdown citation is the escape hatch.
+
+### 4. Skill Authority vs. Loop Authority
+
+The loop owns what survives across sessions. Skills own what happens in a single session. The two are not equivalent.
+
+A skill can execute, scaffold, test, or review — all of which are useful, none of which are loop-citable by default. The loop's self-model (`meta-state.jsonl`) records the *result* of the work (a `finding`, a `change-log`) and the *commitment* the result implies (a `rule` or `change-log`). The skill is what *happened*; the loop is what *lasts*.
+
+**The dependency-balance convention (operator-confirmed, 2026-06-12):**
+
+| Concern | Authority | Why |
+|---|---|---|
+| **Plan-file authoring** (the pre-mortem) | The loop | The plan file is the contract. `ck:plan` is one way to write it; the resulting `change-log` entry with `change_target: 'plans/.../plan.md'` is what makes it loop-citable. The skill is a helper, not the authority. |
+| **Code execution mechanics** (scaffolding, cooking, testing, review) | The skill | These are skill-shaped: session-scoped, execution-focused. The rule: every skill invocation must be cited in the resulting `finding` or `change-log` entry's `evidence_journal`. A skill run the loop does not know about is a bypass waiting to happen. |
+| **The contract itself** (the rule, the decision boundary, the consult-gate pattern) | The loop, no exceptions | The meta-surface is the only authoritative source. Skills may *apply* the contract; they do not *define* it. |
+
+**The single most important sentence:** *Skills execute; the loop records; the meta-surface is the only thing that survives.* The plan-file convention is what makes that sentence *operational* — it is the artifact where operator intent meets agent execution without either one bypassing the loop.
+
+**Long-term direction:** the loop will *own* the `ck:plan`, `ck:cook`, and `ck:journal` skills as MCP tools. The migration sequence is smallest-first, lowest-risk-first: `ck:plan` (citation-only contract) → `ck:journal` (citation-only artifact) → `ck:cook` (full execution mechanics). The order is non-trivial: each migration must (a) preserve the markdown skill as the readable spec, (b) make the resulting artifact loop-citable at creation time, and (c) enforce the consult-gates the markdown skill was skipping. See `docs/trajectory.md` for the migration track; see `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 for the consensus that produced this pillar.
 
 ## State Machine and Observations
 
@@ -93,10 +131,12 @@ The learning loop is a governance layer for external boundaries. It is not a gen
 
 | Tier | What it governs | Workflow |
 |---|---|---|
-| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: evidence → index → experiment → decision (frozen-legacy claims remain in records/<surface>/claims/ as read-only audit trail) |
-| **Internal implementation** | Refactoring, module extraction, naming, structure, patterns within approved boundaries | ck:* skills: plan → cook → review |
+| **External boundary** | Vendor APIs, device slots, resource budgets, output policies, install/runtime contracts, production deployment | Learning loop: observations gate the agent; the agent checks budget + fingerprint + context; meta-state records the reasoning. Plan files bound the pre-mortem. |
+| **Internal implementation** | Refactoring, module extraction, naming, structure, patterns within approved boundaries | ck:* skills: plan → cook → review, **with the rule that skill invocations are cited in the resulting `finding` or `change-log`.** |
 
 A refactor that touches no external system does not need a decision record. A vendor API change always does. The question is never "is this big enough?" The question is "does this touch an external boundary?"
+
+The two tiers are not the same kind of authority. The external-boundary tier is the loop's primary job: it produces records that constrain the next agent's behavior. The internal-implementation tier is execution support: the skill gets the work done, the loop records that it happened. When the skill's work touches the external-boundary tier, the skill execution must surface as a meta-state event (a `finding` if the work changed the loop's behavior; a `change-log` if the work changed the loop's machinery).
 
 ## How to Reason With the Loop
 
@@ -120,7 +160,13 @@ Do not delete failed evidence. Supersede it with a link. The link is the signal 
 
 Before asking the operator about external system state, check observation records. Observations are the authoritative source for device slots, budgets, registration status, and rate limits.
 
+Before asking the operator about prior decisions, check the meta-state registry. The rule is the contract. The finding is the result. The plan file is the pre-mortem. Cite the code, not the markdown.
+
 The operator is the final authority, but the loop should do the work of remembering. Only escalate when the record is silent or stale.
+
+### Cite the Loop, Not the Skill
+
+When you need to invoke a `ck:*` skill, know *why* you need it. The skill is the mechanism. The loop is the reason. After the skill runs, the resulting work product (a plan file, a code change, a journal entry) must be cited in the loop — either as a `change-log` entry with `change_target` pointing at the file, or as a `finding` with `evidence_journal` pointing at the file. A skill invocation that the loop does not know about is invisible to the next agent.
 
 ## The Adversarial Mindset
 
@@ -130,8 +176,10 @@ The loop assumes agents make mistakes. It is designed to catch them.
 - **Experiments are challenged** by cleanup rules (a failed cleanup invalidates the result).
 - **Decisions are challenged** by superseding decisions.
 - **Evidence is challenged** by newer evidence.
+- **Findings are challenged** by `meta_state_derive_status` (is this still true?) and `meta_state_check_grounding` (does the code match the fingerprint?).
+- **Rules are challenged** by `meta_state_query_drift` (aggregate drift across the registry).
 
-Do not treat the loop as a approval pipeline to pass through. Treat it as a debate where your work must survive scrutiny. Write records as if a skeptical agent will read them next week and decide whether to trust your conclusion.
+Do not treat the loop as an approval pipeline to pass through. Treat it as a debate where your work must survive scrutiny. Write records as if a skeptical agent will read them next week and decide whether to trust your conclusion.
 
 ## What the Loop Is Not
 
@@ -139,7 +187,10 @@ Do not treat the loop as a approval pipeline to pass through. Treat it as a deba
 - **It is not a bureaucracy.** Records are lightweight. A single experiment with clear hypothesis and result is enough. Verbose ceremony adds no confidence.
 - **It is not a guarantee.** A verified claim can still fail in production. The loop raises confidence; it does not eliminate risk.
 - **It is not a substitute for judgment.** The operator decides what risks to accept. The loop informs the decision; it does not make it. Judgment lives in docs; procedure lives in the loop.
+- **It is not the only source of authority.** The skill family (and the agent's own reasoning) are useful. The loop does not replace them. The loop records what they do and constrains what they may do; it does not pretend they do not exist.
 
 ## Summary
 
-The learning loop exists because agents forget. It works by making knowledge durable, confidence dimensional, and decisions bounded. Use it to know what you know, know what you do not, and prevent the next agent from rediscovering your mistakes.
+The learning loop exists because agents forget. It works by making knowledge durable, confidence dimensional, decisions bounded, and skills accountable. Use it to know what you know, know what you do not, and prevent the next agent from rediscovering your mistakes.
+
+The trajectory of the loop is to internalize what is internalizable — first procedural knowledge (rules, observations, consult-gates), then plan mechanics, then skill mechanics — while leaving irreducible judgment in the docs. The docs that survive the rewrite are the docs that capture the "why" the loop cannot proceduralize. Everything else moves.
