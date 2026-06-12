@@ -1,33 +1,8 @@
 # AGENTS.md — Agent Surfaces Reference
 
-> **2026-06-12 from-scratch rewrite.** The previous version of this document is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. The rewrite drops all product-surface framing (decisions, experiments, risks, observations, capability records, vendor directories) from the top of the document. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface.** This document is the gate-truth for every agent in every session. See `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe, and `plans/reports/consistency-260612-1300-mastra-research-report.md` for the operational source of truth.
-
 Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mcp/core/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
 
----
-
-## 1. The Meta-Surface (the only bound surface)
-
-The meta-surface is the loop's self-model. It is the **only contract** the loop writes. Everything else (the substrate, the product surface, the legacy `records/<vendor>/` content) is design exploration, archived for forensic continuity, and explicitly not a contract that constrains the loop.
-
-**The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is a 4-kind discriminated union:
-
-| Kind | Role | Lifespan |
-|---|---|---|
-| `finding` | A loop-self-diagnostic observation. Ephemeral; 24h TTL until acked. | 24h → ack → active → resolve |
-| `change-log` | An immutable audit record of a system change. No TTL. | Forever |
-| `rule` | A promoted invariant the loop enforces. Two enforcement classes: `gate` (hard-block) and `agent` (consult). | Forever (until superseded) |
-| `loop-design` | A deferred design that will create or modify rules, schemas, or tools. | Active → inactive (when shipped) → archived |
-
-**The product surface (decisions, experiments, risks, observations, capability records, vendor records, claim records, index entries, resource budgets) is unbound.** The Bridge 5 codegen engine has the ability to generate product-surface records; the loop has not committed to binding. The current `capability`, `index-entry`, `claim`, `resource-budget`, `observation` schemas are design exploration, not contracts. They may or may not be the right shape after the meta-surface re-debates the product surface. **All product-surface record CRUD is paused; no new product records are generated, validated, or migrated.** Legacy product records in `records/<vendor>/` are archived, not deleted.
-
-**The substrate** (the vendor APIs the loop operates against — vnstock, fastapi, tanstack, etc.) is replaceable. It exists to provoke learning; the learning is not *about* the substrate. Recent examples of substrate-independent learning: `meta-260606T2106Z-agent-called-meta-state-log-change-...` (the loop noticing its own retry pathology) — no relationship to any vendor.
-
-**Why this matters for every section below:** the top of this document is meta-surface infrastructure (gates, hooks, meta-state tools, the registry). The middle of this document is meta-surface protocol (how to cite, how to record, how to resolve). The bottom of this document is meta-surface trajectory (where the loop is heading). The product surface does not appear because it is unbound.
-
----
-
-## 2. Hook Matrix
+## Hook Matrix
 
 | Surface | Hook | Wrapper | Universal Script |
 |---------|------|---------|------------------|
@@ -41,13 +16,13 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 ### Gate Descriptions
 
 - **Bash/Execute gate** — blocks commands matching constraint patterns (docker, sudo, package-manager, vendor-api, side-effect-import) without active observations, and blocks all direct writes to `records/**` via redirects/heredocs/tee.
-- **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files. (The `product/**` and `records/**` allowances are substrate carry-overs from the legacy product-surface era; the meta-surface does not need them.)
+- **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files.
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
 - **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_fingerprint` to unblock.
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
 - **Consult-gate `rule-cold-session-test-must-pass-before-resolution`** — gates `meta_state_resolve` on the cold-session discoverability test passing. First instance of `pattern_type: resolution-evidence-required`.
 - **Consult-gate `rule-project-skill-boundary`** — blocks cross-project `ck:use-mcp` / `ck:find-skills` skill invocations in projects that already have a local learning-loop-mcp server (glob `.factory/skills/{use-mcp,find-skills}/**`, scope predicate `project_has_learning_loop_mcp`).
-- **MCP server** (`tools/learning-loop-mcp/server.js`) — 56 tools per `agent-manifest.json` (verified 2026-06-12). Grouped in `tools/learning-loop-mcp/agent-manifest.json`. Of these, ~36 are bound to the meta-surface; the remaining ~20 are unbound (operate on product-surface shapes that are being re-debated) or dropped.
+- **MCP server** (`tools/learning-loop-mcp/server.js`) — 52 tools for constraint checks, record CRUD, preflight gating, meta-state lifecycle, and workflow orchestration. Grouped in `tools/learning-loop-mcp/agent-manifest.json`.
 
 ### Inbound State Gate — Meta-State First
 
@@ -59,7 +34,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 1. Gate fires → read `meta-state.jsonl` (last 20 lines, or use `meta_state_list` MCP tool with `entry_kind` filter).
 2. Scan for recent `change-log` entries (operator intent) and `finding` entries (known gate bugs that may escalate).
 3. If a matching prior finding exists, apply the operator-approved workaround BEFORE running the corresponding bash command.
-4. Only then proceed to update affected observations via `meta_state_report` MCP tool.
+4. Only then proceed to update affected observations via `record_observation` MCP tool.
 
 **Defense in depth**: the hook message itself leads with the meta-state hint (see `tools/learning-loop-mcp/hooks/inbound-gate.js#buildContextMessage`), but this AGENTS.md rule is the canonical source.
 
@@ -85,13 +60,35 @@ The universal hooks handle tool name differences between surfaces:
 - `Write` (Claude) ↔ `Create` (Droid)
 - `Edit`, `ApplyPatch` — same in both
 
----
+## MCP-First Record Access
 
-## 3. Meta-Surface Tools (the canonical MCP CRUD surface)
+**All `records/**` writes go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
 
-**All meta-surface mutations go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `meta-state.jsonl` and to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
+### Available MCP CRUD Tools
 
-### Available Meta-Surface Tools
+| Tool | Purpose |
+|------|---------|
+| `record_create_decision` | Create a decision YAML in `records/<surface>/decisions/` |
+| `record_update_decision` | Update an existing decision record |
+| `record_create_experiment` | Create an experiment YAML in `records/<surface>/experiments/` |
+| `record_update_experiment` | Update an existing experiment record |
+| `record_create_risk` | Create a risk YAML in `records/<surface>/risks/` |
+| `record_update_risk` | Update an existing risk record |
+| `record_create_observation` | Create an observation YAML in `records/observations/` |
+| `record_update_observation` | Update an existing observation's status |
+| `workflow_notify_artifact` | Log a file change and evaluate triggered workflows |
+| `index_validate` | Validate all YAML records against schemas |
+| `index_extract` | Rebuild the index from evidence/capability files |
+| `capability_generate` | Generate capability records from product surfaces |
+| `gate_mark_preflight` | Mark preflight checklist complete for a surface (unlocks product/** writes for 30 min) |
+
+See `tools/learning-loop-mcp/agent-manifest.json` for full tool grouping and quickstart recipes.
+
+**Use the canonical MCP tools (`meta_state_report`, `meta_state_patch`, `meta_state_batch`, `meta_state_archive`, `meta_state_log_change`, `meta_state_resolve`) for all meta-state mutations.** Do not use `node -e` scripts importing `core/meta-state.js` directly — this is the escape-hatch abuse closed in plans `260608-1015-meta-state-patch-tool-and-wire-format-fix` and `260608-2255-index-extractor-optimization`.
+
+### Meta-State Group (the loop's self-model)
+
+The `meta_state` group is the loop's self-model, not bookkeeping. It carries findings, change-logs, promoted rules, and loop-designs in a 4-member discriminated union. Mutations must go through these tools; direct I/O to `meta-state.jsonl` is the canonical anti-pattern tracked by `meta-260606T2102Z-agent-used-direct-file-i-o-...`.
 
 | Tool | Purpose |
 |------|---------|
@@ -110,62 +107,84 @@ The universal hooks handle tool name differences between surfaces:
 | `meta_state_propose_design` | Create a `loop-design` entry (the "design, not yet shipped" surface) |
 | `meta_state_relationships` | 1-hop inbound/outbound cross-reference traversal |
 | `meta_state_batch` | Atomic batch CRUD: one tool, one lock, one cache invalidation (cap 500 ops) |
-| `meta_state_archive` | Move entries to `meta-state.jsonl`'s archive; structural fix for size-overrun findings |
-| `loop_describe` | Discover the loop's operational surface, active rules, and curated instructions (introspection; `tier: summary \| hot \| warm \| cold`) |
-| `loop_get_instruction` | Return a curated instruction from `loop_describe`'s `discoverability_hints` block by key |
-| `gate_check` | Consult a constraint gate (e.g., `bash-docker`, `write-records`, `vendor-api`); returns `ok` / `block` / `escalate` |
-| `gate_mark_preflight` | Mark the preflight checklist complete for a surface (legacy substrate carry-over; the meta-surface does not require preflight) |
-| `budget_check` | Check resource budget for an external system (e.g., `vnstock` device-slots) |
+| `meta_state_archive` | Move entries to `records/observations/.archive/YYYY-MM/`; structural fix for size-overrun findings |
 
-**Use the canonical MCP tools for all meta-surface mutations.** Do not use `node -e` scripts importing `core/meta-state.js` directly — this is the escape-hatch abuse closed in plans `260608-1015-meta-state-patch-tool-and-wire-format-fix` and `260608-2255-index-extractor-optimization`.
+**Operational rule**: the SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-vs-product surface split, and the most recent active findings. Read this block before answering "what's next?" style questions.
 
-**Why the registry is the product**: the loop's destination is a self-referential system whose self-model (this registry) influences its own behavior. Findings promote to rules; rules enforce invariants. Drift between recorded state and actual state is detected mechanically. The substrate is replaceable; what makes the loop valuable is the registry's ability to provoke and capture learning, not the substrate's identity.
+**Why the registry is the product**: the loop's destination (per `docs/trajectory.md` § The Sixth Bridge) is a self-referential system whose self-model (this registry) influences its own behavior. Findings promote to rules; rules enforce invariants. Drift between recorded state and actual state is detected mechanically. The substrate (currently vnstock) is replaceable; what makes the loop valuable is the registry's ability to provoke and capture learning, not the substrate's identity.
 
-### Operational Rule
+### Record ID Convention
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions.
+`{type}-{surface}-{YYMMDD}T{HHmm}Z-{slug}` — e.g., `decision-product-260522T0930Z-use-vnstock-sdk`
 
----
+### Surface-First Directory Layout
 
-## 4. Write Gate Block Protocol
+```
+records/
+├── <surface>/
+│   ├── decisions/*.yaml
+│   ├── experiments/*.yaml
+│   └── risks/*.yaml
+├── observations/*.yaml
+├── meta/
+│   ├── evidence/*.md
+│   └── capabilities/*.yaml
+└── index.yaml
+```
+
+## Write Gate Block Protocol
 
 When the gate blocks with `decision: block`:
 
 1. **Identify if the artifact is required.** If the plan phase lists the file as a deliverable, it is required.
-2. **For `records/**` paths:** Use the appropriate meta-surface MCP tool to create or update the meta-surface entry that references the record. The MCP server writes directly — no gate bypass. **Note:** meta-surface entries live in `meta-state.jsonl`, not in `records/`. A reference to a `records/<vendor>/foo.yaml` file is a `source_ref` in a `change-log` entry, not a write to the product record itself.
+2. **For `records/**` paths:** Use the appropriate MCP CRUD tool to create or update the record. The MCP server writes directly — no gate bypass.
 3. **For `schemas/**` paths:** Use `AskUserQuestion` to surface the block to the operator with: what file is blocked, why, why it's needed, and options to approve or skip.
 4. **Never use Bash to circumvent a write-gate block.** If Edit/Write is blocked, using Bash (sed, cat, echo, redirect) to modify that same path is a circumvention, not a solution.
 5. **Never assume `--auto` mode overrides mechanical blocks.** `--auto` skips review gates, NOT PreToolUse hook blocks. A blocked tool is a hard stop.
 
----
+## Artifact-Level Loop Rules
 
-## 5. Artifact-Level Loop Rules
+### Product-Build Plans
+- All plans with `tags: [product-build]` MUST declare surfaces in Phase 0.
+- Decision records MUST exist in `records/<surface>/decisions/` before implementation phases begin **(product-build plans only)**. Use `record_create_decision` MCP tool.
+- Missing decision records **always block** (exit 2) — regardless of `GATE_RESPONSE_MODE`.
 
-### Meta-Surface Writes (the only kind in scope)
+### Product Code Writes
+- Writing to `product/**` requires a valid preflight marker for the inferred surface.
+- Surface inference: all `product/**` paths → surface `product`.
+- The gate checks `.claude/coordination/.loop-preflight-<surface>` for a marker with a valid timestamp within 30-minute TTL.
+- Missing or expired preflight markers **always block** (exit 2) — regardless of `GATE_RESPONSE_MODE`.
+- The block message includes a `preflight_checklist` (6 steps) and `surface` field.
+- Use `gate_mark_preflight` MCP tool to create the marker. Direct writes to `.loop-preflight-*` files are blocked by both write and bash gates.
 
-- Writing to `meta-state.jsonl` requires a valid meta-surface tool call (`meta_state_report`, `meta_state_log_change`, `meta_state_propose_design`, etc.). There is no preflight marker for meta-surface writes; the tool itself is the gate.
-- The gate checks for consult-rule violations on every meta-surface tool call (e.g., `rule-no-orphaned-evidence` blocks `meta_state_resolve` if the finding has a stale `code_fingerprint`).
-- Direct writes to `meta-state.jsonl` are blocked by both write and bash gates. The only way to mutate the registry is through the meta-surface tools.
-
-### Substrate Writes (legacy carry-overs, not the meta-surface)
-
-The following substrate carry-overs are retained for forensic continuity but are not the meta-surface:
-
-- **Product code writes (`product/**`):** legacy carry-over from the substrate era. The `gate_mark_preflight` MCP tool creates a marker in `.claude/coordination/.loop-preflight-<surface>` with a 30-minute TTL. The meta-surface does not require preflight; this is a substrate concern. If the operator re-debates the product surface and binding is restored, the preflight gate is one of the first things to revisit.
-- **Journal writes (`docs/journals/**`):** allowed unconditionally. These are meta-surface-adjacent (they may contain experiment-worthy observations), but they are not meta-surface records.
-- **Plan writes (`plans/**`):** allowed unconditionally. Plans reference the meta-surface via `source_refs`; they do not contain meta-surface records themselves.
+### Journal Writes
+- `docs/journals/**` is allowed unconditionally.
+- Agents SHOULD suggest using `record_create_experiment` when journals contain experiment-worthy observations.
 
 ### Gate Response Modes
-
 `GATE_RESPONSE_MODE` controls behavior for **non-artifact** gate checks only (unknown paths, observation staleness). Artifact-aware checks always block.
 
 - `warn` (default): allow the write, emit JSON warning.
 - `escalate`: block the write, require operator approval.
 - Set via `GATE_RESPONSE_MODE` environment variable.
 
----
+## Budget-Check Rule (vendor-api commands)
 
-## 6. Internalization Rule (source_refs and evidence_code_ref)
+Before executing any `vendor-api` command (e.g., `curl` to vendor APIs, vendor SDK calls):
+
+1. Call `budget_check(system="vnstock", resource="device-slots")` (or appropriate system/resource)
+2. If budget observation is stale or missing, stop and ask the operator
+3. If budget is exhausted (`remaining: 0`), read `observation-vnstock-device-slot-ledger` to check host fingerprint
+4. Decide:
+   - Same fingerprint as registered device → safe, proceed
+   - New fingerprint → dangerous, stop or ask operator
+5. Record your reasoning via `meta_state_report(category="budget-check", ...)` with:
+   - `affected_system`: the vendor system name (e.g., `vnstock_vendor`)
+   - `description`: budget numbers, fingerprint match result, and decision
+   - `evidence_code_ref`: the budget observation path
+6. Only proceed after recording the budget-check meta-state entry
+
+## Internalization Rule (source_refs and evidence_code_ref)
 
 When an agent needs to cite a design, finding, or external reference, **cite the code, not the markdown.** The canonical citation path is:
 
@@ -179,40 +198,44 @@ The SessionStart hook surfaces this rule in its discoverability hints. To suppre
 
 **Cross-reference script** (for "X is related to Y" prompts): before patching a finding with cross-references, read the 11th hint in `loop_describe({tier: "warm"}).discoverability_hints`. The canonical script is `(1) meta_state_relationship_validate to lint, (2) meta_state_report({reopens: [orphan_ids]}), (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step`. The hint is the source of truth; this sentence is just a pointer so the agent does not skip it. The legacy 2-step `meta_state_migrate_expired_to_stale` call was removed in plan 260611-1000-remove-expired-status.
 
-## 7. Side-Effect Import Rule (all vendor SDKs)
+## Side-Effect Import Rule (all vendor SDKs)
 
 If any vendor SDK import triggers device registration or authentication (e.g., `import vnstock_data`, `import vendor_data`), do not import it directly. Use `importlib.util.find_spec()` for safe checks. If the gate blocks with `side-effect-import`, respect the block. Do not attempt to bypass it.
 
-## 8. Cold-Session Test Onboarding
+## Implementation Workflows
+
+### Use Case A — Direct Cook
+
+For quick product changes:
+
+1. Use `gate_mark_preflight` MCP tool to unlock product/** writes for the target surface.
+2. `/ck:cook evidence.md` or `/ck:cook <file>`
+3. Gate validates product code writes have a valid preflight marker.
+
+### Use Case B — Plan Then Cook
+
+For features requiring research:
+
+1. `/ck:plan` (produces plan.md with Phase 0 surface declaration)
+2. Use `record_create_decision` MCP tool for required decision records (plan gate).
+3. Use `gate_mark_preflight` MCP tool to unlock product/** writes.
+4. `/ck:cook plan.md`
+
+### Agent Rule
+
+**Never ignore gate block decisions.** If blocked by preflight gate, use `gate_mark_preflight` MCP tool and retry. If blocked by records gate, use MCP CRUD tools to create the missing record. Do not use Bash to circumvent a gate block.
+
+### Cold-session Test Onboarding
 
 Fresh clones require `pnpm test:cold-session` once to seed `.cold-session-sentinel.json`. The freshness test in normal `pnpm test` enforces a 3-day cadence. Run `pnpm test:cold-session` whenever the sentinel asserts stale.
 
-## 9. Implementation Workflows (meta-surface only)
-
-**No product-surface workflows are in scope.** The legacy product-build and direct-cook workflows from the substrate era (which referenced `record_create_decision`, `product/**` preflight, and `records/<vendor>/` directories) are **not** part of the meta-surface. They are retained in `AGENTS.old.260612-1300.md` for forensic continuity but are voided by the 2026-06-12 reframe.
-
-The meta-surface workflow is:
-
-1. **Discover** — call `loop_describe({tier: "warm"})` to read active rules and findings.
-2. **Cite** — follow the Internalization Rule (§6). Cite code, not markdown.
-3. **Record** — use `meta_state_report`, `meta_state_log_change`, or `meta_state_propose_design` to mutate the registry. Cite the entry id (`local:meta-state:<id>`) in any downstream references.
-4. **Resolve** — when a finding's `evidence_code_ref` is no longer valid, use `meta_state_refresh_fingerprint` to update the fingerprint, then `meta_state_resolve` to mark it resolved.
-5. **Promote** — when a finding recurs or has cross-surface implications, use `meta_state_promote_rule` to lift it into a `rule` entry.
-6. **Drift-check** — periodically call `meta_state_query_drift` to surface findings whose code has drifted since the fingerprint was stored.
-
-**Agent Rule**
-
-**Never ignore gate block decisions.** If blocked by a consult-gate, fix the underlying issue (refresh the fingerprint, update the source, resolve the parent finding) and retry. Do not use Bash to circumvent a gate block.
-
----
-
-## 10. Where This Project Is Heading
+## Where This Project Is Heading
 
 The long-term direction lives in `docs/trajectory.md` (read it before reasoning about loop design). This section is the AGENTS-level summary that agents need on every session.
 
 > **2026-06-12 operator reframe:** Bridge 5 and Bridge 6 are no longer separate bridges. They are one atomic front called the **meta-surface**. All Bridge 1-4 work is **deferred and unbound** — the product surface is being re-debated by the meta-surface itself. The Bridges table below reflects this. See `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe. The consistency report at `plans/reports/consistency-260612-1300-mastra-research-report.md` is the operational source of truth for this section.
 
-**The loop has shifted from vnstock-driven to self-learning driven.** The substrate is replaceable; what makes the loop valuable is its ability to provoke and capture learning *about itself*. The destination is a self-referential system where the loop's self-model (the meta-state registry) influences its own behavior — findings promote to rules, rules enforce invariants, drift is detected mechanically, and the operator's cognitive load is bounded by the registry's own queryability. **As of 2026-06-12, the meta-surface (Bridge 5+6) is the active front. Bridges 1-4 are deferred and unbound; the product surface is re-debated from the meta-surface once it ships.**
+**The loop has shifted from vnstock-driven to self-learning driven.** The substrate (vnstock, then any real vendor API) is replaceable; what makes the loop valuable is its ability to provoke and capture learning *about itself*. The destination is a self-referential system where the loop's self-model (the meta-state registry) influences its own behavior — findings promote to rules, rules enforce invariants, drift is detected mechanically, and the operator's cognitive load is bounded by the registry's own queryability. **As of 2026-06-12, the meta-surface (Bridge 5+6) is the active front. Bridges 1-4 are deferred and unbound; the product surface is re-debated from the meta-surface once it ships.**
 
 ### The Bridges (2026-06-12 reframe — meta-surface as the only bound surface)
 
@@ -260,6 +283,18 @@ The 2026-06-12 reframe voids all prior "Bridge 1-4 shipped" or "Bridge 1-4 desig
 2. **The meta-surface engine produces output that is not equivalent to the existing hand-written meta-state tools.** The 16 `meta_state_*` tools in `tools/learning-loop-mcp/tools/meta-state-*-tool.js` have hand-written logic (e.g., `meta_state_derive_status`, `meta_state_check_grounding`). If the Bridge 5 engine's output for the meta-surface types does not match the existing hand-written behavior, the cut-over breaks. *Test: at Bridge 5 Phase 0, generate meta-state zod from the engine and compare against `buildZodSchemaFor('observation', ...)` and the hand-written `meta-state-*-tool.js` schemas. Any divergence is a blocker.*
 3. **The product surface re-debate (Bridge 7) reveals that the meta-surface shape is also wrong.** If the loop, using its own meta-surface as substrate, concludes that the 4-kind union (`finding | change-log | rule | loop-design`) does not generalize, the meta-surface itself is in scope for re-debate. *Test: at post-meta-surface, audit whether the 4-kind union is still the right shape for the product surface the loop is designing. If not, the meta-surface is in scope too.*
 
+### Substrate vs. Product vs. Template
+
+Three layers, distinct lifespans, distinct homes:
+
+| Layer | Role | Lifespan | Lives in |
+|---|---|---|---|
+| **Template** | Static rules of the game — gates, hooks, schemas, MCP tools | Frozen-ish; evolves through formal change-log entries | `tools/learning-loop-mcp/`, `schemas/`, `.claude/coordination/` |
+| **Self-model (product)** | The loop's learning about itself — findings, rules, drift, lifecycle | Grows continuously per operator; change-log tier is durable | `meta-state.jsonl` + 16 `meta_state_*` MCP tools |
+| **Substrate** | Real surface area the loop operates against so it generates real findings. Replaceable. | Disposable — exists to provoke learning, not to be learned *about* | `records/vnstock/`, `product/api/` |
+
+The substrate exists to provoke learning; the learning is not *about* the substrate. A recent example: `meta-260606T2106Z-agent-called-meta-state-log-change-...` (subtype `tool-retry-loop`) is the loop noticing its own retry pathology. That finding has no relationship to vnstock. It is the loop learning about the loop.
+
 ### The Storage Layer Trajectory (Approach A → SQLite)
 
 The scout closeout grew `meta-state.jsonl` from ~130 entries to 500+. The cold tier, compact mode, and `readRegistry()` re-parsed the 540KB JSONL on every call. Plan `260608-2255-index-extractor-optimization` shipped a structural fix across three layers (no more threshold-bump cures):
@@ -281,14 +316,3 @@ Three structural decisions are filed as `loop-design` entries (active):
 3. **Operator-capture guard.** A `loop_discovered` vs `operator_ack` annotation on change-log entries. Ratio is the operator-capture index. Schema decision is open; the question is whether the annotation lives in the change-log entry, in a derived metric, or both.
 
 **What stays human forever**: product scope, irreversible operations, class-approval definitions, decisions and risks, philosophy, and the loop's self-model boundaries. The operator remains the authority on what the loop is allowed to learn about itself. The meta-state system is the most dangerous component to give full autonomy to, because it is the one that decides what the rest of the loop learns.
-
----
-
-## 11. What changed in this rewrite (2026-06-12)
-
-This rewrite is a from-scratch replacement of the previous `AGENTS.md`. The previous version is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. Concrete changes:
-
-- **Dropped:** the "MCP-First Record Access" section's `record_*` CRUD table (the legacy product-surface CRUD list). The legacy `records/<surface>/{decisions,experiments,risks}.yaml` directory layout (`Surface-First Directory Layout`) — F5 of the consistency report. The "Product-Build Plans" / "Product Code Writes" / "Journal Writes" subsections of "Artifact-Level Loop Rules" (legacy product-surface carry-overs). The "Budget-Check Rule" (referenced `observation-vnstock-device-slot-ledger`, a product-surface artifact). The "Implementation Workflows" Use Case A and Use Case B (referenced `record_create_decision` and `product/**` preflight). The "Substrate vs. Product vs. Template" table (the product layer is now unbound; only substrate and template remain). The Record ID Convention `{type}-{surface}-{YYMMDD}T{HHmm}Z-{slug}` (a product-surface convention; meta-surface entries use their own id scheme from the meta-state schema).
-- **Reorganized:** the doc now leads with §1 "The Meta-Surface (the only bound surface)" as the opening thesis. The Hook Matrix and discovery sections are infrastructure (§2). The Meta-Surface Tools are the canonical CRUD surface (§3) — replacing the old product-record CRUD table with the actual 21 meta-surface tools. Write Gate Block Protocol is unchanged in intent (§4). Artifact-Level Loop Rules now distinguish meta-surface writes (the only kind in scope) from substrate carry-overs (§5). Internalization Rule (§6), Side-Effect Import Rule (§7), and Cold-Session Test Onboarding (§8) are unchanged. Implementation Workflows (§9) is reduced to the 6-step meta-surface workflow. The "Where This Project Is Heading" section (§10) is the rewrite from the previous turn (Bridges table, Engine vs Instance, Bridges 1-4 voided, sequencing decision rule, three failure modes, Storage Layer Trajectory, Open Forward Decisions).
-- **Added:** the from-scratch rewrite header at the top, pointing at the backup, the reframe, and the consistency report. §1's meta-surface thesis (4-kind union, product-surface unbound, substrate replaceable, why this matters for every section below). The 6-step meta-surface workflow in §9.
-- **Net effect:** the document is now ~5x more focused on the meta-surface and ~5x less focused on the legacy product surface. The product surface is mentioned only where it is unbound (the §1 thesis) or as a substrate carry-over (the §5 substrate subsection).

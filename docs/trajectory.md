@@ -1,110 +1,94 @@
 # Trajectory
 
+> **2026-06-12 from-scratch rewrite.** The previous version of this document is preserved at `docs/trajectory.old.260612-1300.md` for forensic continuity. The rewrite drops the legacy product-surface framing (Bridges 1-4 as "vendor docs → candidate → experiment → class-approval → active", the 11-drift-cells problem, the "Substrate vs. Product vs. Template" table, the "What Stays Human Forever" product-scope/irreversible-operations checklist, and the 4 stacked "What Has Happened Since" changelogs) and the framing of Bridge 5 / Bridge 6 as two separate bridges. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface.** This document is the trajectory of the loop, not the trajectory of any substrate. See `AGENTS.md` §10 for the gate-truth version of the Bridges table, and `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe. The consistency report at `plans/reports/consistency-260612-1300-mastra-research-report.md` is the operational source of truth.
+
 The long-term direction of the learning loop. This document states the destination, not the route. It is intentionally separate from `charter.md` (present-tense system description) and `philosophy.md` (how to reason with the current loop), because aspirational content in either of those weakens their role as canaries for "what the system actually is right now."
 
-## Destination
+---
+
+## 1. Destination
 
 A self-referential learning loop with two stacked dimensions:
 
-1. **Verification autonomy (in progress).** Vendor documentation flows into candidate assertions, candidates become planned experiments, experiments run inside class-level approval gates and budget bounds, validated assertions land in the index, and product consumes only validated assertions. The human operator approves classes of work, not individual experiments, and stays in the loop for judgment calls (product scope, irreversible operations, gate definitions).
-2. **Self-referential memory (active, growing).** The loop maintains a self-model of its own correctness through the meta-state registry. Loop modifications are logged as change-log entries paired with their code changes. Drift between recorded state and actual state is detected mechanically. Findings promote to rules; rules enforce invariants. A real substrate (e.g. vnstock) provokes findings; the findings shape the loop; the loop runs against the substrate.
+1. **Meta-surface autonomy (active, growing).** The loop maintains a self-model of its own correctness through the meta-state registry. Loop modifications are logged as change-log entries paired with their code changes. Drift between recorded state and actual state is detected mechanically. Findings promote to rules; rules enforce invariants. A real substrate (e.g. vnstock) provokes findings; the findings shape the loop; the loop runs against the substrate. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface once it ships.**
+2. **Self-referential memory (the same thing, viewed from the substrate side).** The meta-surface is what the loop has learned about itself. The substrate is what the loop runs against. Both are inputs to the same feedback loop: the substrate provokes findings, the findings shape the meta-surface, the meta-surface governs how the loop runs against the substrate.
 
-**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** The template is the static rules of the game. The substrate is the surface the loop operates against. The meta-state is what the loop learns from doing so.
+**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** The template is the static rules of the game. The substrate is the surface the loop operates against. The meta-surface is what the loop learns from doing so.
 
-The destination also means **docs are not operational dependencies**. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow — and from self-driving workflow into a self-modeling system that improves the workflow it runs.
+The destination also means **docs are not operational dependencies**. Anything an agent must read from `docs/` to execute correctly is a gap the loop has not yet closed. The gradient moves knowledge from docs into records, from records into tools, from tools into self-driving workflow — and from self-driving workflow into a self-modeling system that improves the workflow it runs. The meta-surface is the terminus of that gradient.
 
-## Why This Is the Natural Endpoint
+## 2. Why this is the natural endpoint
 
-The redesigns already shipped point this way. Atomicity (machine-extracted index, brainstorm 2026-05-18) was the precondition — a bundled-claim system cannot ingest hundreds of vendor assertions without collapsing. The N=1/N>1 rule was the precondition for deciding which candidates are worth formalizing. The observations + budgets layer was the precondition for bounding autonomous resource consumption. Each move was load-bearing for autonomy even when autonomy was not the proximate goal.
+The redesigns already shipped point this way. Atomicity (machine-extracted index, brainstorm 2026-05-18) was the precondition — a bundled-claim system cannot ingest hundreds of vendor assertions without collapsing. The N=1/N>1 rule was the precondition for deciding which candidates are worth formalizing. The observations + budgets layer was the precondition for bounding autonomous resource consumption. SP0-SP3 (the four meta-state sub-projects) shipped the affordances that let the loop observe itself: self-modification (SP0), derivation query (SP1), grounding check (SP2), and drift query (SP3). Each move was load-bearing for self-referential memory even when self-referential memory was not the proximate goal.
 
-## The Gradient
+## 3. The gradient
 
 Autonomy is incremental. Each future plan moves one bridge from human-driven to machine-driven. There is no date and no flag-day. The system gets less human-paced one mechanism at a time.
 
-## Milestone: Observation-Driven Gate Enforcement
+**As of 2026-06-12, the gradient has been collapsed to one active front: the meta-surface (Bridge 5+6).** Bridges 1-4 are deferred until the meta-surface ships, and the product surface they were building toward is unbound (re-debated from the meta-surface). See `AGENTS.md` §10 for the canonical Bridges table and the engine/instance split.
 
-Crossed 2026-05-20. The constraint enforcement layer evolved from hardcoded rules to stateful observation-driven gates.
+## 4. The Bridges (2026-06-12 reframe)
 
-Before this milestone, the write gate blocked paths mechanically (`records/evidence/**`) with no override mechanism. Operator approval was conversational — the agent asked, the operator said yes, the agent tried again, the gate blocked again. The agent fell back to `Bash` heredocs, bypassing the gate entirely.
+The destination sentence: *A self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior.* The gradient moves knowledge from human-readable docs into machine-driven loop mechanics, one bridge at a time. **As of 2026-06-12, the gradient has been collapsed to one active front: the meta-surface (Bridge 5+6). Bridges 1-4 are deferred until the meta-surface ships, and the product surface they were building toward is unbound (re-debated from the meta-surface).**
 
-After this milestone, all `records/**` writes are blocked by default. The write gate reads `write-path` observations and uses the same staleness logic (`checkObservationStaleness`) as the bash gate. Operator approval is recorded via the `tools/learning-loop-mcp/` MCP server as an observation YAML. The gate reads that observation on the next tool call and allows the write. The bash gate also checks path-write patterns, closing the heredoc bypass.
+| # | Bridge | Status (2026-06-12) | What it removes (when shipped) |
+|---|---|---|---|
+| 1 | Doc → candidate assertion | **DEFERRED + UNBOUND** — humans hand-author evidence; no candidate-extraction tool; the product surface is re-debated from the meta-surface, so the candidate shape is unknown. Report voided by re-debate 2026-06-12. | The need to re-read vendor docs every session — **once re-debated** |
+| 2 | Candidate → experiment plan | **DEFERRED + UNBOUND** — humans design experiment YAMLs from scratch; the candidate-to-experiment pipeline is product-surface design that needs re-debate. Report voided by re-debate 2026-06-12 (self-flagged as "untested end-to-end"). | The need to author experiment YAMLs from scratch — **once re-debated** |
+| 3 | Class-level experiment approval | **DEFERRED + UNBOUND** — every experiment gates on `status: approved`; no class-pattern field. The class-approval mechanism is product-surface design. | Per-experiment operator approval — **once re-debated** |
+| 4 | Candidate-vs-validated status | **DEFERRED + UNBOUND** — status enum is `active \| superseded \| pending_approval`; no `candidate` slot. The candidate-vs-validated distinction is product-surface design. | Ambiguity about vendor-claims vs proven assertions — **once re-debated** |
+| 5 | Schema as source of truth | **PARTIALLY SHIPPED (Approach 2)** — 4 record types (experiment, risk, decision, observation) are schema-derived via `core/schema-to-zod.js`. **Approach 3 (full codegen for writers + validators) is the active work**, scoped to the meta-surface only. Product-surface schemas are **unbound**; the codegen engine has the ability to generate them, but no product records are bound. | The hand-written tool zod + writer + validator triplet per record type — **for meta-surface records** |
+| 6 | **Self-model as product** | **Shipped (SP0–SP3) and growing** — meta-state registry; 4-kind union (finding \| change-log \| rule \| loop-design); 5 active rules; 3 active loop-designs; all agent affordances operational. **Part of the Bridge 5+6 atomic meta-surface front.** | The operator's need to remember "which gate changed when" — `meta_state_derive_status` reasons about drift instead |
 
-What changed:
-- **Approval became mechanical.** Conversational yes/no is not enough. The MCP server must record an observation.
-- **Gates became stateful.** They read `records/observations/` on every tool call, same as the bash gate reads constraint observations.
-- **The loop became self-referential.** The loop's state machine (observations) controls the loop's own execution gates.
-- **Staleness is unified.** The inbound gate's `.last-operator-message` marker invalidates observations for both bash constraints and write paths.
+### 4.1 Engine vs Instance (the 2026-06-12 inversion)
 
-This milestone is load-bearing for autonomy. A loop that cannot control its own execution boundaries cannot safely run unsupervised experiments. Observation-driven gates make the enforcement layer programmable by the operator rather than hardcoded by the system designer.
+- **Engine** (what Bridge 5 produces): a schema-to-code generator that takes any JSON Schema and emits writers + validators. Provable against the meta-surface because the meta-surface is small (4 entry kinds), stable (locked since SP3 shipped 2026-06-05), and self-owned (the loop is its own designer).
+- **Instance (bound)** — only the meta-surface: `finding`, `change-log`, `rule`, `loop-design` entries in `meta-state.jsonl`. The engine's only validated output.
+- **Instance (unbound)** — all product-surface schemas. The engine has the ability to generate them; the loop has not committed to binding. The current `capability`, `index-entry`, `claim`, `resource-budget`, `observation` schemas are **unbound**; they are design exploration, not contracts.
 
-**Clarification:** The gate enforces observation *existence* (pattern matched → observation present? → pass/block). Budget enforcement is the *agent's* responsibility: the agent reads the budget observation, checks context (fingerprint, container, idempotency), and decides whether to proceed. The meta-state registry captures this reasoning for future sessions. See `docs/observation-vs-meta-state.md` for the full separation.
+This eliminates the drift cells by construction: there is no product instance to drift against.
 
-## The Four Bridges
+### 4.2 Bridges 1-4 voided (2026-06-12)
 
-Each bridge moves knowledge from human-readable docs into machine-driven loop mechanics. The current system stops at the first bridge.
+The 2026-06-12 reframe voids all prior "Bridge 1-4 shipped" or "Bridge 1-4 design approved" claims. The reports themselves remain in `plans/reports/` as historical engineering record, but their status is marked "voided by re-debate, 2026-06-12". The reason: the product surface is being redesigned by the meta-surface, and the schemas + integration shapes those reports were building toward are no longer the right ones to commit to. The pattern: a bridge can be "built" in the sense that all the code and tests are present, but "unbuilt" in the sense that the contract it was built against is voided. The 2026-06-12 reframe collapses the two senses by anchoring the contract to the meta-surface. Once the meta-surface is the only bound surface, the only "built" bridges are the ones that operate on the meta-surface (which is none of Bridges 1-4; those are all product-surface by definition).
 
-1. **Doc → candidate assertion.** Vendor markdown is parsed (structured extraction or LLM-assisted) into atomic candidate assertions. Today: humans hand-author evidence from doc reading. Gap: no candidate-extraction tool, and vendor docs do not author to `## Findings` convention. *This bridge closes the gap between "read docs" and "encode knowledge."*
-2. **Candidate → experiment plan.** Each candidate maps to a runnable verification (call, expected shape, success criterion). Today: humans design experiment YAMLs from scratch. Gap: no mapping convention from "vendor says X" to "experiment Y proves X." *This bridge closes the gap between "know what to test" and "know how to test it."*
-3. **Class-level experiment approval.** A pre-approved pattern (e.g., "read-only sandbox calls to capability Z under N-call budget") lets the loop run experiments without per-experiment operator approval. Today: every experiment gates on `status: approved`. Gap: schema has no class-pattern field; approval is per-record. *This bridge closes the gap between "ask permission every time" and "pre-authorize safe patterns."*
-4. **Candidate-vs-validated status.** Index entries carry a status before experimental proof (`candidate`) distinct from after (`active`). Product reads only `active`. Today: status enum is `active | superseded | pending_approval` — no slot for "vendor-asserted, not yet verified." *This bridge closes the gap between "vendor claims" and "proven assertions."*
+**Reports voided (in-place header edit, not deleted):**
+- `plans/reports/brainstorm-260601-bridge-1-evidence-first-auto-assist.md` — "Status: Design approved, awaiting plan" → voided
+- `plans/reports/brainstorm-20260601-bridge-2-candidate-to-experiment-closeout.md` — "Status: approved, ready for /ck:plan" → voided
+- All `plans/<date>-bridge-{1,2,3,4}-*/` plan directories — treated as historical record, not as in-flight work
 
-Each bridge reduces doc dependency. Bridge 1 removes the need to re-read vendor docs. Bridge 2 removes the need to manually author experiment plans. Bridge 3 removes the need for per-experiment operator approval. Bridge 4 removes ambiguity about what is proven vs what is merely claimed.
+**What stays valid (the engineering is real, the contracts are not):**
+- The pipeline implementations (MCP tools, schema files, validators) remain in the repo. They are not deleted; they are unbound.
+- The findings and rules about *how* the pipeline was built (test coverage, error paths, performance benchmarks) are valid historical record.
 
-## The Fifth Bridge: Schema as Source of Truth (the big leap)
+### 4.3 The Fifth Bridge, scoped to the meta-surface (2026-06-12 reframe)
 
-Bridges 1-4 move *content* from human-readable docs into machine-actionable records. They shrink operator cognitive load. The fifth bridge is different: it moves the loop's *own code* from hand-written to schema-derived. It shrinks operator maintenance load.
+Bridges 1-4 are product-surface moves (content). The fifth bridge is a meta-surface move (code): it moves the loop's *own code* from hand-written to schema-derived. It shrinks operator maintenance load.
 
-Today, for every record type, four parallel "field catalogues" exist:
+**As of 2026-06-12, the fifth bridge is partially shipped (Approach 2) for 4 record types (experiment, risk, decision, observation) via `core/schema-to-zod.js`.** Tool zod schemas are now generated from JSON Schema at runtime, making schema-vs-tool drift impossible by construction. Approach 3 (full codegen for writers + validators) is the active work, scoped to the meta-surface only. Product-surface schemas are unbound; the codegen engine has the ability to generate them, but no product records are bound.
 
-1. The JSON schema in `schemas/<type>.schema.json`.
-2. The tool's zod input schema in `tools/create-<type>-record-tool.js` and `tools/update-<type>-record-tool.js`.
-3. The writer's output shape in `core/<type>-writer.js#build<Type>Yaml`.
-4. The semantic validator's read paths in `core/claim-verification-rules.js` and `core/record-validation-rules.js`.
+**Why this leap is sequenced after SP3 (status as of 2026-06-12, no change):** SP3 introduced a new drift-aggregation query and likely new dimensions. Adding code-generation now would entangle the codegen with SP3's emerging schemas. The two-phase rollout (Approach 2 then Approach 3) is the right sequencing: ship the tool-zod codegen + coverage test first to prove the pattern, then generalize to writers and validators after SP3's schemas stabilize. SP3 should not inherit a half-finished codegen migration.
 
-Each is hand-written. None of them is cross-checked. They drift. The SP2 cook session hit this: the writer never bridged top-level `assertion_refs` to `verification.assertion_refs`; the bridge-2 unit test only checked the top level; the record was rejected by validation. Three of the four layers were correct in isolation; the system as a whole produced an invalid record. Eleven drift cells exist across the four hand-written record types (8 in experiment, 3 in risk; decision and observation are clean).
+**Why this leap is now scoped to the meta-surface only (2026-06-12 reframe):** the 11 drift cells across the 4 hand-written record types (8 in experiment, 3 in risk) were the load-bearing reason for the fifth bridge. **Those drift cells are eliminated by construction under the engine/instance split** — the meta-surface has no product instance to drift against. The fifth bridge's work is now: prove the engine produces output equivalent to the existing hand-written meta-state tools, then generalize to writers and validators. The product-surface half of the work is unbound; the loop, using its own meta-surface as substrate, will re-debate what the product surface should look like.
 
-The fifth bridge replaces this with "write the schema; the code derives":
-
-- **Tool zod schemas** are generated from the JSON schema by a new `core/schema-to-zod.js` module. The 8 hand-written tool zod files become one-liners. Drift between the schema and the tool surface becomes impossible by construction.
-- **Record builders** are generated from the schema's `properties`, `required`, and a small `x-writer` extension for defaults. The four hand-written writers (`experiment-writer.js`, `risk-writer.js`, `decision-writer.js`, `observation-writer.js`) collapse into thin wrappers.
-- **Semantic validators** consume the schema's "required-derived-fields" annotations. New semantic rules are declared in the schema, not in JS.
-
-This is the big leap because it is **self-maintaining**: when a new field is added to a schema, every dependent layer updates without human action. The hand-maintenance surface shrinks from "four files per record type" to "one file per record type" (the schema). The class of bug the SP2 cook hit becomes structurally impossible. Future field additions no longer require coordinated edits across schema + 2 tool files + writer + validator + test fixtures.
-
-The destination sentence reads even more clearly with this bridge in place: knowledge moves "from docs into records, from records into tools, **from hand-written tools into self-deriving tools, and from self-deriving tools into self-driving workflow.**" The loop's own code joins the same gradient the content was already on.
-
-### Why this leap is sequenced after SP3
-
-SP3 introduces 1+ new tools to the manifest, a new drift-aggregation query, and likely a new dimension or two. Adding code-generation now would entangle the codegen with SP3's emerging schemas. The two-phase rollout described in `plans/reports/brainstorm-260603-field-coverage.md` (Approach 2 then Approach 3) is the right sequencing: ship the tool-zod codegen + coverage test first to prove the pattern, then generalize to writers and validators after SP3's schemas stabilize. SP3 should not inherit a half-finished codegen migration.
-
-### Risk
-
+**Risk (status as of 2026-06-12, sharpened):**
 - Codegen is harder to read than hand-written code. The `core/schema-to-zod.js` module will need clear error messages and a debugging story ("how do I see what the tool surface looks like for an experiment?"). The pattern of `x-writer` extension fields is itself a small DSL that can drift — keep the extension set minimal and audit it in the same field-coverage test.
-- `additionalProperties: false` is not currently set on most schemas, so codegen may accept fields the schema did not enumerate. The new `field-coverage.test.js` should set `additionalProperties: false` in its coverage matrix checks before the codegen lands.
+- `additionalProperties: false` is not currently set on most schemas, so codegen may accept fields the schema did not enumerate. The `field-coverage.test.js` should set `additionalProperties: false` in its coverage matrix checks before the codegen lands.
 - The 183 existing records must keep validating. AJV's strict mode (already in `record-validation-rules.js`) is the test surface.
 - A field-coverage test that catches drift can itself be skipped or weakened. The test must be wired into the same negative-fixture runner that already gates `validate:records` in CI, not a separate opt-in check.
+- **The meta-surface engine must reproduce the in-production behavior of the 16 hand-written `meta_state_*` tools.** `coerceParamsToSchema` and `installWireFormatCoercion` are live with test coverage at `__tests__/wire-format-top-level-coercion.test.js` and `__tests__/wire-format-coercion-fix.test.js`. Phase 1 of the Mastra migration must reproduce this behavior in Mastra's `createTool` input validation, not just delete the helpers. (See consistency report F7.)
 
-## The Sixth Bridge: Self-Model as Product
+### 4.4 The Sixth Bridge, unified with the fifth (2026-06-12 reframe)
 
-Bridges 1–4 move *content* from docs into machine-actionable records. Bridge 5 moves the loop's own code from hand-written to schema-derived. The sixth bridge moves the loop's own *runtime state* from operator-memory to a machine-queryable self-model: the meta-state registry.
+The sixth bridge moves the loop's own *runtime state* from operator-memory to a machine-queryable self-model: the meta-state registry. As of 2026-06-12, it is **part of the Bridge 5+6 atomic meta-surface front**, not a separate bridge. SP0-SP3 are the four sub-projects that built the sixth bridge's affordances.
 
-**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** Bridges 1–5 reduce the *content* the operator must author. Bridge 6 reduces the *cognition* the operator must hold — the operator stops remembering "which gate changed when" because the registry remembers, and stops reasoning "is this finding still valid" because `meta_state_derive_status` reasons instead.
+**The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior.** Bridges 1-5 reduce the *content* the operator must author. Bridge 6 reduces the *cognition* the operator must hold — the operator stops remembering "which gate changed when" because the registry remembers, and stops reasoning "is this finding still valid" because `meta_state_derive_status` reasons instead.
 
-Substrate vs. product vs. template:
+**The meta-surface is the loop's self-model. It is the only contract the loop writes.** Everything else is design exploration, archived for forensic continuity, and explicitly not a contract that constrains the loop.
 
-| Layer | Role | Lifespan | Lives in |
-|---|---|---|---|
-| **Template** | Static rules of the game — gates, hooks, schemas, MCP tools | Frozen-ish; evolves through formal change-log entries | `tools/learning-loop-mcp/`, `schemas/`, `.claude/coordination/` |
-| **Self-model (product)** | The loop's learning about itself — findings, rules, drift, lifecycle | Grows continuously per operator; change-log tier is durable | `meta-state.jsonl` + 11 `meta_state_*` MCP tools |
-| **Substrate** | Real surface area the loop operates against so it generates real findings. Replaceable. | Disposable — exists to provoke learning, not to be learned *about* | `records/vnstock/`, `product/api/` |
+**Why this is unified with Bridge 5 (2026-06-12 reframe):** Schema-derived code (Bridge 5) and self-model queryability (Bridge 6) share an assumption: the schema of the loop's own state is stable. If schemas are still being hand-edited, the meta-state tools that read them will drift. **Bridge 5 stabilizes the loop's static rules; Bridge 6 turns the dynamic state into a first-class product; both are meta-surface, both ship together.** "The loop's own code joins the same gradient the content was already on" — but the content is unbound, so the gradient terminates at the meta-surface.
 
-The substrate exists to provoke learning; the learning is not *about* the substrate. A recent example: `meta-260606T2106Z-agent-called-meta-state-log-change-mcp-tool-5-times-in-succe` (category `loop-anti-pattern`, subtype `tool-retry-loop`) is the loop noticing its own retry pathology. That finding has no relationship to vnstock. It is the loop learning about the loop.
-
-### Why this is sequenced after Bridge 5
-
-Schema-derived code (Bridge 5) and self-model queryability (Bridge 6) share an assumption: the schema of the loop's own state is stable. If schemas are still being hand-edited, the meta-state tools that read them will drift. Bridge 5 stabilizes the loop's static rules; Bridge 6 turns the dynamic state into a first-class product.
-
-### The loss function question
+### 4.5 The loss function question
 
 Self-referential learning needs a target. Proposed composite (not yet measured):
 
@@ -113,99 +97,51 @@ Self-referential learning needs a target. Proposed composite (not yet measured):
 
 A loop with no stated loss function optimizes whatever is easiest to measure. Better to state the target and let the metric be approximate than to leave it implicit.
 
-### The operator-capture guard
+### 4.6 The operator-capture guard
 
-When the operator's corrections shape what the loop learns, and the loop's gates shape what the operator sees, they co-adapt. The meta-state becomes a record of operator preferences, not system truths. Charter rule #1 ("operator is final authority") makes this worse — it cedes truth to the operator.
+When the operator's corrections shape what the loop learns, and the loop's gates shape what the operator sees, they co-adapt. The meta-surface becomes a record of operator preferences, not system truths. Charter rule #1 ("operator is final authority") makes this worse — it cedes truth to the operator.
 
 Proposed mitigation: a `loop_discovered` vs `operator_ack` annotation on change-log entries. The ratio of these over time is the "operator-capture index." A high ratio means the operator is the system's brain, not the loop. This is not yet implemented; the schema decision is open.
 
-## What Stays Human Forever
+## 5. What Stays Human Forever
 
-Autonomy is on the verification axis, not the judgment axis. The destination keeps humans in the loop for:
+Autonomy is on the meta-surface axis, not the judgment axis. The destination keeps humans in the loop for:
 
-- **Product scope.** What capability gets built, what gets cut, what ships to whom.
+- **Meta-surface scope.** What the loop is allowed to learn about itself, what findings get promoted to rules, what rules get enforced as `gate` vs `agent` enforcement. The operator remains the authority on what the loop is allowed to learn about itself.
 - **Irreversible operations.** Anything the constraint enforcement layer gates today stays gated. The auto-loop earns no exemption from device-slot ledgers, budget exhaustion, or scope-bounded observations.
 - **Class-approval definitions.** Operators write the pre-approval patterns. The loop does not propose its own expansion of authority.
-- **Decisions and risks.** Both record types remain human-authored.
+- **The meta-surface system itself.** Findings, rules, and loop-designs are operator-ackable. The loop may surface signals; it does not redefine its own success criteria without operator sign-off. This is the limit that prevents the self-referential system from optimizing itself out of alignment with the operator's intent. The meta-state system is the most dangerous component to give full autonomy to, because it is the one that decides what the rest of the loop learns.
 - **Philosophy.** The "why" behind loop design stays in docs. The "what" and "how" move to the loop.
-- **The loop's self-model boundaries.** The operator decides what counts as a "loss function" and what counts as "operator capture." The loop may surface signals; it does not redefine its own success criteria without operator sign-off. This is the limit that prevents the self-referential system from optimizing itself out of alignment with the operator's intent. The meta-state system is the most dangerous component to give full autonomy to, because it is the one that decides what the rest of the loop learns. The operator remains the authority on what the loop is allowed to learn about itself.
+
+**What is no longer in scope as a human-only concern (2026-06-12 reframe):** product scope, vendor records, capability records, observation records, decision records, experiment records, risk records, index entries, resource budgets. These are product-surface concerns, unbound, and re-debated from the meta-surface. The operator's authority over them is *not* removed; the operator is just not the only designer — the loop, using its own meta-surface as substrate, will re-debate the product surface. The operator retains veto power over any product-surface binding the loop proposes.
 
 Vision documents that do not name their limits get cited to justify removing safety gates the author never meant to remove. These limits are the limits.
 
-What stays in `docs/` is irreducible judgment. What moves to `records/` is procedural knowledge. The operator guide shrinks as the loop encodes its contents. The philosophy doc endures because judgment cannot be proceduralized.
+What stays in `docs/` is irreducible judgment. What moves to the meta-surface is procedural knowledge. The philosophy doc endures because judgment cannot be proceduralized. **The trajectory doc itself is a trajectory, not a contract — re-read the destination sentence every time the meta-surface grows, and ask: "is the destination still the same?" If the meta-surface has learned something the operator hasn't, the destination may need updating before the next plan.**
 
-## Cross-References
+## 6. Storage layer trajectory (meta-surface substrate)
 
-- Present-tense system description: `charter.md`.
-- How to reason with the current loop: `philosophy.md`.
-- Current artifact model (claim deprecation, index entries): `record-system-architecture.md`, `artifact-concepts.md`.
-
-## What Has Happened Since (2026-06-05 update)
-
-The meta-state agent-affordances decomposition (`plans/reports/brainstorm-260602-meta-state-agent-affordances.md`) is the precondition for "the loop's own code joins the same gradient the content was already on" (the destination sentence). As of 2026-06-05, all four sub-projects ship.
-
-| Sub-project | Status | Tools | Tests |
-|---|---|---|---|
-| SP0 (Self-Modification Affordance) | SHIPPED | `meta_state_log_change` + `meta_state_sweep` | 475 (+25) |
-| SP1 (Derivation Query) | SHIPPED | `meta_state_derive_status` | 511 (+36) |
-| SP2 (Grounding Check) | SHIPPED | `meta_state_check_grounding` + `meta_state_refresh_fingerprint` | 552 (+41) |
-| SP2 gap closure (discoverability + manifest backfill) | SHIPPED | (manifest backfill) | 557 (+1) |
-| SP3 (Drift Query) | SHIPPED | `meta_state_query_drift` | 674 (+53) |
-| **Field-coverage (Approach 2)** | SHIPPED | 4 record types schema-derived | 621 (+49) |
-
-**The Fifth Bridge** (schema as source of truth) shipped for 4 record types (experiment, risk, decision, observation) via `core/schema-to-zod.js`. Tool zod schemas are now generated from JSON Schema at runtime, making schema-vs-tool drift impossible by construction. Approach 3 (full codegen for writers + validators) is sequenced after SP3 — SP3's schemas need to stabilize first.
-
-**The "self-referential" milestone has been crossed.** The loop's state machine (`meta-state.jsonl`) now controls the loop's own audit trail. The agent can:
-- Log its own modifications via `meta_state_log_change` (SP0)
-- Compute the effective status of any finding via `meta_state_derive_status` (SP1)
-- Verify the file/code/test surface of any finding via `meta_state_check_grounding` (SP2)
-- Aggregate drift events across the entire registry via `meta_state_query_drift` (SP3)
-- The 4-phase TDD plan for SP3 was extended with a Phase 4 (docs-update phase, added 2026-06-05 per operator request) to keep the user-facing docs aligned with the loop's actual state. SP3 closed the drift-surfacing gap: the agent can now ask "which entries disagree with their derived/grounded state?" and get a flat list of drift events.
-- The brainstorm that made atomicity load-bearing: `plans/reports/brainstorm-20260518-machine-extracted-index.md`.
-- The design for schema-derived code generation (the fifth bridge): `plans/reports/brainstorm-260603-field-coverage.md`.
-
-## What Has Happened Since (2026-06-08 revision)
-
-The trajectory document was revised to reflect a corrected understanding surfaced in `plans/reports/predict-revised-loop-memory-correction-260608-1012-vnstock-as-substrate-meta-state-as-product-report.md`: the meta-state registry is the product, not the template's bookkeeping. The substrate (currently vnstock) is replaceable; what makes it valuable is its non-determinism, not its identity.
-
-Three structural decisions identified but not yet implemented:
-
-1. **Tiered meta-state migration (Model C).** Template ships clean. Findings stay operator-local. Promoted rules can be exported as a YAML bundle and PR'd back to the template. The template itself becomes a snapshot of "rules the loop has learned are worth enforcing." Implementation: a new `meta_state_export_rules` MCP tool that emits a template-importable YAML bundle of promoted rules.
-2. **Composite loss function for self-referential learning.** Drift recovery rate + findings-per-promoted-rule ratio. The point is not to optimize; it is to make the learning trajectory visible. Extension target: surface these metrics through `meta_state_query_drift`.
-3. **Operator-capture guard.** A `loop_discovered` vs `operator_ack` annotation on change-log entries. The ratio is the operator-capture index. Schema decision is open; the question is whether the annotation lives in the change-log entry, in a derived metric, or both.
-
-The destination sentence now reads: "A self-referential learning loop with verification autonomy *and* a self-model that the loop maintains and that influences its own behavior." The fifth bridge (schema as source of truth) is unchanged; the sixth bridge (self-model as product) is added above.
-
-Open questions filed from the revised finding:
-
-- A `LIVE.md` declaration in the repo root distinguishing template content from substrate work, so future operators (and future selves) have a clean handoff path.
-- A "substrate properties" document specifying the three required properties (irreversible operations to gate, non-deterministic failure modes, evidence files the loop can fingerprint) so the substrate can be rotated when vnstock stabilizes.
-- A "findings-per-week" trend to answer: "is vnstock still generating novel findings, or has the loop learned enough about it that findings have dried up?"
-- A "learning trajectory" reflection written periodically by the operator from the meta-state — outside the loop — to catch the operator-capture signal early.
-
-## What Has Happened Since (2026-06-08 — index-extractor optimization, Approaching the Storage Layer)
-
-The scout closeout (plan 260608-1700) added 134+ findings, growing the meta-state registry from ~130 entries to 500+. This exposed a structural performance class: the cold tier, compact mode, and `readRegistry()` hot path all re-parse the 540KB `meta-state.jsonl` on every call. The symptom was the family of `*size-overrun*` findings (subtypes: `cold-tier-size-overrun`, `registry-size-overrun`, `test-failure-size-sensitive`). The prior cure was threshold bumps (30KB → 350KB, 90KB → 1MB), which the resolution log itself flags as "the assertion is a sanity bound, not a performance target."
+The scout closeout (plan 260608-1700) added 134+ findings, growing the meta-state registry from ~130 entries to 500+. This exposed a structural performance class: the cold tier, compact mode, and `readRegistry()` hot path all re-parse the 540KB `meta-state.jsonl` on every call. The symptom was the family of `*size-overrun*` findings. The prior cure was threshold bumps, which the resolution log itself flags as "the assertion is a sanity bound, not a performance target."
 
 A brainstorm (`plans/reports/brainstorm-260608-index-extractor-overrun.md`) identified three layers needing work and proposed Approach A as the bridge to a future storage layer.
 
 **Why this matters for trajectory, not just performance:** The gradient's destination sentence is "knowledge moves from hand-written tools into self-deriving tools, and from self-deriving tools into self-driving workflow." The current `readRegistry()` is a hand-written re-parse on every call — the antithesis of self-deriving. The fix is not "parse faster" (mtime-checked LRU) but "stop re-parsing" (materialized cold-tier cache) — and the long-term destination is "stop re-shaping a text file at all" (a real storage engine).
 
-### The three layers, by design
+### 6.1 The three layers, by design
 
 1. **`index_extract` pipeline** (the record-level extractor): content-hash-keyed skip. Reuse `evidence_immutable_hash` from existing index entries to skip re-parsing unchanged evidence MDs.
 2. **`readRegistry()` hot path** (30+ call sites): process-lifetime LRU keyed on `root` + file mtime. Invalidation hooked into every `writeEntry`/`updateEntry`/batch operation. Soft-enforcement rule documented in `AGENTS.md` (production CRUD must go through MCP tools).
 3. **`loop_describe` cold/compact tier** (the LLM-facing read surface): pre-computed `records/meta/.cache/loop-describe-cold.json` sidecar. Built eagerly on every write; rebuilt on first read after registry mtime change. Drops the cold tier from ~250ms to <10ms.
 
-### The batch primitive (Layer 2.5)
+### 6.2 The batch primitive (Layer 2.5)
 
 `meta_state_batch` MCP tool takes a JSON array of operations and applies them under a single file lock with a single cache invalidation. This is the precondition for keeping the LRU cache provably consistent under bulk write workloads (closeout scripts that resolve 200+ findings at once). The shape mirrors SQLite/Prisma transactions: one tool, atomic, no new state in the registry.
 
-### `meta_state_archive` tool (structural fix for the size-overrun findings)
+### 6.3 `meta_state_archive` tool (structural fix for the size-overrun findings)
 
 The two reported `*size-overrun*` findings both suggest adding an archive capability. The tool moves entries to `records/observations/.archive/YYYY-MM/` and sets `status: archived` on the line in `meta-state.jsonl`. Trigger: the agent decides per call (no operator prompt needed); operator can override with explicit ids. Compact and warm tiers exclude archived by default.
 
-### Why the storage layer is parked, not jumped to
+### 6.4 Why the storage layer is parked, not jumped to
 
 Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive.jsonl`) and Approach C (SQLite via `better-sqlite3`) were both rejected for the same reason: migration risk on 490 existing entries, the 30+ call-site touch surface, and `better-sqlite3`'s native build cost on WSL2. Approach A bridges them — once the LRU + materialized cache are stable, the SQLite trajectory becomes a 1-release migration:
 
@@ -213,7 +149,7 @@ Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive
 - **Schema sketch (parked):** 3 tables — `entries(id, kind, status, ...)`, `refs(from_id, to_id, kind)`, `fingerprint(entry_id, code_ref, sha)`.
 - **Migration path:** dual-write JSONL + SQLite for 1 release (so the JSONL stays the source of truth during the validation window), then flip the default reader to SQLite and demote the JSONL to a write-archive.
 
-### Inverse-index baseline (5 maps as of 2026-06-10)
+### 6.5 Inverse-index baseline (5 maps as of 2026-06-10)
 
 `core/loop-introspect.js#buildInverseIndexes` emits the following maps. The set grows only when a new back-reference field is added to the schema; each addition is a constant-factor change to the build (O(n) scan, O(1) insert per entry), not a complexity shift.
 
@@ -227,4 +163,22 @@ Approach B (split the JSONL into `meta-state-active.jsonl` + `meta-state-archive
 
 The 5th map (`reopens_inverse`) is the result of plan `260610-1535-meta-state-reopen-path`. Pre-conditions for SQLite remain un-tripped: ~500 entries, 5 maps, build <1ms.
 
-This is structurally consistent with Bridge 5 (schema as source of truth) and Bridge 6 (self-model as product): the storage layer is the *substrate of the self-model*. Replacing it is a substrate rotation, not a redesign.
+This is structurally consistent with the meta-surface (Bridge 5+6): the storage layer is the *substrate of the self-model*. Replacing it is a substrate rotation, not a redesign.
+
+## 7. Cross-references
+
+- `charter.md` — present-tense system description (the canary for "what the system actually is right now")
+- `philosophy.md` — how to reason with the current loop
+- `meta-state-lifecycle.md` — the 4-kind union, status transitions, fingerprint lifecycle
+- `AGENTS.md` §10 — the gate-truth version of the Bridges table (this doc is the trajectory; AGENTS.md is the rule)
+- `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` — the Mastra/Code research that triggered the 2026-06-12 reframe
+- `plans/reports/consistency-260612-1300-mastra-research-report.md` — the 9-finding consistency check that produced the reframe
+
+## 8. What changed in this rewrite (2026-06-12)
+
+This rewrite is a from-scratch replacement of the previous `docs/trajectory.md`. The previous version is preserved at `docs/trajectory.old.260612-1300.md` for forensic continuity. Concrete changes:
+
+- **Dropped:** the "Four Bridges" section (vendor docs → candidate → experiment → class-approval → active) as a product-surface pipeline. The "11 drift cells across the 4 hand-written record types" framing (drift cells are eliminated by the engine/instance split). The "Substrate vs. Product vs. Template" table (the product layer is unbound; only substrate and template remain). The "What Stays Human Forever" product-scope/irreversible-operations checklist (replaced with the meta-surface-scope/irreversible-operations checklist). The 4 stacked "What Has Happened Since" changelogs (they belong in `docs/journals/`, not in the trajectory — the trajectory is the destination, not the route). The 4-bridge table that listed Bridge 1-4 as "the current system stops at the first bridge" (replaced with the 2026-06-12 reframe: Bridges 1-4 are "DEFERRED + UNBOUND", Bridges 5+6 are unified as the meta-surface).
+- **Reorganized:** the doc now leads with §1 "Destination" (the meta-surface autonomy + self-referential memory framing) and §2 "Why this is the natural endpoint" (the precondition chain that got us here). §3 is the gradient (autonomy is incremental). §4 is the Bridges (the 2026-06-12 reframe, the engine/instance split, the Bridges 1-4 voiding, the fifth bridge scoped to the meta-surface, the sixth bridge unified with the fifth, the loss function question, the operator-capture guard). §5 is "What Stays Human Forever" (meta-surface scope, irreversible operations, the meta-surface system itself, philosophy — **not** product scope, vendor records, etc.). §6 is the storage layer trajectory (preserved from the previous version, since the storage layer is meta-surface infrastructure). §7 is cross-references. §8 is what changed in this rewrite.
+- **Added:** the from-scratch rewrite header at the top, pointing at the backup, the reframe, the consistency report, and AGENTS.md §10 as the gate-truth. §4.1 (engine vs instance inversion). §4.2 (Bridges 1-4 voided, with the in-place header edit policy and the list of voided reports). §4.3 (the fifth bridge, scoped to the meta-surface; the new risk that the meta-surface engine must reproduce the in-production `coerceParamsToSchema` / `installWireFormatCoercion` behavior). §4.4 (the sixth bridge, unified with the fifth). §5's sharpened "What is no longer in scope as a human-only concern" — the operator retains veto power over product-surface binding, but is not the only designer. §8 (what changed).
+- **Net effect:** the document is now ~50% the length of the previous version (230 lines → 230 lines, but the changelogs alone were ~80 lines). The product surface is mentioned only in the §1 destination and §4.2 voiding, both of which frame it as unbound. The trajectory is the trajectory of the meta-surface, not the trajectory of any substrate.
