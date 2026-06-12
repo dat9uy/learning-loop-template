@@ -11,7 +11,7 @@
 //
 // 2. "discoverability surface works via direct MCP server spawn" — a fallback
 //    integration test that spawns the MCP server directly (no droid), drives
-//    loop_describe warm tier + meta_state_report + record_create_decision over
+//    loop_describe warm tier + meta_state_report + meta_state_patch over
 //    stdio JSON-RPC, and asserts the same internalization contract. This test
 //    runs on every PR and guards the surface even when droid exec is not
 //    MCP-enabled.
@@ -45,7 +45,6 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const { parse: parseYaml } = require("yaml");
 const { probeL1, probeL2 } = require("./probe-helpers.cjs");
 
 describe("cold-session discoverability acceptance", () => {
@@ -202,7 +201,7 @@ describe("cold-session discoverability acceptance", () => {
     }
 
     // L2 skip check: this test asks the agent to call meta_state_report and
-    // record_create_decision. If droid's --auto runtime cannot call MCP tools
+    // meta_state_patch. If droid's --auto runtime cannot call MCP tools
     // (the agent-runtime layer gap from finding
     // meta-260608T1522Z-test-1-cold-session-hangs-in-mcp-gapped-env and
     // meta-260608T1410Z-finding-meta-260606t0443z-mcp-tools-not-loaded-into-agent-to),
@@ -218,12 +217,11 @@ describe("cold-session discoverability acceptance", () => {
     }
 
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-"));
-    mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
-    // Copy schemas/ into tempRoot so record_*_tool modules that call
-    // `buildZodSchemaFor(type, { root: resolveRoot() })` at module load time
-    // can find the schema files. Without this, GATE_ROOT=tempRoot makes
-    // loadSchemas throw, safeImport returns null, and the 8 record tools
-    // never register. See test 2 (cold-session-direct) for the same copy.
+    // Copy schemas/ into tempRoot so the meta-state + runtime-state tools
+    // that call `buildZodSchemaFor(type, { root: resolveRoot() })` at module
+    // load time can find the schema files. Without this, GATE_ROOT=tempRoot
+    // makes loadSchemas throw, safeImport returns null, and the meta-state
+    // tools never register. See test 2 (cold-session-direct) for the same copy.
     const schemasSrc = join(projectRoot, "schemas");
     const schemasDst = join(tempRoot, "schemas");
     mkdirSync(schemasDst, { recursive: true });
@@ -233,13 +231,21 @@ describe("cold-session discoverability acceptance", () => {
       }
     }
 
-    // Pure 2-MCP-call chain: meta_state_report -> record_create_decision.
+    // Pure 2-MCP-call chain: meta_state_report -> meta_state_patch.
     // All paths and values are provided upfront so the agent does not need
     // to read files. The earlier prompt asked the agent to "cites plans/.../
     // plan.md for the resolution path" and "internalize the plan reference",
     // which forced 6+ file reads and consumed the 60s budget before any MCP
     // call could land. See meta-260608T1618Z-corrected-diagnosis-for-meta-
     // 260608t1522z-test-1-cold-sessio for the trace evidence.
+    //
+    // Phase 7 (plan 260612-1700-meta-surface-re-debate) deleted all 22
+    // product-surface tools. The Internalization-Rule validation pathway
+    // uses meta_state_report + meta_state_patch: the report's
+    // evidence_code_ref validates the code-pointed cite (Internalization
+    // Rule §6), and the patch's id self-reference exercises the same
+    // local:meta-state:<id> shape (validateSourceRefs branch in
+    // core/source-ref-validator.js).
     //
     // Use the droid display-format tool names (3 underscores) because droid's
     // ToolSearch rejects the canonical mcp__learning_loop_mcp__ form. Tell
@@ -256,11 +262,11 @@ describe("cold-session discoverability acceptance", () => {
       "evidence_code_ref: \"tools/learning-loop-mcp/tools/loop-describe-tool.js\", " +
       "mechanism_check: true }. " +
       "Capture the id field from the response. " +
-      "Then call ToolSearch once with query 'select:learning-loop-mcp___record_create_decision'. " +
-      "Then call learning-loop-mcp___record_create_decision with arguments " +
-      "{ surface: \"meta\", question: \"Does the internalization rule hold?\", " +
-      "decision: \"Yes\", rationale: \"The agent cited the code point and used local:meta-state in source_refs.\", " +
-      "source_refs: [\"local:meta-state:<id-from-call-1>\"], alternatives: [], tradeoffs: [], supersedes: [] }.";
+      "Then call ToolSearch once with query 'select:learning-loop-mcp___meta_state_patch'. " +
+      "Then call learning-loop-mcp___meta_state_patch with arguments " +
+      "{ id: \"<id-from-call-1>\", " +
+      "patch: { description: \"Internalization probe updated by cold-session test 1.\", " +
+      "evidence_journal: \"plans/260612-1700-meta-surface-re-debate/phase-a-remaining-work.md\" } }.";
 
     const child = spawn(cli, ["exec", "--auto", "medium", prompt], {
       cwd: projectRoot,
@@ -304,12 +310,6 @@ describe("cold-session discoverability acceptance", () => {
           .map((l) => JSON.parse(l))
       : [];
 
-    const decisionsDir = join(tempRoot, "records", "meta", "decisions");
-    const decisionFiles = existsSync(decisionsDir) ? readdirSync(decisionsDir) : [];
-    const decisions = decisionFiles
-      .filter((f) => f.endsWith(".yaml"))
-      .map((f) => parseYaml(readFileSync(join(decisionsDir, f), "utf8")));
-
     // 1. Agent called meta_state_report at least once.
     const findings = metaStateEntries.filter((e) => e.entry_kind === "finding");
     assert.ok(findings.length >= 1, "expected at least one finding entry");
@@ -324,31 +324,38 @@ describe("cold-session discoverability acceptance", () => {
     const mechanismChecked = findings.filter((e) => e.mechanism_check === true);
     assert.ok(mechanismChecked.length >= 1, "expected at least one finding with mechanism_check: true");
 
-    // 4. Agent called record_create_decision at least once.
-    assert.ok(decisions.length >= 1, "expected at least one decision record");
+    // 4. Agent called meta_state_report at least once AND meta_state_patch
+    //    reached the registry (we see the patched description in any entry).
+    //    The Internalization-Rule pathway uses meta_state_report +
+    //    meta_state_patch. The meta_state_report call's evidence_code_ref
+    //    validates the code-pointed cite; the meta_state_patch call exercises
+    //    the validateSourceRefs local:meta-state:<id> branch.
+    assert.ok(findings.length >= 2, "expected at least 2 finding entries (report + patch)");
 
-    // 5. At least one decision has source_refs containing local:meta-state:...
-    const decisionsWithMetaState = decisions.filter((d) =>
-      (d.source_refs || []).some((ref) => typeof ref === "string" && ref.startsWith("local:meta-state:")),
+    // 5. At least one entry has evidence_journal pointing at a plan file
+    //    (proves the meta_state_patch call landed with the planned path).
+    const findingsWithPlanJournal = findings.filter((e) =>
+      typeof e.evidence_journal === "string" && e.evidence_journal.startsWith("plans/"),
     );
-    assert.ok(decisionsWithMetaState.length >= 1, "expected at least one decision with local:meta-state source_ref");
+    assert.ok(findingsWithPlanJournal.length >= 1, "expected at least one entry with evidence_journal pointing at plans/");
 
-    // 6. No source_refs contain records/meta/evidence/.
-    for (const d of decisions) {
-      for (const ref of d.source_refs || []) {
-        assert.ok(
-          !(typeof ref === "string" && ref.includes("records/meta/evidence/")),
-          `decision must not cite records/meta/evidence/: ${ref}`,
-        );
-      }
+    // 6. No evidence_code_refs contain records/meta/evidence/ (records are
+    //    archived to records/_unbound/ as of Phase 5; this is a regression
+    //    guard for the citation drift).
+    for (const e of findings) {
+      const ref = e.evidence_code_ref;
+      assert.ok(
+        !(typeof ref === "string" && ref.includes("records/meta/evidence/")),
+        `finding must not cite records/meta/evidence/: ${ref}`,
+      );
     }
 
-    // 7. No source_refs use local:plans/... (proves code-pointed rule).
-    for (const d of decisions) {
-      for (const ref of d.source_refs || []) {
+    // 7. No evidence_journal contains path-traversal (regression guard).
+    for (const e of findings) {
+      if (typeof e.evidence_journal === "string") {
         assert.ok(
-          !(typeof ref === "string" && ref.startsWith("local:plans/")),
-          `decision must not use deprecated local:plans/ ref: ${ref}`,
+          !e.evidence_journal.includes(".."),
+          `evidence_journal must not contain '..': ${e.evidence_journal}`,
         );
       }
     }
@@ -411,9 +418,9 @@ describe("cold-session discoverability acceptance", () => {
 
   test("discoverability surface works via direct MCP server spawn", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-direct-"));
-    mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
-    // Copy all schemas into temp root so create-decision-record-tool.js (and the
-    // other record tools) can import buildZodSchemaFor without ENOENT.
+    // Copy all schemas into temp root so the meta-state + runtime-state tools
+    // that call buildZodSchemaFor at module load time can import without
+    // ENOENT under GATE_ROOT=tempRoot.
     const schemasSrc = join(projectRoot, "schemas");
     const schemasDst = join(tempRoot, "schemas");
     mkdirSync(schemasDst, { recursive: true });
@@ -550,32 +557,29 @@ describe("cold-session discoverability acceptance", () => {
       const findingId = reportResult.id;
       assert.ok(findingId.startsWith("meta-"));
 
-      // 3. record_create_decision with local:meta-state:<id> succeeds.
-      const decisionResult = await call(3, "record_create_decision", {
-        surface: "meta",
-        question: "Does the discoverability surface close the gap?",
-        decision: "Yes",
-        rationale: "The validator accepts local:meta-state refs and the MCP server surfaces the internalization rule.",
-        source_refs: [`local:meta-state:${findingId}`],
-        alternatives: [],
-        tradeoffs: [],
-        supersedes: [],
+      // 3. meta_state_patch with self-id (validates local:meta-state:<id>
+      //    source_ref shape) succeeds. The Internalization-Rule validation
+      //    pathway is meta_state_report + meta_state_patch.
+      const patchResult = await call(3, "meta_state_patch", {
+        id: findingId,
+        entry_kind: "finding",
+        patch: {
+          description: "Cold-session discoverability direct MCP test finding (patched).",
+          evidence_journal: "plans/260612-1700-meta-surface-re-debate/phase-a-remaining-work.md",
+        },
       });
-      assert.strictEqual(decisionResult.created, true);
+      assert.strictEqual(patchResult.patched, true);
 
-      // 4. record_create_decision with deprecated markdown ref is rejected.
-      const deprecatedResult = await call(4, "record_create_decision", {
-        surface: "meta",
-        question: "Should markdown refs still work?",
-        decision: "No",
-        rationale: "Markdown refs are deprecated.",
-        source_refs: ["local:plans/x.md"],
-        alternatives: [],
-        tradeoffs: [],
-        supersedes: [],
+      // 4. meta_state_patch with a non-existent id is rejected (idempotency
+      //    guard for the local:meta-state:<id> source_ref validation
+      //    pathway).
+      const rejectedResult = await call(4, "meta_state_patch", {
+        id: "meta-260601T0000Z-does-not-exist",
+        entry_kind: "finding",
+        patch: { description: "Should fail." },
       });
-      assert.strictEqual(deprecatedResult.created, false);
-      assert.strictEqual(deprecatedResult.reason, "deprecated_source_refs");
+      assert.strictEqual(rejectedResult.patched, false);
+      assert.strictEqual(rejectedResult.reason, "not_found");
 
       // Verify no temp-root pollution leaked into the real project's meta-state
       // or records directories. Snapshot meta-state.jsonl size at start and
@@ -636,16 +640,9 @@ describe("cold-session discoverability acceptance", () => {
       const findings = metaStateEntries.filter((e) => e.entry_kind === "finding");
       assert.ok(findings.some((e) => e.evidence_code_ref && e.evidence_code_ref.endsWith(".js")));
       assert.ok(findings.some((e) => e.mechanism_check === true));
-
-      const decisionsDir = join(tempRoot, "records", "meta", "decisions");
-      const decisionFiles = existsSync(decisionsDir) ? readdirSync(decisionsDir) : [];
-      assert.ok(decisionFiles.length >= 1);
-      const decisions = decisionFiles
-        .filter((f) => f.endsWith(".yaml"))
-        .map((f) => parseYaml(readFileSync(join(decisionsDir, f), "utf8")));
-      assert.ok(decisions.some((d) =>
-        (d.source_refs || []).some((ref) => typeof ref === "string" && ref.startsWith("local:meta-state:")),
-      ));
+      // The meta_state_report + meta_state_patch chain above is the
+      // Internalization-Rule validation surface. The records/<vendor>/
+      // pathway is no longer exercised.
     } finally {
       child.kill();
     }
