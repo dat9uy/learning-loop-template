@@ -2,6 +2,58 @@
 
 > **Status:** approved by operator 2026-06-12 16:10; **§11 closed 2026-06-12 second-pass consensus** (operator intent + skill authority). The dependency-balance convention, pre-mortem channel, and revision loop are operator-confirmed. The post-productization skill-migration target has been **moved to the master tracker as Phase G** (mechanics, not content — does not belong in a Phase A re-debate report). Phase A scope is unchanged. Aligned to the productization master tracker at `plans/reports/productization-260612-1530-master-tracker.md` § Phase A. Refines the locked 2026-06-12 reframe (meta-surface as the only bound surface) into a concrete Phase A design.
 
+---
+
+## 0. Final Decision Summary (2026-06-12 22:45, post-red-team + operator adjudication)
+
+**The full design in §1-§13 below is the forensic record.** This section is the lock-in: what shipped as a plan, what changed during red-team, and why.
+
+### 0.1 What was re-debated
+
+The 2026-06-12 reframe locked the meta-surface as the only bound surface. The product surface (decisions, experiments, risks, observations, capabilities, claims, evidence, index-entries) is unbound and re-debated from the meta-surface. Phase A of the productization master tracker is the re-debate.
+
+### 0.2 What changed during red-team (vs §1-§13 below)
+
+| # | Report claim (§X) | Red-team finding | Disposition | Corrected to |
+|---|---|---|---|---|
+| 1 | §2 / §5.2 / §5.6 / §8: "19 ledger events" in `observation-vnstock-device-slot-ledger.yaml` | Verified by `grep -c '^\s*-\s*timestamp:'`: actual count is **18** | Accept | **18 events**. Conversion script asserts `length === 18`. |
+| 2 | §5.2 / §5.6: forensic stub at `records/observations/_forensic-stubs/` bypasses `core/gate-logic.js:401` via "underscore prefix trick" | Factually wrong. `globMatch("records/observations/**", normalized)` matches any depth including subdirectories with any prefix. The glob does not look at directory names. | Accept | **`records/_unbound/<schema>/`** (sibling to `records/<vendor>/`). Verified: NOT under `records/observations/**` (hard-block) and NOT in `WRITE_PATH_PATTERNS` (conditional-block), so falls through to `decision: 'ok'`. |
+| 3 | §5.3: 3 deleted `capability_*` tools "replaced by derivation functions in `core/derivation/derive-capabilities.js`" | Operator challenge (2026-06-12 22:35, `/ck:ask`): "Why derivation while we don't use that concept anymore?" The loop's reframe (master tracker § Phase A A3) makes `rule` entries the canonical capability representation. The derivation function is a new abstraction for a concept the loop no longer uses. | Accept | **No `core/derivation/derive-capabilities.js` file created.** The 3 `capability_*` tools are deleted with no replacement function. Callers query via `meta_state_list({entry_kind: 'rule', affected_system: '<s>'})` directly. |
+| 4 | §5.5 / §5.6: 8 schemas deleted without specifying what happens to 40+ active records in `records/vnstock/{decisions,experiments,risks,claims,evidence,index}/` | The 40+ records would be silently orphaned — schema validation removed, index extraction pipeline broken, §8 #4 success metric fails. | Accept | **Phase 5 archives 40+ records to `records/_unbound/<schema>/<vendor>/`** before the schemas are deleted. The records stay queryable, unbound, and the archive is documented. |
+| 5 | §5.1: `affected_system` as free string | Allows typos that corrupt the LRU cache key in `readRegistryWithCache` (Phase 1). | Accept | **`affected_system` is a Zod enum** (not free string), extending the existing 6-value enum (`'gate-logic' | 'record-validation' | 'index-extractor' | 'mcp-tools' | 'workflow-registry' | 'vnstock_vendor'`) with the new partition values. |
+| 6 | §5.6: 6 tool files deleted (`capability_*` x3, `index_extract`, `index_search`, `index_update_claim`, `record_*observation*` x2) | Operator challenge (2026-06-12 22:42): "Why only capabilities, why not delete the evidence, claims, index tool, etc... as well?" — the same simplification logic that kills `capability` kills all 14 product-surface concepts. | Accept | **13 tool files deleted** (not 6). All product-surface tools referencing dead concepts. Net: **56 → 43 MCP tools** (down from the report's 50). |
+| 7 | §5.2: sidecar `kind` is "ledger-event" / "budget-state" (extensible, not locked) | Stays. The `kind` enum is small and operator-extensible. | Accept (no change) | 2 kinds: `ledger-event` (the 18 events) and `budget-state` (extensible). |
+
+### 0.3 Why we delete all 14 product-surface tools (operator's framing)
+
+The 2026-06-12 reframe collapsed Bridge 5+6 into one atomic meta-surface. The meta-surface's 4-kind union (`finding | change-log | rule | loop-design`) is the *only* contract the loop writes. The product-surface concepts (`capability`, `claim`, `evidence`, `index-entry`, `decision`, `experiment`, `risk`, `observation`) were each attempts to *internalize* something the loop touched. Each attempt failed the same way (per §11.7.1's failure-mode genealogy): the registry wanted to be a *post*-state, and the concept was a *pre*-state or a *mutable state*, and forcing one into the other's shape produced a record that was structurally dishonest.
+
+The 13 tools being deleted are the MCP surface for those failed registries. They:
+- Encode the obsolete product-surface schema as Zod parameters (`capability_list_verified`'s `include_candidates`, `index_update_claim`'s `claim_id`/`status`, etc.).
+- Write to obsolete paths (`records/evidence/**`, `records/capabilities/**`, `records/index/**`) that the gate's `WRITE_PATH_PATTERNS` no longer recognizes.
+- Depend on schemas (`capability.schema.json`, `claim.schema.json`, `index-entry.schema.json`) being valid; deleting the schemas breaks them.
+
+Keeping them as "stubs" or "deprecated" tools adds maintenance cost with zero value: no caller can usefully invoke a tool whose schema is deleted, and the meta-surface's existing tools cover every legitimate query (`meta_state_list` for rules-as-capabilities, `meta_state_query_drift` for staleness, `meta_state_relationships` for cross-references).
+
+**The deletion is not a cleanup — it is the canonical end-state for those concepts.** The meta-surface is the only bound surface. The product-surface is unbound, archived, and the tools that operated on it are retired.
+
+### 0.4 Plan location and structure
+
+- **Plan file:** `plans/260612-1700-meta-surface-re-debate/plan.md`
+- **Phases:** 8 (per operator selection; Phase 5 absorbs the archive step that the report did not address)
+- **Total effort:** ~21h
+- **Red-team report:** `plans/260612-1700-meta-surface-re-debate/reports/from-code-reviewer-to-planner-red-team-scope-complexity-critic-plan-review-report.md` (10 findings, 6 accepted, 4 rejected)
+
+### 0.5 What this summary is NOT
+
+- **Not a replacement for §1-§13.** The full design record, the dependency-balance convention (§11.1), the pre-mortem channel (§11.2), the revision loop (§11.3), and the failure-mode genealogy (§11.7) are all preserved below for forensic continuity.
+- **Not a contract change.** §11 is closed (consensus 2026-06-12). The corrections in §0.2 are clarifications, not scope changes.
+- **Not a promotion of any meta-state entry.** The corrections are reflected in the plan's Phase 1 (Zod enum), Phase 2 (count 18), Phase 5 (archive path), and Phase 7 (13 tool deletions), but no new `meta_state_log_change` is filed for the report itself.
+
+---
+
+## 1. Problem statement
+
 **Type:** brainstorm (design report)
 **Date:** 2026-06-12
 **Slug:** phase-a-product-surface-re-debate
