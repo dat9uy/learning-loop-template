@@ -1,21 +1,37 @@
 # Research: Mastra-Based Runtime/Model-Agnostic Productization
 
-> **⚠️ Status as of 2026-06-11 (snapshot, not a contract):**
-> This report was committed to main on 2026-06-11 (merge commit `56e4267`). During the same session, `2315341 feat(mcp-tools): patch validateToolInput for top-level array/boolean wire-format coercion` landed on main, which **partially supersedes the Q3 framing** (drop the coercion in Phase 1, gated on Phase 0 parity test). The Q3 direction is still correct (coercion logic moves upstream), but the "drop in Phase 1" assertion needs revisiting once `validateToolInput` is integrated.
+> **⚠️ Status as of 2026-06-12 (operator-approved contract, refined by 2026-06-12 operator reframe):**
+> This report was committed to main on 2026-06-11 (merge commit `56e4267`). The 2026-06-12 reframe **promotes** the §3.x decisions and §8 resolutions from "snapshot" to **operator-approved contract**. The §1-§2 background (current state, Mastra concepts) and §4 risks remain research/snapshot — descriptive, can be refined in place without operator sign-off. **What is contract as of 2026-06-12** (durable until a new operator decision is recorded in `meta-state.jsonl` as a `change-log` or `loop-design` entry):
+> - §3.6 "What changes" — wire-format coercion is **reproduced**, not dropped (per F7 expansion; see below).
+> - §3.7 — Storage Layer deferral (deferred to Mastra Phase 3).
+> - §3.8 — Bridge 5/6 atomic meta-surface front, the engine/instance split, the Bridges 1-4 voiding, the 7-step implementation order (Step 0 → Step 7).
+> - §3.10 — Meta-surface is the only bound surface; Q8 reopened as Option D (re-debate from meta-surface); the ~36/~20 tool-surface split.
+> - §3.9 — Hook layer interaction; runtime hooks stay at the runtime layer in Mode 1; consult-gate re-implementation in Mastra tool `execute` in Phase 1.
+> - §8 Q1–Q7 — Mastra Code as the final runtime target; model selection is session-level; Apache-2.0 license; LibSQL memory default; Mode 1 peer-MCP integration; `MastraServer` HTTP out of scope.
+> - **What is not contract** (still research/snapshot, can be refined in place without operator sign-off):
+> - §1 current state; §2 Mastra concepts (descriptive, can be wrong if upstream changes); §4 risks and mitigations.
 >
-> **What the operator is doing:** resolving additional minor gaps in `meta-state.jsonl` (the self-model) before coming back to refine this report.
+> The 2026-06-11 "during the same session" caveat about `2315341 feat(mcp-tools): patch validateToolInput for top-level array/boolean wire-format coercion` **understated** the impact: as of 2026-06-12 verification, `coerceParamsToSchema` and `installWireFormatCoercion` in `tools/learning-loop-mcp/tool-registry.js` are **in production with full test coverage** at `__tests__/wire-format-top-level-coercion.test.js` and `__tests__/wire-format-coercion-fix.test.js`. They are **load-bearing** for stdio clients that pass JSON-string arrays, booleans, and numbers at the top level of tool arguments. The original Q3 framing ("drop the coercion in Phase 1, gated on Phase 0 parity test") is no longer accurate: Phase 1 of the Mastra migration must **reproduce the upstream behavior in Mastra's `createTool` input validation**, not just delete the helpers. Deleting them without reproduction is a regression for stdio clients. (Q3 was RESOLVED 2026-06-11, REVISED 2026-06-12 — see §8.)
+>
+> **What the operator is doing (2026-06-12):** applying a from-scratch reframe that collapses Bridge 5 and Bridge 6 into one atomic front called the **meta-surface**. All Bridge 1-4 work is deferred and unbound; the product surface is re-debated from the meta-surface. This reframe is reflected in:
+> - `AGENTS.md` (full rewrite, 2026-06-12; previous at `AGENTS.old.260612-1300.md`)
+> - `docs/trajectory.md` (full rewrite, 2026-06-12; previous at `docs/trajectory.old.260612-1300.md`)
+> - `plans/reports/brainstorm-260601-bridge-1-evidence-first-auto-assist.md` (status: VOIDED BY RE-DEBATE, 2026-06-12)
+> - `plans/reports/brainstorm-20260601-bridge-2-candidate-to-experiment-closeout.md` (status: VOIDED BY RE-DEBATE, 2026-06-12)
+> - `plans/reports/consistency-260612-1300-mastra-research-report.md` (the 9-finding consistency check that produced the reframe; the operational source of truth)
 >
 > **What the next agent should do, before starting Phase 0:**
-> 1. **Read `meta-state.jsonl`** (last 50 lines, or filter `entry_kind` via `meta_state_list`) for any new operator-side resolutions that supersede the decisions captured here.
-> 2. **Re-verify the locked implementation order (steps 1–8 in §3.8 + §3.10)** against `main`'s current state — the upstream `validateToolInput` patch may have moved Q3's framing.
-> 3. **Treat this report as a snapshot, not a contract.** The resolved decisions (Q3–Q9, §3.7–§3.10) were correct at the time of writing but may be partially superseded by upstream changes or new operator decisions.
-> 4. **Refine in place** when the operator returns — edit the report's sections, not just add a new one. The Q3 section (§8 Q3, §3.6 "What changes") is the most likely candidate.
+> 1. **Read `meta-state.jsonl`** (last 50 lines, or filter `entry_kind` via `meta_state_list`) for any new operator-side resolutions that supersede the contract decisions captured here. Contract supersession requires a `change-log` or `loop-design` entry.
+> 2. **Re-verify the locked implementation order (§3.8.1 step 0 → step 7, plus §3.10's "What does NOT change" list)** against `main`'s current state. The 2026-06-12 reframe added Step 0 ("Re-debate product-surface schemas using the meta-surface as substrate") and Step 7 ("Bridge 7 question, post-meta-surface") to the implementation order; the rest of the order is preserved from §3.8.1.
+> 3. **Re-verify Q3 in light of the live wire-format coercion helpers.** Phase 1 of the Mastra migration must reproduce `coerceParamsToSchema` + `installWireFormatCoercion` behavior in Mastra's `createTool` input validation. A Phase 0 byte-for-byte parity test against the existing 985-test suite (verified 2026-06-12 via `pnpm test`: 984 pass, 1 skipped, 147 suites) is the gate. The helpers are in `tools/learning-loop-mcp/tool-registry.js` lines 77-134 (`coerceParamsToSchema`) and 197-235 (`installWireFormatCoercion`); the wire-format tests are at `__tests__/wire-format-top-level-coercion.test.js` and `__tests__/wire-format-coercion-fix.test.js`.
+> 4. **Refine §1-§2 and §4 in place** without operator sign-off (these are research/snapshot, not contract). **Do not refine §3.x or §8 in place** without first recording a `change-log` or `loop-design` entry in `meta-state.jsonl` that supersedes the prior contract.
+> 5. **If the live helpers' behavior cannot be reproduced in Mastra**, the Q3 §8 resolution is the most likely contract to revisit. A new `change-log` entry documenting the failure mode is the precondition for any §3.x or §8 in-place refinement.
 
 **Type:** research
-**Date:** 2026-06-11
+**Date:** 2026-06-11 (committed); 2026-06-12 (refined by operator reframe)
 **Slug:** mastra-runtime-model-agnostic-productization
 **Work context:** learning-loop-template
-**Aligned to:** Bridge 6 (self-model as product) per `docs/trajectory.md`
+**Aligned to:** the meta-surface (Bridge 5+6 atomic front) per `AGENTS.md` §10 and `docs/trajectory.md` §4. The 2026-06-11 alignment ("Bridge 6 (self-model as product) per `docs/trajectory.md`") is superseded; the 2026-06-12 reframe unifies Bridge 5 and Bridge 6.
 
 ## TL;DR
 
@@ -73,9 +89,9 @@ new Agent({ model: "anthropic/claude-sonnet-4-6" })  // or any "provider/model"
 
 For the current scope (Droid + Mastra Code), this is a **free bonus, not a primary driver**. The migration does not need to optimize for per-deployment model flips; the model's per-session choice in the outer agent is enough. (Mastra Code's own multi-provider support — Claude / GPT / Gemini / custom OpenAI-compatible — is the runtime-side analog of the same model-agnostic property.)
 
-### 1.3 Inventory of current MCP tools (58 tools, 7 groups)
+### 1.3 Inventory of current MCP tools (56 tools per `agent-manifest.json`, 59 tool files on disk, 8 groups)
 
-Per `tools/learning-loop-mcp/agent-manifest.json`:
+Per `tools/learning-loop-mcp/agent-manifest.json` (canonical tool list, verified 2026-06-12). The `introspection` group has 2 tools (`loop_describe` + `loop_get_instruction`), not 1 — the 52 number in earlier reports predates the `260611-1700-loop-get-instruction` plan that added the second introspection tool.
 
 | Group | Count | Shape | LLM-decision-driven? |
 |---|---|---|---|
@@ -86,7 +102,7 @@ Per `tools/learning-loop-mcp/agent-manifest.json`:
 | `budget` | 1 | check resource budget | no |
 | `capability` | 3 | generate, list probes, list verified | no |
 | `meta_state` | 16 | report, list, ack, resolve, promote-rule, sweep, log-change, patch, derive, check-grounding, refresh-fingerprint, refresh-tools, query-drift, batch, archive, relationship-validate | mostly no (algorithmic), `self_improvement` is LLM-driven |
-| `introspection` | 1 | `loop_describe` | no |
+| `introspection` | 2 | `loop_describe`, `loop_get_instruction` | no |
 
 **Key split:** ~70% of tools are deterministic CRUD/queries; ~30% are LLM-decision-driven (intake, classify, prepare, convert, generate prompt, self-improvement, product build, runtime probe).
 
@@ -186,7 +202,8 @@ The current `@modelcontextprotocol/sdk` server has *no* concept of model — mod
 | `workflow_intake_orient`, `workflow_intake_plan`, `workflow_classify_prompt`, `workflow_verify_evidence`, `workflow_convert_evidence` | **Workflow** | multi-step state machines with branching |
 | `workflow_product_build`, `workflow_self_improvement`, `workflow_runtime_probe` | **Agent** + **Workflow** combo | open-ended LLM decisions interleaved with tool calls |
 | `workflow_prepare_runtime_request`, `workflow_generate_prompt`, `workflow_external_decision`, `workflow_intentional_skip`, `workflow_report_phase_status` | **Tool** (deterministic) + **Agent** (uses it) | templating/logic, not state |
-| `loop_describe` | **Tool** (deterministic, tiered reads) | algorithmic |
+| `loop_describe` | **Tool** (deterministic, tiered reads) | algorithmic; returns the full `discoverability_hints` block at one of 4 tiers (`summary`/`hot`/`warm`/`cold`) |
+| `loop_get_instruction` | **Tool** (deterministic, key-indexed) | algorithmic; on-demand lookup of a single hint from the same `discoverability_hints` block by named slug, 0-based index, or array of either. Composes with `loop_describe`: warm/hot hints surface at start; `loop_get_instruction` is for when they scroll out of context or when cross-referencing and the agent is unsure which canonical pattern applies. Backed by `tools/learning-loop-mcp/tools/loop-get-instruction-tool.js`; consumes `buildDiscoverabilityHints()` from `core/loop-introspect.js`. Added in plan `260611-1700-loop-get-instruction`. |
 | `workflow_notify_artifact`, `workflow_trigger` | **Tool** (writes to registry) | algorithmic; could become event-driven via a workflow `onFinish` |
 
 The "agent" tier is *new capability* — today, LLM decisions are made by the *outer* agent (Claude/Droid), not by tools inside the loop. With Mastra, we can host LLM decisions *inside* the loop, which is a structural shift: the loop stops being a passive tool server and becomes an active reasoning engine about its own state.
@@ -289,7 +306,7 @@ Each phase is independently shippable. Phases 0–2 are pure refactors (no behav
 ### 3.6 What changes
 
 - **Tool registration moves from `McpServer.tool()` to `MCPServer({ tools: { ... } })`.** Same wire format. Different in-process registration.
-- **Wire format coercion logic is dropped in Phase 1** (per Q3 resolution in §8). Today, `tool-registry.js#coerceParamsToSchema` does JSON-string-to-array/bool/number coercion. Mastra's `createTool` validates inputs via Zod natively. The Phase 0 byte-for-byte parity test is the gate: if the existing 675+ tests pass against the Mastra server without coercion, the coercion was dead code, drop it. If they fail, surface the diffs and decide case-by-case.
+- **Wire format coercion logic is reproduced in Phase 1, not dropped** (per Q3 resolution in §8, revised 2026-06-12). Today, `tool-registry.js#coerceParamsToSchema` does JSON-string-to-array/bool/number coercion and `installWireFormatCoercion` patches `McpServer#validateToolInput`. Both helpers are in production with full test coverage. Mastra's `createTool` validates inputs via Zod natively, but it does not replicate the JSON-string-to-typed-value coercion — that behavior is load-bearing for stdio clients. The Phase 0 byte-for-byte parity test is the gate: if the existing **985 tests** (verified 2026-06-12 via `pnpm test`; 984 pass, 1 skipped, 147 suites, ~9s duration) pass against the Mastra server with the coercion reproduced, the behavior is preserved. If they fail, surface the diffs and decide case-by-case. See F6 of the consistency report for the per-glob breakdown.
 - **`{item: X}` unwrap logic is dropped in Phase 1** alongside the coercion. If Mastra's `createTool` accepts the same envelopes, the `unwrapItemWrap` helper can be deleted; if not, Phase 0 surfaces the diff.
 - **One MCP server becomes two surfaces under one Mastra app:** tools (procedural), agents (LLM-driven), workflows (multi-step). Each is registered on the same `MCPServer`.
 - **Model selection becomes a per-deployment env var.** `MASTRA_AGENT_MODEL=anthropic/claude-sonnet-4-6` (or whatever) flips the model for all agents. Today, the model is implicitly the outer agent's model.
@@ -329,65 +346,96 @@ Reasoning:
 
 **Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
 
-### 3.8 Bridge 5 (Approach 3) sequencing decision — ship before Mastra
+### 3.8 Bridge 5 (Approach 3) sequencing decision — meta-surface only, atomic with Bridge 6
 
-**Status check (2026-06-11):** Bridge 5 is *partially* shipped. Per `AGENTS.md` § "What Has Happened Since (2026-06-05 update)":
+> **Operator reframe, 2026-06-12:** Bridge 5 and Bridge 6 are one atomic front called the **meta-surface**. The Bridge 5 codegen engine ships first, **but its only validated output target is `meta-state.jsonl`**. Product-surface schemas (`capability`, `index-entry`, `claim`, `resource-budget`, plus any future product shape) are **unbound**: the engine *can* generate them, but no product records are generated, validated, or migrated against the current product registry. The product surface is **re-debated and re-validated by the meta-surface** once the meta-surface exists. All Bridge 1-4 work is **deferred** until the meta-surface ships; existing "shipped" or "design approved" claims in Bridge 1-4 reports are **structurally voided** because the product surface they were building toward is being redesigned.
+
+**Status check (2026-06-12):** Bridge 5 is *partially* shipped. Per `AGENTS.md` § "What Has Happened Since (2026-06-05 update)":
 - **Approach 2** (tool zod generated from JSON Schema via `core/schema-to-zod.js`) — **SHIPPED** for 4 record types (experiment, risk, decision, observation)
-- **Approach 3** (full codegen for writers + validators) — **pending**, sequenced after SP3 schemas stabilize
+- **Approach 3** (full codegen for writers + validators) — **pending**, scoped to meta-surface only. Product-surface binding is not in scope.
 
-The Bridges table in `AGENTS.md` § "The Six Bridges" inconsistently lists Bridge 5 as "Not shipped" — that table pre-dates the 2026-06-05 update. Approach 3 is the remaining work.
+The Bridges table in `AGENTS.md` § "The Six Bridges" inconsistently lists Bridge 5 as "Not shipped" — that table pre-dates the 2026-06-05 update. Approach 3 is the remaining work, scoped to the meta-surface (4 entry kinds in `meta-state.jsonl`).
 
-**The operator's concern (2026-06-11):** how should Bridge 5 Approach 3 be ordered relative to (a) the SQLite Storage Layer, (b) the Mastra migration?
+#### 3.8.1 Engine vs Instance (the inversion)
 
-**Decision (2026-06-11): ship Bridge 5 Approach 3 BEFORE the Mastra migration starts. Bridge 5 and Storage Layer are independent.**
+The 2026-06-11 framing was "Bridge 5 produces writers/validators for 4 record types; the per-surface instances are paused." The 2026-06-12 operator reframe splits this further:
+
+- **Engine** (what Bridge 5 produces): a schema-to-code generator that takes any JSON Schema and emits writers + validators. The engine is provable against the meta-surface because the meta-surface is small (4 entry kinds), stable (locked since SP3 shipped 2026-06-05), and self-owned (the loop is its own designer).
+- **Instance** (what the engine generates): only the meta-surface — `finding`, `change-log`, `rule`, `loop-design` entries in `meta-state.jsonl`. Product-surface schemas are **not bound** to real records. The engine has the *ability* to generate them, but the *decision* to bind is deferred until the meta-surface exists and can re-debate the product surface.
+
+This eliminates the 11 drift cells by construction: there is no product instance to drift against.
+
+**Quantitative impact (meta-surface only):**
+
+| Meta-surface record type | Hand-written files (today) | After Bridge 5 + Mastra (in order) |
+|---|---|---|
+| `finding` (meta-state) | 0 (lives only in `meta-state.jsonl`) | 0 + 1 Mastra wrapper = 1 |
+| `change-log` (meta-state) | 0 (lives only in `meta-state.jsonl`) | 0 + 1 Mastra wrapper = 1 |
+| `rule` (meta-state) | 0 (lives only in `meta-state.jsonl`) | 0 + 1 Mastra wrapper = 1 |
+| `loop-design` (meta-state) | 0 (lives only in `meta-state.jsonl`) | 0 + 1 Mastra wrapper = 1 |
+| **Meta-surface total** | **0** | **0 + 4 Mastra wrappers = 4** |
+
+**Product-surface record types (capability, index-entry, claim, resource-budget, observation, ...):** not counted. They are unbound. The Bridge 5 engine has the ability to generate them, but no instance is in scope.
+
+**Decision (2026-06-12): ship Bridge 5 Approach 3 BEFORE the Mastra migration starts, scoped to the meta-surface only. The Mastra migration's Phase 0/1 consumes the meta-surface output.**
 
 Reasoning:
 
 - **Mastra's `createTool({ inputSchema, outputSchema })` accepts Standard JSON Schema** (Zod, Valibot, ArkType, or any library implementing the spec). The current `core/schema-to-zod.js` already converts JSON Schema to Zod at runtime. **Bridge 5 Approach 3's output is exactly what Mastra's `createTool` consumes.** No translation layer is needed.
-- **The hand-maintenance problem the trajectory doc names is 4 parallel field catalogues per record type today (JSON schema, tool zod, writer output, validator paths).** Shipping Mastra Phase 1 *before* Bridge 5 Approach 3 adds a **5th catalogue** — the Mastra tool's `inputSchema`/`outputSchema`. The 11 drift cells (8 in experiment, 3 in risk) grow. The original Bridge 5 problem gets *worse*, not better.
-- **Mastra migration Phase 1 shrinks dramatically** with Bridge 5 done first. Each Mastra tool becomes a 3-line wrapper that pulls the Zod from `buildZodFor('<type>')`. The hand-maintenance surface for 4 record types drops from ~16 files to ~4 schema files + ~4 thin wrappers (50% reduction); the drift is *structurally impossible* (codegen runs at build, the `field-coverage.test.js` CI gate catches regressions).
+- **The hand-maintenance problem the trajectory doc names is 4 parallel field catalogues per record type today (JSON schema, tool zod, writer output, validator paths).** Shipping Mastra Phase 1 *before* Bridge 5 Approach 3 adds a **5th catalogue** — the Mastra tool's `inputSchema`/`outputSchema`. By scoping Bridge 5 to the meta-surface only, we avoid growing the catalogue for product-surface types.
+- **Mastra migration Phase 1 shrinks dramatically** with Bridge 5 done first for the meta-surface. Each meta-surface Mastra tool becomes a thin wrapper that pulls the Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written for the meta-surface.
 - **Bridge 5 is independent of storage backend.** Approach 3 generates TypeScript code from JSON Schema; it doesn't care whether the registry lives in JSONL or SQLite. The two are orthogonal. Storage Layer stays deferred to Mastra Phase 3 (per §3.7).
 - **The dependency that does matter is SP3 schema stability.** Approach 3 needs the meta-state / record schemas to be stable. SP3 shipped 2026-06-05. We need ~1 release cycle of post-SP3 schema immutability before Approach 3 ships. *Check the git diff on `schemas/*.schema.json` since 2026-06-05; if the diff is non-trivial, defer Approach 3.*
 
-**Updated implementation order (replaces §3.4 Phasing for the Bridge 5 axis; refined by §3.10's "records strictly product-level" scope):**
+**Updated implementation order (replaces §3.4 Phasing for the meta-surface axis):**
 
-1. **Declare SP3 schema stability.** Mechanical check + 1 release cycle.
-2. **Bridge 5 Approach 3** — full codegen for writers + validators. Extends the existing `core/schema-to-zod.js`. **Per §3.10 refinement: the meta-surface record types (experiment, risk, decision, observation, claim, evidence, capability, index) generate code that targets `meta-state.jsonl` for meta-surface instances, not `records/meta/`.** Ships its own plan.
+0. **Re-debate product-surface schemas (the bridge 7 question).** Use the meta-surface as the substrate for the re-debate. **Not in scope for this report; deferred until after step 6.** The current product-surface schemas are unbound and treated as a design exploration, not a contract.
+1. **Declare SP3 schema stability.** Mechanical check + 1 release cycle. (For the meta-surface only; product-surface schemas are not in scope.)
+2. **Bridge 5 Approach 3** — full codegen for writers + validators, scoped to the meta-surface only. Extends the existing `core/schema-to-zod.js`. Ships its own plan. The output target is `meta-state.jsonl`; the output types are the 4 entry kinds (`finding | change-log | rule | loop-design`).
 3. **Mastra migration Phase 0** — coexistence (no Bridge 5 dependency; just registers deterministic tools, ~30 of them, meta-state-touching).
 4. **Mastra migration Phase 1** — mastrafy the ~30 meta-state deterministic tools. **Now this phase is dramatically smaller**: thin wrappers that consume the Bridge 5 output. No per-tool zod hand-written.
 5. **Mastra migration Phase 2-3** — workflows + agents (Phase 3 is where Storage Layer folds in per §3.7).
-6. **Mastra migration Phase 4-5** — cut over + embed in Mastra Code (Mode 1).
+6. **Mastra migration Phase 4-5** — cut over + embed in Mastra Code (Mode 1). At this point, the meta-surface is the only bound surface. **Phase 5 does not bind to product-surface schemas; it operates entirely on the meta-surface.**
+7. **(Post-meta-surface, out of scope here.)** Re-debate product-surface schemas using the meta-surface as substrate. This is the Bridge 7 question.
 
 **Pre-Phase 0 (added by §3.10): migrate the legacy meta-surface content out of `records/`.**
-- Convert `records/meta/evidence/*.md` → `meta-state.jsonl` findings.
-- Convert `records/meta/capabilities/*.yaml` → `meta-state.jsonl` rules.
-- Convert `records/meta/experiments/*.yaml` → `meta-state.jsonl` change-logs.
+- ~~Convert `records/meta/evidence/*.md` → `meta-state.jsonl` findings.~~ **Already done (2026-06-12 verification).** The `records/meta/evidence/` subdirectory no longer exists; the conversion is complete.
+- ~~Convert `records/meta/capabilities/*.yaml` → `meta-state.jsonl` rules.~~ **Already done (2026-06-12 verification).** The `records/meta/capabilities/` subdirectory no longer exists; the conversion is complete.
+- Convert `records/meta/experiments/*.yaml` (2 files: `experiment-meta-capabilities-stack-allowlist-20260510T160000Z.yaml`, `experiment-meta-install-template-candidate-260512T0046Z.yaml`) → `meta-state.jsonl` change-logs. **Not yet converted; ~2 file conversions remain.**
 - Resolve Q8 for `records/observations/*.yaml` (5th entry kind vs separate file).
-- Delete the converted `records/meta/` content (after conversion is verified).
-- Delete `records/index.yaml` (derive from meta-state at runtime).
-- Archive `records/<vendor>/` (per §3.10).
+- ~~Delete the converted `records/meta/` content (after conversion is verified).~~ **Partial completion:** `records/meta/evidence/` and `records/meta/capabilities/` already gone; `records/meta/experiments/` (2 files) and `records/meta/index/` (12 files) remain.
+- ~~Delete `records/index.yaml` (derive from meta-state at runtime).~~ **Already done (2026-06-12 verification).** No `records/index.yaml` exists.
+- Archive `records/<vendor>/` (per §3.10). Product-surface content is unbound and treated as design exploration, not as a contract that constrains Bridge 5.
 
-**Quantitative impact (per record type):**
+#### 3.8.2 Bridges 1-4 voided by re-debate
 
-| Record types | Hand-written files (today) | After Bridge 5 + Mastra (out of order) | After Bridge 5 + Mastra (in order) |
-|---|---|---|---|
-| 4 (current) | 16 | 16 + 4 Mastra wrappers = 20 | 8 + 4 Mastra wrappers = 12 |
-| 10 (near-term growth) | 40 | 40 + 10 Mastra wrappers = 50 | 8 + 10 Mastra wrappers = 18 |
-| 20 (long-term) | 80 | 80 + 20 Mastra wrappers = 100 | 8 + 20 Mastra wrappers = 28 |
+The operator reframe of 2026-06-12 voids all prior "Bridge 1-4 shipped" or "Bridge 1-4 design approved" claims. The reports themselves remain in `plans/reports/` as historical engineering record, but their status is marked "voided by re-debate, 2026-06-12". The reason: the product surface is being redesigned by the meta-surface, and the schemas + integration shapes those reports were building toward are no longer the right ones to commit to.
 
-**Sequencing decision rule (operator-stated, easy to revise):**
+**Reports voided (in-place header edit, not deleted):**
 
-> **Bridge 5 Approach 3 ships before Mastra migration starts. The Mastra tool surface consumes Bridge 5's output. Storage Layer is deferred to Mastra Phase 3 (per §3.7).**
+- `plans/reports/brainstorm-260601-bridge-1-evidence-first-auto-assist.md` — "Status: Design approved, awaiting plan" → voided; the `index-entry.schema.json` and `claim.schema.json` shapes are unbound.
+- `plans/reports/brainstorm-20260601-bridge-2-candidate-to-experiment-closeout.md` — "Bridge 2 is complete and tested but never exercised on real data" → voided; the candidate-to-experiment pipeline is a product-surface design that needs re-debate. The report's own line 101 self-flags this: *"Bridge 2 is marketed as 'complete' while untested end-to-end."* — the operator reframe is consistent with that self-flag.
+- All `plans/<date>-bridge-{1,2,3,4}-*/` plan directories — treated as historical record, not as in-flight work.
+- All Bridge 1-4 status claims in `AGENTS.md` and `docs/trajectory.md` — superseded by the meta-surface framing.
 
-> **Scope (per §3.10):** Bridge 5 is meta-surface only. The schema-derived writers/validators work for the 4 record types in scope (experiment, risk, decision, observation); the per-surface *instances* are paused for product surfaces. The schemas are unchanged; the legacy product records are archived.
+**What stays valid (the engineering is real, the contracts are not):**
+
+- The pipeline implementations (MCP tools, schema files, validators) remain in the repo. They are not deleted; they are unbound.
+- The findings and rules about *how* the pipeline was built (test coverage, error paths, performance benchmarks) are valid historical record. They are referenced from `meta-state.jsonl` change-logs for forensic continuity.
+
+**The pattern:** A bridge can be "built" in the sense that all the code and tests are present, but "unbuilt" in the sense that the contract it was built against is voided. The 2026-06-12 reframe collapses the two senses by anchoring the contract to the meta-surface. Once the meta-surface is the only bound surface, the only "built" bridges are the ones that operate on the meta-surface (which is none of Bridges 1-4; those are all product-surface by definition).
+
+**Sequencing decision rule (operator-stated, 2026-06-12, supersedes the 2026-06-11 rule):**
+
+> **The meta-surface (Bridge 5+6) is the active front, in no particular order. All Bridge 1-4 work is deferred. The Bridge 5 codegen engine ships first, scoped to the meta-surface only. The Mastra migration's Phase 0-5 follow, also meta-surface only. Product-surface binding is the Bridge 7 question, deferred until after the meta-surface ships.**
 
 **Where this prediction is wrong — three failure modes:**
 
 1. **SP3 schemas are still in flux.** The trajectory says Approach 3 is "sequenced after SP3 — SP3's schemas need to stabilize first." If the SP3 schemas are still being edited (e.g., new fields, status enum changes), Approach 3 will need to be redone as SP3 settles. *Test: check the git history on `schemas/*.schema.json` since 2026-06-05; if the diff is non-trivial, defer Approach 3.*
-2. **The Mastra migration adds tools for record types not in the 4 covered by Bridge 5.** Today: experiment, risk, decision, observation are schema-derived. Claim, evidence, capability, index, observation-schema-override are not. If Phase 1 needs to mastrafy a tool for, say, `record_create_claim`, the 5th-field-catalogue problem returns *for that record type*. *Test: at Mastra Phase 0, audit which tools map to non-derived record types; either extend Bridge 5 first, or accept the drift for those types.*
-3. **The operator values the Mastra destination (Bridge 6 alignment) over the Bridge 5 means (internal cleanup).** If the operator wants to ship the Mastra migration as a Bridge 6 deliverable, the order reverses and we accept the 5th-field-catalogue cost as the price of progress. *Test: confirm with operator whether Bridge 6 is a destination (Mastra) or a means (codegen + no-drift invariant). (Confirmed 2026-06-11: means matter; Bridge 5 ships first.)*
+2. **The meta-surface engine produces output that is not equivalent to the existing hand-written meta-state tools.** The 16 `meta_state_*` tools in `tools/learning-loop-mcp/tools/meta-state-*-tool.js` have hand-written logic (e.g., `meta_state_derive_status`, `meta_state_check_grounding`). If the Bridge 5 engine's output for the meta-surface types does not match the existing hand-written behavior, the cut-over breaks. *Test: at Bridge 5 Phase 0, generate meta-state zod from the engine and compare against `buildZodSchemaFor('observation', ...)` and the hand-written `meta-state-*-tool.js` schemas. Any divergence is a blocker.*
+3. **The product surface re-debate (Bridge 7) reveals that the meta-surface shape is also wrong.** If the loop, using its own meta-surface as substrate, concludes that the 4-kind union (`finding | change-log | rule | loop-design`) does not generalize, the meta-surface itself is in scope for re-debate. *Test: at Step 7 (post-meta-surface), audit whether the 4-kind union is still the right shape for the product surface the loop is designing. If not, the meta-surface is in scope too.*
 
-**Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
+**Captured as a meta-state finding** (operator decision, 2026-06-12, supersedes the 2026-06-11 "not captured" decision). The Bridges 1-4 voiding and the meta-surface atomicity are durable contracts; they belong in `meta-state.jsonl` as a `loop-design` entry. Promote when the Bridge 5 plan is opened.
 
 ### 3.9 Hook layer interaction with the Mastra migration
 
@@ -477,129 +525,175 @@ Reasoning:
 
 **Not captured as a meta-state finding** (per operator decision 2026-06-11). The decision lives in this research report only; can be promoted to a `meta_state_propose_design` or `meta_state_report` later if reaffirmed.
 
-### 3.10 Scope edit: meta-surface only (2026-06-11)
+### 3.10 Scope: meta-surface as the only bound surface (2026-06-12 reframe)
 
-**Operator decision (2026-06-11, refined):** Bridge 5 and this plan as a whole are scoped to the **meta-surface only**. The plan still implements Bridge 5, but no product works — no product-surface registry will be generated; all current product-level registry is treated as archived. **Additionally, `records/` is now strictly product-level** — `records/meta/*` is deleted, replaced by `meta-state.jsonl` (the 4-kind union: finding | change-log | rule | loop-design). The plan's effective scope shrinks further than the original §3.10 framing.
+> **Operator reframe, 2026-06-12:** The 2026-06-11 framing was "Bridge 5 is meta-surface only; product surface is paused." The 2026-06-12 reframe is sharper: **the meta-surface is the only bound surface**. The Bridge 5 codegen engine can produce any schema, but the only **bound** output is `meta-state.jsonl` (the 4-kind union: `finding | change-log | rule | loop-design`). Product-surface schemas are **unbound**: no records are generated, validated, or migrated against them. The product surface is **re-debated and re-validated by the meta-surface** once the meta-surface exists. All Bridge 1-4 work is **deferred** until the meta-surface ships.
 
-**Original §3.10 framing (now superseded):**
+**The inversion (engine vs instance):**
 
-The first version of this section said `records/meta/` and `records/observations/` were both "meta-surface" and stayed in `records/`. The operator's revised edit (this section) is tighter: `records/` is **strictly product-level**, and ALL meta-level content is moved out of `records/`.
+- **Engine:** the Bridge 5 schema-to-code generator. Provable against the meta-surface because the meta-surface is small (4 entry kinds), stable (locked since SP3 shipped 2026-06-05), and self-owned (the loop is its own designer).
+- **Instance (bound):** only the meta-surface — `finding`, `change-log`, `rule`, `loop-design` entries in `meta-state.jsonl`. The engine's only validated output.
+- **Instance (unbound):** all product-surface schemas. The engine *can* generate them; the loop *could* bind to them. The decision to bind is deferred until the meta-surface exists and can re-debate the product surface using itself as substrate.
 
-**Three reasons (operator-stated):**
+**Why this is sharper than "paused":**
 
-1. **The product-level registry is stale.** A lot of MD or YAML files in `records/<vendor>/` don't follow the rules the new design will require. The new design should not be hindered by that.
+- "Paused" implies a state to resume from. The 2026-06-12 reframe removes the assumption that the current product-surface schemas (capability, index-entry, claim, resource-budget, observation) are the right shape to resume to. They may not be.
+- "Meta-surface only" implies the meta-surface is the only thing in scope. The 2026-06-12 reframe adds: **the meta-surface is also the only thing the loop commits to**. The loop's self-model is the only contract the loop writes; everything else is design exploration.
+
+**Two product-surface distinctions (2026-06-12 reframe adds):**
+
+- **Product observations** (resource budgets, gate constraints, vendor-API ledgers): may or may not be the right shape. The current `observation.schema.json` and `resource-budget.schema.json` are artifacts of the substrate-driven era. Re-debate is required.
+- **Product schemas** (capability, index-entry, claim): may or may not be the right shape. The Bridge 1-4 reports' designs are voided (per §3.8.2). Re-debate is required.
+
+**What "meta-surface is the only bound surface" means:**
+
+```
+records/                              ← product-surface content only (unbound, archived per §3.10)
+├── vnstock/                          ← product-surface only (unbound, archived)
+├── fastapi/                          ← product-surface only (unbound, archived)
+├── tanstack/                         ← product-surface only (unbound, archived)
+└── product/                          ← product-surface only (unbound, archived)
+
+meta-state.jsonl                      ← THE bound surface (4-kind union: finding | change-log | rule | loop-design)
+```
+
+The `meta-state.jsonl` registry is the **only contract** the loop writes. The product-surface content in `records/` is design exploration, archived for forensic continuity, and explicitly **not** a contract that constrains Bridge 5 or the meta-surface.
+
+**Original 2026-06-11 framing (now superseded by 2026-06-12 reframe):**
+
+The 2026-06-11 framing said `records/meta/` and `records/observations/` were both "meta-surface" and stayed in `records/`. The 2026-06-11 operator edit tightened that: `records/` is **strictly product-level**, and ALL meta-level content is moved out of `records/`.
+
+The 2026-06-12 reframe goes further: **the meta-surface is the only bound surface**. The 2026-06-11 framing still permitted product-surface schemas to be "the right shape to resume to" once the meta-surface shipped. The 2026-06-12 reframe removes that assumption — the product surface must be re-debated from scratch, and the current schemas are unbound.
+
+**Three reasons (operator-stated, 2026-06-11, sharpened 2026-06-12):**
+
+1. **The product-surface registry is stale.** A lot of MD or YAML files in `records/<vendor>/` don't follow the rules the new design will require. The new design should not be hindered by that. **2026-06-12 sharpening:** the rules the new design *will* require are themselves TBD; the loop must derive them from the meta-surface, not from the old product schemas.
 2. **The old design inflated meta with product-level.** The meta level is now compressed into the meta-state registry (`meta-state.jsonl`). The product-level inflation is no longer needed. The `records/meta/*` directory is a vestige of that old inflation; it is deleted.
-3. **The product-level design question is deferred.** "How the learning loop registry is designed for product-level" will be answered AFTER Bridge 5 and Bridge 6 are finished. At that time, the learning loop itself will be the main designer of the product-level registry, not hindered by the legacy files. This is consistent with `AGENTS.md` and `docs/trajectory.md`.
+3. **The product-surface design question is deferred and unbound.** "How the learning loop registry is designed for product-level" will be answered AFTER the meta-surface ships. At that time, the learning loop itself will be the main designer of the product-level registry, using the meta-surface as its substrate. The current product schemas are **explicitly unbound** — they are design exploration, not contracts. This is consistent with `AGENTS.md` and `docs/trajectory.md`.
 
-**What "records is strictly product-level" means:**
+**What "meta-surface is the only bound surface" means (directory layout):**
 
 ```
-records/
-├── vnstock/               ← PRODUCT-LEVEL ONLY (archived per §3.10)
-├── fastapi/               ← PRODUCT-LEVEL ONLY (archived per §3.10)
-├── tanstack/              ← PRODUCT-LEVEL ONLY (archived per §3.10)
-└── product/               ← PRODUCT-LEVEL ONLY (archived per §3.10)
+records/                              ← product-surface content only (unbound, archived per §3.10)
+├── vnstock/                          ← product-surface only (unbound, archived)
+├── fastapi/                          ← product-surface only (unbound, archived)
+├── tanstack/                         ← product-surface only (unbound, archived)
+└── product/                          ← product-surface only (unbound, archived)
+
+meta-state.jsonl                      ← THE bound surface (4-kind union: finding | change-log | rule | loop-design)
 ```
 
-`records/` contains ONLY `<vendor>/` subdirectories. Every other entry under `records/` is moved out (or deleted) and replaced by `meta-state.jsonl`:
+`records/` contains ONLY `<vendor>/` subdirectories (plus `observations/` and `meta/` which are themselves in the process of being converted/archived per §3.10). Every meta-level entry that survives is in `meta-state.jsonl`:
 
-| Was at | New location | Why |
+| Was at | New location | Status (2026-06-12) |
 |---|---|---|
-| `records/meta/evidence/*.md` | `meta-state.jsonl` (as `finding` or `change-log` entries) | Evidence is the loop's self-model; belongs in the meta-state registry |
-| `records/meta/capabilities/*.yaml` | `meta-state.jsonl` (as `rule` entries) | Capabilities are "what the loop can do" — a rule is the closest meta-state kind |
-| `records/meta/experiments/*.yaml` | `meta-state.jsonl` (as `change-log` entries) | Meta-experiments document changes to the loop's machinery |
-| `records/observations/*.yaml` | `meta-state.jsonl` (as a 5th entry kind, or as `finding` entries) | Constraint observations and resource budgets are facts about the loop, not findings — **operator decision needed (see Open Question below)** |
-| `records/index.yaml` | Derived from `meta-state.jsonl` at runtime; not a separate file | The index is a projection of the meta-state; storing it separately creates a dual-write problem |
-| `meta-state.jsonl` (root) | unchanged | Was already at the root; becomes the SINGLE self-model artifact |
+| `records/meta/evidence/*.md` | `meta-state.jsonl` (as `finding` or `change-log` entries) | **Already converted** (2026-06-12 verification). Subdir no longer exists. |
+| `records/meta/capabilities/*.yaml` | `meta-state.jsonl` (as `rule` entries) | **Already converted.** Subdir no longer exists. |
+| `records/meta/experiments/*.yaml` | `meta-state.jsonl` (as `change-log` entries) | **2 files remain** to convert. |
+| `records/meta/index/*.yaml` | `meta-state.jsonl` (as `finding` entries) | **12 files remain** to convert. |
+| `records/observations/*.yaml` | **Re-debated.** May become a 5th meta-state entry kind, may stay as a separate file, may be folded into `finding` entries. **The current shape is unbound.** | **Q8 reopened** (operator decision 2026-06-12). |
+| `records/index.yaml` | Derived from `meta-state.jsonl` at runtime; not a separate file | **Already done.** No `records/index.yaml` exists. |
+| `meta-state.jsonl` (root) | unchanged | **The single self-model artifact.** |
 
-**Open Question (Q8):** Where do constraint observations and resource budgets go? The current `records/observations/*.yaml` are not findings — they are facts about the external system state (e.g., "the docker daemon is on this host", "the budget is at $X"). Mapping them onto the 4-kind union is non-trivial:
+**Open Question (Q8) — REOPENED, 2026-06-12:** Where do constraint observations and resource budgets go? The 2026-06-11 framing resolved this as "Option A: 5th meta-state entry kind." The 2026-06-12 reframe reopens the question because **the product-surface shape is itself unbound**. Options:
 
-- **Option A** — make observations a 5th entry kind in `meta-state.jsonl` (extends the union to 5: finding | change-log | rule | loop-design | observation). Cleanest semantically; requires a schema change.
+- **Option A** — make observations a 5th entry kind in `meta-state.jsonl` (extends the union to 5: finding | change-log | rule | loop-design | observation). Cleanest semantically; requires a schema change. Validated by the meta-surface once it ships.
 - **Option B** — keep observations as a separate file at the root, e.g. `observations.yaml`. Minimal change; the meta-state stays 4-kind; observations remain a sibling artifact.
-- **Option C** — fold observations into `finding` entries (with a `kind: observation` discriminator). Smallest change to the meta-state schema; semantically lossy (observations aren't "findings" in the loop-self-diagnostic sense).
+- **Option C** — fold observations into `finding` entries (with a `kind: observation` discriminator). Smallest change to the meta-state schema; semantically lossy.
+- **Option D (new, 2026-06-12)** — observations are a **product-surface concept** that may not exist in the new design. The current `observation.schema.json` is a relic of the substrate-driven era. The loop, using the meta-surface as substrate, decides whether observations are the right shape at all. **Re-debate required.**
 
-The current `gate_check` and `budget_check` tools read observations; the gate logic (`core/gate-logic.js`, `core/inbound-state.js`) reads observations; the staleness check is observation-driven. Whatever storage choice we make, the gate logic must continue to work. **Recommend Option A (5th entry kind)** for consistency with the operator's "records is strictly product-level" intent; **Option B** is the lowest-risk choice if Option A's schema change is too disruptive.
+The current `gate_check` and `budget_check` tools read observations; the gate logic (`core/gate-logic.js`, `core/inbound-state.js`) reads observations; the staleness check is observation-driven. Whatever storage choice we make, the gate logic must continue to work. **Recommend Option D (re-debate from meta-surface)** for consistency with the operator's "meta-surface is the only bound surface" intent. The 2026-06-11 "Option A recommended" is superseded.
 
-**What the scope edit eliminates (refined cascade):**
+**What the 2026-06-12 reframe eliminates (engine vs instance cascade):**
 
-| Eliminated | Why it can go |
+| Eliminated | Why it can go (engine vs instance) |
 |---|---|
-| `records/meta/*` (evidence, capabilities, experiments) | Replaced by `meta-state.jsonl` |
-| `records/observations/*` (constraint observations) | Replaced by `meta-state.jsonl` (Q8 pending) |
-| `records/index.yaml` (the loop's index file) | Derived from `meta-state.jsonl` at runtime |
-| `capability_*` (3 tools) | Capabilities live in meta-state as rules |
-| `index_extract`, `index_search`, `index_update_claim` (3 of 5 index tools) | Operate on `records/meta/evidence/*` and `records/index.yaml`, which are gone |
-| `record_create_observation` (1 of 9 record_crud tools) | Operates on `records/observations/`, which is gone (Q8 pending) |
-| The ~38 → ~30 tool surface reduction | Cumulative effect |
-| The "where do constraint observations live?" question (Q8) | New open question; see above |
+| `records/meta/*` (evidence, capabilities) | **Instance replaced** by `meta-state.jsonl` (engine = meta-state) |
+| `records/meta/experiments/*.yaml` (2 files), `records/meta/index/*.yaml` (12 files) | **Instance replaced** by `meta-state.jsonl` (engine = meta-state) — pending conversion |
+| `records/observations/*` (constraint observations) | **Instance unbound.** Engine (the meta-state registry) can host observations; the question is reopened for re-debate. |
+| `records/index.yaml` (the loop's index file) | **Instance replaced** by runtime derivation from `meta-state.jsonl` |
+| `records/<vendor>/*` (product surface) | **Instance unbound.** Engine (Bridge 5 codegen) can generate product records; the decision to bind is deferred. |
+| `capability_*` (3 tools) | **Instance replaced** — capabilities are product-surface; the engine (meta-state) does not host them as tools. Tools dropped; the meta-state `rule` kind is the only "capability" representation in the meta-surface. |
+| `index_extract`, `index_search`, `index_update_claim` (3 of 5 index tools) | **Instance replaced** — these operate on `records/meta/evidence/*` and `records/index.yaml`, which are gone. |
+| `record_create_observation` (1 of 9 record_crud tools) | **Instance unbound.** Operates on `records/observations/`, which is unbound (Q8 reopened). |
+| Product-surface binding for any record type (capability, index-entry, claim, resource-budget) | **Instance unbound.** Engine has the ability; binding is the Bridge 7 question. |
+| The "~38 → ~30 tool surface reduction" math | **Cascade impact:** the 56-tool surface today (per `agent-manifest.json`) → ~34 bound to meta-surface (gate 2 + meta_state 16 + introspection 2 + record_crud ~5 minus observation + workflow ~6 + index ~2 + budget 1 = ~34). The remaining 22 tools are dropped, paused, or unbound. |
+| The "where do constraint observations live?" question (Q8) | **Reopened** as a re-debate from the meta-surface, not a 4-kind-union extension problem. |
 
-**Tool surface (refined again):**
+**Tool surface (2026-06-12 reframe):**
 
-| Group | Today | §3.10 meta-only | **§3.10 refined (records strictly product-level)** |
-|---|---|---|---|
-| `gate` | 2 | 2 | 2 (gate is meta-surface) |
-| `record_crud` | 9 | ~7 | **~6** (drop `record_create_observation`; Q8 pending) |
-| `workflow` | 15 | ~8 | ~8 (no change from §3.10) |
-| `index` | 5 | ~3 | **~2** (drop `index_extract`, `index_search`, `index_update_claim`) |
-| `budget` | 1 | 1 | 1 (budget is meta-surface) |
-| `capability` | 3 | 0 | 0 (paused; capabilities are now meta-state rules) |
-| `meta_state` | 16 | 16 | 16 (all meta) |
-| `introspection` | 1 | 1 | 1 (loop_describe is meta) |
-| **Total** | **52** | **~38** | **~30** |
+| Group | Today (per `agent-manifest.json`) | **§3.10 2026-06-12 (meta-surface bound)** |
+|---|---|---|
+| `gate` | 2 | **2** (gate is meta-surface) |
+| `record_crud` | 9 | **~5** (drop `record_create_observation` and `record_update_observation`; Q8 reopened for re-debate; the other 7 stay bound to meta-state as `change-log` entries) |
+| `workflow` | 15 | **~8** (only meta-state-touching workflows stay; the rest are unbound) |
+| `index` | 5 | **~2** (drop `index_extract`, `index_search`, `index_update_claim`; keep `index_validate` and `index_validate_plans` for the meta-state) |
+| `budget` | 1 | **1** (budget is meta-surface) |
+| `capability` | 3 | **0** (capabilities are unbound product-surface; no tool representation) |
+| `meta_state` | 16 | **16** (all meta) |
+| `introspection` | 2 | **2** (`loop_describe` + `loop_get_instruction`, both meta-surface) |
+| **Total** | **56** | **~36** bound to meta-surface; **~20** unbound or dropped |
 
-The plan's tool surface shrinks from 52 (today) to ~38 (meta-only) to **~30** (records strictly product-level). The remaining 22 tools are deleted, paused, or unscoped.
+The plan's tool surface shrinks from 56 (today, per manifest) to **~36** (bound to meta-surface). The remaining ~20 tools are unbound (operate on product-surface shapes that are being re-debated) or dropped.
 
-**Bridge 5 scope (refined):**
+**Bridge 5 scope (2026-06-12 reframe — engine vs instance):**
 
-- Bridge 5's record types (experiment, risk, decision, observation, claim, evidence, capability, index) are all *shared* schemas. The schemas are meta-surface code; the per-surface *instances* are the product-surface.
-- The scope edit is **transparent to Bridge 5's record-type scope** — the schemas are unchanged, the writers/validators are unchanged. The only effect is that the *output* (the YAML records the writers create) is paused for product surfaces.
-- **For meta-surface record types** (which become meta-state entries per the cascade), the writers/validators generate the new meta-state entry kind instead of a YAML file. The schema-derived code is the same machinery; the output target is meta-state, not `records/meta/`.
-- Bridge 5 Approach 3 ships the same machinery; only the output target changes for meta-surface types.
+- **Engine:** schema-to-code generator. Provable against the meta-surface. The engine itself has the ability to generate any record type from any JSON Schema.
+- **Instance (bound):** the 4 meta-surface entry kinds (`finding | change-log | rule | loop-design`). The engine produces writers + validators for these. The output target is `meta-state.jsonl`.
+- **Instance (unbound):** all product-surface schemas. The engine has the ability to generate them; the loop has not committed to binding. The current `capability`, `index-entry`, `claim`, `resource-budget`, `observation` schemas are **unbound**; they are design exploration, not contracts.
+- **The engine vs instance split is the key Bridge 5 innovation of the 2026-06-12 reframe.** The 2026-06-11 framing conflated engine and instance ("Bridge 5 produces writers/validators for 4 record types"); the 2026-06-12 reframe separates them. The engine ships; the instance is bound only for the meta-surface.
 
-**Phase refinements (each phase is "records strictly product-level, meta-state is the self-model"):**
+**Phase refinements (each phase is "meta-surface is the only bound surface"):**
 
-- **Phase 0**: coexistence with 3 meta-state-touching tools (`gate_check`, `meta_state_list`, `meta_state_report`). The legacy `record_create_decision` is replaced by `meta_state_report` (or a new `decision_log_change` if we keep the decisions concept).
-- **Phase 1**: mastrafy the ~30 tools. Tool count drops to ~30 (from ~38 in the §3.10 framing).
-- **Phase 2**: promote ~8 meta-state workflow tools to `createWorkflow` (intake, classify, etc.).
+- **Phase 0**: coexistence with 3 meta-state-touching tools (`gate_check`, `meta_state_list`, `meta_state_report`). The legacy `record_create_decision` stays bound because `decision` records are a meta-surface kind (they log decisions about the loop, not decisions about products). Bound to meta-state as `change-log` entries.
+- **Phase 1**: mastrafy the ~36 meta-state tools. Tool count drops to ~36 (from 56 today).
+- **Phase 2**: promote ~8 meta-state workflow tools to `createWorkflow` (intake, classify, etc.). All workflows are meta-state-touching.
 - **Phase 3**: add 3-4 meta-state agents (intake, scout, self-improvement). **Storage Layer folds in here** (LibSQL, separate files for meta-state and Mastra memory).
-- **Phase 4**: cut over. The new `MCPServer` exposes ~30 tools.
-- **Phase 5 (Mode 1)**: Mastra Code connects via MCP to the loop's `MCPServer`. The exposed tools are ~30 meta-state tools only.
+- **Phase 4**: cut over. The new `MCPServer` exposes ~36 tools, all bound to meta-surface.
+- **Phase 5 (Mode 1)**: Mastra Code connects via MCP to the loop's `MCPServer`. The exposed tools are ~36 meta-state tools only. **No product-surface binding is added at Phase 5.** Product binding is the Bridge 7 question (post-meta-surface).
 
-**Consistency check with `AGENTS.md` and `docs/trajectory.md`:**
+**Consistency check with `AGENTS.md` and `docs/trajectory.md` (2026-06-12 reframe):**
 
-- `AGENTS.md`: "The loop has shifted from vnstock-driven to self-learning driven. The substrate (vnstock, then any real vendor API) is replaceable; what makes the loop valuable is its ability to provoke and capture learning *about itself*." — The scope edit is the operationalization: the substrate is archived, the self-model is the product.
-- `docs/trajectory.md` § The Sixth Bridge: "The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior." — The scope edit makes the self-model the **only** meta-level artifact; everything meta-level lives in `meta-state.jsonl`.
-- `docs/trajectory.md` § "What Stays Human Forever": "The operator decides what counts as a 'loss function' and what counts as 'operator capture.'" — The operator's decision to scope records strictly to product-level IS the operator exercising the loss-function choice.
+- `AGENTS.md` line 251 (current): "The current focus is Bridge 6, not Bridges 1–5." **Superseded.** The 2026-06-12 reframe says: "The current focus is the **meta-surface** (Bridge 5+6, in no particular order). All Bridge 1-4 work is deferred."
+- `AGENTS.md` line 253 (current): "Bridges 1–5 are aspirational; Bridge 6 is the active front." **Superseded.** The 2026-06-12 reframe says: "Bridges 1-4 are **deferred and unbound**; the **meta-surface** (Bridge 5+6) is the active front. The Bridges table needs a full rewrite to reflect this — see the consistency report at `plans/reports/consistency-260612-1300-mastra-research-report.md` and the AGENTS.md rewrite task."
+- `AGENTS.md` "The loop has shifted from vnstock-driven to self-learning driven" — **consistent**. The 2026-06-12 reframe is the operationalization: the substrate is archived, the self-model is the only bound surface.
+- `docs/trajectory.md` § The Sixth Bridge: "The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior." — **Consistent.** The 2026-06-12 reframe makes the self-model the **only** meta-level artifact; everything meta-level lives in `meta-state.jsonl`.
+- `docs/trajectory.md` § "What Stays Human Forever": "The operator decides what counts as a 'loss function' and what counts as 'operator capture.'" — **Consistent.** The operator's 2026-06-12 decision to bind only the meta-surface and re-debate the product surface IS the operator exercising the loss-function choice.
 
-**Migration of the legacy meta-surface content:**
+**Migration of the legacy meta-surface content (status as of 2026-06-12):**
 
-- `records/meta/*` (evidence, capabilities, experiments) → **DELETED** (per Q9, not archived). Content is converted to `meta-state.jsonl` entries before deletion. The `meta_state_log_change` change-log entry documents the conversion.
-- `records/observations/*` → **DELETED** (per Q8, Option A). Content is converted to `meta-state.jsonl` entries of kind `observation` (the 5th meta-state entry kind). The gate logic is updated to read observations from the meta-state.
-- `records/index.yaml` → **DELETED**. Re-derived from `meta-state.jsonl` at runtime by the (refactored) introspection tools.
-- `records/<vendor>/` → **ARCHIVED** (per §3.10, unchanged). Use `meta_state_archive` MCP tool. The records are still on disk, just out of the loop's active registry.
+- `records/meta/*` (evidence, capabilities) → **DONE.** Subdirs no longer exist; content is in `meta-state.jsonl`.
+- `records/meta/experiments/*.yaml` (2 files) → **PENDING.** Convert to `meta-state.jsonl` change-logs; the `meta_state_log_change` change-log entry will document each conversion.
+- `records/meta/index/*.yaml` (12 files) → **PENDING.** Convert to `meta-state.jsonl` findings; document with `meta_state_log_change`.
+- `records/observations/*` → **REOPENED** (Q8). The current 8 yaml files are unbound. The 2026-06-11 "Option A: 5th entry kind" recommendation is superseded by Option D (re-debate from meta-surface). No conversion happens until the meta-surface decides what observations should look like.
+- `records/index.yaml` → **DONE.** No `records/index.yaml` exists.
+- `records/<vendor>/` → **ARCHIVED** (per §3.10). The records are still on disk, unbound, treated as design exploration. Use `meta_state_archive` MCP tool to formally archive when the meta-surface ships.
 
-**What does NOT change (refined):**
+**What does NOT change (2026-06-12 reframe):**
 
-- **The records model for product-surface.** `records/<vendor>/{decisions,experiments,risks}.yaml` remain the source of truth for product records. They're archived, not deleted.
-- **The gate logic.** The constraint patterns in `core/patterns.json` and the staleness check in `core/inbound-state.js` are unchanged. The gate logic reads observations (wherever they end up per Q8).
 - **The hooks.** Per §3.9: hooks stay at the runtime layer in Mode 1.
-- **The meta-state registry.** `meta-state.jsonl` is the Bridge 6 product. The scope edit makes the meta-state the ONLY meta-level artifact (Q8 pending on observations).
-- **The MCP transport.** Still speaks MCP. The new `MCPServer` exposes ~30 tools, not 52.
-- **The Bridge 5 ordering vs Mastra migration.** Per §3.8: Bridge 5 ships before Mastra migration. The scope edit doesn't change the order.
+- **The meta-state registry.** `meta-state.jsonl` is the meta-surface. The 4-kind union is the bound shape.
+- **The MCP transport.** Still speaks MCP. The new `MCPServer` exposes ~36 meta-surface tools.
 - **§3.7 Storage Layer deferral.** Unchanged — meta-state storage is meta-surface; LibSQL target is unaffected.
-- **§3.8 Bridge 5 ordering.** Unchanged — Bridge 5 is the meta-state code generation; the scope edit doesn't change the order.
 - **§3.9 Hook layer.** Unchanged — hooks stay at the runtime layer in Mode 1.
-- **All 7 resolved open questions in §8.** Unchanged.
+- **The deprecation of `coerceParamsToSchema` and `installWireFormatCoercion` helpers.** The 2026-06-12 reframe does not change the §3.6 wire-format decision. The helpers are in production with test coverage; Phase 1 must reproduce their behavior in Mastra, not just delete them (see consistency report F7).
 
-**The deferred question (now explicit):**
+**What changes (2026-06-12 reframe):**
+
+- **The Bridges 1-4 reports are voided by re-debate.** They are marked "voided by re-debate, 2026-06-12" in-place. See §3.8.2 for the list.
+- **The §8 resolved-questions list.** Q8 is reopened (Option D: re-debate from meta-surface). The 2026-06-11 "All 7 open questions resolved" is no longer accurate; 6 are resolved, Q8 is reopened.
+- **The `AGENTS.md` Bridges table needs a full rewrite.** The 2026-06-12 reframe is sharper than the 2026-06-11 framing; the operator has asked for a from-scratch rewrite of the Bridge 5/6/Six-Bridges sections. See consistency report item 5 in the Action Checklist.
+- **Q1–Q7 resolutions in §8 remain valid.** Mastra Code as the final runtime target, model-agnosticism as a free bonus, coercion as in-production helpers, Apache-2.0 license, LibSQL memory default, Mode 1 peer-MCP integration, `MastraServer` HTTP out of scope. All still hold under the 2026-06-12 reframe.
+
+**The deferred question (now explicit, 2026-06-12 reframe):**
 
 > "How should the learning-loop registry be designed for product-level?"
 
-This question is **deferred until after Bridge 5 and Bridge 6 ship**. At that point, the loop itself — using the meta-surface machinery that Bridge 5+6 provides — will be the main designer of the product-level registry. The current product records are an artifact of the old design; they don't constrain the new design.
+This question is **deferred until after the meta-surface ships**. At that point, the loop itself — using the meta-surface machinery that Bridge 5+6 provides — will be the main designer of the product-level registry. The current product records are an artifact of the old design; they **explicitly do not constrain** the new design. The loop may conclude that product observations, capabilities, and index-entries are not the right shapes at all, and may invent new ones.
 
-The deferred question is the *Bridge 7* question. It is open-ended by design.
+The deferred question is the *Bridge 7* question. It is open-ended by design. **All Bridge 1-4 work (which is what Bridge 7 used to be split into) is unified into this single question**, because the product surface is one re-debate, not four independent bridges.
 
-**Not captured as a meta-state finding** (per operator decision 2026-06-11). The scope edit is documented in this research report; can be promoted to a `meta_state_log_change` change-log entry when the legacy product records are physically archived.
+**Captured as a meta-state finding** (operator decision, 2026-06-12, supersedes the 2026-06-11 "not captured" decision). The meta-surface atomicity, the engine/instance split, and the Bridges 1-4 voiding are durable contracts; they belong in `meta-state.jsonl` as a `loop-design` entry. Promote when the Bridge 5 plan is opened (see consistency report action checklist item 10).
 
 ## 4. Risks & Mitigations
 
@@ -664,7 +758,12 @@ The new agents (Phase 3) and the "Mastra Code" unification (post-Phase 4) are th
 
 1. ~~What is "Pi"?~~ **RESOLVED 2026-06-11**: Pi (`https://github.com/earendil-works/pi`) was a placeholder mentioned in the original prompt. Concrete runtime targets are **Droid (today) and Mastra Code (final Mastra-fy)**.
 2. ~~Per-deployment model selection vs per-agent.~~ **RESOLVED 2026-06-11**: model selection is a session-level concern handled by Droid's `/model` (and Mastra Code's per-prompt model switching). The loop does not need its own model config.
-3. ~~Should the existing `coerceParamsToSchema` semantics be preserved 1-to-1 in Mastra, or is this the moment to clean them up?~~ **RESOLVED 2026-06-11**: drop the coercion in Phase 1, gated on the Phase 0 byte-for-byte parity test. Phase 0 runs the existing 675+ tests against the Mastra server; pass = coercion was dead code, drop it. Fail = surface the diffs and decide case-by-case. Trigger to revisit: any Phase 0 test failure.
+3. ~~Should the existing `coerceParamsToSchema` semantics be preserved 1-to-1 in Mastra, or is this the moment to clean them up?~~ **RESOLVED 2026-06-11, REVISED 2026-06-12**: the 2026-06-11 resolution ("drop the coercion in Phase 1, gated on Phase 0 parity test") is **superseded** by the 2026-06-12 verification that the helpers are in production with test coverage. **New resolution:** Phase 1 of the Mastra migration must **reproduce the upstream behavior in Mastra's `createTool` input validation**, not delete the helpers. Specifically:
+   - `coerceParamsToSchema` (in `tools/learning-loop-mcp/tool-registry.js` lines 77-134) re-hydrates JSON-string top-level arrays, booleans, and numbers to their typed counterparts. It is a recursive, typeName-gated, depth-bounded coercion. The behavior is load-bearing for stdio clients that pass `["x", "y"]` as a JSON string instead of an array.
+   - `installWireFormatCoercion` (lines 197-235) patches `McpServer#validateToolInput` to run `coerceParamsToSchema` before the original Zod parse. It is load-bearing because the MCP SDK validates before the handler-level coercion runs.
+   - The Phase 0 byte-for-byte parity test (existing **985 tests** verified 2026-06-12 via `pnpm test`: 984 pass, 1 skipped, 147 suites, ~9s duration; see F6 of the consistency report for the per-glob breakdown) is still the gate, but the test is now a **regression test against accidental deletion**, not a "is this dead code?" test. Pass = behavior is preserved in Mastra. Fail = surface the diffs and decide case-by-case.
+   - **Equivalent behavior in Mastra:** use `createTool()`'s `inputSchema` (Zod, Valibot, or ArkType) with `.preprocess()` or a Zod transform that re-hydrates JSON-string values. Alternatively, hook into Mastra's `beforeToolCall` lifecycle (per §3.9) to run the same coercion before the tool's `execute` function. The exact mechanism is a Phase 1 implementation detail; the contract is "stdio clients see no behavior change."
+   - **Trigger to revisit:** any Phase 0 parity test failure, OR a documented decision that stdio wire-format coercion is no longer needed (e.g., all clients migrate to HTTP transport where the SDK handles JSON natively).
 4. ~~License compatibility.~~ **RESOLVED 2026-06-11**: no action. Apache-2.0 is permissive, compatible with private use, modification, and internal distribution. Record the adoption as a `meta_state_log_change` entry when Phase 0 lands (per Bridge 6 protocol). Revisit only if the loop is published.
 5. ~~Phase 3 agents' memory.~~ **RESOLVED 2026-06-11**: defer to Phase 3 plan. Default backend: **LibSQL** (matches the Storage Layer target, Mastra Code's default, avoids Postgres/Mongo dependencies). Likely separate SQLite file from the meta-state registry, same engine. Mastra Code's free Observational Memory is a Phase 5 bonus, not a Phase 3 requirement. Trigger to revisit: at Phase 3 plan, audit whether the agents need cross-session memory that single-session `Memory` doesn't provide.
 6. ~~Mastra Code integration mode (Phase 5).~~ **RESOLVED 2026-06-11**: **Mode 1 (peer MCP servers) ships first.** Mode 2 (same Mastra instance via `createMastraCode({...})`) is deferred. Mode 1 is the safe, reversible integration: Droid and Mastra Code both connect to the loop's `MCPServer` via MCP. Mode 2 follows only if the operator's "final Mastra-fy" vision requires single-app coupling. Trigger to revisit: operator's vision requires single-app coupling, OR the Phase 5 surface area is dominated by cross-loop/coding-workflow state that Mode 1's MCP boundary makes awkward.
