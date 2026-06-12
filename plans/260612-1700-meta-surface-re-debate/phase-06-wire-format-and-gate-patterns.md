@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Wire-Format-and-Gate-Patterns"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [4]
@@ -61,12 +61,12 @@ The new alternation matches `runtime_state_record(` (with optional whitespace) a
 
 ## Success Criteria
 
-- [ ] `core/patterns.json` has the updated `side-effect-import` pattern.
-- [ ] The bash-gate returns `decision: 'block'` for `runtime_state_record` invocations without preflight.
-- [ ] The bash-gate returns `decision: 'ok'` for `runtime_state_record` invocations with preflight.
-- [ ] The bash-gate returns `decision: 'ok'` for `runtime_state_read` invocations.
-- [ ] 16 wire-format tests cover the 3 new optional fields on all 16 `meta_state_*` tools.
-- [ ] `pnpm test` passes 1013+ tests (997 + 16).
+- [x] `core/patterns.json` has the updated `side-effect-import` pattern.
+- [x] The bash-gate returns `decision: 'block'` for `runtime_state_record` invocations without preflight.
+- [x] The bash-gate returns `decision: 'ok'` for `runtime_state_record` invocations with preflight.
+- [x] The bash-gate returns `decision: 'ok'` for `runtime_state_read` invocations.
+- [x] 16 wire-format tests cover the 3 new optional fields on all 16 `meta_state_*` tools.
+- [x] `pnpm test` passes 1013+ tests (997 + 16).
 
 ## Risk Assessment
 

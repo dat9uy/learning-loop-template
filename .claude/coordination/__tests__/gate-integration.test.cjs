@@ -59,10 +59,25 @@ function createTempProject() {
 
 function copyRealObservations(tmpDir) {
   const realObsDir = path.join(__dirname, '..', '..', '..', 'records', 'observations');
-  const files = fs.readdirSync(realObsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-  for (const file of files) {
-    fs.copyFileSync(path.join(realObsDir, file), path.join(tmpDir, 'records', 'observations', file));
+  const archiveObsDir = path.join(__dirname, '..', '..', '..', 'records', '_unbound', 'observation', '_');
+  let files = [];
+  
+  // Try primary source first
+  if (fs.existsSync(realObsDir)) {
+    files = fs.readdirSync(realObsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+    for (const file of files) {
+      fs.copyFileSync(path.join(realObsDir, file), path.join(tmpDir, 'records', 'observations', file));
+    }
   }
+  
+  // Fallback to archive (Phase 5)
+  if (files.length === 0 && fs.existsSync(archiveObsDir)) {
+    files = fs.readdirSync(archiveObsDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+    for (const file of files) {
+      fs.copyFileSync(path.join(archiveObsDir, file), path.join(tmpDir, 'records', 'observations', file));
+    }
+  }
+  
   return files;
 }
 

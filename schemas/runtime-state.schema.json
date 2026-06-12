@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "runtime-state.schema.json",
+  "title": "Runtime State",
+  "description": "Sidecar for mutable runtime state. See schemas/runtime-state.schema.json and plans/260612-1700-meta-surface-re-debate/plan.md.",
+  "type": "object",
+  "required": ["affected_system", "kind", "id", "source_ref", "timestamp", "status"],
+  "properties": {
+    "affected_system": {
+      "enum": ["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]
+    },
+    "kind": {
+      "enum": ["ledger-event", "budget-state"]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "source_ref": {
+      "type": "string",
+      "pattern": "^local:meta-state:.+$"
+    },
+    "value": {
+      "type": ["number", "null"]
+    },
+    "delta": {
+      "type": ["number", "null"]
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": ["active", "cleared", "reconciled"]
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Delete-Product-Tools"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [5, 6]
@@ -85,16 +85,16 @@ Delete the 13 product-surface MCP tool files, update `tools/manifest.json` and `
 
 ## Success Criteria
 
-- [ ] 13 tool files are deleted (and their `.test.js` siblings if any).
-- [ ] `tools/manifest.json` has 43 entries.
-- [ ] `agent-manifest.json` does not have a `capability` group.
-- [ ] `agent-manifest.json#groups.index.tools` has 2 entries (`index_validate`, `index_validate_plans`).
-- [ ] `agent-manifest.json#groups.record_crud.tools` has 7 entries (no observation tools).
-- [ ] `agent-manifest.json#groups.workflow.tools` has 10 entries (no evidence/claim/index tools).
-- [ ] `meta-state.jsonl` has 1 new `change-log` entry documenting the deletion.
-- [ ] No code in the repo imports the 13 deleted tool names.
-- [ ] `__tests__/tool-deletion-coverage.test.js` passes.
-- [ ] `pnpm test` passes 1014+ tests.
+- [x] 13 tool files are deleted (and their `.test.js` siblings if any).
+- [x] `tools/manifest.json` has 43 entries.
+- [x] `agent-manifest.json` does not have a `capability` group.
+- [x] `agent-manifest.json#groups.index.tools` has 2 entries (`index_validate`, `index_validate_plans`).
+- [x] `agent-manifest.json#groups.record_crud.tools` has 7 entries (no observation tools).
+- [x] `agent-manifest.json#groups.workflow.tools` has 10 entries (no evidence/claim/index tools).
+- [x] `meta-state.jsonl` has 1 new `change-log` entry documenting the deletion.
+- [x] No code in the repo imports the 13 deleted tool names.
+- [x] `__tests__/tool-deletion-coverage.test.js` passes.
+- [x] `pnpm test` passes 1014+ tests.
 
 ## Risk Assessment
 

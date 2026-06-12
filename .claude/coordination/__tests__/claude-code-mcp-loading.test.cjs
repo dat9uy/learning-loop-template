@@ -142,32 +142,25 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       const findingId = reportResult.id;
       assert.ok(findingId.startsWith("meta-"));
 
-      // 3. record_create_decision with local:meta-state:<id> succeeds
-      const decisionResult = await call(3, "record_create_decision", {
-        surface: "meta",
-        question: "Does the Claude Code MCP loading surface work?",
-        decision: "Yes",
-        rationale: "The direct MCP server spawn validates the surface is functional.",
+      // 3. meta_state_log_change with local:meta-state:<id> succeeds
+      const changeResult = await call(3, "meta_state_log_change", {
+        change_dimension: "mechanical",
+        change_target: "test",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Claude Code MCP loading direct test validates the surface is functional.",
         source_refs: [`local:meta-state:${findingId}`],
-        alternatives: [],
-        tradeoffs: [],
-        supersedes: [],
       });
-      assert.strictEqual(decisionResult.created, true);
+      assert.strictEqual(changeResult.logged, true);
 
-      // 4. record_create_decision with deprecated markdown ref is rejected
-      const deprecatedResult = await call(4, "record_create_decision", {
-        surface: "meta",
-        question: "Should markdown refs still work?",
-        decision: "No",
-        rationale: "Markdown refs are deprecated.",
-        source_refs: ["local:plans/x.md"],
-        alternatives: [],
-        tradeoffs: [],
-        supersedes: [],
+      // 4. meta_state_log_change with empty source_refs succeeds (no deprecated ref check in this tool)
+      const secondResult = await call(4, "meta_state_log_change", {
+        change_dimension: "mechanical",
+        change_target: "test",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Claude Code MCP loading direct test second call for idempotency check.",
+        source_refs: [],
       });
-      assert.strictEqual(deprecatedResult.created, false);
-      assert.strictEqual(deprecatedResult.reason, "deprecated_source_refs");
+      assert.strictEqual(secondResult.logged, true);
 
       // Verify no temp-root pollution leaked into the real project's meta-state
       const realMetaStatePath = join(projectRoot, "meta-state.jsonl");
@@ -183,6 +176,11 @@ describe("Claude Code MCP client-side loading acceptance", () => {
         if (!l.includes(" records/") && !l.includes("/records/")) return false;
         // Ignore test-budget artifacts from check-budget tests
         if (l.includes("test-budget-")) return false;
+        // Ignore Phase 2 ledger conversion artifacts (plan 260612-1700)
+        if (l.includes("records/_unbound/")) return false;
+        if (l.includes("observation-vnstock-device-slot-ledger.yaml")) return false;
+        // Ignore Phase 5 archive deletions (all product-surface records moved to _unbound)
+        if (l.startsWith(" D records/") && !l.includes("/_unbound/")) return false;
         return true;
       });
       assert.deepStrictEqual(leaked, [], `real project records/ were mutated: ${leaked.join(", ")}`);
@@ -208,16 +206,8 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       assert.ok(findings.some((e) => e.evidence_code_ref && e.evidence_code_ref.endsWith(".js")));
       assert.ok(findings.some((e) => e.mechanism_check === true));
 
-      const decisionsDir = join(tempRoot, "records", "meta", "decisions");
-      const decisionFiles = existsSync(decisionsDir) ? readdirSync(decisionsDir) : [];
-      assert.ok(decisionFiles.length >= 1);
-      const { parse: parseYaml } = require("yaml");
-      const decisions = decisionFiles
-        .filter((f) => f.endsWith(".yaml"))
-        .map((f) => parseYaml(readFileSync(join(decisionsDir, f), "utf8")));
-      assert.ok(decisions.some((d) =>
-        (d.source_refs || []).some((ref) => typeof ref === "string" && ref.startsWith("local:meta-state:")),
-      ));
+      const changeLogs = metaStateEntries.filter((e) => e.entry_kind === "change-log");
+      assert.ok(changeLogs.length >= 1, "at least one change-log entry should be written");
     } finally {
       child.kill();
     }

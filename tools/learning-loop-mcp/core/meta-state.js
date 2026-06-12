@@ -9,6 +9,34 @@ const REGISTRY_FILENAME = "meta-state.jsonl";
 // closed via meta_state_resolve with cascade_from). `superseded` is terminal
 // (consolidated into a change-log); `auto-resolved` is closed by mechanism.
 export const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
+export const AFFECTED_SYSTEM_ENUM = [
+  "meta",
+  "gate-logic",
+  "record-validation",
+  "index-extractor",
+  "mcp-tools",
+  "workflow-registry",
+  "vnstock_vendor",
+  "vnstock",
+  "fastapi",
+  "tanstack",
+  "product",
+  "api",
+  "web",
+  "meta-state-tools",
+  "runtime-state",
+];
+
+const AFFECTED_SYSTEM_DEFAULT = "meta";
+
+function withDefaults(entry) {
+  if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+    if (entry.affected_system === undefined || entry.affected_system === null) {
+      entry.affected_system = AFFECTED_SYSTEM_DEFAULT;
+    }
+  }
+  return entry;
+}
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
 
@@ -34,10 +62,7 @@ export const metaStateFindingEntrySchema = z.object({
     "loop-anti-pattern",
   ]).describe("Category of the finding"),
   severity: z.enum(["warning", "escalate"]).describe("Severity level"),
-  affected_system: z.enum([
-    "gate-logic", "record-validation", "index-extractor",
-    "mcp-tools", "workflow-registry", "vnstock_vendor",
-  ]).describe("Which system is affected by this finding"),
+  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system is affected by this finding"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   subtype: z.string().optional()
     .describe("Subtype for loop-anti-pattern findings (e.g., escape-hatch-abuse, new-artifact-type, schema-bloat)"),
@@ -62,6 +87,10 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Opt-in flag (SP2): include this finding in grounding checks. Defaults to true when evidence_code_ref is set; false otherwise. The meta_state_report tool applies this default automatically; the field is omitted from the entry if the caller provides neither mechanism_check nor evidence_code_ref. Pass mechanism_check: false to explicitly opt out (the response includes a warning). When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
     .describe("SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; updated by meta_state_refresh_fingerprint on explicit refresh."),
+  code_ref: z.string().optional()
+    .describe("Optional code reference with SHA-256 fingerprint for validation."),
+  ledger_ref: z.string().optional()
+    .describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   expires_at: z.string().nullable().optional()
     .describe("ISO timestamp when a reported entry expires (24h TTL). Set by writeEntry; cleared by meta_state_ack."),
   acked_at: z.string().nullable().optional()
@@ -117,6 +146,9 @@ export const metaStateChangeEntrySchema = z.object({
     .describe("Test file reference"),
   evidence: z.never().optional()
     .describe("Nested evidence block is no longer supported; use top-level evidence_code_ref, evidence_journal, evidence_test"),
+  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this change affects"),
+  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   status: z.literal("active").default("active").describe("Status — change-log entries are always 'active' (immutable audit log)"),
   created_at: z.string().describe("ISO timestamp"),
   version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
@@ -157,6 +189,9 @@ export const metaStateRuleEntrySchema = z.object({
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
+  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
+  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().optional().describe("ISO timestamp"),
 });
 
@@ -175,12 +210,11 @@ export const metaStateLoopDesignSchema = z.object({
   addresses: z.array(z.string()).default([])
     .describe("Backward: ids of findings this design responds to (the motivation; the why-this-exists)"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
-  affected_system: z.enum([
-    "gate-logic", "record-validation", "index-extractor",
-    "mcp-tools", "workflow-registry", "vnstock_vendor",
-  ]).describe("Which system this design affects"),
+  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system this design affects"),
   severity_hint: z.enum(["low", "medium", "high"]).optional()
     .describe("Operator's read on the urgency of shipping this design"),
+  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().describe("ISO timestamp"),
   created_by: z.string().describe("Operator id"),
   shipped_in_plan: z.string().optional()
@@ -192,13 +226,17 @@ export const metaStateLoopDesignSchema = z.object({
 /**
  * Cross-cutting union validator — for readRegistry validation, loop_describe, etc.
  * Does NOT have .shape (by zod design); use the branch schemas for .shape.
+ * Includes preprocess to default affected_system to 'meta' for legacy entries.
  */
-export const metaStateEntrySchema = z.union([
-  metaStateFindingEntrySchema,
-  metaStateChangeEntrySchema,
-  metaStateRuleEntrySchema,
-  metaStateLoopDesignSchema,
-]);
+export const metaStateEntrySchema = z.preprocess(
+  withDefaults,
+  z.union([
+    metaStateFindingEntrySchema,
+    metaStateChangeEntrySchema,
+    metaStateRuleEntrySchema,
+    metaStateLoopDesignSchema,
+  ])
+);
 
 /**
  * Patch validator — accepts any top-level key because patches are partial
@@ -246,6 +284,7 @@ function _readAndParseRegistry(root) {
     if (!entry.entry_kind) {
       entry.entry_kind = "finding"; // Backward-compat coerce
     }
+    withDefaults(entry); // Apply affected_system default for legacy entries
     return entry;
   });
 }

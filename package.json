@@ -13,20 +13,9 @@
     "dev:web": "cd product/web && pnpm dev",
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
-    "validate:records": "node tools/validate-records-cli.js",
-    "validate:plan-loop": "node tools/validate-plan-loop-cli.js",
-    "verify:claim": "node tools/verify-claim-cli.js",
-    "list:verified": "node tools/list-verified-cli.js",
     "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/core/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
     "test:cold-session": "node --test tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-    "check:budget": "node tools/check-budget-cli.js",
-    "clean:sandbox": "bash product/api/scripts/cleanup-sandbox.sh",
-    "generate:capabilities": "node tools/generate-capabilities-cli.js",
-    "check": "pnpm generate:capabilities --dry-run && pnpm validate:records && pnpm validate:plan-loop && pnpm test",
-    "gate:server": "node tools/learning-loop-mcp/server.js",
-    "extract:index": "node tools/extract-index-cli.js",
-    "list:probes": "node tools/list-probes-cli.js",
-    "search:index": "node tools/search-index-cli.js"
+    "gate:server": "node tools/learning-loop-mcp/server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
@@ -39,6 +28,6 @@
     "simple-git-hooks": "^2.13.1"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm validate:records && pnpm extract:index"
+    "pre-commit": "pnpm test"
   }
 }

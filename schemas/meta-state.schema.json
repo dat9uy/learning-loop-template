@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meta-state.schema.json",
+  "title": "Meta-State Registry",
+  "description": "4-kind discriminated union for the meta-state registry.",
+  "oneOf": [
+    { "$ref": "#/$defs/finding" },
+    { "$ref": "#/$defs/change-log" },
+    { "$ref": "#/$defs/rule" },
+    { "$ref": "#/$defs/loop-design" }
+  ],
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["entry_kind", "category", "severity", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "entry_kind": { "const": "finding" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "category": {
+          "enum": ["gate-logic-bug", "record-repair-gap", "schema-drift", "stale-ref", "mcp-tool-missing", "budget-check", "loop-anti-pattern"]
+        },
+        "severity": { "enum": ["warning", "escalate"] },
+        "affected_system": {
+          "enum": ["meta", "gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor", "vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"],
+          "default": "meta"
+        },
+        "description": { "type": "string", "minLength": 20 },
+        "subtype": { "type": "string" },
+        "evidence_journal": { "type": "string" },
+        "evidence_code_ref": { "type": "string" },
+        "evidence_test": { "type": "string" },
+        "status": {
+          "enum": ["reported", "active", "resolved", "superseded", "auto-resolved", "stale"]
+        },
+        "consolidated_into": { "type": "string" },
+        "last_verified_at": { "type": "string", "format": "date-time" },
+        "verification": { "type": "object" },
+        "superseded_at": { "type": "string", "format": "date-time" },
+        "superseded_by": { "type": "string" },
+        "session_id": { "type": "string" },
+        "mechanism_check": { "type": "boolean" },
+        "code_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "code_ref": { "type": "string" },
+        "ledger_ref": { "type": "string" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "acked_at": { "type": "string", "format": "date-time" },
+        "resolved_at": { "type": "string", "format": "date-time" },
+        "resolved_by": { "type": "string" },
+        "resolution": { "type": "string" },
+        "promoted_to_rule": { "type": "string" },
+        "auto_resolve": { "type": "boolean" },
+        "reopens": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "change-log": {
+      "type": "object",
+      "required": ["entry_kind", "change_dimension", "change_target", "change_diff", "reason"],
+      "properties": {
+        "id": { "type": "string" },
+        "entry_kind": { "const": "change-log" },
+        "change_dimension": { "enum": ["semantic", "mechanical", "surface"] },
+        "change_target": { "type": "string", "minLength": 1 },
+        "change_diff": {
+          "type": "object",
+          "properties": {
+            "added": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "removed": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "changed": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        },
+        "reason": { "type": "string", "minLength": 20 },
+        "applies_to": {
+          "type": "object",
+          "properties": {
+            "tools": { "type": "array", "items": { "type": "string" } },
+            "surfaces": { "type": "array", "items": { "type": "string" } },
+            "rules": { "type": "array", "items": { "type": "string" } },
+            "statuses": { "type": "array", "items": { "type": "string" } },
+            "schemas": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "supersedes": { "type": "string" },
+        "consolidates": { "type": "string" },
+        "evidence_code_ref": { "type": "string" },
+        "evidence_journal": { "type": "string" },
+        "evidence_test": { "type": "string" },
+        "affected_system": {
+          "enum": ["meta", "gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor", "vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]
+        },
+        "code_ref": { "type": "string" },
+        "ledger_ref": { "type": "string" },
+        "status": { "const": "active" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "version": { "type": "number", "default": 0 }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["entry_kind", "id", "origin", "enforcement", "pattern_type", "pattern", "description"],
+      "properties": {
+        "entry_kind": { "const": "rule" },
+        "id": { "type": "string", "pattern": "^rule-[a-z0-9-]+$" },
+        "origin": { "type": "string" },
+        "enforcement": { "enum": ["gate", "agent"] },
+        "pattern_type": { "enum": ["regex", "glob", "resolution-evidence-required"] },
+        "pattern": { "type": "string" },
+        "scope_predicate": { "enum": ["none", "project_has_learning_loop_mcp"] },
+        "applies_to_resolution": { "type": "string" },
+        "supersedes": { "type": "string" },
+        "description": { "type": "string", "minLength": 20 },
+        "status": { "enum": ["active", "inactive"], "default": "active" },
+        "promoted_at": { "type": "string", "format": "date-time" },
+        "promoted_by": { "type": "string" },
+        "evidence_code_ref": { "type": "string" },
+        "evidence_journal": { "type": "string" },
+        "evidence_test": { "type": "string" },
+        "code_fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "refined_at": { "type": "string", "format": "date-time" },
+        "refined_by": { "type": "string" },
+        "refinement_reason": { "type": "string" },
+        "affected_system": {
+          "enum": ["meta", "gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor", "vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]
+        },
+        "code_ref": { "type": "string" },
+        "ledger_ref": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "loop-design": {
+      "type": "object",
+      "required": ["entry_kind", "id", "title", "proposed_design_for", "description", "affected_system", "created_at", "created_by"],
+      "properties": {
+        "entry_kind": { "const": "loop-design" },
+        "id": { "type": "string" },
+        "title": { "type": "string", "minLength": 10 },
+        "status": { "enum": ["active", "inactive"], "default": "active" },
+        "proposed_design_for": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "addresses": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "description": { "type": "string", "minLength": 20 },
+        "affected_system": {
+          "enum": ["meta", "gate-logic", "record-validation", "index-extractor", "mcp-tools", "workflow-registry", "vnstock_vendor", "vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]
+        },
+        "severity_hint": { "enum": ["low", "medium", "high"] },
+        "code_ref": { "type": "string" },
+        "ledger_ref": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "created_by": { "type": "string" },
+        "shipped_in_plan": { "type": "string" }
+      }
+    }
+  }
+}

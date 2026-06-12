@@ -2,34 +2,19 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const schemaMapping = {
-  claim: "claim.schema.json",
-  experiment: "experiment.schema.json",
-  decision: "decision.schema.json",
-  risk: "risk.schema.json",
-  capability: "capability.schema.json",
-  "extracted-assertion": "index-entry.schema.json",
-  observation: "observation.schema.json",
+  "meta-state": "meta-state.schema.json",
+  "runtime-state": "runtime-state.schema.json",
 };
-
-function applyObservationOverride(root, schema) {
-  const overridePath = join(root, "tools", "learning-loop-mcp", "core", "observation-schema-override.json");
-  if (!existsSync(overridePath)) return schema;
-  const override = JSON.parse(readFileSync(overridePath, "utf8"));
-  return {
-    ...schema,
-    properties: {
-      ...(schema.properties || {}),
-      ...(override.properties || {}),
-    },
-  };
-}
 
 export function loadSchemas(root) {
   return Object.fromEntries(
     Object.entries(schemaMapping).map(([type, filename]) => {
-      const raw = JSON.parse(readFileSync(join(root, "schemas", filename), "utf8"));
-      const schema = type === "observation" ? applyObservationOverride(root, raw) : raw;
-      return [type, schema];
-    }),
+      const path = join(root, "schemas", filename);
+      if (!existsSync(path)) {
+        return [type, null];
+      }
+      const raw = JSON.parse(readFileSync(path, "utf8"));
+      return [type, raw];
+    }).filter(([, schema]) => schema !== null),
   );
 }

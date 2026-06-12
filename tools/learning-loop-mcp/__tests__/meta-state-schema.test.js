@@ -374,7 +374,7 @@ describe("meta-state discriminated union", () => {
     assert.strictEqual(result.data.change_dimension, undefined);
   });
 
-  test("metaStateEntrySchema (union) picks change-log branch and ignores finding fields", () => {
+  test("metaStateEntrySchema (union) picks change-log branch and ignores finding-only fields", () => {
     const result = metaStateEntrySchema.safeParse({
       id: "meta-test-change-log-union",
       entry_kind: "change-log",
@@ -390,7 +390,8 @@ describe("meta-state discriminated union", () => {
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.entry_kind, "change-log");
     assert.strictEqual(result.data.severity, undefined);
-    assert.strictEqual(result.data.affected_system, undefined);
+    // affected_system is now a cross-cutting field (present on all entry kinds)
+    assert.strictEqual(result.data.affected_system, "gate-logic");
   });
 });
 
