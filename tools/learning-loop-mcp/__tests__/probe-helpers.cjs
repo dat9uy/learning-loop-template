@@ -168,4 +168,4 @@ async function probeL2(root, { sessionId, runtime, gapOpen, writeFn = defaultWri
   }, builder);
 }
 
-module.exports = { probeL1, probeL2, defaultWriteFn };
+module.exports = { probeL1, probeL2 };

@@ -33,7 +33,7 @@ export function sanitizeSlug(text) {
 /**
  * Generate an ISO-ish timestamp for IDs: YYMMDDTHHmmZ
  */
-export function generateTimestamp() {
+function generateTimestamp() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
@@ -209,7 +209,7 @@ export function updateRecordFile(dirPath, recordId, updates, immutableFields = C
  * Lightweight check: validates required fields exist and types match.
  * Returns { valid: true } or { valid: false, errors: [...] }.
  */
-export function validateRecordShape(record, schema) {
+function validateRecordShape(record, schema) {
   const errors = [];
 
   // Check required fields

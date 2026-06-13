@@ -29,6 +29,6 @@ export function loadDescriptions() {
   return cache;
 }
 
-export function clearDescriptionsCache() {
+function clearDescriptionsCache() {
   cache = null;
 }

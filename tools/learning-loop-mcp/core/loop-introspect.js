@@ -83,7 +83,7 @@ export function listAllRecordTypes(root) {
  * META_STATE_FINDING_CATEGORIES in core/meta-state.js (kept in sync
  * with the metaStateFindingEntrySchema zod enum).
  */
-export function listAllMetaCategories() {
+function listAllMetaCategories() {
   return [...META_STATE_FINDING_CATEGORIES];
 }
 
@@ -233,7 +233,7 @@ export function readAllEntriesForLineage(root) {
  * Build the cold-tier payload and write it to the sidecar cache.
  * Returns the cache write result.
  */
-export function buildColdTierCache(root) {
+function buildColdTierCache(root) {
   const allEntries = readRegistry(root);
   const payload = {
     all_entries: allEntries,

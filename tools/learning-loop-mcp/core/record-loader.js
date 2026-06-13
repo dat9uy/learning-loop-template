@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parseRecordYaml } from "./yaml-parse-wrapper.js";
 
-export const recordDirs = ["claims", "experiments", "decisions", "risks", "capabilities", "index"];
+const recordDirs = ["claims", "experiments", "decisions", "risks", "capabilities", "index"];
 
 const SURFACES = ["meta", "vnstock", "fastapi", "tanstack", "product"];
 const EXCLUDED_DIRS = ["observations", "backlog-items", "validation-gates"];

@@ -58,7 +58,7 @@ export function buildZodSchemaFor(type, { root, excludeFields = [], name } = {})
  * the update tool). Same compose pattern as buildZodSchemaFor, but operates
  * on a properties map rather than a full record-type schema.
  */
-export function zodObjectForProperties(properties, required = [], { descriptions = {} } = {}) {
+function zodObjectForProperties(properties, required = [], { descriptions = {} } = {}) {
   let obj = zodFromSchema({ type: "object", properties, required });
   obj = obj.strict();
   if (Object.keys(descriptions).length) {
@@ -86,7 +86,7 @@ export function zodObjectForProperties(properties, required = [], { descriptions
  * Returns a z.object({...}).strict() with the type's fields (all optional) +
  * nested blocks (optional) + tool-only fields.
  */
-export function composeUpdateSchema({
+function composeUpdateSchema({
   type,
   root,
   excludeFields = [],

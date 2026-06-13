@@ -17,7 +17,7 @@ function getRegistryPath(root) {
 /**
  * Compute sha256 of the current meta-state.jsonl.
  */
-export function registrySha256(root) {
+function registrySha256(root) {
   const path = getRegistryPath(root);
   if (!existsSync(path)) return null;
   const raw = readFileSync(path, "utf8");

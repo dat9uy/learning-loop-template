@@ -269,7 +269,7 @@ function realPathFor(root, relativeRef) {
   return existsSync(fullPath) ? normalize(realpathSync(fullPath)) : fullPath;
 }
 
-export function validateLocalPath(label, relativeRef, root, errors) {
+function validateLocalPath(label, relativeRef, root, errors) {
   const rootPath = normalize(realpathSync(root));
   const fullPath = normalize(join(root, relativeRef));
   if (!existsSync(fullPath)) {

@@ -1,11 +1,11 @@
 import { experimentProvesDimension } from "./experiment-proof-match.js";
 
 export const verificationDimensions = new Set(["static", "install", "runtime", "product"]);
-export const experimentDimensions = new Set(["static", "install", "runtime", "product"]);
-export const proofStatuses = new Set(["claimed", "verified", "rejected"]);
-export const productStatuses = new Set(["claimed", "approved", "rejected"]);
-export const scopedDimensions = new Set(["install", "runtime"]);
-export const humanApprovedDimensions = new Set(["install", "runtime"]);
+const experimentDimensions = new Set(["static", "install", "runtime", "product"]);
+const proofStatuses = new Set(["claimed", "verified", "rejected"]);
+const productStatuses = new Set(["claimed", "approved", "rejected"]);
+const scopedDimensions = new Set(["install", "runtime"]);
+const humanApprovedDimensions = new Set(["install", "runtime"]);
 
 const reviewedStatuses = new Set(["reviewed", "approved"]);
 

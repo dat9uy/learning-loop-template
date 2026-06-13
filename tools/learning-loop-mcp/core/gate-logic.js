@@ -15,7 +15,7 @@ import { computeFileHash } from "./check-grounding.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "..", "core", "patterns.json"), "utf8"));
 
-export const CONSTRAINT_PATTERNS = Object.fromEntries(
+const CONSTRAINT_PATTERNS = Object.fromEntries(
   Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
 );
 
@@ -45,7 +45,7 @@ export function globMatch(pattern, filePath) {
   });
 }
 
-export function pathMatchesObservation(observation, filePath) {
+function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
   if (observation.status !== 'active') return false;
   if (globMatch('records/observations/**', filePath)) return false;
@@ -285,7 +285,7 @@ export function findProjectRoot() {
   return dir;
 }
 
-export function extractFrontmatter(content) {
+function extractFrontmatter(content) {
   if (!content || typeof content !== 'string') return null;
   const trimmed = content.trim();
   if (!trimmed.startsWith('---')) return null;
@@ -302,13 +302,13 @@ export function extractFrontmatter(content) {
   }
 }
 
-export function hasProductBuildTag(frontmatter) {
+function hasProductBuildTag(frontmatter) {
   if (!frontmatter || !frontmatter.tags) return false;
   const tags = Array.isArray(frontmatter.tags) ? frontmatter.tags : [frontmatter.tags];
   return tags.includes('product-build');
 }
 
-export function extractSurfaces(frontmatter) {
+function extractSurfaces(frontmatter) {
   if (!frontmatter || !frontmatter.surfaces) return [];
   return Array.isArray(frontmatter.surfaces) ? frontmatter.surfaces : [frontmatter.surfaces];
 }
@@ -386,7 +386,7 @@ export function inferSurface(filePath) {
   return null;
 }
 
-export function hasDecisionRecords(surface, recordsDir) {
+function hasDecisionRecords(surface, recordsDir) {
   if (!surface || typeof surface !== 'string') return true;
   const result = checkDecisionRecords([surface], recordsDir);
   return result.missing.length === 0;

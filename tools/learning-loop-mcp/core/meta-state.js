@@ -9,7 +9,7 @@ const REGISTRY_FILENAME = "meta-state.jsonl";
 // closed via meta_state_resolve with cascade_from). `superseded` is terminal
 // (consolidated into a change-log); `auto-resolved` is closed by mechanism.
 export const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
-export const AFFECTED_SYSTEM_ENUM = [
+const AFFECTED_SYSTEM_ENUM = [
   "meta",
   "gate-logic",
   "record-validation",

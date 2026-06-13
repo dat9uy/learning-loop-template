@@ -29,7 +29,7 @@ const DIMENSION_KEYWORDS = {
   product: ["product", "feature", "ui", "ux", "workflow", "user"],
 };
 
-export function detectCapability(title, sections) {
+function detectCapability(title, sections) {
   const allText = [
     title,
     ...sections.map((s) => s.heading),
@@ -51,7 +51,7 @@ export function detectCapability(title, sections) {
   return "meta"; // default fallback
 }
 
-export function detectDimension(sections) {
+function detectDimension(sections) {
   const allText = sections.map((s) => `${s.heading} ${s.lines.join(" ")}`).join(" ").toLowerCase();
 
   const scores = {};
@@ -63,7 +63,7 @@ export function detectDimension(sections) {
   return best && best[1] > 0 ? best[0] : "static";
 }
 
-export function computeConfidence(section) {
+function computeConfidence(section) {
   let score = 0.5;
   if (section.hasTable) score += 0.1;
   if (section.hasCode) score += 0.1;
@@ -76,7 +76,7 @@ export function computeConfidence(section) {
   return Math.min(0.95, score);
 }
 
-export function generateTopicTag(heading) {
+function generateTopicTag(heading) {
   return heading
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")

@@ -15,7 +15,7 @@ const MAX_LOG_BACKUPS = 5;
  * Rotate gate-log.jsonl if it exceeds MAX_LOG_SIZE.
  * Keeps only the MAX_LOG_BACKUPS most recent backups.
  */
-export function rotateGateLog(logDir) {
+function rotateGateLog(logDir) {
   try {
     const logPath = join(logDir, "gate-log.jsonl");
     const stats = statSync(logPath);

@@ -96,7 +96,7 @@ function formatProposal(claim, args) {
  * Pure function to update claim verification. Throws on error.
  * @returns {{ updated: boolean, claim_id: string, preview?: string }}
  */
-export function updateClaimVerification({
+function updateClaimVerification({
   root,
   claimId,
   dimension,

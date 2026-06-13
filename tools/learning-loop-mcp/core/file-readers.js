@@ -48,7 +48,7 @@ export function readObservations(root) {
  * Read budget YAML files (*-resource-budget.yaml) from records/observations/.
  * Returns array of parsed budgets, or [] on error.
  */
-export function readBudgets(root) {
+function readBudgets(root) {
   const obsDir = join(root || resolveRoot(), "records", "observations");
   try {
     const files = readdirSync(obsDir).filter((f) => f.endsWith("-resource-budget.yaml"));
