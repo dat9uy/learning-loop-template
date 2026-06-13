@@ -5,7 +5,7 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
  * Single source of truth for constraint patterns and gate decisions.
  */
 
-import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -313,37 +313,6 @@ function extractSurfaces(frontmatter) {
   return Array.isArray(frontmatter.surfaces) ? frontmatter.surfaces : [frontmatter.surfaces];
 }
 
-export function checkDecisionRecords(surfaces, recordsDir) {
-  const missing = [];
-  const found = [];
-  for (const surface of surfaces) {
-    if (!surface || typeof surface !== 'string') continue;
-    const surfaceFirstDir = join(recordsDir, surface, 'decisions');
-    const flatDir = join(recordsDir, 'decisions');
-    let hasDecision = false;
-    try {
-      if (existsSync(surfaceFirstDir)) {
-        const files = readdirSync(surfaceFirstDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-        if (files.length > 0) hasDecision = true;
-      }
-    } catch { /* ignore */ }
-    if (!hasDecision) {
-      try {
-        if (existsSync(flatDir)) {
-          const pattern = new RegExp(`\\b${surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-          const files = readdirSync(flatDir).filter(f =>
-            (f.endsWith('.yaml') || f.endsWith('.yml')) && pattern.test(f)
-          );
-          if (files.length > 0) hasDecision = true;
-        }
-      } catch { /* ignore */ }
-    }
-    if (hasDecision) found.push(surface);
-    else missing.push(surface);
-  }
-  return { missing, found };
-}
-
 export function readPreflightMarker(surface, coordDir) {
   const markerPath = join(coordDir, `.loop-preflight-${surface}`);
   try {
@@ -384,12 +353,6 @@ export function inferSurface(filePath) {
     return null;
   }
   return null;
-}
-
-function hasDecisionRecords(surface, recordsDir) {
-  if (!surface || typeof surface !== 'string') return true;
-  const result = checkDecisionRecords([surface], recordsDir);
-  return result.missing.length === 0;
 }
 
 export function evaluateWritePath(filePath, observations, checkStalenessFn) {

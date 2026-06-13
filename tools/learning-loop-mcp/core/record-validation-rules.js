@@ -2,7 +2,6 @@ import { existsSync, realpathSync } from "node:fs";
 import { join, normalize } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
-import { validateClaimVerification } from "./claim-verification-rules.js";
 import { readRegistry } from "./meta-state.js";
 
 const compiledValidatorsBySchemas = new WeakMap();
@@ -43,76 +42,6 @@ function validateRecordSchemas(records, schemas, errors) {
       continue;
     }
     errors.push(...validateRecordAgainstSchema(record, validators[record.type]).map((error) => `${record.__file}: ${error}`));
-  }
-}
-
-function validateCandidateConsumption(records, errors) {
-  // Build a map of all extracted-assertion entries with their status
-  const assertionStatus = new Map();
-  for (const record of records) {
-    if (record.type === "extracted-assertion") {
-      assertionStatus.set(record.id, record.status);
-    }
-  }
-
-  // Collect all reference fields that may contain record: pointers
-  function collectRecordRefs(record) {
-    const refs = [];
-    const refArrays = [
-      ...(record.source_refs || []),
-      ...(record.evidence_refs || []),
-      ...(record.experiment_refs || []),
-      ...(record.supersedes || []),
-      ...(record.superseded_by ? [record.superseded_by] : []),
-    ];
-
-    for (const ref of refArrays) {
-      if (typeof ref === "string" && ref.startsWith("record:")) {
-        refs.push(ref.slice("record:".length));
-      }
-    }
-
-    // Check nested fields that may contain record: refs
-    const decisionEffect = record.decision_effect;
-    if (decisionEffect && Array.isArray(decisionEffect.affected_refs)) {
-      for (const ref of decisionEffect.affected_refs) {
-        if (typeof ref === "string" && ref.startsWith("record:")) {
-          refs.push(ref.slice("record:".length));
-        }
-      }
-    }
-
-    const verification = record.verification;
-    if (verification) {
-      if (Array.isArray(verification.claim_refs)) {
-        for (const ref of verification.claim_refs) {
-          if (typeof ref === "string" && ref.startsWith("record:")) {
-            refs.push(ref.slice("record:".length));
-          }
-        }
-      }
-      if (Array.isArray(verification.proves)) {
-        for (const p of verification.proves) {
-          if (p && p.claim_ref && typeof p.claim_ref === "string" && p.claim_ref.startsWith("record:")) {
-            refs.push(p.claim_ref.slice("record:".length));
-          }
-        }
-      }
-    }
-
-    return refs;
-  }
-
-  for (const record of records) {
-    // Skip claims (frozen-legacy) and extracted-assertions themselves
-    if (record.type === "claim" || record.type === "extracted-assertion") continue;
-
-    const refs = collectRecordRefs(record);
-    for (const refId of refs) {
-      if (assertionStatus.get(refId) === "candidate") {
-        errors.push(`${record.__file}: references candidate assertion ${refId} — unverified vendor assertions may not be consumed by product`);
-      }
-    }
   }
 }
 
@@ -164,8 +93,6 @@ export function validateRecords(records, schemas, root, allowDisallowedFixtures 
     validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures);
   }
   validateRecordReferences(records, ids, errors);
-  validateCandidateConsumption(records, errors);
-  errors.push(...validateClaimVerification(records));
   for (const record of records) {
     validateOutsideReferences(record, errors);
   }

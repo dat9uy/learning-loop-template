@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Delete Dead Product-Surface Files"
-status: pending
+status: complete
 priority: P2
 effort: "10min"
 dependencies: []

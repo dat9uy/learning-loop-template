@@ -1,7 +1,7 @@
 ---
 title: "Product-Surface Dead Concept Cleanup"
 description: "Remove dead product-surface concepts from live files after 2026-06-12 meta-surface re-debate. The prior cleanup (260613-1000) deleted entirely-unused files; this plan removes dead concepts embedded in live files."
-status: in-progress
+status: complete
 priority: P2
 branch: "main"
 tags: [cleanup, dead-code, product-surface, meta-surface]
@@ -36,13 +36,13 @@ This plan removes:
 
 ## Success Criteria
 
-- [ ] All 6 dead files + 2 directories deleted
-- [ ] All 5 dead test files deleted
-- [ ] `checkDecisionRecords` removed from gate-logic.js
-- [ ] `validateClaimVerification` import and call removed from record-validation-rules.js
-- [ ] `validateCandidateConsumption` removed from record-validation-rules.js
-- [ ] `pnpm test` passes after each phase
-- [ ] No regressions in MCP server startup or hook execution
+- [x] All 6 dead files + 2 directories deleted
+- [x] All 5 dead test files deleted
+- [x] `checkDecisionRecords` removed from gate-logic.js
+- [x] `validateClaimVerification` import and call removed from record-validation-rules.js
+- [x] `validateCandidateConsumption` removed from record-validation-rules.js
+- [x] `pnpm test` passes after each phase (908 pass, 0 fail)
+- [x] No regressions in MCP server startup or hook execution
 
 ## Risk Assessment
 

@@ -31,6 +31,7 @@ const DELETED_TOOLS = [
   "record_update_risk",
   "record_delete",
   "budget_check",
+  "workflow_product_build",
   "index_validate",
   "index_validate_plans",
 ];
@@ -38,9 +39,9 @@ const DELETED_TOOLS = [
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 38 entries (all product-surface tools deleted)
-await test("manifest has 38 entries", () => {
-  assert.strictEqual(manifest.length, 38, `Expected 38, got ${manifest.length}`);
+// 1. Manifest has 37 entries (all product-surface tools deleted)
+await test("manifest has 37 entries", () => {
+  assert.strictEqual(manifest.length, 37, `Expected 37, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest
@@ -80,9 +81,9 @@ await test("agent-manifest does not have budget group", () => {
   assert.strictEqual(agentManifest.groups.budget, undefined, "budget group should be removed");
 });
 
-// 8. agent-manifest.json workflow group has 12 tools
-await test("agent-manifest workflow group has 12 tools", () => {
-  assert.strictEqual(agentManifest.groups.workflow.tools.length, 12);
+// 8. agent-manifest.json workflow group has 11 tools
+await test("agent-manifest workflow group has 11 tools", () => {
+  assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
   for (const tool of ["workflow_convert_evidence", "workflow_verify_evidence", "workflow_external_decision", "workflow_candidate_to_experiment", "workflow_vendor_doc_assist"]) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(tool), false, `${tool} should not be in workflow group`);
   }

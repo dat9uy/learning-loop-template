@@ -10,7 +10,6 @@
   { "file": "./tools/workflow-intentional-skip-tool.js", "export": "workflowIntentionalSkipTool" },
   { "file": "./tools/workflow-self-improvement-tool.js", "export": "workflowSelfImprovementTool" },
   { "file": "./tools/workflow-report-phase-status-tool.js", "export": "workflowReportPhaseStatusTool" },
-  { "file": "./tools/workflow-product-build-tool.js", "export": "workflowProductBuildTool" },
   { "file": "./tools/workflow-runtime-probe-tool.js", "export": "workflowRuntimeProbeTool" },
   { "file": "./tools/mark-preflight-complete-tool.js", "export": "gateMarkPreflightTool" },
   { "file": "./tools/runtime-state-read-tool.js", "export": "runtimeStateReadTool" },

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Clean Dead Concepts from Live Files"
-status: pending
+status: complete
 priority: P2
 effort: "15min"
 dependencies: [1, 2]

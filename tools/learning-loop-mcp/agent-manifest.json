@@ -19,7 +19,6 @@
         "workflow_self_improvement",
         "workflow_intentional_skip",
         "workflow_report_phase_status",
-        "workflow_product_build",
         "workflow_runtime_probe",
         "workflow_notify_artifact",
         "workflow_trigger"
@@ -28,7 +27,6 @@
       "typical_chain": [
         "workflow_intake_orient",
         "workflow_intake_plan",
-        "workflow_product_build",
         "workflow_notify_artifact"
       ]
     },

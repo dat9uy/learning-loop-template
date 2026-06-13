@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Delete Dead Product-Surface Tests"
-status: pending
+status: complete
 priority: P2
 effort: "10min"
 dependencies: [1]
