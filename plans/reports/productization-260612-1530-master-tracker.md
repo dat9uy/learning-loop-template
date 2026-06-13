@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-13 (Phase B1+B2 shipped; 864 pass/0 fail/1 skip; cold-session flaky — reported)
+**Last updated:** 2026-06-13 (Phase B1+B2 shipped; 865 pass/0 fail/1 skip; cold-session flaky — resolved via protocol E2E test)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -30,9 +30,12 @@
 - `meta-260613T0138Z-schemas-deleted` (change-log, 8 schemas removed; filed under the redaction in the JSONL — see § Phase A completion)
 - `meta-260613T0138Z-vnstock-device-slot-ledger-converted` (finding, code_fingerprint: script sha256, mechanism_check: true)
 - `meta-260613T0138Z-master-tracker-flip` (change-log, change_target: `plans/reports/productization-260612-1530-master-tracker.md#Phase A`)
-- `meta-260613T1115Z-cold-session-l2-probe-test-is-flaky-due-to-fixed-60s-timeout` (finding, open; pre-existing timing issue surfaced by H14 mirror hint)
+- `meta-260613T1115Z-cold-session-l2-probe-test-is-flaky-due-to-fixed-60s-timeout` (finding, **resolved** 2026-06-13; replaced by protocol-level E2E test `mcp-protocol-e2e.test.cjs`)
+- `meta-260614T0107Z-cold-session-discoverability-test-rewrite-260614-eliminated` (finding, **resolved** 2026-06-13; coverage gap filled by E2E test)
+- `meta-260614T0143Z-tools-learning-loop-mcp-tests-mcp-protocol-e2e-test-cjs` (change-log, surface; added protocol E2E test)
+- `meta-260614T0158Z-rule-cold-session-test-must-pass-before-resolution` (change-log, semantic; restored rule from archived to active, updated pattern to `mcp-protocol-e2e-test`)
 
-**Open finding (post-Phase A):** the cold-session L2 probe test is timing-sensitive (fixed 60s timeout on real `droid exec`); four fix approaches documented in the finding for the next session.
+**Resolved finding (post-Phase A):** the cold-session L2 probe test was timing-sensitive (fixed 60s timeout on real `droid exec`); resolved by eliminating the flaky sub-test and adding a protocol-level E2E test using `@modelcontextprotocol/sdk` Client. See `plans/260614-0900-mcp-protocol-e2e-test/`. The gate rule `rule-cold-session-test-must-pass-before-resolution` remains **active** — pattern updated to reference the new E2E test.
 
 **No scope change from this update.** The 2026-06-13 changes are consistency-only: the sub-phases A1-A5 are unchanged in their content; this update adds the completion summary, aligns the A2/A3 schema counts with the implementation's 8-schema deletion, and notes the aggressive 22-tool deletion (vs the plan's 13) so the next session has accurate context.
 
@@ -100,8 +103,9 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 | LIM-8 | 3 other tools use `z.object({}).passthrough()`: `trigger-workflow-tool.js:11`, `workflow-intake-plan-tool.js:20,22`, `workflow-generate-prompt-tool.js:89` | Open | Follow-up |
 | LIM-9 | `meta_state_batch` update op at `meta-state-batch-tool.js:17` still uses `.passthrough()` — `Object.assign` at line 483 accepts arbitrary keys | Open | Follow-up |
 
-**Flaky test finding (2026-06-13):**
-- `meta-260614T0052Z-cold-session-discoverability-test-cold-session-discoverabili` — cold-session test flaky (21 prior failures with `session_id=test-cold-session-mcp-client-loading`); 7/8 pass, 1 fail (direct-MCP-server-spawn sub-test). Recommendation: refactor to deterministic test harness or split into fast unit + slow integration.
+**Flaky test finding (2026-06-13, resolved):**
+- `meta-260614T0107Z-cold-session-discoverability-test-rewrite-260614-eliminated` — cold-session test flaky (21 prior failures with `session_id=test-cold-session-mcp-client-loading`); the flaky sub-test was eliminated and replaced by a deterministic protocol-level E2E test at `tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs` using `@modelcontextprotocol/sdk` Client. Status: **resolved** (4 test cases: server init, tools/list, tools/call loop_describe, tools/call meta_state_list). Full suite: 865 pass, 0 fail, 1 skip.
+- **Gate rule `rule-cold-session-test-must-pass-before-resolution` remains active** — pattern updated from `test-cold-session-mcp-client-loading` to `mcp-protocol-e2e-test`. This rule gates resolution of `meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list` on the E2E test passing.
 
 ---
 
