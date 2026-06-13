@@ -83,9 +83,9 @@ describe("meta_state_list ref_by/ref_field filter", () => {
     assert.strictEqual(text.entries[0].id, "design-A");
   });
 
-  test("proposed_design_for scan tolerates wire-format wrap {item: [...]}", async () => {
-    const wrappedDesign = { id: "design-C", entry_kind: "loop-design", status: "active", title: "design C proposed design for target-finding", description: "design C for ref_by wire-format test (min 20 chars)", affected_system: "mcp-tools", proposed_design_for: { item: ["target-finding"] }, addresses: [], created_at: NOW, created_by: "test" };
-    const all = [...SEED_ENTRIES, wrappedDesign];
+  test("proposed_design_for scan finds loop-designs by ref_by (flat)", async () => {
+    const flatDesign = { id: "design-C", entry_kind: "loop-design", status: "active", title: "design C proposed design for target-finding", description: "design C for ref_by flat test (min 20 chars)", affected_system: "mcp-tools", proposed_design_for: ["target-finding"], addresses: [], created_at: NOW, created_by: "test" };
+    const all = [...SEED_ENTRIES, flatDesign];
     writeFileSync(join(root, "meta-state.jsonl"), all.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
     const result = await metaStateListTool.handler({ ref_by: "target-finding", ref_field: "proposed_design_for" });
     const text = JSON.parse(result.content[0].text);

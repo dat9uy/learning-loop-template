@@ -122,9 +122,8 @@ async function withMcpServer(fn) {
 }
 
 // Test 1: combined-patch stdio transport (patches a loop-design).
-// Simulates the wire-format artifact where the entire `patch` object is
-// wrapped as `{item: {...}}` when it contains array fields alongside scalars.
-test("meta_state_patch unwraps {item: {...}} wrapped patch object via stdio", async () => {
+// After the derived-schema fix, patch objects must be flat (no {item: {...}} wrap).
+test("meta_state_patch accepts flat patch object via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
     // 1. Create a loop-design to patch.
     const designResult = await call(1, "meta_state_propose_design", {
@@ -142,15 +141,13 @@ test("meta_state_patch unwraps {item: {...}} wrapped patch object via stdio", as
     );
     const designId = designResult.id;
 
-    // 2. Patch it with the wire-format-wrapped patch object.
+    // 2. Patch it with a flat patch object (no {item: {...}} wrap).
     const patchResult = await call(2, "meta_state_patch", {
       id: designId,
       entry_kind: "loop-design",
       patch: {
-        item: {
-          addresses: ["finding-B", "finding-C", "finding-D"],
-          description: "Updated description for patch test",
-        },
+        addresses: ["finding-B", "finding-C", "finding-D"],
+        description: "Updated description for patch test",
       },
     });
     assert.equal(

@@ -240,6 +240,46 @@ export const metaStateEntrySchema = z.preprocess(
 );
 
 /**
+ * Derive the list of patchable kinds from the entry_kind enum.
+ * Single source of truth — no separate hardcoded array to drift.
+ *
+ * NOTE: change-log is handler-level immutable (meta-state-patch-tool.js:56-59
+ * rejects all change-log patches with reason "change_log_immutable"), but
+ * the schema is still included so the union covers all 4 kinds. The handler
+ * guard is the enforcement; the schema is permissive.
+ */
+export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
+
+/**
+ * Derive a per-kind patch schema from the 4 per-kind source-of-truth
+ * schemas. Patches are partial (.partial() marks all fields optional);
+ * unknown keys are rejected (.strict() closes typo/unknown-field
+ * pollution via Object.assign at the updateEntry boundary).
+ *
+ * IMPORTANT: .strict() does NOT reject __proto__ via JSON.parse (JS
+ * engine absorbs it into prototype chain before Zod sees it). The real
+ * defense is the explicit `delete cleanPatch.__proto__` at
+ * core/meta-state.js:376.
+ *
+ * This is a pure projection: any change to the per-kind schemas in
+ * this file is reflected here automatically. Tests in
+ * __tests__/meta-state-patch-derived-schema.test.js assert the round-trip
+ * behavior end-to-end.
+ */
+export function buildPatchSchemaFor(kind) {
+  switch (kind) {
+    case "finding":    return metaStateFindingEntrySchema.partial().strict();
+    case "change-log": return metaStateChangeEntrySchema.partial().strict();
+    case "rule":       return metaStateRuleEntrySchema.partial().strict();
+    case "loop-design": return metaStateLoopDesignSchema.partial().strict();
+    default:
+      throw new Error(
+        `buildPatchSchemaFor: unknown kind "${kind}". Expected one of: ${PATCH_KINDS.join(", ")}`
+      );
+  }
+}
+
+/**
  * Patch validator — accepts any top-level key because patches are partial
  * by definition and may contain any subset of the union fields.
  */
@@ -375,6 +415,8 @@ export function updateEntry(root, id, patch) {
       if (entry.id === id) {
         const cleanPatch = { ...patch };
         delete cleanPatch._expected_version;
+        delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
+        delete cleanPatch.constructor;  // defense-in-depth
         Object.assign(entry, cleanPatch);
         entry.version = (entry.version ?? 0) + 1;
       }

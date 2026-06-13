@@ -52,15 +52,6 @@ function toCompact(entry) {
   return rest;
 }
 
-// Unwrap {item: [...]} -> [...] (the wire-format quirk meta_state_patch can
-// produce). Mirrors the helper in core/loop-introspect.js#buildRegistrySummary.
-function unwrapItemWrap(value) {
-  if (value && typeof value === "object" && !Array.isArray(value) && Array.isArray(value.item)) {
-    return value.item;
-  }
-  return value;
-}
-
 export const metaStateListTool = {
   name: "meta_state_list",
   description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, resolved, superseded). Runs auto-resolve and expiry checks before returning. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). The narrow-query filters `id` (string|string[]) and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
@@ -144,7 +135,7 @@ export const metaStateListTool = {
         // Tolerate the wire-format wrap {item: [...]}.
         for (const e of updated) {
           if (e.entry_kind === "loop-design") {
-            const refs = unwrapItemWrap(e.proposed_design_for);
+            const refs = e.proposed_design_for;
             if (Array.isArray(refs) && refs.includes(ref_by)) {
               matchingIds.add(e.id);
             }

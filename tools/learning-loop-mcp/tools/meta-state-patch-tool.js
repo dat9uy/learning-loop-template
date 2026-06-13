@@ -1,11 +1,14 @@
 import { z } from "zod";
-import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
+import { readRegistry, updateEntry, buildPatchSchemaFor, PATCH_KINDS } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 export const IMMUTABLE_PATCH_FIELDS = new Set([
   "id",
-  "entry_kind",
+  // entry_kind is NOT here — the per-kind schemas use z.literal("finding") etc.
+  // which already prevents changing the kind. Adding it to the deny-list would
+  // reject every patch because Zod's .default() on the literal adds entry_kind
+  // to the parsed result even when the user didn't send it.
   "version",
   "created_at",
   "created_by",
@@ -25,8 +28,8 @@ export const metaStatePatchTool = {
     id: z.string().describe("Exact entry id to patch"),
     entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
       .describe("Entry kind branch — used to validate patch shape. `change-log` is handler-level immutable; the schema allows it so the immutability branch is reachable."),
-    patch: z.object({}).passthrough()
-      .describe("Partial fields to update. Nest arrays/booleans in this object. Use core/meta-state.js#metaStateEntryPatchSchema's passthrough semantics: any subset of union fields is valid. Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler."),
+    patch: z.union(PATCH_KINDS.map((k) => buildPatchSchemaFor(k)))
+      .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically."),
     _expected_version: z.number().optional()
       .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
   },

@@ -223,7 +223,7 @@ test("meta_state_patch deny-list rejects identity/audit-trail field mutations", 
     const result = await patchCall({
       id,
       entry_kind: "finding",
-      patch: { id: "new-id", version: 99, created_at: "fake" },
+      patch: { id: "new-id", created_at: "fake", resolved_at: "fake" },
     });
 
     assert.equal(result.patched, false);
@@ -231,8 +231,8 @@ test("meta_state_patch deny-list rejects identity/audit-trail field mutations", 
     assert.equal(result.id, id);
     assert.ok(Array.isArray(result.denied_fields));
     assert.ok(result.denied_fields.includes("id"));
-    assert.ok(result.denied_fields.includes("version"));
     assert.ok(result.denied_fields.includes("created_at"));
+    assert.ok(result.denied_fields.includes("resolved_at"));
   } finally {
     teardown();
   }

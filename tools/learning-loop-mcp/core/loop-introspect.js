@@ -348,11 +348,7 @@ export function buildRegistrySummary(entries) {
   const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
   for (const design of loopDesigns) {
     if (design.proposed_design_for) {
-      // Tolerate the wire-format wrap {item: [...]} that meta_state_patch
-      // can produce on top-level arrays under passthrough ZodObject fields.
-      const refs = Array.isArray(design.proposed_design_for)
-        ? design.proposed_design_for
-        : (design.proposed_design_for.item ?? []);
+      const refs = design.proposed_design_for ?? [];
       for (const ref of refs) {
         if (!entryIds.has(ref)) coverage.broken_refs++;
       }
