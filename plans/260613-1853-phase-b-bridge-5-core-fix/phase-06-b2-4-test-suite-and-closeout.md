@@ -96,7 +96,7 @@ The closeout follows the precedent TDD closeout pattern from `plans/260608-1015-
 - [x] Change-log entry filed via `meta_state_log_change`
 - [x] Cook journal written at `docs/journals/260613-bridge-5-core-fix-closeout.md`
 - [x] Master tracker updated (B1 + B2 marked complete)
-- [ ] Working tree clean — deferred to commit
+- [x] Working tree clean
 
 ## Risk Assessment
 
