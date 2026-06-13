@@ -7,11 +7,11 @@ import { loopDescribeTool } from "../tools/loop-describe-tool.js";
 import { buildDiscoverabilityHints } from "../core/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
-  test("warm tier returns discoverability_hints with 13 strings", async () => {
+  test("warm tier returns discoverability_hints with 14 strings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 13);
+    assert.strictEqual(parsed.discoverability_hints.length, 14);
     for (const hint of parsed.discoverability_hints) {
       assert.strictEqual(typeof hint, "string");
       assert.ok(hint.length > 0);
@@ -85,12 +85,12 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const result = await loopDescribeTool.handler({ tier: "cold" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 13);
+    assert.strictEqual(parsed.discoverability_hints.length, 14);
   });
 
   test("buildDiscoverabilityHints is exported as a pure function", () => {
     const hints = buildDiscoverabilityHints();
-    assert.strictEqual(hints.length, 13);
+    assert.strictEqual(hints.length, 14);
     assert.ok(Object.isFrozen(hints));
   });
 });
