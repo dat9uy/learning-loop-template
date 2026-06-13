@@ -31,6 +31,21 @@
 - Set `mechanism_check: false` on same finding (no code to hash)
 - Refreshed fingerprint on `meta-260613T1421Z-...` after `record-validation-rules.js` edit
 
+## Follow-up: Dead Core Writer Deletion
+
+Plan 260613-1000 incorrectly classified 6 core writers as "live" (they were in `tools/manifest.json` dynamic loading section). The manifest loads *tool* files, not *core* modules — when the 13 tool files were deleted, the core writers became dead with zero importers.
+
+**Deleted (8 files + 1 test):**
+- `core/observation-writer.js`, `core/budget-checker.js`, `core/experiment-writer.js`, `core/risk-writer.js`, `core/decision-writer.js` — product-surface record writers
+- `core/record-writer.js` — only imported by the 5 dead writers above
+- `core/record-loader.js` — product-surface record loader
+- `core/schema-to-zod.js` — product-surface schema conversion
+- `__tests__/runtime-state-schema.test.js` — imported dead `zodFromSchema`
+
+**Fallow health:** 189→172 findings (17 eliminated). Critical 59→54.
+
+**Triage report:** `plans/260613-1530-.../reports/fallow-dead-concept-triage.md`
+
 ## Tests
 
-878/878 pass throughout all phases.
+873/873 pass (874 total, 1 skipped).
