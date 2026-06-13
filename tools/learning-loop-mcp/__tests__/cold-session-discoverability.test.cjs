@@ -282,11 +282,38 @@ describe("cold-session discoverability acceptance", () => {
     child.stdout.on("data", (chunk) => { stdout += chunk.toString(); });
     child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
 
+    // Poll meta-state.jsonl during the run to detect partial completion.
+    // The MCP server uses appendFileSync, so entries hit disk immediately.
+    // This avoids the false-negative where the agent completes 1 of 2 calls
+    // but the 60s timeout kills the process before the second call lands.
+    const metaStatePath = join(tempRoot, "meta-state.jsonl");
+    const pollInterval = 3000;
+    const pollStartTime = Date.now();
+    let pollCount = 0;
+    const pollTimer = setInterval(() => {
+      pollCount++;
+      if (existsSync(metaStatePath)) {
+        const entries = readFileSync(metaStatePath, "utf8")
+          .split("\n")
+          .filter((l) => l.trim() !== "")
+          .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+          .filter(Boolean);
+        const findings = entries.filter((e) => e.entry_kind === "finding");
+        const elapsed = ((Date.now() - pollStartTime) / 1000).toFixed(1);
+        if (findings.length > 0) {
+          console.error(`[cold-session/poll] ${elapsed}s: ${findings.length} finding(s) in meta-state.jsonl (poll #${pollCount})`);
+        }
+      }
+    }, pollInterval);
+
+    // 90s timeout: the 60s budget was too tight — adding 1 discoverability
+    // hint (~400 chars) pushed runs to 62-78s. 90s gives headroom while
+    // still catching genuine hangs.
     const exitCode = await new Promise((resolve) => {
       const timeout = setTimeout(() => {
         child.kill("SIGTERM");
         resolve(-1);
-      }, 60000);
+      }, 90000);
       child.on("exit", (code) => {
         clearTimeout(timeout);
         resolve(code ?? -1);
@@ -297,12 +324,14 @@ describe("cold-session discoverability acceptance", () => {
       });
     });
 
-    // Debug breadcrumbs: keep these in stderr so test failures are actionable.
-    // eslint-disable-next-line no-console
-    console.error(`[cold-session] exit=${exitCode} stdout_len=${stdout.length} stderr_len=${stderr.length}`);
+    clearInterval(pollTimer);
 
-    // Read temp-root artifacts.
-    const metaStatePath = join(tempRoot, "meta-state.jsonl");
+    // Debug breadcrumbs: keep these in stderr so test failures are actionable.
+    const elapsed = ((Date.now() - pollStartTime) / 1000).toFixed(1);
+    // eslint-disable-next-line no-console
+    console.error(`[cold-session] exit=${exitCode} elapsed=${elapsed}s stdout_len=${stdout.length} stderr_len=${stderr.length}`);
+
+    // Read temp-root artifacts (metaStatePath declared in polling block above).
     const metaStateEntries = existsSync(metaStatePath)
       ? readFileSync(metaStatePath, "utf8")
           .split("\n")
@@ -324,22 +353,22 @@ describe("cold-session discoverability acceptance", () => {
     const mechanismChecked = findings.filter((e) => e.mechanism_check === true);
     assert.ok(mechanismChecked.length >= 1, "expected at least one finding with mechanism_check: true");
 
-    // 4. Agent called meta_state_report at least once AND meta_state_patch
-    //    reached the registry (we see the patched description in any entry).
-    //    The Internalization-Rule pathway uses meta_state_report +
-    //    meta_state_patch. The meta_state_report call's evidence_code_ref
-    //    validates the code-pointed cite; the meta_state_patch call exercises
-    //    the validateSourceRefs local:meta-state:<id> branch.
-    assert.ok(findings.length >= 2, "expected at least 2 finding entries (report + patch)");
-
-    // 5. At least one entry has evidence_journal pointing at a plan file
-    //    (proves the meta_state_patch call landed with the planned path).
-    const findingsWithPlanJournal = findings.filter((e) =>
-      typeof e.evidence_journal === "string" && e.evidence_journal.startsWith("plans/"),
+    // 4. Both MCP calls landed: meta_state_report created the entry
+    //    (evidence_code_ref set) AND meta_state_patch updated it in-place
+    //    (evidence_journal set). meta_state_patch uses updateEntry which
+    //    rewrites the file, not appendEntry — so there's only 1 finding
+    //    entry, but both calls are verifiable via field presence.
+    const bothCallsLanded = findings.some(
+      (e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.endsWith(".js")
+        && typeof e.evidence_journal === "string" && e.evidence_journal.startsWith("plans/"),
     );
-    assert.ok(findingsWithPlanJournal.length >= 1, "expected at least one entry with evidence_journal pointing at plans/");
+    const timedOut = exitCode === -1;
+    const partialMsg = timedOut
+      ? ` (TIMED OUT after ${elapsed}s)`
+      : ` (agent completed in ${elapsed}s)`;
+    assert.ok(bothCallsLanded, `expected 1 finding with both evidence_code_ref (.js) and evidence_journal (plans/) — proves report+patch both landed; got ${findings.length} finding(s)${partialMsg}`);
 
-    // 6. No evidence_code_refs contain records/meta/evidence/ (records are
+    // 5. No evidence_code_refs contain records/meta/evidence/ (records are
     //    archived to records/_unbound/ as of Phase 5; this is a regression
     //    guard for the citation drift).
     for (const e of findings) {
@@ -350,7 +379,7 @@ describe("cold-session discoverability acceptance", () => {
       );
     }
 
-    // 7. No evidence_journal contains path-traversal (regression guard).
+    // 6. No evidence_journal contains path-traversal (regression guard).
     for (const e of findings) {
       if (typeof e.evidence_journal === "string") {
         assert.ok(
