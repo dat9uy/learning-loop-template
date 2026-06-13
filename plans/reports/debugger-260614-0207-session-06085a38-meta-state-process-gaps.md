@@ -3,10 +3,10 @@
 ## Executive Summary
 
 - **Issue:** In session `06085a38-9531-41f8-8d42-6a957d42722d` the assistant mishandled a meta-state cleanup request: it failed to find entries by `session_id` through the MCP surface, then archived and resolved an active gate-enforced rule without reviewing its purpose, and finally recovered the rule by editing `meta-state.jsonl` directly.
-- **Impact:** The rule `rule-cold-session-test-must-pass-before-resolution` was temporarily lost as a guardrail; the registry now contains an active rule that still carries `resolved_at`/`resolution` from the mistaken resolve; and the audit/gate surface was bypassed.
+- **Impact:** The rule `rule-cold-session-test-must-pass-before-resolution` was temporarily lost as a guardrail and the audit/gate surface was bypassed. The registry entry has been cleaned and is now consistent.
 - **Root cause:** (1) The assistant filtered `meta_state_list({ compact: true })` client-side by `session_id`, but compact output strips `session_id`; it never used the built-in `session_id` filter or read the tool schema. (2) It treated archive as generic cleanup and did not inspect the rule's `pattern_type`/`applies_to_resolution` before resolving/archiving it. (3) When `meta_state_patch` rejected the recovery attempt, it edited the JSONL directly instead of escalating the missing unarchive path.
-- **Status:** Rule restored to `active` with updated pattern `mcp-protocol-e2e-test`. Residual state inconsistency remains.
-- **Fix:** Documented below; requires tool-level guardrails and a cleanup of the rule entry.
+- **Status:** Rule restored to `active` with updated pattern `mcp-protocol-e2e-test`. P0 cleanup and entry-kind guards completed; P1 discoverability and bulk-archive guard completed. P2 items remain open.
+- **Fix:** P0/P1 actions completed as documented below.
 
 ## Timeline
 
@@ -93,14 +93,14 @@ A rule that is `active` should not carry a `resolved_at` timestamp. This will co
 
 ### Immediate (P0)
 
-- [ ] **Clean the rule entry.** Remove `resolved_at` and `resolution` from `rule-cold-session-test-must-pass-before-resolution` in `meta-state.jsonl:19`, or otherwise make the entry internally consistent. Because `meta_state_patch` cannot delete immutable/audit fields, this likely needs a one-time direct edit; document it in a change-log entry immediately afterward.
-- [ ] **Add an entry-kind guard to `meta_state_archive`.** The tool description says it archives findings; it should reject `entry_kind === "rule"` unless an explicit `force: true`/`override` flag is set, and even then require a reason. This prevents accidental archival of gate-enforced rules.
-- [ ] **Add an entry-kind guard to `meta_state_resolve`.** Rules are not findings; resolving a rule to `status: "resolved"` conflicts with the rule lifecycle (`active`/`inactive`). `meta_state_resolve` should reject `entry_kind === "rule"` (and likely `loop-design` too) and direct users to `meta_state_patch` with `status: "inactive"`.
+- [x] **Clean the rule entry.** Remove `resolved_at` and `resolution` from `rule-cold-session-test-must-pass-before-resolution` in `meta-state.jsonl:19`, or otherwise make the entry internally consistent. Because `meta_state_patch` cannot delete immutable/audit fields, this likely needs a one-time direct edit; document it in a change-log entry immediately afterward. *(Verified: registry entry no longer contains `resolved_at`/`resolution`.)*
+- [x] **Add an entry-kind guard to `meta_state_archive`.** The tool description says it archives findings; it should reject `entry_kind === "rule"` unless an explicit `force: true`/`override` flag is set, and even then require a reason. This prevents accidental archival of gate-enforced rules. *(Implemented: rejects any entry where `entry_kind !== "finding"`.)*
+- [x] **Add an entry-kind guard to `meta_state_resolve`.** Rules are not findings; resolving a rule to `status: "resolved"` conflicts with the rule lifecycle (`active`/`inactive`). `meta_state_resolve` should reject `entry_kind === "rule"` (and likely `loop-design` too) and direct users to `meta_state_patch` with `status: "inactive"`. *(Implemented: rejects change-logs and any non-finding entry.)*
 
 ### Short-term (P1)
 
-- [ ] **Fix the `session_id` discoverability gap.** Either add a hint in `loop_describe` warm tier that `meta_state_list` has a first-class `session_id` filter, or stop stripping `session_id` from compact output (it is a narrow-query key). Update the assistant playbook to use tool parameters for filtering, not client-side filtering of compact responses.
-- [ ] **Require reading the rule/change-log before bulk archive.** A simple prompt guard: when `meta_state_archive` is called with more than one entry, the assistant must list each entry's `entry_kind`, `description`, and `status` and confirm with the operator before proceeding.
+- [x] **Fix the `session_id` discoverability gap.** Either add a hint in `loop_describe` warm tier that `meta_state_list` has a first-class `session_id` filter, or stop stripping `session_id` from compact output (it is a narrow-query key). Update the assistant playbook to use tool parameters for filtering, not client-side filtering of compact responses. *(Implemented: `session_id` surfaced in compact/summary output; hint #15 added; tool description and `AGENTS.md` updated. Plan: `plans/260614-0222-fix-session-id-discoverability/`.)*
+- [x] **Require reading the rule/change-log before bulk archive.** A simple prompt guard: when `meta_state_archive` is called with more than one entry, the assistant must list each entry's `entry_kind`, `description`, and `status` and confirm with the operator before proceeding. *(Implemented: `meta_state_archive` now returns a preview for `override` arrays with length > 1 and requires `confirm: true` to proceed. Plan: `plans/260614-0232-bulk-archive-preview-guard/`.)*
 
 ### Long-term (P2)
 
@@ -123,6 +123,6 @@ A rule that is `active` should not carry a `resolved_at` timestamp. This will co
 
 ## Unresolved Questions
 
-- Is an active rule that still carries `resolved_at`/`resolution` acceptable to the gate logic, or should it be cleaned immediately?
-- Should `meta_state_archive` gain a dedicated `unarchive` capability, or should unarchiving be folded into `meta_state_patch`?
-- Should rules and loop-designs be allowed to pass through `meta_state_resolve` at all, or should the tool be strictly limited to findings?
+- [x] ~~Is an active rule that still carries `resolved_at`/`resolution` acceptable to the gate logic, or should it be cleaned immediately?~~ Resolved: registry entry cleaned; no `resolved_at`/`resolution` remains.
+- [ ] Should `meta_state_archive` gain a dedicated `unarchive` capability, or should unarchiving be folded into `meta_state_patch`?
+- [ ] Should rules and loop-designs be allowed to pass through `meta_state_resolve` at all, or should the tool be strictly limited to findings?
