@@ -39,7 +39,7 @@ function setupFixture() {
       status: "superseded",
       consolidated_into: "PENDING-PHASE-2-LOOP-DESIGN-ID",
       description: "Instruction layer for agents: should we add a loop_get_instruction MCP tool, extend loop_describe, or embed the rules in AGENTS.md? TBD in a future session.",
-      created_at: "2026-06-06T04:21:32.000Z",
+      created_at: "2026-06-13T04:21:32.000Z",
     },
   ];
   writeFileSync(join(root, "meta-state.jsonl"), entries.map(JSON.stringify).join("\n") + "\n", "utf8");
@@ -101,7 +101,7 @@ test("migration emits loop-design entry from design-note finding and backfills c
       status: "superseded",
       consolidated_into: "PENDING-PHASE-2-LOOP-DESIGN-ID",
       description: "Instruction layer for agents: should we add a loop_get_instruction MCP tool, extend loop_describe, or embed the rules in AGENTS.md? TBD in a future session.",
-      created_at: "2026-06-06T04:21:32.000Z",
+      created_at: "2026-06-13T04:21:32.000Z",
     },
   ];
   writeFileSync(join(root, "meta-state.jsonl"), entries.map(JSON.stringify).join("\n") + "\n", "utf8");
@@ -116,6 +116,7 @@ test("migration emits loop-design entry from design-note finding and backfills c
   assert.deepEqual(newDesign.addresses, []);
 
   const sourceFinding = after.find((e) => e.id === "meta-260606T0421Z-instruction-layer-for-agents-tbd");
+  assert(sourceFinding, "source finding should still exist after migration (not compacted)");
   assert.equal(sourceFinding.consolidated_into, "loop-design-instruction-layer", "consolidated_into not backfilled");
 });
 

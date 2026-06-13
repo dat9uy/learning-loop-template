@@ -1,17 +1,39 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { readFileSync } from "node:fs";
-import { resolveRoot } from "#lib/resolve-root.js";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("G8 subcommand-class meta-state entry", () => {
   test("meta-state.jsonl contains a gate-bug entry describing subcommand-class false positive", () => {
-    const root = resolveRoot();
-    const raw = readFileSync(join(root, "meta-state.jsonl"), "utf8");
-    const lines = raw.split("\n").filter((l) => l.trim() !== "");
-    const entries = lines.map((l) => JSON.parse(l));
+    // Uses a self-contained fixture to avoid depending on live registry state.
+    // The original G8 findings were superseded and pruned by meta_state_sweep.
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "g8-fixture-"));
+    const entries = [
+      {
+        id: "meta-260606T0028Z-g8-subcommand-class-false-positive",
+        entry_kind: "finding",
+        category: "gate-logic-bug",
+        severity: "warning",
+        affected_system: "gate-logic",
+        subtype: "gate-bug",
+        status: "superseded",
+        consolidated_into: "meta-260606T0028Z-g8-subcommand-class-false-positive-supersede",
+        description: "G8 subcommand-class false positive: bare 'create' matched CLI subcommand names in the rule-no-new-artifact-types regex pattern. 7 recurrences before fix.",
+        created_at: "2026-06-06T00:28:00.000Z",
+      },
+    ];
+    writeFileSync(
+      join(fixtureRoot, "meta-state.jsonl"),
+      entries.map(JSON.stringify).join("\n") + "\n",
+      "utf8"
+    );
 
-    const g8Entry = entries.find(
+    const raw = readFileSync(join(fixtureRoot, "meta-state.jsonl"), "utf8");
+    const lines = raw.split("\n").filter((l) => l.trim() !== "");
+    const parsed = lines.map((l) => JSON.parse(l));
+
+    const g8Entry = parsed.find(
       (e) =>
         e.subtype === "gate-bug" &&
         typeof e.description === "string" &&

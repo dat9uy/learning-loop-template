@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { readRegistry } from "#mcp/core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -88,37 +90,58 @@ test("Phase 5: backfill handles #fragment in code_ref paths (C3 + M1)", () => {
   // include a function anchor like "path/to/file.js#functionName". Before
   // the fix, `existsSync` would fail because the path included the fragment.
   // The fix strips the fragment before path resolution.
-  const entries = readRegistry(root);
-  const resolvedWithCodeRef = entries.filter(
-    (e) => e.entry_kind === "finding" && e.status === "resolved" && (e.evidence_code_ref || e.evidence?.code_ref)
+  // Uses a self-contained tmpRoot fixture to avoid depending on live registry state.
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "backfill-fragment-"));
+
+  // Use an absolute path to a real file as the target (guaranteed to exist).
+  const targetFile = join(root, "tools/learning-loop-mcp/scripts/backfill-mechanism-check.mjs");
+  const entries = [
+    {
+      id: "test-fragment-entry",
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      status: "resolved",
+      description: "Test entry with #fragment in evidence_code_ref",
+      evidence_code_ref: `${targetFile}#computeFileHash`,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "test-colon-line-entry",
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      status: "resolved",
+      description: "Test entry with :line suffix in evidence_code_ref",
+      evidence_code_ref: `${targetFile}:16`,
+      created_at: new Date().toISOString(),
+    },
+  ];
+  writeFileSync(
+    join(fixtureRoot, "meta-state.jsonl"),
+    entries.map(JSON.stringify).join("\n") + "\n",
+    "utf8"
   );
 
-  // All resolved findings with a code_ref should have been backfilled,
-  // UNLESS the file at the path doesn't exist. The 2 previously-skipped
-  // entries with #fragment (gate-logic.js#splitSegments, loop-surface-inject.cjs#spawnAndCall)
-  // should now be backfilled.
-  const splitSegments = entries.find(
-    (e) => e.id === "meta-260606T0301Z-splitsegments-quote-unaware-bash-gate-false-positive"
-  );
-  assert.ok(splitSegments, "splitsegments entry should exist");
-  assert.strictEqual(
-    splitSegments.mechanism_check,
-    true,
-    "splitsegments entry should be backfilled (was skipped before the #fragment fix)"
-  );
+  execSync(`node ${scriptPath.pathname} --root=${fixtureRoot}`, { cwd: root, stdio: "pipe" });
+
+  const after = readRegistry(fixtureRoot);
+  const fragmentEntry = after.find((e) => e.id === "test-fragment-entry");
+  assert.ok(fragmentEntry, "fragment entry should exist");
+  assert.strictEqual(fragmentEntry.mechanism_check, true, "fragment entry should be backfilled");
   assert.ok(
-    splitSegments.code_fingerprint?.startsWith("sha256:"),
-    "splitsegments entry should have a sha256 fingerprint"
+    fragmentEntry.code_fingerprint?.startsWith("sha256:"),
+    "fragment entry should have a sha256 fingerprint"
   );
 
-  const mcpTools = entries.find(
-    (e) => e.id === "meta-260606T0443Z-mcp-tools-not-loaded-into-agent-tool-list"
-  );
-  assert.ok(mcpTools, "mcp-tools entry should exist");
-  assert.strictEqual(
-    mcpTools.mechanism_check,
-    true,
-    "mcp-tools entry should be backfilled (was skipped before the #fragment fix)"
+  const colonEntry = after.find((e) => e.id === "test-colon-line-entry");
+  assert.ok(colonEntry, "colon-line entry should exist");
+  assert.strictEqual(colonEntry.mechanism_check, true, "colon-line entry should be backfilled");
+  assert.ok(
+    colonEntry.code_fingerprint?.startsWith("sha256:"),
+    "colon-line entry should have a sha256 fingerprint"
   );
 });
 

@@ -24,7 +24,9 @@ function computeFileHash(absPath) {
   }
 }
 
-const root = resolveRoot();
+const args = process.argv.slice(2);
+const rootArg = args.find((a) => a.startsWith("--root="));
+const root = rootArg ? rootArg.slice("--root=".length) : resolveRoot();
 const entries = readRegistry(root);
 
 const resolvedFindings = entries.filter(

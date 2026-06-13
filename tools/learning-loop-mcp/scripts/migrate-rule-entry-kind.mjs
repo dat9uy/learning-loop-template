@@ -171,7 +171,9 @@ async function main() {
   console.log(`\nMigration complete: ${newRules.length} rules extracted, ${newDesigns.length} loop-designs emitted, ${newRules.length + newDesigns.length} source findings mutated.`);
 }
 
-main().catch((err) => {
+try {
+  await main();
+} catch (err) {
   console.error(err);
   process.exit(1);
-});
+}
