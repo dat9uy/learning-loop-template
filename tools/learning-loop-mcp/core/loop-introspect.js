@@ -180,32 +180,19 @@ export function listAllFindings(root, { categories } = {}) {
 export function listPromotedRules(root) {
   const rules = loadPromotedRules(root);
   return rules
-    .filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required")
-    .map((r) => {
-      if (r.entry_kind === "rule") {
-        return {
-          id: r.id,
-          rule_id: r.id,
-          pattern_type: r.pattern_type,
-          pattern: r.pattern,
-          enforcement: r.enforcement,
-          status: r.status,
-          origin: r.origin,
-          scope_predicate: r.scope_predicate,
-          applies_to_resolution: r.applies_to_resolution,
-          description: r.description,
-        };
-      }
-      return {
-        id: r.id,
-        rule_id: r.promoted_to_rule.rule_id,
-        pattern_type: r.promoted_to_rule.pattern_type,
-        pattern: r.promoted_to_rule.pattern,
-        enforcement: r.promoted_to_rule.enforcement,
-        status: r.status,
-        origin: r.promoted_to_rule.promoted_at,
-      };
-    });
+    .filter((r) => r.pattern_type !== "resolution-evidence-required")
+    .map((r) => ({
+      id: r.id,
+      rule_id: r.id,
+      pattern_type: r.pattern_type,
+      pattern: r.pattern,
+      enforcement: r.enforcement,
+      status: r.status,
+      origin: r.origin,
+      scope_predicate: r.scope_predicate,
+      applies_to_resolution: r.applies_to_resolution,
+      description: r.description,
+    }));
 }
 
 /**

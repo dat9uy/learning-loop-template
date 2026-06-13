@@ -36,16 +36,16 @@ describe("gate promoted rules regression", () => {
     assert.deepStrictEqual(rules, []);
   });
 
-  test("loadPromotedRules returns empty when no loop-anti-pattern entries", () => {
+  test("loadPromotedRules returns empty when no entry_kind=rule entries", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-"));
     const metaPath = join(tempDir, "meta-state.jsonl");
     writeFileSync(
       metaPath,
       JSON.stringify({
         id: "meta-test",
+        entry_kind: "finding",
         category: "gate-logic-bug",
         status: "active",
-        promoted_to_rule: { enforcement: "gate", pattern_type: "regex", pattern: "test" },
       }) + "\n"
     );
     const rules = loadPromotedRules(tempDir);
@@ -57,36 +57,30 @@ describe("gate promoted rules new behavior", () => {
   test("regex rule matches command and returns escalate", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-no-docker",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-no-docker",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "docker\\s+run",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "docker\\s+run",
       },
     ];
     const result = applyPromotedRules("docker run ubuntu", null, rules);
     assert.strictEqual(result.decision, "escalate");
     assert.strictEqual(result.rule_id, "rule-no-docker");
-    assert.strictEqual(result.meta_state_id, "meta-1");
+    assert.strictEqual(result.meta_state_id, "rule-no-docker");
     assert.strictEqual(result.pattern_type, "regex");
   });
 
   test("glob rule matches file path and returns escalate", () => {
     const rules = [
       {
-        id: "meta-2",
-        category: "loop-anti-pattern",
+        id: "rule-no-secrets",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-no-secrets",
-          enforcement: "gate",
-          pattern_type: "glob",
-          pattern: "product/**/secrets/**",
-        },
+        enforcement: "gate",
+        pattern_type: "glob",
+        pattern: "product/**/secrets/**",
       },
     ];
     const result = applyPromotedRules(null, "product/api/secrets/config.yaml", rules);
@@ -97,15 +91,12 @@ describe("gate promoted rules new behavior", () => {
   test("regex rule does not match returns ok", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-no-docker",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-no-docker",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "docker\\s+run",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "docker\\s+run",
       },
     ];
     const result = applyPromotedRules("ls -la", null, rules);
@@ -115,15 +106,12 @@ describe("gate promoted rules new behavior", () => {
   test("glob rule does not match returns ok", () => {
     const rules = [
       {
-        id: "meta-2",
-        category: "loop-anti-pattern",
+        id: "rule-no-secrets",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-no-secrets",
-          enforcement: "gate",
-          pattern_type: "glob",
-          pattern: "product/**/secrets/**",
-        },
+        enforcement: "gate",
+        pattern_type: "glob",
+        pattern: "product/**/secrets/**",
       },
     ];
     const result = applyPromotedRules(null, "docs/readme.md", rules);
@@ -133,15 +121,12 @@ describe("gate promoted rules new behavior", () => {
   test("inactive rule status reported is ignored", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-no-docker",
+        entry_kind: "rule",
         status: "reported",
-        promoted_to_rule: {
-          rule_id: "rule-no-docker",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "docker\\s+run",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "docker\\s+run",
       },
     ];
     const result = applyPromotedRules("docker run ubuntu", null, rules);
@@ -151,15 +136,12 @@ describe("gate promoted rules new behavior", () => {
   test("non-gate enforcement agent is ignored", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-no-docker",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-no-docker",
-          enforcement: "agent",
-          pattern_type: "regex",
-          pattern: "docker\\s+run",
-        },
+        enforcement: "agent",
+        pattern_type: "regex",
+        pattern: "docker\\s+run",
       },
     ];
     const result = applyPromotedRules("docker run ubuntu", null, rules);
@@ -169,15 +151,12 @@ describe("gate promoted rules new behavior", () => {
   test("invalid regex is caught and skipped without crash", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-bad",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-bad",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "[invalid(",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "[invalid(",
       },
     ];
     const result = applyPromotedRules("anything", null, rules);
@@ -187,26 +166,20 @@ describe("gate promoted rules new behavior", () => {
   test("multiple rules returns first match", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-first",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-first",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: ".*",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: ".*",
       },
       {
-        id: "meta-2",
-        category: "loop-anti-pattern",
+        id: "rule-second",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-second",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: ".*",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: ".*",
       },
     ];
     const result = applyPromotedRules("test", null, rules);
@@ -220,15 +193,12 @@ describe("gate promoted rules new behavior", () => {
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-test",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-test",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) + "\n"
     );
 
@@ -247,15 +217,12 @@ describe("gate promoted rules new behavior", () => {
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-test",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-test",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) + "\n"
     );
 
@@ -266,27 +233,21 @@ describe("gate promoted rules new behavior", () => {
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-test",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-test",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) +
         "\n" +
         JSON.stringify({
-          id: "meta-2",
-          category: "loop-anti-pattern",
+          id: "rule-second",
+          entry_kind: "rule",
           status: "active",
-          promoted_to_rule: {
-            rule_id: "rule-second",
-            enforcement: "gate",
-            pattern_type: "regex",
-            pattern: "second",
-          },
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "second",
         }) +
         "\n"
     );
@@ -298,15 +259,12 @@ describe("gate promoted rules new behavior", () => {
   test("high complexity regex pattern is rejected", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-redos",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-redos",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "(a+)+",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "(a+)+",
       },
     ];
     const result = applyPromotedRules("aaaaaaaaaaaaaaaaaaaaaaaaaaaa!", null, rules);
@@ -316,15 +274,12 @@ describe("gate promoted rules new behavior", () => {
   test("glob outside scope whitelist is rejected", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-traversal",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-traversal",
-          enforcement: "gate",
-          pattern_type: "glob",
-          pattern: "**/secrets/**",
-        },
+        enforcement: "gate",
+        pattern_type: "glob",
+        pattern: "**/secrets/**",
       },
     ];
     const result = applyPromotedRules(null, "product/api/secrets/config.yaml", rules);
@@ -334,81 +289,70 @@ describe("gate promoted rules new behavior", () => {
   test("status disabled rules are excluded", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-disabled",
+        entry_kind: "rule",
         status: "disabled",
-        promoted_to_rule: {
-          rule_id: "rule-disabled",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: ".*",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: ".*",
       },
     ];
     const result = applyPromotedRules("anything", null, rules);
     assert.strictEqual(result.decision, "ok");
   });
 
-  test("loadPromotedRules excludes disabled and non-gate rules", () => {
+  test("loadPromotedRules excludes disabled rules", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-filter-"));
     const metaPath = join(tempDir, "meta-state.jsonl");
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-active",
-        category: "loop-anti-pattern",
+        id: "rule-active",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-active",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "active",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "active",
       }) +
         "\n" +
         JSON.stringify({
-          id: "meta-disabled",
-          category: "loop-anti-pattern",
+          id: "rule-disabled",
+          entry_kind: "rule",
           status: "disabled",
-          promoted_to_rule: {
-            rule_id: "rule-disabled",
-            enforcement: "gate",
-            pattern_type: "regex",
-            pattern: "disabled",
-          },
+          enforcement: "gate",
+          pattern_type: "regex",
+          pattern: "disabled",
         }) +
         "\n" +
         JSON.stringify({
-          id: "meta-agent",
-          category: "loop-anti-pattern",
+          id: "rule-agent",
+          entry_kind: "rule",
           status: "active",
-          promoted_to_rule: {
-            rule_id: "rule-agent",
-            enforcement: "agent",
-            pattern_type: "regex",
-            pattern: "agent",
-          },
+          enforcement: "agent",
+          pattern_type: "regex",
+          pattern: "agent",
         }) +
         "\n"
     );
 
+    // loadPromotedRules returns all active rules; enforcement filtering
+    // happens in applyPromotedRules
     const rules = loadPromotedRules(tempDir);
-    assert.strictEqual(rules.length, 1);
-    assert.strictEqual(rules[0].id, "meta-active");
+    assert.strictEqual(rules.length, 2);
+    const ids = rules.map((r) => r.id);
+    assert.ok(ids.includes("rule-active"));
+    assert.ok(ids.includes("rule-agent"));
   });
 });
 
 describe("gate promoted rules G8 stripMessageFlags", () => {
   const activeRule = {
-    id: "meta-260602T0000Z-escape-hatch",
-    category: "loop-anti-pattern",
+    id: "rule-no-new-artifact-types",
+    entry_kind: "rule",
     status: "active",
-    promoted_to_rule: {
-      rule_id: "rule-no-new-artifact-types",
-      enforcement: "gate",
-      pattern_type: "regex",
-      pattern: "propose|design|create|new\\s+(schema|artifact|directory|convention)",
-    },
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "propose|design|create|new\\s+(schema|artifact|directory|convention)",
   };
 
   test("git commit message with create returns ok (G8 fix)", () => {
@@ -536,19 +480,16 @@ describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
   // The refined pattern is the canonical one shipped by plan
   // 260606-g8-subcommand-class-fix; this test file pins it.
   const activeRule = {
-    id: "meta-260602T0000Z-escape-hatch-abuse-meta-taxonomy-proposal",
-    category: "loop-anti-pattern",
-    status: "resolved", // finding resolved by rule promotion; rule is live
-    promoted_to_rule: {
-      rule_id: "rule-no-new-artifact-types",
-      enforcement: "gate",
-      pattern_type: "regex",
-      pattern:
-        "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
-      promoted_at: "2026-06-01T22:00:13.387Z",
-      refined_at: "2026-06-06T01:55:00.000Z",
-      promoted_by: "operator",
-    },
+    id: "rule-no-new-artifact-types",
+    entry_kind: "rule",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern:
+      "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
+    promoted_at: "2026-06-01T22:00:13.387Z",
+    refined_at: "2026-06-06T01:55:00.000Z",
+    promoted_by: "operator",
   };
 
   test("ck plan create subcommand returns ok (G8 subcommand-class false positive fixed)", () => {
@@ -606,26 +547,23 @@ describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
 });
 
 describe("gate promoted rules status semantics (P1)", () => {
-  test("loadPromotedRules loads status='resolved' entries with promoted_to_rule (rule is live after resolution)", () => {
+  test("loadPromotedRules loads status='active' rule entries", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-resolved-"));
     const metaPath = join(tempDir, "meta-state.jsonl");
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-test-resolved",
-        category: "loop-anti-pattern",
-        status: "resolved",
-        promoted_to_rule: {
-          rule_id: "rule-test-resolved",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        id: "rule-test-active",
+        entry_kind: "rule",
+        status: "active",
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) + "\n"
     );
     const rules = loadPromotedRules(tempDir);
     assert.strictEqual(rules.length, 1);
-    assert.strictEqual(rules[0].id, "meta-test-resolved");
+    assert.strictEqual(rules[0].id, "rule-test-active");
   });
 
   test("loadPromotedRules does NOT load status='disabled' (explicit kill switch)", () => {
@@ -634,33 +572,27 @@ describe("gate promoted rules status semantics (P1)", () => {
     writeFileSync(
       metaPath,
       JSON.stringify({
-        id: "meta-test-disabled",
-        category: "loop-anti-pattern",
+        id: "rule-test-disabled",
+        entry_kind: "rule",
         status: "disabled",
-        promoted_to_rule: {
-          rule_id: "rule-test-disabled",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) + "\n"
     );
     const rules = loadPromotedRules(tempDir);
     assert.strictEqual(rules.length, 0);
   });
 
-  test("applyPromotedRules accepts status='resolved' rules (mirrors loadPromotedRules)", () => {
+  test("applyPromotedRules accepts status='active' rules", () => {
     const rules = [
       {
-        id: "meta-1",
-        category: "loop-anti-pattern",
-        status: "resolved",
-        promoted_to_rule: {
-          rule_id: "rule-resolved-test",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "match-me",
-        },
+        id: "rule-resolved-test",
+        entry_kind: "rule",
+        status: "active",
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "match-me",
       },
     ];
     const result = applyPromotedRules("please match-me here", null, rules);

@@ -39,10 +39,8 @@ describe("checkResolutionEvidence", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
     const { checkResolutionEvidence } = await importGateLogic();
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        pattern: "test-session-id",
-      },
+      id: "rule-test",
+      pattern: "test-session-id",
     };
     const result = checkResolutionEvidence(rule, tempRoot);
     assert.strictEqual(result.satisfied, true);
@@ -69,11 +67,9 @@ describe("checkResolutionEvidence", () => {
 
     const { checkResolutionEvidence } = await importGateLogic();
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        pattern: "test-session-id",
+      id: "rule-test",
+      pattern: "test-session-id",
         applies_to_resolution: "meta-target-finding",
-      },
     };
     const result = checkResolutionEvidence(rule, tempRoot);
     assert.strictEqual(result.satisfied, false);
@@ -102,10 +98,8 @@ describe("checkResolutionEvidence", () => {
 
     const { checkResolutionEvidence } = await importGateLogic();
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        pattern: "test-session-id",
-      },
+      id: "rule-test",
+      pattern: "test-session-id",
     };
     const result = checkResolutionEvidence(rule, tempRoot);
     assert.strictEqual(result.satisfied, false);
@@ -136,10 +130,8 @@ describe("checkResolutionEvidence", () => {
 
     const { checkResolutionEvidence } = await importGateLogic();
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        pattern: "test-session-id",
-      },
+      id: "rule-test",
+      pattern: "test-session-id",
     };
     const result = checkResolutionEvidence(rule, tempRoot);
     assert.strictEqual(result.satisfied, true);
@@ -171,11 +163,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -217,11 +207,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -253,11 +241,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -295,11 +281,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -331,11 +315,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -366,11 +348,9 @@ describe("checkResolutionEvidence", () => {
     });
 
     const rule = {
-      promoted_to_rule: {
-        rule_id: "rule-no-orphaned-evidence",
-        pattern: "*",
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
         applies_to_resolution: "*",
-      },
     };
 
     const result = checkResolutionEvidence(rule, tempRoot);
@@ -383,14 +363,11 @@ describe("applyPromotedRules resolution-evidence-required", () => {
   test("skips resolution-evidence-required pattern type (returns ok)", async () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
+      id: "rule-test",
       status: "active",
-      category: "loop-anti-pattern",
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-      },
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
     };
     const result = applyPromotedRules("mvn install -DskipTests", null, [rule]);
     assert.deepStrictEqual(result, { decision: "ok" });
@@ -403,14 +380,11 @@ describe("applyPromotedRules resolution-evidence-required", () => {
     // just created log spam. Lock in the silent-skip behavior.
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
+      id: "rule-test",
       status: "active",
-      category: "loop-anti-pattern",
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-      },
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
     };
 
     // Capture stderr/stdout around the call.
@@ -437,21 +411,13 @@ describe("applyPromotedRules resolution-evidence-required", () => {
   test("legacy alias: skips resolution-evidence-required pattern (test name preserved for history)", async () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
+      id: "rule-test",
       status: "active",
-      category: "loop-anti-pattern",
-      promoted_to_rule: {
-        rule_id: "rule-test",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-      },
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
     };
-    // Clone with command and filePath
-    const ruleWithCommand = {
-      ...rule,
-      promoted_to_rule: { ...rule.promoted_to_rule, command: "test" },
-    };
-    const result = applyPromotedRules("test", null, [ruleWithCommand]);
+    const result = applyPromotedRules("test", null, [rule]);
     assert.deepStrictEqual(result, { decision: "ok" });
   });
 });
@@ -631,32 +597,26 @@ describe("listPromotedRules filter", () => {
     writeFileSync(
       join(tempRoot, "meta-state.jsonl"),
       JSON.stringify({
-        id: "meta-1",
-        category: "loop-anti-pattern",
+        id: "rule-regex",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-regex",
-          enforcement: "gate",
-          pattern_type: "regex",
-          pattern: "test",
-        },
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "test",
       }) + "\n" +
       JSON.stringify({
-        id: "meta-2",
-        category: "loop-anti-pattern",
+        id: "rule-resolution",
+        entry_kind: "rule",
         status: "active",
-        promoted_to_rule: {
-          rule_id: "rule-resolution",
-          enforcement: "gate",
-          pattern_type: "resolution-evidence-required",
-          pattern: "test-session-id",
-        },
+        enforcement: "gate",
+        pattern_type: "resolution-evidence-required",
+        pattern: "test-session-id",
       }) + "\n"
     );
 
     const { listPromotedRules } = await importLoopIntrospect();
     const rules = listPromotedRules(tempRoot);
     assert.strictEqual(rules.length, 1);
-    assert.strictEqual(rules[0].id, "meta-1");
+    assert.strictEqual(rules[0].id, "rule-regex");
   });
 });

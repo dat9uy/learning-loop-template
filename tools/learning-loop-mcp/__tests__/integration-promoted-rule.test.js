@@ -151,12 +151,12 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const listText = JSON.parse(listResult.content[0].text);
       assert.strictEqual(listText.count, 1);
-      // Phase 1: finding promoted_to_rule is now a string id; the rule entry is the canonical source
-      assert.strictEqual(listText.entries[0].promoted_to_rule, "rule-test-list");
-      // Also verify the rule entry exists
+      // After Phase 2 migration, promoted_to_rule is no longer written on findings.
+      // The rule entry's origin field is the canonical inverse reference.
       const entries = readRegistry(tempDir);
       const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-list");
       assert.ok(ruleEntry, "Rule entry should exist in registry");
+      assert.strictEqual(ruleEntry.origin, listText.entries[0].id);
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperatorMode;

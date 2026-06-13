@@ -13,7 +13,8 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "created_at",
   "created_by",
   "code_fingerprint",
-  "promoted_to_rule",
+  // promoted_to_rule removed from deny-list — the field is no longer written
+  // on findings after the Phase 2 migration to first-class rule entries.
   "consolidated_into",
   "acked_at",
   "resolved_at",

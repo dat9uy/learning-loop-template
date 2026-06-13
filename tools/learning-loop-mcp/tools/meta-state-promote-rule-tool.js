@@ -136,14 +136,9 @@ export const metaStatePromoteRuleTool = {
     }
 
     // Rule ID uniqueness check (RT Finding 10)
-    // Phase 1: checks both new entry_kind: "rule" entries AND legacy findings
     const alreadyActive = entries.find(
       (e) =>
-        (e.entry_kind === "rule" && e.id === rule_id && e.status === "active") ||
-        (e.entry_kind === "finding" &&
-         e.id !== id &&
-         e.status === "active" &&
-         e.promoted_to_rule?.rule_id === rule_id)
+        e.entry_kind === "rule" && e.id === rule_id && e.status === "active"
     );
     if (alreadyActive) {
       const result = { promoted: false, reason: "rule_id_already_active", id, rule_id };
@@ -177,8 +172,9 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-    // Update the source finding's promoted_to_rule and status
-    await updateEntry(root, id, { status: "active", promoted_to_rule: rule_id });
+    // Update the source finding's status (rule entry's origin field is the
+    // canonical inverse reference; promoted_to_rule on findings is no longer used)
+    await updateEntry(root, id, { status: "active" });
 
     const result = {
       promoted: true,

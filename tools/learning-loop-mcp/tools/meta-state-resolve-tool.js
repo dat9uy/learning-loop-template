@@ -73,8 +73,8 @@ export const metaStateResolveTool = {
 
     // Consult global rules (applies_to_resolution === "*") for every resolution
     for (const rule of rules) {
-      if (rule.promoted_to_rule?.pattern_type !== "resolution-evidence-required") continue;
-      if (rule.promoted_to_rule?.applies_to_resolution !== "*") continue;
+      if (rule.pattern_type !== "resolution-evidence-required") continue;
+      if (rule.applies_to_resolution !== "*") continue;
       const evidence = checkResolutionEvidence(rule, root);
       if (!evidence.satisfied) {
         const result = { resolved: false, reason: "resolution_evidence_required", ...evidence };
@@ -84,8 +84,8 @@ export const metaStateResolveTool = {
     }
 
     for (const rule of rules) {
-      if (rule.promoted_to_rule?.pattern_type !== "resolution-evidence-required") continue;
-      if (rule.promoted_to_rule?.applies_to_resolution !== id) continue;
+      if (rule.pattern_type !== "resolution-evidence-required") continue;
+      if (rule.applies_to_resolution !== id) continue;
       const evidence = checkResolutionEvidence(rule, root);
       if (!evidence.satisfied) {
         const result = {
