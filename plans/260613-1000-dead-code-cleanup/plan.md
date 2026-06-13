@@ -1,7 +1,7 @@
 ---
 title: "Dead Code Cleanup — Post Phase A Sweep"
 description: "Remove 42 confirmed-dead files identified by fallow dead-code --format json and verified by researcher agents. Splits into 5 deletion phases + 1 unused-export cleanup phase."
-status: pending
+status: complete
 priority: P2
 branch: "main"
 tags: [cleanup, dead-code, fallow, post-phase-a]
@@ -38,19 +38,19 @@ After completing `plans/260612-1700-meta-surface-re-debate` (Phase A), fallow id
 
 | Phase | Name | Files | Status | Effort | Dependencies |
 |-------|------|-------|--------|--------|--------------|
-| 1 | [Delete One-off Scripts](./phase-01-delete-one-off-scripts.md) | 15 | pending | 15min | — |
-| 2 | [Delete Dead Core Modules](./phase-02-delete-dead-core-modules.md) | 6 | pending | 15min | — |
-| 3 | [Delete Dead Tool Directories](./phase-03-delete-dead-tool-directories.md) | 9 | pending | 15min | — |
-| 4 | [Delete Dead CLI Shims](./phase-04-delete-dead-cli-shims.md) | 9 | pending | 15min | — |
-| 5 | [Delete Dead Fixtures and Tests](./phase-05-delete-dead-fixtures-and-tests.md) | 5 | pending | 15min | — |
-| 6 | [Remove Unused Exports](./phase-06-remove-unused-exports.md) | 92 exports | pending | 30min | 1-5 |
+| 1 | [Delete One-off Scripts](./phase-01-delete-one-off-scripts.md) | 17 | complete | 15min | — |
+| 2 | [Delete Dead Core Modules](./phase-02-delete-dead-core-modules.md) | 6 | complete | 15min | — |
+| 3 | [Delete Dead Tool Directories](./phase-03-delete-dead-tool-directories.md) | 9 | complete | 15min | — |
+| 4 | [Delete Dead CLI Shims](./phase-04-delete-dead-cli-shims.md) | 9 | complete | 15min | — |
+| 5 | [Delete Dead Fixtures and Tests](./phase-05-delete-dead-fixtures-and-tests.md) | 7 | complete | 15min | — |
+| 6 | [Remove Unused Exports](./phase-06-remove-unused-exports.md) | 13 files | complete | 30min | 1-5 |
 
 ## Success Criteria
 
-- [ ] All 42 confirmed-dead files deleted
-- [ ] `pnpm test` passes after each phase
-- [ ] `fallow dead-code --format json` total_issues reduced from 179 to ~85 (remaining = false positives + macro-client exports)
-- [ ] No regressions in MCP server startup or hook execution
+- [x] All 42 confirmed-dead files deleted (+ 6 additional orphaned test/fixture files)
+- [x] `pnpm test` passes after each phase
+- [x] `fallow dead-code --format json` total_issues reduced from 179 to 91 (remaining = runtime-loaded false positives)
+- [x] No regressions in MCP server startup or hook execution
 
 ## Risk Assessment
 
