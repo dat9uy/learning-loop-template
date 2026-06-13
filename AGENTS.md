@@ -96,7 +96,7 @@ The universal hooks handle tool name differences between surfaces:
 | Tool | Purpose |
 |------|---------|
 | `meta_state_report` | Create a finding (ephemeral, 24h TTL) |
-| `meta_state_list` | Query the registry (filterable by `entry_kind`, `status`, `category`, etc.) |
+| `meta_state_list` | Query the registry (filterable by `entry_kind`, `status`, `category`, `session_id`, etc.) |
 | `meta_state_ack` | Promote a finding from `reported` to `active` (removes 24h TTL) |
 | `meta_state_resolve` | Mark a finding as resolved (consults active rules; may require fingerprint refresh) |
 | `meta_state_promote_rule` | Promote a finding into a `rule` entry (enforcement: gate \| agent) |

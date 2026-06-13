@@ -98,5 +98,5 @@ The 4-question framework for picking a tool:
 ## When in doubt
 
 Call `loop_describe({ tier: "warm" })` first. The `discoverability_hints` block
-in the response surfaces 8 short reminders of the loop's rules (cite code, not
+in the response surfaces short reminders of the loop's rules (cite code, not
 markdown; canonical tool, not escape hatch; etc.).

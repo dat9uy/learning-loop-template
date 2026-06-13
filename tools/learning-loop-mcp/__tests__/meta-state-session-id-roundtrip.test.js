@@ -98,6 +98,15 @@ test("meta_state_list filters by session_id (exact match)", async () => {
     for (const e of list.entries) {
       assert.equal(e.session_id, sessionA, "all returned entries should match sessionA");
     }
+
+    // Compact output should still surface session_id
+    const compactResult = await metaStateListTool.handler({ session_id: sessionA, compact: true });
+    const compactList = JSON.parse(compactResult.content[0].text);
+    assert.equal(compactList.count, 2, "compact filter by session_id should return same count");
+    for (const e of compactList.entries) {
+      assert.equal(e.session_id, sessionA, "compact output should include session_id");
+    }
+
     assert.deepEqual(list.filters_applied, { session_id: sessionA });
 
     // Filter by sessionB

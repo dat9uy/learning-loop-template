@@ -248,3 +248,47 @@ describe("meta_state_list compact mode", () => {
     }
   });
 });
+
+describe("meta_state_list compact mode session_id", () => {
+  let root;
+  let originalGateRoot;
+
+  before(() => {
+    root = makeTempRoot();
+    originalGateRoot = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = root;
+
+    writeRegistry(root, [
+      {
+        id: "compact-finding-with-session",
+        entry_kind: "finding",
+        status: "active",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Finding with session_id for compact test (min 20 chars)",
+        created_at: new Date().toISOString(),
+        session_id: "test-session-abc-123",
+      },
+    ]);
+  });
+
+  after(() => {
+    process.env.GATE_ROOT = originalGateRoot;
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  test("compact output includes session_id when present on entry", async () => {
+    const result = await metaStateListTool.handler({
+      compact: true,
+    });
+    const text = JSON.parse(result.content[0].text);
+    const entry = text.entries.find((e) => e.id === "compact-finding-with-session");
+    assert.ok(entry, "entry should be in compact output");
+    assert.strictEqual(
+      entry.session_id,
+      "test-session-abc-123",
+      "compact output should include session_id"
+    );
+  });
+});
