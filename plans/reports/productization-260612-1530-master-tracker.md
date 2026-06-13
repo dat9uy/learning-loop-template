@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-13 (Phase A closed; this session updates the report for consistency with the post-Phase A implementation, no scope change)
+**Last updated:** 2026-06-13 (Phase B scoping brainstorm; test baseline corrected to 862/861)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -23,6 +23,7 @@
 - `core/loop-introspect.js#DISCOVERABILITY_HINTS` H14 hint added
 - Cold-session test fixed (regression: was calling deleted `record_create_decision`); `pnpm test:cold-session` passes 8/8
 - `pnpm test` passes 934/937 (1 skipped, 2 pre-existing failures in `migrate-rule-entry-kind.test.js` unrelated to Phase A)
+- **Verified baseline (2026-06-13):** `pnpm test` is **862 tests** (861 pass, 1 skip, 0 fail, 102 suites). The delta from 937 → 862 is from the 22 tool deletions in Phase 7 (each tool's `.test.js` sibling was also removed). The 934/937 figure above was the intermediate count before the cleanup settled.
 
 **Audit-trail entries filed (queryable via `meta_state_list`):**
 - `meta-260613T0138Z-phase-a-tools-deleted` (change-log, 22 tools removed)
@@ -76,12 +77,14 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 
 **Bucket:** codegen for writers + validators for the 4 meta-surface entry kinds. Pre-condition: SP3 schema stability (mechanical check + 1 release cycle post-2026-06-05). Tied to Report 2 (Bridge 5 design proposal).
 
-- [ ] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- schemas/*.schema.json` shows no diff for the 4 meta-surface kinds (`finding`, `change-log`, `rule`, `loop-design`).
-- [ ] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). Estimated cost: ~6h, 4 sub-phases.
-- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written.
-- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Note (2026-06-13):** pre-Phase A baseline was 985 tests (984 pass, 1 skipped); post-Phase A is 937 tests (934 pass, 1 skipped, 2 pre-existing failures in `migrate-rule-entry-kind.test.js` unrelated to Phase A). The test count delta is from the 22 tool deletions in Phase 7 (each tool's `.test.js` sibling was also removed).
-- [ ] **B5** Update `core/schema-to-zod.js` to be the single source for the 4 meta-surface kinds. Delete the 4 ad-hoc reader patches (buildRegistrySummary, fix-loop-design-refs.mjs, cold-tier-regression.test.js, fix-loop-design-refs.test.js) per the Bridge 5 design's Phase 3.
-- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped) once Approach 3 lands. Run `meta_state_patch` to update the entry's `proposed_design_for` and `addresses`. Resolve `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (currently active, expires 2026-06-13).
+**Scoping (2026-06-13):** Brainstorm at `plans/reports/brainstorm-260613-1146-phase-b-bridge-5-core-fix.md`. Decisions: adapt Report 2 (update numbers), proceed despite SP3 instability (TDD catches divergence), create `core/schema-to-zod.js` fresh, B1-B2 only this session (B3-B6 deferred). SP3 check shows 15 commits to `meta-state.js` since 2026-06-05 — schemas are NOT stable but TDD Phase 0 locks the contract. Ad-hoc patches are 6 locations (not 4 as Report 2 assumed). Wire-format tests updated to assert flat arrays.
+
+- [ ] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- tools/learning-loop-mcp/core/meta-state.js` — informational, not blocking (15 commits found; TDD Phase 0 catches divergence).
+- [ ] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). Estimated cost: ~3-4h for B2 sub-phases (B2-0: TDD, B2-1: codegen, B2-2: wiring, B2-3: cleanup, B2-4: test suite + close findings).
+- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written. **Deferred** — B2 fixes the structural blocker; broader adoption is incremental.
+- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Verified baseline (2026-06-13):** 862 tests (861 pass, 1 skip, 0 fail, 102 suites). **Deferred** — B2-4 covers the patch tool scope.
+- [ ] **B5** Update `core/schema-to-zod.js` to be the single source for the 4 meta-surface kinds. Delete the 6 ad-hoc reader patches (loop-introspect.js, fix-loop-design-refs.mjs, fix-loop-design-refs.test.js, cold-tier-regression.test.js, meta-state-list-ref-by-filter.test.js, meta-state-list-tool.js) per the Bridge 5 design's Phase 3. **Deferred** — B2-1 creates the file; B5 expands it.
+- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped) once Approach 3 lands. Run `meta_state_patch` to update the entry's `proposed_design_for` and `addresses`. Resolve `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (currently active, expires 2026-06-13). **Deferred** — depends on B3-B5 shipping.
 
 ---
 
@@ -92,7 +95,7 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 - [ ] **C1** Add `@mastra/core` + `@mastra/mcp` to a new `tools/learning-loop-mastra/` package.
 - [ ] **C2** Build a parallel `MCPServer` registering the ~36 meta-state deterministic tools (`gate_check`, `meta_state_*` algorithmic, `loop_describe`, `loop_get_instruction`, the bound `record_*` minus observation per §3.10).
 - [ ] **C3** Run it as a peer MCP server on stdio (different `command` entry in `.mcp.json` + `.factory/mcp.json`).
-- [ ] **C4** Verify byte-identical output for the meta-surface subset. The test suite (post-Phase A: 937 tests, 934 pass, 1 skipped, 116 suites, 2 pre-existing failures in `migrate-rule-entry-kind.test.js`; pre-Phase A baseline was 985 tests / 147 suites) is the gate.
+- [ ] **C4** Verify byte-identical output for the meta-surface subset. The test suite (verified 2026-06-13: 862 tests, 861 pass, 1 skip, 102 suites, 0 fail; pre-Phase A baseline was 985 tests / 147 suites) is the gate.
 - [ ] **C5** Reproduce `coerceParamsToSchema` + `installWireFormatCoercion` in Mastra's `createTool` `inputSchema` (per F7 / §3.6 / §8 Q3). The helpers are in `tools/learning-loop-mcp/tool-registry.js` lines 77-134 (`coerceParamsToSchema`) and 197-235 (`installWireFormatCoercion`); equivalent behavior in Mastra is `createTool({inputSchema})` with `.preprocess()` or a Zod transform, OR `beforeToolCall` lifecycle hook.
 - [ ] **C6** Cut over: replace the existing `@modelcontextprotocol/sdk` `McpServer` with the Mastra `MCPServer` for the deterministic subset. Two servers during transition; one server post-cut-over.
 - [ ] **C7** Update `tools/learning-loop-mcp/agent-manifest.json` to the new group names (per §3.4 Phase 4 + §3.10 tool surface table).
