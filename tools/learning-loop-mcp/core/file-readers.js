@@ -21,6 +21,7 @@ function resolveRoot() {
  * Uses uniqueKeys: false to tolerate duplicate YAML keys.
  * Returns array of parsed observations, or [] on error.
  */
+// fallow-ignore-next-line complexity
 export function readObservations(root) {
   const obsDir = join(root || resolveRoot(), "records", "observations");
   try {
@@ -48,6 +49,7 @@ export function readObservations(root) {
  * Read budget YAML files (*-resource-budget.yaml) from records/observations/.
  * Returns array of parsed budgets, or [] on error.
  */
+// fallow-ignore-next-line complexity
 function readBudgets(root) {
   const obsDir = join(root || resolveRoot(), "records", "observations");
   try {

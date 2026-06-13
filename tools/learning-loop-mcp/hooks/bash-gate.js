@@ -47,6 +47,7 @@ function commandWritesToRecords(command) {
   return PATH_WRITE_PATTERNS.some((p) => p.test(command));
 }
 
+// fallow-ignore-next-line complexity
 function main() {
   const stdin = readFileSync(0, "utf8");
   const input = parseInput(stdin);

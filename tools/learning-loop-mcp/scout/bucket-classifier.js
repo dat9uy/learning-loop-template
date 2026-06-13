@@ -47,6 +47,7 @@ const BLOCK_START = /^\s*(test|it|beforeEach|afterEach|before|after|describe)\s*
  * Algorithm: line-by-line brace-counting. Nested describes are treated as
  * their outermost test (regex is 1-level deep per F3).
  */
+// fallow-ignore-next-line complexity
 function parseBlockRanges(lines) {
   const ranges = [];
   const stack = [];
@@ -79,6 +80,7 @@ function parseBlockRanges(lines) {
  * Classify a line number as "test logic" (inside test/it) or "setup" (inside
  * beforeEach/afterEach/before/after).
  */
+// fallow-ignore-next-line complexity
 function classifyLine(lineNum, ranges) {
   for (const r of ranges) {
     if (lineNum >= r.start && lineNum <= (r.end || lineNum)) {
@@ -95,6 +97,7 @@ function classifyLine(lineNum, ranges) {
  * @param {string} sourceCode - source code of the test file
  * @returns {{ bucket: "A" | "B" | "C" | "D" | "error", reason: string }}
  */
+// fallow-ignore-next-line complexity
 export function classifyBucket(testFilePath, sourceCode) {
   if (!sourceCode || sourceCode.trim() === "") {
     return { bucket: "error", reason: "empty source" };

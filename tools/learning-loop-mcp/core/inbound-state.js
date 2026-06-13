@@ -28,6 +28,7 @@ function readSidecar(root) {
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
  * Markers older than MARKER_TTL_MS are treated as non-existent.
  */
+// fallow-ignore-next-line complexity
 export function readLastOperatorMessage(root) {
   try {
     // Priority: env var > .claude > .factory
@@ -84,6 +85,7 @@ export function readLastOperatorMessage(root) {
  * check the runtime-state.jsonl sidecar instead — the sidecar is the source of truth
  * for substrate-facing state.
  */
+// fallow-ignore-next-line complexity
 export function checkObservationStaleness(observations, root) {
   const marker = readLastOperatorMessage(root);
   if (!marker || !marker.timestamp) return { stale: false };

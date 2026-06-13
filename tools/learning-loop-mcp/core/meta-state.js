@@ -1,3 +1,4 @@
+// fallow-ignore-file complexity — registry CRUD with Zod, CAS, TTL
 import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";

@@ -26,6 +26,7 @@ function getAllowedDescription(recordType) {
   return roots.join(", ");
 }
 
+// fallow-ignore-next-line complexity
 function validateMetaStateRef(entryId, root) {
   if (!entryId || entryId.length === 0) {
     return { valid: false, error: "must contain a meta-state entry ID" };
@@ -56,6 +57,7 @@ function validateMetaStateRef(entryId, root) {
  * @param {string} root - The project root path
  * @returns {{valid: boolean, error?: string}}
  */
+// fallow-ignore-next-line complexity
 export function validateSourceRef(ref, recordType, root) {
   if (typeof ref !== "string") {
     return { valid: false, error: `source ref must be a string, got ${typeof ref}` };
@@ -155,6 +157,7 @@ export function validateSourceRefs(refs, recordType, root) {
  * @param {string[]} newRefs - New source refs to append
  * @returns {string[]} - Merged, deduplicated array
  */
+// fallow-ignore-next-line complexity
 export function mergeSourceRefs(existing, newRefs) {
   const merged = [...(existing || [])];
   for (const ref of newRefs || []) {

@@ -23,6 +23,7 @@ const DEFAULT_LATENCIES = {
   otherIo: 3,
 };
 
+// fallow-ignore-next-line complexity
 function loadLatencies() {
   if (typeof process !== "undefined" && process.env && process.env.SCOUT_BUDGET_LATENCIES) {
     try {
@@ -40,6 +41,7 @@ function loadLatencies() {
  *
  * Simple state machine tracking 'string', "string", `template`, /regex/ states.
  */
+// fallow-ignore-next-line complexity
 export function stripComments(sourceText) {
   if (!sourceText) return "";
   let result = "";
@@ -145,6 +147,7 @@ export function stripComments(sourceText) {
  *   wall_clock_estimate, timeout, utilization, risk
  * }}
  */
+// fallow-ignore-next-line complexity
 export function estimateBudget(filePath, promptText, timeoutSeconds) {
   const lat = loadLatencies();
   const cleaned = stripComments(promptText || "");

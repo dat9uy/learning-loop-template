@@ -8,6 +8,7 @@
  * @returns {{ surface, total, covered, percent, missing }}
  */
 
+// fallow-ignore-next-line complexity
 export function analyzeGaps(surface, testFiles) {
   if (!surface || !Array.isArray(surface.items)) {
     return { surface: surface?.name || "unknown", total: 0, covered: 0, percent: 100, missing: [] };

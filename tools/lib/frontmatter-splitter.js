@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "yaml";
 
+// fallow-ignore-next-line complexity
 export function splitFrontmatter(text) {
   const lines = text.split("\n");
 

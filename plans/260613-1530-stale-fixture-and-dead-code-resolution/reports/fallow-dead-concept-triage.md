@@ -93,18 +93,90 @@ The function was **migrated**, not deleted. It now checks staleness of `runtime-
 
 **Lesson:** After deleting a set of tool files, re-run the dead-code analysis. Don't trust the pre-deletion analysis for modules that were imported only by the deleted tools.
 
-## 6. Remaining Fallow Triage (172 findings after dead-file deletion)
+## 6. Remaining 172 Findings — Bucketed Triage
 
-After removing the 17 dead-concept findings, 172 remain:
+After dead-file deletion, 172 findings remain across 63 files + 36 test findings.
 
-| Category | Count | Action |
-|----------|-------|--------|
-| Test files | 36 | Skip (complexity in tests is acceptable) |
-| Meta-surface live tools | ~60 | Complexity suppression or refactor candidates |
-| Scout modules | ~17 | Complexity suppression |
-| Hooks | ~10 | Complexity suppression |
-| Product/web components | 3 | Out of scope (product preflight required) |
-| Scripts | ~4 | Complexity suppression |
-| Other core | ~42 | Manual review needed |
+### Bucket A: Suppress (79 findings, 24 files) — `// fallow-ignore-next-line complexity`
 
-The 6 suppressions already applied (gate-logic.js, tool-registry.js, record-validation-rules.js) are correct for the live code.
+Complexity inherent to the domain. Low change frequency. Not worth refactoring.
+
+**Already suppressed (6):** gate-logic.js (4), tool-registry.js (1), record-validation-rules.js (1)
+
+**Pending suppression (73 findings, 21 files):**
+
+| File | Functions | Why Inherent |
+|------|-----------|-------------|
+| `core/inbound-state.js` | checkObservationStaleness (cc=19), readLastOperatorMessage (cc=17) | Migrated to runtime-state.jsonl; staleness logic is inherently branchy |
+| `core/meta-state.js` | 6 functions (max cc=23) | Registry CRUD with Zod validation, CAS versioning, TTL logic |
+| `core/verification-runner.js` | runVerification (cc=19) | Command execution with timeout, allowlist, shell control |
+| `core/check-grounding.js` | checkGrounding (cc=18), 2 others | SHA-256 fingerprinting + drift detection |
+| `core/derive-status.js` | deriveStatus (cc=10), 2 others | Multi-signal status derivation |
+| `core/query-drift.js` | computeRecommendation (cc=13), 2 others | Drift aggregation across registry |
+| `core/read-registry-cache.js` | readRegistryWithCache (cc=5) | LRU cache with invalidation |
+| `core/file-readers.js` | readObservations (cc=7), readBudgets (cc=7) | YAML directory scanning |
+| `hooks/bash-gate.js` | main (cc=18) | Gate orchestration with pattern matching |
+| `hooks/write-gate.js` | main (cc=16) | Write-path validation |
+| `hooks/inbound-gate.js` | main (cc=7) | Inbound message interception |
+| `hooks/lib/protocol-adapter.js` | normalizeToolName (cc=9), extractPrompt (cc=5) | Protocol normalization |
+| `lib/source-ref-validator.js` | validateSourceRef (cc=15), 2 others | Multi-format ref validation |
+| `scout/bucket-classifier.js` | 4 functions (max cc=12) | File classification heuristics |
+| `scout/dangling-detector.js` | 6 functions (max cc=10) | Multi-pass dangling detection |
+| `scout/gap-analyzer.js` | analyzeGaps (cc=10) | Gap analysis across inventory |
+| `scout/budget-estimator.js` | stripComments (cc=28), 2 others | Comment-aware code analysis |
+| `scout/run-scout.js` | runScout (cc=11), 2 others | Filesystem walk + output generation |
+| `tools/lib/frontmatter-splitter.js` | splitFrontmatter (cc=8) | YAML frontmatter parsing |
+| `tools/lib/resolve-root.js` | resolveRoot (cc=6) | Project root resolution |
+| `.factory/hooks/loop-surface-inject.cjs` | 7 functions (max cc=20) | Hook injection with MCP discovery |
+
+### Bucket B: Refactor Candidates (54 findings, 35 files) — Document for future plans
+
+High complexity in live MCP tool handlers. These are the tool entry points — complexity comes from input validation, error handling, and MCP protocol boilerplate. Each handler is a single function that dispatches to core logic.
+
+**Priority refactor targets (cc > 20):**
+
+| File | Function | cc | Refactor Strategy |
+|------|----------|-----|-------------------|
+| `tools/meta-state-list-tool.js` | handler | 47 | Extract query builder, result formatter, pagination logic |
+| `core/loop-introspect.js` | summarize | 37 | Extract switch cases into strategy map |
+| `core/loop-introspect.js` | buildInverseIndexes | 21 | Extract index builders |
+| `core/loop-introspect.js` | buildRegistrySummary | 21 | Extract summary formatters |
+| `tools/meta-state-relationships-tool.js` | handler | 33 | Extract direction router, result assembler |
+| `tools/gate-tool.js` | handler | 23 | Extract decision tree into gate-logic.js |
+| `tools/meta-state-resolve-tool.js` | handler | 22 | Extract cascade validation |
+| `tools/meta-state-promote-rule-tool.js` | handler | 21 | Extract rule validation |
+| `tools/meta-state-refresh-tools-tool.js` | handler | 21 | Extract import loop |
+| `tools/meta-state-re-verify-tool.js` | handler | 20 | Extract verification orchestration |
+
+**Lower priority (cc 5-19):** 25 more tool handlers + 4 scripts + 3 runtime-state tools. These are manageable complexity; refactor only when touching the file for other reasons.
+
+### Bucket C: Out of Scope (3 findings, 3 files) — Requires product preflight
+
+| File | Function | cc |
+|------|----------|-----|
+| `product/web/src/components/FundamentalTabs.tsx` | FundamentalTabs | 9 |
+| `product/web/src/components/MacroTabs.tsx` | MacroTabs | 8 |
+| `product/web/src/components/SearchBox.tsx` | onSubmit | 7 |
+
+**Action:** None until product preflight is available.
+
+### Bucket D: Skip (36 findings) — Test files
+
+Complexity in test files is acceptable. No action needed.
+
+## 7. Concrete Next Steps
+
+| Step | Action | Findings | Effort |
+|------|--------|----------|--------|
+| 1 | Add `// fallow-ignore-next-line complexity` to all 21 Bucket A files | 73 | 15min |
+| 2 | Create `plans/XXXXXX-fallow-refactor-candidates/plan.md` documenting Bucket B targets | 54 | 30min |
+| 3 | Verify fallow critical count drops after Step 1 | — | 5min |
+| 4 | Bucket B refactors: implement when touching files for other reasons | 54 | ongoing |
+
+**After Step 1:** Expected fallow critical count ≈ 0 (all remaining critical findings are in Bucket B tool handlers or Bucket A suppressed files).
+
+## 8. Systemic Issue (from §5)
+
+**Root cause:** Plan 260613-1000 used `fallow dead-code` but manually overrode its output. After deleting tool files, the core modules they imported became dead — but nobody re-ran the analysis.
+
+**Lesson:** After deleting a set of tool files, re-run dead-code analysis. Don't trust pre-deletion analysis for modules imported only by the deleted tools.

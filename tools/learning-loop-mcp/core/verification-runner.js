@@ -22,6 +22,7 @@ const VERIFY_ALLOWLIST = new Set(patterns["meta-state-verify-cmd-allowlist"] || 
  *   2. spawnSync with shell: false
  *   3. timeout: step.timeout_ms ?? 10_000
  */
+// fallow-ignore-next-line complexity
 export function runVerification(root, step) {
   if (!step || typeof step.cmd !== "string") {
     return { status: "error", signal: "invalid_step" };

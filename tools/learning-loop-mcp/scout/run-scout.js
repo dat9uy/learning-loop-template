@@ -63,7 +63,8 @@ function walkProject(projectRoot, excludeGlobs) {
   const results = [];
   const exclude = excludeGlobs || DEFAULT_EXCLUDE_GLOBS;
 
-  function walk(dir) {
+  // fallow-ignore-next-line complexity
+function walk(dir) {
     let entries;
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -150,6 +151,7 @@ const ERROR_PATHS = [
   "change-log-immutable",
 ];
 
+// fallow-ignore-next-line complexity
 function projectToMarkdown(output) {
   const lines = [];
   lines.push(`# Test Codebase Scout Report`);
@@ -223,6 +225,7 @@ function validateOutput(output, schemaPath) {
  * @param {string[]} [options.excludeGlobs]
  * @returns {object} ScoutOutput
  */
+// fallow-ignore-next-line complexity
 export function runScout(options) {
   const projectRoot = options.projectRoot || process.cwd();
   const excludeGlobs = options.excludeGlobs || DEFAULT_EXCLUDE_GLOBS;

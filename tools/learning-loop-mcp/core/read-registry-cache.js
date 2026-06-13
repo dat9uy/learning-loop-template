@@ -17,6 +17,7 @@ const _cache = new Map();
  *
  * Caller must invoke invalidateCache(root) after any file write.
  */
+// fallow-ignore-next-line complexity
 export function readRegistryWithCache(root, parseFn) {
   const path = join(root, REGISTRY_FILENAME);
   let stat;

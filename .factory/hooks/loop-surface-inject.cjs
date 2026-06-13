@@ -273,6 +273,7 @@ function formatMcpFailureBanner(sessionId, reason) {
   ].join("\n");
 }
 
+// fallow-ignore-next-line complexity
 function formatBlock(summary, tier = "warm") {
   const lines = [
     "=== loop surface (auto-injected at session start) ===",

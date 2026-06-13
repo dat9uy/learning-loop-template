@@ -21,6 +21,7 @@ import { checkGrounding } from "./check-grounding.js";
  * Change-log fast path: SP1 returns kind:"no-signals" for entry_kind:"change-log";
  * those entries are skipped here without further inspection.
  */
+// fallow-ignore-next-line complexity
 export function queryDrift(entries, codeContext = {}) {
   const runGrounding = codeContext.run_grounding === true;
   const driftEvents = [];
@@ -69,6 +70,7 @@ export function queryDrift(entries, codeContext = {}) {
  * `derived_status`. So we also check `derivation.kind === "code-missing"`
  * to detect "the mechanism's file is gone" as a drift event.
  */
+// fallow-ignore-next-line complexity
 function computeIsDrift(derivation, grounding, entry) {
   // Terminal statuses (auto-resolved, resolved, superseded) are always
   // non-drift — the entry's claim is consistent with its terminal state, since
@@ -100,6 +102,7 @@ function computeIsDrift(derivation, grounding, entry) {
  * the lean drift event shape filters to actionable outcomes. `no_action` and
  * `log_drift` are not drift conditions (see `computeIsDrift`).
  */
+// fallow-ignore-next-line complexity
 function computeRecommendation(derivation, grounding) {
   // Case 6: SP1 says code-missing → investigate (file is gone)
   if (derivation.derivation.kind === "code-missing") {

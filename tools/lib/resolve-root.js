@@ -8,6 +8,7 @@ const DEFAULT_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
  * Validates that resolved path does not escape the project directory.
  * Skips validation only when GATE_ROOT env var is set (test override).
  */
+// fallow-ignore-next-line complexity
 export function resolveRoot(override) {
   const root = override || process.env.GATE_ROOT || DEFAULT_ROOT;
   const resolved = resolve(root);

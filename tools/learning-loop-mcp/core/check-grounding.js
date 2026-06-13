@@ -80,6 +80,7 @@ export function computeFileHash(absPath) {
  * @param {Object} codeContext - { root, run_tests?, test_passed?, now? }
  * @returns {Object} GroundingResult — the parent's locked shape
  */
+// fallow-ignore-next-line complexity
 export function checkGrounding(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
@@ -190,6 +191,7 @@ export function checkGrounding(entry, codeContext) {
   };
 }
 
+// fallow-ignore-next-line complexity
 function computeStatus(grounding) {
   if (grounding.code_ref_exists === false) return "drifted";
   if (grounding.hash_match === false) return "drifted";
@@ -197,6 +199,7 @@ function computeStatus(grounding) {
   return "grounded";
 }
 
+// fallow-ignore-next-line complexity
 function computeDriftKind(status, grounding) {
   if (status !== "drifted") return null;
   if (grounding.code_ref_exists === false) return "code_missing";

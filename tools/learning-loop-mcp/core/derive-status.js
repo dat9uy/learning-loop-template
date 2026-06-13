@@ -44,6 +44,7 @@ const TERMINAL_RAW_STATUSES = new Set(["auto-resolved", "resolved"]);
  * sanitize paths. Relative paths are joined with `codeContext.root` using
  * standard path resolution (e.g., `../` traverses upward).
  */
+// fallow-ignore-next-line complexity
 export function deriveStatus(entry, codeContext) {
   const root = codeContext.root;
   const now = codeContext.now ?? (() => Date.now());
@@ -88,6 +89,7 @@ function checkExists(root, path) {
   return existsSync(fullPath);
 }
 
+// fallow-ignore-next-line complexity
 function computeKind(codeRefExists, testFileExists, codeRef, testPath) {
   if (codeRef === null && testPath === null) return "no-signals";
   if (codeRefExists === false) return "code-missing";
@@ -101,6 +103,7 @@ function computeDerivedStatus(kind) {
   return "active-no-signal"; // code-missing or no-signals
 }
 
+// fallow-ignore-next-line complexity
 function computeRecommendation(derivedStatus, kind, rawStatus) {
   if (kind === "mechanism-shipped" && (rawStatus === "reported" || rawStatus === "active")) {
     return "resolve";

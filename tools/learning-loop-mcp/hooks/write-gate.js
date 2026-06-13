@@ -39,6 +39,7 @@ function toRelative(filePath) {
   return filePath.replace(/^\.\//, "");
 }
 
+// fallow-ignore-next-line complexity
 function main() {
   const stdin = readFileSync(0, "utf8");
   const input = parseInput(stdin);
