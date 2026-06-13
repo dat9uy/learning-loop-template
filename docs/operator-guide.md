@@ -30,7 +30,7 @@ The `id` field inside every YAML record must match the filename stem. New conven
 
 ## State Query Protocol
 
-Run `pnpm extract:index` to regenerate machine-extracted assertions from evidence `## Findings`. For read-only search across index entries, use the MCP `search_index_entries` tool.
+Use `meta_state_list` and `meta_state_derive_status` MCP tools for state queries.
 
 ## Evidence Model
 
@@ -38,7 +38,7 @@ Active `source_refs` should use `local:records/<surface>/evidence/...`, `local:p
 
 ## Evidence Findings Convention
 
-Evidence markdown files may include a `## Findings` section for machine extraction. Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion. Nested `Context:` bullets populate `context`; nested `Caveat:` bullets populate `caveats`. The extraction tool (`pnpm extract:index`) reads this and produces `records/<surface>/index/assertion-...yaml`. Files without `## Findings` (or without `[topic-tag]` bullets) are silently skipped.
+Evidence markdown files may include a `## Findings` section. Each top-level bullet starts with `[topic-tag]` followed by an atomic assertion. Nested `Context:` bullets populate `context`; nested `Caveat:` bullets populate `caveats`. Files without `## Findings` (or without `[topic-tag]` bullets) are silently skipped.
 
 ## Plan Authoring
 
@@ -88,15 +88,15 @@ References: `.claude/coordination/hooks/`, `.claude/coordination/__tests__/`.
 
 ## Workflow Auto-Trigger
 
-After writing evidence files, call `notify_artifact_change` via MCP. The `evidence-changed` workflow auto-triggers `extract-index` then `validate-records` for `records/*/evidence/**` changes.
+After writing evidence files, call `notify_artifact_change` via MCP. The `evidence-changed` workflow auto-triggers `validate-records` for `records/*/evidence/**` changes.
 
 Workflows are defined in `.claude/coordination/workflows.json`. Log at `.claude/coordination/workflow-log.jsonl`; failures at `.claude/coordination/.workflow-failures`.
 
 ## MCP Tools
 
-The `tools/learning-loop-mcp/` MCP server exposes 35 tools: 22 enforcement/CRUD tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
+The `tools/learning-loop-mcp/` MCP server exposes 31 tools: 18 enforcement/CRUD tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
 
-Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `gate_mark_preflight`.
+Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `gate_mark_preflight`.
 
 Key workflow tools: `workflow_classify_prompt`, `workflow_intake_orient`, `workflow_intake_plan`, `workflow_prepare_runtime_request`, `workflow_generate_prompt`, `workflow_product_build`, `workflow_convert_evidence`, `workflow_verify_evidence`, `workflow_intentional_skip`, `workflow_external_decision`, `workflow_self_improvement`, `workflow_report_phase_status`, `workflow_runtime_probe`.
 

@@ -20,9 +20,8 @@ Operator Message          Agent Action (Bash/Edit/Write)
        |                    (check_gate, record_observation,
        |                     update_observation, notify_artifact_change,
        |                     trigger_workflow, validate_records,
-       |                     update_claim_verification, extract_index_entries,
-       |                     search_index_entries, generate_capability_records,
-       |                     list_runtime_probes, list_verified_claims,
+       |                     update_claim_verification,
+       |                     list_runtime_probes,
        |                     gate_mark_preflight, workflow_*)
        |                           |
        +-----------+---------------+
@@ -161,7 +160,7 @@ This algorithm differs from the inbound gate's 30-minute threshold. See Known Is
 
 **File:** `tools/learning-loop-mcp/server.js`
 **Transport:** stdio (MCP protocol)
-**Tools:** 35 tools total — `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `extract_index_entries`, `search_index_entries`, `generate_capability_records`, `list_runtime_probes`, `list_verified_claims`, `gate_mark_preflight`, plus 13 workflow tools (`workflow_*`).
+**Tools:** 31 tools total — `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `list_runtime_probes`, `gate_mark_preflight`, plus 13 workflow tools (`workflow_*`).
 
 The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol. All policy logic lives in `tools/learning-loop-mcp/core/` — single source of truth for both Claude Code and Droid CLI.
 
@@ -193,25 +192,9 @@ Validates YAML records under `records/` against JSON schemas. Returns structured
 
 Updates a frozen-legacy claim's verification status for a specific dimension (`static`, `install`, `runtime`, `product`). Supports preview mode (`apply: false`) before committing.
 
-#### extract_index_entries
-
-Extracts machine-readable index entries from evidence markdown `## Findings` sections. Idempotent — safe to call multiple times. Use after writing evidence to update the index.
-
-#### search_index_entries
-
-Read-only search across index entries by capability, dimension, and status. Returns matching entries with frontmatter.
-
-#### generate_capability_records
-
-Generates capability records from product surface adapters. Supports `dry_run` to preview drift before writing.
-
 #### list_runtime_probes
 
 Lists runtime probe files for a given stack. Read-only discovery tool.
-
-#### list_verified_claims
-
-Lists all verified claims and their supporting evidence. Read-only reporting tool. Pure JS implementation with no external dependencies.
 
 ### MCP Workflow Layer
 
@@ -237,7 +220,6 @@ When an agent writes an evidence file, it calls `notify_artifact_change` via MCP
       "triggers": ["records/*/evidence/**"],
       "change_types": ["created", "updated"],
       "commands": [
-        ["node", "tools/extract-index-cli.js"],
         ["node", "tools/validate-records-cli.js"]
       ]
     }
@@ -245,7 +227,7 @@ When an agent writes an evidence file, it calls `notify_artifact_change` via MCP
 }
 ```
 
-- Commands are arrays (e.g., `["node", "tools/extract-index-cli.js"]`)
+- Commands are arrays (e.g., `["node", "tools/validate-records-cli.js"]`)
 - Allowlist: only `node` with script path under `tools/` is permitted
 - Spawn isolation: `{ stdio: "pipe", detached: true }` — no inherited stdout
 - All CLI scripts are thin MCP stdio shims that delegate to the MCP server

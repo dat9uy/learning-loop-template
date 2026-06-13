@@ -135,6 +135,7 @@ const recordLocalRoots = {
   capability: ["records/evidence", "records/*/evidence", "product/*/capabilities"],
 };
 
+// fallow-ignore-next-line complexity
 function validateSourceRefs(record, errors, root, ids, allowDisallowedFixtures) {
   if (record.type === "extracted-assertion") {
     for (const sourceRef of record.source_refs || []) {

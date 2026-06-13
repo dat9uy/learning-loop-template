@@ -62,9 +62,9 @@ function deriveFields(promptText, blueprint, ctx) {
   if (blueprint === "product-build") requiredRecords.push("records/<surface>/decisions/...");
   if (blueprint === "runtime-validation") requiredRecords.push("records/<surface>/experiments/...");
   const suggestedTools = {
-    evidence: ["validate_records", "extract_index"],
+    evidence: ["validate_records"],
     "state-gated": ["check_gate", "trigger_workflow"],
-    "product-build": ["generate_capabilities", "validate_records"],
+    "product-build": ["validate_records"],
     experiment: ["trigger_workflow", "validate_records"],
     "runtime-validation": ["list_probes", "trigger_workflow"],
   }[blueprint] || [];

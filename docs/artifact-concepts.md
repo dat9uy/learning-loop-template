@@ -164,29 +164,20 @@ status: pending_approval
 ### Transition 2: pending_approval → active
 
 **Trigger:** The experiment runs successfully and evidence is recorded with `validation_status: passed`.
-**Action:** Run `pnpm extract:index` (or `index_extract` MCP tool). The extractor reads the evidence, sees `passed`, and updates the assertion status via `STATUS_MAP`:
-```js
-// tools/learning-loop-mcp/core/extract-index/index-entry-builder.js
-const STATUS_MAP = {
-  passed: "active",
-  pending: "candidate",
-  failed: null,
-  draft: null,
-};
-```
+**Action:** The operator manually promotes the assertion to `active` status.
 **Result:** The assertion is now `active` and can be referenced by any record without triggering the candidate block.
 
 ### Failure Path: pending_approval → rejected
 
 **Trigger:** The experiment fails or contradicts the assertion.
-**Action:** Evidence is recorded with `validation_status: failed`. `extract-index` skips the entry (returns null, no YAML written). The operator may manually archive the assertion.
+**Action:** Evidence is recorded with `validation_status: failed`. The operator may manually archive the assertion.
 **Note:** The `index-entry.schema.json` does not have a `rejected` status. A future version may add it. For v1, `failed` evidence + skipped extraction is sufficient.
 
 ### What Requires Human Action
 
 Every transition requires explicit human approval:
 - `candidate → pending_approval`: operator reviews the assertion + experiment draft and decides to promote
-- `pending_approval → active`: operator reviews the experiment result and decides to run `extract-index`
+- `pending_approval → active`: operator reviews the experiment result and promotes the assertion
 
 There is no autonomous promotion. Full automation (class-level approval, auto-promotion on experiment success) is Bridge 3/4 territory per `docs/trajectory.md`.
 

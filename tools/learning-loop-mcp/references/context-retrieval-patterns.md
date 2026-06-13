@@ -31,11 +31,7 @@ Step 3 — Read the matched runtime probe:
 - product/[stack]/capabilities/[domain]/[probe-file].py
 - This is ground-truth product code. Do not skip.
 
-Step 4 — Search index entries by capability:
-- pnpm search:index --capability [capability-id] (or node tools/search-index/search-index.js --capability [capability-id])
-- Index entries carry verification state (Tier 1), not the capability record.
-
-Step 5 — Read matching index entries:
+Step 4 — Read matching index entries:
 - records/<surface>/index/[index-entry-id].yaml
 - Check verification.<dimension>.status for each dimension.
 

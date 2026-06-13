@@ -82,7 +82,7 @@ The 4-question framework for picking a tool:
 |---|---|
 | Check resource budget status for a vendor system | `budget_check` |
 | Generate capability records from product surface adapters | `capability_generate` |
-| List verified claims and supporting evidence | `capability_list_verified` |
+
 
 ## Anti-pattern: do NOT use these
 

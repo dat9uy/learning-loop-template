@@ -77,6 +77,7 @@ const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
  * Each resulting segment is trimmed; empty segments are dropped (same
  * as the prior behavior).
  */
+// fallow-ignore-next-line complexity
 export function splitSegments(command) {
   if (!command || typeof command !== "string") return [];
   const segments = [];
@@ -422,6 +423,7 @@ const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", ".factory
  *
  * This is a lightweight replacement for the safe-regex package.
  */
+// fallow-ignore-next-line complexity
 export function isSafeRegexPattern(pattern) {
   if (!pattern || typeof pattern !== "string") return false;
   if (pattern.length > 500) return false;
@@ -638,6 +640,7 @@ export function stripEvidenceAnchor(codeRef) {
   return stripped;
 }
 
+// fallow-ignore-next-line complexity
 export function checkResolutionEvidence(rule, root) {
   const rule_id = rule.promoted_to_rule?.rule_id;
 
@@ -698,6 +701,7 @@ export function checkResolutionEvidence(rule, root) {
   return { satisfied: true, rule_id };
 }
 
+// fallow-ignore-next-line complexity
 export function applyPromotedRules(command, filePath, rules) {
   for (const rule of rules) {
     // Defense-in-depth: skip rules that should not have been loaded.

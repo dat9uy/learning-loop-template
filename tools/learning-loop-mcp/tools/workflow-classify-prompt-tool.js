@@ -23,14 +23,14 @@ const KEYWORDS = {
 };
 
 const TOOL_MAP = {
-  evidence: ["extract_index", "validate_records"],
+  evidence: ["validate_records"],
   assertion: ["validate_records", "update_claim"],
   verification: ["list_probes", "trigger_workflow"],
-  product: ["generate_capabilities", "extract_index"],
+  product: [],
   observation: ["record_observation", "update_observation"],
   skip: [],
   external_decision: ["update_observation"],
-  self_improvement: ["validate_records", "extract_index"],
+  self_improvement: ["validate_records"],
 };
 
 export const workflowClassifyPromptTool = {

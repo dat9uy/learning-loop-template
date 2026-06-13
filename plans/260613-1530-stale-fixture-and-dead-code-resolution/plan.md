@@ -1,7 +1,7 @@
 ---
 title: "Resolve Stale Scout Fixtures + Dead Product-Surface Code + Fallow Health"
 description: "Resolve two meta-state findings (stale scout fixture refs + dead product-surface code) and triage fallow health complexity findings."
-status: pending
+status: complete
 priority: P2
 branch: "main"
 tags: [cleanup, dead-code, stale-ref, fallow, meta-state]
@@ -31,22 +31,22 @@ Additionally, `fallow health --format json` reports 218 functions above complexi
 
 | Phase | Name | Status | Effort | Dependencies |
 |-------|------|--------|--------|--------------|
-| 1 | [Dead Code Deletion](./phase-01-dead-code-deletion.md) | pending | 10min | — |
-| 2 | [Stale Reference Cleanup](./phase-02-stale-reference-cleanup.md) | pending | 15min | 1 |
-| 3 | [Scout Fixture + Cache Regeneration](./phase-03-scout-fixture-and-cache-regeneration.md) | pending | 5min | 1, 2 |
-| 4 | [Fallow Health Triage](./phase-04-fallow-health-triage.md) | pending | 15min | 1, 2, 3 |
-| 5 | [Meta-State Resolution](./phase-05-meta-state-resolution.md) | pending | 5min | 1, 2, 3, 4 |
+| 1 | [Dead Code Deletion](./phase-01-dead-code-deletion.md) | complete | 10min | — |
+| 2 | [Stale Reference Cleanup](./phase-02-stale-reference-cleanup.md) | complete | 15min | 1 |
+| 3 | [Scout Fixture + Cache Regeneration](./phase-03-scout-fixture-and-cache-regeneration.md) | complete | 5min | 1, 2 |
+| 4 | [Fallow Health Triage](./phase-04-fallow-health-triage.md) | complete | 15min | 1, 2, 3 |
+| 5 | [Meta-State Resolution](./phase-05-meta-state-resolution.md) | complete | 5min | 1, 2, 3, 4 |
 
 ## Success Criteria
 
-- [ ] All 8 dead source files + 4 test files deleted
-- [ ] TOOL_MAP entries for `extract_index` and `generate_capabilities` removed from workflow tools
-- [ ] Documentation references to deleted modules scrubbed
-- [ ] Scout fixture regenerated with zero stale references
-- [ ] Cold cache (`loop-describe-cold.json`) invalidated/regenerated
-- [ ] `pnpm test` passes (0 regressions)
-- [ ] Fallow health findings triaged
-- [ ] Both meta-state findings resolved
+- [x] All 8 dead source files + 4 test files deleted
+- [x] TOOL_MAP entries for `extract_index` and `generate_capabilities` removed from workflow tools
+- [x] Documentation references to deleted modules scrubbed
+- [x] Scout fixture regenerated with zero stale references
+- [x] Cold cache (`loop-describe-cold.json`) invalidated/regenerated
+- [x] `pnpm test` passes (0 regressions)
+- [x] Fallow health findings triaged
+- [x] Both meta-state findings resolved
 
 ## Rollback
 

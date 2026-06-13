@@ -1,6 +1,6 @@
 {
   "scout_version": "0.1.0",
-  "run_timestamp": "2026-06-08T10:43:58.315Z",
+  "run_timestamp": "2026-06-13T08:11:26.518Z",
   "project_root": "/home/datguy/codingProjects/learning-loop-template",
   "inventory": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "file": ".claude/coordination/__tests__/bash-coordination-gate.test.cjs",
-      "last_modified": "2026-06-08T05:46:50.124Z",
+      "last_modified": "2026-06-09T15:29:10.324Z",
       "test_count": 0,
       "bucket": "C",
       "bucket_reason": "writes via fs.writeFileSync in test logic at line 110",
@@ -25,17 +25,17 @@
     },
     {
       "file": ".claude/coordination/__tests__/claude-code-mcp-loading.test.cjs",
-      "last_modified": "2026-06-08T05:46:50.124Z",
-      "test_count": 3,
+      "last_modified": "2026-06-12T17:56:23.181Z",
+      "test_count": 4,
       "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 234",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 294",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
     },
     {
       "file": ".claude/coordination/__tests__/gate-integration.test.cjs",
-      "last_modified": "2026-06-08T05:46:50.124Z",
+      "last_modified": "2026-06-12T17:06:56.836Z",
       "test_count": 0,
       "bucket": "C",
       "bucket_reason": "writes via fs.writeFileSync in test logic at line 54",
@@ -124,153 +124,19 @@
       "gap": false
     },
     {
-      "file": "node_modules/fast-uri/test/ajv.test.js",
-      "last_modified": "2026-06-06T05:11:33.428Z",
-      "test_count": 1,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/equal.test.js",
-      "last_modified": "2026-06-06T05:11:33.444Z",
-      "test_count": 8,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/parse.test.js",
-      "last_modified": "2026-06-06T05:11:33.464Z",
-      "test_count": 1,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/resolve.test.js",
-      "last_modified": "2026-06-06T05:11:33.468Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/rfc-3986.test.js",
-      "last_modified": "2026-06-06T05:11:33.476Z",
-      "test_count": 1,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/security-normalization.test.js",
-      "last_modified": "2026-06-06T05:11:33.480Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/security.test.js",
-      "last_modified": "2026-06-06T05:11:33.484Z",
-      "test_count": 9,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/serialize.test.js",
-      "last_modified": "2026-06-06T05:11:33.484Z",
-      "test_count": 5,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/uri-js-compatibility.test.js",
-      "last_modified": "2026-06-06T05:11:33.488Z",
-      "test_count": 2,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/uri-js.test.js",
-      "last_modified": "2026-06-06T05:11:33.492Z",
-      "test_count": 35,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/fast-uri/test/util.test.js",
-      "last_modified": "2026-06-06T05:11:33.492Z",
-      "test_count": 2,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "node_modules/json-schema-traverse/spec/index.spec.js",
-      "last_modified": "2026-06-06T05:11:33.428Z",
-      "test_count": 10,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
       "file": "product/web/tests/smoke-reference.test.mjs",
       "last_modified": "2026-06-06T05:05:21.470Z",
       "test_count": 4,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
-      "file": "tools/check-budget/check-budget-function.test.js",
-      "last_modified": "2026-06-06T05:05:21.478Z",
-      "test_count": 7,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/check-budget/check-budget.test.js",
-      "last_modified": "2026-06-06T05:05:21.478Z",
-      "test_count": 7,
+      "file": "tools/learning-loop-mcp/__tests__/archive-product-records.test.js",
+      "last_modified": "2026-06-12T16:42:02.076Z",
+      "test_count": 3,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
@@ -278,39 +144,23 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/acceptance/sp3-drift.test.js",
-      "last_modified": "2026-06-07T07:23:01.144Z",
-      "test_count": 4,
-      "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
       "file": "tools/learning-loop-mcp/__tests__/backfill-mechanism-check.test.js",
-      "last_modified": "2026-06-07T00:51:23.853Z",
+      "last_modified": "2026-06-13T05:17:27.903Z",
       "test_count": 4,
       "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 5",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 1,
+      "file": "tools/learning-loop-mcp/__tests__/bash-gate-runtime-state-record.test.js",
+      "last_modified": "2026-06-12T17:27:29.612Z",
+      "test_count": 0,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -319,10 +169,8 @@
       "test_count": 12,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -337,26 +185,12 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/build-inverse-indexes.test.js",
-      "last_modified": "2026-06-07T00:07:17.463Z",
-      "test_count": 3,
+      "last_modified": "2026-06-10T10:42:22.642Z",
+      "test_count": 4,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 4",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/candidate-block.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 8,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -370,33 +204,41 @@
       "gap": false
     },
     {
+      "file": "tools/learning-loop-mcp/__tests__/cold-session-churn-regression.test.js",
+      "last_modified": "2026-06-10T06:43:35.441Z",
+      "test_count": 2,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 16",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
       "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "last_modified": "2026-06-08T08:34:46.903Z",
-      "test_count": 5,
-      "bucket": "D",
-      "bucket_reason": "spawns child_process with droid binary at line 82",
+      "last_modified": "2026-06-13T05:40:04.334Z",
+      "test_count": 8,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 358",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/cold-session-freshness.test.js",
+      "last_modified": "2026-06-10T06:52:15.359Z",
+      "test_count": 1,
+      "bucket": "A",
+      "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js",
-      "last_modified": "2026-06-08T02:17:35.789Z",
+      "last_modified": "2026-06-11T17:51:43.988Z",
       "test_count": 1,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 3",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/create-decision-record-tool.test.js",
-      "last_modified": "2026-06-06T06:37:34.767Z",
-      "test_count": 2,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
@@ -413,7 +255,7 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/derive-status.test.js",
-      "last_modified": "2026-06-07T07:21:58.370Z",
+      "last_modified": "2026-06-09T13:27:25.787Z",
       "test_count": 25,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
@@ -422,87 +264,13 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/experiment-update-verification-assertion-refs.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 1,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 24,
-      "bucket": "B",
-      "bucket_reason": "I/O in setup/teardown blocks only (beforeEach/afterEach)",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/fastapi-adapter.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 5,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 8,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/findings-parser.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 13,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
       "file": "tools/learning-loop-mcp/__tests__/fix-loop-design-refs.test.js",
-      "last_modified": "2026-06-07T00:50:21.628Z",
+      "last_modified": "2026-06-11T17:50:05.541Z",
       "test_count": 3,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 1",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "last_modified": "2026-06-07T04:06:23.506Z",
-      "test_count": 3,
-      "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 12",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -511,22 +279,18 @@
       "test_count": 6,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/g8-subcommand-class-entry.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
+      "last_modified": "2026-06-13T05:17:54.301Z",
       "test_count": 1,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -571,7 +335,7 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/gate-resolution-evidence.test.js",
-      "last_modified": "2026-06-07T08:12:45.723Z",
+      "last_modified": "2026-06-11T10:51:35.379Z",
       "test_count": 17,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 56",
@@ -585,34 +349,18 @@
       "test_count": 13,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 6",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/generate-capabilities.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/index-query-filter.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 6,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "file": "tools/learning-loop-mcp/__tests__/inbound-state-runtime-state.test.js",
+      "last_modified": "2026-06-13T03:40:09.884Z",
+      "test_count": 0,
+      "bucket": "B",
+      "bucket_reason": "I/O in setup/teardown blocks only (beforeEach/afterEach)",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -621,10 +369,18 @@
       "test_count": 9,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/ledger-conversion.test.js",
+      "last_modified": "2026-06-12T16:26:30.659Z",
+      "test_count": 3,
+      "bucket": "A",
+      "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -633,22 +389,18 @@
       "test_count": 3,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/list-verified.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 7,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "file": "tools/learning-loop-mcp/__tests__/loop-describe-cold-cache.test.js",
+      "last_modified": "2026-06-09T01:42:52.891Z",
+      "test_count": 6,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -663,14 +415,12 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/loop-describe-description-mode.test.js",
-      "last_modified": "2026-06-07T07:42:38.720Z",
+      "last_modified": "2026-06-08T12:25:53.632Z",
       "test_count": 5,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -685,7 +435,7 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/loop-describe-warm-tier.test.js",
-      "last_modified": "2026-06-06T13:42:47.200Z",
+      "last_modified": "2026-06-13T03:56:40.759Z",
       "test_count": 5,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
@@ -695,7 +445,7 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/loop-describe.test.js",
-      "last_modified": "2026-06-06T13:42:28.767Z",
+      "last_modified": "2026-06-11T11:00:02.174Z",
       "test_count": 23,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 321",
@@ -704,15 +454,33 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "last_modified": "2026-06-06T07:31:44.280Z",
-      "test_count": 4,
+      "file": "tools/learning-loop-mcp/__tests__/loop-get-instruction.test.js",
+      "last_modified": "2026-06-11T18:31:20.790Z",
+      "test_count": 7,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-archive-tool.test.js",
+      "last_modified": "2026-06-11T10:59:35.926Z",
+      "test_count": 5,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-batch-tool.test.js",
+      "last_modified": "2026-06-09T01:42:52.559Z",
+      "test_count": 5,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -741,15 +509,13 @@
       "test_count": 3,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 3",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-integration.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
+      "last_modified": "2026-06-11T10:59:06.173Z",
       "test_count": 5,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
@@ -759,14 +525,12 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-list-compact.test.js",
-      "last_modified": "2026-06-08T01:54:04.789Z",
+      "last_modified": "2026-06-11T10:58:41.566Z",
       "test_count": 5,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "bucket": "B",
+      "bucket_reason": "I/O in setup/teardown blocks only (beforeEach/afterEach)",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -781,7 +545,7 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-list-entry-kind.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
+      "last_modified": "2026-06-11T10:59:49.211Z",
       "test_count": 4,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 100",
@@ -790,11 +554,41 @@
       "gap": false
     },
     {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-list-id-filter.test.js",
+      "last_modified": "2026-06-11T18:26:17.144Z",
+      "test_count": 7,
+      "bucket": "B",
+      "bucket_reason": "I/O in setup/teardown blocks only (beforeEach/afterEach)",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-list-id-stdio.test.js",
+      "last_modified": "2026-06-11T18:32:47.264Z",
+      "test_count": 4,
+      "bucket": "A",
+      "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-list-ref-by-filter.test.js",
+      "last_modified": "2026-06-11T18:27:01.145Z",
+      "test_count": 8,
+      "bucket": "B",
+      "bucket_reason": "I/O in setup/teardown blocks only (beforeEach/afterEach)",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-log-change.test.js",
-      "last_modified": "2026-06-07T04:34:53.680Z",
-      "test_count": 9,
+      "last_modified": "2026-06-12T05:01:44.109Z",
+      "test_count": 13,
       "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 5",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 9",
       "dangling": true,
       "dangling_patterns": [
         "D3"
@@ -807,6 +601,26 @@
       "test_count": 7,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-lru-cache.test.js",
+      "last_modified": "2026-06-09T01:59:20.962Z",
+      "test_count": 6,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 6",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-patch-immutable-fields.test.js",
+      "last_modified": "2026-06-10T10:49:00.428Z",
+      "test_count": 2,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 20",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
@@ -827,10 +641,8 @@
       "test_count": 3,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 5",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -839,10 +651,8 @@
       "test_count": 5,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 4",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -857,8 +667,20 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-refresh-fingerprint-tool.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 2,
+      "last_modified": "2026-06-10T14:55:16.415Z",
+      "test_count": 7,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 145",
+      "dangling": true,
+      "dangling_patterns": [
+        "D3"
+      ],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-refresh-tools-tool.test.js",
+      "last_modified": "2026-06-09T04:57:44.365Z",
+      "test_count": 5,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
@@ -866,15 +688,43 @@
       "gap": false
     },
     {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js",
+      "last_modified": "2026-06-11T10:50:29.851Z",
+      "test_count": 5,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-relationships.test.js",
-      "last_modified": "2026-06-07T00:07:48.731Z",
-      "test_count": 4,
+      "last_modified": "2026-06-11T10:56:10.140Z",
+      "test_count": 5,
+      "bucket": "C",
+      "bucket_reason": "writes via fs.writeFileSync in test logic at line 76",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-reopen-backfill-integration.test.js",
+      "last_modified": "2026-06-10T10:50:18.712Z",
+      "test_count": 0,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-reopen-e2e-cold-session.test.js",
+      "last_modified": "2026-06-11T11:17:18.139Z",
+      "test_count": 1,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 6",
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -889,10 +739,30 @@
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-report-tool-extension.test.js",
-      "last_modified": "2026-06-07T04:34:24.208Z",
-      "test_count": 3,
+      "last_modified": "2026-06-11T05:10:49.467Z",
+      "test_count": 12,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-resolve-cascade-stale.test.js",
+      "last_modified": "2026-06-11T10:34:09.452Z",
+      "test_count": 5,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 21",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-resolve-cascade.test.js",
+      "last_modified": "2026-06-11T10:49:40.693Z",
+      "test_count": 8,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 24",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
@@ -918,11 +788,61 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-schema.test.js",
-      "last_modified": "2026-06-07T04:59:50.188Z",
-      "test_count": 27,
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-schema-extension.test.js",
+      "last_modified": "2026-06-12T16:18:28.804Z",
+      "test_count": 9,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-schema-stale-only.test.js",
+      "last_modified": "2026-06-11T10:33:43.948Z",
+      "test_count": 3,
+      "bucket": "A",
+      "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-schema.test.js",
+      "last_modified": "2026-06-12T16:20:55.320Z",
+      "test_count": 29,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-session-id-roundtrip.test.js",
+      "last_modified": "2026-06-08T11:38:25.218Z",
+      "test_count": 4,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 8",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-stale-flag.test.js",
+      "last_modified": "2026-06-11T10:56:37.461Z",
+      "test_count": 10,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 9",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-sweep-stale-transition.test.js",
+      "last_modified": "2026-06-09T13:20:36.890Z",
+      "test_count": 3,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 6",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
@@ -933,15 +853,13 @@
       "test_count": 3,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-sweep.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
+      "last_modified": "2026-06-09T13:01:47.244Z",
       "test_count": 7,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 6",
@@ -960,42 +878,8 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/migrate-rule-entry-kind.test.js",
-      "last_modified": "2026-06-06T13:33:30.869Z",
-      "test_count": 4,
-      "bucket": "C",
-      "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records-function.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 5,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
       "file": "tools/learning-loop-mcp/__tests__/query-drift.test.js",
-      "last_modified": "2026-06-07T07:22:12.114Z",
+      "last_modified": "2026-06-11T10:57:01.135Z",
       "test_count": 27,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
@@ -1004,32 +888,28 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/schema-to-zod-spike.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 13,
+      "file": "tools/learning-loop-mcp/__tests__/runtime-state-schema.test.js",
+      "last_modified": "2026-06-12T16:30:53.932Z",
+      "test_count": 5,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/schema-to-zod.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 17,
+      "file": "tools/learning-loop-mcp/__tests__/schema-deletion-coverage.test.js",
+      "last_modified": "2026-06-12T17:43:34.757Z",
+      "test_count": 0,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/scout-bucket-classifier.test.js",
-      "last_modified": "2026-06-08T10:37:34.136Z",
+      "last_modified": "2026-06-10T07:00:52.680Z",
       "test_count": 10,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 30",
@@ -1061,37 +941,13 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/scout-gap-analyzer.test.js",
-      "last_modified": "2026-06-08T10:32:58.958Z",
-      "test_count": 6,
+      "file": "tools/learning-loop-mcp/__tests__/scout-run-scout.test.js",
+      "last_modified": "2026-06-10T06:59:55.290Z",
+      "test_count": 4,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
       "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/scout-run-scout.test.js",
-      "last_modified": "2026-06-08T10:28:03.865Z",
-      "test_count": 4,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/search-index.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 4,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
       "gap": false
     },
     {
@@ -1100,10 +956,8 @@
       "test_count": 1,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -1112,10 +966,8 @@
       "test_count": 2,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 7",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
+      "dangling": false,
+      "dangling_patterns": [],
       "gap": false
     },
     {
@@ -1129,49 +981,13 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/tanstack-adapter.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/validation-centralization.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 5,
+      "file": "tools/learning-loop-mcp/__tests__/tool-deletion-coverage.test.js",
+      "last_modified": "2026-06-13T07:43:44.340Z",
+      "test_count": 0,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
       "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 21,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/verify-claim-scalar-rules.test.js",
-      "last_modified": "2026-06-06T05:05:21.482Z",
-      "test_count": 3,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
       "gap": false
     },
     {
@@ -1185,8 +1001,38 @@
       "gap": false
     },
     {
+      "file": "tools/learning-loop-mcp/__tests__/wire-format-meta-state-optional-fields.test.js",
+      "last_modified": "2026-06-12T17:09:07.527Z",
+      "test_count": 5,
+      "bucket": "A",
+      "bucket_reason": "no file I/O; MCP-only logic",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js",
+      "last_modified": "2026-06-10T03:21:20.455Z",
+      "test_count": 4,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 14",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
+      "file": "tools/learning-loop-mcp/__tests__/wire-format-top-level-coercion.test.js",
+      "last_modified": "2026-06-11T15:54:01.245Z",
+      "test_count": 6,
+      "bucket": "C",
+      "bucket_reason": "imports bypass function from core/meta-state.js at line 13",
+      "dangling": false,
+      "dangling_patterns": [],
+      "gap": false
+    },
+    {
       "file": "tools/learning-loop-mcp/core/__tests__/meta-state-g8-supersede.test.js",
-      "last_modified": "2026-06-07T04:31:41.635Z",
+      "last_modified": "2026-06-11T10:51:51.384Z",
       "test_count": 2,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 13",
@@ -1206,8 +1052,8 @@
     },
     {
       "file": "tools/learning-loop-mcp/core/meta-state.test.js",
-      "last_modified": "2026-06-07T04:56:03.842Z",
-      "test_count": 19,
+      "last_modified": "2026-06-10T06:48:17.624Z",
+      "test_count": 21,
       "bucket": "C",
       "bucket_reason": "imports bypass function from core/meta-state.js at line 4",
       "dangling": false,
@@ -1245,21 +1091,9 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/tools/delete-record-tool.test.js",
-      "last_modified": "2026-06-06T05:05:21.490Z",
-      "test_count": 9,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": true,
-      "dangling_patterns": [
-        "D3"
-      ],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/tools/notify-artifact-tool.test.js",
-      "last_modified": "2026-06-06T05:05:21.490Z",
-      "test_count": 6,
+      "file": "tools/learning-loop-mcp/tools/runtime-state-read-tool.test.js",
+      "last_modified": "2026-06-12T16:33:41.447Z",
+      "test_count": 3,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
       "dangling": false,
@@ -1267,727 +1101,50 @@
       "gap": false
     },
     {
-      "file": "tools/learning-loop-mcp/tools/trigger-workflow-tool.test.js",
-      "last_modified": "2026-06-06T05:05:21.494Z",
-      "test_count": 5,
+      "file": "tools/learning-loop-mcp/tools/runtime-state-record-tool.test.js",
+      "last_modified": "2026-06-12T16:36:20.360Z",
+      "test_count": 3,
       "bucket": "A",
       "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/learning-loop-mcp/tools/workflow-candidate-to-experiment-tool.test.js",
-      "last_modified": "2026-06-06T05:05:21.494Z",
-      "test_count": 8,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/lib/frontmatter-splitter.test.js",
-      "last_modified": "2026-06-06T05:05:21.494Z",
-      "test_count": 5,
-      "bucket": "A",
-      "bucket_reason": "no file I/O; MCP-only logic",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/validate-plan-loop/integration.test.js",
-      "last_modified": "2026-06-06T05:05:21.494Z",
-      "test_count": 5,
-      "bucket": "C",
-      "bucket_reason": "writes via fs.writeFileSync in test logic at line 18",
-      "dangling": false,
-      "dangling_patterns": [],
-      "gap": false
-    },
-    {
-      "file": "tools/validate-plan-loop/validate-plan-loop.test.js",
-      "last_modified": "2026-06-06T05:05:21.494Z",
-      "test_count": 8,
-      "bucket": "C",
-      "bucket_reason": "writes via fs.writeFileSync in test logic at line 11",
       "dangling": false,
       "dangling_patterns": [],
       "gap": false
     }
   ],
   "bucket_distribution": {
-    "A": 80,
-    "B": 1,
-    "C": 40,
-    "D": 1,
+    "A": 52,
+    "B": 4,
+    "C": 54,
+    "D": 0,
     "error": 0
   },
   "dangling_matches": [
     {
-      "file": "product/web/tests/smoke-reference.test.mjs",
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-log-change.test.js",
       "pattern": "D3",
       "line": 4,
-      "match": "React from \"react\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 5,
-      "match": "renderToStaticMarkup from \"react-dom/server\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 6,
-      "match": "createMemoryHistory from \"@tanstack/react-router\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 6,
-      "match": "createRootRoute from \"@tanstack/react-router\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 6,
-      "match": "createRoute from \"@tanstack/react-router\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 6,
-      "match": "createRouter from \"@tanstack/react-router\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 6,
-      "match": "RouterContextProvider from \"@tanstack/react-router\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "product/web/tests/smoke-reference.test.mjs",
-      "pattern": "D3",
-      "line": 7,
-      "match": "createServer from \"vite\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/check-budget/check-budget-function.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "runCheckBudget from \"#mcp/core/budget-checker.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/acceptance/sp3-drift.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "readRegistry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/acceptance/sp3-drift.test.js",
-      "pattern": "D3",
-      "line": 9,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/backfill-mechanism-check.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "readRegistry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/backfill-mechanism-check.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "parse as parseYaml from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "runExtraction from \"#mcp/core/extract-index/extract-index.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "validateRecords from \"#mcp/core/record-validation-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 9,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 10,
-      "match": "listVerifiedClaims from \"#mcp/core/list-verified.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 11,
-      "match": "searchIndex from \"#mcp/core/search-index.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 12,
-      "match": "parseDoc from \"#mcp/core/vendor-doc-assist/doc-parser.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-1-e2e.test.js",
-      "pattern": "D3",
-      "line": 13,
-      "match": "generateSuggestions from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-2-unit.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "getTemplate from \"#mcp/core/candidate-to-experiment/template-registry.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-2-unit.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "applyTemplate from \"#mcp/core/candidate-to-experiment/template-registry.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-2-unit.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "listDimensions from \"#mcp/core/candidate-to-experiment/template-registry.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/bridge-2-unit.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "buildExperimentDraft from \"#mcp/core/candidate-to-experiment/experiment-draft-builder.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/build-inverse-indexes.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/candidate-block.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "validateRecords from \"#mcp/core/record-validation-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/candidate-block.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-tier-regression.test.js",
-      "pattern": "D3",
-      "line": 2,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/experiment-update-verification-assertion-refs.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "zodObjectForProperties from \"#mcp/core/schema-to-zod.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/experiment-update-verification-assertion-refs.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "parse as parseYaml from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 9,
-      "match": "computeHash from \"#mcp/core/extract-index/hash-computer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 10,
-      "match": "buildIndexEntry from \"#mcp/core/extract-index/index-entry-builder.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 11,
-      "match": "runExtraction from \"#mcp/core/extract-index/extract-index.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 12,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/extract-index.test.js",
-      "pattern": "D3",
-      "line": 13,
-      "match": "validateRecords from \"#mcp/core/record-validation-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/fastapi-adapter.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "extract from \"#mcp/core/generate-capabilities/adapters/fastapi-adapter.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 28,
-      "match": "parse as parseYaml from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 30,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 31,
-      "match": "buildExperimentYaml from \"#mcp/core/experiment-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 32,
-      "match": "buildRiskYaml from \"#mcp/core/risk-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 33,
-      "match": "buildDecisionYaml from \"#mcp/core/decision-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 34,
-      "match": "buildObservationYaml from \"#mcp/core/observation-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 35,
-      "match": "experimentDimensions from \"#mcp/core/claim-verification-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 35,
-      "match": "verificationDimensions from \"#mcp/core/claim-verification-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 35,
-      "match": "proofStatuses from \"#mcp/core/claim-verification-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/field-coverage.test.js",
-      "pattern": "D3",
-      "line": 35,
-      "match": "productStatuses from \"#mcp/core/claim-verification-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/findings-parser.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "parseFindings from \"#mcp/core/extract-index/findings-parser.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/fix-loop-design-refs.test.js",
-      "pattern": "D3",
-      "line": 1,
-      "match": "readRegistry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/fix-loop-design-refs.test.js",
-      "pattern": "D3",
-      "line": 1,
-      "match": "writeEntry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/fix-loop-design-refs.test.js",
-      "pattern": "D3",
-      "line": 2,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "metaStateFindingEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "metaStateChangeEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "metaStateRuleEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "metaStateLoopDesignSchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/flatten-evidence-fields.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "readRegistry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/frontmatter-splitter.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "splitFrontmatter from \"#lib/frontmatter-splitter.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/g8-subcommand-class-entry.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/gate-scope-predicate.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/generate-capabilities.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "YAML from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/generate-capabilities.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "generateCapabilities from \"#mcp/core/generate-capabilities/generate-capabilities.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/index-query-filter.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "searchIndex from \"#mcp/core/search-index.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/index-query-filter.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "listVerifiedClaims from \"#mcp/core/list-verified.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/integration-promoted-rule.test.js",
-      "pattern": "D3",
-      "line": 9,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/list-probes.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "listProbes from \"#mcp/core/list-probes.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/list-verified.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "listVerifiedClaims from \"#mcp/core/list-verified.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/loop-describe-description-mode.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "summarize from \"#mcp/core/loop-introspect.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "createDecision from \"#mcp/core/decision-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 9,
-      "match": "updateDecision from \"#mcp/core/decision-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 10,
-      "match": "createExperiment from \"#mcp/core/experiment-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 11,
-      "match": "updateExperiment from \"#mcp/core/experiment-writer.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 13,
-      "match": "validateSourceRefs from \"#mcp/lib/source-ref-validator.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 14,
-      "match": "loadRecords from \"#mcp/core/record-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 15,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 16,
-      "match": "validateRecords from \"#mcp/core/record-validation-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/mcp-lifecycle-integration.test.js",
-      "pattern": "D3",
-      "line": 17,
-      "match": "stringify as stringifyYaml from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "readRegistry from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "metaStateFindingEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "metaStateChangeEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "metaStateRuleEntrySchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-evidence-coverage.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "metaStateLoopDesignSchema from \"#mcp/core/meta-state.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-list-compact.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
+      "match": "_clearIdempotencyCacheForTests from \"../tools/meta-state-log-change-tool.js\"",
       "suggested_fix": "remove import or restore the removed tool"
     },
     {
       "file": "tools/learning-loop-mcp/__tests__/meta-state-log-change.test.js",
       "pattern": "D3",
-      "line": 3,
-      "match": "z from \"zod\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-promote-rule-rule-entry.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-propose-design-tool.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-relationships.test.js",
-      "pattern": "D3",
       "line": 4,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
+      "match": "_backdateIdempotencyCacheForTests from \"../tools/meta-state-log-change-tool.js\"",
       "suggested_fix": "remove import or restore the removed tool"
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/meta-state-sweep-summary.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records-function.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "runValidateRecords from \"#mcp/core/negative-fixture-runner.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records.test.js",
-      "pattern": "D3",
-      "line": 5,
-      "match": "loadSchemas from \"#mcp/core/schema-loader.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records.test.js",
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-refresh-fingerprint-tool.test.js",
       "pattern": "D3",
       "line": 6,
-      "match": "loadRecords from \"#mcp/core/record-loader.js\"",
+      "match": "_clearIdempotencyCacheForTests from \"../tools/meta-state-refresh-fingerprint-tool.js\"",
       "suggested_fix": "remove import or restore the removed tool"
     },
     {
-      "file": "tools/learning-loop-mcp/__tests__/old-validate-records.test.js",
+      "file": "tools/learning-loop-mcp/__tests__/meta-state-refresh-fingerprint-tool.test.js",
       "pattern": "D3",
-      "line": 7,
-      "match": "validateRecords from \"#mcp/core/record-validation-rules.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/schema-to-zod-spike.test.js",
-      "pattern": "D3",
-      "line": 24,
-      "match": "z from \"zod\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/schema-to-zod.test.js",
-      "pattern": "D3",
-      "line": 15,
-      "match": "z from \"zod\"",
+      "line": 6,
+      "match": "_backdateIdempotencyCacheForTests from \"../tools/meta-state-refresh-fingerprint-tool.js\"",
       "suggested_fix": "remove import or restore the removed tool"
     },
     {
@@ -2003,134 +1160,20 @@
       "line": 126,
       "match": ".evidence.code_ref",
       "suggested_fix": "migrate to top-level evidence_code_ref (per meta-260607T0008Z)"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/scout-run-scout.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "Ajv from \"ajv\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/scout-run-scout.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "addFormats from \"ajv-formats\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/search-index.test.js",
-      "pattern": "D3",
-      "line": 6,
-      "match": "searchIndex from \"#mcp/core/search-index.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/sp0-change-log-self-log.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/sp1-derive-status-acceptance.test.js",
-      "pattern": "D3",
-      "line": 8,
-      "match": "resolveRoot from \"#lib/resolve-root.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/tanstack-adapter.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "extract from \"#mcp/core/generate-capabilities/adapters/tanstack-adapter.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "parseDoc from \"#mcp/core/vendor-doc-assist/doc-parser.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "generateSuggestions from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "detectCapability from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "detectDimension from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "computeConfidence from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/vendor-doc-assist.test.js",
-      "pattern": "D3",
-      "line": 4,
-      "match": "generateTopicTag from \"#mcp/core/vendor-doc-assist/suggestion-engine.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/verify-claim-scalar-rules.test.js",
-      "pattern": "D3",
-      "line": 3,
-      "match": "assertWritablePlainString from \"#mcp/core/claim-update.js\"",
-      "suggested_fix": "remove import or restore the removed tool"
-    },
-    {
-      "file": "tools/learning-loop-mcp/tools/delete-record-tool.test.js",
-      "pattern": "D3",
-      "line": 7,
-      "match": "stringify as stringifyYaml from \"yaml\"",
-      "suggested_fix": "remove import or restore the removed tool"
     }
   ],
   "gap_table": [
     {
       "surface": "mcp-tools",
-      "total": 104,
-      "covered": 22,
-      "percent": 21.15,
+      "total": 74,
+      "covered": 25,
+      "percent": 33.78,
       "missing": [
         "gate_check_tool",
-        "recordCreateObservationTool",
-        "record_create_observation_tool",
-        "recordUpdateObservationTool",
-        "record_update_observation_tool",
+        "workflowNotifyArtifactTool",
         "workflow_notify_artifact_tool",
+        "workflowTriggerTool",
         "workflow_trigger_tool",
-        "indexValidateTool",
-        "index_validate_tool",
-        "indexUpdateClaimTool",
-        "index_update_claim_tool",
-        "indexExtractTool",
-        "index_extract_tool",
-        "indexSearchTool",
-        "index_search_tool",
-        "capabilityGenerateTool",
-        "capability_generate_tool",
-        "capabilityListProbesTool",
-        "capability_list_probes_tool",
-        "capabilityListVerifiedTool",
-        "capability_list_verified_tool",
         "workflowClassifyPromptTool",
         "workflow_classify_prompt_tool",
         "workflowIntakeOrientTool",
@@ -2139,50 +1182,27 @@
         "workflow_intake_plan_tool",
         "workflowPrepareRuntimeRequestTool",
         "workflow_prepare_runtime_request_tool",
-        "workflowConvertEvidenceTool",
-        "workflow_convert_evidence_tool",
-        "workflow_candidate_to_experiment_tool",
-        "workflow_vendor_doc_assist_tool",
         "workflowGeneratePromptTool",
         "workflow_generate_prompt_tool",
         "workflowIntentionalSkipTool",
         "workflow_intentional_skip_tool",
-        "workflowVerifyEvidenceTool",
-        "workflow_verify_evidence_tool",
-        "workflowExternalDecisionTool",
-        "workflow_external_decision_tool",
         "workflowSelfImprovementTool",
         "workflow_self_improvement_tool",
         "workflowReportPhaseStatusTool",
         "workflow_report_phase_status_tool",
-        "workflowProductBuildTool",
-        "workflow_product_build_tool",
         "workflowRuntimeProbeTool",
         "workflow_runtime_probe_tool",
-        "record_create_decision_tool",
-        "recordUpdateDecisionTool",
-        "record_update_decision_tool",
-        "recordCreateExperimentTool",
-        "record_create_experiment_tool",
-        "recordUpdateExperimentTool",
-        "record_update_experiment_tool",
-        "recordCreateRiskTool",
-        "record_create_risk_tool",
-        "recordUpdateRiskTool",
-        "record_update_risk_tool",
         "gateMarkPreflightTool",
         "gate_mark_preflight_tool",
-        "record_delete_tool",
-        "indexValidatePlansTool",
-        "index_validate_plans_tool",
-        "budgetCheckTool",
-        "budget_check_tool",
+        "runtime_state_read_tool",
+        "runtime_state_record_tool",
         "meta_state_report_tool",
         "meta_state_list_tool",
         "meta_state_ack_tool",
         "meta_state_resolve_tool",
         "meta_state_promote_rule_tool",
         "loop_describe_tool",
+        "loop_get_instruction_tool",
         "meta_state_sweep_tool",
         "meta_state_log_change_tool",
         "meta_state_patch_tool",
@@ -2191,17 +1211,21 @@
         "meta_state_refresh_fingerprint_tool",
         "meta_state_query_drift_tool",
         "meta_state_propose_design_tool",
-        "meta_state_relationships_tool"
+        "meta_state_relationships_tool",
+        "meta_state_batch_tool",
+        "meta_state_archive_tool",
+        "meta_state_relationship_validate_tool",
+        "meta_state_refresh_tools_tool",
+        "meta_state_re_verify_tool",
+        "meta_state_supersede_tool"
       ]
     },
     {
       "surface": "schemas",
-      "total": 8,
-      "covered": 7,
-      "percent": 87.5,
-      "missing": [
-        "resource-budget.schema.json"
-      ]
+      "total": 2,
+      "covered": 2,
+      "percent": 100,
+      "missing": []
     },
     {
       "surface": "gate-patterns",
@@ -2220,115 +1244,16 @@
     {
       "surface": "error-paths",
       "total": 5,
-      "covered": 2,
-      "percent": 40,
+      "covered": 0,
+      "percent": 0,
       "missing": [
+        "invalid-severity-rejection",
+        "invalid-affected-system-rejection",
         "invalid-evidence-code-ref-rejection",
         "version-mismatch",
         "change-log-immutable"
       ]
     }
   ],
-  "budget_table": [
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "agent cites code via meta_state_report and local:meta-state refs",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 29,
-      "timeout": 60,
-      "utilization": 0.48,
-      "risk": "low"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "\\n",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 35,
-      "timeout": 60,
-      "utilization": 0.58,
-      "risk": "medium"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "\\n",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 29,
-      "timeout": 60,
-      "utilization": 0.48,
-      "risk": "low"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "discoverability surface works via direct MCP server spawn",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 29,
-      "timeout": 60,
-      "utilization": 0.48,
-      "risk": "low"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "\\n",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 23,
-      "timeout": 60,
-      "utilization": 0.38,
-      "risk": "low"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "\\n",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 1,
-      "wall_clock_estimate": 31,
-      "timeout": 60,
-      "utilization": 0.52,
-      "risk": "medium"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "\\n",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 1,
-      "wall_clock_estimate": 31,
-      "timeout": 60,
-      "utilization": 0.52,
-      "risk": "medium"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "droid exec CLI catalog lists runtime-namespaced MCP tools (L1 probe)",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 0,
-      "wall_clock_estimate": 23,
-      "timeout": 60,
-      "utilization": 0.38,
-      "risk": "low"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "cold-session test soft-deletes persisted finding on gap-close",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 1,
-      "wall_clock_estimate": 31,
-      "timeout": 60,
-      "utilization": 0.52,
-      "risk": "medium"
-    },
-    {
-      "file": "tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-      "test": "agent runtime exposes mcp__learning_loop_mcp__* tools to the AI (L2 probe)",
-      "expected_file_reads": 0,
-      "expected_mcp_calls": 3,
-      "wall_clock_estimate": 47,
-      "timeout": 60,
-      "utilization": 0.78,
-      "risk": "high"
-    }
-  ]
+  "budget_table": []
 }
