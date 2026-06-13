@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-13 (Phase B scoping brainstorm; test baseline corrected to 862/861)
+**Last updated:** 2026-06-13 (Phase B1+B2 shipped; 864 pass/0 fail/1 skip; cold-session flaky — reported)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -79,12 +79,29 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 
 **Scoping (2026-06-13):** Brainstorm at `plans/reports/brainstorm-260613-1146-phase-b-bridge-5-core-fix.md`. Decisions: adapt Report 2 (update numbers), proceed despite SP3 instability (TDD catches divergence), create `core/schema-to-zod.js` fresh, B1-B2 only this session (B3-B6 deferred). SP3 check shows 15 commits to `meta-state.js` since 2026-06-05 — schemas are NOT stable but TDD Phase 0 locks the contract. Ad-hoc patches are 6 locations (not 4 as Report 2 assumed). Wire-format tests updated to assert flat arrays.
 
-- [ ] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- tools/learning-loop-mcp/core/meta-state.js` — informational, not blocking (15 commits found; TDD Phase 0 catches divergence).
-- [ ] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). Estimated cost: ~3-4h for B2 sub-phases (B2-0: TDD, B2-1: codegen, B2-2: wiring, B2-3: cleanup, B2-4: test suite + close findings).
-- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written. **Deferred** — B2 fixes the structural blocker; broader adoption is incremental.
-- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Verified baseline (2026-06-13):** 862 tests (861 pass, 1 skip, 0 fail, 102 suites). **Deferred** — B2-4 covers the patch tool scope.
-- [ ] **B5** Update `core/schema-to-zod.js` to be the single source for the 4 meta-surface kinds. Delete the 6 ad-hoc reader patches (loop-introspect.js, fix-loop-design-refs.mjs, fix-loop-design-refs.test.js, cold-tier-regression.test.js, meta-state-list-ref-by-filter.test.js, meta-state-list-tool.js) per the Bridge 5 design's Phase 3. **Deferred** — B2-1 creates the file; B5 expands it.
-- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped) once Approach 3 lands. Run `meta_state_patch` to update the entry's `proposed_design_for` and `addresses`. Resolve `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (currently active, expires 2026-06-13). **Deferred** — depends on B3-B5 shipping.
+- [x] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- tools/learning-loop-mcp/core/meta-state.js` — informational, not blocking (15 commits found; TDD Phase 0 catches divergence). **Closed 2026-06-13** via `plans/260613-1853-phase-b-bridge-5-core-fix/`.
+- [x] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). **Closed 2026-06-13** via `plans/260613-1853-phase-b-bridge-5-core-fix/`. `buildPatchSchemaFor(kind)` + `PATCH_KINDS` inlined in `core/meta-state.js`; `meta_state_patch#patch` is now a per-kind union (`.partial().strict()`); 9 ad-hoc reader patches reverted; 1 live wrap site migrated; 2 findings resolved; 1 change-log filed. Test baseline: 864 pass, 0 fail, 1 skip.
+- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written. **Deferred** — B2 fixes the structural blocker; broader adoption is incremental. Also covers LIM-7 (22 of 38 MCP tools still hand-write Zod).
+- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Verified baseline (2026-06-13):** 864 tests (864 pass, 0 fail, 1 skip). **Deferred** — B2-4 covers the patch tool scope.
+- [ ] **B5** Expand `buildPatchSchemaFor` to handle `_expected_version`, `mechanism_check`, `code_fingerprint` for script callers. Covers LIM-1 (recreate `core/schema-to-zod.js` for full codegen), LIM-2 (`metaStateEntryPatchSchema` passthrough — needs `z.intersection` fix for script callers). **Deferred** — B2-1 inlines the function; B5 expands it.
+- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped). **Deferred** — depends on B3-B5 shipping.
+
+**Known Limitations from B1-B2 (LIM-1 through LIM-9):**
+
+| ID | Gap | Status | Suggested session |
+|----|-----|--------|-------------------|
+| LIM-1 | `core/schema-to-zod.js` recreation for B5/B6 full codegen | Open | B5 |
+| LIM-2 | `metaStateEntryPatchSchema` passthrough — strict typing would reject `_expected_version`; needs `z.intersection` | Open | B5 |
+| LIM-3 | `meta_state_resolve` / `meta_state_log_change` lack caller-identity check; `resolved_by: "operator"` is caller-supplied | Open | Follow-up + meta-wide identity fix |
+| LIM-4 | `meta_state_refresh_fingerprint` path traversal: `join(root, "../../../etc/passwd")` not contained | Open | Follow-up + meta-wide hardening |
+| LIM-5 | Test harness `child.kill()` SIGTERM + no temp cleanup + full `process.env` forward | Open | Test-hardening pass |
+| LIM-6 | `meta_state_log_change` 60s `_idempotencyCache` + silent gate-log failure | Open | Audit-trail hardening pass |
+| LIM-7 | 22 of 38 MCP tools still hand-write Zod; B3 expands `buildPatchSchemaFor` adoption | Open | B3 |
+| LIM-8 | 3 other tools use `z.object({}).passthrough()`: `trigger-workflow-tool.js:11`, `workflow-intake-plan-tool.js:20,22`, `workflow-generate-prompt-tool.js:89` | Open | Follow-up |
+| LIM-9 | `meta_state_batch` update op at `meta-state-batch-tool.js:17` still uses `.passthrough()` — `Object.assign` at line 483 accepts arbitrary keys | Open | Follow-up |
+
+**Flaky test finding (2026-06-13):**
+- `meta-260614T0052Z-cold-session-discoverability-test-cold-session-discoverabili` — cold-session test flaky (21 prior failures with `session_id=test-cold-session-mcp-client-loading`); 7/8 pass, 1 fail (direct-MCP-server-spawn sub-test). Recommendation: refactor to deterministic test harness or split into fast unit + slow integration.
 
 ---
 
@@ -190,8 +207,8 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 - **Skill-migration pillar:** `docs/philosophy.md` Pillar 4 (Skill Authority vs. Loop Authority). The convention that Phase G implements.
 - **Skill-migration closeout:** `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 (the operator-confirmed consensus that produced the dependency-balance convention and the post-productization migration target).
 - **Active loop-design entry:** `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` (status: active; `proposed_design_for` and `addresses` empty; targeted by Report 2).
-- **Active next-up finding:** `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (status: reported; expires 2026-06-13; cost estimate ~6h).
-- **Wire-format quirk finding:** `meta-260612T0058Z-next-up-wire-format-quirk-on-meta-state-patch-proposed-desig` (the latest empirical confirmation that the passthrough ZodObject is the structural blocker).
+- **Resolved next-up finding:** `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (status: resolved 2026-06-13; schema derivation shipped via B2-1+B2-2+B2-3).
+- **Resolved wire-format quirk finding:** `meta-260612T0058Z-next-up-wire-format-quirk-on-meta-state-patch-proposed-desig` (status: resolved 2026-06-13; structural blocker eliminated by derived union schema).
 - **Related change-log:** `meta-260610T1025Z-tools-learning-loop-mcp-tool-registry-js-coerceparamstoschem` (the in-production coercion helpers that Phase C must reproduce in Mastra).
 
 ---

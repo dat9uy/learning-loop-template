@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "B1 SP3 Stability Check"
-status: pending
+status: completed
 priority: P1
 effort: "5min"
 dependencies: []
@@ -35,9 +35,9 @@ Pure `git log` invocation. No code, no test, no schema. The check is documentati
 
 ## Success Criteria
 
-- [ ] Commit count recorded
-- [ ] Most recent commit hash + subject + date recorded
-- [ ] Results pasted into Phase 6 (B2-4) journal
+- [x] Commit count recorded
+- [x] Most recent commit hash + subject + date recorded
+- [x] Results pasted into Phase 6 (B2-4) journal
 
 ## Risk Assessment
 

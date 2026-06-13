@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "B2-3 Revert 9 reader-patch sites (registry helper stays)"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["phase-04-b2-2-wire-patch-tool-to-derived-schema"]
@@ -61,12 +61,13 @@ The 3 commits are grouped by logical locality, not by site:
 
 ## Implementation Steps
 
-1. **Pre-state check** (run before any commit):
+1. **Pre-state check** (run before any commit). **IMPORTANT:** Phase 5 MUST only be run after Phase 4 Part 2 completes (the reverted scripts read `proposed_design_for` directly; if the live data is still wrapped, the script treats `{item: [...]}` as object keys and corrupts data).
    ```sh
-   grep -c '"item"' meta-state.jsonl
+   node -e "const lines = require('fs').readFileSync('meta-state.jsonl', 'utf8').split('\n').filter(l => l.trim()); let wrap = 0; for (const l of lines) { const e = JSON.parse(l); for (const k of ['proposed_design_for', 'addresses']) { const v = e[k]; if (v && typeof v === 'object' && !Array.isArray(v) && Array.isArray(v.item)) wrap++; } } console.log('wrap sites:', wrap);"
    ```
-   - Expected: `0` (Phase 4 Part 2 migration already flattened the 1 live wrap site at line 21)
+   - Expected output: `wrap sites: 0` (Phase 4 Part 2 migration already flattened the 1 live wrap site)
    - If different, STOP and re-run the Phase 4 migration.
+   - Note: do NOT use `grep -c '"item"' meta-state.jsonl` — it matches ANY JSON containing the string `"item"` (e.g., in descriptions), producing false positives.
 
 2. **Commit 1: Revert script + its test (4 sites)**
    - File: `tools/learning-loop-mcp/scripts/fix-loop-design-refs.mjs` (site 2, lines 35-39)
@@ -112,9 +113,9 @@ The 3 commits are grouped by logical locality, not by site:
    - File: `tools/learning-loop-mcp/__tests__/wire-format-top-level-coercion.test.js`
      - Tests 1 and 2 (lines 125-172): the input payloads use `{item: [...]}` (correct — they verify the outer `coerceParamsToSchema` unwraps); the output assertions at lines 144-145 and 169-170 already expect flat (correct — they verify the post-coercion state). **No change needed**; verify the tests pass.
    - File: `tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js`
-     - Test 1 (line 127-169): the test calls `meta_state_patch` with `patch: { item: { addresses: [...], description: "..." } }` (the BUG symptom — the patch object itself is wrapped). Change to `patch: { addresses: [...], description: "..." }` (flat). Update the test name from "meta_state_patch unwraps {item: {...}} wrapped patch object via stdio" to "meta_state_patch accepts flat patch object via stdio".
-     - Test 3 (line 188-202): currently calls `propose_design` with `{item: ["rule-A"]}` and asserts flat. **No change needed** — this is exactly the wire-format coercion contract; the outer `coerceParamsToSchema` unwraps `{item: [...]}` and the test asserts flat.
-     - Test 1.5 (line 206-221): same as Test 3.
+     - Test 1 (line 127-169): the test calls `meta_state_patch` with `patch: { item: { addresses: [...], description: "..." } }` (the BUG symptom — the patch object itself is wrapped). Change to `patch: { addresses: [...], description: "..." }` (flat). Update the test name from "meta_state_patch unwraps {item: {...}} wrapped patch object via stdio" to "meta_state_patch accepts flat patch object via stdio". **Note:** this is the SOLE owner of this test's modification — Phase 2 does NOT touch `wire-format-patch-recursion.test.js`.
+     - Test 3 (line 188-202): currently calls `propose_design` with `{item: ["rule-A"]}` and asserts flat. **No change needed** — this is exactly the wire-format coercion contract; the outer `coerceParamsToSchema` unwraps `{item: [...]}` and the test asserts flat. Keep the `{item: [...]}` input to exercise the outer coercion.
+     - Test 1.5 (line 206-221): same as Test 3 — keep `{item: [...]}` input.
    - Run `pnpm test` — must stay green
    - Commit: `refactor(meta-state-list): drop local unwrapItemWrap copy; flip wire-format test contract to assert flat outputs`
 
@@ -122,13 +123,13 @@ The 3 commits are grouped by logical locality, not by site:
 
 ## Success Criteria
 
-- [ ] 3 commits land in order; each one passes `pnpm test` independently
-- [ ] Registry `unwrapItemWrap` helper **preserved** in `tool-registry.js:58-75`
-- [ ] Local `unwrapItemWrap` copy **deleted** from `meta-state-list-tool.js:57-62`
-- [ ] 9 ad-hoc reader-patch sites reverted (count: 1 + 1 + 4 + 1 + 1 + 1 = 9)
-- [ ] Wire-format tests assert flat outputs (input payloads can still use `{item: [...]}` to verify the outer coercion)
-- [ ] All test counts match expected (866 tests, 0 fail)
-- [ ] No commit references the plan's phase numbers in code or commit message body (only the `see plans/...` trailer)
+- [x] 3 commits land in order; each one passes `pnpm test` independently
+- [x] Registry `unwrapItemWrap` helper **preserved** in `tool-registry.js:58-75`
+- [x] Local `unwrapItemWrap` copy **deleted** from `meta-state-list-tool.js:57-62`
+- [x] 9 ad-hoc reader-patch sites reverted (count: 1 + 1 + 4 + 1 + 1 + 1 = 9)
+- [x] Wire-format tests assert flat outputs (input payloads can still use `{item: [...]}` to verify the outer coercion)
+- [x] All test counts match expected (862 baseline + 3 new + deny-list fix, 0 fail)
+- [x] No commit references the plan's phase numbers in code or commit message body (only the `see plans/...` trailer)
 
 ## Risk Assessment
 
@@ -139,4 +140,4 @@ The 3 commits are grouped by logical locality, not by site:
 
 ## TDD Discipline
 
-This phase is REFACTOR. The 4 RED tests from Phase 2 (B2-0) are GREEN (turned green in Phase 4 Part 1). They stay green throughout Phase 5. The 2 wire-format test updates in commit 3 also stay green (the input payloads still use `{item: [...]}` to exercise the outer coercion; the output assertions are flat).
+This phase is REFACTOR. The 2 RED tests from Phase 2 (B2-0, Tests 1-2: wrapped input rejection) are GREEN (turned green in Phase 4 Part 1). Test 3 (regression guard) stays GREEN. They stay green throughout Phase 5. The wire-format test updates in commit 3 also stay green (the input payloads still use `{item: [...]}` to exercise the outer coercion; the output assertions are flat).

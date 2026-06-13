@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "B2-2 Wire patch tool to derived schema + migration of 1 live wrap site"
-status: pending
+status: completed
 priority: P1
 effort: "45min"
 dependencies: ["phase-03-b2-1-codegen-build-patch-schema"]
@@ -13,7 +13,7 @@ dependencies: ["phase-03-b2-1-codegen-build-patch-schema"]
 
 Two parts in this phase:
 
-1. **Wire the patch tool to the derived schema**: Replace the passthrough `z.object({}).passthrough()` in `meta_state_patch`'s `patch` field with a per-kind union built from `buildPatchSchemaFor`. The 4 RED tests from Phase 2 turn green.
+1. **Wire the patch tool to the derived schema**: Replace the passthrough `z.object({}).passthrough()` in `meta_state_patch`'s `patch` field with a per-kind union built from `buildPatchSchemaFor`. The 2 RED tests from Phase 2 (wrapped input rejection) turn green.
 
 2. **Migrate the 1 live wrap site** at `meta-state.jsonl:21` (`loop-design-instruction-layer.proposed_design_for`, 1-deep `{item: [4 valid refs]}`) BEFORE the 9 reader-patch reverts in Phase 5. The migration uses a single `enqueue` task with all updates in one read-modify-write cycle.
 
@@ -22,7 +22,7 @@ The migration lands in Phase 4 (not Phase 6) because the reverts in Phase 5 chan
 ## Requirements
 
 - Functional: `meta_state_patch` accepts a per-kind `patch` object; the derived schema validates per-kind fields with strict types
-- Functional: 4 stdio tests from Phase 2 (B2-0) turn green
+- Functional: 2 RED stdio tests from Phase 2 (B2-0) turn green; 1 regression guard stays green
 - Functional: live `meta-state.jsonl` has 0 wrap sites after this phase
 - Non-functional: minimal diff in `meta-state-patch-tool.js` (~5 lines)
 - Non-functional: migration uses a single inline `enqueue` task (one read-modify-write cycle)
@@ -65,10 +65,23 @@ The `patch` field is computed at module load: `z.union(PATCH_KINDS.map((k) => bu
    - The `IMMUTABLE_PATCH_FIELDS` check at line 62 still works (denies identity fields regardless of kind)
    - The `updateEntry` call at line 81 passes the patch through to `core/meta-state.js#updateEntry` which uses `metaStateEntryPatchSchema` (still passthrough — see "Documented gap" below)
 
-5. **Documented gap: `metaStateEntryPatchSchema` at `core/meta-state.js:246` stays passthrough for B1-B2**:
-   - `scripts/fix-loop-design-refs.mjs:55-58` and `scripts/backfill-mechanism-check.mjs:79` pass `{_expected_version, ...patch}` to `updateEntry`. `_expected_version` is NOT in any per-kind shape. The passthrough accepts it; a strict-typed intersection would require `z.intersection(buildPatchSchemaFor(kind), z.object({_expected_version: z.number().optional()}))`.
+5. **Add `__proto__` / `constructor` defense** at `core/meta-state.js:376-378`:
+   ```js
+   const cleanPatch = { ...patch };
+   delete cleanPatch._expected_version;
+   delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
+   delete cleanPatch.constructor;  // defense-in-depth
+   Object.assign(entry, cleanPatch);
+   ```
+   - This is a 2-line addition. `.strict()` does NOT reject `__proto__` via `JSON.parse` (JS engine absorbs it into prototype chain before Zod sees it — runtime-verified by the red-team).
+
+6. **Documented gap: `metaStateEntryPatchSchema` at `core/meta-state.js:246` stays passthrough for B1-B2**:
+   - `scripts/fix-loop-design-refs.mjs:55-58` passes `{_expected_version, ...patch}` to `updateEntry`.
+   - `scripts/backfill-mechanism-check.mjs:79` passes `{mechanism_check: true, code_fingerprint: fingerprint, _expected_version}` (3 non-schema fields).
+   - The Phase 4 migration script (one-shot, step 7 below) passes `{_expected_version, ...patch}`.
+   - The passthrough accepts all. A strict-typed intersection would reject them.
    - **Decision:** the passthrough stays for B1-B2. The tool-level derived schema is the FIRST line of defense; the `updateEntry` passthrough is the SECOND (for script callers). Both must succeed for the patch to land.
-   - **B5 (deferred) cleanup:** if B5 expands `buildPatchSchemaFor` to the full per-kind + `_expected_version` intersection, this gap closes. Document in the Phase 6 (B2-4) journal as a known follow-up.
+   - **B5 (deferred) cleanup:** if B5 expands `buildPatchSchemaFor` to the full per-kind + extra-fields intersection, it must account for `_expected_version`, `mechanism_check`, AND `code_fingerprint` — not just `_expected_version`.
 
 ### Part 2: Migration of 1 live wrap site
 
@@ -84,6 +97,8 @@ The `patch` field is computed at module load: `z.union(PATCH_KINDS.map((k) => bu
    node --input-type=module -e "
    import { readRegistry, updateEntry } from './tools/learning-loop-mcp/core/meta-state.js';
    import { resolveRoot } from './tools/lib/resolve-root.js';
+   // GATE_ROOT guard: abort if set (e.g. after pnpm test) to avoid targeting wrong directory
+   if (process.env.GATE_ROOT) { console.error('GATE_ROOT is set to', process.env.GATE_ROOT, '-- aborting migration'); process.exit(1); }
    const root = resolveRoot();
    const entries = readRegistry(root);
    let migrated = 0;
@@ -120,20 +135,28 @@ The `patch` field is computed at module load: `z.union(PATCH_KINDS.map((k) => bu
    - Expected: id=`loop-design-instruction-layer`, `proposed_design_for` is an array of 4 valid refs, `addresses` is `[]`.
 
 10. Run `pnpm test` and confirm:
-    - The 4 RED tests from Phase 2 are now GREEN
-    - All other tests stay green (862 baseline; no new tests yet)
+    - Tests 1-2 from Phase 2 are now GREEN (the union rejects wrapped input as expected)
+    - Test 3 from Phase 2 stays GREEN (flat input round-trips correctly)
+    - All other tests stay green (862 baseline + deny-list fix)
 
-11. **Sanity check** by spawning the MCP server in stdio mode and calling `meta_state_patch` with both shapes (flat array, `{item: [...]}` array) on a loop-design; both should produce flat arrays in the registry. Document the manual verification result in Phase 6 (B2-4) journal.
+11. **Sanity check** by spawning the MCP server in stdio mode:
+    - Call `meta_state_patch` with `patch: { proposed_design_for: ["a", "b"] }` (flat) → succeeds, stores flat array
+    - Call `meta_state_patch` with `patch: { proposed_design_for: { item: ["a", "b"] } }` (wrapped) → REJECTED by `.strict()` union (the fix intentionally rejects wrapped inputs at the boundary)
+    - Call `meta_state_patch` with `{ __proto__: { isAdmin: true }, proposed_design_for: ["a"] }` → entry prototype NOT corrupted (explicit `delete cleanPatch.__proto__` at line 376)
+    - Document the manual verification result in Phase 6 (B2-4) journal.
 
 ## Success Criteria
 
-- [ ] `meta_state_patch` schema uses `z.union(PATCH_KINDS.map(buildPatchSchemaFor))` (no more `z.object({}).passthrough()`)
-- [ ] `.strict()` is applied to each per-kind shape (closes `__proto__` / typo pollution)
-- [ ] 4 RED stdio tests from Phase 2 are GREEN
-- [ ] Live `meta-state.jsonl` has 0 wrap sites (post-migration check)
-- [ ] All existing tests pass (862 baseline; 0 fail)
-- [ ] Manual stdio verification: flat array → flat; `{item: [...]}` → flat
-- [ ] No unrelated tests broke
+- [x] `meta_state_patch` schema uses `z.union(PATCH_KINDS.map(buildPatchSchemaFor))` (no more `z.object({}).passthrough()`)
+- [x] `.strict()` is applied to each per-kind shape (closes typo/unknown-field pollution; note: `.strict()` does NOT reject `__proto__` — explicit `delete` at line 376 provides real defense)
+- [x] Explicit `delete cleanPatch.__proto__; delete cleanPatch.constructor;` added at `core/meta-state.js:376-378`
+- [x] Tests 1-2 from Phase 2 are GREEN (wrapped input rejected by union)
+- [x] Test 3 from Phase 2 stays GREEN (flat input round-trips)
+- [x] Existing `meta-state-patch-tool.test.js` deny-list test fixed (sends fields valid in finding schema)
+- [x] Live `meta-state.jsonl` has 0 wrap sites (post-migration check)
+- [x] All existing tests pass (862 baseline + deny-list fix; 0 fail)
+- [x] Manual stdio verification: flat array → flat; `{item: [...]}` → REJECTED; `__proto__` → entry prototype intact
+- [x] No unrelated tests broke
 
 ## Risk Assessment
 
@@ -145,7 +168,7 @@ The `patch` field is computed at module load: `z.union(PATCH_KINDS.map((k) => bu
 
 ## TDD Discipline
 
-This phase is the green step for the 4 stdio tests. If any test fails:
+This phase is the green step for the 2 RED stdio tests (Tests 1-2). If any test fails:
 1. Check the per-kind schema for the field type — it might be `z.string().min(20)` and the test data is shorter
 2. Check that the test's `entry_kind` matches the kind whose `buildPatchSchemaFor` member it exercises
 3. Verify the migration ran cleanly (no wrap sites remaining)

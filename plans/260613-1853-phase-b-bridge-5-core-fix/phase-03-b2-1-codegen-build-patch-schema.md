@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "B2-1 Codegen: buildPatchSchemaFor (inline in core/meta-state.js)"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["phase-02-b2-0-tdd-derived-schema-tests"]
@@ -11,7 +11,7 @@ dependencies: ["phase-02-b2-0-tdd-derived-schema-tests"]
 
 ## Overview
 
-Add `buildPatchSchemaFor(kind)` and `PATCH_KINDS` to `core/meta-state.js` (inlined near `metaStateEntrySchema`, NOT in a new `core/schema-to-zod.js` file). The function reads the 4 per-kind Zod schemas, returns each as `.partial().strict()` so patches are partial AND unknown keys are rejected. This closes the `__proto__` / typo'd-field pollution path through `Object.assign` at `core/meta-state.js:378` (updateEntry) and `:483` (meta_state_batch).
+Add `buildPatchSchemaFor(kind)` and `PATCH_KINDS` to `core/meta-state.js` (inlined near `metaStateEntrySchema`, NOT in a new `core/schema-to-zod.js` file). The function reads the 4 per-kind Zod schemas, returns each as `.partial().strict()` so patches are partial AND unknown keys are rejected. This closes typo/unknown-field pollution through `Object.assign` at `core/meta-state.js:378` (updateEntry). Note: `.strict()` does NOT reject `__proto__` via `JSON.parse` (JS engine absorbs it into prototype chain before Zod sees it — runtime-verified); explicit `delete cleanPatch.__proto__` at line 376 provides real defense. Line 483 (`metaStateBatch`) is NOT covered — `meta-state-batch-tool.js:17` still uses `.passthrough()`.
 
 The new function is the new source of truth for the patch tool's input schema.
 
@@ -48,20 +48,33 @@ This is a single expression; no precomputed export from `core/meta-state.js`. Th
 
 2. **Add** the new exports:
    ```js
+   /**
+    * Derive the list of patchable kinds from the entry_kind enum in
+    * meta-state-patch-tool.js. Single source of truth — no separate
+    * hardcoded array to drift.
+    *
+    * NOTE: change-log is handler-level immutable (meta-state-patch-tool.js:56-59
+    * rejects all change-log patches with reason "change_log_immutable"), but
+    * the schema is still included so the union covers all 4 kinds. The handler
+    * guard is the enforcement; the schema is permissive.
+    */
    export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
 
    /**
     * Derive a per-kind patch schema from the 4 per-kind source-of-truth
     * schemas. Patches are partial (.partial() marks all fields optional);
-    * unknown keys are rejected (.strict() closes __proto__ / typo'd-field
+    * unknown keys are rejected (.strict() closes typo/unknown-field
     * pollution via Object.assign at the updateEntry boundary).
+    *
+    * IMPORTANT: .strict() does NOT reject __proto__ via JSON.parse (JS
+    * engine absorbs it into prototype chain before Zod sees it). The real
+    * defense is the explicit `delete cleanPatch.__proto__` at
+    * core/meta-state.js:376.
     *
     * This is a pure projection: any change to the per-kind schemas in
     * this file is reflected here automatically. Tests in
     * __tests__/meta-state-patch-derived-schema.test.js assert the round-trip
-    * behavior end-to-end; this unit is verified at the tool boundary, not
-    * by a separate schema-to-zod-patch test (the per-key parity check is
-    * a 1-line test of zod's .partial() which tests the library, not the plan).
+    * behavior end-to-end.
     */
    export function buildPatchSchemaFor(kind) {
      switch (kind) {
@@ -79,21 +92,22 @@ This is a single expression; no precomputed export from `core/meta-state.js`. Th
 
 3. **Do NOT** add a `patchSchemaUnion` export. The patch tool computes the union inline (Phase 4 step 2).
 
-4. **Do NOT** create `__tests__/schema-to-zod-patch.test.js`. The 4 stdio tests in `__tests__/meta-state-patch-derived-schema.test.js` (Phase 2) cover the round-trip end-to-end; a separate 1-line-passthrough test is library-testing, not plan-testing. Per Scope Critic Finding 3.
+4. **Do NOT** create `__tests__/schema-to-zod-patch.test.js`. The 3 stdio tests in `__tests__/meta-state-patch-derived-schema.test.js` (Phase 2) cover the round-trip end-to-end; a separate 1-line-passthrough test is library-testing, not plan-testing. Per Scope Critic Finding 3.
 
 5. Run `pnpm test` and confirm:
-   - The 4 RED tests in `__tests__/meta-state-patch-derived-schema.test.js` from Phase 2 are STILL RED (the patch tool still uses the passthrough schema; this phase only adds the derivation)
+   - The 2 RED tests in `__tests__/meta-state-patch-derived-schema.test.js` from Phase 2 (Tests 1-2, wrapped input rejection) are STILL RED (the patch tool still uses the passthrough schema; this phase only adds the derivation)
    - No unrelated tests broke (862 baseline; 0 expected change yet)
 
 ## Success Criteria
 
-- [ ] `PATCH_KINDS` and `buildPatchSchemaFor` exported from `core/meta-state.js`
-- [ ] Each per-kind branch returns `.partial().strict()` (NOT `.partial()` alone)
-- [ ] Unknown kind throws with a useful error message
-- [ ] No `core/schema-to-zod.js` file is created
-- [ ] No `patchSchemaUnion` precomputed export
-- [ ] 4 RED tests from Phase 2 still RED (the fix is in Phase 4)
-- [ ] No unrelated tests broke
+- [x] `PATCH_KINDS` and `buildPatchSchemaFor` exported from `core/meta-state.js`
+- [x] Each per-kind branch returns `.partial().strict()` (NOT `.partial()` alone)
+- [x] Note: `.strict()` rejects unknown keys but NOT `__proto__` — real defense is explicit `delete` at `core/meta-state.js:376` (added in Phase 4)
+- [x] Unknown kind throws with a useful error message
+- [x] No `core/schema-to-zod.js` file is created
+- [x] No `patchSchemaUnion` precomputed export
+- [x] 2 RED tests from Phase 2 still RED (the fix is in Phase 4)
+- [x] No unrelated tests broke
 
 ## Risk Assessment
 
@@ -104,4 +118,4 @@ This is a single expression; no precomputed export from `core/meta-state.js`. Th
 
 ## TDD Discipline
 
-This phase adds no new test of its own. The 4 RED tests from Phase 2 cover the round-trip end-to-end. Phase 4 (B2-2) is what turns them green.
+This phase adds no new test of its own. The 2 RED tests from Phase 2 (Tests 1-2, wrapped input rejection) cover the round-trip end-to-end. Phase 4 (B2-2) is what turns them green.

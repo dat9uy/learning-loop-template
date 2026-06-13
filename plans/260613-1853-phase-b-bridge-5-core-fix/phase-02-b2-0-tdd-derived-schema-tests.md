@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "B2-0 TDD Derived Schema Tests"
-status: pending
+status: completed
 priority: P1
 effort: "45min"
 dependencies: ["phase-01-b1-sp3-stability-check"]
@@ -11,14 +11,15 @@ dependencies: ["phase-01-b1-sp3-stability-check"]
 
 ## Overview
 
-Write the failing tests first. 4 new stdio regression tests in `__tests__/meta-state-patch-derived-schema.test.js` lock the contract: top-level array fields round-trip flat. 2 existing wire-format tests in `__tests__/wire-format-top-level-coercion.test.js` and `__tests__/wire-format-patch-recursion.test.js` get updated to assert flat arrays (their current `{item: [...]}` assertions are symptoms of the bug). All 6 tests should fail at the end of this phase with the current passthrough `z.object({}).passthrough()` schema.
+Write the failing tests first. 3 new stdio regression tests in `__tests__/meta-state-patch-derived-schema.test.js` lock the contract: top-level array fields round-trip flat. Tests 1-2 send WRAPPED `{item: [...]}` input that the current passthrough accepts but the new derived union will reject — these are the true RED tests. Test 3 sends flat input to verify the post-fix contract.
+
+The `wire-format-patch-recursion.test.js` modifications (Tests 1, 3, 1.5) are handled entirely in Phase 5 — NOT in this phase. This avoids duplicate ownership between Phase 2 and Phase 5.
 
 ## Requirements
 
-- Functional: 4 new tests cover the 4 wire-format scenarios documented in the brainstorm
-- Functional: 2 existing tests updated to assert the post-fix contract
+- Functional: 3 new tests cover the wire-format scenarios
+- Functional: tests use the same `withMcpServer` helper pattern as `wire-format-patch-recursion.test.js` (precedent plan 260611-2230)
 - Non-functional: tests run via `pnpm test`; use only built-in Node modules (no new deps)
-- Non-functional: tests use the same `withMcpServer` helper pattern as `wire-format-patch-recursion.test.js` (precedent plan 260611-2230)
 
 ## Architecture
 
@@ -26,11 +27,9 @@ The new test file spawns the MCP server as a child process, sends JSON-RPC `tool
 
 ## Related Code Files
 
-- **Create:** `tools/learning-loop-mcp/__tests__/meta-state-patch-derived-schema.test.js` (~150 lines; 4 stdio regression tests)
-- **Modify:** `tools/learning-loop-mcp/__tests__/wire-format-top-level-coercion.test.js` (~10 lines: change `{item: [...]}` assertions in Test 1 and Test 2 to flat)
-- **Modify:** `tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js` (~12 lines: change `{item: {...}}` patch object test in Test 1 + `{item: [...]}` assertions in Tests 1, 3, 1.5 to flat)
+- **Create:** `tools/learning-loop-mcp/__tests__/meta-state-patch-derived-schema.test.js` (~120 lines; 3 stdio regression tests)
 - **Read (for patterns):** `tools/learning-loop-mcp/__tests__/wire-format-patch-recursion.test.js` (`withMcpServer` helper)
-- **Read (for schemas):** `tools/learning-loop-mcp/core/meta-state.js#metaStateLoopDesignSchema` (target kind for the 4 new tests)
+- **Read (for schemas):** `tools/learning-loop-mcp/core/meta-state.js#metaStateLoopDesignSchema` (target kind for the 3 new tests)
 
 ## Implementation Steps
 
@@ -38,59 +37,46 @@ The new test file spawns the MCP server as a child process, sends JSON-RPC `tool
    - Copy/adapt the `withMcpServer` helper from `wire-format-patch-recursion.test.js` (90 lines of copy-acceptable duplication per the precedent plan's decision).
    - The helper spawns `tools/learning-loop-mcp/server.js` with `GATE_ROOT` pointing to a temp directory; copies `schemas/*.schema.json` into the temp root; provides `call(id, name, args)` and exposes `tempRoot`.
 
-2. **Write Test 1 — `proposed_design_for: string[]` round-trips flat**:
+2. **Write Test 1 — wrapped `proposed_design_for: {item: [...]}` is REJECTED (RED test)**:
    - Create a loop-design entry via `meta_state_propose_design` with `proposed_design_for: ["rule-A", "rule-B"]`.
-   - Call `meta_state_patch` with `patch: { proposed_design_for: ["rule-C", "rule-D", "rule-E"] }`.
+   - Call `meta_state_patch` with `patch: { proposed_design_for: { item: ["rule-C", "rule-D", "rule-E"] } }` (WRAPPED input).
+   - Assert `result.patched === false` or a validation error (the current passthrough ACCEPTS this and stores the wrapped object; the new derived union will REJECT it).
+   - This test is RED: it asserts rejection, but the current passthrough accepts the wrapped input.
+
+3. **Write Test 2 — wrapped `addresses: {item: [...]}` is REJECTED (RED test)**:
+   - Create a loop-design entry with `addresses: ["finding-A"]`.
+   - Call `meta_state_patch` with `patch: { addresses: { item: ["finding-B", "finding-C"] } }` (WRAPPED input).
+   - Assert rejection (same as Test 1).
+
+4. **Write Test 3 — flat `proposed_design_for: string[]` round-trips flat (post-fix contract)**:
+   - Create a loop-design entry via `meta_state_propose_design` with `proposed_design_for: ["rule-A", "rule-B"]`.
+   - Call `meta_state_patch` with `patch: { proposed_design_for: ["rule-C", "rule-D", "rule-E"] }` (FLAT input).
    - Assert `result.patched === true`.
    - Read registry; assert `entry.proposed_design_for` is `["rule-C", "rule-D", "rule-E"]` (flat array, no `{item: [...]}` wrap).
+   - This test is a regression guard — it passes both before and after the fix (flat inputs work with both schemas).
 
-3. **Write Test 2 — `addresses: string[]` round-trips flat**:
-   - Create a loop-design entry with `addresses: ["finding-A"]`.
-   - Call `meta_state_patch` with `patch: { addresses: ["finding-B", "finding-C"] }`.
-   - Assert success and stored `addresses` is `["finding-B", "finding-C"]` (flat).
+5. **Do NOT modify** `__tests__/wire-format-patch-recursion.test.js` or `__tests__/wire-format-top-level-coercion.test.js` in this phase. Those modifications are handled in Phase 5 commit 3 (single owner, no duplicate changes).
 
-4. **Write Test 3 — stdio client passes array as JSON string, gets flat array back**:
-   - This is the stdio-specific edge case where a client stringifies the array before sending.
-   - Create a loop-design; call `meta_state_patch` with `patch: { addresses: JSON.stringify(["x", "y"]) }` (the outer `coerceParamsToSchema` should parse the string back to an array via the existing `coerceValue` ZodArray branch).
-   - Assert stored `addresses` is `["x", "y"]` (flat).
-
-5. **Write Test 4 — stdio client passes object, gets object back**:
-   - Object fields (e.g., `applies_to`, `change_diff`) must also round-trip cleanly.
-   - Create a change-log entry with `applies_to: { tools: ["tool-A"] }`.
-   - Call `meta_state_patch` with `patch: { applies_to: { tools: ["tool-B", "tool-C"], surfaces: ["mcp-tools"] } }`.
-   - Assert stored `applies_to` is `{ tools: ["tool-B", "tool-C"], surfaces: ["mcp-tools"] }` (deep equal).
-
-6. **Update** `__tests__/wire-format-top-level-coercion.test.js`:
-   - Test 1 (line 144-145): change assertion from `assert.deepEqual(entry.proposed_design_for, ["rule-A", "rule-B"])` (already correct) — verify it passes post-fix; the upstream call still uses `{item: [...]}`, but the outer coercion unwraps it. **No change needed here** since the call shape is the wire-format quirk and the assertion is the post-coercion flat.
-   - Test 2 (line 169-170): same — assertion already expects flat; no change.
-
-7. **Update** `__tests__/wire-format-patch-recursion.test.js`:
-   - Test 1 (line 149-167): currently calls `patch: { item: { addresses: [...], description: "..." } }` and asserts the stored `addresses` is flat. The wire-format wrap on the `patch` object itself is the BUG symptom. **Change the test** to call `patch: { addresses: [...], description: "..." }` (no `{item: ...}` envelope) and assert the stored `addresses` is flat. This locks the post-fix contract: the patch tool accepts flat objects directly.
-   - Test 3 (line 188-202): currently calls `propose_design` with `{item: ["rule-A"]}` and asserts flat. **Change to call with `["rule-A"]`** (flat) and assert flat — locks the contract that flat is the supported shape.
-   - Test 1.5 (line 206-221): same — change `{item: []}` to `[]`.
-
-8. Run `pnpm test` and confirm the 4 new tests FAIL with errors indicating the patch tool's passthrough schema is the blocker:
-   - Test 1 should fail at `result.patched === true` with the registry storing `{item: ["rule-C", ...]}` instead of the flat array.
-   - Test 2 same.
-   - Test 3 same — the string-parsed array would still hit the same wrap.
-   - Test 4 should fail at `deepEqual` with the registry storing the object wrapped somehow.
-9. Confirm the 2 updated wire-format tests now PASS (since they assert the post-fix contract; the underlying `meta_state_propose_design` and `meta_state_patch` calls succeed via the existing `coerceParamsToSchema` outer coercion, which handles `{item: [...]}` for tools that have proper schemas).
+6. Run `pnpm test` and confirm:
+   - Tests 1-2 FAIL (RED) — they assert rejection, but the current passthrough accepts wrapped input
+   - Test 3 PASSES (regression guard) — flat inputs work with both schemas
+   - No unrelated tests break (862 baseline; 0 change)
 
 ## Success Criteria
 
-- [ ] New test file created with 4 tests
-- [ ] 4 new tests FAIL before Phase 3 (B2-1) implementation lands
-- [ ] 2 existing wire-format tests updated and PASS (because they assert the post-fix contract, not the wire-format wrap)
-- [ ] No new dependencies introduced
-- [ ] Existing test suite still passes (only the 4 new tests are red; 0 unrelated tests break)
+- [x] New test file created with 3 tests
+- [x] Tests 1-2 FAIL before Phase 3 (B2-1) implementation lands (RED)
+- [x] Test 3 PASSES (regression guard)
+- [x] No modifications to `wire-format-patch-recursion.test.js` or `wire-format-top-level-coercion.test.js` (deferred to Phase 5)
+- [x] No new dependencies introduced
+- [x] Existing test suite still passes (only Tests 1-2 are red; 0 unrelated tests break)
 
 ## Risk Assessment
 
 - **Risk: Helper duplication** — copying `withMcpServer` creates ~90 lines of duplication. **Mitigation:** accept the duplication; extracting a shared test helper is out of scope and would require updating existing tests.
-- **Risk: Test 3 string-to-array parsing depends on outer `coerceParamsToSchema`** — the new test asserts the round-trip works. The outer coercion (the `coerceValue` ZodArray branch + `unwrapItemWrap`) is preserved throughout this plan (per red-team reversal — it's tool-side coercion used by 14+ tools, NOT reader-side tolerance). Test 3 passes both before and after the fix; the fix is the structural change to the patch tool's schema, not the coercion. **Mitigation:** Test 3 is intentionally written to exercise the outer coercion (it sends a string, expects the outer coercion to parse it). It continues to pass because the outer coercion is preserved.
-- **Risk: Test 4 object round-trip is independent of the array fix** — it tests that object fields work, which they already do. **Mitigation:** Test 4 is a regression guard, not a red test; it should pass before AND after the fix. Phase 2 leaves it passing; Phase 3 doesn't touch it.
+- **Risk: Tests 1-2 assert rejection but the passthrough accepts** — the tests are RED because they assert `patched === false` or a validation error, but the passthrough stores the wrapped value. **Mitigation:** this is the correct TDD RED behavior — the tests lock the contract that wrapped input SHOULD be rejected.
 - **Risk: SP3 mid-implementation schema change invalidates the contract** — if `metaStateLoopDesignSchema` changes shape between Phase 2 and Phase 3, the test must be updated. **Mitigation:** the test reads the schema at runtime, not at write time, so a divergence fails the test, not silently passes. Re-run after schema edits.
 
 ## TDD Discipline
 
-This phase is RED. The 4 new tests must fail before Phase 3 starts. If a test passes by accident (e.g., the wire-format coercion accidentally produces flat for the right reason), update the test to assert the structural fix directly (e.g., assert that `metaStateEntrySchema` exposes 4 per-kind branches with strict-typed `proposed_design_for: z.array(z.string()).min(1)` on `metaStateLoopDesignSchema`, and that the patch tool's `schema.patch` is `z.union([...PATCH_KINDS.map(buildPatchSchemaFor)])` not `z.object({}).passthrough()`).
+This phase is RED. Tests 1-2 must fail before Phase 3 starts. Test 3 is a regression guard (passes both before and after). If Tests 1-2 pass by accident (e.g., the passthrough somehow rejects wrapped input), update the tests to assert the structural fix directly (e.g., assert that `metaStateEntrySchema` exposes 4 per-kind branches with strict-typed `proposed_design_for: z.array(z.string()).min(1)` on `metaStateLoopDesignSchema`, and that the patch tool's `schema.patch` is `z.union([...PATCH_KINDS.map(buildPatchSchemaFor)])` not `z.object({}).passthrough()`).
