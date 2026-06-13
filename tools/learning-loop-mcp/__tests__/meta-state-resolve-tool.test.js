@@ -89,27 +89,43 @@ describe("meta_state_resolve change-log immutability", () => {
 
   // Sanity: log_change tool still produces a resolveable finding-style structure
   // (i.e. change-log entries cannot be "found" by resolve's existing happy path)
-  test("change_log_immutable branch is hit when change-log entry exists alongside findings", async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "mixed-registry-"));
+  test("resolve refuses to resolve a rule entry", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "resolve-rule-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      await metaStateLogChangeTool.handler({
-        change_dimension: "mechanical",
-        change_target: "test/mixed.js",
-        change_diff: { added: [], removed: [], changed: ["x"] },
-        reason: "Mixed registry test: change-log entry should be immutable.",
+      const ruleEntry = {
+        id: "rule-test-resolve-rejected",
+        entry_kind: "rule",
+        origin: "meta-260602T0000Z-test-rule",
+        enforcement: "gate",
+        pattern_type: "glob",
+        pattern: "test/**",
+        description: "Test rule that must not be resolved via meta_state_resolve.",
+        status: "active",
+        created_at: "2026-06-02T00:00:00.000Z",
+      };
+      writeFileSync(
+        join(tempDir, "meta-state.jsonl"),
+        JSON.stringify(ruleEntry) + "\n",
+        "utf8"
+      );
+
+      const result = await metaStateResolveTool.handler({
+        id: "rule-test-resolve-rejected",
+        resolution: "should fail",
+        resolved_by: "operator",
       });
-
-      // Now find the generated id from the registry
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const id = JSON.parse(raw.trim().split("\n")[0]).id;
-
-      const result = await metaStateResolveTool.handler({ id });
       const parsed = JSON.parse(result.content[0].text);
 
       assert.strictEqual(parsed.resolved, false);
-      assert.strictEqual(parsed.reason, "change_log_immutable");
+      assert.strictEqual(parsed.reason, "not_a_finding");
+      assert.strictEqual(parsed.entry_kind, "rule");
+
+      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      const entry = JSON.parse(raw.trim().split("\n")[0]);
+      assert.strictEqual(entry.status, "active");
+      assert.strictEqual(entry.resolved_at, undefined);
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

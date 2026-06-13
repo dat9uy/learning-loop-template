@@ -20,7 +20,7 @@ const ARCHIVE_DECISION_RULE = (entry) => {
 
 export const metaStateArchiveTool = {
   name: "meta_state_archive",
-  description: "Archive findings to reduce registry size. Decision rule (NOT enforced, documented): archive entries that are (status=reported AND age > 30d AND not acked) OR (status=resolved AND resolved > 90d). Operator can override by passing override ids with a reason. Archived entries stay in meta-state.jsonl with status=archived, archived_at, archived_by, archived_reason fields. Default meta_state_list excludes archived; pass include_archived: true to include. Re-archiving is a no-op (returns already_archived).",
+  description: "Archive findings to reduce registry size. Decision rule (NOT enforced, documented): archive entries that are (status=reported AND age > 30d AND not acked) OR (status=resolved AND resolved > 90d). Operator can override by passing override ids with a reason. Only entry_kind=finding can be archived; rules, change-logs, and loop-designs are rejected. Archived entries stay in meta-state.jsonl with status=archived, archived_at, archived_by, archived_reason fields. Default meta_state_list excludes archived; pass include_archived: true to include. Re-archiving is a no-op (returns already_archived).",
   schema: {
     candidates: z.array(z.string()).default([])
       .describe("Optional explicit list of entry ids to evaluate against the decision rule. If empty, the rule is applied to the entire registry."),
@@ -46,7 +46,21 @@ export const metaStateArchiveTool = {
     const archived = [];
     const already_archived = [];
     const not_found = [];
+    const rejected = [];
     for (const id of targets) {
+      const entry = allEntries.find((e) => e.id === id);
+      if (!entry) {
+        not_found.push(id);
+        continue;
+      }
+      if (entry.status === "archived") {
+        already_archived.push(id);
+        continue;
+      }
+      if (entry.entry_kind !== "finding") {
+        rejected.push({ id, entry_kind: entry.entry_kind, reason: "not_a_finding" });
+        continue;
+      }
       const result = await archiveEntry(root, id, reason ?? "decision_rule_or_override", "operator");
       if (result.archived) archived.push({ id, archived_at: result.archived_at });
       else if (result.reason === "already_archived") already_archived.push(id);
@@ -59,12 +73,13 @@ export const metaStateArchiveTool = {
       archived_count: archived.length,
       already_archived_count: already_archived.length,
       not_found_count: not_found.length,
+      rejected_count: rejected.length,
     });
 
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ archived, already_archived, not_found }),
+        text: JSON.stringify({ archived, already_archived, not_found, rejected }),
       }],
     };
   },

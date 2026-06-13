@@ -73,6 +73,7 @@ The `expired` status was removed in plan 260611-1000-remove-expired-status. The 
 ### How Archive Works
 
 - Applied via `meta_state_archive` MCP tool or `meta_state_batch` with `op: "archive"`
+- Only `entry_kind: "finding"` can be archived; rules, change-logs, and loop-designs are rejected
 - Sets `status: "archived"` plus `archived_at`, `archived_by`, `archived_reason`
 - Re-archiving is a no-op (`already_archived`)
 - `meta_state_list` excludes archived entries by default; pass `include_archived: true` to query them
@@ -104,6 +105,7 @@ These three kinds have simpler, binary or fixed status models.
 - Created by `meta_state_promote_rule` (promotes a finding to a rule)
 - Inactive rules remain in the registry for lineage; `supersedes` points to the replacement rule
 - Loaded by the gate via `loadPromotedRules` and `applyPromotedRules`
+- **Guard:** `meta_state_resolve` and `meta_state_archive` reject rule entries. To deprecate a rule, use `meta_state_patch` to set `status: "inactive"` (or `supersedes` if replaced).
 
 ### Loop-Design (`entry_kind: "loop-design"`)
 
@@ -121,11 +123,11 @@ These three kinds have simpler, binary or fixed status models.
 |---|---|---|---|
 | `meta_state_report` | finding | -> `reported` | Creates finding with 24h TTL |
 | `meta_state_ack` | finding | `reported` -> `active` | Clears `expires_at` |
-| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected |
+| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected. Rejects rules, loop-designs, and change-logs. |
 | `meta_state_supersede` | finding | -> `superseded` | Sets `consolidated_into`, `superseded_at`, `superseded_by` |
 | `meta_state_re_verify` | finding | `stale` -> `active` | Runs `verification.steps`; updates `last_verified_at` on pass |
 | `meta_state_sweep` | finding | -> `stale` / `auto-resolved` | Batch lifecycle sweep; dry-run by default |
-| `meta_state_archive` | any | -> `archived` | Decision rule + operator override |
+| `meta_state_archive` | finding | -> `archived` | Decision rule + operator override; rejects rules, change-logs, and loop-designs |
 | `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
 | `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
 | `meta_state_propose_design` | loop-design | -> `active` | Idempotent by `addresses` + `proposed_design_for` set equality |

@@ -149,38 +149,57 @@ describe("meta_state_archive", () => {
     assert.equal(parsed.entries[0].id, "archive-active-1");
   });
 
-  it("archived entries appear with include_archived: true", async () => {
+  it("rejects rules and change-logs via override", async () => {
     const lines = [
       JSON.stringify({
-        id: "archive-active-2",
+        id: "archive-rule-1",
+        entry_kind: "rule",
+        origin: "meta-260602T0000Z-test-rule",
+        enforcement: "gate",
+        pattern_type: "glob",
+        pattern: "test/**",
+        description: "Test rule that must not be archived via override.",
+        status: "active",
+        created_at: new Date().toISOString(),
+      }),
+      JSON.stringify({
+        id: "archive-change-log-1",
+        entry_kind: "change-log",
+        change_dimension: "surface",
+        change_target: "test/path.js",
+        change_diff: { added: [], removed: [], changed: [] },
+        reason: "Test change-log that must not be archived via override.",
+        status: "active",
+        created_at: new Date().toISOString(),
+      }),
+      JSON.stringify({
+        id: "archive-finding-ok",
         entry_kind: "finding",
         status: "active",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Active finding for include_archived test (min 20 chars)",
+        description: "Active finding that can still be archived by override.",
         created_at: new Date().toISOString(),
-      }),
-      JSON.stringify({
-        id: "archive-archived-2",
-        entry_kind: "finding",
-        status: "archived",
-        category: "loop-anti-pattern",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        description: "Archived finding for include_archived test (min 20 chars)",
-        created_at: new Date().toISOString(),
-        archived_at: new Date().toISOString(),
-        archived_by: "test",
-        archived_reason: "test",
       }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
-    const result = await metaStateListTool.handler({ compact: true, include_archived: true });
+    const result = await metaStateArchiveTool.handler({
+      candidates: [],
+      override: ["archive-rule-1", "archive-change-log-1", "archive-finding-ok"],
+      reason: "override with mixed kinds",
+    });
     const parsed = JSON.parse(result.content[0].text);
-    assert.equal(parsed.entries.length, 2, "must return 2 entries with include_archived");
-    assert.ok(parsed.entries.find((e) => e.id === "archive-active-2"));
-    assert.ok(parsed.entries.find((e) => e.id === "archive-archived-2"));
+
+    assert.equal(parsed.archived.length, 1, "must archive only the finding");
+    assert.equal(parsed.archived[0].id, "archive-finding-ok");
+    assert.equal(parsed.rejected.length, 2, "must reject rule and change-log");
+    assert.ok(parsed.rejected.find((r) => r.id === "archive-rule-1" && r.reason === "not_a_finding"));
+    assert.ok(parsed.rejected.find((r) => r.id === "archive-change-log-1" && r.reason === "not_a_finding"));
+
+    const entries = readRegistry(root);
+    assert.ok(entries.find((e) => e.id === "archive-rule-1" && e.status === "active"), "rule must stay active");
+    assert.ok(entries.find((e) => e.id === "archive-change-log-1" && e.status === "active"), "change-log must stay active");
   });
 });

@@ -14,7 +14,7 @@ const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state entry as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. Only `stale` and `active` parents are cascade-closeable; `reported` parents must be acked first (canonical `meta_state_ack` flow). The legacy 2-step `expired -> stale -> resolved` path was removed in plan 260611-1000.",
+  description: "Mark a meta-state finding as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Only entry_kind=finding can be resolved; rules, loop-designs, and change-logs are rejected. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. Only `stale` and `active` parents are cascade-closeable; `reported` parents must be acked first (canonical `meta_state_ack` flow). The legacy 2-step `expired -> stale -> resolved` path was removed in plan 260611-1000.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
@@ -41,6 +41,18 @@ export const metaStateResolveTool = {
 
     if (entry.entry_kind === "change-log") {
       const result = { resolved: false, reason: "change_log_immutable", id };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_resolve",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
+    if (entry.entry_kind !== "finding") {
+      const result = { resolved: false, reason: "not_a_finding", id, entry_kind: entry.entry_kind };
       appendGateLog(root, {
         timestamp: new Date().toISOString(),
         tool: "meta_state_resolve",
