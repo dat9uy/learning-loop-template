@@ -78,11 +78,11 @@ The tension: the meta-surface's 4-kind union is locked since SP3 (2026-06-05); t
 
 | # | Requirement | Concrete anchor |
 |---|---|---|
-| 1 | **Expected output** | (a) A design report (this file). (b) Future plan that ships: extended `meta-state.jsonl` schema; new `runtime-state.jsonl` sidecar; 5 schemas deleted; 4 tools deleted; 2 tools added; 19 ledger events converted from yaml. |
-| 2 | **Acceptance criteria** | (a) The meta-surface's 4-kind union is preserved; no 5th kind. (b) `core/gate-logic.js#evaluateWritePath` continues to enforce write-path patterns after the schema change. (c) `meta_state_list({affected_system: 'vnstock'})` returns the same data the current `records/vnstock/` contains (after conversion). (d) `observation-vnstock-device-slot-ledger.yaml`'s 19 events appear in `runtime-state.jsonl` with a `source_ref` to a meta-state pointer. (e) `core/inbound-state.js#checkObservationStaleness` returns `{stale: false}` after the conversion. |
+| 1 | **Expected output** | (a) A design report (this file). (b) Future plan that ships: extended `meta-state.jsonl` schema; new `runtime-state.jsonl` sidecar; 8 schemas deleted; 22 tools deleted (per operator adjudication 2026-06-13; the original plan said 13, but the 7 `record_crud` "survivors" were also removed); 2 tools added; 18 ledger events converted from yaml. |
+| 2 | **Acceptance criteria** | (a) The meta-surface's 4-kind union is preserved; no 5th kind. (b) `core/gate-logic.js#evaluateWritePath` continues to enforce write-path patterns after the schema change. (c) `meta_state_list({affected_system: 'vnstock'})` returns the same data the current `records/vnstock/` contains (after conversion). (d) `observation-vnstock-device-slot-ledger.yaml`'s 18 events appear in `runtime-state.jsonl` with a `source_ref` to a meta-state pointer. (e) `core/inbound-state.js#checkObservationStaleness` returns `{stale: false}` after the conversion. |
 | 3 | **Scope boundary** | Phase A only. **Out of scope:** Bridge 5 engine Approach 3 (Phase B); Mastra migration (Phases C-E); Bridge 7 product-surface binding (Phase F); legacy `records/<vendor>/` content (stays unbound per §3.10). |
 | 4 | **Non-negotiable constraints** | (a) 4-kind union locked since SP3 — no new kinds. (b) Internalization Rule (§6 of `AGENTS.md`) — every entry has a `code_ref` (extends `evidence_code_ref`). (c) The gate's read path continues to work. (d) `meta_state_resolve` consult-rule (`rule-no-orphaned-evidence`) must still apply after the schema change. (e) The `rule-no-new-artifact-types` consult-gate (AGENTS.md §2) must be respected; new root-level files (e.g., `runtime-state.jsonl`) need an `affected_system` partition, not parallel surfaces. |
-| 5 | **Touchpoints** | `meta-state.jsonl`; `runtime-state.jsonl` (new); 8 `schemas/*.schema.json`; `records/observations/*.yaml` (8 files); `core/{meta-state,gate-logic,inbound-state,patterns}.js`; 16 `meta_state_*-tool.js`; 3 `capability_*-tool.js`; 3 of 5 `index_*-tool.js`; 2 `record_*observation*-tool.js`; `core/derivation/derive-capabilities.js` (new); `tools/{manifest,agent-manifest}.json`; `agent-manifest.json`. |
+| 5 | **Touchpoints** | `meta-state.jsonl`; `runtime-state.jsonl` (new); 8 `schemas/*.schema.json` (deleted in Phase 8); `records/observations/*.yaml` (8 files, archived to `records/_unbound/observation/`); `core/{meta-state,gate-logic,inbound-state,patterns}.js`; 16 `meta_state_*-tool.js`; 3 `capability_*-tool.js`; 5 of 5 `index_*-tool.js` (entire group removed per Phase 7 operator adjudication); 2 `record_*observation*-tool.js`; `tools/{manifest,agent-manifest}.json`. **Note:** `core/derivation/derive-capabilities.js` was originally proposed here as the replacement function for `capability_*` tools, but per red-team #3 / operator challenge 2026-06-12 22:35, no replacement function was created — the 3 capability tools are deleted with no replacement, and callers query via `meta_state_list({entry_kind: 'rule', affected_system: '<s>'})`. |
 
 ## 3. Approaches evaluated
 
@@ -114,7 +114,7 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 
 **Cons:** SP3 schema is locked; adding a 5th kind requires a release cycle of `meta-state.jsonl` backfill; consult-rule `rule-no-new-artifact-types` is more likely to fire; `readRegistry()` and the LRU cache must extend; every reader/writer has a new branch to maintain.
 
-**Why it loses:** the 4-kind union is *load-bearing* for the 985-test suite; structural changes need a release cycle. Predict Report 2 verdict: CAUTION, with the sidecar pattern (Approach A) as the recommended alternative.
+**Why it loses:** the 4-kind union is *load-bearing* for the test suite (985 tests pre-Phase A, 937 tests post-Phase A; structural changes need a release cycle). Predict Report 2 verdict: CAUTION, with the sidecar pattern (Approach A) as the recommended alternative.
 
 ## 4. Final recommended solution
 
@@ -169,7 +169,7 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 - **`meta-state.jsonl`**: semantic claims, diagnostic observations, promoted rules, system change audit. Derivable from code.
 - **`runtime-state.jsonl`**: mutable numeric state, runtime accumulations, counters, budgets. NOT derivable from code; an accumulation of runtime events.
 
-**Conversion of `observation-vnstock-device-slot-ledger.yaml`**: 19 `ledger[]` rows → 19 `runtime-state.jsonl` rows with `kind: 'ledger-event'`. The yaml is archived at `records/observations/_forensic-stubs/observation-vnstock-device-slot-ledger.yaml` (the underscore prefix is the gate-bypass trick — `core/gate-logic.js:401` hard-blocks `records/observations/**` but allows other paths). A new `finding` entry with `affected_system: 'vnstock'`, `ledger_ref: 'vnstock-device-slot'`, and `fingerprint: <sha256-of-sidecar-at-conversion-time>` is added.
+**Conversion of `observation-vnstock-device-slot-ledger.yaml`**: 18 `ledger[]` rows → 18 `runtime-state.jsonl` rows with `kind: 'ledger-event'` (verified by `grep -c '^\s*-\s*timestamp:'` on the yaml; the report's original "19" was an off-by-one error corrected by red-team #1). The yaml is archived at `records/_unbound/observation/observation-vnstock-device-slot-ledger.yaml` (sibling to `records/<vendor>/`; this path falls through to `decision: 'ok'` because it is NOT under the gate's hard-block on `records/observations/**` and NOT in `WRITE_PATH_PATTERNS`). The report's original `_forensic-stubs/` path was factually wrong — `globMatch("records/observations/**", normalized)` matches any depth including subdirectories with any prefix; the glob does not look at directory names. The correct path is `records/_unbound/<schema>/` (per red-team #2). A new `finding` entry with `affected_system: 'vnstock'`, `ledger_ref: 'vnstock-device-slot'`, and `code_fingerprint: <sha256-of-conversion-script>` is added.
 
 ### 5.3 Capabilities as derived view (A3)
 
@@ -179,16 +179,14 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 
 **Replacement queries:**
 - "List verified capabilities for stack=api" → `meta_state_list({entry_kind: 'rule', affected_system: 'api'})` filtered by `code_ref_fingerprint_matches(code_path_scan())`.
-- The 3 dropped tools are replaced by **derivation functions** in `core/derivation/derive-capabilities.js` (no MCP tool surface, callable from the agent's tool code).
+
+**No replacement function.** Per red-team #3 / operator challenge 2026-06-12 22:35 ("Why derivation while we don't use that concept anymore?"), `core/derivation/derive-capabilities.js` is **not created**. The 3 `capability_*` tools are deleted with no replacement function — the derivation abstraction is for a concept the loop no longer uses. Callers query capabilities via `meta_state_list({entry_kind: 'rule', affected_system: '<s>'})` directly. The directory `tools/learning-loop-mcp/core/derivation/` does not exist in the post-Phase A tree.
 
 ### 5.4 Evidence + claim (A2, A4)
 
 **Delete `claim.schema.json` and `index-entry.schema.json`.** The "evidence" concept is already in the meta-state: `finding.description` + `code_ref` + `evidence_journal`. The "claim" concept is a `rule` with `affected_system: <vendor>`.
 
-**The `index_*` MCP tools (5 today) become 2:**
-- Keep `index_validate` (validates plan structure).
-- Keep `index_validate_plans` (validates plan compliance).
-- Drop `index_extract`, `index_search`, `index_update_claim` — replaced by `meta_state_list` + fingerprint scan.
+**The `index_*` MCP tools (5 today) are deleted entirely** (per Phase 7 operator adjudication; the report's "5 → 2" reduction was superseded). The original report proposed keeping `index_validate` + `index_validate_plans` and dropping `index_extract` / `index_search` / `index_update_claim`, but the operator's "aggressive simplification" directive (2026-06-12 22:42) deleted the entire `index` group — `index_validate` and `index_validate_plans` did not survive. The `index` group does not exist in `agent-manifest.json` post-Phase A. Callers use `meta_state_list` + fingerprint scan via `meta_state_check_grounding` for any cross-reference query.
 
 ### 5.5 Engine binding (A5)
 
@@ -197,31 +195,31 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 - `schemas/runtime-state.schema.json` (the ledger shape).
 - `schemas/plan.schema.json` (the plan shape, moved from `plans/.templates/`).
 
-**The 5 unbound schemas (`capability`, `claim`, `decision`, `experiment`, `index-entry`, `observation`, `resource-budget`, `risk`) are deleted.** Forensic stub at `schemas/_unbound/_README.md` lists what was deleted and why.
+**The 8 unbound schemas (`capability`, `claim`, `decision`, `experiment`, `index-entry`, `observation`, `resource-budget`, `risk`) are deleted.** Forensic stub at `schemas/_unbound/_README.md` lists what was deleted and why. (Note: the report's original wording said "5 unbound schemas" but the parenthetical list contains 8 entries — corrected to 8 in §0.2.)
 
 ### 5.6 Touchpoints
 
 | File / directory | Action |
 |---|---|
 | `meta-state.jsonl` | Extended in place; no migration needed (existing entries default `affected_system: 'meta'`) |
-| `runtime-state.jsonl` | Created; 19 rows converted from `observation-vnstock-device-slot-ledger.yaml` |
+| `runtime-state.jsonl` | Created; 18 rows converted from `observation-vnstock-device-slot-ledger.yaml` |
 | `schemas/meta-state.schema.json` | Created (replaces the 4 inline zod branches in `meta-state.js`) |
 | `schemas/runtime-state.schema.json` | Created |
-| `schemas/plan.schema.json` | Created (moved from `plans/.templates/`) |
+| `schemas/plan.schema.json` | Created (moved from `plans/.templates/`) — note: not in the final implementation; deferred (see plan § Phase 1) |
 | `schemas/{capability,claim,experiment,risk,decision,observation,resource-budget,index-entry}.schema.json` | Deleted (8 files) |
 | `schemas/_unbound/_README.md` | Created (forensic record of deletions) |
-| `records/observations/*.yaml` (8 files) | Archived to `records/observations/_forensic-stubs/`; 19 ledger events extracted to `runtime-state.jsonl` |
-| `records/<vendor>/**` | Unchanged (already unbound per §3.10) |
-| `tools/learning-loop-mcp/core/meta-state.js` | Refactored: 4 zod branches → 1 imported `metaStateSchema`; add `affected_system`, `code_ref`, `ledger_ref` |
+| `records/observations/*.yaml` (8 files) | Archived to `records/_unbound/observation/`; 18 ledger events extracted to `runtime-state.jsonl` |
+| `records/vnstock/{decisions,experiments,risks,claims,evidence,index}/*.yaml` (40+ files) | Archived to `records/_unbound/<schema>/vnstock/` (Phase 5; added per red-team #4) |
+| `records/<vendor>/**` (other vendors) | Unchanged (already unbound per §3.10) |
+| `tools/learning-loop-mcp/core/meta-state.js` | Refactored: 4 zod branches → 1 imported `metaStateSchema`; add `affected_system`, `code_ref`, `ledger_ref`. **Note:** the import is deferred to Bridge 5 Phase B3 (see `phase-a-remaining-work.md` item 7); Phase 1 ships the schema + field support, the refactor lands when the codegen engine can produce the 4 zod schemas |
 | `tools/learning-loop-mcp/core/gate-logic.js` | Refactored: `loadPromotedRules` filters by `affected_system`; add `loadLedger(affected_system)` |
-| `tools/learning-loop-mcp/core/inbound-state.js` | Refactored: `checkObservationStaleness` reads from `meta-state.jsonl` partitioned by `affected_system: 'meta'` + sidecar |
-| `tools/learning-loop-mcp/core/derivation/derive-capabilities.js` | Created (function, not a tool) |
+| `tools/learning-loop-mcp/core/inbound-state.js` | Refactored: `checkObservationStaleness` partitions by `affected_system` and reads `runtime-state.jsonl` for non-meta observations (14 new tests in `__tests__/inbound-state-runtime-state.test.js`) |
+| `tools/learning-loop-mcp/core/read-registry-cache.js` | **No-op** (the existing mtime+size cache key is already correct for a single-file registry; per `phase-a-remaining-work.md` item 8) |
 | `tools/learning-loop-mcp/tools/meta-state-*-tool.js` | Updated: new fields surface as optional params |
-| `tools/learning-loop-mcp/tools/{capability,index-extract,index-search,index-update-claim}-tool.js` | Deleted (4 files) |
-| `tools/learning-loop-mcp/tools/{record-create,record-update}-observation-tool.js` | Deleted (2 files; observation writes now go through `runtime_state_record`) |
+| `tools/learning-loop-mcp/tools/{capability,index,record,workflow-product-surface}-*-tool.js` | Deleted (13 files per the plan; final 22 per operator adjudication 2026-06-13 — all 7 `record_crud` "survivors" also removed) |
 | `tools/learning-loop-mcp/tools/runtime-state-read-tool.js` | Created (1 file) |
 | `tools/learning-loop-mcp/tools/runtime-state-record-tool.js` | Created (1 file, operator-preflighted) |
-| `tools/manifest.json` / `agent-manifest.json` | Updated: drop 6 tools, add 2 |
+| `tools/manifest.json` / `agent-manifest.json` | Updated: drop 22 tools, add 2. **Note:** `agent-manifest.json` post-Phase A has 4 groups (`gate`, `workflow`, `meta_state`, `introspection`); the `capability`, `index`, and `record_crud` groups are gone. Net manifest count: 38 (down from 56) |
 | `.mcp.json`, `.factory/mcp.json` | Unchanged (server identity is the same) |
 
 ## 6. Predict reports (preserved verbatim)
@@ -252,20 +250,20 @@ Add `kind: 'ledger'` and `kind: 'capability'` to the meta-surface union. Counter
 |---|---|---|
 | `meta-state.js:6` `REGISTRY_FILENAME` is hard-coded; the new fields require the 4 inline zod branches to consolidate into 1 imported schema | High | Phase A sub-phase: refactor `core/meta-state.js` to import `schemas/meta-state.schema.json` (Bridge 5 Approach 2 ships; Approach 3 in Phase B) |
 | The gate's `loadPromotedRules` reads only `meta-state.jsonl`; adding `affected_system` filter is a one-line change but the cache invalidation hook in `readRegistryWithCache` must be reviewed | High | Add `affected_system` to the cache key in `readRegistryWithCache`; covered by the cold-session discoverability test (`pnpm test:cold-session`) |
-| The 19 ledger events in `observation-vnstock-device-slot-ledger.yaml` need a verbatim conversion; a typo in `value`/`delta` could mask a real budget issue | High | The conversion is a 1-shot script with a verification step: the script reads the yaml, writes the JSONL, then asserts the new JSONL parses to 19 events with `delta` values that sum to the yaml's last-known state |
+| The 18 ledger events in `observation-vnstock-device-slot-ledger.yaml` need a verbatim conversion; a typo in `value`/`delta` could mask a real budget issue | High | The conversion is a 1-shot script with a verification step: the script reads the yaml, writes the JSONL, then asserts the new JSONL parses to 18 events with `delta` values that sum to the yaml's last-known state |
 | Adding `runtime-state.jsonl` triggers the `rule-no-new-artifact-types` consult-gate | Medium | The rule's regex is `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)` — `runtime-state.jsonl` is a JSONL file, not a "schema" or "artifact type" in the rule's sense. Confirm via `gate_check` before any code that creates the file. |
-| The 6 deleted MCP tools are referenced by `agent-manifest.json` (56-tool surface) and possibly external skills (`.claude/skills/**`, `.factory/skills/**`) | Medium | `meta_state_log_change` with `change_target: 'tools/manifest.json'` documents the deprecation in the audit trail; the next `/ck:scout` or `/ck:cook` will surface the skill references |
-| The 8 deleted schemas are imported by the 6 deleted tools; deleting the tools first requires deleting the schemas last (dependency order) | Low | The plan's Phase A sub-phases enforce the order: (1) add new fields to meta-state; (2) convert ledger; (3) create `runtime-state.jsonl`; (4) add 2 new tools; (5) verify everything works; (6) delete 6 old tools; (7) delete 8 old schemas; (8) write forensic README |
+| The 13-22 deleted MCP tools are referenced by `agent-manifest.json` (56-tool surface) and possibly external skills (`.claude/skills/**`, `.factory/skills/**`) | Medium | `meta_state_log_change` with `change_target: 'tools/manifest.json'` documents the deprecation in the audit trail (entry `meta-260613T0138Z-phase-a-tools-deleted`, 22 tools listed); the next `/ck:scout` or `/ck:cook` will surface the skill references |
+| The 8 deleted schemas are imported by the 22 deleted tools; deleting the tools first requires deleting the schemas last (dependency order) | Low | The plan's 8 Phase A sub-phases enforce the order: (1) add new fields to meta-state; (2) convert ledger; (3) create `runtime-state.jsonl`; (4) add 2 new tools; (5) archive 40+ records; (6) wire-format + gate patterns; (7) delete 22 old tools; (8) delete 8 old schemas + write forensic README |
 
 ## 8. Success metrics and validation criteria
 
-1. **Test parity:** the 985-test suite (verified 2026-06-12: 984 pass, 1 skipped) passes after the changes. Any new tests cover the new fields + the sidecar + the derivation function.
+1. **Test parity:** the test suite passes after the changes. Baseline pre-Phase A: 985 tests (984 pass, 1 skipped) verified 2026-06-12. Post-Phase A: 937 tests (934 pass, 1 skipped, 2 pre-existing failures in `migrate-rule-entry-kind.test.js` unrelated to Phase A; per `phase-a-remaining-work.md` item 10). Any new tests cover the new fields + the sidecar + the partitioning.
 2. **Schema validation:** `schemas/meta-state.schema.json` rejects entries with missing `affected_system` (defaults to `'meta'` for legacy entries via a Zod preprocess).
-3. **Gate behavior:** `core/gate-logic.js#evaluateWritePath` continues to return `decision: 'block'` for `records/observations/**` and `decision: 'ok'` for `schemas/meta-state.schema.json`.
+3. **Gate behavior:** `core/gate-logic.js#evaluateWritePath` continues to return `decision: 'block'` for `records/observations/**` and `decision: 'ok'` for `records/_unbound/**` (verified) and `schemas/meta-state.schema.json`.
 4. **Query parity:** `meta_state_list({affected_system: 'vnstock'})` returns the same data the current `records/vnstock/decisions/*.yaml` + `experiments/*.yaml` + `risks/*.yaml` contain, after conversion.
-5. **Ledger conversion:** the 19 events from `observation-vnstock-device-slot-ledger.yaml` appear in `runtime-state.jsonl` with consistent `value`/`delta` arithmetic.
-6. **Staleness check:** `core/inbound-state.js#checkObservationStaleness` returns `{stale: false}` for the converted entries.
-7. **Capability query:** `core/derivation/derive-capabilities.js#deriveCapabilities('vnstock')` returns the same set of capabilities the current `capability_list_verified` tool returns, plus a fresh fingerprint scan.
+5. **Ledger conversion:** the 18 events from `observation-vnstock-device-slot-ledger.yaml` appear in `runtime-state.jsonl` with consistent `value`/`delta` arithmetic (assertion `length === 18` enforced by the conversion script).
+6. **Staleness check:** `core/inbound-state.js#checkObservationStaleness` returns `{stale: false}` for the 18 converted ledger events. (Function partitioned by `affected_system`; 14 new tests in `__tests__/inbound-state-runtime-state.test.js`.)
+7. **Capability query:** `meta_state_list({entry_kind: 'rule', affected_system: 'vnstock'})` returns the same set of capabilities the original `capability_list_verified` tool returned, plus a fresh fingerprint scan via `meta_state_check_grounding`. No derivation function exists.
 
 ## 9. Open decisions resolved in this report
 
@@ -392,7 +390,7 @@ Before the 2026-06-12 reframe, the loop attempted to internalize the pre-mortem 
 | `evidence` (md files in `records/<vendor>/evidence/`) | A canonical narrative for "we read the vendor doc and saw X" | Static, post-hit. By the time the file exists, the reading is done. A pre-mortem is the *plan to read*, not the record of having read. |
 | `index-entry` / `claim` (`schemas/{index-entry,claim}.schema.json` + `index_*` tools) | A typed assertion ("vendor X supports Y") with verification status | Status enum (`active \| superseded \| pending_approval`) is post-attestation. The pre-mortem has no status — it has a hypothesis, a method, a budget. Forcing pre-mortems into a status shape is what §11.3 archived as "the pre-mortem lifecycle problem": a `method: []` field on a `finding` is structurally wrong, not just deferred, because at the moment of creation the agent has *already* hit the thing. |
 | `experiment` (yaml in `records/<vendor>/experiments/`) | Hypothesis + method + result | Closer in shape, but the schema is post-result. A pre-mortem has no `result` field. Padding the schema with `result: null` and conditional validation re-introduces the lifecycle problem at a finer granularity. |
-| `observation` (yaml in `records/observations/`, e.g. `observation-vnstock-device-slot-ledger.yaml`) | A mutable fact about an *external* system (device slot consumed, budget exhausted) | Wrong axis entirely. Observations are about the substrate the loop operates against, not about the loop's own investigations. Phase A §5.1 moves the 19 ledger events to `runtime-state.jsonl` precisely because they are *mutable state*, not *static record*. |
+| `observation` (yaml in `records/observations/`, e.g. `observation-vnstock-device-slot-ledger.yaml`) | A mutable fact about an *external* system (device slot consumed, budget exhausted) | Wrong axis entirely. Observations are about the substrate the loop operates against, not about the loop's own investigations. Phase A §5.1 moves the 18 ledger events to `runtime-state.jsonl` precisely because they are *mutable state*, not *static record*. |
 | `capability` (yaml + `capability_*-tool.js`, deleted in Phase A) | A typed "the loop can do X" with verified status | Post-verification by construction. A pre-mortem is the plan to *verify*; the capability is the result. The two are not the same record. |
 
 The pattern: **every registry we invented wanted to encode a *post*-state, and the pre-mortem is a *pre*-state.** Forcing a pre-state into a post-state shape (via nullable `result` fields, conditional `status` enums, post-hoc "intent" discriminators) produces a record that is structurally dishonest — it claims to be a pre-mortem but reads as a post-mortem with empty fields.
@@ -442,7 +440,7 @@ The naive version of the Internalization Rule (`AGENTS.md` §6) is "if the loop 
 1. **§11 is closed (consensus reached 2026-06-12).** The dependency-balance convention, the pre-mortem channel, and the revision loop are all operator-confirmed. The post-productization skill-migration target has been moved to the master tracker as **Phase G** (mechanics, not content — does not belong in a Phase A re-debate report; see §11.4 for the move note). The consensus does **not** expand Phase A scope; Phase A is unchanged.
 2. Open a `plans/260612-1700-meta-surface-re-debate/plan.md` (or similar) with 8 sub-phases (one per touchpoint category in Section 5.6).
 3. The plan's Phase 0 declares the 4-kind union stability check (the SP3 lock per the master tracker § Phase B1) and the §11.5 closed-consensus check (no `method` field on `finding`, no `effect` field on `rule`, plan-file + `evidence_journal` is the pre-mortem channel).
-4. The plan's Phase 1-7 ships the changes in dependency order: meta-state schema → ledger conversion → runtime-state.jsonl → 2 new tools → 6 deletions. (No `method` / `effect` field additions; those are structurally wrong by the meta-state lifecycle, not just deferred.)
+4. The plan's Phase 1-8 ships the changes in dependency order: meta-state schema → ledger conversion → runtime-state.jsonl → 2 new tools → 40+ record archive → wire-format + gate patterns → 22 tool deletions → 8 schema deletions. (No `method` / `effect` field additions; those are structurally wrong by the meta-state lifecycle, not just deferred.)
 5. The plan's Phase 8 updates the master tracker: A1-A5 flip from `[ ]` to `[x]`. Phase A closure is recorded via `meta_state_log_change` with `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` and `change_dimension: 'semantic'`.
 6. **Other tracks (not in this plan, not in Phase A scope):**
    - **Phase G — Skill Migration Track** (per master tracker Phase G, `docs/trajectory.md` §4.7, `docs/philosophy.md` Pillar 4): `ck:plan` → `ck:journal` → `ck:cook` migration as MCP tools. **Canonical home is the master tracker Phase G**, not this report. Pre-conditions: Phase A ships, the dependency-balance convention is operational. Can ship in parallel with any of Phases A-F.

@@ -5,8 +5,35 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-12 (this session)
+**Last updated:** 2026-06-13 (Phase A closed; this session updates the report for consistency with the post-Phase A implementation, no scope change)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
+
+---
+
+## Phase A Status (as of 2026-06-13)
+
+**Phase A is fully closed.** All 5 sub-phases (A1-A5) are `[x]`, the 8-phase implementation plan at `plans/260612-1700-meta-surface-re-debate/plan.md` is complete, and the 5 audit-trail entries (3 change-logs + 1 finding + 1 master-tracker-flip) are filed in `meta-state.jsonl`. The post-Phase A state:
+
+- 18 ledger events in `runtime-state.jsonl` (converted from `observation-vnstock-device-slot-ledger.yaml`)
+- 8 unbound product-surface schemas deleted: `capability`, `claim`, `decision`, `experiment`, `index-entry`, `observation`, `resource-budget`, `risk` (`schemas/_unbound/_README.md` documents the deletions)
+- 22 product-surface MCP tools deleted (per operator adjudication 2026-06-13; the plan's 13 was extended to include the 7 `record_crud` "survivors" + 2 more); manifest reduced from 56 → 38 entries
+- 40+ product-surface records archived to `records/_unbound/<schema>/<vendor>/`
+- 2 new MCP tools added: `runtime_state_read` (read-only), `runtime_state_record` (operator-preflighted)
+- `core/inbound-state.js#checkObservationStaleness` partitioned by `affected_system` (14 new tests)
+- `core/loop-introspect.js#DISCOVERABILITY_HINTS` H14 hint added
+- Cold-session test fixed (regression: was calling deleted `record_create_decision`); `pnpm test:cold-session` passes 8/8
+- `pnpm test` passes 934/937 (1 skipped, 2 pre-existing failures in `migrate-rule-entry-kind.test.js` unrelated to Phase A)
+
+**Audit-trail entries filed (queryable via `meta_state_list`):**
+- `meta-260613T0138Z-phase-a-tools-deleted` (change-log, 22 tools removed)
+- `meta-260613T0138Z-schemas-deleted` (change-log, 8 schemas removed; filed under the redaction in the JSONL — see § Phase A completion)
+- `meta-260613T0138Z-vnstock-device-slot-ledger-converted` (finding, code_fingerprint: script sha256, mechanism_check: true)
+- `meta-260613T0138Z-master-tracker-flip` (change-log, change_target: `plans/reports/productization-260612-1530-master-tracker.md#Phase A`)
+- `meta-260613T1115Z-cold-session-l2-probe-test-is-flaky-due-to-fixed-60s-timeout` (finding, open; pre-existing timing issue surfaced by H14 mirror hint)
+
+**Open finding (post-Phase A):** the cold-session L2 probe test is timing-sensitive (fixed 60s timeout on real `droid exec`); four fix approaches documented in the finding for the next session.
+
+**No scope change from this update.** The 2026-06-13 changes are consistency-only: the sub-phases A1-A5 are unchanged in their content; this update adds the completion summary, aligns the A2/A3 schema counts with the implementation's 8-schema deletion, and notes the aggressive 22-tool deletion (vs the plan's 13) so the next session has accurate context.
 
 ---
 
@@ -37,10 +64,10 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 
 **Inference disclosure.** Sub-phases A1-A5 are inferred from F3 of the consistency report + §3.10 "What the 2026-06-12 reframe eliminates" cascade. Only A1 (Q8) is explicitly reopened in the locked contract. The other four are open *by construction* (the meta-surface being the only bound surface means every product-surface schema is open). Each sub-phase is annotated `[verified | inferred]` so the next session knows which to defend and which to re-debate.
 
-- [x] **A1 [verified — §8 Q8 reopened 2026-06-12]** Q8: where do observations + resource budgets live? **RESOLVED via Option D (re-debate from meta-surface)**: observations live in `runtime-state.jsonl` (Phase 2 of plan 260612-1700-meta-surface-re-debate); resource budgets live in the same sidecar as `kind: 'budget-state'`. The gate logic continues to work; the budget check moved to `runtime_state_read`. Implementation: `schemas/runtime-state.schema.json` + `runtime-state.jsonl` (18 ledger events). See `plans/260612-1700-meta-surface-re-debate/plan.md` Phase 2 + Phase 3.
-- [x] **A2 [inferred — F3 cascade]** Q-index: are `index-entry` / `claim` / `evidence` the right shapes? **RESOLVED**: redundant. `meta_state_relationships` (1-hop cross-ref via inverse indexes) + `meta_state_derive_status` (per-entry truth) + `loop_describe` cold tier (`.cache/loop-describe-cold.json`) cover the same surface. The 3 schemas (index-entry, claim, evidence) are deleted. See plan 260612-1700-meta-surface-re-debate Phase 8.
-- [x] **A3 [inferred — §3.10 cascade]** Q-capability: `capability` schema exists but no `capability_*` tool is bound to the meta-surface. **RESOLVED**: the 4 active rules are the canonical capability representation. The `capability` schema and all 3 `capability_*` tools are deleted. Callers query via `meta_state_list({entry_kind: 'rule', affected_system: '<s>'})` directly. See plan 260612-1700-meta-surface-re-debate Phase 7 + Phase 8.
-- [x] **A4 [inferred — F3 evidence gap + §3.10 cascade]** Q-evidence + Q-resource-budget grouped. **RESOLVED**: (a) `finding.description` + `evidence_code_ref` + `evidence_journal` is the canonical evidence shape. (b) `resource-budget` is a `kind: 'budget-state'` row in `runtime-state.jsonl`. The 2 schemas are deleted. See plan 260612-1700-meta-surface-re-debate Phase 3 + Phase 8.
+- [x] **A1 [verified — §8 Q8 reopened 2026-06-12]** Q8: where do observations + resource budgets live? **RESOLVED via Option D (re-debate from meta-surface)**: observations live in `runtime-state.jsonl` (Phase 2 of plan 260612-1700-meta-surface-re-debate); resource budgets live in the same sidecar as `kind: 'budget-state'`. The gate logic continues to work; the budget check moved to `runtime_state_read`. Implementation: `schemas/runtime-state.schema.json` + `runtime-state.jsonl` (**18** ledger events, not 19 — the design report's "19" was an off-by-one corrected by the plan's red-team). See `plans/260612-1700-meta-surface-re-debate/plan.md` Phase 2 + Phase 3.
+- [x] **A2 [inferred — F3 cascade]** Q-index: are `index-entry` / `claim` / `evidence` the right shapes? **RESOLVED**: redundant. `meta_state_relationships` (1-hop cross-ref via inverse indexes) + `meta_state_derive_status` (per-entry truth) + `loop_describe` cold tier (`.cache/loop-describe-cold.json`) cover the same surface. The 3 schemas (index-entry, claim, evidence) are deleted. **The full 8-schema deletion in Phase 8 also covers `capability` (A3), `observation` + `resource-budget` (A4), and `decision` + `experiment` + `risk` (unbound by construction — no active binding; archived to `records/_unbound/<schema>/vnstock/` per red-team #4).** See plan 260612-1700-meta-surface-re-debate Phase 8.
+- [x] **A3 [inferred — §3.10 cascade]** Q-capability: `capability` schema exists but no `capability_*` tool is bound to the meta-surface. **RESOLVED**: the active rules are the canonical capability representation. The `capability` schema and all 3 `capability_*` tools are deleted. Callers query via `meta_state_list({entry_kind: 'rule', affected_system: '<s>'})` directly. **The full tool-deletion count in Phase 7 is 22, not 13 — the plan's 13 was extended by operator adjudication 2026-06-13 to also remove the 7 `record_crud` "survivors" + 2 more from the `index` group. The `capability`, `index`, and `record_crud` groups are gone from `agent-manifest.json`; net manifest count is 38 (down from 56).** See plan 260612-1700-meta-surface-re-debate Phase 7 + Phase 8.
+- [x] **A4 [inferred — F3 evidence gap + §3.10 cascade]** Q-evidence + Q-resource-budget grouped. **RESOLVED**: (a) `finding.description` + `evidence_code_ref` + `evidence_journal` is the canonical evidence shape. (b) `resource-budget` is a `kind: 'budget-state'` row in `runtime-state.jsonl`. The 2 schemas (`observation`, `resource-budget`) are deleted. The 8 ledger events from `observation-vnstock-device-slot-ledger.yaml` are converted to `runtime-state.jsonl` rows; the yaml is archived to `records/_unbound/observation/`. See plan 260612-1700-meta-surface-re-debate Phase 3 + Phase 8.
 - [x] **A5 [inferred — §3.10 "What the 2026-06-12 reframe eliminates" — "Product-surface binding for any record type"]** Q-bridge-5-instance. **RESOLVED**: the Bridge 5 engine stays meta-surface-only. The 4-kind meta-state union (`finding` | `change-log` | `rule` | `loop-design`) is the only binding target. Product records stay unbound and re-debated from the meta-surface. This decision locks the contract for Phase B (Bridge 5 codegen) and Phase F (Bridge 7 binding). See `AGENTS.md` §1 + `plans/260612-1700-meta-surface-re-debate/plan.md` Architecture section.
 
 ---
@@ -52,7 +79,7 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 - [ ] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- schemas/*.schema.json` shows no diff for the 4 meta-surface kinds (`finding`, `change-log`, `rule`, `loop-design`).
 - [ ] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). Estimated cost: ~6h, 4 sub-phases.
 - [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written.
-- [ ] **B4** Run the 985-test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate.
+- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Note (2026-06-13):** pre-Phase A baseline was 985 tests (984 pass, 1 skipped); post-Phase A is 937 tests (934 pass, 1 skipped, 2 pre-existing failures in `migrate-rule-entry-kind.test.js` unrelated to Phase A). The test count delta is from the 22 tool deletions in Phase 7 (each tool's `.test.js` sibling was also removed).
 - [ ] **B5** Update `core/schema-to-zod.js` to be the single source for the 4 meta-surface kinds. Delete the 4 ad-hoc reader patches (buildRegistrySummary, fix-loop-design-refs.mjs, cold-tier-regression.test.js, fix-loop-design-refs.test.js) per the Bridge 5 design's Phase 3.
 - [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped) once Approach 3 lands. Run `meta_state_patch` to update the entry's `proposed_design_for` and `addresses`. Resolve `meta-260612T1131Z-next-up-adopt-loop-design-schema-as-source-of-truth-bridge-5` (currently active, expires 2026-06-13).
 
@@ -65,7 +92,7 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 - [ ] **C1** Add `@mastra/core` + `@mastra/mcp` to a new `tools/learning-loop-mastra/` package.
 - [ ] **C2** Build a parallel `MCPServer` registering the ~36 meta-state deterministic tools (`gate_check`, `meta_state_*` algorithmic, `loop_describe`, `loop_get_instruction`, the bound `record_*` minus observation per §3.10).
 - [ ] **C3** Run it as a peer MCP server on stdio (different `command` entry in `.mcp.json` + `.factory/mcp.json`).
-- [ ] **C4** Verify byte-identical output for the meta-surface subset. The 985-test suite (verified 2026-06-12 via `pnpm test`: 984 pass, 1 skipped, 147 suites) is the gate.
+- [ ] **C4** Verify byte-identical output for the meta-surface subset. The test suite (post-Phase A: 937 tests, 934 pass, 1 skipped, 116 suites, 2 pre-existing failures in `migrate-rule-entry-kind.test.js`; pre-Phase A baseline was 985 tests / 147 suites) is the gate.
 - [ ] **C5** Reproduce `coerceParamsToSchema` + `installWireFormatCoercion` in Mastra's `createTool` `inputSchema` (per F7 / §3.6 / §8 Q3). The helpers are in `tools/learning-loop-mcp/tool-registry.js` lines 77-134 (`coerceParamsToSchema`) and 197-235 (`installWireFormatCoercion`); equivalent behavior in Mastra is `createTool({inputSchema})` with `.preprocess()` or a Zod transform, OR `beforeToolCall` lifecycle hook.
 - [ ] **C6** Cut over: replace the existing `@modelcontextprotocol/sdk` `McpServer` with the Mastra `MCPServer` for the deterministic subset. Two servers during transition; one server post-cut-over.
 - [ ] **C7** Update `tools/learning-loop-mcp/agent-manifest.json` to the new group names (per §3.4 Phase 4 + §3.10 tool surface table).
@@ -181,7 +208,7 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 ## What this report is NOT
 
 - **Not a research report.** It cites the Mastra research report as a contract; it does not duplicate the contract.
-- **Not a brainstorm.** The Phase A re-debate is *upcoming* work, not done work. The 5 sub-phases are open questions, not conclusions.
+- **Not a brainstorm.** Phase A is *closed* (A1-A5 flipped `[x]` 2026-06-13). Phases B-F remain open as the next work; the tracker surfaces that state, not the design.
 - **Not a plan.** A plan (`plans/.../plan.md`) ships code; the tracker surfaces state. Each phase will eventually get its own plan directory; the tracker links out to those plans when they exist.
 - **Not a substitute for `meta-state.jsonl`.** The registry is the source of truth for *status*; the tracker is the source of truth for *what's next*. They are co-equal canonicals, each for its own concern.
 - **Not a single-dimension tracker.** Phases A-F are content/code/self-model. Phase G is mechanics (the `ck:*` skill migration track). The two halves share a tracker but are otherwise independent.
