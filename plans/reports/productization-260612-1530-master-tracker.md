@@ -5,8 +5,21 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-14 (Phase B closed: B3+B4 codegen migrations shipped, B5 LIM-2 fix shipped, B6 loop-design flipped to inactive; verified baseline 886 pass/0 fail/1 skip)
+**Last updated:** 2026-06-14 (added Current State Snapshot: Phase A+B done, Phases C–G open, LIM-1 parked, hardening LIMs next-up)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
+
+---
+
+## Current State Snapshot (as of 2026-06-14)
+
+| State | Phases / Items |
+|-------|----------------|
+| **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. |
+| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools). Phase D — Mastra Phase 2-3 (workflows + agents + storage). Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
+| **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). |
+| **Next-up / Hardening** | LIM-3 (caller identity), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough). |
+
+**Recommended next move:** Phase C (Mastra Phase 0-1) is the next unblocked content phase. The hardening LIMs can run in a dedicated security/quality audit in parallel or immediately before Phase C, per operator preference.
 
 ---
 
