@@ -1,7 +1,7 @@
 ---
 title: "Phase B — Bridge 5 Core Fix (B1-B2)"
 description: "Derive the meta_state_patch tool's input schema from metaStateEntrySchema's 4 per-kind branches (finding | change-log | rule | loop-design) instead of the current z.object({}).passthrough(). Eliminates the structural blocker behind the wire-format {item: [...]} wrap on top-level arrays, preserves the tool-registry.js#unwrapItemWrap helper (tool-side coercion used by 14+ tools), and reverts 9 ad-hoc reader patches. Scope this session: B1 (SP3 stability check) + B2 (4 sub-phases). B3-B6 deferred to follow-up sessions per the 2026-06-13 scoping brainstorm. Post-red-team 2026-06-13 reversal: 2 critical findings applied (unwrapItemWrap kept, core/schema-to-zod.js inlined in core/meta-state.js instead of recreated)."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, wire-format, bridge-5, codegen, tdd, passthrough-fix]
