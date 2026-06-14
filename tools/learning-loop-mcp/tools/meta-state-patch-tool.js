@@ -33,8 +33,12 @@ export const metaStatePatchTool = {
       .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically."),
     _expected_version: z.number().optional()
       .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
+    mechanism_check: z.boolean().optional()
+      .describe("Script-caller passthrough: opt-in flag for fingerprint tracking on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; ignored for other kinds."),
+    code_fingerprint: z.string().optional()
+      .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_fingerprint` instead. Ignored for other kinds."),
   },
-  handler: async ({ id, entry_kind, patch, _expected_version }) => {
+  handler: async ({ id, entry_kind, patch, _expected_version, mechanism_check, code_fingerprint }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -63,7 +67,20 @@ export const metaStatePatchTool = {
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
 
-    const deniedFields = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+    // Script-caller passthrough: allow tool-level mechanism_check and
+    // code_fingerprint for finding entries and fold them into the patch object.
+    // code_fingerprint remains immutable and is rejected by the deny-list below.
+    let effectivePatch = patch;
+    if (entry_kind === "finding") {
+      const forwarded = {};
+      if (mechanism_check !== undefined) forwarded.mechanism_check = mechanism_check;
+      if (code_fingerprint !== undefined) forwarded.code_fingerprint = code_fingerprint;
+      if (Object.keys(forwarded).length > 0) {
+        effectivePatch = { ...patch, ...forwarded };
+      }
+    }
+
+    const deniedFields = Object.keys(effectivePatch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
     if (deniedFields.length > 0) {
       const result = {
         patched: false,
@@ -80,7 +97,7 @@ export const metaStatePatchTool = {
     const effectiveExpectedVersion = _expected_version !== undefined
       ? _expected_version
       : currentVersion;
-    const patchWithCAS = { ...patch, _expected_version: effectiveExpectedVersion };
+    const patchWithCAS = { ...effectivePatch, _expected_version: effectiveExpectedVersion };
 
     const updateResult = await updateEntry(root, id, patchWithCAS);
 
@@ -125,7 +142,7 @@ export const metaStatePatchTool = {
       tool: "meta_state_patch",
       id,
       entry_kind: updated.entry_kind,
-      fields_patched: Object.keys(patch),
+      fields_patched: Object.keys(effectivePatch),
       version: updated.version,
     });
 
