@@ -38,11 +38,11 @@ meta_state_patch({
     shipped_in_plan: "plans/260614-1259-phase-b-codegen-adoption",
     shipped_at: new Date().toISOString(),
   },
-  _expected_version: <current version from meta_state_list>,
+  // Omit _expected_version to use auto-capture; see Step 2 for explicit-CAS retry loop.
 })
 ```
 
-The `_expected_version` is the CAS field — auto-captured if omitted (per `meta_state_patch` handler), but explicit is safer for a metadata flip.
+The `_expected_version` is the CAS field. Use auto-capture (omit `_expected_version`) to avoid a list→patch race; the `meta_state_patch` handler auto-captures the current version from the pre-read. If a script or test requires explicit CAS, use a retry loop (see Step 2).
 
 **The `proposed_design_for` + `addresses` gap (not addressed by B6):**
 
@@ -64,14 +64,32 @@ This was never done. B6 does NOT backfill these fields — the entry's shipped s
 
 **Step 1 — Pre-flight (~1 min)**
 
-1. Confirm `pnpm test` is green (all 864+ tests pass; this is the master tracker's "post-merge flip" rule).
+1. Confirm `pnpm test` is green (870 pass / 1 skip; this is the master tracker's "post-merge flip" rule).
 2. Confirm the feature branch `260614-1259-phase-b-codegen-adoption` is merged to main (the flip reflects shipped state; flipping on an unmerged branch is a tracker drift).
 3. Run `meta_state_list({ id: 'loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from' })` to confirm the entry exists and is `status: active`.
 
 **Step 2 — The flip (~2 min)**
 
-1. Run `meta_state_patch` with the snippet from the Architecture section above. Use the current `version` from the list call as `_expected_version`.
-2. Verify the response: `{ patched: true, entry_kind: 'loop-design', version: <bumped> }`.
+1. Use auto-capture for CAS safety: call `meta_state_patch` without `_expected_version` so the handler reads the current version at patch time. If you must use explicit CAS, retry up to 3 times on `version_mismatch`:
+   ```javascript
+   let attempt = 0;
+   let result;
+   while (attempt < 3) {
+     result = await meta_state_patch({
+       id: "loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from",
+       entry_kind: "loop-design",
+       patch: {
+         status: "inactive",
+         shipped_in_plan: "plans/260614-1259-phase-b-codegen-adoption",
+         shipped_at: new Date().toISOString(),
+       },
+     });
+     if (result.patched) break;
+     if (result.reason !== "version_mismatch") break;
+     attempt++;
+   }
+   ```
+2. Verify the response: `{ patched: true, entry_kind: 'loop-design', version: <bumped> }`. If `patched` is `false`, stop and diagnose before proceeding to the audit trail.
 3. Re-run `meta_state_list({ id: 'loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from' })` to confirm `status: 'inactive'` + `shipped_in_plan` + `shipped_at` are populated.
 
 **Step 3 — Audit trail + master-tracker close (~2 min)**
@@ -111,7 +129,7 @@ This was never done. B6 does NOT backfill these fields — the entry's shipped s
 | Risk | Severity | Mitigation |
 |------|----------|------------|
 | Flip on unmerged branch (tracker drift) | low | Step 1's pre-flight confirms the feature branch is merged. If unmerged, defer the flip until after merge. |
-| `_expected_version` mismatch (CAS failure) | low | Auto-capture is the default per the `meta_state_patch` handler; explicit `_expected_version` is belt-and-suspenders. The handler returns `{ patched: false, reason: 'version_mismatch', current_version }` on mismatch — re-read + retry. |
+| `_expected_version` mismatch (CAS failure) | low | Use auto-capture (omit `_expected_version`) or the explicit retry loop in Step 2. Verify `patched: true` before proceeding to the audit trail. |
 | The flip is applied to the wrong entry id (typo) | low | Step 1's pre-flight list confirms the entry id before the patch. The `entry_kind: 'loop-design'` discriminator rejects mismatched kinds. |
 | Audit-trail `meta_state_log_change` fails (silent gate-log) | low | This is LIM-6 territory (idempotency cache + silent gate-log failure — confirmed next-up hardening). For B6, retry once; if it still fails, log to the journal manually. |
 
