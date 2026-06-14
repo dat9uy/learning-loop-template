@@ -1,7 +1,7 @@
 ---
 title: "Phase A — Meta-Surface Re-Debate (one consolidated file + sidecar)"
 description: "Extend meta-state.jsonl with affected_system + code_ref + ledger_ref; add runtime-state.jsonl sidecar; convert 18 ledger events; archive 40+ product records to records/_unbound/; delete 8 schemas + 13 product-surface tools. Net: 56 → 43 MCP tools; meta-surface becomes the only bound surface; product surface is unbound and re-debated from the meta-surface."
-status: in-progress
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-surface, phase-a, product-surface-re-debate, bridge-7]
