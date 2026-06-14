@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "B5 LIM-2 script-caller passthrough fix"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: ["phase-01-b3-b4-codegen-adoption-and-verification"]

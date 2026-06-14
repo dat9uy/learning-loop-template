@@ -1,7 +1,7 @@
 ---
 title: "Phase B — Codegen Adoption (B3-B6)"
 description: "Apply Bridge 5 codegen to the remaining viable meta_state_* tools (closes LIM-7): only meta_state_log_change and meta_state_propose_design are genuine candidates after red-team review. Re-triage and fix LIM-2 script-caller passthrough without using z.intersection. Promote the Bridge 5 loop-design to inactive. Reduced scope: 2 migrations + 1 small bug fix + trivial B6 flip. 3 phases, ~3-4 hours total, stacked PR series on a feature branch off main."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta, mcp-tools, meta-state, bridge-5, codegen, tdd, passthrough-fix]
@@ -44,9 +44,9 @@ B1+B2 (shipped 2026-06-13) fixed the structural blocker behind `meta_state_patch
 
 | Phase | Name | Status | Effort | TDD Color | Dependencies |
 |-------|------|--------|--------|-----------|--------------|
-| 1 | [B3+B4 codegen adoption and verification](./phase-01-b3-b4-codegen-adoption-and-verification.md) | Pending | ~2-3h | RED → GREEN (per-tool, TDD-first) | B1+B2 (shipped 2026-06-13) |
-| 2 | [B5 LIM-2 script-caller passthrough fix](./phase-02-b5-lim-2-script-caller-passthrough-fix.md) | Pending | ~1h | RED → GREEN (3-5 tests) | Phase 1 |
-| 3 | [B6 loop-design flip](./phase-03-b6-loop-design-flip.md) | Pending | ~5min | n/a (one-line metadata flip) | Phase 1 + Phase 2 + green CI |
+| 1 | [B3+B4 codegen adoption and verification](./phase-01-b3-b4-codegen-adoption-and-verification.md) | Completed | ~2-3h | RED → GREEN (per-tool, TDD-first) | B1+B2 (shipped 2026-06-13) |
+| 2 | [B5 LIM-2 script-caller passthrough fix](./phase-02-b5-lim-2-script-caller-passthrough-fix.md) | Completed | ~1h | RED → GREEN (3-5 tests) | Phase 1 |
+| 3 | [B6 loop-design flip](./phase-03-b6-loop-design-flip.md) | Completed | ~5min | n/a (one-line metadata flip) | Phase 1 + Phase 2 + green CI |
 
 **Total effort:** ~3-4 hours. One session. Stacked PR series on a feature branch off main (PR #1: `meta_state_log_change`; PR #2: `meta_state_propose_design` + B5 fix; B6 done as final commit on PR #2 or as a post-merge commit per the master tracker's "post-merge flip" rule).
 

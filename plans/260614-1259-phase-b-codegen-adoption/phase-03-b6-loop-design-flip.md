@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "B6 loop-design flip"
-status: pending
+status: completed
 priority: P3
 effort: "5min"
 dependencies: ["phase-01-b3-b4-codegen-adoption-and-verification", "phase-02-b5-lim-2-script-caller-passthrough-fix"]

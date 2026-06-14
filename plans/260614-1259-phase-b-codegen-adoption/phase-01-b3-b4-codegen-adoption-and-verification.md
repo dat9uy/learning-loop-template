@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "B3+B4 codegen adoption and verification"
-status: pending
+status: completed
 priority: P1
 effort: "2-3h"
 dependencies: ["260613-1853-phase-b-bridge-5-core-fix"]
