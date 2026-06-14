@@ -18,25 +18,25 @@ function setsEqual(a, b) {
   return true;
 }
 
+const MIGRATED_FIELDS = {
+  title: true,
+  description: true,
+  proposed_design_for: true,
+  addresses: true,
+  affected_system: true,
+  severity_hint: true,
+};
+
 export const metaStateProposeDesignTool = {
   name: "meta_state_propose_design",
   description: "Propose a new loop-design entry. Loop-designs are deferred designs with their own lifecycle (active -> inactive when shipped). Use this for designs that will create or modify rules, schemas, or tools. Mirrors meta_state_log_change's append-only semantics with the addition of proposed_design_for (forward: what the design ships) and addresses (backward: what findings the design responds to). Idempotent: same addresses + proposed_design_for set returns the existing entry id.",
-  schema: {
-    title: z.string().min(10).describe("Short human-readable title"),
-    description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
-    proposed_design_for: z.array(z.string()).min(1)
-      .describe("Forward: ids of rules/schemas/tools this design will create or modify (non-empty)"),
-    addresses: z.array(z.string()).default([])
-      .describe("Backward: ids of findings this design responds to"),
-    affected_system: z.enum([
-      "gate-logic", "record-validation", "index-extractor",
-      "mcp-tools", "workflow-registry", "vnstock_vendor",
-    ]).describe("Which system this design affects"),
-    severity_hint: z.enum(["low", "medium", "high"]).optional()
-      .describe("Operator's read on the urgency of shipping this design"),
-    loop_design_id: z.string().optional()
-      .describe("Optional explicit id (loop-design-<slug>). If omitted, the id is auto-generated from the title."),
-  },
+  schema: metaStateLoopDesignSchema
+    .pick(MIGRATED_FIELDS)
+    .merge(z.object({
+      loop_design_id: z.string().optional()
+        .describe("Optional explicit id (loop-design-<slug>). If omitted, the id is auto-generated from the title."),
+    }))
+    .shape,
   handler: async ({
     title,
     description,
