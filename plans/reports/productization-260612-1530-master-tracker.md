@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-13 (Phase B1+B2 shipped; 865 pass/0 fail/1 skip; cold-session flaky — resolved via protocol E2E test)
+**Last updated:** 2026-06-14 (Phase B scoping decision: B3+B4 atomic, B5 re-scoped to fix LIM-2 only + park LIM-1, hardening LIMs out of scope; Phase B1+B2 remain shipped; 865 pass/0 fail/1 skip baseline)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -82,26 +82,40 @@ The 2026-06-12 reframe collapsed Bridge 5 and Bridge 6 into one atomic front cal
 
 **Scoping (2026-06-13):** Brainstorm at `plans/reports/brainstorm-260613-1146-phase-b-bridge-5-core-fix.md`. Decisions: adapt Report 2 (update numbers), proceed despite SP3 instability (TDD catches divergence), create `core/schema-to-zod.js` fresh, B1-B2 only this session (B3-B6 deferred). SP3 check shows 15 commits to `meta-state.js` since 2026-06-05 — schemas are NOT stable but TDD Phase 0 locks the contract. Ad-hoc patches are 6 locations (not 4 as Report 2 assumed). Wire-format tests updated to assert flat arrays.
 
+**Scoping (2026-06-14, operator consultation):** Resolved the deferred B3-B6 disposition. The 9 LIMs split into 3 distinct tracks: **(a) Phase B scope** = LIM-1, LIM-2, LIM-7 (codegen adoption + script-caller passthrough bug + 22 hand-written schemas). **(b) Hardening track** = LIM-3, 4, 5, 6, 8, 9 (caller identity, path traversal, test harness, idempotency cache, passthrough leaks). **(c) YAGNI/parked** = LIM-1 (full codegen engine recreation is premature for current meta-surface scope; park as `loop-design` entry behind Bridge 7). Decision: ship **B3 + B4 + B5(re-scoped to LIM-2 only) + B6 in one session**; hardening LIMs in a separate security/quality audit. B3+B4 is the atomic unit (codegen adoption + verification gate). B6 ships post-merge as a one-line flip. Stacked PR strategy: read-only `meta_state_*` tools first, then writers.
+
 - [x] **B1** Declare SP3 schema stability. Mechanical check: `git log --since="2026-06-05" -- tools/learning-loop-mcp/core/meta-state.js` — informational, not blocking (15 commits found; TDD Phase 0 catches divergence). **Closed 2026-06-13** via `plans/260613-1853-phase-b-bridge-5-core-fix/`.
 - [x] **B2** Bridge 5 Approach 3 — codegen for writers + validators (4 meta-surface kinds). The design proposal is `plans/reports/brainstorm-260612-1530-bridge-5-schema-as-source-of-truth.md` (Report 2). **Closed 2026-06-13** via `plans/260613-1853-phase-b-bridge-5-core-fix/`. `buildPatchSchemaFor(kind)` + `PATCH_KINDS` inlined in `core/meta-state.js`; `meta_state_patch#patch` is now a per-kind union (`.partial().strict()`); 9 ad-hoc reader patches reverted; 1 live wrap site migrated; 2 findings resolved; 1 change-log filed. Test baseline: 864 pass, 0 fail, 1 skip.
-- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written. **Deferred** — B2 fixes the structural blocker; broader adoption is incremental. Also covers LIM-7 (22 of 38 MCP tools still hand-write Zod).
-- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Verified baseline (2026-06-13):** 864 tests (864 pass, 0 fail, 1 skip). **Deferred** — B2-4 covers the patch tool scope.
-- [ ] **B5** Expand `buildPatchSchemaFor` to handle `_expected_version`, `mechanism_check`, `code_fingerprint` for script callers. Covers LIM-1 (recreate `core/schema-to-zod.js` for full codegen), LIM-2 (`metaStateEntryPatchSchema` passthrough — needs `z.intersection` fix for script callers). **Deferred** — B2-1 inlines the function; B5 expands it.
-- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped). **Deferred** — depends on B3-B5 shipping.
+- [ ] **B3** Apply Bridge 5 output to `meta_state_*` MCP tools. Each tool becomes a thin wrapper that pulls Zod from `buildZodFor('<meta-state-kind>')`. No per-tool zod is hand-written. **Open — re-scoped 2026-06-14.** Closes LIM-7 (22 of 38 MCP tools still hand-write Zod). Migration order: read-only tools first (`meta_state_list`, `meta_state_derive_status`, `meta_state_check_grounding`, `meta_state_query_drift`, `meta_state_relationships`, `meta_state_sweep`, `loop_describe` warm tier), then writers (`meta_state_report`, `meta_state_ack`, `meta_state_resolve`, `meta_state_promote_rule`, `meta_state_propose_design`, `meta_state_log_change`, `meta_state_archive`, `meta_state_refresh_fingerprint`, `meta_state_batch`); `meta_state_patch` is already migrated via B2. Stacked PR strategy: read-only PR ships independently if writer migration hits a wall.
+- [ ] **B4** Run the test suite; resolve any divergence between hand-written and generated behavior. The §3.6 byte-for-byte parity test is the gate. **Verified baseline (2026-06-13):** 864 tests (864 pass, 0 fail, 1 skip). **Open — paired with B3.** Verification per-tool after migration, then full suite at the end of the stacked PR series.
+- [ ] **B5** Re-scoped 2026-06-14. **Fix LIM-2 only**: extend `buildPatchSchemaFor` (or `metaStateEntryPatchSchema`) to accept `_expected_version`, `mechanism_check`, `code_fingerprint` from script callers via `z.intersection` or scoped passthrough. ~30 lines + 3-5 tests. **Defer LIM-1** (full `core/schema-to-zod.js` recreation for B5/B6 codegen) as YAGNI for current meta-surface scope; park as `loop-design` entry behind Bridge 7 (`proposed_design_for: ['core/schema-to-zod.js']`, `addresses: ['<new finding id — to be filed when B5 ships>']`).
+- [ ] **B6** Promote `loop-design-schema-as-source-of-truth-bridge-5-derive-tool-schemas-from` to `status: inactive` (shipped). **Open — post-merge flip.** Trivial: one `meta_state_patch` on the loop-design entry (`status: inactive`, `shipped_in_plan: '<b3-b5-plan-dir>'`, `shipped_at: <iso>`) after B3-B5 ship + green CI. Reflects shipped state, not intended state.
 
 **Known Limitations from B1-B2 (LIM-1 through LIM-9):**
 
-| ID | Gap | Status | Suggested session |
-|----|-----|--------|-------------------|
-| LIM-1 | `core/schema-to-zod.js` recreation for B5/B6 full codegen | Open | B5 |
-| LIM-2 | `metaStateEntryPatchSchema` passthrough — strict typing would reject `_expected_version`; needs `z.intersection` | Open | B5 |
-| LIM-3 | `meta_state_resolve` / `meta_state_log_change` lack caller-identity check; `resolved_by: "operator"` is caller-supplied | Open | Follow-up + meta-wide identity fix |
-| LIM-4 | `meta_state_refresh_fingerprint` path traversal: `join(root, "../../../etc/passwd")` not contained | Open | Follow-up + meta-wide hardening |
-| LIM-5 | Test harness `child.kill()` SIGTERM + no temp cleanup + full `process.env` forward | Open | Test-hardening pass |
-| LIM-6 | `meta_state_log_change` 60s `_idempotencyCache` + silent gate-log failure | Open | Audit-trail hardening pass |
-| LIM-7 | 22 of 38 MCP tools still hand-write Zod; B3 expands `buildPatchSchemaFor` adoption | Open | B3 |
-| LIM-8 | 3 other tools use `z.object({}).passthrough()`: `trigger-workflow-tool.js:11`, `workflow-intake-plan-tool.js:20,22`, `workflow-generate-prompt-tool.js:89` | Open | Follow-up |
-| LIM-9 | `meta_state_batch` update op at `meta-state-batch-tool.js:17` still uses `.passthrough()` — `Object.assign` at line 483 accepts arbitrary keys | Open | Follow-up |
+LIMs split into 3 tracks per 2026-06-14 scoping decision. Only LIM-1, LIM-2, LIM-7 are Phase B scope. LIM-3, 4, 5, 6, 8, 9 are hardening/quality issues confirmed "next-up" — they belong in a dedicated security/quality audit, not a codegen session. LIM-1's full-codegen-engine recreation is YAGNI for the current meta-surface scope; parked as a `loop-design` entry behind Bridge 7.
+
+| ID | Gap | Track | Status | Suggested session |
+|----|-----|-------|--------|-------------------|
+| LIM-1 | `core/schema-to-zod.js` recreation for B5/B6 full codegen | Phase B (YAGNI/parked) | Open (parked) | Bridge 7 dependency (loop-design) |
+| LIM-2 | `metaStateEntryPatchSchema` passthrough — strict typing would reject `_expected_version`; needs `z.intersection` | Phase B | Open | B5 (re-scoped 2026-06-14) |
+| LIM-3 | `meta_state_resolve` / `meta_state_log_change` lack caller-identity check; `resolved_by: "operator"` is caller-supplied | Hardening (next-up) | Open | Security audit pass |
+| LIM-4 | `meta_state_refresh_fingerprint` path traversal: `join(root, "../../../etc/passwd")` not contained | Hardening (next-up, security priority) | Open | Security audit pass |
+| LIM-5 | Test harness `child.kill()` SIGTERM + no temp cleanup + full `process.env` forward | Hardening (next-up) | Open | Test-hardening pass |
+| LIM-6 | `meta_state_log_change` 60s `_idempotencyCache` + silent gate-log failure | Hardening (next-up) | Open | Audit-trail hardening pass |
+| LIM-7 | 22 of 38 MCP tools still hand-write Zod; B3 expands `buildPatchSchemaFor` adoption | Phase B | Open | B3 |
+| LIM-8 | 3 other tools use `z.object({}).passthrough()`: `trigger-workflow-tool.js:11`, `workflow-intake-plan-tool.js:20,22`, `workflow-generate-prompt-tool.js:89` | Hardening (next-up) | Open | Passthrough-removal follow-up |
+| LIM-9 | `meta_state_batch` update op at `meta-state-batch-tool.js:17` still uses `.passthrough()` — `Object.assign` at line 483 accepts arbitrary keys | Hardening (next-up) | Open | Passthrough-removal follow-up |
+
+**Scoping decision (2026-06-14, operator consultation — full reasoning):**
+
+The 9 LIMs are not all the same shape. Conflating them under "Phase B" obscured the actual work. The 2026-06-14 operator consultation split them into 3 tracks and locked the disposition:
+
+- **Phase B scope (3 LIMs)**: LIM-7 is the real codegen work (22 hand-written schemas → generated; load-bearing DRY win). LIM-2 is a real bug (script callers can't pass `_expected_version` / `mechanism_check` / `code_fingerprint` through the patch schema). LIM-1 is the full-codegen-engine recreation — *YAGNI for the current meta-surface scope*: the B2 inline approach is "Approach 3 lite" and the patch tool (the only load-bearing surface) is already migrated. Full codegen is only needed when other tool surfaces need it, which means product-surface binding (Bridge 7, explicitly deferred until meta-surface ships). Park LIM-1 as a `loop-design` entry with `proposed_design_for: ['core/schema-to-zod.js']` and `addresses: ['<new finding id>']`. Re-evaluate when Bridge 7 un-pauses.
+
+- **Hardening track (6 LIMs)**: LIM-3 (caller identity), LIM-4 (path traversal), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough). These are security/quality issues that deserve a dedicated audit pass, not a codegen session. Confirmed "next-up" by the operator on 2026-06-14 — not blocking Phase B. File as separate `meta_state_report` findings post-Phase B; LIM-4 is the security priority (CVE-shape), batch the rest into a single audit-trail pass.
+
+- **Sequencing inside Phase B**: B3 + B4 is the atomic unit (codegen adoption + verification gate). B5 is a small bug fix when re-scoped (LIM-2 only). B6 is a one-line metadata flip post-merge. Total: ~6-7 hours of work in one session, one stacked PR series (read-only first, then writers). The 864-test baseline + §3.6 byte-for-byte parity test is the gate. The `coerceParamsToSchema` + `installWireFormatCoercion` helpers in `tool-registry.js` (lines 77-134, 197-235) are upstream of tool execution and must compose with B3's generated schemas, not be replaced by them.
 
 **Flaky test finding (2026-06-13, resolved):**
 - `meta-260614T0107Z-cold-session-discoverability-test-rewrite-260614-eliminated` — cold-session test flaky (21 prior failures with `session_id=test-cold-session-mcp-client-loading`); the flaky sub-test was eliminated and replaced by a deterministic protocol-level E2E test at `tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs` using `@modelcontextprotocol/sdk` Client. Status: **resolved** (4 test cases: server init, tools/list, tools/call loop_describe, tools/call meta_state_list). Full suite: 865 pass, 0 fail, 1 skip.
