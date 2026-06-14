@@ -23,7 +23,7 @@ import {
   loadPromotedRules,
   applyPromotedRules,
 } from "#mcp/core/gate-logic.js";
-import { readObservations } from "#mcp/core/file-readers.js";
+import { readRuntimeObservations } from "#mcp/core/file-readers.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -40,6 +40,8 @@ const PATH_WRITE_PATTERNS = [
   /\btee\b.*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
+  />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
+  /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
 ];
 
 function commandWritesToRecords(command) {
@@ -64,7 +66,6 @@ function main() {
   }
 
   const root = resolveRoot();
-  const obsDir = join(root, "records", "observations");
 
   let constraintResult = null;
   let pathResult = null;
@@ -72,7 +73,7 @@ function main() {
   // --- Constraint pattern check ---
   const constraintMatch = matchConstraintPattern(command);
   if (constraintMatch) {
-    const observations = readObservations(root);
+    const observations = readRuntimeObservations(root);
     const observationStatus = checkObservationExists(constraintMatch, observations);
 
     constraintResult = makeGateDecision(constraintMatch, observationStatus);

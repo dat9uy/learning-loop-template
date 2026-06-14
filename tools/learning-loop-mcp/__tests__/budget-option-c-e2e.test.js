@@ -32,63 +32,56 @@ function runBashHook(input, envOverrides = {}) {
   };
 }
 
-function createVendorApiObservation(root) {
-  const obsDir = join(root, "records", "observations");
-  mkdirSync(obsDir, { recursive: true });
-  writeFileSync(
-    join(obsDir, "observation-vnstock-api-usage.yaml"),
-    `id: obs-vnstock-api-usage-260529T0000Z-test
-constraint_type: vendor-api
-status: active
-description: "Vendor API usage is authorized for this session"
-expires_at: "2026-06-29T00:00:00Z"
-`,
-    "utf8"
-  );
+function createRuntimeStateEntry(root, affectedSystem, constraints = ["vendor-api", "package-manager"]) {
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  const entries = [];
+  for (const constraint of constraints) {
+    entries.push({
+      kind: "ledger-event",
+      affected_system: affectedSystem,
+      id: `${affectedSystem}-test-${Date.now()}`,
+      value: 0,
+      delta: 0,
+      source_ref: "local:meta-state:rule-test",
+      fingerprint: "sha256:test",
+      timestamp: new Date().toISOString(),
+      status: "active",
+      metadata: { action: "test", authorization: constraint },
+    });
+  }
+  writeFileSync(sidecarPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
 }
 
 function createExhaustedBudget(root) {
-  const obsDir = join(root, "records", "observations");
-  mkdirSync(obsDir, { recursive: true });
-  writeFileSync(
-    join(obsDir, "observation-vnstock-resource-budget.yaml"),
-    `id: obs-vnstock-budget-260529T0000Z-test
-constraint_type: vendor-api
-status: active
-budget: 1
-current: 1
-validation_window:
-  active: false
-external_system: vnstock_vendor
-resource: device_slots
-`,
-    "utf8"
-  );
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  const entry = {
+    kind: "budget-state",
+    affected_system: "vnstock",
+    id: "vnstock-budget-test",
+    value: 1,
+    delta: 0,
+    source_ref: "local:meta-state:rule-test",
+    fingerprint: "sha256:test",
+    timestamp: new Date().toISOString(),
+    status: "active",
+    metadata: { budget: 1, current: 1, resource: "device_slots" },
+  };
+  writeFileSync(sidecarPath, JSON.stringify(entry) + "\n", "utf8");
 }
 
 function createDockerObservation(root) {
-  const obsDir = join(root, "records", "observations");
-  mkdirSync(obsDir, { recursive: true });
-  writeFileSync(
-    join(obsDir, "observation-docker-test.yaml"),
-    `id: obs-docker-test-260529T0000Z-test
-constraint_type: docker
-status: active
-description: "Docker usage is authorized for this session"
-expires_at: "2026-06-29T00:00:00Z"
-`,
-    "utf8"
-  );
+  // Docker remains hard-blocked; no runtime-state entry needed.
+  // This helper is kept for test compatibility but is a no-op.
 }
 
 describe("Option C: Agent-Managed Budget end-to-end", () => {
   let tempDir;
   const originalEnv = process.env.GATE_ROOT;
 
-  test("bash gate: vendor-api with observation + exhausted budget → ok", () => {
+  test("bash gate: vendor-api with runtime-state entry + exhausted budget → ok", () => {
     tempDir = mkdtempSync(join(tmpdir(), "budget-optc-e2e-"));
     process.env.GATE_ROOT = tempDir;
-    createVendorApiObservation(tempDir);
+    createRuntimeStateEntry(tempDir, "vnstock");
     createExhaustedBudget(tempDir);
 
     const result = runBashHook({
@@ -103,10 +96,10 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     }
   });
 
-  test("bash gate: vendor-api with no observation → block", () => {
+  test("bash gate: vendor-api with no runtime-state entry → block", () => {
     tempDir = mkdtempSync(join(tmpdir(), "budget-optc-noobs-"));
     process.env.GATE_ROOT = tempDir;
-    // No vendor-api observation created — only a docker observation
+    // No runtime-state entry created — only a docker observation (which is no-op now)
     createDockerObservation(tempDir);
 
     const result = runBashHook({
@@ -123,10 +116,10 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     }
   });
 
-  test("bash gate: side-effect-import always blocks regardless of observation", () => {
+  test("bash gate: side-effect-import always blocks regardless of runtime-state", () => {
     tempDir = mkdtempSync(join(tmpdir(), "budget-optc-sideeffect-"));
     process.env.GATE_ROOT = tempDir;
-    createVendorApiObservation(tempDir);
+    createRuntimeStateEntry(tempDir, "vnstock");
 
     const result = runBashHook({
       tool_name: "Bash",
@@ -143,10 +136,10 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     }
   });
 
-  test("mcp gate_check: vendor-api with observation + exhausted budget → ok", async () => {
+  test("mcp gate_check: vendor-api with runtime-state entry + exhausted budget → ok", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "budget-optc-mcp-"));
     process.env.GATE_ROOT = tempDir;
-    createVendorApiObservation(tempDir);
+    createRuntimeStateEntry(tempDir, "vnstock");
     createExhaustedBudget(tempDir);
 
     const result = await gateCheckTool.handler({
@@ -161,10 +154,10 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     }
   });
 
-  test("mcp gate_check: vendor-api with no observation → block", async () => {
+  test("mcp gate_check: vendor-api with no runtime-state entry → block", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "budget-optc-mcp-noobs-"));
     process.env.GATE_ROOT = tempDir;
-    // Only create a docker observation — no vendor-api observation
+    // Only create a docker observation (no-op) — no vendor-api runtime-state entry
     createDockerObservation(tempDir);
 
     const result = await gateCheckTool.handler({

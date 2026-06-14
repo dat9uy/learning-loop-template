@@ -18,10 +18,10 @@ Last verified: {last_verified}.
 
 Operator action required:
 - Clear or reset the external resource.
-- Update records/observations/{id}-resource-budget.yaml:
-  - Set `current` to reflect actual consumption.
-  - Update `last_verified` with the current timestamp.
-- Re-run the request after the budget file is updated.
+- Update runtime-state.jsonl budget-state entry:
+  - Set `value` to reflect actual consumption.
+  - Update `timestamp` with the current timestamp.
+- Re-run the request after the budget entry is updated.
 
 Do not proceed with any state-changing actions for this system/resource.
 ```
@@ -38,7 +38,7 @@ Reason: {reason}.
 
 Operator action required:
 - Complete the validation or confirmation process.
-- Close the validation window in records/observations/{id}-resource-budget.yaml:
+- Close the validation window in runtime-state.jsonl budget-state entry:
   - Set `validation_window.active` to false.
   - Set `validation_window.closed_at` to the current timestamp.
 - Re-run the request after the window is closed.
@@ -57,9 +57,9 @@ Last verified: {last_verified}.
 Current state: {current}/{budget}.
 
 Operator confirmation required before proceeding:
-- Confirm the external system state matches the budget file.
-- Update `last_verified` in records/observations/{id}-resource-budget.yaml if confirmed.
-- If the state has changed, update `current` before proceeding.
+- Confirm the external system state matches the budget entry.
+- Update `timestamp` in runtime-state.jsonl budget-state entry if confirmed.
+- If the state has changed, update `value` before proceeding.
 
 If the operator confirms, the constrained prompt below applies.
 ```
@@ -92,8 +92,8 @@ Last verified: {last_verified}.
 Hard-stop rules:
 - ANY check failure on a budget-consuming action = STOP (not fix-and-retry).
 - After this action, report result and wait for operator confirmation.
-- Operator must update `records/observations/{id}-resource-budget.yaml` after this action.
-- Do not proceed to the next budget-consuming action until the budget file is updated.
+- Operator must update runtime-state.jsonl budget-state entry after this action.
+- Do not proceed to the next budget-consuming action until the budget entry is updated.
 
 ---
 GOAL

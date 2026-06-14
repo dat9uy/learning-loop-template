@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Update gate layer to runtime-state"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: [1]

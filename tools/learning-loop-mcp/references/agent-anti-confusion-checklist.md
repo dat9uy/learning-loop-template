@@ -5,13 +5,13 @@ Use this checklist before asking the user a question or making an assumption abo
 ## 1. Memory Prohibition
 
 - [ ] I have NOT relied on injected CLAUDE.md memory or session context as a source of truth.
-- [ ] I have re-read `records/<surface>/index/` and `records/observations/` to verify any recalled fact.
+- [ ] I have re-read `meta-state.jsonl` (via `loop_describe` or `meta_state_list`) and `runtime-state.jsonl` to verify any recalled fact.
 - [ ] If memory contradicts records, I trust the records.
 - [ ] If records are silent, I treat the memory as unverified.
 
 ## 2. Observation State Check
 
-- [ ] Before asking about external system state (device slots, budgets, registration status, rate limits, operational constraints), I checked `records/observations/`.
+- [ ] Before asking about external system state (device slots, budgets, registration status, rate limits, operational constraints), I checked `runtime-state.jsonl`.
 - [ ] I read relevant observation records before formulating my question.
 - [ ] I noted the `last_verified` timestamp and treated stale observations as unverified.
 

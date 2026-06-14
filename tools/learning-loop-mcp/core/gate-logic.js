@@ -48,7 +48,6 @@ export function globMatch(pattern, filePath) {
 function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
   if (observation.status !== 'active') return false;
-  if (globMatch('records/observations/**', filePath)) return false;
   const patterns = WRITE_PATH_PATTERNS[observation.constraint];
   if (!patterns) return false;
   return patterns.some((p) => globMatch(p, filePath));
@@ -362,10 +361,11 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
   }
   const normalized = normalize(filePath.replace(/^\.\//, ""));
 
+  // records/observations/** is blocked unconditionally (Phase A migration)
   if (globMatch("records/observations/**", normalized)) {
     return {
       decision: "block",
-      reason: "records/observations/** is blocked unconditionally",
+      reason: "records/observations/** is blocked unconditionally (observations migrated to runtime-state.jsonl)",
       hard_block: true,
     };
   }
@@ -598,8 +598,8 @@ export function stripEvidenceAnchor(codeRef) {
   if (typeof codeRef !== "string") return codeRef;
   // Strip :line suffix (digits only — keeps Windows drive letters safe)
   let stripped = codeRef.replace(/:\d+$/, "");
-  // Strip #anchor suffix (identifier chars: word, dot, dollar, dash, underscore)
-  stripped = stripped.replace(/#[\w$.-]+$/, "");
+  // Strip #anchor suffix (identifier chars: word, dot, dollar, dash, underscore, space)
+  stripped = stripped.replace(/#[\w$.\s-]+$/, "");
   return stripped;
 }
 

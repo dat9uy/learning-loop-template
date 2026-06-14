@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Verify"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2, 3, 4, 5]

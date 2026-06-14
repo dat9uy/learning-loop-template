@@ -6,11 +6,6 @@ export const WORKFLOW_REGISTRY = {
     change_types: ["created", "updated"],
     recommended_tools: ["index_extract", "index_validate"]
   },
-  "observation-changed": {
-    triggers: ["records/observations/**"],
-    change_types: ["created", "updated"],
-    recommended_tools: ["index_validate"]
-  },
   "capability-changed": {
     triggers: ["records/*/capabilities/**"],
     change_types: ["created", "updated"],

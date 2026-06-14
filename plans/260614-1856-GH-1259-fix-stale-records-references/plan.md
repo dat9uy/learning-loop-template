@@ -26,12 +26,21 @@ This plan finishes the hook-layer migration. It replaces `records/observations/`
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Scope confirmation](./phase-01-scope-confirmation.md) | Pending |
-| 2 | [Update gate layer to runtime-state](./phase-02-update-gate-layer-to-runtime-state.md) | Pending |
-| 3 | [Update MCP tools](./phase-03-update-mcp-tools.md) | Pending |
-| 4 | [Update docs](./phase-04-update-docs.md) | Pending |
-| 5 | [Update tests](./phase-05-update-tests.md) | Pending |
-| 6 | [Verify](./phase-06-verify.md) | Pending |
+| 1 | [Scope confirmation](./phase-01-scope-confirmation.md) | Completed |
+| 2 | [Update gate layer to runtime-state](./phase-02-update-gate-layer-to-runtime-state.md) | Completed |
+| 3 | [Update MCP tools](./phase-03-update-mcp-tools.md) | Completed |
+| 4 | [Update docs](./phase-04-update-docs.md) | Completed |
+| 5 | [Update tests](./phase-05-update-tests.md) | Completed |
+| 6 | [Verify](./phase-06-verify.md) | Completed |
+
+## Verification Results
+
+- `pnpm test`: 886 pass, 0 fail, 1 skipped
+- `bash-gate.js`: `npm install` → ok (runtime-state authorizes package-manager)
+- `bash-gate.js`: `echo x > runtime-state.jsonl` → block
+- `bash-gate.js`: `echo x > records/observations/x.yaml` → block
+- `write-gate.js`: `Create runtime-state.jsonl` → block
+- `grep readObservations tools/learning-loop-mcp/` → no matches (removed from all gate/tool code)
 
 ## Dependencies
 

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Update tests"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [2, 3]

@@ -4,6 +4,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const HOOK_PATH = path.join(__dirname, '..', 'hooks', 'bash-coordination-gate.cjs');
 const COORD_DIR = path.join(__dirname, '..');
@@ -71,10 +72,13 @@ console.log('\n--- bash-coordination-gate.cjs ---');
   assert(r.exitCode === 2, 'sudo → exit 2 (constrained)');
 }
 
-// Test 6: pip install → exit 2 (constrained)
+// Test 6: pip install in temp project without runtime-state → exit 2 (constrained)
 {
-  const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } });
-  assert(r.exitCode === 2, 'pip install → exit 2 (constrained)');
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir };
+  const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } }, env);
+  assert(r.exitCode === 2, 'pip install → exit 2 (constrained, no runtime-state)');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
 // Test 7: cat docker-compose.yml → exit 0 (word boundary: no match)
@@ -104,18 +108,28 @@ console.log('\n--- bash-coordination-gate.cjs ---');
 }
 
 // --- Path-write detection tests (temp project) ---
-const os = require('os');
-
 function createTempProject() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bash-gate-test-'));
-  fs.mkdirSync(path.join(tmpDir, 'records', 'observations'), { recursive: true });
   fs.mkdirSync(path.join(tmpDir, '.claude', 'coordination'), { recursive: true });
   return tmpDir;
 }
 
 function writeObservation(tmpDir, id, constraint, timestamp) {
-  const content = `id: ${id}\nconstraint_type: write-path\nconstraint: ${constraint}\nstatus: active\nupdated_at: "${timestamp}"\ndescription: test`;
-  fs.writeFileSync(path.join(tmpDir, 'records', 'observations', `${id}.yaml`), content);
+  // Write to runtime-state.jsonl instead of records/observations YAML
+  const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
+  const entry = {
+    kind: 'ledger-event',
+    affected_system: 'vnstock',
+    id: id,
+    value: 0,
+    delta: 0,
+    source_ref: 'local:meta-state:test',
+    fingerprint: 'sha256:test',
+    timestamp: timestamp,
+    status: 'active',
+    metadata: { constraint_type: 'write-path', constraint: constraint },
+  };
+  fs.writeFileSync(runtimeStatePath, JSON.stringify(entry) + '\n', 'utf8');
 }
 
 function setMarker(tmpDir, timestamp) {

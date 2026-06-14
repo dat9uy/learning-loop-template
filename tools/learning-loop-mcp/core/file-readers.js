@@ -8,6 +8,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
+const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
+  vnstock: ["vendor-api", "package-manager"],
+};
+
 /**
  * Resolve project root from this file's location.
  * tools/learning-loop-mcp/core/file-readers.js → ../../
@@ -17,58 +21,76 @@ function resolveRoot() {
 }
 
 /**
- * Read all observation YAML files from records/observations/.
- * Uses uniqueKeys: false to tolerate duplicate YAML keys.
- * Returns array of parsed observations, or [] on error.
+ * Read active runtime-state entries from runtime-state.jsonl and return
+ * observation-shaped objects for constraint gate compatibility.
+ *
+ * Reverse mapping from affected_system → constraint_type:
+ *   vnstock → ["vendor-api", "package-manager"]
+ *
+ * Each active entry yields one observation-shaped object per mapped constraint.
+ * Fail-open: returns [] on error or malformed lines.
  */
 // fallow-ignore-next-line complexity
-export function readObservations(root) {
-  const obsDir = join(root || resolveRoot(), "records", "observations");
+export function readRuntimeObservations(root) {
+  const sidecarPath = join(root || resolveRoot(), "runtime-state.jsonl");
   try {
-    const files = readdirSync(obsDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
+    const raw = readFileSync(sidecarPath, "utf8");
+    const lines = raw.split("\n").filter((line) => line.trim() !== "");
     const observations = [];
-    for (const file of files) {
+    for (const line of lines) {
+      let entry;
       try {
-        const content = readFileSync(join(obsDir, file), "utf8");
-        const parsed = parseYaml(content, { uniqueKeys: false });
-        if (parsed && typeof parsed === "object") {
-          observations.push(parsed);
-        }
-      } catch (err) {
-        console.error(`gate: failed to parse observation ${file}: ${err.message}`);
+        entry = JSON.parse(line);
+      } catch {
+        continue; // skip malformed lines
+      }
+      if (entry.status !== "active") continue;
+      const constraints = AFFECTED_SYSTEM_TO_CONSTRAINTS[entry.affected_system];
+      if (!constraints) continue;
+      for (const constraintType of constraints) {
+        observations.push({
+          id: entry.id,
+          status: entry.status,
+          constraint_type: constraintType,
+          constraint: constraintType,
+          affected_system: entry.affected_system,
+          updated_at: entry.timestamp,
+          metadata: entry.metadata || {},
+        });
       }
     }
     return observations;
   } catch (err) {
-    console.error(`gate: failed to read observations dir: ${err.message}`);
+    console.error(`gate: failed to read runtime-state.jsonl: ${err.message}`);
     return [];
   }
 }
 
 /**
- * Read budget YAML files (*-resource-budget.yaml) from records/observations/.
- * Returns array of parsed budgets, or [] on error.
+ * Read budget-state entries from runtime-state.jsonl.
+ * Returns array of budget-shaped objects, or [] on error.
  */
 // fallow-ignore-next-line complexity
-function readBudgets(root) {
-  const obsDir = join(root || resolveRoot(), "records", "observations");
+function readRuntimeBudgets(root) {
+  const sidecarPath = join(root || resolveRoot(), "runtime-state.jsonl");
   try {
-    const files = readdirSync(obsDir).filter((f) => f.endsWith("-resource-budget.yaml"));
+    const raw = readFileSync(sidecarPath, "utf8");
+    const lines = raw.split("\n").filter((line) => line.trim() !== "");
     const budgets = [];
-    for (const file of files) {
+    for (const line of lines) {
+      let entry;
       try {
-        const content = readFileSync(join(obsDir, file), "utf8");
-        const parsed = parseYaml(content, { uniqueKeys: false });
-        if (parsed && typeof parsed === "object") {
-          budgets.push(parsed);
-        }
-      } catch (err) {
-        console.error(`gate: failed to parse budget ${file}: ${err.message}`);
+        entry = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (entry.kind === "budget-state") {
+        budgets.push(entry);
       }
     }
     return budgets;
   } catch (err) {
-    console.error(`gate: failed to read budgets dir: ${err.message}`);
+    console.error(`gate: failed to read runtime-state budgets: ${err.message}`);
     return [];
   }
 }
