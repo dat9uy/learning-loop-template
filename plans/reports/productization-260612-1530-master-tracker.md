@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-14 (added Current State Snapshot: Phase A+B done, Phases C–G open, LIM-1 parked, hardening LIMs next-up)
+**Last updated:** 2026-06-14 (Phase C design direction captured; package, tool subset, coercion probe, and parity gate decided pending probe)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -138,7 +138,16 @@ The 9 LIMs are not all the same shape. Conflating them under "Phase B" obscured 
 
 ## Phase C — Mastra Phase 0-1 (coexistence + mastrafy deterministic tools)
 
-**Bucket:** add Mastra as a peer MCP server, then cut over the ~36 meta-state deterministic tools. The runtime hook layer is unchanged (per §3.9 Mode 1 matrix). Reproduce `coerceParamsToSchema` + `installWireFormatCoercion` in Mastra's `createTool` `inputSchema` (per F7 / §3.6 / §8 Q3).
+**Bucket:** add Mastra as a peer MCP server, then cut over the deterministic meta-surface tools. The runtime hook layer is unchanged (per §3.9 Mode 1 matrix). Reproduce `coerceParamsToSchema` + `installWireFormatCoercion` in Mastra's `createTool` `inputSchema` only if a Mastra envelope probe proves it is necessary (per F7 / §3.6 / §8 Q3, revised 2026-06-14).
+
+### Phase C design direction (2026-06-14 brainstorm)
+
+- **Package location:** new `tools/learning-loop-mastra/` package, separate from the legacy `tools/learning-loop-mcp/` server. Keeps the existing server untouched during coexistence.
+- **Tool subset:** deterministic meta-surface tools only — `gate_check`, `gate_mark_preflight`, `runtime_state_read`, `runtime_state_record`, `loop_describe`, `loop_get_instruction`, and all `meta_state_*` algorithmic tools. Workflow tools (`workflow_*`) are excluded; they move to Phase D.
+- **Coercion:** pending a Mastra envelope probe in a temp directory. Goal: determine whether Mastra's stdio transport / `createTool` validation already handles JSON-string→array/boolean/number coercion and `{item: X}` envelopes. If yes, carry minimal or no legacy coercion forward. If no, use a shared `createLoopTool()` factory with `z.preprocess()`.
+- **Factory shape:** `createLoopTool({ id, description, inputSchema, execute })` returns `createTool({ ... })` from `@mastra/core/tools`. The factory is the single place coercion is applied if the probe shows it is needed.
+- **Parity gate:** dedicated dual-server test harness that calls both `learning-loop-mcp` and `learning-loop-mastra` with identical inputs for the migrated subset and compares outputs. Full `pnpm test` continues to run against the legacy server during Phase C; it cannot pass against Mastra until enough tools are migrated.
+- **Cut over:** deferred to Phase C6/C7 only after the probe + parity harness prove byte-identical behavior on the deterministic subset.
 
 - [ ] **C1** Add `@mastra/core` + `@mastra/mcp` to a new `tools/learning-loop-mastra/` package.
 - [ ] **C2** Build a parallel `MCPServer` registering the ~36 meta-state deterministic tools (`gate_check`, `meta_state_*` algorithmic, `loop_describe`, `loop_get_instruction`, the bound `record_*` minus observation per §3.10).
