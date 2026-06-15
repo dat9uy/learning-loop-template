@@ -109,23 +109,26 @@ Phases 1, 2, 3 all consume the same `decision` object from `bash-gate.js#main`:
   reason: string,
   rule_id?: string,
   matched_pattern?: string,
-  // Phase 2 adds: skipped_via_override?: { rule_id, operator_note, expired_at }
-  // Phase 3 adds: nothing (the log records this shape as-is)
+  skipped_via_override?: boolean  // ASPIRATIONAL — see note below
 }
 ```
 
+**Note on `skipped_via_override`**: the field is **aspirational, not a hard requirement** (per operator decision 2026-06-15, captured in `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md` Q1). The actual requirement is "the operator can override a block" — which is satisfied by Phase 2's `.gate-override` marker + `gate_override` MCP tool + audit entry in `runtime-state.jsonl`. The field is hard-coded to `false` in `bash-gate.js` because `applyPromotedRules` silently skips rules in the override set (it does not return a "skipped" decision that the gate could log). Removing the field from the plan's decision shape is the CLEANUP-batch work. The override *is* auditable — via `runtime-state.jsonl` — so this is spec-vs-code drift, not a correctness gap.
+
 **Phase 1** routes this object via `hookSpecificOutput` on stdout (block/escalate) or stays silent (ok).
 **Phase 2** mutates the rule-match loop in `applyPromotedRules` to skip rules whose `id` is in the override set.
-**Phase 3** appends one JSON line per call to `.gate-decision.log` (write-temp + rename for atomicity).
+**Phase 3** appends one JSON line per call to `.gate-decision.log` (per-surface `appendFileSync` for true append; see `phase-03-decision-log.md` § "Corrected architecture" for why `writeToAllSurfaces` was the wrong primitive).
 **Phase 4** reads `.gate-decision.log` from all surfaces, groups by `rule_id + command_prefix_normalized`, and auto-files findings.
 
 ### Cross-surface discipline
 
 Per Step 1's helper:
 
-- **Override marker** is written to all surfaces via `writeToAllSurfaces(root, ".gate-override", content)`.
-- **Decision log** is written to all surfaces via `writeToAllSurfaces(root, ".gate-decision.log", line)` — note: write-temp + rename per call for atomicity (decision log append is concurrent-safe; rotation is a separate concern, deferred).
-- **Recurrence tracker** reads from all surfaces via `readFromAllSurfaces(root, ".gate-decision.log")` (the default `[]` shape — one result per surface, deduped on content).
+- **Override marker** is written to all surfaces via `writeToAllSurfaces(root, ".gate-override", content)`. **Note (post-ship drift)**: the shipped `gate-override.js` hand-rolls the cross-surface loop instead of using `writeToAllSurfaces` (the read-modify-write for merging `rule_ids` per surface required per-surface reads, which the helper's atomic-overwrite primitive doesn't support). The helper's `SURFACES` constant is still the single source of truth; only the helper's write function is bypassed. See planning-order report § Cleanup backlog item 2.1.
+- **Decision log** is written to all surfaces via per-surface `appendFileSync` (true append, not write-replace). The plan's "Cross-surface discipline" text originally said `writeToAllSurfaces`; the corrected architecture (in `phase-03-decision-log.md`) is honest about the divergence — `writeToAllSurfaces` does atomic-overwrite, which is the wrong primitive for an append-only log. The helper's `SURFACES` constant is still the source of truth for the surface list. See planning-order report § Cleanup backlog item 2.2.
+- **Recurrence tracker** reads from all surfaces via per-file `readFileSync` + per-line `JSON.parse` (the log is JSONL; the helper's `readFromAllSurfaces` parses the whole file as one JSON blob, which doesn't fit). The helper's `SURFACES` constant is still the source of truth. See planning-order report § Cleanup backlog item 2.1.
+
+**Open question for Step 4** (per operator decision 2026-06-15, captured in `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md` Q3): the helper API covers "write a JSON blob to all surfaces" and "read a JSON blob from all surfaces" but not **JSONL read**, **append semantics**, or **read-modify-write**. To fully deliver the planning-order § Technique 2 (Simplification Cascade) thesis, `core/surfaces.js` should grow three more functions: `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`. Step 2's code (`gate-override.js`, `gate-decision-log.js`, `recurrence-tracker.js`) can then be refactored to use them. Step 4's planning session is the judge of whether this work folds into Step 4 or defers to the CLEANUP batch.
 
 Both `.gate-override` and `.gate-decision.log` are excluded from the write gate's allowlist (the bash gate writes them directly, but direct writes from Edit/Write/tee are blocked — only the bash gate may produce them).
 

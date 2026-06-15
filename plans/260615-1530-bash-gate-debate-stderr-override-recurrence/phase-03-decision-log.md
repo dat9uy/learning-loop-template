@@ -11,7 +11,7 @@ dependencies: ["phase-01-stderr-visibility", "phase-02-override-marker"]
 
 ## Overview
 
-Add a per-call audit trail for the bash gate. Every gate call appends one JSON line to `.gate-decision.log` (in both surfaces, via Step 1's `writeToAllSurfaces` helper). The log captures the decision shape from Phases 1-2 (with the `skipped_via_override` field that Phase 2 added) plus a few call-site fields (`ts`, `command_prefix`).
+Add a per-call audit trail for the bash gate. Every gate call appends one JSON line to `.gate-decision.log` (in both surfaces). The log captures the decision shape from Phases 1-2 plus a few call-site fields (`ts`, `command_prefix`). The `skipped_via_override` field in the plan's "unified decision shape" is **aspirational** (per operator decision 2026-06-15; see `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md` Q1) — the override audit trail lives in `runtime-state.jsonl` via the `gate_override` MCP tool, not the decision log. The decision log's `skipped_via_override` field is hard-coded to `false` everywhere; removing it from the schema is CLEANUP-batch work.
 
 **Why not in `runtime-state.jsonl`:** the bash gate is high-frequency (every command). `runtime-state.jsonl` is the operator-writable surface (decisions, budgets, observations). Mixing per-call gate decisions in would bloat the operator surface and dilute the meta-state semantics. The decision log lives in `coordination/`, is read by the recurrence tracker (Phase 4), and is NOT in `runtime-state.jsonl`.
 
@@ -31,7 +31,7 @@ Functional:
     "decision": "ok" | "block" | "escalate",
     "reason": "...",
     "matched_pattern": "..." | null,
-    "skipped_via_override": false
+    "skipped_via_override": false  // ASPIRATIONAL — see plan.md § "unified decision shape"
   }
   ```
 - Write is atomic per call: write-temp + rename (Step 1's `writeToAllSurfaces` does this).

@@ -168,4 +168,4 @@ The audit entry is written to `runtime-state.jsonl` via the existing `runtimeSta
 
 ## Next Steps
 
-Phase 3: decision log. The decision log is the per-call audit trail that feeds the recurrence tracker in Phase 4. With Phases 1 (stderr) and 2 (override) in place, the decision log can record whether the rule was skipped via override (the `skipped_via_override` field).
+Phase 3: decision log. The decision log is the per-call audit trail that feeds the recurrence tracker in Phase 4. With Phases 1 (decision visibility) and 2 (override) in place, the override is fully auditable: the `gate_override` tool writes an entry to `runtime-state.jsonl` (`appendOverrideAudit` in `gate-override.js:74-92`), so the operator can answer "who overrode what, when, why" without consulting the decision log. The `skipped_via_override` field in the plan's "unified decision shape" is aspirational (per operator decision 2026-06-15; see `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md` Q1); the audit trail lives in `runtime-state.jsonl`, not the decision log.
