@@ -24,7 +24,9 @@ Functional: 10 tests, organized into 3 categories:
 
 1. **Helper API completeness (3 tests)** — assert all 6 cross-surface helpers are exported from `core/surfaces.js` with the right signatures.
 2. **No hand-rolled cross-surface loops in `core/` (3 tests)** — assert `core/` files don't have inline `for (const surface of SURFACES)` loops outside of `surfaces.js` itself; assert no hard-coded `join(root, ".claude"` or `join(root, ".factory"` outside of `surfaces.js`; assert all `core/` files that need cross-surface iteration import from `surfaces.js`.
-3. **Shim + manifest invariants (4 tests)** — assert both shim directories have the same set of hook names; assert the manifest is registered and discoverable; assert `protocol-adapter.js` exports the canonical I/O contract; assert `core/gate-logic.js#GLOB_SCOPE_WHITELIST` includes both surface prefixes.
+3. **Shim + manifest invariants (4 tests)** — assert both shim directories have the same set of hook names (filtered to `.cjs`); assert the manifest is registered and discoverable; assert `protocol-adapter.js` exports the canonical I/O contract; assert `core/gate-logic.js#GLOB_SCOPE_WHITELIST` includes both surface prefixes.
+
+**Shared module with Phase 6 (single source of truth):** the 6-item runtime-agnostic checklist is defined in `core/runtime-agnostic-checklist.js` (a new shared module). Both this regression test (Phase 4) and the `check_runtime_agnostic` MCP tool (Phase 6) import `CHECKLIST` from this module. Drift between the test and the tool is impossible.
 
 Non-functional:
 - The test runs as part of `pnpm test` (no new test runner config).
@@ -138,12 +140,17 @@ await test("all core/ files that read or write coordination paths import from su
 
 // ─── Shim + manifest invariants (4 tests) ───
 
-await test("both shim directories have the same set of hook names", () => {
-  const claudeShims = existsSync(SHIM_CLAUDE) ? readdirSync(SHIM_CLAUDE) : [];
-  const factoryShims = existsSync(SHIM_FACTORY) ? readdirSync(SHIM_FACTORY) : [];
+await test("both shim directories have the same set of hook shim names (excluding README/markdown)", () => {
+  // Filter to .cjs shim files only; READMEs and other non-shim artifacts are not part of the mirror contract.
+  const filterShims = (dir) =>
+    existsSync(dir)
+      ? readdirSync(dir).filter((f) => f.endsWith(".cjs")).sort()
+      : [];
+  const claudeShims = filterShims(SHIM_CLAUDE);
+  const factoryShims = filterShims(SHIM_FACTORY);
   assert.deepStrictEqual(
-    [...claudeShims].sort(),
-    [...factoryShims].sort(),
+    claudeShims,
+    factoryShims,
     `claude shims: ${claudeShims.join(", ")}; factory shims: ${factoryShims.join(", ")}`,
   );
 });
@@ -186,6 +193,7 @@ The test pins this state. A future change that violates any of these patterns fa
 
 ## Related Code Files
 
+- Create: `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js` (~80 lines, exports `CHECKLIST` with the 6-item array + 6 verify functions).
 - Create: `tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js` (~120 lines, 10 tests).
 - No other files touched. (The production code is already in the right state after Phases 1-3.)
 
@@ -194,7 +202,7 @@ The test pins this state. A future change that violates any of these patterns fa
 1. **Read existing test files for style consistency.** `__tests__/surfaces.test.js` (already read in plan-prep) and `__tests__/cross-surface.test.js` (newer test that already covers some cross-surface invariants).
 2. **Create `__tests__/runtime-agnostic.test.js`** with the 10 tests above. Group by category with section comments.
 3. **Run `pnpm test -- runtime-agnostic`**. Expect 10 GREEN (the assertions match the current state after Phases 1-3).
-4. **Run the full test suite.** `pnpm test` — expect 968/969 (1 skipped). No regressions.
+4. **Run the full test suite.** `pnpm test` — expect 976/977 (1 skipped). No regressions. (Baseline 957/958 + 9 helper tests + 10 regression tests.)
 5. **Mutation test (manual).** Temporarily add `join(root, ".claude", "coordination", "test.json")` to a non-surfaces.js file in `core/`. Run `pnpm test -- runtime-agnostic`. Expect the 2nd test in the "No hand-rolled" group to FAIL. Revert the mutation. Test should pass again. (The mutation test is manual; the file says so in the test comment.)
 6. **Whole-plan consistency check.** `grep -n "runtime-agnostic" tools/learning-loop-mcp/__tests__/` — expect 1 match (the new test file). `grep -n "runtime-agnostic" tools/learning-loop-mcp/core/` — expect 0 matches (the rule entry is added in Phase 7, not yet).
 
@@ -202,7 +210,7 @@ The test pins this state. A future change that violates any of these patterns fa
 
 - [ ] `__tests__/runtime-agnostic.test.js` exists with 10 tests, all GREEN.
 - [ ] `pnpm test -- runtime-agnostic` shows 10 GREEN.
-- [ ] `pnpm test` shows 968/969 (1 skipped). No regressions in any other test file.
+- [ ] `pnpm test` shows 976/977 (1 skipped). No regressions in any other test file.
 - [ ] Mutation test (manual) confirms the test catches a hard-coded surface path violation.
 
 ## Risk Assessment

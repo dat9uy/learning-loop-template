@@ -61,7 +61,7 @@ The annotation is a structured update to the existing "Shipped status" subsectio
 | 3 | Report 1 P2 | ✅ shipped | `meta-260615T1921Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody` | 2026-06-15 |
 | 4 | Report 2 P2-5 + 2.5a/b/c | ✅ shipped | `<change-log-id>` | 2026-06-15 |
 
-Updated: 2026-06-15 — Step 4 closes the runtime-agnostic rule and completes the Simplification Cascade thesis. Ships 3 new helpers (appendToAllSurfaces, readJsonlFromAllSurfaces, readModifyWriteOnAllSurfaces) + 3 Step 2 refactors + 23 new tests + the consult-checklist pattern type + the check_runtime_agnostic MCP tool + the rule entry + AGENTS.md amendment + loop_describe hint per `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/`. **Planning-order sequence is closed** (all 4 steps shipped).
+Updated: 2026-06-15 — Step 4 closes the runtime-agnostic rule and completes the Simplification Cascade thesis. Ships 3 new helpers (appendToAllSurfaces, readJsonlFromAllSurfaces, readModifyWriteOnAllSurfaces) + 3 Step 2 refactors + 25 new tests + the consult-checklist pattern type + the check_runtime_agnostic MCP tool + the rule entry + AGENTS.md amendment + loop_describe hint per `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/`. **Planning-order sequence is closed** (all 4 steps shipped).
 
 The "Open questions" section (currently has 3 RESOLVED entries from this plan) gets one more annotation line:
 

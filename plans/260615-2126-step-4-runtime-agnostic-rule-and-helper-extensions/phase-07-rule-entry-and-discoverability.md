@@ -39,7 +39,7 @@ Non-functional:
 - The rule's `pattern` field is a JSON-serialized string (the checklist). The shape matches the `consult-checklist` pattern type from Phase 5.
 - The AGENTS.md amendment is in §2 (the Hook Matrix) and follows the existing subsection style (3-5 sentences, design principle, citation to the rule entry).
 - The `loop_describe` hint is one line; it points to the tool name and the rule id.
-- The test count remains 972/973 (1 skipped); the change is meta + prose, not code.
+- The test count remains 982/983 (1 skipped); the change is meta + prose, not code.
 
 ## Architecture
 
@@ -54,14 +54,14 @@ Non-functional:
   "pattern": "{\"version\":1,\"items\":[{\"id\":\"core-in-universal-location\",...},{\"id\":\"shims-in-sync\",...},{\"id\":\"protocol-adapter-i/o\",...},{\"id\":\"manifest-registered\",...},{\"id\":\"cross-surface-iteration\",...},{\"id\":\"parameterized-for-new-surfaces\",...}]}",
   "description": "Consult-gate rule: every feature must be runtime-agnostic. Codifies the shim-not-fork + cross-surface-iteration pattern. Use check_runtime_agnostic MCP tool to audit a feature; new runtimes add themselves to SURFACES in core/surfaces.js.",
   "status": "active",
-  "promoted_at": "2026-06-15T22:00:00Z",
+  "promoted_at": "<captured by meta_state_promote_rule at the moment of promotion — millisecond precision, not a placeholder>",
   "promoted_by": "operator",
   "affected_system": "meta",
-  "origin": "meta-260615T2200Z-runtime-agnostic-features-rule-ships"
+  "origin": "<id of the change-log entry filed in this same phase, captured BEFORE the rule promotion>"
 }
 ```
 
-The entry is appended to `meta-state.jsonl` (the canonical registry). The `pattern` field is the same 6-item checklist used by `check_runtime_agnostic` (Phase 6), so the tool and the rule share a single source of truth.
+The entry is appended to `meta-state.jsonl` (the canonical registry) by the `meta_state_promote_rule` MCP tool, which captures the wall-clock `promoted_at` timestamp and validates the entry against the zod schema (now extended to include `consult-checklist` per Phase 5). The `pattern` field is the same 6-item checklist used by `check_runtime_agnostic` (Phase 6), so the tool and the rule share a single source of truth.
 
 ### Change-log entry
 
@@ -75,13 +75,19 @@ The entry is appended to `meta-state.jsonl` (the canonical registry). The `patte
     "added": [
       "tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js",
       "tools/learning-loop-mcp/__tests__/check-runtime-agnostic-tool.test.js",
-      "tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js"
+      "tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js",
+      "tools/learning-loop-mcp/__tests__/gate-logic-consult-checklist.test.js",
+      "tools/learning-loop-mcp/__tests__/surfaces-append.test.js",
+      "tools/learning-loop-mcp/__tests__/surfaces-read-jsonl.test.js",
+      "tools/learning-loop-mcp/__tests__/surfaces-rmw.test.js",
+      "tools/learning-loop-mcp/core/runtime-agnostic-checklist.js"
     ],
     "changed": [
       "core/surfaces.js (3 new helpers: appendToAllSurfaces, readJsonlFromAllSurfaces, readModifyWriteOnAllSurfaces)",
       "core/gate-decision-log.js (refactored to use appendToAllSurfaces + readJsonlFromAllSurfaces)",
-      "core/gate-override.js (refactored to use readModifyWriteOnAllSurfaces)",
+      "core/gate-override.js (refactored to use readModifyWriteOnAllSurfaces for write + readFromAllSurfaces for read)",
       "core/gate-logic.js (new consult-checklist pattern type branch)",
+      "core/meta-state.js#metaStateRuleEntrySchema (extended zod enum to include consult-checklist)",
       "agent-manifest.json (new runtime_agnostic group)",
       "tools/manifest.json (check_runtime_agnostic registered)",
       "AGENTS.md (new §2 subsection 'Runtime-Agnostic Pattern')",
@@ -139,22 +145,33 @@ The hint is one sentence; it points to the tool name (the agent can `loop_get_in
 ## Implementation Steps
 
 1. **Read `meta-state.jsonl` end-to-end** to confirm the existing entry format. Use the existing rule entry (`rule-no-new-artifact-types` or `rule-project-skill-boundary`) as the template.
-2. **Append the rule entry** to `meta-state.jsonl`. Use `meta_state_promote_rule` (the MCP tool) if the operator prefers MCP-mediated writes; use direct file write if the operator prefers inline. Recommendation: direct file write (the rule is being authored in this phase, not promoted from a finding).
-3. **Append the change-log entry** to `meta-state.jsonl`. Use `meta_state_log_change` (MCP tool) or direct write. Recommendation: MCP-mediated, since change-logs are normally emitted via the tool.
+2. **Append the rule entry to `meta-state.jsonl` via `meta_state_promote_rule` (MCP tool, REQUIRED).** Direct file write is **not** the recommended path — the MCP tool validates the zod schema, captures the actual `promoted_at` timestamp (millisecond precision), records `promoted_by: "operator"` with a real audit trail, and emits the matching change-log. This is the pattern used by all 5 existing rules in the registry (verified at `meta-state.jsonl:16-19, 129`). To promote the rule, the operator runs:
+   ```sh
+   # in OPERATOR_MODE=1 session
+   meta_state_promote_rule \
+     --id meta-<find-id-if-promoted-from-finding> \
+     --rule_id rule-runtime-agnostic-features \
+     --enforcement agent \
+     --pattern_type consult-checklist \
+     --pattern '<JSON-serialized 6-item checklist>' \
+     --description '...'
+   ```
+   If for some reason the MCP server cannot be started, the direct file write is a documented fallback (operator must set `promoted_at` to the real wall-clock timestamp, not a round number, and run `meta_state_patch` afterward to backfill attribution).
+3. **Append the change-log entry** to `meta-state.jsonl` via `meta_state_log_change` (MCP tool). Direct write is acceptable for change-logs (the tool is the normal path; the entry is data, not a promoted rule).
 4. **Add the new subsection to `AGENTS.md` §2.** Place after the existing Hook Matrix subsection. Match the existing subsection style (header level, citation pattern).
 5. **Add the new hint to `DISCOVERABILITY_HINTS`** in `core/loop-introspect.js`. Append after the existing 5 hints.
 6. **Verify `loop_describe`** returns the new hint. Run the MCP tool (or read the warm tier from the test fixture): `loop_describe({tier: "warm"})` should include the new hint in `discoverability_hints`.
-7. **Run the full test suite.** `pnpm test` — expect 972/973 (1 skipped). No regressions.
+7. **Run the full test suite.** `pnpm test` — expect 982/983 (1 skipped). No regressions.
 8. **Whole-plan consistency check.** `grep -n "rule-runtime-agnostic-features" meta-state.jsonl` — expect 1 match (the rule entry). `grep -n "check_runtime_agnostic" AGENTS.md` — expect 1+ matches (the new subsection). `grep -n "check_runtime_agnostic" core/loop-introspect.js` — expect 1 match (the new hint).
 
 ## Success Criteria
 
-- [ ] `meta-state.jsonl` has the `rule-runtime-agnostic-features` rule entry.
+- [ ] `meta-state.jsonl` has the `rule-runtime-agnostic-features` rule entry, written via `meta_state_promote_rule` (MCP tool).
 - [ ] `meta-state.jsonl` has the change-log entry recording the ship.
 - [ ] `AGENTS.md` §2 has the new "Runtime-Agnostic Pattern" subsection.
 - [ ] `core/loop-introspect.js#DISCOVERABILITY_HINTS` includes the new hint.
 - [ ] `loop_describe({tier: "warm"})` returns the new hint in `discoverability_hints`.
-- [ ] `pnpm test` shows 972/973 (1 skipped). No regressions.
+- [ ] `pnpm test` shows 982/983 (1 skipped). No regressions.
 
 ## Risk Assessment
 

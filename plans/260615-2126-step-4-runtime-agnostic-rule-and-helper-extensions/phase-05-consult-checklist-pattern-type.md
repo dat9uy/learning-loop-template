@@ -19,15 +19,17 @@ The pattern matches the existing `resolution-evidence-required` branch at `gate-
 ## Requirements
 
 Functional:
-- New branch in `applyPromotedRules` at `gate-logic.js:749-755` (after the `resolution-evidence-required` branch):
+- **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` (line 169) to include `"consult-checklist"` alongside the existing `["regex", "glob", "resolution-evidence-required"]`. Without this, the rule entry written in Phase 7 will fail validation when `loadPromotedRules` parses it.
+- New branch in `applyPromotedRules` at `gate-logic.js:749-755` (after the `resolution-evidence-required` branch). **The branch must be placed BEFORE the `if (rule.enforcement !== "gate") continue;` filter at line 739** so it is reached for `enforcement: "agent"` rules (otherwise the branch is dead code for the Phase 7 rule):
   - `if (pattern_type === "consult-checklist") { continue; }`
   - Optional debug-only warning: `if (process.env.LL_DEBUG_RUNTIME_AGNOSTIC === "1") { console.warn(...); }` (matches the optional warning in the existing pattern).
-- The branch must be placed before the `regex` and `glob` branches so it short-circuits correctly.
+- The branch is also placed before the `regex` and `glob` branches so it short-circuits correctly.
 - No change to the function's return shape or its callers.
+- **New unit test** in `__tests__/gate-logic-consult-checklist.test.js`: loads a `consult-checklist` rule via the schema, calls `applyPromotedRules` with a sample command, asserts `{ decision: "ok" }` with no stderr warning (verifies the branch is reachable + the schema accepts the new value).
 
 Non-functional:
 - Existing tests pass without modification (the branch is a no-op for the bash gate).
-- The branch is a 5-line addition; the file's complexity budget is preserved.
+- The branch is a 5-line addition; the file's complexity budget is preserved (matches the precedent at lines 749-755 verbatim, no debug warning).
 - The `consult-checklist` pattern type is documented in `core/patterns.json` (or equivalent) so future readers know it exists.
 
 ## Architecture
@@ -35,25 +37,18 @@ Non-functional:
 ### Code change
 
 ```js
-// tools/learning-loop-mcp/core/gate-logic.js, applyPromotedRules, line 749+
+// tools/learning-loop-mcp/core/gate-logic.js, applyPromotedRules, top of for-loop
+// (BEFORE the `if (rule.enforcement !== "gate") continue;` filter at line 739)
 
-if (pattern_type === "resolution-evidence-required") {
-  // Existing branch (unchanged). The check happens in meta_state_resolve.
-  continue;
-} else if (pattern_type === "consult-checklist") {
+if (pattern_type === "consult-checklist") {
   // Design-time rule; no command/path matching. The check is in
   // the new check_runtime_agnostic MCP tool (Phase 6) and the
   // regression test (Phase 4). The rule loads; the gate ignores it.
-  if (process.env.LL_DEBUG_RUNTIME_AGNOSTIC === "1") {
-    console.warn(`Rule ${rule_id}: consult-checklist pattern; not enforced on commands. Use check_runtime_agnostic to audit.`);
-  }
   continue;
-} else if (pattern_type === "regex" && command) {
-  // ... existing
 }
 ```
 
-The branch is placed **before** the `regex` and `glob` branches so it short-circuits for the new pattern type. The debug-only warning matches the convention used in the existing `regex` branch (`LL_DEBUG_*` env vars).
+The branch is placed at the top of the `for (const rule of rules)` loop, **before** the `enforcement !== "gate"` filter, so it is reached for both `enforcement: "agent"` and `enforcement: "gate"` rules with this pattern type. This matches the precedent at `gate-logic.js:749-755` (`resolution-evidence-required` is also a no-op `continue` with no debug warning). The branch is 5 lines (1 condition + 1 comment + 1 continue + braces), matching the file's existing pattern.
 
 ### Why a no-op is correct
 
@@ -65,25 +60,32 @@ The pattern type is in the registry so the rule loads correctly; the gate's job 
 
 ## Related Code Files
 
-- Modify: `tools/learning-loop-mcp/core/gate-logic.js` — add 6 lines (the new branch + comment).
+- Modify: `tools/learning-loop-mcp/core/meta-state.js#metaStateRuleEntrySchema` (line 169) — extend `z.enum([...])` to include `"consult-checklist"`.
+- Modify: `tools/learning-loop-mcp/core/gate-logic.js` — add 6 lines (the new branch + comment) BEFORE the `enforcement !== "gate"` filter.
 - Modify: `tools/learning-loop-mcp/core/patterns.json` — add `"consult-checklist": "Design-time rule; no command/path matching. Audit via check_runtime_agnostic MCP tool or runtime-agnostic regression test."` (or equivalent shape, matching the existing entries).
-- No test changes. (The new branch is a no-op; existing tests cover the no-match path.)
+- Create: `tools/learning-loop-mcp/__tests__/gate-logic-consult-checklist.test.js` — 1 test verifying the branch is reachable for `enforcement: "agent"` rules + the schema accepts the new value.
 
 ## Implementation Steps
 
 1. **Read `core/gate-logic.js` lines 730-792** to confirm the existing branch structure. (Already read in plan-prep.)
-2. **Add the new branch** after the `resolution-evidence-required` branch (line 755). Include the optional debug warning.
-3. **Add the new pattern type to `core/patterns.json`** with a one-line description. Match the existing entry shape.
-4. **Run `pnpm test -- gate-promoted-rules`**. Expect all existing tests GREEN. The new branch is exercised by no test (it's a no-op), but the load path is verified.
-5. **Run the full test suite.** `pnpm test` — expect 968/969 (1 skipped). No regressions.
-6. **Whole-plan consistency check.** `grep -n "consult-checklist" tools/learning-loop-mcp/core/` — expect 2 matches (gate-logic.js + patterns.json). `grep -n "consult-checklist" tools/learning-loop-mcp/__tests__/` — expect 0 matches (no test yet; covered by the regression test's "manifest-registered" item once Phase 7 ships).
+2. **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` (line 169) to include `"consult-checklist"`. Update both the enum array and the JSDoc comment that lists the valid pattern types.
+3. **Add the new branch** BEFORE the `enforcement !== "gate"` filter at `gate-logic.js:739` (i.e., at the top of the `for (const rule of rules)` loop, right after the `try` block opens). The branch short-circuits for `consult-checklist` rules regardless of enforcement. Include the optional debug warning.
+4. **Add the new pattern type to `core/patterns.json`** with a one-line description. Match the existing entry shape.
+5. **Add the new unit test** to `__tests__/gate-logic-consult-checklist.test.js`: load a `consult-checklist` rule via `loadPromotedRules`; call `applyPromotedRules({ command: "ls" })`; assert `{ decision: "ok" }` with no stderr output.
+6. **Run `pnpm test -- gate-logic-consult-checklist`**. Expect 1 GREEN.
+7. **Run `pnpm test -- gate-promoted-rules`**. Expect all existing tests GREEN.
+8. **Run the full test suite.** `pnpm test` — expect 977/978 (1 skipped). (Baseline 957/958 + 9 helper tests + 10 regression tests + 1 new consult-checklist test.)
+9. **Whole-plan consistency check.** `grep -n "consult-checklist" tools/learning-loop-mcp/core/` — expect 3 matches (meta-state.js + gate-logic.js + patterns.json). `grep -n "consult-checklist" tools/learning-loop-mcp/__tests__/` — expect 1 match (the new test file).
 
 ## Success Criteria
 
-- [ ] `core/gate-logic.js#applyPromotedRules` handles `consult-checklist` as a no-op.
+- [ ] `core/meta-state.js#metaStateRuleEntrySchema` zod enum includes `"consult-checklist"`.
+- [ ] `core/gate-logic.js#applyPromotedRules` handles `consult-checklist` as a no-op, BEFORE the enforcement filter.
 - [ ] `core/patterns.json` documents the new pattern type.
+- [ ] `__tests__/gate-logic-consult-checklist.test.js` exists with 1 test, all GREEN.
+- [ ] `pnpm test -- gate-logic-consult-checklist` shows 1 GREEN.
 - [ ] `pnpm test -- gate-promoted-rules` shows all existing tests GREEN.
-- [ ] `pnpm test` shows 968/969 (1 skipped). No regressions.
+- [ ] `pnpm test` shows 977/978 (1 skipped). No regressions.
 - [ ] `LL_DEBUG_RUNTIME_AGNOSTIC=1 pnpm test -- gate-promoted-rules` (manual) shows the debug warning on relevant rules.
 
 ## Risk Assessment

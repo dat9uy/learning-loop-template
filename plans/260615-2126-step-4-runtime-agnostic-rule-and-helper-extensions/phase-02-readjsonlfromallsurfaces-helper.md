@@ -138,7 +138,7 @@ The same precedent as `writeToAllSurfaces` (single-object) vs `appendToAllSurfac
 4. **Run `pnpm test -- surfaces-read-jsonl`**. Expect 3 GREEN.
 5. **Refactor `core/gate-decision-log.js#readDecisionLog`.** Replace the function body with a single call to `readJsonlFromAllSurfaces`. Remove `readAllLogContents`, `parseLogLines`, the `seen` Set, the inline sort. Remove the now-unused `readFileSync` and `existsSync` imports.
 6. **Run `pnpm test -- gate-decision-log`**. Expect 5 GREEN.
-7. **Run the full test suite.** `pnpm test` — expect 955/956 (1 skipped). No regressions.
+7. **Run the full test suite.** `pnpm test` — expect 963/964 (1 skipped). No regressions. (Baseline 957/958 + 3 surfaces-append + 3 surfaces-read-jsonl.)
 8. **Whole-plan consistency check.** `grep -n "readAllLogContents\|parseLogLines" tools/learning-loop-mcp/core/gate-decision-log.js` — expect 0 matches (both private functions are removed).
 
 ## Success Criteria
@@ -147,8 +147,8 @@ The same precedent as `writeToAllSurfaces` (single-object) vs `appendToAllSurfac
 - [ ] `core/surfaces.js` exports `readJsonlFromAllSurfaces` with `dedupe`, `since`, `sort` options.
 - [ ] `core/gate-decision-log.js#readDecisionLog` is ≤10 lines and uses the helper.
 - [ ] `pnpm test -- surfaces-read-jsonl` shows 3 GREEN.
-- [ ] `pnpm test -- gate-decision-log` shows 5 GREEN (no regressions).
-- [ ] `pnpm test` shows 955/956 (1 skipped). No regressions in any other test file.
+- [ ] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
+- [ ] `pnpm test` shows 963/964 (1 skipped). No regressions in any other test file.
 - [ ] `readAllLogContents` and `parseLogLines` are removed from `gate-decision-log.js`.
 
 ## Risk Assessment

@@ -13,21 +13,23 @@ dependencies:
 
 ## Overview
 
-Add `readModifyWriteOnAllSurfaces` to `core/surfaces.js` (the third and most complex of three missing helper functions). Refactor `core/gate-override.js#writeGateOverride` to use the new helper, eliminating the hand-rolled per-surface read-merge-write loop.
+Add `readModifyWriteOnAllSurfaces` to `core/surfaces.js` (the third and most complex of three missing helper functions). Refactor `core/gate-override.js#writeGateOverride` AND `core/gate-override.js#readGateOverride` to use the new helper, eliminating both hand-rolled per-surface loops.
 
 The read-modify-write pattern is the most nuanced of the three helper extensions: each surface's file is read independently, the caller's `modifier` function transforms the parsed content (or returns a fresh value if the file is missing/corrupt), and the result is written back atomically. The merge semantic is the caller's responsibility (the override marker merges `rule_ids`; a future consumer might overwrite or append).
+
+**`readGateOverride` refactor (added in red-team review):** the original plan only refactored `writeGateOverride`. But Phase 4's regression test "no hand-rolled `for (const surface of SURFACES)` loops in `core/`" would have caught `readGateOverride`'s existing loop at `gate-override.js:49`. To keep Phase 4's test honest, Phase 3 refactors both functions. `readGateOverride` becomes a 1-line call to a new `readAllOverlays` helper (or uses the existing `readFromAllSurfaces` + merge in-place).
 
 ## Requirements
 
 Functional:
-- New helper `readModifyWriteOnAllSurfaces(root, subpath, modifier)` in `core/surfaces.js`:
+- New helper `readModifyWriteOnAllSurfaces(root, subpath, modifier, options)` in `core/surfaces.js`:
   - For each surface in `SURFACES`:
     1. Read `<root>/<surface>/coordination/<subpath>` (if exists). If missing or malformed, treat as `null`.
-    2. Call `modifier(currentValue, { surface, root, subpath })` to compute the new value. The modifier may return:
+    2. Call `modifier(currentValue)` to compute the new value. The modifier may return:
        - An object → written atomically (write-temp + rename).
-       - `null` or `undefined` → file is removed (`unlinkSync`).
-       - A primitive → coerced to string and written as raw content (rare; opt-in via `options.raw`).
-    3. If the modifier throws, log to stderr and skip the surface (fail-open).
+       - A string → written as raw content.
+       - `null` or `undefined` → NO-OP by default; file is removed ONLY if `options.removeOnNull: true` is set explicitly (opt-in for safety).
+    3. If the modifier throws, log to stderr (PII-sanitized: surface + basename only) and skip the surface (fail-open).
   - Returns an array of `{ surface, action: "wrote" | "removed" | "skipped" }` per surface.
 - Refactor `core/gate-override.js#writeGateOverride` to call the helper with a `modifier` that:
   - Parses the existing marker (if any).
@@ -36,9 +38,10 @@ Functional:
 - New test file `__tests__/surfaces-rmw.test.js` with 3 tests.
 
 Non-functional:
-- The helper's atomicity matches `writeToAllSurfaces` (write-temp + rename). The read half is best-effort.
+- The helper's atomicity matches `writeToAllSurfaces` (write-temp + rename) **per surface**. Cross-surface atomicity is NOT provided; concurrent calls to the helper for the same `subpath` may interleave. Callers needing cross-surface consistency must serialize.
 - The override cache invalidation behavior is preserved: `writeGateOverride` calls `overrideCache.delete(root)` after the helper returns (matches the existing code at `gate-override.js:143`).
 - The fail-open contract is preserved: a surface error does not abort the other surfaces; the audit append is unaffected.
+- **PII-safe logging:** `console.error` calls log only `surface` and `basename(path)`, not the full user-derived `subpath`.
 
 ## Architecture
 
@@ -51,12 +54,20 @@ Non-functional:
  * (or null if missing/malformed) and a context object. The modifier returns
  * the new value (object to write, null/undefined to remove).
  *
+ * Atomicity: each surface is atomic (write-temp + rename). Cross-surface
+ * consistency is the caller's responsibility (no transaction across surfaces).
+ *
  * @param {string} root
  * @param {string} subpath
- * @param {function} modifier — (currentValue, { surface, root, subpath }) => newValue | null
+ * @param {function} modifier — (currentValue) => newValue | null
+ * @param {object} [options]
+ * @param {boolean} [options.removeOnNull=false] — if true, modifier returning
+ *   null/undefined DELETES the existing file. Default false: no-op (safer).
+ *   Override only when the caller's semantic explicitly is "remove on null".
  * @returns {Array<{ surface, action: "wrote" | "removed" | "skipped" }>}
  */
-export function readModifyWriteOnAllSurfaces(root, subpath, modifier) {
+export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = {}) {
+  const { removeOnNull = false } = options;
   const results = [];
   for (const surface of SURFACES) {
     const path = join(root, surface, "coordination", subpath);
@@ -76,19 +87,25 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier) {
 
     let newValue;
     try {
-      newValue = modifier(current, { surface, root, subpath });
+      newValue = modifier(current);
     } catch (err) {
-      console.error(`surfaces.readModifyWriteOnAllSurfaces: modifier for ${surface} threw: ${err.message}`);
+      // Log only surface + basename (PII-safe: avoids leaking user-derived subpath).
+      console.error(`surfaces.readModifyWriteOnAllSurfaces: modifier for ${surface}/${basename(path)} threw: ${err.message}`);
       results.push({ surface, action: "skipped" });
       continue;
     }
 
     if (newValue == null) {
+      if (!removeOnNull) {
+        // Default: no-op on null (safer than unlink). Caller opts in to unlink via options.removeOnNull.
+        results.push({ surface, action: "skipped" });
+        continue;
+      }
       try {
         if (existsSync(path)) unlinkSync(path);
         results.push({ surface, action: "removed" });
       } catch (err) {
-        console.error(`surfaces.readModifyWriteOnAllSurfaces: unlink ${path} failed: ${err.message}`);
+        console.error(`surfaces.readModifyWriteOnAllSurfaces: unlink ${surface}/${basename(path)} failed: ${err.message}`);
         results.push({ surface, action: "skipped" });
       }
       continue;
@@ -102,7 +119,7 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier) {
       renameSync(tmpPath, path);
       results.push({ surface, action: "wrote" });
     } catch (err) {
-      console.error(`surfaces.readModifyWriteOnAllSurfaces: write ${path} failed: ${err.message}`);
+      console.error(`surfaces.readModifyWriteOnAllSurfaces: write ${surface}/${basename(path)} failed: ${err.message}`);
       results.push({ surface, action: "skipped" });
     }
   }
@@ -110,12 +127,14 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier) {
 }
 ```
 
-Imports to add to `surfaces.js`: `unlinkSync` (the rest are already imported).
+Imports to add to `surfaces.js`: `unlinkSync`, `basename` (the rest are already imported).
+
+**Removed context args (YAGNI):** the original plan's modifier signature was `(current, { surface, root, subpath }) => newValue`. The only caller (`writeGateOverride`) ignored the context. The signature is now `(current) => newValue`. KISS.
 
 ### Refactored `writeGateOverride`
 
 ```js
-import { readModifyWriteOnAllSurfaces, SURFACES } from "./surfaces.js";
+import { readModifyWriteOnAllSurfaces, readFromAllSurfaces, SURFACES } from "./surfaces.js";
 
 export function writeGateOverride(root, { rule_id, ttl_seconds, operator_note }) {
   const created_at = new Date().toISOString();
@@ -134,24 +153,33 @@ export function writeGateOverride(root, { rule_id, ttl_seconds, operator_note })
       operator_note,
       created_at,
     };
-  });
+  }, { removeOnNull: false });  // override marker never returns null; explicit safety.
 
   // Invalidate cache so the next read sees the new marker immediately.
   overrideCache.delete(root);
   appendOverrideAudit(root, { rule_id, ttl_seconds, operator_note });
 }
+
+export function readGateOverride(root) {
+  // First-write-wins semantic: iterate surfaces in declared order, return
+  // the first valid marker. Hand-rolled loop was 12 lines; helper call is 1.
+  for (const { parsed } of readFromAllSurfaces(root, OVERRIDE_FILE)) {
+    if (parsed && Array.isArray(parsed.rule_ids)) return parsed;
+  }
+  return null;
+}
 ```
 
-The function shrinks from 41 lines (105-145) to 19 lines. The per-surface loop, the inline `readFileSync`/`JSON.parse`/`mkdirSync`/`writeFileSync`/`renameSync` are all gone. The merge semantic lives in the modifier closure.
+`writeGateOverride` shrinks from 41 lines to 19 lines. `readGateOverride` shrinks from 12 lines to 5 lines (the for-of is gone; the helper iterates internally). Both functions now satisfy Phase 4's "no hand-rolled `for (const surface of SURFACES)` loops in `core/`" assertion.
 
-The `SURFACES` import remains in `gate-override.js` for `readGateOverride`'s per-surface iteration (Phase 3 only refactors `writeGateOverride`; `readGateOverride` continues to use `readFromAllSurfaces` would be a future refactor — out of scope here).
+The `SURFACES` import is no longer used in `gate-override.js` (both `read` and `write` go through helpers). Remove from imports.
 
 **Note on additive vs replacement merge:** the existing `writeGateOverride` merges `rule_ids` (additive) but refreshes `ttl_seconds`, `operator_note`, and `created_at` (replacement). The refactored version preserves this behavior. A future consumer (not the override marker) might want pure replacement; that's a different `modifier` shape and a future helper, not in scope.
 
 ## Related Code Files
 
 - Modify: `tools/learning-loop-mcp/core/surfaces.js` — add `readModifyWriteOnAllSurfaces` (~40 lines). Add `unlinkSync` to the import.
-- Modify: `tools/learning-loop-mcp/core/gate-override.js` — replace `writeGateOverride` body (~22 lines removed, 19 added). Remove the `writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync` imports (no longer used in this file). Keep `statSync`, `appendFileSync`, `existsSync` for `readGateOverride` and the audit appender.
+- Modify: `tools/learning-loop-mcp/core/gate-override.js` — replace `writeGateOverride` body (~22 lines removed, 19 added) AND `readGateOverride` body (~7 lines removed, 5 added). Remove the `writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync` imports (no longer used in this file). Remove the `SURFACES` import (no longer used in this file). Keep `appendFileSync` for the audit appender.
 - Create: `tools/learning-loop-mcp/__tests__/surfaces-rmw.test.js` — 3 tests for the new helper.
 - No other files touched.
 
@@ -164,10 +192,10 @@ The `SURFACES` import remains in `gate-override.js` for `readGateOverride`'s per
 2. **Run `pnpm test -- surfaces-rmw`**. Expect 3 RED.
 3. **Add `readModifyWriteOnAllSurfaces` to `core/surfaces.js`.** Append after `readJsonlFromAllSurfaces`. Add `unlinkSync` to the existing import.
 4. **Run `pnpm test -- surfaces-rmw`**. Expect 3 GREEN.
-5. **Refactor `core/gate-override.js#writeGateOverride`.** Replace the per-surface loop with a `readModifyWriteOnAllSurfaces` call. The modifier is the merge closure. Remove the now-unused imports.
-6. **Run `pnpm test -- gate-override`**. Expect 13 GREEN (the existing 13 tests cover the read, write, merge, audit, cache, tool rejection, etc.).
-7. **Run the full test suite.** `pnpm test` — expect 958/959 (1 skipped). No regressions.
-8. **Whole-plan consistency check.** `grep -n "writeFileSync\|renameSync" tools/learning-loop-mcp/core/gate-override.js` — expect 0 matches (the imports are removed). The audit appender's `appendFileSync` remains.
+5. **Refactor `core/gate-override.js#writeGateOverride` and `readGateOverride`.** Replace the per-surface loop in `writeGateOverride` with a `readModifyWriteOnAllSurfaces` call. Replace the per-surface loop in `readGateOverride` with a `readFromAllSurfaces` call (first-valid-wins). Remove the now-unused imports (`writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync`, `SURFACES`).
+6. **Run `pnpm test -- gate-override`**. Expect 12 GREEN (the existing 12 tests cover the read, write, merge, audit, cache, tool rejection, etc.; count verified by `grep -cE "^\s*await test\("`).
+7. **Run the full test suite.** `pnpm test` — expect 966/967 (1 skipped). No regressions. (Baseline 957/958 + 6 helper tests.)
+8. **Whole-plan consistency check.** `grep -n "writeFileSync\|renameSync" tools/learning-loop-mcp/core/gate-override.js` — expect 0 matches (the imports are removed). `grep -n "for (const surface of SURFACES)" tools/learning-loop-mcp/core/gate-override.js` — expect 0 matches (both loops gone). The audit appender's `appendFileSync` remains. **Final `surfaces.js` import line (asserted by `grep -n "import.*node:fs" tools/learning-loop-mcp/core/surfaces.js`):** `{ readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, appendFileSync, unlinkSync }` (7 imports, all from `node:fs`). Plus `import { basename } from "node:path"` (added in Phase 1 for PII-safe logging).
 
 ## Success Criteria
 
@@ -175,9 +203,10 @@ The `SURFACES` import remains in `gate-override.js` for `readGateOverride`'s per
 - [ ] `core/surfaces.js` exports `readModifyWriteOnAllSurfaces` with the documented contract.
 - [ ] `core/gate-override.js#writeGateOverride` uses the helper; the function body is ≤20 lines.
 - [ ] `pnpm test -- surfaces-rmw` shows 3 GREEN.
-- [ ] `pnpm test -- gate-override` shows 13 GREEN (no regressions).
-- [ ] `pnpm test` shows 958/959 (1 skipped). No regressions in any other test file.
-- [ ] `writeFileSync` and `renameSync` are removed from `gate-override.js` imports.
+- [ ] `pnpm test -- gate-override` shows 12 GREEN (no regressions).
+- [ ] `pnpm test` shows 966/967 (1 skipped). No regressions in any other test file.
+- [ ] `writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync`, and `SURFACES` are removed from `gate-override.js` imports.
+- [ ] `gate-override.js` has no `for (const surface of SURFACES)` loops in either `readGateOverride` or `writeGateOverride`.
 
 ## Risk Assessment
 

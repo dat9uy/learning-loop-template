@@ -52,7 +52,8 @@ export function appendToAllSurfaces(root, subpath, line) {
       mkdirSync(dirname(path), { recursive: true });
       appendFileSync(path, `${line}\n`, "utf8");
     } catch (err) {
-      console.error(`surfaces.appendToAllSurfaces: append to ${path} failed: ${err.message}`);
+      // Log only surface + basename (PII-safe: avoids leaking user-derived subpath).
+      console.error(`surfaces.appendToAllSurfaces: append to ${surface}/${basename(path)} failed: ${err.message}`);
     }
   }
 }
@@ -101,11 +102,11 @@ A follow-up edit in Phase 4 (or CLEANUP) annotates Step 2's plan § Cross-surfac
    - Test 2: `appendToAllSurfaces` appends to an existing file (does not overwrite). Pre-write 1 line, call the helper, assert 2 lines.
    - Test 3: `appendToAllSurfaces` adds `"\n"` after each line; the log is newline-separated.
 3. **Run `pnpm test -- surfaces-append`**. Expect 3 RED (helper does not exist yet).
-4. **Add `appendToAllSurfaces` to `core/surfaces.js`.** Append the function after the existing `readFromAllSurfaces`. Add the necessary import: `import { appendFileSync } from "node:fs"` (existing imports cover everything else).
+4. **Add `appendToAllSurfaces` to `core/surfaces.js`.** Append the function after the existing `readFromAllSurfaces`. Add the necessary imports: `import { appendFileSync } from "node:fs"` and `import { basename } from "node:path"` (the latter for PII-safe error logging).
 5. **Run `pnpm test -- surfaces-append`**. Expect 3 GREEN.
 6. **Refactor `core/gate-decision-log.js#appendDecisionLog`.** Replace the `for` loop with a single call to `appendToAllSurfaces(root, DECISION_LOG_FILE, line)`. Remove the now-unused `appendFileSync`, `mkdirSync`, `SURFACES` imports. Keep the `existsSync`/`readFileSync` imports for `readDecisionLog` (Phase 2's refactor).
-7. **Run `pnpm test -- gate-decision-log`**. Expect 5 GREEN (all existing decision log tests still pass — the refactor is behavior-preserving).
-8. **Run the full test suite.** `pnpm test` — expect 952/953 (1 skipped, the existing skip). No regressions.
+7. **Run `pnpm test -- gate-decision-log`**. Expect 6 GREEN (all existing decision log tests still pass — the refactor is behavior-preserving; count verified by `grep -cE "^\s*await test\("` on the test file).
+8. **Run the full test suite.** `pnpm test` — expect 960/961 (1 skipped, the existing skip). No regressions. (Baseline 957/958 + 3 new helper tests.)
 9. **Whole-plan consistency check.** `grep -n "appendFileSync\|appendToAllSurfaces" tools/learning-loop-mcp/core/` — confirm the helper is in `surfaces.js`; confirm `gate-decision-log.js` no longer imports `appendFileSync`.
 
 ## Success Criteria
@@ -114,8 +115,8 @@ A follow-up edit in Phase 4 (or CLEANUP) annotates Step 2's plan § Cross-surfac
 - [ ] `core/surfaces.js` exports `appendToAllSurfaces` with the documented contract.
 - [ ] `core/gate-decision-log.js#appendDecisionLog` uses `appendToAllSurfaces`; the function body is ≤20 lines.
 - [ ] `pnpm test -- surfaces-append` shows 3 GREEN.
-- [ ] `pnpm test -- gate-decision-log` shows 5 GREEN (no regressions).
-- [ ] `pnpm test` shows 952/953 (1 skipped). No regressions in any other test file.
+- [ ] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
+- [ ] `pnpm test` shows 960/961 (1 skipped). No regressions in any other test file.
 - [ ] `grep -n "appendFileSync" tools/learning-loop-mcp/core/gate-decision-log.js` returns 0 matches (the import is removed).
 
 ## Risk Assessment
