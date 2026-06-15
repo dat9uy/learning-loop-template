@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "green-impl-and-ship — implement stripNodeEvalBody, wire into gate-logic, file finding, ship change-log"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: ["phase-01-red-tests"]
@@ -282,18 +282,18 @@ Filed via `meta_state_log_change` MCP tool:
 
 ## Success Criteria
 
-- [ ] `stripNodeEvalBody(segment)` is exported from `core/gate-logic.js`.
-- [ ] `matchConstraintPattern` calls `stripNodeEvalBody` after `stripMessageFlags`.
-- [ ] `applyPromotedRules` regex branch calls `stripNodeEvalBody` after `stripMessageFlags`.
-- [ ] `pnpm test -- gate-logic-quoted-strings` shows 22 passing tests (17 existing + 3 new node -e + 2 regression guards).
-- [ ] `pnpm test -- gate-promoted-rules` shows 24+ passing tests (23+ existing + 1 new G8-style).
-- [ ] `pnpm test` shows 0 new failures; 870+ tests pass.
+- [x] `stripNodeEvalBody(segment)` is exported from `core/gate-logic.js`.
+- [x] `matchConstraintPattern` calls `stripNodeEvalBody` after `stripMessageFlags`.
+- [x] `applyPromotedRules` regex branch calls `stripNodeEvalBody` after `stripMessageFlags`.
+- [x] `pnpm test -- gate-logic-quoted-strings` shows 22 passing tests (17 existing + 3 new node -e + 2 regression guards).
+- [x] `pnpm test -- gate-promoted-rules` shows 24+ passing tests (23+ existing + 1 new G8-style).
+- [x] `pnpm test` shows 0 new failures; 870+ tests pass.
 <!-- Updated: Validation Session 1 — 6 new tests total (was 5). -->
-- [ ] `meta_state_report` finding `meta-260615T<HHMM>Z-node-e-strip-bypass-risk-...` is filed.
-- [ ] `meta_state_log_change` change-log `meta-260615T<HHMM>Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody-...` is filed.
-- [ ] `docs/journals/260615-step3-node-e-strip.md` is written.
-- [ ] Commit lands on branch `260614-1259-phase-b-codegen-adoption`.
-- [ ] Whole-plan consistency check: `stripNodeEvalBody` is referenced in `core/gate-logic.js` only (no unintended touch points); `meta-state.jsonl` has 2 new entries (finding + change-log); tests do not import `stripNodeEvalBody` directly (they go through the public surface).
+- [x] `meta_state_report` finding `meta-260615T<HHMM>Z-node-e-strip-bypass-risk-...` is filed.
+- [x] `meta_state_log_change` change-log `meta-260615T<HHMM>Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody-...` is filed.
+- [x] `docs/journals/260615-step3-node-e-strip.md` is written.
+- [x] Commit lands on branch `260614-1259-phase-b-codegen-adoption`.
+- [x] Whole-plan consistency check: `stripNodeEvalBody` is referenced in `core/gate-logic.js` only (no unintended touch points); `meta-state.jsonl` has 2 new entries (finding + change-log); tests do not import `stripNodeEvalBody` directly (they go through the public surface).
 
 ## Risk Assessment
 

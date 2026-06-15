@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "red-tests — write 4 quoted-strings tests + 1 G8-style promoted-rule guard test, confirm RED"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies: []
@@ -133,14 +133,14 @@ This test is **included** per validation decision (Session 1, 2026-06-15). It ma
 
 ## Success Criteria
 
-- [ ] `__tests__/gate-logic-quoted-strings.test.js` has 3 new tests for `node -e` body cases.
-- [ ] `__tests__/gate-logic-quoted-strings.test.js` has 2 new regression-guard tests for `python -c` and `bash -c` (pre-existing assertion style, new tests for clarity).
-- [ ] `__tests__/gate-promoted-rules.test.js` has 1 new G8-style test for `applyPromotedRules` + `node -e`.
-- [ ] `pnpm test -- gate-logic-quoted-strings` shows: 3 RED (`node -e` tests), 2 GREEN (regression guards), 17 existing GREEN.
+- [x] `__tests__/gate-logic-quoted-strings.test.js` has 3 new tests for `node -e` body cases.
+- [x] `__tests__/gate-logic-quoted-strings.test.js` has 2 new regression-guard tests for `python -c` and `bash -c` (pre-existing assertion style, new tests for clarity).
+- [x] `__tests__/gate-promoted-rules.test.js` has 1 new G8-style test for `applyPromotedRules` + `node -e`.
+- [x] `pnpm test -- gate-logic-quoted-strings` shows: 3 RED (`node -e` tests), 2 GREEN (regression guards), 17 existing GREEN.
 <!-- Updated: Validation Session 1 — 3 node-e tests (was 2). -->
-- [ ] `pnpm test -- gate-promoted-rules` shows: 1 RED (`node -e` promoted-rule test), 23+ existing GREEN.
-- [ ] No regressions in any other test file (the change is contained to the 2 test files).
-- [ ] Whole-plan consistency check passes (no `stripNodeEvalBody` in `core/gate-logic.js` yet — that lands in Phase 2).
+- [x] `pnpm test -- gate-promoted-rules` shows: 1 RED (`node -e` promoted-rule test), 23+ existing GREEN.
+- [x] No regressions in any other test file (the change is contained to the 2 test files).
+- [x] Whole-plan consistency check passes (no `stripNodeEvalBody` in `core/gate-logic.js` yet — that lands in Phase 2).
 
 ## Risk Assessment
 

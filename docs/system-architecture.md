@@ -103,7 +103,7 @@ Outbound gates intercept agent tool usage before execution. Both Claude Code and
 
 1. Read tool input from stdin JSON
 2. Skip if tool is not `Bash`
-3. Match command against constraint patterns
+3. Match command against constraint patterns (splits on `;`, `&`, `|` — quote-aware; strips message flags and `node -e|--eval` bodies before regex matching)
 4. Detect file writes to `records/**` via redirects (`>`, `>>`), heredocs (`<<`), and `tee`
 5. Check resource budgets (global)
 6. Check for active observation matching constraint or write-path
@@ -168,7 +168,7 @@ The MCP server provides the same gating logic as the outbound hooks but via the 
 
 #### check_gate
 
-Returns `ok`, `block`, or `escalate` for a given command. Includes `inbound_gate: true` when observations are stale relative to the last operator message.
+Returns `ok`, `block`, or `escalate` for a given command. Splits on `;`, `&`, `|` (quote-aware), strips message flags and `node -e|--eval` bodies before regex matching, then checks against constraint patterns and promoted rules. Includes `inbound_gate: true` when observations are stale relative to the last operator message.
 
 #### gate_override
 

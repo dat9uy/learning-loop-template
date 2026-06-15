@@ -32,7 +32,7 @@ The two prior brainstorm reports are sequenced in **4 /ck/plan invocations** (on
 |---|---|---|---|
 | **1** | Report 2 | Phase 0-1 (helper + 2 refactors) | ✅ shipped 2026-06-15 — Foundation; unblocks Report 1's cross-surface code |
 | **2** | Report 1 | Plan 1 (stderr + override + log + recurrence) | ✅ shipped 2026-06-15 — `meta-260615T1459Z-bash-gate-debate-step-2-shipping` — Builds on the helper; ships the user-pain fix |
-| **3** | Report 1 | Plan 2 (node -e strip) | Independent; can ship alongside or after step 2 |
+| **3** | Report 1 | Plan 2 (node -e strip) | ✅ shipped 2026-06-15 — `meta-260615T1921Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody` — Narrow first-pass fix; ships alongside Step 2's catch-net (`gate_check_recurrence`) |
 | **4** | Report 2 | Phase 2-5 (test + pattern type + tool + rule entry) | Closes the rule; new MCP tools from step 2 are rule-compliant by design |
 
 The decision is justified by **three problem-solving techniques** from `ck:problem-solving`:
@@ -189,10 +189,10 @@ This markdown is the **single source of truth** for the planning-order decision.
 |------|--------|--------|------------|------------|
 | 1 | Report 2 P0-1 | ✅ shipped | — (routine refactor; no change-log filed) | 2026-06-15 |
 | 2 | Report 1 P1 | ✅ shipped | `meta-260615T1459Z-bash-gate-debate-step-2-shipping` | 2026-06-15 |
-| 3 | Report 1 P2 | pending | — | — |
+| 3 | Report 1 P2 | ✅ shipped | `meta-260615T1921Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody` | 2026-06-15 |
 | 4 | Report 2 P2-5 | pending | — | — |
 
-Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`. Step 2 ships the decision visibility + override + decision log + recurrence tracker per `plans/260615-1530-bash-gate-debate-stderr-override-recurrence/`.
+Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`. Step 2 ships the decision visibility + override + decision log + recurrence tracker per `plans/260615-1530-bash-gate-debate-stderr-override-recurrence/`. Step 3 ships the conservative `node -e` body strip + 6 new tests per `plans/260615-1600-step3-bash-gate-node-e-strip/`. Bypass risk (`node -e "require('child_process').exec('npm install')"` no longer matches `package-manager`) documented in finding `meta-260615T1920Z-the-new-stripnodeevalbody-function-in-tools-learning-loop-mc`; caught by Step 2's `gate_check_recurrence` if the pattern recurs.
 
 ## Cleanup backlog
 

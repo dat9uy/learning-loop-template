@@ -3,6 +3,14 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
 /**
  * Pure gate decision logic — no I/O, fully testable.
  * Single source of truth for constraint patterns and gate decisions.
+ *
+ * Strip functions (`splitSegments`, `stripMessageFlags`, `stripNodeEvalBody`)
+ * form a layered pipeline: a command is split into segments, then each
+ * segment is stripped of message-flag bodies and (for `node -e` wrappers) the
+ * eval body. The regex matching constraint patterns sees only the command verb.
+ * The `node -e` strip is asymmetric by user-stated design (see
+ * `stripNodeEvalBody` JSDoc and finding
+ * `meta-260615T1915Z-node-e-strip-bypass-risk`).
  */
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
@@ -186,6 +194,50 @@ export function stripMessageFlags(segment) {
 }
 
 /**
+ * Strip the body of a `node -e|--eval|-p|--print` wrapper.
+ *
+ * The body of a `node -e "..."` command is a JavaScript string literal in
+ * shell. The regex matching constraint patterns (e.g., the G8 promoted rule
+ * `rule-no-new-artifact-types`) should not see trigger phrases inside that
+ * body, just like `stripMessageFlags` keeps `git commit -m "..."` message
+ * bodies out of the regex's view.
+ *
+ * Asymmetric by user-stated design: this strips only `node` wrappers.
+ * `python -c`, `bash -c`, `ruby -e`, `perl -e`, `sh -c` are NOT stripped
+ * because their bodies are real commands (the existing 3 tests at
+ * `__tests__/gate-logic-quoted-strings.test.js` lock this asymmetry).
+ *
+ * Bypass risk: `node -e "require('child_process').exec('npm install')"` no
+ * longer matches the `package-manager` constraint (the command is inside the
+ * blanked body). This is an accepted bypass, not a fix; the user-stated design
+ * from plans/reports/brainstorm-260615-1300-bash-gate-debate-friendly-and-string-literal-fix.md#plan-2
+ * chose asymmetry (only node, not python-c/bash-c). Catch-net: the
+ * `gate_check_recurrence` MCP tool shipped in plan
+ * 260615-1530-bash-gate-debate-stderr-override-recurrence auto-files a finding
+ * via `meta_state_report` if `node -e "..."` matches a constraint N>=3 times in
+ * M<=10min.
+ *
+ * @param {string} segment - A single command segment (output of `splitSegments`).
+ * @returns {string} The segment with the body of any `node -e|--eval|-p|--print` wrapper blanked.
+ */
+export function stripNodeEvalBody(segment) {
+  if (typeof segment !== "string" || !segment) return segment;
+  // Match: (node|nodejs) ( -e | --eval | -p | --print ) "..." or '...'
+  // Replace the quoted body with an empty placeholder. E.g.:
+  //   node -e "foo bar"   ->   node -e ""
+  //   node --eval 'baz'   ->   node --eval ''
+  //   node -e "a" -e "b"  ->   node -e "" -e ""  (g flag handles multiple)
+  // Known limitation: escaped quotes inside the eval body are not recognised,
+  // e.g. `node -e "console.log(\"docker run\")"` stops at the first `"`.
+  // This is rare in agent flows; if it recurs, extend the regex or replace it
+  // with the quote-aware state machine from `splitSegments`.
+  return segment.replace(
+    /\b(node|nodejs)\s+(-e|--eval|-p|--print)\s+(["'])(?:(?!\3).)*\3/g,
+    (match, _node, _flag, quote) => match.replace(/(["'])(?:(?!\1).)*\1/, `${quote}${quote}`)
+  );
+}
+
+/**
  * Match a command against constraint patterns.
  * Splits on ;, &, | and checks each segment independently.
  * Strips message flags before matching to avoid false positives.
@@ -196,8 +248,9 @@ export function matchConstraintPattern(command) {
 
   for (const segment of splitSegments(command)) {
     const stripped = stripMessageFlags(segment);
+    const nodeStripped = stripNodeEvalBody(stripped);
     for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(stripped)) return type;
+      if (pattern.test(nodeStripped)) return type;
     }
   }
   return null;
@@ -707,7 +760,8 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         }
         for (const segment of splitSegments(command)) {
           const stripped = stripMessageFlags(segment);
-          if (new RegExp(pattern).test(stripped)) {
+          const nodeStripped = stripNodeEvalBody(stripped);
+          if (new RegExp(pattern).test(nodeStripped)) {
             matched = true;
             break;
           }

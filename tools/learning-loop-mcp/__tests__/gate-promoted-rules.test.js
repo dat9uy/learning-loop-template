@@ -472,6 +472,29 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
     assert.ok(stripped.includes("git"));
     assert.ok(stripped.includes("commit"));
   });
+
+  test("applyPromotedRules: node -e body with trigger phrase → ok (no escalate)", () => {
+    // The trigger phrase "create a new schema" is inside the `node -e` body.
+    // After Phase 2 ships stripNodeEvalBody, the body is blanked before regex match.
+    // Today (RED), the regex sees the trigger and escalates.
+    const rules = [
+      {
+        id: "rule-no-new-artifact-types",
+        entry_kind: "rule",
+        status: "active",
+        enforcement: "gate",
+        pattern_type: "regex",
+        pattern: "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
+      },
+    ];
+    const result = applyPromotedRules(
+      `node -e "console.log('create a new schema')"`,
+      null,
+      rules,
+      "/tmp",
+    );
+    assert.strictEqual(result.decision, "ok");
+  });
 });
 
 describe("gate promoted rules G8 subcommand-class fix (P1)", () => {

@@ -13,7 +13,7 @@ description: >-
   via a new finding + change-log note; Step 2's recurrence tracker catches it if
   first, then the implementation. TDD: 5 unit tests + 1 G8-style promoted-rule guard test land RED
   first, then the implementation.
-status: pending
+status: completed
 priority: P2
 branch: 260614-1259-phase-b-codegen-adoption
 tags:
@@ -75,10 +75,10 @@ The design is **narrow by user-stated intent**: ship a `stripNodeEvalBody(segmen
 
 | Phase | Name | Status | TDD anchor |
 |-------|------|--------|------------|
-| 1 | [red-tests](./phase-01-red-tests.md) | pending | RED: 5 tests in `__tests__/gate-logic-quoted-strings.test.js` + 1 guard test in `__tests__/gate-promoted-rules.test.js`; confirm FAIL |
+| 1 | [red-tests](./phase-01-red-tests.md) | completed | RED: 5 tests in `__tests__/gate-logic-quoted-strings.test.js` + 1 guard test in `__tests__/gate-promoted-rules.test.js`; confirm FAIL |
 <!-- Updated: Validation Session 1 — 5 quoted-strings tests (was 4) after including bypass guard. -->
-| 2 | [green-impl-and-ship](./phase-02-green-impl-and-ship.md) | pending | GREEN: implement `stripNodeEvalBody`; wire into `matchConstraintPattern` + `applyPromotedRules`; tests pass; file bypass-risk finding; ship change-log |
-| 3 | [annotate-planning-order-report](./phase-03-annotate-planning-order-report.md) | pending | No tests (tracking-only phase; mirrors Step 2 Phase 5 + Step 1 Phase 4): annotate the planning-order report's "Shipped status" table + TL;DR table with the change-log id from Phase 2 |
+| 2 | [green-impl-and-ship](./phase-02-green-impl-and-ship.md) | completed | GREEN: implemented `stripNodeEvalBody`; wired into `matchConstraintPattern` + `applyPromotedRules`; tests pass; filed bypass-risk finding + change-log |
+| 3 | [annotate-planning-order-report](./phase-03-annotate-planning-order-report.md) | completed | Annotated planning-order report's "Shipped status" table + TL;DR table with change-log id |
 
 ## Dependencies
 
@@ -117,8 +117,8 @@ Three constraints from the source report (`brainstorm-260615-1300-bash-gate-deba
 
 | File | Test | Asserts |
 |------|------|---------|
-| `gate-logic-quoted-strings.test.js` | `node -e with nested string literal containing trigger phrase → null` | `matchConstraintPattern('node -e "console.log(\'do not create a new schema\')"')` returns `null` |
-| `gate-logic-quoted-strings.test.js` | `node -e with nested string literal containing propose → null` | `matchConstraintPattern('node -e "console.log(\'propose a new artifact\')"')` returns `null` |
+| `gate-logic-quoted-strings.test.js` | `node -e body with docker command → null` | `matchConstraintPattern('node -e "console.log(\'docker run ubuntu\')"')` returns `null` |
+| `gate-logic-quoted-strings.test.js` | `node -e body with sudo command → null` | `matchConstraintPattern('node -e "console.log(\'sudo apt update\')"')` returns `null` |
 | `gate-logic-quoted-strings.test.js` | `python -c with import docker inside → docker (regression guard)` | `matchConstraintPattern('python -c "import docker"')` returns `"docker"` (unchanged) |
 | `gate-logic-quoted-strings.test.js` | `bash -c with docker run inside → docker (regression guard)` | `matchConstraintPattern('bash -c "docker run ubuntu"')` returns `"docker"` (unchanged) |
 | `gate-logic-quoted-strings.test.js` | `node -e body with package-manager command → null (accepted bypass)` | `matchConstraintPattern('node -e "require(\'child_process\').exec(\'npm install\')"')` returns `null` |
@@ -268,11 +268,11 @@ for (const segment of splitSegments(command)) {
 
 #### Action Items
 - [x] Update plan prose to reflect validation decisions (done during this validation session).
-- [ ] During Phase 2 implementation: file bypass-risk finding via `meta_state_report` with category `loop-anti-pattern` and `expires_at: null`.
-- [ ] During Phase 2 implementation: file change-log via `meta_state_log_change` with `affected_system: gate-logic`.
-- [ ] During Phase 1 implementation: add bypass-guard test using `node -e "require('child_process').exec('npm install')"`.
-- [ ] During Phase 2 implementation: ack then resolve stale parent finding `meta-260614T2141Z-...`.
-- [ ] During implementation: reconcile test counts across all files (6 new tests total).
+- [x] During Phase 2 implementation: file bypass-risk finding via `meta_state_report` with category `loop-anti-pattern` and `expires_at: null`.
+- [x] During Phase 2 implementation: file change-log via `meta_state_log_change` with `affected_system: gate-logic`.
+- [x] During Phase 1 implementation: add bypass-guard test using `node -e "require('child_process').exec('npm install')"`.
+- [ ] During Phase 2 implementation: ack then resolve stale parent finding `meta-260614T2141Z-...` (operator decision; deferred).
+- [x] During implementation: reconcile test counts across all files (6 new tests total).
 
 #### Impact on Phases
 - Phase 1: Optional bypass test is included with realistic Node.js example.

@@ -31,7 +31,9 @@ The gate **reads** domain observations to check if they exist (meta-level: "has 
 
 **What the gate does:**
 - Match command strings against regex patterns (`patterns.json`)
+- Split on `;`, `&`, `|` — quote-aware (state machine tracks single-quote, double-quote, and backslash escape)
 - Strip message flags (`-m`, `--message`, `--title`, `--description`, `--body`) and their values before matching to prevent false positives from quoted commit messages, PR titles, etc.
+- Strip `node -e|--eval|-p|--print` bodies before matching (asymmetric: `python -c`, `bash -c`, `ruby -e`, `perl -e`, `sh -c` are NOT stripped because their bodies are real commands)
 - Check if an active observation exists for the matched constraint
 - Block commands that have no observation ("no one has approved this constraint")
 - Escalate when an observation is stale ("operator may have changed state, verify first")
