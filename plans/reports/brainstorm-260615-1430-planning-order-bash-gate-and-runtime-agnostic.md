@@ -181,6 +181,7 @@ This markdown is the **single source of truth** for the planning-order decision.
 - The cross-report dependency matrix.
 - The problem-solving techniques that justify the order (so a future reader can re-derive the decision, not just trust it).
 - The "what does NOT depend" callouts (so a future reader can re-balance the order if priorities change).
+- The cleanup backlog (minor findings from each shipped step, processed in one session after all 4 steps ship).
 
 ## Shipped status
 
@@ -192,6 +193,28 @@ This markdown is the **single source of truth** for the planning-order decision.
 | 4 | Report 2 P2-5 | pending | — | — |
 
 Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`.
+
+## Cleanup backlog
+
+Minor findings surfaced during code review of each shipped step. **Processed in one session after all 4 steps ship** (separate from the plan-of-record work). The backlog grows as more steps complete — append new items here rather than scattering them across reports.
+
+**Why deferred:** these are cosmetic / hygiene items, not blockers. Touching the same files mid-stream creates merge friction; batching them keeps the plan-of-record PRs focused on the actual feature work.
+
+**How to use this section:**
+- When a step ships, the reviewer appends any cosmetic findings here with a one-line description + file/line reference.
+- After all 4 steps are shipped (or whenever the operator wants), open a single `plans/260615-CLEANUP-batch-cleanup-after-planning-order/` plan that walks this list, applies the fixes, and updates this section to `cleared` (with date).
+
+### Step 1 (shipped 2026-06-15) cleanup items
+
+| # | Item | File / line | Severity |
+|---|------|-------------|----------|
+| 1.1 | Stale `// fallow-ignore-next-line complexity` comment on `readLastOperatorMessage` — the function shrank 35 → 14 lines after the refactor; verify fallow still trips the rule, remove if no longer needed. | `tools/learning-loop-mcp/core/inbound-state.js:41` | cosmetic |
+| 1.2 | No file-level JSDoc for `core/surfaces.js` — the plan required per-export JSDoc (shipped), but a one-line module header explaining the contract ("single source of truth for cross-surface iteration; append new runtimes to SURFACES") would help future contributors. | `tools/learning-loop-mcp/core/surfaces.js:1` | cosmetic |
+| 1.3 | The plan's "Unresolved questions" section in `phase-01-surfaces-helper.md` listed 3 questions (const vs function, atomicity, first/all match) that were all answered in the implementation but never annotated as resolved. Either annotate the answers inline or remove the section. | `plans/260615-1500-surfaces-helper-and-refactors/phase-01-surfaces-helper.md:59-62` | doc-hygiene |
+| 1.4 | The "mutation test" in `gate-logic-glob-whitelist.test.js` (test 6) doesn't actually exercise parameterization — it just asserts on `SURFACES` contents. Either strengthen it (module mock + assert `.cursor/` whitelisted) or drop it; the source-level `...SURFACES.map(...)` is the actual contract. | `tools/learning-loop-mcp/__tests__/gate-logic-glob-whitelist.test.js:36-47` | test-quality |
+| 1.5 | `writeToAllSurfaces` "best-effort" test doesn't actually exercise a failure path — the test acknowledges "can't easily simulate a real failure cross-platform". Either use `chmod 000` on Unix in a test that's tagged `@platform=posix`, or document the gap and move on. | `tools/learning-loop-mcp/__tests__/surfaces.test.js:78-88` | test-quality |
+
+(Add new cleanup items below as Steps 2, 3, 4 ship.)
 
 ## What stays human forever
 

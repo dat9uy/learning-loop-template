@@ -61,7 +61,13 @@ export function readLastOperatorMessage(root) {
     }
 
     // Priority 2 + 3: surface iteration via the helper.
-    const hits = readFromAllSurfaces(root, ".last-operator-message", { first: true });
+    // Returns the full array (not `{ first: true }`) because the for-loop
+    // applies the TTL filter per surface and falls through to the next
+    // surface on expiry or parse error. With `first: true` the helper
+    // would return the first non-malformed hit regardless of TTL, and we
+    // would lose the ability to skip an expired .claude marker in favour
+    // of a fresh .factory one.
+    const hits = readFromAllSurfaces(root, ".last-operator-message");
     for (const hit of hits) {
       const marker = isMarkerFresh(hit.parsed);
       if (marker) return marker;
@@ -75,9 +81,9 @@ export function readLastOperatorMessage(root) {
 ```
 
 Notes:
-- `readFromAllSurfaces(subpath, { first: true })` returns `parsed` for each surface, in `SURFACES` order (`[".claude", ".factory"]` today). The for-loop preserves the same priority.
+- `readFromAllSurfaces(subpath)` (default) returns `{ surface, content, parsed }[]` for every surface that has the file, in `SURFACES` order (`[".claude", ".factory"]` today). Malformed JSON is already filtered by the helper (the inner `JSON.parse` catch `continue`s the surface). The for-loop preserves the same priority as the prior inline `.claude → .factory` chain.
 - The `try { ... } catch {}` blocks around the per-surface reads are no longer needed — `readFromAllSurfaces` is fail-quiet per surface (Phase 1's contract). The outer `try { ... } catch { return null }` stays as a defense-in-depth for the env-var path and any unexpected throws from `isMarkerFresh`.
-- The helper's `parsed` field is already `JSON.parse`d; malformed JSON on a surface yields `parsed: null`, which `isMarkerFresh` rejects.
+- The helper's `parsed` field is already `JSON.parse`d; malformed JSON on a surface yields the surface being omitted from `hits`, and `isMarkerFresh` rejects markers with missing/invalid/expired timestamps.
 
 ## Related Code Files
 
