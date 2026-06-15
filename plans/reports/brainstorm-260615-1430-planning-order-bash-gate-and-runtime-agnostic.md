@@ -3,7 +3,7 @@ title: "Planning Order: Bash Gate Debate (Report 1) + Runtime-Agnostic Rule (Rep
 description: "Single-source-of-truth markdown for the cross-report planning-order decision. Report 2 ships first as foundation (Phase 0-1: surfaces.js helper + 2 existing-call-site refactors); Report 1 ships on top (Plan 1: visibility + override + recurrence; Plan 2: node -e strip is independent). Report 2 Phases 2-5 close the loop last. Three problem-solving techniques justify the order: Inversion Exercise (Report 1 first creates retrofit debt), Simplification Cascade (the helper is the one insight that eliminates 5+ special cases), Meta-Pattern Recognition (debatable + self-improving → loop's self-model first). 4 /ck/plan invocations listed with dependencies."
 date: "2026-06-15T14:30:00Z"
 tags: [meta, planning, sequencing, dependency-analysis, bash-gate, runtime-agnostic, simplification-cascade, inversion-exercise, meta-pattern, problem-solving]
-status: draft
+status: in-progress
 session: 260615-planning-order
 supersedes: null
 superseded_by: null
@@ -30,7 +30,7 @@ The two prior brainstorm reports are sequenced in **4 /ck/plan invocations** (on
 
 | Step | Source | Phases | Why this position |
 |---|---|---|---|
-| **1** | Report 2 | Phase 0-1 (helper + 2 refactors) | Foundation; unblocks Report 1's cross-surface code |
+| **1** | Report 2 | Phase 0-1 (helper + 2 refactors) | ✅ shipped 2026-06-15 — Foundation; unblocks Report 1's cross-surface code |
 | **2** | Report 1 | Plan 1 (stderr + override + log + recurrence) | Builds on the helper; ships the user-pain fix |
 | **3** | Report 1 | Plan 2 (node -e strip) | Independent; can ship alongside or after step 2 |
 | **4** | Report 2 | Phase 2-5 (test + pattern type + tool + rule entry) | Closes the rule; new MCP tools from step 2 are rule-compliant by design |
@@ -181,6 +181,17 @@ This markdown is the **single source of truth** for the planning-order decision.
 - The cross-report dependency matrix.
 - The problem-solving techniques that justify the order (so a future reader can re-derive the decision, not just trust it).
 - The "what does NOT depend" callouts (so a future reader can re-balance the order if priorities change).
+
+## Shipped status
+
+| Step | Source | Status | Change-log | Shipped at |
+|------|--------|--------|------------|------------|
+| 1 | Report 2 P0-1 | ✅ shipped | — (routine refactor; no change-log filed) | 2026-06-15 |
+| 2 | Report 1 P1 | pending | — | — |
+| 3 | Report 1 P2 | pending | — | — |
+| 4 | Report 2 P2-5 | pending | — | — |
+
+Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`.
 
 ## What stays human forever
 

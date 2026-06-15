@@ -1,7 +1,7 @@
 ---
 title: "Surfaces helper + GLOB_WHITELIST / readLastOperatorMessage refactor"
 description: "Ships Step 1 of the planning-order decision (Report 2 Phase 0+1). New core/surfaces.js helper plus two refactors that consume it: GLOB_SCOPE_WHITELIST in core/gate-logic.js (fixes the missing .claude/ asymmetry) and readLastOperatorMessage in core/inbound-state.js (DRYs the inline cross-surface iteration). Foundation for Report 1 Plan 1 (override marker + decision log + recurrence tracker) and Report 2 Phases 2-5 (test + pattern type + tool + rule entry)."
-status: pending
+status: shipped
 priority: P1
 branch: "260614-1259-phase-b-codegen-adoption"
 tags: [meta, surfaces, refactor, tdd, foundation, planning-order-step-1]
@@ -32,10 +32,10 @@ After this ships, the helper is available for Report 1's override-marker / decis
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [surfaces-helper](./phase-01-surfaces-helper.md) | Pending |
-| 2 | [GLOB_SCOPE_WHITELIST-refactor](./phase-02-glob-scope-whitelist-refactor.md) | Pending |
-| 3 | [readLastOperatorMessage-refactor](./phase-03-readlastoperatormessage-refactor.md) | Pending |
-| 4 | [annotate-planning-order-report](./phase-04-annotate-planning-order-report.md) | Pending |
+| 1 | [surfaces-helper](./phase-01-surfaces-helper.md) | **shipped** |
+| 2 | [GLOB_SCOPE_WHITELIST-refactor](./phase-02-glob-scope-whitelist-refactor.md) | **shipped** |
+| 3 | [readLastOperatorMessage-refactor](./phase-03-readlastoperatormessage-refactor.md) | **shipped** |
+| 4 | [annotate-planning-order-report](./phase-04-annotate-planning-order-report.md) | **shipped** |
 
 ## TDD structure
 
