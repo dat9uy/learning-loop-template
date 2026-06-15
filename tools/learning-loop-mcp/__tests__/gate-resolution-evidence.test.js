@@ -594,24 +594,33 @@ describe("meta_state_resolve consultation", () => {
 describe("listPromotedRules filter", () => {
   test("excludes resolution-evidence-required rules", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const regexRule = {
+      id: "rule-regex",
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "test",
+      description: "Test regex rule for listPromotedRules filter regression coverage",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    const resolutionRule = {
+      id: "rule-resolution",
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "resolution-evidence-required",
+      pattern: "test-session-id",
+      description: "Test resolution rule for listPromotedRules filter regression coverage",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
     writeFileSync(
       join(tempRoot, "meta-state.jsonl"),
-      JSON.stringify({
-        id: "rule-regex",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
-        pattern_type: "regex",
-        pattern: "test",
-      }) + "\n" +
-      JSON.stringify({
-        id: "rule-resolution",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
-        pattern_type: "resolution-evidence-required",
-        pattern: "test-session-id",
-      }) + "\n"
+      JSON.stringify(regexRule) + "\n" + JSON.stringify(resolutionRule) + "\n",
     );
 
     const { listPromotedRules } = await importLoopIntrospect();

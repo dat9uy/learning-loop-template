@@ -1,6 +1,6 @@
-import { statSync, appendFileSync } from "node:fs";
+import { statSync, appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readModifyWriteOnAllSurfaces, readFromAllSurfaces } from "./surfaces.js";
+import { readModifyWriteOnAllSurfaces, SURFACES } from "./surfaces.js";
 
 const OVERRIDE_FILE = ".gate-override";
 const CACHE_TTL_MS = 1000;
@@ -24,8 +24,11 @@ function validateMarker(parsed) {
 }
 
 /**
- * Read the active gate-override marker from the first surface that has one.
- * Returns null if no valid (non-expired) marker exists.
+ * Read the active gate-override marker from the first surface that has a
+ * VALID (non-expired) one. Iterates SURFACES in order (.claude, .factory)
+ * and returns the first valid marker; an expired or malformed marker on
+ * one surface does not block a valid marker on another.
+ * Returns null if no valid marker exists.
  * Cached for up to 1 second and invalidated on marker mtime/size changes.
  *
  * @param {string} root
@@ -46,18 +49,27 @@ export function readGateOverride(root) {
     }
   }
 
-  const result = readFromAllSurfaces(root, OVERRIDE_FILE, { first: true });
-  if (result) {
-    const valid = validateMarker(result.parsed);
-    if (valid) {
-      try {
-        const path = join(root, result.surface, "coordination", OVERRIDE_FILE);
-        const { mtime, size } = statSync(path);
-        overrideCache.set(root, { result: valid, at: Date.now(), path, mtime: mtime.getTime(), size });
-        return valid;
-      } catch {
-        // Fall through to cache null.
-      }
+  // Iterate SURFACES and call validateMarker per surface. This preserves
+  // the "first VALID wins" contract: an expired or malformed marker on
+  // .claude falls through to a valid marker on .factory (and vice versa).
+  for (const surface of SURFACES) {
+    const path = join(root, surface, "coordination", OVERRIDE_FILE);
+    let parsed = null;
+    try {
+      if (!existsSync(path)) continue;
+      parsed = JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      // Per-surface best effort: malformed or missing marker is ignored.
+      continue;
+    }
+    const valid = validateMarker(parsed);
+    if (!valid) continue;
+    try {
+      const { mtime, size } = statSync(path);
+      overrideCache.set(root, { result: valid, at: Date.now(), path, mtime: mtime.getTime(), size });
+      return valid;
+    } catch {
+      // Fall through to cache null.
     }
   }
 

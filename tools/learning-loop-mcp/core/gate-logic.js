@@ -18,7 +18,7 @@ import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
-import { readRegistry } from "./meta-state.js";
+import { readRegistry, metaStateRuleEntrySchema } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 
@@ -618,6 +618,23 @@ export function loadPromotedRules(root) {
   // Phase 2 migration (all promoted rules are now standalone rule entries).
   let rules = entries.filter((e) => {
     return e.entry_kind === "rule" && e.status === "active";
+  });
+
+  // Schema validation: a malformed rule entry (typo, missing field,
+  // invalid pattern_type) would crash applyPromotedRules. Validate
+  // each entry and warn-and-skip on invalid. This closes the gap that
+  // direct file appends (bypassing writeEntry's safeParse) would otherwise
+  // create — see code-reviewer-260615-2255-... finding F-3.
+  rules = rules.filter((r) => {
+    const validation = metaStateRuleEntrySchema.safeParse(r);
+    if (!validation.success) {
+      console.warn(
+        `Rule ${r.id ?? "<unknown>"}: schema validation failed, skipping. ` +
+          `Errors: ${validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+      );
+      return false;
+    }
+    return true;
   });
 
   rules = rules.filter((r) => {

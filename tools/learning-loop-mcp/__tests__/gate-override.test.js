@@ -29,7 +29,7 @@ function writeRule(ruleId, pattern) {
     enforcement: "gate",
     pattern_type: "regex",
     pattern,
-    description: `Test rule ${ruleId}`,
+    description: `Test rule ${ruleId} for gate-override regression coverage`,
     status: "active",
     promoted_at: new Date().toISOString(),
     promoted_by: "operator",
@@ -91,6 +91,33 @@ await test("readGateOverride first-valid-wins prefers .claude over .factory", ()
   writeFileSync(factoryPath, JSON.stringify({ rule_ids: ["rule-factory"], ttl_seconds: 3600, operator_note: "f", created_at: new Date().toISOString() }));
   const override = readGateOverride(root);
   assert.deepStrictEqual(override.rule_ids, ["rule-claude"]);
+});
+
+await test("readGateOverride falls through to .factory when .claude marker is expired (first-VALID-wins, not first-parsed)", () => {
+  // F-1 regression test: an expired marker on .claude must NOT shadow a
+  // valid marker on .factory. The old behavior (pre-Step 4 refactor) iterated
+  // SURFACES and called validateMarker per surface. The Step 4 refactor
+  // accidentally collapsed this to "first-parsed-wins" via readFromAllSurfaces
+  // ({ first: true }). This test pins the "first-VALID-wins" contract.
+  const claudePath = join(root, ".claude", "coordination", ".gate-override");
+  const factoryPath = join(root, ".factory", "coordination", ".gate-override");
+  mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  // .claude: expired (created 2 hours ago, ttl 1 hour)
+  const expiredCreatedAt = new Date(Date.now() - 7200 * 1000).toISOString();
+  writeFileSync(
+    claudePath,
+    JSON.stringify({ rule_ids: ["rule-claude"], ttl_seconds: 3600, operator_note: "c", created_at: expiredCreatedAt }),
+  );
+  // .factory: valid (fresh)
+  writeFileSync(
+    factoryPath,
+    JSON.stringify({ rule_ids: ["rule-factory"], ttl_seconds: 3600, operator_note: "f", created_at: new Date().toISOString() }),
+  );
+  const override = readGateOverride(root);
+  assert.ok(override, "expected to fall through to valid .factory marker");
+  assert.deepStrictEqual(override.rule_ids, ["rule-factory"]);
+  assert.strictEqual(override.operator_note, "f");
 });
 
 await test("applyPromotedRules skips rule in override set", () => {

@@ -195,10 +195,14 @@ describe("gate promoted rules new behavior", () => {
       JSON.stringify({
         id: "rule-test",
         entry_kind: "rule",
-        status: "active",
+        origin: "meta-test-origin",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
+        description: "Cache hit test rule for loadPromotedRules regression coverage",
+        status: "active",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "operator",
       }) + "\n"
     );
 
@@ -219,10 +223,14 @@ describe("gate promoted rules new behavior", () => {
       JSON.stringify({
         id: "rule-test",
         entry_kind: "rule",
-        status: "active",
+        origin: "meta-test-origin",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
+        description: "Cache miss test rule for loadPromotedRules regression coverage",
+        status: "active",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "operator",
       }) + "\n"
     );
 
@@ -235,19 +243,27 @@ describe("gate promoted rules new behavior", () => {
       JSON.stringify({
         id: "rule-test",
         entry_kind: "rule",
-        status: "active",
+        origin: "meta-test-origin",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
+        description: "Cache miss test rule for loadPromotedRules regression coverage",
+        status: "active",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "operator",
       }) +
         "\n" +
         JSON.stringify({
           id: "rule-second",
           entry_kind: "rule",
-          status: "active",
+          origin: "meta-test-origin",
           enforcement: "gate",
           pattern_type: "regex",
           pattern: "second",
+          description: "Second cache miss test rule for loadPromotedRules regression coverage",
+          status: "active",
+          promoted_at: new Date().toISOString(),
+          promoted_by: "operator",
         }) +
         "\n"
     );
@@ -309,28 +325,40 @@ describe("gate promoted rules new behavior", () => {
       JSON.stringify({
         id: "rule-active",
         entry_kind: "rule",
-        status: "active",
+        origin: "meta-test-origin",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "active",
+        description: "Active rule for loadPromotedRules status filter regression coverage",
+        status: "active",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "operator",
       }) +
         "\n" +
         JSON.stringify({
           id: "rule-disabled",
           entry_kind: "rule",
-          status: "disabled",
+          origin: "meta-test-origin",
           enforcement: "gate",
           pattern_type: "regex",
           pattern: "disabled",
+          description: "Disabled rule for loadPromotedRules status filter regression coverage",
+          status: "disabled",
+          promoted_at: new Date().toISOString(),
+          promoted_by: "operator",
         }) +
         "\n" +
         JSON.stringify({
           id: "rule-agent",
           entry_kind: "rule",
-          status: "active",
+          origin: "meta-test-origin",
           enforcement: "agent",
           pattern_type: "regex",
           pattern: "agent",
+          description: "Agent rule for loadPromotedRules status filter regression coverage",
+          status: "active",
+          promoted_at: new Date().toISOString(),
+          promoted_by: "operator",
         }) +
         "\n"
     );
@@ -578,10 +606,14 @@ describe("gate promoted rules status semantics (P1)", () => {
       JSON.stringify({
         id: "rule-test-active",
         entry_kind: "rule",
-        status: "active",
+        origin: "meta-test-origin",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
+        description: "Active rule for status semantics regression coverage",
+        status: "active",
+        promoted_at: new Date().toISOString(),
+        promoted_by: "operator",
       }) + "\n"
     );
     const rules = loadPromotedRules(tempDir);
@@ -621,6 +653,111 @@ describe("gate promoted rules status semantics (P1)", () => {
     const result = applyPromotedRules("please match-me here", null, rules);
     assert.strictEqual(result.decision, "escalate");
     assert.strictEqual(result.rule_id, "rule-resolved-test");
+  });
+});
+
+describe("loadPromotedRules schema validation (F-3 fix)", () => {
+  // F-3 fix: a malformed rule entry (typo, missing field, invalid
+  // pattern_type) was previously passed through unvalidated and would
+  // crash applyPromotedRules. loadPromotedRules now calls
+  // metaStateRuleEntrySchema.safeParse and warn-and-skips invalid entries.
+  // This closes the gap that direct file appends (bypassing writeEntry's
+  // safeParse) would otherwise create.
+  test("warn-and-skips a rule entry with invalid pattern_type", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-schema-bad-pattern-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    writeFileSync(
+      metaPath,
+      JSON.stringify({
+        id: "rule-bad-pattern-type",
+        entry_kind: "rule",
+        status: "active",
+        enforcement: "gate",
+        pattern_type: "this-is-not-a-valid-pattern-type",
+        pattern: ".*",
+      }) + "\n",
+    );
+    // Capture stderr to verify the warning
+    const origWarn = console.warn;
+    const warnings = [];
+    console.warn = (...args) => warnings.push(args.join(" "));
+    try {
+      const rules = loadPromotedRules(tempDir);
+      assert.deepStrictEqual(rules, [], "malformed rule must be skipped");
+      assert.ok(
+        warnings.some((w) => w.includes("rule-bad-pattern-type") && w.includes("schema validation failed")),
+        `expected warn-and-skip; warnings: ${JSON.stringify(warnings)}`,
+      );
+    } finally {
+      console.warn = origWarn;
+    }
+  });
+
+  test("warn-and-skips a rule entry missing required enforcement field", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-schema-missing-enforcement-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    writeFileSync(
+      metaPath,
+      JSON.stringify({
+        id: "rule-missing-enforcement",
+        entry_kind: "rule",
+        status: "active",
+        // enforcement: missing — required by metaStateRuleEntrySchema
+        pattern_type: "regex",
+        pattern: ".*",
+      }) + "\n",
+    );
+    const origWarn = console.warn;
+    const warnings = [];
+    console.warn = (...args) => warnings.push(args.join(" "));
+    try {
+      const rules = loadPromotedRules(tempDir);
+      assert.deepStrictEqual(rules, []);
+      assert.ok(
+        warnings.some((w) => w.includes("rule-missing-enforcement") && w.includes("schema validation failed")),
+      );
+    } finally {
+      console.warn = origWarn;
+    }
+  });
+
+  test("loads valid rules and skips invalid ones in the same registry", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "gate-promoted-schema-mixed-"));
+    const metaPath = join(tempDir, "meta-state.jsonl");
+    const validRule = {
+      id: "rule-valid",
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "valid-pattern",
+      description: "Valid test rule for F-3 mixed-registry regression test",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    const invalidRule = {
+      id: "rule-invalid",
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "totally-bogus",
+      pattern: ".*",
+      description: "Invalid test rule for F-3 mixed-registry regression test",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+    };
+    writeFileSync(metaPath, JSON.stringify(validRule) + "\n" + JSON.stringify(invalidRule) + "\n");
+    const origWarn = console.warn;
+    console.warn = () => {};
+    try {
+      const rules = loadPromotedRules(tempDir);
+      assert.strictEqual(rules.length, 1, "only the valid rule is loaded");
+      assert.strictEqual(rules[0].id, "rule-valid");
+    } finally {
+      console.warn = origWarn;
+    }
   });
 });
 

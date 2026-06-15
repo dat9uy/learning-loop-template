@@ -49,19 +49,28 @@ describe("gate scope predicate", () => {
     );
   }
 
+  function writeRuleEntry(extra) {
+    return {
+      id: "rule-test-" + Math.random().toString(36).slice(2, 8),
+      entry_kind: "rule",
+      origin: "meta-test-origin",
+      enforcement: "gate",
+      pattern_type: "regex",
+      pattern: "test",
+      description: "Test rule for scope-predicate regression coverage",
+      status: "active",
+      promoted_at: new Date().toISOString(),
+      promoted_by: "operator",
+      ...extra,
+    };
+  }
+
   test("loadPromotedRules returns rules with scope_predicate 'none' regardless of project config", () => {
     const tempDir = setupTempDir("scope-none-");
     process.env.GATE_ROOT = tempDir;
     try {
-      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
-        id: "rule-test-none",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
-        pattern_type: "regex",
-        pattern: "test",
-        scope_predicate: "none",
-      }) + "\n");
+      const rule = writeRuleEntry({ id: "rule-test-none", scope_predicate: "none" });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
 
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
@@ -77,15 +86,8 @@ describe("gate scope predicate", () => {
     process.env.GATE_ROOT = tempDir;
     try {
       writeMcpJson(tempDir, { "learning-loop-mcp": { command: "node", args: ["server.js"] } });
-      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
-        id: "rule-test-match",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
-        pattern_type: "regex",
-        pattern: "test",
-        scope_predicate: "project_has_learning_loop_mcp",
-      }) + "\n");
+      const rule = writeRuleEntry({ id: "rule-test-match", scope_predicate: "project_has_learning_loop_mcp" });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
 
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
@@ -170,20 +172,18 @@ describe("gate scope predicate", () => {
     const captured = [];
     console.warn = (...args) => captured.push(args.join(" "));
     try {
-      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
-        id: "rule-test-unknown",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
-        pattern_type: "regex",
-        pattern: "test",
-        scope_predicate: "unknown_predicate_value",
-      }) + "\n");
+      const rule = writeRuleEntry({ id: "rule-test-unknown", scope_predicate: "unknown_predicate_value" });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
 
-      loadPromotedRules(tempDir);
+      const rules = loadPromotedRules(tempDir);
+      // Post F-3: invalid scope_predicate is caught by schema validation
+      // (warn-and-skip). The rule is excluded from the loaded set. Either
+      // the schema warn OR the legacy predicate warn satisfies the test's
+      // "this rule was rejected" intent.
+      assert.strictEqual(rules.length, 0, "invalid rule must be skipped");
       assert.ok(
-        captured.some((w) => w.includes("unknown_predicate_value")),
-        `Expected warning about unknown predicate, got: ${JSON.stringify(captured)}`
+        captured.length > 0,
+        `Expected at least one warning about rejected rule, got: ${JSON.stringify(captured)}`
       );
     } finally {
       console.warn = originalWarn;
@@ -327,15 +327,13 @@ describe("gate scope predicate", () => {
     process.env.GATE_ROOT = tempDir;
     try {
       writeMcpJson(tempDir, { "learning-loop-mcp": { command: "node", args: ["server.js"] } });
-      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
+      const rule = writeRuleEntry({
         id: "rule-project-skill-boundary",
-        entry_kind: "rule",
-        status: "active",
-        enforcement: "gate",
         pattern_type: "glob",
         pattern: ".factory/skills/{use-mcp,find-skills}/**",
         scope_predicate: "project_has_learning_loop_mcp",
-      }) + "\n");
+      });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
 
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 1);
