@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { readFromAllSurfaces } from "./surfaces.js";
 
 const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const SIDECAR_FILENAME = "runtime-state.jsonl";
@@ -23,6 +24,15 @@ function readSidecar(root) {
   }
 }
 
+/** Apply TTL filter to a parsed marker; returns the marker if valid, else null. */
+function isMarkerFresh(marker) {
+  if (!marker || !marker.timestamp) return null;
+  const markerTime = new Date(marker.timestamp).getTime();
+  if (isNaN(markerTime)) return null;
+  if (Date.now() - markerTime > MARKER_TTL_MS) return null;
+  return marker;
+}
+
 /**
  * Read the last operator message marker written by inbound-state-gate.cjs.
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
@@ -31,43 +41,17 @@ function readSidecar(root) {
 // fallow-ignore-next-line complexity
 export function readLastOperatorMessage(root) {
   try {
-    // Priority: env var > .claude > .factory
+    // Priority 1: env var (operator override).
     if (process.env.GATE_MARKER_PATH) {
-      const marker = JSON.parse(readFileSync(process.env.GATE_MARKER_PATH, "utf8"));
-      if (marker && marker.timestamp) {
-        const markerTime = new Date(marker.timestamp).getTime();
-        if (!isNaN(markerTime) && (Date.now() - markerTime) <= MARKER_TTL_MS) {
-          return marker;
-        }
-      }
+      const marker = isMarkerFresh(JSON.parse(readFileSync(process.env.GATE_MARKER_PATH, "utf8")));
+      if (marker) return marker;
     }
 
-    // Try .claude/coordination
-    const claudeMarker = join(root, ".claude", "coordination", ".last-operator-message");
-    try {
-      const marker = JSON.parse(readFileSync(claudeMarker, "utf8"));
-      if (marker && marker.timestamp) {
-        const markerTime = new Date(marker.timestamp).getTime();
-        if (!isNaN(markerTime) && (Date.now() - markerTime) <= MARKER_TTL_MS) {
-          return marker;
-        }
-      }
-    } catch {
-      // fall through
-    }
-
-    // Try .factory/coordination for Droid CLI
-    const factoryMarker = join(root, ".factory", "coordination", ".last-operator-message");
-    try {
-      const marker = JSON.parse(readFileSync(factoryMarker, "utf8"));
-      if (marker && marker.timestamp) {
-        const markerTime = new Date(marker.timestamp).getTime();
-        if (!isNaN(markerTime) && (Date.now() - markerTime) <= MARKER_TTL_MS) {
-          return marker;
-        }
-      }
-    } catch {
-      // fall through
+    // Priority 2 + 3: surface iteration via the helper.
+    const hits = readFromAllSurfaces(root, ".last-operator-message");
+    for (const hit of hits) {
+      const marker = isMarkerFresh(hit.parsed);
+      if (marker) return marker;
     }
 
     return null;

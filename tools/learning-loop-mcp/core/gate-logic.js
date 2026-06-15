@@ -9,6 +9,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync, statSyn
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
+import { SURFACES } from "./surfaces.js";
 import { readRegistry } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
 
@@ -404,7 +405,14 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
 // ─── Promoted Rules (meta-state as rule registry) ───
 
 /** Whitelist for glob patterns to prevent path traversal. */
-const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", ".factory/", "meta-state.jsonl"];
+const GLOB_SCOPE_WHITELIST = [
+  "product/",
+  "docs/",
+  "plans/",
+  "tools/",
+  "meta-state.jsonl",
+  ...SURFACES.map((s) => `${s}/`),
+];
 
 /**
  * Simple regex safety check to prevent ReDoS.
