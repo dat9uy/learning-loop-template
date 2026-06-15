@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "decision-log — cross-surface .gate-decision.log atomic append per gate call"
-status: pending
+status: shipped
 priority: P1
 effort: "2h"
 dependencies: ["phase-01-stderr-visibility", "phase-02-override-marker"]
@@ -129,11 +129,11 @@ The reader in Phase 4 uses `readFromAllSurfaces(root, ".gate-decision.log")` (th
 
 ## Success Criteria
 
-- [ ] `core/gate-decision-log.js` exists; exports `appendDecisionLog` and `readDecisionLog`.
-- [ ] `bash-gate.js` calls `appendDecisionLog` in the block/escalate paths.
-- [ ] `__tests__/gate-decision-log.test.js` exists with 5+ passing tests.
-- [ ] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
-- [ ] Manual smoke: a gate block produces a new line in `.claude/coordination/.gate-decision.log` and `.factory/coordination/.gate-decision.log`.
+- [x] `core/gate-decision-log.js` exists; exports `appendDecisionLog` and `readDecisionLog`.
+- [x] `bash-gate.js` calls `appendDecisionLog` in the block/escalate paths.
+- [x] `__tests__/gate-decision-log.test.js` exists with 5+ passing tests.
+- [x] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
+- [x] Manual smoke: a gate block produces a new line in `.claude/coordination/.gate-decision.log` and `.factory/coordination/.gate-decision.log`.
 
 ## Risk Assessment
 

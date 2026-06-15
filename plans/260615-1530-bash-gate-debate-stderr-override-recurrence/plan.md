@@ -12,7 +12,7 @@ description: >-
   N≥3 in M≤10min. Closes finding meta-260614T2141Z-... with the operator-stated
   reframe (visibility is primary, override is in-session, recurrence drives
   learning, do not try to perfectly classify every false positive up front).
-status: pending
+status: shipped
 priority: P1
 branch: 260614-1259-phase-b-codegen-adoption
 tags:
@@ -67,11 +67,11 @@ Implements Step 2 of the cross-report planning order — Report 1 Plan 1 from th
 
 | Phase | Name | Status | TDD anchor |
 |-------|------|--------|------------|
-| 1 | [decision-visibility](./phase-01-stderr-visibility.md) | Pending | RED: `__tests__/bash-gate-decision-visibility.test.js` — capture stdout, assert hookSpecificOutput envelope |
-| 2 | [override-marker](./phase-02-override-marker.md) | Pending | RED: `__tests__/gate-override.test.js` — marker write/read/skip/TTL/multi-rule |
-| 3 | [decision-log](./phase-03-decision-log.md) | Pending | RED: `__tests__/gate-decision-log.test.js` — atomic append, schema, concurrent writes |
-| 4 | [recurrence-tracker](./phase-04-recurrence-tracker.md) | Pending | RED: `__tests__/gate-recurrence.test.js` — threshold, dedup, cross-surface, auto-file |
-| 5 | [annotate-planning-order-report](./phase-05-annotate-planning-order-report.md) | Pending | No tests (tracking-only phase; mirrors Step 1 Phase 4) |
+| 1 | [decision-visibility](./phase-01-stderr-visibility.md) | shipped | RED: `__tests__/bash-gate-decision-visibility.test.js` — capture stdout, assert hookSpecificOutput envelope |
+| 2 | [override-marker](./phase-02-override-marker.md) | shipped | RED: `__tests__/gate-override.test.js` — marker write/read/skip/TTL/multi-rule |
+| 3 | [decision-log](./phase-03-decision-log.md) | shipped | RED: `__tests__/gate-decision-log.test.js` — atomic append, schema, concurrent writes |
+| 4 | [recurrence-tracker](./phase-04-recurrence-tracker.md) | shipped | RED: `__tests__/gate-recurrence.test.js` — threshold, dedup, cross-surface, auto-file |
+| 5 | [annotate-planning-order-report](./phase-05-annotate-planning-order-report.md) | shipped | No tests (tracking-only phase; mirrors Step 1 Phase 4) |
 
 ## Dependencies
 

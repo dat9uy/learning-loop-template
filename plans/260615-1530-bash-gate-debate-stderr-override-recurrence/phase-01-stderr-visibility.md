@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "decision visibility — route block/escalate via hookSpecificOutput on stdout, keep ok on stdout"
-status: pending
+status: shipped
 priority: P1
 effort: "1.5h"
 dependencies: []
@@ -89,13 +89,13 @@ The `ok` path is implicit: when `decision` is not set, the function falls throug
 
 ## Success Criteria
 
-- [ ] `protocol-adapter.js` exports `formatHookDecision(decision, { channel })`.
-- [ ] `bash-gate.js` line ~108 writes via `formatHookDecision(promotedCheck, { channel: "hookSpecificOutput" })`.
-- [ ] `bash-gate.js` line ~124 writes via `formatHookDecision(decision, { channel: "hookSpecificOutput" })`.
-- [ ] `bash-gate.js` line ~121 (ok path) is unchanged (`process.exit(0)`, no output).
-- [ ] `__tests__/bash-gate-decision-visibility.test.js` exists with 5+ passing tests.
-- [ ] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
-- [ ] Manual smoke: an agent invoking a blocked command sees the hookSpecificOutput JSON on stdout (verified via the new test).
+- [x] `protocol-adapter.js` exports `formatHookDecision(decision, { channel })`.
+- [x] `bash-gate.js` line ~108 writes via `formatHookDecision(promotedCheck, { channel: "hookSpecificOutput" })`.
+- [x] `bash-gate.js` line ~124 writes via `formatHookDecision(decision, { channel: "hookSpecificOutput" })`.
+- [x] `bash-gate.js` line ~121 (ok path) is unchanged (`process.exit(0)`, no output).
+- [x] `__tests__/bash-gate-decision-visibility.test.js` exists with 5+ passing tests.
+- [x] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
+- [x] Manual smoke: an agent invoking a blocked command sees the hookSpecificOutput JSON on stdout (verified via the new test).
 
 ## Risk Assessment
 

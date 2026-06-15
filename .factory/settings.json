@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/recurrence-check-on-start.cjs"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [

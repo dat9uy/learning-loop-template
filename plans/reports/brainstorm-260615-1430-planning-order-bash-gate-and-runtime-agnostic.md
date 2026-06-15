@@ -31,7 +31,7 @@ The two prior brainstorm reports are sequenced in **4 /ck/plan invocations** (on
 | Step | Source | Phases | Why this position |
 |---|---|---|---|
 | **1** | Report 2 | Phase 0-1 (helper + 2 refactors) | ✅ shipped 2026-06-15 — Foundation; unblocks Report 1's cross-surface code |
-| **2** | Report 1 | Plan 1 (stderr + override + log + recurrence) | Builds on the helper; ships the user-pain fix |
+| **2** | Report 1 | Plan 1 (stderr + override + log + recurrence) | ✅ shipped 2026-06-15 — `meta-260615T1459Z-bash-gate-debate-step-2-shipping` — Builds on the helper; ships the user-pain fix |
 | **3** | Report 1 | Plan 2 (node -e strip) | Independent; can ship alongside or after step 2 |
 | **4** | Report 2 | Phase 2-5 (test + pattern type + tool + rule entry) | Closes the rule; new MCP tools from step 2 are rule-compliant by design |
 
@@ -188,11 +188,11 @@ This markdown is the **single source of truth** for the planning-order decision.
 | Step | Source | Status | Change-log | Shipped at |
 |------|--------|--------|------------|------------|
 | 1 | Report 2 P0-1 | ✅ shipped | — (routine refactor; no change-log filed) | 2026-06-15 |
-| 2 | Report 1 P1 | pending | — | — |
+| 2 | Report 1 P1 | ✅ shipped | `meta-260615T1459Z-bash-gate-debate-step-2-shipping` | 2026-06-15 |
 | 3 | Report 1 P2 | pending | — | — |
 | 4 | Report 2 P2-5 | pending | — | — |
 
-Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`.
+Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`. Step 2 ships the decision visibility + override + decision log + recurrence tracker per `plans/260615-1530-bash-gate-debate-stderr-override-recurrence/`.
 
 ## Cleanup backlog
 
@@ -215,6 +215,16 @@ Minor findings surfaced during code review of each shipped step. **Processed in 
 | 1.5 | `writeToAllSurfaces` "best-effort" test doesn't actually exercise a failure path — the test acknowledges "can't easily simulate a real failure cross-platform". Either use `chmod 000` on Unix in a test that's tagged `@platform=posix`, or document the gap and move on. | `tools/learning-loop-mcp/__tests__/surfaces.test.js:78-88` | test-quality |
 
 (Add new cleanup items below as Steps 2, 3, 4 ship.)
+
+### Step 2 (shipped 2026-06-15) cleanup items
+
+| # | Item | File / line | Severity |
+|---|------|-------------|----------|
+| 2.1 | `gate-override.js` hand-rolls cross-surface read/write loops instead of using `core/surfaces.js` helpers as the plan's Architecture section specified. Align with `writeToAllSurfaces` / `readFromAllSurfaces` or document the intentional divergence. | `tools/learning-loop-mcp/core/gate-override.js:47-138` | refactor |
+| 2.2 | `gate-decision-log.js` uses `appendFileSync` per surface; the plan claimed "write-temp + rename per call for atomicity". Decide the intended contract and either switch to atomic overwrite or update the plan/docs to acknowledge append semantics. | `tools/learning-loop-mcp/core/gate-decision-log.js:37-46` | design-doc |
+| 2.3 | `recurrence-tracker.js#generateFindingId` uses a 6-character `Math.random()` suffix; collision probability is low but non-zero. Consider `crypto.randomBytes` or a per-process counter for stronger uniqueness. | `tools/learning-loop-mcp/core/recurrence-tracker.js:70-73` | hygiene |
+| 2.4 | `recurrence-check-on-start.js` reads stdin but discards it without a comment; add an explicit no-op comment so future maintainers know the SessionStart payload is intentionally ignored. | `tools/learning-loop-mcp/hooks/recurrence-check-on-start.js:15` | cosmetic |
+| 2.5 | `gate-check-recurrence-tool.js` passes explicit `undefined` for `threshold`/`windowMs` when options are omitted; tidy the handler to omit the keys or pass defaults. | `tools/learning-loop-mcp/tools/gate-check-recurrence-tool.js:14-17` | cosmetic |
 
 ## What stays human forever
 

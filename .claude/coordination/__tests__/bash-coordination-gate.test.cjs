@@ -37,6 +37,18 @@ function assert(condition, msg) {
   }
 }
 
+function parseDecision(stdout) {
+  try {
+    const parsed = JSON.parse(stdout);
+    if (parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext) {
+      return JSON.parse(parsed.hookSpecificOutput.additionalContext);
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 console.log('\n--- bash-coordination-gate.cjs ---');
 
 // Test 1: Non-Bash tool → exit 0
@@ -61,8 +73,7 @@ console.log('\n--- bash-coordination-gate.cjs ---');
 {
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
   assert(r.exitCode === 2, 'docker run → exit 2 (constrained)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.decision === 'block', 'docker run output has decision: block (no docker obs, budget mismatch: vendor-api vs docker)');
 }
 
@@ -148,8 +159,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/evidence → exit 2 (unconditional block)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'records/evidence → hard_block');
 }
 
@@ -171,8 +181,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/evidence stale obs → exit 2 (unconditional)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'stale obs → hard_block (not escalate)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -204,8 +213,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/observations/foo.yaml' } }, env);
   assert(r.exitCode === 2, 'redirect to records/observations → exit 2 (unconditional)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'observations → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -225,8 +233,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/claims/foo.yaml\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/claims/foo.yaml → exit 2 (MCP only)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'records/claims → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -248,8 +255,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/evidence/../observations/foo.yaml' } }, env);
   assert(r.exitCode === 2, 'path traversal to records/** → exit 2');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'traversal → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

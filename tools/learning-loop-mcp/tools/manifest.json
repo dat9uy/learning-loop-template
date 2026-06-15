@@ -1,5 +1,7 @@
 [
   { "file": "./tools/gate-tool.js", "export": "gateCheckTool" },
+  { "file": "./tools/gate-override-tool.js", "export": "gateOverrideTool" },
+  { "file": "./tools/gate-check-recurrence-tool.js", "export": "gateCheckRecurrenceTool" },
   { "file": "./tools/notify-artifact-tool.js", "export": "workflowNotifyArtifactTool" },
   { "file": "./tools/trigger-workflow-tool.js", "export": "workflowTriggerTool" },
   { "file": "./tools/workflow-classify-prompt-tool.js", "export": "workflowClassifyPromptTool" },

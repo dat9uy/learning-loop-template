@@ -12,6 +12,7 @@ import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { readRegistry } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
+import { readGateOverride } from "./gate-override.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "..", "core", "patterns.json"), "utf8"));
@@ -673,13 +674,20 @@ export function checkResolutionEvidence(rule, root) {
 }
 
 // fallow-ignore-next-line complexity
-export function applyPromotedRules(command, filePath, rules) {
+export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
+  const override = readGateOverride(root);
+  const overrideSet = override ? new Set(override.rule_ids) : new Set();
+
   for (const rule of rules) {
     // Defense-in-depth: skip rules that should not have been loaded.
     // loadPromotedRules already filters to entry_kind="rule" + status="active",
     // but we double-check status here for safety.
     if (rule.status !== "active") continue;
     if (rule.enforcement !== "gate") continue;
+    if (overrideSet.has(rule.id)) {
+      console.warn(`Rule ${rule.id}: skipped via gate override (${override.operator_note ?? "no note"})`);
+      continue;
+    }
 
     const { pattern_type, pattern, id: rule_id } = rule;
     let matched = false;

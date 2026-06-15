@@ -21,14 +21,20 @@ function runBashHook(input, envOverrides = {}) {
     env: { ...process.env, ...envOverrides },
   });
   let output = null;
+  let decision = null;
   try {
     output = JSON.parse(result.stdout.trim());
+    if (output?.hookSpecificOutput?.additionalContext) {
+      decision = JSON.parse(output.hookSpecificOutput.additionalContext);
+    }
   } catch {
     output = null;
+    decision = null;
   }
   return {
     exitCode: result.status ?? 0,
     output,
+    decision,
   };
 }
 
@@ -109,8 +115,8 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
 
     try {
       assert.strictEqual(result.exitCode, 2, "Expected exit 2 (block)");
-      assert.strictEqual(result.output?.decision, "block");
-      assert.strictEqual(result.output?.observation_required, true);
+      assert.strictEqual(result.decision?.decision, "block");
+      assert.strictEqual(result.decision?.observation_required, true);
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }
@@ -128,9 +134,9 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
 
     try {
       assert.strictEqual(result.exitCode, 2, "Expected exit 2 (hard block)");
-      assert.strictEqual(result.output?.decision, "block");
-      assert.strictEqual(result.output?.hard_block, true);
-      assert.ok(result.output?.reason?.includes("importlib.util.find_spec"));
+      assert.strictEqual(result.decision?.decision, "block");
+      assert.strictEqual(result.decision?.hard_block, true);
+      assert.ok(result.decision?.reason?.includes("importlib.util.find_spec"));
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

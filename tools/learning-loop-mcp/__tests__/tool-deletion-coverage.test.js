@@ -39,9 +39,9 @@ const DELETED_TOOLS = [
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 37 entries (all product-surface tools deleted)
-await test("manifest has 37 entries", () => {
-  assert.strictEqual(manifest.length, 37, `Expected 37, got ${manifest.length}`);
+// 1. Manifest has 39 entries (all product-surface tools deleted + 2 new gate tools)
+await test("manifest has 39 entries", () => {
+  assert.strictEqual(manifest.length, 39, `Expected 39, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest

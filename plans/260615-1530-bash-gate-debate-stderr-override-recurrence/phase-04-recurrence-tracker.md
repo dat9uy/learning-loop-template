@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "recurrence-tracker — gate_check_recurrence MCP tool + auto-file meta_state_report"
-status: pending
+status: shipped
 priority: P1
 effort: "4h"
 dependencies: ["phase-01-stderr-visibility", "phase-02-override-marker", "phase-03-decision-log"]
@@ -236,13 +236,13 @@ This makes the recurrence tracker run on every session start. The hook is a thin
 
 ## Success Criteria
 
-- [ ] `core/recurrence-tracker.js` exists; exports `findRecurrentGroups` and `checkAndEmit`.
-- [ ] `tools/gate-check-recurrence-tool.js` exists; exports `gateCheckRecurrenceTool` with name `"gate_check_recurrence"`.
-- [ ] `hooks/recurrence-check-on-start.js` (universal) + 2 `.cjs` wrappers exist; SessionStart hook binding added to both surface settings files.
-- [ ] `__tests__/gate-recurrence.test.js` exists with 7+ passing tests.
-- [ ] `tools/manifest.json` and `agent-manifest.json` include the new tool.
-- [ ] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
-- [ ] Manual smoke: invoke 3 bash commands that match the same false-positive rule in 10min; trigger SessionStart; assert 1 finding emitted to `meta-state.jsonl`.
+- [x] `core/recurrence-tracker.js` exists; exports `findRecurrentGroups` and `checkAndEmit`.
+- [x] `tools/gate-check-recurrence-tool.js` exists; exports `gateCheckRecurrenceTool` with name `"gate_check_recurrence"`.
+- [x] `hooks/recurrence-check-on-start.js` (universal) + 2 `.cjs` wrappers exist; SessionStart hook binding added to both surface settings files.
+- [x] `__tests__/gate-recurrence.test.js` exists with 7+ passing tests.
+- [x] `tools/manifest.json` and `agent-manifest.json` include the new tool.
+- [x] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
+- [x] Manual smoke: invoke 3 bash commands that match the same false-positive rule in 10min; trigger SessionStart; assert 1 finding emitted to `meta-state.jsonl`.
 
 ## Risk Assessment
 

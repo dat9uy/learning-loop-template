@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "override-marker — writeToAllSurfaces .gate-override + gate_override MCP tool"
-status: pending
+status: shipped
 priority: P1
 effort: "3h"
 dependencies: ["phase-01-stderr-visibility"]
@@ -142,13 +142,13 @@ The audit entry is written to `runtime-state.jsonl` via the existing `runtimeSta
 
 ## Success Criteria
 
-- [ ] `core/gate-override.js` exists; exports `readGateOverride` and `writeGateOverride`.
-- [ ] `tools/gate-override-tool.js` exists; exports `gateOverrideTool` with name `"gate_override"`.
-- [ ] `applyPromotedRules` consults the override set; rules in the set are skipped with a `console.warn`.
-- [ ] `__tests__/gate-override.test.js` exists with 7+ passing tests.
-- [ ] `tools/manifest.json` and `agent-manifest.json` include the new tool.
-- [ ] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
-- [ ] Manual smoke: `gate_override({ rule_id: "rule-foo", operator_note: "test" })` writes the marker; the next bash call matching `rule-foo` is not escalated.
+- [x] `core/gate-override.js` exists; exports `readGateOverride` and `writeGateOverride`.
+- [x] `tools/gate-override-tool.js` exists; exports `gateOverrideTool` with name `"gate_override"`.
+- [x] `applyPromotedRules` consults the override set; rules in the set are skipped with a `console.warn`.
+- [x] `__tests__/gate-override.test.js` exists with 7+ passing tests.
+- [x] `tools/manifest.json` and `agent-manifest.json` include the new tool.
+- [x] `pnpm test` shows 0 new failures; all 840+ existing tests still pass.
+- [x] Manual smoke: `gate_override({ rule_id: "rule-foo", operator_note: "test" })` writes the marker; the next bash call matching `rule-foo` is not escalated.
 
 ## Risk Assessment
 

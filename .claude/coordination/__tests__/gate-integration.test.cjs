@@ -131,7 +131,11 @@ function contextWasInjected(result) {
 
 function parseOutbound(result) {
   try {
-    return JSON.parse(result.stdout);
+    const parsed = JSON.parse(result.stdout);
+    if (parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext) {
+      return JSON.parse(parsed.hookSpecificOutput.additionalContext);
+    }
+    return parsed;
   } catch {
     return null;
   }

@@ -84,7 +84,13 @@ The write gate (`.claude/coordination/hooks/write-coordination-gate.cjs`) enforc
 Allowed: `docs/**`, `plans/**`, `.claude/**`, `tools/**`, `product/**`.
 Blocked: `records/observations/**`, `records/*/evidence/**`, `schemas/**`, build artifacts, unknown paths.
 
+**Gate override:** Use `gate_override` MCP tool to temporarily skip a promoted gate rule. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob rules enforced by the bash gate. Requires an `operator_note` for the audit trail.
+
 References: `.claude/coordination/hooks/`, `.claude/coordination/__tests__/`.
+
+## Recurrence Detection
+
+The `gate_check_recurrence` MCP tool scans `.gate-decision.log` across all surfaces for recurring false-positive escalation patterns. When a command prefix recurs >= 3 times within 10 minutes under the same rule, the tool auto-files a meta-state `finding` with subtype `recurring-false-positive`. A `recurrence-check-on-start` SessionStart hook runs this check automatically at session start. Threshold and window are configurable.
 
 ## Workflow Auto-Trigger
 
@@ -94,9 +100,9 @@ Workflows are defined in `.claude/coordination/workflows.json`. Log at `.claude/
 
 ## MCP Tools
 
-The `tools/learning-loop-mcp/` MCP server exposes 31 tools: 18 enforcement/CRUD tools and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
+The `tools/learning-loop-mcp/` MCP server exposes 33 tools: 18 enforcement/CRUD tools, 2 gate tools, and 13 workflow tools. Mutating tools gate through the constraint system; read-only tools do not require observations.
 
-Key enforcement tools: `check_gate`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `gate_mark_preflight`.
+Key enforcement tools: `check_gate`, `gate_override`, `gate_check_recurrence`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `gate_mark_preflight`.
 
 Key workflow tools: `workflow_classify_prompt`, `workflow_intake_orient`, `workflow_intake_plan`, `workflow_prepare_runtime_request`, `workflow_generate_prompt`, `workflow_product_build`, `workflow_convert_evidence`, `workflow_verify_evidence`, `workflow_intentional_skip`, `workflow_external_decision`, `workflow_self_improvement`, `workflow_report_phase_status`, `workflow_runtime_probe`.
 

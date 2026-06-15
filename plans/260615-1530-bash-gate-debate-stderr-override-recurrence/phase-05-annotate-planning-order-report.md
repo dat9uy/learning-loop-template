@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Annotate planning-order report — mark Step 2 complete with change-log id"
-status: pending
+status: shipped
 priority: P3
 effort: "15m"
 dependencies: ["phase-01-stderr-visibility", "phase-02-override-marker", "phase-03-decision-log", "phase-04-recurrence-tracker"]
@@ -80,11 +80,11 @@ No production code, no tests, no MCP tools. Pure tracking artifact.
 
 ## Success Criteria
 
-- [ ] `plans/reports/brainstorm-260615-1430-planning-order-bash-gate-and-runtime-agnostic.md` has a "Shipped status" row for Step 2 with the change-log id (or `—` if none was filed).
-- [ ] The TL;DR table's Step 2 row is annotated with `✅`.
-- [ ] The cleanup-backlog section (if items were added) has Step 2's findings.
-- [ ] No other content in the report is changed (narrative, dependency matrix, problem-solving techniques are intact).
-- [ ] `git diff` against the pre-Phase-5 state is < 30 lines (1-2 lines for the TL;DR prefix + 1 row for Shipped status + ~5-15 lines for cleanup-backlog additions).
+- [x] `plans/reports/brainstorm-260615-1430-planning-order-bash-gate-and-runtime-agnostic.md` has a "Shipped status" row for Step 2 with the change-log id (or `—` if none was filed).
+- [x] The TL;DR table's Step 2 row is annotated with `✅`.
+- [x] The cleanup-backlog section (if items were added) has Step 2's findings.
+- [x] No other content in the report is changed (narrative, dependency matrix, problem-solving techniques are intact).
+- [x] `git diff` against the pre-Phase-5 state is < 30 lines (1-2 lines for the TL;DR prefix + 1 row for Shipped status + ~5-15 lines for cleanup-backlog additions).
 
 ## Risk Assessment
 
