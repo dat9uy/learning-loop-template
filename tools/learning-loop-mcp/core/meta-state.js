@@ -166,7 +166,7 @@ export const metaStateRuleEntrySchema = z.object({
   id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; not timestamp-based"),
   origin: z.string().describe("Finding id that originated this rule (preserves historical lineage)"),
   enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
-  pattern_type: z.enum(["regex", "glob", "resolution-evidence-required"]).describe("Pattern language"),
+  pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
   scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional()
     .describe("Optional scope filter: 'none' (default) or 'project_has_learning_loop_mcp'"),

@@ -57,6 +57,11 @@
       "tools": ["loop_describe", "loop_get_instruction", "runtime_state_read"],
       "ordering": "any",
       "typical_chain": ["loop_describe", "loop_get_instruction"]
+    },
+    "runtime_agnostic": {
+      "description": "Audit a feature's compliance with the runtime-agnostic pattern (shim-not-fork + cross-surface-iteration). Call when adding a new feature.",
+      "tools": ["check_runtime_agnostic"],
+      "ordering": "any"
     }
   },
   "quickstart": {

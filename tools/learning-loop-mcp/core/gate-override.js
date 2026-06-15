@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, statSync, existsSync, appendFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { SURFACES } from "./surfaces.js";
+import { statSync, appendFileSync } from "node:fs";
+import { join } from "node:path";
+import { readModifyWriteOnAllSurfaces, readFromAllSurfaces } from "./surfaces.js";
 
 const OVERRIDE_FILE = ".gate-override";
 const CACHE_TTL_MS = 1000;
@@ -46,18 +46,18 @@ export function readGateOverride(root) {
     }
   }
 
-  for (const surface of SURFACES) {
-    const path = join(root, surface, "coordination", OVERRIDE_FILE);
-    try {
-      if (!existsSync(path)) continue;
-      const parsed = JSON.parse(readFileSync(path, "utf8"));
-      const valid = validateMarker(parsed);
-      if (!valid) continue;
-      const { mtime, size } = statSync(path);
-      overrideCache.set(root, { result: valid, at: Date.now(), path, mtime: mtime.getTime(), size });
-      return valid;
-    } catch {
-      // Per-surface best effort: malformed or missing marker is ignored.
+  const result = readFromAllSurfaces(root, OVERRIDE_FILE, { first: true });
+  if (result) {
+    const valid = validateMarker(result.parsed);
+    if (valid) {
+      try {
+        const path = join(root, result.surface, "coordination", OVERRIDE_FILE);
+        const { mtime, size } = statSync(path);
+        overrideCache.set(root, { result: valid, at: Date.now(), path, mtime: mtime.getTime(), size });
+        return valid;
+      } catch {
+        // Fall through to cache null.
+      }
     }
   }
 
@@ -105,39 +105,26 @@ function appendOverrideAudit(root, { rule_id, ttl_seconds, operator_note }) {
 export function writeGateOverride(root, { rule_id, ttl_seconds, operator_note }) {
   const created_at = new Date().toISOString();
 
-  for (const surface of SURFACES) {
-    const path = join(root, surface, "coordination", OVERRIDE_FILE);
-    const ruleIds = [];
-
-    try {
-      const existing = JSON.parse(readFileSync(path, "utf8"));
-      if (Array.isArray(existing.rule_ids)) {
-        for (const id of existing.rule_ids) {
+  readModifyWriteOnAllSurfaces(
+    root,
+    OVERRIDE_FILE,
+    (current) => {
+      const ruleIds = [];
+      if (current && Array.isArray(current.rule_ids)) {
+        for (const id of current.rule_ids) {
           if (!ruleIds.includes(id)) ruleIds.push(id);
         }
       }
-    } catch {
-      // No existing marker on this surface yet.
-    }
-
-    if (!ruleIds.includes(rule_id)) ruleIds.push(rule_id);
-
-    const content = JSON.stringify(
-      {
+      if (!ruleIds.includes(rule_id)) ruleIds.push(rule_id);
+      return {
         rule_ids: ruleIds,
         ttl_seconds,
         operator_note,
         created_at,
-      },
-      null,
-      2,
-    );
-
-    mkdirSync(dirname(path), { recursive: true });
-    const tmpPath = `${path}.tmp`;
-    writeFileSync(tmpPath, content, "utf8");
-    renameSync(tmpPath, path);
-  }
+      };
+    },
+    { removeOnNull: false },
+  );
 
   // Invalidate cache so the next read sees the new marker immediately.
   overrideCache.delete(root);

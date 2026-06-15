@@ -736,6 +736,14 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
     // loadPromotedRules already filters to entry_kind="rule" + status="active",
     // but we double-check status here for safety.
     if (rule.status !== "active") continue;
+
+    if (rule.pattern_type === "consult-checklist") {
+      // Design-time rule; no command/path matching. The audit lives in the
+      // check_runtime_agnostic MCP tool and the runtime-agnostic regression test.
+      // The rule loads; the gate ignores it.
+      continue;
+    }
+
     if (rule.enforcement !== "gate") continue;
     if (overrideSet.has(rule.id)) {
       console.warn(`Rule ${rule.id}: skipped via gate override (${override.operator_note ?? "no note"})`);
