@@ -1,9 +1,10 @@
 import assert from "node:assert";
 import { test } from "node:test";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
-import { CHECKLIST } from "../core/runtime-agnostic-checklist.js";
+import { CHECKLIST, stripCommentsAndStrings } from "../core/runtime-agnostic-checklist.js";
 
 const MCP_ROOT = new URL("../../../", import.meta.url).pathname;
 const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mcp/core");
@@ -139,6 +140,39 @@ await test("protocol-adapter.js exports the canonical I/O contract", () => {
   for (const sym of ["parseInput", "formatOutput", "normalizeToolName"]) {
     assert.ok(src.includes("export") && src.includes(sym), `protocol-adapter.js must export ${sym}`);
   }
+});
+
+await test("shims-in-sync fails when shim contents differ", () => {
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-mismatch-"));
+  mkdirSync(join(root, "feature", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
+  writeFileSync(join(root, "feature", "hooks", "test-hook.js"), "// hook", "utf8");
+  writeFileSync(join(root, ".claude", "coordination", "hooks", "test-hook.cjs"), "// claude shim", "utf8");
+  writeFileSync(join(root, ".factory", "coordination", "hooks", "test-hook.cjs"), "// factory shim", "utf8");
+
+  const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
+  const result = item.verify("feature/hooks", root);
+  assert.strictEqual(result.ok, false, "mismatched shims should fail");
+  assert.ok(result.found.includes("test-hook.cjs"), "failure should name the mismatched shim");
+});
+
+await test("stripCommentsAndStrings removes comments and template literals before regex testing", () => {
+  const input = [
+    "    // This comment contains .claude which is a false-positive bait",
+    "    /* This block comment contains .factory which is also a false-positive bait */",
+    '    const x = ".claude";  // string literal containing .claude (preserved)',
+    "    const y = '.factory'; // single-quoted string (preserved)",
+    "    const z = `${SURFACES[0]}/foo`;  // template literal (stripped)",
+    '    const real = "real string content";',
+    "  ",
+  ].join("\n");
+  const stripped = stripCommentsAndStrings(input);
+  assert.strictEqual(stripped.includes("// This comment contains .claude"), false, "line comment should be stripped");
+  assert.strictEqual(stripped.includes("This block comment contains .factory"), false, "block comment should be stripped");
+  assert.strictEqual(stripped.includes("${SURFACES[0]}/foo"), false, "template literal content should be stripped");
+  assert.ok(stripped.includes('const x = ".claude"'), "quoted string literals should be preserved");
+  assert.ok(stripped.includes("const real"), "non-surface code should remain");
 });
 
 await test("GLOB_SCOPE_WHITELIST includes both surface prefixes via SURFACES", () => {

@@ -1,4 +1,5 @@
 import { appendFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { readDecisionLog } from "./gate-decision-log.js";
 import { readRegistry } from "./meta-state.js";
@@ -69,7 +70,7 @@ export function findRecurrentGroups(root, options = {}) {
 
 function generateFindingId(prefix) {
   const ts = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 15);
-  const suffix = `${slugify(prefix)}-${Math.random().toString(36).slice(2, 8)}`;
+  const suffix = `${slugify(prefix)}-${randomBytes(4).toString("hex")}`;
   return `meta-${ts}Z-${suffix}`;
 }
 

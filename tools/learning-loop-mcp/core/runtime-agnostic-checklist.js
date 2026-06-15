@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
 const UNIVERSAL_DIRS = [
@@ -16,6 +17,32 @@ function loadText(root, relPath) {
   } catch {
     return "";
   }
+}
+
+/**
+ * Strip block comments, line comments, and template literals from a source
+ * text. Returns a "regex-safe" text where the existing CHECKLIST regexes
+ * will not false-positive on comments or template-literal contents.
+ *
+ * Quoted string literals (`"..."`, `'...'`) are intentionally preserved
+ * because the hard-coded-surface-path regex matches their contents.
+ *
+ * KNOWN LIMITATIONS:
+ * - Template literals with ${} expressions have the entire literal stripped
+ *   (including the expression). The expression's content is lost. Acceptable
+ *   for the current CHECKLIST: expressions rarely contain surface paths.
+ * - The 9 syntax bypasses flagged in code-review F-2 (forEach, map, for-in,
+ *   while, template literals in cross-surface calls, array literals,
+ *   raw templates, path.resolve, etc.) are NOT closed by this preprocessor.
+ *   The preprocessor eliminates false positives, not bypasses. The audit
+ *   remains best-effort; the rule's `enforcement: "agent"` (the agent
+ *   itself) is the canonical check.
+ */
+export function stripCommentsAndStrings(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, "") // block comments /* ... */
+    .replace(/\/\/.*$/gm, "") // line comments // ...
+    .replace(/`(?:[^`\\]|\\.)*`/g, ""); // template literals `...`
 }
 
 function* walkFiles(root, relPath) {
@@ -82,11 +109,27 @@ function pass() {
  * Runtime-agnostic checklist — shared between the regression test and the
  * check_runtime_agnostic MCP tool. Each item has an id, human description,
  * and a verify(featurePath, root) function returning { ok, expected?, found?, fix_suggestion? }.
+ *
+ * REGEX-BASED ITEMS are best-effort, lowest-common-denominator. They match
+ * the most common patterns the codebase uses, but DO NOT catch all syntax
+ * forms. The 9 known bypass forms (forEach, map, for-in, while, template
+ * literals, array literals, raw templates, path.resolve, spread iter) are
+ * documented in the code review (F-2) and intentionally not closed by the
+ * regex. The audit's job is to catch regressions, not to be a perfect lint.
+ *
+ * False-positive elimination: the regex-based items run against a
+ * comment-and-template-stripped version of the source text (see
+ * `stripCommentsAndStrings`). A `.claude` reference inside a `//` or
+ * `/* *\/` comment no longer triggers the predicate.
+ *
+ * The canonical check is the agent itself (the rule's `enforcement: "agent"`).
+ * The regex is a regression guard for the most common patterns, not a
+ * complete validator.
  */
 export const CHECKLIST = [
   {
     id: "core-in-universal-location",
-    description: "Primary implementation lives in tools/learning-loop-mcp/{core,hooks,tools}/",
+    description: "Primary implementation lives in tools/learning-loop-mcp/{core,hooks,tools}/ (use the universal-dir convention, not a per-surface fork).",
     verify(featurePath, root) {
       const offenders = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -105,7 +148,7 @@ export const CHECKLIST = [
   },
   {
     id: "shims-in-sync",
-    description: "If hooks are added, both .claude and .factory shim directories contain the shim",
+    description: "If hooks are added, both .claude and .factory shim directories contain the shim (mirror by hand, no helper; see SHIM_DIRS).",
     verify(featurePath, root) {
       const hookFiles = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -114,19 +157,27 @@ export const CHECKLIST = [
       }
       if (hookFiles.length === 0) return pass();
 
-      const missing = [];
+      const issues = [];
       for (const file of hookFiles) {
         const shimName = basename(file, extname(file)) + ".cjs";
-        for (const shimDir of SHIM_DIRS) {
-          const shimPath = join(root, shimDir, shimName);
-          if (!existsSync(shimPath)) missing.push(`${shimDir}/${shimName}`);
+        const [claudeShim, factoryShim] = SHIM_DIRS.map((d) => join(root, d, shimName));
+        const claudeExists = existsSync(claudeShim);
+        const factoryExists = existsSync(factoryShim);
+        if (!claudeExists) issues.push(`${SHIM_DIRS[0]}/${shimName}`);
+        if (!factoryExists) issues.push(`${SHIM_DIRS[1]}/${shimName}`);
+        if (claudeExists && factoryExists) {
+          const claudeHash = createHash("sha256").update(readFileSync(claudeShim, "utf8")).digest("hex");
+          const factoryHash = createHash("sha256").update(readFileSync(factoryShim, "utf8")).digest("hex");
+          if (claudeHash !== factoryHash) {
+            issues.push(`${shimName} (claude=${claudeHash.slice(0, 8)} factory=${factoryHash.slice(0, 8)})`);
+          }
         }
       }
-      if (missing.length) {
+      if (issues.length) {
         return fail(
-          missing.join(", "),
-          "matching shim in both .claude/coordination/hooks and .factory/coordination/hooks",
-          "Add the missing .cjs shim to both runtime coordination directories so Claude Code and Droid CLI stay in sync.",
+          issues.join(", "),
+          "matching shim content in both .claude/coordination/hooks and .factory/coordination/hooks",
+          "Add the missing .cjs shim to both runtime coordination directories (or copy the shim so the contents match) so Claude Code and Droid CLI stay in sync.",
         );
       }
       return pass();
@@ -134,7 +185,7 @@ export const CHECKLIST = [
   },
   {
     id: "protocol-adapter-i-o",
-    description: "Hook I/O is normalized through hooks/lib/protocol-adapter.js",
+    description: "Hook I/O is normalized through hooks/lib/protocol-adapter.js (use `parseInput` / `formatOutput` / `normalizeToolName`).",
     verify(featurePath, root) {
       const hookFiles = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -147,7 +198,7 @@ export const CHECKLIST = [
 
       const offenders = [];
       for (const file of hookFiles) {
-        const src = loadText(root, file);
+        const src = stripCommentsAndStrings(loadText(root, file));
         const usesAdapter =
           src.includes("protocol-adapter") ||
           src.includes("parseInput") ||
@@ -167,7 +218,7 @@ export const CHECKLIST = [
   },
   {
     id: "manifest-registered",
-    description: "New MCP tools are listed in tools/learning-loop-mcp/agent-manifest.json",
+    description: "New MCP tools are listed in tools/learning-loop-mcp/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
     verify(featurePath, root) {
       const tools = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -209,13 +260,13 @@ export const CHECKLIST = [
   },
   {
     id: "cross-surface-iteration",
-    description: "Cross-surface iteration uses surfaces.js helpers, not hard-coded surface paths",
+    description: "Cross-surface iteration uses surfaces.js helpers, not hard-coded surface paths (use `writeToAllSurfaces`, `readFromAllSurfaces`, `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, or `readModifyWriteOnAllSurfaces`).",
     verify(featurePath, root) {
       const offenders = [];
       for (const file of walkFiles(root, featurePath)) {
         if (!isCodeFile(file)) continue;
         if (isSurfacesJs(file)) continue;
-        const src = loadText(root, file);
+        const src = stripCommentsAndStrings(loadText(root, file));
         if (!/\.(claude|factory)|coordination|SURFACES/.test(src)) continue;
         const handRolledLoop = /for\s*\(\s*const\s+\w+\s+of\s+SURFACES\s*\)/.test(src);
         const hardCodedPath = /join\s*\(\s*root\s*,\s*"\.(claude|factory)"/.test(src);
@@ -233,13 +284,13 @@ export const CHECKLIST = [
   },
   {
     id: "parameterized-for-new-surfaces",
-    description: "SURFACES is the single source of truth for supported runtimes",
+    description: "SURFACES is the single source of truth for supported runtimes (import `SURFACES` from `core/surfaces.js`; do not hard-code surface names).",
     verify(featurePath, root) {
       const offenders = [];
       for (const file of walkFiles(root, featurePath)) {
         if (!isCodeFile(file)) continue;
         if (isSurfacesJs(file)) continue;
-        const src = loadText(root, file);
+        const src = stripCommentsAndStrings(loadText(root, file));
         const touchesSurfaces = /\.(claude|factory)|coordination/.test(src);
         if (!touchesSurfaces) continue;
         const importsHelpers =

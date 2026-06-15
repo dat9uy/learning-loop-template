@@ -1,6 +1,11 @@
 import assert from "node:assert";
 import { test } from "node:test";
 import { isGlobScopeWhitelisted } from "../core/gate-logic.js";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 await test("whitelists .claude/ prefix (was rejected before refactor)", () => {
   assert.strictEqual(isGlobScopeWhitelisted(".claude/skills/foo/**"), true);
@@ -33,15 +38,7 @@ await test("rejects empty string and non-string input", () => {
   assert.strictEqual(isGlobScopeWhitelisted(123), false);
 });
 
-await test("GLOB_SCOPE_WHITELIST includes both surfaces when SURFACES is multi-element", async () => {
-  // Mutation test: dynamically import to get a fresh module with the current SURFACES
-  const { SURFACES } = await import("../core/surfaces.js");
-  // Create a temporary extended array (do not mutate the frozen constant)
-  const extended = [...SURFACES, ".cursor"];
-  // The whitelist is built from the actual SURFACES at module load time.
-  // We verify the parameterization property by checking that both current
-  // surfaces are present, which proves the spread-map construction works.
-  assert.ok(SURFACES.includes(".claude"), "SURFACES includes .claude");
-  assert.ok(SURFACES.includes(".factory"), "SURFACES includes .factory");
-  assert.strictEqual(SURFACES.length, 2, "SURFACES has exactly 2 elements today");
+await test("GLOB_SCOPE_WHITELIST parameterizes on SURFACES: source derives prefixes from SURFACES.map", () => {
+  const src = readFileSync(join(__dirname, "../core/gate-logic.js"), "utf8");
+  assert.ok(src.includes("...SURFACES.map"), "GLOB_SCOPE_WHITELIST must derive prefixes from SURFACES.map(...)");
 });

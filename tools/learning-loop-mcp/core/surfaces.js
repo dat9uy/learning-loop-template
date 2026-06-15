@@ -1,7 +1,18 @@
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, appendFileSync, unlinkSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
-/** The canonical set of supported runtimes. Append a new runtime here. */
+/**
+ * Cross-surface helper — the single source of truth for runtime iteration.
+ *
+ * To add a new runtime (e.g. Cursor, Aider), append one entry to SURFACES.
+ * No other code changes are required: every helper in this module iterates
+ * SURFACES, so existing call sites pick up the new runtime automatically.
+ *
+ * Cross-surface atomicity: per-surface operations are atomic (write-temp +
+ * rename for writes, single readFileSync for reads). Cross-surface
+ * consistency is the caller's responsibility — there is no transaction
+ * spanning surfaces.
+ */
 export const SURFACES = Object.freeze([".claude", ".factory"]);
 
 /**
@@ -88,7 +99,7 @@ export function appendToAllSurfaces(root, subpath, line) {
       appendFileSync(path, `${line}\n`, "utf8");
     } catch (err) {
       // Log only surface + basename (PII-safe: avoids leaking user-derived subpath).
-      console.error(`surfaces.appendToAllSurfaces: append to ${surface}/${basename(path)} failed: ${err.message}`);
+      console.error(`surfaces.appendToAllSurfaces: append to ${surface}/${basename(path)} failed: ${sanitizeErrorMessage(err, path)}`);
     }
   }
 }
@@ -150,12 +161,15 @@ export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
 
 /**
  * Per-surface read-modify-write with caller's modifier function.
+ *
+ * WARNING — atomicity: each surface is atomic (write-temp + rename).
+ * Cross-surface consistency is the caller's responsibility; there is
+ * NO transaction across surfaces. Callers that need cross-surface
+ * atomicity must serialize calls (e.g. via a mutex) at a higher level.
+ *
  * The modifier is called once per surface with the current parsed value
  * (or null if missing/malformed) and a context object. The modifier returns
  * the new value (object to write, null/undefined to remove).
- *
- * Atomicity: each surface is atomic (write-temp + rename). Cross-surface
- * consistency is the caller's responsibility (no transaction across surfaces).
  *
  * @param {string} root
  * @param {string} subpath
@@ -190,7 +204,7 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = 
       newValue = modifier(current);
     } catch (err) {
       // Log only surface + basename (PII-safe: avoids leaking user-derived subpath).
-      console.error(`surfaces.readModifyWriteOnAllSurfaces: modifier for ${surface}/${basename(path)} threw: ${err.message}`);
+      console.error(`surfaces.readModifyWriteOnAllSurfaces: modifier for ${surface}/${basename(path)} threw: ${sanitizeErrorMessage(err, path)}`);
       results.push({ surface, action: "skipped" });
       continue;
     }
@@ -205,7 +219,7 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = 
         if (existsSync(path)) unlinkSync(path);
         results.push({ surface, action: "removed" });
       } catch (err) {
-        console.error(`surfaces.readModifyWriteOnAllSurfaces: unlink ${surface}/${basename(path)} failed: ${err.message}`);
+        console.error(`surfaces.readModifyWriteOnAllSurfaces: unlink ${surface}/${basename(path)} failed: ${sanitizeErrorMessage(err, path)}`);
         results.push({ surface, action: "skipped" });
       }
       continue;
@@ -219,9 +233,27 @@ export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = 
       renameSync(tmpPath, path);
       results.push({ surface, action: "wrote" });
     } catch (err) {
-      console.error(`surfaces.readModifyWriteOnAllSurfaces: write ${surface}/${basename(path)} failed: ${err.message}`);
+      console.error(`surfaces.readModifyWriteOnAllSurfaces: write ${surface}/${basename(path)} failed: ${sanitizeErrorMessage(err, path)}`);
       results.push({ surface, action: "skipped" });
     }
   }
   return results;
+}
+
+/**
+ * Strip the absolute path from an error message when it matches the file we
+ * were operating on. Keeps diagnostic context (code, syscall) without leaking
+ * user-derived paths. Falls back to the original message if no match.
+ *
+ * @param {Error} err
+ * @param {string} path
+ * @returns {string}
+ */
+function sanitizeErrorMessage(err, path) {
+  const msg = err?.message ?? String(err);
+  const idx = msg.indexOf(path);
+  if (idx >= 0) {
+    return msg.slice(0, idx) + "<path>" + msg.slice(idx + path.length);
+  }
+  return msg;
 }

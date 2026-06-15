@@ -11,10 +11,10 @@ export const gateCheckRecurrenceTool = {
   },
   handler: async ({ threshold, window_minutes }) => {
     const root = resolveRoot();
-    const result = checkAndEmit(root, {
-      threshold,
-      windowMs: window_minutes ? window_minutes * 60 * 1000 : undefined,
-    });
+    const options = {};
+    if (threshold != null) options.threshold = threshold;
+    if (window_minutes != null) options.windowMs = window_minutes * 60 * 1000;
+    const result = checkAndEmit(root, options);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };

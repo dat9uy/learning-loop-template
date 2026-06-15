@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test, beforeEach, afterEach } from "node:test";
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -75,16 +75,18 @@ await test("writeToAllSurfaces is atomic (write-temp + rename)", () => {
   }
 });
 
-await test("writeToAllSurfaces best-effort: does not throw if one surface fails", () => {
-  // Create a read-only parent directory for .factory to simulate a failure
-  const factoryParent = join(root, ".factory");
-  mkdirSync(factoryParent, { recursive: true });
-  // Best-effort means it should still succeed for .claude even if .factory fails
-  // We can't easily simulate a real failure cross-platform, so we verify the
-  // contract by asserting no throw and .claude still gets the file.
-  writeToAllSurfaces(root, "markers/best-effort.json", '{"ok": true}');
-  const claudePath = join(root, ".claude", "coordination", "markers", "best-effort.json");
-  assert.ok(existsSync(claudePath), ".claude should still get the file");
+await test("writeToAllSurfaces best-effort: skip-on-permission-denied (Unix)", () => {
+  if (process.platform === "win32") return; // skip on Windows
+  const factoryDir = join(root, ".factory", "coordination");
+  mkdirSync(factoryDir, { recursive: true });
+  chmodSync(factoryDir, 0o000);
+  try {
+    writeToAllSurfaces(root, "markers/best-effort.json", '{"ok": true}');
+    const claudePath = join(root, ".claude", "coordination", "markers", "best-effort.json");
+    assert.ok(existsSync(claudePath), ".claude should still get the file");
+  } finally {
+    chmodSync(factoryDir, 0o755);
+  }
 });
 
 // ─── readFromAllSurfaces ───
