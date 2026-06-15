@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Test quality improvements"
-status: pending
+status: complete
 priority: P3
 effort: "30m"
 dependencies: []

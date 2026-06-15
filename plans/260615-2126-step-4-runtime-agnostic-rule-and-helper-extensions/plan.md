@@ -47,20 +47,19 @@ related:
     tools/learning-loop-mcp/core/surfaces.js (the helper being extended in
     Phases 1-3)
   - >-
-    tools/learning-loop-mcp/core/gate-decision-log.js (Phase 1 + 2 refactor
-    target; lines 37-46, 65-77)
+    tools/learning-loop-mcp/core/gate-decision-log.js#appendDecisionLog +
+    #readDecisionLog (Phase 1 + 2 refactor target)
   - >-
-    tools/learning-loop-mcp/core/gate-override.js (Phase 3 refactor target;
-    lines 108-140)
+    tools/learning-loop-mcp/core/gate-override.js#writeGateOverride +
+    #readGateOverride (Phase 3 refactor target)
   - >-
-    tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules (Phase 5
-    target; lines 730-792)
+    tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules (Phase 5 target)
   - >-
     tools/learning-loop-mcp/agent-manifest.json (Phase 6 target; add
     runtime_agnostic group)
   - >-
-    tools/learning-loop-mcp/core/loop-introspect.js#DISCOVERABILITY_HINTS (Phase
-    7 target; lines 95-106)
+    tools/learning-loop-mcp/core/loop-introspect.js#DISCOVERABILITY_HINTS
+    (Phase 7 target)
   - AGENTS.md (Phase 7 target; new §2 subsection "Runtime-Agnostic Pattern")
 ---
 

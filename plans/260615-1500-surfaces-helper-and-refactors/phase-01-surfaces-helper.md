@@ -104,3 +104,12 @@ The helper is the API for cross-surface iteration; it is the ONLY place surface 
 
 Phase 2: refactor `GLOB_SCOPE_WHITELIST` to use `SURFACES` (fixes the missing `.claude/` asymmetry).
 Phase 3: refactor `readLastOperatorMessage` to use `readFromAllSurfaces` (DRYs the inline cross-surface iteration).
+
+## Resolution Log
+
+**Status:** All 3 design decisions from plan-prep resolved by implementation. Resolved dates: 2026-06-15 (per the planning-order report and the Step 4 code review).
+
+- **Q1: `const` vs `getSurfaces()` function?** Resolved: `const SURFACES = Object.freeze([...])`. The `Object.freeze` ensures runtime immutability; future runtimes append one entry. Tests for callers can use `mkdirSync` + real surface dirs in `tmp` rather than monkey-patching.
+- **Q2: `writeToAllSurfaces` atomicity (write-temp+rename vs best-effort)?** Resolved: atomic for marker files (write-temp + rename). Matches the inbound-state pattern. Best-effort only applies to per-surface errors (one surface failure does not abort the others).
+- **Q3: First-match vs all-matches for read helpers?** Resolved: both — `readFromAllSurfaces(subpath, { first: true })` for first-match (the marker-read pattern); default returns all. Step 4 added `readJsonlFromAllSurfaces` for the JSONL use case (recurrence tracker reads from all surfaces).
+

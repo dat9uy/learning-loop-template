@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Code hygiene"
-status: pending
+status: complete
 priority: P3
 effort: "20m"
 dependencies: []

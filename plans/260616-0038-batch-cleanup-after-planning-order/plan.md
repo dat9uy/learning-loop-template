@@ -12,7 +12,7 @@ description: >-
   Closes with a planning-order report "Cleanup backlog → cleared" annotation,
   a single change-log entry for the batch, and 2 `loop-design` entries
   tracking the AST-based check + recurrence-tracker MCP-mediation follow-ups.
-status: pending
+status: complete
 priority: P3
 branch: "260614-1259-phase-b-codegen-adoption"
 tags:

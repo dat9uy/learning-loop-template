@@ -127,7 +127,7 @@ The subsection is placed in §2 (Hook Matrix) per Report 2's design. It is 8-10 
 
 ### `loop_describe` discoverability hint
 
-Add to `DISCOVERABILITY_HINTS` in `core/loop-introspect.js` (after the existing hints at lines 95-106):
+Add to `DISCOVERABILITY_HINTS` in `core/loop-introspect.js` (after the existing hints):
 
 ```js
 "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by __tests__/runtime-agnostic.test.js.",

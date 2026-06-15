@@ -14,13 +14,13 @@ dependencies:
 
 Add a new `pattern_type` branch in `core/gate-logic.js#applyPromotedRules` for `consult-checklist`. The new type is a **no-op for command-time enforcement** — the rule is design-time, not command-time. The branch exists so the rule loads correctly (the gate doesn't reject unknown pattern types) and so the new `check_runtime_agnostic` MCP tool (Phase 6) can use the same loading path.
 
-The pattern matches the existing `resolution-evidence-required` branch at `gate-logic.js:749-755`, which is also a no-op for the bash gate. The precedent is set; this phase is a 5-line addition.
+The pattern matches the existing `resolution-evidence-required` branch in `core/gate-logic.js#applyPromotedRules`, which is also a no-op for the bash gate. The precedent is set; this phase is a 5-line addition.
 
 ## Requirements
 
 Functional:
-- **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` (line 169) to include `"consult-checklist"` alongside the existing `["regex", "glob", "resolution-evidence-required"]`. Without this, the rule entry written in Phase 7 will fail validation when `loadPromotedRules` parses it.
-- New branch in `applyPromotedRules` at `gate-logic.js:749-755` (after the `resolution-evidence-required` branch). **The branch must be placed BEFORE the `if (rule.enforcement !== "gate") continue;` filter at line 739** so it is reached for `enforcement: "agent"` rules (otherwise the branch is dead code for the Phase 7 rule):
+- **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` to include `"consult-checklist"` alongside the existing `["regex", "glob", "resolution-evidence-required"]`. Without this, the rule entry written in Phase 7 will fail validation when `loadPromotedRules` parses it.
+- New branch in `applyPromotedRules` after the `resolution-evidence-required` branch. **The branch must be placed BEFORE the `if (rule.enforcement !== "gate") continue;` filter** so it is reached for `enforcement: "agent"` rules (otherwise the branch is dead code for the Phase 7 rule):
   - `if (pattern_type === "consult-checklist") { continue; }`
   - Optional debug-only warning: `if (process.env.LL_DEBUG_RUNTIME_AGNOSTIC === "1") { console.warn(...); }` (matches the optional warning in the existing pattern).
 - The branch is also placed before the `regex` and `glob` branches so it short-circuits correctly.
@@ -60,16 +60,16 @@ The pattern type is in the registry so the rule loads correctly; the gate's job 
 
 ## Related Code Files
 
-- Modify: `tools/learning-loop-mcp/core/meta-state.js#metaStateRuleEntrySchema` (line 169) — extend `z.enum([...])` to include `"consult-checklist"`.
+- Modify: `tools/learning-loop-mcp/core/meta-state.js#metaStateRuleEntrySchema` — extend `z.enum([...])` to include `"consult-checklist"`.
 - Modify: `tools/learning-loop-mcp/core/gate-logic.js` — add 6 lines (the new branch + comment) BEFORE the `enforcement !== "gate"` filter.
 - Modify: `tools/learning-loop-mcp/core/patterns.json` — add `"consult-checklist": "Design-time rule; no command/path matching. Audit via check_runtime_agnostic MCP tool or runtime-agnostic regression test."` (or equivalent shape, matching the existing entries).
 - Create: `tools/learning-loop-mcp/__tests__/gate-logic-consult-checklist.test.js` — 1 test verifying the branch is reachable for `enforcement: "agent"` rules + the schema accepts the new value.
 
 ## Implementation Steps
 
-1. **Read `core/gate-logic.js` lines 730-792** to confirm the existing branch structure. (Already read in plan-prep.)
-2. **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` (line 169) to include `"consult-checklist"`. Update both the enum array and the JSDoc comment that lists the valid pattern types.
-3. **Add the new branch** BEFORE the `enforcement !== "gate"` filter at `gate-logic.js:739` (i.e., at the top of the `for (const rule of rules)` loop, right after the `try` block opens). The branch short-circuits for `consult-checklist` rules regardless of enforcement. Include the optional debug warning.
+1. **Read `core/gate-logic.js#applyPromotedRules`** to confirm the existing branch structure. (Already read in plan-prep.)
+2. **Extend the zod enum** in `core/meta-state.js#metaStateRuleEntrySchema` to include `"consult-checklist"`. Update both the enum array and the JSDoc comment that lists the valid pattern types.
+3. **Add the new branch** BEFORE the `enforcement !== "gate"` filter (i.e., at the top of the `for (const rule of rules)` loop, right after the `try` block opens). The branch short-circuits for `consult-checklist` rules regardless of enforcement. Include the optional debug warning.
 4. **Add the new pattern type to `core/patterns.json`** with a one-line description. Match the existing entry shape.
 5. **Add the new unit test** to `__tests__/gate-logic-consult-checklist.test.js`: load a `consult-checklist` rule via `loadPromotedRules`; call `applyPromotedRules({ command: "ls" })`; assert `{ decision: "ok" }` with no stderr output.
 6. **Run `pnpm test -- gate-logic-consult-checklist`**. Expect 1 GREEN.

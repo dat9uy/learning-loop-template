@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Plan and report hygiene"
-status: pending
+status: complete
 priority: P3
 effort: "20m"
 dependencies: []

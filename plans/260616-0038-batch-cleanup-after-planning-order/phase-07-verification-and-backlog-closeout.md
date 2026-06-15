@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Verification and backlog closeout"
-status: pending
+status: complete
 priority: P3
 effort: "20m"
 dependencies: [1, 2, 3, 4, 5, 6]

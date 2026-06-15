@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Surface documentation header"
-status: pending
+status: complete
 priority: P3
 effort: "15m"
 dependencies: []

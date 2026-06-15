@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Comment and handler hygiene"
-status: pending
+status: complete
 priority: P3
 effort: "10m"
 dependencies: []

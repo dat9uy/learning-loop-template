@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Regex comment-stripping preprocessor"
-status: pending
+status: complete
 priority: P2
 effort: "30m"
 dependencies: []

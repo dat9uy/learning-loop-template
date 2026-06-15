@@ -125,7 +125,7 @@ A follow-up edit in Phase 4 (or CLEANUP) annotates Step 2's plan § Cross-surfac
 |------|------------|
 | The helper's `console.error` is captured by the gate's stderr contract (the bash gate uses stderr for soft warnings) | Step 2's bash-gate test (`bash-gate-decision-visibility.test.js`) asserts stderr is empty on the OK path; the helper's `console.error` only fires on per-surface failures (rare). If a test fires the helper's error path, the test will see a stderr message. Verify by reading the existing fail-open test (`gate-decision-log.test.js` chmod 0o444 test). |
 | The refactor changes the helper-call order: previously the loop was synchronous and called each surface; now `appendToAllSurfaces` does the same internally. The order is the same (.claude then .factory). | The 5 existing decision log tests cover the order implicitly (the cross-surface read test asserts both surfaces are read). No test pins the write order specifically. |
-| `mkdirSync({ recursive: true })` already exists in `writeToAllSurfaces`; reusing the pattern is safe | The 2 functions diverge in their atomicity (write-temp+rename vs append) but share the dir-creation step. Verified by reading `writeToAllSurfaces` lines 30-37. |
+| `mkdirSync({ recursive: true })` already exists in `writeToAllSurfaces`; reusing the pattern is safe | The 2 functions diverge in their atomicity (write-temp+rename vs append) but share the dir-creation step. Verified by reading `writeToAllSurfaces`. |
 
 ## Security Considerations
 

@@ -198,45 +198,49 @@ Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE
 
 ## Cleanup backlog
 
-Minor findings surfaced during code review of each shipped step. **Processed in one session after all 4 steps ship** (separate from the plan-of-record work). The backlog grows as more steps complete — append new items here rather than scattering them across reports.
+✅ **All 15 items cleared 2026-06-16** by `plans/260616-0038-batch-cleanup-after-planning-order/`. See the table below for the per-item disposition. The cleanup batch is closed.
 
-**Why deferred:** these are cosmetic / hygiene items, not blockers. Touching the same files mid-stream creates merge friction; batching them keeps the plan-of-record PRs focused on the actual feature work.
-
-**How to use this section:**
-- When a step ships, the reviewer appends any cosmetic findings here with a one-line description + file/line reference.
-- After all 4 steps are shipped (or whenever the operator wants), open a single `plans/260615-CLEANUP-batch-cleanup-after-planning-order/` plan that walks this list, applies the fixes, and updates this section to `cleared` (with date).
+<details>
+<summary>Per-item disposition</summary>
 
 ### Step 1 (shipped 2026-06-15) cleanup items
 
-| # | Item | File / line | Severity |
-|---|------|-------------|----------|
-| 1.1 | Stale `// fallow-ignore-next-line complexity` comment on `readLastOperatorMessage` — the function shrank 35 → 14 lines after the refactor; verify fallow still trips the rule, remove if no longer needed. | `tools/learning-loop-mcp/core/inbound-state.js:41` | cosmetic |
-| 1.2 | No file-level JSDoc for `core/surfaces.js` — the plan required per-export JSDoc (shipped), but a one-line module header explaining the contract ("single source of truth for cross-surface iteration; append new runtimes to SURFACES") would help future contributors. | `tools/learning-loop-mcp/core/surfaces.js:1` | cosmetic |
-| 1.3 | The plan's "Unresolved questions" section in `phase-01-surfaces-helper.md` listed 3 questions (const vs function, atomicity, first/all match) that were all answered in the implementation but never annotated as resolved. Either annotate the answers inline or remove the section. | `plans/260615-1500-surfaces-helper-and-refactors/phase-01-surfaces-helper.md:59-62` | doc-hygiene |
-| 1.4 | The "mutation test" in `gate-logic-glob-whitelist.test.js` (test 6) doesn't actually exercise parameterization — it just asserts on `SURFACES` contents. Either strengthen it (module mock + assert `.cursor/` whitelisted) or drop it; the source-level `...SURFACES.map(...)` is the actual contract. | `tools/learning-loop-mcp/__tests__/gate-logic-glob-whitelist.test.js:36-47` | test-quality |
-| 1.5 | `writeToAllSurfaces` "best-effort" test doesn't actually exercise a failure path — the test acknowledges "can't easily simulate a real failure cross-platform". Either use `chmod 000` on Unix in a test that's tagged `@platform=posix`, or document the gap and move on. | `tools/learning-loop-mcp/__tests__/surfaces.test.js:78-88` | test-quality |
-
-(Add new cleanup items below as Steps 2, 3, 4 ship.)
+| # | Item | File / line | Disposition |
+|---|------|-------------|-------------|
+| 1.1 | Stale `// fallow-ignore-next-line complexity` comment on `readLastOperatorMessage` | `tools/learning-loop-mcp/core/inbound-state.js:41` | ✅ cleared 2026-06-16 (CLEANUP Phase 3) — comment removed |
+| 1.2 | No file-level JSDoc for `core/surfaces.js` | `tools/learning-loop-mcp/core/surfaces.js:1` | ✅ cleared 2026-06-16 (CLEANUP Phase 1) — 5-7 line header added |
+| 1.3 | Plan's "Unresolved questions" not annotated as resolved | `plans/260615-1500-surfaces-helper-and-refactors/phase-01-surfaces-helper.md` | ✅ cleared 2026-06-16 (CLEANUP Phase 2) — `## Resolution Log` added |
+| 1.4 | "Mutation test" doesn't exercise parameterization | `tools/learning-loop-mcp/__tests__/gate-logic-glob-whitelist.test.js:36-47` | ✅ cleared 2026-06-16 (CLEANUP Phase 5) — source assertion that `GLOB_SCOPE_WHITELIST` derives from `SURFACES.map` |
+| 1.5 | `writeToAllSurfaces` "best-effort" test doesn't exercise failure | `tools/learning-loop-mcp/__tests__/surfaces.test.js:78-88` | ✅ cleared 2026-06-16 (CLEANUP Phase 5) — Unix-only `chmodSync(0o000)` + try/finally |
 
 ### Step 2 (shipped 2026-06-15) cleanup items
 
-| # | Item | File / line | Severity |
-|---|------|-------------|----------|
-| 2.1 | `gate-override.js` hand-rolls cross-surface read/write loops instead of using `core/surfaces.js` helpers as the plan's Architecture section specified. Align with `writeToAllSurfaces` / `readFromAllSurfaces` or document the intentional divergence. **→ RESOLVED by Step 4 Phases 1-3** (`readModifyWriteOnAllSurfaces` for write, `readFromAllSurfaces` for read; both call sites now use helpers). | `tools/learning-loop-mcp/core/gate-override.js:47-138` | refactor |
-| 2.2 | `gate-decision-log.js` uses `appendFileSync` per surface; the plan claimed "write-temp + rename per call for atomicity". Decide the intended contract and either switch to atomic overwrite or update the plan/docs to acknowledge append semantics. **→ RESOLVED by Step 4 Phase 1** (`appendToAllSurfaces` uses `appendFileSync` per surface; the spec is now correct and the helper is the source of truth). | `tools/learning-loop-mcp/core/gate-decision-log.js:37-46` | design-doc |
-| 2.3 | `recurrence-tracker.js#generateFindingId` uses a 6-character `Math.random()` suffix; collision probability is low but non-zero. Consider `crypto.randomBytes` or a per-process counter for stronger uniqueness. | `tools/learning-loop-mcp/core/recurrence-tracker.js:70-73` | hygiene |
-| 2.4 | `recurrence-check-on-start.js` reads stdin but discards it without a comment; add an explicit no-op comment so future maintainers know the SessionStart payload is intentionally ignored. | `tools/learning-loop-mcp/hooks/recurrence-check-on-start.js:15` | cosmetic |
-| 2.5 | `gate-check-recurrence-tool.js` passes explicit `undefined` for `threshold`/`windowMs` when options are omitted; tidy the handler to omit the keys or pass defaults. | `tools/learning-loop-mcp/tools/gate-check-recurrence-tool.js:14-17` | cosmetic |
+| # | Item | File / line | Disposition |
+|---|------|-------------|-------------|
+| 2.1 | `gate-override.js` hand-rolls cross-surface loops | `tools/learning-loop-mcp/core/gate-override.js:47-138` | ✅ resolved by Step 4 Phases 1-3 (2026-06-15) |
+| 2.2 | `gate-decision-log.js` append semantics | `tools/learning-loop-mcp/core/gate-decision-log.js:37-46` | ✅ resolved by Step 4 Phase 1 (2026-06-15) |
+| 2.3 | `recurrence-tracker.js#generateFindingId` uses `Math.random()` | `tools/learning-loop-mcp/core/recurrence-tracker.js:70-73` | ✅ cleared 2026-06-16 (CLEANUP Phase 4) — `crypto.randomBytes(4).toString("hex")` |
+| 2.4 | `recurrence-check-on-start.js` stdin read has no comment | `tools/learning-loop-mcp/hooks/recurrence-check-on-start.js:15` | ✅ cleared 2026-06-16 (CLEANUP Phase 3) — "Intentionally ignored" comment added |
+| 2.5 | `gate-check-recurrence-tool.js` explicit `undefined` keys | `tools/learning-loop-mcp/tools/gate-check-recurrence-tool.js:14-17` | ✅ cleared 2026-06-16 (CLEANUP Phase 3) — options built conditionally |
 
 ### Step 4 (shipped 2026-06-15) cleanup items
 
-| # | Item | File / line | Severity |
-|---|------|-------------|----------|
-| 4.1 | `core/runtime-agnostic-checklist.js` CHECKLIST descriptions name the invariant but not the canonical helper to use; add inline helper names (e.g., "use `appendToAllSurfaces` / `readJsonlFromAllSurfaces` / `readModifyWriteOnAllSurfaces`") so agents know exactly how to fix a failure. | `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:10-40` | doc-hygiene |
-| 4.2 | `check-runtime-agnostic-tool.js` shim-mirror predicate only checks that both `.claude/` and `.factory/` shim directories exist; it does not verify file-content equality. Strengthen to hash-compare the shim files or document the weaker check as intentional. | `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js:55-75` | test-quality |
-| 4.3 | `readModifyWriteOnAllSurfaces` is per-surface atomic (`unlinkSync` + `writeFileSync`) but not cross-surface atomic; document the contract in a file-level or function-level comment so callers understand the partial guarantee. | `tools/learning-loop-mcp/core/surfaces.js:180-220` | design-doc |
-| 4.4 | Step 4 plan files cite stale line-number ranges for `gate-override.js` and `gate-decision-log.js` refactor targets (the files shifted after the refactors). Replace line ranges with symbol references or refresh the numbers. | `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/phase-*.md` | doc-hygiene |
-| 4.5 | `core/runtime-agnostic-checklist.js` 6-item checklist regexes have 9 syntax bypasses (`forEach`, `map`, spread iter, `for-in`, `while`, template literals, array literals, raw templates, `path.resolve`) and false positives on comments/strings (regex matches any text containing the pattern, including inside `//` or `/* */`). Document the regex as "lowest common denominator, best-effort" in JSDoc AND add a `loadText` preprocessor that strips block comments and string literals before regex testing. Reference: `plans/reports/code-reviewer-260615-2255-step-4-runtime-agnostic-closure.md` F-2. | `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:220-221, 246-250` | test-quality |
+| # | Item | File / line | Disposition |
+|---|------|-------------|-------------|
+| 4.1 | CHECKLIST descriptions don't name canonical helpers | `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:10-40` | ✅ cleared 2026-06-16 (CLEANUP Phase 2) — descriptions name helpers |
+| 4.2 | Shim-mirror predicate only checks existence | `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js:55-75` | ✅ cleared 2026-06-16 (CLEANUP Phase 5) — SHA-256 hash comparison |
+| 4.3 | `readModifyWriteOnAllSurfaces` cross-surface atomicity not prominent | `tools/learning-loop-mcp/core/surfaces.js:180-220` | ✅ cleared 2026-06-16 (CLEANUP Phase 1) — `WARNING` JSDoc block added |
+| 4.4 | Stale line-number ranges in Step 4 phase files | `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/phase-*.md` | ✅ cleared 2026-06-16 (CLEANUP Phase 2) — symbol references |
+| 4.5 | Checklist regex has 9 bypasses + false positives | `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:220-221, 246-250` | ✅ cleared 2026-06-16 (CLEANUP Phase 6) — `stripCommentsAndStrings` preprocessor + JSDoc |
+
+### Code-review / Q1 follow-up items
+
+| # | Item | Source | Disposition |
+|---|------|--------|-------------|
+| F-5 | `err.message` from `appendFileSync`/`writeFileSync`/`unlinkSync` may leak full path on ENOENT | Step 4 code review | ✅ cleared 2026-06-16 (CLEANUP Phase 4) — `sanitizeErrorMessage` helper in `core/surfaces.js` |
+| Q1 | `skipped_via_override` field remains aspirational | Planning-order Q1 follow-up | ✅ resolved 2026-06-16 (CLEANUP Phase 2) — removed from plan decision shape; `bash-gate.js` does not include it |
+
+</details>
 
 ## What stays human forever
 
@@ -250,7 +254,12 @@ Decisions deferred from Step 2's post-ship review (`plans/reports/code-reviewer-
 
 1. **Helper API gaps vs the Simplification Cascade thesis (RESOLVED 2026-06-15 21:26 — Step 4 Phases 1-3)**. Step 4 extended `core/surfaces.js` with `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, and `readModifyWriteOnAllSurfaces`, then refactored `gate-decision-log.js` and `gate-override.js` to use them. The Simplification Cascade thesis is now complete.
 
-2. **`skipped_via_override` field status (RESOLVED 2026-06-15)**. The field remains aspirational; the actual requirement (operator can override a block) is satisfied by the `.gate-override` marker + `gate_override` MCP tool + audit entry in `runtime-state.jsonl`. CLEANUP batch will either remove the field from the plan's decision shape or document it as permanently `false`.
+2. **`skipped_via_override` field status (RESOLVED 2026-06-16 — CLEANUP Phase 2)**.
+   The field was removed from the plan's decision shape in `plans/260615-1530-.../plan.md`
+   by the CLEANUP batch. The field was aspirational; the actual requirement (operator
+   can override a block) is satisfied by the `.gate-override` marker + `gate_override`
+   MCP tool + audit entry in `runtime-state.jsonl`. The `bash-gate.js` decision
+   object does NOT include the field (verified by reading the source).
 
 3. **Recurrence-tracker writes through MCP or direct file (RESOLVED 2026-06-15)**. Direct writes are accepted for now; a post-4-step brainstorm will reconsider MCP-mediation for `recurrence-tracker.js#checkAndEmit`.
 

@@ -108,12 +108,11 @@ Phases 1, 2, 3 all consume the same `decision` object from `bash-gate.js#main`:
   decision: "ok" | "block" | "escalate",
   reason: string,
   rule_id?: string,
-  matched_pattern?: string,
-  skipped_via_override?: boolean  // ASPIRATIONAL — see note below
+  matched_pattern?: string
 }
 ```
 
-**Note on `skipped_via_override`**: the field is **aspirational, not a hard requirement** (per operator decision 2026-06-15, captured in `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md` Q1). The actual requirement is "the operator can override a block" — which is satisfied by Phase 2's `.gate-override` marker + `gate_override` MCP tool + audit entry in `runtime-state.jsonl`. The field is hard-coded to `false` in `bash-gate.js` because `applyPromotedRules` silently skips rules in the override set (it does not return a "skipped" decision that the gate could log). Removing the field from the plan's decision shape is the CLEANUP-batch work. The override *is* auditable — via `runtime-state.jsonl` — so this is spec-vs-code drift, not a correctness gap.
+**Q1 resolution (2026-06-16):** `skipped_via_override` was removed from the decision shape. The override is auditable via `runtime-state.jsonl` (written by the `gate_override` MCP tool) and the decision log; `applyPromotedRules` silently skips overridden rules, so the field is correctly never set. See `plans/reports/brainstorm-260615-1430-planning-order-bash-gate-and-runtime-agnostic.md` § Open questions for Step 4 and `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/plan.md` § Unresolved questions for the original Q1 discussion.
 
 **Phase 1** routes this object via `hookSpecificOutput` on stdout (block/escalate) or stays silent (ok).
 **Phase 2** mutates the rule-match loop in `applyPromotedRules` to skip rules whose `id` is in the override set.
