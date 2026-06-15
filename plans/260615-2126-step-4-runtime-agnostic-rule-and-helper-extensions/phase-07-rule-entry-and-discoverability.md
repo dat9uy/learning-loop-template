@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "rule entry + AGENTS.md amendment + loop_describe discoverability hint"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
@@ -166,12 +166,12 @@ The hint is one sentence; it points to the tool name (the agent can `loop_get_in
 
 ## Success Criteria
 
-- [ ] `meta-state.jsonl` has the `rule-runtime-agnostic-features` rule entry, written via `meta_state_promote_rule` (MCP tool).
-- [ ] `meta-state.jsonl` has the change-log entry recording the ship.
-- [ ] `AGENTS.md` §2 has the new "Runtime-Agnostic Pattern" subsection.
-- [ ] `core/loop-introspect.js#DISCOVERABILITY_HINTS` includes the new hint.
-- [ ] `loop_describe({tier: "warm"})` returns the new hint in `discoverability_hints`.
-- [ ] `pnpm test` shows 982/983 (1 skipped). No regressions.
+- [x] `meta-state.jsonl` has the `rule-runtime-agnostic-features` rule entry, written via `meta_state_promote_rule` (MCP tool).
+- [x] `meta-state.jsonl` has the change-log entry recording the ship.
+- [x] `AGENTS.md` §2 has the new "Runtime-Agnostic Pattern" subsection.
+- [x] `core/loop-introspect.js#DISCOVERABILITY_HINTS` includes the new hint.
+- [x] `loop_describe({tier: "warm"})` returns the new hint in `discoverability_hints`.
+- [x] `pnpm test` shows 982/983 (1 skipped). No regressions.
 
 ## Risk Assessment
 

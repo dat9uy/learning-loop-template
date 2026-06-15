@@ -162,7 +162,7 @@ This algorithm differs from the inbound gate's 30-minute threshold. See Known Is
 
 **File:** `tools/learning-loop-mcp/server.js`
 **Transport:** stdio (MCP protocol)
-**Tools:** 33 tools total — `check_gate`, `gate_override`, `gate_check_recurrence`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `list_runtime_probes`, `gate_mark_preflight`, plus 13 workflow tools (`workflow_*`).
+**Tools:** 36 tools total across 5 groups — `check_gate`, `gate_override`, `gate_check_recurrence`, `gate_mark_preflight`, `runtime_state_record`, `record_observation`, `update_observation`, `notify_artifact_change`, `trigger_workflow`, `validate_records`, `update_claim_verification`, `list_runtime_probes`, `check_runtime_agnostic`, plus 11 workflow tools (`workflow_*`) and 16 meta-state tools (`meta_state_*`).
 
 The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol. All policy logic lives in `tools/learning-loop-mcp/core/` — single source of truth for both Claude Code and Droid CLI.
 
@@ -172,11 +172,11 @@ Returns `ok`, `block`, or `escalate` for a given command. Splits on `;`, `&`, `|
 
 #### gate_override
 
-Temporarily overrides a promoted gate rule for the current session. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob rules enforced by the bash gate. Requires a non-empty `operator_note` for the audit trail.
+Temporarily overrides a promoted gate rule for the current session. The override is TTL'd (max 24h), audited in `runtime-state.jsonl`, and applies only to regex/glob rules enforced by the bash gate. Requires a non-empty `operator_note` for the audit trail. Reads and writes the `.gate-override` marker via `readModifyWriteOnAllSurfaces` for cross-surface consistency.
 
 #### gate_check_recurrence
 
-Checks the gate's decision log (`.gate-decision.log` per surface) for recurring false-positive patterns. Groups by `rule_id` + normalized command prefix; emits a meta-state `finding` when a pattern recurs at least 3 times within 10 minutes. Threshold and window are configurable.
+Checks the gate's decision log (`.gate-decision.log` per surface) for recurring false-positive patterns. Reads the log via `readJsonlFromAllSurfaces` for cross-surface deduplication. Groups by `rule_id` + normalized command prefix; emits a meta-state `finding` when a pattern recurs at least 3 times within 10 minutes. Threshold and window are configurable.
 
 #### record_observation
 
@@ -205,6 +205,10 @@ Updates a frozen-legacy claim's verification status for a specific dimension (`s
 #### list_runtime_probes
 
 Lists runtime probe files for a given stack. Read-only discovery tool.
+
+#### check_runtime_agnostic
+
+Audits a feature against the 6-item runtime-agnostic checklist (core-in-universal-location, shims-in-sync, protocol-adapter-i-o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Returns structured feedback with fix suggestions for each failure. Use when adding a new feature to verify the shim-not-fork + cross-surface-iteration pattern. The checklist is shared between this MCP tool and `__tests__/runtime-agnostic.test.js`.
 
 ### MCP Workflow Layer
 

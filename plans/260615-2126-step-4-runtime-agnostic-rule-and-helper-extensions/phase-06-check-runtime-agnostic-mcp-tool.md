@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "check_runtime_agnostic MCP tool — the audit surface"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies:
@@ -171,13 +171,13 @@ Add to `tools/learning-loop-mcp/tools/manifest.json`:
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js` exists with the 6-item checklist.
-- [ ] `agent-manifest.json` has the `runtime_agnostic` group with `check_runtime_agnostic`.
-- [ ] `tools/manifest.json` registers the new tool.
-- [ ] `__tests__/check-runtime-agnostic-tool.test.js` exists with 5 tests, all GREEN.
-- [ ] `pnpm test -- check-runtime-agnostic-tool` shows 5 GREEN.
-- [ ] `pnpm test` shows 982/983 (1 skipped). No regressions.
-- [ ] Manual smoke test confirms the tool returns structured feedback.
+- [x] `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js` exists with the 6-item checklist.
+- [x] `agent-manifest.json` has the `runtime_agnostic` group with `check_runtime_agnostic`.
+- [x] `tools/manifest.json` registers the new tool.
+- [x] `__tests__/check-runtime-agnostic-tool.test.js` exists with 5 tests, all GREEN.
+- [x] `pnpm test -- check-runtime-agnostic-tool` shows 5 GREEN.
+- [x] `pnpm test` shows 982/983 (1 skipped). No regressions.
+- [x] Manual smoke test confirms the tool returns structured feedback.
 
 ## Risk Assessment
 

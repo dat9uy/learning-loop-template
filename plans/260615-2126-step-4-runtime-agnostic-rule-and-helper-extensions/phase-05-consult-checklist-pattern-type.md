@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "consult-checklist pattern type — gate-logic.js#applyPromotedRules"
-status: pending
+status: completed
 priority: P2
 effort: "30m"
 dependencies:
@@ -79,14 +79,14 @@ The pattern type is in the registry so the rule loads correctly; the gate's job 
 
 ## Success Criteria
 
-- [ ] `core/meta-state.js#metaStateRuleEntrySchema` zod enum includes `"consult-checklist"`.
-- [ ] `core/gate-logic.js#applyPromotedRules` handles `consult-checklist` as a no-op, BEFORE the enforcement filter.
-- [ ] `core/patterns.json` documents the new pattern type.
-- [ ] `__tests__/gate-logic-consult-checklist.test.js` exists with 1 test, all GREEN.
-- [ ] `pnpm test -- gate-logic-consult-checklist` shows 1 GREEN.
-- [ ] `pnpm test -- gate-promoted-rules` shows all existing tests GREEN.
-- [ ] `pnpm test` shows 977/978 (1 skipped). No regressions.
-- [ ] `LL_DEBUG_RUNTIME_AGNOSTIC=1 pnpm test -- gate-promoted-rules` (manual) shows the debug warning on relevant rules.
+- [x] `core/meta-state.js#metaStateRuleEntrySchema` zod enum includes `"consult-checklist"`.
+- [x] `core/gate-logic.js#applyPromotedRules` handles `consult-checklist` as a no-op, BEFORE the enforcement filter.
+- [x] `core/patterns.json` documents the new pattern type.
+- [x] `__tests__/gate-logic-consult-checklist.test.js` exists with 1 test, all GREEN.
+- [x] `pnpm test -- gate-logic-consult-checklist` shows 1 GREEN.
+- [x] `pnpm test -- gate-promoted-rules` shows all existing tests GREEN.
+- [x] `pnpm test` shows 977/978 (1 skipped). No regressions.
+- [x] `LL_DEBUG_RUNTIME_AGNOSTIC=1 pnpm test -- gate-promoted-rules` (manual) shows the debug warning on relevant rules.
 
 ## Risk Assessment
 

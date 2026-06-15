@@ -3,7 +3,7 @@ title: "Planning Order: Bash Gate Debate (Report 1) + Runtime-Agnostic Rule (Rep
 description: "Single-source-of-truth markdown for the cross-report planning-order decision. Report 2 ships first as foundation (Phase 0-1: surfaces.js helper + 2 existing-call-site refactors); Report 1 ships on top (Plan 1: visibility + override + recurrence; Plan 2: node -e strip is independent). Report 2 Phases 2-5 close the loop last. Three problem-solving techniques justify the order: Inversion Exercise (Report 1 first creates retrofit debt), Simplification Cascade (the helper is the one insight that eliminates 5+ special cases), Meta-Pattern Recognition (debatable + self-improving → loop's self-model first). 4 /ck/plan invocations listed with dependencies."
 date: "2026-06-15T14:30:00Z"
 tags: [meta, planning, sequencing, dependency-analysis, bash-gate, runtime-agnostic, simplification-cascade, inversion-exercise, meta-pattern, problem-solving]
-status: in-progress
+status: complete
 session: 260615-planning-order
 supersedes: null
 superseded_by: null
@@ -33,7 +33,7 @@ The two prior brainstorm reports are sequenced in **4 /ck/plan invocations** (on
 | **1** | Report 2 | Phase 0-1 (helper + 2 refactors) | ✅ shipped 2026-06-15 — Foundation; unblocks Report 1's cross-surface code |
 | **2** | Report 1 | Plan 1 (stderr + override + log + recurrence) | ✅ shipped 2026-06-15 — `meta-260615T1459Z-bash-gate-debate-step-2-shipping` — Builds on the helper; ships the user-pain fix |
 | **3** | Report 1 | Plan 2 (node -e strip) | ✅ shipped 2026-06-15 — `meta-260615T1921Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody` — Narrow first-pass fix; ships alongside Step 2's catch-net (`gate_check_recurrence`) |
-| **4** | Report 2 | Phase 2-5 (test + pattern type + tool + rule entry) | Closes the rule; new MCP tools from step 2 are rule-compliant by design |
+| **4** | Report 2 | Phase 2-5 (test + pattern type + tool + rule entry) | ✅ shipped 2026-06-15 — `meta-260615T2236Z-tools-learning-loop-mcp-agent-manifest-json-agents-md-meta-s` — Closes the rule; new MCP tools from step 2 are rule-compliant by design |
 
 The decision is justified by **three problem-solving techniques** from `ck:problem-solving`:
 
@@ -162,6 +162,8 @@ This maps to AGENTS.md §1's "The meta-surface is the only bound surface" — th
 
 These independence opportunities mean: if the operator wants to ship user value fast, steps 2-3 can ship alongside step 1 (with the helper ship in step 1's PR). The execution order is "step 1 must precede 2 and 4" — beyond that, the order is flexible.
 
+**Retrospective note:** Step 3 (Report 1 Plan 2) shipped 2026-06-15 as a fully independent shippable; it is the only step in the sequence with no upstream dependency on Step 1's helper.
+
 ## Tracking the process
 
 This markdown is the **single source of truth** for the planning-order decision. Updates to the order should land here, with a brief rationale for any change.
@@ -190,9 +192,9 @@ This markdown is the **single source of truth** for the planning-order decision.
 | 1 | Report 2 P0-1 | ✅ shipped | — (routine refactor; no change-log filed) | 2026-06-15 |
 | 2 | Report 1 P1 | ✅ shipped | `meta-260615T1459Z-bash-gate-debate-step-2-shipping` | 2026-06-15 |
 | 3 | Report 1 P2 | ✅ shipped | `meta-260615T1921Z-tools-learning-loop-mcp-core-gate-logic-js-stripnodeevalbody` | 2026-06-15 |
-| 4 | Report 2 P2-5 | pending | — | — |
+| 4 | Report 2 P2-5 | ✅ shipped | `meta-260615T2236Z-tools-learning-loop-mcp-agent-manifest-json-agents-md-meta-s` | 2026-06-15 |
 
-Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`. Step 2 ships the decision visibility + override + decision log + recurrence tracker per `plans/260615-1530-bash-gate-debate-stderr-override-recurrence/`. Step 3 ships the conservative `node -e` body strip + 6 new tests per `plans/260615-1600-step3-bash-gate-node-e-strip/`. Bypass risk (`node -e "require('child_process').exec('npm install')"` no longer matches `package-manager`) documented in finding `meta-260615T1920Z-the-new-stripnodeevalbody-function-in-tools-learning-loop-mc`; caught by Step 2's `gate_check_recurrence` if the pattern recurs.
+Updated: 2026-06-15 — Step 1 ships the `core/surfaces.js` helper + `GLOB_SCOPE_WHITELIST` refactor + `readLastOperatorMessage` refactor per `plans/260615-1500-surfaces-helper-and-refactors/`. Step 2 ships the decision visibility + override + decision log + recurrence tracker per `plans/260615-1530-bash-gate-debate-stderr-override-recurrence/`. Step 3 ships the conservative `node -e` body strip + 6 new tests per `plans/260615-1600-step3-bash-gate-node-e-strip/`. Step 4 ships the helper extensions (`appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`), the 3 Step 2 refactors, the runtime-agnostic regression test + `consult-checklist` pattern type + `check_runtime_agnostic` MCP tool + the `rule-runtime-agnostic-features` rule entry + AGENTS.md amendment + `loop_describe` hint per `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/`. **Planning-order sequence is closed** (all 4 steps shipped).
 
 ## Cleanup backlog
 
@@ -220,11 +222,20 @@ Minor findings surfaced during code review of each shipped step. **Processed in 
 
 | # | Item | File / line | Severity |
 |---|------|-------------|----------|
-| 2.1 | `gate-override.js` hand-rolls cross-surface read/write loops instead of using `core/surfaces.js` helpers as the plan's Architecture section specified. Align with `writeToAllSurfaces` / `readFromAllSurfaces` or document the intentional divergence. **Status: deferred to Step 4's planning session** (Q3 in `plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md`); if Step 4 ships the helper extensions, refactor in Step 4; otherwise refactor in CLEANUP batch. | `tools/learning-loop-mcp/core/gate-override.js:47-138` | refactor |
-| 2.2 | `gate-decision-log.js` uses `appendFileSync` per surface; the plan claimed "write-temp + rename per call for atomicity". Decide the intended contract and either switch to atomic overwrite or update the plan/docs to acknowledge append semantics. **Status: corrected in plan post-ship** (`phase-03-decision-log.md` § "Corrected architecture" now explains the appendFileSync rationale; helper's `SURFACES` constant is still the source of truth for the surface list). Remaining work: extend the helper with `appendToAllSurfaces` if Step 4's planning session decides to ship helper extensions. | `tools/learning-loop-mcp/core/gate-decision-log.js:37-46` | design-doc |
+| 2.1 | `gate-override.js` hand-rolls cross-surface read/write loops instead of using `core/surfaces.js` helpers as the plan's Architecture section specified. Align with `writeToAllSurfaces` / `readFromAllSurfaces` or document the intentional divergence. **→ RESOLVED by Step 4 Phases 1-3** (`readModifyWriteOnAllSurfaces` for write, `readFromAllSurfaces` for read; both call sites now use helpers). | `tools/learning-loop-mcp/core/gate-override.js:47-138` | refactor |
+| 2.2 | `gate-decision-log.js` uses `appendFileSync` per surface; the plan claimed "write-temp + rename per call for atomicity". Decide the intended contract and either switch to atomic overwrite or update the plan/docs to acknowledge append semantics. **→ RESOLVED by Step 4 Phase 1** (`appendToAllSurfaces` uses `appendFileSync` per surface; the spec is now correct and the helper is the source of truth). | `tools/learning-loop-mcp/core/gate-decision-log.js:37-46` | design-doc |
 | 2.3 | `recurrence-tracker.js#generateFindingId` uses a 6-character `Math.random()` suffix; collision probability is low but non-zero. Consider `crypto.randomBytes` or a per-process counter for stronger uniqueness. | `tools/learning-loop-mcp/core/recurrence-tracker.js:70-73` | hygiene |
 | 2.4 | `recurrence-check-on-start.js` reads stdin but discards it without a comment; add an explicit no-op comment so future maintainers know the SessionStart payload is intentionally ignored. | `tools/learning-loop-mcp/hooks/recurrence-check-on-start.js:15` | cosmetic |
 | 2.5 | `gate-check-recurrence-tool.js` passes explicit `undefined` for `threshold`/`windowMs` when options are omitted; tidy the handler to omit the keys or pass defaults. | `tools/learning-loop-mcp/tools/gate-check-recurrence-tool.js:14-17` | cosmetic |
+
+### Step 4 (shipped 2026-06-15) cleanup items
+
+| # | Item | File / line | Severity |
+|---|------|-------------|----------|
+| 4.1 | `core/runtime-agnostic-checklist.js` CHECKLIST descriptions name the invariant but not the canonical helper to use; add inline helper names (e.g., "use `appendToAllSurfaces` / `readJsonlFromAllSurfaces` / `readModifyWriteOnAllSurfaces`") so agents know exactly how to fix a failure. | `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:10-40` | doc-hygiene |
+| 4.2 | `check-runtime-agnostic-tool.js` shim-mirror predicate only checks that both `.claude/` and `.factory/` shim directories exist; it does not verify file-content equality. Strengthen to hash-compare the shim files or document the weaker check as intentional. | `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js:55-75` | test-quality |
+| 4.3 | `readModifyWriteOnAllSurfaces` is per-surface atomic (`unlinkSync` + `writeFileSync`) but not cross-surface atomic; document the contract in a file-level or function-level comment so callers understand the partial guarantee. | `tools/learning-loop-mcp/core/surfaces.js:180-220` | design-doc |
+| 4.4 | Step 4 plan files cite stale line-number ranges for `gate-override.js` and `gate-decision-log.js` refactor targets (the files shifted after the refactors). Replace line ranges with symbol references or refresh the numbers. | `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/phase-*.md` | doc-hygiene |
 
 ## What stays human forever
 
@@ -236,11 +247,11 @@ Minor findings surfaced during code review of each shipped step. **Processed in 
 
 Decisions deferred from Step 2's post-ship review (`plans/reports/code-reviewer-260615-1630-bash-gate-step-2-spec-deviations.md`):
 
-1. **Helper API gaps vs the Simplification Cascade thesis** (Q3, operator decision 2026-06-15). Step 1's helper (`core/surfaces.js`) covers "write a JSON blob to all surfaces" and "read a JSON blob from all surfaces" but not **JSONL read**, **append semantics**, or **read-modify-write**. Step 2's code (`gate-override.js`, `gate-decision-log.js`, `recurrence-tracker.js`) hand-rolls these patterns with the helper's `SURFACES` constant. To fully deliver the § Technique 2 (Simplification Cascade) thesis, the helper should grow three more functions: `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`. Step 2's code can then be refactored to use them. **Step 4's planning session is the judge** of whether this work folds into Step 4 (extending Phase 2 or adding a new Phase 2.5) or defers to the CLEANUP batch after Step 4 ships.
+1. **Helper API gaps vs the Simplification Cascade thesis (RESOLVED 2026-06-15 21:26 — Step 4 Phases 1-3)**. Step 4 extended `core/surfaces.js` with `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, and `readModifyWriteOnAllSurfaces`, then refactored `gate-decision-log.js` and `gate-override.js` to use them. The Simplification Cascade thesis is now complete.
 
-2. **`skipped_via_override` field status** (Q1, operator decision 2026-06-15). The plan's "unified decision shape" defines `skipped_via_override?: { rule_id, operator_note, expired_at }` as a Phase 2 addition. The implementation hard-codes `false` because `applyPromotedRules` silently skips rules in the override set (no "skipped" decision is returned for the gate to log). The field is **aspirational, not a hard requirement** — the actual requirement "operator can override a block" is satisfied by the `.gate-override` marker + `gate_override` MCP tool + audit entry in `runtime-state.jsonl`. CLEANUP-batch work: remove the field from the plan's decision shape OR document the field as `false` permanently.
+2. **`skipped_via_override` field status (RESOLVED 2026-06-15)**. The field remains aspirational; the actual requirement (operator can override a block) is satisfied by the `.gate-override` marker + `gate_override` MCP tool + audit entry in `runtime-state.jsonl`. CLEANUP batch will either remove the field from the plan's decision shape or document it as permanently `false`.
 
-3. **Recurrence-tracker writes through MCP or direct file** (Q2, operator decision 2026-06-15). `recurrence-tracker.js#checkAndEmit` writes findings directly to `meta-state.jsonl` via `appendFileSync`, bypassing the `meta_state_report` MCP tool. **Direct writes are accepted for now** — the finding is not yet promoted to the learning loop. A follow-up brainstorm (after all 4 planning-order steps ship) will reconsider MCP-mediation for this finding type.
+3. **Recurrence-tracker writes through MCP or direct file (RESOLVED 2026-06-15)**. Direct writes are accepted for now; a post-4-step brainstorm will reconsider MCP-mediation for `recurrence-tracker.js#checkAndEmit`.
 
 ---
 

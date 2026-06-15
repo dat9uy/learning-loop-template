@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "readModifyWriteOnAllSurfaces — helper extension + gate-override refactor"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies:
@@ -199,14 +199,14 @@ The `SURFACES` import is no longer used in `gate-override.js` (both `read` and `
 
 ## Success Criteria
 
-- [ ] `__tests__/surfaces-rmw.test.js` exists with 3 tests, all GREEN.
-- [ ] `core/surfaces.js` exports `readModifyWriteOnAllSurfaces` with the documented contract.
-- [ ] `core/gate-override.js#writeGateOverride` uses the helper; the function body is ≤20 lines.
-- [ ] `pnpm test -- surfaces-rmw` shows 3 GREEN.
-- [ ] `pnpm test -- gate-override` shows 12 GREEN (no regressions).
-- [ ] `pnpm test` shows 966/967 (1 skipped). No regressions in any other test file.
-- [ ] `writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync`, and `SURFACES` are removed from `gate-override.js` imports.
-- [ ] `gate-override.js` has no `for (const surface of SURFACES)` loops in either `readGateOverride` or `writeGateOverride`.
+- [x] `__tests__/surfaces-rmw.test.js` exists with 3 tests, all GREEN.
+- [x] `core/surfaces.js` exports `readModifyWriteOnAllSurfaces` with the documented contract.
+- [x] `core/gate-override.js#writeGateOverride` uses the helper; the function body is ≤20 lines.
+- [x] `pnpm test -- surfaces-rmw` shows 3 GREEN.
+- [x] `pnpm test -- gate-override` shows 12 GREEN (no regressions).
+- [x] `pnpm test` shows 966/967 (1 skipped). No regressions in any other test file.
+- [x] `writeFileSync`, `renameSync`, `mkdirSync`, `readFileSync`, and `SURFACES` are removed from `gate-override.js` imports.
+- [x] `gate-override.js` has no `for (const surface of SURFACES)` loops in either `readGateOverride` or `writeGateOverride`.
 
 ## Risk Assessment
 

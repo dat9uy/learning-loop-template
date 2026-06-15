@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "runtime-agnostic regression test — locks the helper API + cross-surface pattern"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
@@ -208,10 +208,10 @@ The test pins this state. A future change that violates any of these patterns fa
 
 ## Success Criteria
 
-- [ ] `__tests__/runtime-agnostic.test.js` exists with 10 tests, all GREEN.
-- [ ] `pnpm test -- runtime-agnostic` shows 10 GREEN.
-- [ ] `pnpm test` shows 976/977 (1 skipped). No regressions in any other test file.
-- [ ] Mutation test (manual) confirms the test catches a hard-coded surface path violation.
+- [x] `__tests__/runtime-agnostic.test.js` exists with 10 tests, all GREEN.
+- [x] `pnpm test -- runtime-agnostic` shows 10 GREEN.
+- [x] `pnpm test` shows 976/977 (1 skipped). No regressions in any other test file.
+- [x] Mutation test (manual) confirms the test catches a hard-coded surface path violation.
 
 ## Risk Assessment
 

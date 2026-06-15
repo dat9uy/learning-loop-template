@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Annotate planning-order report — mark Step 4 complete + close the planning-order sequence"
-status: pending
+status: completed
 priority: P3
 effort: "20m"
 dependencies:
@@ -116,15 +116,15 @@ No production code, no tests, no MCP tools. Pure tracking artifact.
 
 ## Success Criteria
 
-- [ ] `plans/reports/brainstorm-260615-1430-planning-order-bash-gate-and-runtime-agnostic.md` has a "Shipped status" row for Step 4 with the change-log id (or `—` if none was filed).
-- [ ] The TL;DR table's Step 4 row is annotated with `✅ shipped <date> — \`<change-log-id>\``.
-- [ ] The report's frontmatter `status` flipped from `in-progress` to `complete`.
-- [ ] Q3 in the "Open questions" section is annotated as RESOLVED.
-- [ ] Step 2 cleanup items 2.1, 2.2, 2.4 are annotated with `→ RESOLVED by Step 4 Phases 1-3`.
-- [ ] The cleanup-backlog section has Step 4's findings numbered `4.1`, `4.2`, ... (or 0 items if no findings).
-- [ ] The "What does NOT depend" subsection has a 1-line note about Step 3's independence.
-- [ ] No other content in the report is changed (narrative, dependency matrix, problem-solving techniques are intact).
-- [ ] `git diff` against the pre-Phase-8 state is < 60 lines.
+- [x] `plans/reports/brainstorm-260615-1430-planning-order-bash-gate-and-runtime-agnostic.md` has a "Shipped status" row for Step 4 with the change-log id (or `—` if none was filed).
+- [x] The TL;DR table's Step 4 row is annotated with `✅ shipped <date> — \`<change-log-id>\``.
+- [x] The report's frontmatter `status` flipped from `in-progress` to `complete`.
+- [x] Q3 in the "Open questions" section is annotated as RESOLVED.
+- [x] Step 2 cleanup items 2.1, 2.2, 2.4 are annotated with `→ RESOLVED by Step 4 Phases 1-3`.
+- [x] The cleanup-backlog section has Step 4's findings numbered `4.1`, `4.2`, ... (or 0 items if no findings).
+- [x] The "What does NOT depend" subsection has a 1-line note about Step 3's independence.
+- [x] No other content in the report is changed (narrative, dependency matrix, problem-solving techniques are intact).
+- [x] `git diff` against the pre-Phase-8 state is < 60 lines.
 
 ## Risk Assessment
 

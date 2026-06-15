@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "readJsonlFromAllSurfaces — helper extension + decision-log read refactor"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
@@ -143,13 +143,13 @@ The same precedent as `writeToAllSurfaces` (single-object) vs `appendToAllSurfac
 
 ## Success Criteria
 
-- [ ] `__tests__/surfaces-read-jsonl.test.js` exists with 3 tests, all GREEN.
-- [ ] `core/surfaces.js` exports `readJsonlFromAllSurfaces` with `dedupe`, `since`, `sort` options.
-- [ ] `core/gate-decision-log.js#readDecisionLog` is ≤10 lines and uses the helper.
-- [ ] `pnpm test -- surfaces-read-jsonl` shows 3 GREEN.
-- [ ] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
-- [ ] `pnpm test` shows 963/964 (1 skipped). No regressions in any other test file.
-- [ ] `readAllLogContents` and `parseLogLines` are removed from `gate-decision-log.js`.
+- [x] `__tests__/surfaces-read-jsonl.test.js` exists with 3 tests, all GREEN.
+- [x] `core/surfaces.js` exports `readJsonlFromAllSurfaces` with `dedupe`, `since`, `sort` options.
+- [x] `core/gate-decision-log.js#readDecisionLog` is ≤10 lines and uses the helper.
+- [x] `pnpm test -- surfaces-read-jsonl` shows 3 GREEN.
+- [x] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
+- [x] `pnpm test` shows 963/964 (1 skipped). No regressions in any other test file.
+- [x] `readAllLogContents` and `parseLogLines` are removed from `gate-decision-log.js`.
 
 ## Risk Assessment
 

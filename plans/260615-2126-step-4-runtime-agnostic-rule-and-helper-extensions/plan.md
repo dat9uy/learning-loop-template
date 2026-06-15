@@ -10,7 +10,7 @@ description: >-
   new check_runtime_agnostic MCP tool, the rule entry, the AGENTS.md amendment,
   and the loop_describe discoverability hint. Closes the rule; future features
   are runtime-agnostic by design.
-status: pending
+status: complete
 priority: P2
 branch: 260614-1259-phase-b-codegen-adoption
 tags:
@@ -93,14 +93,14 @@ The 8 phases are sequential and independently shippable:
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [appendToAllSurfaces-helper](./phase-01-appendtoallsurfaces-helper.md) | Pending |
-| 2 | [readJsonlFromAllSurfaces-helper](./phase-02-readjsonlfromallsurfaces-helper.md) | Pending |
-| 3 | [readModifyWriteOnAllSurfaces-helper](./phase-03-readmodifywriteonallsurfaces-helper.md) | Pending |
-| 4 | [runtime-agnostic-regression-test](./phase-04-runtime-agnostic-regression-test.md) | Pending |
-| 5 | [consult-checklist-pattern-type](./phase-05-consult-checklist-pattern-type.md) | Pending |
-| 6 | [check-runtime-agnostic-mcp-tool](./phase-06-check-runtime-agnostic-mcp-tool.md) | Pending |
-| 7 | [rule-entry-and-discoverability](./phase-07-rule-entry-and-discoverability.md) | Pending |
-| 8 | [annotate-planning-order-report](./phase-08-annotate-planning-order-report.md) | Pending |
+| 1 | [appendToAllSurfaces-helper](./phase-01-appendtoallsurfaces-helper.md) | Completed |
+| 2 | [readJsonlFromAllSurfaces-helper](./phase-02-readjsonlfromallsurfaces-helper.md) | Completed |
+| 3 | [readModifyWriteOnAllSurfaces-helper](./phase-03-readmodifywriteonallsurfaces-helper.md) | Completed |
+| 4 | [runtime-agnostic-regression-test](./phase-04-runtime-agnostic-regression-test.md) | Completed |
+| 5 | [consult-checklist-pattern-type](./phase-05-consult-checklist-pattern-type.md) | Completed |
+| 6 | [check-runtime-agnostic-mcp-tool](./phase-06-check-runtime-agnostic-mcp-tool.md) | Completed |
+| 7 | [rule-entry-and-discoverability](./phase-07-rule-entry-and-discoverability.md) | Completed |
+| 8 | [annotate-planning-order-report](./phase-08-annotate-planning-order-report.md) | Completed |
 
 ## TDD structure
 

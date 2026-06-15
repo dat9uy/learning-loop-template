@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "appendToAllSurfaces — helper extension + gate-decision-log refactor"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies:
@@ -111,13 +111,13 @@ A follow-up edit in Phase 4 (or CLEANUP) annotates Step 2's plan § Cross-surfac
 
 ## Success Criteria
 
-- [ ] `__tests__/surfaces-append.test.js` exists with 3 tests, all GREEN.
-- [ ] `core/surfaces.js` exports `appendToAllSurfaces` with the documented contract.
-- [ ] `core/gate-decision-log.js#appendDecisionLog` uses `appendToAllSurfaces`; the function body is ≤20 lines.
-- [ ] `pnpm test -- surfaces-append` shows 3 GREEN.
-- [ ] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
-- [ ] `pnpm test` shows 960/961 (1 skipped). No regressions in any other test file.
-- [ ] `grep -n "appendFileSync" tools/learning-loop-mcp/core/gate-decision-log.js` returns 0 matches (the import is removed).
+- [x] `__tests__/surfaces-append.test.js` exists with 3 tests, all GREEN.
+- [x] `core/surfaces.js` exports `appendToAllSurfaces` with the documented contract.
+- [x] `core/gate-decision-log.js#appendDecisionLog` uses `appendToAllSurfaces`; the function body is ≤20 lines.
+- [x] `pnpm test -- surfaces-append` shows 3 GREEN.
+- [x] `pnpm test -- gate-decision-log` shows 6 GREEN (no regressions).
+- [x] `pnpm test` shows 960/961 (1 skipped). No regressions in any other test file.
+- [x] `grep -n "appendFileSync" tools/learning-loop-mcp/core/gate-decision-log.js` returns 0 matches (the import is removed).
 
 ## Risk Assessment
 
