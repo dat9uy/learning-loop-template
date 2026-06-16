@@ -1,5 +1,7 @@
 [
   { "file": "./tools/gate-tool.js", "export": "gateCheckTool" },
+  { "file": "./tools/gate-override-tool.js", "export": "gateOverrideTool" },
+  { "file": "./tools/gate-check-recurrence-tool.js", "export": "gateCheckRecurrenceTool" },
   { "file": "./tools/notify-artifact-tool.js", "export": "workflowNotifyArtifactTool" },
   { "file": "./tools/trigger-workflow-tool.js", "export": "workflowTriggerTool" },
   { "file": "./tools/workflow-classify-prompt-tool.js", "export": "workflowClassifyPromptTool" },
@@ -35,5 +37,6 @@
   { "file": "./tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool" },
   { "file": "./tools/meta-state-refresh-tools-tool.js", "export": "metaStateRefreshToolsTool" },
   { "file": "./tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool" },
-  { "file": "./tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool" }
+  { "file": "./tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool" },
+  { "file": "./tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" }
 ]

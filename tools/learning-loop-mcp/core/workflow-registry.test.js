@@ -10,10 +10,10 @@ describe("workflow-registry", () => {
     assert.ok(result.recommendations.includes("index_validate"));
   });
 
-  test("matches observation file changes", () => {
+  test("does not match observation file changes (removed)", () => {
     const result = evaluateTriggers("records/observations/obs-001.yaml", "created");
-    assert.deepStrictEqual(result.matched, ["observation-changed"]);
-    assert.deepStrictEqual(result.recommendations, ["index_validate"]);
+    assert.deepStrictEqual(result.matched, []);
+    assert.deepStrictEqual(result.recommendations, []);
   });
 
   test("matches capability file changes", () => {
@@ -42,9 +42,7 @@ describe("workflow-registry", () => {
   });
 
   test("deduplicates recommendations when multiple workflows match", () => {
-    // Both evidence-changed and observation-changed include index_validate,
-    // but a single path shouldn't match both. Test dedup with a hypothetical
-    // path that somehow would. Instead, verify dedup logic directly:
+    // Verify dedup logic directly:
     const result = evaluateTriggers("records/product/evidence/foo.md", "created");
     const unique = [...new Set(result.recommendations)];
     assert.strictEqual(result.recommendations.length, unique.length);
@@ -57,9 +55,9 @@ describe("workflow-registry", () => {
     assert.deepStrictEqual(withDot.recommendations, withoutDot.recommendations);
   });
 
-  test("WORKFLOW_REGISTRY has all 4 workflows", () => {
+  test("WORKFLOW_REGISTRY has 3 workflows (observation-changed removed)", () => {
     assert.ok(WORKFLOW_REGISTRY["evidence-changed"]);
-    assert.ok(WORKFLOW_REGISTRY["observation-changed"]);
+    assert.ok(!WORKFLOW_REGISTRY["observation-changed"]);
     assert.ok(WORKFLOW_REGISTRY["capability-changed"]);
     assert.ok(WORKFLOW_REGISTRY["index-changed"]);
   });

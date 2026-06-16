@@ -83,3 +83,25 @@ export function formatSoftWarning(message) {
     },
   });
 }
+
+/**
+ * Format gate decision for a specific hook output channel.
+ *
+ * When `channel` is "hookSpecificOutput", wraps the decision in the canonical
+ * hook-specific envelope so the runtime surfaces it back to the model. This
+ * matches the existing `formatSoftWarning` contract and keeps both gates
+ * speaking the same stdout dialect.
+ *
+ * Defaults to the raw `formatOutput` shape for backward compatibility.
+ */
+export function formatHookDecision(decision, { channel } = {}) {
+  if (channel === "hookSpecificOutput") {
+    return JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        additionalContext: JSON.stringify(decision),
+      },
+    });
+  }
+  return formatOutput(decision);
+}

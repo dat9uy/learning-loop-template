@@ -102,6 +102,8 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mcp/**` and `schemas/**` are the template rules. Cite the correct surface.",
   "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
   "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
+  "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
+  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js.",
 ]);
 
 /**
@@ -180,32 +182,19 @@ export function listAllFindings(root, { categories } = {}) {
 export function listPromotedRules(root) {
   const rules = loadPromotedRules(root);
   return rules
-    .filter((r) => r.promoted_to_rule?.pattern_type !== "resolution-evidence-required")
-    .map((r) => {
-      if (r.entry_kind === "rule") {
-        return {
-          id: r.id,
-          rule_id: r.id,
-          pattern_type: r.pattern_type,
-          pattern: r.pattern,
-          enforcement: r.enforcement,
-          status: r.status,
-          origin: r.origin,
-          scope_predicate: r.scope_predicate,
-          applies_to_resolution: r.applies_to_resolution,
-          description: r.description,
-        };
-      }
-      return {
-        id: r.id,
-        rule_id: r.promoted_to_rule.rule_id,
-        pattern_type: r.promoted_to_rule.pattern_type,
-        pattern: r.promoted_to_rule.pattern,
-        enforcement: r.promoted_to_rule.enforcement,
-        status: r.status,
-        origin: r.promoted_to_rule.promoted_at,
-      };
-    });
+    .filter((r) => r.pattern_type !== "resolution-evidence-required")
+    .map((r) => ({
+      id: r.id,
+      rule_id: r.id,
+      pattern_type: r.pattern_type,
+      pattern: r.pattern,
+      enforcement: r.enforcement,
+      status: r.status,
+      origin: r.origin,
+      scope_predicate: r.scope_predicate,
+      applies_to_resolution: r.applies_to_resolution,
+      description: r.description,
+    }));
 }
 
 /**
@@ -348,11 +337,7 @@ export function buildRegistrySummary(entries) {
   const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
   for (const design of loopDesigns) {
     if (design.proposed_design_for) {
-      // Tolerate the wire-format wrap {item: [...]} that meta_state_patch
-      // can produce on top-level arrays under passthrough ZodObject fields.
-      const refs = Array.isArray(design.proposed_design_for)
-        ? design.proposed_design_for
-        : (design.proposed_design_for.item ?? []);
+      const refs = design.proposed_design_for ?? [];
       for (const ref of refs) {
         if (!entryIds.has(ref)) coverage.broken_refs++;
       }
@@ -450,6 +435,7 @@ export function summarize(entry) {
   if (entry.evidence_code_ref) compact.evidence_code_ref = entry.evidence_code_ref;
   if (entry.evidence_journal) compact.evidence_journal = entry.evidence_journal;
   if (entry.evidence_test) compact.evidence_test = entry.evidence_test;
+  if (entry.session_id) compact.session_id = entry.session_id;
 
   // Description preview.
   // m3: `summarize` ALWAYS sets `description_preview` (it is the contract of

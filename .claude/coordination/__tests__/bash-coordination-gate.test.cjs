@@ -4,6 +4,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const HOOK_PATH = path.join(__dirname, '..', 'hooks', 'bash-coordination-gate.cjs');
 const COORD_DIR = path.join(__dirname, '..');
@@ -36,6 +37,18 @@ function assert(condition, msg) {
   }
 }
 
+function parseDecision(stdout) {
+  try {
+    const parsed = JSON.parse(stdout);
+    if (parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext) {
+      return JSON.parse(parsed.hookSpecificOutput.additionalContext);
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 console.log('\n--- bash-coordination-gate.cjs ---');
 
 // Test 1: Non-Bash tool → exit 0
@@ -60,8 +73,7 @@ console.log('\n--- bash-coordination-gate.cjs ---');
 {
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
   assert(r.exitCode === 2, 'docker run → exit 2 (constrained)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.decision === 'block', 'docker run output has decision: block (no docker obs, budget mismatch: vendor-api vs docker)');
 }
 
@@ -71,10 +83,13 @@ console.log('\n--- bash-coordination-gate.cjs ---');
   assert(r.exitCode === 2, 'sudo → exit 2 (constrained)');
 }
 
-// Test 6: pip install → exit 2 (constrained)
+// Test 6: pip install in temp project without runtime-state → exit 2 (constrained)
 {
-  const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } });
-  assert(r.exitCode === 2, 'pip install → exit 2 (constrained)');
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir };
+  const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } }, env);
+  assert(r.exitCode === 2, 'pip install → exit 2 (constrained, no runtime-state)');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
 // Test 7: cat docker-compose.yml → exit 0 (word boundary: no match)
@@ -104,18 +119,28 @@ console.log('\n--- bash-coordination-gate.cjs ---');
 }
 
 // --- Path-write detection tests (temp project) ---
-const os = require('os');
-
 function createTempProject() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bash-gate-test-'));
-  fs.mkdirSync(path.join(tmpDir, 'records', 'observations'), { recursive: true });
   fs.mkdirSync(path.join(tmpDir, '.claude', 'coordination'), { recursive: true });
   return tmpDir;
 }
 
 function writeObservation(tmpDir, id, constraint, timestamp) {
-  const content = `id: ${id}\nconstraint_type: write-path\nconstraint: ${constraint}\nstatus: active\nupdated_at: "${timestamp}"\ndescription: test`;
-  fs.writeFileSync(path.join(tmpDir, 'records', 'observations', `${id}.yaml`), content);
+  // Write to runtime-state.jsonl instead of records/observations YAML
+  const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
+  const entry = {
+    kind: 'ledger-event',
+    affected_system: 'vnstock',
+    id: id,
+    value: 0,
+    delta: 0,
+    source_ref: 'local:meta-state:test',
+    fingerprint: 'sha256:test',
+    timestamp: timestamp,
+    status: 'active',
+    metadata: { constraint_type: 'write-path', constraint: constraint },
+  };
+  fs.writeFileSync(runtimeStatePath, JSON.stringify(entry) + '\n', 'utf8');
 }
 
 function setMarker(tmpDir, timestamp) {
@@ -134,8 +159,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/evidence → exit 2 (unconditional block)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'records/evidence → hard_block');
 }
 
@@ -157,8 +181,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/evidence stale obs → exit 2 (unconditional)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'stale obs → hard_block (not escalate)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -190,8 +213,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/observations/foo.yaml' } }, env);
   assert(r.exitCode === 2, 'redirect to records/observations → exit 2 (unconditional)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'observations → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -211,8 +233,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/claims/foo.yaml\ncontent\nEOF" } }, env);
   assert(r.exitCode === 2, 'heredoc to records/claims/foo.yaml → exit 2 (MCP only)');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'records/claims → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
@@ -234,8 +255,7 @@ function clearMarker(tmpDir) {
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/evidence/../observations/foo.yaml' } }, env);
   assert(r.exitCode === 2, 'path traversal to records/** → exit 2');
-  let output;
-  try { output = JSON.parse(r.stdout); } catch { output = null; }
+  const output = parseDecision(r.stdout);
   assert(output && output.hard_block === true, 'traversal → hard_block');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

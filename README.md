@@ -47,7 +47,7 @@ Commands that touch irreversible external systems (docker, sudo, package install
 1. **PreToolUse hooks** — universal bash-gate, write-gate, and inbound-state-gate that intercept tool calls for both Claude Code and Droid CLI
 2. **MCP server** (`tools/learning-loop-mcp/server.js`) — meta-surface tools, constraint checks (`gate_check`, `gate_mark_preflight`), and workflow tools
 
-The gate reads observation records from `records/observations/` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mcp/core/` — single source of truth.
+The gate reads runtime state from `runtime-state.jsonl` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mcp/core/` — single source of truth.
 
 ### The escape hatch rule
 
@@ -74,9 +74,9 @@ The loop does not internalize everything it touches. Three classes:
 | Path | Purpose |
 |------|---------|
 | `meta-state.jsonl` | The loop's self-model. 4-kind discriminated union. |
+| `runtime-state.jsonl` | Mutable operator state: ledger events and budget states for external systems. |
 | `tools/learning-loop-mcp/` | MCP server, gate logic, validation, and workflow tools. Single source of truth for both Claude Code and Droid CLI. |
-| `records/observations/` | Constraint observations + resource budgets (mutable, operator-managed). |
-| `records/<vendor>/` | Forensic stub. Legacy product-surface content, archived, not a contract. |
+| `records/_unbound/` | Archived legacy product-surface content (observations, decisions, etc.), not a contract. |
 | `product/<stack>/` | Per-stack runtime probes. Phase A of the productization master tracker re-debates the product surface. |
 | `plans/<date>-<slug>/` | Active and historical plans. The pre-mortem channel. |
 | `docs/` | Policy, philosophy, trajectory. Escape hatch, not source of truth. |

@@ -25,7 +25,7 @@ export const metaStatePromoteRuleTool = {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
     enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
-    pattern_type: z.enum(["regex", "glob", "resolution-evidence-required"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
+    pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for resolution-evidence-required)"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
     preview: z.boolean().optional().default(false).describe("If true, return sample matches without activating the rule"),
@@ -136,14 +136,9 @@ export const metaStatePromoteRuleTool = {
     }
 
     // Rule ID uniqueness check (RT Finding 10)
-    // Phase 1: checks both new entry_kind: "rule" entries AND legacy findings
     const alreadyActive = entries.find(
       (e) =>
-        (e.entry_kind === "rule" && e.id === rule_id && e.status === "active") ||
-        (e.entry_kind === "finding" &&
-         e.id !== id &&
-         e.status === "active" &&
-         e.promoted_to_rule?.rule_id === rule_id)
+        e.entry_kind === "rule" && e.id === rule_id && e.status === "active"
     );
     if (alreadyActive) {
       const result = { promoted: false, reason: "rule_id_already_active", id, rule_id };
@@ -177,8 +172,9 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-    // Update the source finding's promoted_to_rule and status
-    await updateEntry(root, id, { status: "active", promoted_to_rule: rule_id });
+    // Update the source finding's status (rule entry's origin field is the
+    // canonical inverse reference; promoted_to_rule on findings is no longer used)
+    await updateEntry(root, id, { status: "active" });
 
     const result = {
       promoted: true,

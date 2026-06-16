@@ -69,6 +69,17 @@ function main() {
     process.exit(2);
   }
 
+  // --- 1.5. runtime-state.jsonl — always block (only via MCP tools) ---
+  if (globMatch("runtime-state.jsonl", relPath)) {
+    console.log(formatOutput({
+      decision: "block",
+      reason: "Direct writes to runtime-state.jsonl are blocked. Use runtime_state_record MCP tool to create entries.",
+      file_path: filePath,
+      matched_rule: "runtime-state.jsonl",
+    }));
+    process.exit(2);
+  }
+
   // --- 2. schemas/** — always block (needs validation) ---
   if (globMatch("schemas/**", relPath)) {
     console.log(formatOutput({

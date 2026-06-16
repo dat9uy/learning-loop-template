@@ -29,9 +29,9 @@ MCP tools: `gate_check`, `workflow_prepare_runtime_request` enforce these constr
 5. **After a budget-consuming action, the agent reports result and waits for operator confirmation.**
    - The agent does not proceed to the next budget-consuming action until the operator updates the budget YAML.
 
-6. **Operator-only writes to budget YAML; agent reads only.**
-   - The agent never modifies `records/observations/*-resource-budget.yaml`.
-   - Only the operator increments `current`, resets state, or opens/closes validation windows.
+6. **Operator-only writes to runtime-state; agent reads only.**
+   - The agent never modifies `runtime-state.jsonl` directly.
+   - Only the operator (via MCP tools or manual update) increments `value`, resets state, or opens/closes validation windows.
 
 7. **Staleness check: warn if `last_verified` is older than 7 days (fixed threshold).**
    - If the budget data is stale, the agent emits a WARNING and asks the operator to confirm the external system state before acting.

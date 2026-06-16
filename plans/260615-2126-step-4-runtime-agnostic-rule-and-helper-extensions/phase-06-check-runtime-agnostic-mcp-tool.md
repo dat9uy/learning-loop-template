@@ -1,0 +1,202 @@
+---
+phase: 6
+title: "check_runtime_agnostic MCP tool — the audit surface"
+status: completed
+priority: P2
+effort: "2h"
+dependencies:
+  - "phase-05-consult-checklist-pattern-type"
+---
+
+# Phase 6: check_runtime_agnostic MCP tool — the audit surface
+
+## Overview
+
+Add a new MCP tool `check_runtime_agnostic` that audits a file or directory against the 6-item runtime-agnostic checklist. The tool is the **enforcement surface** for the `rule-runtime-agnostic-features` rule (Phase 7). Agents are expected to call it when adding a new feature; the tool returns structured feedback with `fix_suggestion` for each failure.
+
+The tool reuses the same verification predicates that the regression test (Phase 4) uses, but exposes them as an MCP-callable surface. The tool is registered in `agent-manifest.json` and the MCP server's `tools/manifest.json`.
+
+## Requirements
+
+Functional:
+- New file `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js`:
+  - **Input schema** (Zod): `{ feature_path: string }` (a file or directory path relative to the project root).
+  - **Output**: `{ feature_path, items_checked, items_passed, items_failed, failures: [{ item_id, description, expected, found, fix_suggestion }] }`.
+  - **Behavior**:
+    1. Resolve `feature_path` to an absolute path (default: relative to project root).
+    2. For each of the 6 checklist items, run the verification predicate against the feature path.
+    3. Collect failures with `fix_suggestion` per item.
+    4. Return the structured result.
+- The 6 checklist items (from Report 2 § The 6-item checklist):
+  1. `core-in-universal-location` — primary file in `tools/learning-loop-mcp/{core,hooks,tools}/`.
+  2. `shims-in-sync` — if hooks are needed, both shim directories have the shim.
+  3. `protocol-adapter-i-o` — hook I/O goes through `protocol-adapter.js`.
+  4. `manifest-registered` — new MCP tools are in `agent-manifest.json`.
+  5. `cross-surface-iteration` — code uses `surfaces.js` helpers, not hard-coded paths.
+  6. `parameterized-for-new-surfaces` — `SURFACES` is the single source of truth.
+- Register the tool in `agent-manifest.json` (new group `runtime_agnostic` or extend the `gate` group; recommend new group per Report 2).
+- Register the tool in `tools/manifest.json`.
+- New test file `__tests__/check-runtime-agnostic-tool.test.js` with 4 tests.
+
+Non-functional:
+- The tool is read-only (no `writeFileSync`).
+- The tool is hermetic (no network, no external state).
+- The tool's response is JSON-serializable; no class instances, no functions.
+
+## Architecture
+
+### Tool implementation
+
+```js
+// tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js
+
+import { z } from "zod";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, resolve, basename, sep } from "node:path";
+import { resolveRoot } from "#lib/resolve-root.js";
+import { CHECKLIST } from "../core/runtime-agnostic-checklist.js";
+
+/** Reject any feature_path that escapes the project root or is a directory. */
+function resolveFeaturePath(root, featurePath) {
+  if (!featurePath || typeof featurePath !== "string") {
+    throw new Error("feature_path must be a non-empty string");
+  }
+  if (resolve(featurePath) === featurePath) {
+    throw new Error(`feature_path must be relative to the project root; absolute paths are rejected: ${featurePath}`);
+  }
+  const resolved = resolve(root, featurePath);
+  const rootWithSep = root.endsWith(sep) ? root : root + sep;
+  if (!resolved.startsWith(rootWithSep) && resolved !== root) {
+    throw new Error(`feature_path escapes project root: ${featurePath} -> ${resolved}`);
+  }
+  let stat;
+  try {
+    stat = statSync(resolved);
+  } catch {
+    throw new Error(`feature_path does not exist: ${featurePath}`);
+  }
+  if (stat.isDirectory()) {
+    throw new Error(`feature_path is a directory (expected file): ${featurePath}`);
+  }
+  return resolved;
+}
+
+// CHECKLIST is imported from `core/runtime-agnostic-checklist.js` (shared with Phase 4 regression test).
+// Adding/removing items updates both surfaces atomically.
+
+const inputSchema = z.object({
+  feature_path: z.string().describe("File or directory path (relative to project root) to audit"),
+});
+
+export const checkRuntimeAgnosticTool = {
+  name: "check_runtime_agnostic",
+  description: "Audit a file or directory against the runtime-agnostic checklist (the 6-item pattern codified in rule-runtime-agnostic-features). Use when adding a new feature to verify the shim-not-fork + cross-surface-iteration pattern. Returns structured feedback with fix_suggestion for each failure.",
+  schema: { feature_path: z.string() },
+  handler: async (raw) => {
+    const { feature_path } = inputSchema.parse(raw);
+    const root = resolveRoot();
+    // Reject path traversal, absolute paths, and directories BEFORE running predicates.
+    resolveFeaturePath(root, feature_path);
+    const failures = [];
+    let items_checked = 0;
+    let items_passed = 0;
+
+    for (const item of CHECKLIST) {
+      items_checked++;
+      const result = item.verify(feature_path, root);
+      if (result.ok) {
+        items_passed++;
+      } else {
+        failures.push({ item_id: item.id, description: item.description, ...result });
+      }
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          feature_path,
+          items_checked,
+          items_passed,
+          items_failed: failures.length,
+          failures,
+        }, null, 2),
+      }],
+    };
+  },
+};
+```
+
+### Manifest registration
+
+Add to `tools/learning-loop-mcp/agent-manifest.json`:
+
+```json
+"runtime_agnostic": {
+  "description": "Audit a feature's compliance with the runtime-agnostic pattern (shim-not-fork + cross-surface-iteration). Call when adding a new feature.",
+  "tools": ["check_runtime_agnostic"],
+  "ordering": "any"
+}
+```
+
+Add to `tools/learning-loop-mcp/tools/manifest.json`:
+
+```json
+{ "file": "./tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" }
+```
+
+## Related Code Files
+
+- Create: `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js` (~30 lines; CHECKLIST is imported from the shared module, not defined inline).
+- Modify: `tools/learning-loop-mcp/agent-manifest.json` — add `runtime_agnostic` group.
+- Modify: `tools/learning-loop-mcp/tools/manifest.json` — register the new tool.
+- Create: `tools/learning-loop-mcp/__tests__/check-runtime-agnostic-tool.test.js` — 4 tests.
+
+## Implementation Steps (TDD)
+
+1. **Append 5 RED tests to `__tests__/check-runtime-agnostic-tool.test.js`** (new file):
+   - Test 1: tool returns `{ items_checked: 6, items_passed: N, items_failed: 6-N, failures: [...] }` for a compliant feature (e.g., `core/surfaces.js` itself).
+   - Test 2: tool returns a failure for `cross-surface-iteration` when a feature has hard-coded `join(root, ".claude"...)`.
+   - Test 3: tool returns a failure for `manifest-registered` when a new tool file is not in the manifest.
+   - Test 4: tool's `fix_suggestion` is non-empty for each failure (the agent can act on it).
+   - **Test 5 (security): tool throws when `feature_path` is `/etc/passwd` (path traversal) — does NOT return a 6/6 pass that leaks path existence.**
+2. **Run `pnpm test -- check-runtime-agnostic-tool`**. Expect 5 RED.
+3. **Create `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js`** with the implementation above.
+4. **Register the tool in `agent-manifest.json` and `tools/manifest.json`**.
+5. **Refresh the MCP server's tool modules**: this is automatic on next server start; for local testing, the `meta_state_refresh_tools` MCP tool reloads in-process. Alternatively, just restart the test runner.
+6. **Run `pnpm test -- check-runtime-agnostic-tool`**. Expect 5 GREEN.
+7. **Run the full test suite.** `pnpm test` — expect 982/983 (1 skipped). No regressions. (Baseline 957/958 + 9 helper tests + 10 regression tests + 1 consult-checklist test + 5 tool tests.)
+8. **Manual smoke test.** Call the tool via the MCP server (or via direct handler invocation in a Node REPL) against `core/surfaces.js` (expect 6/6 pass), against a synthetic file with a hard-coded path (expect 1 failure with `fix_suggestion`), and against `/etc/passwd` (expect throw, NOT 6/6 pass).
+9. **Whole-plan consistency check.** `grep -n "check_runtime_agnostic" tools/learning-loop-mcp/` — expect 4 matches (tool file, manifest, manifest.json, test file).
+
+## Success Criteria
+
+- [x] `tools/learning-loop-mcp/tools/check-runtime-agnostic-tool.js` exists with the 6-item checklist.
+- [x] `agent-manifest.json` has the `runtime_agnostic` group with `check_runtime_agnostic`.
+- [x] `tools/manifest.json` registers the new tool.
+- [x] `__tests__/check-runtime-agnostic-tool.test.js` exists with 5 tests, all GREEN.
+- [x] `pnpm test -- check-runtime-agnostic-tool` shows 5 GREEN.
+- [x] `pnpm test` shows 982/983 (1 skipped). No regressions.
+- [x] Manual smoke test confirms the tool returns structured feedback.
+
+## Risk Assessment
+
+| Risk | Mitigation |
+|------|------------|
+| The tool's predicates return false positives (e.g., a file that legitimately hard-codes a surface path is flagged) | The predicates include skip conditions (e.g., `if (!src.includes("readFileSync(0"))` for `protocol-adapter-i/o`). The `fix_suggestion` field is the agent's escape hatch. |
+| The tool imports from `core/surfaces.js` indirectly (via `resolveRoot`); if the import fails, the tool handler crashes | The handler is async; an import error becomes a JSON error in the response (the MCP wire layer catches thrown errors). The 4 tests cover the happy path; the failure path is tested by the MCP server's error handling. |
+| The tool's `resolveRoot()` returns a different path in test vs production | The test creates a temp dir and overrides `GATE_ROOT` (or the equivalent env var). Verified by reading the existing test pattern in `gate-override.test.js`. |
+| The `manifest-registered` predicate's tool-name derivation (`basename(featurePath, "-tool.js").replace(/-/g, "_")`) doesn't match the actual tool name (e.g., `gate-check-recurrence-tool.js` → `gate_check_recurrence`) | Verified by reading 5 existing tool filenames: `gate-tool.js` → `gate_check` ✓, `gate-override-tool.js` → `gate_override` ✓, `gate-check-recurrence-tool.js` → `gate_check_recurrence` ✓. The derivation is correct. |
+
+## Security Considerations
+
+- The tool is read-only. No file writes. No network access. No new attack surface.
+- The tool's `feature_path` is resolved relative to the project root. `resolveFeaturePath()` enforces: (a) relative-only paths (absolute paths rejected), (b) resolved path stays under project root, (c) path exists, (d) path is a file (not a directory). Path traversal (`../../../etc/passwd`) throws.
+- The tool's predicates do not execute untrusted code. They read files and pattern-match.
+- The tool's response is JSON-serializable; no code execution on the client side.
+
+## Next Steps
+
+After Phase 6 ships:
+- The audit surface is live. Agents can call `check_runtime_agnostic` when adding new features.
+- Phase 7: rule entry + AGENTS.md + `loop_describe` hint. The rule is now discoverable + codified + documented.

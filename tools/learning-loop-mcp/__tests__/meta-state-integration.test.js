@@ -191,7 +191,7 @@ describe("meta-state end-to-end lifecycle", () => {
       severity: "warning",
       affected_system: "vnstock_vendor",
       description: "Agent checked budget before vendor-api curl. Budget 1/1, fingerprint matches, proceeding.",
-      evidence_code_ref: "records/observations/observation-vnstock-resource-budget.yaml",
+      evidence_code_ref: "runtime-state.jsonl",
     });
     const reportText = JSON.parse(reportResult.content[0].text);
 

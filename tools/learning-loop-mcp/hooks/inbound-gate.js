@@ -16,7 +16,7 @@ import {
   exitCode,
 } from "./lib/protocol-adapter.js";
 import { findProjectRoot } from "#mcp/core/gate-logic.js";
-import { readObservations } from "#mcp/core/file-readers.js";
+import { readRuntimeObservations } from "#mcp/core/file-readers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,7 +43,7 @@ function detectStateChange(prompt) {
 }
 
 function readActiveObservations(root) {
-  const all = readObservations(root);
+  const all = readRuntimeObservations(root);
   return all.filter((obs) => obs.status === "active");
 }
 

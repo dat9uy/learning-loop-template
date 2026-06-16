@@ -56,6 +56,48 @@ await test("matchConstraintPattern: bash -c with npm install inside → package-
   assert.strictEqual(result, "package-manager");
 });
 
+// ─── node -e body cases (must NOT match) ───
+
+await test("matchConstraintPattern: node -e body with docker command → null", () => {
+  const result = matchConstraintPattern(`node -e "console.log('docker run ubuntu')"`);
+  assert.strictEqual(result, null);
+});
+
+await test("matchConstraintPattern: node -e body with sudo command → null", () => {
+  const result = matchConstraintPattern(`node -e "console.log('sudo apt update')"`);
+  assert.strictEqual(result, null);
+});
+
+await test("matchConstraintPattern: python -c with import docker inside → docker (regression guard)", () => {
+  const result = matchConstraintPattern('python -c "import docker"');
+  assert.strictEqual(result, "docker");
+});
+
+await test("matchConstraintPattern: bash -c with docker run inside → docker (regression guard)", () => {
+  const result = matchConstraintPattern('bash -c "docker run ubuntu"');
+  assert.strictEqual(result, "docker");
+});
+
+await test("matchConstraintPattern: node -e body with package-manager command → null (accepted bypass, see meta-260615T1920Z-the-new-stripnodeevalbody-function-in-tools-learning-loop-mc)", () => {
+  const result = matchConstraintPattern(`node -e "require('child_process').exec('npm install')"`);
+  assert.strictEqual(result, null);
+});
+
+// ─── node -e body escaped-quote limitation (locks current regex behavior) ───
+
+await test("matchConstraintPattern: node -e body with escaped inner quote → regex stops at first \\\" (known limitation, see core/gate-logic.js#stripNodeEvalBody JSDoc)", () => {
+  // The JSDoc at core/gate-logic.js#stripNodeEvalBody discloses: the regex
+  // does not handle escaped quotes, so `node -e "console.log(\"sudo apt update\")"`
+  // stops matching the body at the inner `"`, leaving `sudo apt update`
+  // visible to the constraint patterns. This test locks in the current
+  // (limited) behavior so a future "fix" can't silently change it. If the
+  // regex is upgraded to a quote-aware state machine (e.g., the one in
+  // splitSegments), this test should be updated to assert the corrected
+  // (null) result — and the JSDoc note removed.
+  const result = matchConstraintPattern('node -e "console.log(\\"sudo apt update\\")"');
+  assert.strictEqual(result, "sudo");
+});
+
 // ─── -t collision: skipNext consumed by user@host, string still checked ───
 
 await test("matchConstraintPattern: ssh -t user@host with npm install inside → package-manager", () => {

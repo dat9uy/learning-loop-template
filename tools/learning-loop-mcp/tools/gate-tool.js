@@ -5,7 +5,7 @@ import {
   makeGateDecision,
   evaluateWritePath,
 } from "#mcp/core/gate-logic.js";
-import { readObservations } from "#mcp/core/file-readers.js";
+import { readRuntimeObservations } from "#mcp/core/file-readers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
@@ -21,7 +21,7 @@ export const gateCheckTool = {
   handler: async ({ command, file_path }) => {
     const root = resolveRoot();
 
-    const observations = readObservations(root);
+    const observations = readRuntimeObservations(root);
 
     let constraintDecision = null;
     let constraintMatch = null;

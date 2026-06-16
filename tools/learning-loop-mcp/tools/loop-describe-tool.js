@@ -6,7 +6,7 @@ import { readColdTierCache, writeColdTierCache } from "#mcp/core/loop-introspect
 
 export const loopDescribeTool = {
   name: "loop_describe",
-  description: "Return the loop's current operational surface. **Recommended: call at session start to discover what the loop offers.** Supports tiered reads (hot/warm/cold/summary) to control context bloat. Use when you need to know what the loop offers, what rules are enforced, or what findings are active. The warm tier's `discoverability_hints` block surfaces 8 short reminders of the loop's rules. Not for mutating state (use the `meta_state_*` or `record_*` tools instead).",
+  description: "Return the loop's current operational surface. **Recommended: call at session start to discover what the loop offers.** Supports tiered reads (hot/warm/cold/summary) to control context bloat. Use when you need to know what the loop offers, what rules are enforced, or what findings are active. The warm tier's `discoverability_hints` block surfaces short reminders of the loop's rules. Not for mutating state (use the `meta_state_*` or `record_*` tools instead).",
   schema: {
     tier: z.enum(["hot", "warm", "cold", "summary"]).optional()
       .describe("Read tier: hot=active rules only (~5KB), warm=active surface (default, 10-25KB), cold=full history (25-100KB), summary=counts only (<1KB)"),

@@ -12,12 +12,7 @@ function countBrokenRefs(entries) {
   const entryIds = new Set(entries.map((e) => e.id));
   return entries
     .filter((e) => e.entry_kind === "loop-design")
-    .flatMap((e) => {
-      // Tolerate the wire-format wrap {item: [...]} that meta_state_patch
-      // can produce on top-level arrays under passthrough ZodObject fields.
-      const v = e.proposed_design_for;
-      return Array.isArray(v) ? v : (v && Array.isArray(v.item) ? v.item : []);
-    })
+    .flatMap((e) => e.proposed_design_for ?? [])
     .filter((ref) => !entryIds.has(ref)).length;
 }
 
@@ -39,9 +34,7 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
   // instruction-layer may have valid refs backfilled by design adoption (plan
   // 260609-adopt-instruction-layer); assert no broken refs remain rather than
   // asserting emptiness
-  const instructionRefs = Array.isArray(instructionLayer.proposed_design_for)
-    ? instructionLayer.proposed_design_for
-    : (instructionLayer.proposed_design_for?.item ?? []);
+  const instructionRefs = instructionLayer.proposed_design_for ?? [];
   const brokenInstruction = instructionRefs.filter(
     (ref) => !after.some((e) => e.id === ref)
   );
@@ -49,9 +42,7 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
     "instruction-layer should have no broken refs after fix");
   // cross-reference-fields may have valid refs backfilled by design adoption;
   // assert no broken refs remain rather than asserting emptiness
-  const crossRefRefs = Array.isArray(crossRefFields.proposed_design_for)
-    ? crossRefFields.proposed_design_for
-    : (crossRefFields.proposed_design_for?.item ?? []);
+  const crossRefRefs = crossRefFields.proposed_design_for ?? [];
   const brokenCrossRef = crossRefRefs.filter(
     (ref) => !after.some((e) => e.id === ref)
   );
@@ -97,9 +88,7 @@ test("Phase 1: fix-loop-design-refs change-log is CAS-consistent (C2)", () => {
   for (const ref of removed) {
     const stillPresent = entries.some((e) => {
       if (e.entry_kind !== "loop-design") return false;
-      const v = e.proposed_design_for;
-      const refs = Array.isArray(v) ? v : (v && Array.isArray(v.item) ? v.item : []);
-      return refs.includes(ref);
+      return (e.proposed_design_for ?? []).includes(ref);
     });
     assert.strictEqual(
       stillPresent,

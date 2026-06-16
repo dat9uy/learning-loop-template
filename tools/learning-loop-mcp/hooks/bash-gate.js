@@ -14,6 +14,7 @@ import {
   normalizeToolName,
   extractCommand,
   formatOutput,
+  formatHookDecision,
   exitCode,
 } from "./lib/protocol-adapter.js";
 import {
@@ -23,8 +24,9 @@ import {
   loadPromotedRules,
   applyPromotedRules,
 } from "#mcp/core/gate-logic.js";
-import { readObservations } from "#mcp/core/file-readers.js";
+import { readRuntimeObservations } from "#mcp/core/file-readers.js";
 import { checkObservationStaleness } from "#mcp/core/inbound-state.js";
+import { appendDecisionLog } from "#mcp/core/gate-decision-log.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +42,8 @@ const PATH_WRITE_PATTERNS = [
   /\btee\b.*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
+  />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
+  /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
 ];
 
 function commandWritesToRecords(command) {
@@ -64,7 +68,6 @@ function main() {
   }
 
   const root = resolveRoot();
-  const obsDir = join(root, "records", "observations");
 
   let constraintResult = null;
   let pathResult = null;
@@ -72,7 +75,7 @@ function main() {
   // --- Constraint pattern check ---
   const constraintMatch = matchConstraintPattern(command);
   if (constraintMatch) {
-    const observations = readObservations(root);
+    const observations = readRuntimeObservations(root);
     const observationStatus = checkObservationExists(constraintMatch, observations);
 
     constraintResult = makeGateDecision(constraintMatch, observationStatus);
@@ -102,9 +105,17 @@ function main() {
 
   // --- Promoted rules check (meta-state as rule registry) ---
   const promotedRules = loadPromotedRules(root);
-  const promotedCheck = applyPromotedRules(command, null, promotedRules);
+  const promotedCheck = applyPromotedRules(command, null, promotedRules, root);
   if (promotedCheck.decision === "escalate") {
-    console.log(formatOutput(promotedCheck));
+    appendDecisionLog(root, {
+      command_prefix: command,
+      rule_id: promotedCheck.rule_id ?? null,
+      decision: promotedCheck.decision,
+      reason: promotedCheck.reason,
+      matched_pattern: promotedCheck.pattern_type ?? null,
+      skipped_via_override: false,
+    });
+    console.log(formatHookDecision(promotedCheck, { channel: "hookSpecificOutput" }));
     process.exit(exitCode(promotedCheck));
   }
 
@@ -120,7 +131,16 @@ function main() {
     process.exit(0);
   }
 
-  console.log(formatOutput(decision));
+  appendDecisionLog(root, {
+    command_prefix: command,
+    rule_id: decision.rule_id ?? decision.meta_state_id ?? null,
+    decision: decision.decision,
+    reason: decision.reason,
+    matched_pattern: decision.pattern_type ?? decision.constraint_type ?? null,
+    skipped_via_override: false,
+  });
+
+  console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
   process.exit(exitCode(decision));
 }
 

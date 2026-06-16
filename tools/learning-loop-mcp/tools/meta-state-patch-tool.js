@@ -1,16 +1,20 @@
 import { z } from "zod";
-import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
+import { readRegistry, updateEntry, buildPatchSchemaFor, PATCH_KINDS } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 export const IMMUTABLE_PATCH_FIELDS = new Set([
   "id",
-  "entry_kind",
+  // entry_kind is NOT here — the per-kind schemas use z.literal("finding") etc.
+  // which already prevents changing the kind. Adding it to the deny-list would
+  // reject every patch because Zod's .default() on the literal adds entry_kind
+  // to the parsed result even when the user didn't send it.
   "version",
   "created_at",
   "created_by",
   "code_fingerprint",
-  "promoted_to_rule",
+  // promoted_to_rule removed from deny-list — the field is no longer written
+  // on findings after the Phase 2 migration to first-class rule entries.
   "consolidated_into",
   "acked_at",
   "resolved_at",
@@ -25,12 +29,16 @@ export const metaStatePatchTool = {
     id: z.string().describe("Exact entry id to patch"),
     entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
       .describe("Entry kind branch — used to validate patch shape. `change-log` is handler-level immutable; the schema allows it so the immutability branch is reachable."),
-    patch: z.object({}).passthrough()
-      .describe("Partial fields to update. Nest arrays/booleans in this object. Use core/meta-state.js#metaStateEntryPatchSchema's passthrough semantics: any subset of union fields is valid. Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler."),
+    patch: z.union(PATCH_KINDS.map((k) => buildPatchSchemaFor(k)))
+      .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically."),
     _expected_version: z.number().optional()
       .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
+    mechanism_check: z.boolean().optional()
+      .describe("Script-caller passthrough: opt-in flag for fingerprint tracking on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; ignored for other kinds."),
+    code_fingerprint: z.string().optional()
+      .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_fingerprint` instead. Ignored for other kinds."),
   },
-  handler: async ({ id, entry_kind, patch, _expected_version }) => {
+  handler: async ({ id, entry_kind, patch, _expected_version, mechanism_check, code_fingerprint }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -59,7 +67,20 @@ export const metaStatePatchTool = {
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
 
-    const deniedFields = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+    // Script-caller passthrough: allow tool-level mechanism_check and
+    // code_fingerprint for finding entries and fold them into the patch object.
+    // code_fingerprint remains immutable and is rejected by the deny-list below.
+    let effectivePatch = patch;
+    if (entry_kind === "finding") {
+      const forwarded = {};
+      if (mechanism_check !== undefined) forwarded.mechanism_check = mechanism_check;
+      if (code_fingerprint !== undefined) forwarded.code_fingerprint = code_fingerprint;
+      if (Object.keys(forwarded).length > 0) {
+        effectivePatch = { ...patch, ...forwarded };
+      }
+    }
+
+    const deniedFields = Object.keys(effectivePatch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
     if (deniedFields.length > 0) {
       const result = {
         patched: false,
@@ -76,7 +97,7 @@ export const metaStatePatchTool = {
     const effectiveExpectedVersion = _expected_version !== undefined
       ? _expected_version
       : currentVersion;
-    const patchWithCAS = { ...patch, _expected_version: effectiveExpectedVersion };
+    const patchWithCAS = { ...effectivePatch, _expected_version: effectiveExpectedVersion };
 
     const updateResult = await updateEntry(root, id, patchWithCAS);
 
@@ -121,7 +142,7 @@ export const metaStatePatchTool = {
       tool: "meta_state_patch",
       id,
       entry_kind: updated.entry_kind,
-      fields_patched: Object.keys(patch),
+      fields_patched: Object.keys(effectivePatch),
       version: updated.version,
     });
 

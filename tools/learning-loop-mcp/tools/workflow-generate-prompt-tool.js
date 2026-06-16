@@ -58,7 +58,7 @@ function substitute(text, ctx) {
 function deriveFields(promptText, blueprint, ctx) {
   const constraints = promptText.split("\n").filter((l) => l.trim().startsWith("- Do not") || l.trim().startsWith("- Do not proceed")).map((l) => l.trim().replace(/^-\s*/, ""));
   const requiredRecords = [];
-  if (blueprint === "state-gated") requiredRecords.push(`records/observations/${ctx?.system || "default"}-resource-budget.yaml`);
+  if (blueprint === "state-gated") requiredRecords.push("runtime-state.jsonl (budget-state entries)");
   if (blueprint === "product-build") requiredRecords.push("records/<surface>/decisions/...");
   if (blueprint === "runtime-validation") requiredRecords.push("records/<surface>/experiments/...");
   const suggestedTools = {

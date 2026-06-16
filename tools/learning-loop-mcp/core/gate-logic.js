@@ -3,14 +3,24 @@ const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
 /**
  * Pure gate decision logic — no I/O, fully testable.
  * Single source of truth for constraint patterns and gate decisions.
+ *
+ * Strip functions (`splitSegments`, `stripMessageFlags`, `stripNodeEvalBody`)
+ * form a layered pipeline: a command is split into segments, then each
+ * segment is stripped of message-flag bodies and (for `node -e` wrappers) the
+ * eval body. The regex matching constraint patterns sees only the command verb.
+ * The `node -e` strip is asymmetric by user-stated design (see
+ * `stripNodeEvalBody` JSDoc and finding
+ * `meta-260615T1915Z-node-e-strip-bypass-risk`).
  */
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
-import { readRegistry } from "./meta-state.js";
+import { SURFACES } from "./surfaces.js";
+import { readRegistry, metaStateRuleEntrySchema } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
+import { readGateOverride } from "./gate-override.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "..", "core", "patterns.json"), "utf8"));
@@ -19,8 +29,10 @@ const CONSTRAINT_PATTERNS = Object.fromEntries(
   Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
 );
 
+// `records-evidence` was the only observation-based unlock for `records/evidence/**`.
+// It was migrated to meta-state (Phase A) and the unlock removed in plan 260614-1856.
+// Direct writes to `records/**` are now blocked unconditionally by write-gate.js.
 const WRITE_PATH_PATTERNS = {
-  'records-evidence': ['records/evidence/**', 'records/*/evidence/**'],
   'records-index': ['records/index/**', 'records/*/index/**'],
   'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };
@@ -48,7 +60,6 @@ export function globMatch(pattern, filePath) {
 function pathMatchesObservation(observation, filePath) {
   if (observation.constraint_type !== 'write-path') return false;
   if (observation.status !== 'active') return false;
-  if (globMatch('records/observations/**', filePath)) return false;
   const patterns = WRITE_PATH_PATTERNS[observation.constraint];
   if (!patterns) return false;
   return patterns.some((p) => globMatch(p, filePath));
@@ -185,6 +196,50 @@ export function stripMessageFlags(segment) {
 }
 
 /**
+ * Strip the body of a `node -e|--eval|-p|--print` wrapper.
+ *
+ * The body of a `node -e "..."` command is a JavaScript string literal in
+ * shell. The regex matching constraint patterns (e.g., the G8 promoted rule
+ * `rule-no-new-artifact-types`) should not see trigger phrases inside that
+ * body, just like `stripMessageFlags` keeps `git commit -m "..."` message
+ * bodies out of the regex's view.
+ *
+ * Asymmetric by user-stated design: this strips only `node` wrappers.
+ * `python -c`, `bash -c`, `ruby -e`, `perl -e`, `sh -c` are NOT stripped
+ * because their bodies are real commands (the existing 3 tests at
+ * `__tests__/gate-logic-quoted-strings.test.js` lock this asymmetry).
+ *
+ * Bypass risk: `node -e "require('child_process').exec('npm install')"` no
+ * longer matches the `package-manager` constraint (the command is inside the
+ * blanked body). This is an accepted bypass, not a fix; the user-stated design
+ * from plans/reports/brainstorm-260615-1300-bash-gate-debate-friendly-and-string-literal-fix.md#plan-2
+ * chose asymmetry (only node, not python-c/bash-c). Catch-net: the
+ * `gate_check_recurrence` MCP tool shipped in plan
+ * 260615-1530-bash-gate-debate-stderr-override-recurrence auto-files a finding
+ * via `meta_state_report` if `node -e "..."` matches a constraint N>=3 times in
+ * M<=10min.
+ *
+ * @param {string} segment - A single command segment (output of `splitSegments`).
+ * @returns {string} The segment with the body of any `node -e|--eval|-p|--print` wrapper blanked.
+ */
+export function stripNodeEvalBody(segment) {
+  if (typeof segment !== "string" || !segment) return segment;
+  // Match: (node|nodejs) ( -e | --eval | -p | --print ) "..." or '...'
+  // Replace the quoted body with an empty placeholder. E.g.:
+  //   node -e "foo bar"   ->   node -e ""
+  //   node --eval 'baz'   ->   node --eval ''
+  //   node -e "a" -e "b"  ->   node -e "" -e ""  (g flag handles multiple)
+  // Known limitation: escaped quotes inside the eval body are not recognised,
+  // e.g. `node -e "console.log(\"docker run\")"` stops at the first `"`.
+  // This is rare in agent flows; if it recurs, extend the regex or replace it
+  // with the quote-aware state machine from `splitSegments`.
+  return segment.replace(
+    /\b(node|nodejs)\s+(-e|--eval|-p|--print)\s+(["'])(?:(?!\3).)*\3/g,
+    (match, _node, _flag, quote) => match.replace(/(["'])(?:(?!\1).)*\1/, `${quote}${quote}`)
+  );
+}
+
+/**
  * Match a command against constraint patterns.
  * Splits on ;, &, | and checks each segment independently.
  * Strips message flags before matching to avoid false positives.
@@ -195,8 +250,9 @@ export function matchConstraintPattern(command) {
 
   for (const segment of splitSegments(command)) {
     const stripped = stripMessageFlags(segment);
+    const nodeStripped = stripNodeEvalBody(stripped);
     for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(stripped)) return type;
+      if (pattern.test(nodeStripped)) return type;
     }
   }
   return null;
@@ -362,10 +418,11 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
   }
   const normalized = normalize(filePath.replace(/^\.\//, ""));
 
+  // records/observations/** is blocked unconditionally (Phase A migration)
   if (globMatch("records/observations/**", normalized)) {
     return {
       decision: "block",
-      reason: "records/observations/** is blocked unconditionally",
+      reason: "records/observations/** is blocked unconditionally (observations migrated to runtime-state.jsonl)",
       hard_block: true,
     };
   }
@@ -404,7 +461,14 @@ export function evaluateWritePath(filePath, observations, checkStalenessFn) {
 // ─── Promoted Rules (meta-state as rule registry) ───
 
 /** Whitelist for glob patterns to prevent path traversal. */
-const GLOB_SCOPE_WHITELIST = ["product/", "docs/", "plans/", "tools/", ".factory/", "meta-state.jsonl"];
+const GLOB_SCOPE_WHITELIST = [
+  "product/",
+  "docs/",
+  "plans/",
+  "tools/",
+  "meta-state.jsonl",
+  ...SURFACES.map((s) => `${s}/`),
+];
 
 /**
  * Simple regex safety check to prevent ReDoS.
@@ -551,57 +615,37 @@ export function loadPromotedRules(root) {
     return [];
   }
 
-  // Phase 1 transitional filter: BOTH entry_kind="rule" (new first-class) AND
-  // legacy findings with promoted_to_rule are accepted. Phase 2's migration
-  // moves all promoted_to_rule findings into entry_kind="rule" entries;
-  // the legacy branch is removed after the migration is verified.
+  // Only first-class entry_kind="rule" entries are accepted.
+  // Legacy finding entries with promoted_to_rule were removed after the
+  // Phase 2 migration (all promoted rules are now standalone rule entries).
   let rules = entries.filter((e) => {
-    // New first-class rule entries
-    if (e.entry_kind === "rule" && e.status === "active") return true;
-    // Legacy finding entries with promoted_to_rule (still valid until Phase 2)
-    if (
-      (e.status === "active" || e.status === "resolved") &&
-      e.category === "loop-anti-pattern" &&
-      e.promoted_to_rule?.enforcement === "gate"
-    ) return true;
-    return false;
+    return e.entry_kind === "rule" && e.status === "active";
   });
 
-  // Synthesis layer: normalize rule entries to the legacy shape so downstream
-  // call sites (applyPromotedRules, checkResolutionEvidence, listPromotedRules)
-  // continue to work without changes. For first-class rule entries, synthesize
-  // promoted_to_rule from the top-level fields. For legacy findings, preserve
-  // the existing shape.
-  rules = rules.map((r) => {
-    if (r.entry_kind === "rule") {
-      return {
-        ...r,
-        category: "loop-anti-pattern",  // synthesized for applyPromotedRules compat
-        promoted_to_rule: {
-          rule_id: r.id,
-          enforcement: r.enforcement,
-          pattern_type: r.pattern_type,
-          pattern: r.pattern,
-          scope_predicate: r.scope_predicate,
-          applies_to_resolution: r.applies_to_resolution,
-          promoted_at: r.promoted_at,
-          promoted_by: r.promoted_by,
-          refined_at: r.refined_at,
-          refined_by: r.refined_by,
-          refinement_reason: r.refinement_reason,
-        },
-      };
+  // Schema validation: a malformed rule entry (typo, missing field,
+  // invalid pattern_type) would crash applyPromotedRules. Validate
+  // each entry and warn-and-skip on invalid. This closes the gap that
+  // direct file appends (bypassing writeEntry's safeParse) would otherwise
+  // create — see code-reviewer-260615-2255-... finding F-3.
+  rules = rules.filter((r) => {
+    const validation = metaStateRuleEntrySchema.safeParse(r);
+    if (!validation.success) {
+      console.warn(
+        `Rule ${r.id ?? "<unknown>"}: schema validation failed, skipping. ` +
+          `Errors: ${validation.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+      );
+      return false;
     }
-    return r;
+    return true;
   });
 
   rules = rules.filter((r) => {
-    const predicate = r.promoted_to_rule?.scope_predicate ?? r.scope_predicate;
+    const predicate = r.scope_predicate;
     if (!predicate || predicate === "none") return true;
     if (predicate === "project_has_learning_loop_mcp") {
       return projectHasLearningLoopMcp(root);
     }
-    console.warn(`Rule ${r.promoted_to_rule?.rule_id ?? r.id}: unknown scope_predicate "${predicate}"`);
+    console.warn(`Rule ${r.id}: unknown scope_predicate "${predicate}"`);
     return true;
   });
 
@@ -635,14 +679,14 @@ export function stripEvidenceAnchor(codeRef) {
   if (typeof codeRef !== "string") return codeRef;
   // Strip :line suffix (digits only — keeps Windows drive letters safe)
   let stripped = codeRef.replace(/:\d+$/, "");
-  // Strip #anchor suffix (identifier chars: word, dot, dollar, dash, underscore)
-  stripped = stripped.replace(/#[\w$.-]+$/, "");
+  // Strip #anchor suffix (identifier chars: word, dot, dollar, dash, underscore, space)
+  stripped = stripped.replace(/#[\w$.\s-]+$/, "");
   return stripped;
 }
 
 // fallow-ignore-next-line complexity
 export function checkResolutionEvidence(rule, root) {
-  const rule_id = rule.promoted_to_rule?.rule_id;
+  const rule_id = rule.id;
 
   // Branch 1: global orphan-evidence rule
   if (rule_id === "rule-no-orphaned-evidence") {
@@ -676,13 +720,13 @@ export function checkResolutionEvidence(rule, root) {
       }
     }
     if (orphans.length > 0) {
-      return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.promoted_to_rule?.applies_to_resolution, orphans };
+      return { satisfied: false, rule_id: "rule-no-orphaned-evidence", blocking_id: orphans[0]?.id, applies_to_resolution: rule.applies_to_resolution, orphans };
     }
     return { satisfied: true, rule_id: "rule-no-orphaned-evidence" };
   }
 
   // Branch 2: existing per-finding resolution-evidence-required rules
-  const { pattern, applies_to_resolution } = rule.promoted_to_rule;
+  const { pattern, applies_to_resolution } = rule;
   const entries = readRegistry(root);
   const blocking = entries.find((e) =>
     e.entry_kind === "finding"
@@ -702,18 +746,30 @@ export function checkResolutionEvidence(rule, root) {
 }
 
 // fallow-ignore-next-line complexity
-export function applyPromotedRules(command, filePath, rules) {
+export function applyPromotedRules(command, filePath, rules, root = findProjectRoot()) {
+  const override = readGateOverride(root);
+  const overrideSet = override ? new Set(override.rule_ids) : new Set();
+
   for (const rule of rules) {
     // Defense-in-depth: skip rules that should not have been loaded.
-    // The status check mirrors loadPromotedRules: a finding with
-    // promoted_to_rule is the source of a live rule regardless of whether
-    // the finding itself is 'active' or 'resolved' (resolved by promotion).
-    // 'disabled' remains the explicit kill switch.
-    if (rule.status !== "active" && rule.status !== "resolved") continue;
-    if (rule.category !== "loop-anti-pattern") continue;
-    if (rule.promoted_to_rule?.enforcement !== "gate") continue;
+    // loadPromotedRules already filters to entry_kind="rule" + status="active",
+    // but we double-check status here for safety.
+    if (rule.status !== "active") continue;
 
-    const { pattern_type, pattern, rule_id } = rule.promoted_to_rule;
+    if (rule.pattern_type === "consult-checklist") {
+      // Design-time rule; no command/path matching. The audit lives in the
+      // check_runtime_agnostic MCP tool and the runtime-agnostic regression test.
+      // The rule loads; the gate ignores it.
+      continue;
+    }
+
+    if (rule.enforcement !== "gate") continue;
+    if (overrideSet.has(rule.id)) {
+      console.warn(`Rule ${rule.id}: skipped via gate override (${override.operator_note ?? "no note"})`);
+      continue;
+    }
+
+    const { pattern_type, pattern, id: rule_id } = rule;
     let matched = false;
 
     try {
@@ -731,7 +787,8 @@ export function applyPromotedRules(command, filePath, rules) {
         }
         for (const segment of splitSegments(command)) {
           const stripped = stripMessageFlags(segment);
-          if (new RegExp(pattern).test(stripped)) {
+          const nodeStripped = stripNodeEvalBody(stripped);
+          if (new RegExp(pattern).test(nodeStripped)) {
             matched = true;
             break;
           }

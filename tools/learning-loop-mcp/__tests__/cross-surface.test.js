@@ -36,6 +36,15 @@ function runHook(hookPath, input, envOverrides = {}) {
   };
 }
 
+function getBashDecision(output) {
+  if (!output?.hookSpecificOutput?.additionalContext) return null;
+  try {
+    return JSON.parse(output.hookSpecificOutput.additionalContext);
+  } catch {
+    return null;
+  }
+}
+
 // ─── Bash/Execute Gate Cross-Surface Tests ───
 
 const bashTestCases = [
@@ -77,8 +86,10 @@ for (const tc of bashTestCases) {
     );
 
     if (tc.expectedDecision) {
-      assert.strictEqual(claudeResult.output?.decision, tc.expectedDecision);
-      assert.strictEqual(droidResult.output?.decision, tc.expectedDecision);
+      const claudeDecision = getBashDecision(claudeResult.output);
+      const droidDecision = getBashDecision(droidResult.output);
+      assert.strictEqual(claudeDecision?.decision, tc.expectedDecision);
+      assert.strictEqual(droidDecision?.decision, tc.expectedDecision);
     }
   });
 }

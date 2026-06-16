@@ -40,14 +40,27 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 ### Gate Descriptions
 
-- **Bash/Execute gate** — blocks commands matching constraint patterns (docker, sudo, package-manager, vendor-api, side-effect-import) without active observations, and blocks all direct writes to `records/**` via redirects/heredocs/tee.
-- **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files. (The `product/**` and `records/**` allowances are substrate carry-overs from the legacy product-surface era; the meta-surface does not need them.)
+- **Bash/Execute gate** — blocks commands matching constraint patterns (docker, sudo, package-manager, vendor-api, side-effect-import) without active runtime-state entries, and blocks all direct writes to `records/**` and `runtime-state.jsonl` via redirects/heredocs/tee.
+- **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, `runtime-state.jsonl`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files. (The `product/**` and `records/**` allowances are substrate carry-overs from the legacy product-surface era; the meta-surface does not need them.)
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
 - **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_fingerprint` to unblock.
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
 - **Consult-gate `rule-cold-session-test-must-pass-before-resolution`** — gates `meta_state_resolve` on the cold-session discoverability test passing. First instance of `pattern_type: resolution-evidence-required`.
 - **Consult-gate `rule-project-skill-boundary`** — blocks cross-project `ck:use-mcp` / `ck:find-skills` skill invocations in projects that already have a local learning-loop-mcp server (glob `.factory/skills/{use-mcp,find-skills}/**`, scope predicate `project_has_learning_loop_mcp`).
-- **MCP server** (`tools/learning-loop-mcp/server.js`) — 56 tools per `agent-manifest.json` (verified 2026-06-12). Grouped in `tools/learning-loop-mcp/agent-manifest.json`. Of these, ~36 are bound to the meta-surface; the remaining ~20 are unbound (operate on product-surface shapes that are being re-debated) or dropped.
+- **MCP server** (`tools/learning-loop-mcp/server.js`) — 36 tools per `agent-manifest.json` (verified 2026-06-15). Grouped in `tools/learning-loop-mcp/agent-manifest.json`. Of these, ~21 are bound to the meta-surface; the remaining ~15 are unbound (operate on product-surface shapes that are being re-debated) or dropped.
+
+### Runtime-Agnostic Pattern (rule-runtime-agnostic-features)
+
+Every feature must work identically on Claude Code and Droid CLI (and future runtimes). The shim-not-fork pattern is the canonical way to achieve this:
+
+- **Core logic** lives in `tools/learning-loop-mcp/{core,hooks,tools}/` (not under `.claude/` or `.factory/`).
+- **Surface shims** (`.claude/coordination/hooks/*.cjs` and `.factory/coordination/hooks/*.cjs`) are thin wrappers; the universal hook does the real work.
+- **Hook I/O** goes through `tools/learning-loop-mcp/hooks/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
+- **MCP tools** are registered in `tools/learning-loop-mcp/agent-manifest.json`.
+- **Cross-surface iteration** uses the `core/surfaces.js` helper (`SURFACES`, `getAllCoordinationPaths`, `writeToAllSurfaces`, `readFromAllSurfaces`, `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`). Do not hard-code `.claude/` or `.factory/` paths.
+- **New runtimes** append to `SURFACES` in `core/surfaces.js` (one line, no other code changes).
+
+The rule is codified as `rule-runtime-agnostic-features` in `meta-state.jsonl`. Audit a feature with the `check_runtime_agnostic` MCP tool. The pattern is regression-tested by `tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js`.
 
 ### Inbound State Gate — Meta-State First
 
@@ -89,14 +102,14 @@ The universal hooks handle tool name differences between surfaces:
 
 ## 3. Meta-Surface Tools (the canonical MCP CRUD surface)
 
-**All meta-surface mutations go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `meta-state.jsonl` and to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
+**All meta-surface mutations go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `meta-state.jsonl`, `runtime-state.jsonl`, and to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
 
 ### Available Meta-Surface Tools
 
 | Tool | Purpose |
 |------|---------|
 | `meta_state_report` | Create a finding (ephemeral, 24h TTL) |
-| `meta_state_list` | Query the registry (filterable by `entry_kind`, `status`, `category`, etc.) |
+| `meta_state_list` | Query the registry (filterable by `entry_kind`, `status`, `category`, `session_id`, etc.) |
 | `meta_state_ack` | Promote a finding from `reported` to `active` (removes 24h TTL) |
 | `meta_state_resolve` | Mark a finding as resolved (consults active rules; may require fingerprint refresh) |
 | `meta_state_promote_rule` | Promote a finding into a `rule` entry (enforcement: gate \| agent) |

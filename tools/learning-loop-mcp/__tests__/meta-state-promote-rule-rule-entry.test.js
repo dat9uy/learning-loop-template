@@ -54,7 +54,9 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     assert.equal(ruleEntry.enforcement, "gate");
 
     const finding = entries.find((e) => e.id === reportText.id);
-    assert.equal(finding.promoted_to_rule, "rule-test-entry-kind", "finding promoted_to_rule should be string id");
+    // After Phase 2 migration, promoted_to_rule is no longer written on findings.
+    // The rule entry's origin field is the canonical inverse reference.
+    assert.equal(finding.status, "active", "finding status should be active after promotion");
   } finally {
     teardown();
   }

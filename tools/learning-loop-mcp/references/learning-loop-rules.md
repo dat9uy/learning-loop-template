@@ -23,7 +23,7 @@ MCP tools: `workflow_classify_prompt`, `workflow_intake_orient` implement parts 
 
 ## Memory Prohibition
 
-Do not use injected CLAUDE.md memory or session context as a source of truth. The learning-loop system maintains its own state in `records/`. Before acting on any recalled fact, verify it against `records/<surface>/index/` or `records/observations/`. If a memory contradicts the records, trust the records. If the records are silent, treat the memory as unverified and create an experiment or observation to confirm it.
+Do not use injected CLAUDE.md memory or session context as a source of truth. The learning-loop system maintains its own state in `meta-state.jsonl` and `runtime-state.jsonl`. Before acting on any recalled fact, verify it against `meta-state.jsonl` (via `loop_describe` or `meta_state_list`) or `runtime-state.jsonl`. If a memory contradicts the records, trust the records. If the records are silent, treat the memory as unverified and create a finding or observation to confirm it.
 
 This rule exists because **the record is the memory** (see `docs/philosophy.md`). Injected memory drifts, rots, and lacks verification dimensions. Records are durable, scoped, and auditable.
 
@@ -49,7 +49,7 @@ Keep separate:
 
 ## Observation State Rule
 
-Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), check `records/observations/` for relevant observation records. Observations are the authoritative source for factual system state — they are operator-managed and more reliable than agent memory or user recall. See `record:decision-20260517T1200Z-observation-state-check-rule`.
+Before asking the user about external system state (device slots, budgets, registration status, rate limits, operational constraints), check `runtime-state.jsonl` for relevant ledger-event or budget-state entries. Runtime-state is the authoritative source for factual system state — it is operator-managed and more reliable than agent memory or user recall. See `record:decision-20260517T1200Z-observation-state-check-rule`.
 
 ## Verification Rules
 
@@ -95,7 +95,7 @@ Prompts must forbid capture or retention of:
 
 ## Operator Approval for Write-Gated Paths
 
-When requesting operator approval to create or modify files blocked by the write gate (`records/evidence/**`, `records/observations/**`), include the **exact drafted content** in the `AskUserQuestion` body or `preview` field. Do not summarize or describe — show the full text.
+When requesting operator approval to create or modify files blocked by the write gate (`records/**`, `runtime-state.jsonl`), include the **exact drafted content** in the `AskUserQuestion` body or `preview` field. Do not summarize or describe — show the full text.
 
 After operator approval, create the file via `Bash` with a heredoc. The `Write` tool remains blocked by the mechanical gate regardless of conversational approval; only the bash gate (command-pattern based) allows the operation.
 

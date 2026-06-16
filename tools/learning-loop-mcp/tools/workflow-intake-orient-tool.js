@@ -44,12 +44,25 @@ async function listMetaTriggers(root) {
   return all;
 }
 
+/**
+ * Read active runtime-state entries from runtime-state.jsonl.
+ * Returns observation-shaped objects for compatibility.
+ */
+async function readRuntimeStateObservations(root) {
+  try {
+    const { readRuntimeObservations } = await import("#mcp/core/file-readers.js");
+    return readRuntimeObservations(root);
+  } catch {
+    return [];
+  }
+}
+
 export const workflowIntakeOrientTool = {
   name: "workflow_intake_orient",
   description:
-    "Orients the agent by reading records/*/index, records/*/evidence, records/observations, and records/*/capabilities. " +
+    "Orients the agent by reading records/*/index, records/*/evidence, records/*/capabilities, and runtime-state.jsonl. " +
     "Use AT THE START of an intake session to understand current record state. " +
-    "Returns structured overview: index entries, meta triggers, observations, capability files, and missing decisions. " +
+    "Returns structured overview: index entries, meta triggers, runtime observations, capability files, and missing decisions. " +
     "Failure mode: invalid category filter returns error.",
   schema: {
     root: z.string().optional().describe("Project root directory (default: auto-detected)"),
@@ -71,7 +84,7 @@ export const workflowIntakeOrientTool = {
     const decisionDirs = ["records/decisions", ...SURFACES.map((s) => `records/${s}/decisions`)];
 
     const indexEntries = await loadYamlDirs(root, indexDirs);
-    const observations = await loadYamlDir(root, "records/observations");
+    const observations = await readRuntimeStateObservations(root);
     const capabilities = await loadYamlDirs(root, capabilityDirs);
     const metaTriggers = await listMetaTriggers(root);
 

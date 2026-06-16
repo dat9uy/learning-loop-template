@@ -53,21 +53,38 @@ function runOutboundGate(command, envOverrides = {}) {
 
 function createTempProject() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'inbound-gate-test-'));
-  fs.mkdirSync(path.join(tmpDir, 'records', 'observations'), { recursive: true });
   fs.mkdirSync(path.join(tmpDir, '.claude', 'coordination'), { recursive: true });
   return tmpDir;
 }
 
 function writeObservation(tmpDir, data) {
-  const filename = `${data.id || data.constraint || 'test-obs'}.yaml`;
-  fs.writeFileSync(path.join(tmpDir, 'records', 'observations', filename), yaml.stringify(data));
+  // Write to runtime-state.jsonl instead of records/observations YAML
+  const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
+  const entry = {
+    kind: 'ledger-event',
+    affected_system: data.affected_system || 'vnstock',
+    id: data.id, // Allow undefined for fallback testing
+    value: 0,
+    delta: 0,
+    source_ref: 'local:meta-state:test',
+    fingerprint: 'sha256:test',
+    status: data.status || 'active',
+    metadata: data.metadata || { constraint_type: data.constraint_type, constraint: data.constraint },
+  };
+  // Only set timestamp if updated_at is provided; otherwise leave undefined for "no updated_at" tests
+  if (data.updated_at) {
+    entry.timestamp = data.updated_at;
+  }
+  const existing = fs.existsSync(runtimeStatePath)
+    ? fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim())
+    : [];
+  existing.push(JSON.stringify(entry));
+  fs.writeFileSync(runtimeStatePath, existing.join('\n') + '\n');
 }
 
 function clearObservations(tmpDir) {
-  const dir = path.join(tmpDir, 'records', 'observations');
-  for (const f of fs.readdirSync(dir)) {
-    fs.unlinkSync(path.join(dir, f));
-  }
+  const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
+  try { fs.unlinkSync(runtimeStatePath); } catch {}
 }
 
 function writeMarker(tmpDir, timestamp, snippet = 'test') {
@@ -96,7 +113,11 @@ function contextWasInjected(result) {
 
 function parseOutbound(result) {
   try {
-    return JSON.parse(result.stdout);
+    const parsed = JSON.parse(result.stdout);
+    if (parsed && parsed.hookSpecificOutput && parsed.hookSpecificOutput.additionalContext) {
+      return JSON.parse(parsed.hookSpecificOutput.additionalContext);
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -296,11 +317,11 @@ console.log('\n=== Category 5: Outbound Gate Integration ===');
 
   // Stale obs + marker + constrained cmd → escalate with inbound_gate: true
   clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out1', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-out1', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   writeMarker(tmpDir, new Date(now - 1 * 60 * 1000).toISOString(), 'I cleared the device');
-  const t1 = runOutboundGate('docker run ubuntu', env);
+  const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
   const out1 = parseOutbound(t1);
-  // Budget is exhausted in real observations, but with GATE_ROOT we use temp dir (no budgets)
+  // With runtime-state, vendor-api constraint is satisfied by vnstock entry, then staleness check escalates
   assert(t1.exitCode === 2, 'stale obs + constrained → exit 2');
   assert(out1 && out1.decision === 'escalate', 'decision is escalate');
   assert(out1 && out1.inbound_gate === true, 'inbound_gate flag is true');
@@ -308,35 +329,35 @@ console.log('\n=== Category 5: Outbound Gate Integration ===');
 
   // Fresh obs + marker + constrained cmd → ok (not stale by outbound algorithm)
   clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 1 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-out2', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 1 * 60 * 1000).toISOString() });
   writeMarker(tmpDir, new Date(now - 2 * 60 * 60 * 1000).toISOString(), 'old message');
-  const t2 = runOutboundGate('docker run ubuntu', env);
+  const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
   // Exit 0 with empty stdout means allowed (no escalation)
   assert(t2.exitCode === 0, 'fresh obs + old marker → exit 0 (no escalation)');
   clearMarker(tmpDir);
 
   // No marker + constrained cmd → ok (not stale)
   clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out3', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-out3', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   clearMarker(tmpDir);
-  const t3 = runOutboundGate('docker run ubuntu', env);
+  const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
   assert(t3.exitCode === 0, 'no marker → exit 0 (no escalation)');
 
   // Phantom escalation (F1): fresh obs + state-change msg + constrained cmd
   clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out4', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-out4', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
   // Simulate inbound gate writing marker for fresh obs
   writeMarker(tmpDir, new Date().toISOString(), 'the container is running');
-  const t4 = runOutboundGate('docker run ubuntu', env);
+  const t4 = runOutboundGate('curl https://api.vnstock.com/data', env);
   const out4 = parseOutbound(t4);
   assert(out4 && out4.inbound_gate === true, 'F1 phantom escalation: fresh obs + new marker → inbound_gate true');
   clearMarker(tmpDir);
 
   // Divergence case (F2): obs 10min old + state-change + constrained cmd
   clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out5', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
+  writeObservation(tmpDir, { id: 'obs-out5', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
   writeMarker(tmpDir, new Date().toISOString(), 'I cleared the device');
-  const t5 = runOutboundGate('docker run ubuntu', env);
+  const t5 = runOutboundGate('curl https://api.vnstock.com/data', env);
   const out5 = parseOutbound(t5);
   assert(out5 && out5.inbound_gate === true, 'F2 divergence: 10min obs + new marker → outbound escalates');
   clearMarker(tmpDir);
@@ -432,20 +453,20 @@ console.log('\n=== Category 9: Observation Schema ===');
   assert(t1.stdout.includes('obs-by-id'), 'context mentions observation id');
   clearMarker(tmpDir);
 
-  // Observation without id → context mentions constraint fallback
+  // Observation without id → context mentions mapped constraint (vendor-api/package-manager from vnstock)
   clearObservations(tmpDir);
   writeObservation(tmpDir, { constraint: 'docker-cleanup', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t2 = runInboundHook('I cleared the device', env);
   assert(contextWasInjected(t2), 'observation without id → context injected');
-  assert(t2.stdout.includes('docker-cleanup'), 'context mentions constraint fallback');
+  assert(t2.stdout.includes('vendor-api') || t2.stdout.includes('package-manager'), 'context mentions mapped constraint');
   clearMarker(tmpDir);
 
-  // Observation with neither id nor constraint → uses unknown fallback
+  // Observation with neither id nor constraint → still gets mapped constraint from affected_system
   clearObservations(tmpDir);
   writeObservation(tmpDir, { status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t3 = runInboundHook('I cleared the device', env);
   assert(contextWasInjected(t3), 'observation with neither → context injected');
-  assert(t3.stdout.includes('unknown'), 'context mentions unknown fallback');
+  assert(t3.stdout.includes('vendor-api') || t3.stdout.includes('package-manager'), 'context mentions mapped constraint');
   clearMarker(tmpDir);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });

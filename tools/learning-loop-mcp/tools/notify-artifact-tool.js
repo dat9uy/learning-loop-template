@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { readObservations } from "#mcp/core/file-readers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readLastOperatorMessage, checkObservationStaleness } from "#mcp/core/inbound-state.js";
@@ -28,21 +27,6 @@ export const workflowNotifyArtifactTool = {
       recommended_tools: recommendations,
     };
 
-    let staleEscalation = false;
-    const observations = readObservations(root);
-    const matchingObs = observations.filter(
-      (obs) =>
-        obs.status === "active" &&
-        obs.constraint_type === "write-path" &&
-        (obs.constraint === "records-evidence" || obs.constraint?.startsWith("records-evidence"))
-    );
-    if (matchingObs.length > 0) {
-      const staleness = checkObservationStaleness(matchingObs, root);
-      if (staleness.stale) {
-        staleEscalation = true;
-      }
-    }
-
     appendGateLog(root, logEntry);
 
     const reasoning = matched.length > 0
@@ -55,9 +39,6 @@ export const workflowNotifyArtifactTool = {
       recommended_next_tools: recommendations,
       reasoning,
     };
-    if (staleEscalation) {
-      result.stale_escalation = true;
-    }
 
     return {
       content: [{ type: "text", text: JSON.stringify(result) }],
