@@ -223,7 +223,7 @@ Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) shipped on branch `260616-22
 1. **Verify Plan 2 PR state.** `git log origin/main..HEAD` on branch `260616-2200-phase-c-plan-2-parity`; if not pushed, push + open PR. PR body is in `plans/260616-2200-phase-c-plan-2-parity/reports/pr-body.md`.
 2. **Author Plan 3.** `/ck:plan` for `plans/260617-XXXX-phase-c-plan-3-cut-over/`. Plan 3 author reads: this brainstorm (D-8 to D-13 remain), `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`, master tracker Phase C section, and the F4 finding (D-10).
 3. **Resolve F4 in Plan 3.** Decide whether mastra server becomes primary with hook-layer re-implementation, or peer remains. Document decision in Plan 3 PR body.
-4. **Reconcile agent-manifest.json gap (D-11).** Add or document the 4 missing tools (`meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`).
+4. **Reconcile agent-manifest.json gap (D-11 / M-C4).** Add or document the 4 missing tools (`meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`).
 
 **Out-of-band (not in this session's scope):**
 

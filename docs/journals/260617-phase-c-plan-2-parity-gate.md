@@ -42,6 +42,6 @@ The root cause was an implicit assumption: "tools that sound like checks are rea
 
 - Plan 3 (C6+C7 cut-over) is unblocked. Owner: lead. Timeline: next sprint.
 - F4 gate-bypass gap (D-10) must be resolved before any production cut-over. Owner: lead.
-- M-C4: reconcile 4 missing tools in `agent-manifest.json`. Owner: lead.
+- M-C4 / D-11: reconcile 4 missing tools in `agent-manifest.json`. Belongs to Plan 3 (C6+C7 operational flip). Owner: lead.
 
 **Status:** DONE
