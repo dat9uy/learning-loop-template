@@ -1,41 +1,42 @@
 import { MCPServer } from "@mastra/mcp";
 import { createLoopTool } from "./create-loop-tool.js";
-import {
-  metaStateProposeDesignTool,
-  metaStatePatchTool,
-  metaStateReportTool,
-} from "./schemas.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-// Phase 1 stub: 3 tools to prove the createLoopTool factory against all 4
-// wire-format regression test files. Phase 2 expands this to the full 29-tool
-// data-driven register loop.
-const tools = {
-  mastra_meta_state_propose_design: createLoopTool({
-    id: "mastra_meta_state_propose_design",
-    description: metaStateProposeDesignTool.description,
-    inputSchema: metaStateProposeDesignTool.schema,
-    execute: adaptLegacyHandler(metaStateProposeDesignTool),
-  }),
-  mastra_meta_state_patch: createLoopTool({
-    id: "mastra_meta_state_patch",
-    description: metaStatePatchTool.description,
-    inputSchema: metaStatePatchTool.schema,
-    execute: adaptLegacyHandler(metaStatePatchTool),
-  }),
-  mastra_meta_state_report: createLoopTool({
-    id: "mastra_meta_state_report",
-    description: metaStateReportTool.description,
-    inputSchema: metaStateReportTool.schema,
-    execute: adaptLegacyHandler(metaStateReportTool),
-  }),
-};
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const MANIFEST = JSON.parse(
+  readFileSync(join(__dirname, "tools", "manifest.json"), "utf8"),
+);
+
+const PREFIX = "mastra_";
+const tools = {};
+
+for (const { file, export: exportName } of MANIFEST) {
+  const mod = await import(`#mcp/${file}`);
+  const legacy = mod[exportName];
+  if (!legacy) {
+    console.error(`skipped ${file} (missing export "${exportName}")`);
+    continue;
+  }
+  const prefixed = PREFIX + legacy.name;
+  tools[prefixed] = createLoopTool({
+    id: prefixed,
+    description: legacy.description,
+    inputSchema: legacy.schema,
+    execute: adaptLegacyHandler(legacy),
+  });
+}
+
+console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} of ${MANIFEST.length} tools`);
 
 const server = new MCPServer({
   id: "learning-loop-mastra",
   name: "learning-loop-mastra",
   version: "0.1.0",
-  description: "Mastra-based peer MCP server for the learning loop (Phase C Plan 1)",
+  description:
+    "Mastra-based peer MCP server for the learning loop (Phase C Plan 1). 29 deterministic meta-surface tools (workflow tools excluded per Phase D).",
   tools,
 });
 

@@ -1,14 +1,31 @@
 [
-  {
-    "file": "./server.js",
-    "export": "mastraMetaStateProposeDesign"
-  },
-  {
-    "file": "./server.js",
-    "export": "mastraMetaStatePatch"
-  },
-  {
-    "file": "./server.js",
-    "export": "mastraMetaStateReport"
-  }
+  { "file": "tools/gate-tool.js", "export": "gateCheckTool" },
+  { "file": "tools/gate-override-tool.js", "export": "gateOverrideTool" },
+  { "file": "tools/gate-check-recurrence-tool.js", "export": "gateCheckRecurrenceTool" },
+  { "file": "tools/mark-preflight-complete-tool.js", "export": "gateMarkPreflightTool" },
+  { "file": "tools/runtime-state-record-tool.js", "export": "runtimeStateRecordTool" },
+  { "file": "tools/runtime-state-read-tool.js", "export": "runtimeStateReadTool" },
+  { "file": "tools/meta-state-report-tool.js", "export": "metaStateReportTool" },
+  { "file": "tools/meta-state-list-tool.js", "export": "metaStateListTool" },
+  { "file": "tools/meta-state-ack-tool.js", "export": "metaStateAckTool" },
+  { "file": "tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool" },
+  { "file": "tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool" },
+  { "file": "tools/loop-describe-tool.js", "export": "loopDescribeTool" },
+  { "file": "tools/loop-get-instruction-tool.js", "export": "loopGetInstructionTool" },
+  { "file": "tools/meta-state-sweep-tool.js", "export": "metaStateSweepTool" },
+  { "file": "tools/meta-state-log-change-tool.js", "export": "metaStateLogChangeTool" },
+  { "file": "tools/meta-state-patch-tool.js", "export": "metaStatePatchTool" },
+  { "file": "tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool" },
+  { "file": "tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool" },
+  { "file": "tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool" },
+  { "file": "tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool" },
+  { "file": "tools/meta-state-propose-design-tool.js", "export": "metaStateProposeDesignTool" },
+  { "file": "tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool" },
+  { "file": "tools/meta-state-batch-tool.js", "export": "metaStateBatchTool" },
+  { "file": "tools/meta-state-archive-tool.js", "export": "metaStateArchiveTool" },
+  { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool" },
+  { "file": "tools/meta-state-refresh-tools-tool.js", "export": "metaStateRefreshToolsTool" },
+  { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool" },
+  { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool" },
+  { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" }
 ]
