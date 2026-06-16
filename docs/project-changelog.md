@@ -1,5 +1,50 @@
 # Project Changelog
 
+## 2026-06-17 — Phase C Plan 2: Parity Gate (C4)
+
+**Plan:** `plans/260616-2200-phase-c-plan-2-parity/`
+**Closeout report:** `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`
+
+### Added
+
+- **Dual-server parity harness** in `tools/learning-loop-mastra/__tests__/parity-harness.js`:
+  - `schemaJsonParity` — compares legacy and Mastra `inputSchema` values via `z.toJSONSchema({ target: "draft-7" })` after stripping spec-drift metadata (`$schema`, `title`, `additionalProperties`).
+  - `toolsListParity` — compares legacy vs Mastra `tools/list` arrays for the migrated subset.
+  - `toolsCallParity` — compares `tools/call` result payloads via `JSON.parse(content[0].text)` deep equality.
+  - 6 invariant tests in `parity-harness.test.js` validate the helpers before any server spawn.
+
+- **Dual-server MCP spawn helpers** in `tools/learning-loop-mastra/__tests__/with-mcp-server.js` and `with-both-mcp-servers.js`:
+  - Shared temp `GATE_ROOT` so both `learning-loop-mcp` and `learning-loop-mastra` see the same registry.
+  - In-flight promise mutex serializes cross-server calls to avoid interleaved registry writes.
+  - Smoke tests verify both servers respond to `tools/list` and that legacy reports are visible to Mastra.
+
+- **`parity-zod-to-json-schema.test.js`** — full structural parity test replacing the shape-only `parity-schema-shape.test.js`:
+  - 29 schema parity tests (one per migrated deterministic tool).
+  - 4 read-only `tools/call` content parity tests (`meta_state_list`, `loop_describe`, `runtime_state_read`, `check_runtime_agnostic`).
+  - 3 invariant probe tests (Draft 7 serialization, `additionalProperties` normalization, `z.preprocess` wrapper handling).
+
+- **`mcp-protocol-e2e.test.cjs`** — parallel cold-session E2E for the Mastra server; mirrors the legacy E2E. Asserts initialize, 29 distinct tools, `tools/call loop_describe`, and `tools/call meta_state_list`.
+
+- **`tools-list-collision.test.cjs`** — dual-server collision test asserting 40 legacy + 29 mastra = 69 distinct tool names, manifest-matched, no overlap, and `mastra_` prefix convention.
+
+### Changed
+
+- **`tools/learning-loop-mastra/schemas.js`** — added Plan 3 cut-over header comment (M-C1).
+- **`plans/reports/productization-260612-1530-master-tracker.md`** — flipped C4 checkbox to `[x]` and updated last-updated line.
+- **Plan 2 plan/phase files** — corrected test count math: 36 parity tests, 70 mastra-specific tests total; documented `gate_check` exclusion from content parity.
+
+### Acceptance
+
+- `pnpm test`: **1059 tests / 1058 pass / 0 fail / 1 pre-existing skip**.
+- 9 legacy test namespaces pass.
+- 69 distinct tools across both servers (40 legacy + 29 mastra) with zero collisions.
+
+### Unblocks
+
+- Plan 3 (C6+C7 cut-over).
+
+---
+
 ## 2026-06-15 — Step 4: Runtime-Agnostic Rule Closure + Helper Extensions
 
 **Plan:** `plans/260615-2126-step-4-runtime-agnostic-rule-and-helper-extensions/`

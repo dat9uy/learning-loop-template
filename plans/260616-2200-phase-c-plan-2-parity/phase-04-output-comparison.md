@@ -71,7 +71,7 @@ parity-zod-to-json-schema.test.js
 2. **Run, confirm 3 RED.**
 3. **Implement the test loop.** For each of the 29 tools, run the structural comparison. Use `for (const { file, export: exportName } of MANIFEST)` (same pattern as `parity-schema-shape.test.js:32-71`).
 4. **Run, confirm 58 GREEN (or as many as pass without `tools/call`).**
-5. **Add the 5 read-only `tools/call` parity tests.** Per R-05, specify probe inputs per-tool:
+5. **Add the 4 read-only `tools/call` parity tests.** Per R-05, specify probe inputs per-tool:
 
    | Tool | Probe Args | Why |
    |------|-----------|-----|
@@ -79,19 +79,20 @@ parity-zod-to-json-schema.test.js
    | `loop_describe` | `{ tier: "summary" }` | smallest tier; no `discoverability_hints` drift |
    | `runtime_state_read` | `{ id: "mcp-tools", kind: "budget-state", compact: true }` | reads an existing entry (no creation); compact bounds payload |
    | `check_runtime_agnostic` | `{ feature_path: "tools/learning-loop-mcp/server.js" }` | required arg; real feature path |
-   | `gate_check` | `{ command: "node --version" }` | required arg; low-risk command |
 
-   Each probe: call both servers with the same args, parse `content[0].text` JSON, `assert.deepEqual`. **Why 5 not 29:** the 24 write-side tools mutate the registry; sequentializing them is straightforward but the structural schema comparison is the high-value gate. Content parity for write-side tools is a Plan 3 / Phase 7 follow-up if needed.
-6. **Run, confirm 58 + 5 = 63 tests GREEN.**
+   `gate_check` is intentionally **excluded** from the read-only subset: although it returns a gate decision, it also records the checked command as a ledger event in `runtime-state.jsonl`, so it is not read-only and can race with concurrent registry readers/writers.
+
+   Each probe: call both servers with the same args, parse `content[0].text` JSON, `assert.deepEqual`. **Why 4 not 29:** the 25 write-side tools mutate the registry; sequentializing them is straightforward but the structural schema comparison is the high-value gate. Content parity for write-side tools is a Plan 3 / Phase 7 follow-up if needed.
+6. **Run, confirm 58 + 4 = 62 tests GREEN.**
 7. **Delete `parity-schema-shape.test.js`.** Its assertions are a strict subset of the new test (the new test does shape + per-field type + JSON Schema).
-8. **Verify namespace-10 count: 55 (existing) - 29 (deleted `parity-schema-shape`) + 37 (new `parity-zod-to-json-schema.test.js` = 29 schema + 5 read-only + 3 probes) = 63 tests.** Re-run `pnpm test` to confirm the count. (Per R-02 + R-07: the prior "117" anchor was wrong; the correct count is 63 in namespace 10 after Phase 4. The 9-namespace anchor is durable; per-test counts drift.)
+8. **Verify namespace-10 count: 55 (existing) - 29 (deleted `parity-schema-shape`) + 36 (new `parity-zod-to-json-schema.test.js` = 29 schema + 4 read-only + 3 probes) = 62 tests.** Re-run `pnpm test` to confirm the count. (Per R-02 + R-07: the prior "117" anchor was wrong; the correct count is 62 in namespace 10 after Phase 4. The 9-namespace anchor is durable; per-test counts drift.)
 
 ## Success Criteria
 
 - [ ] All 29 tools' `inputSchema` JSON Schemas match (via `z.toJSONSchema()`, `target: "draft-7"`, `io: "input"` on the mastra side)
-- [ ] At least 5 read-only `tools/call` parity assertions pass (content deepEqual)
+- [ ] At least 4 read-only `tools/call` parity assertions pass (content deepEqual)
 - [ ] `parity-schema-shape.test.js` deleted
-- [ ] `pnpm test` reports 63/63 in namespace 10 (per R-07 corrected math; durable anchor is "all 9 legacy namespaces pass AND all parity tests pass against mastra")
+- [ ] `pnpm test` reports 62/62 in namespace 10 (per R-07 corrected math; durable anchor is "all 9 legacy namespaces pass AND all parity tests pass against mastra")
 - [ ] F7 + F11 marked resolved in `meta-state.jsonl` via `meta_state_log_change`
 
 ## Risk Assessment
