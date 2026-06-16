@@ -3,10 +3,10 @@
 **Type:** brainstorm (scope decision)
 **Date:** 2026-06-16
 **Slug:** phase-c-plan-scope
-**Status:** consensus — operator picked Option A 2026-06-16
+**Status:** consensus — Plan 2 closed 2026-06-17; Plan 3 is next unblocked
 **Aligned to:** `plans/reports/productization-260612-1530-master-tracker.md` Phase C
 **Predecessor:** Phase C5 coercion probe (2026-06-16) + Phase B 3-plan stack pattern (closed 2026-06-14)
-**Successor:** `/ck:plan` for Plan 1 of the stack
+**Successor:** `/ck:plan` for Plan 3 of the stack (C6+C7 operational flip)
 
 ---
 
@@ -100,7 +100,7 @@ Constraint: **C4 (byte-identical parity gate against legacy) cannot pass without
 |------|------|----------------|
 | Plan 1 | All 9 test namespaces pass against legacy server | Namespace table is the durable anchor (count is informational only) |
 | Plan 1 | Factory's 4 ported regression tests (in `tools/learning-loop-mcp/__tests__/wire-format-*`) | All 4 pass against `createLoopTool` output |
-| Plan 2 | Byte-identical parity on migrated subset | All 9 test namespaces pass against both servers; output diffs = empty |
+| Plan 2 | Byte-identical parity on migrated subset | **CLOSED 2026-06-17.** 9 legacy namespaces pass; 70 mastra tests pass (36 parity + 5 cold-session + 3 collision + 26 existing factory/wire-format); 0 failures. 4-tool read-only content parity (`meta_state_list`, `loop_describe`, `runtime_state_read`, `check_runtime_agnostic`). See closeout report. |
 | Plan 3 | Cut-over subset is functional | All 9 test namespaces pass against Mastra server; `tools/list` enumerates correctly per `agent-manifest.json` |
 
 ## Risks
@@ -176,21 +176,54 @@ Plan 1 (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`) shipped 2026
 | ~~F5~~ | HIGH | "Two-way alignment" prose correction in `phase-03`. |
 | ~~F6~~ | HIGH | 1 stacked PR (5 commits). Atomic-unit pattern. |
 
+## Plan 2 Closeout Update (2026-06-17)
+
+Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) shipped on branch `260616-2200-phase-c-plan-2-parity`. Closeout report: `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`.
+
+### Resolved in Plan 2 (D-1 to D-7)
+
+| # | Source | Resolution |
+|---|--------|------------|
+| D-1 | Master tracker C4 | Dual-server parity harness shipped; C4 checkbox flipped to `[x]`. |
+| D-2 | F7 | Full per-field structural parity via `z.toJSONSchema()` in `parity-harness.js`. |
+| D-3 | F9 | Parallel cold-session E2E test for mastra manifest (`mcp-protocol-e2e.test.cjs`). |
+| D-4 | F11 | `z.toJSONSchema({ target: "draft-7" })` used in parity harness. |
+| D-5 | M-C5 | Automated `tools/list` collision test (`tools-list-collision.test.cjs`) — 40 + 29 = 69 distinct names. |
+| D-6 | M-C1 | `tools/learning-loop-mastra/schemas.js` Plan 3 cut-over header added. |
+| D-7 | namespacing | `mastra_` prefix confirmed by collision test; re-evaluation deferred to Plan 3. |
+
+### Key correction during Plan 2
+
+`gate_check` was removed from the read-only content-parity set. Although it returns a gate decision, it also records a ledger event in `runtime-state.jsonl`, so it is not read-only and can race with concurrent registry readers/writers. Final read-only content parity is 4 tools.
+
+### Verification
+
+- `pnpm test`: **1059 tests / 1058 pass / 0 fail / 1 pre-existing skip**.
+- 9 legacy namespaces pass.
+- 70 mastra-specific tests pass.
+- 40 legacy + 29 mastra = 69 distinct tool names, zero collisions.
+
+### State after Plan 2
+
+- Master tracker Phase C: C1/C2/C3/C4/C5 `[x]`; C6/C7 `[ ]`.
+- F4 finding (`meta-260616T2123Z-...-peer-mcp-server-registers-29-determ`) was `ack`-ed to extend active lifetime; resolution remains Plan 3 (D-10).
+- Plan 3 (C6+C7 operational flip) is now unblocked.
+
 ## Next Steps
 
-**Current state (2026-06-16 22:08 Bangkok / 15:08 UTC, post closeout review):**
+**Current state (2026-06-17 01:22 Bangkok / 18:22 UTC, post Plan 2 closeout):**
 
-- **Plan 1 — CLOSED.** 5 commits shipped on branch `260616-1605-phase-c-plan-1-atomic-mastra-adoption` (`f28a05e`..`a92e9df`). Master tracker Phase C: C1/C2/C3/C5 `[x]`, C4/C6/C7 `[ ]`. Test gate: 9/9 legacy namespaces + 55/55 namespace 10 = 1043 pass / 0 fail / 1 skipped. Stacked PR not yet verified as opened (the closeout report + this brainstorm + the post-impl review are the artifacts on disk).
-- **F4 finding TTL — ACTIVE.** `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` (status=reported, `subtype: gate-bypass-gap`, 24h TTL). Expires 2026-06-17 14:23:34Z (21:23 Bangkok). ~23h 15min remaining. **Ack or close before TTL expires** — ack → `active` (Plan 3 owner can resolve); close → must cite the resolution.
-- **Plan 2 (C4 — Verification Gate) is the next unblocked plan.** 7 deferred items (D-1 to D-7) target it, including the parity harness itself (D-1), F7/F9/F11 extensions (D-2/D-3/D-4), M-C1 missed action (D-6), and the MCP-namespacing re-evaluation (D-7).
-- **Plan 3 (C6+C7 — Operational Flip) blocked by Plan 2.** 6 deferred items (D-8 to D-13). D-10 (F4 gate-bypass) needs the finding's resolution; D-11 (4-tool agent-manifest reconciliation) is independent of F4.
+- **Plan 1 — CLOSED.** 5 commits shipped on branch `260616-1605-phase-c-plan-1-atomic-mastra-adoption` (`f28a05e`..`a92e9df`).
+- **Plan 2 — CLOSED.** 5 commits shipped on branch `260616-2200-phase-c-plan-2-parity` (`084def1`..`9d80ef4`). Master tracker Phase C: C1/C2/C3/C4/C5 `[x]`, C6/C7 `[ ]`. Test gate: 9/9 legacy namespaces + 70 mastra tests = 1058 pass / 0 fail / 1 pre-existing skip.
+- **F4 finding — ACTIVE (acknowledged).** `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` is now `active`; resolution path is Plan 3 (D-10). It no longer has a pending TTL.
+- **Plan 3 (C6+C7 — Operational Flip) is the next unblocked plan.** 6 deferred items (D-8 to D-13) target it. D-10 (F4 gate-bypass) and D-11 (4-tool agent-manifest reconciliation) are the highest priority.
 
 **Immediate actions (operator, in order):**
 
-1. **Verify Plan 1 PR state.** `git log origin/main..HEAD` on the branch; if not pushed, push + `gh pr create`. PR body must include the security note from commit `15a894c` (F4 documentation).
-2. **Resolve F4 finding TTL.** Either `meta_state_ack` (move to `active` for Plan 3 to resolve) or `meta_state_resolve` with a resolution note (e.g., "ship + document gap" → operator decision 2026-06-16 already documented in PR + journal; resolution is "documented, no further action until Plan 3").
-3. **Decide whether to patch M-C1 now or defer to Plan 2's first commit.** 1-line `schemas.js` header. Either way, log the decision in this brainstorm's next-steps or in the Plan 2 first-commit message.
-4. **Author Plan 2.** `/ck:plan` for `plans/260616-XXXX-phase-c-plan-2-parity/`. Plan 2 author reads: this brainstorm (now includes D-1 to D-7), `plans/reports/research-260616-1605-mastra-createtool-and-mcpserver-api.md`, `plans/reports/research-260616-1605-wire-format-coercion-and-test-porting.md`, `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/plan.md`, master tracker Phase C section, the post-impl review (M-C1, M-C3, M-C5), and the F4 finding (D-10 forward-dep).
+1. **Verify Plan 2 PR state.** `git log origin/main..HEAD` on branch `260616-2200-phase-c-plan-2-parity`; if not pushed, push + open PR. PR body is in `plans/260616-2200-phase-c-plan-2-parity/reports/pr-body.md`.
+2. **Author Plan 3.** `/ck:plan` for `plans/260617-XXXX-phase-c-plan-3-cut-over/`. Plan 3 author reads: this brainstorm (D-8 to D-13 remain), `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`, master tracker Phase C section, and the F4 finding (D-10).
+3. **Resolve F4 in Plan 3.** Decide whether mastra server becomes primary with hook-layer re-implementation, or peer remains. Document decision in Plan 3 PR body.
+4. **Reconcile agent-manifest.json gap (D-11).** Add or document the 4 missing tools (`meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`).
 
 **Out-of-band (not in this session's scope):**
 
@@ -198,13 +231,15 @@ Plan 1 (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`) shipped 2026
 - D-16 to D-17 (CI drift check, fail-fast on manifest) — future hardening plan, not blocking.
 - D-18 to D-19 (Phase G skill migration, LIM hardening) — separate tracks.
 
-**Artifacts on disk at session end:**
+**Artifacts on disk at session end (2026-06-17):**
 
-- This brainstorm report (`plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md`, 196 lines) — updated 2026-06-16 with D-1 to D-19 deferred-tasks audit.
+- This brainstorm report (`plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md`) — updated 2026-06-17 with Plan 2 closeout state; D-1 to D-7 resolved, D-8 to D-19 remain.
+- Plan 2 plan folder (`plans/260616-2200-phase-c-plan-2-parity/`) — 8 phase files + `plan.md` + `reports/closeout-report.md` + `reports/pr-body.md`.
+- Plan 2 closeout report (`plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`) — acceptance gate, file deltas, resolved items, trade-offs.
 - Plan 1 closeout report (`plans/reports/phase-c-plan-1-260616-1605-closeout-report.md`, 51 lines).
-- Plan 1 post-implementation review (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/reports/from-code-reviewer-to-planner-phase-c-plan-1-post-implementation-review.md`, 271 lines) — the new code-review artifact this session produced.
-- Master tracker (`plans/reports/productization-260612-1530-master-tracker.md`) — C1/C2/C3/C5 flipped to `[x]`, 29-tool count fixed.
-- `meta-state.jsonl` — 2 new entries: `meta-260616T2123Z-plans-reports-...-master-tracker-md-p` (change-log) and `meta-260616T2123Z-the-learning-loop-mastra-peer-...` (F4 finding, 24h TTL).
+- Plan 1 post-implementation review (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/reports/from-code-reviewer-to-planner-phase-c-plan-1-post-implementation-review.md`, 271 lines).
+- Master tracker (`plans/reports/productization-260612-1530-master-tracker.md`) — C1/C2/C3/C4/C5 flipped to `[x]`; C6/C7 `[ ]`.
+- `meta-state.jsonl` — change-log entry for C4 master-tracker flip (`meta-260617T0104Z-productization-260612-1530-master-tracker-md-phase-c-c4-p`), change-log entry for F9/F11 resolution (`meta-260617T0111Z-learning-loop-mastra-parity-zod-to-json-schema-test`), and F4 finding (`meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ`, status=`active` after ack).
 
 ## References
 
