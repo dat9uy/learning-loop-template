@@ -1,0 +1,66 @@
+{
+  "version": "0.1.0",
+  "server": "learning-loop-mastra",
+  "groups": {
+    "gate": {
+      "description": "Safety checks — call BEFORE any write operation",
+      "tools": [
+        "mastra_gate_check",
+        "mastra_gate_check_recurrence",
+        "mastra_gate_mark_preflight",
+        "mastra_gate_override",
+        "mastra_runtime_state_record"
+      ],
+      "ordering": "mandatory-first",
+      "cache_ttl": 0
+    },
+    "meta_state": {
+      "description": "Meta-state registry for loop self-awareness findings",
+      "tools": [
+        "mastra_meta_state_report",
+        "mastra_meta_state_list",
+        "mastra_meta_state_ack",
+        "mastra_meta_state_resolve",
+        "mastra_meta_state_promote_rule",
+        "mastra_meta_state_sweep",
+        "mastra_meta_state_log_change",
+        "mastra_meta_state_patch",
+        "mastra_meta_state_derive_status",
+        "mastra_meta_state_check_grounding",
+        "mastra_meta_state_refresh_fingerprint",
+        "mastra_meta_state_refresh_tools",
+        "mastra_meta_state_query_drift",
+        "mastra_meta_state_batch",
+        "mastra_meta_state_archive",
+        "mastra_meta_state_relationship_validate",
+        "mastra_meta_state_propose_design",
+        "mastra_meta_state_relationships",
+        "mastra_meta_state_re_verify",
+        "mastra_meta_state_supersede"
+      ],
+      "ordering": "any"
+    },
+    "introspection": {
+      "description": "Discover the loop's operational surface, active rules, and curated instructions",
+      "tools": [
+        "mastra_loop_describe",
+        "mastra_loop_get_instruction",
+        "mastra_runtime_state_read"
+      ],
+      "ordering": "any",
+      "typical_chain": ["mastra_loop_describe", "mastra_loop_get_instruction"]
+    },
+    "runtime_agnostic": {
+      "description": "Audit a feature's compliance with the runtime-agnostic pattern (shim-not-fork + cross-surface-iteration). Call when adding a new feature.",
+      "tools": ["mastra_check_runtime_agnostic"],
+      "ordering": "any"
+    }
+  },
+  "quickstart": {
+    "meta_state_query": [
+      { "tool": "mastra_loop_describe", "tier": "warm" },
+      { "tool": "mastra_meta_state_list", "entry_kind": "finding" },
+      { "tool": "mastra_meta_state_query_drift" }
+    ]
+  }
+}

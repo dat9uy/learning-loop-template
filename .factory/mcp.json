@@ -3,6 +3,10 @@
     "learning-loop-mcp": {
       "command": "node",
       "args": ["tools/learning-loop-mcp/server.js"]
+    },
+    "learning-loop-mastra": {
+      "command": "node",
+      "args": ["tools/learning-loop-mastra/server.js"]
     }
   }
 }
