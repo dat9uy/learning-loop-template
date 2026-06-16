@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Phase 0 — Branch + Mastra install + server skeleton"
-status: pending
+status: completed
 priority: P1
 effort: "~1h"
 dependencies: ["260614-1259-phase-b-codegen-adoption"]

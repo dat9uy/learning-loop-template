@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Phase 1 — C5 factory + 4 ported wire-format tests"
-status: pending
+status: completed
 priority: P1
 effort: "~2h"
 dependencies: ["phase-0-branch-mastra-install-server-skeleton"]

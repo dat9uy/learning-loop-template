@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Phase 2 — C2 register 29 deterministic tools via createLoopTool"
-status: pending
+status: completed
 priority: P1
 effort: "~1-2h"
 dependencies: ["phase-1-c5-factory-4-ported-wire-format-tests"]

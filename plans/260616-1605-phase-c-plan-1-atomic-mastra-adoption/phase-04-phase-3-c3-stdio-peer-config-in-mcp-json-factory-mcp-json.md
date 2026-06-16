@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Phase 3 — C3 stdio peer config in .mcp.json + .factory/mcp.json"
-status: pending
+status: completed
 priority: P1
 effort: "~30min"
 dependencies: ["phase-2-c2-register-29-deterministic-tools-via-createlooptool"]

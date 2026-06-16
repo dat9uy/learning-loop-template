@@ -1,7 +1,7 @@
 ---
 title: "Phase C Plan 1 — Atomic Mastra Adoption (C1+C2+C3+C5)"
 description: "Add @mastra/core + @mastra/mcp as a peer MCP server (tools/learning-loop-mastra/) that registers the 29 deterministic meta-surface tools via createLoopTool(). Ship the createLoopTool factory (z.preprocess + unwrapItem + MAX_RECURSION_DEPTH=2) that reproduces legacy coerceParamsToSchema behavior, port the 4 wire-format regression tests, and add a stdio peer entry in both .mcp.json files. Plan 1 mirrors Phase B's atomic-unit pattern: ship the smallest useful unit (peer server with working factory), defer byte-identical parity (Plan 2 / C4) and cut-over (Plan 3 / C6+C7) to separate PRs."
-status: pending
+status: completed
 priority: P1
 branch: "260616-1605-phase-c-plan-1-atomic-mastra-adoption"
 tags: [meta-surface, phase-c, mastra, mcp, codegen-adjacent, tdd, parity-adjacent, atomic-adoption]
@@ -54,11 +54,11 @@ related:
 
 | Phase | Name | Status | Effort | TDD Color | Dependencies |
 |-------|------|--------|--------|-----------|--------------|
-| 1 | [Phase 0 — Branch + Mastra install + server skeleton](./phase-01-phase-0-branch-mastra-install-server-skeleton.md) | Pending | ~1h | n/a (install + skeleton) | Phase B (shipped 2026-06-14) |
-| 2 | [Phase 1 — C5 factory + 4 ported wire-format tests](./phase-02-phase-1-c5-factory-4-ported-wire-format-tests.md) | Pending | ~2h | RED → GREEN (20 tests, 1 stub tool) | Phase 0 |
-| 3 | [Phase 2 — C2 register 29 deterministic tools via createLoopTool](./phase-03-phase-2-c2-register-29-deterministic-tools-via-createlooptoo.md) | Pending | ~1-2h | Per-tool RED → GREEN via parity contract test | Phase 1 |
-| 4 | [Phase 3 — C3 stdio peer config in .mcp.json + .factory/mcp.json](./phase-04-phase-3-c3-stdio-peer-config-in-mcp-json-factory-mcp-json.md) | Pending | ~30min | `tools/list` enumeration test | Phase 2 |
-| 5 | [Phase 4 — Plan 1 acceptance gate](./phase-05-phase-4-plan-1-acceptance-gate.md) | Pending | ~30min | Full `pnpm test` + meta-state log + tracker flip | Phase 3 + green CI |
+| 1 | [Phase 0 — Branch + Mastra install + server skeleton](./phase-01-phase-0-branch-mastra-install-server-skeleton.md) | Completed | ~1h | n/a (install + skeleton) | Phase B (shipped 2026-06-14) |
+| 2 | [Phase 1 — C5 factory + 4 ported wire-format tests](./phase-02-phase-1-c5-factory-4-ported-wire-format-tests.md) | Completed | ~2h | RED → GREEN (20 tests, 1 stub tool) | Phase 0 |
+| 3 | [Phase 2 — C2 register 29 deterministic tools via createLoopTool](./phase-03-phase-2-c2-register-29-deterministic-tools-via-createlooptoo.md) | Completed | ~1-2h | Per-tool RED → GREEN via parity contract test | Phase 1 |
+| 4 | [Phase 3 — C3 stdio peer config in .mcp.json + .factory/mcp.json](./phase-04-phase-3-c3-stdio-peer-config-in-mcp-json-factory-mcp-json.md) | Completed | ~30min | `tools/list` enumeration test | Phase 2 |
+| 5 | [Phase 4 — Plan 1 acceptance gate](./phase-05-phase-4-plan-1-acceptance-gate.md) | Completed | ~30min | Full `pnpm test` + meta-state log + tracker flip | Phase 3 + green CI |
 
 **Total effort:** ~5-6 hours. One session. Single PR (the 4 sub-phases ship together as the atomic unit).
 

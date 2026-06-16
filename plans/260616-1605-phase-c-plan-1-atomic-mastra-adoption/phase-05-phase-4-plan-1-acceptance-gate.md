@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Phase 4 — Plan 1 acceptance gate"
-status: pending
+status: completed
 priority: P1
 effort: "~30min"
 dependencies: ["phase-3-c3-stdio-peer-config-in-mcp-json-factory-mcp-json"]
