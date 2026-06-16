@@ -100,7 +100,7 @@ Constraint: **C4 (byte-identical parity gate against legacy) cannot pass without
 |------|------|----------------|
 | Plan 1 | All 9 test namespaces pass against legacy server | Namespace table is the durable anchor (count is informational only) |
 | Plan 1 | Factory's 4 ported regression tests (in `tools/learning-loop-mcp/__tests__/wire-format-*`) | All 4 pass against `createLoopTool` output |
-| Plan 2 | Byte-identical parity on migrated subset | **CLOSED 2026-06-17.** 9 legacy namespaces pass; 70 mastra tests pass (36 parity + 5 cold-session + 3 collision + 26 existing factory/wire-format); 0 failures. 4-tool read-only content parity (`meta_state_list`, `loop_describe`, `runtime_state_read`, `check_runtime_agnostic`). See closeout report. |
+| Plan 2 | Byte-identical parity on migrated subset | **CLOSED 2026-06-17.** 9 legacy namespaces pass; 75 mastra tests pass (36 parity + 5 cold-session + 3 collision + 26 existing factory/wire-format + 5 harness/smoke); 0 failures. 4-tool read-only content parity (`meta_state_list`, `loop_describe`, `runtime_state_read`, `check_runtime_agnostic`). PR #3 code review: APPROVE-WITH-GAPS. See closeout report + CR-1 to CR-6. |
 | Plan 3 | Cut-over subset is functional | All 9 test namespaces pass against Mastra server; `tools/list` enumerates correctly per `agent-manifest.json` |
 
 ## Risks
@@ -165,6 +165,21 @@ Plan 1 (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`) shipped 2026
 | D-18 | `plan.md:79` | **Phase G: skill migration** (`ck:*` → MCP tools) | Parallel dimension, independent of A-F. |
 | D-19 | `plan.md:80` | **LIM-3 / LIM-4 / LIM-5 / LIM-6 / LIM-8 / LIM-9 hardening** | Hardening LIMs from Phase B. Separate security/quality audit. |
 
+### Code Review Gaps from PR #3 (2026-06-17)
+
+PR #3 (Plan 2 closeout) passed code review with **APPROVE-WITH-GAPS** — 2 critical red-team findings (R-12, R-16) marked "addressed" in closeout docs but **not actually fixed**, plus 1 partial resolution (R-03) and 4 minor doc/process items. Full review: `plans/reports/code-reviewer-260617-0131-GH-2200-phase-c-plan-2-pr-review-report.md`.
+
+| # | Source | Task | Severity | Target Plan |
+|---|--------|------|----------|-------------|
+| CR-1 | `package.json:34` + closeout report + PR body | **GAP-1 (HIGH): Remove caret from `zod` pin.** `package.json` has `"zod": "^4.4.3"` but closeout docs claim "Zod v4 is pinned to `4.4.3` exact (no caret)". The `z.toJSONSchema({ target: "draft-7", io: "input" })` parity gate is version-sensitive; minor version bump could break it silently. **R-12 / R-16 from red team not actually resolved.** Fix: change to `"zod": "4.4.3"`. | high (claim contradicts code) | **Plan 3 phase 1** |
+| CR-2 | `tools/learning-loop-mastra/__tests__/parity-zod-to-json-schema.test.js:9, 79-80, 141-144, 166-169` | **GAP-2 (MED): Mutex bypassed in parity test.** R-03 added a `withMutex` serializer to `with-both-mcp-servers.js:49-59`, but the parity test uses `connectMcpServer` directly + `Promise.all` and bypasses the mutex. Safe today (4 read-only tools used in content parity don't race), but **Plan 3 will add write-side content parity** for the 25 currently-skip tools — parallel calls will race on `meta-state.jsonl`. Fix: route test through `withBothMcpServers`, or push mutex into `connectMcpServer`. | medium (Plan 3 prerequisite) | **Plan 3 phase 1** |
+| CR-3 | `tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs:341` | **GAP-3 (LOW): Pre-existing cold-session test fails in isolation.** `hook mirror count (13) must match canonical (15)` fails when test is run alone, passes in `pnpm test` suite (other tests register the missing hooks first). Test-ordering dependency. Not a Plan 2 regression but a latent flake risk for Plan 3's new cold-session tests. Fix: make test self-contained (register hooks in `before()`). | low (pre-existing) | Plan 3 or quick cleanup PR |
+| CR-4 | closeout report, PR body, master tracker, project changelog | **GAP-4 (LOW): Test count math fuzzy across docs.** All docs cite "70 mastra tests"; actual run is 75. Different docs counted different subsets (mastra dir only vs mastra dir + collision + cold-session E2E). Fix: use the 9-namespace anchor as the durable claim; per-file counts drift. | low (reporting) | Quick doc fix |
+| CR-5 | PR commit history | **GAP-5 (LOW): Plan 2 implementation squashed into 1 commit.** Plan called for 8 separate commits, one per phase; actual is 9 commits but the code is in a single `feat(mastra)` commit (`084def1`). Historical; no fix needed for Plan 2. Lesson for Plan 3: commit per phase if implementation is large. | low (process) | Plan 3 (lesson learned) |
+| CR-6 | `plans/260616-2200-phase-c-plan-2-parity/plan.md:105` | **GAP-6 (LOW): R-09 arithmetic still in plan.md.** Red team R-09 flagged incoherent "25/40" arithmetic; PR body fixed it (correctly distinguishes `tools/manifest.json` flat vs `agent-manifest.json` grouped) but plan.md unchanged. Fix: update plan.md or accept as historical. | low (doc drift) | Quick doc fix |
+
+**Red-team findings (R-12, R-16) NOT actually resolved by Plan 2** — see CR-1. The closeout report's claim of "Zod v4 is pinned to `4.4.3` exact (no caret)" is false; package.json still has caret. This is the single most important gap to land before Plan 3.
+
 ### Closed during Plan 1 (no longer deferred)
 
 | # | Red Team ID | Resolution |
@@ -200,14 +215,16 @@ Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) shipped on branch `260616-22
 
 - `pnpm test`: **1059 tests / 1058 pass / 0 fail / 1 pre-existing skip**.
 - 9 legacy namespaces pass.
-- 70 mastra-specific tests pass.
+- 70 mastra-specific tests pass (claim); **75 actual** (per-file counts drift; see CR-4 in Code Review Gaps section below).
 - 40 legacy + 29 mastra = 69 distinct tool names, zero collisions.
+- PR #3 code review: **APPROVE-WITH-GAPS** — see `plans/reports/code-reviewer-260617-0131-GH-2200-phase-c-plan-2-pr-review-report.md` and CR-1 to CR-6 in Code Review Gaps section.
 
 ### State after Plan 2
 
 - Master tracker Phase C: C1/C2/C3/C4/C5 `[x]`; C6/C7 `[ ]`.
 - F4 finding (`meta-260616T2123Z-...-peer-mcp-server-registers-29-determ`) was `ack`-ed to extend active lifetime; resolution remains Plan 3 (D-10).
 - Plan 3 (C6+C7 operational flip) is now unblocked.
+- **6 code review gaps (CR-1 to CR-6) cataloged.** CR-1 (zod pin) and CR-2 (mutex bypass) are Plan 3 prerequisites.
 
 ## Next Steps
 
@@ -221,21 +238,25 @@ Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) shipped on branch `260616-22
 **Immediate actions (operator, in order):**
 
 1. **Verify Plan 2 PR state.** `git log origin/main..HEAD` on branch `260616-2200-phase-c-plan-2-parity`; if not pushed, push + open PR. PR body is in `plans/260616-2200-phase-c-plan-2-parity/reports/pr-body.md`.
-2. **Author Plan 3.** `/ck:plan` for `plans/260617-XXXX-phase-c-plan-3-cut-over/`. Plan 3 author reads: this brainstorm (D-8 to D-13 remain), `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`, master tracker Phase C section, and the F4 finding (D-10).
-3. **Resolve F4 in Plan 3.** Decide whether mastra server becomes primary with hook-layer re-implementation, or peer remains. Document decision in Plan 3 PR body.
-4. **Reconcile agent-manifest.json gap (D-11 / M-C4).** Add or document the 4 missing tools (`meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`).
+2. **Author Plan 3.** `/ck:plan` for `plans/260617-XXXX-phase-c-plan-3-cut-over/`. Plan 3 author reads: this brainstorm (D-8 to D-13 + CR-1 to CR-6 remain), `plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`, PR #3 code review report, master tracker Phase C section, and the F4 finding (D-10).
+3. **Land CR-1 + CR-2 in Plan 3 phase 1.** Before any write-side content parity work: (a) remove caret from `zod` pin in `package.json` (CR-1, 1-char change); (b) make mutex reliable — either route `parity-zod-to-json-schema.test.js` through `withBothMcpServers` or push mutex into `connectMcpServer` (CR-2).
+4. **Resolve F4 in Plan 3.** Decide whether mastra server becomes primary with hook-layer re-implementation, or peer remains. Document decision in Plan 3 PR body.
+5. **Reconcile agent-manifest.json gap (D-11 / M-C4).** Add or document the 4 missing tools (`meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`).
 
 **Out-of-band (not in this session's scope):**
 
 - D-14 to D-15 (Phase D workflow + agent + storage) — separate phase, parallel dimension.
 - D-16 to D-17 (CI drift check, fail-fast on manifest) — future hardening plan, not blocking.
 - D-18 to D-19 (Phase G skill migration, LIM hardening) — separate tracks.
+- CR-3 (cold-session test isolation) — Plan 3 or quick cleanup PR; not blocking.
+- CR-4 to CR-6 (test count math, commit squashing, plan.md doc drift) — low-priority doc/process cleanup; not blocking.
 
 **Artifacts on disk at session end (2026-06-17):**
 
-- This brainstorm report (`plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md`) — updated 2026-06-17 with Plan 2 closeout state; D-1 to D-7 resolved, D-8 to D-19 remain.
+- This brainstorm report (`plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md`) — updated 2026-06-17 with Plan 2 closeout state + 6 code review gaps (CR-1 to CR-6); D-1 to D-7 resolved, D-8 to D-19 + CR-1 to CR-6 remain.
 - Plan 2 plan folder (`plans/260616-2200-phase-c-plan-2-parity/`) — 8 phase files + `plan.md` + `reports/closeout-report.md` + `reports/pr-body.md`.
 - Plan 2 closeout report (`plans/260616-2200-phase-c-plan-2-parity/reports/closeout-report.md`) — acceptance gate, file deltas, resolved items, trade-offs.
+- **PR #3 code review report** (`plans/reports/code-reviewer-260617-0131-GH-2200-phase-c-plan-2-pr-review-report.md`) — APPROVE-WITH-GAPS verdict; 6 gaps (CR-1 to CR-6) cataloged for Plan 3.
 - Plan 1 closeout report (`plans/reports/phase-c-plan-1-260616-1605-closeout-report.md`, 51 lines).
 - Plan 1 post-implementation review (`plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/reports/from-code-reviewer-to-planner-phase-c-plan-1-post-implementation-review.md`, 271 lines).
 - Master tracker (`plans/reports/productization-260612-1530-master-tracker.md`) — C1/C2/C3/C4/C5 flipped to `[x]`; C6/C7 `[ ]`.
