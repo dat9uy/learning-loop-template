@@ -271,3 +271,5 @@ Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) shipped on branch `260616-22
 - `tools/learning-loop-mcp/__tests__/wire-format-{coercion-fix,top-level-coercion,meta-state-optional-fields,patch-recursion}.test.js` — 4 regression tests C5 must port
 - `plans/260614-1259-phase-b-codegen-adoption/` — Phase B's 3-plan stack pattern
 - `meta-260616T???-phase-c5-coercion-probe-resolved` (to be filed) — the 1/6 PASS probe result
+- `plans/reports/brainstorm-260617-0212-pre-plan-3-prerequisite-fixes.md` — Q1 sibling brainstorm: 2 active meta-state findings + 6 PR-#3 CR gaps + 6 deferred items (D-8 to D-13) + F4 gate-bypass resolution, scoped into a 3-plan stack (atomic fix / single fix / one-line flip)
+- `plans/reports/brainstorm-260617-0212-coerce-layer-zod-native-migration.md` — Q2 sibling brainstorm: remove the `coerceScalar`/`unwrapItem`/`wrapSchema` layer in mastra + `coerceParamsToSchema`/`installWireFormatCoercion` in legacy via `z.coerce.*` + `z.union` for envelope absorption (Path A; 1-day effort)
