@@ -29,8 +29,10 @@ const CONSTRAINT_PATTERNS = Object.fromEntries(
   Object.entries(PATTERNS_RAW).map(([key, pattern]) => [key, new RegExp(pattern)])
 );
 
+// `records-evidence` was the only observation-based unlock for `records/evidence/**`.
+// It was migrated to meta-state (Phase A) and the unlock removed in plan 260614-1856.
+// Direct writes to `records/**` are now blocked unconditionally by write-gate.js.
 const WRITE_PATH_PATTERNS = {
-  'records-evidence': ['records/evidence/**', 'records/*/evidence/**'],
   'records-index': ['records/index/**', 'records/*/index/**'],
   'records-capabilities': ['records/capabilities/**', 'records/*/capabilities/**'],
 };

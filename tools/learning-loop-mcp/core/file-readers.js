@@ -3,10 +3,9 @@
  * All readers are fail-open: return empty defaults on error.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
@@ -62,35 +61,6 @@ export function readRuntimeObservations(root) {
     return observations;
   } catch (err) {
     console.error(`gate: failed to read runtime-state.jsonl: ${err.message}`);
-    return [];
-  }
-}
-
-/**
- * Read budget-state entries from runtime-state.jsonl.
- * Returns array of budget-shaped objects, or [] on error.
- */
-// fallow-ignore-next-line complexity
-function readRuntimeBudgets(root) {
-  const sidecarPath = join(root || resolveRoot(), "runtime-state.jsonl");
-  try {
-    const raw = readFileSync(sidecarPath, "utf8");
-    const lines = raw.split("\n").filter((line) => line.trim() !== "");
-    const budgets = [];
-    for (const line of lines) {
-      let entry;
-      try {
-        entry = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (entry.kind === "budget-state") {
-        budgets.push(entry);
-      }
-    }
-    return budgets;
-  } catch (err) {
-    console.error(`gate: failed to read runtime-state budgets: ${err.message}`);
     return [];
   }
 }
