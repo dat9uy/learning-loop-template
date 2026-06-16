@@ -1,6 +1,14 @@
 [
   {
     "file": "./server.js",
-    "export": "stubTool"
+    "export": "mastraMetaStateProposeDesign"
+  },
+  {
+    "file": "./server.js",
+    "export": "mastraMetaStatePatch"
+  },
+  {
+    "file": "./server.js",
+    "export": "mastraMetaStateReport"
   }
 ]
