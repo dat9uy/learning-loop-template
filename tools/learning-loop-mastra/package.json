@@ -1,0 +1,9 @@
+{
+  "name": "@learning-loop/mastra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "learning-loop-mastra": "./server.js"
+  }
+}

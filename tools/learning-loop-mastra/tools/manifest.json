@@ -1,0 +1,6 @@
+[
+  {
+    "file": "./server.js",
+    "export": "stubTool"
+  }
+]
