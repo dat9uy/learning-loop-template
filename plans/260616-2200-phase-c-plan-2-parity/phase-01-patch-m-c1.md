@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Patch M-C1 (schemas.js header)"
-status: pending
+status: completed
 priority: P1
 effort: "5min"
 dependencies: []

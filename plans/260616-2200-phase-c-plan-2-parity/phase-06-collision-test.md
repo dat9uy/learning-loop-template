@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "tools/list Collision Test (M-C5)"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["3"]

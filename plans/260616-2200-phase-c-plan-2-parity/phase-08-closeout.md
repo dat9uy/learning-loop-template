@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Closeout (tracker + meta-state + PR body)"
-status: pending
+status: completed
 priority: P1
 effort: "15min"
 dependencies: ["7"]

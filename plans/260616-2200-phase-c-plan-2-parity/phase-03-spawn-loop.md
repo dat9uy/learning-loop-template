@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Dual-Server Spawn Loop"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["2"]

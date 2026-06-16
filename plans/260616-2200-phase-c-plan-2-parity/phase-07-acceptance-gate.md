@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Acceptance Gate (all 9 namespaces for both servers)"
-status: pending
+status: completed
 priority: P1
 effort: "30min"
 dependencies: ["2", "3", "4", "5", "6"]

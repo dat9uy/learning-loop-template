@@ -1,7 +1,7 @@
 ---
 title: "Phase C Plan 2 — Parity Gate (C4)"
 description: "Build a dual-server parity harness that calls both learning-loop-mcp and learning-loop-mastra with identical inputs and asserts byte-identical output (inputSchema via z.toJSONSchema() + tools/call content via JSON.parse). Ship per-field type-name parity (F7), use z.toJSONSchema() (F11), parallel cold-session test for the mastra manifest (F9), and an automated tools/list collision test (M-C5). M-C1 schemas.js header is the first commit. Replaces the shape-only parity-schema-shape.test.js with the full structural comparison. Plan 1 is unblocked (the legacy server keeps running during coexistence); Plan 3 (C6+C7 cut-over) is blocked on this plan passing."
-status: pending
+status: completed
 priority: P1
 branch: "260616-2200-phase-c-plan-2-parity"
 tags: [meta-surface, phase-c, mastra, mcp, parity, tdd, atomic-gate]

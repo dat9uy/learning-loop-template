@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Output Comparison (z.toJSONSchema + content JSON)"
-status: pending
+status: completed
 priority: P1
 effort: "1-2h"
 dependencies: ["2", "3"]
