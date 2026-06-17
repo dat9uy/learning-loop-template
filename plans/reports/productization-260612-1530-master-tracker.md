@@ -5,17 +5,17 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-17 (Plan 2 closeout: C4 shipped via `plans/260616-2200-phase-c-plan-2-parity/`; 9 legacy namespaces pass, 70 mastra tests pass, 40 + 29 = 69 distinct tool names)
+**Last updated:** 2026-06-17 (Plan 1a closeout: 2 findings + CR-1 + CR-2 fixed via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`; 9 namespaces pass, 4 RED tests GREEN, 2 findings resolved, 1 change-log filed)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
 
-## Current State Snapshot (as of 2026-06-14)
+## Current State Snapshot (as of 2026-06-17)
 
 | State | Phases / Items |
 |-------|----------------|
 | **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. |
-| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools). Phase D — Mastra Phase 2-3 (workflows + agents + storage). Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
+| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools); Plan 1, Plan 1a, Plan 2 closed; Plan 3 (C6+C7 cut-over) open. Phase D — Mastra Phase 2-3 (workflows + agents + storage). Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
 | **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). |
 | **Next-up / Hardening** | LIM-3 (caller identity), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough). |
 
@@ -156,6 +156,7 @@ Phase C ships as a **3-plan stack**, mirroring Phase B's proven pattern (atomic 
 | Plan | Sub-phases | Purpose | Gate |
 |------|-----------|---------|------|
 | **Plan 1** | C1 + C2 + C3 + C5 | Atomic adoption — peer server + factory + 4 ported regression tests | All 9 test namespaces pass against legacy + 4 wire-format tests pass against factory |
+| **Plan 1a** | — (corrective) | Atomic fix — 2 active findings + CR-1 + CR-2 from PR #3 review | All 9 namespaces pass; 4 RED tests GREEN; 2 findings resolved |
 | **Plan 2** | C4 | Verification gate — byte-identical parity harness | All 9 test namespaces pass against both servers; output diffs = empty |
 | **Plan 3** | C6 + C7 | Operational flip — cut over + agent-manifest.json update | All 9 test namespaces pass against Mastra server post-cut-over |
 
@@ -184,6 +185,7 @@ The test suite is anchored on **9 namespace directories** declared in `package.j
 - [x] **C3 [Plan 1]** Run it as a peer MCP server on stdio (different `command` entry in `.mcp.json` + `.factory/mcp.json`). **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
 - [x] **C4 [Plan 2]** Verify byte-identical output for the meta-surface subset. **Closed 2026-06-17** via `plans/260616-2200-phase-c-plan-2-parity/`. 9 legacy namespaces + 70 mastra tests pass. Byte-identical parity proven via `z.toJSONSchema()` + 4-tool read-only `tools/call` content deepEqual.
 - [x] **C5 [Plan 1]** Ship `createLoopTool({ id, description, inputSchema, execute })` factory in `tools/learning-loop-mastra/create-loop-tool.js`. Wrap `inputSchema` shape: `z.preprocess()` for `ZodBoolean` ("true"/"false" → bool), `ZodNumber` (`/^-?\d+(\.\d+)?$/` → number); `unwrapItem` step (gated on `ZodArray`/`ZodObject` type names) for `{item: X}` envelopes. Port these legacy regression tests to call the factory's output as the parity gate: `tools/learning-loop-mcp/__tests__/wire-format-coercion-fix.test.js`, `wire-format-top-level-coercion.test.js`, `wire-format-meta-state-optional-fields.test.js`, **and `wire-format-patch-recursion.test.js` (the leaf-recursion case — locks Mastra's nested-object coercion behavior against the legacy `MAX_RECURSION_DEPTH = 2` recursion in `tools/learning-loop-mcp/tool-registry.js#coerceParamsToSchema` lines 124-134).** Legacy helpers (`coerceParamsToSchema` lines 77-134, `installWireFormatCoercion` lines 197-235) stay in the legacy server during coexistence; the factory replaces them on Mastra's side only. **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
+- [x] **C5a [Plan 1a]** Corrective fixes to deterministic meta-surface tools before Plan 3 cut-over. Four stacked commits: (1) `meta_state_list` `include_archived` semantic unification — single flag surfaces all 4 terminal statuses (superseded, resolved, auto-resolved, archived); (2) `meta_state_relationships` `consolidated_into` inbound traversal — added `consolidated_into_inverse` to `buildInverseIndexes` (5 → 6 maps) and exposed `inbound.consolidated_by`; (3) `zod` exact pin (`4.4.3`) in `package.json` to protect parity gate version sensitivity; (4) in-process Promise-chain mutex in `connectMcpServer` to serialize `callTool`/`listTools` across servers sharing a `GATE_ROOT`. **Closed 2026-06-17** via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`.
 - [ ] **C6 [Plan 3]** Cut over: replace the existing `@modelcontextprotocol/sdk` `McpServer` with the Mastra `MCPServer` for the deterministic subset. Two servers during transition; one server post-cut-over.
 - [ ] **C7 [Plan 3]** Update `tools/learning-loop-mcp/agent-manifest.json` to the new group names (per §3.4 Phase 4 + §3.10 tool surface table).
 
