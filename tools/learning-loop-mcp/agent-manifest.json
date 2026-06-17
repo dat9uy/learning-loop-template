@@ -44,7 +44,6 @@
         "meta_state_derive_status",
         "meta_state_check_grounding",
         "meta_state_refresh_fingerprint",
-        "meta_state_refresh_tools",
         "meta_state_query_drift",
         "meta_state_batch",
         "meta_state_archive",
