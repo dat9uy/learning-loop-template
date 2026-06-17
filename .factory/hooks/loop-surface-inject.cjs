@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Droid SessionStart hook: inject loop_describe({tier:"summary"}) into context.
- * Only fires when the project has its own .mcp.json + learning-loop-mcp entry.
+ * Only fires when the project has its own .mcp.json + learning-loop-mastra entry.
  * Reads stdin (Droid hook input JSON), guards, spawns MCP server, prints block.
  */
 
@@ -20,13 +20,15 @@ const LOCAL_DISCOVERABILITY_HINTS = Object.freeze([
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
   "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `superseded` (consolidated into a change-log), `auto-resolved` (closed by mechanism). The legacy `expired` status was removed in plan 260611-1000-remove-expired-status; only `stale` parents are cascade-closeable.",
   "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
-  "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` or `loop_describe({ tier: 'cold' })`. The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
+  "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
   "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mcp/references/tool-selection-guide.md` for the intent to tool mapping.",
   "AGENTS.md is the priority-1 prompt (the steering layer: shape of the loop, rules, canonical paths). The tool manifest is the deterministic tool-selection surface. `loop_describe` warm tier `discoverability_hints` is the at-start-up injection. The `learning-loop` skill is the prompt-author docs. Each surface has a distinct role; do not duplicate content across them.",
   "For 'X is related to Y' prompts: (1) meta_state_relationship_validate to lint; (2) meta_state_report({..., reopens: ['<orphan_id>']}); (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step.",
   "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mcp/**` and `schemas/**` are the template rules. Cite the correct surface.",
   "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
   "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
+  "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
+  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js.",
 ]);
 
 async function main(inputArg, envArg, spawnImpl) {
@@ -67,7 +69,7 @@ async function main(inputArg, envArg, spawnImpl) {
     return null;
   }
 
-  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mcp"];
+  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mastra"];
   if (!serverCfg) return null;
 
   const tier = env.LL_LOOP_INJECT_TIER === "summary" ? "summary" : "warm";
@@ -153,8 +155,8 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     severity: "warning",
     affected_system: "mcp-tools",
     subtype: "mcp-connection",
-    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mcp__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
-    evidence_code_ref: "tools/learning-loop-mcp/server.js",
+    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
+    evidence_code_ref: "tools/learning-loop-mastra/server.js",
     session_id: sessionId,
     status: "reported",
     auto_resolve: null,
@@ -264,7 +266,7 @@ function formatMcpFailureBanner(sessionId, reason) {
     "may be unreachable in this session.",
     "",
     "Workarounds:",
-    "  1. Try mcp__learning_loop_mcp__* tools directly (the probe may have failed transiently).",
+    "  1. Try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently).",
     "  2. Reconnect via session config (.mcp.json or Droid hook init).",
     "  3. Fall back to direct file I/O via Node scripts that import core/meta-state.js (loses appendGateLog audit trail).",
     "",
@@ -291,7 +293,7 @@ function formatBlock(summary, tier = "warm") {
   }
 
   lines.push("");
-  lines.push("Use mcp__learning_loop_mcp__* tools directly. Do not invoke ck:use-mcp from");
+  lines.push("Use mcp__learning_loop_mastra__* tools directly. Do not invoke ck:use-mcp from");
   lines.push("a project that has its own .mcp.json — that skill is for cross-project discovery.");
   lines.push("========================================================");
   return lines.join("\n");
@@ -354,7 +356,7 @@ async function spawnAndCall(serverCfg, cwd, tier = "summary") {
             jsonrpc: "2.0",
             id: 2,
             method: "tools/call",
-            params: { name: "loop_describe", arguments: { tier } }
+            params: { name: "mastra_loop_describe", arguments: { tier } }
           }) + "\n");
         } catch {
           cleanup();

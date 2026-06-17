@@ -65,6 +65,8 @@ export const metaStateRelationshipsTool = {
     if (inboundPromoted && inboundPromoted.length > 0) inbound.promoted_from = inboundPromoted;
     const inboundReopens = inverse.reopens_inverse.get(id);
     if (inboundReopens && inboundReopens.length > 0) inbound.reopened_by = inboundReopens;
+    const inboundConsolidated = inverse.consolidated_into_inverse.get(id);
+    if (inboundConsolidated && inboundConsolidated.length > 0) inbound.consolidated_by = inboundConsolidated;
 
     const result = {
       id,

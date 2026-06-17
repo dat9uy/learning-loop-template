@@ -36,7 +36,7 @@ const server = new MCPServer({
   name: "learning-loop-mastra",
   version: "0.1.0",
   description:
-    "Mastra-based peer MCP server for the learning loop (Phase C Plan 1). 29 deterministic meta-surface tools (workflow tools excluded per Phase D).",
+    "Mastra-based canonical MCP server for the learning loop (Phase C Plan 3). 40 tools (5 gate + 11 workflow + 20 meta_state + 3 introspection + 1 runtime_agnostic) across 5 groups. Single server post-cut-over.",
   tools,
 });
 

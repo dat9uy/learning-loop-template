@@ -1,5 +1,107 @@
 # Project Changelog
 
+## 2026-06-17 — Phase C Plan 3 Post-Merge: Hygiene (4 findings)
+
+**Plan:** `plans/260617-2352-GH-1607-plan-3-post-merge-followups/`
+
+### Removed
+
+- **`tools/learning-loop-mcp/tools/meta-state-refresh-tools-tool.js`** — deleted. The in-process reload tool targeted legacy `@modelcontextprotocol/sdk` internals (`_registeredTools`, `setToolRequestHandlers`, `sendToolListChanged`) with no analog in Mastra's `MCPServer` SDK. Even with a `globalThis.__loopMcpServer` binding, the body could not work.
+- **`tools/learning-loop-mcp/core/mcp-server-reload.js`** — deleted. Became dead code after the reload tool was removed.
+- **`tools/learning-loop-mcp/__tests__/meta-state-refresh-tools-tool.test.js`** — deleted alongside the tool.
+
+### Changed
+
+- **`tools/learning-loop-mastra/tools/manifest.json`** — `meta-state-refresh-tools-tool` entry removed (40 → 39 tools).
+- **`tools/learning-loop-mastra/agent-manifest.json`** — `mastra_meta_state_refresh_tools` removed from `meta_state.tools` array (20 → 19 entries).
+- **`tools/learning-loop-mcp/tools/manifest.json` + `tools/learning-loop-mcp/agent-manifest.json`** — same removal applied to legacy manifests.
+- **`docs/mcp-server-restart-protocol.md`** — rewritten as a restart-only protocol. Operator hot-reload uses `pnpm gate:server` (~1s restart cost) instead of in-process reload.
+
+### Resolved
+
+- `meta-260617T2356Z-pr-4-plan-3-cut-over-shipped-meta-state-refresh-tools-to-the` — tool deleted; restart is the canonical path.
+- `meta-260617T2356Z-f4-meta-260616t2123z-the-learning-loop-mastra-peer-mcp-serve` — F4 `evidence_code_ref` patched to `tools/learning-loop-mastra/server.js:13` (the `PREFIX` line).
+- `meta-260617T2357Z-master-tracker-c7-line-193-lists-groups-as-coordination-meta` — tracker C7 line 193 patched to canonical 5-group enumeration matching `agent-manifest.json`.
+- `meta-260617T2357Z-tools-learning-loop-mastra-tests-connect-mcp-server-mutex-te` — mutex test comment patched to reflect actual assertion strength (non-regression check, not strict ordering).
+
+## 2026-06-17 — Phase C Plan 3: Operational Cut-Over (C6 + C7)
+
+**Plan:** `plans/260617-1950-phase-c-plan-3-cut-over/`
+**Closeout report:** `plans/260617-1950-phase-c-plan-3-cut-over/reports/closeout-report.md`
+
+### Added
+
+- **`tools/learning-loop-mcp/core/wire-format-coercion.js`** — runtime-agnostic coercion helpers for MCP wire-format values (string↔boolean, string↔number, JSON blob parsing). Used by the canonical server to normalize incoming tool arguments before validation.
+- **`tools/learning-loop-mcp/core/mcp-server-reload.js`** — in-process reload helpers for the canonical MCP server: `reloadMcpServer()` and `reloadIfNeeded()` with version-gate checks, enabling hot-reload without process restart during development.
+
+### Changed
+
+- **`tools/learning-loop-mastra/server.js`** — promoted from peer/secondary to **canonical MCP server**. Now the single source of truth for all MCP tool registrations. All 40 deterministic tools are `mastra_`-prefixed and live in 5 manifest groups (`coordination`, `meta_state`, `runtime_state`, `gate`, `introspection`).
+- **`.mcp.json` / `.factory/mcp.json`** — reduced to a single `learning-loop-mastra` server entry. Legacy `learning-loop-mcp` server entry removed.
+- **`package.json`** — `gate:server` script now points to `tools/learning-loop-mastra/server.js` (was `tools/learning-loop-mcp/server.js`).
+- **SessionStart hook** — updated to key on `mcpServers["learning-loop-mastra"]` and tool `mastra_loop_describe` for server discovery and capability probing.
+- **`agent-manifest.json`** — 5 groups, 40 `mastra_`-prefixed deterministic tools. All legacy non-deterministic tools removed from the canonical surface.
+
+### Removed
+
+- **`tools/learning-loop-mcp/server.js`** — deleted. The legacy standalone MCP server is no longer maintained; all server logic lives in the Mastra-based canonical server.
+- **`tools/learning-loop-mcp/tool-registry.js`** — deleted. Tool registration is now handled by the Mastra server via `agent-manifest.json` and `mastra-tools.js`.
+
+### Resolved
+
+- `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` — resolved structurally by deleting the peer-server bypass surface. The Mastra server is now the only server; there is no peer to bypass.
+
+### Acceptance
+
+- `pnpm test`: **1040 pass / 0 fail / 1 pre-existing skip** across all test namespaces.
+- All 40 canonical tools respond to `tools/list` and `tools/call` via the Mastra server.
+- Zero legacy server processes required for normal operation.
+
+### Unblocks
+
+- Phase D (productization beyond Mastra Phase 0-1).
+- Future runtime-agnostic feature work can assume a single canonical server surface.
+
+---
+
+## 2026-06-17 — Phase C Plan 1a: Atomic Fix
+
+**Plan:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/`
+**Closeout report:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/reports/closeout-report.md`
+
+### Added
+
+- **`consolidated_into_inverse` in `tools/learning-loop-mcp/core/loop-introspect.js`** — `buildInverseIndexes` now returns 6 inverse maps (was 5), enabling `meta_state_relationships` to expose `inbound.consolidated_by` for change-logs.
+- **5 RED-first test files** across legacy and Mastra surfaces:
+  - `tools/learning-loop-mcp/__tests__/meta-state-list-include-archived.test.js`
+  - `tools/learning-loop-mcp/core/loop-introspect.test.js`
+  - `tools/learning-loop-mcp/__tests__/meta-state-relationships-tool.test.js`
+  - `tools/learning-loop-mcp/__tests__/package-json-zod-pin.test.js`
+  - `tools/learning-loop-mastra/__tests__/connect-mcp-server-mutex.test.js`
+
+### Changed
+
+- **`tools/learning-loop-mcp/tools/meta-state-list-tool.js`** — `include_archived: true` now surfaces all terminal statuses (`superseded`, `resolved`, `auto-resolved`, `archived`) via a single flag.
+- **`package.json`** — pinned `zod` to exact `4.4.3` to protect the parity gate's version-sensitive JSON-schema snapshot.
+- **`tools/learning-loop-mastra/__tests__/with-mcp-server.js`** — added per-tempRoot Promise-chain mutex so `callTool`/`listTools` calls serialize when two MCP servers share a `GATE_ROOT`.
+- **`plans/reports/productization-260612-1530-master-tracker.md`** — flipped Plan 1a checkbox to `[x]`.
+
+### Resolved
+
+- `meta-260616T1352Z-meta-state-list-does-not-return-superseded-entries-even-when`
+- `meta-260616T1352Z-meta-state-relationships-does-not-traverse-consolidated-into`
+
+### Acceptance
+
+- `pnpm test`: **1069 pass / 0 fail / 1 pre-existing skip** across all 10 test namespaces.
+
+### Unblocks
+
+- Plan 1b (CR-3 to CR-6 hygiene).
+- Plan 3 (C6+C7 cut-over).
+
+---
+
 ## 2026-06-17 — Phase C Plan 2: Parity Gate (C4)
 
 **Plan:** `plans/260616-2200-phase-c-plan-2-parity/`

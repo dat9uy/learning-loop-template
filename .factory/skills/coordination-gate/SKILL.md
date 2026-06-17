@@ -10,9 +10,9 @@ MCP server that enforces "observe before workaround" for constraint discovery an
 
 ## Server
 
-- **Name**: `learning-loop-mcp`
-- **Entry**: `tools/learning-loop-mcp/server.js`
-- **Registered**: 33 tools across 5 domains
+- **Name**: `learning-loop-mastra`
+- **Entry**: `tools/learning-loop-mastra/server.js`
+- **Registered**: 40 tools across 5 groups
 
 ## Tool Domains
 
@@ -56,4 +56,4 @@ index_validate()
 
 ## Agent Manifest
 
-See `tools/learning-loop-mcp/agent-manifest.json` for full grouping, ordering hints, and typical chains.
+See `tools/learning-loop-mastra/agent-manifest.json` for full grouping, ordering hints, and typical chains.

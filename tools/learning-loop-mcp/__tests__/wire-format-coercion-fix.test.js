@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { coerceParamsToSchema } from "../tool-registry.js";
+import { coerceParamsToSchema } from "../core/wire-format-coercion.js";
 import { metaStateProposeDesignTool } from "../tools/meta-state-propose-design-tool.js";
 
 test("coerceParamsToSchema re-hydrates top-level array from JSON string", () => {

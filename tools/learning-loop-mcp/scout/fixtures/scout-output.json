@@ -1215,7 +1215,6 @@
         "meta_state_batch_tool",
         "meta_state_archive_tool",
         "meta_state_relationship_validate_tool",
-        "meta_state_refresh_tools_tool",
         "meta_state_re_verify_tool",
         "meta_state_supersede_tool"
       ]

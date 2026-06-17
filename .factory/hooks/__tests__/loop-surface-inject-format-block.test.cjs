@@ -53,7 +53,7 @@ describe("loop-surface-inject formatBlock", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mcp": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       // Seed a minimal meta-state.jsonl so the downgrade log has a registry to write to.
       writeFileSync(join(tempDir, "meta-state.jsonl"), "", "utf8");

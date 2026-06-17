@@ -158,8 +158,8 @@ export function estimateBudget(filePath, promptText, timeoutSeconds) {
   const catInvocations = (cleaned.match(/\bcat\s+[^\s]+/g) || []).length;
   const readLines = readFileLines + catInvocations;
 
-  // expected_mcp_calls: count of mcp__learning_loop_mcp__ strings
-  const mcpCalls = (cleaned.match(/mcp__learning_loop_mcp__/g) || []).length;
+  // expected_mcp_calls: count of mcp__learning_loop_mcp__ or mcp__learning_loop_mastra__ strings
+  const mcpCalls = (cleaned.match(/mcp__learning_loop_(?:mcp|mastra)__/g) || []).length;
 
   // expected_reasoning_blocks: count of "##" markdown headings or paragraph breaks (double newlines)
   const headings = (cleaned.match(/^##/gm) || []).length;

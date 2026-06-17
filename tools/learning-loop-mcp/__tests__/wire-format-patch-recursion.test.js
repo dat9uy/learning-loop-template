@@ -10,13 +10,13 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { coerceParamsToSchema } from "../tool-registry.js";
+import { coerceParamsToSchema } from "../core/wire-format-coercion.js";
 import { readRegistry } from "../core/meta-state.js";
 import { metaStateProposeDesignTool } from "../tools/meta-state-propose-design-tool.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -126,7 +126,7 @@ async function withMcpServer(fn) {
 test("meta_state_patch accepts flat patch object via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
     // 1. Create a loop-design to patch.
-    const designResult = await call(1, "meta_state_propose_design", {
+    const designResult = await call(1, "mastra_meta_state_propose_design", {
       title: "test-loop-design-for-patch",
       description:
         "Test loop design for wire-format patch recursion bug (min 20 chars)",
@@ -142,7 +142,7 @@ test("meta_state_patch accepts flat patch object via stdio", async () => {
     const designId = designResult.id;
 
     // 2. Patch it with a flat patch object (no {item: {...}} wrap).
-    const patchResult = await call(2, "meta_state_patch", {
+    const patchResult = await call(2, "mastra_meta_state_patch", {
       id: designId,
       entry_kind: "loop-design",
       patch: {

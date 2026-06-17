@@ -146,12 +146,11 @@ export function listActiveFindings(root, { categories } = {}) {
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  // The legacy 'expired' status was removed in plan 260611-1000; anti-patterns
-  // are surfaced in reported/active states. The set below mirrors the canonical
-  // TERMINAL_STATUSES in core/meta-state.js minus 'expired'.
-  const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved"]);
+  // Anti-patterns are surfaced in reported/active states; filter out closed
+  // statuses so the list does not include resolved/auto-resolved findings.
+  const CLOSED_STATUSES = new Set(["auto-resolved", "resolved"]);
   let findings = entries.filter(
-    (e) => e.category === "loop-anti-pattern" && !TERMINAL_STATUSES.has(e.status)
+    (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
   );
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
@@ -236,12 +235,14 @@ function buildColdTierCache(root) {
 
 /**
  * Build inverse indexes from a flat array of entries.
- * Returns 4 maps for O(1) relationship lookup.
+ * Returns 6 maps for O(1) relationship lookup.
  *
  * - addresses_inverse: Map<loop-design.id, finding.id[]>
  * - supersedes_inverse: Map<change-log.id, entry.id[]>
  * - origin_inverse: Map<finding.id, rule.id[]>
  * - promoted_to_rule_inverse: Map<rule.id, finding.id[]>
+ * - reopens_inverse: Map<finding.id, finding.id[]>
+ * - consolidated_into_inverse: Map<change-log.id, finding.id[]>
  *
  * Pure function — O(N) over entries. No I/O.
  */
@@ -251,6 +252,7 @@ export function buildInverseIndexes(entries) {
   const originInverse = new Map();
   const promotedToRuleInverse = new Map();
   const reopensInverse = new Map();
+  const consolidatedIntoInverse = new Map();
 
   for (const entry of entries) {
     // addresses: loop-design -> findings that address it
@@ -297,6 +299,25 @@ export function buildInverseIndexes(entries) {
         reopensInverse.get(staleId).push(entry.id);
       }
     }
+
+    // consolidated_into: the forward ref is on the change-log side
+    // (`change-log.consolidates`, CSV or array of finding ids). The inverse
+    // is keyed by change-log id and holds the findings it consolidates.
+    // This powers `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
+    // returning `inbound.consolidated_by`. (See meta-state.js JSDoc for the
+    // canonical direction description.)
+    if (entry.entry_kind === "change-log" && entry.consolidates !== undefined) {
+      const ids = typeof entry.consolidates === "string"
+        ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
+        : Array.isArray(entry.consolidates)
+          ? entry.consolidates
+          : [];
+      if (!consolidatedIntoInverse.has(entry.id)) consolidatedIntoInverse.set(entry.id, []);
+      const arr = consolidatedIntoInverse.get(entry.id);
+      for (const id of ids) {
+        if (!arr.includes(id)) arr.push(id);
+      }
+    }
   }
 
   return {
@@ -305,6 +326,7 @@ export function buildInverseIndexes(entries) {
     origin_inverse: originInverse,
     promoted_to_rule_inverse: promotedToRuleInverse,
     reopens_inverse: reopensInverse,
+    consolidated_into_inverse: consolidatedIntoInverse,
   };
 }
 
@@ -355,7 +377,7 @@ export function buildRegistrySummary(entries) {
   // Top references: most-cited entry ids (sum of inverse-index sizes)
   const inverse = buildInverseIndexes(entries);
   const citationCounts = new Map();
-  for (const map of [inverse.addresses_inverse, inverse.supersedes_inverse, inverse.origin_inverse, inverse.promoted_to_rule_inverse, inverse.reopens_inverse]) {
+  for (const map of [inverse.addresses_inverse, inverse.supersedes_inverse, inverse.origin_inverse, inverse.promoted_to_rule_inverse, inverse.reopens_inverse, inverse.consolidated_into_inverse]) {
     for (const [id, refs] of map.entries()) {
       citationCounts.set(id, (citationCounts.get(id) || 0) + refs.length);
     }
