@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-17 (Plan 1a closeout: 2 findings + CR-1 + CR-2 fixed via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`; 9 namespaces pass, 4 RED tests GREEN, 2 findings resolved, 1 change-log filed)
+**Last updated:** 2026-06-17 (Plan 1a closeout: 2 findings + CR-1 + CR-2 fixed via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`; 9 namespaces pass, 4 RED tests GREEN, 2 findings resolved, 1 change-log filed; **2026-06-17 Deferred Items Backlog consolidated: 22 items (D-1 to D-19 + H-1/H-2/H-7 + R4 + C-9 + COERCE), 4 historical resolved, 5 Phase C continuation 🟡 READY (Plan 3 ready, awaiting `/ck:cook`)**)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -268,6 +268,89 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 - **Not Bridge 1-4.** The product surface is unbound; the track does not depend on it shipping.
 - **Not a Phase A concern.** Phase A closes the convention; the migration itself is this track. Phase A and Phase G share the convention but not the scope.
 - **Not a sequential dependency for A-F.** This track can ship in parallel with any other phase.
+
+---
+
+## Deferred Items Backlog (snapshot 2026-06-17)
+
+**Origin:** consolidated from `plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md` (D-1 to D-19), the Plan 3 red-team review (`plans/260617-1950-phase-c-plan-3-cut-over/reports/from-code-reviewer-to-planner-phase-c-plan-3-red-team-39-finding-summary-report.md`; H-2, R4, C-9), and the separate coerce-layer brainstorm (`plans/reports/brainstorm-260617-0212-coerce-layer-zod-native-migration.md`).
+
+**Status legend:** `🟡 READY` = plan authored, awaiting `/ck:cook`. `🔵 OPEN` = no plan yet. `⚪ DEFERRED` = operator-decision deferred; no due date. `🟢 SHIPPED` = resolved in a prior plan.
+
+### Phase C continuation (Plan 3 ready; ships next)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| D-8 | C6 cut-over — replace legacy `McpServer` with Mastra `MCPServer` for the deterministic subset | high | 🟡 READY | `plans/260617-1950-phase-c-plan-3-cut-over/` (single phase, 1 commit, 1-2h) |
+| D-9 | C7 manifest update — `tools/learning-loop-mastra/agent-manifest.json` 5-group structure with 40 `mastra_`-prefixed tools | high | 🟡 READY (Plan 3) | `plans/260617-1950-phase-c-plan-3-cut-over/phase-01` Group 1 |
+| D-10 | F4 gate-bypass resolution — `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` closed structurally (peer removed) | high (security) | 🟡 READY (Plan 3) | `plans/260617-1950-phase-c-plan-3-cut-over/phase-01` Group 15; fingerprint anchor at `tools/learning-loop-mastra/server.js:13` |
+| D-11 | Reconcile 4 tools missing from legacy `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`) | medium | 🟡 READY (Plan 3) | Plan 3 Group 1.2 — extended `meta_state` group |
+| D-13 | F4 PR security note in PR body | low (process) | 🟡 READY (Plan 3) | Plan 3 Group 19.4 PR body |
+
+### Phase D (workflow + agent + storage migration)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| D-14 | Phase D — promote 11 `workflow_*` tools to `createWorkflow`; add 3-4 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`, `productBuildAgent`); fold in LibSQL storage | high (separate phase) | 🔵 OPEN | `plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md` D-14 |
+| D-15 | Workflow-tool migration (D1-D3) — 8 `workflow_*` tools to `createWorkflow`; `stateSchema` for cross-step orientation; `suspend`/`resume` for operator checkpoints | high (separate phase) | 🔵 OPEN | D-15 |
+| D-12 | Mode 1 (peer MCP) vs Mode 2 (single `createMastraCode({...})`) decision | medium | ⚪ DEFERRED | Operator decision 2026-06-17: defer to post-Plan 3; Phase E scope |
+
+### Phase E (cut-over + Mastra Code Mode 1)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| E1 | Replace legacy `learning-loop-mcp` server with Mastra-based one (the "cut over" decision) | high | 🟡 RESOLVED-BY-PLAN-3 (deferred to Plan 3 = D-8) | tracker E1 |
+| E2-E6 | E2 mark old server `legacy`; E3 update skills; E4 update `agent-manifest.json`; E5 Mode 1 Mastra Code; E6 hook layer confirm | high | 🔵 OPEN (Phase E scope) | tracker E2-E6 |
+| E7 | Mode 2 (same Mastra instance) decision — revisit if operator's "final Mastra-fy" vision requires single-app coupling | low | ⚪ DEFERRED (= D-12) | tracker E7 |
+
+### Hardening / quality (separate security/quality audit)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| D-16 | CI diff check for ported test files — `tools/ci/test-drift-check.js` fails CI if ported files drift beyond import-swap lines | low | 🔵 OPEN | `brainstorm-260616-1530-...` D-16 (Red team F10) |
+| D-17 | Fail-fast on manifest errors in mastra server — `server.js:20` does `console.error` and `continue` on missing exports; should `throw` when `NODE_ENV !== 'production'` or `MANIFEST_STRICT=1` | low | 🔵 OPEN | D-17 (Post-impl review M-C2) |
+| D-19 | LIM hardening — LIM-3 (caller identity), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough) | high (security) | 🔵 OPEN | D-19; see LIM table at line ~116 |
+| H-2 | `quickstart.meta_state_query` injection surface — free-form JSON consumed at session start (`loop_describe`); no JSON schema, no semantic test, no documented consumer chain | medium (security) | 🔵 OPEN | Plan 3 red-team Security Adversary F4 |
+| H-1/H-7 | `clearRegistrations` hot-reload seam — `@mastra/mcp` 1.10.0 may expose comparable internals; verify before fully removing | low | 🔵 OPEN | Plan 3 red-team Failure Mode F8; Plan 3 Group 6.2 ports to `core/mcp-server-reload.js` as interim |
+
+### Phase G (skill migration — `ck:*` → MCP tools)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| D-18 | Phase G — `ck:plan` → `loop_plan_create`; `ck:journal` → `loop_journal_record`; `ck:cook` → `loop_cook`. Sequential migration, smallest-first | high (parallel dimension) | 🔵 OPEN | tracker Phase G1-G3 |
+| G1 | `ck:plan` → `loop_plan_create` MCP tool | medium | 🔵 OPEN | tracker Phase G1 |
+| G2 | `ck:journal` → `loop_journal_record` MCP tool | medium | 🔵 OPEN | tracker Phase G2 |
+| G3 | `ck:cook` → `loop_cook` MCP tool (largest surface, highest risk) | high | 🔵 OPEN | tracker Phase G3 |
+
+### Cross-cutting (operator-decision pending; out of Phase C scope)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| R4 | JSON key rename `learning-loop-mastra` → `learning-loop` in `.mcp.json` + `.factory/mcp.json` — cascades to AGENTS.md, Droid state, Claude Code state | low | 🔵 OPEN | Plan 3 red-team Scope & Complexity R4 (researcher B) |
+| C-9 | Move `tools/learning-loop-mcp/tools/` → `tools/learning-loop-mastra/tools/legacy/` (or merge into existing `tools/learning-loop-mastra/tools/`); delete `#mcp/*` import alias | low | 🔵 OPEN | Plan 3 red-team Scope & Complexity C-9 |
+| COERCE | Coerce layer Zod-native migration — replace `coerceScalar`/`unwrapItem`/`wrapSchema` (mastra) and `coerceParamsToSchema`/`installWireFormatCoercion` (legacy) with declarative `z.coerce.*` + `z.union` for envelope absorption. Path A. 5-7h; 1 PR; not Phase C scope | low (debt) | 🔵 OPEN | `plans/reports/brainstorm-260617-0212-coerce-layer-zod-native-migration.md` |
+
+### Resolved (historical — for the record)
+
+| ID | Task | Resolved By |
+|----|------|-------------|
+| D-1 | C4 byte-identical parity harness | Plan 2 (`plans/260616-2200-phase-c-plan-2-parity/`) — 2026-06-17 |
+| D-2 | F7 per-field `_def.typeName` parity | Plan 2 (covered by full `z.toJSONSchema()`) |
+| D-3 | F9 parallel cold-session E2E for mastra manifest | Plan 2 (`mcp-protocol-e2e.test.cjs`) |
+| D-4 | F11 `z.toJSONSchema()` in parity harness | Plan 2 (`parity-harness.js`) |
+| D-5 | M-C5 automated `tools/list` collision test | Plan 2 (`tools-list-collision.test.cjs`; deleted in Plan 3 since no second server) |
+| D-6 | M-C1 `schemas.js` Plan 3 cut-over header | Plan 2 (header added) |
+| D-7 | `mastra_` prefix re-evaluation | Plan 2 (collision test confirmed) |
+| CR-1 | Remove caret from `zod` pin | Plan 1a (`71262df`) — 2026-06-17 |
+| CR-2 | Make mutex reliable | Plan 1a (`fca8309`) — 2026-06-17 |
+| CR-3 | Cold-session test isolation | Plan 1b (`850ebc2`) — 2026-06-17 |
+| CR-4 | Test count math (9 → 10 namespaces; 70 → 75 mastra tests) | Plan 1b — 2026-06-17 |
+| CR-5 | Commit squashing (historical; lesson for future plans) | Plan 1b — acknowledged |
+| CR-6 | Plan 2 R-09 arithmetic | Plan 1b — 2026-06-17 |
+| F4 (CRITICAL) | SessionStart hook key update (`loop-surface-inject.cjs:72`) | Plan 3 Group 4 (ready, not shipped) |
+| C-2 | `settings.local.json` dead `mcp__learning-loop-mcp__*` permissions | Plan 3 Group 5 (ready, not shipped) |
+
+**Total deferred items:** 22 (5 Phase C continuation ready, 3 Phase D open, 6 Phase E, 5 hardening, 4 Phase G, 3 cross-cutting). 4 of 5 Phase C continuation items are 🟡 READY (Plan 3 ready to cook); 1 is ⚪ DEFERRED (D-12, Mode decision). **Phase C is one `/ck:cook` away from completion.**
 
 ---
 
