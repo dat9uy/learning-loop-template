@@ -173,8 +173,12 @@ export const metaStateListTool = {
     // Plan 260611-1000: terminal statuses are excluded by default. If the
     // caller explicitly filters by a terminal status (e.g., status="resolved"),
     // honor that filter — the user is opting in to terminal entries.
+    // include_archived: true is the unified "show me the audit trail" affordance;
+    // it surfaces all 4 terminal statuses (superseded, resolved, auto-resolved,
+    // archived) without requiring callers to know which statuses are terminal.
     const isExplicitStatusFilter = typeof status === "string" && TERMINAL_STATUSES.has(status);
-    if (!isExplicitStatusFilter) {
+    const includeTerminal = include_archived || isExplicitStatusFilter;
+    if (!includeTerminal) {
       result = result.filter((e) => !TERMINAL_STATUSES.has(e.status));
     }
     if (!include_archived) {
