@@ -1,5 +1,29 @@
 # Project Changelog
 
+## 2026-06-17 — Phase C Plan 3 Post-Merge: Hygiene (4 findings)
+
+**Plan:** `plans/260617-2352-GH-1607-plan-3-post-merge-followups/`
+
+### Removed
+
+- **`tools/learning-loop-mcp/tools/meta-state-refresh-tools-tool.js`** — deleted. The in-process reload tool targeted legacy `@modelcontextprotocol/sdk` internals (`_registeredTools`, `setToolRequestHandlers`, `sendToolListChanged`) with no analog in Mastra's `MCPServer` SDK. Even with a `globalThis.__loopMcpServer` binding, the body could not work.
+- **`tools/learning-loop-mcp/core/mcp-server-reload.js`** — deleted. Became dead code after the reload tool was removed.
+- **`tools/learning-loop-mcp/__tests__/meta-state-refresh-tools-tool.test.js`** — deleted alongside the tool.
+
+### Changed
+
+- **`tools/learning-loop-mastra/tools/manifest.json`** — `meta-state-refresh-tools-tool` entry removed (40 → 39 tools).
+- **`tools/learning-loop-mastra/agent-manifest.json`** — `mastra_meta_state_refresh_tools` removed from `meta_state.tools` array (20 → 19 entries).
+- **`tools/learning-loop-mcp/tools/manifest.json` + `tools/learning-loop-mcp/agent-manifest.json`** — same removal applied to legacy manifests.
+- **`docs/mcp-server-restart-protocol.md`** — rewritten as a restart-only protocol. Operator hot-reload uses `pnpm gate:server` (~1s restart cost) instead of in-process reload.
+
+### Resolved
+
+- `meta-260617T2356Z-pr-4-plan-3-cut-over-shipped-meta-state-refresh-tools-to-the` — tool deleted; restart is the canonical path.
+- `meta-260617T2356Z-f4-meta-260616t2123z-the-learning-loop-mastra-peer-mcp-serve` — F4 `evidence_code_ref` patched to `tools/learning-loop-mastra/server.js:13` (the `PREFIX` line).
+- `meta-260617T2357Z-master-tracker-c7-line-193-lists-groups-as-coordination-meta` — tracker C7 line 193 patched to canonical 5-group enumeration matching `agent-manifest.json`.
+- `meta-260617T2357Z-tools-learning-loop-mastra-tests-connect-mcp-server-mutex-te` — mutex test comment patched to reflect actual assertion strength (non-regression check, not strict ordering).
+
 ## 2026-06-17 — Phase C Plan 3: Operational Cut-Over (C6 + C7)
 
 **Plan:** `plans/260617-1950-phase-c-plan-3-cut-over/`
