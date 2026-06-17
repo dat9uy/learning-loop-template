@@ -14,7 +14,7 @@ import { readRegistry } from "../core/meta-state.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -125,7 +125,7 @@ async function withMcpServer(fn) {
 test("meta_state_patch REJECTS wrapped {item: [...]} on proposed_design_for (RED)", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
     // 1. Create a loop-design entry.
-    const designResult = await call(1, "meta_state_propose_design", {
+    const designResult = await call(1, "mastra_meta_state_propose_design", {
       title: "test-derived-schema-wrap-reject",
       description: "Test that wrapped proposed_design_for is rejected (min 20 chars)",
       proposed_design_for: ["rule-A", "rule-B"],
@@ -141,7 +141,7 @@ test("meta_state_patch REJECTS wrapped {item: [...]} on proposed_design_for (RED
     // or patched=false is acceptable — both mean the wrapped input was rejected.
     let rejected = false;
     try {
-      const patchResult = await call(2, "meta_state_patch", {
+      const patchResult = await call(2, "mastra_meta_state_patch", {
         id: designId,
         entry_kind: "loop-design",
         patch: {
@@ -165,7 +165,7 @@ test("meta_state_patch REJECTS wrapped {item: [...]} on proposed_design_for (RED
 test("meta_state_patch REJECTS wrapped {item: [...]} on addresses (RED)", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
     // 1. Create a loop-design entry.
-    const designResult = await call(1, "meta_state_propose_design", {
+    const designResult = await call(1, "mastra_meta_state_propose_design", {
       title: "test-derived-schema-addresses-wrap",
       description: "Test that wrapped addresses is rejected (min 20 chars)",
       proposed_design_for: ["rule-A"],
@@ -178,7 +178,7 @@ test("meta_state_patch REJECTS wrapped {item: [...]} on addresses (RED)", async 
     // 2. Patch with WRAPPED input — should be REJECTED after the fix.
     let rejected = false;
     try {
-      const patchResult = await call(2, "meta_state_patch", {
+      const patchResult = await call(2, "mastra_meta_state_patch", {
         id: designId,
         entry_kind: "loop-design",
         patch: {
@@ -202,7 +202,7 @@ test("meta_state_patch REJECTS wrapped {item: [...]} on addresses (RED)", async 
 test("meta_state_patch flat proposed_design_for round-trips as flat array", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
     // 1. Create a loop-design entry.
-    const designResult = await call(1, "meta_state_propose_design", {
+    const designResult = await call(1, "mastra_meta_state_propose_design", {
       title: "test-derived-schema-flat-roundtrip",
       description: "Test that flat proposed_design_for round-trips correctly (min 20 chars)",
       proposed_design_for: ["rule-A", "rule-B"],
@@ -213,7 +213,7 @@ test("meta_state_patch flat proposed_design_for round-trips as flat array", asyn
     const designId = designResult.id;
 
     // 2. Patch with FLAT input — should succeed.
-    const patchResult = await call(2, "meta_state_patch", {
+    const patchResult = await call(2, "mastra_meta_state_patch", {
       id: designId,
       entry_kind: "loop-design",
       patch: {

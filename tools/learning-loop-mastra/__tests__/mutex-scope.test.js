@@ -14,7 +14,7 @@ import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const legacyEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -39,8 +39,8 @@ describe("connectMcpServer mutex scope", () => {
     const tempRootA = prepareTempRoot();
     const tempRootB = prepareTempRoot();
 
-    const a = await connectMcpServer(legacyEntry, tempRootA);
-    const b = await connectMcpServer(legacyEntry, tempRootB);
+    const a = await connectMcpServer(mastraEntry, tempRootA);
+    const b = await connectMcpServer(mastraEntry, tempRootB);
 
     try {
       const work = { a: {}, b: {} };

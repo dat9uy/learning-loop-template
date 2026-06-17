@@ -9,7 +9,7 @@ import { loopGetInstructionTool } from "../tools/loop-get-instruction-tool.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 describe("loop_get_instruction", () => {
   test("returns hint by named slug 'reopens-script'", async () => {
@@ -150,7 +150,7 @@ describe("loop_get_instruction (stdio transport)", () => {
         clientInfo: { name: "loop-get-instruction-test", version: "1.0.0" },
       });
 
-      const result = await call(1, "loop_get_instruction", {
+      const result = await call(1, "mastra_loop_get_instruction", {
         key: ["reopens-script", "internalization-rule"],
       });
 

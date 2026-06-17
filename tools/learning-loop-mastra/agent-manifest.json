@@ -4,49 +4,24 @@
   "groups": {
     "gate": {
       "description": "Safety checks — call BEFORE any write operation",
-      "tools": [
-        "mastra_gate_check",
-        "mastra_gate_check_recurrence",
-        "mastra_gate_mark_preflight",
-        "mastra_gate_override",
-        "mastra_runtime_state_record"
-      ],
+      "tools": ["mastra_gate_check", "mastra_gate_check_recurrence", "mastra_gate_mark_preflight", "mastra_gate_override", "mastra_runtime_state_record"],
       "ordering": "mandatory-first",
       "cache_ttl": 0
     },
+    "workflow": {
+      "description": "Learning-loop workflow orchestration",
+      "tools": ["mastra_workflow_intake_orient", "mastra_workflow_intake_plan", "mastra_workflow_classify_prompt", "mastra_workflow_prepare_runtime_request", "mastra_workflow_generate_prompt", "mastra_workflow_self_improvement", "mastra_workflow_intentional_skip", "mastra_workflow_report_phase_status", "mastra_workflow_runtime_probe", "mastra_workflow_notify_artifact", "mastra_workflow_trigger"],
+      "ordering": "linear",
+      "typical_chain": ["mastra_workflow_intake_orient", "mastra_workflow_intake_plan", "mastra_workflow_notify_artifact"]
+    },
     "meta_state": {
       "description": "Meta-state registry for loop self-awareness findings",
-      "tools": [
-        "mastra_meta_state_report",
-        "mastra_meta_state_list",
-        "mastra_meta_state_ack",
-        "mastra_meta_state_resolve",
-        "mastra_meta_state_promote_rule",
-        "mastra_meta_state_sweep",
-        "mastra_meta_state_log_change",
-        "mastra_meta_state_patch",
-        "mastra_meta_state_derive_status",
-        "mastra_meta_state_check_grounding",
-        "mastra_meta_state_refresh_fingerprint",
-        "mastra_meta_state_refresh_tools",
-        "mastra_meta_state_query_drift",
-        "mastra_meta_state_batch",
-        "mastra_meta_state_archive",
-        "mastra_meta_state_relationship_validate",
-        "mastra_meta_state_propose_design",
-        "mastra_meta_state_relationships",
-        "mastra_meta_state_re_verify",
-        "mastra_meta_state_supersede"
-      ],
+      "tools": ["mastra_meta_state_report", "mastra_meta_state_list", "mastra_meta_state_ack", "mastra_meta_state_resolve", "mastra_meta_state_promote_rule", "mastra_meta_state_sweep", "mastra_meta_state_log_change", "mastra_meta_state_patch", "mastra_meta_state_derive_status", "mastra_meta_state_check_grounding", "mastra_meta_state_refresh_fingerprint", "mastra_meta_state_refresh_tools", "mastra_meta_state_query_drift", "mastra_meta_state_batch", "mastra_meta_state_archive", "mastra_meta_state_relationship_validate", "mastra_meta_state_propose_design", "mastra_meta_state_relationships", "mastra_meta_state_re_verify", "mastra_meta_state_supersede"],
       "ordering": "any"
     },
     "introspection": {
       "description": "Discover the loop's operational surface, active rules, and curated instructions",
-      "tools": [
-        "mastra_loop_describe",
-        "mastra_loop_get_instruction",
-        "mastra_runtime_state_read"
-      ],
+      "tools": ["mastra_loop_describe", "mastra_loop_get_instruction", "mastra_runtime_state_read"],
       "ordering": "any",
       "typical_chain": ["mastra_loop_describe", "mastra_loop_get_instruction"]
     },

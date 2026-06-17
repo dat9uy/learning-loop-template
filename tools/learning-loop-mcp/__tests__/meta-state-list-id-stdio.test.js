@@ -8,7 +8,7 @@ import { spawn } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(dirname(dirname(__dirname)));
-const serverEntry = join(projectRoot, "tools", "learning-loop-mcp", "server.js");
+const serverEntry = join(projectRoot, "tools", "learning-loop-mastra", "server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -76,7 +76,12 @@ async function withMcpServer(fn) {
   child.stderr.on("data", () => {}); // Drain stderr
 
   try {
-    await fn({ send, tempRoot });
+    await send(nextId++, "initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "meta-state-list-id-stdio-test", version: "1.0.0" },
+    });
+    await fn({ send: (method, params) => send(nextId++, method, params), tempRoot });
   } finally {
     child.kill();
   }
@@ -84,8 +89,8 @@ async function withMcpServer(fn) {
 
 test("meta_state_list { id: ['alpha', 'beta'] } round-trips top-level array via stdio", async () => {
   await withMcpServer(async ({ send }) => {
-    const result = await send(1, "tools/call", {
-      name: "meta_state_list",
+    const result = await send("tools/call", {
+      name: "mastra_meta_state_list",
       arguments: { id: ["alpha", "beta"], compact: true },
     });
     assert(result.content, "tools/call result missing content");
@@ -99,8 +104,8 @@ test("meta_state_list { id: ['alpha', 'beta'] } round-trips top-level array via 
 
 test("meta_state_list { id: ['alpha', 'nonexistent'] } silently skips missing ids via stdio", async () => {
   await withMcpServer(async ({ send }) => {
-    const result = await send(1, "tools/call", {
-      name: "meta_state_list",
+    const result = await send("tools/call", {
+      name: "mastra_meta_state_list",
       arguments: { id: ["alpha", "nonexistent"], compact: true },
     });
     const text = JSON.parse(result.content[0].text);
@@ -111,8 +116,8 @@ test("meta_state_list { id: ['alpha', 'nonexistent'] } silently skips missing id
 
 test("meta_state_list { ref_by, ref_field } round-trips via stdio", async () => {
   await withMcpServer(async ({ send }) => {
-    const result = await send(1, "tools/call", {
-      name: "meta_state_list",
+    const result = await send("tools/call", {
+      name: "mastra_meta_state_list",
       arguments: { ref_by: "alpha", ref_field: "addresses", compact: true },
     });
     const text = JSON.parse(result.content[0].text);
@@ -124,8 +129,8 @@ test("meta_state_list { ref_by, ref_field } round-trips via stdio", async () => 
 
 test("meta_state_list { ref_by } without ref_field returns structured error via stdio", async () => {
   await withMcpServer(async ({ send }) => {
-    const result = await send(1, "tools/call", {
-      name: "meta_state_list",
+    const result = await send("tools/call", {
+      name: "mastra_meta_state_list",
       arguments: { ref_by: "alpha" },
     });
     const text = JSON.parse(result.content[0].text);

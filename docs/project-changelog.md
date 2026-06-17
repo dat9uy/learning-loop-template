@@ -1,5 +1,45 @@
 # Project Changelog
 
+## 2026-06-17 — Phase C Plan 3: Operational Cut-Over (C6 + C7)
+
+**Plan:** `plans/260617-1950-phase-c-plan-3-cut-over/`
+**Closeout report:** `plans/260617-1950-phase-c-plan-3-cut-over/reports/closeout-report.md`
+
+### Added
+
+- **`tools/learning-loop-mcp/core/wire-format-coercion.js`** — runtime-agnostic coercion helpers for MCP wire-format values (string↔boolean, string↔number, JSON blob parsing). Used by the canonical server to normalize incoming tool arguments before validation.
+- **`tools/learning-loop-mcp/core/mcp-server-reload.js`** — in-process reload helpers for the canonical MCP server: `reloadMcpServer()` and `reloadIfNeeded()` with version-gate checks, enabling hot-reload without process restart during development.
+
+### Changed
+
+- **`tools/learning-loop-mastra/server.js`** — promoted from peer/secondary to **canonical MCP server**. Now the single source of truth for all MCP tool registrations. All 40 deterministic tools are `mastra_`-prefixed and live in 5 manifest groups (`coordination`, `meta_state`, `runtime_state`, `gate`, `introspection`).
+- **`.mcp.json` / `.factory/mcp.json`** — reduced to a single `learning-loop-mastra` server entry. Legacy `learning-loop-mcp` server entry removed.
+- **`package.json`** — `gate:server` script now points to `tools/learning-loop-mastra/server.js` (was `tools/learning-loop-mcp/server.js`).
+- **SessionStart hook** — updated to key on `mcpServers["learning-loop-mastra"]` and tool `mastra_loop_describe` for server discovery and capability probing.
+- **`agent-manifest.json`** — 5 groups, 40 `mastra_`-prefixed deterministic tools. All legacy non-deterministic tools removed from the canonical surface.
+
+### Removed
+
+- **`tools/learning-loop-mcp/server.js`** — deleted. The legacy standalone MCP server is no longer maintained; all server logic lives in the Mastra-based canonical server.
+- **`tools/learning-loop-mcp/tool-registry.js`** — deleted. Tool registration is now handled by the Mastra server via `agent-manifest.json` and `mastra-tools.js`.
+
+### Resolved
+
+- `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` — resolved structurally by deleting the peer-server bypass surface. The Mastra server is now the only server; there is no peer to bypass.
+
+### Acceptance
+
+- `pnpm test`: **1040 pass / 0 fail / 1 pre-existing skip** across all test namespaces.
+- All 40 canonical tools respond to `tools/list` and `tools/call` via the Mastra server.
+- Zero legacy server processes required for normal operation.
+
+### Unblocks
+
+- Phase D (productization beyond Mastra Phase 0-1).
+- Future runtime-agnostic feature work can assume a single canonical server surface.
+
+---
+
 ## 2026-06-17 — Phase C Plan 1a: Atomic Fix
 
 **Plan:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/`

@@ -47,7 +47,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
 - **Consult-gate `rule-cold-session-test-must-pass-before-resolution`** — gates `meta_state_resolve` on the cold-session discoverability test passing. First instance of `pattern_type: resolution-evidence-required`.
 - **Consult-gate `rule-project-skill-boundary`** — blocks cross-project `ck:use-mcp` / `ck:find-skills` skill invocations in projects that already have a local learning-loop-mcp server (glob `.factory/skills/{use-mcp,find-skills}/**`, scope predicate `project_has_learning_loop_mcp`).
-- **MCP server** (`tools/learning-loop-mcp/server.js`) — 36 tools per `agent-manifest.json` (verified 2026-06-15). Grouped in `tools/learning-loop-mcp/agent-manifest.json`. Of these, ~21 are bound to the meta-surface; the remaining ~15 are unbound (operate on product-surface shapes that are being re-debated) or dropped.
+- **MCP server** (`tools/learning-loop-mastra/server.js`) — 40 tools across 5 groups per `tools/learning-loop-mastra/agent-manifest.json` (verified 2026-06-17). Of these, ~21 are bound to the meta-surface; the remaining ~19 are workflow or unbound (operate on product-surface shapes that are being re-debated) or dropped.
 
 ### Runtime-Agnostic Pattern (rule-runtime-agnostic-features)
 
@@ -56,7 +56,7 @@ Every feature must work identically on Claude Code and Droid CLI (and future run
 - **Core logic** lives in `tools/learning-loop-mcp/{core,hooks,tools}/` (not under `.claude/` or `.factory/`).
 - **Surface shims** (`.claude/coordination/hooks/*.cjs` and `.factory/coordination/hooks/*.cjs`) are thin wrappers; the universal hook does the real work.
 - **Hook I/O** goes through `tools/learning-loop-mcp/hooks/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
-- **MCP tools** are registered in `tools/learning-loop-mcp/agent-manifest.json`.
+- **MCP tools** are registered in `tools/learning-loop-mastra/agent-manifest.json`.
 - **Cross-surface iteration** uses the `core/surfaces.js` helper (`SURFACES`, `getAllCoordinationPaths`, `writeToAllSurfaces`, `readFromAllSurfaces`, `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`). Do not hard-code `.claude/` or `.factory/` paths.
 - **New runtimes** append to `SURFACES` in `core/surfaces.js` (one line, no other code changes).
 

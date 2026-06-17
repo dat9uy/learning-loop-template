@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Droid SessionStart hook: inject loop_describe({tier:"summary"}) into context.
- * Only fires when the project has its own .mcp.json + learning-loop-mcp entry.
+ * Only fires when the project has its own .mcp.json + learning-loop-mastra entry.
  * Reads stdin (Droid hook input JSON), guards, spawns MCP server, prints block.
  */
 
@@ -69,7 +69,7 @@ async function main(inputArg, envArg, spawnImpl) {
     return null;
   }
 
-  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mcp"];
+  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mastra"];
   if (!serverCfg) return null;
 
   const tier = env.LL_LOOP_INJECT_TIER === "summary" ? "summary" : "warm";
@@ -155,8 +155,8 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     severity: "warning",
     affected_system: "mcp-tools",
     subtype: "mcp-connection",
-    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mcp__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
-    evidence_code_ref: "tools/learning-loop-mcp/server.js",
+    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
+    evidence_code_ref: "tools/learning-loop-mastra/server.js",
     session_id: sessionId,
     status: "reported",
     auto_resolve: null,
@@ -266,7 +266,7 @@ function formatMcpFailureBanner(sessionId, reason) {
     "may be unreachable in this session.",
     "",
     "Workarounds:",
-    "  1. Try mcp__learning_loop_mcp__* tools directly (the probe may have failed transiently).",
+    "  1. Try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently).",
     "  2. Reconnect via session config (.mcp.json or Droid hook init).",
     "  3. Fall back to direct file I/O via Node scripts that import core/meta-state.js (loses appendGateLog audit trail).",
     "",
@@ -293,7 +293,7 @@ function formatBlock(summary, tier = "warm") {
   }
 
   lines.push("");
-  lines.push("Use mcp__learning_loop_mcp__* tools directly. Do not invoke ck:use-mcp from");
+  lines.push("Use mcp__learning_loop_mastra__* tools directly. Do not invoke ck:use-mcp from");
   lines.push("a project that has its own .mcp.json — that skill is for cross-project discovery.");
   lines.push("========================================================");
   return lines.join("\n");
@@ -356,7 +356,7 @@ async function spawnAndCall(serverCfg, cwd, tier = "summary") {
             jsonrpc: "2.0",
             id: 2,
             method: "tools/call",
-            params: { name: "loop_describe", arguments: { tier } }
+            params: { name: "mastra_loop_describe", arguments: { tier } }
           }) + "\n");
         } catch {
           cleanup();

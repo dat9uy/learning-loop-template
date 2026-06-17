@@ -19,8 +19,8 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
-const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mcp/server.js");
-const MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mcp/tools/manifest.json");
+const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/server.js");
+const MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mastra/tools/manifest.json");
 
 /** Spawn the MCP server and return a connected Client + cleanup handle. */
 async function spawnServer() {
@@ -82,7 +82,7 @@ describe("mcp protocol e2e", () => {
 
   test("tools/call loop_describe returns expected shape", { timeout: 10000 }, async () => {
     const result = await server.client.callTool({
-      name: "loop_describe",
+      name: "mastra_loop_describe",
       arguments: { tier: "warm" },
     });
 
@@ -99,7 +99,7 @@ describe("mcp protocol e2e", () => {
 
   test("tools/call meta_state_list with compact returns valid response", { timeout: 10000 }, async () => {
     const result = await server.client.callTool({
-      name: "meta_state_list",
+      name: "mastra_meta_state_list",
       arguments: { compact: true },
     });
 

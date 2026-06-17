@@ -9,7 +9,6 @@ import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const legacyEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
 const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 function copySchemas(tempRoot) {
@@ -37,34 +36,34 @@ function readRegistryLines(tempRoot) {
 
 describe("connectMcpServer module-level mutex", () => {
   let tempRoot;
-  let legacy;
-  let mastra;
+  let a;
+  let b;
 
   before(async () => {
     tempRoot = prepareTempRoot();
-    legacy = await connectMcpServer(legacyEntry, tempRoot);
-    mastra = await connectMcpServer(mastraEntry, tempRoot);
+    a = await connectMcpServer(mastraEntry, tempRoot);
+    b = await connectMcpServer(mastraEntry, tempRoot);
   });
 
   after(async () => {
-    if (legacy) await legacy.cleanup();
-    if (mastra) await mastra.cleanup();
+    if (a) await a.cleanup();
+    if (b) await b.cleanup();
   });
 
-  test("20 parallel cross-server writes serialize without lost updates", async () => {
+  test("20 parallel cross-client writes serialize without lost updates", async () => {
     const calls = [];
     for (let i = 0; i < 10; i++) {
-      calls.push(legacy.callTool("meta_state_log_change", {
+      calls.push(a.callTool("mastra_meta_state_log_change", {
         change_dimension: "mechanical",
-        change_target: `tools/legacy-mutex-test-${i}.js`,
+        change_target: `tools/mutex-test-a-${i}.js`,
         change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
-        reason: `Legacy mutex race test entry ${i} (min 20 chars)`,
+        reason: `Client A mutex race test entry ${i} (min 20 chars)`,
       }));
-      calls.push(mastra.callTool("mastra_meta_state_log_change", {
+      calls.push(b.callTool("mastra_meta_state_log_change", {
         change_dimension: "mechanical",
-        change_target: `tools/mastra-mutex-test-${i}.js`,
+        change_target: `tools/mutex-test-b-${i}.js`,
         change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
-        reason: `Mastra mutex race test entry ${i} (min 20 chars)`,
+        reason: `Client B mutex race test entry ${i} (min 20 chars)`,
       }));
     }
 

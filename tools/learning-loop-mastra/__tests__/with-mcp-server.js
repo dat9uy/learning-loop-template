@@ -109,37 +109,20 @@ export async function connectMcpServer(serverEntry, tempRoot) {
 }
 
 /**
- * Run a test function against a single MCP server entry point.
+ * Run a test function against the canonical Mastra MCP server entry point.
  *
  * Creates an isolated temp GATE_ROOT, connects a Client, invokes fn(handles),
  * and cleans up the child process afterwards.
  */
-export async function withMcpServer(serverEntry, fn) {
+export async function withMcpServer(fn) {
   const tempRoot = prepareTempRoot();
-  const handles = await connectMcpServer(serverEntry, tempRoot);
+  const handles = await connectMcpServer(
+    join(projectRoot, "tools/learning-loop-mastra/server.js"),
+    tempRoot,
+  );
   try {
     await fn(handles);
   } finally {
     await handles.cleanup();
   }
-}
-
-/**
- * Convenience entry point for the legacy learning-loop-mcp server.
- */
-export function withLegacyMcpServer(fn) {
-  return withMcpServer(
-    join(projectRoot, "tools/learning-loop-mcp/server.js"),
-    fn,
-  );
-}
-
-/**
- * Convenience entry point for the learning-loop-mastra server.
- */
-export function withMastraMcpServer(fn) {
-  return withMcpServer(
-    join(projectRoot, "tools/learning-loop-mastra/server.js"),
-    fn,
-  );
 }

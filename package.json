@@ -16,7 +16,7 @@
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
     "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/core/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' 'tools/learning-loop-mastra/__tests__/*.test.js' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
     "test:cold-session": "node --test tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
-    "gate:server": "node tools/learning-loop-mcp/server.js"
+    "gate:server": "node tools/learning-loop-mastra/server.js"
   },
   "dependencies": {
     "@mastra/core": "1.42.0",

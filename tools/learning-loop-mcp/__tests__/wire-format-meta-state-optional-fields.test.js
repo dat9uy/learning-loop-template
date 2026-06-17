@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { z } from "zod";
-import { installWireFormatCoercion } from "../tool-registry.js";
+import { installWireFormatCoercion } from "../core/wire-format-coercion.js";
 
 // Test that the new optional fields (affected_system, code_ref, ledger_ref)
 // survive wire-format coercion on all 16 meta_state_* tools.

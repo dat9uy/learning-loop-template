@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveRoot } from "#lib/resolve-root.js";
-import * as toolRegistry from "../tool-registry.js";
+import * as serverReload from "../core/mcp-server-reload.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -53,9 +53,9 @@ export const metaStateRefreshToolsTool = {
     // Allow tests to inject stubbed dependencies (Node ESM modules are
     // read-only; importing the namespace and re-binding here is the only
     // seam for spying on safeImport / clearRegistrations / registerTool).
-    const safeImport = _deps?.safeImport ?? toolRegistry.safeImport;
-    const clearRegistrations = _deps?.clearRegistrations ?? toolRegistry.clearRegistrations;
-    const registerTool = _deps?.registerTool ?? toolRegistry.registerTool;
+    const safeImport = _deps?.safeImport ?? serverReload.safeImport;
+    const clearRegistrations = _deps?.clearRegistrations ?? serverReload.clearRegistrations;
+    const registerTool = _deps?.registerTool ?? serverReload.registerTool;
     let root;
     try {
       root = resolveRoot();

@@ -11,12 +11,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRegistry } from "../core/meta-state.js";
-import { installWireFormatCoercion } from "../tool-registry.js";
+import { installWireFormatCoercion } from "../core/wire-format-coercion.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const serverEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");
@@ -124,7 +124,7 @@ async function withMcpServer(fn) {
 // Test 1: meta_state_propose_design array unwrap via stdio.
 test("meta_state_propose_design unwraps {item: [...]} arrays via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(1, "meta_state_propose_design", {
+    const result = await call(1, "mastra_meta_state_propose_design", {
       title: "test-propose-design-top-level",
       description:
         "Test wire-format top-level array coercion via stdio transport (min 20 chars)",
@@ -149,7 +149,7 @@ test("meta_state_propose_design unwraps {item: [...]} arrays via stdio", async (
 // Test 2: meta_state_propose_design empty array unwrap via stdio.
 test("meta_state_propose_design unwraps {item: []} to flat empty arrays via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(2, "meta_state_propose_design", {
+    const result = await call(2, "mastra_meta_state_propose_design", {
       title: "test-empty-array-coercion",
       description:
         "Test empty array wire-format coercion via stdio transport (min 20 chars)",
@@ -174,7 +174,7 @@ test("meta_state_propose_design unwraps {item: []} to flat empty arrays via stdi
 // Test 3: meta_state_report "true" coercion via stdio.
 test("meta_state_report coerces mechanism_check 'true' string to boolean via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(3, "meta_state_report", {
+    const result = await call(3, "mastra_meta_state_report", {
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
@@ -199,7 +199,7 @@ test("meta_state_report coerces mechanism_check 'true' string to boolean via std
 // Test 4: meta_state_report "false" coercion via stdio.
 test("meta_state_report coerces mechanism_check 'false' string to boolean via stdio", async () => {
   await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(4, "meta_state_report", {
+    const result = await call(4, "mastra_meta_state_report", {
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
@@ -247,7 +247,7 @@ test("tools/list still advertises real array schemas after coercion patch", asyn
     const result = await send(5, "tools/list", {});
     assert(result.tools, "tools/list result missing tools array");
     const proposeDesign = result.tools.find(
-      (t) => t.name === "meta_state_propose_design",
+      (t) => t.name === "mastra_meta_state_propose_design",
     );
     assert(proposeDesign, "meta_state_propose_design not found in tools/list");
     assert(proposeDesign.inputSchema, "inputSchema missing");
