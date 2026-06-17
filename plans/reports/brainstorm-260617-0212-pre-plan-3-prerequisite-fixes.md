@@ -3,10 +3,10 @@
 **Type:** brainstorm (scope decision)
 **Date:** 2026-06-17
 **Slug:** pre-plan-3-prerequisite-fixes
-**Status:** consensus — operator-approved 2026-06-17; ready for `/ck:plan` handoff
+**Status:** consensus — operator-approved 2026-06-17; **Plan 1a shipped 2026-06-17** (see "Plan 1a Closeout" below). Plan 1b + Plan 3 remain open.
 **Aligned to:** `plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md` Plan 3 (C6+C7 operational flip)
 **Predecessor:** Plan 2 closeout (CR-1 to CR-6) + 2 active meta-state findings + F4 finding (`active`)
-**Successor:** `/ck:plan` for the 3-plan stack (atomic fix / single fix / one-line flip)
+**Successor:** Plan 1b (hygiene) + Plan 3 (operational flip) — Plan 1a is the unblocker for both.
 
 ---
 
@@ -124,13 +124,81 @@ Mirrors Phase B's atomic-unit → single-fix → one-line-flip pattern. The 15 i
 | F4 resolution path (D-10) is a fork in the road (peer becomes primary vs. peer is removed) | Medium | F4 is `active` (ack-ed 2026-06-16); resolve during Plan 3 Phase 1 (before cut-over) |
 | D-11 (4-tool manifest reconciliation) has 2 valid resolutions (add to manifest vs. document omission) | Low | Operator decision during Plan 3 author; not blocking Plan 1a/1b |
 
+## Plan 1a Closeout (2026-06-17)
+
+**Status:** SHIPPED. 1 session, 4 stacked commits (easiest → hardest: Phase 1 → 2 → 3 → 4), 1 PR. Both findings resolved. Master tracker flipped. See `plans/260617-1138-phase-c-plan-1a-atomic-fix/reports/closeout-report.md`.
+
+**Acceptance gate (single-sentence anchor):** All 9 test namespaces pass, 0 regressions, `include_archived: true` surfaces superseded entries, `meta_state_relationships` returns `inbound.consolidated_by`, `package.json` zod pin is `4.4.3` exact, parallel `callTool` calls serialize registry writes. **Met.** Verification: `pnpm test` → 1069 pass / 0 fail / 1 skip.
+
+### Resolved Open Questions
+
+- **Q1 (include_archived semantic) — RESOLVED 2026-06-17.** Operator chose semantic unification: single `include_archived: true` flag surfaces superseded + resolved + auto-resolved + archived. Rejected the separate `include_terminal: true` flag (Option B). Implementation: `meta-state-list-tool.js:179-186` — `includeTerminal = include_archived || isExplicitStatusFilter`.
+- **Q5 (PR sequencing) — RESOLVED 2026-06-17.** 1 PR with 4 stacked commits (Phase B pattern). Commit order = easiest → hardest for bisect-friendly rollback. This pattern was used and worked; **Plan 3 should reuse it** if its scope is large.
+
+### Actual Test Counts (vs. brainstorm predictions)
+
+| Predicted (this brainstorm) | Actual |
+|---|---|
+| 9 legacy namespaces | **10 test namespaces** (verified: `package.json:17` has 10 globs; the 9-count was wrong, inherited from Plan 2) |
+| 75 mastra tests + 4-tool content parity | 1069 pass / 0 fail / 1 skip across all 10 namespaces (the 1 skip is the persistent `tools-list-collision` skip from Plan 2, not a regression) |
+| 0 regressions | 0 regressions ✓ |
+
+**The 9-namespace anchor is obsolete.** Plan 1b and Plan 3 should use "10 test namespaces" or "all test namespaces pass" as the durable anchor. The 75-mastra-test count is also obsolete — mastra namespace now has more tests; use the total 1069 as the new anchor.
+
+### TTL Pressure Was Real (not theoretical)
+
+Both findings were set to expire at 2026-06-17T06:52:16Z — ~3 hours from plan authoring. Plan 1a resolved both at 2026-06-17T06:09:27Z (43 minutes before TTL). If the session had slipped, the findings would have entered `stale` status and the meta-state surface would have been advertising broken behavior as the default. The TTL pressure was real, not theoretical, and shaped the scope decision (4 fixes in 1 atomic PR vs. 4 separate PRs).
+
+### Findings Resolved
+
+- `meta-260616T1352Z-meta-state-list-does-not-return-superseded-entries-even-when` → `status: resolved`, `code_fingerprint: sha256:7d9c8378...` populated. Drift detection now enabled via `meta_state_check_grounding`.
+- `meta-260616T1352Z-meta-state-relationships-does-not-traverse-consolidated-into` → `status: resolved`, `code_fingerprint: sha256:a80334c8...` populated.
+
+### New Findings from Code Review (→ Plan 1b scope extension)
+
+The 4-fix atomic PR is technically correct (code review verdict: **PASS**), but `plans/reports/code-reviewer-260617-1338-phase-c-plan-1a-atomic-fix-review-report.md` identified 1 Important + 6 Minor items that should land in Plan 1b's hygiene batch. **Extend Plan 1b's scope** to include:
+
+**Important (1):**
+- `tools/learning-loop-mastra/__tests__/with-mcp-server.js:14-28` — module-level `inFlight` over-serializes ALL listTools/callTool across the test process, including calls against servers that do NOT share `GATE_ROOT`. **Fix:** scope the mutex to per-`(serverEntry, tempRoot)` closure inside `connectMcpServer`.
+
+**Minor (6):**
+- `with-both-mcp-servers.js:46-60` — pre-existing stale-rejection bug (not introduced by Plan 1a; was masked by the new inner mutex). Verified: `caught1: boom1, caught2: boom1` (second call inherits stale rejection).
+- `connect-mcp-server-mutex.test.js:54-90` — test does not deterministically exercise the race; could pass with or without the mutex depending on timing. Add timestamp-stamped ordering check or back-to-back identical `change_target` IDs.
+- `loop-introspect.js:309-317` — `consolidated_into_inverse` does not dedup duplicates; inconsistent with `promoted_to_rule` pattern at line 282-284. Add `if (!arr.includes(id)) arr.push(id);`.
+- `loop-introspect.js:304-308` — comment is misleading (says `finding.consolidated_into` is the forward, but it's the inverse; forward is `change-log.consolidates`). Rewrite to "The forward ref is on the change-log side (`change-log.consolidates`). The inverse is keyed by change-log id."
+- `loop-introspect.test.js` — coverage gap: no 1-finding→2-change-logs test, no empty-string test, no duplicate-in-CSV test. Add 2-3 more tests.
+- `meta-state-list-tool.js:14` — naming inconsistency: `TERMINAL_STATUSES` set has 3 entries (auto-resolved, resolved, superseded); `archived` is the 4th terminal status but is NOT in the set, handled by a separate `if (!include_archived)` filter. Either add `"archived"` to the set and delete the second filter, or rename to `EXCLUDABLE_STATUSES`.
+
+**Doc drift to fix in Plan 1b:**
+- Plan/closeout claim "9 test namespaces" → correct to "10 test namespaces" (or "all test namespaces").
+- Plan claims "+4 RED tests" → correct to "+5 new test files / +11 new tests" (Phase 2 has 2 test files: `loop-introspect.test.js` + `meta-state-relationships-tool.test.js`).
+- Journal RCA contains 4 hallucinated pre-fix map names (`resolves_inverse`, `archives_inverse`, `consolidates_inverse`, `depends_on_inverse` are invented; the real 5 pre-fix maps are `addresses_inverse, supersedes_inverse, origin_inverse, promoted_to_rule_inverse, reopens_inverse`).
+- Journal claims `TERMINAL_STATUSES` was "added" at line 14 of `meta-state-list-tool.js` — it was pre-existing from plan 260611-1000; actual change was at lines 179-186.
+
+### Code Reference Drift in This Brainstorm
+
+Several line numbers in the "References" section are now slightly off after the Plan 1a fixes (line ranges shifted):
+- `tools/learning-loop-mcp/tools/meta-state-list-tool.js:14, 173-182` — line 14 (`TERMINAL_STATUSES`) is unchanged; the actual change was at lines 179-186.
+- `tools/learning-loop-mcp/core/loop-introspect.js:248-307` — actual range is now 240-328 (extended with `consolidated_into_inverse`).
+- `tools/learning-loop-mcp/tools/meta-state-relationships-tool.js:38-79` — the `inbound` map is at lines 56-69; the new `consolidated_by` is at lines 68-69.
+- `tools/learning-loop-mastra/package.json:34` — should be `package.json:28` (Plan 1a moved the pin to the root package.json, not the mastra subdir's).
+
+Plan 1b should correct these line numbers when it picks up the doc-drift items.
+
+### References for Plan 1a Closeout
+
+- `plans/260617-1138-phase-c-plan-1a-atomic-fix/plan.md` — Plan 1a plan
+- `plans/260617-1138-phase-c-plan-1a-atomic-fix/reports/closeout-report.md` — Plan 1a closeout
+- `docs/journals/2026-06-17-phase-c-plan-1a-closeout.md` — Plan 1a journal (contains hallucinated map names; correct in Plan 1b)
+- `plans/reports/code-reviewer-260617-1338-phase-c-plan-1a-atomic-fix-review-report.md` — Plan 1a code review (PASS verdict; 1 Important + 6 Minor)
+
 ## Open Questions
 
-1. **`include_archived` semantic for `superseded`/`resolved`/`auto-resolved`:** should the existing `include_archived: true` flag also surface the 3 non-`archived` terminal statuses (semantic unification), or should we add a new `include_terminal: true` flag (semantic separation)? Plan 260611-1000 line 173-179 already handles explicit `status="superseded"` opt-in; the gap is the implicit case. **Operator decision required before Plan 1a author.**
+1. **`include_archived` semantic for `superseded`/`resolved`/`auto-resolved`:** ~~Operator decision required before Plan 1a author.~~ **RESOLVED 2026-06-17** — semantic unification chosen. See "Plan 1a Closeout → Resolved Open Questions" above.
 2. **Cold-session test isolation (CR-3):** is the fix `before()` registration or a full rewrite of the test to not depend on test ordering? Pre-existing flake risk; low priority but Plan 1b should pick one.
 3. **D-11 resolution:** add the 4 tools (`propose_design`, `relationships`, `re_verify`, `supersede`) to `agent-manifest.json`, or document the omission? Master tracker line 183 acknowledges the gap.
 4. **D-12 Mode 1 vs Mode 2 decision timing:** should this be resolved before Plan 3 author starts (locks C6 scope), or during Plan 3 (peer review feedback)? Earlier resolution = tighter Plan 3 scope; later = more input from operator during review.
-5. **Plan 1a PR sequencing:** 1 PR with 4 commits, or 4 PRs (1 per item)? Phase B used batched-with-stacked-commits. Plan 1a's items are smaller; 1 PR with 4 commits is fine.
+5. **Plan 1a PR sequencing:** ~~Phase B used batched-with-stacked-commits. Plan 1a's items are smaller; 1 PR with 4 commits is fine.~~ **RESOLVED 2026-06-17** — 1 PR with 4 stacked commits shipped successfully. Plan 3 should reuse the pattern.
 
 ## Deferred (out of scope for these 3 plans)
 
