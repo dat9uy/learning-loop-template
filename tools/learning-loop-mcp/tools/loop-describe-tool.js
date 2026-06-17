@@ -180,6 +180,7 @@ export const loopDescribeTool = {
           origin_inverse: Object.fromEntries(inverseIndexes.origin_inverse),
           promoted_to_rule_inverse: Object.fromEntries(inverseIndexes.promoted_to_rule_inverse),
           reopens_inverse: Object.fromEntries(inverseIndexes.reopens_inverse),
+          consolidated_into_inverse: Object.fromEntries(inverseIndexes.consolidated_into_inverse),
         };
 
         // Evidence-code-ref coverage (Phase 3 dual-field schema unification)

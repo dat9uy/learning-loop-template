@@ -236,12 +236,14 @@ function buildColdTierCache(root) {
 
 /**
  * Build inverse indexes from a flat array of entries.
- * Returns 4 maps for O(1) relationship lookup.
+ * Returns 6 maps for O(1) relationship lookup.
  *
  * - addresses_inverse: Map<loop-design.id, finding.id[]>
  * - supersedes_inverse: Map<change-log.id, entry.id[]>
  * - origin_inverse: Map<finding.id, rule.id[]>
  * - promoted_to_rule_inverse: Map<rule.id, finding.id[]>
+ * - reopens_inverse: Map<finding.id, finding.id[]>
+ * - consolidated_into_inverse: Map<change-log.id, finding.id[]>
  *
  * Pure function — O(N) over entries. No I/O.
  */
@@ -251,6 +253,7 @@ export function buildInverseIndexes(entries) {
   const originInverse = new Map();
   const promotedToRuleInverse = new Map();
   const reopensInverse = new Map();
+  const consolidatedIntoInverse = new Map();
 
   for (const entry of entries) {
     // addresses: loop-design -> findings that address it
@@ -297,6 +300,21 @@ export function buildInverseIndexes(entries) {
         reopensInverse.get(staleId).push(entry.id);
       }
     }
+
+    // consolidated_into: finding -> change-log is the forward ref on the
+    // finding side (`finding.consolidated_into`). The inverse is keyed by
+    // change-log id and holds the findings it consolidates. This powers
+    // `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
+    // returning `inbound.consolidated_by`.
+    if (entry.entry_kind === "change-log" && entry.consolidates) {
+      const ids = typeof entry.consolidates === "string"
+        ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
+        : Array.isArray(entry.consolidates)
+          ? entry.consolidates
+          : [];
+      if (!consolidatedIntoInverse.has(entry.id)) consolidatedIntoInverse.set(entry.id, []);
+      consolidatedIntoInverse.get(entry.id).push(...ids);
+    }
   }
 
   return {
@@ -305,6 +323,7 @@ export function buildInverseIndexes(entries) {
     origin_inverse: originInverse,
     promoted_to_rule_inverse: promotedToRuleInverse,
     reopens_inverse: reopensInverse,
+    consolidated_into_inverse: consolidatedIntoInverse,
   };
 }
 
@@ -355,7 +374,7 @@ export function buildRegistrySummary(entries) {
   // Top references: most-cited entry ids (sum of inverse-index sizes)
   const inverse = buildInverseIndexes(entries);
   const citationCounts = new Map();
-  for (const map of [inverse.addresses_inverse, inverse.supersedes_inverse, inverse.origin_inverse, inverse.promoted_to_rule_inverse, inverse.reopens_inverse]) {
+  for (const map of [inverse.addresses_inverse, inverse.supersedes_inverse, inverse.origin_inverse, inverse.promoted_to_rule_inverse, inverse.reopens_inverse, inverse.consolidated_into_inverse]) {
     for (const [id, refs] of map.entries()) {
       citationCounts.set(id, (citationCounts.get(id) || 0) + refs.length);
     }
