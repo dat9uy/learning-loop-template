@@ -1,0 +1,91 @@
+import { describe, test, before, after } from "node:test";
+import assert from "node:assert";
+import { readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { connectMcpServer } from "./with-mcp-server.js";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const projectRoot = resolve(__dirname, "..", "..", "..");
+const legacyEntry = join(projectRoot, "tools/learning-loop-mcp/server.js");
+const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
+
+function copySchemas(tempRoot) {
+  const schemasSrc = join(projectRoot, "schemas");
+  const schemasDst = join(tempRoot, "schemas");
+  mkdirSync(schemasDst, { recursive: true });
+  for (const f of readdirSync(schemasSrc)) {
+    if (f.endsWith(".schema.json")) {
+      copyFileSync(join(schemasSrc, f), join(schemasDst, f));
+    }
+  }
+}
+
+function prepareTempRoot() {
+  const tempRoot = mkdtempSync(join(tmpdir(), "mutex-race-"));
+  mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
+  copySchemas(tempRoot);
+  return tempRoot;
+}
+
+function readRegistryLines(tempRoot) {
+  const raw = readFileSync(join(tempRoot, "meta-state.jsonl"), "utf8");
+  return raw.split("\n").filter((line) => line.trim() !== "");
+}
+
+describe("connectMcpServer module-level mutex", () => {
+  let tempRoot;
+  let legacy;
+  let mastra;
+
+  before(async () => {
+    tempRoot = prepareTempRoot();
+    legacy = await connectMcpServer(legacyEntry, tempRoot);
+    mastra = await connectMcpServer(mastraEntry, tempRoot);
+  });
+
+  after(async () => {
+    if (legacy) await legacy.cleanup();
+    if (mastra) await mastra.cleanup();
+  });
+
+  test("20 parallel cross-server writes serialize without lost updates", async () => {
+    const calls = [];
+    for (let i = 0; i < 10; i++) {
+      calls.push(legacy.callTool("meta_state_log_change", {
+        change_dimension: "mechanical",
+        change_target: `tools/legacy-mutex-test-${i}.js`,
+        change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
+        reason: `Legacy mutex race test entry ${i} (min 20 chars)`,
+      }));
+      calls.push(mastra.callTool("mastra_meta_state_log_change", {
+        change_dimension: "mechanical",
+        change_target: `tools/mastra-mutex-test-${i}.js`,
+        change_diff: { added: [`mutex-test-${i}`], removed: [], changed: [] },
+        reason: `Mastra mutex race test entry ${i} (min 20 chars)`,
+      }));
+    }
+
+    const results = await Promise.all(calls.map((p) => p.catch((err) => ({ error: err.message }))));
+    const failures = results.filter((r) => r.error);
+    assert.strictEqual(failures.length, 0, `Some calls failed: ${JSON.stringify(failures.slice(0, 3), null, 2)}`);
+
+    const lines = readRegistryLines(tempRoot);
+    assert.strictEqual(
+      lines.length,
+      20,
+      `Expected 20 registry entries, got ${lines.length} — parallel writes raced and lost updates`
+    );
+
+    // Verify every entry is valid JSON (no interleaved/corrupt writes).
+    const ids = new Set();
+    for (const line of lines) {
+      const parsed = JSON.parse(line);
+      assert.strictEqual(parsed.entry_kind, "change-log");
+      ids.add(parsed.id);
+    }
+    assert.strictEqual(ids.size, 20, "Expected 20 unique change-log ids");
+  });
+});
