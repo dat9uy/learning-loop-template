@@ -155,16 +155,17 @@ Phase C ships as a **3-plan stack**, mirroring Phase B's proven pattern (atomic 
 
 | Plan | Sub-phases | Purpose | Gate |
 |------|-----------|---------|------|
-| **Plan 1** | C1 + C2 + C3 + C5 | Atomic adoption — peer server + factory + 4 ported regression tests | All 9 test namespaces pass against legacy + 4 wire-format tests pass against factory |
-| **Plan 1a** | — (corrective) | Atomic fix — 2 active findings + CR-1 + CR-2 from PR #3 review | All 9 namespaces pass; 4 RED tests GREEN; 2 findings resolved |
-| **Plan 2** | C4 | Verification gate — byte-identical parity harness | All 9 test namespaces pass against both servers; output diffs = empty |
-| **Plan 3** | C6 + C7 | Operational flip — cut over + agent-manifest.json update | All 9 test namespaces pass against Mastra server post-cut-over |
+| **Plan 1** | C1 + C2 + C3 + C5 | Atomic adoption — peer server + factory + 4 ported regression tests | All 10 test namespaces pass against legacy + 4 wire-format tests pass against factory |
+| **Plan 1a** | — (corrective) | Atomic fix — 2 active findings + CR-1 + CR-2 from PR #3 review | All 10 namespaces pass; 4 RED tests GREEN; 2 findings resolved |
+| **Plan 1b** | — (hygiene) | CR-3 to CR-6 + Plan 1a review followups + doc drift corrections | All 10 namespaces pass; deterministic race + inverse-map dedup + doc drift closed |
+| **Plan 2** | C4 | Verification gate — byte-identical parity harness | All 10 test namespaces pass against both servers; output diffs = empty |
+| **Plan 3** | C6 + C7 | Operational flip — cut over + agent-manifest.json update | All 10 test namespaces pass against Mastra server post-cut-over |
 
 **Why 3 plans, not 1 or 2:** C4 (parity gate) cannot pass without C5's factory (probe-confirmed 2026-06-16: 1/6 wire-format cases pass against raw `createTool`; `z.preprocess()` + `unwrapItem` are mandatory). C6+C7 (cut-over) is operational and should be reviewable separately from technical adoption. Phase B's 3-plan pattern (B3+B4 → B5 → B6) shipped successfully 2026-06-14 with no test regressions.
 
 ### Test namespace anchor (2026-06-16, replaces count-based baseline)
 
-The test suite is anchored on **9 namespace directories** declared in `package.json#scripts.test`. Counts drift with each PR; namespaces are durable.
+The test suite is anchored on **10 namespace directories** declared in `package.json#scripts.test`. Counts drift with each PR; namespaces are durable.
 
 | # | Namespace | Semantic role |
 |---|-----------|---------------|
@@ -177,15 +178,17 @@ The test suite is anchored on **9 namespace directories** declared in `package.j
 | 7 | `tools/learning-loop-mcp/tools/` | MCP sub-tool narrow modules |
 | 8 | `.claude/coordination/__tests__/` | **Meta-surface coordination** — cross-cutting rules |
 | 9 | `.factory/hooks/__tests__/` | **Droid CLI hook layer** — universal-hook contract |
+| 10 | `tools/learning-loop-mastra/__tests__/` | **Mastra parity surface** — deterministic tool parity + spawn infra |
 
-**Phase C gate language:** "all 9 namespaces pass" replaces the prior "862 tests pass" formulation. Plan 2 (C4) cannot pass until the migrated tool subset is byte-identical against namespaces 1, 8, 9 (the ones exercised by the deterministic tools — `__tests__/`, `.claude/coordination/__tests__/`, `.factory/hooks/__tests__/`).
+**Phase C gate language:** "all 10 namespaces pass" replaces the prior "862 tests pass" formulation. Plan 2 (C4) cannot pass until the migrated tool subset is byte-identical against namespaces 1, 8, 9, 10 (the ones exercised by the deterministic tools — `__tests__/`, `.claude/coordination/__tests__/`, `.factory/hooks/__tests__/`, `learning-loop-mastra/__tests__/`).
 
 - [x] **C1 [Plan 1]** Add `@mastra/core` + `@mastra/mcp` to a new `tools/learning-loop-mastra/` package. **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
 - [x] **C2 [Plan 1]** Build a parallel `MCPServer` registering the 29 meta-state deterministic tools (post-Phase-A: 5 gate + 20 meta_state + 3 introspection + 1 runtime_agnostic — see `tools/learning-loop-mastra/tools/manifest.json` derived from `tools/learning-loop-mcp/tools/manifest.json` minus 11 workflow_*; tool list: `gate_check`, `gate_check_recurrence`, `gate_mark_preflight`, `gate_override`, `runtime_state_record`, all 20 `meta_state_*` algorithmic tools, `loop_describe`, `loop_get_instruction`, `runtime_state_read`, `check_runtime_agnostic`). The 36 figure was the pre-Phase-A total `agent-manifest.json` count (5+11+16+3+1, includes 11 workflow tools that move to Phase D). The 4 tools in `tools/manifest.json` but missing from `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`) are a known pre-existing inconsistency between the two manifests; deferred to Plan 3 / C7. **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
 - [x] **C3 [Plan 1]** Run it as a peer MCP server on stdio (different `command` entry in `.mcp.json` + `.factory/mcp.json`). **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
-- [x] **C4 [Plan 2]** Verify byte-identical output for the meta-surface subset. **Closed 2026-06-17** via `plans/260616-2200-phase-c-plan-2-parity/`. 9 legacy namespaces + 70 mastra tests pass. Byte-identical parity proven via `z.toJSONSchema()` + 4-tool read-only `tools/call` content deepEqual.
+- [x] **C4 [Plan 2]** Verify byte-identical output for the meta-surface subset. **Closed 2026-06-17** via `plans/260616-2200-phase-c-plan-2-parity/`. All 10 test namespaces pass; 70 mastra-specific tests pass. Byte-identical parity proven via `z.toJSONSchema()` + 4-tool read-only `tools/call` content deepEqual.
 - [x] **C5 [Plan 1]** Ship `createLoopTool({ id, description, inputSchema, execute })` factory in `tools/learning-loop-mastra/create-loop-tool.js`. Wrap `inputSchema` shape: `z.preprocess()` for `ZodBoolean` ("true"/"false" → bool), `ZodNumber` (`/^-?\d+(\.\d+)?$/` → number); `unwrapItem` step (gated on `ZodArray`/`ZodObject` type names) for `{item: X}` envelopes. Port these legacy regression tests to call the factory's output as the parity gate: `tools/learning-loop-mcp/__tests__/wire-format-coercion-fix.test.js`, `wire-format-top-level-coercion.test.js`, `wire-format-meta-state-optional-fields.test.js`, **and `wire-format-patch-recursion.test.js` (the leaf-recursion case — locks Mastra's nested-object coercion behavior against the legacy `MAX_RECURSION_DEPTH = 2` recursion in `tools/learning-loop-mcp/tool-registry.js#coerceParamsToSchema` lines 124-134).** Legacy helpers (`coerceParamsToSchema` lines 77-134, `installWireFormatCoercion` lines 197-235) stay in the legacy server during coexistence; the factory replaces them on Mastra's side only. **Closed 2026-06-16** via `plans/260616-1605-phase-c-plan-1-atomic-mastra-adoption/`.
 - [x] **C5a [Plan 1a]** Corrective fixes to deterministic meta-surface tools before Plan 3 cut-over. Four stacked commits: (1) `meta_state_list` `include_archived` semantic unification — single flag surfaces all 4 terminal statuses (superseded, resolved, auto-resolved, archived); (2) `meta_state_relationships` `consolidated_into` inbound traversal — added `consolidated_into_inverse` to `buildInverseIndexes` (5 → 6 maps) and exposed `inbound.consolidated_by`; (3) `zod` exact pin (`4.4.3`) in `package.json` to protect parity gate version sensitivity; (4) in-process Promise-chain mutex in `connectMcpServer` to serialize `callTool`/`listTools` across servers sharing a `GATE_ROOT`. **Closed 2026-06-17** via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`.
+- [x] **C5b [Plan 1b]** Hygiene batch — cold-session test isolation (CR-3), per-tempRoot mutex scope (Plan 1a review Important), deterministic mutex race test + inverse-map dedup + coverage gap (Plan 1a review Minors 1-5), and doc drift corrections (9→10 namespaces, +4→+5/11 tests, hallucinated map names, R-09 arithmetic, `TERMINAL_STATUSES`→`EXCLUDABLE_STATUSES`). **Closed 2026-06-17** via `plans/260617-1607-phase-c-plan-1b-hygiene/`.
 - [ ] **C6 [Plan 3]** Cut over: replace the existing `@modelcontextprotocol/sdk` `McpServer` with the Mastra `MCPServer` for the deterministic subset. Two servers during transition; one server post-cut-over.
 - [ ] **C7 [Plan 3]** Update `tools/learning-loop-mcp/agent-manifest.json` to the new group names (per §3.4 Phase 4 + §3.10 tool surface table).
 

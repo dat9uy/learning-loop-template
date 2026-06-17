@@ -146,12 +146,11 @@ export function listActiveFindings(root, { categories } = {}) {
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  // The legacy 'expired' status was removed in plan 260611-1000; anti-patterns
-  // are surfaced in reported/active states. The set below mirrors the canonical
-  // TERMINAL_STATUSES in core/meta-state.js minus 'expired'.
-  const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved"]);
+  // Anti-patterns are surfaced in reported/active states; filter out closed
+  // statuses so the list does not include resolved/auto-resolved findings.
+  const CLOSED_STATUSES = new Set(["auto-resolved", "resolved"]);
   let findings = entries.filter(
-    (e) => e.category === "loop-anti-pattern" && !TERMINAL_STATUSES.has(e.status)
+    (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
   );
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
@@ -301,19 +300,23 @@ export function buildInverseIndexes(entries) {
       }
     }
 
-    // consolidated_into: finding -> change-log is the forward ref on the
-    // finding side (`finding.consolidated_into`). The inverse is keyed by
-    // change-log id and holds the findings it consolidates. This powers
-    // `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
-    // returning `inbound.consolidated_by`.
-    if (entry.entry_kind === "change-log" && entry.consolidates) {
+    // consolidated_into: the forward ref is on the change-log side
+    // (`change-log.consolidates`, CSV or array of finding ids). The inverse
+    // is keyed by change-log id and holds the findings it consolidates.
+    // This powers `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
+    // returning `inbound.consolidated_by`. (See meta-state.js JSDoc for the
+    // canonical direction description.)
+    if (entry.entry_kind === "change-log" && entry.consolidates !== undefined) {
       const ids = typeof entry.consolidates === "string"
         ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
         : Array.isArray(entry.consolidates)
           ? entry.consolidates
           : [];
       if (!consolidatedIntoInverse.has(entry.id)) consolidatedIntoInverse.set(entry.id, []);
-      consolidatedIntoInverse.get(entry.id).push(...ids);
+      const arr = consolidatedIntoInverse.get(entry.id);
+      for (const id of ids) {
+        if (!arr.includes(id)) arr.push(id);
+      }
     }
   }
 

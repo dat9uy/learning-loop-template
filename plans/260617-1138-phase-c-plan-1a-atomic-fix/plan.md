@@ -41,9 +41,9 @@ related:
 2. **Phase 2 — `meta_state_relationships` `consolidated_into` inbound traversal (finding 2).** Add `consolidated_into_inverse` to `buildInverseIndexes` (5 maps → 6 maps) + wire `consolidated_by` into the inbound map. RED test: querying a change-log's relationships shows `inbound.consolidated_by: [<finding-id>]`. Resolves `meta-260616T1352Z-meta-state-relationships-does-not-traverse-consolidated-into`.
 3. **Phase 3 — `zod` exact pin (CR-1).** Remove caret from `package.json:28`. 1-character change + 1-line README/comment. RED test: `package.json` zod pin is exact (no caret) — locks the parity gate's version-sensitivity.
 4. **Phase 4 — Mutex reliability in `connectMcpServer` (CR-2).** Per code-reviewer disposition (option b, robust): push the in-process serializer into `connectMcpServer` itself so the mutex is always active when both servers share `GATE_ROOT`. The `withBothMcpServers` helper's mutex becomes a belt-and-suspenders. RED test: two parallel `callTool` invocations on the same `GATE_ROOT` produce serialized registry writes.
-5. **Phase 5 — Acceptance gate + closeout.** Full `pnpm test` (all 9 test namespaces); 2 `meta_state_resolve` calls; 1 `meta_state_log_change` for the plan; master tracker flip for "Plan 1a [x]"; closeout journal.
+5. **Phase 5 — Acceptance gate + closeout.** Full `pnpm test` (all 10 test namespaces); 2 `meta_state_resolve` calls; 1 `meta_state_log_change` for the plan; master tracker flip for "Plan 1a [x]"; closeout journal.
 
-**Acceptance gate (single sentence, durable anchor):** *"All 9 test namespaces pass (the 9-namespace anchor from Plan 2's closeout; per-file counts drift) AND 0 regressions AND `meta_state_list({include_archived: true})` returns at least one superseded entry (RED→GREEN finding 1) AND `meta_state_relationships({id: <change-log-id>, direction: 'inbound'})` returns `consolidated_by: [<finding-id>]` (RED→GREEN finding 2) AND `package.json` zod pin is `4.4.3` exact (RED→GREEN CR-1) AND two parallel `callTool` calls on shared `GATE_ROOT` produce serialized registry writes (RED→GREEN CR-2)."*
+**Acceptance gate (single sentence, durable anchor):** *"All 10 test namespaces pass (per `package.json#scripts.test`; per-file counts drift) AND 0 regressions AND `meta_state_list({include_archived: true})` returns at least one superseded entry (RED→GREEN finding 1) AND `meta_state_relationships({id: <change-log-id>, direction: 'inbound'})` returns `consolidated_by: [<finding-id>]` (RED→GREEN finding 2) AND `package.json` zod pin is `4.4.3` exact (RED→GREEN CR-1) AND two parallel `callTool` calls on shared `GATE_ROOT` produce serialized registry writes (RED→GREEN CR-2)."*
 
 **Out of scope (deferred to Plan 1b / Plan 3):** CR-3 to CR-6 hygiene items (cold-session test isolation, test count math, commit squashing lesson, plan.md R-09 arithmetic) are Plan 1b. C6 cut-over + C7 manifest rename + D-8 to D-13 + F4 resolution are Plan 3. Phase D workflow tools, Phase G skill migration, LIM hardening are parallel/separate tracks.
 
@@ -82,7 +82,7 @@ related:
 ## Dependencies
 
 **Blocked by:**
-- `260616-2200-phase-c-plan-2-parity` (Plan 2 / C4 shipped 2026-06-17; 9 test namespaces pass; mastra namespace contains 75 tests per Plan 2 baseline; parity gate is the regression envelope for Plan 1a)
+- `260616-2200-phase-c-plan-2-parity` (Plan 2 / C4 shipped 2026-06-17; all 10 test namespaces pass (durable anchor); mastra namespace contains 75 tests per Plan 2 baseline; parity gate is the regression envelope for Plan 1a)
 
 **Blocks:**
 - `phase-c-plan-1b-hygiene` (Plan 1b / CR-3 to CR-6; cannot start until Plan 1a merges; small 2-3h batched PR)
@@ -110,7 +110,7 @@ related:
   - Open Q1 (semantic unification vs separation) → **semantic unification** (single `include_archived: true` flag surfaces superseded + resolved + auto-resolved in addition to archived).
   - Plan scope → **Plan 1a only** (2 findings + CR-1 + CR-2); 1b stays separate.
   - PR structure → **1 PR with 4 stacked commits** (Phase B pattern); commit order = easiest → hardest (Phase 1 → Phase 2 → Phase 3 → Phase 4) for bisect-friendly rollback.
-- **Test count math (Plan 1a RED tests):** 4 new RED tests (1 per fix). The 2 existing tool test files (if they exist) get extended with 1 assertion each. The other 2 are new test files. Net test count delta = +4 RED tests, +0 RED-to-GREEN churn in other test files. Acceptance gate re-runs the full suite (9 test namespaces, durable anchor; mastra namespace contains 75 tests per Plan 2 baseline) to confirm 0 regressions.
+- **Test count math (Plan 1a RED tests):** 4 fixes produced +5 new test files / +11 new tests. The 2 existing tool test files (if they exist) get extended with 1 assertion each. Net test count delta = +5 new test files / +11 new tests, +0 RED-to-GREEN churn in other test files. Acceptance gate re-runs the full suite (all 10 test namespaces, durable anchor; mastra namespace contains 75 tests per Plan 2 baseline) to confirm 0 regressions.
 - **Reconciled stale references:**
   - "McpServer" vs "MCPServer" naming — Plan 1a touches legacy `meta_state_*` tools (legacy `McpServer`); does NOT touch the mastra peer. The fix propagates to the mastra peer via the legacy-handler-adapter (the mastra server wraps the legacy handlers).
   - "The 4 tools missing from `agent-manifest.json`" (D-11) — NOT this plan; Plan 3 / C7.
@@ -198,7 +198,7 @@ related:
 
 #### Whole-Plan Consistency Sweep
 - **Files re-read:** plan.md, phase-01 through phase-05.
-- **Stale terms removed:** "9 legacy namespaces + 75 mastra tests" → "9 test namespaces" (durable anchor; 75 demoted to snapshot).
+- **Stale terms removed:** "9 legacy namespaces + 75 mastra tests" → "all 10 test namespaces" (durable anchor; 75 demoted to snapshot).
 - **Line-range corrections applied:** `loop-introspect.js:248-307` → `248-309`; `meta-state-relationships-tool.js:38-79` → `56-79`.
 - **Unresolved contradictions:** 0.
 

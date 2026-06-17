@@ -1,7 +1,7 @@
 ---
 title: "Phase C Plan 1b — Hygiene (CR-3 to CR-6 + Plan 1a review followups + doc drift)"
 description: "Batched hygiene PR: cold-session test isolation (CR-3), mutex scope per-connection (Plan 1a review Important), test strengthening (deterministic race + inverse-map dedup + coverage gap), and doc drift corrections (9→10 namespaces, +4→+5/11 tests, hallucinated map names, R-09 arithmetic). 6 phases, 1 PR, 2-3h total. Predecessor: Plan 1a. Prerequisite for Plan 3 (C6+C7 cut-over). Mirrors Phase B's single-fix PR pattern."
-status: pending
+status: completed
 priority: P2
 branch: "260617-1607-phase-c-plan-1b-hygiene"
 tags: [meta-surface, phase-c, hygiene, tdd, parity-prerequisite]
@@ -59,12 +59,12 @@ related:
 
 | Phase | Name | Status | Effort | TDD Color | Dependencies |
 |-------|------|--------|--------|-----------|--------------|
-| 1 | [cold-session-test-isolation](./phase-01-phase-1-cold-session-test-isolation.md) | Pending | ~30min | GREEN-only (pre-existing test) | Plan 1a (shipped 2026-06-17) |
-| 2 | [mutex-scope](./phase-02-phase-2-mutex-scope.md) | Pending | ~45min | RED → GREEN | Phase 1 (commit order) |
-| 3 | [test-strengthening](./phase-03-phase-3-test-strengthening.md) | Pending | ~30min | RED → GREEN (deterministic + 3 coverage) | Phase 2 (commit order; tests the new mutex) |
-| 4 | [inverse-map-dedup](./phase-04-phase-4-inverse-map-dedup.md) | Pending | ~15min | RED → GREEN | Phase 3 (commit order; dedup in same file) |
-| 5 | [doc-drift-corrections](./phase-05-phase-5-doc-drift-corrections.md) | Pending | ~30min | doc-only | Phases 1-4 (commit order; doc lands after code) |
-| 6 | [acceptance-gate](./phase-06-phase-6-acceptance-gate.md) | Pending | ~20min | Full `pnpm test` + meta-state log + tracker flip | Phases 1-5 + green CI |
+| 1 | [cold-session-test-isolation](./phase-01-phase-1-cold-session-test-isolation.md) | Completed | ~30min | GREEN-only (pre-existing test) | Plan 1a (shipped 2026-06-17) |
+| 2 | [mutex-scope](./phase-02-phase-2-mutex-scope.md) | Completed | ~45min | RED → GREEN | Phase 1 (commit order) |
+| 3 | [test-strengthening](./phase-03-phase-3-test-strengthening.md) | Completed | ~30min | RED → GREEN (deterministic + 3 coverage) | Phase 2 (commit order; tests the new mutex) |
+| 4 | [inverse-map-dedup](./phase-04-phase-4-inverse-map-dedup.md) | Completed | ~15min | RED → GREEN | Phase 3 (commit order; dedup in same file) |
+| 5 | [doc-drift-corrections](./phase-05-phase-5-doc-drift-corrections.md) | Completed | ~30min | doc-only | Phases 1-4 (commit order; doc lands after code) |
+| 6 | [acceptance-gate](./phase-06-phase-6-acceptance-gate.md) | Completed | ~20min | Full `pnpm test` + meta-state log + tracker flip | Phases 1-5 + green CI |
 
 **Total effort:** ~2.5 hours. One session. Single PR (stacked commits, one per phase). Commit order: Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 (easiest → hardest; doc lands last; bisect-friendly). All 5 code changes are small (5-25 LOC each); 5 doc corrections in Phase 5.
 

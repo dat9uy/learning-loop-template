@@ -3,7 +3,7 @@
 **Plan:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/plan.md`  
 **Branch:** `260617-1138-phase-c-plan-1a-atomic-fix`  
 **Closed:** 2026-06-17  
-**Acceptance gate:** all 9 test namespaces pass, 0 regressions, 4 RED tests GREEN, 2 findings resolved, 1 change-log entry filed, master tracker flipped.
+**Acceptance gate:** all 10 test namespaces pass, 0 regressions, 4 RED tests GREEN, 2 findings resolved, 1 change-log entry filed, master tracker flipped.
 
 ---
 
@@ -25,7 +25,7 @@ pnpm test
 1069 pass / 0 fail / 1 skip
 ```
 
-All 9 test namespaces in `package.json#scripts.test` pass. No regressions.
+All 10 test namespaces in `package.json#scripts.test` pass. No regressions.
 
 ## Findings Resolved
 

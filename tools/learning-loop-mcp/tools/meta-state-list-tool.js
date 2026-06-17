@@ -9,9 +9,8 @@ import { buildInverseIndexes, summarize } from "#mcp/core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-// The legacy 'expired' status was removed in plan 260611-1000. This set
-// mirrors the canonical TERMINAL_STATUSES in core/meta-state.js.
-const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
+// Set of statuses excluded by default from `meta_state_list` results.
+const EXCLUDABLE_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
 
 const REF_FIELDS = [
   "consolidated_into",
@@ -176,10 +175,10 @@ export const metaStateListTool = {
     // include_archived: true is the unified "show me the audit trail" affordance;
     // it surfaces all 4 terminal statuses (superseded, resolved, auto-resolved,
     // archived) without requiring callers to know which statuses are terminal.
-    const isExplicitStatusFilter = typeof status === "string" && TERMINAL_STATUSES.has(status);
+    const isExplicitStatusFilter = typeof status === "string" && EXCLUDABLE_STATUSES.has(status);
     const includeTerminal = include_archived || isExplicitStatusFilter;
     if (!includeTerminal) {
-      result = result.filter((e) => !TERMINAL_STATUSES.has(e.status));
+      result = result.filter((e) => !EXCLUDABLE_STATUSES.has(e.status));
     }
     if (!include_archived) {
       result = result.filter((e) => e.status !== "archived");

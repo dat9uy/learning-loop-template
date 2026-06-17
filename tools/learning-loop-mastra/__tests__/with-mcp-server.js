@@ -12,18 +12,20 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
 
-// Module-level in-process serializer. Tests that spawn multiple MCP servers
+// Per-tempRoot in-process serializer. Tests that spawn multiple MCP servers
 // (legacy + mastra) with a shared GATE_ROOT race on registry writes because
-// each server reads and writes meta-state.jsonl independently. This queue
-// guarantees that all listTools/callTool operations from this process are
-// FIFO and non-overlapping. Per-process scope is intentional: each test file
-// runs in its own process via node --test, and each test gets its own temp
-// GATE_ROOT, so the queue never starves unrelated tests.
-let inFlight = Promise.resolve();
-function withMutex(operation) {
-  const release = inFlight;
+// each server reads and writes meta-state.jsonl independently. This map keeps
+// a FIFO queue per tempRoot so operations sharing a GATE_ROOT serialize, while
+// unrelated tempRoots run concurrently.
+const inFlightByTempRoot = new Map();
+
+function withMutex(tempRoot, operation) {
+  if (!inFlightByTempRoot.has(tempRoot)) {
+    inFlightByTempRoot.set(tempRoot, Promise.resolve());
+  }
+  const release = inFlightByTempRoot.get(tempRoot);
   const next = release.then(() => operation(), () => operation());
-  inFlight = next.then(() => undefined, () => undefined);
+  inFlightByTempRoot.set(tempRoot, next.then(() => undefined, () => undefined));
   return next;
 }
 
@@ -66,13 +68,13 @@ export async function connectMcpServer(serverEntry, tempRoot) {
   await client.connect(transport);
 
   const listTools = async () =>
-    withMutex(async () => {
+    withMutex(tempRoot, async () => {
       const result = await client.listTools();
       return result.tools;
     });
 
   const callTool = async (name, args) =>
-    withMutex(async () => {
+    withMutex(tempRoot, async () => {
       const result = await client.callTool({ name, arguments: args });
       if (
         !result ||
@@ -99,6 +101,8 @@ export async function connectMcpServer(serverEntry, tempRoot) {
         if (!e?.message?.includes("closed")) {
           console.error("client close error:", e);
         }
+      } finally {
+        inFlightByTempRoot.delete(tempRoot);
       }
     },
   };

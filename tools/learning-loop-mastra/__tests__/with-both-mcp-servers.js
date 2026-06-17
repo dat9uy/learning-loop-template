@@ -50,12 +50,14 @@ export async function withBothMcpServers(fn) {
   // best-effort in-process serializer: it ensures only one callTool/listTools
   // is in flight at a time for the two clients spawned by this helper. It does
   // not guard against server-side concurrent writes or unrelated processes
-  // touching the same temp root.
+  // touching the same temp root. Rejections are consumed so a stale failure
+  // does not block subsequent operations.
   let inFlight = Promise.resolve();
-  const withMutex = async (operation) => {
-    const release = await inFlight;
-    inFlight = operation().finally(() => {});
-    return inFlight;
+  const withMutex = (operation) => {
+    const release = inFlight;
+    const next = release.then(() => operation(), () => operation());
+    inFlight = next.then(() => undefined, () => undefined);
+    return next;
   };
 
   const listTools = ({ server }) =>

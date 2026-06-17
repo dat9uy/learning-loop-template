@@ -21,7 +21,7 @@
 //   7. Hook mirror hint count matches canonical — reads both files, compares
 //      array lengths (not regex-based quote counting).
 
-const { describe, test } = require("node:test");
+const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -338,40 +338,51 @@ describe("cold-session discoverability", () => {
   // Test 7: Hook mirror hint count matches canonical
   // ---------------------------------------------------------------------------
 
-  test("hook mirror matches canonical hint count (drift prevention)", async () => {
-    const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
-    assert.ok(existsSync(hookPath), "hook file must exist");
+  describe("hook mirror hint count", () => {
+    let hookSource;
+    let canonicalSource;
 
-    const hookSource = readFileSync(hookPath, "utf8");
-    const canonicalPath = join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js");
-    const canonicalSource = readFileSync(canonicalPath, "utf8");
+    before(() => {
+      const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
+      assert.ok(existsSync(hookPath), "hook file must exist");
+      hookSource = readFileSync(hookPath, "utf8");
+      const canonicalPath = join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js");
+      canonicalSource = readFileSync(canonicalPath, "utf8");
+    });
 
-    // Extract array contents between Object.freeze([ and ]).
-    const hookMatch = hookSource.match(/LOCAL_DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
-    const canonicalMatch = canonicalSource.match(/DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+    after(() => {
+      hookSource = null;
+      canonicalSource = null;
+    });
 
-    assert.ok(hookMatch, "hook should contain LOCAL_DISCOVERABILITY_HINTS array");
-    assert.ok(canonicalMatch, "canonical should contain DISCOVERABILITY_HINTS array");
+    test("matches canonical hint count (drift prevention)", async () => {
+      // Extract array contents between Object.freeze([ and ]).
+      const hookMatch = hookSource.match(/LOCAL_DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+      const canonicalMatch = canonicalSource.match(/DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
 
-    // Count hints by splitting on the hint-delimiter pattern (each hint starts
-    // with a quoted string after optional whitespace/newlines). This is more
-    // robust than counting quote characters which can appear inside hints.
-    function countHints(arrayBody) {
-      // Each hint is a string literal. Count opening quotes that start a new
-      // hint entry (preceded by [ or , with optional whitespace).
-      const matches = arrayBody.match(/(?<=\[|,)\s*"/g);
-      return matches ? matches.length : 0;
-    }
+      assert.ok(hookMatch, "hook should contain LOCAL_DISCOVERABILITY_HINTS array");
+      assert.ok(canonicalMatch, "canonical should contain DISCOVERABILITY_HINTS array");
 
-    const hookCount = countHints(hookMatch[1]);
-    const canonicalCount = countHints(canonicalMatch[1]);
+      // Count hints by splitting on the hint-delimiter pattern (each hint starts
+      // with a quoted string after optional whitespace/newlines). This is more
+      // robust than counting quote characters which can appear inside hints.
+      function countHints(arrayBody) {
+        // Each hint is a string literal. Count opening quotes that start a new
+        // hint entry (preceded by [ or , with optional whitespace).
+        const matches = arrayBody.match(/(?<=\[|,)\s*"/g);
+        return matches ? matches.length : 0;
+      }
 
-    assert.ok(hookCount > 0, "hook hint count should be > 0");
-    assert.ok(canonicalCount > 0, "canonical hint count should be > 0");
-    assert.strictEqual(
-      hookCount,
-      canonicalCount,
-      `Hook hint count (${hookCount}) must match canonical (${canonicalCount}). The hook mirror has drifted.`,
-    );
+      const hookCount = countHints(hookMatch[1]);
+      const canonicalCount = countHints(canonicalMatch[1]);
+
+      assert.ok(hookCount > 0, "hook hint count should be > 0");
+      assert.ok(canonicalCount > 0, "canonical hint count should be > 0");
+      assert.strictEqual(
+        hookCount,
+        canonicalCount,
+        `Hook hint count (${hookCount}) must match canonical (${canonicalCount}). The hook mirror has drifted.`,
+      );
+    });
   });
 });

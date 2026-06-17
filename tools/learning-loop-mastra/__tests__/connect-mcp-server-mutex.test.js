@@ -72,6 +72,15 @@ describe("connectMcpServer module-level mutex", () => {
     const failures = results.filter((r) => r.error);
     assert.strictEqual(failures.length, 0, `Some calls failed: ${JSON.stringify(failures.slice(0, 3), null, 2)}`);
 
+    // Deterministic ordering proof: with the mutex in place the server-side
+    // created_at timestamps must be monotonic in call order. If calls were
+    // actually concurrent, handler reordering would break this.
+    const timestamps = results.map((r) => new Date(r.created_at).getTime());
+    assert.ok(
+      timestamps.every((t, i) => i === 0 || t >= timestamps[i - 1]),
+      "Parallel cross-server writes must be serialized into monotonic created_at order"
+    );
+
     const lines = readRegistryLines(tempRoot);
     assert.strictEqual(
       lines.length,

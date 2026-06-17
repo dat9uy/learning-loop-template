@@ -1,5 +1,43 @@
 # Project Changelog
 
+## 2026-06-17 — Phase C Plan 1a: Atomic Fix
+
+**Plan:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/`
+**Closeout report:** `plans/260617-1138-phase-c-plan-1a-atomic-fix/reports/closeout-report.md`
+
+### Added
+
+- **`consolidated_into_inverse` in `tools/learning-loop-mcp/core/loop-introspect.js`** — `buildInverseIndexes` now returns 6 inverse maps (was 5), enabling `meta_state_relationships` to expose `inbound.consolidated_by` for change-logs.
+- **5 RED-first test files** across legacy and Mastra surfaces:
+  - `tools/learning-loop-mcp/__tests__/meta-state-list-include-archived.test.js`
+  - `tools/learning-loop-mcp/core/loop-introspect.test.js`
+  - `tools/learning-loop-mcp/__tests__/meta-state-relationships-tool.test.js`
+  - `tools/learning-loop-mcp/__tests__/package-json-zod-pin.test.js`
+  - `tools/learning-loop-mastra/__tests__/connect-mcp-server-mutex.test.js`
+
+### Changed
+
+- **`tools/learning-loop-mcp/tools/meta-state-list-tool.js`** — `include_archived: true` now surfaces all terminal statuses (`superseded`, `resolved`, `auto-resolved`, `archived`) via a single flag.
+- **`package.json`** — pinned `zod` to exact `4.4.3` to protect the parity gate's version-sensitive JSON-schema snapshot.
+- **`tools/learning-loop-mastra/__tests__/with-mcp-server.js`** — added per-tempRoot Promise-chain mutex so `callTool`/`listTools` calls serialize when two MCP servers share a `GATE_ROOT`.
+- **`plans/reports/productization-260612-1530-master-tracker.md`** — flipped Plan 1a checkbox to `[x]`.
+
+### Resolved
+
+- `meta-260616T1352Z-meta-state-list-does-not-return-superseded-entries-even-when`
+- `meta-260616T1352Z-meta-state-relationships-does-not-traverse-consolidated-into`
+
+### Acceptance
+
+- `pnpm test`: **1069 pass / 0 fail / 1 pre-existing skip** across all 10 test namespaces.
+
+### Unblocks
+
+- Plan 1b (CR-3 to CR-6 hygiene).
+- Plan 3 (C6+C7 cut-over).
+
+---
+
 ## 2026-06-17 — Phase C Plan 2: Parity Gate (C4)
 
 **Plan:** `plans/260616-2200-phase-c-plan-2-parity/`
