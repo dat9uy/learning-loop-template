@@ -18,11 +18,13 @@ researchers:
 
 Resolve coerce-layer technical debt before Phase D productization cut-over. Replace imperative `coerceScalar`/`unwrapItem`/`coerceShape`/`wrapSchema` (mastra factory) and `coerceValue`/`unwrapItemWrap`/`coerceParamsToSchema`/`installWireFormatCoercion` (legacy lifted helper) with declarative Zod (`z.coerce.*` + `z.preprocess` envelope strippers). Delete the imperative walkers. Migrate 8 wire-format tests (4 mcp-side rename, 4 mastra-side delete).
 
+> **Implementation note (added post-execution):** The plan's claim that `z.preprocess` emits identical JSON Schema to non-preprocess is true for the trivial case (`z.array(z.string())`) but **false** for the actual migration use cases (`.default([])`, `.optional()`, and `z.union([z.boolean(), z.string()]).transform(...)`). Empirical proof: `Number("")` and `Boolean("false")` widening, plus the fact that `z.preprocess` strips `.default()` from `z.toJSONSchema()` output. To recover byte-identical JSON Schema for MCP clients, a 125-line `schema-parity.js` shim was added (`buildParitySchema` + `attachParityJSONSchema` in `create-loop-tool.js`). The shim overrides `schema._zod.toJSONSchema` to return a parity view while keeping strict parse semantics. See "In-Implementation Decision" in `phase-01-schema-migration.md` and the full review at `plans/reports/code-reviewer-260618-1226-GH-0029-coerce-migration-parity-shim-deviation-report.md`.
+
 ## Phases
 
 | # | Phase | Status | Effort | Depends on |
 |---|---|---|---|---|
-| 1 | Schema migration across 40 tools | completed | 2-3h | — |
+| 1 | Schema migration across 22 tool inputSchemas | completed | 2-3h | — |
 | 2 | Coerce layer deletion | completed | 30min | phase-01 |
 | 3 | Test migration + acceptance | completed | 2-3h | phase-02 |
 
@@ -32,18 +34,20 @@ Total: **5-7h** (matches brainstorm estimate).
 
 ### Phase 1 — Schema Migration
 
-Migrate 40 tool inputSchemas across `tools/learning-loop-mcp/tools/`:
-- 13 boolean fields: `z.boolean()` → `z.coerce.boolean()` (with semantic guards on 5 HIGH/CRITICAL fields)
+Migrate 22 tool inputSchemas across 21 tool files in `tools/learning-loop-mcp/tools/`:
+- 13 boolean fields: `z.boolean()` → `z.coerce.boolean()` (with semantic guards on 6 fields: 2 HIGH/CRITICAL + 4 MEDIUM)
 - 10 number fields: `z.number()` → `z.coerce.number()` (no semantic change)
 - 17 envelope-bearing array fields: wrap with `z.preprocess(stripEnvelope, z.array(...))`
 - 3 envelope-bearing object fields: wrap with `z.preprocess(stripEnvelope, z.object({...}))`
+
+(Plan originally said 40 tools; actual count is 22 inputSchemas across 21 files. `meta_state_list_tool.js` has 2 boolean fields; the rest are 1-per-file.)
 
 **Deviation from brainstorm:** use `z.preprocess(envelope-stripper, inner)` instead of `z.union([inner, z.object({item: inner})])`. Empirical zod 4.4.3 testing (Researcher 1) proves `z.union` does NOT strip envelopes — the handler receives `{item: [...]}` literally, which crashes 12+ tools. `z.preprocess` is the correct primitive. Same JSON Schema output. See `plans/260618-0029.../phase-01-schema-migration.md`.
 
 ### Phase 2 — Coerce Layer Deletion
 
 Delete imperative helpers:
-- `tools/learning-loop-mastra/create-loop-tool.js`: delete `coerceScalar`, `unwrapItem`, `extractShape`, `coerceShape`, `wrapSchema` (lines 39-137); delete `coerceParams` export (lines 139-142); collapse `createLoopTool` to 1-line `createTool` re-export.
+- `tools/learning-loop-mastra/create-loop-tool.js`: delete `coerceScalar`, `unwrapItem`, `extractShape`, `coerceShape`, `wrapSchema` (lines 39-137); delete `coerceParams` export (lines 139-142); **factory becomes ~50 lines** (not 10 as originally planned) — `normalizeInputSchema` + `attachParityJSONSchema` remain to handle plain-object schemas and the JSON-Schema parity override. The parity override is the implementation of the `schema-parity.js` shim described in Phase 1.
 - `tools/learning-loop-mcp/core/wire-format-coercion.js`: delete entire 183-line file (lifted legacy helper).
 - `tools/learning-loop-mastra/__tests__/parity-harness.js`: delete (191 lines; dead post-Plan 3; YAGNI).
 
@@ -87,19 +91,19 @@ See each phase file for full rationale + alternatives.
 
 ## Success Criteria
 
-- All 40 tool inputSchemas use zod-native primitives (no legacy coercion patterns remain).
+- All 22 tool inputSchemas (across 21 files) use zod-native primitives (no legacy coercion patterns remain).
 - `coerceScalar`/`unwrapItem`/`coerceShape`/`wrapSchema`/`coerceParams` deleted from mastra factory.
 - `core/wire-format-coercion.js` deleted (entire 183 lines).
-- 4 mcp-side tests renamed to zod-native names; 4 mastra-side duplicates deleted; `parity-zod-to-json-schema.test.js` renamed to `coerce-correctness.test.js`; `boolean-semantic-guards.test.js` added (locks 5 guarded fields).
+- 4 mcp-side tests renamed to zod-native names; 4 mastra-side duplicates deleted; `parity-zod-to-json-schema.test.js` renamed to `coerce-correctness.test.js`; `boolean-semantic-guards.test.js` added (locks 6 guarded fields).
 - All 10 test namespaces pass (`pnpm test`).
-- JSON Schema parity preserved for ALL 40 tools (not 1 sample — red-team finding 6.1).
+- JSON Schema parity preserved for ALL 22 schemas (not 1 sample — red-team finding 6.1). **Achieved via `schema-parity.js` shim** (see "In-Implementation Decision" in `phase-01-schema-migration.md`).
 - SP2 grounding run on `create-loop-tool.js` post-migration; fingerprint recorded.
 - Single PR; no transport changes; no schema redesign.
 
 ## Risks
 
 - **Boolean semantic widening:** `z.coerce.boolean()` accepts `"yes"`, `"0"`, etc. Mitigated by semantic guards on 5 HIGH/CRITICAL fields (returns `false` for non-`"true"` strings, NOT a Zod error).
-- **`z.preprocess` parity:** preprocessed schemas emit identical JSON Schema to non-preprocess. Verified by Researcher 1; Phase 1 step 9 diffs all 40 tools.
+- **`z.preprocess` parity:** preprocessed schemas emit identical JSON Schema to non-preprocess **for the trivial case only**. The migration's actual use cases (`.default([])`, `.optional()`, and `z.union(...).transform(...)`) DIVERGE; the `schema-parity.js` shim (see Phase 1 "In-Implementation Decision") recovers byte-identical output. Phase 1 step 9 diffs all 22 schemas through the shim.
 - **`parity-harness.js` deletion:** removes 191 lines of Phase E scaffolding. YAGNI says delete; Phase E can re-author in its own scope.
 - **Optional-after-preprocess bug (red-team 7a):** `meta_state_list.id` is `z.union([z.string(), z.array(z.string())]).optional()`; naive `z.preprocess(stripEnvelope, union)` would fail on `undefined`. **Mitigation:** `stripEnvelope` is undefined-safe (Phase 1 step 1).
 - **Identity preservation lost (red-team 7g):** legacy `coerceParams` returned the original args reference when no coercion happened; `z.preprocess` always constructs a new object. Mitigation: verify no tool relies on arg `===` reference (Phase 1 step 7 grep for `=== args` or `args === `).
@@ -108,8 +112,11 @@ See each phase file for full rationale + alternatives.
 
 ## Files Touched
 
-- `tools/learning-loop-mcp/tools/*.js` (40 files; schema field changes)
-- `tools/learning-loop-mastra/create-loop-tool.js` (delete coerce layer; collapse to re-export)
+- `tools/learning-loop-mcp/tools/*.js` (21 files; 22 inputSchemas)
+- `tools/learning-loop-mastra/create-loop-tool.js` (delete coerce layer; keep 50-line factory with `normalizeInputSchema` + `attachParityJSONSchema`)
+- `tools/learning-loop-mastra/schema-parity.js` (NEW; 125 lines; `buildParitySchema` helper for JSON-Schema parity recovery — see "In-Implementation Decision" in `phase-01-schema-migration.md`)
+- `tools/learning-loop-mcp/core/envelope-stripper.js` (NEW; 22 lines; `stripEnvelope` for MCP SDK `{item: X}` envelopes, undefined-safe)
+- `tools/learning-loop-mcp/core/strict-boolean-guard.js` (NEW; 11 lines; `strictBooleanGuard` for 6 HIGH/CRITICAL + MEDIUM boolean fields)
 - `tools/learning-loop-mcp/core/wire-format-coercion.js` (DELETE)
 - `tools/learning-loop-mastra/__tests__/parity-harness.js` (DELETE)
 - `tools/learning-loop-mcp/__tests__/wire-format-*.test.js` (RENAME 4)

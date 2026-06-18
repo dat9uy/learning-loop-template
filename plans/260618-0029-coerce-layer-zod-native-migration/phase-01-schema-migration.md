@@ -8,7 +8,7 @@ dependencies: []
 predecessor: plans/reports/brainstorm-260617-0212-coerce-layer-zod-native-migration.md
 ---
 
-# Phase 01 — Schema Migration Across 40 Tools
+# Phase 01 — Schema Migration Across 22 Tool InputSchemas
 
 ## Overview
 
@@ -25,14 +25,14 @@ Migrate all inputSchema fields in `tools/learning-loop-mcp/tools/*.js` from impe
    ```
    Affects 12+ tools (meta_state_list, _promote_rule, _resolve, _log_change, _archive, _propose_design, _report, _query_drift, workflow_intake_plan, _self_improvement).
 
-2. **`z.preprocess` IS the correct primitive.** Researcher 1 verified:
+2. **`z.preprocess` IS the correct primitive for envelope stripping.** Researcher 1 verified:
    ```
    z.preprocess((v) => isEnvelope(v) ? v.item : v, z.array(z.string())).parse({item:['a','b']})
    → ['a','b']
    ```
-   `z.toJSONSchema(wrapped, {target:'draft-7', io:'input'})` returns `{"type":"array","items":...}` — IDENTICAL to non-preprocess. No parity comparator update needed.
+   **Caveat (added post-execution):** `z.preprocess` emits identical JSON Schema to non-preprocess for the trivial case, but **diverges for the migration's actual use cases** (`.default([])`, `.optional()`, and `z.union(...).transform(...)`). Empirical proof and the compensating `schema-parity.js` shim are documented in "In-Implementation Decision" below.
 
-3. **`z.coerce.boolean()` semantic widening** (Researcher 1): `"false"`, `"0"`, `"no"` → `true` (JS `Boolean()`). Requires explicit guards on 5 HIGH/CRITICAL fields.
+3. **`z.coerce.boolean()` semantic widening** (Researcher 1): `"false"`, `"0"`, `"no"` → `true` (JS `Boolean()`). Requires explicit guards on 6 fields (2 HIGH/CRITICAL + 4 MEDIUM).
 
 ## Requirements
 
@@ -103,13 +103,79 @@ Locks strict `true`/`"true"` semantics; non-`"true"` strings (`"false"`, `"0"`, 
 
 **Note (red-team 8.2 contract divergence):** the legacy `coerceValue` returned the original string for unrecognized inputs (passthrough). The new guard returns `false` instead. This is a **contract change** for any consumer that sent `"yes"` etc. and expected passthrough. Mitigation: pre-merge grep `tools/` for `"yes"`, `"no"`, `"1"`, `"0"` as boolean values; if any tool consumes these, add `.passthrough()` exemption.
 
+## In-Implementation Decision: JSON Schema Parity Shim (added 2026-06-18)
+
+The plan's claim that `z.preprocess` emits identical JSON Schema to non-preprocess is true for the **trivial case only** (`z.array(z.string())` vs. `z.preprocess(stripEnvelope, z.array(z.string()))`). It is **false** for the migration's actual use cases.
+
+**Empirical proof (zod 4.4.3):**
+
+```javascript
+// Trivial — passes
+z.toJSONSchema(z.array(z.string()))                        // {"type":"array","items":{"type":"string"}}
+z.toJSONSchema(z.preprocess(stripEnvelope, z.array(z.string())))
+                                                           // {"type":"array","items":{"type":"string"}}  ✓ identical
+
+// Migration case 1: .default([]) — FAILS
+z.toJSONSchema(z.array(z.string()).default([]))            // {"default":[],"type":"array","items":{"type":"string"}}
+z.toJSONSchema(z.preprocess(stripEnvelope, z.array(z.string())).default([]))
+                                                           // {"type":"array","items":{"type":"string"}}   ✗ default lost
+
+// Migration case 2: .optional() — FAILS
+z.toJSONSchema(z.array(z.string()).optional())             // {"anyOf":[{"type":"array","items":...},{"not":{}}]}
+z.toJSONSchema(z.preprocess(stripEnvelope, z.array(z.string())).optional())
+                                                           // {"anyOf":[{"type":"array","items":...},{"not":{}}]}  same shape, but inner type structure differs
+
+// Migration case 3: guarded boolean — FAILS
+z.toJSONSchema(z.boolean())                                // {"type":"boolean"}
+z.toJSONSchema(z.union([z.boolean(), z.string()]).transform(g))
+                                                           // {"anyOf":[{"type":"boolean"},{"type":"string"}]}  ✗ type changes
+```
+
+The plan's Researcher 1 verification tested the trivial case only and missed the migration cases. To recover byte-identical JSON Schema for MCP clients, a 125-line shim was added.
+
+### The shim: `tools/learning-loop-mastra/schema-parity.js`
+
+```javascript
+export function buildParitySchema(schema) {
+  // Recursively unwraps z.preprocess and guarded-boolean unions
+  // to recover the pre-migration JSON Schema shape.
+  // ... 125 lines: handles pipe, optional, default, nullable, array,
+  //                object, record, discriminatedUnion, union, tuple
+}
+
+function attachParityJSONSchema(schema) {
+  // Overrides schema._zod.toJSONSchema to return the parity view
+  // while keeping the wrapped schema for strict parse behavior.
+  schema._zod.toJSONSchema = () => parityJSONSchema;
+  return schema;
+}
+```
+
+The factory (`create-loop-tool.js`) now uses `attachParityJSONSchema` on every tool's inputSchema. The override is transparent to MCP clients (they see byte-identical schemas) and to handlers (they see strict parse behavior).
+
+### Why this is "in-implementation" not "in-plan"
+
+- The plan was committed with a research-based claim that turned out to be wrong for the actual migration.
+- Detecting this required running a parity diff across all 22 schemas (not 1 sample — red-team finding 6.1), which the plan listed as a Phase 1 step 9 verification but did not have a clear "what to do if parity fails" path.
+- The shim is a **reactive correction** that emerged during the parity diff verification.
+- The shim's existence is now recorded in the change-log entry (`meta-260618T0557Z`) and an SP2 grounding marker (`meta-260618T0558Z`).
+
+### Cost / Risk
+
+- **+125 lines** in `schema-parity.js` (replaces the 10-line factory collapse the plan promised).
+- **+40 lines** in `create-loop-tool.js` for `normalizeInputSchema` + `attachParityJSONSchema` (factory is now 50 lines, not 10).
+- **Internal Zod API dependency:** the shim reaches into `schema._zod.def.type`, `schema._zod.bag`, `globalRegistry`, and overrides `schema._zod.toJSONSchema`. All of these are internal Zod APIs. Any minor zod version bump could break the shim. Mitigation: SP2 fingerprint on `create-loop-tool.js` catches the shim's file; zod minor bumps must re-verify parity.
+- **Mastra SDK coupling:** the override works if Mastra calls `z.toJSONSchema` via the `_zod` method dispatch. If Mastra calls `z.toJSONSchema` directly on the wrapped schema, the override is bypassed. Worth a follow-up to confirm (see review's Unresolved Question #3).
+
 ## Related Code Files
 
-### Create (1)
+### Create (3)
 
-- `tools/learning-loop-mcp/core/envelope-stripper.js` (NEW; ~10 lines)
+- `tools/learning-loop-mcp/core/envelope-stripper.js` (NEW; 22 lines; `stripEnvelope` undefined-safe)
+- `tools/learning-loop-mcp/core/strict-boolean-guard.js` (NEW; 11 lines; `strictBooleanGuard` for 6 fields)
+- `tools/learning-loop-mastra/schema-parity.js` (NEW; 125 lines; `buildParitySchema` JSON-Schema parity shim — see "In-Implementation Decision" above)
 
-### Migrate (40)
+### Migrate (22 inputSchemas across 21 tool files)
 
 All in `tools/learning-loop-mcp/tools/`. See "Field Inventory".
 
@@ -131,8 +197,10 @@ All in `tools/learning-loop-mcp/tools/`. See "Field Inventory".
 | `meta-state-derive-status-tool.js:41` | `run_tests` | D (MEDIUM) |
 | `meta-state-promote-rule-tool.js:31` | `preview` | **D (HIGH)** |
 | `meta-state-check-grounding-tool.js:44` | `run_tests` | D (MEDIUM) |
-| `meta-state-list-tool.js:72-73` | `compact`, `include_archived` | A |
+| `meta-state-list-tool.js:72-73` | `compact`, `include_archived` | A (2 fields) |
 | `workflow-prepare-runtime-request-tool.js:17` | `evidence_missing` | **SKIP (Decision #3)** |
+
+**Template D count: 6 guarded fields (2 HIGH/CRITICAL + 4 MEDIUM) — 4 MEDIUM listed above; previously summarized in plan.md as "5 HIGH/CRITICAL" which is corrected to 6 total guards.**
 
 ### Number fields (10)
 
@@ -169,13 +237,13 @@ Per Researcher 1 §1. Template B.
 6. **Wire-format probe for `.passthrough()` fields** (2 candidates): check if `trigger-workflow-tool.js:11` and `workflow-generate-prompt-tool.js:89` ever receive `{item: ...}` envelopes; wrap if yes.
 7. Verify all `z.passthrough` and `z.strict` schemas are unchanged (gate against accidental mutation).
 8. **Evidence grep:** `grep -rn '"yes"\|"no"\|"1"\|"0"' tools/learning-loop-mcp/tools/` to confirm no agent sends these as boolean wire values (red-team 8.2 contract-divergence concern).
-9. **JSON Schema parity gate (ALL 40 tools, not 1 sample):** for each tool, `z.toJSONSchema(migratedSchema, {target:'draft-7', io:'input'})` must match the pre-migration baseline byte-equal. Use a small diff script (YAGNI: inline Node `assert.deepEqual` over the 40 outputs).
+9. **JSON Schema parity gate (ALL 22 inputSchemas, not 1 sample):** for each migrated schema, build the parity view via `buildParitySchema(wrapped)` and assert `z.toJSONSchema(parity, {target:'draft-7', io:'input'})` matches the pre-migration baseline byte-equal. The parity shim is the bridge — without it, the migration cases (`.default([])`, `.optional()`, guarded-boolean unions) would diverge. Use a small diff script (YAGNI: inline Node `assert.deepEqual` over all 22 outputs).
 10. Run `pnpm test` — verify all 10 namespaces pass.
 11. Run `boolean-semantic-guards.test.js` (Phase 3 step 2) to lock the 5 guarded fields' behavior.
 
 ## Success Criteria
 
-- All 40 tool files compile (no Zod errors).
+- All 22 tool inputSchemas (21 files) compile (no Zod errors).
 - `pnpm test` passes all 10 test namespaces.
 - JSON Schema parity preserved (sample tool's `z.toJSONSchema` matches pre-migration shape).
 - 5 HIGH/CRITICAL boolean fields have explicit semantic guards.

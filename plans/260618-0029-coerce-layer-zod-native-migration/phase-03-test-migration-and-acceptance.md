@@ -155,7 +155,7 @@ In `zod-coerce-top-level.test.js`: 1 `withMcpServer` test calling `meta_state_re
 2. mastra-side deletes (4): `rm tools/learning-loop-mastra/__tests__/wire-format-*.test.js`.
 3. Mastra-side rename + rewrite (1): `mv parity-zod-to-json-schema.test.js coerce-correctness.test.js` + rewrite.
 4. Retain 1 stdio smoke test in `zod-coerce-top-level.test.js`.
-5. **New test (red-team finding 6.2):** `boolean-semantic-guards.test.js` — walks the 5 guarded boolean fields (`meta_state_sweep.apply`, `meta_state_archive.confirm`, `meta_state_promote_rule.preview`, `meta_state_check_grounding.run_tests`, `meta_state_derive_status.run_tests`, `meta_state_query_drift.run_grounding`) and asserts the guard transforms `true`/`"true"` → `true`, `false`/`"false"`/`"yes"`/`"1"`/`"0"`/`1` → `false`. Lock the strict-true contract.
+5. **New test (red-team finding 6.2):** `boolean-semantic-guards.test.js` — walks the 6 guarded boolean fields (`meta_state_sweep.apply` [CRITICAL], `meta_state_archive.confirm` [HIGH], `meta_state_promote_rule.preview` [HIGH], `meta_state_check_grounding.run_tests` [MEDIUM], `meta_state_derive_status.run_tests` [MEDIUM], `meta_state_query_drift.run_grounding` [MEDIUM]) and asserts the guard transforms `true`/`"true"` → `true`, `false`/`"false"`/`"yes"`/`"1"`/`"0"`/`1` → `false`. Lock the strict-true contract. (Plan originally said "5 HIGH/CRITICAL fields" — corrected to 6 total guards: 2 HIGH/CRITICAL + 4 MEDIUM.)
 6. Run `pnpm test` — all 10 namespaces pass.
 7. Run `meta_state_check_grounding` on `tools/learning-loop-mastra/create-loop-tool.js` — record fingerprint.
 
@@ -166,8 +166,8 @@ In `zod-coerce-top-level.test.js`: 1 `withMcpServer` test calling `meta_state_re
 | Gate | Pass condition |
 |---|---|
 | All 10 test namespaces pass | `pnpm test` exit 0 |
-| JSON Schema parity preserved (ALL 40 tools, not 1 sample — red-team finding 6.1) | `z.toJSONSchema(migratedSchema, {target:'draft-7', io:'input'})` byte-equal to pre-migration baseline for all 40 tools |
-| Boolean semantic guards fire correctly (red-team finding 6.2) | `boolean-semantic-guards.test.js` passes; 7 inputs × 5 fields all return expected boolean |
+| JSON Schema parity preserved (ALL 22 inputSchemas, not 1 sample — red-team finding 6.1) | `buildParitySchema(wrapped)` → `z.toJSONSchema({target:'draft-7', io:'input'})` byte-equal to pre-migration baseline for all 22 inputSchemas |
+| Boolean semantic guards fire correctly (red-team finding 6.2) | `boolean-semantic-guards.test.js` passes; 10 inputs × 6 fields all return expected boolean |
 | `.passthrough` / `.strict` schemas unchanged (red-team finding 6.5) | Phase 1 step 7 verification passes |
 | SP2 grounding on `create-loop-tool.js` | `meta_state_check_grounding` succeeds; fingerprint recorded |
 | Net test delta | -4 test files; +1 (`boolean-semantic-guards.test.js`); net -3 |
@@ -177,7 +177,7 @@ In `zod-coerce-top-level.test.js`: 1 `withMcpServer` test calling `meta_state_re
 
 - 4 mcp-side wire-format tests renamed with zod-direct assertions.
 - 4 mastra-side wire-format tests deleted.
-- `parity-zod-to-json-schema.test.js` renamed to `coerce-correctness.test.js` AND rewritten.
+- `parity-zod-to-json-schema.test.js` renamed to `coerce-correctness.test.js` AND rewritten (with explicit parity tests through `buildParitySchema` for the migration cases — see review `code-reviewer-260618-1226-GH-0029-coerce-migration-parity-shim-deviation-report.md`).
 - 1 stdio smoke gate retained.
 - `pnpm test` exits 0.
 - SP2 fingerprint recorded.
