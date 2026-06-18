@@ -1,12 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { z } from "zod";
-import { installWireFormatCoercion } from "../core/wire-format-coercion.js";
 
-// Test that the new optional fields (affected_system, code_ref, ledger_ref)
-// survive wire-format coercion on all 16 meta_state_* tools.
-// We test via the schema shapes directly since the wire-format coercion
-// is a transport-layer concern.
+// Test that optional fields on meta-state tools accept their values directly
+// (no wire-format coercion layer needed; zod-native schemas handle it).
 
 test("meta_state_report schema accepts affected_system enum", () => {
   const schema = z.object({
@@ -47,13 +44,10 @@ test("meta_state_patch schema accepts affected_system in patch", () => {
   assert.strictEqual(result.data.affected_system, "vnstock");
 });
 
-test("wire-format string coercion for affected_system enum", () => {
-  // Simulates the MCP wire format where a string arrives quoted
+test("zod-native enum accepts plain string (no wire-format wrapping)", () => {
   const schema = z.object({
     affected_system: z.enum(["meta", "vnstock"]).optional(),
   });
-  // The wire format may send '"vnstock"' (with quotes) which Zod should reject
-  // but the installWireFormatCoercion should strip them
   const result = schema.safeParse({ affected_system: "vnstock" });
   assert.strictEqual(result.success, true);
 });
