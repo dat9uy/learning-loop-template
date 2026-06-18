@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import {
   readRegistry,
   writeEntry,
@@ -28,9 +30,9 @@ export const metaStatePromoteRuleTool = {
     pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for resolution-evidence-required)"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
-    preview: z.boolean().optional().default(false).describe("If true, return sample matches without activating the rule"),
-    sample_commands: z.array(z.string()).optional().describe("Sample commands to test against (for regex preview)"),
-    sample_paths: z.array(z.string()).optional().describe("Sample paths to test against (for glob preview)"),
+    preview: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, return sample matches without activating the rule"),
+    sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
+    sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),
   },
   handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();

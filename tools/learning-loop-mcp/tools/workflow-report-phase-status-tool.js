@@ -8,8 +8,8 @@ export const workflowReportPhaseStatusTool = {
     "Returns a status string and lifecycle_complete boolean. " +
     "Failure mode: missing required fields return error.",
   schema: {
-    process_steps_total: z.number().int().min(1).describe("Total number of process steps in the phase"),
-    process_steps_complete: z.number().int().min(0).describe("Number of process steps completed so far"),
+    process_steps_total: z.coerce.number().int().min(1).describe("Total number of process steps in the phase"),
+    process_steps_complete: z.coerce.number().int().min(0).describe("Number of process steps completed so far"),
     experiment_result: z.enum(["success", "failure", "inconclusive"]).describe("Result of the phase experiment"),
     blocker_reason: z.string().optional().describe("Optional reason why the phase is blocked"),
   },

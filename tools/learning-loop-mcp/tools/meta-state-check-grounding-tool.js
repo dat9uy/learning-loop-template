@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { checkGrounding } from "#mcp/core/check-grounding.js";
@@ -41,7 +42,7 @@ export const metaStateCheckGroundingTool = {
   description: "Check the grounding of a meta-state entry by computing its SHA-256 fingerprint and comparing to the stored value. Returns the locked shape: { id, raw_status, grounding { ... }, status, drift_kind, fingerprint_was_recorded }. On the first call, auto-records code_fingerprint when mechanism_check is true and the file exists. The agent decides what to do with drift; this tool does NOT auto-resolve entries.",
   schema: {
     id: z.string().min(1).describe("Entry id to check grounding for"),
-    run_tests: z.boolean().optional().default(false)
+    run_tests: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false)
       .describe("Opt-in: run the test runner for the entry's test file and populate grounding.test_passed. Default false (file-existence + hash check only)."),
   },
   handler: async ({ id, run_tests = false }) => {

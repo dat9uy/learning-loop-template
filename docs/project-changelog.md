@@ -1,6 +1,51 @@
 # Project Changelog
 
-## 2026-06-17 — Phase C Plan 3 Post-Merge: Hygiene (4 findings)
+## 2026-06-18 — Coerce Layer Zod-Native Migration (GH-0029)
+
+**Plan:** `plans/260618-0029-coerce-layer-zod-native-migration/`
+
+### Added
+
+- **`tools/learning-loop-mcp/core/envelope-stripper.js`** — `stripEnvelope` helper (undefined-safe). Strips `{item: ...}` MCP SDK envelopes before Zod parse. Used by 17 array + 3 object fields across 12 tools.
+- **`tools/learning-loop-mcp/core/strict-boolean-guard.js`** — explicit semantic guards for 5 HIGH/CRITICAL boolean fields (`meta_state_sweep.apply`, `meta_state_archive.confirm`, `meta_state_promote_rule.preview`, `meta_state_check_grounding.run_tests`, `meta_state_derive_status.run_tests`). Locks `true`/`"true"` semantics; all other strings → `false`.
+- **5 new test files**:
+  - `tools/learning-loop-mcp/__tests__/zod-coerce-boolean-string.test.js`
+  - `tools/learning-loop-mcp/__tests__/zod-coerce-top-level.test.js` (retains 1 stdio smoke gate)
+  - `tools/learning-loop-mcp/__tests__/zod-optional-coerce.test.js`
+  - `tools/learning-loop-mcp/__tests__/zod-union-envelope.test.js`
+  - `tools/learning-loop-mcp/__tests__/boolean-semantic-guards.test.js` (locks 5 guarded fields)
+- **`tools/learning-loop-mastra/__tests__/coerce-correctness.test.js`** — renamed + rewritten from `parity-zod-to-json-schema.test.js`. Single-server regression net with direct zod calls (no `coerceParams` import).
+
+### Changed
+
+- **40 tool inputSchemas** in `tools/learning-loop-mcp/tools/*.js` migrated to zod-native coercion:
+  - 13 boolean fields → `z.coerce.boolean()` (12) or semantic guard (5 HIGH/CRITICAL).
+  - 10 number fields → `z.coerce.number()`.
+  - 17 envelope-bearing array fields → `z.preprocess(stripEnvelope, z.array(...))`.
+  - 3 envelope-bearing object fields → `z.preprocess(stripEnvelope, z.object({...}))`.
+- **`tools/learning-loop-mastra/create-loop-tool.js`** — collapsed from 146-line imperative factory to ~10-line `createTool` re-export. Deleted `coerceScalar`, `unwrapItem`, `coerceShape`, `wrapSchema`, `coerceParams`.
+- **`tools/learning-loop-mastra/schema-parity.js`** — description preservation fixed (code-review finding). `z.toJSONSchema` parity harness now emits identical JSON Schema for all 39 registered tools.
+
+### Removed
+
+- **`tools/learning-loop-mcp/core/wire-format-coercion.js`** — deleted (183 lines). Legacy lifted helper superseded by zod-native primitives.
+- **`tools/learning-loop-mastra/__tests__/parity-harness.js`** + **`parity-harness.test.js`** — deleted (191 lines + self-test). Dead post-Plan 3; zero callers.
+- **4 mastra-side wire-format test files** — deleted as duplicates (mcp-side tests are canonical post-Plan 3).
+- **4 mcp-side `wire-format-*.test.js` files** — renamed to `zod-coerce-*.test.js` / `zod-union-envelope.test.js`.
+- **`tools/learning-loop-mastra/__tests__/parity-zod-to-json-schema.test.js`** — renamed to `coerce-correctness.test.js`.
+
+### Acceptance
+
+- `pnpm test`: **1067 pass / 0 fail / 1 skip** across all test namespaces.
+- JSON Schema parity harness: **0 mismatches across 39 registered tools**.
+- Code review: passed after fixing description preservation in `schema-parity.js`.
+- SP2 grounding: fingerprint recorded on `create-loop-tool.js` post-migration.
+
+### Unblocks
+
+- Phase D productization (coerce-layer debt cleared; no legacy imperative walkers remain).
+
+---
 
 **Plan:** `plans/260617-2352-GH-1607-plan-3-post-merge-followups/`
 

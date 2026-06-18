@@ -33,7 +33,7 @@ export const metaStatePatchTool = {
       .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically."),
     _expected_version: z.number().optional()
       .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
-    mechanism_check: z.boolean().optional()
+    mechanism_check: z.coerce.boolean().optional()
       .describe("Script-caller passthrough: opt-in flag for fingerprint tracking on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; ignored for other kinds."),
     code_fingerprint: z.string().optional()
       .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_fingerprint` instead. Ignored for other kinds."),

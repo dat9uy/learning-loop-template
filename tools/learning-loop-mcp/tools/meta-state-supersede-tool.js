@@ -10,7 +10,7 @@ export const metaStateSupersedeTool = {
     id: z.string().describe("Finding entry id to supersede"),
     consolidated_into: z.string().describe("Id of the change-log entry that is the canonical source"),
     resolution: z.string().optional().describe("Human-readable resolution note"),
-    _expected_version: z.number().optional()
+    _expected_version: z.coerce.number().optional()
       .describe("Optional CAS: supersede succeeds only if current entry.version === _expected_version."),
   },
   handler: async ({ id, consolidated_into, resolution, _expected_version }) => {

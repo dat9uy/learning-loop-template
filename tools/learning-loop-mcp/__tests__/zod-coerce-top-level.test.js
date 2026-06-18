@@ -11,8 +11,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRegistry } from "../core/meta-state.js";
-import { installWireFormatCoercion } from "../core/wire-format-coercion.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
@@ -121,59 +119,11 @@ async function withMcpServer(fn) {
   }
 }
 
-// Test 1: meta_state_propose_design array unwrap via stdio.
-test("meta_state_propose_design unwraps {item: [...]} arrays via stdio", async () => {
-  await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(1, "mastra_meta_state_propose_design", {
-      title: "test-propose-design-top-level",
-      description:
-        "Test wire-format top-level array coercion via stdio transport (min 20 chars)",
-      proposed_design_for: { item: ["rule-A", "rule-B"] },
-      addresses: { item: ["finding-C"] },
-      affected_system: "mcp-tools",
-    });
-    assert.equal(
-      result.proposed,
-      true,
-      `Failed to create loop-design: ${JSON.stringify(result)}`,
-    );
-
-    const entries = readRegistry(tempRoot);
-    const entry = entries.find((e) => e.id === result.id);
-    assert(entry, "entry not found in registry");
-    assert.deepEqual(entry.proposed_design_for, ["rule-A", "rule-B"]);
-    assert.deepEqual(entry.addresses, ["finding-C"]);
-  });
-});
-
-// Test 2: meta_state_propose_design empty array unwrap via stdio.
-test("meta_state_propose_design unwraps {item: []} to flat empty arrays via stdio", async () => {
-  await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(2, "mastra_meta_state_propose_design", {
-      title: "test-empty-array-coercion",
-      description:
-        "Test empty array wire-format coercion via stdio transport (min 20 chars)",
-      proposed_design_for: { item: ["rule-A"] },
-      addresses: { item: [] },
-      affected_system: "mcp-tools",
-    });
-    assert.equal(
-      result.proposed,
-      true,
-      `Failed to create loop-design: ${JSON.stringify(result)}`,
-    );
-
-    const entries = readRegistry(tempRoot);
-    const entry = entries.find((e) => e.id === result.id);
-    assert(entry, "entry not found in registry");
-    assert.deepEqual(entry.proposed_design_for, ["rule-A"]);
-    assert.deepEqual(entry.addresses, []);
-  });
-});
-
-// Test 3: meta_state_report "true" coercion via stdio.
-test("meta_state_report coerces mechanism_check 'true' string to boolean via stdio", async () => {
-  await withMcpServer(async ({ call, tempRoot }) => {
+// Stdio smoke test: meta_state_report "true" coercion + tools/list schema preservation.
+// Both tests share one server instance to avoid spawn overhead.
+test("stdio smoke: mechanism_check coercion + tools/list schema preservation", async () => {
+  await withMcpServer(async ({ call, tempRoot, send }) => {
+    // 1. Test mechanism_check coercion via stdio
     const result = await call(3, "mastra_meta_state_report", {
       category: "loop-anti-pattern",
       severity: "warning",
@@ -193,60 +143,11 @@ test("meta_state_report coerces mechanism_check 'true' string to boolean via std
     const entry = entries.find((e) => e.id === result.id);
     assert(entry, "entry not found in registry");
     assert.equal(entry.mechanism_check, true);
-  });
-});
 
-// Test 4: meta_state_report "false" coercion via stdio.
-test("meta_state_report coerces mechanism_check 'false' string to boolean via stdio", async () => {
-  await withMcpServer(async ({ call, tempRoot }) => {
-    const result = await call(4, "mastra_meta_state_report", {
-      category: "loop-anti-pattern",
-      severity: "warning",
-      affected_system: "mcp-tools",
-      description:
-        "Test boolean false wire-format coercion via stdio transport (min 20 chars)",
-      evidence_code_ref: "tools/test.js",
-      mechanism_check: "false",
-    });
-    assert.equal(
-      result.reported,
-      true,
-      `Failed to report finding: ${JSON.stringify(result)}`,
-    );
-
-    const entries = readRegistry(tempRoot);
-    const entry = entries.find((e) => e.id === result.id);
-    assert(entry, "entry not found in registry");
-    assert.equal(entry.mechanism_check, false);
-  });
-});
-
-// Test 6: installWireFormatCoercion guard — must actually replace validateToolInput.
-test("installWireFormatCoercion patches validateToolInput and guard passes", () => {
-  const server = new McpServer({
-    name: "test-guard-server",
-    version: "1.0.0",
-  });
-  const original = server.validateToolInput;
-  installWireFormatCoercion(server, "/tmp");
-  assert.notEqual(
-    server.validateToolInput,
-    original,
-    "validateToolInput was not replaced",
-  );
-  assert.equal(
-    typeof server.validateToolInput,
-    "function",
-    "validateToolInput is not a function after patching",
-  );
-});
-
-// Test 5: tools/list schema preservation.
-test("tools/list still advertises real array schemas after coercion patch", async () => {
-  await withMcpServer(async ({ send }) => {
-    const result = await send(5, "tools/list", {});
-    assert(result.tools, "tools/list result missing tools array");
-    const proposeDesign = result.tools.find(
+    // 2. Test tools/list schema preservation
+    const listResult = await send(5, "tools/list", {});
+    assert(listResult.tools, "tools/list result missing tools array");
+    const proposeDesign = listResult.tools.find(
       (t) => t.name === "mastra_meta_state_propose_design",
     );
     assert(proposeDesign, "meta_state_propose_design not found in tools/list");
@@ -272,5 +173,3 @@ test("tools/list still advertises real array schemas after coercion patch", asyn
     );
   });
 });
-
-

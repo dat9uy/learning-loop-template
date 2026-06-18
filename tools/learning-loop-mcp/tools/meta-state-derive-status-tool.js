@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -38,7 +39,7 @@ export const metaStateDeriveStatusTool = {
   description: "Derive the effective status of a meta-state entry by reading its stored references + the current filesystem state. Returns the locked shape: { id, raw_status, derived_status, derivation { kind, signals, checked_at, duration_ms }, drift, recommendation }. The agent decides what to do with the answer; this tool does NOT mutate entries. Use when you need to ask \"is this finding still true?\" before resolving it. Not for recording a new finding (use `meta_state_report` instead) or for closing one (use `meta_state_resolve` instead).",
   schema: {
     id: z.string().min(1).describe("Entry id to derive status for"),
-    run_tests: z.boolean().optional().default(false)
+    run_tests: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false)
       .describe("Opt-in: run the test runner for the entry's test file and populate signals.test_passed. Default false (file-existence check only)."),
   },
   handler: async ({ id, run_tests = false }) => {

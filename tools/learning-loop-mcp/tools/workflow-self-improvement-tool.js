@@ -1,3 +1,4 @@
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { z } from "zod";
 
 const CANDIDATES = {
@@ -18,7 +19,7 @@ export const workflowSelfImprovementTool = {
   schema: {
     improvement_type: z.enum(["schema-change", "workflow-gap", "heuristic-tune", "tool-addition"]).describe("Type of improvement"),
     description: z.string().describe("Human-readable description of the improvement"),
-    proposed_changes: z.array(z.string()).optional().describe("List of proposed changes"),
+    proposed_changes: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("List of proposed changes"),
   },
   handler: async (args) => {
     const meta = CANDIDATES[args.improvement_type];

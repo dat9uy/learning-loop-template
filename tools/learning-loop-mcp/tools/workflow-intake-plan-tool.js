@@ -1,3 +1,4 @@
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { z } from "zod";
 
 function classifyVerificationType(entry) {
@@ -16,13 +17,13 @@ export const workflowIntakePlanTool = {
     "Returns an array of ordered steps with verification type classification (static, import, runtime). " +
     "Failure mode: missing orient_result or empty candidates returns blocked status.",
   schema: {
-    orient_result: z.object({
+    orient_result: z.preprocess(stripEnvelope, z.object({
       index_entries: z.array(z.object({}).passthrough()).optional(),
       meta_triggers: z.array(z.string()).optional(),
       observations: z.array(z.object({}).passthrough()).optional(),
       capability_files: z.array(z.string()).optional(),
       missing_decisions: z.array(z.string()).optional(),
-    }).describe("Output object from workflow_intake_orient"),
+    })).describe("Output object from workflow_intake_orient"),
   },
   handler: async (args) => {
     const orient = args.orient_result;

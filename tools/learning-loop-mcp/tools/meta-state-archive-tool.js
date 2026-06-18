@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, archiveEntry } from "#mcp/core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -48,13 +50,13 @@ export const metaStateArchiveTool = {
   name: "meta_state_archive",
   description: "Archive findings to reduce registry size. Decision rule (NOT enforced, documented): archive entries that are (status=reported AND age > 30d AND not acked) OR (status=resolved AND resolved > 90d). Operator can override by passing override ids with a reason. Only entry_kind=finding can be archived; rules, change-logs, and loop-designs are rejected. Multi-id overrides require a preview/confirm step: pass override with more than one id to receive a preview, then call again with confirm: true to archive. Archived entries stay in meta-state.jsonl with status=archived, archived_at, archived_by, archived_reason fields. Default meta_state_list excludes archived; pass include_archived: true to include. Re-archiving is a no-op (returns already_archived).",
   schema: {
-    candidates: z.array(z.string()).default([])
+    candidates: z.preprocess(stripEnvelope, z.array(z.string())).default([])
       .describe("Optional explicit list of entry ids to evaluate against the decision rule. If empty, the rule is applied to the entire registry."),
-    override: z.array(z.string()).default([])
+    override: z.preprocess(stripEnvelope, z.array(z.string())).default([])
       .describe("Operator override: force-archive these specific ids regardless of the decision rule."),
     reason: z.string().optional()
       .describe("Default reason for archives triggered by the decision rule (used in archived_reason). Override ids use their own per-id reason."),
-    confirm: z.boolean().optional()
+    confirm: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional()
       .describe("Confirm a multi-id override archive after reviewing the preview. Required when override has more than one id."),
   },
   handler: async ({ candidates = [], override = [], reason, confirm = false }) => {
