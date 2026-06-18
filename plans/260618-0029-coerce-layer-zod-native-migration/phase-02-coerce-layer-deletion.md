@@ -1,7 +1,7 @@
 ---
 phase: 02
 title: Coerce Layer Deletion
-status: planned
+status: completed
 priority: high
 effort: 30min
 dependencies: [phase-01-schema-migration]

@@ -1,7 +1,7 @@
 ---
 phase: 03
 title: Test Migration + Acceptance
-status: planned
+status: completed
 priority: high
 effort: 2-3h
 dependencies: [phase-02-coerce-layer-deletion]
