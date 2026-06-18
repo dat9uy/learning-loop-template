@@ -1,5 +1,4 @@
 # Project-local overrides for scout-block hook
 # Allow .venv access — this project manages its own Python env via bootstrap workflow
 !.venv
-# Allow node_modules — needed for PR#5 unresolved-questions research (zod internal API + Mastra SDK)
-!node_modules
+# !node_modules removed 2026-06-18 (PR#5 research complete — see plan 260618-1418-GH-0029-pr5-shim-followup). Re-add with rationale if needed for future zod/Mastra investigation.

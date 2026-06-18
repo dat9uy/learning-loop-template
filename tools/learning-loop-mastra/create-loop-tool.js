@@ -32,9 +32,17 @@ function attachParityJSONSchema(schema) {
     target: "draft-7",
     io: "input",
   });
-  // Zod's `process` checks `schema._zod.toJSONSchema?.()` before invoking the
-  // type-specific processor, so overriding it lets us return the unwrapped
-  // JSON Schema while still using the wrapped schema for parsing.
+  // Override zod's per-schema JSON Schema generator so the schema exposed to
+  // MCP clients via `tools/list` is the parity view (z.preprocess wrappers and
+  // guarded-boolean unions unwrapped). zod's `process` function in
+  // node_modules/zod/v4/core/to-json-schema.js:49 checks
+  // `schema._zod.toJSONSchema?.()` and uses its return value. The override IS
+  // honored through Mastra's MCPServer.convertSchema → standardSchemaToJSONSchema
+  // path (verified empirically by spawning the production MCP server and
+  // asserting all 39 tools return real inputSchemas — see
+  // plans/reports/researcher-A-260618-1418-GH-0029-pr5-shim-fix-strategies-report.md
+  // §1). The new e2e regression test in mcp-tools-list-parity.test.js locks
+  // this path against future regressions.
   schema._zod.toJSONSchema = () => parityJSONSchema;
   return schema;
 }

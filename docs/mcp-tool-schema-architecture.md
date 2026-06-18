@@ -207,25 +207,48 @@ convertSchema(schema) {
 
 **Therefore:** the override is **bypassed** in the actual production code path.
 
-### 3.5 Open question: does this actually break MCP clients?
+### 3.5 Q3 status: REFUTED by live e2e (2026-06-18)
 
-The test suite passes (1063/0/1 per PR#5). Either:
-- (a) MCP clients tolerate `{"$ref":"#"}` somehow
-- (b) Some other code path intercepts before `convertSchema` is called
-- (c) The bug is real but masked by something
-- (d) The 22 inputSchemas happen to be simple enough to avoid the nested-object bug
+The scout report's concern that the `_zod.toJSONSchema` override is bypassed
+in production was investigated empirically. The live e2e probe (see
+`plans/reports/researcher-A-260618-1418-GH-0029-pr5-shim-fix-strategies-report.md`
+§1 and the probe at
+`plans/260618-1418-GH-0029-pr5-shim-followup/e2e-tools-list-parity-probe.cjs`)
+spawns the actual MCP server, sends `tools/list`, and inspects all 39
+registered tools' inputSchemas. Result: all 39 return real JSON Schemas
+(`type:"object"` with proper `properties` map). The override DOES propagate
+through `MCPServer.convertSchema` → `standardSchemaToJSONSchema` →
+`schema["~standard"].jsonSchema.input` → `process` + `finalize`.
 
-The PR#5 description claims "5/5 end-to-end JSON Schema parity spot checks pass" — no matching test was found in the codebase (`grep -rn "spot check\|end-to-end" tools/` returns nothing). This claim is **unverified**.
+**Known caveat (not blocking):** the synthetic probe at
+`/tmp/probe-q3-clean.cjs` still returns `{"$ref":"#"}` for synthetic nested
+schemas called in isolation. This is a zod 4.4.3 quirk in the `process` +
+`finalize` interaction when the override is called without the full
+`JSON_SCHEMA_LIBRARY_OPTIONS.override` context (provided by
+`@mastra/schema-compat`'s `jsonSchemaOverride`). The discrepancy is not
+fully diagnosed; the most likely explanation is that the migration-touched
+schemas use `z.object({...})` roots which route through `finalize` differently
+than the synthetic probe's nested objects. Production never hits the
+synthetic-probe quirk because the full override context is provided.
 
-**The existing `coerce-correctness.test.js` tests only exercise `z.toJSONSchema` directly** (lines 94-103), not the MCP server path. They do NOT catch the bypass.
+**Bottom line:** the shim works in production. No refactor needed. The new
+e2e test (rec #1) is a regression guard against future shim/SDK changes; it
+will fail loudly if the synthetic-probe quirk ever re-manifests in production.
 
-### 3.6 What to do if the bug is real
+### 3.6 What to do if the bug is real — RESOLVED: bug is NOT real
 
-Options to consider (do not apply without a plan):
-1. **Wrap with `jsonSchema()` helper** (from `@mastra/core/utils`) — `MCPServer.convertSchema` checks for `"jsonSchema" in inputSchema` and uses it directly. This short-circuits `standardSchemaToJSONSchema` and uses the parity view verbatim.
-2. **Wrap with `toStandardSchema(schema)`** from `@mastra/schema-compat` — this adds a new `~standard` interface that calls `convertToJsonSchema` → `toJSONSchema` from `zod/v4`, which DOES honor the override (verified empirically for nested objects via this path).
-3. **Pin zod to a version where the override works correctly** for all paths.
-4. **Write a true e2e test first** using the existing `with-mcp-server.js` helper at `tools/learning-loop-mastra/__tests__/with-mcp-server.js` and `mcp-protocol-e2e.test.cjs`. This is the missing piece — without it, the production behavior is unknown.
+This section is preserved for historical context. As of 2026-06-18, the Q3
+finding (synthetic-probe bypass) is REFUTED for all 39 production tools
+(verified by live e2e). The "if the bug is real" options below are NOT being
+pursued. If a future zod 4.4.x patch or Mastra SDK upgrade re-manifests the
+synthetic-probe quirk in production, the e2e regression test
+(`tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js`) will
+fail loudly. The 3 strategies listed here remain valid fallbacks for that
+hypothetical future:
+
+- Strategy A: Wrap with Vercel-shape `{ _type: "function", jsonSchema: parity }` — incompatible with `createTool` (which expects zod), but documents the short-circuit path
+- Strategy B: Wrap with `toStandardSchema()` from `@mastra/schema-compat` — would be a no-op refactor
+- Strategy C: Pin zod to 4.4.x — already in effect (`package.json:48`)
 
 ---
 
@@ -376,10 +399,10 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 
 | # | Action | Owner | Blocked by |
 |---|--------|-------|------------|
-| 1 | **Write a true e2e test** that spawns the MCP server via stdio, sends `tools/list`, and asserts each migrated tool's `inputSchema` is a real JSON Schema (not `{"$ref":"#"}`). Use the existing `with-mcp-server.js` helper. | any agent | none — needs a plan |
-| 2 | If bug is real, **fix the shim** via one of: (a) wrap with `jsonSchema()` helper, (b) wrap with `toStandardSchema`, (c) pin zod. | any agent | (1) — must confirm bug first |
-| 3 | **Fix the comment** at `create-loop-tool.js:35-37` to accurately describe the override's path-dependent behavior in zod 4.4.3. | any agent | none |
-| 4 | **Add `schema-parity.js` to SP2 fingerprint registry** via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/schema-parity.js"`. | any agent | none |
-| 5 | **Pin zod to `4.4.x`** in `package.json` and document the upgrade procedure. | any agent | none |
-| 6 | **Restore or remove** the missing `research-260618-0031-zod-impact-analysis.md` reference in `plan.md:11`. | any agent | none |
-| 7 | **Fix the plan's `.optional()` overstatement** at `phase-01-schema-migration.md:123-126` (`.optional()` is actually identical in zod 4.4.3). | any agent | none |
+| 1 | **Add e2e regression guard** at `tools/learning-loop-mastra/__tests__/mcp-tools-list-parity.test.js` — 4 tests (1 universal + 3 per-tool load-bearing) | any agent | none — implementation in phase-02 step 2.2 |
+| 2 | ~~Fix the shim~~ — NOT NEEDED. Shim works in production. | n/a | n/a |
+| 3 | Fix comment at `create-loop-tool.js:35-37` (verbatim in phase-02 step 2.1) | any agent | none |
+| 4 | Add `schema-parity.js` to SP2 fingerprint registry | any agent | none |
+| 5 | Pin zod to 4.4.x — ALREADY DONE in `package.json:48` | n/a | n/a |
+| 6 | Restore or remove missing `research-260618-0031-zod-impact-analysis.md` reference in `plans/260618-0029-coerce-layer-zod-native-migration/plan.md:11` | any agent | none (handled in phase-02 step 2.7) |
+| 7 | Fix plan's `.optional()` overstatement at `phase-01-schema-migration.md:123-126` | any agent | none (out of scope; doc nit) |

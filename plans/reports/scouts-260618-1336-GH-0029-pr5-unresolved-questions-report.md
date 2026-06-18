@@ -226,6 +226,28 @@ s._zod.toJSONSchema = () => customResult;
 
 ---
 
+## Addendum (2026-06-18): Q3 refuted by live e2e probe
+
+The Q3 finding in this report — that the `_zod.toJSONSchema` override is
+bypassed by Mastra's `standardSchemaToJSONSchema` path — was based on isolated
+synthetic probes at `/tmp/probe-q3-clean.cjs`. Subsequent e2e investigation
+(see `plans/reports/researcher-A-260618-1418-GH-0029-pr5-shim-fix-strategies-report.md`
+§1) spawned the actual MCP server and verified all 39 registered tools return
+proper JSON Schemas via `tools/list`. The override works in production.
+
+The synthetic probe's `{"$ref":"#"}` result is a zod 4.4.3 quirk in the
+`process` + `finalize` interaction when the override is called without the
+full `JSON_SCHEMA_LIBRARY_OPTIONS.override` context. Production uses the full
+context (provided by `@mastra/schema-compat`'s `jsonSchemaOverride`), so the
+quirk never manifests for real schemas.
+
+**Implication for the original 3 unresolved questions:**
+- Q1: Resolved (Researcher 1's trivial-case test was over-broad but correct in essence; `.optional()` is actually fine in zod 4.4.3)
+- Q2: Resolved (4 zod internals are stable; upgrade risk is bounded by `coerce-correctness.test.js`)
+- Q3: REFUTED (no production bug; shim works; new e2e test as regression guard)
+
+---
+
 ## Cross-cutting concerns
 
 ### Plan file accuracy

@@ -8,7 +8,7 @@ created: 2026-06-18
 slug: coerce-layer-zod-native-migration
 predecessor: plans/reports/brainstorm-260617-0212-coerce-layer-zod-native-migration.md
 researchers:
-  - plans/reports/research-260618-0031-zod-impact-analysis.md (Researcher 1)
+  - [Researcher 1 report missing — see plans/reports/scouts-260618-1336-GH-0029-pr5-unresolved-questions-report.md Finding #5. Plan's Q1 verdict was confirmed via re-running the test method described in phase-01-schema-migration.md:21-50 directly.] (Researcher 1)
   - plans/reports/general-purpose-260618-0032-test-migration-parity-harness-report.md (Researcher 2)
 ---
 
