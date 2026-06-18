@@ -84,7 +84,7 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Operator id set by meta_state_supersede. Default 'operator'."),
   session_id: z.string().optional()
     .describe("Idempotency key for hook-emitted findings. When set, the entry is unique per session. The MCP connection hook (Phase 4) uses this to avoid emitting the same finding twice in one session."),
-  mechanism_check: z.boolean().optional()
+  mechanism_check: z.coerce.boolean().optional()
     .describe("Opt-in flag (SP2): include this finding in grounding checks. Defaults to true when evidence_code_ref is set; false otherwise. The meta_state_report tool applies this default automatically; the field is omitted from the entry if the caller provides neither mechanism_check nor evidence_code_ref. Pass mechanism_check: false to explicitly opt out (the response includes a warning). When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
     .describe("SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; updated by meta_state_refresh_fingerprint on explicit refresh."),
@@ -104,7 +104,7 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Human-readable resolution note. Set by meta_state_resolve."),
   promoted_to_rule: z.string().nullable().optional()
     .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
-  auto_resolve: z.boolean().nullable().optional()
+  auto_resolve: z.coerce.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
   reopens: z.array(z.string()).optional()
     .describe("Finding ids whose `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve the stale parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})` in 1 step. The legacy 'expired' status was removed in plan 260611-1000; only `stale` parents are cascade-closeable. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
