@@ -1,3 +1,4 @@
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { metaStateBatch } from "#mcp/core/meta-state.js";
@@ -8,7 +9,7 @@ const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
 const opSchema = z.discriminatedUnion("op", [
   z.object({
     op: z.literal("write"),
-    entry: z.record(z.string(), z.unknown()).describe("Entry to write; validated against metaStateEntrySchema"),
+    entry: z.preprocess(stripEnvelope, z.record(z.string(), z.unknown())).describe("Entry to write; validated against metaStateEntrySchema"),
   }),
   z.object({
     op: z.literal("update"),

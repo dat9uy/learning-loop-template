@@ -5,7 +5,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 const schemaShape = {
   rule_id: z.string().describe("Rule id to skip (must be an active promoted rule)"),
-  ttl_seconds: z.number().int().positive().max(86400).default(3600).describe("Override TTL in seconds (max 86400)"),
+  ttl_seconds: z.coerce.number().int().positive().max(86400).default(3600).describe("Override TTL in seconds (max 86400)"),
   operator_note: z.string().min(1).describe("Why the override is needed (audit trail)"),
 };
 

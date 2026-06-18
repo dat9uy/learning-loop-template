@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -86,7 +87,7 @@ export const workflowGeneratePromptTool = {
   schema: {
     blueprint: z.enum(["evidence", "state-gated", "product-build", "experiment", "runtime-validation"]).describe("Blueprint category"),
     skeleton: z.string().optional().describe("Skeleton name within the blueprint"),
-    context: z.object({}).passthrough().optional().describe("Context values for substitution"),
+    context: z.preprocess(stripEnvelope, z.object({}).passthrough()).optional().describe("Context values for substitution"),
   },
   handler: async (args) => {
     const root = resolveRoot(args.root);

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { WORKFLOW_REGISTRY } from "#mcp/core/workflow-registry.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -8,7 +9,7 @@ export const workflowTriggerTool = {
   description: "Trigger a workflow by name. Returns the recommended MCP tool sequence. Does NOT spawn processes — the agent calls the tools explicitly.",
   schema: {
     name: z.string().describe("Workflow name"),
-    context: z.object({}).passthrough().optional().describe("Arbitrary context passed to workflow (unused but preserved for backward compatibility)"),
+    context: z.preprocess(stripEnvelope, z.object({}).passthrough()).optional().describe("Arbitrary context passed to workflow (unused but preserved for backward compatibility)"),
   },
   handler: async ({ name, context }) => {
     const root = resolveRoot();

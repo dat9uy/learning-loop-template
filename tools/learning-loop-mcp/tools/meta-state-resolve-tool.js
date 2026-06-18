@@ -1,3 +1,4 @@
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import { z } from "zod";
 import {
   readRegistry,
@@ -19,7 +20,7 @@ export const metaStateResolveTool = {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
-    cascade_from: z.array(z.string()).optional()
+    cascade_from: z.preprocess(stripEnvelope, z.array(z.string())).optional()
       .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided, each child must exist, have `reopens` containing this entry's id, and be in `active` or `resolved` status. The parent is closed in 1 call. Only `stale` and `active` parents are cascade-closeable; `reported` parents return `cascade_parent_is_reported` and must be acked first via `meta_state_ack`."),
   },
   handler: async ({ id, resolution, resolved_by, cascade_from }) => {

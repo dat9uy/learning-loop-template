@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "#mcp/core/meta-state.js";
 import { buildRegistrySummary } from "#mcp/core/loop-introspect.js";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -100,7 +101,7 @@ export const metaStateSweepTool = {
   name: "meta_state_sweep",
   description: "Walk the meta-state registry and propose (or apply) lifecycle transitions: expiry for reported entries past expires_at, auto-resolve for entries whose watched file was modified after creation. Dry-run by default. Operator-only (env: OPERATOR_MODE=1). CAS-safe via the version field. Use to keep the registry honest without manual per-entry work.",
   schema: {
-    apply: z.boolean().optional().default(false).describe("If true, commit the transitions. Default false (dry-run)."),
+    apply: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, commit the transitions. Default false (dry-run)."),
   },
   handler: async ({ apply }) => {
     if (apply && process.env.OPERATOR_MODE !== "1" && process.env.OPERATOR_MODE !== "true") {

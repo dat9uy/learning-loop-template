@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
 import {
   readRegistry,
   checkExpiry,
@@ -61,16 +62,16 @@ export const metaStateListTool = {
     session_id: z.string().optional().describe("Filter by session_id (idempotency key for hook-emitted findings)"),
     entry_kind: z.enum(["finding", "change-log", "rule", "loop-design"]).optional()
       .describe("Filter by a single entry kind; default = both (legacy)"),
-    entry_kinds: z.array(z.enum(["finding", "change-log", "rule", "loop-design"])).optional()
+    entry_kinds: z.preprocess(stripEnvelope, z.array(z.enum(["finding", "change-log", "rule", "loop-design"]))).optional()
       .describe("Filter by multiple entry kinds (takes precedence over entry_kind if both set)"),
-    id: z.union([z.string(), z.array(z.string())]).optional()
+    id: z.preprocess(stripEnvelope, z.union([z.string(), z.array(z.string())])).optional()
       .describe("Filter by id (string or string[]). Missing ids are silently skipped. Pairs with `ref_by`/`ref_field` for the narrow query path."),
     ref_by: z.string().optional()
       .describe("Filter entries that reference this id in `ref_field`. Required with `ref_field`."),
     ref_field: z.enum(REF_FIELDS).optional()
       .describe("Field used by the `ref_by` filter. Required with `ref_by`."),
-    compact: z.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
-    include_archived: z.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
+    compact: z.coerce.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
+    include_archived: z.coerce.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
   },
   handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, id, ref_by, ref_field, compact, include_archived }) => {
     const root = resolveRoot();

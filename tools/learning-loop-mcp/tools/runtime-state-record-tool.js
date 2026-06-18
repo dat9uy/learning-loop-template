@@ -27,9 +27,9 @@ export const runtimeStateRecordTool = {
       .describe("Entry kind"),
     id: z.string()
       .describe("Stable entry id"),
-    value: z.number().nullable().optional()
+    value: z.coerce.number().nullable().optional()
       .describe("Current value (nullable)"),
-    delta: z.number().nullable().optional()
+    delta: z.coerce.number().nullable().optional()
       .describe("Delta since last entry (nullable)"),
     source_ref: z.string().regex(/^local:meta-state:.+$/)
       .describe("Pointer to meta-state entry that governs this state"),

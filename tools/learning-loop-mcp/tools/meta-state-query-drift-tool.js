@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { stripEnvelope } from "../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { readRegistry, filterEntries } from "#mcp/core/meta-state.js";
 import { queryDrift } from "#mcp/core/query-drift.js";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -16,12 +18,12 @@ export const metaStateQueryDriftTool = {
   name: "meta_state_query_drift",
   description: "Aggregate drift events across the meta-state registry. Joins SP1's deriveStatus + SP2's checkGrounding. Read-only: the agent decides what to do with the result.",
   schema: {
-    filter: z.object({
+    filter: z.preprocess(stripEnvelope, z.object({
       status: z.enum(["active", "reported"]).optional()
         .describe("Optional filter: only return entries with this status"),
-    }).optional()
+    })).optional()
       .describe("Optional filter on the registry before computing drift"),
-    run_grounding: z.boolean().optional().default(false)
+    run_grounding: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false)
       .describe("Opt-in: also run SP2's checkGrounding for each entry. Default false (derivation-only)."),
   },
   handler: async ({ filter, run_grounding = false }) => {

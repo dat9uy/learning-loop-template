@@ -14,7 +14,7 @@ export const metaStateReVerifyTool = {
   description: "Re-verify a stale meta-state entry by running its verification.steps. Each step is executed via core/verification-runner.js with cmd-allowlist + shell:false + 10s timeout. On a full pass, transitions the entry stale -> active and stamps last_verified_at. On any failure, stays stale and appends to verification.history (FIFO cap 50). Gated on META_STATE_VERIFY_EXEC=1 (default off). Use to close the TTL recursion: stale findings can be re-validated rather than auto-killed.",
   schema: {
     id: z.string().describe("Entry id to re-verify"),
-    _expected_version: z.number().optional()
+    _expected_version: z.coerce.number().optional()
       .describe("Optional CAS: re-verify succeeds only if current entry.version === _expected_version."),
   },
   handler: async ({ id, _expected_version }) => {

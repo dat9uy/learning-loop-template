@@ -33,7 +33,7 @@ export const runtimeStateReadTool = {
       .describe("Filter entries with timestamp >= since"),
     until: z.string().datetime().optional()
       .describe("Filter entries with timestamp <= until"),
-    limit: z.number().int().min(1).max(1000).default(100)
+    limit: z.coerce.number().int().min(1).max(1000).default(100)
       .describe("Maximum number of entries to return"),
   },
   handler: async ({ affected_system, kind, since, until, limit = 100 }) => {
