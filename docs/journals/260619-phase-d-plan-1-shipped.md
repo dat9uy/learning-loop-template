@@ -22,7 +22,7 @@ This was smoother than expected because we reused the `createLoopTool` parity-sh
 - New factory: `tools/learning-loop-mastra/create-loop-workflow.js`
 - 8 workflow files moved to `tools/learning-loop-mastra/workflows/workflow-*.js`
 - Server registers workflows via custom `LoopMCPServer` subclass
-- Manifests updated: `tools/manifest.json` (31 entries), `agent-manifest.json` (11 workflow groups), legacy `tools/learning-loop-mcp/agent-manifest.json` (3 groups)
+- Manifests updated: `tools/manifest.json` (31 entries), `agent-manifest.json` (11 workflow group entries: 8 `run_workflow_*` + 3 `mastra_workflow_*`), legacy `tools/learning-loop-mcp/agent-manifest.json` (3 workflow group entries)
 - Tracker D1/D2/D3 flipped to `[x]` in `plans/reports/productization-260612-1530-master-tracker.md`
 
 ## What We Tried
@@ -38,7 +38,7 @@ Not a failure — a deliberate scope boundary. The only near-mistake was conside
 
 - **Reuse proven patterns.** `createLoopWorkflow` is basically `createLoopTool` with a `createWorkflow` call instead of `createTool`. No new concepts, no new mental overhead.
 - **Defer multi-step complexity to the agent plan.** Workflows that need stateful steps (`self_improvement`, `runtime_probe`) should wait until the agent layer (Plan 3) is ready. Trying to solve both layers at once is a trap.
-- **Parity harnesses pay for themselves.** The 5 factory invariant tests + 8 direct parity tests + 9 MCP integration tests caught a schema mismatch in `workflow_intentional_skip` before it hit the PR.
+- **Parity harnesses pay for themselves.** The 5 factory invariant tests + 8 direct parity tests + 9 MCP integration tests would have caught a schema mismatch in any of the 8 workflows (e.g., a missing field on `workflow_intentional_skip`'s rationale or a Zod-required regression on `workflow_prepare_runtime_request`). The harness is the contract; future migrations that drop a field will fail it.
 
 ## Next Steps
 

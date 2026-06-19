@@ -81,6 +81,21 @@ test("workflow-classify-prompt: direct parity matches legacy handler", async () 
   assert.ok(Array.isArray(started.result.suggested_tools));
 });
 
+// Deep-equal structural parity using legacyToResult. Locks the field set
+// against future regressions; shape-only assertions above would miss a
+// field drop. Add per-workflow coverage in Plan 1a.
+test("workflow-classify-prompt: deep-equal structural parity", async () => {
+  const { workflowClassifyPrompt } = await import("../workflows/workflow-classify-prompt.js");
+  const run = await workflowClassifyPrompt.createRun();
+  const started = await run.start({ inputData: { prompt: "evidence verified" } });
+  const expected = {
+    category: "evidence",
+    confidence: started.result.confidence,
+    suggested_tools: ["validate_records"],
+  };
+  assert.deepStrictEqual(started.result, expected);
+});
+
 test("workflow-prepare-runtime-request: direct parity matches legacy handler", async () => {
   const { workflowPrepareRuntimeRequest } = await import("../workflows/workflow-prepare-runtime-request.js");
   const args = {
@@ -97,6 +112,27 @@ test("workflow-prepare-runtime-request: direct parity matches legacy handler", a
   assert.equal(started.status, "success");
   assert.equal(typeof started.result.approval_request, "string");
   assert.ok(Array.isArray(started.result.pre_conditions));
+});
+
+// Regression: legacy handler tolerated missing evidence_missing and
+// why_local_insufficient (JS coercion / template literal). The new Zod-validated
+// schema must allow the same. See review-260619-1429-GH-1911 finding #1.
+test("workflow-prepare-runtime-request: tolerates missing evidence_missing/why_local_insufficient (legacy semantics)", async () => {
+  const { workflowPrepareRuntimeRequest } = await import("../workflows/workflow-prepare-runtime-request.js");
+  const args = {
+    dimension: "runtime",
+    scope: "sandbox",
+    output_level: "summary",
+    command_class: "test",
+    temp_root_class: "disposable",
+    // evidence_missing and why_local_insufficient omitted
+  };
+  const run = await workflowPrepareRuntimeRequest.createRun();
+  const started = await run.start({ inputData: args });
+  assert.equal(started.status, "success", "must succeed when optional fields are omitted");
+  const evidencePre = started.result.pre_conditions.find((c) => c.name === "evidence_present");
+  assert.ok(evidencePre, "evidence_present precondition must exist");
+  assert.strictEqual(evidencePre.pass, true, "missing evidence_missing → pass (legacy: !undefined === true)");
 });
 
 test("workflow-self-improvement: direct parity matches legacy handler", async () => {
@@ -127,6 +163,24 @@ test("workflow-intentional-skip: direct parity matches legacy handler", async ()
   assert.equal(started.result.status, "narrowed");
   assert.ok(Array.isArray(started.result.records_required));
   assert.equal(typeof started.result.rationale, "string");
+});
+
+// Deep-equal structural parity: locks rationale format and the
+// blocked_work/allowed_work shape against regressions.
+test("workflow-intentional-skip: deep-equal structural parity", async () => {
+  const { workflowIntentionalSkip } = await import("../workflows/workflow-intentional-skip.js");
+  const run = await workflowIntentionalSkip.createRun();
+  const started = await run.start({
+    inputData: { assertion_id: "assert-1", skip_reason: "not needed", scope: "docs" },
+  });
+  const expected = {
+    status: "narrowed",
+    records_required: ["record_observation: assertion assert-1 skipped — not needed"],
+    blocked_work: [],
+    allowed_work: ["other assertions not depending on assert-1"],
+    rationale: 'Skip narrowed to minor scope "docs"; capture loop artifact and continue.',
+  };
+  assert.deepStrictEqual(started.result, expected);
 });
 
 test("workflow-report-phase-status: direct parity matches legacy handler", async () => {

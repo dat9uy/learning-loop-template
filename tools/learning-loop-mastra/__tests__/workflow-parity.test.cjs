@@ -51,7 +51,6 @@ describe("workflow parity harness", () => {
     const result = await handles.callTool("run_workflow_classify_prompt", { prompt: "test classification" });
     assert.ok(result, "workflow call must return a result");
     assert.equal(typeof result.category, "string", "must have category");
-    console.log("EMPIRICAL PROBE:", JSON.stringify(result, null, 2));
   });
 
   test("run_workflow_intake_orient matches legacy output shape", { timeout: 10000 }, async () => {

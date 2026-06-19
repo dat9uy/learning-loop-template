@@ -74,8 +74,11 @@ export const workflowPrepareRuntimeRequest = createLoopWorkflow({
     output_level: z.string().describe("Expected output granularity (e.g., pass/fail, summary, full)"),
     command_class: z.string().describe("Command category (e.g., setup, test, deploy)"),
     temp_root_class: z.string().describe("Temp root disposition (e.g., disposable, ephemeral, persistent)"),
-    evidence_missing: z.boolean().describe("Whether required evidence has not yet been collected"),
-    why_local_insufficient: z.string().describe("Explanation why local/static verification is insufficient"),
+    // Optional to preserve legacy tolerance: handler used `!evidence_missing`
+    // (coerces undefined → true → "Evidence collected.") and templated
+    // `${why_local_insufficient}` directly. Zod parse must allow the same.
+    evidence_missing: z.boolean().optional().describe("Whether required evidence has not yet been collected"),
+    why_local_insufficient: z.string().optional().describe("Explanation why local/static verification is insufficient"),
   },
   steps: [
     {
@@ -87,8 +90,8 @@ export const workflowPrepareRuntimeRequest = createLoopWorkflow({
         output_level: z.string(),
         command_class: z.string(),
         temp_root_class: z.string(),
-        evidence_missing: z.boolean(),
-        why_local_insufficient: z.string(),
+        evidence_missing: z.boolean().optional(),
+        why_local_insufficient: z.string().optional(),
       },
       outputSchema: {
         approval_request: z.string(),
