@@ -39,9 +39,9 @@ const DELETED_TOOLS = [
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 39 entries (post-Plan-3-hygiene: meta_state_refresh_tools deleted)
-await test("manifest has 39 entries", () => {
-  assert.strictEqual(manifest.length, 39, `Expected 39, got ${manifest.length}`);
+// 1. Manifest has 31 entries (8 workflow tools moved to mastra in Phase D Plan 1)
+await test("manifest has 31 entries", () => {
+  assert.strictEqual(manifest.length, 31, `Expected 31, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest

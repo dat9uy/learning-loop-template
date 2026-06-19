@@ -13,7 +13,20 @@ const MANIFEST = JSON.parse(
 const PREFIX = "mastra_";
 const tools = {};
 
+// TODO(phase-d-plan-1-phase-4): re-enable as createWorkflow
+const WORKFLOW_FILES = new Set([
+  "tools/workflow-intake-orient-tool.js",
+  "tools/workflow-intake-plan-tool.js",
+  "tools/workflow-classify-prompt-tool.js",
+  "tools/workflow-prepare-runtime-request-tool.js",
+  "tools/workflow-self-improvement-tool.js",
+  "tools/workflow-intentional-skip-tool.js",
+  "tools/workflow-report-phase-status-tool.js",
+  "tools/workflow-runtime-probe-tool.js",
+]);
+
 for (const { file, export: exportName } of MANIFEST) {
+  if (WORKFLOW_FILES.has(file)) continue;
   const mod = await import(`#mcp/${file}`);
   const legacy = mod[exportName];
   if (!legacy) {

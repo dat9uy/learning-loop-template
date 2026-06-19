@@ -1,4 +1,4 @@
-import { stripEnvelope } from "../core/envelope-stripper.js";
+import { stripEnvelope } from "#mcp/core/envelope-stripper.js";
 import { z } from "zod";
 
 function classifyVerificationType(entry) {
