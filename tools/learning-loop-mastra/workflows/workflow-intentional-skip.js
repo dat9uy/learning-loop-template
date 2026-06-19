@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createLoopWorkflow } from "../create-loop-workflow.js";
 
 function decideStatus(skipReason, scope) {
   const reason = (skipReason || "").trim().toLowerCase();
@@ -38,22 +39,41 @@ function buildOutput(assertionId, skipReason, scope, status) {
   };
 }
 
-export const workflowIntentionalSkipTool = {
-  name: "workflow_intentional_skip",
+async function decideSkip({ assertion_id, skip_reason, scope }) {
+  const status = decideStatus(skip_reason, scope);
+  return buildOutput(assertion_id, skip_reason, scope, status);
+}
+
+export const workflowIntentionalSkip = createLoopWorkflow({
+  id: "workflow_intentional_skip",
   description:
     "Processes an intentional skip decision for an assertion. " +
     "Use WHEN the operator or agent decides to bypass a specific assertion. " +
     "Converts skipped knowledge into required loop artifacts so nothing disappears. " +
     "Returns status (blocked, narrowed, accepted), records_required, blocked_work, allowed_work, and rationale. " +
     "Failure mode: empty skip_reason returns blocked.",
-  schema: {
+  inputSchema: {
     assertion_id: z.string().describe("Identifier of the assertion being skipped"),
     skip_reason: z.string().describe("Human-readable reason for the skip"),
     scope: z.string().describe("Scope or risk class of the assertion"),
   },
-  handler: async (args) => {
-    const status = decideStatus(args.skip_reason, args.scope);
-    const out = buildOutput(args.assertion_id, args.skip_reason, args.scope, status);
-    return { content: [{ type: "text", text: JSON.stringify(out) }] };
-  },
-};
+  steps: [
+    {
+      id: "decide-skip",
+      description: "Decision tree for skip status",
+      inputSchema: {
+        assertion_id: z.string(),
+        skip_reason: z.string(),
+        scope: z.string(),
+      },
+      outputSchema: {
+        status: z.string(),
+        records_required: z.array(z.string()),
+        blocked_work: z.array(z.string()),
+        allowed_work: z.array(z.string()),
+        rationale: z.string(),
+      },
+      handler: decideSkip,
+    },
+  ],
+});

@@ -1,0 +1,10 @@
+[
+  { "file": "workflows/workflow-intake-orient.js", "export": "workflowIntakeOrient" },
+  { "file": "workflows/workflow-intake-plan.js", "export": "workflowIntakePlan" },
+  { "file": "workflows/workflow-classify-prompt.js", "export": "workflowClassifyPrompt" },
+  { "file": "workflows/workflow-prepare-runtime-request.js", "export": "workflowPrepareRuntimeRequest" },
+  { "file": "workflows/workflow-self-improvement.js", "export": "workflowSelfImprovement" },
+  { "file": "workflows/workflow-intentional-skip.js", "export": "workflowIntentionalSkip" },
+  { "file": "workflows/workflow-report-phase-status.js", "export": "workflowReportPhaseStatus" },
+  { "file": "workflows/workflow-runtime-probe.js", "export": "workflowRuntimeProbe" }
+]
