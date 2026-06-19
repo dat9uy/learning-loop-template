@@ -283,3 +283,94 @@ This isn't scope creep — it's a precondition for the migration that the Phase 
 - **AGENTS.md §1 contract:** `AGENTS.md` line 215 (product-surface void) + §10 (2026-06-12 reframe)
 - **SKILL.md prompt references:** `.claude/skills/learning-loop/SKILL.md` line 95-96 (prompt-blueprints-product-build.md + meta-evidence-self-improvement.md)
 - **Existing scout helper:** `tools/learning-loop-mcp/scout/**` (the legacy module that `scoutAgent` wraps)
+
+---
+
+## Plan 1 Execution: Process Learnings & Deferred Items
+
+**Status:** Plan 1 shipped 2026-06-19 (PR #6, branch `260618-1911-phase-d-plan-1-workflows`). D1/D2/D3 tracker flips confirmed. This section captures the process that actually ran and the items that were explicitly deferred to downstream plans. The original decision (above) is preserved as the intent; this is the ground-truth post-execution.
+
+### Process — What Actually Ran
+
+Plan 1 was authored and executed as `plans/260618-1911-phase-d-plan-1-workflows/`, following the 6-phase structure documented in the plan. Several process patterns emerged that are worth carrying forward to Plans 2, 3, and 4.
+
+**Phase structure (6 phases, 1 branch, ~6-9h):**
+
+| Phase | Concern | TDD | Commit |
+|---|---|---|---|
+| 1 | File-move precondition | n/a (mechanical) | `5788890` |
+| 2 | `createLoopWorkflow` factory | RED → GREEN (5 invariant tests) | `9241ce4` |
+| 3 | 8 `createWorkflow` wrappers | TDD per workflow (8 direct unit tests) | `46419a0` |
+| 4 | server.js wiring + manifests | n/a (config) | `36a5312` |
+| 5 | MCP parity harness | TDD per workflow (9 MCP + 1 tools/list enumeration) | included in 46419a0 + 2603edd |
+| 6 | Acceptance gate + closeout | verify-only | `365e444`, `25e2b03` |
+
+**Process patterns that worked (carry forward to Plans 2, 3, 4):**
+
+1. **TDD-per-workflow in Phase 3.** Each of the 8 workflows got its own direct unit parity test (`workflow-direct-parity.test.js`) before its wrapper was written. Blockers surfaced in isolation; no batched "8 didn't work" failure. **Apply to Plan 3's 3 agents** — write 1 direct unit parity test per agent, then implement.
+2. **Empirical probe before parity batch.** Phase 5's first MCP test was a deliberate probe of `run_workflow_classify_prompt` to lock the MCP response format (`content[0].text` JSON envelope) before writing 7 more parity tests. The format was unknown at plan time (researcher B's CONCERN #1). **Apply to Plan 3 agent harness** — probe 1 agent's MCP response shape first, then batch the parity tests.
+3. **Parity-faithful default for new features.** The Q1 conflict (brainstorm said "real stateSchema for 2 of 8"; researcher A said "all 8 thin") was resolved at plan-author time as **parity-faithful thin `stateSchema = input` for all 8**. Multi-step restructuring deferred to Plan 3 (where the agent consumer lives). This is the YAGNI-correct call: ship the factory that supports `stateSchema`, defer the restructuring to the plan that introduces the consumer. **Apply to Plan 2 LibSQL** — ship the storage backend parity-faithful, defer any "real storage schema" features to the plan that needs them.
+4. **Factory as integration seam.** `createLoopWorkflow` mirrors `createLoopTool` 1:1 (parity-shim + `attachParityJSONSchema` + `normalizeSchema`). Plan 3's `createLoopAgent` should mirror both. The pattern is now: factory name = `create-loop-<x>.js`, factory accepts `{ id, description, inputSchema, ...}`, applies the same parity-shim treatment, returns the Mastra primitive.
+5. **Per-plan `meta_state_log_change` with the same `change_target`.** Plan 1 filed `meta-260619T1320Z-plans-reports-productization-260612-1530-master-tracker-md` for the D1/D2/D3 flip. Plans 2, 3, 4 should each file their own with the same `change_target` so the audit trail is one entry per plan (not per checkbox).
+6. **Count math locked in `tools/list` enumeration test.** The MCP `tools/list` enumeration test (Phase 5) asserts exactly 31 `mastra_*` + 8 `run_workflow_*` = 39 total. This is a regression guard that catches manifest drift. **Apply to Plan 4 cutover** — write the final enumeration test that asserts the post-cutover count.
+
+**Process deltas from the original brainstorm (worth noting for operator review):**
+
+1. **Q1 resolution diverged from the brainstorm's recommendation.** Brainstorm Q1 resolved as "hybrid per per-tool classification" — 2 of 8 (`self_improvement`, `runtime_probe`) get "real `stateSchema`" (multi-step), 6 of 8 get "thin `stateSchema = input`". The actual plan shipped **all 8 with thin `stateSchema = input`** (parity-faithful). The plan's "Q1 Conflict Resolution" section documents the rationale: the current code is single-step; restructuring to multi-step belongs in the plan that introduces the consumer (Plan 3 agents). The brainstorm's "real stateSchema" decision was based on a model of how these workflows *should* work; the plan's "thin stateSchema" is based on what they *do* work today. Both are defensible. **The plan-level resolution supersedes the brainstorm-level resolution.** If the operator wants multi-step restructuring back in scope, file a `meta_state_log_change` and add it to Plan 1a (atomic fix) before Plan 3.
+2. **Factory filename.** Brainstorm references `create-workflow.js` (line 123, 268). Actual implementation is `create-loop-workflow.js` (mirrors `create-loop-tool.js` naming). Already corrected in the plan's "Whole-Plan Consistency Sweep" — carried here for record.
+3. **Workflow filename convention.** Brainstorm references `intake-orient.js` (bare) in some places, `workflow-intake-orient.js` (prefixed) in others. Actual implementation uses `workflow-*.js` (prefixed) to match the existing `tools/` manifest convention and to make `run_<key>` MCP naming obvious. The plan was right; the brainstorm was inconsistent.
+4. **Phase C-D manifest gap (4 tools in `tools/manifest.json` but not in legacy `agent-manifest.json`: `propose_design`, `relationships`, `re_verify`, `supersede`).** Brainstorm does not call this out. Plan 1's Phase 4 + 6 only updated the *mastra* `agent-manifest.json`. The legacy `tools/learning-loop-mcp/agent-manifest.json` is still missing those 4 tools. **Tracked as master-tracker item D-11, slated for Plan 3 (per tracker line 287).** Flagging here for operator awareness.
+5. **`agent-manifest.json` workflow group arithmetic.** Brainstorm does not enumerate the post-Phase-4 group size. Actual: 11 entries total (8 `run_workflow_*` + 3 `mastra_workflow_*` stay-as-createTool). Plan 4 owns the final 5-group reconciliation.
+
+### Deferred Items (consolidated)
+
+All items deferred from Plan 1 with target plan and rationale. Each item has either (a) a concrete `evidence_code_ref` or (b) a `meta_state_log_change` id. **Not a re-litigation of Q1** — Q1 is resolved per the plan's "Q1 Conflict Resolution" section. These are the *follow-up* items that surfaced during execution and pre-merge review.
+
+#### Plan 1a candidates (atomic fix, non-blocking)
+
+If operator opens Plan 1a, all four items ship in one branch. Each is <50 LOC and has a test stub or design ready.
+
+| # | Item | File | Effort | Source |
+|---|------|------|--------|--------|
+| 1.1 | Deep-equal structural parity for remaining 6 workflows (`workflow_intake_orient`, `workflow_intake_plan`, `workflow_prepare_runtime_request`, `workflow_self_improvement`, `workflow_report_phase_status`, `workflow_runtime_probe`) | `tools/learning-loop-mastra/__tests__/workflow-direct-parity.test.js` | ~1h (6 `assert.deepStrictEqual` tests using `legacyToResult` helper, which already exists) | review-260619-1429 finding #2, #3 |
+| 1.2 | Envelope-input tests for `workflow_self_improvement` and `workflow_intake_plan` to prove `stripEnvelope` preprocess handles the MCP envelope form when an agent caller wraps the input | `tools/learning-loop-mastra/__tests__/workflow-direct-parity.test.js` | ~30min (2 tests passing the legacy envelope shape) | review-260619-1429 finding #3 |
+| 1.3 | `id` shape validation in `createLoopWorkflow` factory (`/^[a-z][a-z0-9_]*$/`) | `tools/learning-loop-mastra/create-loop-workflow.js` | ~10min (1-line check + error message) | review-260619-1429 finding #10 (minor) |
+| 1.4 | Explicit `runId` generation in `LoopMCPServer.convertWorkflowsToTools` (use `crypto.randomUUID()` when `proxiedContext.get("runId")` is undefined) | `tools/learning-loop-mastra/server.js:96` | ~30min (1 import + 1 line + 1 idempotency test) | review-260619-1429 finding #6 (medium) |
+
+**Total Plan 1a effort:** ~2-3h. Single branch, single PR. **Recommendation:** file as `loop-design-phase-d-plan-1a-parity-tightening` and ship before Plan 3 (so Plan 3's agents inherit the tighter parity guarantees).
+
+#### Plan 2 (storage, parallel, in flight per brainstorm)
+
+No items deferred from Plan 1 → Plan 2. Plan 2 is independent of Plan 1.
+
+#### Plan 3 (agents, blocked on Plans 1+2)
+
+Items deferred from Plan 1 to Plan 3. Plan 3 inherits the workflow parity guarantees from Plan 1a (if 1a ships) or from Plan 1 (if not).
+
+| # | Item | Source | Notes |
+|---|------|--------|-------|
+| 3.1 | **Multi-step `stateSchema` restructuring for `workflow_self_improvement` and `workflow_runtime_probe`.** The factory `createLoopWorkflow` supports `stateSchema` and `suspend`/`resume` already; the wrappers ship with thin `stateSchema = input` (parity-faithful). When Plan 3's agents consume these workflows, restructure to accumulate cross-step state. The current handlers are single-step; this is a consumer-driven change. | plan §"Q1 Conflict Resolution" | One-line addition at call site per workflow. Factory is ready. |
+| 3.2 | **Agent reasoning for `workflow_intentional_skip` and `workflow_report_phase_status`.** These workflows are listed as "Tool+Agent" in the brainstorm Q1 table (line 27). Today they ship as pure-compute workflows. Plan 3 may add agent reasoning on top (e.g., the operator describes the skip, the agent proposes a structured record). | brainstorm line 27 | Not in Plan 1 scope; Plan 3 may revisit. |
+| 3.3 | **D-11 (master tracker line 287):** Reconcile 4 tools missing from legacy `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`). Pre-existing inconsistency between legacy `agent-manifest.json` and `tools/manifest.json`; not in Plan 1 scope. | tracker D-11 | One-line addition to legacy `agent-manifest.json` workflow group. |
+| 3.4 | **Phase-report workflow utility.** `workflow_report_phase_status` returns `lifecycle_complete: bool`. With workflow execution now going through `createWorkflow`, the "phase" abstraction may no longer map cleanly. Confirm with Plan 3 author whether the workflow stays as-is or gets restructured. | review-260619-1429 unresolved question #4 | Open question — not blocking. |
+
+#### Plan 4 (cutover, blocked on Plans 1+2+3)
+
+| # | Item | Source | Notes |
+|---|------|--------|-------|
+| 4.1 | **`agent-manifest.json` final 5-group reconciliation.** Phase 4 updated the mastra `agent-manifest.json` to add the 8 `run_workflow_*` entries alongside the 3 `mastra_workflow_*` entries. The final 5-group structure (gate, workflow, meta_state, introspection, runtime_agnostic) is correct as of Plan 1; Plan 4's reconciliation is mostly the agent group addition. | plan §"Phases" | Low effort. |
+| 4.2 | **Cold-session discoverability enumeration of new 8 `run_workflow_*` tools.** The cold-session test currently reads from `.factory/mcp.json` and enumerates 31 tools; the new 8 `run_*` tools are exercised by `workflow-parity.test.cjs` but not by the cold-session test. Agents using the cold-session quickstart will not see `run_workflow_*` suggestions. | review-260619-1429 finding #10 (minor) + unresolved question #5 | Update `cold-session-discoverability.test.cjs` to enumerate 39. |
+| 4.3 | **§3.10 reconciliation in `research-260611-2216-mastra-runtime-model-agnostic-productization.md`.** Plan 4 edits §3.10 to reflect the post-Phase-D tool surface (workflow group + agent group). | brainstorm Q5 resolution | Per Q5 protocol: file `meta_state_log_change` first. |
+| 4.4 | **AGENTS.md §1 contract note** that Phase D shipped. | brainstorm Touchpoints Plan 4 | One-line addition. |
+
+#### Out of scope (separate phases, not Phase D)
+
+- **Phase E (cutover to Mastra Code Mode 1):** E1-E7. Tracked in master tracker.
+- **Phase G (skill migration):** G1-G3. Tracked in master tracker.
+- **D-16 (CI test-drift check):** `tools/ci/test-drift-check.js`. Separate track.
+- **D-17 (fail-fast on manifest errors):** `server.js` strict mode. Separate track.
+- **D-19 (LIM hardening):** 6 LIMs. Separate security/quality audit.
+
+### Cross-Reference: Plan 1 Review Report
+
+Full pre-merge review at `plans/reports/review-260619-1429-GH-1911-phase-d-plan-1-workflows-report.md`. Verdicts: 0 critical / 6 important (5 addressed in `c3aba39`) / 4 minor (Plan 1a candidates) / praise for reuse-pattern discipline. All test counts verified: 1083 pass / 0 fail / 1 skipped (was 1080; +3 new tests added in `c3aba39`).
