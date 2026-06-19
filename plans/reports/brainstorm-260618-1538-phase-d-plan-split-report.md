@@ -37,7 +37,7 @@ Phase D of the master tracker (D1–D7) is the Mastra Phase 2-3 migration: promo
 | Plan | Sub-phases | Purpose | Gate | Dependency |
 |------|-----------|---------|------|------------|
 | **Plan 1** | D1+D2+D3 | **Workflows** — 8 `createWorkflow` + `stateSchema` + `suspend`/`resume` + workflow parity harness | All 10 namespaces pass; workflow parity GREEN (stateSchema round-trip for 8 tools) | None |
-| **Plan 2** | D5+D6 | **Storage** — LibSQL backend + agent memory infra + LibSQL/JSONL round-trip | All 10 namespaces pass; LibSQL read/write tests GREEN | None |
+| **Plan 2** | D5+D6 | **Storage** — LibSQL backend (Mastra runtime substrate) + LibSQL/JSONL round-trip | All 10 namespaces pass; LibSQL read/write tests GREEN | None |
 | **Plan 3** | D4+D7 | **Agents** — 3 `createAgent` + per-agent model config + agent parity harness (mocked LLM) | All 10 namespaces pass; agent parity tests GREEN | Plan 1 + Plan 2 |
 | **Plan 4** | — | **Cutover** — `agent-manifest.json` update + retire legacy tool wrappers + master-tracker flip | All 10 namespaces pass; legacy imports cleared; §3.10 tool surface reconciled | Plan 1 + Plan 2 + Plan 3 |
 
@@ -374,3 +374,109 @@ Items deferred from Plan 1 to Plan 3. Plan 3 inherits the workflow parity guaran
 ### Cross-Reference: Plan 1 Review Report
 
 Full pre-merge review at `plans/reports/review-260619-1429-GH-1911-phase-d-plan-1-workflows-report.md`. Verdicts: 0 critical / 6 important (5 addressed in `c3aba39`) / 4 minor (Plan 1a candidates) / praise for reuse-pattern discipline. All test counts verified: 1083 pass / 0 fail / 1 skipped (was 1080; +3 new tests added in `c3aba39`).
+
+---
+
+## Plan 2 Scope Clarification — Storage vs Memory (added 2026-06-19)
+
+**Status:** Decision locked 2026-06-19 in brainstorm session. Pre-Plan-2 author work. The parent report's Plan 2 row (D5+D6) needed a scope disambiguation that the original Q1–Q5 resolutions did not fully spell out. The push-back was: "if Plan 3 ships 3 agents with memory omitted, why ship LibSQL in Plan 2?" — this section answers it.
+
+### The conceptual split (Mastra layer)
+
+Mastra has two distinct concepts that the operator-confused them as one. They are at different layers:
+
+| Concept | Mastra primitive | Purpose | Wired on |
+|---|---|---|---|
+| **Storage** | `storage: new LibSQLStore({...})` (from `@mastra/libsql`) | Persistence backend for the Mastra app — workflow `stateSchema` runs, `suspend`/`resume` snapshots, thread/message persistence (for OM), traces | `Mastra` instance or `MCPServer` |
+| **Memory** | `memory: { observationalMemory, workingMemory, semanticRecall, lastMessages }` on `Agent` | Per-agent conversation context (raw messages, observations, working memory, semantic recall) | Per-agent `Agent` constructor |
+
+Per `.agents/skills/mastra/references/core-concepts.md`: "Memory: Maintain context through message history, working memory, semantic recall, and observational memory. Storage: Persist data with providers such as Postgres, LibSQL, and MongoDB." Memory and storage are listed as separate sub-systems.
+
+**Storage is the substrate. Memory is a per-agent config that *uses* the substrate (when OM is enabled).** A `MCPServer` can have storage without memory (workflows persist, agents are stateless against OM). A `MCPServer` cannot have memory without storage (OM threads/messages need a backend).
+
+Observational Memory itself is a 3-tier long-term memory layer on top of a single agent's conversation stream: an **Observer** sub-agent extracts observations from raw messages (default threshold: 30k unobserved tokens), a **Reflector** sub-agent compresses observations (default threshold: 40k observation tokens), and the user-facing actor agent reads the compressed layer in its context. The Observer/Reflector are framework-managed; the actor agent does not call them directly. See `node_modules/@mastra/core/dist/memory/types.d.ts#ObservationalMemoryOptions` for the full config surface.
+
+### What Plan 2 ships (the substrate)
+
+| Item | In Plan 2 | Source |
+|---|---|---|
+| `@mastra/libsql` dep in `tools/learning-loop-mastra/package.json` | ✓ | Brainstorm Q2 + Touchpoints Plan 2 |
+| `tools/learning-loop-mastra/storage.js` — LibSQL config + wiring | ✓ | Brainstorm Touchpoints Plan 2 |
+| File path `./tools/learning-loop-mastra/data/mastra-memory.db` (sibling to `server.js`) | ✓ | Brainstorm Q2 resolution |
+| `data/` subdir gitignored | ✓ | Brainstorm Q2 resolution |
+| Separate SQLite file from meta-state JSONL | ✓ | Research §3.7 (locked contract 2026-06-12) |
+| `__tests__/storage-parity.test.cjs` — LibSQL read/write round-trip + JSONL equivalent | ✓ | Brainstorm Touchpoints Plan 2 |
+| `server.js` wires storage backend into `Mastra`/`MCPServer` | ✓ | Brainstorm Touchpoints Plan 2 |
+
+**What Plan 2 storage is used for (the user-facing wins):**
+
+1. **Workflow `stateSchema` persistence.** Plan 1's `createLoopWorkflow` supports `stateSchema` + `suspend`/`resume`, but the 8 wrappers ship with thin `stateSchema = input` (parity-faithful — see parent report "Plan 1 Execution: Process Learnings" §"Process deltas" #1). When Plan 3 restructures `workflow_self_improvement` and `workflow_runtime_probe` to real multi-step `stateSchema`, the runs need a backend to persist cross-step state across MCP calls. Plan 2 ships the backend now; Plan 3 consumes it.
+2. **`suspend`/`resume` snapshots.** Long-running workflows that pause for operator input persist their suspended state via the storage backend. Same prerequisite as #1.
+3. **Mastra architectural closure.** A `MCPServer` without storage is a degenerate Mastra app. The research report §3.7 (locked contract 2026-06-12) places storage at "Phase 3 of the Mastra migration." The contract is: storage ships in Phase 3. Plan 2 = Phase 3.
+4. **One-shot migration under low risk.** Going JSONL → LibSQL for meta-state (or any large registry) is invasive. Plan 2 = "lift the parking brake while the parking lot is empty." Forward-compatible with Bridge 7 (product-surface binding re-debate) where storage isolation may be needed for per-feature parity tests.
+
+### What Plan 2 does NOT ship (deferred to a follow-up)
+
+| Item | Status | Why |
+|---|---|---|
+| `memory: { observationalMemory: { ... } }` on agents | **OUT** | Plan 3 ships 3 agents with `memory` field omitted or `false`. Agents are memory-less against OM. |
+| Per-agent `resourceId` / `threadId` scoping | **OUT** | Not needed while agents are memory-less. Comes with OM config in the follow-up plan. |
+| `workingMemory` / `semanticRecall` configs | **OUT** | Same — agents are stateless against memory. |
+| Observer / Reflector sub-agents | **OUT** | Only relevant if OM is enabled. |
+| Meta-state migration JSONL → LibSQL | **OUT** | Per research §3.7: "Likely separate file, same engine." Meta-state stays JSONL this round; only the agent/workflow storage layer gets LibSQL. |
+
+**The follow-up plan for agent memory is Phase 3.5 or Phase 5** (per research report §8 Q5: "Mastra Code's free Observational Memory is a Phase 5 bonus, not a Phase 3 requirement"). At that time, Plan 2's storage backend is the substrate; the per-agent memory config is the consumer.
+
+### Plan 3 agent memory stance (locked 2026-06-19)
+
+Each of the 3 agents in Plan 3 ships in this shape:
+
+```js
+new Agent({
+  id: "intakeAgent", // or scoutAgent / selfImprovementAgent
+  model: "anthropic/claude-sonnet-4-6",
+  instructions: "...",
+  tools: { ... meta_state_* + gate_* + ... },
+  // memory: omitted — agent does not use Mastra's memory sub-system
+  // storage: not configured per-agent (instance-level, set on Mastra instance)
+})
+```
+
+- **No `memory` field** → agent does not create threads/messages/observations; OM is off.
+- **No `resourceId` / `threadId` passed at call time** → no per-call thread creation; no token budget consumed by OM.
+- **Per-call context assembly:** agent invokes `mastra_meta_state_list` (or the specific tool needed) at the start of each call to load relevant meta-state. The agent's "memory" of past sessions is the registry's queryable history — operator-acked, schema-validated, drift-checked.
+- **Cross-session continuity** is the operator's job: `loop_describe({tier: "warm"})` at session start (per AGENTS.md §3 Operational Rule) loads discoverability hints; the agent reads the registry on demand.
+
+**This aligns with AGENTS.md §1 contract:** "Meta-surface as the only bound surface." Per-agent memory (OM, working memory) is a product-surface concern that is being re-debated from the meta-surface. Shipping agents with `memory: false` keeps the meta-surface authoritative for cross-agent knowledge; per-agent conversation context is ephemeral and per-call.
+
+It also aligns with §6 Internalization Rule: "The loop does not internalize everything it touches." Cross-agent knowledge flows through the registry (cited via `local:meta-state:<id>`), not through shared memory. The agents stay decoupled at the memory layer; they coordinate through the meta-surface.
+
+### Future hooks (when memory gets added)
+
+When the follow-up plan lands (likely Phase 3.5 or Phase 5), the natural progression is:
+
+1. **Add `memory: { observationalMemory: { scope: 'resource', ... } }` to each agent.** Each agent gets its own `resourceId` (the operator) and `threadId` (per-call). Cross-session continuity for the same operator per agent. Per-agent OM config is the consumer; Plan 2's storage is the substrate.
+2. **3 separate memories, not 1 shared.** Each agent owns its own memory. Cross-agent knowledge still flows through the registry, not memory. The Internalization Rule holds: OM is per-agent conversation context, not cross-agent coordination.
+3. **Per-agent model + threshold tuning.** Intake = cheap, scout = cheap, self-improvement = expensive (per brainstorm Q4: `intake=cheap, scout=cheap, selfImprovement=expensive`). Different `messageTokens` / `observationTokens` / `model` per agent. Default `model: 'google/gemini-2.5-flash'` for Observer/Reflector (per the type definition) is overridable per agent.
+4. **Bridge 7 storage migration.** When product-surface binding re-opens, the storage layer is the substrate. Per-feature parity tests can use LibSQL isolation; thread/messages/observations tables are already there.
+
+**This is forward-compatible, not retrofitted.** Plan 2's storage schema includes the thread/messages/observations tables Mastra's OM expects. Plan 3's agents are memory-less but the runtime substrate is ready. Adding `memory: { observationalMemory: true }` later is a config change on each agent, not a migration.
+
+### Why the push-back resolution lands here
+
+The operator's push-back was: "if Plan 3 ships 3 agents with memory omitted, why ship LibSQL in Plan 2?" The resolution: **OM is not the primary driver for Plan 2. The primary drivers are workflow `stateSchema` persistence and Mastra architectural closure.** OM is a side benefit, not the goal. The storage substrate ships in Plan 2 because:
+
+- The research contract (§3.7) places storage at "Phase 3 of the Mastra migration" — Plan 2 is Phase 3.
+- Workflows need storage even if agents don't (state persistence, suspend/resume).
+- Forward-compatibility: when OM config lands (Phase 3.5 or 5), Plan 2's storage is ready; no migration.
+- One-shot migration under low registry size (~500 entries) is cheaper than under pressure at 5000+.
+
+The user-facing value of Plan 2 is workflow persistence + Mastra architectural closure. Agent memory is a follow-up concern that uses the substrate Plan 2 ships, not a Plan 2 deliverable.
+
+### Cross-references
+
+- **Parent report** (this file): Plan 2 row in the Approach A table; Q2 resolution (file path `./tools/learning-loop-mastra/data/mastra-memory.db`); Touchpoints Plan 2; "Plan 1 Execution" §"Process deltas" #1 (Q1 conflict → parity-faithful thin `stateSchema`).
+- **Research report** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §2.4 (`MCPServer` shape), §2.2 (Agent + memory), §3.7 (storage parking brake contract), §8 Q5 (OM is Phase 5, not Phase 3)
+- **Mastra skill** `.agents/skills/mastra/SKILL.md` and `references/core-concepts.md` (4 memory sub-systems + storage as separate concerns)
+- **Mastra SDK** `node_modules/@mastra/core/dist/memory/types.d.ts#ObservationalMemoryOptions` and `SharedMemoryConfig` (full config surface)
+- **AGENTS.md** §1 (meta-surface as only bound surface), §3 Operational Rule (loop_describe at session start for cross-session continuity), §6 Internalization Rule (cross-agent knowledge goes through registry, not memory)
