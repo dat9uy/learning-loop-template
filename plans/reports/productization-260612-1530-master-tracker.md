@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-17 (Plan 1a closeout: 2 findings + CR-1 + CR-2 fixed via `plans/260617-1138-phase-c-plan-1a-atomic-fix/`; 9 namespaces pass, 4 RED tests GREEN, 2 findings resolved, 1 change-log filed; **2026-06-17 Deferred Items Backlog consolidated: 22 items (D-1 to D-19 + H-1/H-2/H-7 + R4 + C-9 + COERCE), 4 historical resolved, 5 Phase C continuation 🟡 READY (Plan 3 ready, awaiting `/ck:cook`)**)
+**Last updated:** 2026-06-19 (Phase D Plan 1 closeout: 8 workflow tools promoted to `createWorkflow` via `plans/260618-1911-phase-d-plan-1-workflows/`; `createLoopWorkflow` factory shipped; 31 `mastra_*` tools + 8 `run_workflow_*` tools = 39 total; all 10 test namespaces pass (1080 pass / 0 fail / 1 skipped); D1/D2/D3 flipped `[x]`; 1 change-log filed; journal + PR body drafted)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -15,7 +15,7 @@
 | State | Phases / Items |
 |-------|----------------|
 | **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. |
-| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools); Plan 1, Plan 1a, Plan 2 closed; Plan 3 (C6+C7 cut-over) open. Phase D — Mastra Phase 2-3 (workflows + agents + storage). Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
+| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools); Plan 1, Plan 1a, Plan 2, Plan 3 closed. Phase D — Mastra Phase 2-3 (workflows + agents + storage); Plan 1 (D1+D2+D3) closed; Plans 2-4 open. Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
 | **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). |
 | **Next-up / Hardening** | LIM-3 (caller identity), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough). |
 
@@ -198,9 +198,9 @@ The test suite is anchored on **10 namespace directories** declared in `package.
 
 **Bucket:** promote workflow tools to `createWorkflow`, add 3-4 agents, fold in Storage Layer. **Phase 3 is where Storage Layer folds in per §3.7.**
 
-- [ ] **D1** Promote ~8 meta-state workflow tools to `createWorkflow` (per §3.1 mapping table: `workflow_intake_orient`, `workflow_intake_plan`, `workflow_classify_prompt`, `workflow_verify_evidence`, `workflow_convert_evidence` as state machines).
-- [ ] **D2** Use `stateSchema` to carry orientation context across steps (replaces per-call re-orientation that today requires the agent to remember prior state).
-- [ ] **D3** Use `suspend`/`resume` for operator checkpoints without spinning up a new agent turn.
+- [x] **D1** Promote ~8 meta-state workflow tools to `createWorkflow` (per §3.1 mapping table: `workflow_intake_orient`, `workflow_intake_plan`, `workflow_classify_prompt`, `workflow_verify_evidence`, `workflow_convert_evidence` as state machines).
+- [x] **D2** Use `stateSchema` to carry orientation context across steps (replaces per-call re-orientation that today requires the agent to remember prior state).
+- [x] **D3** Use `suspend`/`resume` for operator checkpoints without spinning up a new agent turn.
 - [ ] **D4** Add 3-4 meta-state agents (per §3.4 Phase 3): `intakeAgent`, `scoutAgent`, `selfImprovementAgent`, `productBuildAgent`. These become MCP tools themselves (`ask_intake_agent`, etc.).
 - [ ] **D5** Storage Layer fold-in (per §3.7): pick LibSQL as the Mastra storage backend. Meta-state in one SQLite file, Mastra memory in another. Schemas are unrelated; same engine, separate files.
 - [ ] **D6** Phase 3 agents' memory (Q5 from §8): default LibSQL, separate file from meta-state. Audit whether agents need cross-session memory that single-session `Memory` doesn't provide.

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "File-move precondition"
-status: pending
+status: completed
 priority: P1
 effort: "30min"
 dependencies: []
@@ -116,13 +116,13 @@ tools/learning-loop-mastra/workflows/      ← new dir
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mastra/workflows/` directory exists with 8 files (renamed `-tool.js` → `.js`)
-- [ ] All 8 files have updated import paths (use `#mcp/*` for cross-package imports)
-- [ ] `tools/learning-loop-mastra/server.js` skips the 8 workflow entries at runtime with `// TODO(phase-d-plan-1-phase-4)` marker
-- [ ] `tools/learning-loop-mcp/tools/manifest.json` has 31 entries (8 in-scope workflows removed)
-- [ ] All 10 test namespaces pass (`pnpm test`)
-- [ ] Cold-session discoverability test passes against the 31-entry legacy manifest
-- [ ] No test or hook imports the old `tools/learning-loop-mcp/tools/workflow-*-tool.js` paths (or any such imports are fixed in this phase)
+- [x] `tools/learning-loop-mastra/workflows/` directory exists with 8 files (renamed `-tool.js` → `.js`)
+- [x] All 8 files have updated import paths (use `#mcp/*` for cross-package imports)
+- [x] `tools/learning-loop-mastra/server.js` skips the 8 workflow entries at runtime with `// TODO(phase-d-plan-1-phase-4)` marker
+- [x] `tools/learning-loop-mcp/tools/manifest.json` has 31 entries (8 in-scope workflows removed)
+- [x] All 10 test namespaces pass (`pnpm test`)
+- [x] Cold-session discoverability test passes against the 31-entry legacy manifest
+- [x] No test or hook imports the old `tools/learning-loop-mcp/tools/workflow-*-tool.js` paths (or any such imports are fixed in this phase)
 
 ## Risk Assessment
 

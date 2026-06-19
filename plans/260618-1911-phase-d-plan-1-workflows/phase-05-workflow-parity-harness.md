@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Workflow parity harness"
-status: pending
+status: completed
 priority: P1
 effort: "1-2h"
 dependencies: ["4"]
@@ -141,11 +141,11 @@ workflow-parity.test.cjs
 
 ## Success Criteria
 
-- [ ] Empirical probe test passes; format locked
-- [ ] 8 per-workflow parity tests pass
-- [ ] 1 tools/list enumeration test passes
-- [ ] `parseWorkflowResult` helper handles the locked format
-- [ ] All 10 test namespaces pass (including the new `workflow-parity.test.cjs`)
+- [x] Empirical probe test passes; format locked
+- [x] 8 per-workflow parity tests pass
+- [x] 1 tools/list enumeration test passes
+- [x] `parseWorkflowResult` helper handles the locked format
+- [x] All 10 test namespaces pass (including the new `workflow-parity.test.cjs`)
 
 ## Risk Assessment
 

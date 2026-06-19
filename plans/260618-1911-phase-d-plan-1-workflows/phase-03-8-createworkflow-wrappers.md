@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "8 createWorkflow wrappers"
-status: pending
+status: completed
 priority: P1
 effort: "2-3h"
 dependencies: ["2"]
@@ -173,11 +173,11 @@ Per file pattern (showing `workflow-intake-orient.js` as the most complex exampl
 
 ## Success Criteria
 
-- [ ] 8 wrapper files export workflows via `createLoopWorkflow`
-- [ ] `workflows-manifest.json` has 8 entries matching the wrappers
-- [ ] 8 direct unit parity tests pass (`workflow-direct-parity.test.js`)
-- [ ] Each wrapper has a comment noting parity-faithful thin `stateSchema` (the 2 deferred wrappers — `self_improvement`, `runtime_probe` — additionally note the cross-step accumulation surface is ready for the consumer that needs it)
-- [ ] No behavior change vs legacy handlers (proven by parity tests)
+- [x] 8 wrapper files export workflows via `createLoopWorkflow`
+- [x] `workflows-manifest.json` has 8 entries matching the wrappers
+- [x] 8 direct unit parity tests pass (`workflow-direct-parity.test.js`)
+- [x] Each wrapper has a comment noting parity-faithful thin `stateSchema` (the 2 deferred wrappers — `self_improvement`, `runtime_probe` — additionally note the cross-step accumulation surface is ready for the consumer that needs it)
+- [x] No behavior change vs legacy handlers (proven by parity tests)
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "server.js wiring + manifests"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["3"]
@@ -158,14 +158,14 @@ Post-Phase 4:
 
 ## Success Criteria
 
-- [ ] `server.js` registers 8 workflows via `MCPServer.workflows` field
-- [ ] `tools/learning-loop-mastra/manifest.json` has 31 entries (was 39; 8 in-scope removed)
-- [ ] `agent-manifest.json` workflow group has 11 entries (8 `run_*` + 3 `mastra_*`); `typical_chain` updated
-- [ ] `tools/learning-loop-mcp/agent-manifest.json` has 3 workflow group entries (was 11; 8 in-scope removed) + `typical_chain` updated to reference only `workflow_notify_artifact`
-- [ ] `mcp-tools-list-parity.test.js` references updated for the 2 renamed tools
-- [ ] No remaining `mastra_workflow_intake_orient|intake_plan|classify_prompt|prepare_runtime_request|self_improvement|intentional_skip|report_phase_status|runtime_probe` references in any `__tests__/` or source file (except for the 3 stay-as-createTool: `generate_prompt`, `notify_artifact`, `trigger`)
-- [ ] All 10 test namespaces pass
-- [ ] Smoke test confirms 39 tools registered (31 `mastra_*` + 8 `run_*`)
+- [x] `server.js` registers 8 workflows via `MCPServer.workflows` field
+- [x] `tools/learning-loop-mastra/manifest.json` has 31 entries (was 39; 8 in-scope removed)
+- [x] `agent-manifest.json` workflow group has 11 entries (8 `run_*` + 3 `mastra_*`); `typical_chain` updated
+- [x] `tools/learning-loop-mcp/agent-manifest.json` has 3 workflow group entries (was 11; 8 in-scope removed) + `typical_chain` updated to reference only `workflow_notify_artifact`
+- [x] `mcp-tools-list-parity.test.js` references updated for the 2 renamed tools
+- [x] No remaining `mastra_workflow_intake_orient|intake_plan|classify_prompt|prepare_runtime_request|self_improvement|intentional_skip|report_phase_status|runtime_probe` references in any `__tests__/` or source file (except for the 3 stay-as-createTool: `generate_prompt`, `notify_artifact`, `trigger`)
+- [x] All 10 test namespaces pass
+- [x] Smoke test confirms 39 tools registered (31 `mastra_*` + 8 `run_*`)
 
 ## Risk Assessment
 

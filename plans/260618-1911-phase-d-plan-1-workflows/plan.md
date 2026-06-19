@@ -1,7 +1,7 @@
 ---
 title: "Phase D Plan 1 — Mastra Workflows Migration (D1+D2+D3)"
 description: "Promote 8 deterministic workflow_* tools to createWorkflow with createLoopWorkflow factory + per-workflow parity harness. Ships D1+D2+D3 from master tracker. Plans 1+2 ship in parallel; Plan 3 (agents) and Plan 4 (cutover) are blocked on this. Parity-faithful migration: thin stateSchema for all 8; multi-step stateSchema deferred to Plan 1a/Plan 3 per brainstorm Q1 conflict resolution."
-status: pending
+status: completed
 priority: P1
 branch: "260618-1911-phase-d-plan-1-workflows"
 tags: [meta-surface, phase-d, mastra, workflows, parity, tdd, atomic-gate]
@@ -69,12 +69,12 @@ related:
 
 | Phase | Name | Status | Effort | TDD Color | Dependencies |
 |-------|------|--------|--------|-----------|--------------|
-| 1 | [Phase 1 — File-move precondition](./phase-01-file-move-precondition.md) | Pending | ~30min | n/a (mechanical move) | Plan 1 parent |
-| 2 | [Phase 2 — `create-loop-workflow` factory](./phase-02-create-loop-workflow-factory.md) | Pending | ~1h | RED → GREEN (4 invariant tests first) | Phase 1 |
-| 3 | [Phase 3 — 8 `createWorkflow` wrappers](./phase-03-8-createworkflow-wrappers.md) | Pending | ~2-3h | TDD per workflow (8 direct unit tests, then wrappers) | Phase 2 |
-| 4 | [Phase 4 — server.js wiring + manifests](./phase-04-server-js-wiring-manifests.md) | Pending | ~1h | n/a (config + manifest updates) | Phase 3 |
-| 5 | [Phase 5 — Workflow parity harness](./phase-05-workflow-parity-harness.md) | Pending | ~1-2h | TDD per workflow (8 MCP `run_<key>` tests) | Phase 4 |
-| 6 | [Phase 6 — Acceptance gate + closeout](./phase-06-acceptance-gate-closeout.md) | Pending | ~30min | n/a (full `pnpm test` + tracker flip + closeout) | Phase 5 |
+| 1 | [Phase 1 — File-move precondition](./phase-01-file-move-precondition.md) | Completed | ~30min | n/a (mechanical move) | Plan 1 parent |
+| 2 | [Phase 2 — `create-loop-workflow` factory](./phase-02-create-loop-workflow-factory.md) | Completed | ~1h | RED → GREEN (5 invariant tests first) | Phase 1 |
+| 3 | [Phase 3 — 8 `createWorkflow` wrappers](./phase-03-8-createworkflow-wrappers.md) | Completed | ~2-3h | TDD per workflow (8 direct unit tests, then wrappers) | Phase 2 |
+| 4 | [Phase 4 — server.js wiring + manifests](./phase-04-server-js-wiring-manifests.md) | Completed | ~1h | n/a (config + manifest updates) | Phase 3 |
+| 5 | [Phase 5 — Workflow parity harness](./phase-05-workflow-parity-harness.md) | Completed | ~1-2h | TDD per workflow (9 MCP `run_<key>` tests) | Phase 4 |
+| 6 | [Phase 6 — Acceptance gate + closeout](./phase-06-acceptance-gate-closeout.md) | Completed | ~30min | n/a (full `pnpm test` + tracker flip + closeout) | Phase 5 |
 
 **Total effort:** ~6-9 hours. One session. Single PR (6 commits, one per phase, stacked on a feature branch off `main`).
 

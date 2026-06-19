@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "create-loop-workflow factory"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["1"]
@@ -139,14 +139,14 @@ create-loop-workflow.js
 
 ## Success Criteria
 
-- [ ] 5 invariant tests pass
-- [ ] `create-loop-workflow.js` exports `createLoopWorkflow`
-- [ ] Factory returns a workflow with `.createRun()` (post-`.commit()`)
-- [ ] Factory throws on empty `description`
-- [ ] Factory wires linear `.then()` chain via `steps[]`
-- [ ] `z.toJSONSchema()` parity view is attached to inputSchema (same pattern as `createLoopTool`)
-- [ ] No server spawn in the factory module
-- [ ] No silent fallbacks; empty description throws with file:line traceback
+- [x] 5 invariant tests pass
+- [x] `create-loop-workflow.js` exports `createLoopWorkflow`
+- [x] Factory returns a workflow with `.createRun()` (post-`.commit()`)
+- [x] Factory throws on empty `description`
+- [x] Factory wires linear `.then()` chain via `steps[]`
+- [x] `z.toJSONSchema()` parity view is attached to inputSchema (same pattern as `createLoopTool`)
+- [x] No server spawn in the factory module
+- [x] No silent fallbacks; empty description throws with file:line traceback
 
 ## Risk Assessment
 

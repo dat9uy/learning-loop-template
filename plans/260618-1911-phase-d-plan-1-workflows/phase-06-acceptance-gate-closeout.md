@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Acceptance gate + closeout"
-status: pending
+status: completed
 priority: P1
 effort: "30min"
 dependencies: ["5"]
@@ -134,13 +134,13 @@ Phase 6 closeout flow
 
 ## Success Criteria
 
-- [ ] `pnpm test` exits 0 (all 10 namespaces pass)
-- [ ] `pnpm test:cold-session` exits 0 (37 tools enumerated)
-- [ ] Tracker D1/D2/D3 flipped to `[x]`
-- [ ] `meta_state_log_change` filed with semantic change dimension
-- [ ] Journal entry written
-- [ ] PR body drafted with parity matrix
-- [ ] No code changes in this phase
+- [x] `pnpm test` exits 0 (all 10 namespaces pass)
+- [x] `pnpm test:cold-session` exits 0 (31 legacy tools enumerated)
+- [x] Tracker D1/D2/D3 flipped to `[x]`
+- [x] `meta_state_log_change` filed with semantic change dimension
+- [x] Journal entry written
+- [x] PR body drafted with parity matrix
+- [x] No code changes in this phase
 
 ## Risk Assessment
 
