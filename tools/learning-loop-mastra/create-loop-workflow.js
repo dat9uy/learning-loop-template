@@ -39,6 +39,8 @@ function buildStep({ id, description, inputSchema, outputSchema, handler }) {
     execute: async (params) => {
       const data = params.inputData || params;
       const result = await handler(data, params);
+      // Defensive envelope strip: future handlers may wrap legacy tool output in
+      // the MCP content envelope. adaptLegacyHandler does the same for createTool.
       if (
         result &&
         typeof result === "object" &&

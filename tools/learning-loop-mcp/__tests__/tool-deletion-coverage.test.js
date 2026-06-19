@@ -84,7 +84,26 @@ await test("agent-manifest does not have budget group", () => {
 // 8. agent-manifest.json workflow group has 3 tools (8 migrated to mastra; 3 stay-as-createTool remain)
 await test("agent-manifest workflow group has 3 tools", () => {
   assert.strictEqual(agentManifest.groups.workflow.tools.length, 3);
-  for (const tool of ["workflow_convert_evidence", "workflow_verify_evidence", "workflow_external_decision", "workflow_candidate_to_experiment", "workflow_vendor_doc_assist", "workflow_intake_orient", "workflow_intake_plan", "workflow_classify_prompt", "workflow_prepare_runtime_request", "workflow_self_improvement", "workflow_intentional_skip", "workflow_report_phase_status", "workflow_runtime_probe"]) {
+  // 8 in-scope workflows migrated to Mastra createWorkflow in Phase D Plan 1.
+  const migratedInThisPlan = [
+    "workflow_intake_orient",
+    "workflow_intake_plan",
+    "workflow_classify_prompt",
+    "workflow_prepare_runtime_request",
+    "workflow_self_improvement",
+    "workflow_intentional_skip",
+    "workflow_report_phase_status",
+    "workflow_runtime_probe",
+  ];
+  // 5 workflows deleted in earlier phases; kept here as a regression guard.
+  const historicallyDeleted = [
+    "workflow_convert_evidence",
+    "workflow_verify_evidence",
+    "workflow_external_decision",
+    "workflow_candidate_to_experiment",
+    "workflow_vendor_doc_assist",
+  ];
+  for (const tool of [...migratedInThisPlan, ...historicallyDeleted]) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(tool), false, `${tool} should not be in workflow group`);
   }
 });
