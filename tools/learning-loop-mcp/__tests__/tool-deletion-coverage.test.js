@@ -81,10 +81,10 @@ await test("agent-manifest does not have budget group", () => {
   assert.strictEqual(agentManifest.groups.budget, undefined, "budget group should be removed");
 });
 
-// 8. agent-manifest.json workflow group has 11 tools
-await test("agent-manifest workflow group has 11 tools", () => {
-  assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
-  for (const tool of ["workflow_convert_evidence", "workflow_verify_evidence", "workflow_external_decision", "workflow_candidate_to_experiment", "workflow_vendor_doc_assist"]) {
+// 8. agent-manifest.json workflow group has 3 tools (8 migrated to mastra; 3 stay-as-createTool remain)
+await test("agent-manifest workflow group has 3 tools", () => {
+  assert.strictEqual(agentManifest.groups.workflow.tools.length, 3);
+  for (const tool of ["workflow_convert_evidence", "workflow_verify_evidence", "workflow_external_decision", "workflow_candidate_to_experiment", "workflow_vendor_doc_assist", "workflow_intake_orient", "workflow_intake_plan", "workflow_classify_prompt", "workflow_prepare_runtime_request", "workflow_self_improvement", "workflow_intentional_skip", "workflow_report_phase_status", "workflow_runtime_probe"]) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(tool), false, `${tool} should not be in workflow group`);
   }
 });
