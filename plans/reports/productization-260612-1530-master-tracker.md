@@ -201,9 +201,9 @@ The test suite is anchored on **10 namespace directories** declared in `package.
 - [x] **D1** Promote ~8 meta-state workflow tools to `createWorkflow` (per §3.1 mapping table: `workflow_intake_orient`, `workflow_intake_plan`, `workflow_classify_prompt`, `workflow_verify_evidence`, `workflow_convert_evidence` as state machines).
 - [x] **D2** Use `stateSchema` to carry orientation context across steps (replaces per-call re-orientation that today requires the agent to remember prior state).
 - [x] **D3** Use `suspend`/`resume` for operator checkpoints without spinning up a new agent turn.
-- [ ] **D4** Add 3-4 meta-state agents (per §3.4 Phase 3): `intakeAgent`, `scoutAgent`, `selfImprovementAgent`, `productBuildAgent`. These become MCP tools themselves (`ask_intake_agent`, etc.).
-- [ ] **D5** Storage Layer fold-in (per §3.7): pick LibSQL as the Mastra storage backend. Meta-state in one SQLite file, Mastra memory in another. Schemas are unrelated; same engine, separate files.
-- [ ] **D6** Phase 3 agents' memory (Q5 from §8): default LibSQL, separate file from meta-state. Audit whether agents need cross-session memory that single-session `Memory` doesn't provide.
+- [ ] **D4** Add 3 meta-state agents (per §3.4 Phase 3, after 2026-06-19 reframe): `intakeAgent`, `scoutAgent`, `selfImprovementAgent`. `productBuildAgent` is dropped (AGENTS.md:215 voids legacy product-build as substrate-era; surfaces via `meta_state_log_change` per brainstorm line 23). These become MCP tools themselves (`ask_intake_agent`, etc.).
+- [ ] **D5** Storage Layer fold-in (per §3.7): pick LibSQL as the Mastra runtime substrate. **Workflow `stateSchema` runs + `suspend`/`resume` snapshots persist in one SQLite file (`./tools/learning-loop-mastra/data/mastra-memory.db`). Meta-state registry stays as JSONL (or future project DB), accessed via tools — NOT a Mastra Storage domain.** Meta-state migration JSONL → SQLite is OUT of scope (per research §3.7: "Likely separate file, same engine" — but the meta-state file is *not* a Mastra file).
+- [ ] **D6** Phase 3 agents' memory (Q5 from §8): **agent `memory` field OMITTED in Plan 3** (observational memory is Phase 5 per research §8 Q5; Plan 2 ships the storage substrate, not the per-agent memory config). **Cross-agent knowledge flows through the meta-state registry via tools** (per AGENTS.md §1 "Meta-surface as the only bound surface" + §6 Internalization Rule). When OM is enabled in Phase 5, each agent gets its own `resourceId`/`threadId`; cross-agent coordination stays on the registry.
 - [ ] **D7** Document per-agent model config (the model-agnostic claim from §2.6 / §3.3). Per-session model selection via Droid's `/model`; per-agent override via `MASTRA_AGENT_MODEL` env var.
 
 ---
@@ -291,7 +291,7 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 
 | ID | Task | Severity | Status | Source |
 |----|------|----------|--------|--------|
-| D-14 | Phase D — promote 11 `workflow_*` tools to `createWorkflow`; add 3-4 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`, `productBuildAgent`); fold in LibSQL storage | high (separate phase) | 🔵 OPEN | `plans/reports/brainstorm-260616-1530-phase-c-plan-scope-report.md` D-14 |
+| D-14 | Phase D — promote 8 `workflow_*` tools to `createWorkflow`; add 3 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`); fold in LibSQL storage as Mastra runtime substrate (workflow stateSchema + suspend/resume; meta-state stays JSONL) | high (separate phase) | 🔵 OPEN | `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md` (D-14 referenced) + storage design report |
 | D-15 | Workflow-tool migration (D1-D3) — 8 `workflow_*` tools to `createWorkflow`; `stateSchema` for cross-step orientation; `suspend`/`resume` for operator checkpoints | high (separate phase) | 🔵 OPEN | D-15 |
 | D-12 | Mode 1 (peer MCP) vs Mode 2 (single `createMastraCode({...})`) decision | medium | ⚪ DEFERRED | Operator decision 2026-06-17: defer to post-Plan 3; Phase E scope |
 
