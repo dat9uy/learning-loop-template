@@ -11,22 +11,12 @@
     "workflow": {
       "description": "Learning-loop workflow orchestration",
       "tools": [
-        "workflow_intake_orient",
-        "workflow_intake_plan",
-        "workflow_classify_prompt",
-        "workflow_prepare_runtime_request",
         "workflow_generate_prompt",
-        "workflow_self_improvement",
-        "workflow_intentional_skip",
-        "workflow_report_phase_status",
-        "workflow_runtime_probe",
         "workflow_notify_artifact",
         "workflow_trigger"
       ],
       "ordering": "linear",
       "typical_chain": [
-        "workflow_intake_orient",
-        "workflow_intake_plan",
         "workflow_notify_artifact"
       ]
     },

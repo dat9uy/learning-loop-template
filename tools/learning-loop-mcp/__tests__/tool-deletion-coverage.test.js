@@ -39,9 +39,9 @@ const DELETED_TOOLS = [
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 39 entries (post-Plan-3-hygiene: meta_state_refresh_tools deleted)
-await test("manifest has 39 entries", () => {
-  assert.strictEqual(manifest.length, 39, `Expected 39, got ${manifest.length}`);
+// 1. Manifest has 31 entries (8 workflow tools moved to mastra in Phase D Plan 1)
+await test("manifest has 31 entries", () => {
+  assert.strictEqual(manifest.length, 31, `Expected 31, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest
@@ -81,10 +81,29 @@ await test("agent-manifest does not have budget group", () => {
   assert.strictEqual(agentManifest.groups.budget, undefined, "budget group should be removed");
 });
 
-// 8. agent-manifest.json workflow group has 11 tools
-await test("agent-manifest workflow group has 11 tools", () => {
-  assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
-  for (const tool of ["workflow_convert_evidence", "workflow_verify_evidence", "workflow_external_decision", "workflow_candidate_to_experiment", "workflow_vendor_doc_assist"]) {
+// 8. agent-manifest.json workflow group has 3 tools (8 migrated to mastra; 3 stay-as-createTool remain)
+await test("agent-manifest workflow group has 3 tools", () => {
+  assert.strictEqual(agentManifest.groups.workflow.tools.length, 3);
+  // 8 in-scope workflows migrated to Mastra createWorkflow in Phase D Plan 1.
+  const migratedInThisPlan = [
+    "workflow_intake_orient",
+    "workflow_intake_plan",
+    "workflow_classify_prompt",
+    "workflow_prepare_runtime_request",
+    "workflow_self_improvement",
+    "workflow_intentional_skip",
+    "workflow_report_phase_status",
+    "workflow_runtime_probe",
+  ];
+  // 5 workflows deleted in earlier phases; kept here as a regression guard.
+  const historicallyDeleted = [
+    "workflow_convert_evidence",
+    "workflow_verify_evidence",
+    "workflow_external_decision",
+    "workflow_candidate_to_experiment",
+    "workflow_vendor_doc_assist",
+  ];
+  for (const tool of [...migratedInThisPlan, ...historicallyDeleted]) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(tool), false, `${tool} should not be in workflow group`);
   }
 });

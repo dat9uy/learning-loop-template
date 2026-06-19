@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createLoopWorkflow } from "../create-loop-workflow.js";
 
 const CATEGORIES = [
   "evidence",
@@ -33,47 +34,57 @@ const TOOL_MAP = {
   self_improvement: ["validate_records"],
 };
 
-export const workflowClassifyPromptTool = {
-  name: "workflow_classify_prompt",
+async function classify({ prompt }) {
+  const text = (prompt || "").trim().toLowerCase();
+  if (!text) {
+    return { error: true, message: "prompt is empty" };
+  }
+
+  const scores = {};
+  for (const cat of CATEGORIES) {
+    const hits = KEYWORDS[cat].filter((k) => text.includes(k)).length;
+    scores[cat] = Math.min(1.0, hits * 0.5);
+  }
+
+  const best = Object.entries(scores).sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return CATEGORIES.indexOf(a[0]) - CATEGORIES.indexOf(b[0]);
+  })[0];
+  const category = best[1] > 0 ? best[0] : "skip";
+  const confidence = Math.round(best[1] * 100) / 100;
+
+  return {
+    category,
+    confidence: confidence || 0.1,
+    suggested_tools: TOOL_MAP[category] || [],
+  };
+}
+
+export const workflowClassifyPrompt = createLoopWorkflow({
+  id: "workflow_classify_prompt",
   description:
     "Classifies a user prompt into one of 8 categories using keyword heuristics. " +
     "Use BEFORE routing to specialized tools to determine intent. " +
     "Returns category name, confidence score, and suggested tool names. " +
     "Failure mode: empty prompt returns error.",
-  schema: {
+  inputSchema: {
     prompt: z.string().describe("The user prompt text to classify"),
   },
-  handler: async (args) => {
-    const prompt = (args.prompt || "").trim().toLowerCase();
-    if (!prompt) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ error: true, message: "prompt is empty" }) }],
-        isError: true,
-      };
-    }
-
-    const scores = {};
-    for (const cat of CATEGORIES) {
-      const hits = KEYWORDS[cat].filter((k) => prompt.includes(k)).length;
-      scores[cat] = Math.min(1.0, hits * 0.5);
-    }
-
-    const best = Object.entries(scores).sort((a, b) => {
-      if (b[1] !== a[1]) return b[1] - a[1];
-      return CATEGORIES.indexOf(a[0]) - CATEGORIES.indexOf(b[0]);
-    })[0];
-    const category = best[1] > 0 ? best[0] : "skip";
-    const confidence = Math.round(best[1] * 100) / 100;
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          category,
-          confidence: confidence || 0.1,
-          suggested_tools: TOOL_MAP[category] || [],
-        }),
-      }],
-    };
-  },
-};
+  steps: [
+    {
+      id: "classify",
+      description: "Keyword heuristic classification",
+      inputSchema: {
+        prompt: z.string(),
+      },
+      outputSchema: {
+        category: z.string(),
+        confidence: z.number(),
+        suggested_tools: z.array(z.string()),
+        error: z.boolean().optional(),
+        message: z.string().optional(),
+      },
+      handler: classify,
+    },
+  ],
+});
