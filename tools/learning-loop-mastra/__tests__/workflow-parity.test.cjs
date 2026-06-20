@@ -5,7 +5,7 @@
 // TDD order: 1 empirical probe (locks response format), then 8 parity tests,
 // then 1 tools/list enumeration test.
 
-const { describe, test, before } = require("node:test");
+const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -46,6 +46,13 @@ describe("workflow parity harness", () => {
     const tempRoot = makeTempRoot();
     handles = await connectMcpServer(SERVER_ENTRY, tempRoot);
   }, { timeout: 15000 });
+
+  after(async () => {
+    if (handles) {
+      await handles.cleanup();
+      handles = null;
+    }
+  });
 
   test("empirical probe: run_workflow_classify_prompt returns valid result", { timeout: 10000 }, async () => {
     const result = await handles.callTool("run_workflow_classify_prompt", { prompt: "test classification" });
@@ -150,13 +157,13 @@ describe("workflow parity harness", () => {
     assert.ok(Array.isArray(result.expected_outputs));
   });
 
-  test("tools/list enumerates 31 mastra_* + 8 run_workflow_* = 39 total", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 31 mastra_* + 8 run_workflow_* + 2 run_workflow_storage_* = 41 total", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
     assert.equal(mastra.length, 31, `must have 31 mastra_* tools, got ${mastra.length}`);
-    assert.equal(runWorkflows.length, 8, `must have 8 run_workflow_* tools, got ${runWorkflows.length}`);
-    assert.equal(tools.length, 39, `total must be 39, got ${tools.length}`);
+    assert.equal(runWorkflows.length, 10, `must have 10 run_workflow_* tools (8 existing + 2 storage), got ${runWorkflows.length}`);
+    assert.equal(tools.length, 41, `total must be 41, got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

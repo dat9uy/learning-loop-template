@@ -22,7 +22,11 @@ function attachParityJSONSchema(schema) {
     target: "draft-7",
     io: "input",
   });
-  schema._zod.toJSONSchema = () => parityJSONSchema;
+  // See create-loop-tool.js for the full rationale. The same mutation hazard
+  // applies here: Mastra may convert a workflow's schemas multiple times, and
+  // zod's toJSONSchema mutates the override object in place. Return a clone
+  // so repeated conversions stay idempotent.
+  schema._zod.toJSONSchema = () => JSON.parse(JSON.stringify(parityJSONSchema));
   return schema;
 }
 
