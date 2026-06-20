@@ -336,12 +336,15 @@ If operator opens Plan 1a, all four items ship in one branch. Each is <50 LOC an
 | 1.2 | Envelope-input tests for `workflow_self_improvement` and `workflow_intake_plan` to prove `stripEnvelope` preprocess handles the MCP envelope form when an agent caller wraps the input | `tools/learning-loop-mastra/__tests__/workflow-direct-parity.test.js` | ~30min (2 tests passing the legacy envelope shape) | review-260619-1429 finding #3 |
 | 1.3 | `id` shape validation in `createLoopWorkflow` factory (`/^[a-z][a-z0-9_]*$/`) | `tools/learning-loop-mastra/create-loop-workflow.js` | ~10min (1-line check + error message) | review-260619-1429 finding #10 (minor) |
 | 1.4 | Explicit `runId` generation in `LoopMCPServer.convertWorkflowsToTools` (use `crypto.randomUUID()` when `proxiedContext.get("runId")` is undefined) | `tools/learning-loop-mastra/server.js:96` | ~30min (1 import + 1 line + 1 idempotency test) | review-260619-1429 finding #6 (medium) |
+| 1.5 | **Schema fingerprint test for Mastra storage substrate.** List all tables + column counts in `mastra-memory.db` and assert against a known-good baseline snapshot. Detects schema drift early when `@mastra/libsql` is bumped past 1.13.0. ~30 LOC, ~1 test in `storage-parity.test.cjs` (or a separate `schema-fingerprint.test.cjs`). | `tools/learning-loop-mastra/__tests__/storage-parity.test.cjs` (or new file) | ~30min | researcher-A-260619-2246 §"Open Questions" Q5; Plan 2 validate decision 2026-06-19 |
 
-**Total Plan 1a effort:** ~2-3h. Single branch, single PR. **Recommendation:** file as `loop-design-phase-d-plan-1a-parity-tightening` and ship before Plan 3 (so Plan 3's agents inherit the tighter parity guarantees).
+**Total Plan 1a effort:** ~2.5-3.5h. Single branch, single PR. **Recommendation:** file as `loop-design-phase-d-plan-1a-parity-tightening` and ship before Plan 3 (so Plan 3's agents inherit the tighter parity guarantees).
 
 #### Plan 2 (storage, parallel, in flight per brainstorm)
 
-No items deferred from Plan 1 → Plan 2. Plan 2 is independent of Plan 1.
+No items deferred from Plan 1 → Plan 2. Plan 2 is independent of Plan 1. Plan 2's own deferred items (post-validate decision 2026-06-19):
+
+- Schema fingerprint test for `@mastra/libsql` schema drift detection — promoted to Plan 1a item 1.5 (above). Plan 2 ships 11 tests in `storage-parity.test.cjs`; the schema fingerprint is a 12th test, deferred to Plan 1a.
 
 #### Plan 3 (agents, blocked on Plans 1+2)
 
