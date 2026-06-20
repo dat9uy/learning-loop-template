@@ -14,12 +14,14 @@
     "dev:web": "cd product/web && pnpm dev",
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
-    "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/core/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' 'tools/learning-loop-mastra/__tests__/*.test.js' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
+    "test": "node --test 'tools/learning-loop-mcp/__tests__/*.test.js' 'tools/learning-loop-mcp/core/__tests__/*.test.js' 'tools/learning-loop-mcp/core/*.test.js' 'tools/learning-loop-mcp/scout/*.test.js' 'tools/learning-loop-mcp/lib/*.test.js' 'tools/learning-loop-mcp/evals/*.test.js' 'tools/learning-loop-mcp/tools/*.test.js' 'tools/learning-loop-mastra/__tests__/*.test.js' 'tools/learning-loop-mastra/__tests__/*.test.cjs' '.claude/coordination/__tests__/*.test.cjs' '.factory/hooks/__tests__/*.test.cjs'",
     "test:cold-session": "node --test tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
     "gate:server": "node tools/learning-loop-mastra/server.js"
   },
   "dependencies": {
+    "@libsql/client": "0.17.4",
     "@mastra/core": "1.42.0",
+    "@mastra/libsql": "1.13.0",
     "@mastra/mcp": "1.10.0",
     "@modelcontextprotocol/sdk": "1.29.0",
     "ajv": "^8.20.0",
