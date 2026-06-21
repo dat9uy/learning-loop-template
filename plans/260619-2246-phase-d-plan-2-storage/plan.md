@@ -1,7 +1,7 @@
 ---
 title: "Phase D Plan 2 — Mastra LibSQL Storage (D5+D6)"
 description: "Wire @mastra/libsql@1.13.0 as the runtime substrate for Mastra persistence. Ships storage.js factory + 2 storage-touching workflows + storage-parity.test.cjs (6 tests). Plan 1 (workflows) and Plan 2 ship in parallel; Plan 3 (agents) and Plan 4 (cutover) are blocked on this. Storage is Mastra runtime substrate only; meta-state stays JSONL per mastra-storage-memory-260619-1918-direction-clarification-report.md §3. Bumps tools/list count 39→41 (adds 2 run_workflow_storage_*). 1-PR delivery with 6-9 hours total effort, mirroring Plan 1's 6-phase rhythm. Q1.A LOCKED 2026-06-19: storage.js exports BOTH getMastraStorage() (LibSQLStore, for future Mastra runtime domains) AND getParityDb() (direct createClient from @libsql/client, used by the 2 storage workflows for app-level records)."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-surface, phase-d, mastra, storage, libsql, parity, tdd, atomic-gate]
@@ -23,7 +23,7 @@ related:
   - tools/learning-loop-mastra/server.js (registration point; adds storage + 2 workflows)
   - tools/learning-loop-mastra/create-loop-workflow.js (factory pattern the 2 storage workflows reuse)
   - tools/learning-loop-mastra/workflows-manifest.json (grows 8→10)
-  - tools/learning-loop-mastra/__tests__/with-mcp-server.js (connectMcpServer reused unchanged)
+  - tools/learning-loop-mastra/__tests__/with-mcp-server.js (connectMcpServer reused; defaults to MASTRA_STORAGE_DRIVER=memory per plans/260621-2223-GH-2246-mcp-stdio-sdk-conversion)
   - tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs (bump 39→41 assertion at line 159)
   - package.json (root — add @mastra/libsql@1.13.0; no tools/learning-loop-mastra/package.json exists)
   - .gitignore (add tools/learning-loop-mastra/data/, **/*.db, **/*.db-wal, **/*.db-shm)
