@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Probe 4: pnpm test consumers"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---
@@ -69,11 +69,11 @@ Plan B's Layer 1 fix cannot be finalized without knowing which consumers will br
 
 ## Success Criteria
 
-- [ ] All `pnpm test` consumers enumerated (no missed files)
-- [ ] Each consumer classified A/B/C/D/E with file:line evidence
-- [ ] Summary table produced
-- [ ] Global verdict: "all consumers tolerate the prefix" OR "X consumers break; fix is [partition | migration | wrapper]"
-- [ ] For any Class B consumer that breaks, the file:line of the parser is cited
+- [x] All `pnpm test` consumers enumerated (no missed files)
+- [x] Each consumer classified A/B/C/D/E with file:line evidence
+- [x] Summary table produced
+- [x] Global verdict: "all consumers tolerate the prefix" OR "X consumers break; fix is [partition | migration | wrapper]"
+- [x] For any Class B consumer that breaks, the file:line of the parser is cited
 
 ## Risk Assessment
 

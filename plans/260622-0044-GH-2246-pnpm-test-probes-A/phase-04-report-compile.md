@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Report compile"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2, 3]
 ---
@@ -61,13 +61,13 @@ The 3 probe phases produce raw data. The report phase synthesizes that data into
 
 ## Success Criteria
 
-- [ ] `plans/260622-0044-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` exists and is <300 lines
-- [ ] All 3 probe sections are present in the order: 1, 4, 7
-- [ ] The "Constraints for Plan B" section is present and lists every new constraint
-- [ ] The "Open questions" section is present (with content or "None")
-- [ ] Brainstorm §7 (or new §12) has a one-line cross-link to the report
-- [ ] No files outside `plans/260622-0044-GH-2246-pnpm-test-probes-A/` are modified (except the brainstorm cross-link)
-- [ ] No meta-state mutations
+- [x] `plans/260622-0044-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` exists and is <300 lines
+- [x] All 3 probe sections are present in the order: 1, 4, 7
+- [x] The "Constraints for Plan B" section is present and lists every new constraint
+- [x] The "Open questions" section is present (with content or "None")
+- [x] Brainstorm §7 (or new §12) has a one-line cross-link to the report
+- [x] No files outside `plans/260622-0044-GH-2246-pnpm-test-probes-A/` are modified (except the brainstorm cross-link)
+- [x] No meta-state mutations
 
 ## Report Template
 

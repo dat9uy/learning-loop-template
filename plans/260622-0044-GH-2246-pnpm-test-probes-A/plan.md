@@ -1,7 +1,7 @@
 ---
 title: "GH-2246 pnpm test probes A — data gathering"
 description: "Read-only investigation closing the 3 blocking probes (1, 4, 7) from brainstorm-260621-1355 §11. Each probe delivers a concrete answer with file:line evidence; new constraints are added back to the brainstorm's §7. No code changes, no meta-state mutations. This is the precondition for Plan B (fix design + implementation)."
-status: pending
+status: completed
 priority: P2
 branch: "260619-2246-phase-d-plan-2-storage"
 tags: [gh-2246, pnpm-test, data-gathering, read-only]
@@ -29,10 +29,10 @@ Sibling to `plans/260621-2223-GH-2246-mcp-stdio-sdk-conversion/` (resolved 2026-
 
 | Phase | Name | Status | Probe |
 |-------|------|--------|-------|
-| 1 | [Probe 1: Runtime Parity](./phase-01-probe-1-runtime-parity.md) | Pending | Mastra Agent ↔ direct `pnpm test` invocation parity |
-| 2 | [Probe 4: pnpm test consumers](./phase-02-probe-4-pnpm-test-consumers.md) | Pending | Enumerate + classify every `pnpm test` consumer |
-| 3 | [Probe 7: Fingerprint-drift dependency](./phase-03-probe-7-fingerprint-drift-dependency.md) | Pending | Does drift detection require full E2E or per-namespace? |
-| 4 | [Report compile](./phase-04-report-compile.md) | Pending | Assemble <300 line report at `plans/260622-0044-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` |
+| 1 | [Probe 1: Runtime Parity](./phase-01-probe-1-runtime-parity.md) | Completed | Mastra Agent ↔ direct `pnpm test` invocation parity |
+| 2 | [Probe 4: pnpm test consumers](./phase-02-probe-4-pnpm-test-consumers.md) | Completed | Enumerate + classify every `pnpm test` consumer |
+| 3 | [Probe 7: Fingerprint-drift dependency](./phase-03-probe-7-fingerprint-drift-dependency.md) | Completed | Does drift detection require full E2E or per-namespace? |
+| 4 | [Report compile](./phase-04-report-compile.md) | Completed | Assemble <300 line report at `plans/260622-0044-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` |
 
 ## Dependencies
 

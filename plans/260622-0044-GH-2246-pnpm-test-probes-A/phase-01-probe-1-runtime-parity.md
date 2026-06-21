@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Probe 1: Runtime Parity — Mastra Agent vs direct pnpm test"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---
@@ -55,11 +55,11 @@ Plan B's Layer 1 design (`[ns] ==> start` / `[ns] ==> pass` / `[ns] ==> FAIL` pr
 
 ## Success Criteria
 
-- [ ] A concrete answer exists: "Mastra Agent invokes `pnpm test` via [subprocess | in-process | workflow step | N/A — does not invoke pnpm test]"
-- [ ] If the Mastra Agent does NOT invoke `pnpm test` directly, the answer includes: "The surface that does invoke it is [Claude Code | Droid CLI | both | neither]; the Mastra Agent sees test results via [runtime_state | direct invocation | other]"
-- [ ] File:line evidence for each claim in the answer
-- [ ] The 1-paragraph trace is recorded in the phase notes
-- [ ] If the answer is "does not invoke pnpm test" (Probe 1 negative), record this as a new constraint for the brainstorm §7 ("Layer 1 fix is Claude Code/Droid only; Mastra Agent is not on this path")
+- [x] A concrete answer exists: "Mastra Agent invokes `pnpm test` via [subprocess | in-process | workflow step | N/A — does not invoke pnpm test]"
+- [x] If the Mastra Agent does NOT invoke `pnpm test` directly, the answer includes: "The surface that does invoke it is [Claude Code | Droid CLI | both | neither]; the Mastra Agent sees test results via [runtime_state | direct invocation | other]"
+- [x] File:line evidence for each claim in the answer
+- [x] The 1-paragraph trace is recorded in the phase notes
+- [x] If the answer is "does not invoke pnpm test" (Probe 1 negative), record this as a new constraint for the brainstorm §7 ("Layer 1 fix is Claude Code/Droid only; Mastra Agent is not on this path")
 
 ## Risk Assessment
 

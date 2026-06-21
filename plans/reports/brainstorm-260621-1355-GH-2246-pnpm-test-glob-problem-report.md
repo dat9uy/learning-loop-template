@@ -277,6 +277,10 @@ closed. Without Plan A, Plan B would be designing in the dark.
 
 ---
 
+## 12. Plan A data-gathering results
+
+Probe answers are now closed in `plans/260622-0044-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` — see that report for the concrete file:line evidence and the new constraints added back to §7.
+
 ## Unresolved questions (per development-rules.md)
 
 These remain after the 2-plan direction was added:

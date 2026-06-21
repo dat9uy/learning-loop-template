@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Probe 7: Fingerprint-drift dependency"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---
@@ -59,10 +59,10 @@ The brainstorm's central trade-off is: "10-min run is the catch mechanism for dr
 
 ## Success Criteria
 
-- [ ] A concrete answer: "Drift detection requires [full E2E | one specific namespace | one specific test file | just `meta-state.jsonl` updates]"
-- [ ] File:line evidence for the answer
-- [ ] If the answer is "one specific test file," the isolated runtime of that file is noted (or the cost to measure it is documented for Plan B)
-- [ ] If the answer is "full E2E," the chain of dependencies that forces the full suite is traced
+- [x] A concrete answer: "Drift detection requires [full E2E | one specific namespace | one specific test file | just `meta-state.jsonl` updates]"
+- [x] File:line evidence for the answer
+- [x] If the answer is "one specific test file," the isolated runtime of that file is noted (or the cost to measure it is documented for Plan B)
+- [x] If the answer is "full E2E," the chain of dependencies that forces the full suite is traced
 
 ## Risk Assessment
 
