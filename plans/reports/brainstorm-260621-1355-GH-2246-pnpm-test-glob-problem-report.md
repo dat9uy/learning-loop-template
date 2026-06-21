@@ -75,6 +75,8 @@ The finding prescribes a runner-level fix. But the operator's correction suggest
 
 **Why D is the deeper problem:** D generalizes. Any long-running command with sparse feedback (vendor API install, container build, deploy, file copy) could trigger the same loop. The test runner is just the trigger; the agent is the bug.
 
+> **Note on related work (added 2026-06-21 post-resolution):** A sibling failure on the same `pnpm test` surface — `meta-260621T1743Z` (hand-rolled MCP stdio JSON-RPC parsers deadlocking the pre-commit run) — was resolved by `plans/260621-2223-GH-2246-mcp-stdio-sdk-conversion/` via SDK conversion + 30s test timeout + memory storage default. That fix removes a *binary* failure mode (test hang) but does not address the *continuous* failure modes this brainstorm targets: the 10-min silent output (Layer 1) and the agent's lack of loop defense (Layer 2). The forcing-function trade-off and the Plan A + Plan B direction remain unchanged.
+
 ### The two-layer model (A/B + D)
 
 ```
@@ -235,7 +237,7 @@ the remaining probes as acceptance criteria).
    "slow test is the signal" claim is at the full-suite level or per-namespace.
 
 **Deliverable:** a short data-gathering report (target: <300 lines) at
-`plans/<date>-GH-2246-pnpm-test-probes-A/report.md` with the three probe answers
+`plans/<date>-GH-2246-pnpm-test-probes-A/pnpm-test-probes-data-gathering-report.md` with the three probe answers
 and any new constraints discovered in the process.
 
 **Acceptance criteria:**
