@@ -7,7 +7,6 @@
 
 const { readFileSync, existsSync } = require("node:fs");
 const { join } = require("node:path");
-const { spawn } = require("node:child_process");
 
 // SECURITY: hints are operator-curated and rendered from a local hardcoded copy.
 // The server's discoverability_hints field is not trusted at render time.
@@ -300,95 +299,83 @@ function formatBlock(summary, tier = "warm") {
 }
 
 async function spawnAndCall(serverCfg, cwd, tier = "summary") {
-  return new Promise((resolve, reject) => {
-    const ALLOWED_COMMANDS = new Set(["node", "bun", "deno"]);
-    const command = serverCfg.command || "node";
-    if (!ALLOWED_COMMANDS.has(command)) {
-      return resolve(null);
-    }
-    const [cmd, ...args] = serverCfg.args || [];
-    const child = spawn(command, [cmd, ...args], {
-      cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    child.unref();
+  const ALLOWED_COMMANDS = new Set(["node", "bun", "deno"]);
+  const command = serverCfg.command || "node";
+  if (!ALLOWED_COMMANDS.has(command)) {
+    return null;
+  }
+  const [cmd, ...args] = serverCfg.args || [];
 
-    let buffer = "";
-    let initSent = false;
-    let callSent = false;
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { StdioClientTransport } = await import(
+    "@modelcontextprotocol/sdk/client/stdio.js"
+  );
+
+  const transport = new StdioClientTransport({
+    command,
+    args: [cmd, ...args],
+    cwd,
+    env: process.env,
+    stderr: "pipe",
+  });
+
+  // Drain piped stderr so the child process never stalls on a full buffer.
+  if (transport.stderr) {
+    transport.stderr.on("data", () => {});
+  }
+
+  const client = new Client({
+    name: "loop-surface-inject",
+    version: "1.0.0",
+  });
+
+  return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error("timeout"));
+      cleanup().finally(() => reject(new Error("timeout")));
     }, 10000);
 
-    const cleanup = () => {
+    const cleanup = async () => {
       clearTimeout(timeout);
-      try { child.kill(); } catch { /* already dead */ }
-    };
-
-    // Send initialize and tools/call shortly after spawn. The MCP server
-    // imports its tool modules via top-level await and then awaits
-    // server.connect(transport) before logging "MCP server started" on
-    // stderr. A ~200ms delay gives the server time to register the stdin
-    // 'data' listener before we write. This avoids the prior
-    // chicken-and-egg: the old code wrote initialize inside the stdout
-    // 'data' handler, but the first stdout data is the response to
-    // initialize — which could never be sent.
-    const sendInitAndCall = () => {
-      if (initSent) return;
-      initSent = true;
       try {
-        child.stdin.write(JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "initialize",
-          params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "loop-surface-inject", version: "1.0.0" } }
-        }) + "\n");
+        await client.close();
       } catch {
-        cleanup();
-        return reject(new Error("stdin_write_failed_at_initialize"));
+        // already closed
       }
-      setTimeout(() => {
-        if (callSent) return;
-        callSent = true;
-        try {
-          child.stdin.write(JSON.stringify({
-            jsonrpc: "2.0",
-            id: 2,
-            method: "tools/call",
-            params: { name: "mastra_loop_describe", arguments: { tier } }
-          }) + "\n");
-        } catch {
-          cleanup();
-          return reject(new Error("stdin_write_failed_at_tools_call"));
+      try {
+        if (transport.pid) {
+          process.kill(transport.pid);
         }
-      }, 100);
+      } catch {
+        // already dead
+      }
     };
-    setTimeout(sendInitAndCall, 200);
 
-    child.stdout.on("data", (chunk) => {
-      buffer += chunk.toString();
-      if (buffer.length > 1_000_000) {
-        cleanup();
-        return resolve(null);
-      }
-      const lines = buffer.split("\n").filter((l) => l.trim());
-      for (const line of lines) {
+    (async () => {
+      try {
+        await client.connect(transport);
+
+        // Preserve the original unref semantics: the probe child should not
+        // keep the Droid parent process alive if the hook finishes early.
         try {
-          const msg = JSON.parse(line);
-          if (msg.id === 2 && msg.result) {
-            cleanup();
-            const text = msg.result.content?.[0]?.text;
-            if (text) resolve(JSON.parse(text));
-            else resolve(null);
-            return;
+          if (transport._process && typeof transport._process.unref === "function") {
+            transport._process.unref();
           }
-        } catch { /* not a complete message yet */ }
-      }
-    });
+        } catch {
+          // private field may change — keep probing
+        }
 
-    child.on("error", (err) => { cleanup(); reject(err); });
-    child.on("exit", () => { cleanup(); resolve(null); });
+        const result = await client.callTool({
+          name: "mastra_loop_describe",
+          arguments: { tier },
+        });
+        await cleanup();
+        const text = result?.content?.[0]?.text;
+        resolve(text ? JSON.parse(text) : null);
+      } catch (err) {
+        await cleanup();
+        reject(err);
+      }
+    })();
   });
 }
 

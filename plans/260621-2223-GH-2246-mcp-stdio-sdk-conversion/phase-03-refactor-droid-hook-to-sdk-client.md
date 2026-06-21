@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Refactor Droid hook to SDK client"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -34,9 +34,9 @@ Convert `.factory/hooks/loop-surface-inject.cjs` from a hand-rolled JSON-RPC pro
 
 ## Success Criteria
 
-- [ ] `loop-surface-inject-real-spawn.test.cjs` passes.
-- [ ] Hook still reports `mcp-connection` findings on timeout or connection failure.
-- [ ] No hand-rolled `jsonrpc` writes remain in the hook.
+- [x] `loop-surface-inject-real-spawn.test.cjs` passes.
+- [x] Hook still reports `mcp-connection` findings on timeout or connection failure.
+- [x] No hand-rolled `jsonrpc` writes remain in the hook.
 
 ## Risk Assessment
 

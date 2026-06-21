@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Runner hardening and finding closeout"
-status: pending
+status: completed
 priority: P2
 dependencies: [2, 3]
 ---
@@ -35,9 +35,9 @@ Add a global test timeout so future hangs fail fast, and close the meta-state fi
 
 ## Success Criteria
 
-- [ ] `pnpm test` script includes `--test-timeout=30000`.
-- [ ] Finding `meta-260621T1743Z` reflects the actual root cause and correct test path.
-- [ ] Finding status moved toward resolution with evidence.
+- [x] `pnpm test` script includes `--test-timeout=30000`.
+- [x] Finding `meta-260621T1743Z` reflects the actual root cause and correct test path.
+- [x] Finding status moved toward resolution with evidence.
 
 ## Risk Assessment
 

@@ -39,6 +39,10 @@ const { join, resolve } = require("node:path");
 const { connectMcpServer } = require("./with-mcp-server.js");
 const { getParityDb, getParityDDL, initStorage } = require("../storage.js");
 
+const MCP_ENV = {
+  MASTRA_STORAGE_DRIVER: process.env.MASTRA_STORAGE_DRIVER || "libsql",
+};
+
 const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
 
 function withTempStorageRoot(prefix = "storage-parity-") {
@@ -215,7 +219,7 @@ describe("storage parity harness", () => {
   // file-backed database. Under the memory driver the two real tests are not
   // declared and a single placeholder skip is emitted so the reported skip
   // count stays at 2 (Test 3 + this MCP block) instead of 3.
-  const isMemoryDriver = process.env.MASTRA_STORAGE_DRIVER === "memory";
+  const isMemoryDriver = MCP_ENV.MASTRA_STORAGE_DRIVER === "memory";
 
   describe("mcp integration", () => {
     let handles;
@@ -224,7 +228,7 @@ describe("storage parity harness", () => {
     before(async () => {
       tempRoot = mkdtempSync(join(tmpdir(), "storage-mcp-"));
       prepareGateRoot(tempRoot);
-      handles = await connectMcpServer(SERVER_ENTRY, tempRoot);
+      handles = await connectMcpServer(SERVER_ENTRY, tempRoot, MCP_ENV);
     }, { timeout: 15000 });
 
     after(async () => {
@@ -248,7 +252,7 @@ describe("storage parity harness", () => {
         handles = null;
 
         // Session 2: spawn fresh against the same machine (storage path is fixed)
-        handles = await connectMcpServer(SERVER_ENTRY, tempRoot);
+        handles = await connectMcpServer(SERVER_ENTRY, tempRoot, MCP_ENV);
         const result = await handles.callTool("run_workflow_storage_read", { id: "rec-mcp-001" });
         assert.equal(result.found, true, "record must be found in fresh server session");
         assert.equal(result.payload.payload.source, "session-1", "payload must match what session-1 wrote");

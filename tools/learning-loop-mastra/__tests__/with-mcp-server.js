@@ -40,7 +40,7 @@ function copySchemas(tempRoot) {
   }
 }
 
-function prepareTempRoot() {
+export function prepareTempRoot() {
   const tempRoot = mkdtempSync(join(tmpdir(), "mcp-server-"));
   mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
   copySchemas(tempRoot);
@@ -50,9 +50,12 @@ function prepareTempRoot() {
 /**
  * Connect to a single MCP server entry point with a shared GATE_ROOT.
  *
+ * Sets MASTRA_STORAGE_DRIVER=memory by default. Pass `env` to override or
+ * extend environment variables.
+ *
  * Returns handles for calling tools and listing tools, plus a cleanup function.
  */
-export async function connectMcpServer(serverEntry, tempRoot) {
+export async function connectMcpServer(serverEntry, tempRoot, env = {}) {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StdioClientTransport } = await import(
     "@modelcontextprotocol/sdk/client/stdio.js"
@@ -61,7 +64,12 @@ export async function connectMcpServer(serverEntry, tempRoot) {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
-    env: { ...process.env, GATE_ROOT: tempRoot },
+    env: {
+      ...process.env,
+      GATE_ROOT: tempRoot,
+      MASTRA_STORAGE_DRIVER: "memory",
+      ...env,
+    },
   });
 
   const client = new Client({ name: "test-client", version: "1.0.0" });

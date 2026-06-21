@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Rewrite MCP stdio tests with SDK"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -40,9 +40,9 @@ Replace every hand-rolled MCP stdio parser in tests with the SDK-based `withMcpS
 
 ## Success Criteria
 
-- [ ] Each rewritten test passes when run in isolation with `--test-timeout=15000`.
-- [ ] `pnpm test` no longer deadlocks on these files.
-- [ ] No hand-rolled JSON-RPC remains in any test file.
+- [x] Each rewritten test passes when run in isolation with `--test-timeout=15000`.
+- [x] `pnpm test` no longer deadlocks on these files.
+- [x] No hand-rolled JSON-RPC remains in any test file.
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Prepare shared helper"
-status: pending
+status: completed
 priority: P1
 dependencies: []
 ---
@@ -29,8 +29,8 @@ Update `tools/learning-loop-mastra/__tests__/with-mcp-server.js` so all SDK-base
 
 ## Success Criteria
 
-- [ ] `withMcpServer` spawns server with `MASTRA_STORAGE_DRIVER=memory` by default.
-- [ ] Existing SDK-based tests (`mcp-protocol-e2e.test.cjs`, `workflow-parity.test.cjs`, `storage-parity.test.cjs`) still pass.
+- [x] `withMcpServer` spawns server with `MASTRA_STORAGE_DRIVER=memory` by default.
+- [x] Existing SDK-based tests (`mcp-protocol-e2e.test.cjs`, `workflow-parity.test.cjs`, `storage-parity.test.cjs`) still pass.
 
 ## Risk Assessment
 

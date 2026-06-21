@@ -1,7 +1,7 @@
 ---
 title: "Eliminate hand-rolled MCP stdio clients and fix pnpm test deadlock"
 description: "Convert all hand-rolled MCP stdio/JSON-RPC clients to the official @modelcontextprotocol/sdk Client, default test storage to memory, add a test timeout, and close meta-260621T1743Z."
-status: pending
+status: completed
 priority: P1
 branch: "260619-2246-phase-d-plan-2-storage"
 tags: [mcp, stdio, sdk, test, deadlock, technical-debt]
@@ -27,11 +27,11 @@ The pre-commit `pnpm test` deadlock (`meta-260621T1743Z`) is caused by hand-roll
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Prepare shared helper](./phase-01-prepare-shared-helper.md) | Pending |
-| 2 | [Rewrite MCP stdio tests with SDK](./phase-02-rewrite-mcp-stdio-tests-with-sdk.md) | Pending |
-| 3 | [Refactor Droid hook to SDK client](./phase-03-refactor-droid-hook-to-sdk-client.md) | Pending |
-| 4 | [Runner hardening and finding closeout](./phase-04-runner-hardening-and-finding-closeout.md) | Pending |
-| 5 | [Verification](./phase-05-verification.md) | Pending |
+| 1 | [Prepare shared helper](./phase-01-prepare-shared-helper.md) | Completed |
+| 2 | [Rewrite MCP stdio tests with SDK](./phase-02-rewrite-mcp-stdio-tests-with-sdk.md) | Completed |
+| 3 | [Refactor Droid hook to SDK client](./phase-03-refactor-droid-hook-to-sdk-client.md) | Completed |
+| 4 | [Runner hardening and finding closeout](./phase-04-runner-hardening-and-finding-closeout.md) | Completed |
+| 5 | [Verification](./phase-05-verification.md) | Completed |
 
 ## Dependencies
 
@@ -42,12 +42,12 @@ The pre-commit `pnpm test` deadlock (`meta-260621T1743Z`) is caused by hand-roll
 
 ## Acceptance Criteria
 
-- [ ] `pnpm test` no longer deadlocks on the four affected test files.
-- [ ] All hand-rolled JSON-RPC MCP clients are removed from tests and the Droid hook.
-- [ ] `tools/learning-loop-mastra/__tests__/with-mcp-server.js` defaults to `MASTRA_STORAGE_DRIVER=memory`.
-- [ ] `package.json` `test` script includes `--test-timeout=30000`.
-- [ ] `meta-260621T1743Z` is updated with the correct root cause and `evidence_test` path and resolved.
-- [ ] Full `pnpm test` completes without deadlock.
+- [x] `pnpm test` no longer deadlocks on the four affected test files.
+- [x] All hand-rolled JSON-RPC MCP clients are removed from tests and the Droid hook.
+- [x] `tools/learning-loop-mastra/__tests__/with-mcp-server.js` defaults to `MASTRA_STORAGE_DRIVER=memory`.
+- [x] `package.json` `test` script includes `--test-timeout=30000`.
+- [x] `meta-260621T1743Z` is updated with the correct root cause and `evidence_test` path and resolved.
+- [x] Full `pnpm test` completes without deadlock.
 
 ## Open Questions
 

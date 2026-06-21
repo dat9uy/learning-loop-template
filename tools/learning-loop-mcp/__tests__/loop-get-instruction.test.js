@@ -1,15 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { loopGetInstructionTool } from "../tools/loop-get-instruction-tool.js";
-
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const projectRoot = resolve(__dirname, "..", "..", "..");
-const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
+import { withMcpServer } from "../../learning-loop-mastra/__tests__/with-mcp-server.js";
 
 describe("loop_get_instruction", () => {
   test("returns hint by named slug 'reopens-script'", async () => {
@@ -67,90 +59,9 @@ describe("loop_get_instruction", () => {
 // must round-trip without being wrapped to {item: [...]} by the
 // wire-format coercion helper. Pairs with the meta-260610T1458Z fix.
 describe("loop_get_instruction (stdio transport)", () => {
-  function copySchemas(tempRoot) {
-    const schemasSrc = join(projectRoot, "schemas");
-    const schemasDst = join(tempRoot, "schemas");
-    mkdirSync(schemasDst, { recursive: true });
-    for (const f of readdirSync(schemasSrc)) {
-      if (f.endsWith(".schema.json")) {
-        copyFileSync(join(schemasSrc, f), join(schemasDst, f));
-      }
-    }
-  }
-
   test("accepts top-level array key input over stdio", async () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), "loop-get-instruction-stdio-"));
-    mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
-    copySchemas(tempRoot);
-
-    const child = spawn("node", [serverEntry], {
-      cwd: projectRoot,
-      env: { ...process.env, GATE_ROOT: tempRoot },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    let buffer = "";
-    let serverErr = "";
-    const pending = new Map();
-
-    child.stderr.on("data", (chunk) => { serverErr += chunk.toString(); });
-    child.stdout.on("data", (chunk) => {
-      buffer += chunk.toString();
-      const lines = buffer.split("\n");
-      const remaining = [];
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const msg = JSON.parse(trimmed);
-          if (msg.id !== undefined && pending.has(msg.id)) {
-            const { resolve, reject } = pending.get(msg.id);
-            pending.delete(msg.id);
-            if (msg.error) reject(new Error(msg.error.message));
-            else resolve(msg.result);
-          } else {
-            remaining.push(line);
-          }
-        } catch {
-          remaining.push(line);
-        }
-      }
-      buffer = remaining.join("\n");
-    });
-
-    const send = (id, method, params) => {
-      return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        child.stdin.write(
-          JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n",
-          (err) => {
-            if (err) { pending.delete(id); reject(err); }
-          },
-        );
-      });
-    };
-
-    const call = async (id, name, args) => {
-      const result = await send(id, "tools/call", { name, arguments: args });
-      if (!result || !result.content || !result.content[0] || typeof result.content[0].text !== "string") {
-        throw new Error(`Unexpected MCP result for ${name}: ${JSON.stringify(result)}`);
-      }
-      try {
-        return JSON.parse(result.content[0].text);
-      } catch (parseErr) {
-        throw new Error(`Failed to parse ${name} result: ${result.content[0].text.slice(0, 500)} (error: ${parseErr.message}); server stderr: ${serverErr.slice(0, 1000)}`);
-      }
-    };
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await send(0, "initialize", {
-        protocolVersion: "2024-11-05",
-        capabilities: {},
-        clientInfo: { name: "loop-get-instruction-test", version: "1.0.0" },
-      });
-
-      const result = await call(1, "mastra_loop_get_instruction", {
+    await withMcpServer(async ({ callTool }) => {
+      const result = await callTool("mastra_loop_get_instruction", {
         key: ["reopens-script", "internalization-rule"],
       });
 
@@ -162,8 +73,6 @@ describe("loop_get_instruction (stdio transport)", () => {
       assert.ok(internalization, "results should contain the internalization-rule hint (index 0)");
       assert.ok(reopens.hint.includes("meta_state_relationship_validate"));
       assert.ok(internalization.hint.includes("evidence_code_ref"));
-    } finally {
-      child.kill();
-    }
+    });
   });
 });

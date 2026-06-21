@@ -1,5 +1,32 @@
 # Project Changelog
 
+## 2026-06-21 — MCP stdio SDK Conversion + Test Deadlock Fix (GH-2246)
+
+**Plan:** `plans/260621-2223-GH-2246-mcp-stdio-sdk-conversion/`
+
+### Changed
+
+- **5 test files** — replaced hand-rolled MCP stdio/JSON-RPC clients with the official `@modelcontextprotocol/sdk Client` via the shared `with-mcp-server.js` helper:
+  - `.claude/coordination/__tests__/claude-code-mcp-loading.test.cjs`
+  - `tools/learning-loop-mcp/__tests__/loop-get-instruction.test.js`
+  - `tools/learning-loop-mcp/__tests__/meta-state-patch-derived-schema.test.js`
+  - `tools/learning-loop-mcp/__tests__/zod-coerce-top-level.test.js`
+  - `tools/learning-loop-mcp/__tests__/meta-state-list-id-stdio.test.js`
+- **1 Droid hook** — `.factory/hooks/loop-surface-inject.cjs` now uses the SDK `Client` with `StdioClientTransport` instead of a hand-rolled parser.
+- **`tools/learning-loop-mastra/__tests__/with-mcp-server.js`** — spawned test servers default to `MASTRA_STORAGE_DRIVER=memory`; callers can override via the optional `env` parameter.
+- **`tools/learning-loop-mastra/__tests__/storage-parity.test.cjs`** — passes `MASTRA_STORAGE_DRIVER=libsql` to the helper so cross-process persistence tests keep working.
+- **`tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs`** — relaxed stale tool-count assertion to account for workflow tools surfaced by the server.
+- **`package.json`** — `test` script now includes `--test-timeout=30000` so future hangs fail fast instead of blocking pre-commit.
+
+### Resolved
+
+- `meta-260621T1743Z` — root cause corrected to "hand-rolled stdio parsers could not handle server stdout log lines / missing `notifications/initialized`"; `evidence_test` path corrected to `.claude/coordination/__tests__/claude-code-mcp-loading.test.cjs`; status resolved.
+
+### Acceptance
+
+- `pnpm test`: **1114 pass / 0 fail / 1 skipped** across all test namespaces.
+- Zero hand-rolled MCP stdio/JSON-RPC clients remain in tests or production hooks.
+
 ## 2026-06-18 — Coerce Layer Zod-Native Migration (GH-0029)
 
 **Plan:** `plans/260618-0029-coerce-layer-zod-native-migration/`

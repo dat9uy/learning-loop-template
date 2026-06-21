@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Verification"
-status: pending
+status: completed
 priority: P1
 dependencies: [4]
 ---
@@ -36,10 +36,10 @@ Run focused and broad tests to prove the deadlock is gone and no regressions wer
 
 ## Success Criteria
 
-- [ ] All 5 rewritten MCP tests pass.
-- [ ] `.factory/hooks/__tests__/` passes.
-- [ ] `pnpm test` completes with no deadlock.
-- [ ] No failing tests were hidden by the new timeout.
+- [x] All 5 rewritten MCP tests pass.
+- [x] `.factory/hooks/__tests__/` passes.
+- [x] `pnpm test` completes with no deadlock.
+- [x] No failing tests were hidden by the new timeout.
 
 ## Risk Assessment
 
