@@ -104,6 +104,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
   "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
   "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js.",
+  "pnpm test discipline. `pnpm test` runs 9 namespaces / 1100+ tests in ~13s. Per-namespace logs at `.test-logs/<ns>.log` mirror progress. Rule 1 (silent-command): if a Bash call is silent for >2 min, tail `.test-logs/<ns>.log` instead of re-reading files. Rule 2 (same-file-read): if you read the same file >5 times in 60s with no Edit/Write/Bash, STOP — write a one-line journal to `plans/reports/` and ask the operator. The old 10-min claim was an agent-side `tail -60` artifact; the runner preserves the principle of observable per-namespace progress.",
 ]);
 
 /**
@@ -112,6 +113,36 @@ const DISCOVERABILITY_HINTS = Object.freeze([
  */
 export function buildDiscoverabilityHints() {
   return DISCOVERABILITY_HINTS;
+}
+
+/**
+ * Return runtime substrate paths + drivers used by the loop. Surfaces the
+ * Mastra LibSQL storage location so agents + operators can reason about
+ * persistence without re-deriving paths. Pure function — values come from
+ * the project structure + `MASTRA_STORAGE_DRIVER` env var convention.
+ *
+ * NOTE: this is a structural snapshot, not a live probe. The actual storage
+ * instance is owned by `tools/learning-loop-mastra/storage.js`; this helper
+ * exists for `loop_describe` discoverability only. If the storage layout
+ * ever moves, update both this and the storage factory.
+ */
+export function listSubstrates() {
+  // The storage data dir is `tools/learning-loop-mastra/data/`, sibling to
+  // the mastra package's `server.js`. `import.meta.url` derivation in
+  // storage.js is the source of truth; the env var convention is
+  // MASTRA_STORAGE_DRIVER (native | web | memory).
+  const storage = {
+    type: "libsql",
+    id: "mastra-storage",
+    path: "tools/learning-loop-mastra/data/mastra-memory.db",
+    driver_env: "MASTRA_STORAGE_DRIVER",
+    driver_default: "native",
+    driver_options: ["native", "web", "memory"],
+    note:
+      "Storage is the Mastra runtime substrate (workflow stateSchema + future OM threads/messages). " +
+      "Meta-state stays at `meta-state.jsonl` per the 2026-06-19 direction-clarification report §3.",
+  };
+  return { storage };
 }
 
 /**

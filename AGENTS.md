@@ -42,6 +42,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 - **Bash/Execute gate** — blocks commands matching constraint patterns (docker, sudo, package-manager, vendor-api, side-effect-import) without active runtime-state entries, and blocks all direct writes to `records/**` and `runtime-state.jsonl` via redirects/heredocs/tee.
 - **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, `runtime-state.jsonl`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files. (The `product/**` and `records/**` allowances are substrate carry-overs from the legacy product-surface era; the meta-surface does not need them.)
+  - **Note (2026-06-22, Plan 2 PR):** `.gitignore` was expanded from `records/meta/.cache/` → `records/meta/`. The product-surface meta directory (legacy `records/<vendor>/` files + cold-tier cache) is now fully git-ignored, consistent with the 2026-06-12 reframe. The legacy `records/<vendor>/` content is archived in-place, not deleted. The write-gate's `records/**` block stays in place for runtime writes (a different concern from git-ignoring generated content).
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
 - **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_fingerprint` to unblock.
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
@@ -136,7 +137,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mcp/core/loop-introspect.js#DISCOVERABILITY_HINTS`.
 
 ---
 

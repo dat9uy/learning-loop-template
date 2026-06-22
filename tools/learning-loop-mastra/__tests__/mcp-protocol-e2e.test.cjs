@@ -2,6 +2,21 @@
 //
 // Mirrors tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs but points
 // at the learning-loop-mastra server and its 29 deterministic tools.
+//
+// Note (2026-06-22, Plan 2 PR #8): two test relaxations from the original
+// strict-`===` / `mastra_`-prefixed shape, both forced by Phase D Plan 1+2
+// shipping the workflow tool surface alongside the deterministic tools:
+//
+//   1. `assert.ok(result.tools.length >= TOOL_COUNT)` (was `===`): the server
+//      now registers 31 `mastra_*` + 10 `run_workflow_*` = 41 tools, but this
+//      file's `TOOL_COUNT` is read from the 31-entry deterministic
+//      `tools/manifest.json` (it does not include workflows). The exact 41-tool
+//      count is enforced by `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:159`.
+//   2. The `startsWith("mastra_")` prefix check was removed: `run_workflow_*`
+//      and `run_workflow_storage_*` tools don't have that prefix.
+//
+// These relaxations are scope-locked to the protocol-level shape test. The
+// per-tool count and prefix invariants are checked by `workflow-parity.test.cjs`.
 
 const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
@@ -62,10 +77,9 @@ describe("mastra mcp protocol e2e", () => {
     const result = await server.client.listTools();
 
     assert.ok(Array.isArray(result.tools), "result.tools must be an array");
-    assert.strictEqual(
-      result.tools.length,
-      TOOL_COUNT,
-      `expected ${TOOL_COUNT} tools, got ${result.tools.length}`,
+    assert.ok(
+      result.tools.length >= TOOL_COUNT,
+      `expected at least ${TOOL_COUNT} tools, got ${result.tools.length}`,
     );
 
     for (const tool of result.tools) {
@@ -74,7 +88,6 @@ describe("mastra mcp protocol e2e", () => {
         "string",
         `tool must have string name`,
       );
-      assert.ok(tool.name.startsWith("mastra_"), `${tool.name} lacks mastra_ prefix`);
       assert.ok(tool.name.length > 0, `tool name must be non-empty`);
       assert.strictEqual(
         typeof tool.description,
@@ -92,10 +105,14 @@ describe("mastra mcp protocol e2e", () => {
     }
   });
 
-  test("tools/list returns 29 distinct tool names", { timeout: 10000 }, async () => {
+  test("tools/list returns distinct tool names", { timeout: 10000 }, async () => {
     const result = await server.client.listTools();
     const names = result.tools.map((t) => t.name);
-    assert.strictEqual(new Set(names).size, TOOL_COUNT, "tool names must be distinct");
+    assert.strictEqual(
+      new Set(names).size,
+      result.tools.length,
+      "tool names must be distinct",
+    );
   });
 
   test("tools/call loop_describe returns expected shape", { timeout: 10000 }, async () => {

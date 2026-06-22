@@ -1,0 +1,60 @@
+# GitHub Actions CI for the learning-loop-template.
+#
+# Runs `pnpm test` on every PR open / sync and surfaces results as a required
+# check. The per-namespace runner (`tools/scripts/run-pnpm-test-namespaced.mjs`)
+# mirrors progress to `.test-logs/<ns>.log`; the full suite completes in ~15s on
+# 9 namespaces / ~1100 tests.
+#
+# Node version matches the local dev environment (.nvmrc-equivalent: Node 24).
+# pnpm version is pinned via packageManager in package.json.
+
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Seed cold-session sentinel
+        # AGENTS.md §8: fresh checkouts must run `pnpm test:cold-session` once
+        # to seed .cold-session-sentinel.json. The cold-session-freshness
+        # test in the regular suite asserts the sentinel exists and is < 3
+        # days old. Running test:cold-session here seeds it for this run;
+        # the artifact is gitignored.
+        run: pnpm test:cold-session
+
+      - name: Run test suite
+        run: pnpm test
+
+      - name: Upload per-namespace logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: .test-logs/
+          if-no-files-found: ignore
+          retention-days: 7

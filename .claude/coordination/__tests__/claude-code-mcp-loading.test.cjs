@@ -4,7 +4,7 @@
 // gap, but probes Claude Code's MCP loading via .mcp.json configuration.
 //
 // The test has two modes:
-// 1. "config probe" — checks .mcp.json for learning-loop-mcp server entry
+// 1. "config probe" — checks .mcp.json for learning-loop-mastra server entry
 // 2. "direct spawn" — spawns the MCP server directly and verifies tool list
 //
 // If the config probe fails, the test logs a meta_state_report finding to the
@@ -15,7 +15,6 @@
 
 const { describe, test } = require("node:test");
 const assert = require("node:assert");
-const { spawn } = require("node:child_process");
 const { mkdtempSync, mkdirSync, readFileSync, existsSync, copyFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
@@ -25,8 +24,10 @@ const { probeL1 } = require("../../../tools/learning-loop-mcp/__tests__/probe-he
 
 describe("Claude Code MCP client-side loading acceptance", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..");
-  const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
   const mcpConfigPath = join(projectRoot, ".mcp.json");
+  const helperPath = pathToFileURL(
+    join(projectRoot, "tools/learning-loop-mastra/__tests__/with-mcp-server.js"),
+  );
 
   test(".mcp.json has learning-loop-mastra server configured", () => {
     assert.ok(existsSync(mcpConfigPath), ".mcp.json must exist for Claude Code MCP loading");
@@ -40,97 +41,17 @@ describe("Claude Code MCP client-side loading acceptance", () => {
   });
 
   test("discoverability surface works via direct MCP server spawn", async () => {
-    const tempRoot = mkdtempSync(join(tmpdir(), "claude-mcp-direct-"));
-    mkdirSync(join(tempRoot, "records", "meta", "decisions"), { recursive: true });
+    const { withMcpServer } = await import(helperPath.href);
 
-    // Copy schemas so record tools can import buildZodSchemaFor
-    const schemasSrc = join(projectRoot, "schemas");
-    const schemasDst = join(tempRoot, "schemas");
-    mkdirSync(schemasDst, { recursive: true });
-    const { readdirSync } = require("node:fs");
-    for (const f of readdirSync(schemasSrc)) {
-      if (f.endsWith(".schema.json")) {
-        copyFileSync(join(schemasSrc, f), join(schemasDst, f));
-      }
-    }
-
-    const child = spawn("node", [serverEntry], {
-      cwd: projectRoot,
-      env: {
-        ...process.env,
-        GATE_ROOT: tempRoot,
-      },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    let buffer = "";
-    let serverErr = "";
-    const pending = new Map();
-    child.stderr.on("data", (chunk) => {
-      serverErr += chunk.toString();
-    });
-    child.stdout.on("data", (chunk) => {
-      buffer += chunk.toString();
-      const lines = buffer.split("\n");
-      const remaining = [];
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const msg = JSON.parse(trimmed);
-          if (msg.id !== undefined && pending.has(msg.id)) {
-            const { resolve, reject } = pending.get(msg.id);
-            pending.delete(msg.id);
-            if (msg.error) reject(new Error(msg.error.message));
-            else resolve(msg.result);
-          } else {
-            remaining.push(line);
-          }
-        } catch {
-          remaining.push(line);
-        }
-      }
-      buffer = remaining.join("\n");
-    });
-
-    const send = (id, method, params) => {
-      return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        child.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n", (err) => {
-          if (err) {
-            pending.delete(id);
-            reject(err);
-          }
-        });
-      });
-    };
-
-    const call = async (id, name, args) => {
-      const result = await send(id, "tools/call", { name, arguments: args });
-      if (!result || !result.content || !result.content[0] || typeof result.content[0].text !== "string") {
-        throw new Error(`Unexpected MCP result for ${name}: ${JSON.stringify(result)}`);
-      }
-      const text = result.content[0].text;
-      try {
-        return JSON.parse(text);
-      } catch (parseErr) {
-        throw new Error(`Failed to parse ${name} result: ${text.slice(0, 500)} (error: ${parseErr.message}); server stderr: ${serverErr.slice(0, 1000)}`);
-      }
-    };
-
-    try {
-      // Wait for the server to start, then initialize
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await send(0, "initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "claude-mcp-test", version: "1.0.0" } });
-
+    await withMcpServer(async ({ callTool, tempRoot }) => {
       // 1. loop_describe warm tier returns discoverability hints
-      const warm = await call(1, "mastra_loop_describe", { tier: "warm" });
+      const warm = await callTool("mastra_loop_describe", { tier: "warm" });
       assert.ok(Array.isArray(warm.discoverability_hints), "warm tier should include discoverability_hints");
       const citationHint = warm.discoverability_hints.find((h) => h.includes("evidence_code_ref"));
       assert.ok(citationHint, "citation hint should mention evidence_code_ref");
 
       // 2. meta_state_report with evidence_code_ref + mechanism_check: true succeeds
-      const reportResult = await call(2, "mastra_meta_state_report", {
+      const reportResult = await callTool("mastra_meta_state_report", {
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -143,7 +64,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       assert.ok(findingId.startsWith("meta-"));
 
       // 3. meta_state_log_change with local:meta-state:<id> succeeds
-      const changeResult = await call(3, "mastra_meta_state_log_change", {
+      const changeResult = await callTool("mastra_meta_state_log_change", {
         change_dimension: "mechanical",
         change_target: "test",
         change_diff: { added: [], removed: [], changed: [] },
@@ -153,7 +74,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       assert.strictEqual(changeResult.logged, true);
 
       // 4. meta_state_log_change with empty source_refs succeeds (no deprecated ref check in this tool)
-      const secondResult = await call(4, "mastra_meta_state_log_change", {
+      const secondResult = await callTool("mastra_meta_state_log_change", {
         change_dimension: "mechanical",
         change_target: "test",
         change_diff: { added: [], removed: [], changed: [] },
@@ -208,14 +129,12 @@ describe("Claude Code MCP client-side loading acceptance", () => {
 
       const changeLogs = metaStateEntries.filter((e) => e.entry_kind === "change-log");
       assert.ok(changeLogs.length >= 1, "at least one change-log entry should be written");
-    } finally {
-      child.kill();
-    }
+    });
   });
 
   // Third test: Claude Code MCP client-side loading probe.
   //
-  // This test probes .mcp.json for learning-loop-mcp configuration. If the gap
+  // This test probes .mcp.json for learning-loop-mastra configuration. If the gap
   // is CLOSED (config present), the test passes silently. If the gap is OPEN
   // (config missing), the test logs a meta_state_report finding directly to the
   // project's meta-state.jsonl (mirroring the cold-session test pattern for Droid).

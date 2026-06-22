@@ -13,12 +13,15 @@ export const HINT_KEY_MAP = {
   "canonical-tool": 8,
   "surface-split": 9,
   "reopens-script": 10,
-  "meta-vs-product-split": 11,
   "loop-get-instruction": 11,
   "narrow-query": 12,
+  "phase-a-reframe": 13,
+  "session-id-query": 14,
+  "runtime-agnostic-features": 15,
+  "pnpm-test-discipline": 16,
 };
 
-const HINT_SUGGESTIONS = [
+export const HINT_SUGGESTIONS = [
   "Prefer `local:meta-state:<id>` source_refs and set `evidence_code_ref` to a code path so the loop can re-check it.",
   "When you provide `evidence_code_ref`, `mechanism_check` defaults to true; pass `false` only if you intentionally want to opt out.",
   "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch.",
@@ -32,6 +35,10 @@ const HINT_SUGGESTIONS = [
   "For cross-references, run `meta_state_relationship_validate`, report with `reopens`, then `meta_state_resolve({ cascade_from: [child] })`.",
   "Use `loop_get_instruction` for on-demand lookup. Keep `meta-state.jsonl` (self-model), `product/**` (substrate), and template code separate when citing evidence.",
   "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only.",
+  "Phase A reframe: the meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
+  "Hook-emitted batches: query by `session_id` via `meta_state_list`; do not client-side filter compact output.",
+  "Runtime-agnostic features: use shim-not-fork + cross-surface-iteration; audit with `check_runtime_agnostic` before shipping.",
+  "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
 ];
 
 export const loopGetInstructionTool = {

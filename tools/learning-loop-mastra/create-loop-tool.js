@@ -43,7 +43,13 @@ function attachParityJSONSchema(schema) {
   // plans/reports/researcher-A-260618-1418-GH-0029-pr5-shim-fix-strategies-report.md
   // §1). The new e2e regression test in mcp-tools-list-parity.test.js locks
   // this path against future regressions.
-  schema._zod.toJSONSchema = () => parityJSONSchema;
+  //
+  // IMPORTANT: return a clone on every call. Mastra converts tools more than
+  // once (MCPServer constructor + __registerMastra), and zod's toJSONSchema
+  // mutates the returned object in place (extractDefs replaces the root schema
+  // with {"$ref":"#"}). Reusing the same object causes the second conversion
+  // to emit only the $ref sentinel.
+  schema._zod.toJSONSchema = () => JSON.parse(JSON.stringify(parityJSONSchema));
   return schema;
 }
 

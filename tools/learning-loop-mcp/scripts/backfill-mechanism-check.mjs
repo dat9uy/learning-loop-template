@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readRegistry, updateEntry } from "#mcp/core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { stripEvidenceAnchor } from "#mcp/core/gate-logic.js";
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, isAbsolute } from "node:path";
@@ -52,17 +53,15 @@ for (const entry of resolvedFindings) {
     continue;
   }
 
-  // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
-  // and loop-introspect.js discoverability hint) and `#fragment` suffixes (e.g.,
-  // "path/to/file.js#functionName" or "path/to/file.js:37") so the path resolves
-  // to a real file. evidence_code_ref often includes a function/method anchor
-  // OR a line number; only the file part is a valid filesystem path. Without
-  // the `:line` strip, 1 resolved finding (meta-260607T0008Z-dual-field-schema-risk)
-  // would be incorrectly skipped. Mirrors the strip applied in
-  // core/gate-logic.js#checkResolutionEvidence and core/check-grounding.js.
-  const codeRefPath = codeRef
-    .replace(/:\d+$/, "")
-    .replace(/#[\w$.-]+$/, "");
+  // Strip `:line`, `:start-end`, and `#fragment` suffixes via the shared
+  // helper (single source of truth in core/gate-logic.js#stripEvidenceAnchor).
+  // evidence_code_ref often includes a function/method anchor OR a line number;
+  // only the file part is a valid filesystem path. Without the strip,
+  // resolved findings with line ranges (e.g. ":12-34") or compound suffixes
+  // (":12-34#methodName") would be incorrectly skipped. See finding
+  // meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
+  // for the gate-bug class this closes.
+  const codeRefPath = stripEvidenceAnchor(codeRef);
   if (!codeRefPath) {
     skippedNoEvidence++;
     continue;

@@ -1,4 +1,5 @@
 import { MCPServer } from "@mastra/mcp";
+import { Mastra } from "@mastra/core";
 import { createTool } from "@mastra/core/tools";
 import { makeCoreTool } from "@mastra/core/utils";
 import { RequestContext } from "@mastra/core/request-context";
@@ -7,6 +8,7 @@ import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { storage, initStorage } from "./storage.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(
@@ -46,7 +48,7 @@ for (const { file, export: exportName } of WORKFLOW_MANIFEST) {
   workflows[wf.id] = wf;
 }
 
-console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} tools and ${Object.keys(workflows).length} workflows`);
+console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, storage.id=${storage.id}`);
 
 // Custom MCPServer subclass that extracts only the step result from workflow
 // execution output, ensuring parity with legacy createTool handlers.
@@ -136,14 +138,24 @@ class LoopMCPServer extends MCPServer {
   }
 }
 
+// Initialize storage before the server starts accepting requests so that
+// workflows can persist stateSchema snapshots from the first call.
+// initStorage() is idempotent (~15ms first call, <1ms subsequent).
+await initStorage();
+
 const server = new LoopMCPServer({
   id: "learning-loop-mastra",
   name: "learning-loop-mastra",
   version: "0.1.0",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plan 1). 31 tools + 8 workflows across 5 groups. Single server post-cut-over.",
+    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 41 tools + 10 workflows across 5 groups. Single server post-cut-over.",
   tools,
   workflows,
+});
+
+const mastra = new Mastra({
+  storage,
+  mcpServers: { "learning-loop-mastra": server },
 });
 
 await server.startStdio();
