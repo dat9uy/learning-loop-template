@@ -3,6 +3,7 @@ import { Mastra } from "@mastra/core";
 import { createTool } from "@mastra/core/tools";
 import { makeCoreTool } from "@mastra/core/utils";
 import { RequestContext } from "@mastra/core/request-context";
+import { randomUUID } from "node:crypto";
 import { createLoopTool } from "./create-loop-tool.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
 import { readFileSync } from "node:fs";
@@ -95,7 +96,7 @@ class LoopMCPServer extends MCPServer {
                 proxiedContext.set(key, value);
               });
             }
-            const run2 = await workflow.createRun({ runId: proxiedContext?.get("runId") });
+            const run2 = await workflow.createRun({ runId: proxiedContext?.get("runId") ?? randomUUID() });
             const response = await run2.start({
               inputData,
               requestContext: proxiedContext,

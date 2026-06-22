@@ -115,3 +115,17 @@ test("createLoopWorkflow with stateSchema accepts state and persists across step
   assert.strictEqual(result.status, "success");
   assert.deepStrictEqual(result.result, { counter: 6 }, "counter should be incremented from 5 to 6");
 });
+
+test("createLoopWorkflow throws on invalid id (uppercase)", async () => {
+  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  assert.throws(
+    () =>
+      createLoopWorkflow({
+        id: "Intake-Orient",
+        description: "Test",
+        inputSchema: {},
+        steps: [],
+      }),
+    /must match \/\^\[a-z\]\[a-z0-9_\]\*\$/,
+  );
+});
