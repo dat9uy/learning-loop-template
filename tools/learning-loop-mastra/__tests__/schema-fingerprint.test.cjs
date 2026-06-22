@@ -6,7 +6,6 @@
 
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createClient } = require("@libsql/client");
 const { resolve } = require("node:path");
 
 // Snapshot captured against @mastra/libsql@1.13.0 on 2026-06-22.
@@ -53,8 +52,15 @@ const SNAPSHOT = [
 ];
 
 test("LibSQL schema fingerprint matches snapshot", { timeout: 10000 }, async () => {
-  const dbPath = resolve(__dirname, "..", "data", "mastra-memory.db");
-  const db = createClient({ url: `file:${dbPath}` });
+  // Use the project's storage factory so the fingerprint reflects the
+  // initialized substrate, not whatever tables happen to exist in a dev DB.
+  const { initStorage, getParityDb, getParityDDL } = await import(
+    resolve(__dirname, "..", "storage.js")
+  );
+
+  await initStorage();
+  const db = getParityDb();
+  await db.execute(getParityDDL());
 
   const tables = await db.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
   const names = tables.rows.map((r) => r.name);
