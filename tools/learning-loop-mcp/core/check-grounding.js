@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, isAbsolute } from "node:path";
+import { stripEvidenceAnchor } from "./gate-logic.js";
 
 /**
  * SP2 Grounding Check — pure function (no subprocess).
@@ -128,17 +129,17 @@ export function checkGrounding(entry, codeContext) {
   }
 
   // Resolve path: absolute -> as-is, relative -> join with root.
-  // Strip both `:line` (canonical per meta-state.js#metaStateFindingEntrySchema
-  // and loop-introspect.js discoverability hint) and `#anchor` suffixes before
-  // resolving the file path. Without this, `path/to/file.js:37` and
-  // `path/to/file.js#functionName` would both be reported as missing even when
-  // the file exists. Mirrors the strip applied in
-  // core/gate-logic.js#checkResolutionEvidence (consistency invariant). See
-  // finding meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
+  // Strip both `:line` / `:start-end` range (canonical per
+  // meta-state.js#metaStateFindingEntrySchema and loop-introspect.js
+  // discoverability hint) and `#anchor` suffixes before resolving the file path.
+  // Without this, `path/to/file.js:37`, `path/to/file.js:37-42`, and
+  // `path/to/file.js#functionName` would all be reported as missing even when
+  // the file exists. Single source of truth: core/gate-logic.js#stripEvidenceAnchor
+  // handles `:line`, `:start-end`, and `#anchor` in any order. See finding
+  // meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
   // for the gate-bug class this closes.
-  const absPath = isAbsolute(codeRef)
-    ? codeRef.replace(/:\d+$/, "").replace(/#[\w$.-]+$/, "")
-    : join(root, codeRef.replace(/:\d+$/, "").replace(/#[\w$.-]+$/, ""));
+  const strippedRef = stripEvidenceAnchor(codeRef);
+  const absPath = isAbsolute(strippedRef) ? strippedRef : join(root, strippedRef);
   const codeRefExists = existsSync(absPath);
 
   // Compute hash if file exists (catch read race)
