@@ -7,11 +7,11 @@ import { loopDescribeTool } from "../tools/loop-describe-tool.js";
 import { buildDiscoverabilityHints } from "../core/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
-  test("warm tier returns discoverability_hints with 15 strings", async () => {
+  test("warm tier returns discoverability_hints with 17 strings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 16);
+    assert.strictEqual(parsed.discoverability_hints.length, 17);
     for (const hint of parsed.discoverability_hints) {
       assert.strictEqual(typeof hint, "string");
       assert.ok(hint.length > 0);
@@ -21,7 +21,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
   test("each hint contains the documented substrings", async () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
-    const [citation, autoDefault, sourceRef, grounding, noCode, statusLifecycle, reopensHint, ruleLifecycle, toolSelection, layerSplit, relationshipScript, onDemandLookup, narrowQuery, phaseAHint, sessionIdHint, runtimeAgnosticHint] = parsed.discoverability_hints;
+    const [citation, autoDefault, sourceRef, grounding, noCode, statusLifecycle, reopensHint, ruleLifecycle, toolSelection, layerSplit, relationshipScript, onDemandLookup, narrowQuery, phaseAHint, sessionIdHint, runtimeAgnosticHint, pnpmTestDiscipline] = parsed.discoverability_hints;
 
     assert.ok(citation.includes("meta_state_report"));
     assert.ok(citation.includes("evidence_code_ref"));
@@ -81,6 +81,11 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(runtimeAgnosticHint.includes("runtime-agnostic"));
     assert.ok(runtimeAgnosticHint.includes("check_runtime_agnostic"));
     assert.ok(runtimeAgnosticHint.includes("runtime-agnostic.test.js"));
+
+    assert.ok(pnpmTestDiscipline.includes("pnpm test"));
+    assert.ok(pnpmTestDiscipline.includes(".test-logs/"));
+    assert.ok(pnpmTestDiscipline.includes("silent-command"));
+    assert.ok(pnpmTestDiscipline.includes("same-file-read"));
   });
 
   test("summary tier does NOT include discoverability_hints", async () => {
@@ -93,12 +98,12 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const result = await loopDescribeTool.handler({ tier: "cold" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(Array.isArray(parsed.discoverability_hints));
-    assert.strictEqual(parsed.discoverability_hints.length, 16);
+    assert.strictEqual(parsed.discoverability_hints.length, 17);
   });
 
   test("buildDiscoverabilityHints is exported as a pure function", () => {
     const hints = buildDiscoverabilityHints();
-    assert.strictEqual(hints.length, 16);
+    assert.strictEqual(hints.length, 17);
     assert.ok(Object.isFrozen(hints));
   });
 });

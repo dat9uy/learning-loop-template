@@ -23,7 +23,7 @@ describe("loop_get_instruction", () => {
 
   test("accepts an array of keys and returns multiple results", async () => {
     const result = await loopGetInstructionTool.handler({
-      key: ["internalization-rule", 10, "meta-vs-product-split"],
+      key: ["internalization-rule", 10, "loop-get-instruction"],
     });
     const parsed = JSON.parse(result.content[0].text);
     assert.strictEqual(parsed.count, 3);

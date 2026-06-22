@@ -136,7 +136,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mcp/core/loop-introspect.js#DISCOVERABILITY_HINTS`.
 
 ---
 

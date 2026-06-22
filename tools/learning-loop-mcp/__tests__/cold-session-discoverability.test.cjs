@@ -335,54 +335,78 @@ describe("cold-session discoverability", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Test 7: Hook mirror hint count matches canonical
+  // Test 7: Hook mirror hint parity (exact string equality + suggestion/key map)
   // ---------------------------------------------------------------------------
 
-  describe("hook mirror hint count", () => {
+  describe("hook mirror hint parity", () => {
     let hookSource;
-    let canonicalSource;
+    let canonicalHints;
+    let loopGetInstruction;
 
-    before(() => {
+    before(async () => {
       const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
       assert.ok(existsSync(hookPath), "hook file must exist");
       hookSource = readFileSync(hookPath, "utf8");
+
       const canonicalPath = join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js");
-      canonicalSource = readFileSync(canonicalPath, "utf8");
+      const { buildDiscoverabilityHints } = await import(pathToFileURL(canonicalPath).href);
+      canonicalHints = buildDiscoverabilityHints();
+
+      const toolPath = join(projectRoot, "tools/learning-loop-mcp/tools/loop-get-instruction-tool.js");
+      loopGetInstruction = await import(pathToFileURL(toolPath).href);
     });
 
     after(() => {
       hookSource = null;
-      canonicalSource = null;
+      canonicalHints = null;
+      loopGetInstruction = null;
     });
 
-    test("matches canonical hint count (drift prevention)", async () => {
-      // Extract array contents between Object.freeze([ and ]).
-      const hookMatch = hookSource.match(/LOCAL_DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
-      const canonicalMatch = canonicalSource.match(/DISCOVERABILITY_HINTS\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+    function parseFrozenStringArray(source, varName) {
+      const regex = new RegExp(`${varName}\\s*=\\s*Object\\.freeze\\(\\[([\\s\\S]*?)\\]\\)`);
+      const match = source.match(regex);
+      assert.ok(match, `${varName} array not found in source`);
+      let body = match[1].trim();
+      if (body.endsWith(",")) body = body.slice(0, -1);
+      return JSON.parse(`[${body}]`);
+    }
 
-      assert.ok(hookMatch, "hook should contain LOCAL_DISCOVERABILITY_HINTS array");
-      assert.ok(canonicalMatch, "canonical should contain DISCOVERABILITY_HINTS array");
+    test("canonical and hook hint arrays match exactly (drift prevention)", () => {
+      const hookHints = parseFrozenStringArray(hookSource, "LOCAL_DISCOVERABILITY_HINTS");
 
-      // Count hints by splitting on the hint-delimiter pattern (each hint starts
-      // with a quoted string after optional whitespace/newlines). This is more
-      // robust than counting quote characters which can appear inside hints.
-      function countHints(arrayBody) {
-        // Each hint is a string literal. Count opening quotes that start a new
-        // hint entry (preceded by [ or , with optional whitespace).
-        const matches = arrayBody.match(/(?<=\[|,)\s*"/g);
-        return matches ? matches.length : 0;
-      }
-
-      const hookCount = countHints(hookMatch[1]);
-      const canonicalCount = countHints(canonicalMatch[1]);
-
-      assert.ok(hookCount > 0, "hook hint count should be > 0");
-      assert.ok(canonicalCount > 0, "canonical hint count should be > 0");
       assert.strictEqual(
-        hookCount,
-        canonicalCount,
-        `Hook hint count (${hookCount}) must match canonical (${canonicalCount}). The hook mirror has drifted.`,
+        hookHints.length,
+        canonicalHints.length,
+        `Hook hint count (${hookHints.length}) must match canonical (${canonicalHints.length}).`,
       );
+
+      for (let i = 0; i < canonicalHints.length; i++) {
+        assert.strictEqual(
+          hookHints[i],
+          canonicalHints[i],
+          `Hint[${i}] differs between hook mirror and canonical source.`,
+        );
+      }
+    });
+
+    test("HINT_SUGGESTIONS has one entry per hint", () => {
+      assert.ok(loopGetInstruction.HINT_SUGGESTIONS, "HINT_SUGGESTIONS must be exported");
+      assert.strictEqual(
+        loopGetInstruction.HINT_SUGGESTIONS.length,
+        canonicalHints.length,
+        "HINT_SUGGESTIONS length must match discoverability hint count.",
+      );
+    });
+
+    test("HINT_KEY_MAP covers every hint index", () => {
+      assert.ok(loopGetInstruction.HINT_KEY_MAP, "HINT_KEY_MAP must be exported");
+      const mappedIndices = new Set(Object.values(loopGetInstruction.HINT_KEY_MAP));
+      for (let i = 0; i < canonicalHints.length; i++) {
+        assert.ok(
+          mappedIndices.has(i),
+          `HINT_KEY_MAP is missing an entry for hint index ${i}.`,
+        );
+      }
     });
   });
 });
