@@ -1,7 +1,7 @@
 ---
 title: "GH-2246 pnpm test fix design (Plan B) — Layer 1 + Layer 2"
 description: "Fix the agent-degenerate-loop failure mode in `pnpm test` via Layer 1 (runner script with per-namespace prefix + log files) and Layer 2 (DISCOVERABILITY_HINTS teaching). Re-categorize the finding from `e2e-test-output-overflow` to `runner-interface-fragility` and resolve via closeout."
-status: pending
+status: completed
 priority: P1
 branch: "260619-2246-phase-d-plan-2-storage"
 tags: [gh-2246, pnpm-test, agent-loop, runner, layer-1, layer-2, meta-surface]
@@ -40,12 +40,12 @@ Resolves `meta-260620T2108Z-the-full-pnpm-test-glob-...` (active, escalate) by a
 
 | Phase | Name | Status | Layer |
 |-------|------|--------|-------|
-| 1 | [runner-script](./phase-01-runner-script.md) | Pending | Layer 1 |
-| 2 | [per-namespace-logs](./phase-02-per-namespace-logs.md) | Pending | Layer 1 |
-| 3 | [dead-glob-cleanup](./phase-03-dead-glob-cleanup.md) | Pending | Layer 1 |
-| 4 | [layer-2-prompt-teaching](./phase-04-layer-2-prompt-teaching.md) | Pending | Layer 2 |
-| 5 | [finding-recategorization](./phase-05-finding-recategorization.md) | Pending | Meta-surface |
-| 6 | [closeout](./phase-06-closeout.md) | Pending | Verification |
+| 1 | [runner-script](./phase-01-runner-script.md) | Completed | Layer 1 |
+| 2 | [per-namespace-logs](./phase-02-per-namespace-logs.md) | Completed | Layer 1 |
+| 3 | [dead-glob-cleanup](./phase-03-dead-glob-cleanup.md) | Completed | Layer 1 |
+| 4 | [layer-2-prompt-teaching](./phase-04-layer-2-prompt-teaching.md) | Completed | Layer 2 |
+| 5 | [finding-recategorization](./phase-05-finding-recategorization.md) | Completed | Meta-surface |
+| 6 | [closeout](./phase-06-closeout.md) | Completed | Verification |
 
 ## Dependencies
 
