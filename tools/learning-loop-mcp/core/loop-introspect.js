@@ -116,6 +116,36 @@ export function buildDiscoverabilityHints() {
 }
 
 /**
+ * Return runtime substrate paths + drivers used by the loop. Surfaces the
+ * Mastra LibSQL storage location so agents + operators can reason about
+ * persistence without re-deriving paths. Pure function — values come from
+ * the project structure + `MASTRA_STORAGE_DRIVER` env var convention.
+ *
+ * NOTE: this is a structural snapshot, not a live probe. The actual storage
+ * instance is owned by `tools/learning-loop-mastra/storage.js`; this helper
+ * exists for `loop_describe` discoverability only. If the storage layout
+ * ever moves, update both this and the storage factory.
+ */
+export function listSubstrates() {
+  // The storage data dir is `tools/learning-loop-mastra/data/`, sibling to
+  // the mastra package's `server.js`. `import.meta.url` derivation in
+  // storage.js is the source of truth; the env var convention is
+  // MASTRA_STORAGE_DRIVER (native | web | memory).
+  const storage = {
+    type: "libsql",
+    id: "mastra-storage",
+    path: "tools/learning-loop-mastra/data/mastra-memory.db",
+    driver_env: "MASTRA_STORAGE_DRIVER",
+    driver_default: "native",
+    driver_options: ["native", "web", "memory"],
+    note:
+      "Storage is the Mastra runtime substrate (workflow stateSchema + future OM threads/messages). " +
+      "Meta-state stays at `meta-state.jsonl` per the 2026-06-19 direction-clarification report §3.",
+  };
+  return { storage };
+}
+
+/**
  * List all gate constraint patterns from patterns.json.
  */
 export function listAllGatePatterns(root) {

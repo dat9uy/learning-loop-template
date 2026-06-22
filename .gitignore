@@ -29,3 +29,5 @@ tools/learning-loop-mastra/data/
 **/*.db
 **/*.db-wal
 **/*.db-shm
+
+# Plan 2 PR — `records/meta/.cache/` → `records/meta/` expansion (consistent with 2026-06-12 meta-surface reframe; see AGENTS.md §1 and the comment at line 12 above).

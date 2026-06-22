@@ -38,6 +38,7 @@ export const loopDescribeTool = {
         result.rule_count = promotedRules.length;
         result.active_finding_count = activeFindings.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
+        result.substrates = introspect.listSubstrates();
       } else if (tier === "hot") {
         result.tools = tools.map((t) => ({ name: t.name }));
         result.rules = promotedRules.map((r) => ({
@@ -72,6 +73,7 @@ export const loopDescribeTool = {
         }));
         result.rule_count = promotedRules.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
+        result.substrates = introspect.listSubstrates();
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
         // No expired-status advisory; status was removed in plan 260611-1000-remove-expired-status.
@@ -91,6 +93,7 @@ export const loopDescribeTool = {
         }));
         result.record_types = recordTypes;
         result.gate_patterns = gatePatterns;
+        result.substrates = introspect.listSubstrates();
         result.rules = promotedRules;
         result.active_findings = activeFindings;
         result.all_findings = introspect.listAllFindings(root, { categories });

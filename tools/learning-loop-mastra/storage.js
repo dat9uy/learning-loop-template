@@ -35,6 +35,17 @@ function buildUrl() {
   return `file:${join(DATA_DIR, "mastra-memory.db")}`;
 }
 
+/**
+ * Exported for tests + the loop_describe substrates field. Returns the absolute
+ * path to the storage data directory. Single source of truth: the `__dirname +
+ * "data"` derivation above. If the storage layout ever changes (env-var-driven
+ * path, configurable location), update this and its callers; do not re-derive
+ * the path inline in tests.
+ */
+export function getDataDir() {
+  return DATA_DIR;
+}
+
 // DDL for the parity_records table used by Phase 3's 2 storage workflows
 // (and the parity harness's Test 1). Idempotent on every client.execute().
 const PARITY_DDL = `

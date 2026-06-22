@@ -73,7 +73,7 @@ related:
 - **Multi-step `stateSchema` restructuring for `self_improvement` / `runtime_probe`.** Plan 3 / Plan 1a (operator's call at Plan 3 author time). Plan 2 ships 2 thin `stateSchema = input` workflows consistent with Plan 1's parity-faithful default.
 - **Turso remote backend.** Local file only.
 - **`Mastra.shutdown()` lifecycle hook for storage `close()`.** Add when wiring agents in Plan 3.
-- **Schema-version fingerprint test.** Recommended in researcher A §"Open Questions" Q5; deferred to Plan 2a if schema drift becomes a real concern.
+- **Schema-version fingerprint test.** Recommended in researcher A §"Open Questions" Q5; deferred to **Plan 1a item 1.5** (the next plan after this one merges) per `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md` §"Plan 1a candidates" — see also validate decision 2026-06-19.
 - **Updating `cold-session-discoverability.test.cjs` to enumerate the mastra server's 41 tools.** Plan 1 review deferred item; Plan 4 owns (per `plans/260618-1911-phase-d-plan-1-workflows/plan.md` §"Process patterns" #6). Plan 2 keeps the cold-session test's scope as-is: it verifies the legacy 31-entry `tools/learning-loop-mcp/tools/manifest.json` tool registration shape. The mastra server's 41-tool enumeration is checked by `workflow-parity.test.cjs:159` (the bumped assertion per Phase 4 step 5).
 
 ## Phases
@@ -247,7 +247,7 @@ No phase changes after the consistency sweep. Plan is internally consistent acro
 
 ### Session 2 — 2026-06-19 (validate subcommand, post-red-team + post-Q1.A lock)
 
-**Trigger:** validate subcommand invocation after red team found 4 BLOCKERs (all applied) + 16 MINORs (4 applied including MINOR #4 + #9; 12 deferred to Plan 2a). Operator answered 4 critical questions via AskUserQuestion.
+**Trigger:** validate subcommand invocation after red team found 4 BLOCKERs (all applied) + 16 MINORs (4 applied including MINOR #4 + #9; 12 deferred to Plan 1a, including the schema-fingerprint test as item 1.5). Operator answered 4 critical questions via AskUserQuestion.
 
 **Verification tier:** Full (1 role, 8 high-value claims sampled)
 

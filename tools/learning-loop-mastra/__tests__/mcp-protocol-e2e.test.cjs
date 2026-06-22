@@ -2,6 +2,21 @@
 //
 // Mirrors tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs but points
 // at the learning-loop-mastra server and its 29 deterministic tools.
+//
+// Note (2026-06-22, Plan 2 PR #8): two test relaxations from the original
+// strict-`===` / `mastra_`-prefixed shape, both forced by Phase D Plan 1+2
+// shipping the workflow tool surface alongside the deterministic tools:
+//
+//   1. `assert.ok(result.tools.length >= TOOL_COUNT)` (was `===`): the server
+//      now registers 31 `mastra_*` + 10 `run_workflow_*` = 41 tools, but this
+//      file's `TOOL_COUNT` is read from the 31-entry deterministic
+//      `tools/manifest.json` (it does not include workflows). The exact 41-tool
+//      count is enforced by `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:159`.
+//   2. The `startsWith("mastra_")` prefix check was removed: `run_workflow_*`
+//      and `run_workflow_storage_*` tools don't have that prefix.
+//
+// These relaxations are scope-locked to the protocol-level shape test. The
+// per-tool count and prefix invariants are checked by `workflow-parity.test.cjs`.
 
 const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
