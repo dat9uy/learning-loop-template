@@ -356,7 +356,7 @@ Items deferred from Plan 1 to Plan 3. Plan 3 inherits the workflow parity guaran
 | 3.2 | **Agent reasoning for `workflow_intentional_skip` and `workflow_report_phase_status`.** These workflows are listed as "Tool+Agent" in the brainstorm Q1 table (line 27). Today they ship as pure-compute workflows. Plan 3 may add agent reasoning on top (e.g., the operator describes the skip, the agent proposes a structured record). | brainstorm line 27 | Not in Plan 1 scope; Plan 3 may revisit. |
 | 3.3 | **D-11 (master tracker line 287):** Reconcile 4 tools missing from legacy `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`). Pre-existing inconsistency between legacy `agent-manifest.json` and `tools/manifest.json`; not in Plan 1 scope. | tracker D-11 | One-line addition to legacy `agent-manifest.json` workflow group. |
 | 3.4 | **Phase-report workflow utility.** `workflow_report_phase_status` returns `lifecycle_complete: bool`. With workflow execution now going through `createWorkflow`, the "phase" abstraction may no longer map cleanly. Confirm with Plan 3 author whether the workflow stays as-is or gets restructured. | review-260619-1429 unresolved question #4 | Open question — not blocking. |
-| 3.5 | **TaskUpdate no-op gap mitigation (Plan 1b follow-up).** Plan 1b deleted the broken `mastra_task_update` wrapper (no `claude task update` subcommand; CLI exposes no programmatic task-update interface). New active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`) tracks the upstream gap. Plan 3 must choose: (a) per-agent workaround (string-match "Updated task #N" on native TaskUpdate stdout, ~30 LOC per agent), (b) accept the gap and document per-agent that the upstream fix is deferred, (c) gate agent task mutations on a `meta_state_derive_status` check that requires explicit operator ack. | `meta-260623T0223Z-...` (active; reopens `meta-260622T1439Z-...`); Plan 1b journal `docs/journals/260622-phase-d-plan-1b-shipped.md`; Plan 1b phase 2 | See "Plan 3 TaskUpdate Mitigation — Upstream Gap" sub-section below for full trade-off. Recommended: (b) for first agent cut; revisit if degenerate loops recur (same shape as session `caa56a15-...` 190-call loop on 2026-06-20). |
+| 3.5 | **TaskUpdate no-op gap is out of Plan 3 scope by construction.** Plan 1b deleted the broken `mastra_task_update` wrapper (no `claude task update` subcommand; CLI exposes no programmatic task-update interface). Active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`) tracks the upstream gap. **Scope: Claude Code sessions only** — Mastra Agents have no path to Claude Code's native `TaskUpdate` (their tool surface is the MCP tools the `tools/learning-loop-mastra/` server registers; no Claude Code native tool is bridged in). No Plan 3 action item. The original 190-call degenerate loop (session `caa56a15-...` 2026-06-20) was a Claude Code session, not a Mastra Agent run. | `meta-260623T0223Z-...` (active; reopens `meta-260622T1439Z-...`); Plan 1b journal `docs/journals/260622-phase-d-plan-1b-shipped.md`; Plan 1b phase 2 | Out of scope by construction. Forward-compatibility note: if a future plan bridges Claude Code native tools into the Mastra runtime (Phase F Bridge 7 territory), revisit. |
 
 #### Plan 4 (cutover, blocked on Plans 1+2+3)
 
@@ -487,46 +487,3 @@ The user-facing value of Plan 2 is workflow persistence + Mastra architectural c
 
 ---
 
-## Plan 3 TaskUpdate Mitigation — Upstream Gap (added 2026-06-23)
-
-**Status:** Decision deferred to Plan 3 author. Locked 2026-06-23 in follow-up to Plan 1b's Path B ship (`9ee5eb8 fix(meta): apply Plan 1b review findings on top of Plan 1a`).
-
-### Context
-
-Plan 1a shipped a `mastra_task_update` wrapper in `tools/learning-loop-mcp/tools/task-update.js` to mitigate Claude Code's native `TaskUpdate` tool returning `"Updated task #N"` regardless of whether the status actually changed (the degenerate-loop root cause for session `caa56a15-2db7-4a83-9ec3-8ab26a8de2ff` 2026-06-20: 190 `TaskUpdate(taskId:5, status:completed)` calls in 150s). Plan 1a's wrapper shelled out to `claude task update --id X --status Y`.
-
-Plan 1b's code review found the wrapper **broken in production**: `claude --help` exposes no `task` subcommand (verified 2026-06-22 23:38 UTC; only `agents`, `doctor`, `install`, `mcp`, `setup-token`, `update` are present). Plan 1b Phase 2 Path B deleted the wrapper, the test, and the manifest entry. The original finding `meta-260622T1439Z-claude-code-s-native-taskupdate-tool-returns-updated-task-n` stays resolved (its closure note is correct: "Plan 1a Phase 9 ships the agreed fix" — the fix shipped, it just turned out to be broken). A new active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` tracks the upstream gap with `reopens: [meta-260622T1439Z-...]` for structural lineage.
-
-**The upstream gap:** no Claude Code programmatic task-update interface returns `{changed: bool}`. No CLI subcommand, no `@anthropic-ai/claude-agent-sdk` method, no MCP tool, no hook event. The native `TaskUpdate` tool is the only entry point; it does not expose a no-op signal. Until upstream changes, any agent that calls `TaskUpdate` in a loop cannot self-detect a no-op.
-
-### Options for Plan 3
-
-| Option | LOC | Risk | When to pick |
-|---|---|---|---|
-| **(a) Per-agent stdout parser** — wrap each agent's `TaskUpdate` calls, capture stdout, string-match `"Updated task #N"`, return `{changed: true}` only when the prior status is unknown. ~30 LOC per agent. | ~30 per agent (~90 total) | Brittle: string-match on a non-contracted output format. Will silently regress if Claude Code output format changes. | If Plan 3 agents need to mutate task state autonomously and we accept the brittleness. |
-| **(b) Accept the gap, document per-agent** — Plan 3 agents do not call `TaskUpdate` autonomously. Task mutations are operator-driven or routed through `meta_state_*` registry. | ~0 | Agents cannot self-advance task state. Multi-step agent flows that depend on task state need operator intervention. | **Recommended** for first agent cut. Aligns with §6 Internalization Rule. |
-| **(c) Gate via `meta_state_derive_status` ack** — agents can call `TaskUpdate`, but each call requires the agent to have an operator-acked `meta_state_derive_status` token first. Forces a meta-surface detour for every task mutation. | ~10 per agent | Operator friction. The 190-call loop is structurally impossible because each call requires a separate ack. | If Plan 3 ships agents that must self-advance and we want a hard structural stop on degenerate loops. |
-
-### Recommendation
-
-**Option (b) for first agent cut. Revisit if degenerate loops recur.**
-
-Rationale:
-- **YAGNI:** Plan 3 ships 3 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`). None of them need autonomous `TaskUpdate` mutations. `intakeAgent` is read-only (orient). `scoutAgent` is read-only (filesystem scout). `selfImprovementAgent` mutates meta-state (via `meta_state_*` tools), not native tasks.
-- **DRY:** routing task mutations through the meta-state registry is one mechanism, not two. Agents gain task state via `meta_state_query_drift` (already on the registry surface) or by emitting `meta_state_report` entries that operators translate to task state. No need to re-invent a task-mutation layer.
-- **KISS:** option (a) is brittle (string-match); option (c) adds operator friction for a 3-agent first cut. Option (b) is the simplest viable default.
-- **Forward-compatible:** if Plan 3.5 or Plan 5 needs task mutation, options (a) or (c) can be added per-agent without changing the other two.
-
-### The 190-call loop shape — what to watch for
-
-If the upstream gap re-surfaces as a Plan 3 incident, the symptom will match session `caa56a15-...` exactly: an agent calls `TaskUpdate` in a tight loop, each call returns "Updated task #N", the agent cannot self-detect the no-op, and the loop consumes tokens until context budget or operator interrupt. The cold-tier discoverability hint already covers `pnpm-test-discipline` for similar loops; Plan 3 should add a `taskupdate-noop-undetected` hint that mirrors the same stop conditions. Filing: `meta_state_report({ category: "loop-anti-pattern", subtype: "taskupdate-noop-undetected" })` with `evidence_journal` pointing to the new incident.
-
-### Cross-references
-
-- **Active finding:** `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`, `expires_at: null`).
-- **Original finding (resolved, re-surfaced via `reopens`):** `meta-260622T1439Z-claude-code-s-native-taskupdate-tool-returns-updated-task-n`.
-- **Plan 1b phase 2:** `plans/260622-2119-phase-d-plan-1b-review-fixups/phase-02-critical-fixes.md` Path B steps 1-6.
-- **Plan 1b journal:** `docs/journals/260622-phase-d-plan-1b-shipped.md` Decisions #1, #5 + Forward-looking §"Plan 3 (agents) is unblocked".
-- **Original degenerate loop trace:** `plans/reports/debug-260620-1713-caa56a15-stuck-taskupdate-loop-report.md`.
-- **Code-reviewer report (Critical C1):** `plans/reports/from-code-reviewer-to-planner-260622-2119-phase-d-plan-1a-review-report.md`.
-- **Parent report (this file):** Deferred items table 3.5 (cross-references this section).
