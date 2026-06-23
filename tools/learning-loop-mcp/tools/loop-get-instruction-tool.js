@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { buildDiscoverabilityHints } from "#mcp/core/loop-introspect.js";
+import { buildDiscoverabilityHints, buildProcessHints } from "#mcp/core/loop-introspect.js";
 
 export const HINT_KEY_MAP = {
   "internalization-rule": 0,
@@ -18,7 +18,12 @@ export const HINT_KEY_MAP = {
   "phase-a-reframe": 13,
   "session-id-query": 14,
   "runtime-agnostic-features": 15,
-  "pnpm-test-discipline": 16,
+};
+
+export const HINT_KEY_MAP_PROCESS = {
+  "pnpm-test-discipline": 0,
+  "pr-body-registry-deltas": 1,
+  "runtime-agnostic-audit": 2,
 };
 
 export const HINT_SUGGESTIONS = [
@@ -38,8 +43,44 @@ export const HINT_SUGGESTIONS = [
   "Phase A reframe: the meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
   "Hook-emitted batches: query by `session_id` via `meta_state_list`; do not client-side filter compact output.",
   "Runtime-agnostic features: use shim-not-fork + cross-surface-iteration; audit with `check_runtime_agnostic` before shipping.",
-  "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
 ];
+
+export const HINT_SUGGESTIONS_PROCESS = [
+  "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
+  "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
+  "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
+];
+
+/**
+ * Resolve a hint key by searching both discoverability and process hint maps.
+ * Returns { hint, suggestion, source } or null if not found.
+ */
+function resolveHint(key) {
+  const hints = buildDiscoverabilityHints();
+  const processHints = buildProcessHints();
+
+  // Check discoverability map first
+  const discIndex = typeof key === "number" ? key : HINT_KEY_MAP[key];
+  if (discIndex !== undefined && discIndex >= 0 && discIndex < hints.length) {
+    return {
+      hint: hints[discIndex],
+      suggestion: HINT_SUGGESTIONS[discIndex],
+      source: "discoverability",
+    };
+  }
+
+  // Check process map
+  const procIndex = typeof key === "number" ? (key - hints.length) : HINT_KEY_MAP_PROCESS[key];
+  if (procIndex !== undefined && procIndex >= 0 && procIndex < processHints.length) {
+    return {
+      hint: processHints[procIndex],
+      suggestion: HINT_SUGGESTIONS_PROCESS[procIndex],
+      source: "process",
+    };
+  }
+
+  return null;
+}
 
 export const loopGetInstructionTool = {
   name: "loop_get_instruction",
@@ -49,24 +90,26 @@ export const loopGetInstructionTool = {
       z.string(),
       z.number().int().nonnegative(),
       z.array(z.union([z.string(), z.number().int().nonnegative()])),
-    ]).describe("Hint identifier: named slug, 0-based index, or array of slugs/indices."),
+    ]).describe("Hint identifier: named slug, a 0-based index, or array of slugs/indices."),
   },
   handler: async ({ key }) => {
-    const hints = buildDiscoverabilityHints();
     const keys = Array.isArray(key) ? key : [key];
     const results = [];
 
     for (const k of keys) {
-      const index = typeof k === "number" ? k : HINT_KEY_MAP[k];
-      if (index === undefined || index < 0 || index >= hints.length) {
-        results.push({ key: k, error: `Unknown hint key: ${k}` });
-      } else {
+      const resolved = resolveHint(k);
+      if (resolved) {
         results.push({
           key: k,
-          index,
-          hint: hints[index],
-          suggestion: HINT_SUGGESTIONS[index],
+          index: resolved.source === "discoverability"
+            ? (typeof k === "number" ? k : HINT_KEY_MAP[k])
+            : undefined,
+          hint: resolved.hint,
+          suggestion: resolved.suggestion,
+          source: resolved.source,
         });
+      } else {
+        results.push({ key: k, error: `Unknown hint key: ${k}` });
       }
     }
 

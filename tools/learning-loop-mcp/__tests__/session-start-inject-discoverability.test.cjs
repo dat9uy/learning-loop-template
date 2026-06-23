@@ -23,7 +23,9 @@ test("SessionStart hook writes discoverability hints to session-context.json", {
   assert.strictEqual(code, 0, `hook exited ${code}; stderr: ${stderr}`);
 
   const context = JSON.parse(fs.readFileSync(CONTEXT_PATH, "utf8"));
-  assert.ok(Array.isArray(context.hints), "hints must be array");
-  assert.ok(context.hints.length > 0, "hints must not be empty");
+  assert.ok(Array.isArray(context.discoverability_hints), "discoverability_hints must be array");
+  assert.ok(context.discoverability_hints.length > 0, "discoverability_hints must not be empty");
+  assert.ok(Array.isArray(context.process_hints), "process_hints must be array");
+  assert.ok(context.process_hints.length >= 1, "process_hints must have ≥1 entry");
   assert.ok(typeof context.injected_at === "string", "injected_at must be string");
 });

@@ -1,0 +1,64 @@
+# Meta-state registry delta advisory
+# Runs on PRs touching meta-state.jsonl; emits delta summary to $GITHUB_STEP_SUMMARY.
+# Advisory-only (never fails the check). Per finding meta-260622T1708Z.
+name: Meta-state registry delta advisory
+
+on:
+  pull_request:
+    paths:
+      - 'meta-state.jsonl'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  registry-deltas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch base ref
+        run: |
+          git fetch origin "$GITHUB_BASE_REF" --depth=1 2>/dev/null || \
+            git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" "$GITHUB_BASE_REF" --depth=1
+        continue-on-error: true
+
+      - name: Diff registry
+        run: |
+          set -euo pipefail
+          git diff --unified=0 "origin/$GITHUB_BASE_REF"...HEAD -- meta-state.jsonl > /tmp/registry.diff || true
+
+      - name: Emit delta summary
+        run: tools/scripts/ci-registry-deltas.sh /tmp/registry.diff
+
+      - name: Check PR body sections
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const body = pr.body || '';
+            const sections = [
+              'Swept entries',
+              'Resolved entries',
+              'New entries',
+              'Promoted rules',
+              'Superseded entries',
+              'Archived entries',
+            ];
+            for (const s of sections) {
+              const re = new RegExp(`^## ${s}\\s*\\n([^#]+)`, 'm');
+              const m = body.match(re);
+              if (!m || m[1].trim().length === 0) {
+                core.warning(`PR body section "${s}" is empty or missing`);
+              }
+            }

@@ -126,7 +126,7 @@ The universal hooks handle tool name differences between surfaces:
 | `meta_state_batch` | Atomic batch CRUD: one tool, one lock, one cache invalidation (cap 500 ops) |
 | `meta_state_archive` | Move entries to `meta-state.jsonl`'s archive; structural fix for size-overrun findings |
 | `loop_describe` | Discover the loop's operational surface, active rules, and curated instructions (introspection; `tier: summary \| hot \| warm \| cold`) |
-| `loop_get_instruction` | Return a curated instruction from `loop_describe`'s `discoverability_hints` block by key |
+| `loop_get_instruction` | Return a curated instruction from `loop_describe`'s `discoverability_hints` or `process_hints` block by key |
 | `gate_check` | Consult a constraint gate (e.g., `bash-docker`, `write-records`, `vendor-api`); returns `ok` / `block` / `escalate` |
 | `gate_mark_preflight` | Mark the preflight checklist complete for a surface (legacy substrate carry-over; the meta-surface does not require preflight) |
 | `budget_check` | Check resource budget for an external system (e.g., `vnstock` device-slots) |
@@ -137,7 +137,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces a `discoverability_hints` block teaching the Internalization Rule, the meta-surface framing, and the most recent active findings. Read this block before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mcp/core/loop-introspect.js#DISCOVERABILITY_HINTS`.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mcp/core/loop-introspect.js#PROCESS_HINTS`.
 
 ---
 

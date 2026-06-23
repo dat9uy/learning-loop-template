@@ -74,7 +74,6 @@ export const loopDescribeTool = {
         result.rule_count = promotedRules.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.substrates = introspect.listSubstrates();
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
         // No expired-status advisory; status was removed in plan 260611-1000-remove-expired-status.
         const allEntries = readRegistry(root);
@@ -85,6 +84,23 @@ export const loopDescribeTool = {
         result.registry_summary = introspect.buildRegistrySummary(allEntries);
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
+        result.discoverability_hints = introspect.buildDiscoverabilityHints();
+        result.process_hints = introspect.buildProcessHints();
+
+        // H6 ordering gate: every consult-checklist rule must have a PROCESS_HINTS row.
+        const processHints = result.process_hints;
+        for (const rule of promotedRules) {
+          if (rule.pattern_type === "consult-checklist") {
+            const hasHint = processHints.some((h) => h.includes(rule.id));
+            if (!hasHint) {
+              warnings.push(
+                `H6 ordering gate: consult-checklist rule "${rule.id}" has no corresponding PROCESS_HINTS row. ` +
+                `Add a hint referencing this rule to core/loop-introspect.js PROCESS_HINTS.`,
+              );
+            }
+          }
+        }
+
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
@@ -207,6 +223,7 @@ export const loopDescribeTool = {
         result.description_mode = description_mode;
 
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
+        result.process_hints = introspect.buildProcessHints();
         result.cache_hit = cacheHit;
         result.built_at = builtAt;
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
