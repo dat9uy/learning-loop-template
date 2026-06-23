@@ -88,7 +88,7 @@ export const intakeAgent = createLoopAgent({
   description: "Orient operator into current meta-state; produce ordered deterministic verification plan",
   instructions,
   tools,
-  modelOverride: agentsManifest.intake_agent.model, // passed to factory; factory uses this if set
+  agentsManifest: agentsManifest.agents, // passed to factory; 3-layer lookup runs via resolveAgentModel
 });
 ```
 
@@ -200,7 +200,7 @@ The dict keys (`intake_agent`, `scout_agent`, `self_improvement_agent`) are the 
 ## Implementation Steps
 
 1. **Read researcher-B's report §1 verbatim for the 3 instruction strings.** Copy each string into the corresponding `instructions/<name>.js` file as the default export. The instruction files have a 2-line header comment citing the source (`plans/reports/researcher-B-260623-1619-...`).
-2. **Write Test 1 RED.** `agent-direct-parity.test.js` test 1 imports `intakeAgent` from `agents/intake-agent.js`. Asserts: `intakeAgent.id === "intakeAgent"`, `intakeAgent.name === "intakeAgent"`, `intakeAgent.memory === undefined`, `intakeAgent.instructions` includes "Bound surface: the meta-surface" (the first marker string), and `intakeAgent.tools` has 9 entries (the locked read-only tool surface from researcher-B §2.1).
+2. **Write Test 1 RED.** `agent-direct-parity.test.js` test 1 imports `intakeAgent` from `agents/intake-agent.js`. Asserts: `intakeAgent.id === "intakeAgent"`, `intakeAgent.name === "intakeAgent"`, `intakeAgent.memory === undefined`, `intakeAgent.instructions` includes "Bound surface: the meta-surface" (the first marker string), and `intakeAgent.tools` has 8 entries (the locked read-only tool surface from researcher-B §2.1; `buildReadOnlyMetaStateTools` returns 8 tools).
 3. **Write `build-readonly-meta-state-tools.js` helper.** Returns the 8 read-only tools (`mastra_loop_describe`, `mastra_loop_get_instruction`, `mastra_meta_state_list`, `mastra_meta_state_query_drift`, `mastra_meta_state_derive_status`, `mastra_meta_state_relationships`, `mastra_runtime_state_read`, `mastra_check_runtime_agnostic`). Note: researcher-B's report lists 9 tools for intakeAgent; the 9th (`mastra_meta_state_get_relationship`) is not a registered MCP tool in the current manifest (the canonical name is `mastra_meta_state_relationships`). Phase 3 ships 8 read-only tools; the 9th is added in Phase 4 if the operator confirms the canonical name.
 4. **Write `build-write-meta-state-tools.js` helper for selfImprovementAgent.** Returns the 8 read-only tools PLUS the 8 write tools from researcher-B §2.3 (excluding `mastra_meta_state_batch` per the locked scope). Total: 16 tools for selfImprovementAgent.
 5. **Refactor `server-tools.js` out of `server.js:22-39`.** Extract the `tools` dict construction (loop over `MANIFEST` + createLoopTool call per entry) into `server-tools.js`. `server.js` imports `buildToolsDict()` from `server-tools.js`. No behavior change in this phase; the refactor is mechanical.

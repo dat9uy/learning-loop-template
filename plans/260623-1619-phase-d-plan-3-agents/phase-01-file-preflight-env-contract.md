@@ -16,7 +16,7 @@ Verify the technical preconditions for Plan 3: `@mastra/core@1.42.0` ships the o
 ## Requirements
 
 - **Functional:**
-  - Verify `createMockModel` is importable from `@mastra/core/test-utils` (the path the parity harness will use).
+  - Verify `createMockModel` is importable from `@mastra/core/test-utils/llm-mock` (the path the parity harness will use).
   - Verify the Kimi router resolves `kimi-for-coding/k2p6` without a vendor import (Mastra's model router handles the package install lazily; a probe test confirms the magic string is accepted by `MastraModelConfig`).
   - Document the env-var contract in `.claude/coordination/MASTRA_AGENT_MODEL.md` (operator-facing).
   - File a `meta_state_log_change` locking the no-`dotenv` decision.
@@ -58,7 +58,7 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 2. **Verify `kimi-for-coding/k2p6` is a valid `ModelRouterModelId`.** Inspect `node_modules/@mastra/core/dist/llm/model/shared.types.d.ts` for the `MastraModelConfig` type union. Confirm `ModelRouterModelId` is a string-typed union that accepts arbitrary `provider/model` strings (it's a generic branded string, not an enum). Document the verification in the probe script's console output.
 3. **Confirm no `dotenv` is used anywhere in the loop.** Run `grep -rn "dotenv\|require.*dotenv\|from .dotenv" tools/learning-loop-mcp/ tools/learning-loop-mastra/ 2>/dev/null` and verify zero matches. Document the output in the probe script.
 4. **Create the probe script.** Write `tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs` (ESM, since `tools/learning-loop-mastra/` is ESM-only per the existing `create-loop-*.js` files). The script:
-   - Imports `createMockModel` from `@mastra/core/test-utils`.
+   - Imports `createMockModel` from `@mastra/core/test-utils/llm-mock`.
    - Constructs a stub mock with `mockText: "probe-ok"`.
    - Calls `model.doGenerate({...})` to verify the helper runs end-to-end.
    - Logs each step to stdout for the operator to inspect.

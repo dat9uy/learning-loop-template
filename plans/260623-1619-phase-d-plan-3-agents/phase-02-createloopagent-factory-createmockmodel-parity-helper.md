@@ -22,7 +22,7 @@ Ship `createLoopAgent` factory + `resolveAgentModel` helper. Mirrors `createLoop
 - **Non-functional:**
   - No new vendor deps.
   - ESM (`tools/learning-loop-mastra/` is ESM; `.js` extensions on imports per existing pattern).
-  - The factory does NOT import `@mastra/core/test-utils` (the test helper is test-only; production code never imports it).
+  - The factory does NOT import `@mastra/core/test-utils/llm-mock` (the test helper is test-only; production code never imports it).
   - The factory applies the parity-shim to any tool `inputSchema` passed via `tools` (same pattern as `createLoopTool`).
 
 ## Architecture
@@ -46,15 +46,15 @@ export function resolveAgentModel(agentId, agentsManifest) {
   return DEFAULT_AGENT_MODEL;
 }
 
-export function createLoopAgent({ id, name, description, instructions, modelOverride, tools }) {
+export function createLoopAgent({ id, name, description, instructions, modelOverride, tools, agentsManifest }) {
   if (!id) throw new Error(`createLoopAgent: id is required.`);
   if (!name) throw new Error(`createLoopAgent: name is required for "${id}".`);
   if (!instructions) throw new Error(`createLoopAgent: instructions are required for "${id}".`);
   if (!/^[a-z][a-z0-9_]*$/.test(id)) {
     throw new Error(`createLoopAgent: id "${id}" must match /^[a-z][a-z0-9_]*$/.`);
   }
-  // modelOverride is for tests only; production agents use agentsManifest lookup
-  const model = modelOverride ?? resolveAgentModel(id, /* agentsManifest passed by caller */ undefined);
+  // modelOverride takes precedence (for tests). Otherwise, run the 3-layer lookup.
+  const model = modelOverride ?? resolveAgentModel(id, agentsManifest);
   return new Agent({
     id,
     name,
@@ -67,11 +67,11 @@ export function createLoopAgent({ id, name, description, instructions, modelOver
 }
 ```
 
-**`createMockModel` parity helper** — separate file at `tools/learning-loop-mastra/__tests__/helpers/create-mock-model.cjs`. The helper is test-only (lives under `__tests__/helpers/` per the existing `with-mcp-server.js` pattern). Re-exports `createMockModel` from `@mastra/core/test-utils` with a default config that includes `spyGenerate` recording the agent's prompt for assertion.
+**`createMockModel` parity helper** — separate file at `tools/learning-loop-mastra/__tests__/helpers/create-mock-model.cjs`. The helper is test-only (lives under `__tests__/helpers/` per the existing `with-mcp-server.js` pattern). Re-exports `createMockModel` from `@mastra/core/test-utils/llm-mock` with a default config that includes `spyGenerate` recording the agent's prompt for assertion.
 
 ```js
 // tools/learning-loop-mastra/__tests__/helpers/create-mock-model.cjs
-const { createMockModel: mastraCreateMockModel } = require("@mastra/core/test-utils");
+const { createMockModel: mastraCreateMockModel } = require("@mastra/core/test-utils/llm-mock");
 
 function createMockModelWithSpy({ mockText, spyGenerate } = {}) {
   const calls = [];
@@ -126,19 +126,19 @@ The test helper records `calls` so the parity test can assert "the agent's promp
 3. **Run the tests RED.** Verify all 4 fail with `ReferenceError: createLoopAgent is not defined`. The RED state locks the contract before implementation.
 4. **Implement `createLoopAgent` + `resolveAgentModel`.** Write `tools/learning-loop-mastra/create-loop-agent.js` with the factory + helper as shown in the Architecture section above.
 5. **Run the tests GREEN.** Verify all 4 pass.
-6. **Write the `createMockModelWithSpy` test helper.** Create `tools/learning-loop-mastra/__tests__/helpers/create-mock-model.cjs`. The helper wraps `@mastra/core/test-utils#createMockModel` with a `calls` array recorder.
+6. **Write the `createMockModelWithSpy` test helper.** Create `tools/learning-loop-mastra/__tests__/helpers/create-mock-model.cjs`. The helper wraps `@mastra/core/test-utils/llm-mock#createMockModel` with a `calls` array recorder.
 7. **Verify the helper.** Write a one-shot assertion in the same file (or a small smoke test): instantiate the helper with `mockText: "ok"`, call `model.doGenerate({...})` once, assert `calls.length === 1` and `calls[0]` has the expected shape. This is not a test file; it's the helper's self-check (run by the agent parity test in Phase 5).
 8. **Run `pnpm test` to confirm no regressions.** The Plan 1b baseline is 1140 pass / 0 fail / 1 skipped. Phase 2 adds 4 tests → 1144 expected.
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `createLoopAgent({ id, name, description?, instructions, modelOverride?, tools? })` returns a `new Agent({...})` instance
+- [ ] `createLoopAgent({ id, name, description?, instructions, modelOverride?, tools?, agentsManifest? })` returns a `new Agent({...})` instance
 - [ ] `resolveAgentModel(agentId, agentsManifest?)` implements 3-layer lookup
 - [ ] Factory validates `id` matches `/^[a-z][a-z0-9_]*$/`
 - [ ] Factory throws on missing `id`, `name`, or `instructions`
 - [ ] Factory does NOT pass a `memory` field (memory-less by default)
 - [ ] Test helper `createMockModelWithSpy({ mockText, spyGenerate? })` records `calls` array
-- [ ] Test helper passes through to `@mastra/core/test-utils#createMockModel`
+- [ ] Test helper passes through to `@mastra/core/test-utils/llm-mock#createMockModel`
 - [ ] Parity-shim is NOT applied to the `Agent` constructor directly (no `inputSchema` on Agent); document this in the factory header comment
 
 ## Test Scenario Matrix (deep mode)
@@ -157,7 +157,7 @@ The test helper records `calls` so the parity test can assert "the agent's promp
 
 - **Reads from:**
   - `@mastra/core/agent` (`Agent` class — the production primitive)
-  - `@mastra/core/test-utils` (`createMockModel` — the test-only mock helper)
+  - `@mastra/core/test-utils/llm-mock` (`createMockModel` — the test-only mock helper)
   - `./schema-parity.js` (`buildParitySchema` — parity-shim; reused from `createLoopTool`)
   - `process.env.MASTRA_AGENT_MODEL` (the 3-layer lookup layer 2)
 - **Writes to:**
@@ -183,7 +183,7 @@ The test helper records `calls` so the parity test can assert "the agent's promp
 - **`resolveAgentModel` reads `process.env.MASTRA_AGENT_MODEL` at import time vs call time.** Risk: low. **Mitigation:** The function reads the env var at call time, not at import time. Tests can set/restore the env var per-test with `beforeEach`/`afterEach` hooks.
 - **The factory pattern does not exactly mirror `createLoopTool`.** Risk: low. **Mitigation:** Documented in the factory header comment: agents have no `inputSchema`/`outputSchema` on the constructor directly (per `AgentConfigBase`); the parity-shim applies to each `tools[name].inputSchema` instead. The factory does not pre-attach the shim; the `tools` object passed in is assumed to have shim-attached schemas (per the Plan 1 + Plan 2 pattern where each `createTool`/`createWorkflow` call attaches its own shim). Phase 3's 3 wrapper files attach the shim to each tool they construct.
 - **Test helper's `calls` array grows unbounded.** Risk: very low (each test calls `doGenerate` 1-2 times). **Mitigation:** Helper is test-only; no production exposure. If a future test calls the agent many times, the `calls` array is asserted for length; OOM is not a concern at the expected test scale.
-- **`@mastra/core/test-utils` import path drifts in a future version.** Risk: low. **Mitigation:** Pinned to `@mastra/core@1.42.0` (matches Plan 1 + Plan 2's pin). A future upgrade will require a deliberate plan to re-verify the import.
+- **`@mastra/core/test-utils/llm-mock` import path drifts in a future version.** Risk: low. **Mitigation:** Pinned to `@mastra/core@1.42.0` (matches Plan 1 + Plan 2's pin). A future upgrade will require a deliberate plan to re-verify the import.
 
 ## Security Considerations
 

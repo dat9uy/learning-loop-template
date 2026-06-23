@@ -55,12 +55,35 @@ before(async () => {
 });
 ```
 
-**Two design options for injecting the mock:**
+**Mock injection design (red-team Finding 2 fix):**
 
-1. **Option A: patch `agents-manifest.json` in-test.** `before` reads the manifest, replaces each `model` field with a special marker string `"__MOCK_LLM__"`. The server's `resolveAgentModel` recognizes the marker and substitutes the mock. Restore in `after`.
-2. **Option B: per-test spawn with a test-only manifest.** `before` copies `agents-manifest.json` to a temp file, patches the `model` field, sets `MASTRA_AGENTS_MANIFEST` env var to the temp file path. Server reads the patched manifest. Restore in `after`.
+The `with-mcp-server.js` helper spawns a child process. JavaScript objects (`createMockModel` returns a model instance) cannot cross process boundaries via JSON files or env vars. The mock injection must happen within the spawned server process, not from the test process.
 
-> **Architectural decision:** Option B is cleaner — it does not require the production `createLoopAgent` to recognize a `__MOCK_LLM__` marker (which would be a code smell). Option B adds a test-only path: `MASTRA_AGENTS_MANIFEST` env var overrides the default manifest path. This is a non-invasive, test-only extension.
+**Solution: per-test server spawn + `resolveAgentModel` marker recognition.**
+
+1. The test fixture (`agents-manifest.test.json`) sets `model: "__MOCK_LLM__"` — a string marker in the JSON file.
+2. `resolveAgentModel()` in `create-loop-agent.js` recognizes the `"__MOCK_LLM__"` marker. When detected, it checks a module-level registry (`__testMockModels__`) for a pre-registered mock. If found, returns the mock instance. If not found, throws with a clear error.
+3. The test registers its `createMockModelWithSpy()` result into the registry BEFORE spawning the server. Since `create-loop-agent.js` is a module imported by the agent wrappers, and the agent wrappers are imported by `server.js`, the registry is shared within the same process.
+4. Each test spawns a fresh server via `connectMcpServer()` (same pattern as `workflow-parity.test.cjs` which spawns per-test or per-describe). The `MASTRA_AGENTS_MANIFEST` env var points to the test fixture.
+
+```js
+// tools/learning-loop-mastra/create-loop-agent.js — add test-only mock registry
+export const __testMockModels__ = new Map(); // agentId -> mock model instance
+
+export function resolveAgentModel(agentId, agentsManifest) {
+  // Layer 0 (test-only): check mock registry
+  if (__testMockModels__.has(agentId)) return __testMockModels__.get(agentId);
+  // Layer 1: per-agent manifest field
+  const perAgent = agentsManifest?.[agentId]?.model;
+  if (perAgent && perAgent !== "__MOCK_LLM__") return perAgent;
+  // Layer 2: env var
+  if (process.env.MASTRA_AGENT_MODEL) return process.env.MASTRA_AGENT_MODEL;
+  // Layer 3: code default
+  return DEFAULT_AGENT_MODEL;
+}
+```
+
+> **Why this is safe:** `__testMockModels__` is a `Map` that is empty in production (no code writes to it except tests). The `"__MOCK_LLM__"` string is never a valid `ModelRouterModelId` (Mastra router rejects it). The registry check is O(1) and has no side effects. This is the same pattern as test-only global stubs in other Node.js test harnesses.
 
 **`MASTRA_AGENTS_MANIFEST` env var** (added in Phase 4 step 5 if not already present):
 
@@ -72,60 +95,58 @@ const AGENTS_MANIFEST = JSON.parse(readFileSync(AGENTS_MANIFEST_PATH, "utf8"));
 
 This env var is test-only. The plan does NOT document it in the operator-facing `.claude/coordination/MASTRA_AGENT_MODEL.md` (the env var is internal to the test harness).
 
-**Per-agent test mock injection:**
+**Per-agent test mock injection (red-team Finding 5 fix — correct `callTool` API):**
 
 ```js
 // agent-parity.test.cjs — Phase 5.2 (intakeAgent invocation)
+// Note: callTool(name, args) — positional args, NOT ({name, arguments}).
+// with-mcp-server.js already parses content[0].text, returning the parsed object.
 test("ask_intake_agent produces expected output with mocked LLM", { timeout: 15000 }, async () => {
   const { model, calls } = createMockModelWithSpy({
-    mockText: JSON.stringify({
-      rules_in_force: ["rule-pr-body-registry-deltas"],
-      loop_designs: [],
-      drift_findings: [],
-      verification_steps: ["step 1", "step 2"],
-      handoff: "selfImprovementAgent",
-    }),
+    mockText: "intake-agent-response",
     spyGenerate: (props) => {
-      // Assert: the agent's prompt includes the expected instructions marker
       assert.match(JSON.stringify(props), /Bound surface: the meta-surface/);
     },
   });
-  // Inject model into the test-only manifest; reload server
-  // ... (setup per Option B)
-  const result = await handles.callTool({
-    name: "ask_intake_agent",
-    arguments: { message: "What rules are in force?" },
-  });
-  const text = JSON.parse(result.content[0].text);
-  assert.equal(text.text, expectedText);
-  assert.equal(calls.length, 1);
+  // Register mock BEFORE spawning server
+  const { __testMockModels__ } = await import("../create-loop-agent.js");
+  __testMockModels__.set("intakeAgent", model);
+  const handles = await connectMcpServer(/* env: MASTRA_AGENTS_MANIFEST points to test fixture */);
+  try {
+    const result = await handles.callTool("ask_intake_agent", { message: "What rules are in force?" });
+    // result is already parsed by with-mcp-server.js — no JSON.parse needed
+    assert.equal(result.text, "intake-agent-response");
+    assert.equal(calls.length, 1);
+  } finally {
+    __testMockModels__.delete("intakeAgent");
+    await handles.cleanup();
+  }
 });
 ```
 
-**Empirical probe (Phase 5.1):**
+**Empirical probe (Phase 5.1) — truly exploratory (red-team Finding 2/8 fix):**
 
 ```js
 test("Phase 5.1: empirical probe of ask_intake_agent MCP response shape", { timeout: 15000 }, async () => {
-  // First run: minimal mock, observe raw response
-  // Log the response shape for documentation
-  // Lock the assertion shape based on the observation
-  const result = await handles.callTool({
-    name: "ask_intake_agent",
-    arguments: { message: "probe" },
-  });
-  console.log("EMPIRICAL PROBE result:", JSON.stringify(result, null, 2));
-  // Assertions: result has content[0].text; content[0].text is JSON-stringified
-  assert.ok(result.content);
-  assert.ok(Array.isArray(result.content));
-  assert.ok(result.content[0]);
-  assert.equal(result.content[0].type, "text");
-  // Lock: text is JSON-stringified AgentGenerateResult (per researcher-A Q4)
-  const parsed = JSON.parse(result.content[0].text);
-  assert.ok(parsed.text, "expected `text` field in response");
+  const { model } = createMockModelWithSpy({ mockText: "probe-response" });
+  const { __testMockModels__ } = await import("../create-loop-agent.js");
+  __testMockModels__.set("intakeAgent", model);
+  const handles = await connectMcpServer();
+  try {
+    const result = await handles.callTool("ask_intake_agent", { message: "probe" });
+    console.log("EMPIRICAL PROBE result:", JSON.stringify(result, null, 2));
+    // Truly exploratory: assert only that we got a non-null result
+    assert.ok(result != null, "expected non-null result from ask_intake_agent");
+    // Document the observed shape in a comment after this test runs
+    // Expected (from researcher-A Q4): result has a `text` field
+  } finally {
+    __testMockModels__.delete("intakeAgent");
+    await handles.cleanup();
+  }
 });
 ```
 
-The empirical probe is the first test in the file; the format is locked based on its output. The remaining tests use the locked format.
+The empirical probe is the first test in the file. It logs the full response shape WITHOUT asserting specific fields. After observing, the implementer adds a comment documenting the locked format, then writes the remaining 7 tests against the observed shape.
 
 ## Related Code Files
 

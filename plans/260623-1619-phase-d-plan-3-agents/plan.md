@@ -1,6 +1,6 @@
 ---
 title: "Phase D Plan 3 — Mastra Agents Migration (D4+D7)"
-description: "Promote 3 meta-surface agents to createAgent with createLoopAgent factory + per-agent model config + agent parity harness (mocked LLM via @mastra/core/test-utils). Ships D4+D7 from master tracker. Plans 1+2 already shipped; Plan 4 (cutover) is blocked on this. Per-agent memory (OM) deferred to Phase 5; Plan 3 ships memory-less agents. Per-plan meta_state_log_change + D-11 reconciliation folded in."
+description: "Promote 3 meta-surface agents to createAgent with createLoopAgent factory + per-agent model config + agent parity harness (mocked LLM via @mastra/core/test-utils/llm-mock). Ships D4+D7 from master tracker. Plans 1+2 already shipped; Plan 4 (cutover) is blocked on this. Per-agent memory (OM) deferred to Phase 5; Plan 3 ships memory-less agents. Per-plan meta_state_log_change + D-11 reconciliation folded in."
 status: pending
 priority: P1
 branch: "260623-1619-phase-d-plan-3-agents"
@@ -32,11 +32,11 @@ related:
   - tools/learning-loop-mastra/__tests__/with-mcp-server.js (spawn harness reused)
   - tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs (39→41→44 enumeration gate; bumps assertion)
   - tools/learning-loop-mastra/__tests__/storage-parity.test.cjs (11-test precedent for the parity file shape)
-  - node_modules/@mastra/core/test-utils (createMockModel — official mock helper for agent parity tests)
+  - node_modules/@mastra/core/test-utils/llm-mock (createMockModel — official mock helper for agent parity tests)
   - node_modules/@mastra/mcp/dist/index.js (ask_<agentKey> conversion; verified at lines around the agentToolName block)
   - node_modules/@mastra/core/dist/agent/types.d.ts#AgentConfigBase (Agent constructor shape)
   - node_modules/@mastra/core/dist/llm/model/shared.types.d.ts#MastraModelConfig (model router type; kimi-for-coding/k2p6 valid)
-  - "@mastra/core 1.42.0 + @mastra/mcp 1.10.0 (pinned; @mastra/core/test-utils ships createMockModel in 1.42.0)"
+  - "@mastra/core 1.42.0 + @mastra/mcp 1.10.0 (pinned; @mastra/core/test-utils/llm-mock ships createMockModel in 1.42.0)"
 ---
 
 # Phase D Plan 3 — Mastra Agents Migration (D4+D7)
@@ -45,7 +45,7 @@ related:
 
 **Plan 3 of the 4-plan Phase D stack** (decided 2026-06-18, see `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md`). Promotes 3 meta-surface agents from concept to `createAgent` wrappers. Ships **D4 + D7** from the master tracker. Plans 1 + 2 are shipped; Plan 4 (cutover) is blocked on this.
 
-**Why D4/D7 must be its own plan:** the agent migration introduces a new MCPServer registration namespace (`agents: {...}` → auto-prefixed to `ask_<agentKey>`), a new factory (`createLoopAgent`), a per-agent model config resolver (3 layers: manifest per-agent field → `MASTRA_AGENT_MODEL` env var → code default), an LLM mocking strategy for the parity harness (official `@mastra/core/test-utils#createMockModel`), and a parity gate that proves the 3 agents produce expected output deterministically. Per the operator preference for per-feature parity, this concern gets its own plan.
+**Why D4/D7 must be its own plan:** the agent migration introduces a new MCPServer registration namespace (`agents: {...}` → auto-prefixed to `ask_<agentKey>`), a new factory (`createLoopAgent`), a per-agent model config resolver (3 layers: manifest per-agent field → `MASTRA_AGENT_MODEL` env var → code default), an LLM mocking strategy for the parity harness (official `@mastra/core/test-utils/llm-mock#createMockModel`), and a parity gate that proves the 3 agents produce expected output deterministically. Per the operator preference for per-feature parity, this concern gets its own plan.
 
 **User decisions locked 2026-06-23 (the gate for this plan):**
 - All 3 agents use model `kimi-for-coding/k2p6` (Mastra router format; auth via `KIMI_API_KEY` env var). Per Mastra docs `https://mastra.ai/models/providers/kimi-for-coding` — `kimi-for-coding/k2p6` is a `ModelRouterModelId` (verified at `node_modules/@mastra/core/dist/llm/model/shared.types.d.ts`).
@@ -62,13 +62,13 @@ related:
 1. **Phase 1 — File preflight + env contract.** Verify the `kimi-for-coding/k2p6` model router resolves on the installed `@mastra/core@1.42.0`; confirm no new vendor deps needed; document the env-var contract (`MASTRA_AGENT_MODEL`, `KIMI_API_KEY`, no `dotenv`); file `meta_state_log_change` for the no-dotenv decision. No code changes.
 2. **Phase 2 — `createLoopAgent` factory.** TDD: 4 invariant tests first (model lookup order, schema-parity-shim applied, agent constructed with required fields, no `memory` field by default). Then factory implementation mirroring `createLoopTool` (parity-shim + `attachParityJSONSchema`) + `resolveAgentModel()` helper for the 3-layer lookup.
 3. **Phase 3 — 3 `createAgent` wrappers + `agents-manifest.json`.** TDD-per-agent: 1 direct unit test per agent (parity-shim test + agent instantiation + model resolution), then 3 wrapper files. Each wrapper imports the instruction string from `tools/learning-loop-mastra/agents/instructions/<name>.js` (or inline if short). Ships `agents-manifest.json` with 3 entries.
-4. **Phase 4 — `server.js` wiring + `agent-manifest.json` `agent` group + D-11 reconciliation.** Add `agents-manifest.json` loader + `agents: {...}` to `MCPServer` config. Add `agent` group to `agent-manifest.json` (3 entries). Reconcile 4 missing tools in legacy `tools/learning-loop-mcp/agent-manifest.json` (D-11: `propose_design`, `relationships`, `re_verify`, `supersede`). Bump `workflow-parity.test.cjs:159` assertion 41 → 44.
+4. **Phase 4 — `server.js` wiring + `agent-manifest.json` `agent` group + D-11 reconciliation.** Add `agents-manifest.json` loader + `agents: {...}` to `MCPServer` config. Add `agent` group to `agent-manifest.json` (3 entries). Reconcile 4 missing tools in legacy `tools/learning-loop-mcp/agent-manifest.json` (D-11: `propose_design`, `relationships`, `re_verify`, `supersede`). Bump `workflow-parity.test.cjs:166` assertion 41 → 44.
 5. **Phase 5 — `agent-parity.test.cjs`.** Empirical probe first (Phase 5.1): spawn server with 1 test agent, lock the `ask_*` MCP response format. Then 3+ per-agent parity tests + 1 model-override test + 1 schema-parity test + 1 tools/list enumeration. Total: ~7-9 tests in 1 file.
 6. **Phase 6 — Acceptance gate + closeout.** Full `pnpm test` (estimated 1148 pass / 0 fail / 1 skipped on Plan 1b baseline 1140 + +8 from agent-parity); cold-session passes (legacy 31-entry manifest verified; scope unchanged by Plan 3 — Plan 4 owns the 44-tool enumeration update); tracker D4 + D7 flip `[x]`; `meta_state_log_change` filed (semantic, D4+D7 closure); journal entry; PR body with count matrix.
 
-**Acceptance gate (the single durable anchor):** *"All 12 test namespaces pass; `createLoopAgent` factory applies parity-shim + 3-layer model resolution; 3 `createAgent` wrappers (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`) instantiate with the locked instruction strings + per-agent tool surfaces; `agents-manifest.json` registered and loaded by `server.js`; `MCPServer` auto-converts to 3 `ask_*` tools (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`); `agent-manifest.json` adds `agent` group (3 entries); legacy `agent-manifest.json` reconciled (D-11: 4 tools added: `propose_design`, `relationships`, `re_verify`, `supersede`); agent-parity harness proves each agent invokes the mocked LLM and produces expected output deterministically (8 tests in `agent-parity.test.cjs`); tools/list enumeration = 44 tools total (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); cold-session test passes against the legacy 31-entry manifest (the 44-tool enumeration is checked by `workflow-parity.test.cjs:159` after the bump; cold-session scope is Plan 4). No `dotenv` import. No `memory` field on any agent (OM off, deferred to Phase 5). `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars documented in `.claude/coordination/MASTRA_AGENT_MODEL.md` for operator reference. `MASTRA_AGENTS_MANIFEST` env var is test-only (Phase 5); never set in production. Whole-suite count: 1155 pass / 0 fail / 1 skipped."*
+**Acceptance gate (the single durable anchor):** *"All 12 test namespaces pass; `createLoopAgent` factory applies parity-shim + 3-layer model resolution; 3 `createAgent` wrappers (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`) instantiate with the locked instruction strings + per-agent tool surfaces; `agents-manifest.json` registered and loaded by `server.js`; `MCPServer` auto-converts to 3 `ask_*` tools (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`); `agent-manifest.json` adds `agent` group (3 entries); legacy `agent-manifest.json` reconciled (D-11: 4 tools added to `meta_state` group: `propose_design`, `relationships`, `re_verify`, `supersede`; legacy meta_state 15 → 19); agent-parity harness proves each agent invokes the mocked LLM and produces expected output deterministically (8 tests in `agent-parity.test.cjs`); tools/list enumeration = 44 tools total (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); cold-session test passes against the legacy 31-entry manifest (the 44-tool enumeration is checked by `workflow-parity.test.cjs:166` after the bump; cold-session scope is Plan 4). No `dotenv` import. No `memory` field on any agent (OM off, deferred to Phase 5). `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars documented in `.claude/coordination/MASTRA_AGENT_MODEL.md` for operator reference. `MASTRA_AGENTS_MANIFEST` env var is test-only (Phase 5); never set in production. Whole-suite count: 1155 pass / 0 fail / 1 skipped."*
 
-**Count math (verified 2026-06-23 against current `agent-manifest.json` + `workflow-parity.test.cjs:159`):**
+**Count math (verified 2026-06-23 against current `agent-manifest.json` + `workflow-parity.test.cjs:166`):**
 
 | Source | Pre-Plan 3 | Post-Plan 3 |
 |---|---|---|
@@ -80,8 +80,9 @@ related:
 | `ask_*` tools registered at runtime | 0 | **3 (NEW)** |
 | **Total tools registered** | **41** | **44** (+3) |
 | `agent-manifest.json` groups | 5 (gate, workflow, meta_state, introspection, runtime_agnostic) | **6 (adds `agent` group)** |
-| `agent-manifest.json` meta_state group | 19 | **20** (D-11: add `mastra_meta_state_propose_design` if missing, etc.) |
-| `tools/learning-loop-mcp/agent-manifest.json` workflow group | 3 | **7** (D-11: add 4 missing tools) |
+| `agent-manifest.json` (mastra) meta_state group | 19 | 19 (no change; D-11 tools already present) |
+| `tools/learning-loop-mcp/agent-manifest.json` (legacy) meta_state group | 15 | **19** (D-11: +4 tools: `propose_design`, `relationships`, `re_verify`, `supersede`) |
+| `tools/learning-loop-mcp/agent-manifest.json` (legacy) workflow group | 3 | 3 (no change) |
 | Test namespaces | 11 | **12** (agent-parity is new) |
 | Tests pass (Plan 1b baseline) | 1140 | **1155** (+4 from Phase 2 + +3 from Phase 3 + +8 from Phase 5) |
 
@@ -187,8 +188,8 @@ new Agent({
 - **Test count math:** Plan 1b baseline = 1140 pass / 0 fail / 1 skipped. Plan 3 adds:
   - Phase 2: 4 invariant tests (model resolver + factory).
   - Phase 3: 3 direct unit tests (one per agent).
-  - Phase 5: 8 parity tests (1 empirical probe + 3 per-agent invocation + 1 per-agent-manifest-field override + 1 schema-parity + 1 tools/list enumeration + 1 input-validation rejection).
-  - Estimated net: **+8 tests** → **1155 pass / 0 fail / 1 skipped**.
+  - Phase 5: 8 parity tests (1 empirical probe + 3 per-agent invocation + 1 per-agent-manifest-field override + 1 schema-parity + 1 tools/list enumeration + 1 input-validation rejection). Fixed at 8 (not a range) to match the acceptance gate.
+  - Net: **+15 tests** (4+3+8) → **1155 pass / 0 fail / 1 skipped**.
 - **Reconciled stale references:**
   - Brainstorm §"Touchpoints Plan 3" line 137 references `tools/learning-loop-mastra/agents/<name>.js` — confirmed in the file list above.
   - Brainstorm §"Q3" line 226 references the 3 instructions as "200-555 words" — researcher B delivered at 315/430/540 (all in range).
@@ -204,11 +205,11 @@ new Agent({
 
 - **`Agent` constructor shape differs between Mastra versions.** Risk: low after version pin. **Mitigation:** `Agent` class + `AgentConfig` verified at `node_modules/@mastra/core/dist/agent/agent.d.ts:51` + `types.d.ts#AgentConfigBase` against pinned `@mastra/core@1.42.0`. Required fields: `id`, `name`, `instructions`, `model`. Optional: `description`, `tools`, `metadata`. Plan 1 + Plan 2 already pin this version.
 - **MCP `tools/call` response shape for `ask_*` tools is unverified at planning time.** Risk: medium for Phase 5's parity assertions. Researcher A's Q4 explicitly flags this as needing an empirical probe. **Mitigation:** Phase 5.1 (first test) is the empirical probe — spawn server with 1 test agent, call `ask_<test>`, inspect raw response, lock the format. Same pattern as `plans/reports/researcher-B-260618-1418-e2e-parity-test-design-report.md` (the Plan 1 CONCERN #1 probe).
-- **LLM mocking approach novel (Phase 5 harness).** Risk: medium. **Mitigation:** Use the official `@mastra/core/test-utils#createMockModel` (verified at `node_modules/@mastra/core/dist/test-utils/llm-mock.js`). Maintained by Mastra; tracks API surface. No custom stub. `spyGenerate` + `spyStream` hooks allow the test to assert the agent's prompt includes the expected instructions prefix.
+- **LLM mocking approach novel (Phase 5 harness).** Risk: medium. **Mitigation:** Use the official `@mastra/core/test-utils/llm-mock#createMockModel` (verified at `node_modules/@mastra/core/dist/test-utils/llm-mock.js`). Maintained by Mastra; tracks API surface. No custom stub. `spyGenerate` + `spyStream` hooks allow the test to assert the agent's prompt includes the expected instructions prefix.
 - **Per-agent model config lookup order.** Risk: low after 3-layer rule locked. **Mitigation:** Phase 2 ships a `resolveAgentModel(agentId, agentsManifest)` helper with 4 invariant tests (one per layer + one for fallback). Phase 3 reads from `agents-manifest.json` per-agent field; Phase 1 documents the env var.
 - **D-11 reconciliation drifts again later.** Risk: low. **Mitigation:** Phase 4 step 4 reconciles the 4 missing tools as a one-line addition each. The legacy `agent-manifest.json` is read by `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:221-255` for new-tool verification. Plan 4 owns the final manifest reconciliation; Plan 3 closes the structural gap.
 - **`Agent.memory` field accidentally enabled.** Risk: low. **Mitigation:** Phase 2's 4 invariant tests assert `memory === undefined` on the constructed agent. Phase 3's direct unit tests re-assert.
-- **Cold-session test breaks.** Risk: low. The cold-session test (`tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs:67-77`) reads the LEGACY `tools/learning-loop-mcp/tools/manifest.json` (the 31-entry manifest), NOT the mastra server's `tools/list`. Plan 3 does NOT change the cold-session test (its scope is unchanged: verify the legacy 31-entry manifest's tool registration shape). The mastra server's 44-tool enumeration is checked separately by `workflow-parity.test.cjs:159` (bumped 41 → 44 in Phase 4 step 5). **Out of scope:** updating the cold-session test to enumerate the mastra server's 44 tools — Plan 4 owns (per brainstorm deferred item 4.2).
+- **Cold-session test breaks.** Risk: low. The cold-session test (`tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs:67-77`) reads the LEGACY `tools/learning-loop-mcp/tools/manifest.json` (the 31-entry manifest), NOT the mastra server's `tools/list`. Plan 3 does NOT change the cold-session test (its scope is unchanged: verify the legacy 31-entry manifest's tool registration shape). The mastra server's 44-tool enumeration is checked separately by `workflow-parity.test.cjs:166` (bumped 41 → 44 in Phase 4 step 5). **Out of scope:** updating the cold-session test to enumerate the mastra server's 44 tools — Plan 4 owns (per brainstorm deferred item 4.2).
 - **`MASTRA_AGENT_MODEL` env var read at module load time vs call time.** Risk: low. **Mitigation:** `resolveAgentModel()` reads `process.env.MASTRA_AGENT_MODEL` at agent construction time (Phase 2). Per-call context is assembled by the agent, not the factory.
 - **Test count overshoot if Phase 5 grows.** Risk: low. **Mitigation:** Phase 5's test plan is budgeted at 7-9 tests. If the empirical probe reveals additional coverage needs, the test count grows; Phase 6 reports the actual count.
 - **Plan 1a item 1.5 (schema fingerprint test for storage).** Already shipped by Plan 1a. Plan 3 reuses the pattern via the same `schema-fingerprint.test.cjs` for any schema drift in Plan 3 files. **Mitigation:** Phase 5 step 4 includes a schema-parity test for the `ask_*` tools' input schema (the fixed `{message}` shape).
@@ -236,7 +237,7 @@ new Agent({
 - `tools/learning-loop-mcp/agent-manifest.json` (legacy manifest; D-11: 4 missing tools)
 - `tools/learning-loop-mcp/scout/run-scout.js` (scoutAgent wraps the pure-function scout pipeline)
 - `tools/learning-loop-mastra/__tests__/with-mcp-server.js` (spawn harness reused)
-- `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:159` (bump assertion 41 → 44)
+- `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` (bump assertion 41 → 44)
 - `tools/learning-loop-mastra/__tests__/storage-parity.test.cjs` (11-test precedent for the parity file shape)
 - `node_modules/@mastra/core/dist/agent/agent.d.ts:51` (Agent class)
 - `node_modules/@mastra/core/dist/agent/types.d.ts#AgentConfigBase` (constructor fields)
@@ -345,4 +346,46 @@ None. All open questions in researcher A §"Open Questions" and researcher B §"
 - **Files reread:** `plan.md`, `phase-01` through `phase-06` (7 files).
 - **Red-team deltas checked:** 4 (test env var, fixture drift, helper extraction, env var dead code). All applied.
 - **Validation deltas checked:** 4 (env var lockdown, Phase 5.8, instructions layout, Phase 5.5). All applied.
+- **Unresolved contradictions:** 0. Plan is internally consistent across all 7 files.
+
+### Session 3 — 2026-06-23 (red-team, independent reproduction)
+
+**Trigger:** independent red-team review (4 personas, Full tier) to reproduce and verify the plan. Also served as a live test of the `/ck:plan red-team` report-writing workflow (meta-260623T0014Z finding).
+
+**Red-team findings:** 12 (all accepted)
+
+| # | Finding | Reviewer(s) | Severity | Disposition | Applied To |
+|---|---------|-------------|----------|-------------|------------|
+| 1 | `@mastra/core/test-utils` import path does not exist; correct path is `@mastra/core/test-utils/llm-mock` | Security, Scope, FMA | Critical | Accept | phase-01, phase-02, phase-05, plan.md |
+| 2 | Phase 5 mock injection mechanism fundamentally broken (`__MOCK_LLM__` string can't become a JS object across process boundary) | Assumption Destroyer | Critical | Accept | phase-05: redesigned mock injection via `__testMockModels__` registry + per-test server spawn |
+| 3 | D-11 reconciliation targets wrong manifest group (workflow, should be meta_state) | All 4 | High | Accept | phase-04, phase-06, plan.md count matrix |
+| 4 | `createLoopAgent` factory never passes `agentsManifest` — Layer 1 of 3-layer lookup is dead code | Security, FMA, Scope, Assumption | High | Accept | phase-02: added `agentsManifest` param; phase-03: pass `agentsManifest` instead of `modelOverride` |
+| 5 | Phase 5 test code uses wrong `callTool` API (object vs positional args, double-parsed response) | FMA, Scope | High | Accept | phase-05: fixed to `callTool(name, args)` + direct `result.text` assertion |
+| 6 | intakeAgent tool count contradiction — 9 in test vs 8 in checklist | Security, Assumption | High | Accept | phase-03 step 2: fixed to 8 |
+| 7 | Mastra manifest count matrix claims meta_state 19→20 but D-11 tools already present | Security, FMA, Scope | Medium | Accept | plan.md count matrix: corrected rows |
+| 8 | `__MOCK_LLM__` marker design unresolved (subsumed by Finding 2) | Scope | Medium | Accept | phase-05 (subsumed) |
+| 9 | Test count math inconsistency (1155 vs 1154-1156) | All 4 | Medium | Accept | plan.md, phase-06: locked to 1155 |
+| 10 | Phase 3 `server-tools.js` refactor causes Phase 4 stale line references | FMA, Scope, Security | Medium | Accept | phase-04: structural anchors instead of line numbers |
+| 11 | `MASTRA_AGENTS_MANIFEST` env var enables arbitrary code execution via `import()` | Security | Medium | Accept | phase-04: added path containment validation |
+| 12 | `workflow-parity.test.cjs:159` line reference is wrong (actual: 166) | Assumption | Low | Accept | plan.md, phase-04, phase-06: corrected to 166 |
+
+**Report files written:** 2 of 4 (Security Adversary + Assumption Destroyer wrote to plan-scoped `reports/`. Failure Mode Analyst returned findings as text only. Scope & Complexity Critic wrote to global `plans/reports/` instead of plan-scoped path.)
+
+**Meta-finding:** The red-team run reproduced the bug from `meta-260623T0014Z` — 2 of 4 reviewer subagents failed to write report files to the correct plan-scoped path. This confirms the finding is NOT resolved by removing the CLAUDE.md instruction. The root cause is likely systemic in how `code-reviewer` subagents handle file writes (possibly the system prompt's general instruction to avoid file creation, or the subagent type lacking Write tool access in some contexts). `meta-260623T0014Z` reopened.
+
+### Whole-Plan Consistency Sweep (post-Session 3)
+
+- **Files reread:** `plan.md`, `phase-01` through `phase-06` (7 files).
+- **Decision deltas from Session 3:**
+  - Import path: `@mastra/core/test-utils` → `@mastra/core/test-utils/llm-mock` (all phases)
+  - Factory signature: added `agentsManifest` param (phase-02, phase-03)
+  - D-11 target: `workflow` group → `meta_state` group (phase-04, phase-06, plan.md)
+  - Mock injection: `__MOCK_LLM__` marker → `__testMockModels__` registry (phase-05)
+  - `callTool` API: `callTool({name, arguments})` → `callTool(name, args)` (phase-05)
+  - Response assertion: `result.content[0].text` → `result.text` (phase-05)
+  - Tool count: 9 → 8 for intakeAgent (phase-03)
+  - Test count: locked at 1155 (plan.md, phase-06)
+  - Line ref: 159 → 166 (plan.md, phase-04, phase-06)
+  - Path validation: added containment check for `MASTRA_AGENTS_MANIFEST` (phase-04)
+- **Stale references checked:** all `@mastra/core/test-utils` references updated; all `workflow group` D-11 references updated; all `159` line refs updated; all `1154-1156` ranges updated to `1155`.
 - **Unresolved contradictions:** 0. Plan is internally consistent across all 7 files.

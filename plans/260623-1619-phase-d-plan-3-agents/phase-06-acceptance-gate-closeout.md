@@ -19,8 +19,8 @@ Run the full `pnpm test` (all 12 namespaces), confirm the closeout acceptance ga
   - `pnpm test` exits 0 with the expected pass/fail/skip count.
   - Cold-session test passes against the legacy 31-entry manifest (scope unchanged; Plan 4 owns the 44-tool enumeration update).
   - `agent-manifest.json` (mastra) has 6 groups; the `agent` group has 3 entries.
-  - `tools/learning-loop-mcp/agent-manifest.json` (legacy) workflow group has 7 entries (3 existing + 4 D-11).
-  - `tools/list` enumeration returns 44 tools (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); `workflow-parity.test.cjs:159` asserts 44.
+  - `tools/learning-loop-mcp/agent-manifest.json` (legacy) meta_state group has 19 entries (15 existing + 4 D-11).
+  - `tools/list` enumeration returns 44 tools (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); `workflow-parity.test.cjs:166` asserts 44.
   - Master tracker D4 + D7 flipped to `[x]`.
   - `meta_state_log_change` filed (semantic, D4+D7 closure).
   - Journal entry: `docs/journals/260623-phase-d-plan-3-shipped.md`.
@@ -53,11 +53,12 @@ Phase 6 is verify + closeout. No code changes. The phase:
 | `ask_*` tools registered at runtime | 0 | **3** (NEW) |
 | **Total tools registered** | **41** | **44** (+3) |
 | `agent-manifest.json` (mastra) groups | 5 | **6** (adds `agent` group) |
-| `agent-manifest.json` (legacy) workflow group | 3 | **7** (D-11: +4) |
+| `agent-manifest.json` (legacy) meta_state group | 15 | **19** (D-11: +4) |
+| `agent-manifest.json` (legacy) workflow group | 3 | 3 (no change) |
 | Test namespaces | 11 | **12** (adds `agent-parity`) |
-| Tests pass (Plan 1b baseline) | 1140 | **~1154** (+7-9 from agent-parity + +4 from Phase 2 + +3 from Phase 3) |
+| Tests pass (Plan 1b baseline) | 1140 | **1155** (+8 from agent-parity + +4 from Phase 2 + +3 from Phase 3) |
 
-**Estimated test count after Phase 6:** 1140 (Plan 1b) + 4 (Phase 2) + 3 (Phase 3) + 7-9 (Phase 5) = **1154-1156 pass / 0 fail / 1 skipped**.
+**Test count after Phase 6:** 1140 (Plan 1b) + 4 (Phase 2) + 3 (Phase 3) + 8 (Phase 5) = **1155 pass / 0 fail / 1 skipped**.
 
 ## Related Code Files
 
@@ -89,7 +90,7 @@ Phase 6 is verify + closeout. No code changes. The phase:
 
 1. **Run `pnpm test`.** Verify exit code 0; pass count is 1154-1156; fail count is 0; skip count is 1. If any test fails, escalate to operator (do not flip the tracker until all tests pass).
 2. **Run `pnpm test:cold-session`.** Verify exit code 0. The cold-session test enumerates the legacy 31-entry manifest; Plan 3 does not change the manifest's tool set. The test should pass unchanged.
-3. **Verify the count math.** Grep `tools/learning-loop-mastra/agents-manifest.json` for the 3 entries. Grep `tools/learning-loop-mastra/agent-manifest.json` for the 6 groups. Grep `tools/learning-loop-mcp/agent-manifest.json` for the 7-entry workflow group. Grep `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:159` for the assertion 44.
+3. **Verify the count math.** Grep `tools/learning-loop-mastra/agents-manifest.json` for the 3 entries. Grep `tools/learning-loop-mastra/agent-manifest.json` for the 6 groups. Grep `tools/learning-loop-mcp/agent-manifest.json` for the 19-entry meta_state group (D-11 reconciled). Grep `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` for the assertion 44.
 4. **File the `meta_state_log_change`.** Use the MCP tool with:
    - `change_target`: `plans/reports/productization-260612-1530-master-tracker.md`
    - `change_dimension`: `semantic`
@@ -142,8 +143,8 @@ Phase 6 is verify + closeout. No code changes. The phase:
 - [ ] PR body written at `plans/260623-1619-phase-d-plan-3-agents/pr-body.md`
 - [ ] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
 - [ ] `agent-manifest.json` (mastra) has 6 groups
-- [ ] `agent-manifest.json` (legacy) workflow group has 7 entries
-- [ ] `workflow-parity.test.cjs:159` asserts 44
+- [ ] `agent-manifest.json` (legacy) meta_state group has 19 entries (D-11 reconciled)
+- [ ] `workflow-parity.test.cjs:166` asserts 44
 - [ ] `tools/list` returns 44 tools
 
 ## Test Scenario Matrix (deep mode)
@@ -164,7 +165,7 @@ Phase 6 is verify + closeout. No code changes. The phase:
 - **Reads from:**
   - `pnpm test` output (the full suite; the count math)
   - `tools/learning-loop-mastra/agent-manifest.json` (the 6 groups)
-  - `tools/learning-loop-mcp/agent-manifest.json` (the 7-entry workflow group)
+  - `tools/learning-loop-mcp/agent-manifest.json` (the 19-entry meta_state group, D-11 reconciled)
   - `tools/learning-loop-mastra/agents-manifest.json` (the 3 entries)
   - `tools/learning-loop-mastra/workflows-manifest.json` (the 10 entries)
   - `docs/journals/260622-phase-d-plan-1b-shipped.md` (the journal structure to mirror)
@@ -179,7 +180,7 @@ Phase 6 is verify + closeout. No code changes. The phase:
 
 ## Success Criteria
 
-- [ ] `pnpm test` exits 0 with the expected count (1154-1156 pass / 0 fail / 1 skipped)
+- [ ] `pnpm test` exits 0 with the expected count (1155 pass / 0 fail / 1 skipped)
 - [ ] `pnpm test:cold-session` exits 0
 - [ ] Master tracker D4 + D7 flipped to `[x]`
 - [ ] D-11 row updated to `[x]`
