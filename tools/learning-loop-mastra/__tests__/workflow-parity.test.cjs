@@ -157,7 +157,7 @@ describe("workflow parity harness", () => {
     assert.ok(Array.isArray(result.expected_outputs));
   });
 
-  test("tools/list enumerates 31 mastra_* + 8 run_workflow_* + 2 run_workflow_storage_* = 41 total", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 31 mastra_* + 10 run_workflow_* = 41 total", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));

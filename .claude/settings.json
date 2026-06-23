@@ -6,6 +6,10 @@
           {
             "type": "command",
             "command": "node .claude/coordination/hooks/recurrence-check-on-start.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node tools/learning-loop-mcp/hooks/session-start-inject-discoverability.cjs"
           }
         ]
       }

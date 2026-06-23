@@ -2,6 +2,7 @@ import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import { buildParitySchema } from "./schema-parity.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+import { stripMcpContentEnvelope } from "#mcp/core/envelope-stripper.js";
 
 function normalizeSchema(schema) {
   if (
@@ -42,6 +43,10 @@ function buildStep({ id, description, inputSchema, outputSchema, handler }) {
     outputSchema: normalizedOutput,
     execute: async (params) => {
       const data = params.inputData || params;
+      // Inline input envelope strip REMOVED in Plan 1b Phase 3 (operator override of
+      // Red Team Finding 5). The factory-level preprocess at line ~110 handles MCP-path
+      // callers via schema validation. Direct `run.start({ inputData })` callers are
+      // migrated to the MCP call path in Phase 3 step 4.
       const result = await handler(data, params);
       // Defensive envelope strip: future handlers may wrap legacy tool output in
       // the MCP content envelope. adaptLegacyHandler does the same for createTool.
@@ -63,7 +68,15 @@ export function createLoopWorkflow({ id, description, inputSchema, outputSchema,
   if (!description || description.trim() === "") {
     throw new Error(`createLoopWorkflow: description is required for "${id}" (MCPServer throws on empty workflow description).`);
   }
-  const normalizedInput = attachParityJSONSchema(normalizeSchema(inputSchema));
+  if (!/^[a-z][a-z0-9_]*$/.test(id)) {
+    throw new Error(`createLoopWorkflow: id "${id}" must match /^[a-z][a-z0-9_]*$/ (lowercase letters, digits, underscores; must start with a letter).`);
+  }
+  const rawInput = normalizeSchema(inputSchema);
+  // Wrap with envelope-aware preprocess so agent callers that wrap input in
+  // MCP content envelope form are handled transparently.
+  const normalizedInput = attachParityJSONSchema(
+    z.preprocess(stripMcpContentEnvelope, rawInput)
+  );
   const normalizedOutput = outputSchema
     ? attachParityJSONSchema(normalizeSchema(outputSchema))
     : undefined;

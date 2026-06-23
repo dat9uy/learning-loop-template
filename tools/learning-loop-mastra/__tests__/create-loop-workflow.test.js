@@ -115,3 +115,33 @@ test("createLoopWorkflow with stateSchema accepts state and persists across step
   assert.strictEqual(result.status, "success");
   assert.deepStrictEqual(result.result, { counter: 6 }, "counter should be incremented from 5 to 6");
 });
+
+const invalidIds = [
+  ["uppercase", "Intake-Orient"],
+  ["starts-with-digit", "1abc"],
+  ["hyphen", "my-workflow"],
+  ["special-char", "my workflow"],
+  ["empty", ""],
+];
+
+for (const [label, id] of invalidIds) {
+  test(`createLoopWorkflow rejects invalid id (${label})`, async () => {
+    const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+    assert.throws(
+      () =>
+        createLoopWorkflow({
+          id,
+          description: "Test",
+          inputSchema: {},
+          steps: [],
+        }),
+      /must match \/\^\[a-z\]\[a-z0-9_\]\*\$/,
+    );
+  });
+}
+
+test("stripMcpContentEnvelope falls back to raw input on malformed JSON", async () => {
+  const { stripMcpContentEnvelope } = await import("#mcp/core/envelope-stripper.js");
+  const broken = { content: [{ type: "text", text: "not-json{" }] };
+  assert.strictEqual(stripMcpContentEnvelope(broken), broken);
+});

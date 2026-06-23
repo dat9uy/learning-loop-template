@@ -3,6 +3,7 @@ import { Mastra } from "@mastra/core";
 import { createTool } from "@mastra/core/tools";
 import { makeCoreTool } from "@mastra/core/utils";
 import { RequestContext } from "@mastra/core/request-context";
+import { randomUUID } from "node:crypto";
 import { createLoopTool } from "./create-loop-tool.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
 import { readFileSync } from "node:fs";
@@ -95,7 +96,7 @@ class LoopMCPServer extends MCPServer {
                 proxiedContext.set(key, value);
               });
             }
-            const run2 = await workflow.createRun({ runId: proxiedContext?.get("runId") });
+            const run2 = await workflow.createRun({ runId: proxiedContext?.get("runId") ?? randomUUID() });
             const response = await run2.start({
               inputData,
               requestContext: proxiedContext,
@@ -146,9 +147,9 @@ await initStorage();
 const server = new LoopMCPServer({
   id: "learning-loop-mastra",
   name: "learning-loop-mastra",
-  version: "0.1.0",
+  version: "0.1.1",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 41 tools + 10 workflows across 5 groups. Single server post-cut-over.",
+    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 31 tools + 10 workflows across 5 groups. Single server post-cut-over.",
   tools,
   workflows,
 });
