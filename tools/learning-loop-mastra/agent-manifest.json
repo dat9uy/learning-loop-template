@@ -29,6 +29,12 @@
       "description": "Audit a feature's compliance with the runtime-agnostic pattern (shim-not-fork + cross-surface-iteration). Call when adding a new feature.",
       "tools": ["mastra_check_runtime_agnostic"],
       "ordering": "any"
+    },
+    "agent": {
+      "description": "Mastra agents — call when you need LLM reasoning over the meta-surface",
+      "tools": ["ask_intake_agent", "ask_scout_agent", "ask_self_improvement_agent"],
+      "ordering": "any",
+      "typical_chain": ["ask_intake_agent", "ask_scout_agent", "ask_self_improvement_agent"]
     }
   },
   "quickstart": {

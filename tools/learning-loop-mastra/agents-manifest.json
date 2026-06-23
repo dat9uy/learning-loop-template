@@ -1,0 +1,30 @@
+{
+  "version": "0.1.0",
+  "description": "Mastra agents registered by tools/learning-loop-mastra/server.js. Per-agent `model` field overrides MASTRA_AGENT_MODEL and the code default.",
+  "agents": {
+    "intake_agent": {
+      "id": "intake_agent",
+      "name": "intakeAgent",
+      "file": "./agents/intake-agent.js",
+      "export": "intakeAgent",
+      "model": "kimi-for-coding/k2p6",
+      "description": "Orient operator into current meta-state; produce ordered deterministic verification plan"
+    },
+    "scout_agent": {
+      "id": "scout_agent",
+      "name": "scoutAgent",
+      "file": "./agents/scout-agent.js",
+      "export": "scoutAgent",
+      "model": "kimi-for-coding/k2p6",
+      "description": "Wrap the pure-function scout pipeline; surface structured readiness report"
+    },
+    "self_improvement_agent": {
+      "id": "self_improvement_agent",
+      "name": "selfImprovementAgent",
+      "file": "./agents/self-improvement-agent.js",
+      "export": "selfImprovementAgent",
+      "model": "kimi-for-coding/k2p6",
+      "description": "Turn gaps surfaced by scout into experiment candidates; write to meta-surface registry"
+    }
+  }
+}

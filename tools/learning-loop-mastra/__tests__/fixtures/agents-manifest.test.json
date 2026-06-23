@@ -1,0 +1,30 @@
+{
+  "version": "0.1.0",
+  "description": "Test-only agents manifest. SOURCE OF TRUTH: ../../agents-manifest.json (production). Model field replaced with __MOCK_LLM__ marker for parity tests. If the production manifest gains new fields, update this fixture in lockstep.",
+  "agents": {
+    "intake_agent": {
+      "id": "intake_agent",
+      "name": "intakeAgent",
+      "file": "./agents/intake-agent.js",
+      "export": "intakeAgent",
+      "model": "__MOCK_LLM__",
+      "description": "Orient operator into current meta-state; produce ordered deterministic verification plan"
+    },
+    "scout_agent": {
+      "id": "scout_agent",
+      "name": "scoutAgent",
+      "file": "./agents/scout-agent.js",
+      "export": "scoutAgent",
+      "model": "__MOCK_LLM__",
+      "description": "Wrap the pure-function scout pipeline; surface structured readiness report"
+    },
+    "self_improvement_agent": {
+      "id": "self_improvement_agent",
+      "name": "selfImprovementAgent",
+      "file": "./agents/self-improvement-agent.js",
+      "export": "selfImprovementAgent",
+      "model": "__MOCK_LLM__",
+      "description": "Turn gaps surfaced by scout into experiment candidates; write to meta-surface registry"
+    }
+  }
+}
