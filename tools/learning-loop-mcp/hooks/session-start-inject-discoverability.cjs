@@ -14,27 +14,29 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildDiscoverabilityHints } = require("../core/loop-introspect.js");
+const { buildDiscoverabilityHints, buildProcessHints } = require("../core/loop-introspect.js");
 
 async function main() {
   const projectRoot = path.resolve(__dirname, "..", "..", "..");
   const contextPath = path.join(projectRoot, ".claude", "session-context.json");
 
-  let hints = [];
+  let discoverability_hints = [];
+  let process_hints = [];
   try {
-    hints = buildDiscoverabilityHints();
+    discoverability_hints = buildDiscoverabilityHints();
+    process_hints = buildProcessHints();
   } catch (err) {
     // Fall through with empty hints; do NOT exit 1 (smoke test requires exit 0).
-    console.error(`[session-start] buildDiscoverabilityHints failed: ${err.message}`);
+    console.error(`[session-start] buildHints failed: ${err.message}`);
   }
 
   fs.mkdirSync(path.dirname(contextPath), { recursive: true });
   fs.writeFileSync(
     contextPath,
-    JSON.stringify({ hints, injected_at: new Date().toISOString() }, null, 2),
+    JSON.stringify({ discoverability_hints, process_hints, injected_at: new Date().toISOString() }, null, 2),
   );
 
-  console.error(`[session-start] wrote ${hints.length} hints to .claude/session-context.json`);
+  console.error(`[session-start] wrote ${discoverability_hints.length} discoverability + ${process_hints.length} process hints to .claude/session-context.json`);
   process.exit(0);
 }
 
@@ -45,7 +47,7 @@ main().catch((err) => {
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
     const contextPath = path.join(projectRoot, ".claude", "session-context.json");
     fs.mkdirSync(path.dirname(contextPath), { recursive: true });
-    fs.writeFileSync(contextPath, JSON.stringify({ hints: [], injected_at: new Date().toISOString() }, null, 2));
+    fs.writeFileSync(contextPath, JSON.stringify({ discoverability_hints: [], process_hints: [], injected_at: new Date().toISOString() }, null, 2));
   } catch { /* ignore */ }
   process.exit(0);
 });

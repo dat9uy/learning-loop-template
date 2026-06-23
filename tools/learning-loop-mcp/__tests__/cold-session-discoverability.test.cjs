@@ -374,10 +374,11 @@ describe("cold-session discoverability", () => {
     test("canonical and hook hint arrays match exactly (drift prevention)", () => {
       const hookHints = parseFrozenStringArray(hookSource, "LOCAL_DISCOVERABILITY_HINTS");
 
-      assert.strictEqual(
-        hookHints.length,
-        canonicalHints.length,
-        `Hook hint count (${hookHints.length}) must match canonical (${canonicalHints.length}).`,
+      // Mirror hook intentionally keeps all 17 hints (Droid-specific; no PROCESS_HINTS split).
+      // Compare only the first canonicalHints.length (16) entries — the 17th is the process hint.
+      assert.ok(
+        hookHints.length >= canonicalHints.length,
+        `Hook hint count (${hookHints.length}) must be >= canonical (${canonicalHints.length}).`,
       );
 
       for (let i = 0; i < canonicalHints.length; i++) {
@@ -389,7 +390,7 @@ describe("cold-session discoverability", () => {
       }
     });
 
-    test("HINT_SUGGESTIONS has one entry per hint", () => {
+    test("HINT_SUGGESTIONS has one entry per discoverability hint", () => {
       assert.ok(loopGetInstruction.HINT_SUGGESTIONS, "HINT_SUGGESTIONS must be exported");
       assert.strictEqual(
         loopGetInstruction.HINT_SUGGESTIONS.length,
@@ -398,7 +399,7 @@ describe("cold-session discoverability", () => {
       );
     });
 
-    test("HINT_KEY_MAP covers every hint index", () => {
+    test("HINT_KEY_MAP covers every discoverability hint index", () => {
       assert.ok(loopGetInstruction.HINT_KEY_MAP, "HINT_KEY_MAP must be exported");
       const mappedIndices = new Set(Object.values(loopGetInstruction.HINT_KEY_MAP));
       for (let i = 0; i < canonicalHints.length; i++) {
@@ -407,6 +408,15 @@ describe("cold-session discoverability", () => {
           `HINT_KEY_MAP is missing an entry for hint index ${i}.`,
         );
       }
+    });
+
+    test("loop_get_instruction resolves pnpm-test-discipline from PROCESS_HINTS cross-array routing", async () => {
+      const result = await loopGetInstruction.loopGetInstructionTool.handler({ key: "pnpm-test-discipline" });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.results.length, 1);
+      assert.ok(parsed.results[0].hint.includes("pnpm test"), "must resolve the process hint");
+      assert.strictEqual(parsed.results[0].source, "process");
+      assert.strictEqual(parsed.results[0].error, undefined);
     });
   });
 });
