@@ -1,7 +1,7 @@
 ---
 title: "Meta-state PR-quality rule + discoverability hints split"
 description: "Atomic follow-up to PR #8 (Phase D Plan 2 — storage) addressing 2 review findings: meta-260622T1708Z (pr-quality-rule: PR bodies touching meta-state.jsonl must enumerate registry deltas) and meta-260622T1713Z (schema-bloat: extract process rules from DISCOVERABILITY_HINTS into separate PROCESS_HINTS table). Both findings share a broken evidence_journal citation that must be repaired first; both should defer design work via meta_state_propose_design before rule promotion."
-status: pending
+status: complete
 priority: P1
 branch: "main"
 tags: [meta-surface, schema-refactor, pr-quality, discoverability, atomic-fix]
@@ -63,12 +63,12 @@ PR #8 merged with 11 registry entries swept (179 → 168) but no PR-rendered del
 
 | Phase | Name | Status | Effort | TDD Color | Source |
 |-------|------|--------|--------|-----------|--------|
-| 1 | [Research](./phase-01-research.md) | ☐ Pending | ~20min | n/a (verify-only) | research-only; gates Phase 2 |
-| 2 | [Citation Repair](./phase-02-citation-repair.md) | ☐ Pending | ~15min | n/a (data fix) | unblocks Phase 5 |
-| 3 | [PROCESS_HINTS Split](./phase-03-process-hints-split.md) | ☐ Pending | ~1.5h | RED → GREEN | schema refactor + 6 consumer updates |
-| 4 | [PR-body CI Advisory](./phase-04-pr-body-ci-advisory.md) | ☐ Pending | ~1h | RED → GREEN (parser test) | new workflow + script |
-| 5 | [PR-body Rule Promotion](./phase-05-pr-body-rule-promotion.md) | ☐ Pending | ~30min | registry-only | propose_design + promote_rule |
-| 6 | [Acceptance Gate](./phase-06-acceptance-gate.md) | ☐ Pending | ~30min | verify-only | closeout + journal |
+| 1 | [Research](./phase-01-research.md) | ☑ Complete | ~20min | n/a (verify-only) | research-only; gates Phase 2 |
+| 2 | [Citation Repair](./phase-02-citation-repair.md) | ☑ Complete | ~15min | n/a (data fix) | unblocks Phase 5 |
+| 3 | [PROCESS_HINTS Split](./phase-03-process-hints-split.md) | ☑ Complete | ~1.5h | RED → GREEN | schema refactor + 6 consumer updates |
+| 4 | [PR-body CI Advisory](./phase-04-pr-body-ci-advisory.md) | ☑ Complete | ~15min | RED → GREEN (parser test) | new workflow + script |
+| 5 | [PR-body Rule Promotion](./phase-05-pr-body-rule-promotion.md) | ☑ Complete | ~30min | registry-only | propose_design + promote_rule |
+| 6 | [Acceptance Gate](./phase-06-acceptance-gate.md) | ☑ Complete | ~30min | verify-only | closeout + journal |
 
 **Total effort:** ~4-5 hours. Single session. Single branch (`main`), single PR.
 
@@ -123,7 +123,7 @@ PR #8 merged with 11 registry entries swept (179 → 168) but no PR-rendered del
   - Phase 4: `.github/workflows/`, `tools/scripts/`, 1 new test file. Independent of Phase 3 file ownership.
   - Phase 5: `meta-state.jsonl` (3 mutations).
   - Phase 6: `meta-state.jsonl` (1 change-log) + `docs/journals/`.
-- **Test count delta:** Phase 3 (-2, +3 for new warm-tier tests; net +1). Phase 4 (+1 parser test). Net: +2 tests.
+- **Test count delta:** Phase 3: warm-tier +5 (split combined assertions into focused tests for discoverability/process/summary/cold tiers + `buildProcessHints` shape), cold-session +1 (cross-array routing for `pnpm-test-discipline`), session-start +0 (modified existing assertions to cover both fields). Phase 4: parser +5. Net: +6 tests (1138 → 1144).
 - **Reconciled stale references:**
   - Both findings' `evidence_journal` is broken. Phase 2 repoints both.
   - PR #8's `pr-body.md` already documents the deltas (refutes finding 1's premise partially). Plan 4 ships the CI advisory for forward PRs; the historical PR is not retroactively enforced.
@@ -205,7 +205,7 @@ PR #8 merged with 11 registry entries swept (179 → 168) but no PR-rendered del
   - Plan 1b used 6 phases; this plan uses 6 phases with stricter ordering (Phase 2 → Phase 3 → Phase 5 are not parallelizable).
   - Plan 1b's `blocks` referenced `phase-d-plan-3-agents` and `phase-d-plan-4-cutover`; this plan inherits the same `blocks` because Phase 3 + Phase 4 both depend on the schema split shipping first.
 - **File ownership map (no parallel conflicts):** see Whole-Plan Consistency section above.
-- **Test count delta:** +2 tests net (Phase 3: +1, Phase 4: +1).
+- **Test count delta:** +6 tests net (Phase 3: warm-tier +5, cold-session +1; Phase 4: parser +5; session-start +0).
 - **Reconciled stale references:**
   - Both findings' `evidence_journal` is broken. Phase 2 repoints.
   - PR #8's `pr-body.md` documents the deltas; finding 1's premise is partially refuted; the forward invariant (CI advisory for future PRs) is still warranted.

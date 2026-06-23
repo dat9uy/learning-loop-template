@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "PR-body CI Advisory"
-status: pending
+status: complete
 priority: P1
 dependencies: [1]
 effort: "~15min (post-H8 simplification)"

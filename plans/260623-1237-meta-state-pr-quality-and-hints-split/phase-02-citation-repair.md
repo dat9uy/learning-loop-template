@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Citation Repair"
-status: pending
+status: complete
 priority: P1
 dependencies: [1]
 effort: "~15min"

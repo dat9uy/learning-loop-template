@@ -74,7 +74,6 @@ export const loopDescribeTool = {
         result.rule_count = promotedRules.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.substrates = introspect.listSubstrates();
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
 
         // No expired-status advisory; status was removed in plan 260611-1000-remove-expired-status.
         const allEntries = readRegistry(root);

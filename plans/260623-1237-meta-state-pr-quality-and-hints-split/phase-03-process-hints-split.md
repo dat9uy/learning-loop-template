@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "PROCESS_HINTS Split"
-status: pending
+status: complete
 priority: P1
 dependencies: [1]
 effort: "~1.5h"

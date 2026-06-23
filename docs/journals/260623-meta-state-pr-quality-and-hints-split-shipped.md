@@ -22,8 +22,8 @@ Atomic fixup addressing 2 findings from PR #8 review (meta-260622T1708Z, meta-26
 ## Test Count Delta
 
 - Before: ~1138 tests (9 namespaces)
-- After: 1144 tests (9 namespaces)
-- Delta: +6 tests (+1 warm-tier, +1 cold-session routing, +1 SessionStart, +5 parser)
+- After: 1145 tests (9 namespaces)
+- Delta: +7 tests (+1 warm-tier split, +2 cold-session [routing + process-hints parity], +5 parser)
 
 ## Registry Deltas
 
@@ -31,17 +31,30 @@ Atomic fixup addressing 2 findings from PR #8 review (meta-260622T1708Z, meta-26
 - `meta-260622T1708Z-every-pr-that-modifies-meta-state-jsonl-registry-sweeps-stat` → superseded, consolidated into `meta-260623T1450Z-plans-260623-1237-meta-state-pr-quality-and-hints-split-plan`
 - `meta-260622T1713Z-process-specific-rules-test-runner-stop-conditions-ci-rules` → superseded, consolidated into `meta-260623T1450Z-plans-260623-1237-meta-state-pr-quality-and-hints-split-plan`
 
+**Resolved entries (post-review fix-up):**
+- `meta-260623T1458Z-rule-runtime-agnostic-features-is-a-consult-checklist-rule-m` → resolved, consolidated into `meta-260623T1534Z-tools-learning-loop-mcp-core-loop-introspect-js-tools-learni` (PROCESS_HINTS row added; H6 gate silenced)
+
 **New entries:**
 - `rule-pr-body-registry-deltas` (rule, active, agent/consult-checklist)
 - `loop-design-pr-quality-rules-and-hints-split` (loop-design, active)
 - `meta-260623T1450Z-plans-260623-1237-meta-state-pr-quality-and-hints-split-plan` (change-log, active)
 - `meta-260623T1352Z-meta-state-jsonl-evidence-journal` (change-log, active — citation repair)
+- `meta-260623T1534Z-tools-learning-loop-mcp-core-loop-introspect-js-tools-learni` (change-log, active — code-review fix-up)
 
 **Promoted rules:**
 - `meta-260622T1708Z-...` → `rule-pr-body-registry-deltas`
 
+## Code-Review Fix-Up (post-review pass)
+
+Atomic patch addressing review findings C1, C2, I1, I2, I3:
+
+- **C1 (H6 gate regression)**: Added `PROCESS_HINTS[2]` referencing `rule-runtime-agnostic-features`. The H6 ordering gate in `loop-describe-tool.js:91-103` no longer fires on every warm-tier call.
+- **C2 (duplicate assignment)**: Removed redundant `result.discoverability_hints = introspect.buildDiscoverabilityHints();` at `loop-describe-tool.js:77`. Single assignment at line 86.
+- **I1 (stale `status: pending`)**: Updated `plan.md` + 6 phase files: `pending` → `complete`.
+- **I2 / I3 (mirror hook asymmetry)**: Added `LOCAL_PROCESS_HINTS` to `.factory/hooks/loop-surface-inject.cjs` (mirrors split). `formatBlock` renders both `discoverability_hints` + `process_hints` sections. Cold-session parity test restored to `strictEqual`.
+
+**Verification:** 1145 tests pass. `loopDescribeTool.handler({tier:'warm'})` returns `warnings: []`.
+
 ## Open Follow-ups
 
-- `rule-runtime-agnostic-features` (pre-existing consult-checklist rule) has no PROCESS_HINTS row — H6 gate warns. Separate fix needed.
-- CI advisory is advisory-only; promote to required check after one quarter of measured compliance.
-- Mirror hook (`.factory/hooks/loop-surface-inject.cjs`) intentionally keeps 17 entries in `LOCAL_DISCOVERABILITY_HINTS`. `LOCAL_PROCESS_HINTS` is a forward feature for Droid.
+- `meta-260623T1542Z-the-pr-body-registry-deltas-advisory-github-workflows-meta-s` (status=reported, subtype=advisory-to-required-promotion): CI advisory is advisory-only; promote to required check after one quarter of measured compliance. Resolution path documented in finding description.

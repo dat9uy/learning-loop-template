@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Research"
-status: pending
+status: complete
 priority: P1
 dependencies: []
 effort: "~20min"

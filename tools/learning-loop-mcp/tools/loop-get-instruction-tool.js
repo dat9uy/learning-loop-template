@@ -23,6 +23,7 @@ export const HINT_KEY_MAP = {
 export const HINT_KEY_MAP_PROCESS = {
   "pnpm-test-discipline": 0,
   "pr-body-registry-deltas": 1,
+  "runtime-agnostic-audit": 2,
 };
 
 export const HINT_SUGGESTIONS = [
@@ -47,6 +48,7 @@ export const HINT_SUGGESTIONS = [
 export const HINT_SUGGESTIONS_PROCESS = [
   "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
   "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
+  "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
 ];
 
 /**

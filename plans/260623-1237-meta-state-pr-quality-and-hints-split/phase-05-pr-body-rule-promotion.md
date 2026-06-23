@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "PR-body Rule Promotion"
-status: pending
+status: complete
 priority: P1
 dependencies: [2, 3]
 effort: "~30min"

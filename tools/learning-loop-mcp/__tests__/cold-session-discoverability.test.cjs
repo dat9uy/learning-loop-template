@@ -371,14 +371,13 @@ describe("cold-session discoverability", () => {
       return JSON.parse(`[${body}]`);
     }
 
-    test("canonical and hook hint arrays match exactly (drift prevention)", () => {
+    test("canonical and hook LOCAL_DISCOVERABILITY_HINTS arrays match exactly (drift prevention)", () => {
       const hookHints = parseFrozenStringArray(hookSource, "LOCAL_DISCOVERABILITY_HINTS");
 
-      // Mirror hook intentionally keeps all 17 hints (Droid-specific; no PROCESS_HINTS split).
-      // Compare only the first canonicalHints.length (16) entries — the 17th is the process hint.
-      assert.ok(
-        hookHints.length >= canonicalHints.length,
-        `Hook hint count (${hookHints.length}) must be >= canonical (${canonicalHints.length}).`,
+      assert.strictEqual(
+        hookHints.length,
+        canonicalHints.length,
+        `Hook LOCAL_DISCOVERABILITY_HINTS length (${hookHints.length}) must match canonical (${canonicalHints.length}).`,
       );
 
       for (let i = 0; i < canonicalHints.length; i++) {
@@ -386,6 +385,28 @@ describe("cold-session discoverability", () => {
           hookHints[i],
           canonicalHints[i],
           `Hint[${i}] differs between hook mirror and canonical source.`,
+        );
+      }
+    });
+
+    test("canonical PROCESS_HINTS and hook LOCAL_PROCESS_HINTS arrays match exactly (drift prevention)", async () => {
+      const hookProcessHints = parseFrozenStringArray(hookSource, "LOCAL_PROCESS_HINTS");
+
+      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mcp/core/loop-introspect.js");
+      const { buildProcessHints } = await import(pathToFileURL(canonicalToolPath).href);
+      const canonicalProcessHints = buildProcessHints();
+
+      assert.strictEqual(
+        hookProcessHints.length,
+        canonicalProcessHints.length,
+        `Hook LOCAL_PROCESS_HINTS length (${hookProcessHints.length}) must match canonical (${canonicalProcessHints.length}).`,
+      );
+
+      for (let i = 0; i < canonicalProcessHints.length; i++) {
+        assert.strictEqual(
+          hookProcessHints[i],
+          canonicalProcessHints[i],
+          `PROCESS_HINTS[${i}] differs between hook mirror and canonical source.`,
         );
       }
     });
