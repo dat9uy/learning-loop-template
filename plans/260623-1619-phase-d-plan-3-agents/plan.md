@@ -50,7 +50,7 @@ related:
 **User decisions locked 2026-06-23 (the gate for this plan):**
 - All 3 agents use model `kimi-for-coding/k2p6` (Mastra router format; auth via `KIMI_API_KEY` env var). Per Mastra docs `https://mastra.ai/models/providers/kimi-for-coding` — `kimi-for-coding/k2p6` is a `ModelRouterModelId` (verified at `node_modules/@mastra/core/dist/llm/model/shared.types.d.ts`).
 - Lookup order: (1) `agents-manifest.json` per-agent `model` field, (2) `MASTRA_AGENT_MODEL` env var, (3) code default.
-- Plan ships the env slot for the operator to fill in; the loop does NOT auto-read `.env` files. Use `process.env.*` directly. No `dotenv` import.
+- Plan ships the env slot for the operator to fill in; the loop does NOT auto-read `.env` files. Use `process.env.*` directly. No `dotenv` import. **Operator's local-dev workflow: `direnv` (recommended) or shell rc (fallback).** Loop code is decoupled from operator's dev env choice.
 - D-11 (legacy `agent-manifest.json` reconciliation: 4 missing tools `propose_design`, `relationships`, `re_verify`, `supersede`) is in scope of Plan 3 (master tracker line 287).
 - Multi-step `stateSchema` restructuring for `workflow_self_improvement` and `workflow_runtime_probe` is OUT of scope (per Plan 1's Q1 conflict resolution; the factory supports it; restructuring belongs in the plan that needs cross-step state).
 - `mastra_meta_state_batch` excluded from all 3 agent tool surfaces (operator-grade only).
@@ -62,13 +62,13 @@ related:
 1. **Phase 1 — File preflight + env contract.** Verify the `kimi-for-coding/k2p6` model router resolves on the installed `@mastra/core@1.42.0`; confirm no new vendor deps needed; document the env-var contract (`MASTRA_AGENT_MODEL`, `KIMI_API_KEY`, no `dotenv`); file `meta_state_log_change` for the no-dotenv decision. No code changes.
 2. **Phase 2 — `createLoopAgent` factory.** TDD: 4 invariant tests first (model lookup order, schema-parity-shim applied, agent constructed with required fields, no `memory` field by default). Then factory implementation mirroring `createLoopTool` (parity-shim + `attachParityJSONSchema`) + `resolveAgentModel()` helper for the 3-layer lookup.
 3. **Phase 3 — 3 `createAgent` wrappers + `agents-manifest.json`.** TDD-per-agent: 1 direct unit test per agent (parity-shim test + agent instantiation + model resolution), then 3 wrapper files. Each wrapper imports the instruction string from `tools/learning-loop-mastra/agents/instructions/<name>.js` (or inline if short). Ships `agents-manifest.json` with 3 entries.
-4. **Phase 4 — `server.js` wiring + `agent-manifest.json` `agent` group + D-11 reconciliation.** Add `agents-manifest.json` loader + `agents: {...}` to `MCPServer` config. Add `agent` group to `agent-manifest.json` (3 entries). Reconcile 4 missing tools in legacy `tools/learning-loop-mcp/agent-manifest.json` (D-11: `propose_design`, `relationships`, `re_verify`, `supersede`). Bump `workflow-parity.test.cjs:166` assertion 41 → 44.
+4. **Phase 4 — `server.js` wiring + `agent-manifest.json` `agent` group + D-11 reconciliation.** Add `agents-manifest.json` loader + `agents: {...}` to `MCPServer` config. Add `agent` group to `agent-manifest.json` (3 entries). Reconcile 4 missing tools in legacy `tools/learning-loop-mcp/agent-manifest.json` (D-11: `propose_design`, `relationships`, `re_verify`, `supersede`). Bump `workflow-parity.test.cjs` (`assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`).
 5. **Phase 5 — `agent-parity.test.cjs`.** Empirical probe first (Phase 5.1): spawn server with 1 test agent, lock the `ask_*` MCP response format. Then 3+ per-agent parity tests + 1 model-override test + 1 schema-parity test + 1 tools/list enumeration. Total: ~7-9 tests in 1 file.
-6. **Phase 6 — Acceptance gate + closeout.** Full `pnpm test` (estimated 1148 pass / 0 fail / 1 skipped on Plan 1b baseline 1140 + +8 from agent-parity); cold-session passes (legacy 31-entry manifest verified; scope unchanged by Plan 3 — Plan 4 owns the 44-tool enumeration update); tracker D4 + D7 flip `[x]`; `meta_state_log_change` filed (semantic, D4+D7 closure); journal entry; PR body with count matrix.
+6. **Phase 6 — Acceptance gate + closeout.** Full `pnpm test` (estimated 1155 pass / 0 fail / 1 skipped on Plan 1b baseline 1140 + +4 + +3 + +8; with `KIMI_API_KEY` set, additionally +3 conditional e2e tests pass = 1158 pass / 0 fail / 1 skipped); cold-session passes (legacy 31-entry manifest verified; scope unchanged by Plan 3 — Plan 4 owns the 44-tool enumeration update); tracker D4 + D7 flip `[x]`; `meta_state_log_change` filed (semantic, D4+D7 closure); journal entry; PR body with count matrix; **Post Plan 3 prerequisites for Plan 4 documented (operator must run manual smoke test + conditional e2e test before Plan 4 starts)**.
 
-**Acceptance gate (the single durable anchor):** *"All 12 test namespaces pass; `createLoopAgent` factory applies parity-shim + 3-layer model resolution; 3 `createAgent` wrappers (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`) instantiate with the locked instruction strings + per-agent tool surfaces; `agents-manifest.json` registered and loaded by `server.js`; `MCPServer` auto-converts to 3 `ask_*` tools (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`); `agent-manifest.json` adds `agent` group (3 entries); legacy `agent-manifest.json` reconciled (D-11: 4 tools added to `meta_state` group: `propose_design`, `relationships`, `re_verify`, `supersede`; legacy meta_state 15 → 19); agent-parity harness proves each agent invokes the mocked LLM and produces expected output deterministically (8 tests in `agent-parity.test.cjs`); tools/list enumeration = 44 tools total (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); cold-session test passes against the legacy 31-entry manifest (the 44-tool enumeration is checked by `workflow-parity.test.cjs:166` after the bump; cold-session scope is Plan 4). No `dotenv` import. No `memory` field on any agent (OM off, deferred to Phase 5). `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars documented in `.claude/coordination/MASTRA_AGENT_MODEL.md` for operator reference. `MASTRA_AGENTS_MANIFEST` env var is test-only (Phase 5); never set in production. Whole-suite count: 1155 pass / 0 fail / 1 skipped."*
+**Acceptance gate (the single durable anchor):** *"All 12 test namespaces pass; `createLoopAgent` factory applies parity-shim + 3-layer model resolution; 3 `createAgent` wrappers (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`) instantiate with the locked instruction strings + per-agent tool surfaces; `agents-manifest.json` registered and loaded by `server.js`; `MCPServer` auto-converts to 3 `ask_*` tools (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`); `agent-manifest.json` adds `agent` group (3 entries); legacy `agent-manifest.json` reconciled (D-11: 4 tools added to `meta_state` group: `propose_design`, `relationships`, `re_verify`, `supersede`; legacy meta_state 15 → 19); agent-parity harness proves each agent invokes the mocked LLM and produces expected output deterministically (8 tests in `agent-parity.test.cjs`); conditional e2e integration test ships with 3 tests gated on `KIMI_API_KEY` (Post Plan 3 functional verification step per `brainstorm-260618-1538-phase-d-plan-split-report.md` §"Post Plan 3 — Functional Verification"); tools/list enumeration = 44 tools total (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); cold-session test passes against the legacy 31-entry manifest (the 44-tool enumeration is checked by `workflow-parity.test.cjs` after the assertion bump; cold-session scope is Plan 4). No `dotenv` import in loop code. Operator's local-dev workflow: `direnv` (recommended) or shell rc (fallback) — Phase 1 ships `.envrc` + `.env.example` (committed) + `.env` (gitignored). No `memory` field on any agent (OM off, deferred to Phase 5). `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars documented in `.claude/coordination/MASTRA_AGENT_MODEL.md` for operator reference. `MASTRA_AGENTS_MANIFEST` env var is test-only (Phase 5); never set in production. Whole-suite count: 1155 pass / 0 fail / 1 skipped (default, no `KIMI_API_KEY`) OR 1158 pass / 0 fail / 1 skipped (with `KIMI_API_KEY` set, 3 conditional e2e tests pass). Plan 4 pre-flight requires Post Plan 3 verification (operator smoke test + journal at `docs/journals/260623-post-plan-3-verification.md`)."*
 
-**Count math (verified 2026-06-23 against current `agent-manifest.json` + `workflow-parity.test.cjs:166`):**
+**Count math (verified 2026-06-23 against current `agent-manifest.json` + `workflow-parity.test.cjs` assertion):**
 
 | Source | Pre-Plan 3 | Post-Plan 3 |
 |---|---|---|
@@ -83,8 +83,8 @@ related:
 | `agent-manifest.json` (mastra) meta_state group | 19 | 19 (no change; D-11 tools already present) |
 | `tools/learning-loop-mcp/agent-manifest.json` (legacy) meta_state group | 15 | **19** (D-11: +4 tools: `propose_design`, `relationships`, `re_verify`, `supersede`) |
 | `tools/learning-loop-mcp/agent-manifest.json` (legacy) workflow group | 3 | 3 (no change) |
-| Test namespaces | 11 | **12** (agent-parity is new) |
-| Tests pass (Plan 1b baseline) | 1140 | **1155** (+4 from Phase 2 + +3 from Phase 3 + +8 from Phase 5) |
+| Test namespaces | 11 | **12** (agent-parity + agent-e2e-integration are new) |
+| Tests pass (Plan 1b baseline) | 1140 | **1155** (+4 from Phase 2 + +3 from Phase 3 + +8 from Phase 5 mocked); with `KIMI_API_KEY` set: **1158** (+3 conditional e2e tests pass) |
 
 **Out of scope (separate tracks, NOT this plan):**
 - **Per-agent `memory` field (Observational Memory).** Locked out per `mastra-storage-memory-260619-1918-direction-clarification-report.md` §3. The 3 agents are memory-less; cross-session continuity flows through the meta-state registry (per AGENTS.md §1 + §6). When OM is enabled in Phase 5, each agent gets its own `resourceId`/`threadId`. Plan 3 ships the storage substrate (already in Plan 2); the per-agent memory config is the Phase 5 consumer.
@@ -152,8 +152,8 @@ new Agent({
 | 3 | `tools/learning-loop-mastra/__tests__/agent-direct-parity.test.js` (new) | n/a | 3 direct unit parity tests (no MCP) |
 | 4 | `tools/learning-loop-mastra/server.js` | n/a | adds `agents-manifest.json` loader + `agents: {...}` to MCPServer config |
 | 4 | `tools/learning-loop-mastra/agent-manifest.json` | n/a | adds `agent` group (3 entries) |
-| 4 | `tools/learning-loop-mcp/agent-manifest.json` | n/a | D-11: add 4 missing tools to workflow group |
-| 4 | `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` | n/a | bumps line 159: 41 → 44 |
+| 4 | `tools/learning-loop-mcp/agent-manifest.json` | n/a | D-11: add 4 missing tools to meta_state group |
+| 4 | `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` | n/a | bumps `assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)` |
 | 5 | `tools/learning-loop-mastra/__tests__/agent-parity.test.cjs` (new) | n/a | 7-9 tests (empirical probe + 3 per-agent + 1 model-override + 1 schema + 1 enumeration) |
 | 6 | `plans/reports/productization-260612-1530-master-tracker.md` (D4/D7 flip) | `OPERATOR_MODE=1` | gated; closeout contract |
 | 6 | `meta-state.jsonl` (`meta_state_log_change`) | `OPERATOR_MODE=1` | gated; closeout |
@@ -180,7 +180,7 @@ new Agent({
 - **Files reread during authoring:** `plan.md`, `phase-01` through `phase-06` (7 files).
 - **Decision deltas from brainstorm + research reports + user decisions (2026-06-23):**
   - **Model locked to `kimi-for-coding/k2p6`** (per user; replaces brainstorm Q4's "default claude-sonnet-4-6"). The `kimi-for-coding/k2p6` magic string is a valid `ModelRouterModelId` (verified at `node_modules/@mastra/core/dist/llm/model/shared.types.d.ts`). Auth via `KIMI_API_KEY` env var (auto-injected by the Mastra router). `MASTRA_AGENT_MODEL` env var is the global override.
-  - **No `dotenv` import** (per user). The loop uses `process.env.*` directly (verified — no `dotenv` in `node_modules/@mastra/*` or `tools/learning-loop-mcp/core/`). The plan locks this contract via a `meta_state_log_change` entry in Phase 1.
+  - **No `dotenv` import in loop code** (per user). The loop uses `process.env.*` directly (verified — no `dotenv` in `node_modules/@mastra/*` or `tools/learning-loop-mcp/core/`). The plan locks this contract via a `meta_state_log_change` entry in Phase 1. **Operator's local-dev workflow: `direnv` (recommended) or shell rc (fallback).** Per-project scoped via `.envrc` + `.env` (gitignored) + `.env.example` (committed template). The lock applies to the loop's runtime, not the operator's dev env choice.
   - **D-11 (4 missing tools in legacy `agent-manifest.json`) is in scope** (per user; was previously deferred). Phase 4 reconciles as a one-line addition per tool.
   - **Multi-step `stateSchema` restructuring is OUT of scope** (per user; matches Plan 1's Q1 conflict resolution). The factory `createLoopAgent` does NOT need to support `stateSchema` — agents do not use the workflow state-machine feature.
   - **`mastra_meta_state_batch` excluded from all agents** (per researcher B). Self-improvement agent surfaces batch requests to the operator; does not invoke directly.
@@ -189,7 +189,8 @@ new Agent({
   - Phase 2: 4 invariant tests (model resolver + factory).
   - Phase 3: 3 direct unit tests (one per agent).
   - Phase 5: 8 parity tests (1 empirical probe + 3 per-agent invocation + 1 per-agent-manifest-field override + 1 schema-parity + 1 tools/list enumeration + 1 input-validation rejection). Fixed at 8 (not a range) to match the acceptance gate.
-  - Net: **+15 tests** (4+3+8) → **1155 pass / 0 fail / 1 skipped**.
+  - Phase 5.9: 3 conditional e2e tests (Post Plan 3 functional verification; gated on `KIMI_API_KEY`; skipped by default).
+  - Net: **+15 tests in default mode** (4+3+8) → **1155 pass / 0 fail / 1 skipped**. With `KIMI_API_KEY` set: **+18 tests** (4+3+8+3) → **1158 pass / 0 fail / 1 skipped** (3 conditional tests pass).
 - **Reconciled stale references:**
   - Brainstorm §"Touchpoints Plan 3" line 137 references `tools/learning-loop-mastra/agents/<name>.js` — confirmed in the file list above.
   - Brainstorm §"Q3" line 226 references the 3 instructions as "200-555 words" — researcher B delivered at 315/430/540 (all in range).
@@ -209,7 +210,7 @@ new Agent({
 - **Per-agent model config lookup order.** Risk: low after 3-layer rule locked. **Mitigation:** Phase 2 ships a `resolveAgentModel(agentId, agentsManifest)` helper with 4 invariant tests (one per layer + one for fallback). Phase 3 reads from `agents-manifest.json` per-agent field; Phase 1 documents the env var.
 - **D-11 reconciliation drifts again later.** Risk: low. **Mitigation:** Phase 4 step 4 reconciles the 4 missing tools as a one-line addition each. The legacy `agent-manifest.json` is read by `tools/learning-loop-mcp/core/runtime-agnostic-checklist.js:221-255` for new-tool verification. Plan 4 owns the final manifest reconciliation; Plan 3 closes the structural gap.
 - **`Agent.memory` field accidentally enabled.** Risk: low. **Mitigation:** Phase 2's 4 invariant tests assert `memory === undefined` on the constructed agent. Phase 3's direct unit tests re-assert.
-- **Cold-session test breaks.** Risk: low. The cold-session test (`tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs:67-77`) reads the LEGACY `tools/learning-loop-mcp/tools/manifest.json` (the 31-entry manifest), NOT the mastra server's `tools/list`. Plan 3 does NOT change the cold-session test (its scope is unchanged: verify the legacy 31-entry manifest's tool registration shape). The mastra server's 44-tool enumeration is checked separately by `workflow-parity.test.cjs:166` (bumped 41 → 44 in Phase 4 step 5). **Out of scope:** updating the cold-session test to enumerate the mastra server's 44 tools — Plan 4 owns (per brainstorm deferred item 4.2).
+- **Cold-session test breaks.** Risk: low. The cold-session test (`tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs:67-77`) reads the LEGACY `tools/learning-loop-mcp/tools/manifest.json` (the 31-entry manifest), NOT the mastra server's `tools/list`. Plan 3 does NOT change the cold-session test (its scope is unchanged: verify the legacy 31-entry manifest's tool registration shape). The mastra server's 44-tool enumeration is checked separately by `workflow-parity.test.cjs` (assertion bumped 41 → 44 in Phase 4 step 5). **Out of scope:** updating the cold-session test to enumerate the mastra server's 44 tools — Plan 4 owns (per brainstorm deferred item 4.2).
 - **`MASTRA_AGENT_MODEL` env var read at module load time vs call time.** Risk: low. **Mitigation:** `resolveAgentModel()` reads `process.env.MASTRA_AGENT_MODEL` at agent construction time (Phase 2). Per-call context is assembled by the agent, not the factory.
 - **Test count overshoot if Phase 5 grows.** Risk: low. **Mitigation:** Phase 5's test plan is budgeted at 7-9 tests. If the empirical probe reveals additional coverage needs, the test count grows; Phase 6 reports the actual count.
 - **Plan 1a item 1.5 (schema fingerprint test for storage).** Already shipped by Plan 1a. Plan 3 reuses the pattern via the same `schema-fingerprint.test.cjs` for any schema drift in Plan 3 files. **Mitigation:** Phase 5 step 4 includes a schema-parity test for the `ask_*` tools' input schema (the fixed `{message}` shape).
@@ -237,7 +238,7 @@ new Agent({
 - `tools/learning-loop-mcp/agent-manifest.json` (legacy manifest; D-11: 4 missing tools)
 - `tools/learning-loop-mcp/scout/run-scout.js` (scoutAgent wraps the pure-function scout pipeline)
 - `tools/learning-loop-mastra/__tests__/with-mcp-server.js` (spawn harness reused)
-- `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` (bump assertion 41 → 44)
+- `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` (`assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`) (bump assertion 41 → 44)
 - `tools/learning-loop-mastra/__tests__/storage-parity.test.cjs` (11-test precedent for the parity file shape)
 - `node_modules/@mastra/core/dist/agent/agent.d.ts:51` (Agent class)
 - `node_modules/@mastra/core/dist/agent/types.d.ts#AgentConfigBase` (constructor fields)
@@ -275,8 +276,8 @@ None. All open questions in researcher A §"Open Questions" and researcher B §"
 #### Confirmed Decisions
 
 - **Model locked to `kimi-for-coding/k2p6`** for all 3 agents. Lookup order: (1) per-agent `agents-manifest.json` `model` field, (2) `MASTRA_AGENT_MODEL` env var, (3) code default. Initial manifest ships with `model: "kimi-for-coding/k2p6"` for all 3 entries.
-- **No `dotenv` import** in Plan 3. The loop uses `process.env.*` directly. Phase 1 files a `meta_state_log_change` locking the contract.
-- **D-11 in scope** (Phase 4 step 4). 4 tools added to legacy `agent-manifest.json` workflow group: `meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`.
+- **No `dotenv` import in loop code** in Plan 3. The loop uses `process.env.*` directly. Phase 1 files a `meta_state_log_change` locking the contract. **Operator's local-dev workflow: `direnv` (recommended) or shell rc (fallback).** Loop code is decoupled from operator's dev env choice.
+- **D-11 in scope** (Phase 4 step 4). 4 tools added to legacy `agent-manifest.json` meta_state group: `meta_state_propose_design`, `meta_state_relationships`, `meta_state_re_verify`, `meta_state_supersede`.
 - **Multi-step `stateSchema` restructuring OUT of scope** (matches Plan 1's Q1 conflict resolution).
 - **`mastra_meta_state_batch` excluded** from all 3 agents.
 - **`runScout` write flags hidden** in the agent wrapper (input schema is `{ projectRoot, excludeGlobs? }` only).
@@ -339,7 +340,7 @@ None. All open questions in researcher A §"Open Questions" and researcher B §"
 **Impact on phases:**
 - **Phase 4:** added header comment + test-only doc note for `MASTRA_AGENTS_MANIFEST` env var.
 - **Phase 5:** step 6 redesigned (per-agent manifest field override instead of env var); Function/Interface Checklist + Test Scenario Matrix + Success Criteria updated.
-- **Plan count math:** final count is **1155 pass / 0 fail / 1 skipped** (was 1140 baseline + +4 + +3 + +8).
+- **Plan count math:** final count is **1155 pass / 0 fail / 1 skipped** in default mode (was 1140 baseline + +4 + +3 + +8). With `KIMI_API_KEY` set, +3 conditional e2e tests pass → **1158 pass / 0 fail / 1 skipped**.
 
 ### Whole-Plan Consistency Sweep (post-red-team)
 
@@ -389,3 +390,175 @@ None. All open questions in researcher A §"Open Questions" and researcher B §"
   - Path validation: added containment check for `MASTRA_AGENTS_MANIFEST` (phase-04)
 - **Stale references checked:** all `@mastra/core/test-utils` references updated; all `workflow group` D-11 references updated; all `159` line refs updated; all `1154-1156` ranges updated to `1155`.
 - **Unresolved contradictions:** 0. Plan is internally consistent across all 7 files.
+
+### Session 4 — 2026-06-23 (validate, post-red-team, full-tier)
+
+**Trigger:** validate invocation with `/mastra` skill cross-check against installed `node_modules/@mastra/{core,mcp}@1.42.0/1.10.0` (per user request: "not just from reading the node_modules code" — also consulted `/.agents/skills/mastra/` for current model-registry verification).
+
+**Verification tier:** Full (4 roles active)
+
+#### Verification Results
+
+- **Claims checked:** 23 (12 from Session 1 + 11 new — mastra interface, agent manifest counts, test baseline, model registry)
+- **Verified:** 18
+- **Failed:** 0
+- **Stale (consistency drift from prior sessions):** 5
+
+**Mastra interface verification (per `/mastra` skill):**
+
+| Claim | Verified | Evidence |
+|---|---|---|
+| `@mastra/core@1.42.0` + `@mastra/mcp@1.10.0` installed | ✓ | `node_modules/@mastra/core/package.json` + `@mastra/mcp/package.json` |
+| `Agent` is a class (`new Agent({...})`) | ✓ | `agent.d.ts:51` |
+| `AgentConfigBase` fields: `id`, `name`, `description?`, `instructions`, `model`, `tools?` | ✓ | `agent/types.d.ts` |
+| `MCPServerConfig.agents?: Record<string, Agent>` | ✓ | `@mastra/core/dist/mcp/types.d.ts` |
+| `ask_<agentKey>` conversion (uses dict key, not agent name) | ✓ | `@mastra/mcp/dist/index.js:3506` |
+| `ask_*` input schema: `{ message: string }` + `additionalProperties: false` | ✓ | `@mastra/mcp/dist/index.js:3514-3521` |
+| `kimi-for-coding/k2p6` is a valid model | ✓ | `node .agents/skills/mastra/scripts/provider-registry.mjs --provider kimi-for-coding` returns 3 models including `k2p6` |
+| `@mastra/core/test-utils/llm-mock` export path | ✓ | `@mastra/core/package.json` exports map |
+| `createMockModel({ mockText, spyGenerate, spyStream, version })` signature | ✓ | `dist/test-utils/llm-mock.js` |
+| No `dotenv` in loop code | ✓ | grep returns 0 matches in `tools/learning-loop-mcp/` + `tools/learning-loop-mastra/` |
+| `runScout({ projectRoot, writeJson, writeMarkdown, excludeGlobs })` — no `maxItems` | ✓ | `tools/learning-loop-mcp/scout/run-scout.js:222-225` |
+| Plan 1b baseline 1140 pass / 0 fail / 1 skipped | ✓ | `docs/journals/260622-phase-d-plan-1b-shipped.md` |
+
+**Stale references found (Session 4 — consistency drift):**
+
+| # | File:Line | Stale Text | Should Be | Source |
+|---|---|---|---|---|
+| 1 | `phase-04-...md:23` | "gains 4 entries in its `workflow` group: `propose_design`, `relationships`, `re_verify`, `supersede`" | "gains 4 entries in its `meta_state` group: `propose_design`, `relationships`, `re_verify`, `supersede`" | Session 3 Finding 3 (accepted) — plan body updated but this Functional bullet missed |
+| 2 | `phase-03-...md:287` | "bumps `workflow-parity.test.cjs:159` from 41 → 44" | "bumps `workflow-parity.test.cjs:167` from 41 → 44" | Session 3 Finding 12 (accepted) — actual line is 167 (off-by-one from 166); phase 3's "Next Steps" still has the pre-fix reference |
+| 3 | `plan.md:155` | "D-11: add 4 missing tools to workflow group" | "D-11: add 4 missing tools to meta_state group" | Session 3 Finding 3 — pre-flight checklist line not updated |
+| 4 | `plan.md:279` | "4 tools added to legacy `agent-manifest.json` workflow group" | "4 tools added to legacy `agent-manifest.json` meta_state group" | Session 3 Finding 3 — confirmed-decisions bullet not updated |
+| 5 | `phase-05-...md:19` | "assert the response shape (`result.content[0].text` is JSON-stringified)" | "assert the response shape (`result.text` is the pre-parsed string per `with-mcp-server.js`)" | Session 3 Finding 5 — overview text mentions the OLD shape; the actual code (line 118) uses `result.text` correctly |
+
+**Meta-finding:** Session 3's consistency sweep claimed "all `workflow group` D-11 references updated" — but the claim was over-broad. 3 of 4 stale `workflow group` references were missed (plan.md:155, plan.md:279, phase-04:23). Similarly for `line 159` reference. The whole-plan consistency sweep needs a stronger grep pattern (e.g., `grep -nE "workflow.{0,3}group|line.{0,5}159"`).
+
+#### Whole-Plan Consistency Sweep (post-Session 4)
+
+- **Files reread:** `plan.md`, `phase-01` through `phase-06` (7 files).
+- **Decision deltas from Session 4:**
+  - 5 stale references identified (4 D-11 group assignment + 1 line-number + 1 response-shape overview text).
+  - 0 critical failures (all mastra interfaces verified; 0 factual errors in plan).
+- **Stale references checked:** all `workflow group` references (3 found in plan.md:155, plan.md:279, phase-04:23 — should be `meta_state group`); all `159` line refs (1 found in phase-03:287 — should be `167`); all `result.content[0].text` references (1 found in phase-05:19 — should be `result.text`).
+- **Unresolved contradictions:** 5 stale references. All are documentation drift (not behavioral errors); the implementation will be correct because the body text is consistent. **All 5 should be fixed before cook** to prevent future red-team churn.
+
+#### Confirmed Decisions (Session 4)
+
+- **All Mastra API claims verified against installed code** (12/12 claims pass).
+- **Model `kimi-for-coding/k2p6` is valid in current Mastra model registry** (provider-registry.mjs confirms 3 models: `kimi-k2-thinking`, `k2p6`, `k2p5`).
+- **`ask_<agentKey>` conversion confirmed at the source code level** (line 3506 of `@mastra/mcp/dist/index.js`).
+- **D-11 target group is `meta_state`, NOT `workflow`** (confirmed by both session-3-red-team finding AND current state of the legacy manifest).
+
+#### Action Items
+
+- [x] Fix `phase-04-...md:23` — change "workflow group" → "meta_state group" in Functional bullet (Session 4 stale-ref #1)
+- [x] Fix `phase-03-...md:287` — change "line 159" → structural anchor in Next Steps (Session 4 stale-ref #2)
+- [x] Fix `plan.md:155` — change "workflow group" → "meta_state group" in pre-flight checklist (Session 4 stale-ref #3)
+- [x] Fix `plan.md:279` — change "workflow group" → "meta_state group" in Confirmed Decisions (Session 4 stale-ref #4)
+- [x] Fix `phase-05-...md:19` — change response-shape overview from `result.content[0].text` → `result.text` (Session 4 stale-ref #5)
+- [x] **Additional fixes** (caught by Session 4 post-fix sweep):
+  - `plan.md:65,71,156,212,240` — all `workflow-parity.test.cjs:166` references → structural anchor
+  - `plan.md:69` — acceptance gate (the durable anchor) `:166` reference → structural anchor
+  - `phase-04-...md:14,24,101,118,134,145,158,174,185,192` — all `:166` references → structural anchor
+  - `phase-04-...md:199` — "D-11 reconciliation adds 4 tools to the legacy manifest's `workflow` group" → "meta_state group"
+  - `phase-05-...md:180,197` — Implementation Steps + Function/Interface Checklist still had `content[0].text` → updated to `result.text`
+  - `phase-06-...md:23,93,147` — `:166` references → structural anchor
+  - `phase-06-...md` — added "Cleanup task — Plan 4 owns the master-tracker reconciliation" section per validate Session 4 + operator decision 2026-06-23 (initially scoped to Phase E; revised to Plan 4 per operator "Change of mind" note)
+- [x] Strengthen consistency-sweep grep pattern in future plans: `grep -nE "(workflow|workflow).{0,5}group|(line|workflow-parity).{0,3}159|content\[0\]\.text"` (process improvement applied this session)
+
+#### Impact on Phases
+
+- **All 5 fixes are documentation-only.** No phase file changes its implementation steps, success criteria, or risks.
+- **Phase 4's "Implementation Steps" (lines 117-135) is consistent** — only the Functional bullet (line 23) has the stale reference.
+- **Plan count math is correct** — the +3 ask_* tools bump from 41 → 44 is verified by the mastra server's behavior.
+
+#### Whole-Plan Consistency Sweep (post-fixes)
+
+- **Files reread:** `plan.md`, `phase-01` through `phase-06` (7 files).
+- **Stale references fixed:** 5 documented + 9 additional caught by post-fix sweep (see Action Items above).
+- **Verification:** `grep -nE "workflow.{0,3}group|line.{0,3}159|content\[0\]\.text|:166|:159"` against all 7 files returns only **historical-context matches** (Session 3/4 logs, count-matrix "workflow group stays at 3" which is a true statement, and the accurate code comment "with-mcp-server.js already parses content[0].text" which documents the helper's actual behavior).
+- **Operator decisions applied:**
+  - **Stale-reference fix strategy:** apply 5 mechanical fixes inline (no 4th red-team pass). ✓
+  - **Line-reference stability:** use structural anchors (not line numbers). ✓ (9 references converted)
+  - **`mastra_meta_state_get_relationship` tool gap:** defer to Phase 4 (per operator; related to `meta-260623T1126Z-meta-state-relationships-graph-is-unidirectional-on-reopens`).
+  - **Cold-session scope:** keep unchanged; cleanup task assigned to Plan 4 (per operator decision 2026-06-23: "Change of mind. for Cleanup task, let's put it into Plan 4 of plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md (So it's in Phase D scope, not Phase E)").
+- **Unresolved contradictions:** 0. Plan is internally consistent across all 7 files.
+
+#### Recommendation
+
+**Plan is factually correct against the installed Mastra code** (12/12 verified) AND internally consistent after the fixes. All stale references are documentation drift, not behavioral errors. The plan is **ready to cook**.
+
+`/ck:plan red-team` is NOT needed (3 red-team sessions already complete; no new behavioral changes proposed). The Session 4 fixes are all mechanical find-replace operations; they have been applied and the whole-plan consistency sweep reports 0 unresolved contradictions.
+
+### Session 5 — 2026-06-23 (operator-driven refinement: `direnv` recommended for local dev)
+
+**Trigger:** operator pushback on the "shell `~/.bashrc` only" env-var injection workflow. The plan's `.claude/coordination/MASTRA_AGENT_MODEL.md` (Phase 1 deliverable) originally documented only shell rc as the operator's option. Operator noted this is "kinda random" because it's not per-project scoped. Mastra's own docs at `https://mastra.ai/models/providers/kimi-for-coding` use `.env` files via conventional Node.js patterns. Operator asked: "why not `.env` like the documentation, or setting by `direnv`?"
+
+**Refinement (no behavioral change to the loop code):**
+
+The plan's "no `dotenv` import in loop code" lock is about the **loop's runtime**, not the operator's dev environment. The two concerns are orthogonal:
+
+- **Loop code (locked):** reads `process.env.*` directly. No `dotenv` import. No code change required.
+- **Operator dev env (flexible):** free to use any env-var injection method.
+
+**Recommended operator workflow:** `direnv` with `.envrc` (committed, no secrets) + `.env` (gitignored, contains the actual key) + `.env.example` (committed template, placeholder values).
+
+```bash
+# .envrc (committed, no secrets)
+dotenv .env
+```
+
+```bash
+# .env.example (committed template)
+KIMI_API_KEY=sk-your-kimi-api-key-here
+# MASTRA_AGENT_MODEL=kimi-for-coding/k2p6
+```
+
+**Setup (one-time per developer):**
+```bash
+brew install direnv        # macOS
+sudo apt install direnv    # Linux
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc  # or bash equivalent
+cp .env.example .env       # fill in real key
+direnv allow .
+```
+
+**Why this is the right answer:**
+- Per-project scoped (auto-load on `cd`, auto-unload on `cd` out)
+- Git-safe (`.env` is gitignored; `.envrc` and `.env.example` are committed intentionally)
+- No code change in the loop (the lock holds)
+- Matches the operator's intuition about "random shell" being awkward
+- Standard pattern in the Node.js / Mastra ecosystem
+
+**Fallback for operators without `direnv`:** shell rc (`~/.bashrc` / `~/.zshrc`) still works; the plan's original doc is preserved as a fallback.
+
+**Production deployment context:** the plan's recommendation is for dev. In production, env vars come from the deployment system (Docker, K8s, systemd, etc.), not `.env` files. The loop code is unchanged across dev / CI / production.
+
+#### Files changed (Session 5)
+
+- `phase-01-...md` Overview: updated to mention `direnv` recommendation
+- `phase-01-...md` Requirements: added non-functional bullet on operator workflow flexibility
+- `phase-01-...md` Related Code Files: added `.envrc`, `.env.example`, `.gitignore` to the create/modify list
+- `phase-01-...md` File Inventory: added 3 new rows (`.envrc`, `.env.example`, `.gitignore`)
+- `phase-01-...md` Implementation Steps: added steps 7-9 (`.envrc`, `.env.example`, `.gitignore`); updated step 6 (`.claude/coordination/MASTRA_AGENT_MODEL.md`) to recommend `direnv` and document fallback
+- `phase-01-...md` Function/Interface Checklist: added 4 new items
+- `phase-01-...md` Security Considerations: updated `KIMI_API_KEY` storage + `dotenv` notes
+- `plan.md` User decisions: updated "no `dotenv` import" bullet to clarify the lock scope
+- `plan.md` Acceptance gate: added `direnv` recommendation reference
+- `plan.md` Whole-Plan Consistency Sweep: re-run (no new contradictions)
+
+#### Operator Decisions Applied (Session 5)
+
+- **Local-dev workflow:** `direnv` (recommended) or shell rc (fallback). No change to loop code.
+- **Git-safety:** `.env` excluded; `.envrc` and `.env.example` committed intentionally.
+- **Production:** env vars from deployment system, not `.env` files (unchanged).
+
+#### Whole-Plan Consistency Sweep (post-Session 5)
+
+- **Files reread:** `plan.md`, `phase-01` (only file with substantive changes).
+- **Decision deltas:** operator workflow recommendation added; no behavioral change to loop code.
+- **Unresolved contradictions:** 0. Plan is internally consistent.
+
+#### Recommendation
+
+**Plan remains ready to cook.** The Session 5 refinement is a documentation + workflow improvement, not a behavioral change. The loop's "no `dotenv` import" lock is preserved; the operator's local-dev workflow is now properly supported via `direnv` (per-project scoped, git-safe) or shell rc (fallback).

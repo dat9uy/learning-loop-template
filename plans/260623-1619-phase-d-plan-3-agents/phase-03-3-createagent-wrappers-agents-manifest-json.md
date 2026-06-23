@@ -284,4 +284,4 @@ The dict keys (`intake_agent`, `scout_agent`, `self_improvement_agent`) are the 
 
 ## Next Steps
 
-After Phase 3 ships, Phase 4 wires `agents-manifest.json` into `server.js` + adds the `agent` group to `agent-manifest.json` + reconciles D-11 in the legacy manifest + bumps `workflow-parity.test.cjs:159` from 41 → 44.
+After Phase 3 ships, Phase 4 wires `agents-manifest.json` into `server.js` + adds the `agent` group to `agent-manifest.json` + reconciles D-11 in the legacy manifest + bumps `workflow-parity.test.cjs` (`assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`) in the tools/list test.

@@ -11,7 +11,7 @@ dependencies: [3]
 
 ## Overview
 
-Wire `agents-manifest.json` into `server.js`; pass the 3 `Agent` instances to `MCPServer` config as `agents: {...}`; the `MCPServer` auto-converts each to a `ask_<key>` MCP tool. Add the `agent` group to `agent-manifest.json` (3 entries: `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`). Reconcile D-11 in the legacy `tools/learning-loop-mcp/agent-manifest.json` (add 4 missing tools to the `meta_state` group: 15 → 19). Bump `workflow-parity.test.cjs:166` assertion 41 → 44. No new tests in this phase — the changes are config + manifest updates; Phase 5's parity harness is the load-bearing test surface.
+Wire `agents-manifest.json` into `server.js`; pass the 3 `Agent` instances to `MCPServer` config as `agents: {...}`; the `MCPServer` auto-converts each to a `ask_<key>` MCP tool. Add the `agent` group to `agent-manifest.json` (3 entries: `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`). Reconcile D-11 in the legacy `tools/learning-loop-mcp/agent-manifest.json` (add 4 missing tools to the `meta_state` group: 15 → 19). Bump `workflow-parity.test.cjs` (`assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`) in the tools/list test. No new tests in this phase — the changes are config + manifest updates; Phase 5's parity harness is the load-bearing test surface.
 
 ## Requirements
 
@@ -20,8 +20,8 @@ Wire `agents-manifest.json` into `server.js`; pass the 3 `Agent` instances to `M
   - `server.js` constructs the `agents` dict by dynamically importing each agent module + extracting the exported instance.
   - `server.js` passes `agents: {...}` to the `MCPServer` constructor (alongside `tools` and `workflows`).
   - `agent-manifest.json` (the mastra one) gains a 6th `agent` group with 3 entries.
-  - `tools/learning-loop-mcp/agent-manifest.json` (the legacy one) gains 4 entries in its `workflow` group: `propose_design`, `relationships`, `re_verify`, `supersede` (master tracker D-11).
-  - `workflow-parity.test.cjs:166` assertion bumps from 41 → 44.
+  - `tools/learning-loop-mcp/agent-manifest.json` (the legacy one) gains 4 entries in its `meta_state` group: `propose_design`, `relationships`, `re_verify`, `supersede` (master tracker D-11).
+  - `workflow-parity.test.cjs` (`assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`) bumps from 41 → 44.
   - `server.js` description string updates from "31 tools + 10 workflows" → "31 tools + 10 workflows + 3 agents" (or equivalent).
 - **Non-functional:**
   - The `MCPServer` accepts `agents: Record<string, Agent>` (verified at `node_modules/@mastra/core/dist/mcp/types.d.ts`).
@@ -98,7 +98,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
   - `tools/learning-loop-mastra/server.js` (adds `agents-manifest.json` loader + `agents` dict + `agents: {...}` to `MCPServer` config; updates description string)
   - `tools/learning-loop-mastra/agent-manifest.json` (adds 6th `agent` group; 3 entries)
   - `tools/learning-loop-mcp/agent-manifest.json` (adds 4 entries to `meta_state` group; D-11: 15 → 19)
-  - `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` (bumps assertion 41 → 44; updates the test message string)
+  - `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` (bumps `assert.equal(tools.length, 41, ...)` → `assert.equal(tools.length, 44, ...)`; updates the test message string)
 - **Delete:** none
 - **Read (verification):**
   - `tools/learning-loop-mastra/server.js:18-50` (the existing `tools` and `workflows` loader pattern to mirror)
@@ -115,7 +115,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 | `tools/learning-loop-mastra/server.js` | Modify | +20 LOC | behavior: registers 3 agents |
 | `tools/learning-loop-mastra/agent-manifest.json` | Modify | +7 lines | 5→6 groups |
 | `tools/learning-loop-mcp/agent-manifest.json` | Modify | +4 lines | D-11 reconciliation |
-| `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` | Modify | -1 LOC, +1 LOC | assertion bump 41 → 44 |
+| `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` (`assert.equal(tools.length, ...)` assertion) | Modify | -1 LOC, +1 LOC | assertion bump 41 → 44 |
 
 ## Implementation Steps
 
@@ -131,7 +131,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 5. **Bump the version (optional).** If the `server.js` version is `0.1.1` (per Plan 1b I4 fix), bump to `0.1.2`. This is a behavior change (3 new `ask_*` tools added), so a version bump is appropriate. Document the version bump in Phase 6's PR body. **Also add the `MASTRA_AGENTS_MANIFEST` env var support here** (test-only path; see Architecture section above). The env var is intentionally not documented in the operator-facing `.claude/coordination/MASTRA_AGENT_MODEL.md` — it is an internal test seam.
 6. **Add the `agent` group to `agent-manifest.json`.** Insert after the `runtime_agnostic` group (currently the 5th group). 3 entries: `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`. `ordering: "any"`. `typical_chain` lists the 3 agents in order (intake → scout → selfImprovement, per the AGENTS.md §9 implementation workflow).
 7. **Reconcile D-11 in the legacy `agent-manifest.json`.** Add 4 entries to the `meta_state` group (NOT the `workflow` group). The 4 entries are BARE names: `propose_design`, `relationships`, `re_verify`, `supersede`. The legacy meta_state group grows from 15 → 19. The workflow group stays at 3.
-8. **Bump `workflow-parity.test.cjs:166` assertion 41 → 44.** Update the line: `assert.equal(tools.length, 44, ...)`. Update the test message to mention the 3 new `ask_*` tools.
+8. **Bump `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) assertion 41 → 44.** Update the line: `assert.equal(tools.length, 44, ...)`. Update the test message to mention the 3 new `ask_*` tools.
 9. **Run `pnpm test` to confirm no regressions.** The 3 new `ask_*` tools should be enumerated by `tools/list`; the workflow-parity test should pass with the new count. The legacy 31-entry `tools/manifest.json` is unchanged; the cold-session test is unchanged.
 
 ## Function/Interface Checklist (deep mode)
@@ -142,7 +142,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 - [ ] `server.js` version bumped (if applicable)
 - [ ] `agent-manifest.json` has 6 groups (5 existing + 1 new `agent`)
 - [ ] Legacy `agent-manifest.json` meta_state group has 19 entries (15 existing + 4 D-11)
-- [ ] `workflow-parity.test.cjs:166` assertion is 44
+- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) assertion is 44
 - [ ] `console.error` log line in `server.js` includes the agent count
 
 ## Test Scenario Matrix (deep mode)
@@ -155,7 +155,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 | `ask_self_improvement_agent` is in `tools/list` enumeration | ✓ | | | the agent→ask_<key> conversion |
 | Each `ask_*` tool has a non-empty description | | ✓ | | from the `Agent.description` field |
 | Each `ask_*` tool has a `{message: string}` input schema | ✓ | | | the fixed MCP agent invocation shape |
-| `workflow-parity.test.cjs:166` passes with assertion 44 | ✓ | | | the count-math guard |
+| `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) passes with assertion 44 | ✓ | | | the count-math guard |
 | `pnpm test` passes with no regressions | ✓ | | | the overall health check |
 | Cold-session test passes (legacy 31-entry manifest unchanged) | | ✓ | | scope unchanged |
 | Legacy `agent-manifest.json` D-11 reconciliation | | ✓ | | closes the structural gap |
@@ -171,7 +171,7 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
   - `tools/learning-loop-mastra/server.js` (modified)
   - `tools/learning-loop-mastra/agent-manifest.json` (modified)
   - `tools/learning-loop-mcp/agent-manifest.json` (modified)
-  - `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` (modified)
+  - `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` (`assert.equal(tools.length, ...)` modified)
 - **Blocks:** Phase 5 (the agent-parity harness enumerates `ask_*` tools and asserts the MCP response shape)
 - **Blocked by:** Phase 3 (the 3 agent instances + `agents-manifest.json`)
 
@@ -182,21 +182,21 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 - [ ] `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent` are in `tools/list` with non-empty descriptions and `{message: string}` input schemas
 - [ ] `agent-manifest.json` has 6 groups
 - [ ] Legacy `agent-manifest.json` meta_state group has 19 entries (D-11 reconciled)
-- [ ] `workflow-parity.test.cjs:166` asserts 44
+- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
 - [ ] `server.js` description string mentions the 3 new agents
 - [ ] `server.js` log line includes the agent count
 
 ## Risk Assessment
 
 - **D-11 reconciliation breaks `runtime-agnostic-checklist.js`.** Risk: very low. **Mitigation:** The 4 added tools are existing MCP tools (per `tools/learning-loop-mastra/tools/manifest.json`); the legacy manifest's role is to enumerate tools the checklist should verify. Adding tools to the list is a no-op for the checklist (it iterates over the list; if the tool is already registered, the check passes). If the checklist does a strict-equality assertion on the list, the addition breaks it; Phase 4 step 7 verifies the checklist still passes.
-- **`workflow-parity.test.cjs:166` assertion bump missed a second assertion.** Risk: low. **Mitigation:** The test has only one count assertion at line 159 (verified at `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:155-170`). If other tests assert the old count, Phase 4 step 8 grep-verifies the file.
+- **`workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) assertion bump missed a second assertion.** Risk: low. **Mitigation:** The test has only one count assertion (`assert.equal(tools.length, ...)` in the tools/list test). If other tests assert the old count, Phase 4 step 8 grep-verifies the file.
 - **`server.js` version bump is forgotten.** Risk: low. **Mitigation:** Phase 6 step 1 includes a version-bump verification (grep for the new version string). If the bump is missed, Phase 6 catches it.
 - **The `agents-manifest.json` snake_case key convention is not honored.** Risk: very low. **Mitigation:** Phase 3 ships the manifest with the snake_case keys; Phase 4's `server.js` reads the keys verbatim. No key transformation.
 
 ## Security Considerations
 
 - **The `agent-manifest.json` `model` field is `kimi-for-coding/k2p6`.** Risk: very low. **Mitigation:** The field is a public API surface; the operator can change it in the manifest before any production deployment. The 3-layer lookup rule means an env var change is the simplest override.
-- **D-11 reconciliation adds 4 tools to the legacy manifest's `workflow` group.** Risk: very low. **Mitigation:** The 4 tools are existing MCP tools (per the deterministic `tools/manifest.json`). The legacy manifest is used by `runtime-agnostic-checklist.js:221-255` to verify new tools are listed. Adding tools to the list expands the verification surface; the checklist iterates over the list and checks each tool. No new behavior; the addition is a structural fix.
+- **D-11 reconciliation adds 4 tools to the legacy manifest's `meta_state` group.** Risk: very low. **Mitigation:** The 4 tools are existing MCP tools (per the deterministic `tools/manifest.json`). The legacy manifest is used by `runtime-agnostic-checklist.js:221-255` to verify new tools are listed. Adding tools to the list expands the verification surface; the checklist iterates over the list and checks each tool. No new behavior; the addition is a structural fix.
 
 ## Next Steps
 

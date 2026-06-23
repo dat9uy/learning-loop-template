@@ -16,7 +16,7 @@ Ship `agent-parity.test.cjs` — the parity harness for the 3 `ask_*` MCP tools.
 ## Requirements
 
 - **Functional:**
-  - Empirical probe test (Phase 5.1): spawn server, call `ask_intake_agent` with a fixed message, assert the response shape (`result.content[0].text` is JSON-stringified; contains the expected `text` field from the mock).
+  - Empirical probe test (Phase 5.1): spawn server, call `ask_intake_agent` with a fixed message, assert the response shape (`result.text` is the pre-parsed string returned by `with-mcp-server.js`; contains the expected `text` field from the mock).
   - 3 per-agent invocation tests (Phase 5.2-5.4): one per agent, each with a distinct `mockText` and a distinct `spyGenerate` assertion.
   - 1 per-agent-manifest-field override test (Phase 5.5): patch the test-only manifest fixture to set one agent's `model` field to a distinct value (e.g., `anthropic/claude-sonnet-4-6`); assert the agent uses the patched model via `spyGenerate` recording the model id. **Note:** the `MASTRA_AGENT_MODEL` env-var override is already covered at the unit-test level by Phase 2's invariant Test 2 (`resolveAgentModel` env var wins when no per-agent field). The MCP-integration version of the env-var override test would require a real API key for the overridden model and is NOT in scope; the unit-test version is sufficient.
   - 1 schema-parity test (Phase 5.6): assert each `ask_*` tool's input schema is `{ message: string }` (the locked MCP shape per researcher-A Q2).
@@ -177,7 +177,7 @@ The empirical probe is the first test in the file. It logs the full response sha
 1. **Read `workflow-parity.test.cjs` and `storage-parity.test.cjs` to confirm the test file shape.** The pattern: shared `before` block spawns the server, per-test mocks inject behavior, `after` cleans up.
 2. **Create the test-only manifest fixture.** `tools/learning-loop-mastra/__tests__/fixtures/agents-manifest.test.json` is a copy of the production `agents-manifest.json` with the `model` field set to `"__MOCK_LLM__"` (a marker the server recognizes via the `MASTRA_AGENTS_MANIFEST` env var). Alternatively, the test fixture is a copy with `model` set to a `ModelRouterModelId` that resolves to a local stub; the cleanest path is the env var + marker. **Add a header comment to the test fixture that references the production manifest as the source of truth:** `// SOURCE OF TRUTH: ../../../agents-manifest.json (production). The test fixture is a copy with the model field replaced by the __MOCK_LLM__ marker. If the production manifest gains new fields, the test fixture must be updated in lockstep. The Phase 5.7 tools/list enumeration test asserts the agent count is 3 — the regression guard that catches manifest drift.`
 3. **Add `MASTRA_AGENTS_MANIFEST` env var support to `server.js`** (if not already present from Phase 4). The env var overrides the default manifest path. Used only in tests.
-4. **Write the empirical probe test (Phase 5.1).** The first test in the file. Spawns the server with the test-only manifest, calls `ask_intake_agent` with a fixed message, logs the raw response, asserts the basic shape (`content[0].text` is JSON-stringified with a `text` field). The locked format is documented in a comment header in the test file.
+4. **Write the empirical probe test (Phase 5.1).** The first test in the file. Spawns the server with the test-only manifest, calls `ask_intake_agent` with a fixed message, logs the raw response, asserts the basic shape (`result.text` is the pre-parsed string per `with-mcp-server.js`, containing a `text` field). The locked format is documented in a comment header in the test file.
 5. **Write the 3 per-agent invocation tests (Phase 5.2-5.4).** Each test:
    - Constructs a `createMockModelWithSpy` instance with a distinct `mockText` (one per agent).
    - Patches the test-only manifest to point at the mock model.
@@ -188,18 +188,29 @@ The empirical probe is the first test in the file. It logs the full response sha
 7. **Write the schema-parity test (Phase 5.6).** Call `listTools()`. Filter to `ask_*` tools. Assert each has `inputSchema.type === "object"`, `inputSchema.properties.message.type === "string"`, `inputSchema.required.includes("message")`, and `inputSchema.additionalProperties === false`.
 8. **Write the tools/list enumeration test (Phase 5.7).** Assert exactly 3 `ask_*` tools in `tools/list` with the expected keys (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`).
 9. **Write the input-validation rejection test (Phase 5.8).** Call `ask_intake_agent` with no `message` field. Assert the MCP call returns an error (or a validation rejection) — the locked behavior depends on the empirical probe's observation.
-10. **Run `pnpm test` to confirm the new tests pass.** Plan 1b baseline 1140 + Phase 2's 4 + Phase 3's 3 + Phase 5's 8 = 1155 expected.
+10. **Write the conditional e2e integration test (Phase 5.9 — Post Plan 3 step, ships in this phase).** New file: `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs`. This is the **Post Plan 3 functional verification** step (per `brainstorm-260618-1538-phase-d-plan-split-report.md` §"Post Plan 3"). The test uses `node:test`'s conditional `describe({ skip: !HAS_KEY })` pattern:
+   - If `KIMI_API_KEY` is unset: the entire `describe` block is skipped (3 tests counted as 3 skipped in the test summary).
+   - If `KIMI_API_KEY` is set: spawns the mastra server WITHOUT the `MASTRA_AGENTS_MANIFEST` env var (so the production `agents-manifest.json` is used), calls each `ask_*` with a real prompt, and asserts the response includes expected loop concepts.
+   - **Test 5.9.1 (intakeAgent):** Call `ask_intake_agent({ message: "What rules are in force? List active findings." })`. Assert: `result.text` is non-empty, length > 50 chars; matches `/active|rule|surface|meta-state/i`.
+   - **Test 5.9.2 (scoutAgent):** Call `ask_scout_agent({ message: "Run the scout pipeline at the project root and report the bucket distribution." })`. Assert: response includes at least 1 of the 5 scout sections ("Test Inventory", "MCP-First Bucket Distribution", "Dangling Matches", "Gap Table", "Prompt Budget Audit").
+   - **Test 5.9.3 (selfImprovementAgent):** Call `ask_self_improvement_agent({ message: "Given the scout output, propose 1 experiment candidate." })`. Assert: response includes `/finding|experiment|hypothesis|gap|surface/i`.
+   - **Why this is the Post Plan 3 step in Plan 3:** It's small (~150 LOC) and ships with the agent wrappers. The operator runs it manually after Plan 3 merges (per Phase 6's Post Plan 3 prerequisites section). The test is gated so the regular `pnpm test` baseline is unchanged for operators without `KIMI_API_KEY`.
+   - **Test count math update:** Plan 1b baseline 1140 + Phase 2's 4 + Phase 3's 3 + Phase 5's 8 (mocked) = 1155 pass / 0 fail / 1 skipped (default, no `KIMI_API_KEY`). With `KIMI_API_KEY`: 1158 pass / 0 fail / 1 skipped (3 additional pass; 1 original skip retained). The 3 conditional tests are the Post Plan 3 verification surface.
+11. **Run `pnpm test` to confirm the new tests pass.** Plan 1b baseline 1140 + Phase 2's 4 + Phase 3's 3 + Phase 5's 8 (mocked) + Phase 5.9's 3 (conditional, skipped by default) = 1158 tests in total / 1155 pass / 0 fail / 1 skipped (default) OR 1158 pass / 0 fail / 1 skipped (with `KIMI_API_KEY`).
 
 ## Function/Interface Checklist (deep mode)
 
 - [ ] `MASTRA_AGENTS_MANIFEST` env var overrides the default manifest path (test-only)
 - [ ] Test fixture `agents-manifest.test.json` exists with the mock model marker
-- [ ] Empirical probe test logs the response shape + asserts `content[0].text` is JSON-stringified
+- [ ] Empirical probe test logs the response shape + asserts `result.text` (pre-parsed by `with-mcp-server.js`) is the locked format
 - [ ] 3 per-agent tests assert: response shape, `mockText` round-trip, `calls.length === 1`, instructions marker in prompt
 - [ ] Per-agent-manifest-field override test asserts the manifest's `model` field wins
 - [ ] Schema-parity test asserts the locked `{ message: string }` input schema
 - [ ] Tools/list enumeration test asserts exactly 3 `ask_*` tools with the expected keys
 - [ ] Input-validation rejection test asserts the locked rejection behavior
+- [ ] Conditional e2e integration test (`agent-e2e-integration.test.cjs`) exists with 3 tests, gated on `KIMI_API_KEY`
+- [ ] When `KIMI_API_KEY` is unset, the 3 e2e tests are reported as `skipped` (not failed)
+- [ ] When `KIMI_API_KEY` is set, the 3 e2e tests assert response includes expected loop concepts (active/rule for intake; bucket section for scout; finding/experiment for selfImprovement)
 
 ## Test Scenario Matrix (deep mode)
 
@@ -213,6 +224,9 @@ The empirical probe is the first test in the file. It logs the full response sha
 | Phase 5.6: input schema parity (locked `{ message: string }`) | ✓ | | | the schema-parity contract |
 | Phase 5.7: tools/list enumeration = 3 `ask_*` tools | ✓ | | | the count-math guard |
 | Phase 5.8: input validation rejection | | ✓ | | the input contract enforcement |
+| Phase 5.9.1: intakeAgent real-LLM invocation (gated on KIMI_API_KEY) | ✓ | | | Post Plan 3 verification — proves agent actually follows the loop |
+| Phase 5.9.2: scoutAgent real-LLM invocation (gated on KIMI_API_KEY) | ✓ | | | Post Plan 3 verification — proves scout produces expected sections |
+| Phase 5.9.3: selfImprovementAgent real-LLM invocation (gated on KIMI_API_KEY) | ✓ | | | Post Plan 3 verification — proves selfImprovement follows the loop |
 | All tests: `calls.length === 1` per invocation | | ✓ | | the single-call contract |
 | All tests: prompt includes the agent's instructions marker | | ✓ | | the instructions are honored |
 
@@ -244,7 +258,7 @@ The empirical probe is the first test in the file. It logs the full response sha
 
 ## Risk Assessment
 
-- **The empirical probe reveals the response shape is NOT `content[0].text` JSON-stringified.** Risk: medium. **Mitigation:** The probe runs first; the test file's assertions are updated based on the observation. If the shape is different, the remaining 6-8 tests are re-targeted at the actual shape. The shape is documented in a comment header in the test file. Researcher A Q4 flagged this as a known unknown; Phase 5.1 is the explicit resolution.
+- **The empirical probe reveals the response shape is NOT `result.text` as expected.** Risk: medium. **Mitigation:** The probe runs first; the test file's assertions are updated based on the observation. If the shape is different, the remaining 6-8 tests are re-targeted at the actual shape. The shape is documented in a comment header in the test file. Researcher A Q4 flagged this as a known unknown; Phase 5.1 is the explicit resolution.
 - **The mock LLM does not produce the expected `text` field on `doGenerate`.** Risk: low. **Mitigation:** `createMockModelWithSpy` is a thin wrapper around `createMockModel`, which returns a fixed `text` field per the helper's implementation (verified at `node_modules/@mastra/core/dist/test-utils/llm-mock.js`). The spy records the call; the test asserts the spy was called exactly once with the expected input shape.
 - **`MASTRA_AGENTS_MANIFEST` env var is read at import time, not at server start time.** Risk: low. **Mitigation:** Phase 4's `server.js` change reads the env var at the top of the module (line 1-5). Each test that needs a different manifest sets the env var BEFORE importing `server.js`. The test uses `child_process.spawn` (via `with-mcp-server.js`) to start a fresh server per test, so the env var is read on each spawn.
 - **The test fixture is committed and accidentally used in production.** Risk: very low. **Mitigation:** The fixture is in `__tests__/fixtures/`, a subdirectory of the test folder. The `server.js` only loads it when `MASTRA_AGENTS_MANIFEST` env var is set. The default `agents-manifest.json` is in the package root, not the test folder.

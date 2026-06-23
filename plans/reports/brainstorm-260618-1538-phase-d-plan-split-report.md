@@ -39,12 +39,13 @@ Phase D of the master tracker (D1–D7) is the Mastra Phase 2-3 migration: promo
 | **Plan 1** | D1+D2+D3 | **Workflows** — 8 `createWorkflow` + `stateSchema` + `suspend`/`resume` + workflow parity harness | All 10 namespaces pass; workflow parity GREEN (stateSchema round-trip for 8 tools) | None |
 | **Plan 2** | D5+D6 | **Storage** — LibSQL backend (Mastra runtime substrate) + LibSQL/JSONL round-trip | All 10 namespaces pass; LibSQL read/write tests GREEN | None |
 | **Plan 3** | D4+D7 | **Agents** — 3 `createAgent` + per-agent model config + agent parity harness (mocked LLM) | All 10 namespaces pass; agent parity tests GREEN | Plan 1 + Plan 2 |
-| **Plan 4** | — | **Cutover** — `agent-manifest.json` update + retire legacy tool wrappers + master-tracker flip | All 10 namespaces pass; legacy imports cleared; §3.10 tool surface reconciled | Plan 1 + Plan 2 + Plan 3 |
+| **Post Plan 3** | — | **Functional Verification** — manual smoke test of 3 `ask_*` tools with real LLM + conditional e2e test gated on `KIMI_API_KEY` | All 3 agents produce expected output with real LLM; journal + test artifacts present | Plan 3 |
+| **Plan 4** | — | **Cutover** — `agent-manifest.json` update + retire legacy tool wrappers + master-tracker flip | All 10 namespaces pass; legacy imports cleared; §3.10 tool surface reconciled | Plan 1 + Plan 2 + Plan 3 + Post Plan 3 |
 
 **Dependency DAG:**
 ```
 Plan 1 (workflows) ─┐
-                    ├─→ Plan 3 (agents) ─→ Plan 4 (cutover)
+                    ├─→ Plan 3 (agents) ─→ Post Plan 3 (verification) ─→ Plan 4 (cutover)
 Plan 2 (storage)  ──┘
 ```
 
@@ -103,6 +104,7 @@ Plan 2 (storage)  ──┘
 | `createWorkflow` API surface differs from `createTool` enough that 8 migrations can't ship in one PR | Medium | Phase C Plan 1 already shipped `createTool` + factory. `createWorkflow` is documented in research report §3.1 as "multi-step state machines with branching" — patterns are known. If mid-Plan-1 we discover a category that won't fit `createWorkflow`, split it into Plan 1a (atomic fix). |
 | LibSQL adoption pulls in @libsql/client + native bindings; WSL2 build issues | Medium | Plan 2 starts with a LibSQL install probe (matches Phase C Plan 1's coercion probe pattern). If install fails on WSL2, fall back to in-memory SQLite via `@libsql/client` `file::memory:?`. |
 | Agent parity harness needs LLM mocking infrastructure that doesn't exist | Medium | Plan 3 inherits the test patterns from `tools/learning-loop-mcp/scout/` (existing scout helper tests) and the `workflow_*` parity harness from Plan 1. If LLM mocking is novel, ship a thin mock first (1 file, ~50 LOC) before agent parity. |
+| Plan 3's mocked tests don't catch LLM-instruction ambiguity (the agent "works" structurally but the LLM interprets instructions differently than the test fixture) | **High** | **NEW (Post Plan 3 step):** After Plan 3 ships, run a manual smoke test of each `ask_*` tool with a real LLM call + ship a conditional e2e test (`tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs`) gated on `KIMI_API_KEY`. Plan 4 cannot start until both artifacts (journal + test pass-or-skip) exist. |
 | Plan 4 (cutover) breaks cold-session test | Low | Phase C Plan 3 broke cold-session test then fixed it (CR-3 → Plan 1b). Apply same protocol: `pnpm test:cold-session` is a Plan 4 gate. |
 | productBuildAgent reframe surfaces during Plan 3 review | Low | Brainstorm already locked the decision. If operator reopens, file a `meta_state_log_change` with `change_target: 'AGENTS.md#215'` and revert Plan 3 to 4 agents. |
 | Storage file path conflicts with meta-state.jsonl | Low | §3.7 explicitly says "Likely separate file, same engine." Plan 2 picks `./tools/learning-loop-mastra/data/mastra-memory.db`. Meta-state stays at `./meta-state.jsonl`. |
@@ -147,6 +149,16 @@ Plan 2 (storage)  ──┘
 - Modify: `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.10 (reconcile tool surface table)
 - Modify: `AGENTS.md` §1 (note Phase D shipped)
 
+**Post Plan 3 (Functional Verification — gating step before Plan 4):**
+- Create: `docs/journals/260623-post-plan-3-verification.md` (operator-filled journal documenting manual smoke test of each `ask_*` tool with real LLM)
+- Create: `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` (conditional e2e test, ~150 LOC; runs ONLY if `process.env.KIMI_API_KEY` is set; 3 tests, one per agent; skips entirely otherwise)
+- Modify: `meta-state.jsonl` (1 `meta_state_log_change` entry filing Post Plan 3 completion with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`)
+- Read (verification): `tools/learning-loop-mcp/scout/run-scout.js` (verify scoutAgent can invoke the scout pipeline through real LLM)
+- Read (verification): `meta-state.jsonl` (verify agents can read + write meta-state entries through real LLM)
+- **Why this exists:** Plan 3's mocked tests prove agent *machinery* is correct. They do NOT prove the agents actually follow the learning loop when connected to a real LLM. Plan 4 (cutover) assumes the agents work; if they don't, Plan 4's cleanup doesn't have anything to clean up. Post Plan 3 is the gating step that proves the agents work BEFORE Plan 4 starts.
+- **Why not a new plan:** The verification is small (~150 LOC of test + 1 journal). It doesn't have multi-phase work, doesn't need its own PR, doesn't introduce new architecture. It's a gating checkpoint, not a plan.
+- **Acceptance criteria for Post Plan 3 to be "complete":** Journal entry exists with non-empty output for each of the 3 agents AND conditional e2e test either passes (when run with `KIMI_API_KEY`) or is properly skipped (when run without). Plan 4's pre-flight requires this completion.
+
 ---
 
 ## Success Metrics & Validation Criteria
@@ -158,6 +170,7 @@ Plan 2 (storage)  ──┘
 | Plan 1 | All 10 namespaces pass; workflow parity tests GREEN | `pnpm test` exits 0; `workflow-parity.test.cjs` shows 8/8 GREEN |
 | Plan 2 | All 10 namespaces pass; LibSQL parity tests GREEN | `pnpm test` exits 0; `storage-parity.test.cjs` shows read/write round-trip matches JSONL output |
 | Plan 3 | All 10 namespaces pass; agent parity tests GREEN | `pnpm test` exits 0; `agent-parity.test.cjs` shows 3/3 agents produce expected output with mocked LLM |
+| Post Plan 3 | All 3 agents produce expected output with real LLM | `docs/journals/260623-post-plan-3-verification.md` has non-empty output for all 3 agents; `agent-e2e-integration.test.cjs` passes (when run with `KIMI_API_KEY`) or is properly skipped (when run without) |
 | Plan 4 | All 10 namespaces pass; legacy imports cleared; `pnpm test:cold-session` GREEN | `pnpm test` exits 0; cold-session 8/8; `agent-manifest.json` reflects 5-group structure with workflow + agent groups |
 
 ### Cross-Plan Validation
@@ -165,6 +178,7 @@ Plan 2 (storage)  ──┘
 - **Workflow parity harness** (Plan 1) reads the same input as the legacy `mastra_workflow_*` tool and produces byte-identical output via `createWorkflow`. Validates wire-format coercion survives the migration.
 - **LibSQL/JSONL round-trip** (Plan 2) reads the same data structure via JSONL sidecar AND LibSQL, asserts equal output. Validates storage backend is functionally equivalent for agent memory use cases.
 - **Agent parity harness** (Plan 3) mocks LLM responses (deterministic fixtures) and asserts agent invocation produces expected `meta_state_*` calls. Validates agent reasoning pipeline.
+- **Post Plan 3 functional verification** invokes each agent with a real LLM (gated on `KIMI_API_KEY`) and asserts the response includes expected loop concepts (active rules, scout sections, finding/experiment wording). Validates the agents actually follow the learning loop — not just the mocked machinery.
 - **Cold-session test** (Plan 4) confirms the loop's MCP tool surface is discoverable from a fresh client (8/8 GREEN). Validates cutover didn't break tool loading.
 
 ### Operator-Facing Acceptance
@@ -184,7 +198,8 @@ Plan 2 (storage)  ──┘
 1. **Author Plan 1** (Workflows) — `plans/260618-XXXX-phase-d-plan-1-workflows/plan.md`
 2. **Author Plan 2** (Storage) — `plans/260618-XXXX-phase-d-plan-2-storage/plan.md` (parallel with #1)
 3. **Author Plan 3** (Agents) — `plans/260618-XXXX-phase-d-plan-3-agents/plan.md` (after Plans 1+2 ship)
-4. **Author Plan 4** (Cutover) — `plans/260618-XXXX-phase-d-plan-4-cutover/plan.md` (after Plan 3 ships)
+4. **Run Post Plan 3** (Functional Verification) — operator runs manual smoke test + conditional e2e test; files journal at `docs/journals/260623-post-plan-3-verification.md`. (after Plan 3 ships)
+5. **Author Plan 4** (Cutover) — `plans/260618-XXXX-phase-d-plan-4-cutover/plan.md` (after Post Plan 3 completes)
 
 ### Pre-Conditions for Each Plan
 
@@ -193,7 +208,8 @@ Plan 2 (storage)  ──┘
 | Plan 1 | Phase C Plan 3 closed (✓ 2026-06-17); `tools/learning-loop-mastra/server.js` registers 39 deterministic tools; `create-loop-tool.js` factory exists |
 | Plan 2 | `@mastra/core` 1.42.0 already in deps (✓); LibSQL install probe needed before authoring |
 | Plan 3 | Plans 1 + 2 closed; `create-workflow.js` factory exists; `storage.js` exists |
-| Plan 4 | Plans 1 + 2 + 3 closed; `agent-manifest.json` is up-to-date with 39 deterministic tools |
+| Post Plan 3 | Plan 3 closed; `tools/learning-loop-mastra/agents/{intake,scout,self-improvement}-agent.js` exist; `tools/learning-loop-mastra/__tests__/agent-parity.test.cjs` GREEN; `KIMI_API_KEY` env var available (operator sets it in shell) |
+| Plan 4 | Plans 1 + 2 + 3 closed; Post Plan 3 verification complete (`docs/journals/260623-post-plan-3-verification.md` exists + `agent-e2e-integration.test.cjs` passes-or-skips); `agent-manifest.json` is up-to-date with 39 deterministic tools |
 
 ### Plan Handoff (Recommended)
 

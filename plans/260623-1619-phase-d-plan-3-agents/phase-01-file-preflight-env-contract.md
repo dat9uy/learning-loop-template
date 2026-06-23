@@ -11,7 +11,7 @@ dependencies: []
 
 ## Overview
 
-Verify the technical preconditions for Plan 3: `@mastra/core@1.42.0` ships the official `createMockModel` helper at the expected path; `kimi-for-coding/k2p6` resolves as a valid `ModelRouterModelId`; the loop's env-var contract (no `dotenv`, `MASTRA_AGENT_MODEL` precedence, `KIMI_API_KEY` for the Kimi router) is documented and locked via a `meta_state_log_change`. No code changes to the mastra package — this phase is probe + log-change.
+Verify the technical preconditions for Plan 3: `@mastra/core@1.42.0` ships the official `createMockModel` helper at the expected path; `kimi-for-coding/k2p6` resolves as a valid `ModelRouterModelId`; the loop's env-var contract (no `dotenv` import in loop code, `MASTRA_AGENT_MODEL` precedence, `KIMI_API_KEY` for the Kimi router, `direnv` recommended for local dev) is documented and locked via a `meta_state_log_change`. No code changes to the mastra package — this phase is probe + log-change.
 
 ## Requirements
 
@@ -22,7 +22,8 @@ Verify the technical preconditions for Plan 3: `@mastra/core@1.42.0` ships the o
   - File a `meta_state_log_change` locking the no-`dotenv` decision.
 - **Non-functional:**
   - No vendor SDK install (Kimi is auto-installed by the Mastra router on first use; the plan's runtime test in Phase 5 will fail loudly if not).
-  - No `dotenv` import anywhere in the mastra package (verified by grep).
+  - No `dotenv` import anywhere in the loop code (verified by grep). The lock is about the **loop's runtime**, not the operator's dev environment — operators may use `direnv`, `~/.bashrc`, `~/.zshrc`, or any other method to inject env vars at the shell level before the loop reads them.
+  - **Recommended operator workflow:** `direnv` with `.envrc` + `.env` (per-project auto-load, git-safe). Fallback: shell rc. The loop code does not read `.env` files directly.
   - No code changes to `tools/learning-loop-mastra/server.js`, `create-loop-workflow.js`, or `create-loop-tool.js` in this phase.
 
 ## Architecture
@@ -35,9 +36,12 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 
 - **Create:**
   - `tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs` (one-shot probe; ~30 LOC; runs `node` once and exits)
-  - `.claude/coordination/MASTRA_AGENT_MODEL.md` (operator-facing env-var reference; ~50 LOC; documents `MASTRA_AGENT_MODEL`, `KIMI_API_KEY`, lookup order, no-`dotenv` contract)
+  - `.claude/coordination/MASTRA_AGENT_MODEL.md` (operator-facing env-var reference; ~80 LOC; documents `MASTRA_AGENT_MODEL`, `KIMI_API_KEY`, lookup order, no-`dotenv` lock, `direnv` recommended setup)
+  - `.envrc` (committed, no secrets; ~3 lines; contains `dotenv .env` directive for `direnv` auto-load; pairs with gitignored `.env`)
+  - `.env.example` (committed template; ~5 lines; shows the expected env-var shape with placeholder values, no real keys)
 - **Modify:**
   - `meta-state.jsonl` (one `meta_state_log_change` entry filed via the MCP tool)
+  - `.gitignore` (add `.env` if not already present; verify `.envrc` is committed intentionally — `.envrc` contains no secrets, just the `dotenv .env` directive)
 - **Delete:** none
 - **Read (verification only):**
   - `node_modules/@mastra/core/dist/test-utils/llm-mock.js` (probe verifies this file exists and exports `createMockModel`)
@@ -49,8 +53,11 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 | File | Action | Rough size | Test impact |
 |---|---|---|---|
 | `tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs` | Create | ~30 LOC | none (one-shot, not a test) |
-| `.claude/coordination/MASTRA_AGENT_MODEL.md` | Create | ~50 LOC | none (docs) |
+| `.claude/coordination/MASTRA_AGENT_MODEL.md` | Create | ~80 LOC | none (docs) |
+| `.envrc` | Create | ~3 lines | none (direnv hook; not a test) |
+| `.env.example` | Create | ~5 lines | none (template; not a test) |
 | `meta-state.jsonl` | Modify (1 entry) | +1 line | none (registry delta) |
+| `.gitignore` | Modify | +1 line (`.env`) | none (gitignore delta) |
 
 ## Implementation Steps
 
@@ -66,11 +73,38 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 5. **Run the probe.** `node tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs`. Verify exit code 0 and the expected log output. If non-zero, the probe fails; escalate to operator.
 6. **Create `.claude/coordination/MASTRA_AGENT_MODEL.md`.** Document:
    - `MASTRA_AGENT_MODEL` env var (sets all 3 agents to the same `provider/model` string).
-   - `KIMI_API_KEY` env var (auto-injected by the Mastra router when an agent uses the Kimi provider; **operator must set this in their shell**).
+   - `KIMI_API_KEY` env var (auto-injected by the Mastra router when an agent uses the Kimi provider; **operator must set this in their shell before invoking the loop**).
    - Per-agent `agents-manifest.json` `model` field (overrides the env var for that agent).
    - Lookup order: (1) per-agent manifest field, (2) `MASTRA_AGENT_MODEL`, (3) code default `kimi-for-coding/k2p6`.
-   - **No `dotenv`.** The loop reads `process.env.*` directly. The operator must set the env vars in their shell (`~/.bashrc`, `~/.zshrc`, or the Claude Code / Droid CLI session env).
+   - **No `dotenv` import in the loop.** The loop reads `process.env.*` directly. The lock applies to the loop code only; the operator's dev environment is free to use any env-var injection method.
+   - **Recommended operator workflow: `direnv` + `.envrc` + `.env`.** This is the per-project, git-safe, auto-load pattern. Setup is one-time; subsequent `cd` into the project auto-loads the env.
+   - **Fallback: shell rc (`~/.bashrc` / `~/.zshrc`).** Works but not per-project scoped; recommended only if `direnv` is unavailable.
+   - **Production deploy: env vars from the deployment system** (Docker, K8s, systemd, etc.). Not `.env` files.
    - Reference: `https://mastra.ai/models/providers/kimi-for-coding`.
+7. **Create `.envrc` (committed, no secrets).** The file contains a single `direnv` directive that loads `.env` on `cd` into the project:
+   ```bash
+   # .envrc — committed; no secrets. direnv auto-loads on cd.
+   dotenv .env
+   ```
+   Operators run `direnv allow .` once after cloning. The `.env` file (gitignored) contains the actual `KIMI_API_KEY` and any other secrets.
+8. **Create `.env.example` (committed template).** The file shows the expected env-var shape with placeholder values, no real keys:
+   ```bash
+   # .env.example — committed template; no real secrets.
+   # Copy to .env (gitignored) and fill in your actual key.
+   KIMI_API_KEY=sk-your-kimi-api-key-here
+   # Optional override: set all 3 agents to a different model.
+   # MASTRA_AGENT_MODEL=kimi-for-coding/k2p6
+   ```
+9. **Update `.gitignore` to include `.env` (if not already present).** Verify `.env` is excluded; verify `.envrc` is NOT excluded (it contains no secrets). If `.gitignore` does not already exclude `.env`, add it.
+10. **File the `meta_state_log_change`.** Use the MCP tool `meta_state_log_change` with:
+   - `change_target`: `.claude/coordination/MASTRA_AGENT_MODEL.md`
+   - `change_dimension`: `surface`
+   - `change_diff.added`: `["MASTRA_AGENT_MODEL env var", "KIMI_API_KEY env var", "Per-agent model field in agents-manifest.json", "3-layer lookup order", "no-dotenv contract (loop code only)", "direnv recommended operator workflow", "fallback shell rc workflow", "production deploy via deployment system env vars"]`
+   - `change_diff.removed`: `[]`
+   - `change_diff.changed`: `[]`
+   - `reason`: `Plan 3 ships 3 Mastra agents with model lookup via per-agent manifest → MASTRA_AGENT_MODEL → code default. The loop code does not introduce dotenv; the operator's dev environment is free to use direnv (recommended) or shell rc (fallback) to inject env vars. .envrc + .env.example committed; .env gitignored. Locks the env-var contract before Phase 2 factory ships.`
+   - `evidence_code_ref`: `tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs`
+   - `evidence_journal`: `docs/journals/260623-phase-d-plan-3-shipped.md` (the journal Phase 6 ships)
 7. **File the `meta_state_log_change`.** Use the MCP tool `meta_state_log_change` with:
    - `change_target`: `.claude/coordination/MASTRA_AGENT_MODEL.md`
    - `change_dimension`: `surface`
@@ -85,8 +119,11 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 
 - [ ] `createMockModel` import path verified
 - [ ] `kimi-for-coding/k2p6` accepted as `ModelRouterModelId`
-- [ ] No `dotenv` in the loop (grep verified)
-- [ ] `.claude/coordination/MASTRA_AGENT_MODEL.md` created with lookup order + env-var reference
+- [ ] No `dotenv` in the loop code (grep verified)
+- [ ] `.claude/coordination/MASTRA_AGENT_MODEL.md` created with lookup order + env-var reference + `direnv` recommended setup
+- [ ] `.envrc` created (committed, no secrets; contains `dotenv .env` directive)
+- [ ] `.env.example` created (committed template; placeholder values only)
+- [ ] `.gitignore` excludes `.env` (if not already present)
 - [ ] `meta_state_log_change` filed with `change_target: .claude/coordination/MASTRA_AGENT_MODEL.md`
 
 ## Test Scenario Matrix (deep mode)
@@ -129,8 +166,9 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 
 ## Security Considerations
 
-- **`KIMI_API_KEY` storage.** The env var is read from `process.env` at agent construction time. Plan 3 does not log the value, persist it to disk, or transmit it to any service other than the Mastra router. The operator's shell env is the source of truth.
-- **No `dotenv`.** Prevents accidental `KIMI_API_KEY` commit to a `.env` file (the loop's `gitignore` should also ignore `.env`; verify in Phase 4 if not already present).
+- **`KIMI_API_KEY` storage.** The env var is read from `process.env` at agent construction time. Plan 3 does not log the value, persist it to disk, or transmit it to any service other than the Mastra router. The operator's shell env (via `direnv` or shell rc) is the source of truth at dev time; the deployment system is the source of truth at production time.
+- **No `dotenv` import in the loop.** Prevents accidental `KIMI_API_KEY` commit via a code change (the loop never reads `.env` files). The `.env` file (when used with `direnv`) is gitignored. The `.envrc` (committed) contains only the `dotenv .env` directive, no secrets. The `.env.example` (committed) contains only placeholder values, no real keys.
+- **`.gitignore` discipline.** `.env` is excluded; `.envrc` and `.env.example` are committed intentionally (no secrets). Phase 4 step (or Phase 1 step 9 if not already done) verifies `.gitignore` excludes `.env`.
 - **The probe script is one-shot.** It does not call any external service; the `createMockModel` helper is local. No network exposure.
 
 ## Next Steps

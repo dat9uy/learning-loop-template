@@ -20,7 +20,7 @@ Run the full `pnpm test` (all 12 namespaces), confirm the closeout acceptance ga
   - Cold-session test passes against the legacy 31-entry manifest (scope unchanged; Plan 4 owns the 44-tool enumeration update).
   - `agent-manifest.json` (mastra) has 6 groups; the `agent` group has 3 entries.
   - `tools/learning-loop-mcp/agent-manifest.json` (legacy) meta_state group has 19 entries (15 existing + 4 D-11).
-  - `tools/list` enumeration returns 44 tools (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); `workflow-parity.test.cjs:166` asserts 44.
+  - `tools/list` enumeration returns 44 tools (31 `mastra_*` + 10 `run_workflow_*` + 3 `ask_*`); `workflow-parity.test.cjs` (`assert.equal(tools.length, 44, ...)`) asserts 44.
   - Master tracker D4 + D7 flipped to `[x]`.
   - `meta_state_log_change` filed (semantic, D4+D7 closure).
   - Journal entry: `docs/journals/260623-phase-d-plan-3-shipped.md`.
@@ -90,7 +90,7 @@ Phase 6 is verify + closeout. No code changes. The phase:
 
 1. **Run `pnpm test`.** Verify exit code 0; pass count is 1154-1156; fail count is 0; skip count is 1. If any test fails, escalate to operator (do not flip the tracker until all tests pass).
 2. **Run `pnpm test:cold-session`.** Verify exit code 0. The cold-session test enumerates the legacy 31-entry manifest; Plan 3 does not change the manifest's tool set. The test should pass unchanged.
-3. **Verify the count math.** Grep `tools/learning-loop-mastra/agents-manifest.json` for the 3 entries. Grep `tools/learning-loop-mastra/agent-manifest.json` for the 6 groups. Grep `tools/learning-loop-mcp/agent-manifest.json` for the 19-entry meta_state group (D-11 reconciled). Grep `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs:166` for the assertion 44.
+3. **Verify the count math.** Grep `tools/learning-loop-mastra/agents-manifest.json` for the 3 entries. Grep `tools/learning-loop-mastra/agent-manifest.json` for the 6 groups. Grep `tools/learning-loop-mcp/agent-manifest.json` for the 19-entry meta_state group (D-11 reconciled). Grep `tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs` for the `assert.equal(tools.length, 44, ...)` assertion.
 4. **File the `meta_state_log_change`.** Use the MCP tool with:
    - `change_target`: `plans/reports/productization-260612-1530-master-tracker.md`
    - `change_dimension`: `semantic`
@@ -144,7 +144,7 @@ Phase 6 is verify + closeout. No code changes. The phase:
 - [ ] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
 - [ ] `agent-manifest.json` (mastra) has 6 groups
 - [ ] `agent-manifest.json` (legacy) meta_state group has 19 entries (D-11 reconciled)
-- [ ] `workflow-parity.test.cjs:166` asserts 44
+- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
 - [ ] `tools/list` returns 44 tools
 
 ## Test Scenario Matrix (deep mode)
@@ -216,3 +216,39 @@ After Phase 6 ships, Plan 4 (cutover) is the only remaining Phase D work. Plan 4
 - The F4 PR security note in the PR body (D-13).
 
 The 4-plan Phase D stack completes with Plan 4. Phase E (Mastra Code Mode 1), Phase F (Bridge 7), and Phase G (skill migration) are separate phases.
+
+## Cleanup task — Plan 4 owns the master-tracker reconciliation (per validate Session 4 + operator decision 2026-06-23)
+
+The 14 stale-reference fixes applied during validate Session 4 (5 documented + 9 caught by the post-fix sweep) are plan-internal documentation drift — they do NOT require a master-tracker update. The master-tracker (`plans/reports/productization-260612-1530-master-tracker.md`) D4 + D7 + D-11 + D-13 entries stay as written through Plan 3's closeout. However, when **Plan 4 ships** (per the 4-plan stack defined in `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md`), the master-tracker should be reconciled to reflect the post-Plan-3 state. Plan 4 is in-scope for the Phase D stack and is the natural owner of this cleanup because it is the cutover/closeout plan for the entire 4-plan stack.
+
+Plan 4 cleanup checklist for the master-tracker (carry forward from Plans 1+2+3):
+
+- D-9 (final 5→6 group reconciliation; currently the 6th group is the 6th canonical name; Plan 4 owns the final naming per brainstorm §"Plan 4 (cutover) follows Phase C Plan 3 pattern").
+- D-13 (F4 PR security note; Plan 4's PR body owns).
+- D-11 closure confirmation (D-11 was added in Plan 3; confirm the operator-facing tracker reflects the closure).
+- Plan 3's `MASTRA_AGENT_MODEL` env var entry (added to `.claude/coordination/MASTRA_AGENT_MODEL.md` in Phase 1; not yet on the master tracker env-var list).
+- Plan 3's `kimi-for-coding/k2p6` model decision (locked 2026-06-23; not yet on the master tracker model-registry list).
+- Plan 1b's `mastra_task_update` removal (already in master tracker, but verify the post-Path-B status is reflected).
+- Plan 2's storage substrate additions (Pattern A2a + `Mastra({ storage, mcpServers })` wiring; confirm the master tracker's tool surface table reflects the 11th test namespace).
+
+These are operator-facing reference updates; not blocking for Plan 3's cook. Documented here per validate Session 4 decision (user: "Change of mind. for Cleanup task, let's put it into Plan 4 of plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md (So it's in Phase D scope, not Phase E)").
+
+## Post Plan 3 prerequisites for Plan 4 (per brainstorm §"Post Plan 3 — Functional Verification")
+
+Per `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md` §"Post Plan 3 (Functional Verification — gating step before Plan 4)", Plan 4 cannot start until the operator runs the **Post Plan 3 verification** step. This is the gating surface that proves the agents actually follow the learning loop (not just the mocked machinery).
+
+**Operator workflow after Plan 3 ships:**
+
+1. **Set `KIMI_API_KEY` in shell** (operator's `~/.bashrc` / `~/.zshrc` or session env). The Mastra router reads this on first agent invocation.
+2. **Spawn the mastra server** via `pnpm gate:server` (uses the production `agents-manifest.json` with `kimi-for-coding/k2p6`).
+3. **Invoke each `ask_*` tool** with a real prompt and capture the output:
+   - `ask_intake_agent({ message: "What rules are in force? List active findings." })` — expect a verification plan with active rules, loop-designs, drift findings.
+   - `ask_scout_agent({ message: "Run the scout pipeline at the project root and report the bucket distribution." })` — expect a 5-section scout report.
+   - `ask_self_improvement_agent({ message: "Given the scout output, propose 1 experiment candidate." })` — expect a finding or experiment candidate written to the meta-state registry.
+4. **Document outputs** in `docs/journals/260623-post-plan-3-verification.md` with: timestamp, prompt, response (truncated if long), and operator judgment ("agent follows the loop" or "agent did not follow the loop — escalate").
+5. **Run the conditional e2e test** with `KIMI_API_KEY` set: `node --test tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs`. The 3 tests should pass; if any fail, the agent's instruction string or model wiring needs revision before Plan 4.
+6. **File `meta_state_log_change`** with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`, `change_dimension: 'semantic'`, `reason: 'Post Plan 3 verification complete; agents follow the learning loop with real LLM.'`
+
+**Plan 4 pre-flight requirement:** The author of Plan 4 must verify the journal entry exists and contains non-empty output for all 3 agents before drafting Plan 4. If the journal is missing or any agent did not follow the loop, escalate to operator — do not start Plan 4 until Post Plan 3 is fully complete.
+
+**Why this is in Phase 6 (not a separate phase):** The verification is a single operator action (~15-30 min), not a multi-phase code change. It belongs in Plan 3's closeout as the "verify the agents work" handoff to Plan 4.
