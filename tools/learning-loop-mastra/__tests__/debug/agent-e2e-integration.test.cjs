@@ -1,6 +1,11 @@
-// Agent e2e integration — conditional on KIMI_API_KEY.
-// These tests use the real LLM router and are skipped by default.
-// Set KIMI_API_KEY to run them as Post Plan 3 functional verification.
+// Agent e2e integration — DEBUG ONLY (requires real KIMI_API_KEY).
+//
+// This file is in __tests__/debug/ and is NOT included in `pnpm test`.
+// Run with: pnpm test:debug
+//
+// Purpose: verify the real Kimi API works when debugging production issues.
+// These tests are slow (~60-80s) and require a valid API key.
+// For CI/fast feedback, use the mocked tests in agent-parity.test.cjs instead.
 
 const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
@@ -8,9 +13,9 @@ const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
-const { connectMcpServer } = require("./with-mcp-server.js");
+const { connectMcpServer } = require("../with-mcp-server.js");
 
-const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
+const SERVER_ENTRY = resolve(__dirname, "..", "..", "server.js");
 const HAS_KEY = !!process.env.KIMI_API_KEY;
 
 function makeTempRoot() {
@@ -48,7 +53,7 @@ describe("agent e2e integration (KIMI_API_KEY required)", { skip: !HAS_KEY }, ()
     assert.match(text, /active|rule|surface|meta-state/i, "response must reference loop concepts");
   });
 
-  test("scoutAgent: real LLM produces scout sections", { timeout: 30000 }, async () => {
+  test("scoutAgent: real LLM produces scout sections", { timeout: 120000 }, async () => {
     const result = await handles.callTool("ask_scout_agent", {
       message: "Run the scout pipeline at the project root and report the bucket distribution.",
     });

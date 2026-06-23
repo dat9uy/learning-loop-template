@@ -117,14 +117,14 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `createMockModel` import path verified
-- [ ] `kimi-for-coding/k2p6` accepted as `ModelRouterModelId`
-- [ ] No `dotenv` in the loop code (grep verified)
-- [ ] `.claude/coordination/MASTRA_AGENT_MODEL.md` created with lookup order + env-var reference + `direnv` recommended setup
-- [ ] `.envrc` created (committed, no secrets; contains `dotenv .env` directive)
-- [ ] `.env.example` created (committed template; placeholder values only)
-- [ ] `.gitignore` excludes `.env` (if not already present)
-- [ ] `meta_state_log_change` filed with `change_target: .claude/coordination/MASTRA_AGENT_MODEL.md`
+- [x] `createMockModel` import path verified
+- [x] `kimi-for-coding/k2p6` accepted as `ModelRouterModelId`
+- [x] No `dotenv` in the loop code (grep verified)
+- [x] `.claude/coordination/MASTRA_AGENT_MODEL.md` created with lookup order + env-var reference + `direnv` recommended setup
+- [x] `.envrc` created (committed, no secrets; contains `dotenv .env` directive)
+- [x] `.env.example` created (committed template; placeholder values only)
+- [x] `.gitignore` excludes `.env` (if not already present)
+- [x] `meta_state_log_change` filed with `change_target: .claude/coordination/MASTRA_AGENT_MODEL.md`
 
 ## Test Scenario Matrix (deep mode)
 
@@ -150,11 +150,11 @@ Phase 1 is probe + documentation. The probe is a one-shot Node script (no test f
 
 ## Success Criteria
 
-- [ ] `node tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs` exits 0
-- [ ] Probe output logs: `createMockModel` importable, `kimi-for-coding/k2p6` accepted, no `dotenv` in loop
-- [ ] `.claude/coordination/MASTRA_AGENT_MODEL.md` exists with: `MASTRA_AGENT_MODEL` reference, `KIMI_API_KEY` reference, 3-layer lookup order, no-`dotenv` contract, URL citation to `https://mastra.ai/models/providers/kimi-for-coding`
-- [ ] `meta_state_log_change` entry exists in `meta-state.jsonl` with `change_target: .claude/coordination/MASTRA_AGENT_MODEL.md`, `change_dimension: surface`, reason citing Plan 3's env-var contract
-- [ ] `pnpm test` exits 0 (no test changes in Phase 1; baseline 1140 pass / 0 fail / 1 skipped preserved)
+- [x] `node tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs` exits 0
+- [x] Probe output logs: `createMockModel` importable, `kimi-for-coding/k2p6` accepted, no `dotenv` in loop
+- [x] `.claude/coordination/MASTRA_AGENT_MODEL.md` exists with: `MASTRA_AGENT_MODEL` reference, `KIMI_API_KEY` reference, 3-layer lookup order, no-`dotenv` contract, URL citation to `https://mastra.ai/models/providers/kimi-for-coding`
+- [x] `meta_state_log_change` entry exists in `meta-state.jsonl` with `change_target: .claude/coordination/MASTRA_AGENT_MODEL.md`, `change_dimension: surface`, reason citing Plan 3's env-var contract
+- [x] `pnpm test` exits 0 (no test changes in Phase 1; baseline 1140 pass / 0 fail / 1 skipped preserved)
 
 ## Risk Assessment
 

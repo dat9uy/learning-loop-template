@@ -136,14 +136,14 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `server.js` loads `agents-manifest.json` and constructs the `agents` dict
-- [ ] `server.js` passes `agents: {...}` to the `MCPServer` constructor
-- [ ] `server.js` description string reflects the new tool count
-- [ ] `server.js` version bumped (if applicable)
-- [ ] `agent-manifest.json` has 6 groups (5 existing + 1 new `agent`)
-- [ ] Legacy `agent-manifest.json` meta_state group has 19 entries (15 existing + 4 D-11)
-- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) assertion is 44
-- [ ] `console.error` log line in `server.js` includes the agent count
+- [x] `server.js` loads `agents-manifest.json` and constructs the `agents` dict
+- [x] `server.js` passes `agents: {...}` to the `MCPServer` constructor
+- [x] `server.js` description string reflects the new tool count
+- [x] `server.js` version bumped (if applicable)
+- [x] `agent-manifest.json` has 6 groups (5 existing + 1 new `agent`)
+- [x] Legacy `agent-manifest.json` meta_state group has 19 entries (15 existing + 4 D-11)
+- [x] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) assertion is 44
+- [x] `console.error` log line in `server.js` includes the agent count
 
 ## Test Scenario Matrix (deep mode)
 
@@ -177,14 +177,14 @@ Add 4 entries to the `meta_state` group (NOT the `workflow` group — red-team F
 
 ## Success Criteria
 
-- [ ] `pnpm test` passes with no regressions (baseline 1147 → 1147; no test changes in Phase 4)
-- [ ] `tools/list` enumeration returns 44 tools (31 + 10 + 3)
-- [ ] `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent` are in `tools/list` with non-empty descriptions and `{message: string}` input schemas
-- [ ] `agent-manifest.json` has 6 groups
-- [ ] Legacy `agent-manifest.json` meta_state group has 19 entries (D-11 reconciled)
-- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
-- [ ] `server.js` description string mentions the 3 new agents
-- [ ] `server.js` log line includes the agent count
+- [x] `pnpm test` passes with no regressions (baseline 1147 → 1147; no test changes in Phase 4)
+- [x] `tools/list` enumeration returns 44 tools (31 + 10 + 3)
+- [x] `ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent` are in `tools/list` with non-empty descriptions and `{message: string}` input schemas
+- [x] `agent-manifest.json` has 6 groups
+- [x] Legacy `agent-manifest.json` meta_state group has 19 entries (D-11 reconciled)
+- [x] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
+- [x] `server.js` description string mentions the 3 new agents
+- [x] `server.js` log line includes the agent count
 
 ## Risk Assessment
 

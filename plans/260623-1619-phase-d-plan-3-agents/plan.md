@@ -1,7 +1,7 @@
 ---
 title: "Phase D Plan 3 — Mastra Agents Migration (D4+D7)"
 description: "Promote 3 meta-surface agents to createAgent with createLoopAgent factory + per-agent model config + agent parity harness (mocked LLM via @mastra/core/test-utils/llm-mock). Ships D4+D7 from master tracker. Plans 1+2 already shipped; Plan 4 (cutover) is blocked on this. Per-agent memory (OM) deferred to Phase 5; Plan 3 ships memory-less agents. Per-plan meta_state_log_change + D-11 reconciliation folded in."
-status: pending
+status: completed
 priority: P1
 branch: "260623-1619-phase-d-plan-3-agents"
 tags: [meta-surface, phase-d, mastra, agents, parity, tdd, atomic-gate, kimi-for-coding, mcp-agents]
@@ -101,12 +101,12 @@ related:
 
 | Phase | Name | Status | Effort | TDD Color | Dependencies |
 |-------|------|--------|--------|-----------|--------------|
-| 1 | [File preflight + env contract](./phase-01-file-preflight-env-contract.md) | Pending | ~30min | n/a (probe + log-change) | Plan 3 parent |
-| 2 | [createLoopAgent factory + createMockModel parity helper](./phase-02-createloopagent-factory-createmockmodel-parity-helper.md) | Pending | ~1-2h | RED → GREEN (4 invariant tests first) | Phase 1 |
-| 3 | [3 createAgent wrappers + agents-manifest.json](./phase-03-3-createagent-wrappers-agents-manifest-json.md) | Pending | ~2-3h | TDD per agent (3 direct unit tests, then wrappers) | Phase 2 |
-| 4 | [server.js wiring + agent-manifest.json agent group + D-11 reconciliation](./phase-04-server-js-wiring-agent-manifest-json-agent-group-d-11-reconc.md) | Pending | ~1h | n/a (config + manifest updates) | Phase 3 |
-| 5 | [agent-parity harness](./phase-05-agent-parity-harness.md) | Pending | ~1-2h | TDD per test (empirical probe first, then 7-9 tests) | Phase 4 |
-| 6 | [Acceptance gate + closeout](./phase-06-acceptance-gate-closeout.md) | Pending | ~30min | n/a (full `pnpm test` + tracker flip + closeout) | Phase 5 |
+| 1 | [File preflight + env contract](./phase-01-file-preflight-env-contract.md) | Complete | ~30min | n/a (probe + log-change) | Plan 3 parent |
+| 2 | [createLoopAgent factory + createMockModel parity helper](./phase-02-createloopagent-factory-createmockmodel-parity-helper.md) | Complete | ~1-2h | RED → GREEN (4 invariant tests first) | Phase 1 |
+| 3 | [3 createAgent wrappers + agents-manifest.json](./phase-03-3-createagent-wrappers-agents-manifest-json.md) | Complete | ~2-3h | TDD per agent (3 direct unit tests, then wrappers) | Phase 2 |
+| 4 | [server.js wiring + agent-manifest.json agent group + D-11 reconciliation](./phase-04-server-js-wiring-agent-manifest-json-agent-group-d-11-reconc.md) | Complete | ~1h | n/a (config + manifest updates) | Phase 3 |
+| 5 | [agent-parity harness](./phase-05-agent-parity-harness.md) | Complete | ~1-2h | TDD per test (empirical probe first, then 7-9 tests) | Phase 4 |
+| 6 | [Acceptance gate + closeout](./phase-06-acceptance-gate-closeout.md) | Complete | ~30min | n/a (full `pnpm test` + tracker flip + closeout) | Phase 5 |
 
 **Total effort:** ~6-9 hours. One session. Single PR (6 commits, one per phase, stacked on a feature branch off `main`).
 
@@ -285,8 +285,8 @@ None. All open questions in researcher A §"Open Questions" and researcher B §"
 
 #### Action Items
 
-- [ ] **Phase 1 step 2:** confirm `@mastra/core@1.42.0` ships `createMockModel` at `node_modules/@mastra/core/dist/test-utils/llm-mock.js` (researcher A verified; no need for an empirical probe; the `import` will fail loudly if not present).
-- [ ] **Phase 1 step 5:** file `meta_state_log_change` for the no-dotenv decision (change_target: `.claude/coordination/MASTRA_AGENT_MODEL.md`; change_dimension: surface).
+- [x] **Phase 1 step 2:** confirm `@mastra/core@1.42.0` ships `createMockModel` at `node_modules/@mastra/core/dist/test-utils/llm-mock.js` (researcher A verified; no need for an empirical probe; the `import` will fail loudly if not present).
+- [x] **Phase 1 step 5:** file `meta_state_log_change` for the no-dotenv decision (change_target: `.claude/coordination/MASTRA_AGENT_MODEL.md`; change_dimension: surface).
 
 #### Impact on Phases
 

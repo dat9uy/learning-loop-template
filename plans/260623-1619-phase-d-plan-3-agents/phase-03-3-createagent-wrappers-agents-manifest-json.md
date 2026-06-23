@@ -216,14 +216,14 @@ The dict keys (`intake_agent`, `scout_agent`, `self_improvement_agent`) are the 
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `intakeAgent` instance: id="intakeAgent", name="intakeAgent", description set, instructions match researcher-B §1.1, tools has 8 entries, memory undefined, model="kimi-for-coding/k2p6" (or per-agent manifest field)
-- [ ] `scoutAgent` instance: id="scoutAgent", name="scoutAgent", description set, instructions match researcher-B §1.2, tools has 9 entries (8 read-only + runScoutTool), memory undefined, model resolved per 3-layer lookup
-- [ ] `selfImprovementAgent` instance: id="selfImprovementAgent", name="selfImprovementAgent", description set, instructions match researcher-B §1.3, tools has 16 entries, memory undefined, model resolved per 3-layer lookup
-- [ ] `runScoutTool` instance: id="run_scout", inputSchema accepts `{ projectRoot?, excludeGlobs? }` only (no write flags)
-- [ ] `buildReadOnlyMetaStateTools()` returns 8 tools (per resolved scope; was 9 in researcher-B's draft, minus `mastra_meta_state_get_relationship`)
-- [ ] `buildWriteMetaStateTools()` returns 8 read-only + 8 write = 16 tools, excluding `mastra_meta_state_batch`
-- [ ] `buildToolsDict()` (in `server-tools.js`) returns the 31-tool dict matching the existing `server.js` behavior
-- [ ] `agents-manifest.json` has 3 entries with snake_case keys
+- [x] `intakeAgent` instance: id="intakeAgent", name="intakeAgent", description set, instructions match researcher-B §1.1, tools has 8 entries, memory undefined, model="kimi-for-coding/k2p6" (or per-agent manifest field)
+- [x] `scoutAgent` instance: id="scoutAgent", name="scoutAgent", description set, instructions match researcher-B §1.2, tools has 9 entries (8 read-only + runScoutTool), memory undefined, model resolved per 3-layer lookup
+- [x] `selfImprovementAgent` instance: id="selfImprovementAgent", name="selfImprovementAgent", description set, instructions match researcher-B §1.3, tools has 16 entries, memory undefined, model resolved per 3-layer lookup
+- [x] `runScoutTool` instance: id="run_scout", inputSchema accepts `{ projectRoot?, excludeGlobs? }` only (no write flags)
+- [x] `buildReadOnlyMetaStateTools()` returns 8 tools (per resolved scope; was 9 in researcher-B's draft, minus `mastra_meta_state_get_relationship`)
+- [x] `buildWriteMetaStateTools()` returns 8 read-only + 8 write = 16 tools, excluding `mastra_meta_state_batch`
+- [x] `buildToolsDict()` (in `server-tools.js`) returns the 31-tool dict matching the existing `server.js` behavior
+- [x] `agents-manifest.json` has 3 entries with snake_case keys
 
 ## Test Scenario Matrix (deep mode)
 
@@ -256,16 +256,16 @@ The dict keys (`intake_agent`, `scout_agent`, `self_improvement_agent`) are the 
 
 ## Success Criteria
 
-- [ ] 3 instruction files exist with the strings from researcher-B §1 (verbatim, no edits)
-- [ ] 3 agent wrapper files exist; each exports an `Agent` instance with the locked config
-- [ ] `run-scout-tool.js` exists with the locked input schema (no write flags)
-- [ ] 2 build-tool helpers exist (`build-readonly-meta-state-tools.js`, `build-write-meta-state-tools.js`)
-- [ ] `server-tools.js` exists; `server.js` imports from it (refactor verified; no behavior change)
-- [ ] `agents-manifest.json` exists with 3 entries
-- [ ] 3 direct unit parity tests pass in `agent-direct-parity.test.js`
-- [ ] All 3 agents have `memory === undefined` (asserted in tests)
-- [ ] `pnpm test` shows +3 tests vs Phase 2's baseline (1147 expected)
-- [ ] No new vendor deps
+- [x] 3 instruction files exist with the strings from researcher-B §1 (verbatim, no edits)
+- [x] 3 agent wrapper files exist; each exports an `Agent` instance with the locked config
+- [x] `run-scout-tool.js` exists with the locked input schema (no write flags)
+- [x] 2 build-tool helpers exist (`build-readonly-meta-state-tools.js`, `build-write-meta-state-tools.js`)
+- [x] `server-tools.js` exists; `server.js` imports from it (refactor verified; no behavior change)
+- [x] `agents-manifest.json` exists with 3 entries
+- [x] 3 direct unit parity tests pass in `agent-direct-parity.test.js`
+- [x] All 3 agents have `memory === undefined` (asserted in tests)
+- [x] `pnpm test` shows +3 tests vs Phase 2's baseline (1147 expected)
+- [x] No new vendor deps
 
 ## Risk Assessment
 

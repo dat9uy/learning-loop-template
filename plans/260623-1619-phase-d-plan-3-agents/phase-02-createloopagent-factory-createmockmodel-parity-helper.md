@@ -132,14 +132,14 @@ The test helper records `calls` so the parity test can assert "the agent's promp
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `createLoopAgent({ id, name, description?, instructions, modelOverride?, tools?, agentsManifest? })` returns a `new Agent({...})` instance
-- [ ] `resolveAgentModel(agentId, agentsManifest?)` implements 3-layer lookup
-- [ ] Factory validates `id` matches `/^[a-z][a-z0-9_]*$/`
-- [ ] Factory throws on missing `id`, `name`, or `instructions`
-- [ ] Factory does NOT pass a `memory` field (memory-less by default)
-- [ ] Test helper `createMockModelWithSpy({ mockText, spyGenerate? })` records `calls` array
-- [ ] Test helper passes through to `@mastra/core/test-utils/llm-mock#createMockModel`
-- [ ] Parity-shim is NOT applied to the `Agent` constructor directly (no `inputSchema` on Agent); document this in the factory header comment
+- [x] `createLoopAgent({ id, name, description?, instructions, modelOverride?, tools?, agentsManifest? })` returns a `new Agent({...})` instance
+- [x] `resolveAgentModel(agentId, agentsManifest?)` implements 3-layer lookup
+- [x] Factory validates `id` matches `/^[a-z][a-z0-9_]*$/`
+- [x] Factory throws on missing `id`, `name`, or `instructions`
+- [x] Factory does NOT pass a `memory` field (memory-less by default)
+- [x] Test helper `createMockModelWithSpy({ mockText, spyGenerate? })` records `calls` array
+- [x] Test helper passes through to `@mastra/core/test-utils/llm-mock#createMockModel`
+- [x] Parity-shim is NOT applied to the `Agent` constructor directly (no `inputSchema` on Agent); document this in the factory header comment
 
 ## Test Scenario Matrix (deep mode)
 
@@ -169,13 +169,13 @@ The test helper records `calls` so the parity test can assert "the agent's promp
 
 ## Success Criteria
 
-- [ ] 4 invariant tests in `create-loop-agent.test.js` pass
-- [ ] `create-loop-agent.js` exports both `createLoopAgent` and `resolveAgentModel`
-- [ ] `__tests__/helpers/create-mock-model.cjs` exports `createMockModelWithSpy`
-- [ ] All test runs after Phase 2 show `+4` tests vs Plan 1b baseline (1144 expected)
-- [ ] No `memory` field in the constructed `Agent` (asserted by Test 4)
-- [ ] No new vendor deps
-- [ ] ESM imports use `.js` extensions (per existing pattern in `create-loop-tool.js`)
+- [x] 4 invariant tests in `create-loop-agent.test.js` pass
+- [x] `create-loop-agent.js` exports both `createLoopAgent` and `resolveAgentModel`
+- [x] `__tests__/helpers/create-mock-model.cjs` exports `createMockModelWithSpy`
+- [x] All test runs after Phase 2 show `+4` tests vs Plan 1b baseline (1144 expected)
+- [x] No `memory` field in the constructed `Agent` (asserted by Test 4)
+- [x] No new vendor deps
+- [x] ESM imports use `.js` extensions (per existing pattern in `create-loop-tool.js`)
 
 ## Risk Assessment
 

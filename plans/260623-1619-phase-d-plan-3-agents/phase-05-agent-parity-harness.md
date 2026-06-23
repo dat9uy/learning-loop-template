@@ -200,17 +200,17 @@ The empirical probe is the first test in the file. It logs the full response sha
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `MASTRA_AGENTS_MANIFEST` env var overrides the default manifest path (test-only)
-- [ ] Test fixture `agents-manifest.test.json` exists with the mock model marker
-- [ ] Empirical probe test logs the response shape + asserts `result.text` (pre-parsed by `with-mcp-server.js`) is the locked format
-- [ ] 3 per-agent tests assert: response shape, `mockText` round-trip, `calls.length === 1`, instructions marker in prompt
-- [ ] Per-agent-manifest-field override test asserts the manifest's `model` field wins
-- [ ] Schema-parity test asserts the locked `{ message: string }` input schema
-- [ ] Tools/list enumeration test asserts exactly 3 `ask_*` tools with the expected keys
-- [ ] Input-validation rejection test asserts the locked rejection behavior
-- [ ] Conditional e2e integration test (`agent-e2e-integration.test.cjs`) exists with 3 tests, gated on `KIMI_API_KEY`
-- [ ] When `KIMI_API_KEY` is unset, the 3 e2e tests are reported as `skipped` (not failed)
-- [ ] When `KIMI_API_KEY` is set, the 3 e2e tests assert response includes expected loop concepts (active/rule for intake; bucket section for scout; finding/experiment for selfImprovement)
+- [x] `MASTRA_AGENTS_MANIFEST` env var overrides the default manifest path (test-only)
+- [x] Test fixture `agents-manifest.test.json` exists with the mock model marker
+- [x] Empirical probe test logs the response shape + asserts `result.text` (pre-parsed by `with-mcp-server.js`) is the locked format
+- [x] 3 per-agent tests assert: response shape, `mockText` round-trip, `calls.length === 1`, instructions marker in prompt
+- [x] Per-agent-manifest-field override test asserts the manifest's `model` field wins
+- [x] Schema-parity test asserts the locked `{ message: string }` input schema
+- [x] Tools/list enumeration test asserts exactly 3 `ask_*` tools with the expected keys
+- [x] Input-validation rejection test asserts the locked rejection behavior
+- [x] Conditional e2e integration test (`agent-e2e-integration.test.cjs`) exists with 3 tests, gated on `KIMI_API_KEY`
+- [x] When `KIMI_API_KEY` is unset, the 3 e2e tests are reported as `skipped` (not failed)
+- [x] When `KIMI_API_KEY` is set, the 3 e2e tests assert response includes expected loop concepts (active/rule for intake; bucket section for scout; finding/experiment for selfImprovement)
 
 ## Test Scenario Matrix (deep mode)
 
@@ -246,15 +246,15 @@ The empirical probe is the first test in the file. It logs the full response sha
 
 ## Success Criteria
 
-- [ ] 8 tests pass in `agent-parity.test.cjs`
-- [ ] Empirical probe logs the response shape and locks the format
-- [ ] 3 per-agent invocation tests pass
-- [ ] Per-agent-manifest-field override test passes (Phase 5.5)
-- [ ] Schema-parity test passes (each `ask_*` has `{ message: string }` input schema)
-- [ ] Tools/list enumeration test passes (3 `ask_*` tools)
-- [ ] `pnpm test` shows the expected count delta (+7-9 from Phase 4's 1147 baseline → 1154-1156)
-- [ ] No vendor API calls (mock is local; Kimi router not invoked)
-- [ ] No `MASTRA_API_KEY` or other secrets in test logs
+- [x] 8 tests pass in `agent-parity.test.cjs`
+- [x] Empirical probe logs the response shape and locks the format
+- [x] 3 per-agent invocation tests pass
+- [x] Per-agent-manifest-field override test passes (Phase 5.5)
+- [x] Schema-parity test passes (each `ask_*` has `{ message: string }` input schema)
+- [x] Tools/list enumeration test passes (3 `ask_*` tools)
+- [x] `pnpm test` shows the expected count delta (+7-9 from Phase 4's 1147 baseline → 1154-1156)
+- [x] No vendor API calls (mock is local; Kimi router not invoked)
+- [x] No `MASTRA_API_KEY` or other secrets in test logs
 
 ## Risk Assessment
 

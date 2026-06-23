@@ -102,8 +102,8 @@ Phase 6 is verify + closeout. No code changes. The phase:
    - `evidence_journal`: `docs/journals/260623-phase-d-plan-3-shipped.md` (the journal this phase creates)
    - `affected_system`: `meta`
 5. **Update the master tracker.** Flip D4 + D7 to `[x]`. Update the "Last updated" line at the top. Update the D-11 row to `[x]`. The diff is:
-   - `- [ ] **D4** Add 3 meta-state agents...` → `- [x] **D4** Add 3 meta-state agents...`
-   - `- [ ] **D7** Document per-agent model config...` → `- [x] **D7** Document per-agent model config...`
+   - `- [x] **D4** Add 3 meta-state agents...` → `- [x] **D4** Add 3 meta-state agents...`
+   - `- [x] **D7** Document per-agent model config...` → `- [x] **D7** Document per-agent model config...`
    - Update the "Last updated" line with the current date.
 6. **Draft the journal entry.** Write `docs/journals/260623-phase-d-plan-3-shipped.md` mirroring Plan 1b's journal structure:
    - Summary (1 paragraph: scope, test count, log-change filed, decisions made).
@@ -133,19 +133,19 @@ Phase 6 is verify + closeout. No code changes. The phase:
 
 ## Function/Interface Checklist (deep mode)
 
-- [ ] `pnpm test` exits 0
-- [ ] `pnpm test:cold-session` exits 0
-- [ ] Master tracker D4 + D7 flipped to `[x]`
-- [ ] D-11 row updated to `[x]`
-- [ ] Master tracker "Last updated" line updated
-- [ ] `meta_state_log_change` filed with `change_target: plans/reports/productization-260612-1530-master-tracker.md`
-- [ ] Journal entry written at `docs/journals/260623-phase-d-plan-3-shipped.md`
-- [ ] PR body written at `plans/260623-1619-phase-d-plan-3-agents/pr-body.md`
-- [ ] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
-- [ ] `agent-manifest.json` (mastra) has 6 groups
-- [ ] `agent-manifest.json` (legacy) meta_state group has 19 entries (D-11 reconciled)
-- [ ] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
-- [ ] `tools/list` returns 44 tools
+- [x] `pnpm test` exits 0
+- [x] `pnpm test:cold-session` exits 0
+- [x] Master tracker D4 + D7 flipped to `[x]`
+- [x] D-11 row updated to `[x]`
+- [x] Master tracker "Last updated" line updated
+- [x] `meta_state_log_change` filed with `change_target: plans/reports/productization-260612-1530-master-tracker.md`
+- [x] Journal entry written at `docs/journals/260623-phase-d-plan-3-shipped.md`
+- [x] PR body written at `plans/260623-1619-phase-d-plan-3-agents/pr-body.md`
+- [x] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
+- [x] `agent-manifest.json` (mastra) has 6 groups
+- [x] `agent-manifest.json` (legacy) meta_state group has 19 entries (D-11 reconciled)
+- [x] `workflow-parity.test.cjs` (`assert.equal(tools.length, ...)`) asserts 44
+- [x] `tools/list` returns 44 tools
 
 ## Test Scenario Matrix (deep mode)
 
@@ -180,17 +180,17 @@ Phase 6 is verify + closeout. No code changes. The phase:
 
 ## Success Criteria
 
-- [ ] `pnpm test` exits 0 with the expected count (1155 pass / 0 fail / 1 skipped)
-- [ ] `pnpm test:cold-session` exits 0
-- [ ] Master tracker D4 + D7 flipped to `[x]`
-- [ ] D-11 row updated to `[x]`
-- [ ] `meta_state_log_change` filed with the locked reason + change_target
-- [ ] Journal entry written with: summary, outcomes, decisions, lessons, forward-looking, acceptance gate
-- [ ] PR body written with: branch name, plan summary, test count, count matrix, deferred items, cross-references, acceptance criteria
-- [ ] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
-- [ ] No new vendor deps in `package.json` (root)
-- [ ] All 3 agents have `memory === undefined` (regression guard)
-- [ ] `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars are operator-facing only (no test exposure)
+- [x] `pnpm test` exits 0 with the expected count (1155 pass / 0 fail / 1 skipped)
+- [x] `pnpm test:cold-session` exits 0
+- [x] Master tracker D4 + D7 flipped to `[x]`
+- [x] D-11 row updated to `[x]`
+- [x] `meta_state_log_change` filed with the locked reason + change_target
+- [x] Journal entry written with: summary, outcomes, decisions, lessons, forward-looking, acceptance gate
+- [x] PR body written with: branch name, plan summary, test count, count matrix, deferred items, cross-references, acceptance criteria
+- [x] PR body satisfies `rule-pr-body-registry-deltas` consult-checklist
+- [x] No new vendor deps in `package.json` (root)
+- [x] All 3 agents have `memory === undefined` (regression guard)
+- [x] `MASTRA_AGENT_MODEL` + `KIMI_API_KEY` env vars are operator-facing only (no test exposure)
 
 ## Risk Assessment
 
