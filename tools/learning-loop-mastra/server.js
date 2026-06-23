@@ -147,9 +147,9 @@ await initStorage();
 const server = new LoopMCPServer({
   id: "learning-loop-mastra",
   name: "learning-loop-mastra",
-  version: "0.1.0",
+  version: "0.1.1",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 41 tools + 10 workflows across 5 groups. Single server post-cut-over.",
+    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 31 tools + 10 workflows across 5 groups. Single server post-cut-over.",
   tools,
   workflows,
 });

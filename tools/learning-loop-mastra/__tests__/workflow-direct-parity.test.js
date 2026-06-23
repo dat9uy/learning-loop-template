@@ -21,16 +21,6 @@ function writeYaml(root, path, data) {
   writeFileSync(fullPath, JSON.stringify(data, null, 2));
 }
 
-// Helper: compare workflow result to legacy handler result.
-// The workflow result is the inner JSON (envelope stripped by adapter).
-// The legacy handler returns { content: [{ type: "text", text: JSON.stringify(result) }] }.
-function legacyToResult(legacyOutput) {
-  if (legacyOutput && typeof legacyOutput === "object" && Array.isArray(legacyOutput.content)) {
-    return JSON.parse(legacyOutput.content[0].text);
-  }
-  return legacyOutput;
-}
-
 test("workflow-intake-orient: direct parity matches legacy handler", async () => {
   const { workflowIntakeOrient } = await import("../workflows/workflow-intake-orient.js");
   const tempRoot = makeTempRoot();
@@ -81,9 +71,8 @@ test("workflow-classify-prompt: direct parity matches legacy handler", async () 
   assert.ok(Array.isArray(started.result.suggested_tools));
 });
 
-// Deep-equal structural parity using legacyToResult. Locks the field set
-// against future regressions; shape-only assertions above would miss a
-// field drop. Add per-workflow coverage in Plan 1a.
+// Deep-equal structural parity. Locks the field set against future
+// regressions; shape-only assertions above would miss a field drop.
 test("workflow-classify-prompt: deep-equal structural parity", async () => {
   const { workflowClassifyPrompt } = await import("../workflows/workflow-classify-prompt.js");
   const run = await workflowClassifyPrompt.createRun();

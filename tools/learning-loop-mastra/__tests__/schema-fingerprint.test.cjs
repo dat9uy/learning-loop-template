@@ -52,6 +52,13 @@ const SNAPSHOT = [
 ];
 
 test("LibSQL schema fingerprint matches snapshot", { timeout: 10000 }, async () => {
+  // Asymmetric assertion: we check all expected tables exist with correct
+  // column counts, but do NOT assert that there are no extra tables.
+  // Intentional: allow future @mastra/libsql bumps to add new tables without
+  // breaking this test. Symmetric assertion would force a deliberate
+  // operator review on every addition; the current design only reviews on
+  // removal or column-count drift.
+
   // Use the project's storage factory so the fingerprint reflects the
   // initialized substrate, not whatever tables happen to exist in a dev DB.
   const { initStorage, getParityDb, getParityDDL } = await import(

@@ -2,6 +2,7 @@ import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import { buildParitySchema } from "./schema-parity.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+import { stripMcpContentEnvelope } from "#mcp/core/envelope-stripper.js";
 
 function normalizeSchema(schema) {
   if (
@@ -13,28 +14,6 @@ function normalizeSchema(schema) {
     return schema;
   }
   return z.object(schema);
-}
-
-/**
- * Strip MCP content envelope from input data.
- * Envelope form: { content: [{ type: "text", text: JSON.stringify(inner) }] }
- * Fail-closed: malformed JSON falls back to raw input.
- */
-function stripContentEnvelope(v) {
-  if (
-    v &&
-    typeof v === "object" &&
-    Array.isArray(v.content) &&
-    v.content[0] &&
-    typeof v.content[0].text === "string"
-  ) {
-    try {
-      return JSON.parse(v.content[0].text);
-    } catch {
-      return v;
-    }
-  }
-  return v;
 }
 
 function attachParityJSONSchema(schema) {
@@ -63,23 +42,11 @@ function buildStep({ id, description, inputSchema, outputSchema, handler }) {
     inputSchema: normalizedInput,
     outputSchema: normalizedOutput,
     execute: async (params) => {
-      const raw = params.inputData || params;
-      // Defensive envelope strip: agent callers may wrap input in MCP envelope form.
-      // Fail-closed: malformed JSON falls back to raw input.
-      let data = raw;
-      if (
-        raw &&
-        typeof raw === "object" &&
-        Array.isArray(raw.content) &&
-        raw.content[0] &&
-        typeof raw.content[0].text === "string"
-      ) {
-        try {
-          data = JSON.parse(raw.content[0].text);
-        } catch {
-          data = raw;
-        }
-      }
+      const data = params.inputData || params;
+      // Inline input envelope strip REMOVED in Plan 1b Phase 3 (operator override of
+      // Red Team Finding 5). The factory-level preprocess at line ~110 handles MCP-path
+      // callers via schema validation. Direct `run.start({ inputData })` callers are
+      // migrated to the MCP call path in Phase 3 step 4.
       const result = await handler(data, params);
       // Defensive envelope strip: future handlers may wrap legacy tool output in
       // the MCP content envelope. adaptLegacyHandler does the same for createTool.
@@ -108,7 +75,7 @@ export function createLoopWorkflow({ id, description, inputSchema, outputSchema,
   // Wrap with envelope-aware preprocess so agent callers that wrap input in
   // MCP content envelope form are handled transparently.
   const normalizedInput = attachParityJSONSchema(
-    z.preprocess(stripContentEnvelope, rawInput)
+    z.preprocess(stripMcpContentEnvelope, rawInput)
   );
   const normalizedOutput = outputSchema
     ? attachParityJSONSchema(normalizeSchema(outputSchema))

@@ -29,6 +29,5 @@
   { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool" },
   { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool" },
   { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool" },
-  { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" },
-  { "file": "tools/task-update.js", "export": "taskUpdate" }
+  { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" }
 ]
