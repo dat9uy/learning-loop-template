@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 1: Foundation (rename core/legacy → core + FCIS + schema doc + 3-layer AGENTS.md)"
 description: "Pure rename + discipline doc that codifies the 3-layer architecture. No new code. Locks the FCIS invariant. Includes fingerprint repointing to satisfy the O(N)-per-cited-file-change constraint (meta-260624T1920Z)."
-status: pending
+status: done
 priority: P2
 branch: "main"
 tags: [phase-e, foundation, fcis, schema-doc, runtime-interface]
