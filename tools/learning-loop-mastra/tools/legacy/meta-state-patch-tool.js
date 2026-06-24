@@ -1,26 +1,17 @@
 import { z } from "zod";
-import { readRegistry, updateEntry, buildPatchSchemaFor, PATCH_KINDS } from "../../core/meta-state.js";
+import {
+  readRegistry,
+  updateEntry,
+  buildPatchSchemaFor,
+  PATCH_KINDS,
+  IMMUTABLE_PATCH_FIELDS,
+} from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-export const IMMUTABLE_PATCH_FIELDS = new Set([
-  "id",
-  // entry_kind is NOT here — the per-kind schemas use z.literal("finding") etc.
-  // which already prevents changing the kind. Adding it to the deny-list would
-  // reject every patch because Zod's .default() on the literal adds entry_kind
-  // to the parsed result even when the user didn't send it.
-  "version",
-  "created_at",
-  "created_by",
-  "code_fingerprint",
-  // promoted_to_rule removed from deny-list — the field is no longer written
-  // on findings after the Phase 2 migration to first-class rule entries.
-  "consolidated_into",
-  "acked_at",
-  "resolved_at",
-  "resolved_by",
-  "resolution",
-]);
+// Re-exported for backward compat with existing test imports
+// (meta-state-patch-immutable-fields.test.js).
+export { IMMUTABLE_PATCH_FIELDS };
 
 export const metaStatePatchTool = {
   name: "meta_state_patch",

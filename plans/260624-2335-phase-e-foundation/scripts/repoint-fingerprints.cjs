@@ -3,7 +3,16 @@
  * Repoint 7 findings from core/legacy/* to core/* via meta_state_batch.
  * One atomic batch op (not 7 sequential refresh+patch calls).
  *
- * Usage: node plans/260624-2335-phase-e-foundation/scripts/repoint-fingerprints.cjs
+ * HISTORICAL: executed 2026-06-24 against meta-state.jsonl (manifest written to
+ * reports/fingerprint-repoint-manifest.json). Re-running this script will FAIL:
+ * after the fix for meta-260625T0255Z-... (meta_state_batch now enforces the
+ * same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch), the update ops
+ * that pin `code_fingerprint` to a stale hash are rejected with
+ * `reason: "immutable_field"`. Future repoints should call
+ * `meta_state_refresh_fingerprint` per entry (the documented pattern), not
+ * set code_fingerprint in a batch update.
+ *
+ * Usage (historical only): node plans/260624-2335-phase-e-foundation/scripts/repoint-fingerprints.cjs
  */
 const { readFileSync, writeFileSync, mkdirSync, existsSync } = require("node:fs");
 const { join } = require("node:path");

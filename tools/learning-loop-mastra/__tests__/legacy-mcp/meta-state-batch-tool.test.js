@@ -222,4 +222,66 @@ describe("meta_state_batch", () => {
     assert.ok(entries.find((e) => e.id === "batch-concurrent-x"), "entry X must exist");
     assert.ok(entries.find((e) => e.id === "batch-concurrent-y"), "entry Y must exist");
   });
+
+  it("update op with code_fingerprint in patch is rejected (immutable_field deny-list)", async () => {
+    // Regression: metaStateBatch's update op used to do raw Object.assign,
+    // letting callers pin a finding's code_fingerprint to a stale hash and
+    // suppress future drift detection. The IMMUTABLE_PATCH_FIELDS deny-list
+    // is now consulted by both meta_state_patch AND meta_state_batch.
+    const registryPath = join(root, "meta-state.jsonl");
+    const beforeHash = sha256File(registryPath);
+
+    const ops = [
+      {
+        op: "update",
+        id: "batch-base-1",
+        code_fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      },
+    ];
+
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0, "denied op must not be applied");
+    assert.equal(parsed.failed_at, 0, "must fail at op index 0");
+    assert.equal(parsed.reason, "immutable_field", "must surface immutable_field reason");
+    assert.ok(Array.isArray(parsed.denied_fields), "must include denied_fields array");
+    assert.ok(
+      parsed.denied_fields.includes("code_fingerprint"),
+      `denied_fields must include code_fingerprint; got: ${JSON.stringify(parsed.denied_fields)}`
+    );
+
+    // The registry must be byte-identical after the failed batch.
+    const afterHash = sha256File(registryPath);
+    assert.equal(afterHash, beforeHash, "file must be byte-identical after rollback");
+
+    // The entry's code_fingerprint (if any) must NOT have been overwritten.
+    const entries = readRegistry(root);
+    const target = entries.find((e) => e.id === "batch-base-1");
+    assert.ok(target, "entry must still exist");
+    assert.notEqual(
+      target.code_fingerprint,
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "code_fingerprint must not be overwritten"
+    );
+  });
+
+  it("update op with any IMMUTABLE_PATCH_FIELDS key is rejected (deny-list is exhaustive)", async () => {
+    // Sanity: the deny-list covers all of {id, version, created_at, created_by,
+    // code_fingerprint, consolidated_into, acked_at, resolved_at, resolved_by, resolution}.
+    // We test a non-code_fingerprint field to confirm the list is enforced
+    // broadly, not just for code_fingerprint.
+    const ops = [
+      {
+        op: "update",
+        id: "batch-base-1",
+        resolved_at: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0, "denied op must not be applied");
+    assert.equal(parsed.reason, "immutable_field");
+    assert.ok(parsed.denied_fields.includes("resolved_at"));
+  });
 });
