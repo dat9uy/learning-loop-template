@@ -19,6 +19,15 @@ import { join } from "node:path";
 //   - tools/learning-loop-mcp/scout/*.test.js — matches 7 fixture files under
 //     scout/test-fixtures/mini-codebase/__tests__/, not live runners.
 //   - tools/learning-loop-mcp/evals/*.test.js — directory exists, 0 .test.js files.
+//
+// Plan 4 cutover follow-up (2026-06-24): the 5 mcp-* globs were NOT repointed
+// at tools/learning-loop-mastra/{__tests__,core,tools}/legacy/ because the test
+// files in __tests__/legacy-mcp/ (110 files) were git-mv'd with stale relative
+// import paths. Fixing those paths is a separate follow-up plan (~135 broken
+// tests today). The globs remain pointing at the now-deleted tools/learning-
+// loop-mcp/ tree, which matches 0 files; the namespaces pass with 0 tests as
+// a visible signal that the migration is incomplete. See meta-state finding
+// filed in Plan 4 cutover followup.
 const GLOBS = [
   { ns: "mcp-tests", pattern: "tools/learning-loop-mcp/__tests__/*.test.js" },
   { ns: "mcp-core-tests", pattern: "tools/learning-loop-mcp/core/__tests__/*.test.js" },

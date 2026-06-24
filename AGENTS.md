@@ -2,7 +2,7 @@
 
 > **2026-06-12 from-scratch rewrite.** The previous version of this document is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. The rewrite drops all product-surface framing (decisions, experiments, risks, observations, capability records, vendor directories) from the top of the document. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface.** This document is the gate-truth for every agent in every session. See `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe, and `plans/reports/consistency-260612-1300-mastra-research-report.md` for the operational source of truth.
 
-Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mcp/core/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
+Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mastra/core/legacy/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
 
 ---
 
@@ -33,12 +33,12 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 | Surface | Hook | Wrapper | Universal Script |
 |---------|------|---------|------------------|
-| Claude Code | Bash gate | `.claude/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/bash-gate.js` |
-| Claude Code | Write gate | `.claude/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/write-gate.js` |
-| Claude Code | Inbound gate | `.claude/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mcp/hooks/inbound-gate.js` |
-| Droid CLI | Execute gate | `.factory/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/bash-gate.js` |
-| Droid CLI | Write gate | `.factory/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mcp/hooks/write-gate.js` |
-| Droid CLI | Inbound gate | `.factory/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mcp/hooks/inbound-gate.js` |
+| Claude Code | Bash gate | `.claude/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/bash-gate.js` |
+| Claude Code | Write gate | `.claude/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/write-gate.js` |
+| Claude Code | Inbound gate | `.claude/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js` |
+| Droid CLI | Execute gate | `.factory/coordination/hooks/bash-coordination-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/bash-gate.js` |
+| Droid CLI | Write gate | `.factory/coordination/hooks/write-coordination-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/write-gate.js` |
+| Droid CLI | Inbound gate | `.factory/coordination/hooks/inbound-state-gate.cjs` | `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js` |
 
 ### Gate Descriptions
 
@@ -56,14 +56,14 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 Every feature must work identically on Claude Code and Droid CLI (and future runtimes). The shim-not-fork pattern is the canonical way to achieve this:
 
-- **Core logic** lives in `tools/learning-loop-mcp/{core,hooks,tools}/` (not under `.claude/` or `.factory/`).
+- **Core logic** lives in `tools/learning-loop-mastra/{core,hooks,tools}/legacy/` (not under `.claude/` or `.factory/`).
 - **Surface shims** (`.claude/coordination/hooks/*.cjs` and `.factory/coordination/hooks/*.cjs`) are thin wrappers; the universal hook does the real work.
-- **Hook I/O** goes through `tools/learning-loop-mcp/hooks/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
+- **Hook I/O** goes through `tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
 - **MCP tools** are registered in `tools/learning-loop-mastra/agent-manifest.json`.
 - **Cross-surface iteration** uses the `core/surfaces.js` helper (`SURFACES`, `getAllCoordinationPaths`, `writeToAllSurfaces`, `readFromAllSurfaces`, `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, `readModifyWriteOnAllSurfaces`). Do not hard-code `.claude/` or `.factory/` paths.
 - **New runtimes** append to `SURFACES` in `core/surfaces.js` (one line, no other code changes).
 
-The rule is codified as `rule-runtime-agnostic-features` in `meta-state.jsonl`. Audit a feature with the `check_runtime_agnostic` MCP tool. The pattern is regression-tested by `tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js`.
+The rule is codified as `rule-runtime-agnostic-features` in `meta-state.jsonl`. Audit a feature with the `check_runtime_agnostic` MCP tool. The pattern is regression-tested by `tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js`.
 
 ### Inbound State Gate — Meta-State First
 
@@ -77,7 +77,7 @@ The rule is codified as `rule-runtime-agnostic-features` in `meta-state.jsonl`. 
 3. If a matching prior finding exists, apply the operator-approved workaround BEFORE running the corresponding bash command.
 4. Only then proceed to update affected observations via `meta_state_report` MCP tool.
 
-**Defense in depth**: the hook message itself leads with the meta-state hint (see `tools/learning-loop-mcp/hooks/inbound-gate.js#buildContextMessage`), but this AGENTS.md rule is the canonical source.
+**Defense in depth**: the hook message itself leads with the meta-state hint (see `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js#buildContextMessage`), but this AGENTS.md rule is the canonical source.
 
 ### Discovery: `loop_describe`
 
@@ -139,7 +139,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mcp/core/loop-introspect.js#PROCESS_HINTS`.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mastra/core/legacy/loop-introspect.js#PROCESS_HINTS`.
 
 ---
 
@@ -195,7 +195,7 @@ The most common failure mode of the naive reading ("if the loop touches it, the 
 
 **The citation rule (internal-implementation class only):** when an agent needs to cite a design, finding, or external reference, **cite the code, not the markdown.** The canonical citation path is:
 
-1. Report a `meta_state_report` finding with `evidence_code_ref` set to the code location (e.g., `tools/learning-loop-mcp/tools/loop-describe-tool.js#buildDiscoverabilityHints`).
+1. Report a `meta_state_report` finding with `evidence_code_ref` set to the code location (e.g., `tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js#buildDiscoverabilityHints`).
 2. In the record's `source_refs`, use `local:meta-state:<id>` where `<id>` is the finding's id.
 3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_refresh_fingerprint` can re-check it after refactors.
 
@@ -283,7 +283,7 @@ The 2026-06-12 reframe voids all prior "Bridge 1-4 shipped" or "Bridge 1-4 desig
 #### Where this prediction is wrong — three failure modes
 
 1. **SP3 schemas are still in flux.** If the SP3 schemas are still being edited (e.g., new fields, status enum changes), Approach 3 will need to be redone as SP3 settles. *Test: check the git history on `schemas/*.schema.json` since 2026-06-05; if the diff is non-trivial, defer Approach 3.*
-2. **The meta-surface engine produces output that is not equivalent to the existing hand-written meta-state tools.** The 16 `meta_state_*` tools in `tools/learning-loop-mcp/tools/meta-state-*-tool.js` have hand-written logic (e.g., `meta_state_derive_status`, `meta_state_check_grounding`). If the Bridge 5 engine's output for the meta-surface types does not match the existing hand-written behavior, the cut-over breaks. *Test: at Bridge 5 Phase 0, generate meta-state zod from the engine and compare against `buildZodSchemaFor('observation', ...)` and the hand-written `meta-state-*-tool.js` schemas. Any divergence is a blocker.*
+2. **The meta-surface engine produces output that is not equivalent to the existing hand-written meta-state tools.** The 16 `meta_state_*` tools in `tools/learning-loop-mastra/tools/legacy/meta-state-*-tool.js` have hand-written logic (e.g., `meta_state_derive_status`, `meta_state_check_grounding`). If the Bridge 5 engine's output for the meta-surface types does not match the existing hand-written behavior, the cut-over breaks. *Test: at Bridge 5 Phase 0, generate meta-state zod from the engine and compare against `buildZodSchemaFor('observation', ...)` and the hand-written `meta-state-*-tool.js` schemas. Any divergence is a blocker.*
 3. **The product surface re-debate (Bridge 7) reveals that the meta-surface shape is also wrong.** If the loop, using its own meta-surface as substrate, concludes that the 4-kind union (`finding | change-log | rule | loop-design`) does not generalize, the meta-surface itself is in scope for re-debate. *Test: at post-meta-surface, audit whether the 4-kind union is still the right shape for the product surface the loop is designing. If not, the meta-surface is in scope too.*
 
 ### The Storage Layer Trajectory (Approach A → SQLite)

@@ -81,7 +81,7 @@ Enforces domain rules for file writes. Rules are evaluated in order; first match
 
 ## Shared Utilities
 
-All gate logic lives in `tools/learning-loop-mcp/core/` (ESM, single source of truth). Hook wrappers delegate to universal ESM hooks via `execFileSync`. There is no shared CJS utility file — the thin wrappers intentionally contain zero business logic.
+All gate logic lives in `tools/learning-loop-mastra/core/legacy/` (ESM, single source of truth). Hook wrappers delegate to universal ESM hooks via `execFileSync`. There is no shared CJS utility file — the thin wrappers intentionally contain zero business logic.
 
 ## Environment Variables
 
