@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, updateEntry } from "../../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { stripEvidenceAnchor } from "../../core/legacy/gate-logic.js";
+import { stripEvidenceAnchor } from "../../../core/legacy/gate-logic.js";
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, isAbsolute } from "node:path";

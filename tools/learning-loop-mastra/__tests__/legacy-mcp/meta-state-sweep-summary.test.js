@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { metaStateSweepTool } from "../tools/meta-state-sweep-tool.js";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
+import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

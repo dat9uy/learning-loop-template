@@ -1,11 +1,11 @@
 /**
  * Source ref validator for MCP tools.
- * Reuses existing validation functions from ../../core/legacy/record-validation-rules.js
+ * Reuses existing validation functions from ../record-validation-rules.js
  * with MCP-specific error messages.
  */
 
-import { validateLocalRef as validateLocalRefCore, validateAllowedLocalPath } from "../../core/legacy/record-validation-rules.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { validateLocalRef as validateLocalRefCore, validateAllowedLocalPath } from "../record-validation-rules.js";
+import { readRegistry } from "../meta-state.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 

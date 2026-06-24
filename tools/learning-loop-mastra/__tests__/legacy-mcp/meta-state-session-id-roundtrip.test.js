@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateListTool } from "../tools/meta-state-list-tool.js";
-import { readRegistry } from "../core/meta-state.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const originalRoot = process.env.GATE_ROOT;

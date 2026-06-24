@@ -3,9 +3,9 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateCheckGroundingTool } from "../tools/meta-state-check-grounding-tool.js";
-import { metaStateRefreshFingerprintTool } from "../tools/meta-state-refresh-fingerprint-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
+import { metaStateRefreshFingerprintTool } from "../../tools/legacy/meta-state-refresh-fingerprint-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 
 describe("SP2 check_grounding acceptance", () => {
   const originalEnv = process.env.GATE_ROOT;

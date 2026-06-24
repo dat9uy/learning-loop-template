@@ -9,7 +9,7 @@ import {
   getAllCoordinationPaths,
   writeToAllSurfaces,
   readFromAllSurfaces,
-} from "../core/surfaces.js";
+} from "../../core/legacy/surfaces.js";
 
 let root;
 

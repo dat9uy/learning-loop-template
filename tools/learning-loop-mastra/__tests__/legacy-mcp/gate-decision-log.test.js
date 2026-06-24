@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync, 
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { appendDecisionLog, readDecisionLog } from "../core/gate-decision-log.js";
+import { appendDecisionLog, readDecisionLog } from "../../core/legacy/gate-decision-log.js";
 
 let root;
 

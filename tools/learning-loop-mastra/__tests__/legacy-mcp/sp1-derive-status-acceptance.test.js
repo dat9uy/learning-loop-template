@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateDeriveStatusTool } from "../tools/meta-state-derive-status-tool.js";
-import { readRegistry } from "../core/meta-state.js";
+import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 describe("SP1 derive_status acceptance", () => {
@@ -15,7 +15,7 @@ describe("SP1 derive_status acceptance", () => {
     // the real registry's lifecycle. The real "internalization rule" finding was
     // resolved by plan 260606; this test locks the derive_status contract for
     // any active code-pointed finding independently of real-registry state.
-    const codeRef = "tools/learning-loop-mcp/lib/source-ref-validator.js";
+    const codeRef = "tools/learning-loop-mastra/core/legacy/lib/source-ref-validator.js";
     const syntheticEntry = {
       id: "meta-260606T0000Z-sp1-acceptance-synthetic",
       entry_kind: "finding",
@@ -36,7 +36,7 @@ describe("SP1 derive_status acceptance", () => {
     process.env.GATE_ROOT = tempDir;
     try {
       const refPath = join(tempDir, codeRef);
-      mkdirSync(join(tempDir, "tools", "learning-loop-mcp", "lib"), { recursive: true });
+      mkdirSync(join(tempDir, "tools", "learning-loop-mastra", "core", "legacy", "lib"), { recursive: true });
       writeFileSync(refPath, "// real file exists", "utf8");
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(syntheticEntry) + "\n", "utf8");
 
@@ -64,7 +64,8 @@ describe("SP1 derive_status acceptance", () => {
     const entries = readRegistry(root);
     const realEntry = entries.find((e) =>
       e.entry_kind === "change-log" &&
-      e.change_target === "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js"
+      typeof e.change_target === "string" &&
+      e.change_target.includes("meta-state-log-change-tool.js")
     );
     assert.ok(realEntry, "Expected to find the SP0 self-log change-log entry in meta-state.jsonl");
 

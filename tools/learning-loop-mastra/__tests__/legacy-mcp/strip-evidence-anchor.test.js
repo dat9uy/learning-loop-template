@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { stripEvidenceAnchor } from "../core/gate-logic.js";
+import { stripEvidenceAnchor } from "../../core/legacy/gate-logic.js";
 
 describe("stripEvidenceAnchor", () => {
   test("strips single-line suffix", () => {

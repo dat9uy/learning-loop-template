@@ -5,7 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const schemasDir = join(__dirname, "..", "..", "..", "schemas");
+const schemasDir = join(__dirname, "..", "..", "..", "..", "schemas");
 
 const DELETED_SCHEMAS = [
   "capability.schema.json",

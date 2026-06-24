@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test } from "node:test";
-import { isGlobScopeWhitelisted } from "../core/gate-logic.js";
+import { isGlobScopeWhitelisted } from "../../core/legacy/gate-logic.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +21,7 @@ await test("whitelists non-surface prefixes (no regression)", () => {
   assert.strictEqual(isGlobScopeWhitelisted("product/foo/bar"), true);
   assert.strictEqual(isGlobScopeWhitelisted("docs/readme.md"), true);
   assert.strictEqual(isGlobScopeWhitelisted("plans/2026-06/test.md"), true);
-  assert.strictEqual(isGlobScopeWhitelisted("tools/learning-loop-mcp/core/gate-logic.js"), true);
+  assert.strictEqual(isGlobScopeWhitelisted("tools/learning-loop-mastra/core/legacy/gate-logic.js"), true);
   assert.strictEqual(isGlobScopeWhitelisted("meta-state.jsonl"), true);
 });
 
@@ -39,6 +39,6 @@ await test("rejects empty string and non-string input", () => {
 });
 
 await test("GLOB_SCOPE_WHITELIST parameterizes on SURFACES: source derives prefixes from SURFACES.map", () => {
-  const src = readFileSync(join(__dirname, "../core/gate-logic.js"), "utf8");
+  const src = readFileSync(join(__dirname, "../../core/legacy/gate-logic.js"), "utf8");
   assert.ok(src.includes("...SURFACES.map"), "GLOB_SCOPE_WHITELIST must derive prefixes from SURFACES.map(...)");
 });

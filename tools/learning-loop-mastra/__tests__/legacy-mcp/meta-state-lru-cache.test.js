@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, statSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRegistry, writeEntry } from "../core/meta-state.js";
-import { invalidateCache } from "../core/read-registry-cache.js";
+import { readRegistry, writeEntry } from "../../core/legacy/meta-state.js";
+import { invalidateCache } from "../../core/legacy/read-registry-cache.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "lru-cache-test-"));
@@ -134,7 +134,7 @@ describe("readRegistry LRU cache", () => {
     assert.equal(before.length, 1);
 
     // Batch write 10 entries — cache should be invalidated once, not 10 times
-    const { metaStateBatchTool } = await import("../tools/meta-state-batch-tool.js");
+    const { metaStateBatchTool } = await import("../../tools/legacy/meta-state-batch-tool.js");
     const originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
     const ops = Array.from({ length: 10 }, (_, i) => ({

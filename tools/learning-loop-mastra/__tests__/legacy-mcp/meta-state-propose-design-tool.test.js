@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { metaStateProposeDesignTool } from "../tools/meta-state-propose-design-tool.js";
-import { readRegistry } from "../core/meta-state.js";
+import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

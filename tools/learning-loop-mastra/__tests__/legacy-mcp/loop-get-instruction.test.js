@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loopGetInstructionTool } from "../tools/loop-get-instruction-tool.js";
-import { withMcpServer } from "../../learning-loop-mastra/__tests__/with-mcp-server.js";
+import { loopGetInstructionTool } from "../../tools/legacy/loop-get-instruction-tool.js";
+import { withMcpServer } from "../with-mcp-server.js";
 
 describe("loop_get_instruction", () => {
   test("returns hint by named slug 'reopens-script'", async () => {

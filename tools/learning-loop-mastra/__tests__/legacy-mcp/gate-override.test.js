@@ -4,9 +4,9 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { readGateOverride, writeGateOverride } from "../core/gate-override.js";
-import { applyPromotedRules, loadPromotedRules } from "../core/gate-logic.js";
-import { gateOverrideTool } from "../tools/gate-override-tool.js";
+import { readGateOverride, writeGateOverride } from "../../core/legacy/gate-override.js";
+import { applyPromotedRules, loadPromotedRules } from "../../core/legacy/gate-logic.js";
+import { gateOverrideTool } from "../../tools/legacy/gate-override-tool.js";
 
 let root;
 

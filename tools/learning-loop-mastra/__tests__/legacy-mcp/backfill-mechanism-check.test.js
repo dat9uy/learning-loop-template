@@ -8,7 +8,7 @@ import { readRegistry } from "../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();
-const scriptPath = new URL("../scripts/backfill-mechanism-check.mjs", import.meta.url);
+const scriptPath = new URL("../../tools/legacy/scripts/backfill-mechanism-check.mjs", import.meta.url);
 
 function countResolvedWithMechanismCheck(entries) {
   return entries.filter(
@@ -46,7 +46,7 @@ test("Phase 5: backfill-mechanism-check runs and is idempotent", () => {
   // continued compaction drift. The original comment (24/29 = 82.8%) was
   // calibrated for the post-2026-06-15 compaction steady state. Since
   // then, 2 more reachable findings lost their `evidence_code_ref` paths
-  // (the `tools/learning-loop-mcp/core/candidate-to-experiment/`
+  // (the `tools/learning-loop-mastra/core/legacy/candidate-to-experiment/`
   // directory was removed), making them unreachable by the backfill
   // script. New ceiling: 19/24 = 79.2%. Threshold 0.75 provides a small
   // headroom below the realistic ceiling while the registry continues
@@ -58,7 +58,7 @@ test("Phase 5: backfill-mechanism-check runs and is idempotent", () => {
   //   2. meta-260613T1448Z-dead-product-surface-code-remains-in-extract-index-list-veri
   //      — no evidence_code_ref
   //   3. meta-260613T1546Z + meta-260613T1547Z — point to
-  //      tools/learning-loop-mcp/core/candidate-to-experiment/experiment-draft-builder.js
+  //      tools/learning-loop-mastra/core/legacy/candidate-to-experiment/experiment-draft-builder.js
   //      which no longer exists (directory removed)
   const coverage = withCheckAfter / resolvedBefore.length;
   console.log(`Coverage: ${withCheckAfter}/${resolvedBefore.length} = ${(coverage * 100).toFixed(1)}%`);
@@ -104,7 +104,7 @@ test("Phase 5: backfill handles #fragment in code_ref paths (C3 + M1)", () => {
   const fixtureRoot = mkdtempSync(join(tmpdir(), "backfill-fragment-"));
 
   // Use an absolute path to a real file as the target (guaranteed to exist).
-  const targetFile = join(root, "tools/learning-loop-mcp/scripts/backfill-mechanism-check.mjs");
+  const targetFile = join(root, "tools/learning-loop-mastra/tools/legacy/scripts/backfill-mechanism-check.mjs");
   const entries = [
     {
       id: "test-fragment-entry",

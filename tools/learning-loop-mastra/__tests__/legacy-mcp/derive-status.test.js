@@ -8,7 +8,7 @@ import {
   META_STATE_DERIVATION_KINDS,
   META_STATE_DERIVED_STATUSES,
   META_STATE_RECOMMENDATIONS,
-} from "../core/derive-status.js";
+} from "../../core/legacy/derive-status.js";
 
 describe("deriveStatus pure function", () => {
   // Helper to build a temp dir with files

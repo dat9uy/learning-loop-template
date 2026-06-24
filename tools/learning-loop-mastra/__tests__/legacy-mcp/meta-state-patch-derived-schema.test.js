@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readRegistry } from "../core/meta-state.js";
-import { withMcpServer } from "../../learning-loop-mastra/__tests__/with-mcp-server.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
+import { withMcpServer } from "../with-mcp-server.js";
 
 // Test 1: wrapped proposed_design_for: {item: [...]} is REJECTED (RED test).
 // The current passthrough ACCEPTS this and stores the wrapped object.

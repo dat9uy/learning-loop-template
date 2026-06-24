@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readRegistry, writeEntry, updateEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, writeEntry, updateEntry } from "../../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 /**

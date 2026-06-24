@@ -3,7 +3,7 @@ import { test, beforeEach, afterEach } from "node:test";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { checkObservationStaleness } from "../core/inbound-state.js";
+import { checkObservationStaleness } from "../../core/legacy/inbound-state.js";
 
 let root;
 

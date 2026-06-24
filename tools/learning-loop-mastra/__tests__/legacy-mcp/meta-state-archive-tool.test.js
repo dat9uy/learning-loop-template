@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateArchiveTool } from "../tools/meta-state-archive-tool.js";
-import { metaStateListTool } from "../tools/meta-state-list-tool.js";
-import { readRegistry } from "../core/meta-state.js";
+import { metaStateArchiveTool } from "../../tools/legacy/meta-state-archive-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "archive-test-"));

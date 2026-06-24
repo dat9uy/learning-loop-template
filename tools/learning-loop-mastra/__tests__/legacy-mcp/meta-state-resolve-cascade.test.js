@@ -11,12 +11,12 @@ import { pathToFileURL } from "node:url";
 const projectRoot = resolve(process.cwd());
 
 async function importCore(tempRoot) {
-  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js")).href;
+  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js")).href;
   return await import(corePath);
 }
 
 async function importMetaStateResolveTool() {
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/tools/meta-state-resolve-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-resolve-tool.js")).href;
   return await import(toolPath);
 }
 

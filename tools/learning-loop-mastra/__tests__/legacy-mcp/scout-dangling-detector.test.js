@@ -4,10 +4,10 @@ import { readFileSync, mkdtempSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { detectDangling } from "../scout/dangling-detector.js";
+import { detectDangling } from "../../scout/legacy/dangling-detector.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const fixturesDir = join(__dirname, "..", "scout", "test-fixtures", "mini-codebase", "__tests__");
+const fixturesDir = join(__dirname, "..", "..", "scout", "legacy", "test-fixtures", "mini-codebase", "__tests__");
 
 function readFixture(name) {
   return readFileSync(join(fixturesDir, name), "utf8");

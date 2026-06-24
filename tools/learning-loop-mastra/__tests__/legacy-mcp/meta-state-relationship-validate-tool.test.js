@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateRelationshipValidateTool } from "../tools/meta-state-relationship-validate-tool.js";
-import { writeEntry } from "../core/meta-state.js";
+import { metaStateRelationshipValidateTool } from "../../tools/legacy/meta-state-relationship-validate-tool.js";
+import { writeEntry } from "../../core/legacy/meta-state.js";
 
 function makeTempRoot() {
   return mkdtempSync(join(tmpdir(), "validate-test-"));

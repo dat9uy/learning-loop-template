@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   metaStateRuleEntrySchema,
   metaStateEntrySchema,
-} from "../core/meta-state.js";
+} from "../../core/legacy/meta-state.js";
 
 const validRule = {
   id: "rule-no-new-artifact-types",
@@ -41,7 +41,7 @@ test("metaStateRuleEntrySchema accepts optional fields (scope_predicate, evidenc
   const rule = {
     ...validRule,
     scope_predicate: "project_has_learning_loop_mcp",
-    evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#loadPromotedRules",
+    evidence_code_ref: "tools/learning-loop-mastra/core/legacy/gate-logic.js#loadPromotedRules",
     code_fingerprint: "sha256:" + "a".repeat(64),
     refined_at: "2026-06-05T19:25:15.567Z",
     refined_by: "operator",

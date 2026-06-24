@@ -4,14 +4,14 @@ import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFil
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { CHECKLIST, stripCommentsAndStrings } from "../core/runtime-agnostic-checklist.js";
+import { CHECKLIST, stripCommentsAndStrings } from "../../core/legacy/runtime-agnostic-checklist.js";
 
-const MCP_ROOT = new URL("../../../", import.meta.url).pathname;
-const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mcp/core");
+const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
+const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/core/legacy");
 const SHIM_CLAUDE = join(MCP_ROOT, ".claude/coordination/hooks");
 const SHIM_FACTORY = join(MCP_ROOT, ".factory/coordination/hooks");
-const MANIFEST_PATH = join(MCP_ROOT, "tools/learning-loop-mcp/agent-manifest.json");
-const PROTOCOL_ADAPTER_PATH = join(MCP_ROOT, "tools/learning-loop-mcp/hooks/lib/protocol-adapter.js");
+const MANIFEST_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/agent-manifest.json");
+const PROTOCOL_ADAPTER_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js");
 
 await test("runtime-agnostic checklist has 6 items and surfaces.js passes them all", () => {
   assert.strictEqual(CHECKLIST.length, 6, "checklist must have 6 items");
@@ -21,7 +21,7 @@ await test("runtime-agnostic checklist has 6 items and surfaces.js passes them a
     assert.strictEqual(typeof item.verify, "function", "item must have verify function");
   }
 
-  const surfacesRel = "tools/learning-loop-mcp/core/surfaces.js";
+  const surfacesRel = "tools/learning-loop-mastra/core/legacy/surfaces.js";
   for (const item of CHECKLIST) {
     const result = item.verify(surfacesRel, MCP_ROOT);
     assert.ok(result.ok, `${item.id} failed for surfaces.js: ${result.found ?? ""}`);
@@ -44,7 +44,7 @@ await test("surfaces.js exports all cross-surface helpers", () => {
 });
 
 await test("surfaces.js SURFACES is frozen and contains the canonical runtimes", async () => {
-  const mod = await import("../core/surfaces.js");
+  const mod = await import("../../core/legacy/surfaces.js");
   assert.ok(Object.isFrozen(mod.SURFACES), "SURFACES must be Object.frozen");
   assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory"]);
 });
@@ -128,7 +128,7 @@ await test("both shim directories have the same set of .cjs shim names", () => {
 
 await test("agent-manifest.json is registered and has the expected group structure", () => {
   const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
-  assert.strictEqual(manifest.server, "learning-loop-mcp");
+  assert.strictEqual(manifest.server, "learning-loop");
   assert.ok(manifest.groups.gate, "manifest must have a 'gate' group");
   assert.ok(manifest.groups.workflow, "manifest must have a 'workflow' group");
   assert.ok(manifest.groups.meta_state, "manifest must have a 'meta_state' group");

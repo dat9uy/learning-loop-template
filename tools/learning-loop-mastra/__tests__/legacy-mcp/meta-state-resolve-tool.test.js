@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
+import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 
 describe("meta_state_resolve change-log immutability", () => {
   test("resolve refuses to change a change-log entry (immutable audit log)", async () => {

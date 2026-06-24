@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
-import { buildDiscoverabilityHints, buildProcessHints } from "../core/loop-introspect.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { buildDiscoverabilityHints, buildProcessHints } from "../../core/legacy/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
   test("warm tier returns discoverability_hints with 16 strings", async () => {
@@ -133,7 +133,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
   });
 
   test("loop_get_instruction resolves pnpm-test-discipline from PROCESS_HINTS", async () => {
-    const { loopGetInstructionTool } = await import("../tools/loop-get-instruction-tool.js");
+    const { loopGetInstructionTool } = await import("../../tools/legacy/loop-get-instruction-tool.js");
     const result = await loopGetInstructionTool.handler({ key: "pnpm-test-discipline" });
     const parsed = JSON.parse(result.content[0].text);
     assert.strictEqual(parsed.results.length, 1);

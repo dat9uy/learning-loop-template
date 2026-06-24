@@ -5,9 +5,9 @@ import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { formatHookDecision, formatOutput } from "../hooks/lib/protocol-adapter.js";
+import { formatHookDecision, formatOutput } from "../../hooks/legacy/lib/protocol-adapter.js";
 
-const UNIVERSAL_HOOK = new URL("../hooks/bash-gate.js", import.meta.url).pathname;
+const UNIVERSAL_HOOK = new URL("../../hooks/legacy/bash-gate.js", import.meta.url).pathname;
 
 let root;
 

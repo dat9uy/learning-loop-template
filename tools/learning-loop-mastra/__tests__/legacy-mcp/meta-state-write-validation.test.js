@@ -5,7 +5,7 @@ import {
   updateEntry,
   readRegistry,
   InvalidEntryError,
-} from "../core/meta-state.js";
+} from "../../core/legacy/meta-state.js";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

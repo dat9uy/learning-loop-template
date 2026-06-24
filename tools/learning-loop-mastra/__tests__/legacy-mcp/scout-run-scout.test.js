@@ -6,14 +6,16 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
-import { runScout } from "../scout/run-scout.js";
+import { runScout } from "../../scout/legacy/run-scout.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const schemaPath = join(
   __dirname,
   "..",
+  "..",
   "scout",
+  "legacy",
   "scout-output.schema.json"
 );
 const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
@@ -25,7 +27,9 @@ const validate = ajv.compile(schema);
 const miniCodebasePath = join(
   __dirname,
   "..",
+  "..",
   "scout",
+  "legacy",
   "test-fixtures",
   "mini-codebase"
 );

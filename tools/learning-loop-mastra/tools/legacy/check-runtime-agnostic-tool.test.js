@@ -15,10 +15,10 @@ beforeEach(() => {
   process.env.GATE_ROOT = root;
 
   // Minimal project structure required by the checklist predicates.
-  mkdirSync(join(root, "tools/learning-loop-mcp/core"), { recursive: true });
-  mkdirSync(join(root, "tools/learning-loop-mcp/tools"), { recursive: true });
+  mkdirSync(join(root, "tools/learning-loop-mastra/core/legacy"), { recursive: true });
+  mkdirSync(join(root, "tools/learning-loop-mastra/tools/legacy"), { recursive: true });
   writeFileSync(
-    join(root, "tools/learning-loop-mcp/agent-manifest.json"),
+    join(root, "tools/learning-loop-mastra/agent-manifest.json"),
     JSON.stringify({ version: "1.0.0", server: "learning-loop-mcp", groups: {} }, null, 2),
     "utf8",
   );
@@ -39,12 +39,12 @@ function parseResult(result) {
 
 await test("tool returns 6/6 pass for a compliant core feature", async () => {
   writeFileSync(
-    join(root, "tools/learning-loop-mcp/core/compliant.js"),
+    join(root, "tools/learning-loop-mastra/core/legacy/compliant.js"),
     `import { SURFACES } from "./surfaces.js";\nexport function init() { return SURFACES; }\n`,
     "utf8",
   );
 
-  const result = parseResult(await callTool("tools/learning-loop-mcp/core/compliant.js"));
+  const result = parseResult(await callTool("tools/learning-loop-mastra/core/legacy/compliant.js"));
 
   assert.strictEqual(result.items_checked, 6);
   assert.strictEqual(result.items_passed, 6);
@@ -54,12 +54,12 @@ await test("tool returns 6/6 pass for a compliant core feature", async () => {
 
 await test("tool reports cross-surface-iteration failure for hard-coded surface path", async () => {
   writeFileSync(
-    join(root, "tools/learning-loop-mcp/core/bad.js"),
+    join(root, "tools/learning-loop-mastra/core/legacy/bad.js"),
     `import { join } from "node:path";\nexport function read(root) { return join(root, ".claude", "coordination", "x.json"); }\n`,
     "utf8",
   );
 
-  const result = parseResult(await callTool("tools/learning-loop-mcp/core/bad.js"));
+  const result = parseResult(await callTool("tools/learning-loop-mastra/core/legacy/bad.js"));
 
   assert.ok(result.items_failed >= 1, `expected at least 1 failure, got ${result.items_failed}`);
   const ids = result.failures.map((f) => f.item_id);
@@ -68,12 +68,12 @@ await test("tool reports cross-surface-iteration failure for hard-coded surface 
 
 await test("tool reports manifest-registered failure for unregistered tool file", async () => {
   writeFileSync(
-    join(root, "tools/learning-loop-mcp/tools/my-feature-tool.js"),
+    join(root, "tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"),
     `export const myFeatureTool = { name: "my_feature", handler: async () => ({}) };\n`,
     "utf8",
   );
 
-  const result = parseResult(await callTool("tools/learning-loop-mcp/tools/my-feature-tool.js"));
+  const result = parseResult(await callTool("tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"));
 
   assert.ok(result.items_failed >= 1, `expected at least 1 failure, got ${result.items_failed}`);
   const ids = result.failures.map((f) => f.item_id);
@@ -82,12 +82,12 @@ await test("tool reports manifest-registered failure for unregistered tool file"
 
 await test("every failure includes a non-empty fix_suggestion", async () => {
   writeFileSync(
-    join(root, "tools/learning-loop-mcp/core/bad.js"),
+    join(root, "tools/learning-loop-mastra/core/legacy/bad.js"),
     `import { join } from "node:path";\nexport function read(root) { return join(root, ".claude", "coordination", "x.json"); }\n`,
     "utf8",
   );
 
-  const result = parseResult(await callTool("tools/learning-loop-mcp/core/bad.js"));
+  const result = parseResult(await callTool("tools/learning-loop-mastra/core/legacy/bad.js"));
 
   assert.ok(result.failures.length > 0, "expected at least one failure");
   for (const failure of result.failures) {
@@ -97,10 +97,10 @@ await test("every failure includes a non-empty fix_suggestion", async () => {
 });
 
 await test("tool rejects directory input", async () => {
-  mkdirSync(join(root, "tools/learning-loop-mcp/core/dir-feature"), { recursive: true });
+  mkdirSync(join(root, "tools/learning-loop-mastra/core/legacy/dir-feature"), { recursive: true });
 
   await assert.rejects(
-    () => callTool("tools/learning-loop-mcp/core/dir-feature"),
+    () => callTool("tools/learning-loop-mastra/core/legacy/dir-feature"),
     /is a directory/,
   );
 });

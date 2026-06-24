@@ -7,8 +7,8 @@ import {
   metaStateEntrySchema,
   readRegistry,
   writeEntry,
-} from "../core/meta-state.js";
-import { invalidateCache } from "../core/read-registry-cache.js";
+} from "../../core/legacy/meta-state.js";
+import { invalidateCache } from "../../core/legacy/read-registry-cache.js";
 
 describe("meta-state schema extension (Phase 1)", () => {
   let tempDir;

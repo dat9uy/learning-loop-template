@@ -3,9 +3,9 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateCheckGroundingTool } from "../tools/meta-state-check-grounding-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
+import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 
 function getGateLogPath(tempDir) {
   return join(tempDir, ".claude", "coordination", "gate-log.jsonl");
@@ -273,7 +273,7 @@ describe("meta_state_check_grounding tool", () => {
     process.env.GATE_ROOT = previousRoot; // no-op; keeps the assertion clean
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(
-      new URL("../tools/meta-state-check-grounding-tool.js", import.meta.url),
+      new URL("../../tools/legacy/meta-state-check-grounding-tool.js", import.meta.url),
       "utf8"
     );
     assert.ok(src.includes("context_load_failed"), "Tool must define the context_load_failed error path");

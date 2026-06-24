@@ -4,10 +4,10 @@ import { readFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { classifyBucket } from "../scout/bucket-classifier.js";
+import { classifyBucket } from "../../scout/legacy/bucket-classifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const fixturesDir = join(__dirname, "..", "scout", "test-fixtures", "mini-codebase", "__tests__");
+const fixturesDir = join(__dirname, "..", "..", "scout", "legacy", "test-fixtures", "mini-codebase", "__tests__");
 
 function readFixture(name) {
   return readFileSync(join(fixturesDir, name), "utf8");

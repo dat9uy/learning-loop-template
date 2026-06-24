@@ -3,12 +3,12 @@ import assert from "node:assert";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRegistry, writeEntry, updateEntry } from "../core/meta-state.js";
-import { invalidateCache } from "../core/read-registry-cache.js";
-import { metaStateRelationshipValidateTool } from "../tools/meta-state-relationship-validate-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateRelationshipsTool } from "../tools/meta-state-relationships-tool.js";
-import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
+import { readRegistry, writeEntry, updateEntry } from "../../core/legacy/meta-state.js";
+import { invalidateCache } from "../../core/legacy/read-registry-cache.js";
+import { metaStateRelationshipValidateTool } from "../../tools/legacy/meta-state-relationship-validate-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
 
 // Plan 260611-1000 retargeted the cascade to a 1-step path. The legacy
 // 'expired' status was removed; the migrate tool (used by the old 2-step

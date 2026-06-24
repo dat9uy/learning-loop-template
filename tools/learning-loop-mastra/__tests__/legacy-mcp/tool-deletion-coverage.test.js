@@ -5,9 +5,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const toolsDir = join(__dirname, "..", "tools");
+const toolsDir = join(__dirname, "..", "..", "tools");
 const manifestPath = join(toolsDir, "manifest.json");
-const agentManifestPath = join(dirname(__dirname), "agent-manifest.json");
+const agentManifestPath = join(__dirname, "..", "..", "agent-manifest.json");
 
 const DELETED_TOOLS = [
   "capability_generate",
@@ -81,9 +81,9 @@ await test("agent-manifest does not have budget group", () => {
   assert.strictEqual(agentManifest.groups.budget, undefined, "budget group should be removed");
 });
 
-// 8. agent-manifest.json workflow group has 3 tools (8 migrated to mastra; 3 stay-as-createTool remain)
-await test("agent-manifest workflow group has 3 tools", () => {
-  assert.strictEqual(agentManifest.groups.workflow.tools.length, 3);
+// 8. agent-manifest.json workflow group has 13 tools after Phase D Plan 4 (5 run_workflow_* + 3 mastra_workflow_* + 2 storage + 3 more)
+await test("agent-manifest workflow group has 13 tools", () => {
+  assert.strictEqual(agentManifest.groups.workflow.tools.length, 13);
   // 8 in-scope workflows migrated to Mastra createWorkflow in Phase D Plan 1.
   const migratedInThisPlan = [
     "workflow_intake_orient",

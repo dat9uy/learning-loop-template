@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
-import { readRegistry } from "../core/meta-state.js";
-import { writeColdTierCache, readColdTierCache } from "../core/loop-introspect-cache.js";
-import { writeEntry } from "../core/meta-state.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
+import { writeColdTierCache, readColdTierCache } from "../../core/legacy/loop-introspect-cache.js";
+import { writeEntry } from "../../core/legacy/meta-state.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "cold-cache-test-"));

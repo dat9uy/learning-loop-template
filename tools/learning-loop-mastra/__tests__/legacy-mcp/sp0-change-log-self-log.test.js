@@ -15,7 +15,8 @@ describe("SP0 self-modification change-log entry", () => {
       (e) =>
         e.entry_kind === "change-log" &&
         e.change_dimension === "surface" &&
-        e.change_target === "tools/learning-loop-mcp/tools/meta-state-log-change-tool.js" &&
+        typeof e.change_target === "string" &&
+        e.change_target.includes("meta-state-log-change-tool.js") &&
         Array.isArray(e.change_diff?.added) &&
         e.change_diff.added.includes("meta_state_log_change")
     );

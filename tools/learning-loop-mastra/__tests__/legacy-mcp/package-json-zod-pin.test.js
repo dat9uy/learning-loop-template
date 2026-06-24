@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = dirname(dirname(dirname(__dirname)));
+const projectRoot = dirname(dirname(dirname(dirname(__dirname))));
 
 test("package.json pins zod to 4.4.3 exact (no caret, tilde, or range)", () => {
   const pkg = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8"));

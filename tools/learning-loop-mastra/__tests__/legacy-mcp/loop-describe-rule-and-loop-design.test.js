@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
-import { writeEntry } from "../core/meta-state.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { writeEntry } from "../../core/legacy/meta-state.js";
 
 const originalEnv = process.env.GATE_ROOT;
 

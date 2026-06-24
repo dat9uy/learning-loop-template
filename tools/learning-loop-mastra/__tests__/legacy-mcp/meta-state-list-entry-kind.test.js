@@ -1,8 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateListTool } from "../tools/meta-state-list-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -97,7 +97,7 @@ describe("meta_state_list entry_kind filter", () => {
       await seedChangeLog();
 
       // Manually resolve the second finding to make it terminal
-      const { updateEntry, readRegistry } = await import("../core/meta-state.js");
+      const { updateEntry, readRegistry } = await import("../../core/legacy/meta-state.js");
       const entries = readRegistry(tempDir);
       const resolvedEntry = entries.find((e) => e.category === "schema-drift");
       await updateEntry(tempDir, resolvedEntry.id, { status: "resolved", resolved_at: new Date().toISOString(), resolved_by: "operator" });

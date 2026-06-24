@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateDeriveStatusTool } from "../tools/meta-state-derive-status-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
+import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 
 describe("meta_state_derive_status tool", () => {
   const originalEnv = process.env.GATE_ROOT;
@@ -56,11 +56,11 @@ describe("meta_state_derive_status tool", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "derive-status-known-"));
     process.env.GATE_ROOT = tempDir;
     try {
-      // Write the referenced files
-      const srcDir = join(tempDir, "tools", "learning-loop-mcp", "lib");
+      // Write the referenced files (use the post-Plan-4 paths)
+      const srcDir = join(tempDir, "tools", "learning-loop-mastra", "core", "legacy", "lib");
       mkdirSync(srcDir, { recursive: true });
       writeFileSync(join(srcDir, "source-ref-validator.js"), "// code");
-      const testDir = join(tempDir, "tools", "learning-loop-mcp", "__tests__");
+      const testDir = join(tempDir, "tools", "learning-loop-mastra", "__tests__", "legacy-mcp");
       mkdirSync(testDir, { recursive: true });
       writeFileSync(join(testDir, "source-ref-validator.test.js"), "// test");
 
@@ -73,8 +73,8 @@ describe("meta_state_derive_status tool", () => {
         affected_system: "mcp-tools",
         description: "Known derivable finding for acceptance test simulation.",
         status: "active",
-        evidence_code_ref: "tools/learning-loop-mcp/lib/source-ref-validator.js",
-        evidence_test: "tools/learning-loop-mcp/__tests__/source-ref-validator.test.js",
+        evidence_code_ref: "tools/learning-loop-mastra/core/legacy/lib/source-ref-validator.js",
+        evidence_test: "tools/learning-loop-mastra/__tests__/legacy-mcp/source-ref-validator.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(entry) + "\n", "utf8");

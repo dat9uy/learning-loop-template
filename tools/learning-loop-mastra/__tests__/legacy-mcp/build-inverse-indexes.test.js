@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { buildInverseIndexes } from "../core/loop-introspect.js";
-import { readRegistry } from "../core/meta-state.js";
+import { buildInverseIndexes } from "../../core/legacy/loop-introspect.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();
@@ -96,7 +96,7 @@ test("buildInverseIndexes on live registry returns 5 expected keys", async () =>
   }
 
   // Verify inverse_indexes field on cold tier
-  const { loopDescribeTool } = await import("../tools/loop-describe-tool.js");
+  const { loopDescribeTool } = await import("../../tools/legacy/loop-describe-tool.js");
   const coldResult = await loopDescribeTool.handler({ tier: "cold" });
   const cold = JSON.parse(coldResult.content[0].text);
   assert.ok(cold.inverse_indexes, "cold tier should have inverse_indexes");

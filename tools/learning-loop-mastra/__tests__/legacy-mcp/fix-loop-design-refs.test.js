@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
 const root = resolveRoot();
-const scriptPath = new URL("../scripts/fix-loop-design-refs.mjs", import.meta.url);
+const scriptPath = new URL("../../tools/legacy/scripts/fix-loop-design-refs.mjs", import.meta.url);
 
 function countBrokenRefs(entries) {
   const entryIds = new Set(entries.map((e) => e.id));

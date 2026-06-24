@@ -1,12 +1,12 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
-import { metaStateListTool } from "../tools/meta-state-list-tool.js";
-import { metaStateResolveTool } from "../tools/meta-state-resolve-tool.js";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
-import { loadPromotedRules } from "../core/gate-logic.js";
-import { listAntiPatterns } from "../core/loop-introspect.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { loadPromotedRules } from "../../core/legacy/gate-logic.js";
+import { listAntiPatterns } from "../../core/legacy/loop-introspect.js";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,7 +40,7 @@ describe("loop_describe regression", () => {
   });
 
   test("manifest.json is valid JSON", () => {
-    const manifestPath = join(import.meta.dirname, "..", "tools", "manifest.json");
+    const manifestPath = join(import.meta.dirname, "..", "..", "tools", "manifest.json");
     const raw = readFileSync(manifestPath, "utf8");
     const manifest = JSON.parse(raw);
     assert.ok(Array.isArray(manifest));
@@ -88,7 +88,7 @@ describe("loop_describe new behavior", () => {
     }
   });
 
-  test("tier warm returns tool descriptions and active findings", async () => {
+  test("tier warm returns tool names and active findings", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-warm-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -106,7 +106,7 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.tier, "warm");
       assert.ok(Array.isArray(text.tools));
       assert.ok(text.tools.length > 0);
-      assert.ok(typeof text.tools[0].description === "string");
+      assert.strictEqual(typeof text.tools[0].name, "string");
       assert.ok(Array.isArray(text.active_findings));
       assert.strictEqual(text.active_findings.length, 1);
     } finally {
@@ -122,11 +122,11 @@ describe("loop_describe new behavior", () => {
       const text = JSON.parse(result.content[0].text);
       const names = text.tools.map((t) => t.name);
       assert.ok(
-        names.includes("meta_state_check_grounding"),
+        names.includes("metaStateCheckGroundingTool"),
         "SP2 check tool must appear in warm response"
       );
       assert.ok(
-        names.includes("meta_state_refresh_fingerprint"),
+        names.includes("metaStateRefreshFingerprintTool"),
         "SP2 refresh tool must appear in warm response"
       );
     } finally {
@@ -142,7 +142,7 @@ describe("loop_describe new behavior", () => {
       const text = JSON.parse(result.content[0].text);
       const names = text.tools.map((t) => t.name);
       assert.ok(
-        names.includes("meta_state_query_drift"),
+        names.includes("metaStateQueryDriftTool"),
         "SP3 query_drift tool must appear in warm response"
       );
     } finally {
@@ -318,7 +318,7 @@ describe("listAntiPatterns G9 status filter", () => {
       });
       const id = JSON.parse(report.content[0].text).id;
       // Force expiry by setting expires_at to past
-      const { updateEntry } = await import("../core/meta-state.js");
+      const { updateEntry } = await import("../../core/legacy/meta-state.js");
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
       // metaStateListTool auto-applies expiry -> transitions to stale
@@ -351,7 +351,7 @@ describe("listAntiPatterns G9 status filter", () => {
         description: "Reported anti-pattern entry for G9 testing two",
       });
       const id2 = JSON.parse(report2.content[0].text).id;
-      const { metaStateAckTool } = await import("../tools/meta-state-ack-tool.js");
+      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
       await metaStateAckTool.handler({ id: id2, reason: "ack" });
 
       const result = listAntiPatterns(tempDir);

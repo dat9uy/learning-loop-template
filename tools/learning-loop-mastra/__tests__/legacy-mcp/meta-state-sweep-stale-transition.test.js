@@ -1,9 +1,9 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { metaStateSweepTool } from "../tools/meta-state-sweep-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateAckTool } from "../tools/meta-state-ack-tool.js";
-import { readRegistry, updateEntry } from "../core/meta-state.js";
+import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
+import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

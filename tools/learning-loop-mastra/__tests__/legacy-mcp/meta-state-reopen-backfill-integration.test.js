@@ -6,8 +6,8 @@ import assert from "node:assert";
 test.skip("backfill: meta-260610T1458Z-... reopens meta-260606T2202Z-...", async () => {
   if (process.env.SKIP_REAL_REGISTRY_TESTS === "1") return;
 
-  const { metaStatePatchTool } = await import("../tools/meta-state-patch-tool.js");
-  const { metaStateRelationshipsTool } = await import("../tools/meta-state-relationships-tool.js");
+  const { metaStatePatchTool } = await import("../../tools/legacy/meta-state-patch-tool.js");
+  const { metaStateRelationshipsTool } = await import("../../tools/legacy/meta-state-relationships-tool.js");
 
   // Verify the backfill was applied
   const relResult = await metaStateRelationshipsTool.handler({

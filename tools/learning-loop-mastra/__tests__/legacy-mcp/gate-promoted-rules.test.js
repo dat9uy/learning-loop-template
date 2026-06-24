@@ -8,7 +8,7 @@ import {
   splitSegments,
   stripMessageFlags,
   isSafeRegexPattern,
-} from "../core/gate-logic.js";
+} from "../../core/legacy/gate-logic.js";
 import { mkdtempSync, writeFileSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

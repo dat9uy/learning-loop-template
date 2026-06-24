@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 
 describe("metaStateReportTool description", () => {
   test("mentions evidence_code_ref and meta_state_derive_status", () => {

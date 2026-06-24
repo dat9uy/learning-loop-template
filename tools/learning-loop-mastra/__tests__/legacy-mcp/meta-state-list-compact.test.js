@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateListTool } from "../tools/meta-state-list-tool.js";
-import { loopDescribeTool } from "../tools/loop-describe-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "compact-test-"));

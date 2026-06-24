@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateRelationshipsTool } from "../tools/meta-state-relationships-tool.js";
+import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();

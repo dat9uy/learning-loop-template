@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 
 describe("metaStateReportTool mechanism_check extension", () => {
   const originalEnv = process.env.GATE_ROOT;

@@ -8,15 +8,15 @@ import {
   TERMINAL_STATUSES,
   readRegistry,
   checkExpiry,
-} from "../core/meta-state.js";
-import { summarize } from "../core/loop-introspect.js";
-import { deriveStatus, META_STATE_RECOMMENDATIONS } from "../core/derive-status.js";
-import { runVerification } from "../core/verification-runner.js";
-import { metaStateReVerifyTool } from "../tools/meta-state-re-verify-tool.js";
-import { metaStateSupersedeTool } from "../tools/meta-state-supersede-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateAckTool } from "../tools/meta-state-ack-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
+} from "../../core/legacy/meta-state.js";
+import { summarize } from "../../core/legacy/loop-introspect.js";
+import { deriveStatus, META_STATE_RECOMMENDATIONS } from "../../core/legacy/derive-status.js";
+import { runVerification } from "../../core/legacy/verification-runner.js";
+import { metaStateReVerifyTool } from "../../tools/legacy/meta-state-re-verify-tool.js";
+import { metaStateSupersedeTool } from "../../tools/legacy/meta-state-supersede-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 
 describe("stale status schema + behavior (TDD red)", () => {
   const originalEnv = process.env.GATE_ROOT;
@@ -144,7 +144,7 @@ describe("stale status schema + behavior (TDD red)", () => {
       await metaStateAckTool.handler({ id, reason: "ack for test" });
 
       // Set verification steps and stale status
-      await import("../core/meta-state.js").then(({ updateEntry }) =>
+      await import("../../core/legacy/meta-state.js").then(({ updateEntry }) =>
         updateEntry(tempDir, id, {
           status: "stale",
           verification: {
@@ -160,7 +160,7 @@ describe("stale status schema + behavior (TDD red)", () => {
       assert.ok(resultA.last_verified_at);
 
       // Reset to stale for subtest B
-      await import("../core/meta-state.js").then(({ updateEntry }) =>
+      await import("../../core/legacy/meta-state.js").then(({ updateEntry }) =>
         updateEntry(tempDir, id, {
           status: "stale",
           verification: {
@@ -211,7 +211,7 @@ describe("stale status schema + behavior (TDD red)", () => {
 
       // Manually transition the finding to stale (the modern past-TTL state;
       // 'expired' was removed in plan 260611-1000).
-      await import("../core/meta-state.js").then(({ updateEntry }) =>
+      await import("../../core/legacy/meta-state.js").then(({ updateEntry }) =>
         updateEntry(tempDir, findingId, { status: "stale" })
       );
 

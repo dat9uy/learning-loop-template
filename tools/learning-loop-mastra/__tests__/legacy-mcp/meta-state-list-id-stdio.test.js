@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url";
 import {
   prepareTempRoot,
   connectMcpServer,
-} from "../../learning-loop-mastra/__tests__/with-mcp-server.js";
+} from "../with-mcp-server.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = dirname(dirname(dirname(__dirname)));
-const serverEntry = join(projectRoot, "tools", "learning-loop", "server.js");
+const projectRoot = dirname(dirname(dirname(dirname(__dirname))));
+const serverEntry = join(projectRoot, "tools", "learning-loop-mastra", "server.js");
 
 async function withSeededMcpServer(fn) {
   const tempRoot = prepareTempRoot();

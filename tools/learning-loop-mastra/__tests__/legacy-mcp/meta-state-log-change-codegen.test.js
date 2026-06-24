@@ -1,8 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
-import { metaStateChangeEntrySchema } from "../core/meta-state.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateChangeEntrySchema } from "../../core/legacy/meta-state.js";
 
 const MIGRATED_FIELDS = {
   change_dimension: true,

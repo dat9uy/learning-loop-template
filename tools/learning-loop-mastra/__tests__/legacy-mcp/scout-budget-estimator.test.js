@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estimateBudget } from "../scout/budget-estimator.js";
+import { estimateBudget } from "../../scout/legacy/budget-estimator.js";
 
 test("low risk: prompt with 0 file reads, 2 MCP calls", () => {
   const prompt = "Call mcp__learning_loop_mastra__loop_describe with tier=summary. Then call mcp__learning_loop_mastra__loop_describe with tier=warm.";

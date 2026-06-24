@@ -6,13 +6,13 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = resolve(__dirname, "..", "..", "..");
+const projectRoot = resolve(__dirname, "..", "..", "..", "..");
 
 describe("cold-session churn regression", () => {
 
   test("L1 gap-close does not resolve L2 findings (layer isolation)", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-layer-"));
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
     const { tryClaimSessionId, readRegistry, updateEntry, generateId } = await import(pathToFileURL(corePath).href);
 
     const sessionId = "test-cold-session-mcp-client-loading";
@@ -26,7 +26,7 @@ describe("cold-session churn regression", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "L2 probe gap. runtime: droid; layer: L2;",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/server.js",
       session_id: sessionId,
       status: "reported",
       created_at: new Date().toISOString(),
@@ -50,7 +50,7 @@ describe("cold-session churn regression", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "L1 probe gap. runtime: droid; layer: L1;",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/server.js",
       session_id: sessionId,
       status: "reported",
       created_at: new Date().toISOString(),
@@ -70,7 +70,7 @@ describe("cold-session churn regression", () => {
 
   test("tryClaimSessionId deduplicates on exact runtime+layer (no cross-resolution)", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-dedup-"));
-    const corePath = join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
     const { tryClaimSessionId, readRegistry, generateId } = await import(pathToFileURL(corePath).href);
     const { writeEntry } = await import(pathToFileURL(corePath).href);
 
@@ -86,7 +86,7 @@ describe("cold-session churn regression", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "L1 probe gap. runtime: droid; layer: L1;",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/server.js",
       session_id: sessionId,
       status: "reported",
       created_at: new Date().toISOString(),
@@ -104,7 +104,7 @@ describe("cold-session churn regression", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "L1 probe gap. runtime: droid; layer: L1;",
-      evidence_code_ref: "tools/learning-loop-mcp/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/server.js",
       session_id: sessionId,
       status: "reported",
       created_at: new Date().toISOString(),

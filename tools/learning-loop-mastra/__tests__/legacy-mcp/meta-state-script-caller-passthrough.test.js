@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { metaStatePatchTool } from "../tools/meta-state-patch-tool.js";
-import { buildPatchSchemaFor } from "../core/meta-state.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
-import { metaStateLogChangeTool } from "../tools/meta-state-log-change-tool.js";
-import { metaStateProposeDesignTool } from "../tools/meta-state-propose-design-tool.js";
-import { readRegistry } from "../core/meta-state.js";
+import { metaStatePatchTool } from "../../tools/legacy/meta-state-patch-tool.js";
+import { buildPatchSchemaFor } from "../../core/legacy/meta-state.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+import { readRegistry } from "../../core/legacy/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

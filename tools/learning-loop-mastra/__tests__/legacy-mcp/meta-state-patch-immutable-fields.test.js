@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 const projectRoot = resolve(process.cwd());
 
 async function importCore(tempRoot) {
-  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js")).href;
+  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js")).href;
   return await import(corePath);
 }
 
@@ -29,7 +29,7 @@ test("immutable_field error response includes full IMMUTABLE_PATCH_FIELDS list",
     version: 0,
   });
 
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/tools/meta-state-patch-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
   const { metaStatePatchTool, IMMUTABLE_PATCH_FIELDS } = await import(toolPath);
 
   const originalEnv = process.env.GATE_ROOT;
@@ -72,7 +72,7 @@ test("immutable_field error response still includes denied_fields (backward comp
     version: 0,
   });
 
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mcp/tools/meta-state-patch-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
   const { metaStatePatchTool } = await import(toolPath);
 
   const originalEnv = process.env.GATE_ROOT;

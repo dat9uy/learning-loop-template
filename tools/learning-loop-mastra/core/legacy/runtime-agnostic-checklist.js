@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
 const UNIVERSAL_DIRS = [
-  "tools/learning-loop-mcp/core",
-  "tools/learning-loop-mcp/hooks",
-  "tools/learning-loop-mcp/tools",
+  "tools/learning-loop-mastra/core/legacy",
+  "tools/learning-loop-mastra/hooks/legacy",
+  "tools/learning-loop-mastra/tools/legacy",
 ];
 
 const SHIM_DIRS = [".claude/coordination/hooks", ".factory/coordination/hooks"];
@@ -79,7 +79,7 @@ function isCodeFile(relPath) {
 }
 
 function isSurfacesJs(relPath) {
-  return relPath.replace(/\\/g, "/").endsWith("tools/learning-loop-mcp/core/surfaces.js");
+  return relPath.replace(/\\/g, "/").endsWith("tools/learning-loop-mastra/core/legacy/surfaces.js");
 }
 
 function isHookFile(relPath) {
@@ -89,7 +89,7 @@ function isHookFile(relPath) {
 
 function isToolFile(relPath) {
   const normalized = relPath.replace(/\\/g, "/");
-  return normalized.startsWith("tools/learning-loop-mcp/tools/") && normalized.endsWith("-tool.js");
+  return normalized.startsWith("tools/learning-loop-mastra/tools/legacy/") && normalized.endsWith("-tool.js");
 }
 
 function deriveToolName(relPath) {
@@ -129,7 +129,7 @@ function pass() {
 export const CHECKLIST = [
   {
     id: "core-in-universal-location",
-    description: "Primary implementation lives in tools/learning-loop-mcp/{core,hooks,tools}/ (use the universal-dir convention, not a per-surface fork).",
+    description: "Primary implementation lives in tools/learning-loop-mastra/{core,hooks,tools}/ (use the universal-dir convention, not a per-surface fork).",
     verify(featurePath, root) {
       const offenders = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -139,8 +139,8 @@ export const CHECKLIST = [
       if (offenders.length) {
         return fail(
           offenders.join(", "),
-          "feature files under tools/learning-loop-mcp/{core,hooks,tools}/",
-          "Move implementation files into tools/learning-loop-mcp/core/, hooks/, or tools/.",
+          "feature files under tools/learning-loop-mastra/{core,hooks,tools}/",
+          "Move implementation files into tools/learning-loop-mastra/core/, hooks/, or tools/.",
         );
       }
       return pass();
@@ -218,7 +218,7 @@ export const CHECKLIST = [
   },
   {
     id: "manifest-registered",
-    description: "New MCP tools are listed in tools/learning-loop-mcp/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
+    description: "New MCP tools are listed in tools/learning-loop-mastra/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
     verify(featurePath, root) {
       const tools = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -226,7 +226,7 @@ export const CHECKLIST = [
       }
       if (tools.length === 0) return pass();
 
-      const manifestPath = join(root, "tools/learning-loop-mcp/agent-manifest.json");
+      const manifestPath = join(root, "tools/learning-loop-mastra/agent-manifest.json");
       let manifest;
       try {
         manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -234,7 +234,7 @@ export const CHECKLIST = [
         return fail(
           "missing or unreadable agent-manifest.json",
           "agent-manifest.json to exist and list the tool",
-          "Create tools/learning-loop-mcp/agent-manifest.json or add the tool to an existing group.",
+          "Create tools/learning-loop-mastra/agent-manifest.json or add the tool to an existing group.",
         );
       }
 
@@ -252,7 +252,7 @@ export const CHECKLIST = [
         return fail(
           missing.join(", "),
           "tool name in agent-manifest.json groups.*.tools",
-          `Register ${missing.join(", ")} in tools/learning-loop-mcp/agent-manifest.json under an appropriate group (gate, workflow, meta_state, introspection, or runtime_agnostic).`,
+          `Register ${missing.join(", ")} in tools/learning-loop-mastra/agent-manifest.json under an appropriate group (gate, workflow, meta_state, introspection, or runtime_agnostic).`,
         );
       }
       return pass();

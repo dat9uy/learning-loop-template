@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { stripEnvelope } from "../core/envelope-stripper.js";
+import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
 
 test("z.preprocess strips {item: [...]} envelope", () => {
   const schema = z.preprocess(stripEnvelope, z.array(z.string()));

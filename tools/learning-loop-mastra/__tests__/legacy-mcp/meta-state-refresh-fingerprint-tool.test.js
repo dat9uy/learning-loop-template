@@ -7,8 +7,8 @@ import {
   metaStateRefreshFingerprintTool,
   _clearIdempotencyCacheForTests,
   _backdateIdempotencyCacheForTests,
-} from "../tools/meta-state-refresh-fingerprint-tool.js";
-import { metaStateReportTool } from "../tools/meta-state-report-tool.js";
+} from "../../tools/legacy/meta-state-refresh-fingerprint-tool.js";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 
 describe("meta_state_refresh_fingerprint tool", () => {
   const originalEnv = process.env.GATE_ROOT;
@@ -141,8 +141,8 @@ describe("meta_state_refresh_fingerprint tool", () => {
       // First call computes the real hash and stores it; the cache key uses the
       // pre-call fingerprint. With a pre-seeded fingerprint matching the file,
       // call 2 uses the same key and hits the cache.
-      const { computeFileHash } = await import("../core/check-grounding.js");
-      const { updateEntry } = await import("../core/meta-state.js");
+      const { computeFileHash } = await import("../../core/legacy/check-grounding.js");
+      const { updateEntry } = await import("../../core/legacy/meta-state.js");
       const hash = computeFileHash(join(tempDir, "src.js"));
       await updateEntry(tempDir, id, { code_fingerprint: hash });
 
@@ -193,7 +193,7 @@ describe("meta_state_refresh_fingerprint tool", () => {
       assert.strictEqual(parsed1.cache_hit, false);
 
       // Mutate the entry's code_fingerprint directly to simulate a file change
-      const { readRegistry, updateEntry } = await import("../core/meta-state.js");
+      const { readRegistry, updateEntry } = await import("../../core/legacy/meta-state.js");
       const root = tempDir;
       const fakeHash = "sha256:" + "0".repeat(64);
       await updateEntry(root, id, { code_fingerprint: fakeHash });
