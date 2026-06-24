@@ -1,0 +1,426 @@
+# Phase E Scope Report: Runtime Interface Structure (3-Layer Architecture Locked)
+
+**Type:** phase-e-scope (advisory; problem-solving inversion applied)
+**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; see "Revision notes" at end)
+**Slug:** runtime-interface-structure
+**Status:** advisory (no contract change yet; awaits operator approval before master-tracker update)
+**Aligned to:** `plans/reports/predict-260624-2025-phase-e-domain-driven-architecture-report.md` (CAUTION verdict) + `plans/reports/productization-260612-1530-master-tracker.md` Phase E
+**Technique applied:** Inversion Exercise (per `/problem-solving` skill) — flipped the assumption that "the shim pattern IS the runtime interface" to reveal the missing first-class structure.
+
+---
+
+## The gap I missed in the predict report
+
+My predict report treated the shim pattern as the "runtime interface." That was wrong. **The shim pattern is HOW a runtime satisfies the interface; the interface itself is a separate, first-class concept that does not exist yet as a structure.**
+
+**Evidence of the gap:**
+
+| Today | What it is | What it is NOT |
+|---|---|---|
+| `.claude/coordination/hooks/{bash,write,inbound}-coordination-gate.cjs` | Claude Code's *implementation* of hook shims | The interface *contract* |
+| `.factory/coordination/hooks/{bash,write,inbound}-coordination-gate.cjs` | Droid CLI's *implementation* of hook shims | The interface *contract* |
+| (future) `.mastracode/coordination/hooks/*.cjs` | Mastra Code's *implementation* of hook shims | The interface *contract* |
+| `runtime-agnostic-checklist.js` (the 6-item gate) | A *validator* that runs against implementations | The interface *spec* (no written spec; the validator IS the spec by example) |
+
+**What is missing:** a place where the operator (or a future runtime implementer) can read "here is what a runtime MUST provide to integrate with the learning loop." Today, the only way to discover the contract is to:
+1. Read the `runtime-agnostic-checklist.js` source and infer the 6 items.
+2. Read AGENTS.md §2 Hook Matrix and infer the pattern.
+3. Read both shim dirs and reverse-engineer the common shape.
+
+This is implicit, fragile, and creates a **structural gap**: the "interface" is a real concept, but it lives only in code, not in spec.
+
+**The inversion applied:** if the shim pattern is the *implementation*, then there must be a *spec* somewhere. The spec does not exist. The work is to create it.
+
+---
+
+## Proposed structure: `interface/` as a first-class concept
+
+**Location:** `tools/learning-loop-mastra/interface/`
+
+**Contents (minimum viable, ~150 LoC + 1 test):**
+
+```
+tools/learning-loop-mastra/interface/
+├── README.md                  # What "interface" means; why it exists; how it relates to Core and Mastra shell
+├── CONTRACT.md                # The 5 requirements a runtime MUST satisfy + verification steps
+├── contract.js                # JS module: `validate(runtimeId) → { ok, missing: [], path_map: {} }`
+├── RUNTIME_ONBOARDING.md      # Step-by-step: "How to add a new runtime" (checklist + worked example for Mastra Code)
+└── __tests__/
+    └── contract.test.js       # Validates existing runtimes (claude-code, droid) pass; verifies failure modes
+```
+
+**The 5 requirements in the contract** (derived from inverting the existing pattern):
+
+| # | Requirement | What it means | How to verify |
+|---|-------------|---------------|---------------|
+| 1 | **Hook shim set** | Runtime must provide `coordination/hooks/{bash,write,inbound-state,recurrence-check-on-start}-*.cjs` (or equivalent), each delegating to the universal scripts in `tools/learning-loop-mastra/hooks/legacy/`. (4 shims in current runtimes: `bash-coordination-gate.cjs`, `write-coordination-gate.cjs`, `inbound-state-gate.cjs`, `recurrence-check-on-start.cjs`.) | All 4 shim files exist in the runtime's coordination dir; SHA-256 of each matches the universal script's expected dispatch shape. |
+| 2 | **MCP client config** | Runtime must register the loop's `MCPServer` (via `.mcp.json` / `.claude/settings.json` / `.factory/mcp.json` / Mastra Code's `configDir` / etc.). | The config file contains an `mcpServers.learning-loop` entry pointing to `tools/learning-loop-mastra/server.js` (or a future renamed entry). |
+| 3 | **Skill spec** | Runtime must provide a `skills/learning-loop/SKILL.md` (or equivalent) describing how to use the loop's MCP tools. | File exists; contains a `tools:` block with at least the `loop_describe` and `meta_state_list` references. |
+| 4 | **Identity marker (PROPOSED)** | Runtime SHOULD set a `RUNTIME_ID` env var (or session marker) so the loop can attribute actions and the future write-gate can enforce R2 ownership. **This is the target convention from the hardening plan (LIM-3 caller identity); not yet adopted by `claude-code` or `droid`.** | Validator returns `missing: []` with `note: 'identity-marker-not-adopted'` when `RUNTIME_ID` is unset. Once adopted, the marker enables R2 ownership in the write-gate. The contract spec documents the target so future runtimes ship the marker from day 1. |
+| 5 | **Settings integration** | Runtime must configure hook integration in its own settings file (`.claude/settings.json` / `.factory/settings.json` / Mastra Code config). | The settings file references the 4 hook shim paths. |
+
+**Relationship to the 3-layer architecture:**
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Runtime (Claude Code / Droid CLI / Mastra Code / future)           │
+│  └─ Implements the 5 requirements in CONTRACT.md                    │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ satisfies
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Runtime Interface (FIRST-CLASS STRUCTURE — NEW)                    │
+│  tools/learning-loop-mastra/interface/                              │
+│  - README.md: what the interface IS                                  │
+│  - CONTRACT.md: the 5 requirements                                  │
+│  - contract.js: the validator                                       │
+│  - RUNTIME_ONBOARDING.md: how to add a runtime                      │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ defines contract for
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Mastra Shell (imperative)                                          │
+│  tools/learning-loop-mastra/                                        │
+│  - server.js: MCPServer entry                                       │
+│  - create-loop-{tool,workflow,agent}.js: factories                  │
+│  - workflows/ + agents/: tool/workflow/agent definitions            │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ wraps
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  Core (functional)                                                  │
+│  tools/learning-loop-mastra/core/                                   │
+│  - meta-state.js, gate-logic.js, schemas, etc.                      │
+│  - FCIS invariant: zero @mastra/* imports                           │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Relationship to the existing shim dirs:**
+
+- The shim dirs at `.claude/coordination/hooks/` and `.factory/coordination/hooks/` are the **Claude Code and Droid implementations of Requirement #1 (Hook shim set)**. They stay where they are; the new `interface/` directory does not move them.
+- The shim dirs and the new `interface/CONTRACT.md` are linked: the contract says "Requirement #1 = these 4 files exist and have this shape." The shim dirs are the proof that the requirement is met.
+- A future Mastra Code integration will satisfy Requirement #1 by creating `.mastracode/coordination/hooks/*.cjs` (or equivalent) — same pattern, new location.
+
+**Why the interface is a separate concept, not a directory under Core or Mastra shell:**
+
+- **Core** = pure logic, zero Mastra imports. The interface spec mentions "MCP server" and "hook shims," which are not pure logic.
+- **Mastra shell** = the factories (`createTool` / `createWorkflow` / `createAgent`) and the `MCPServer` entry. The interface spec is *what a runtime must provide to consume* the Mastra shell; it is not the shell itself.
+- **Interface** = the contract that runtimes sign by satisfying the 5 requirements. It is the layer between "what we ship" (Core + Mastra shell) and "who runs it" (Runtimes).
+
+This is the missing first-class structure.
+
+---
+
+## Revised Phase E scope (incorporating E.1b: interface structure)
+
+| # | Phase | Scope | Effort | Risk | Resolves open item |
+|---|-------|-------|--------|------|-------------------|
+| **E.0** | **E3 (close open doc drift)** | Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to point at the current 44-tool manifest + 6 groups + the new 3-layer architecture + the interface contract. | 1h | None | master tracker E3 |
+| **E.1** | **Rename + discipline doc (the actual Phase E work)** | (a) Rename `core/legacy/` → `core/`. (b) Add `core/README.md` with the FCIS invariant: "Core has zero `@mastra/*` imports; the shell may import core." (c) Add `tools/learning-loop-mastra/docs/schemas.md` (the schema doc): 4 meta-state entry kinds, runtime-state shape, wire envelope format, parity contract. (d) Update `AGENTS.md §1` to name the 3 layers explicitly: Core / Mastra shell / Runtime interface. | 0.5 day | Low — no functional change; all 1189 tests continue to pass | user's #2 concern (no schema doc) |
+| **E.1b** | **NEW: Define the runtime interface structure (the gap I missed)** | (a) Create `tools/learning-loop-mastra/interface/` directory. (b) Add `interface/README.md` — what "interface" means; why it exists; how it relates to Core and Mastra shell. (c) Add `interface/CONTRACT.md` — the 5 requirements + verification steps. (d) Add `interface/contract.js` — the validator function. (e) Add `interface/RUNTIME_ONBOARDING.md` — step-by-step checklist for adding a new runtime (worked example: Mastra Code). (f) Add `interface/__tests__/contract.test.js` — validates existing runtimes (claude-code, droid) pass the 5 requirements; locks the contract against silent regression. | 1 day | Low — doc + small validator; no behavioral change to existing runtimes | **the gap the user identified in this turn** |
+| **E.2** | **R2 as process norm** | Add `AGENTS.md §11` "Runtime interface ownership": "Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, future `.mastracode/coordination/hooks/`) is owned by the corresponding runtime agent. Cross-runtime edits require operator approval." Enforce via PR review + branch protection. **Defer the write-gate to a hardening plan that bundles LIM-3 (caller identity).** | 0.5h | None | user's R2 (strict recommendation #2) |
+| **E.3** | **Parity-pin label + legacy-pins doc** | (a) Add a one-line comment to `workflows/workflow-intentional-skip.js` flagging it as a parity-test pin (not legacy). (b) Create `tools/learning-loop-mastra/docs/legacy-pins.md` listing all parity-test pins that must not be moved to `legacy/`. | 0.5h | None | user's #1 concern (legacy code) — REFRAMED as "parity-pin, not legacy" |
+| **E.4** | **Schema rot cleanup** | Delete `core/legacy/schema-descriptions.yaml` (12 LoC, references Phase-A-deleted records) OR rewrite it to reference the 4 meta-state kinds only. The new `docs/schemas.md` from E.1 is authoritative. | 0.5h | None | prerequisite for any schema-centralization work |
+| **E.5** | **E5 + E6: Mastra Code Mode 1 peer MCP, validated against the new contract** | (a) Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against our `MCPServer` over stdio. (b) Satisfy the 5 contract requirements for Mastra Code: create `.mastracode/coordination/hooks/*.cjs`, register MCP client in `configDir`, write `skills/learning-loop/SKILL.md`, set `RUNTIME_ID=mastra-code`, configure settings. (c) Run `interface/contract.js` against the new runtime; expect all 5 requirements met. (d) Confirm the hook layer (`.claude/`, `.factory/`) does not need changes (per `§3.9 Mode 1` — no hook changes). (e) Document Mastra Code hook surface in `docs/agents/mastra-code.md`. | 1–2 days | Low — config + smoke test + contract validation | user's #3 concern (Claude Code ↔ Mastra agent interaction) — REFRAMED as "Mastra Code satisfies the contract" |
+| **DEFER (BUNDLED)** | **Hardening plan: LIM-3 caller identity + R2 write-gate + LIM-4 path traversal** | One dedicated hardening plan that bundles the 3 security/identity items. The plan's gate pattern will enforce R2 ownership: per-runtime write allowlist keyed on `RUNTIME_ID` env var. **Phase E ships the process norm (E.2); the hardening plan ships the gate.** | 1–2 weeks | Medium — new gate infrastructure; LIM-3 is high-effort | user confirmed "Bundle" in this turn |
+
+**Total Phase E (E.0–E.5) effort: ~4–5 days.** Replaces the original Phase E scope (~1.5–2 weeks) at ~30% the cost. The bundled hardening plan is parallel — can be authored + shipped alongside Phase E or after, per operator preference.
+
+**Order of operations (locked, per user "E.1 first"):**
+
+```
+E.0  →  E.1  →  E.1b  →  E.2  →  E.3  →  E.4  →  E.5
+└─┬─┘   └─┬─┘   └──┬──┘   └─┬─┘   └─┬─┘   └─┬─┘   └─┬─┘
+  │       │        │        │       │       │       │
+  1h     0.5d     1d      0.5h    0.5h    0.5h   1-2d
+```
+
+Hardening plan (LIM-3 + R2 gate + LIM-4) is **parallel** — does not block E.0–E.5.
+
+---
+
+## Plan split for execution (meta-pattern: 5 clusters)
+
+The 7 phase items (E.0–E.5) cluster naturally into **4 shippable plans** based on what they touch, what depends on what, and review focus. Plus the 1 deferred hardening plan. **Total: 5 plans.**
+
+**Meta-pattern applied:** the items fall into 5 clusters by *kind of work* (rename, new spec, housekeeping, validation, hardening) — not by the original phase order. Each cluster has a single review focus, ships in its own PR, and has clear preconditions. Meta-pattern recognition: every "phase item" is either *foundation* (sets an invariant), *structure* (creates new first-class), *housekeeping* (closes minor doc debt), *validation* (proves the structure works), or *hardening* (security/identity). One cluster per plan.
+
+| # | Plan | Items | Scope | Effort | Review focus | Precondition |
+|---|------|-------|-------|--------|--------------|--------------|
+| **1** | **phase-e-foundation** | E.1 | Rename `core/legacy/` → `core/` + add `core/README.md` (FCIS invariant) + add `tools/learning-loop-mastra/docs/schemas.md` + update `AGENTS.md §1` to name the 3 layers. **Pure rename + discipline doc. No new code.** | 0.5d | Mechanical + invariant correctness | None (this is the foundation) |
+| **2** | **phase-e-interface-spec** | E.0 + E.1b | (E.0) Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to reference the new contract. (E.1b) Create `interface/` with README, CONTRACT.md, contract.js, RUNTIME_ONBOARDING.md, contract.test.js. **The new spec + the docs that point to it.** | ~1.25d | Spec correctness + validator behavior | Plan 1 (FCIS invariant) |
+| **3** | **phase-e-housekeeping** | E.2, E.3, E.4 | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **3 small doc/process changes bundled to avoid PR overhead.** | ~1.5h | Doc accuracy (low risk) | Plan 1 (FCIS invariant) — can run in parallel with Plan 2 |
+| **4** | **phase-e-mastra-code-validation** | E.5 | Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against the new MCPServer. Satisfy the 5 contract requirements for Mastra Code. Run `interface/contract.js mastra-code` → expect `{ok: true}`. Document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Config + smoke test + contract validation | Plan 2 (interface spec must exist) |
+| **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 + R2 + LIM-4 | Bundled hardening plan: (1) `RUNTIME_ID` env var convention + runtime-marker reader. (2) R2 write-gate (per-runtime write allowlist). (3) Path traversal fix in `meta_state_refresh_fingerprint`. **Per user "Bundle" decision.** Parallel to Phase E. | 1–2w | Security + identity primitive correctness | None — can ship in parallel or after Phase E |
+
+**Total Phase E (Plans 1–4) effort: ~4–5 days** (unchanged from the E.0–E.5 view). **Total with hardening (Plans 1–5): ~3–4 weeks** if hardening is included.
+
+**Updated order of operations (plan-level):**
+
+```
+Plan 1 (Foundation)         0.5d
+  │
+  ├──→ Plan 2 (Interface)   1.25d
+  │       │
+  │       └──→ Plan 4 (Mastra Code)  1-2d
+  │
+  └──→ Plan 3 (Housekeeping)  1.5h  [parallel to Plan 2]
+
+Plan 5 (Hardening)          1-2w  [parallel to all of the above]
+```
+
+**Why this split and not alternatives:**
+
+- **Why not 1 big Phase E plan?** A 4–5 day single-PR plan is hard to review and hard to roll back. Each plan is small enough to be reviewed in a single sitting (≤2 days of work, ≤300 LoC change).
+- **Why not 7 plans (one per item)?** Overhead. E.0 + E.1b share the same review focus (the new spec) and E.0 is meaningless without E.1b (SKILL.md updates point to the new contract). E.2/E.3/E.4 are all <1h doc changes — bundling saves 2 PRs.
+- **Why not bundle Plan 1 + Plan 2?** They have different review focus. Plan 1 is "rename + invariant" (mechanical); Plan 2 is "new spec + validator" (design). Splitting lets the Plan 2 reviewer focus on the interface contract without re-reviewing the rename.
+- **Why is hardening a separate plan (not in Phase E)?** Per user "Bundle" decision. The hardening items are security/identity primitives; they belong in a dedicated review context, not mixed with the Phase E doc/structure work.
+
+**Plan dir naming convention** (per project rule `plans/<timestamp>-<descriptive-slug>/`):
+
+```
+plans/260625-0930-phase-e-foundation/
+plans/260625-0930-phase-e-interface-spec/
+plans/260625-0930-phase-e-housekeeping/
+plans/260625-0930-phase-e-mastra-code-validation/
+plans/260701-0930-hardening-r2-lim3-lim4/    (deferred)
+```
+
+(Dates are illustrative — actual plan dates set when each plan is authored.)
+
+**Plan 3 (Housekeeping) can ship immediately after Plan 1** without waiting for Plan 2. This means a fast-feedback path: ~0.5d (Plan 1) + 1.5h (Plan 3, parallelizable) = the housekeeping items can land within a day of Plan 1. Plan 2 takes longer (1.25d) but unblocks Plan 4. Plan 4 (Mastra Code) is the slowest and may need `mastracode` npm install + smoke-test debugging.
+
+---
+
+## The 3 resolved decisions (applied to the new scope)
+
+### Decision 1: Git branches OK for now (R2 ownership)
+
+**Per user this turn:** "Git branches is ok for now"
+
+**Applied to Phase E:**
+
+- R2 ownership is enforced via **PR review + branch protection** at the repository level. The convention: each runtime agent works on its own branch (e.g., `claude-code/interface-v2`, `mastra-code/interface-v1`); cross-runtime edits require operator approval.
+- **No new write-gate in Phase E.** The gate ships in the bundled hardening plan (LIM-3 + R2 gate + LIM-4).
+- **AGENTS.md §11** (E.2) codifies the branch convention: "Runtime interface code is owned by the corresponding runtime agent. Cross-runtime edits require operator approval." This is a process norm, not a gate.
+- **Why defer the gate:** the gate requires LIM-3 (caller identity) to ship first. LIM-3 is a security/identity primitive that does not exist today; adding it is a 1–2 week hardening effort, separate from Phase E.
+
+### Decision 2: Bundle LIM-3 + R2 write-gate (+ LIM-4 path traversal)
+
+**Per user this turn:** "Bundle"
+
+**Applied to Phase E:**
+
+- One **bundled hardening plan** (post-Phase E) ships:
+  1. **LIM-3**: caller identity primitive (`RUNTIME_ID` env var convention; runtime-marker reader in `core/legacy/`)
+  2. **R2 write-gate**: per-runtime write allowlist in `write-gate.js`, keyed on `RUNTIME_ID`. Pattern: runtime X can write to `runtime/<X>/**` + the universal Core+Mastra shell (with operator approval for cross-runtime edits). Other runtimes' directories are blocked.
+  3. **LIM-4**: path traversal fix in `meta_state_refresh_fingerprint` and other tools that use `join(root, user_path)`.
+- The 3 items share infrastructure (env var reader + gate pattern + path-allowlist helper) — bundling saves ~30% effort vs 3 separate plans.
+- The hardening plan is **parallel to Phase E**: it does not gate E.0–E.5; it can ship after Phase E or alongside it.
+- **Why bundle:** the user's "Bundle" decision is correct because the 3 items share the runtime-identity primitive. Implementing LIM-3 alone gives caller identity; using it for the R2 gate is a small extension; using it for LIM-4's path-allowlist is a similar small extension. Three plans = three rounds of design+code+test+review; one plan = one round.
+
+### Decision 3: E.1 first (rename + doc before everything else)
+
+**Per user this turn:** "E.1 first"
+
+**Applied to Phase E:**
+
+- E.1 is the first step after E.0 (the doc-drift closeout). The order is: **E.0 (1h) → E.1 (0.5d) → E.1b (1d) → E.2 (0.5h) → E.3 (0.5h) → E.4 (0.5h) → E.5 (1–2d)**.
+- **Why E.1 first:** E.1 codifies the FCIS invariant for Core and the schema doc. E.1b (the new interface structure) depends on E.1's discipline doc (FCIS for Core) to position the interface layer correctly. Without E.1, E.1b's `interface/README.md` would lack the 3-layer context.
+- **Why E.0 first:** E.0 closes the open E3 item (skill doc drift) so that E.1's discipline doc and E.1b's interface spec reference up-to-date skills.
+
+---
+
+## What the 3-layer architecture looks like after Phase E
+
+```
+tools/learning-loop-mastra/
+├── core/                              # FUNCTIONAL CORE (FCIS)
+│   ├── README.md                      # FCIS invariant: zero @mastra/* imports
+│   ├── meta-state.js
+│   ├── gate-logic.js
+│   ├── schemas.js
+│   ├── surfaces.js                    # the SURFACES source of truth
+│   └── ...                            # pure logic; shell may import
+│
+├── mastra/                            # MASTRA SHELL (imperative)
+│   ├── server.js                      # MCPServer entry
+│   ├── create-loop-tool.js            # factory: wraps core logic in createTool
+│   ├── create-loop-workflow.js        # factory: wraps core logic in createWorkflow
+│   ├── create-loop-agent.js           # factory: wraps core logic in createAgent
+│   ├── workflows/                     # workflow definitions (10 + 1 parity-pin)
+│   ├── agents/                        # agent definitions (3)
+│   ├── tools/legacy/                  # legacy tool files (30+; kept for parity; NOT core)
+│   ├── legacy-handler-adapter.js      # legacy → Mastra adapter
+│   ├── schema-parity.js               # wire-format parity contract
+│   └── ...                            # the imperative shell
+│
+├── interface/                         # RUNTIME INTERFACE (NEW — first-class)
+│   ├── README.md                      # what "interface" means
+│   ├── CONTRACT.md                    # the 5 requirements
+│   ├── contract.js                    # validator: validate(runtimeId) → {ok, missing[]}
+│   ├── RUNTIME_ONBOARDING.md          # how to add a new runtime
+│   └── __tests__/
+│       └── contract.test.js           # locks existing runtimes; verifies failure modes
+│
+├── docs/
+│   ├── schemas.md                     # NEW: the schema doc (4 kinds + wire envelope + parity)
+│   ├── legacy-pins.md                 # NEW: parity-test pins that must not be moved
+│   └── agents/
+│       └── mastra-code.md             # NEW: Mastra Code hook surface + config
+│
+├── hooks/legacy/                      # Universal hook scripts (referenced by shim dirs)
+│   ├── bash-gate.js
+│   ├── write-gate.js
+│   ├── inbound-gate.js
+│   └── lib/protocol-adapter.js
+│
+└── data/                              # LibSQL storage (Mastra runtime substrate)
+    └── mastra-memory.db
+```
+
+**Runtime-specific code (unchanged location):**
+
+```
+.claude/                               # Claude Code's implementation of CONTRACT.md
+├── coordination/hooks/*.cjs           # Requirement #1 (hook shim set)
+├── settings.local.json                # Requirement #2 (MCP client config) + #5 (settings)
+└── skills/learning-loop/SKILL.md      # Requirement #3 (skill spec)
+
+.factory/                              # Droid CLI's implementation of CONTRACT.md
+├── coordination/hooks/*.cjs
+├── settings.json
+├── mcp.json
+└── skills/learning-loop/SKILL.md
+
+.mastracode/                           # Mastra Code's implementation (NEW in E.5)
+├── coordination/hooks/*.cjs
+├── configDir/                         # createMastraCode({ configDir }) target
+└── skills/learning-loop/SKILL.md
+
+AGENTS.md                              # Operator-facing spec for all runtimes
+├── §1 — meta-surface (canonical, all runtimes)
+├── §2 — hook matrix (per-runtime implementation)
+├── §11 — runtime interface ownership (NEW in E.2)
+```
+
+**Key insight:** the 3 layers (Core, Mastra shell, Runtime interface) are **all first-class**. The shim dirs are the *evidence* that the contract is met; the `interface/` directory is the *spec* of the contract. Without the spec, the contract is implicit and fragile.
+
+---
+
+## Risks and tradeoffs
+
+| # | Risk | Severity | Mitigation |
+|---|------|----------|------------|
+| R1 | The `interface/` directory adds a new top-level concept; future plans may under-use it or over-formalize it | Low | Keep E.1b to ~150 LoC + 1 test; resist the urge to add a registry, schema-validation, or auto-discovery. The contract is a doc, not a runtime enforcement (enforcement ships in the bundled hardening plan). |
+| R2 | The 5 contract requirements may not be the right shape; future runtimes may need a 6th or 7th requirement | Low | The contract is a Markdown doc; amendments are PR-sized. The validator (`contract.js`) is a separate file; adding a 6th requirement is a 5-line change. |
+| R3 | The bundled hardening plan is 1–2 weeks; the user may want Phase E to ship without waiting for it | Low (intentional) | Phase E ships the process norm (E.2); the bundled hardening plan is parallel and does not block E.0–E.5. |
+| R4 | The `interface/contract.js` validator may become a load-bearing gate that, if buggy, blocks runtime onboarding | Medium | Validator is a pure function (no I/O); tests cover both pass and fail modes. If buggy, operators can bypass it manually with operator override (matches the existing `gate_override` MCP tool pattern). |
+| R5 | R2 ownership via branch protection may be insufficient; a misconfigured branch protection allows cross-runtime edits | Low | AGENTS.md §11 (E.2) codifies the convention; PR review is the primary enforcement; the bundled hardening plan adds the gate for the security-critical case. |
+| R6 | The "no dedicated structure for 'interface'" gap is bigger than the user described; there may be other missing first-class structures (e.g., storage, identity, observability) that I have not surfaced | Medium | **Open question for the user** — see below. The current report scopes Phase E to the 3 layers (Core / Mastra shell / Runtime interface). If other first-class structures are missing, they may need their own phases. |
+
+---
+
+## Open questions for the operator
+
+1. **Is the 5-requirement contract complete?** The proposed contract has 5 requirements: (1) hook shim set, (2) MCP client config, (3) skill spec, (4) identity marker, (5) settings integration. Are there other requirements a runtime must satisfy? (Examples to consider: observability hook, error-reporting endpoint, license-attribution file.)
+2. **Should `interface/contract.js` be enforced at hook-time (e.g., a `interface-validate` hook that runs on session start) or only at onboarding-time (one-shot check when adding a new runtime)?** Recommend: onboarding-time only; runtime check is a perf hit and the contract is stable.
+3. **Should Phase E ship the bundled hardening plan as a follow-up, or in parallel with the 3-layer work?** Recommend: parallel; the hardening plan does not block E.0–E.5 and can ship in the next quarter.
+4. **Are there other first-class structures missing?** The user identified the "interface" gap; the same inversion exercise may surface others (e.g., is there a dedicated structure for "the substrate" — the vendor APIs the loop operates against? is there a dedicated structure for "the audit trail" — beyond `meta-state.jsonl`?). Recommend: a separate `/problem-solving` session to surface any other missing first-class structures before Phase E begins.
+5. **The "interface" rename collision:** the AGENTS.md already uses the word "interface" in §2 "Protocol Adapter" (a different concept — the I/O adapter for tool name differences). Should the new structure be named `interface/` (overloading) or `runtime-interface/` (more specific)? Recommend: `interface/` for KISS; document the distinction in `interface/README.md` ("`interface/` = the runtime-to-loop contract; `protocol-adapter` = the loop-to-tool-name I/O adapter — different concepts").
+6. **E.5 (Mastra Code Mode 1) timing:** ship in Phase E, or as a follow-up after E.1b validates the contract shape? Recommend: ship in Phase E. E.1b's `RUNTIME_ONBOARDING.md` is most useful when there is a worked example (Mastra Code) — shipping E.5 in the same phase proves the onboarding flow works.
+
+---
+
+## What I am NOT changing in the original predict report
+
+The predict report's other 5 recommendations stand:
+- A1–A5 (the 5 persona agreements) — unchanged.
+- Risk table R1–R8 (excluding the new E.1b risk R6) — unchanged.
+- Counter-arguments to the user's framing — unchanged (the user's R1/R2/R3 are addressed above; their 3 concerns are addressed above).
+- The "deferred full extraction" recommendation — unchanged. The full extraction is YAGNI; the rename + interface spec is sufficient.
+
+**What this report adds:** the dedicated `interface/` structure (E.1b) + the 3 resolved decisions (branches, bundle, E.1 first) + the revised execution order (E.0 → E.1 → E.1b → E.2 → E.3 → E.4 → E.5).
+
+---
+
+## Verification (how to test the change is right)
+
+**After Phase E ships:**
+
+1. **The 3 layers are first-class.** `ls tools/learning-loop-mastra/` shows `core/`, `mastra/`, `interface/`, `docs/`, `hooks/legacy/`, `data/`. AGENTS.md §1 names them explicitly. Future agents reading the codebase find the 3 layers documented in 30 seconds.
+2. **The interface contract is enforceable.** `node tools/learning-loop-mastra/interface/contract.js claude-code` returns `{ok: true, missing: []}`. Same for `droid` and `mastra-code`. A test for a fake runtime returns `{ok: false, missing: ['hook-shim-set', 'mcp-client-config', ...]}`.
+3. **Existing runtimes pass the contract.** The `interface/__tests__/contract.test.js` test file passes for `.claude/` and `.factory/` (existing shim dirs). This locks the contract against silent regression.
+4. **Mastra Code can be onboarded in < 1 hour.** A new agent (or operator) reads `interface/RUNTIME_ONBOARDING.md`, follows the checklist, creates the 5 things, runs `contract.js mastra-code`, gets `{ok: true}`. The smoke test against `MCPServer` succeeds.
+5. **R2 ownership is enforceable via PR review.** A PR that adds a new file under `.claude/coordination/hooks/` from a non-Claude-Code session requires operator approval (matches the AGENTS.md §11 convention).
+6. **The schema doc answers the user's #2 concern.** `tools/learning-loop-mastra/docs/schemas.md` exists; a reader can answer "how many records are there, what fields do they have?" by reading 1 file.
+7. **All 1189 existing tests still pass.** E.1 (rename), E.1b (interface spec), E.2 (doc), E.3 (parity-pin label), E.4 (schema rot cleanup) are all non-functional changes. E.5 (Mastra Code) is config + smoke test. The only behavioral change is the new `interface/__tests__/contract.test.js` which adds ~30 tests.
+8. **The bundled hardening plan is parallel.** LIM-3 + R2 gate + LIM-4 ship in a separate plan that does not block Phase E.
+
+---
+
+## Inversion closure (per `/problem-solving` skill)
+
+| Normal assumption (my predict report) | Inverted (this report) | What it revealed |
+|---------------------------------------|------------------------|------------------|
+| "The shim pattern IS the runtime interface" | "The shim pattern is HOW a runtime satisfies the interface; the interface is a separate spec" | The interface was a real concept but not first-class; Phase E.1b creates the structure. |
+| "The 3 layers are Core, Mastra, Runtime hooks" | "The 3 layers are Core, Mastra shell, Runtime interface (where interface = spec, not shim)" | The shim dirs are *implementations* of the interface, not the interface itself. The interface is the contract. |
+| "Runtime onboarding = create a shim dir" | "Runtime onboarding = satisfy the 5 contract requirements" | Onboarding is a checklist (validate against `contract.js`), not a copy-paste exercise. |
+| "Adding a new runtime = writing code in `.claude/` or `.factory/`" | "Adding a new runtime = writing code in `.mastracode/` (or your own dir) AND satisfying the contract" | The new runtime's location is *its own concern*; the contract is the loop's concern. |
+
+**Validity of the inversion:** the inversion works in the concrete sense — by treating the interface as a separate spec, we get a first-class concept (the `interface/` directory), a validation tool (`contract.js`), and an onboarding flow (`RUNTIME_ONBOARDING.md`). None of these existed before. The inversion is *contextually* valid: at the current scale (2 runtimes + 1 planned), the spec is the right level of formalization; at 5+ runtimes, a registry may be warranted (and the inversion can be re-applied).
+
+**What I learned:** the predict report was over-confident in calling the existing pattern "good enough." The shim pattern is *necessary* (the implementations must exist), but not *sufficient* (the spec must also exist). The user's feedback was correct: the structure was missing.
+
+---
+
+## References (verifiable)
+
+- Predict report: `plans/reports/predict-260624-2025-phase-e-domain-driven-architecture-report.md` (the prior advisory this report builds on)
+- Master tracker: `plans/reports/productization-260612-1530-master-tracker.md` § Phase E (lines 211–222)
+- AGENTS.md §1 (meta-surface), §2 (hook matrix), §3 (meta-surface tools)
+- Current Core dir: `tools/learning-loop-mastra/core/legacy/` (rename target → `core/`)
+- Current shim dirs: `.claude/coordination/hooks/` + `.factory/coordination/hooks/` (implementations of Requirement #1)
+- Existing runtime-agnostic validator: `tools/learning-loop-mastra/core/legacy/runtime-agnostic-checklist.js` (6-item gate; this report's 5-requirement contract is the spec the validator implicitly enforces)
+- Stale schema doc: `tools/learning-loop-mastra/core/legacy/schema-descriptions.yaml` (E.4 cleanup target)
+- Parity-test pin: `tools/learning-loop-mastra/workflows/workflow-intentional-skip.js` (E.3 label target)
+- Mastra Code: npm `mastracode`; source at `mastra-ai/mastra/tree/main/mastracode`
+- Open LIMs: LIM-3 (caller identity), LIM-4 (path traversal) — see master tracker § Phase B LIMs table (bundled hardening plan)
+- Inversion technique: `/problem-solving` skill, `references/inversion-exercise.md`
+
+---
+
+## Revision notes
+
+### Revision 3 (2026-06-24 22:10) — plan split added
+
+The user's question "How many plans should we split Phase E into?" triggered a meta-pattern recognition pass over the 7 phase items. Result: **4 shippable plans for Phase E + 1 deferred hardening plan = 5 plans total.** New section "Plan split for execution" inserted with the 5-row plan table, plan-level ordering diagram, rationale, and plan-dir naming convention. Date stamp updated.
+
+**Net change:** no scope change; only the execution grouping changed. Effort totals are the same (~4–5 days for Phase E).
+
+### Revision 2 (2026-06-24 21:30) — 4 corrections
+
+A cross-reference check against the actual codebase surfaced 4 factual gaps in the original 19:25 draft. All 4 are corrected in this revision:
+
+| # | Original claim | Correction | Severity | Source |
+|---|----------------|------------|----------|--------|
+| C1 | Requirement #4 "Identity marker" presented `RUNTIME_ID` as a present-tense convention | Reframed as **PROPOSED — target convention from hardening plan (LIM-3 caller identity); not yet adopted by `claude-code` or `droid`.** Validator now returns `missing: []` with `note: 'identity-marker-not-adopted'` when unset. | **High** | `grep -r "RUNTIME_ID" tools/ .claude/ .factory/` returns 0 matches outside this report and the predict report |
+| C2 | Requirement #1 listed 3 hook shims with wrong filenames | Corrected to **4 shims** (`bash-coordination-gate.cjs`, `write-coordination-gate.cjs`, `inbound-state-gate.cjs`, `recurrence-check-on-start.cjs`) | Medium | `.claude/coordination/hooks/` and `.factory/coordination/hooks/` each contain 4 files |
+| C3 | Requirement #2 referenced `.claude/settings.local.json` | Corrected to **`.claude/settings.json`** (no `.local` suffix — that file does not exist) | Low | `.claude/settings.json` is the actual config file |
+| C4 | MCP entry described as "an entry pointing to" | Clarified to **`mcpServers.learning-loop` entry** | Low | `.mcp.json` and `.factory/mcp.json` both use `mcpServers.learning-loop` namespace |
+
+The "after Phase E" tree (line ~184) is **already labeled** as the post-E.1 / post-E.1b shape — no correction needed there, but readers should note the `mastra/` and `interface/` subdirs do not exist today; they are the target structure that Phase E creates.
+
+**What was NOT changed:**
+
+- The inversion insight (spec vs implementation) — keep.
+- The 5-requirement shape — keep (with the #4 reframing).
+- The 3-layer architecture (Core / Mastra shell / Runtime interface) — keep.
+- The bundled hardening plan (LIM-3 + R2 write-gate + LIM-4) — keep.
+- The order of operations (E.0 → E.1 → E.1b → E.2 → E.3 → E.4 → E.5) — keep.
+- The risk table R1–R6 — keep.
+- The open questions Q1–Q6 — keep (Q4 about "other missing first-class structures" is still open and worth a follow-up `/problem-solving` session).
+
+---
+
+**Status:** DONE (advisory only; no meta-state mutation, no contract change). Awaits operator approval to advance to plan authoring (`/ck:plan` per the dev rules) and master-tracker update.
