@@ -1,10 +1,15 @@
 // Server name rename test — asserts the R4 cascade is complete:
 //   1. .mcp.json has key "learning-loop" (not "learning-loop-mastra")
 //   2. .factory/mcp.json has key "learning-loop"
-//   3. .claude/settings.local.json allowlist uses "mcp__learning-loop__*"
-//   4. .claude/settings.local.json enabledMcpjsonServers is ["learning-loop"]
+//   3. .claude/settings.local.json allowlist uses "mcp__learning-loop__*" (skipped on CI)
+//   4. .claude/settings.local.json enabledMcpjsonServers is ["learning-loop"] (skipped on CI)
 //   5. No "learning-loop-mastra" string in non-legacy code (.js/.cjs/.mjs in tools/, .claude/, .factory/)
 //   6. The 3 historical references in plans/reports/ are preserved (sample audit)
+//
+// Tests 3 and 4 are guarded with existsSync because .claude/settings.local.json
+// is a per-developer Claude Code state file (globally gitignored) and never
+// exists in fresh CI checkouts. Locally they assert the real allowlist; on CI
+// they trivially pass. See docs/operator-notes/260624-mcp-server-rename-operator-action.md.
 
 const { describe, test } = require("node:test");
 const assert = require("node:assert");
@@ -30,7 +35,9 @@ describe("server name rename (R4)", () => {
   });
 
   test(".claude/settings.local.json allowlist uses mcp__learning-loop__*", () => {
-    const settings = JSON.parse(readFileSync(join(PROJECT_ROOT, ".claude/settings.local.json"), "utf8"));
+    const path = join(PROJECT_ROOT, ".claude/settings.local.json");
+    if (!existsSync(path)) return; // per-developer file; absent on CI
+    const settings = JSON.parse(readFileSync(path, "utf8"));
     const allow = settings.permissions?.allow ?? [];
     for (const entry of allow) {
       if (typeof entry === "string" && entry.startsWith("mcp__learning-loop")) {
@@ -41,7 +48,9 @@ describe("server name rename (R4)", () => {
   });
 
   test(".claude/settings.local.json enabledMcpjsonServers is [learning-loop]", () => {
-    const settings = JSON.parse(readFileSync(join(PROJECT_ROOT, ".claude/settings.local.json"), "utf8"));
+    const path = join(PROJECT_ROOT, ".claude/settings.local.json");
+    if (!existsSync(path)) return; // per-developer file; absent on CI
+    const settings = JSON.parse(readFileSync(path, "utf8"));
     const enabled = settings.enabledMcpjsonServers ?? [];
     assert.ok(enabled.includes("learning-loop"),
       `enabledMcpjsonServers should include learning-loop, got ${JSON.stringify(enabled)}`);
