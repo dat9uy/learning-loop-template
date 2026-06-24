@@ -1,7 +1,7 @@
 // MCP protocol-level E2E test for the Mastra peer server.
 //
 // Mirrors tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs but points
-// at the learning-loop-mastra server and its 29 deterministic tools.
+// at the learning-loop server and its 29 deterministic tools.
 //
 // Note (2026-06-22, Plan 2 PR #8): two test relaxations from the original
 // strict-`===` / `mastra_`-prefixed shape, both forced by Phase D Plan 1+2

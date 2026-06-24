@@ -46,7 +46,7 @@ describe("loop-surface-inject SessionStart hook", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = { hook_event_name: "SessionStart", source: "startup", cwd: tempDir };
       const mockSummary = { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 };
@@ -67,7 +67,7 @@ describe("loop-surface-inject SessionStart hook", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = { hook_event_name: "SessionStart", source: "startup", cwd: tempDir };
       const mockSummary = { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 };
@@ -85,7 +85,7 @@ describe("loop-surface-inject SessionStart hook", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = { hook_event_name: "UserPromptSubmit", source: "startup", cwd: tempDir };
       const mockSpawn = async () => ({ tool_count: 1 });
@@ -102,7 +102,7 @@ describe("loop-surface-inject SessionStart hook", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = { hook_event_name: "SessionStart", source: "resume", cwd: tempDir };
       const mockSpawn = async () => ({ tool_count: 1 });

@@ -141,7 +141,7 @@ for (const [label, id] of invalidIds) {
 }
 
 test("stripMcpContentEnvelope falls back to raw input on malformed JSON", async () => {
-  const { stripMcpContentEnvelope } = await import("#mcp/core/envelope-stripper.js");
+  const { stripMcpContentEnvelope } = await import("../core/legacy/envelope-stripper.js");
   const broken = { content: [{ type: "text", text: "not-json{" }] };
   assert.strictEqual(stripMcpContentEnvelope(broken), broken);
 });

@@ -35,7 +35,7 @@ async function getToolDict() {
   const PREFIX = "mastra_";
   _toolCache = {};
   for (const { file, export: exportName } of MANIFEST) {
-    const mod = await import(`#mcp/${file}`);
+    const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
     const legacy = mod[exportName];
     if (!legacy) continue;
     const prefixed = PREFIX + legacy.name;

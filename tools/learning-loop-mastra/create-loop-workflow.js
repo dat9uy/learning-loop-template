@@ -2,7 +2,7 @@ import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import { buildParitySchema } from "./schema-parity.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
-import { stripMcpContentEnvelope } from "#mcp/core/envelope-stripper.js";
+import { stripMcpContentEnvelope } from "./core/legacy/envelope-stripper.js";
 
 function normalizeSchema(schema) {
   if (

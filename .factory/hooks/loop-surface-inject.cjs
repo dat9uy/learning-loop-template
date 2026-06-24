@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Droid SessionStart hook: inject loop_describe({tier:"summary"}) into context.
- * Only fires when the project has its own .mcp.json + learning-loop-mastra entry.
+ * Only fires when the project has its own .mcp.json + learning-loop entry.
  * Reads stdin (Droid hook input JSON), guards, spawns MCP server, prints block.
  */
 
@@ -31,7 +31,7 @@ const LOCAL_DISCOVERABILITY_HINTS = Object.freeze([
 ]);
 
 // Process-specific rules: agent behavior under operational conditions.
-// Mirrors PROCESS_HINTS in tools/learning-loop-mcp/core/loop-introspect.js.
+// Mirrors PROCESS_HINTS in tools/learning-loop-mastra/core/legacy/loop-introspect.js.
 const LOCAL_PROCESS_HINTS = Object.freeze([
   "pnpm test discipline. `pnpm test` runs 9 namespaces / 1100+ tests in ~13s. Per-namespace logs at `.test-logs/<ns>.log` mirror progress. Rule 1 (silent-command): if a Bash call is silent for >2 min, tail `.test-logs/<ns>.log` instead of re-reading files. Rule 2 (same-file-read): if you read the same file >5 times in 60s with no Edit/Write/Bash, STOP — write a one-line journal to `plans/reports/` and ask the operator. The old 10-min claim was an agent-side `tail -60` artifact; the runner preserves the principle of observable per-namespace progress.",
   "PR-body registry deltas. Every PR that touches `meta-state.jsonl` must enumerate its deltas in the PR body: (a) sweep entries by id+reason, (b) resolved entries by id+resolution note, (c) new entries by id+initial status, (d) promoted rules by finding_id+rule_id, (e) superseded/archived entries by id+target. See `rule-pr-body-registry-deltas` in `meta-state.jsonl` for the canonical rule body and enforcement shape. The CI workflow `meta-state-pr-body-advisory.yml` surfaces the deltas in the PR's Checks tab.",
@@ -76,7 +76,7 @@ async function main(inputArg, envArg, spawnImpl) {
     return null;
   }
 
-  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mastra"];
+  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop"];
   if (!serverCfg) return null;
 
   const tier = env.LL_LOOP_INJECT_TIER === "summary" ? "summary" : "warm";
@@ -117,10 +117,10 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
   try {
     // The meta-state module lives in the project, not in the test temp cwd.
     // Resolve relative to this hook's own location: .factory/hooks/<this>.cjs
-    // -> <project-root>/tools/learning-loop-mcp/core/meta-state.js
+    // -> <project-root>/tools/learning-loop-mastra/core/legacy/meta-state.js (post-Phase-D legacy move)
     const path = require("node:path");
     const projectRoot = path.resolve(__dirname, "..", "..");
-    corePath = path.join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    corePath = path.join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
   } catch (e) {
     // Should not happen — log and bail.
     console.error(`[loop-surface-inject] cannot resolve core path: ${e.message}`);
@@ -162,7 +162,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     severity: "warning",
     affected_system: "mcp-tools",
     subtype: "mcp-connection",
-    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
+    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
     evidence_code_ref: "tools/learning-loop-mastra/server.js",
     session_id: sessionId,
     status: "reported",
@@ -202,7 +202,7 @@ async function reportHintDowngrade(input, env, cwd, reason) {
   try {
     const path = require("node:path");
     const projectRoot = path.resolve(__dirname, "..", "..");
-    corePath = path.join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    corePath = path.join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
   } catch (e) {
     console.error(`[loop-surface-inject] cannot resolve core path: ${e.message}`);
     return;

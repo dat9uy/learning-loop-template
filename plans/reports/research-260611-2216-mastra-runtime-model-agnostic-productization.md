@@ -620,21 +620,23 @@ The current `gate_check` and `budget_check` tools read observations; the gate lo
 | The "~38 → ~30 tool surface reduction" math | **Cascade impact:** the 56-tool surface today (per `agent-manifest.json`) → ~34 bound to meta-surface (gate 2 + meta_state 16 + introspection 2 + record_crud ~5 minus observation + workflow ~6 + index ~2 + budget 1 = ~34). The remaining 22 tools are dropped, paused, or unbound. |
 | The "where do constraint observations live?" question (Q8) | **Reopened** as a re-debate from the meta-surface, not a 4-kind-union extension problem. |
 
-**Tool surface (2026-06-12 reframe):**
+**Tool surface (post-Phase-D, verified 2026-06-24):**
 
-| Group | Today (per `agent-manifest.json`) | **§3.10 2026-06-12 (meta-surface bound)** |
-|---|---|---|
-| `gate` | 2 | **2** (gate is meta-surface) |
-| `record_crud` | 9 | **~5** (drop `record_create_observation` and `record_update_observation`; Q8 reopened for re-debate; the other 7 stay bound to meta-state as `change-log` entries) |
-| `workflow` | 15 | **~8** (only meta-state-touching workflows stay; the rest are unbound) |
-| `index` | 5 | **~2** (drop `index_extract`, `index_search`, `index_update_claim`; keep `index_validate` and `index_validate_plans` for the meta-state) |
-| `budget` | 1 | **1** (budget is meta-surface) |
-| `capability` | 3 | **0** (capabilities are unbound product-surface; no tool representation) |
-| `meta_state` | 16 | **16** (all meta) |
-| `introspection` | 2 | **2** (`loop_describe` + `loop_get_instruction`, both meta-surface) |
-| **Total** | **56** | **~36** bound to meta-surface; **~20** unbound or dropped |
+| Group | Today (per `agent-manifest.json`) | **§3.10 2026-06-12 projection (historical)** | **Post-Phase-D 2026-06-24 actual** |
+|---|---|---|---|
+| `gate` | 2 (2026-06-12) | **2** (gate is meta-surface) | **5** (added `gate_check_recurrence`, `gate_mark_preflight`, `gate_override` per Phase C + Plan 1) |
+| `record_crud` | 9 (2026-06-12) | **~5** | **0** (record_crud group deleted; the 7 record_crud tools consolidated into `meta_state_*` per Phase A) |
+| `workflow` | 15 (2026-06-12) | **~8** | **13** (8 `run_workflow_*` + 3 `mastra_workflow_*` + 2 storage workflows; per Plan 1 + Plan 2) |
+| `index` | 5 (2026-06-12) | **~2** | **0** (index group deleted; the 2 surviving tools merged into `meta_state_check_grounding` per Phase A) |
+| `budget` | 1 (2026-06-12) | **1** | **1** (`mastra_runtime_state_read`; the `budget_check` MCP tool was removed and replaced with `runtime_state_read({kind: 'budget-state'})` per Phase A) |
+| `capability` | 3 (2026-06-12) | **0** | **0** (capabilities group deleted per Phase A) |
+| `meta_state` | 16 (2026-06-12) | **16** | **19** (added `propose_design`, `relationships`, `re_verify`, `supersede` per Phase B) |
+| `introspection` | 2 (2026-06-12) | **2** | **3** (added `runtime_state_read` per Phase A) |
+| `runtime_agnostic` | (n/a) | (n/a) | **1** (`mastra_check_runtime_agnostic`; new in Phase C) |
+| `agent` | (n/a) | (n/a) | **3** (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`; new in Phase D Plan 3) |
+| **Total** | **56** (2026-06-12) | **~36** bound | **44** bound (all 44 are meta-surface; product-surface stays unbound per AGENTS.md §1) |
 
-The plan's tool surface shrinks from 56 (today, per manifest) to **~36** (bound to meta-surface). The remaining ~20 tools are unbound (operate on product-surface shapes that are being re-debated) or dropped.
+The actual MCP surface today is **44 tools** (per `tools/learning-loop-mastra/agent-manifest.json` verified 2026-06-24; cross-walk test in `tools/learning-loop-mastra/__tests__/manifest-arithmetic.test.cjs`). The 14-tool delta from SP3's 56 is the deleted `record_crud` (9) + `index` (5) groups, plus the `capability` group (already 0 in 2026-06-12). The +6 net additions are 3 agents (Plan 3) + `runtime_state_record` (Phase A) + `runtime_state_read` (Phase A) + `check_runtime_agnostic` (Phase C). All 44 are bound to the meta-surface.
 
 **Bridge 5 scope (2026-06-12 reframe — engine vs instance):**
 
@@ -645,12 +647,12 @@ The plan's tool surface shrinks from 56 (today, per manifest) to **~36** (bound 
 
 **Phase refinements (each phase is "meta-surface is the only bound surface"):**
 
-- **Phase 0**: coexistence with 3 meta-state-touching tools (`gate_check`, `meta_state_list`, `meta_state_report`). The legacy `record_create_decision` stays bound because `decision` records are a meta-surface kind (they log decisions about the loop, not decisions about products). Bound to meta-state as `change-log` entries.
-- **Phase 1**: mastrafy the ~36 meta-state tools. Tool count drops to ~36 (from 56 today).
-- **Phase 2**: promote ~8 meta-state workflow tools to `createWorkflow` (intake, classify, etc.). All workflows are meta-state-touching.
-- **Phase 3**: add 3-4 meta-state agents (intake, scout, self-improvement). **Storage Layer folds in here** (LibSQL, separate files for meta-state and Mastra memory).
-- **Phase 4**: cut over. The new `MCPServer` exposes ~36 tools, all bound to meta-surface.
-- **Phase 5 (Mode 1)**: Mastra Code connects via MCP to the loop's `MCPServer`. The exposed tools are ~36 meta-state tools only. **No product-surface binding is added at Phase 5.** Product binding is the Bridge 7 question (post-meta-surface).
+- **Phase 0 [shipped 2026-06-16]**: Phase C Plan 1 — peer MCP server + `createLoopTool` factory + 4 wire-format regression tests. Started with 29 meta-state deterministic tools (the "minimal" subset), not 3.
+- **Phase 1 [shipped 2026-06-16]**: Phase C Plan 1 + Plan 1a/1b hardening. Mastrafied 39 deterministic tools (gate=5, workflow=11, meta_state=19, introspection=3, runtime_agnostic=1) — not ~36. The legacy `record_crud` (9) and `index` (5) groups were deleted, not migrated.
+- **Phase 2 [shipped 2026-06-19]**: Phase D Plan 1. Promoted 8 meta-state workflow tools to `createWorkflow` (intake_orient, intake_plan, classify_prompt, prepare_runtime_request, self_improvement, intentional_skip, report_phase_status, runtime_probe) + 2 storage workflows (storage_round_trip, storage_read). Per Q1 conflict resolution: thin `stateSchema = input` for all 10 (parity-faithful); multi-step `stateSchema` deferred to Plan 3 (where the agent consumer lives).
+- **Phase 3 [shipped 2026-06-23]**: Phase D Plans 2 + 3. **Storage Layer shipped 2026-06-20** (LibSQL chosen per §3.7; separate file at `./tools/learning-loop-mastra/data/mastra-memory.db`; meta-state registry stays JSONL). **3 agents shipped 2026-06-23** (intake, scout, self_improvement). `productBuildAgent` dropped per AGENTS.md:215 (substrate-era; surfaces via `meta_state_log_change`). Per-agent `memory` field OMITTED (observational memory is Phase 5 per §8 Q5). All 3 agents use `kimi-for-coding/k2p6` per the 3-layer model lookup.
+- **Phase 4 [shipped 2026-06-24]**: Phase D Plan 4 — cutover. The new `MCPServer` exposes 44 tools across 6 groups (gate, workflow, meta_state, introspection, runtime_agnostic, agent), all bound to the meta-surface. `agent-manifest.json` reconciled. `tools/learning-loop-mcp/tools/` moved to `tools/learning-loop-mastra/tools/legacy/`. MCP server key renamed `learning-loop-mastra` → `learning-loop` in `.mcp.json` + `.factory/mcp.json` + `.claude/settings.local.json`. `#mcp/*` import alias deleted.
+- **Phase 5 (Mode 1) [deferred to Phase E]**: Mastra Code connects via MCP to the loop's `MCPServer`. The exposed tools are 44 meta-surface tools. **No product-surface binding is added at Phase 5.** Product binding is the Bridge 7 question (post-meta-surface; Phase F).
 
 **Consistency check with `AGENTS.md` and `docs/trajectory.md` (2026-06-12 reframe):**
 
@@ -660,30 +662,31 @@ The plan's tool surface shrinks from 56 (today, per manifest) to **~36** (bound 
 - `docs/trajectory.md` § The Sixth Bridge: "The product is not the template. The product is the loop's self-model — what it knows about itself, how that knowledge is structured, and how it influences future behavior." — **Consistent.** The 2026-06-12 reframe makes the self-model the **only** meta-level artifact; everything meta-level lives in `meta-state.jsonl`.
 - `docs/trajectory.md` § "What Stays Human Forever": "The operator decides what counts as a 'loss function' and what counts as 'operator capture.'" — **Consistent.** The operator's 2026-06-12 decision to bind only the meta-surface and re-debate the product surface IS the operator exercising the loss-function choice.
 
-**Migration of the legacy meta-surface content (status as of 2026-06-12):**
+**Migration of the legacy meta-surface content (status as of 2026-06-24):**
 
-- `records/meta/*` (evidence, capabilities) → **DONE.** Subdirs no longer exist; content is in `meta-state.jsonl`.
-- `records/meta/experiments/*.yaml` (2 files) → **PENDING.** Convert to `meta-state.jsonl` change-logs; the `meta_state_log_change` change-log entry will document each conversion.
-- `records/meta/index/*.yaml` (12 files) → **PENDING.** Convert to `meta-state.jsonl` findings; document with `meta_state_log_change`.
-- `records/observations/*` → **REOPENED** (Q8). The current 8 yaml files are unbound. The 2026-06-11 "Option A: 5th entry kind" recommendation is superseded by Option D (re-debate from meta-surface). No conversion happens until the meta-surface decides what observations should look like.
+- `records/meta/*` (evidence, capabilities) → **DONE** (2026-06-13 per Phase A). Subdirs no longer exist; content is in `meta-state.jsonl`.
+- `records/meta/experiments/*.yaml` (2 files) → **DONE** (2026-06-13 per Phase A). Converted to `meta-state.jsonl` change-logs.
+- `records/meta/index/*.yaml` (12 files) → **DONE** (2026-06-13 per Phase A). Converted to `meta-state.jsonl` findings.
+- `records/observations/*` → **REOPENED** (Q8 per §8). The 8 yaml files remain on disk (unbound). Option D (re-debate from meta-surface) is the active framing. **No Phase D change.** Resolution deferred until the meta-surface decides what observations should look like (Phase F / Bridge 7 territory).
 - `records/index.yaml` → **DONE.** No `records/index.yaml` exists.
-- `records/<vendor>/` → **ARCHIVED** (per §3.10). The records are still on disk, unbound, treated as design exploration. Use `meta_state_archive` MCP tool to formally archive when the meta-surface ships.
+- `records/<vendor>/` → **ARCHIVED** (per §3.10, unchanged). The records are still on disk, unbound, treated as design exploration. `meta_state_archive` MCP tool used during Phase A to formally archive.
+- `tools/learning-loop-mcp/tools/` → **MOVED** to `tools/learning-loop-mastra/tools/legacy/` (2026-06-24 per Phase D Plan 4 phase-07). The 31 deterministic tool implementations are now under `legacy/`; the canonical MCP server (`tools/learning-loop-mastra/server.js`) loads them via direct relative paths.
 
-**What does NOT change (2026-06-12 reframe):**
+**What does NOT change (2026-06-12 reframe + post-Phase-D reconciliation 2026-06-24):**
 
-- **The hooks.** Per §3.9: hooks stay at the runtime layer in Mode 1.
-- **The meta-state registry.** `meta-state.jsonl` is the meta-surface. The 4-kind union is the bound shape.
-- **The MCP transport.** Still speaks MCP. The new `MCPServer` exposes ~36 meta-surface tools.
-- **§3.7 Storage Layer deferral.** Unchanged — meta-state storage is meta-surface; LibSQL target is unaffected.
-- **§3.9 Hook layer.** Unchanged — hooks stay at the runtime layer in Mode 1.
-- **The deprecation of `coerceParamsToSchema` and `installWireFormatCoercion` helpers.** The 2026-06-12 reframe does not change the §3.6 wire-format decision. The helpers are in production with test coverage; Phase 1 must reproduce their behavior in Mastra, not just delete them (see consistency report F7).
+- **The hooks.** Per §3.9: hooks stay at the runtime layer in Mode 1. **DURABLE.**
+- **The meta-state registry.** `meta-state.jsonl` is the meta-surface. The 4-kind union is the bound shape. **DURABLE.**
+- **The MCP transport.** Still speaks MCP. The new `MCPServer` exposes 44 meta-surface tools across 6 groups (gate, workflow, meta_state, introspection, runtime_agnostic, agent).
+- **§3.7 Storage Layer.** Resolved 2026-06-20 (Plan 2): LibSQL chosen; separate file at `./tools/learning-loop-mastra/data/mastra-memory.db`; meta-state registry stays JSONL.
+- **§3.9 Hook layer.** Unchanged — hooks stay at the runtime layer in Mode 1. **DURABLE.**
+- **The deprecation of `coerceParamsToSchema` and `installWireFormatCoercion` helpers.** The helpers were deleted along with the legacy server in Phase C Plan 3 cut-over (2026-06-17), only after the Mastra reproduction was verified to pass all 985 tests.
 
-**What changes (2026-06-12 reframe):**
+**What changes (2026-06-12 reframe + post-Phase-D reconciliation 2026-06-24):**
 
-- **The Bridges 1-4 reports are voided by re-debate.** They are marked "voided by re-debate, 2026-06-12" in-place. See §3.8.2 for the list.
-- **The §8 resolved-questions list.** Q8 is reopened (Option D: re-debate from meta-surface). The 2026-06-11 "All 7 open questions resolved" is no longer accurate; 6 are resolved, Q8 is reopened.
-- **The `AGENTS.md` Bridges table needs a full rewrite.** The 2026-06-12 reframe is sharper than the 2026-06-11 framing; the operator has asked for a from-scratch rewrite of the Bridge 5/6/Six-Bridges sections. See consistency report item 5 in the Action Checklist.
-- **Q1–Q7 resolutions in §8 remain valid.** Mastra Code as the final runtime target, model-agnosticism as a free bonus, coercion as in-production helpers, Apache-2.0 license, LibSQL memory default, Mode 1 peer-MCP integration, `MastraServer` HTTP out of scope. All still hold under the 2026-06-12 reframe.
+- **The Bridges 1-4 reports are voided by re-debate.** They are marked "voided by re-debate, 2026-06-12" in-place. See §3.8.2 for the list. **DURABLE — preserved through Phase D.**
+- **The §8 resolved-questions list.** Q8 is reopened (Option D: re-debate from meta-surface). Q5 (memory) is partially resolved (storage substrate ships 2026-06-20; per-agent `memory` config deferred to Phase 5). Q6 (Mode 1/2) is resolved (Mode 1 first; Mode 2 deferred per Phase E). Q3 (coercion) is shipped (helpers reproduced in `createLoopTool` factory per Phase C Plan 1; legacy helpers deleted 2026-06-17).
+- **The `AGENTS.md` Bridges table rewrite.** Shipped 2026-06-12 (the from-scratch rewrite that produced the current `AGENTS.md`).
+- **Q1, Q2, Q4, Q7 remain valid and unchanged** (Mastra Code as runtime target; model-agnosticism; Apache-2.0; `MastraServer` HTTP out of scope).
 
 **The deferred question (now explicit, 2026-06-12 reframe):**
 

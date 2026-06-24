@@ -4,7 +4,7 @@
 // gap, but probes Claude Code's MCP loading via .mcp.json configuration.
 //
 // The test has two modes:
-// 1. "config probe" — checks .mcp.json for learning-loop-mastra server entry
+// 1. "config probe" — checks .mcp.json for learning-loop server entry
 // 2. "direct spawn" — spawns the MCP server directly and verifies tool list
 //
 // If the config probe fails, the test logs a meta_state_report finding to the
@@ -20,7 +20,7 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
-const { probeL1 } = require("../../../tools/learning-loop-mcp/__tests__/probe-helpers.cjs");
+const { probeL1 } = require("../../../tools/learning-loop-mastra/__tests__/legacy-mcp/probe-helpers.cjs");
 
 describe("Claude Code MCP client-side loading acceptance", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..");
@@ -29,14 +29,14 @@ describe("Claude Code MCP client-side loading acceptance", () => {
     join(projectRoot, "tools/learning-loop-mastra/__tests__/with-mcp-server.js"),
   );
 
-  test(".mcp.json has learning-loop-mastra server configured", () => {
+  test(".mcp.json has learning-loop server configured", () => {
     assert.ok(existsSync(mcpConfigPath), ".mcp.json must exist for Claude Code MCP loading");
     const config = JSON.parse(readFileSync(mcpConfigPath, "utf8"));
     assert.ok(config.mcpServers, ".mcp.json must have mcpServers key");
-    assert.ok(config.mcpServers["learning-loop-mastra"], ".mcp.json must have learning-loop-mastra server");
-    const server = config.mcpServers["learning-loop-mastra"];
-    assert.ok(server.command, "learning-loop-mastra server must have command");
-    assert.ok(server.args, "learning-loop-mastra server must have args");
+    assert.ok(config.mcpServers["learning-loop"], ".mcp.json must have learning-loop server");
+    const server = config.mcpServers["learning-loop"];
+    assert.ok(server.command, "learning-loop server must have command");
+    assert.ok(server.args, "learning-loop server must have args");
     assert.ok(server.args.some((a) => a.includes("server.js")), "args must reference server.js");
   });
 
@@ -134,21 +134,21 @@ describe("Claude Code MCP client-side loading acceptance", () => {
 
   // Third test: Claude Code MCP client-side loading probe.
   //
-  // This test probes .mcp.json for learning-loop-mastra configuration. If the gap
+  // This test probes .mcp.json for learning-loop configuration. If the gap
   // is CLOSED (config present), the test passes silently. If the gap is OPEN
   // (config missing), the test logs a meta_state_report finding directly to the
   // project's meta-state.jsonl (mirroring the cold-session test pattern for Droid).
   //
   // The test does NOT fail CI on the gap. The finding IS the surface.
   // Refactored to use probeL1 helper (conditional emission + atomic dedup).
-  test("Claude Code .mcp.json exposes learning-loop-mastra (client-side loading)", async () => {
+  test("Claude Code .mcp.json exposes learning-loop (client-side loading)", async () => {
     const sessionId = "test-claude-code-mcp-client-loading";
     const runtime = "claude";
     const gapOpen = !(existsSync(mcpConfigPath) &&
-      JSON.parse(readFileSync(mcpConfigPath, "utf8")).mcpServers?.["learning-loop-mastra"]);
+      JSON.parse(readFileSync(mcpConfigPath, "utf8")).mcpServers?.["learning-loop"]);
 
     if (!gapOpen) {
-      console.error("[claude-mcp] gap closed: .mcp.json has learning-loop-mastra");
+      console.error("[claude-mcp] gap closed: .mcp.json has learning-loop");
     }
 
     const claim = await probeL1(projectRoot, {
@@ -169,10 +169,10 @@ describe("Claude Code MCP client-side loading acceptance", () => {
           affected_system: "mcp-tools",
           subtype: "mcp-client-loading",
           description:
-            "Claude Code .mcp.json does not expose learning-loop-mastra in this environment. " +
+            "Claude Code .mcp.json does not expose learning-loop in this environment. " +
             "The MCP server is reachable (server-side probe works), " +
             "but Claude Code is not configured to load the project-local MCP server. " +
-            "Detected by claude-code-mcp-loading.test.cjs#Claude Code .mcp.json exposes learning-loop-mastra. " +
+            "Detected by claude-code-mcp-loading.test.cjs#Claude Code .mcp.json exposes learning-loop. " +
             `runtime: ${runtime}; layer: L1;`,
           evidence_code_ref: "tools/learning-loop-mastra/server.js",
           session_id: sessionId,

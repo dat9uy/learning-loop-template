@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#mcp/*": "./tools/learning-loop-mcp/*",
     "#mastra/*": "./tools/learning-loop-mastra/*",
     "#lib/*": "./tools/lib/*"
   },
@@ -16,7 +15,7 @@
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
     "test": "node tools/scripts/run-pnpm-test-namespaced.mjs",
     "test:debug": "node --test --test-timeout=120000 tools/learning-loop-mastra/__tests__/debug/*.test.cjs",
-    "test:cold-session": "node --test tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs",
+    "test:cold-session": "node --test tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
     "gate:server": "node tools/learning-loop-mastra/server.js"
   },
   "dependencies": {

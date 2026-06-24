@@ -5,7 +5,7 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-20 (Phase D Plan 2 closeout: @mastra/libsql@1.13.0 wired as Mastra runtime substrate via `storage.js` factory + Pattern A2a server wiring; 2 storage workflows + 11-test `storage-parity.test.cjs` shipped; tools/list 39→41 (added `run_workflow_storage_round_trip` + `run_workflow_storage_read`); D5/D6 flipped `[x]`; 1 semantic change-log filed; journal + PR body drafted)
+**Last updated:** 2026-06-24 (Phase D Plan 4 cutover: agent-manifest.json reconciled to 44 tools across 6 groups; tools/learning-loop-mcp/tools/ moved to tools/learning-loop-mastra/tools/legacy/; #mcp/* import alias deleted; MCP server key renamed learning-loop-mastra → learning-loop in .mcp.json + .factory/mcp.json + .claude/settings.local.json; D9/D15 flipped ✅ DONE; E1/E4 flipped ✅ DONE; E2 flipped 🟡 PARTIAL; §3.10 + AGENTS.md §1+§2 reconciled; 1 semantic change-log filed; journal + PR body drafted)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
@@ -282,7 +282,7 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 | ID | Task | Severity | Status | Source |
 |----|------|----------|--------|--------|
 | D-8 | C6 cut-over — replace legacy `McpServer` with Mastra `MCPServer` for the deterministic subset | high | 🟡 READY | `plans/260617-1950-phase-c-plan-3-cut-over/` (single phase, 1 commit, 1-2h) |
-| D-9 | C7 manifest update — `tools/learning-loop-mastra/agent-manifest.json` 5-group structure with 40 `mastra_`-prefixed tools | high | 🟡 READY (Plan 3) | `plans/260617-1950-phase-c-plan-3-cut-over/phase-01` Group 1 |
+| D-9 | C7 manifest update — `tools/learning-loop-mastra/agent-manifest.json` 6-group structure with 44 tools (gate=5, workflow=13, meta_state=19, introspection=3, runtime_agnostic=1, agent=3) | high | ✅ DONE (Plan 4, 2026-06-24) | `plans/260624-1111-phase-d-plan-4-cutover/phase-02-manifest-reconciliation.md` |
 | D-10 | F4 gate-bypass resolution — `meta-260616T2123Z-the-learning-loop-mastra-peer-mcp-server-registers-29-determ` closed structurally (peer removed) | high (security) | 🟡 READY (Plan 3) | `plans/260617-1950-phase-c-plan-3-cut-over/phase-01` Group 15; fingerprint anchor at `tools/learning-loop-mastra/server.js:13` |
 | D-11 | Reconcile 4 tools missing from legacy `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`) | medium | ✅ DONE (Plan 3, 2026-06-23) | Plan 3 Phase 4 — extended `meta_state` group 15→19 |
 | D-13 | F4 PR security note in PR body | low (process) | 🟡 READY (Plan 3) | Plan 3 Group 19.4 PR body |
@@ -292,15 +292,19 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 | ID | Task | Severity | Status | Source |
 |----|------|----------|--------|--------|
 | D-14 | Phase D — promote 8 `workflow_*` tools to `createWorkflow`; add 3 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`); fold in LibSQL storage as Mastra runtime substrate (workflow stateSchema + suspend/resume; meta-state stays JSONL) | high (separate phase) | 🔵 OPEN | `plans/reports/brainstorm-260618-1538-phase-d-plan-split-report.md` (D-14 referenced) + storage design report |
-| D-15 | Workflow-tool migration (D1-D3) — 8 `workflow_*` tools to `createWorkflow`; `stateSchema` for cross-step orientation; `suspend`/`resume` for operator checkpoints | high (separate phase) | 🔵 OPEN | D-15 |
+| D-15 | Workflow-tool migration (D1-D3) — 10 `createWorkflow` tools (8 run_workflow_* + 2 storage workflows) | high (separate phase) | ✅ DONE (Plan 1, 2026-06-19 + Plan 2, 2026-06-20) | `plans/260618-1911-phase-d-plan-1-workflows/` (D1+D2+D3) + `plans/260619-2246-phase-d-plan-2-storage/` (storage workflows) |
 | D-12 | Mode 1 (peer MCP) vs Mode 2 (single `createMastraCode({...})`) decision | medium | ⚪ DEFERRED | Operator decision 2026-06-17: defer to post-Plan 3; Phase E scope |
 
 ### Phase E (cut-over + Mastra Code Mode 1)
 
 | ID | Task | Severity | Status | Source |
 |----|------|----------|--------|--------|
-| E1 | Replace legacy `learning-loop-mcp` server with Mastra-based one (the "cut over" decision) | high | 🟡 RESOLVED-BY-PLAN-3 (deferred to Plan 3 = D-8) | tracker E1 |
-| E2-E6 | E2 mark old server `legacy`; E3 update skills; E4 update `agent-manifest.json`; E5 Mode 1 Mastra Code; E6 hook layer confirm | high | 🔵 OPEN (Phase E scope) | tracker E2-E6 |
+| E1 | Replace legacy `learning-loop-mcp` server with Mastra-based one (the "cut over" decision) | high | ✅ DONE (Plan 4, 2026-06-24) | `plans/260624-1111-phase-d-plan-4-cutover/phase-07-legacy-cleanup-c9.md` (legacy/ move) + phase-08 (MCP server key rename) |
+| E2 | Mark old server `legacy` | high | 🟡 PARTIAL (Plan 4, 2026-06-24) | `plans/260624-1111-phase-d-plan-4-cutover/phase-07-legacy-cleanup-c9.md` (tools/ moved to tools/legacy/; core/ + scout/ moved to core/legacy/ + scout/legacy/; #mcp/* alias deleted) |
+| E3 | Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to point at the new tool surface | high | 🔵 OPEN (Phase E scope) | tracker E3 |
+| E4 | Update `agent-manifest.json` to the new group names | high | ✅ DONE (Plan 3 + Plan 4, 2026-06-24) | `plans/260623-1619-phase-d-plan-3-agents/` (6th group added) + `plans/260624-1111-phase-d-plan-4-cutover/phase-02-manifest-reconciliation.md` (44-tool total) |
+| E5 | Mode 1: Mastra Code connects via MCP to the loop's `MCPServer` | high | 🔵 OPEN (Phase E scope) | tracker E5 |
+| E6 | Hook layer: confirm no Mode 1 changes | high | 🔵 OPEN (Phase E scope) | tracker E6 |
 | E7 | Mode 2 (same Mastra instance) decision — revisit if operator's "final Mastra-fy" vision requires single-app coupling | low | ⚪ DEFERRED (= D-12) | tracker E7 |
 
 ### Hardening / quality (separate security/quality audit)
