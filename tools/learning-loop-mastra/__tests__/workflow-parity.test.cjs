@@ -163,7 +163,7 @@ describe("workflow parity harness", () => {
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
     assert.equal(mastra.length, 31, `must have 31 mastra_* tools, got ${mastra.length}`);
     assert.equal(runWorkflows.length, 10, `must have 10 run_workflow_* tools (8 existing + 2 storage), got ${runWorkflows.length}`);
-    assert.equal(tools.length, 41, `total must be 41, got ${tools.length}`);
+    assert.equal(tools.length, 44, `total must be 44 (31 mastra_* + 10 run_workflow_* + 3 ask_*), got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

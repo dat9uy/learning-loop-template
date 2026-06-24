@@ -8,8 +8,9 @@ import { createLoopTool } from "./create-loop-tool.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { storage, initStorage } from "./storage.js";
+import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(
@@ -49,7 +50,23 @@ for (const { file, export: exportName } of WORKFLOW_MANIFEST) {
   workflows[wf.id] = wf;
 }
 
-console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, storage.id=${storage.id}`);
+// MASTRA_AGENTS_MANIFEST is a TEST-ONLY env var (used by agent-parity.test.cjs).
+// In production, the default agents-manifest.json is loaded. Never set this env
+// var in a production deployment; the test fixture under __tests__/fixtures/ is
+// for parity tests only. Path containment is enforced in loadAgentsManifest.
+const AGENTS_MANIFEST = loadAgentsManifest();
+const agents = {};
+for (const [key, entry] of Object.entries(AGENTS_MANIFEST.agents)) {
+  const mod = await import(`./${entry.file}`);
+  const agent = mod[entry.export];
+  if (!agent) {
+    console.error(`skipped agent ${key} (missing export "${entry.export}")`);
+    continue;
+  }
+  agents[key] = agent;
+}
+
+console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, ${Object.keys(agents).length} agents, storage.id=${storage.id}`);
 
 // Custom MCPServer subclass that extracts only the step result from workflow
 // execution output, ensuring parity with legacy createTool handlers.
@@ -147,11 +164,12 @@ await initStorage();
 const server = new LoopMCPServer({
   id: "learning-loop-mastra",
   name: "learning-loop-mastra",
-  version: "0.1.1",
+  version: "0.1.2",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2). 31 tools + 10 workflows across 5 groups. Single server post-cut-over.",
+    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2+3). 31 tools + 10 workflows + 3 agents across 6 groups.",
   tools,
   workflows,
+  agents,
 });
 
 const mastra = new Mastra({

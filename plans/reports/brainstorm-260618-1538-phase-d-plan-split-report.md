@@ -39,12 +39,13 @@ Phase D of the master tracker (D1–D7) is the Mastra Phase 2-3 migration: promo
 | **Plan 1** | D1+D2+D3 | **Workflows** — 8 `createWorkflow` + `stateSchema` + `suspend`/`resume` + workflow parity harness | All 10 namespaces pass; workflow parity GREEN (stateSchema round-trip for 8 tools) | None |
 | **Plan 2** | D5+D6 | **Storage** — LibSQL backend (Mastra runtime substrate) + LibSQL/JSONL round-trip | All 10 namespaces pass; LibSQL read/write tests GREEN | None |
 | **Plan 3** | D4+D7 | **Agents** — 3 `createAgent` + per-agent model config + agent parity harness (mocked LLM) | All 10 namespaces pass; agent parity tests GREEN | Plan 1 + Plan 2 |
-| **Plan 4** | — | **Cutover** — `agent-manifest.json` update + retire legacy tool wrappers + master-tracker flip | All 10 namespaces pass; legacy imports cleared; §3.10 tool surface reconciled | Plan 1 + Plan 2 + Plan 3 |
+| **Post Plan 3** | — | **Functional Verification** — manual smoke test of 3 `ask_*` tools with real LLM + conditional e2e test gated on `KIMI_API_KEY` | All 3 agents produce expected output with real LLM; journal + test artifacts present | Plan 3 |
+| **Plan 4** | — | **Cutover** — `agent-manifest.json` update + retire legacy tool wrappers + master-tracker flip | All 10 namespaces pass; legacy imports cleared; §3.10 tool surface reconciled | Plan 1 + Plan 2 + Plan 3 + Post Plan 3 |
 
 **Dependency DAG:**
 ```
 Plan 1 (workflows) ─┐
-                    ├─→ Plan 3 (agents) ─→ Plan 4 (cutover)
+                    ├─→ Plan 3 (agents) ─→ Post Plan 3 (verification) ─→ Plan 4 (cutover)
 Plan 2 (storage)  ──┘
 ```
 
@@ -103,6 +104,7 @@ Plan 2 (storage)  ──┘
 | `createWorkflow` API surface differs from `createTool` enough that 8 migrations can't ship in one PR | Medium | Phase C Plan 1 already shipped `createTool` + factory. `createWorkflow` is documented in research report §3.1 as "multi-step state machines with branching" — patterns are known. If mid-Plan-1 we discover a category that won't fit `createWorkflow`, split it into Plan 1a (atomic fix). |
 | LibSQL adoption pulls in @libsql/client + native bindings; WSL2 build issues | Medium | Plan 2 starts with a LibSQL install probe (matches Phase C Plan 1's coercion probe pattern). If install fails on WSL2, fall back to in-memory SQLite via `@libsql/client` `file::memory:?`. |
 | Agent parity harness needs LLM mocking infrastructure that doesn't exist | Medium | Plan 3 inherits the test patterns from `tools/learning-loop-mcp/scout/` (existing scout helper tests) and the `workflow_*` parity harness from Plan 1. If LLM mocking is novel, ship a thin mock first (1 file, ~50 LOC) before agent parity. |
+| Plan 3's mocked tests don't catch LLM-instruction ambiguity (the agent "works" structurally but the LLM interprets instructions differently than the test fixture) | **High** | **NEW (Post Plan 3 step):** After Plan 3 ships, run a manual smoke test of each `ask_*` tool with a real LLM call + ship a conditional e2e test (`tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs`) gated on `KIMI_API_KEY`. Plan 4 cannot start until both artifacts (journal + test pass-or-skip) exist. |
 | Plan 4 (cutover) breaks cold-session test | Low | Phase C Plan 3 broke cold-session test then fixed it (CR-3 → Plan 1b). Apply same protocol: `pnpm test:cold-session` is a Plan 4 gate. |
 | productBuildAgent reframe surfaces during Plan 3 review | Low | Brainstorm already locked the decision. If operator reopens, file a `meta_state_log_change` with `change_target: 'AGENTS.md#215'` and revert Plan 3 to 4 agents. |
 | Storage file path conflicts with meta-state.jsonl | Low | §3.7 explicitly says "Likely separate file, same engine." Plan 2 picks `./tools/learning-loop-mastra/data/mastra-memory.db`. Meta-state stays at `./meta-state.jsonl`. |
@@ -147,6 +149,16 @@ Plan 2 (storage)  ──┘
 - Modify: `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.10 (reconcile tool surface table)
 - Modify: `AGENTS.md` §1 (note Phase D shipped)
 
+**Post Plan 3 (Functional Verification — gating step before Plan 4):**
+- Create: `docs/journals/260623-post-plan-3-verification.md` (operator-filled journal documenting manual smoke test of each `ask_*` tool with real LLM)
+- Create: `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` (conditional e2e test, ~150 LOC; runs ONLY if `process.env.KIMI_API_KEY` is set; 3 tests, one per agent; skips entirely otherwise)
+- Modify: `meta-state.jsonl` (1 `meta_state_log_change` entry filing Post Plan 3 completion with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`)
+- Read (verification): `tools/learning-loop-mcp/scout/run-scout.js` (verify scoutAgent can invoke the scout pipeline through real LLM)
+- Read (verification): `meta-state.jsonl` (verify agents can read + write meta-state entries through real LLM)
+- **Why this exists:** Plan 3's mocked tests prove agent *machinery* is correct. They do NOT prove the agents actually follow the learning loop when connected to a real LLM. Plan 4 (cutover) assumes the agents work; if they don't, Plan 4's cleanup doesn't have anything to clean up. Post Plan 3 is the gating step that proves the agents work BEFORE Plan 4 starts.
+- **Why not a new plan:** The verification is small (~150 LOC of test + 1 journal). It doesn't have multi-phase work, doesn't need its own PR, doesn't introduce new architecture. It's a gating checkpoint, not a plan.
+- **Acceptance criteria for Post Plan 3 to be "complete":** Journal entry exists with non-empty output for each of the 3 agents AND conditional e2e test either passes (when run with `KIMI_API_KEY`) or is properly skipped (when run without). Plan 4's pre-flight requires this completion.
+
 ---
 
 ## Success Metrics & Validation Criteria
@@ -158,6 +170,7 @@ Plan 2 (storage)  ──┘
 | Plan 1 | All 10 namespaces pass; workflow parity tests GREEN | `pnpm test` exits 0; `workflow-parity.test.cjs` shows 8/8 GREEN |
 | Plan 2 | All 10 namespaces pass; LibSQL parity tests GREEN | `pnpm test` exits 0; `storage-parity.test.cjs` shows read/write round-trip matches JSONL output |
 | Plan 3 | All 10 namespaces pass; agent parity tests GREEN | `pnpm test` exits 0; `agent-parity.test.cjs` shows 3/3 agents produce expected output with mocked LLM |
+| Post Plan 3 | All 3 agents produce expected output with real LLM | `docs/journals/260623-post-plan-3-verification.md` has non-empty output for all 3 agents; `agent-e2e-integration.test.cjs` passes (when run with `KIMI_API_KEY`) or is properly skipped (when run without) |
 | Plan 4 | All 10 namespaces pass; legacy imports cleared; `pnpm test:cold-session` GREEN | `pnpm test` exits 0; cold-session 8/8; `agent-manifest.json` reflects 5-group structure with workflow + agent groups |
 
 ### Cross-Plan Validation
@@ -165,6 +178,7 @@ Plan 2 (storage)  ──┘
 - **Workflow parity harness** (Plan 1) reads the same input as the legacy `mastra_workflow_*` tool and produces byte-identical output via `createWorkflow`. Validates wire-format coercion survives the migration.
 - **LibSQL/JSONL round-trip** (Plan 2) reads the same data structure via JSONL sidecar AND LibSQL, asserts equal output. Validates storage backend is functionally equivalent for agent memory use cases.
 - **Agent parity harness** (Plan 3) mocks LLM responses (deterministic fixtures) and asserts agent invocation produces expected `meta_state_*` calls. Validates agent reasoning pipeline.
+- **Post Plan 3 functional verification** invokes each agent with a real LLM (gated on `KIMI_API_KEY`) and asserts the response includes expected loop concepts (active rules, scout sections, finding/experiment wording). Validates the agents actually follow the learning loop — not just the mocked machinery.
 - **Cold-session test** (Plan 4) confirms the loop's MCP tool surface is discoverable from a fresh client (8/8 GREEN). Validates cutover didn't break tool loading.
 
 ### Operator-Facing Acceptance
@@ -184,7 +198,8 @@ Plan 2 (storage)  ──┘
 1. **Author Plan 1** (Workflows) — `plans/260618-XXXX-phase-d-plan-1-workflows/plan.md`
 2. **Author Plan 2** (Storage) — `plans/260618-XXXX-phase-d-plan-2-storage/plan.md` (parallel with #1)
 3. **Author Plan 3** (Agents) — `plans/260618-XXXX-phase-d-plan-3-agents/plan.md` (after Plans 1+2 ship)
-4. **Author Plan 4** (Cutover) — `plans/260618-XXXX-phase-d-plan-4-cutover/plan.md` (after Plan 3 ships)
+4. **Run Post Plan 3** (Functional Verification) — operator runs manual smoke test + conditional e2e test; files journal at `docs/journals/260623-post-plan-3-verification.md`. (after Plan 3 ships)
+5. **Author Plan 4** (Cutover) — `plans/260618-XXXX-phase-d-plan-4-cutover/plan.md` (after Post Plan 3 completes)
 
 ### Pre-Conditions for Each Plan
 
@@ -193,7 +208,8 @@ Plan 2 (storage)  ──┘
 | Plan 1 | Phase C Plan 3 closed (✓ 2026-06-17); `tools/learning-loop-mastra/server.js` registers 39 deterministic tools; `create-loop-tool.js` factory exists |
 | Plan 2 | `@mastra/core` 1.42.0 already in deps (✓); LibSQL install probe needed before authoring |
 | Plan 3 | Plans 1 + 2 closed; `create-workflow.js` factory exists; `storage.js` exists |
-| Plan 4 | Plans 1 + 2 + 3 closed; `agent-manifest.json` is up-to-date with 39 deterministic tools |
+| Post Plan 3 | Plan 3 closed; `tools/learning-loop-mastra/agents/{intake,scout,self-improvement}-agent.js` exist; `tools/learning-loop-mastra/__tests__/agent-parity.test.cjs` GREEN; `KIMI_API_KEY` env var available (operator sets it in shell) |
+| Plan 4 | Plans 1 + 2 + 3 closed; Post Plan 3 verification complete (`docs/journals/260623-post-plan-3-verification.md` exists + `agent-e2e-integration.test.cjs` passes-or-skips); `agent-manifest.json` is up-to-date with 39 deterministic tools |
 
 ### Plan Handoff (Recommended)
 
@@ -356,7 +372,7 @@ Items deferred from Plan 1 to Plan 3. Plan 3 inherits the workflow parity guaran
 | 3.2 | **Agent reasoning for `workflow_intentional_skip` and `workflow_report_phase_status`.** These workflows are listed as "Tool+Agent" in the brainstorm Q1 table (line 27). Today they ship as pure-compute workflows. Plan 3 may add agent reasoning on top (e.g., the operator describes the skip, the agent proposes a structured record). | brainstorm line 27 | Not in Plan 1 scope; Plan 3 may revisit. |
 | 3.3 | **D-11 (master tracker line 287):** Reconcile 4 tools missing from legacy `agent-manifest.json` (`propose_design`, `relationships`, `re_verify`, `supersede`). Pre-existing inconsistency between legacy `agent-manifest.json` and `tools/manifest.json`; not in Plan 1 scope. | tracker D-11 | One-line addition to legacy `agent-manifest.json` workflow group. |
 | 3.4 | **Phase-report workflow utility.** `workflow_report_phase_status` returns `lifecycle_complete: bool`. With workflow execution now going through `createWorkflow`, the "phase" abstraction may no longer map cleanly. Confirm with Plan 3 author whether the workflow stays as-is or gets restructured. | review-260619-1429 unresolved question #4 | Open question — not blocking. |
-| 3.5 | **TaskUpdate no-op gap mitigation (Plan 1b follow-up).** Plan 1b deleted the broken `mastra_task_update` wrapper (no `claude task update` subcommand; CLI exposes no programmatic task-update interface). New active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`) tracks the upstream gap. Plan 3 must choose: (a) per-agent workaround (string-match "Updated task #N" on native TaskUpdate stdout, ~30 LOC per agent), (b) accept the gap and document per-agent that the upstream fix is deferred, (c) gate agent task mutations on a `meta_state_derive_status` check that requires explicit operator ack. | `meta-260623T0223Z-...` (active; reopens `meta-260622T1439Z-...`); Plan 1b journal `docs/journals/260622-phase-d-plan-1b-shipped.md`; Plan 1b phase 2 | See "Plan 3 TaskUpdate Mitigation — Upstream Gap" sub-section below for full trade-off. Recommended: (b) for first agent cut; revisit if degenerate loops recur (same shape as session `caa56a15-...` 190-call loop on 2026-06-20). |
+| 3.5 | **TaskUpdate no-op gap is out of Plan 3 scope by construction.** Plan 1b deleted the broken `mastra_task_update` wrapper (no `claude task update` subcommand; CLI exposes no programmatic task-update interface). Active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`) tracks the upstream gap. **Scope: Claude Code sessions only** — Mastra Agents have no path to Claude Code's native `TaskUpdate` (their tool surface is the MCP tools the `tools/learning-loop-mastra/` server registers; no Claude Code native tool is bridged in). No Plan 3 action item. The original 190-call degenerate loop (session `caa56a15-...` 2026-06-20) was a Claude Code session, not a Mastra Agent run. | `meta-260623T0223Z-...` (active; reopens `meta-260622T1439Z-...`); Plan 1b journal `docs/journals/260622-phase-d-plan-1b-shipped.md`; Plan 1b phase 2 | Out of scope by construction. Forward-compatibility note: if a future plan bridges Claude Code native tools into the Mastra runtime (Phase F Bridge 7 territory), revisit. |
 
 #### Plan 4 (cutover, blocked on Plans 1+2+3)
 
@@ -487,46 +503,3 @@ The user-facing value of Plan 2 is workflow persistence + Mastra architectural c
 
 ---
 
-## Plan 3 TaskUpdate Mitigation — Upstream Gap (added 2026-06-23)
-
-**Status:** Decision deferred to Plan 3 author. Locked 2026-06-23 in follow-up to Plan 1b's Path B ship (`9ee5eb8 fix(meta): apply Plan 1b review findings on top of Plan 1a`).
-
-### Context
-
-Plan 1a shipped a `mastra_task_update` wrapper in `tools/learning-loop-mcp/tools/task-update.js` to mitigate Claude Code's native `TaskUpdate` tool returning `"Updated task #N"` regardless of whether the status actually changed (the degenerate-loop root cause for session `caa56a15-2db7-4a83-9ec3-8ab26a8de2ff` 2026-06-20: 190 `TaskUpdate(taskId:5, status:completed)` calls in 150s). Plan 1a's wrapper shelled out to `claude task update --id X --status Y`.
-
-Plan 1b's code review found the wrapper **broken in production**: `claude --help` exposes no `task` subcommand (verified 2026-06-22 23:38 UTC; only `agents`, `doctor`, `install`, `mcp`, `setup-token`, `update` are present). Plan 1b Phase 2 Path B deleted the wrapper, the test, and the manifest entry. The original finding `meta-260622T1439Z-claude-code-s-native-taskupdate-tool-returns-updated-task-n` stays resolved (its closure note is correct: "Plan 1a Phase 9 ships the agreed fix" — the fix shipped, it just turned out to be broken). A new active finding `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` tracks the upstream gap with `reopens: [meta-260622T1439Z-...]` for structural lineage.
-
-**The upstream gap:** no Claude Code programmatic task-update interface returns `{changed: bool}`. No CLI subcommand, no `@anthropic-ai/claude-agent-sdk` method, no MCP tool, no hook event. The native `TaskUpdate` tool is the only entry point; it does not expose a no-op signal. Until upstream changes, any agent that calls `TaskUpdate` in a loop cannot self-detect a no-op.
-
-### Options for Plan 3
-
-| Option | LOC | Risk | When to pick |
-|---|---|---|---|
-| **(a) Per-agent stdout parser** — wrap each agent's `TaskUpdate` calls, capture stdout, string-match `"Updated task #N"`, return `{changed: true}` only when the prior status is unknown. ~30 LOC per agent. | ~30 per agent (~90 total) | Brittle: string-match on a non-contracted output format. Will silently regress if Claude Code output format changes. | If Plan 3 agents need to mutate task state autonomously and we accept the brittleness. |
-| **(b) Accept the gap, document per-agent** — Plan 3 agents do not call `TaskUpdate` autonomously. Task mutations are operator-driven or routed through `meta_state_*` registry. | ~0 | Agents cannot self-advance task state. Multi-step agent flows that depend on task state need operator intervention. | **Recommended** for first agent cut. Aligns with §6 Internalization Rule. |
-| **(c) Gate via `meta_state_derive_status` ack** — agents can call `TaskUpdate`, but each call requires the agent to have an operator-acked `meta_state_derive_status` token first. Forces a meta-surface detour for every task mutation. | ~10 per agent | Operator friction. The 190-call loop is structurally impossible because each call requires a separate ack. | If Plan 3 ships agents that must self-advance and we want a hard structural stop on degenerate loops. |
-
-### Recommendation
-
-**Option (b) for first agent cut. Revisit if degenerate loops recur.**
-
-Rationale:
-- **YAGNI:** Plan 3 ships 3 agents (`intakeAgent`, `scoutAgent`, `selfImprovementAgent`). None of them need autonomous `TaskUpdate` mutations. `intakeAgent` is read-only (orient). `scoutAgent` is read-only (filesystem scout). `selfImprovementAgent` mutates meta-state (via `meta_state_*` tools), not native tasks.
-- **DRY:** routing task mutations through the meta-state registry is one mechanism, not two. Agents gain task state via `meta_state_query_drift` (already on the registry surface) or by emitting `meta_state_report` entries that operators translate to task state. No need to re-invent a task-mutation layer.
-- **KISS:** option (a) is brittle (string-match); option (c) adds operator friction for a 3-agent first cut. Option (b) is the simplest viable default.
-- **Forward-compatible:** if Plan 3.5 or Plan 5 needs task mutation, options (a) or (c) can be added per-agent without changing the other two.
-
-### The 190-call loop shape — what to watch for
-
-If the upstream gap re-surfaces as a Plan 3 incident, the symptom will match session `caa56a15-...` exactly: an agent calls `TaskUpdate` in a tight loop, each call returns "Updated task #N", the agent cannot self-detect the no-op, and the loop consumes tokens until context budget or operator interrupt. The cold-tier discoverability hint already covers `pnpm-test-discipline` for similar loops; Plan 3 should add a `taskupdate-noop-undetected` hint that mirrors the same stop conditions. Filing: `meta_state_report({ category: "loop-anti-pattern", subtype: "taskupdate-noop-undetected" })` with `evidence_journal` pointing to the new incident.
-
-### Cross-references
-
-- **Active finding:** `meta-260623T0223Z-plan-1b-phase-2-path-b-reverted-plan-1a-s-mastra-task-update` (status=`active`, `reopens: [meta-260622T1439Z-...]`, `expires_at: null`).
-- **Original finding (resolved, re-surfaced via `reopens`):** `meta-260622T1439Z-claude-code-s-native-taskupdate-tool-returns-updated-task-n`.
-- **Plan 1b phase 2:** `plans/260622-2119-phase-d-plan-1b-review-fixups/phase-02-critical-fixes.md` Path B steps 1-6.
-- **Plan 1b journal:** `docs/journals/260622-phase-d-plan-1b-shipped.md` Decisions #1, #5 + Forward-looking §"Plan 3 (agents) is unblocked".
-- **Original degenerate loop trace:** `plans/reports/debug-260620-1713-caa56a15-stuck-taskupdate-loop-report.md`.
-- **Code-reviewer report (Critical C1):** `plans/reports/from-code-reviewer-to-planner-260622-2119-phase-d-plan-1a-review-report.md`.
-- **Parent report (this file):** Deferred items table 3.5 (cross-references this section).
