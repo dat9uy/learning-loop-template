@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import * as introspect from "../../core/legacy/loop-introspect.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
-import { readColdTierCache, writeColdTierCache } from "../../core/legacy/loop-introspect-cache.js";
+import * as introspect from "../../core/loop-introspect.js";
+import { readRegistry } from "../../core/meta-state.js";
+import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
 
 export const loopDescribeTool = {
   name: "loop_describe",

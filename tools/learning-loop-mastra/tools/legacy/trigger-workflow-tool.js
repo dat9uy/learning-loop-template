@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
-import { WORKFLOW_REGISTRY } from "../../core/legacy/workflow-registry.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
+import { WORKFLOW_REGISTRY } from "../../core/workflow-registry.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

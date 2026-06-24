@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import {
   metaStateFindingEntrySchema,
   metaStateChangeEntrySchema,
   metaStateRuleEntrySchema,
   metaStateLoopDesignSchema,
-} from "../../core/legacy/meta-state.js";
+} from "../../core/meta-state.js";
 
 const root = resolveRoot();
 

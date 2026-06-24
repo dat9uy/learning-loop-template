@@ -6,7 +6,7 @@ import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MCP_ROOT = dirname(dirname(__dirname));
+const MCP_ROOT = dirname(__dirname);
 
 /**
  * Safely import a module with a timeout.

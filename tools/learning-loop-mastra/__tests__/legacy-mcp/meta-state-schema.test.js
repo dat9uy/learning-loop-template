@@ -7,7 +7,7 @@ import {
   metaStateEntrySchema,
   readRegistry,
   filterEntries,
-} from "../../core/legacy/meta-state.js";
+} from "../../core/meta-state.js";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -314,7 +314,7 @@ describe("meta-state change-log schema", () => {
 
   test("metaStateChangeEntrySchema accepts any change_target string (open)", () => {
     const targets = [
-      "tools/learning-loop-mastra/core/legacy/meta-state.js",
+      "tools/learning-loop-mastra/core/meta-state.js",
       "rule-no-new-artifact-types",
       "https://example.com/design-doc",
     ];

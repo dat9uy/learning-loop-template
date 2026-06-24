@@ -2,7 +2,7 @@
 
 > **2026-06-12 from-scratch rewrite.** The previous version of this document is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. The rewrite drops all product-surface framing (decisions, experiments, risks, observations, capability records, vendor directories) from the top of the document. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface.** This document is the gate-truth for every agent in every session. See `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe, and `plans/reports/consistency-260612-1300-mastra-research-report.md` for the operational source of truth.
 
-Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mastra/core/legacy/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
+Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mastra/core/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
 
 ---
 
@@ -56,7 +56,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 Every feature must work identically on Claude Code and Droid CLI (and future runtimes). The shim-not-fork pattern is the canonical way to achieve this:
 
-- **Core logic** lives in `tools/learning-loop-mastra/{core,hooks,tools}/legacy/` (not under `.claude/` or `.factory/`).
+- **Core logic** lives in `tools/learning-loop-mastra/core/` (not under `.claude/` or `.factory/`).
 - **Surface shims** (`.claude/coordination/hooks/*.cjs` and `.factory/coordination/hooks/*.cjs`) are thin wrappers; the universal hook does the real work.
 - **Hook I/O** goes through `tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
 - **MCP tools** are registered in `tools/learning-loop-mastra/agent-manifest.json`.
@@ -139,7 +139,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mastra/core/legacy/loop-introspect.js#PROCESS_HINTS`.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mastra/core/loop-introspect.js#PROCESS_HINTS`.
 
 ---
 

@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { SURFACES, appendToAllSurfaces } from "../../core/legacy/surfaces.js";
+import { SURFACES, appendToAllSurfaces } from "../../core/surfaces.js";
 
 let root;
 

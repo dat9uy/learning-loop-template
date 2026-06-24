@@ -1,8 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { stripEnvelope } from "../core/legacy/envelope-stripper.js";
-import { strictBooleanGuard } from "../core/legacy/strict-boolean-guard.js";
+import { stripEnvelope } from "../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
 import { buildParitySchema } from "../schema-parity.js";
 
 // Regression net: single-server wire-format correctness after zod-native migration.

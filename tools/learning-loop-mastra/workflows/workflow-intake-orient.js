@@ -47,7 +47,7 @@ async function listMetaTriggers(root) {
 
 async function readRuntimeStateObservations(root) {
   try {
-    const { readRuntimeObservations } = await import("../core/legacy/file-readers.js");
+    const { readRuntimeObservations } = await import("../core/file-readers.js");
     return readRuntimeObservations(root);
   } catch {
     return [];

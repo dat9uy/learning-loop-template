@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url";
 const projectRoot = resolve(process.cwd());
 
 async function importCore(tempRoot) {
-  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js")).href;
+  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js")).href;
   return await import(corePath);
 }
 

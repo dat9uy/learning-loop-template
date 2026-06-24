@@ -4,7 +4,7 @@ import { execSync } from "node:child_process";
 import { readFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();
@@ -46,7 +46,7 @@ test("Phase 5: backfill-mechanism-check runs and is idempotent", () => {
   // continued compaction drift. The original comment (24/29 = 82.8%) was
   // calibrated for the post-2026-06-15 compaction steady state. Since
   // then, 2 more reachable findings lost their `evidence_code_ref` paths
-  // (the `tools/learning-loop-mastra/core/legacy/candidate-to-experiment/`
+  // (the `tools/learning-loop-mastra/core/candidate-to-experiment/`
   // directory was removed), making them unreachable by the backfill
   // script. New ceiling: 19/24 = 79.2%. Threshold 0.75 provides a small
   // headroom below the realistic ceiling while the registry continues
@@ -58,7 +58,7 @@ test("Phase 5: backfill-mechanism-check runs and is idempotent", () => {
   //   2. meta-260613T1448Z-dead-product-surface-code-remains-in-extract-index-list-veri
   //      — no evidence_code_ref
   //   3. meta-260613T1546Z + meta-260613T1547Z — point to
-  //      tools/learning-loop-mastra/core/legacy/candidate-to-experiment/experiment-draft-builder.js
+  //      tools/learning-loop-mastra/core/candidate-to-experiment/experiment-draft-builder.js
   //      which no longer exists (directory removed)
   const coverage = withCheckAfter / resolvedBefore.length;
   console.log(`Coverage: ${withCheckAfter}/${resolvedBefore.length} = ${(coverage * 100).toFixed(1)}%`);

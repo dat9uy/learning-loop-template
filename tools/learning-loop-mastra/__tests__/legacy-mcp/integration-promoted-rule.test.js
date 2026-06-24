@@ -4,8 +4,8 @@ import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.j
 import { metaStatePromoteRuleTool } from "../../tools/legacy/meta-state-promote-rule-tool.js";
 import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
-import { loadPromotedRules, applyPromotedRules } from "../../core/legacy/gate-logic.js";
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
+import { loadPromotedRules, applyPromotedRules } from "../../core/gate-logic.js";
+import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

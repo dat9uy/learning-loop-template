@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
 import { gateCheckTool } from "../../tools/legacy/gate-tool.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 

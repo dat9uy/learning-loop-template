@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { checkGrounding } from "../../core/legacy/check-grounding.js";
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
-import { runVerification } from "../../core/legacy/verification-runner.js";
+import { checkGrounding } from "../../core/check-grounding.js";
+import { readRegistry, updateEntry } from "../../core/meta-state.js";
+import { runVerification } from "../../core/verification-runner.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

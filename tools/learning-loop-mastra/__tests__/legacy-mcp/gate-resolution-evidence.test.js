@@ -9,13 +9,13 @@ const projectRoot = resolve(process.cwd());
 
 // We need to import AFTER setting GATE_ROOT so resolveRoot picks up the temp dir.
 async function importCore(tempRoot) {
-  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js")).href;
+  const corePath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js")).href;
   const core = await import(corePath);
   return core;
 }
 
 async function importGateLogic() {
-  const gateLogicPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/gate-logic.js")).href;
+  const gateLogicPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/gate-logic.js")).href;
   return await import(gateLogicPath);
 }
 
@@ -25,12 +25,12 @@ async function importMetaStateResolveTool() {
 }
 
 async function importLoopIntrospect() {
-  const introspectPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/loop-introspect.js")).href;
+  const introspectPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js")).href;
   return await import(introspectPath);
 }
 
 async function importCheckGrounding() {
-  const groundingPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/legacy/check-grounding.js")).href;
+  const groundingPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/core/check-grounding.js")).href;
   return await import(groundingPath);
 }
 

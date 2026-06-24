@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
-import { buildDiscoverabilityHints, buildProcessHints } from "../../core/legacy/loop-introspect.js";
+import { buildDiscoverabilityHints, buildProcessHints } from "../../core/loop-introspect.js";
 
 describe("loop_describe warm tier discoverability_hints", () => {
   test("warm tier returns discoverability_hints with 16 strings", async () => {

@@ -4,7 +4,7 @@ import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.j
 import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
 import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
 import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

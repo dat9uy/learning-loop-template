@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import {
   readRegistry,
   checkExpiry,
   filterEntries,
   updateEntry,
-} from "../../core/legacy/meta-state.js";
-import { buildInverseIndexes, summarize } from "../../core/legacy/loop-introspect.js";
+} from "../../core/meta-state.js";
+import { buildInverseIndexes, summarize } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

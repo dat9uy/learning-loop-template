@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { readRegistry } from "../../core/legacy/meta-state.js";
-import { buildInverseIndexes } from "../../core/legacy/loop-introspect.js";
+import { readRegistry } from "../../core/meta-state.js";
+import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

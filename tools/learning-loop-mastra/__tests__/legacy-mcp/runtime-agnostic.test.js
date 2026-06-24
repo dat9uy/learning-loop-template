@@ -4,10 +4,10 @@ import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFil
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { CHECKLIST, stripCommentsAndStrings } from "../../core/legacy/runtime-agnostic-checklist.js";
+import { CHECKLIST, stripCommentsAndStrings } from "../../core/runtime-agnostic-checklist.js";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
-const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/core/legacy");
+const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/core");
 const SHIM_CLAUDE = join(MCP_ROOT, ".claude/coordination/hooks");
 const SHIM_FACTORY = join(MCP_ROOT, ".factory/coordination/hooks");
 const MANIFEST_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/agent-manifest.json");
@@ -21,7 +21,7 @@ await test("runtime-agnostic checklist has 6 items and surfaces.js passes them a
     assert.strictEqual(typeof item.verify, "function", "item must have verify function");
   }
 
-  const surfacesRel = "tools/learning-loop-mastra/core/legacy/surfaces.js";
+  const surfacesRel = "tools/learning-loop-mastra/core/surfaces.js";
   for (const item of CHECKLIST) {
     const result = item.verify(surfacesRel, MCP_ROOT);
     assert.ok(result.ok, `${item.id} failed for surfaces.js: ${result.found ?? ""}`);
@@ -44,7 +44,7 @@ await test("surfaces.js exports all cross-surface helpers", () => {
 });
 
 await test("surfaces.js SURFACES is frozen and contains the canonical runtimes", async () => {
-  const mod = await import("../../core/legacy/surfaces.js");
+  const mod = await import("../../core/surfaces.js");
   assert.ok(Object.isFrozen(mod.SURFACES), "SURFACES must be Object.frozen");
   assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory"]);
 });

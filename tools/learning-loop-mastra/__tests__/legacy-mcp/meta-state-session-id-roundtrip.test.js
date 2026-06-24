@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const originalRoot = process.env.GATE_ROOT;

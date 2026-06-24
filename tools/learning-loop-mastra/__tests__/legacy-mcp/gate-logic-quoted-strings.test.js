@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test } from "node:test";
-import { matchConstraintPattern } from "../../core/legacy/gate-logic.js";
+import { matchConstraintPattern } from "../../core/gate-logic.js";
 
 // ─── False-positive cases (message flags) ───
 

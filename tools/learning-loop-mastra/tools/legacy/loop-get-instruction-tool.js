@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { buildDiscoverabilityHints, buildProcessHints } from "../../core/legacy/loop-introspect.js";
+import { buildDiscoverabilityHints, buildProcessHints } from "../../core/loop-introspect.js";
 
 export const HINT_KEY_MAP = {
   "internalization-rule": 0,

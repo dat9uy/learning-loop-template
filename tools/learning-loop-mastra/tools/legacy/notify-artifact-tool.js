@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readLastOperatorMessage, checkObservationStaleness } from "../../core/legacy/inbound-state.js";
-import { evaluateTriggers } from "../../core/legacy/workflow-registry.js";
+import { readLastOperatorMessage, checkObservationStaleness } from "../../core/inbound-state.js";
+import { evaluateTriggers } from "../../core/workflow-registry.js";
 
 export const workflowNotifyArtifactTool = {
   name: "workflow_notify_artifact",

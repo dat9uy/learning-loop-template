@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { listProbes } from "../../core/legacy/list-probes.js";
+import { listProbes } from "../../core/list-probes.js";
 
 describe("list-probes", () => {
   it("lists all .py files under product/<stack>/capabilities/", () => {

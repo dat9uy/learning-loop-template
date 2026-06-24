@@ -97,7 +97,7 @@ describe("meta_state_list entry_kind filter", () => {
       await seedChangeLog();
 
       // Manually resolve the second finding to make it terminal
-      const { updateEntry, readRegistry } = await import("../../core/legacy/meta-state.js");
+      const { updateEntry, readRegistry } = await import("../../core/meta-state.js");
       const entries = readRegistry(tempDir);
       const resolvedEntry = entries.find((e) => e.category === "schema-drift");
       await updateEntry(tempDir, resolvedEntry.id, { status: "resolved", resolved_at: new Date().toISOString(), resolved_by: "operator" });

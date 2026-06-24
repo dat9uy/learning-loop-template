@@ -12,7 +12,7 @@ describe("cold-session churn regression", () => {
 
   test("L1 gap-close does not resolve L2 findings (layer isolation)", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-layer-"));
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const { tryClaimSessionId, readRegistry, updateEntry, generateId } = await import(pathToFileURL(corePath).href);
 
     const sessionId = "test-cold-session-mcp-client-loading";
@@ -70,7 +70,7 @@ describe("cold-session churn regression", () => {
 
   test("tryClaimSessionId deduplicates on exact runtime+layer (no cross-resolution)", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-dedup-"));
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const { tryClaimSessionId, readRegistry, generateId } = await import(pathToFileURL(corePath).href);
     const { writeEntry } = await import(pathToFileURL(corePath).href);
 

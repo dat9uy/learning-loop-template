@@ -14,7 +14,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildDiscoverabilityHints, buildProcessHints } = require("../../core/legacy/loop-introspect.js");
+const { buildDiscoverabilityHints, buildProcessHints } = require("../../core/loop-introspect.js");
 
 async function main() {
   const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");

@@ -399,7 +399,7 @@ console.log('\n=== Category 6: False Positive Rate ===');
 console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
 {
   const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'server.js');
-  const inboundStatePath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'legacy', 'inbound-state.js');
+  const inboundStatePath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'inbound-state.js');
   const serverCode = fs.readFileSync(serverPath, 'utf8');
   const inboundStateCode = fs.readFileSync(inboundStatePath, 'utf8');
   const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');

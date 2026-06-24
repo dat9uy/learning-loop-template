@@ -10,7 +10,7 @@
 //   - Fail path (gapOpen=true): dedup-write via tryClaimSessionId (1 write on
 //     first novel failure; 0 writes on duplicate).
 
-const { tryClaimSessionId, readRegistry, updateEntry, generateId } = require("../../core/legacy/meta-state");
+const { tryClaimSessionId, readRegistry, updateEntry, generateId } = require("../../core/meta-state");
 
 async function defaultWriteFn(root, id, patch) {
   return updateEntry(root, id, patch);

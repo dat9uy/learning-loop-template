@@ -8,7 +8,7 @@ import {
   computeFileHash,
   META_STATE_GROUNDING_STATUSES,
   META_STATE_GROUNDING_DRIFT_KINDS,
-} from "../../core/legacy/check-grounding.js";
+} from "../../core/check-grounding.js";
 
 describe("checkGrounding pure function", () => {
   function makeTempDir(prefix) {

@@ -2,8 +2,8 @@ import {
   writeEntry,
   generateId,
   metaStateFindingEntrySchema,
-} from "../../core/legacy/meta-state.js";
-import { slugify } from "../../core/legacy/slugify.js";
+} from "../../core/meta-state.js";
+import { slugify } from "../../core/slugify.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
