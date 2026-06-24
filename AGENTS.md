@@ -8,9 +8,42 @@ Shared coordination rules for both Claude Code and Droid CLI. All gate logic liv
 
 ## 1. The Meta-Surface (the only bound surface)
 
+### 1.1 The 3 layers (Core / Mastra shell / Runtime interface)
+
+The meta-surface is implemented across 3 layers:
+
+- **Core (functional).** Pure logic. Zero `@mastra/*` imports. Lives at
+  `tools/learning-loop-mastra/core/`. Codifies the FCIS invariant (see
+  `core/README.md`). Owns: meta-state, gate decisions, schema validation,
+  fingerprint computation, drift detection.
+
+- **Mastra shell (imperative).** Wraps core in Mastra framework primitives.
+  Lives at `tools/learning-loop-mastra/` (top level): `server.js`,
+  `create-loop-{tool,workflow,agent}.js`, `workflows/`, `agents/`, `tools/`.
+  May import core; core may NOT import the shell.
+
+- **Runtime interface (contract).** The contract that agent runtimes sign
+  to integrate with the loop. Lives at `tools/learning-loop-mastra/interface/`
+  (NEW in Phase E.1b, ships in Plan 2). A runtime satisfies the 5 contract
+  requirements (see `interface/CONTRACT.md`).
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  Layer 3: Runtime Interface                                │
+└─────────────────────────┬──────────────────────────────────┘
+                          │ satisfies
+┌─────────────────────────▼──────────────────────────────────┐
+│  Layer 2: Mastra Shell                                     │
+└─────────────────────────┬──────────────────────────────────┘
+                          │ wraps
+┌─────────────────────────▼──────────────────────────────────┐
+│  Layer 1: Core                                             │
+└────────────────────────────────────────────────────────────┘
+```
+
 The meta-surface is the loop's self-model. It is the **only contract** the loop writes. Everything else (the substrate, the product surface, the legacy `records/<vendor>/` content) is design exploration, archived for forensic continuity, and explicitly not a contract that constrains the loop.
 
-**The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is a 4-kind discriminated union:
+**The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is implemented across the 3 layers (see §1.1): Core owns the data model, Mastra shell owns the tool surface, Runtime interface owns the agent runtime. It is a 4-kind discriminated union:
 
 | Kind | Role | Lifespan |
 |---|---|---|
