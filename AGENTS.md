@@ -105,6 +105,9 @@ The universal hooks handle tool name differences between surfaces:
 
 ## 3. Meta-Surface Tools (the canonical MCP CRUD surface)
 
+> **Schema reference:** see `tools/learning-loop-mastra/docs/schemas.md` for the
+> canonical schema doc (4 meta-state kinds, runtime-state, wire envelope, parity).
+
 **All meta-surface mutations go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `meta-state.jsonl`, `runtime-state.jsonl`, and to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
 
 ### Available Meta-Surface Tools
