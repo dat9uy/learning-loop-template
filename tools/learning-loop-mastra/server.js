@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { storage, initStorage } from "./storage.js";
+import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(
@@ -52,17 +53,8 @@ for (const { file, export: exportName } of WORKFLOW_MANIFEST) {
 // MASTRA_AGENTS_MANIFEST is a TEST-ONLY env var (used by agent-parity.test.cjs).
 // In production, the default agents-manifest.json is loaded. Never set this env
 // var in a production deployment; the test fixture under __tests__/fixtures/ is
-// for parity tests only.
-const AGENTS_MANIFEST_PATH =
-  process.env.MASTRA_AGENTS_MANIFEST ?? join(__dirname, "agents-manifest.json");
-// Path containment: ensure manifest resolves within the project directory
-const resolvedManifestPath = resolve(AGENTS_MANIFEST_PATH);
-if (!resolvedManifestPath.startsWith(resolve(__dirname))) {
-  throw new Error(
-    `MASTRA_AGENTS_MANIFEST path "${AGENTS_MANIFEST_PATH}" resolves outside the project directory`,
-  );
-}
-const AGENTS_MANIFEST = JSON.parse(readFileSync(resolvedManifestPath, "utf8"));
+// for parity tests only. Path containment is enforced in loadAgentsManifest.
+const AGENTS_MANIFEST = loadAgentsManifest();
 const agents = {};
 for (const [key, entry] of Object.entries(AGENTS_MANIFEST.agents)) {
   const mod = await import(`./${entry.file}`);

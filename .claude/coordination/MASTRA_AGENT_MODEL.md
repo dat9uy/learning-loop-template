@@ -14,7 +14,7 @@ API key for the Kimi router. The Mastra model router auto-injects this when an a
 
 Overrides the model for all 3 agents. Format: `provider/model` (e.g., `kimi-for-coding/k2p6`).
 
-When set, this takes precedence over the per-agent `model` field in `agents-manifest.json`, but is overridden by the per-agent field if that is also set.
+The per-agent `model` field in `agents-manifest.json` overrides this env var; this env var overrides the code default. See "3-Layer Lookup Order" below.
 
 ## 3-Layer Lookup Order
 

@@ -1,7 +1,8 @@
 /**
  * createTool wrapper over tools/learning-loop-mcp/scout/run-scout.js#runScout.
  * Read-only contract: exposes only { projectRoot?, excludeGlobs? }.
- * Write flags (writeJson, writeMarkdown) are hidden from the agent.
+ * Write flags (writeJson, writeMarkdown) are pinned to false in the wrapper so
+ * the contract is local — not derived from defaults in run-scout.js.
  */
 import { createLoopTool } from "../create-loop-tool.js";
 import { z } from "zod";
@@ -19,7 +20,8 @@ export const runScoutTool = createLoopTool({
     return await runScout({
       projectRoot: input.projectRoot,
       excludeGlobs: input.excludeGlobs,
-      // writeJson + writeMarkdown NOT exposed (read-only contract)
+      writeJson: false,
+      writeMarkdown: false,
     });
   },
 });

@@ -76,7 +76,16 @@ const WRITE_NAMES = [
 function pick(dict, names) {
   const result = {};
   for (const name of names) {
-    if (dict[name]) result[name] = dict[name];
+    if (dict[name]) {
+      result[name] = dict[name];
+    } else {
+      // Fail-fast: a missing tool in the read-only/write surface means the
+      // manifest has drifted (D-11 reconciliation, tool rename, etc.).
+      // Surface at server start, not silently at agent construction.
+      throw new Error(
+        `build-meta-state-tools: required tool "${name}" missing from manifest cache. Check tools/learning-loop-mastra/tools/manifest.json.`,
+      );
+    }
   }
   return result;
 }
