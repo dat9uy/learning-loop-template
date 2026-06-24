@@ -213,8 +213,13 @@ describe("cold-session enumerate mastra manifest", () => {
       assert.ok(t.name.length > 0, `tool name must be non-empty`);
       assert.strictEqual(typeof t.description, "string", `${t.name}: description must be string`);
       assert.ok(t.description.length > 0, `${t.name}: description must be non-empty`);
-      assert.ok(typeof t.inputSchema === "object" && t.inputSchema !== null,
-        `${t.name}: inputSchema must be object`);
+      // Backward-compat: accept both `inputSchema` (Mastra convention) and
+      // `schema` (legacy convention). The existing cold-session test at
+      // tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs
+      // lines 91-94 uses this same dual check.
+      const hasSchema = (typeof t.inputSchema === "object" && t.inputSchema !== null) ||
+        (typeof t.schema === "object" && t.schema !== null);
+      assert.ok(hasSchema, `${t.name}: inputSchema or schema must be object`);
     }
   });
 });

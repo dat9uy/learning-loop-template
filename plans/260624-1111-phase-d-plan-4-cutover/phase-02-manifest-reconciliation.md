@@ -151,17 +151,21 @@ describe("manifest arithmetic", () => {
 
   test("every tools/manifest.json entry appears in agent-manifest.json", () => {
     // Each tool's MCP name is `mastra_<name>` per server.js:23
+    // The tool's exported `name` field determines the MCP name.
     const allAgentTools = new Set(
       Object.values(agentManifest.groups).flatMap((g) => g.tools),
     );
-    for (const { file, export: exportName } of tools) {
-      // We need the actual legacy.name to compute the MCP name.
-      // Easiest: just verify each tool's expected prefix is present.
-      // For full correctness, load each tool module and read its `name`.
-      // (Done by the existing workflow-parity.test.cjs; we cross-check here.)
+    for (const { file } of tools) {
+      // Load the tool module to read its exported `name`.
+      const toolPath = join(PKG, file);
+      const mod = require(toolPath);
+      const toolName = mod.default?.name || mod.name;
+      const mcpName = `mastra_${toolName}`;
+      assert.ok(
+        allAgentTools.has(mcpName),
+        `tool ${file} exports name "${toolName}" → MCP name "${mcpName}" not found in agent-manifest.json#groups`,
+      );
     }
-    // (See also the workflow-parity.test.cjs for the actual server-side count assertion.)
-    assert.ok(allAgentTools.has("mastra_meta_state_log_change")); // sanity check
   });
 
   test("every run_<id> from workflows-manifest.json is in agent-manifest.json#workflow", () => {

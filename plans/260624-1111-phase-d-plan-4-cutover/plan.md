@@ -33,7 +33,7 @@ related:
   - tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs (legacy e2e test asserting 31 tools; currently failing post-Plan-3; phase-06 relaxes to >= 31)
   - tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs (currently loads the wrong manifest; phase-06 fixes)
   - "tools/learning-loop-mastra/__tests__/workflow-parity.test.cjs (the 44-tool count assertion ground truth; phase-02 reads this to verify)"
-  - "tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs (the conditional KIMI_API_KEY e2e test for phase-01)"
+  - "tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs (the conditional KIMI_API_KEY e2e test for phase-01)"
   - "tools/learning-loop-mastra/agents/instructions/scout-agent.js (LOCKED instruction markers; phase-07 cannot edit without test fixture update)"
   - ".claude/settings.local.json (R4 cascade target — mcp__learning-loop-mastra__* allowlist + enabledMcpjsonServers)"
   - ".factory/mcp.json (R4 cascade target — learning-loop-mastra key)"
@@ -57,8 +57,8 @@ related:
 4. **AGENTS.md §1 + §2 note (Phase 4)** — add a one-line Phase-D-shipped callout to §1; fix the stale "40 tools across 5 groups" statement on §2 line 51.
 5. **Master tracker reconciliation (Phase 5)** — flip D-9, D-15, partial E2; file 1 `meta_state_log_change`.
 6. **Cold-session discoverability fix (Phase 6)** — `cold-session-discoverability.test.cjs` currently loads the wrong manifest (legacy 31-entry, but the test runs against the mastra server). Update to enumerate the 44-tool mastra surface. Also relax the legacy e2e test (`mcp-protocol-e2e.test.cjs:70`) from `=== 31` to `>= 31`.
-7. **Legacy cleanup (Phase 7, C-9)** — move `tools/learning-loop-mcp/tools/` → `tools/learning-loop-mastra/tools/legacy/`; migrate 5 cross-package `#mcp/*` imports + 2 direct path imports in the mastra side; delete the `#mcp/*` import alias from `package.json`. Plan 1's file-move pattern is the precedent.
-8. **JSON key rename (Phase 8, R4)** — rename `learning-loop-mastra` → `learning-loop` in `.mcp.json`, `.factory/mcp.json`, and `.claude/settings.local.json` (5 `mcp__learning-loop-mastra__*` allowlist entries + 1 `enabledMcpjsonServers`). Does NOT touch the legacy `tools/learning-loop-mcp/references/...` paths in SKILL.md (those are different).
+7. **Legacy cleanup (Phase 7, C-9)** — move `tools/learning-loop-mcp/{tools,core,scout,hooks}/` → `tools/learning-loop-mastra/{tools,core,scout,hooks}/legacy/`; migrate 11 cross-package `#mcp/*` import lines across 9 files (including server.js:27 dynamic import) + 2 direct path imports + ~68 self-imports; update `.factory/hooks/loop-surface-inject.cjs` core path references; delete the `#mcp/*` import alias from `package.json`. Plan 1's file-move pattern is the precedent. **Option A for hooks** (move to legacy/) — Option B is structurally impossible because hooks import `#mcp/core/*` which moves.
+8. **JSON key rename (Phase 8, R4)** — rename `learning-loop-mastra` → `learning-loop` in `.mcp.json`, `.factory/mcp.json`, and `.claude/settings.local.json` (6 `mcp__learning-loop-mastra__*` allowlist entries + 1 `enabledMcpjsonServers`). Also updates 30+ test files, hook loader, scripts, and source code. **Critical:** only rename MCP server key references; do NOT rename filesystem paths (`tools/learning-loop-mastra/`). Does NOT touch the legacy `tools/learning-loop-mcp/references/...` paths in SKILL.md (those are different).
 9. **Acceptance gate + closeout (Phase 9)** — all 10 namespaces pass; cold-session 11/11 GREEN; legacy imports cleared; master tracker reconciled; journal + PR body filed.
 
 **Out of scope (per master tracker):**
@@ -125,13 +125,13 @@ None. All in-scope plans are completed.
 
 Plan 4 ships when **all** of the following are true:
 
-- [ ] Phase 1: `docs/journals/260623-post-plan-3-verification.md` exists with non-empty output for all 3 agents; `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` passes (with `KIMI_API_KEY`) or properly skips (without); 1 `meta_state_log_change` filed with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`.
+- [ ] Phase 1: `docs/journals/260623-post-plan-3-verification.md` exists with non-empty output for all 3 agents; `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs` passes (with `KIMI_API_KEY`) or properly skips (without); 1 `meta_state_log_change` filed with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`.
 - [ ] Phase 2: `tools/learning-loop-mastra/agent-manifest.json#workflow.tools` has 13 entries (8 run + 3 mastra_workflow_* + 2 storage). `tools/learning-loop-mastra/agent-manifest.json#groups` totals 44. New `tools/learning-loop-mastra/__tests__/manifest-arithmetic.test.cjs` asserts the 44-tool count + 6-group structure + 13 workflow group + cross-walk between the 4 manifest files.
 - [ ] Phase 3: `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.10 (lines 620-637 + 646-653 + 663-696) is updated to reflect the post-Phase-D state. 1 `meta_state_log_change` filed with `change_target: 'plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md#§3.10'` (per Q5 protocol, BEFORE the edit).
 - [ ] Phase 4: `AGENTS.md §1` has a one-line "Phase D shipped 2026-06-24" callout. `AGENTS.md §2` line 51 reads "44 tools across 6 groups per `tools/learning-loop-mastra/agent-manifest.json` (verified 2026-06-24)".
 - [ ] Phase 5: `plans/reports/productization-260612-1530-master-tracker.md` Phase D section (lines 197-211) is unchanged (D1-D7 are already `[x]`). "Deferred Items Backlog" table (lines 274-353) has D-9 flipped from `🟡 READY (Plan 3)` to `✅ DONE (Plan 4, 2026-06-24)`; D-11 confirmed `✅ DONE (Plan 3, 2026-06-23)`; D-15 flipped from `🔵 OPEN` to `✅ DONE (Plan 1, 2026-06-19)`. E2 row added with `🟡 PARTIAL (Plan 4: legacy/ move; E3 SKILL.md update deferred to Phase E)`. 1 `meta_state_log_change` filed.
 - [ ] Phase 6: `tools/learning-loop-mcp/__tests__/cold-session-discoverability.test.cjs` enumerates the mastra manifest (44 tools across 6 groups), not the legacy manifest. `tools/learning-loop-mcp/__tests__/mcp-protocol-e2e.test.cjs:70` relaxed from `=== 31` to `>= 31` (matching the mastra-side e2e pattern at `tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs:78`). New `tools/learning-loop-mastra/__tests__/cold-session-enumerate-mastra.test.cjs` asserts all 44 tools register with valid `name`/`description`/`inputSchema`.
-- [ ] Phase 7: `tools/learning-loop-mcp/tools/` moved to `tools/learning-loop-mastra/tools/legacy/`. 5 cross-package `#mcp/*` imports in mastra code (schemas.js, create-loop-workflow.js, run-scout-tool.js, workflow-intake-plan.js, workflow-self-improvement.js) migrated to direct relative paths. 2 direct `../../learning-loop-mcp/core/...` imports in `__tests__/coerce-correctness.test.js` migrated. `#mcp/*` import alias deleted from `package.json#imports`. 5 prose references in `agents/instructions/scout-agent.js` (3) and `agents/run-scout-tool.js` (2) updated to the new path — and the `agent-prompt-content.test.cjs` fixture + `agent-prompt-content.test.cjs` markers updated correspondingly to keep the LOCKED instruction markers test green.
+- [ ] Phase 7: `tools/learning-loop-mcp/` is empty (tools/, core/, scout/, hooks/ all moved to `tools/learning-loop-mastra/{tools,core,scout,hooks}/legacy/`). 11 cross-package `#mcp/*` import lines across 9 files migrated (including server.js:27 and build-meta-state-tools.js:38 dynamic imports). 2 direct path imports in `__tests__/coerce-correctness.test.js` migrated. ~68 self-imports migrated. 5 prose references in `agents/instructions/scout-agent.js` (3) and `agents/run-scout-tool.js` (2) updated. `.factory/hooks/loop-surface-inject.cjs` core path references updated. `#mcp/*` import alias deleted from `package.json#imports`. `agent-prompt-content.test.cjs` LOCKED instruction markers test stays GREEN.
 - [ ] Phase 8: `.mcp.json` key renamed `learning-loop-mastra` → `learning-loop`. `.factory/mcp.json` same. `.claude/settings.local.json` allowlist updated (`mcp__learning-loop-mastra__*` → `mcp__learning-loop__*`); `enabledMcpjsonServers` updated.
 - [ ] Phase 9: All 10 test namespaces pass (per `package.json#scripts.test`); `pnpm test:cold-session` GREEN (11/11 or scope-unchanged); `git grep "#mcp/"` returns 0 matches outside `node_modules` and `data/`; `git grep "learning-loop-mastra"` returns 0 matches outside `node_modules`, `data/`, and `meta-state.jsonl` (the meta-state has historical references that are immutable). Master tracker reconciled. 1 `meta_state_log_change` filed with `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'`. Journal `docs/journals/260624-phase-d-plan-4-cutover-shipped.md` filed. PR body enumerates registry deltas (per `rule-pr-body-registry-deltas`).
 
@@ -141,7 +141,7 @@ Plan 4 ships when **all** of the following are true:
 |---|---|---|
 | Phase 1 verification cannot run because operator has no `KIMI_API_KEY` | Medium | Conditional e2e test (already in `agent-e2e-integration.test.cjs`) skips cleanly when `KIMI_API_KEY` is unset. Plan 4 can ship with the test in skip state as long as the journal documents the skip explicitly. |
 | Phase 7 prose-reference migration (5 references in `scout-agent.js` + `run-scout-tool.js`) breaks `agent-prompt-content.test.cjs` (C3 finding) | Low | The test fixture holds the locked instruction markers. Update the fixture + the agents simultaneously in one commit; `agent-prompt-content.test.cjs` asserts the marker is present, not the path. |
-| Phase 7 `#mcp/*` alias deletion breaks the legacy `core/` consumers that depend on the alias | Low | The 7 cross-package consumers are exhaustively enumerated (scout report §3). The 38 self-imports inside `tools/learning-loop-mcp/` are first migrated to direct relative paths, then the alias is deleted. Phase 7 atomic: migrate + alias-delete in one commit. |
+| Phase 7 `#mcp/*` alias deletion breaks the legacy `core/` consumers that depend on the alias | Low | The 11 cross-package import lines across 9 files are exhaustively enumerated (including server.js:27 and build-meta-state-tools.js:38). The ~68 self-imports inside `tools/learning-loop-mcp/` are first migrated to direct relative paths, then the alias is deleted. Phase 7 atomic: migrate + alias-delete in one commit. |
 | Phase 8 JSON rename cascades to Droid state + Claude Code state files outside the repo | Medium | Plan 4 ships the rename in repo files only. The Droid state file (e.g., `~/.droid/...`) and Claude Code state file (e.g., `~/.claude/...`) are not in the repo. Operator must update these manually after Plan 4 ships; Plan 4 PR body documents this. |
 | Phase 8 leaves `mcp__learning-loop__mastra_meta_state_list` ambiguity (since the legacy namespace was `mcp__learning-loop-mastra__mastra_meta_state_list` which is doubly-prefixed; see scout report §9.7) | Low | Rename is mechanical: `mcp__learning-loop-mastra__*` → `mcp__learning-loop__*`. The doubly-prefixed `mcp__learning-loop-mastra__mastra_*` becomes `mcp__learning-loop__mastra_*` which is correct. |
 | Plan 4 PR body fails `rule-pr-body-registry-deltas` consult-checklist | Low | Plan 4 PR body must enumerate registry-deltas (sweep/resolved/new/promoted/superseded/archived) per the rule pattern. Phase 9 acceptance gate explicitly checks this. |
@@ -155,10 +155,11 @@ Plan 4 ships when **all** of the following are true:
 - **Test gate:** "All 10 namespaces pass" (per `package.json#scripts.test`). Plan 4 must also pass `pnpm test:cold-session` (cold-session regression prevention per `rule-cold-session-test-must-pass-before-resolution`).
 - **Backward compatibility:** None required post-Phase C cutover. The legacy `tools/learning-loop-mcp/server.js` was deleted in Plan 3 C6. Plan 4 phase-07 moves the legacy `tools/` (and `core/`, `scout/`, etc.) to `legacy/` and deletes the `#mcp/*` import alias. There is no peer-MCP coexistence.
 - **Mastra import discipline:** Phase 8 may need to add a new import alias (e.g., `#loop-tools/*` for the legacy `tools/learning-loop-mcp/core/...` consumers that are moved to `tools/learning-loop-mastra/core/legacy/`). The new alias is OPTIONAL — direct relative paths are preferred.
-- **Audit trail:** Plan 4 files 3 `meta_state_log_change` entries total:
+- **Audit trail:** Plan 4 files 4 `meta_state_log_change` entries total:
   1. Phase 1: `change_target: 'docs/journals/260623-post-plan-3-verification.md'`
   2. Phase 3: `change_target: 'plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md#§3.10'` (Q5 protocol: file FIRST before the edit)
-  3. Phase 9: `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` (master-tracker final flip)
+  3. Phase 5: `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` (D-9 + D-15 + E1 + E4 + E2 flips)
+  4. Phase 9: `change_target: 'plans/reports/productization-260612-1530-master-tracker.md'` (master-tracker final flip)
 - **AGENTS.md §1 contract:** "Meta-surface as the only bound surface" stays load-bearing. Plan 4 phase-04 adds a one-line observational note; it does not modify the §1 contract itself.
 - **No `dotenv` import:** Plan 4 does not introduce `dotenv` imports. `KIMI_API_KEY` is read from `process.env` directly per the existing convention.
 - **No `mastra_` prefix for new tools:** Plan 4 does not add new MCP tools; it only renames the MCP server key. The 3 `ask_*` agents and 8 `run_workflow_*` workflows keep their names.
@@ -167,7 +168,7 @@ Plan 4 ships when **all** of the following are true:
 
 **Phase 1 (Post-Plan-3 verification):**
 - Create: `docs/journals/260623-post-plan-3-verification.md` (operator-filled)
-- Read: `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` (already exists from Plan 3)
+- Read: `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs` (already exists from Plan 3)
 
 **Phase 2 (Manifest reconciliation):**
 - Modify: `tools/learning-loop-mastra/agent-manifest.json` (add 2 storage workflow entries to `workflow` group; `workflow` group goes from 11 to 13)
@@ -196,19 +197,21 @@ Plan 4 ships when **all** of the following are true:
 - Move: `tools/learning-loop-mcp/tools/` → `tools/learning-loop-mastra/tools/legacy/` (mirror Plan 1's file-move pattern)
 - Move: `tools/learning-loop-mcp/core/` → `tools/learning-loop-mastra/core/legacy/` (C-9 also affects core; the alias is `#mcp/*` → `tools/learning-loop-mcp/*`, so deleting the alias requires moving `core/` and `scout/` too)
 - Move: `tools/learning-loop-mcp/scout/` → `tools/learning-loop-mastra/scout/legacy/`
-- Modify: 5 cross-package `#mcp/*` imports in mastra code (replace with direct relative paths or new alias)
+- Modify: 11 cross-package `#mcp/*` import lines across 9 files (including server.js:27 dynamic import; replace with direct relative paths)
 - Modify: 2 direct path imports in `__tests__/coerce-correctness.test.js`
 - Modify: 5 prose references in `agents/instructions/scout-agent.js` + `agents/run-scout-tool.js` (update paths; update `agent-prompt-content.test.cjs` fixture correspondingly)
 - Modify: `package.json#imports` (delete `#mcp/*` alias)
-- Modify: `tools/learning-loop-mcp/hooks/*.js` (38 self-imports migrate to direct relative paths; the hooks directory may also be moved to `tools/learning-loop-mcp/hooks/legacy/` or stay in place)
+- Move: `tools/learning-loop-mcp/hooks/` → `tools/learning-loop-mastra/hooks/legacy/` (Option A — hooks must move with core/ per red-team Finding 3)
+- Modify: 7 hook self-imports migrate from `#mcp/core/...` to `../../core/legacy/...`
+- Modify: `.factory/hooks/loop-surface-inject.cjs:123,205` (core path references to `tools/learning-loop-mcp/core/meta-state.js` → `tools/learning-loop-mastra/core/legacy/meta-state.js`)
 - Create: `tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs` (assert no `#mcp/*` imports remain; assert all 7 cross-package consumers resolve to the new paths; assert the moved files are importable from their new locations)
 
 **Phase 8 (JSON rename):**
 - Modify: `.mcp.json` (rename key `learning-loop-mastra` → `learning-loop`)
 - Modify: `.factory/mcp.json` (same)
-- Modify: `.claude/settings.local.json` (5 `mcp__learning-loop-mastra__*` allowlist entries → `mcp__learning-loop__*`; 1 `enabledMcpjsonServers` entry)
+- Modify: `.claude/settings.local.json` (6 `mcp__learning-loop-mastra__*` allowlist entries → `mcp__learning-loop__*`; 1 `enabledMcpjsonServers` entry)
 - Create: `docs/operator-notes/mcp-server-rename.md` (operator-facing note: Droid state + Claude Code state must be updated manually after merge)
-- Update: any in-repo test fixtures that reference `learning-loop-mastra` (scout report §6 enumerates 13 test files + 2 probe scripts; phase-08 ships a `git grep -l "learning-loop-mastra" -- ':!*.md'` audit + mechanical rename in repo files)
+- Update: 30+ files across `tools/`, `.factory/`, `.claude/` that reference the MCP server name `learning-loop-mastra` (12+ test files in tools/, 4 in .factory/hooks/__tests__/, 3 in .claude/coordination/__tests__/, hook loader, scripts, source code; phase-08 ships a `grep -rl` audit + mechanical rename). Critical: only rename MCP server key references; do NOT rename filesystem paths.
 
 **Phase 9 (Acceptance gate):**
 - Run: `pnpm test` (all 10 namespaces)
@@ -217,6 +220,46 @@ Plan 4 ships when **all** of the following are true:
 - Run: `git grep "learning-loop-mastra"` (assert 0 outside node_modules + data + meta-state.jsonl)
 - Create: `docs/journals/260624-phase-d-plan-4-cutover-shipped.md`
 - 1 `meta_state_log_change` filed
+
+## Red Team Review
+
+### Session — 2026-06-24
+**Findings:** 15 (15 accepted, 0 rejected)
+**Severity breakdown:** 4 Critical, 4 High, 7 Medium
+**Reviewers:** Security Adversary, Assumption Destroyer, Failure Mode Analyst, Scope & Complexity Critic
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | server.js + build-meta-state-tools.js dynamic `#mcp/` imports missing from Phase 7 | Critical | Accept | Phase 7 |
+| 2 | Self-import count wrong (38 vs 65-71) | Critical | Accept | Phase 7 |
+| 3 | Option B (keep hooks in place) structurally impossible after core/ move + alias deletion | Critical | Accept | Phase 7 |
+| 4 | Phase 1 e2e test path wrong (file is in `__tests__/debug/`) | Critical | Accept | Phase 1 |
+| 5 | Phase 7 misses ~64 direct filesystem path references in test files | High | Accept | Phase 7 |
+| 6 | Phase 8 R4 scope incomplete — misses 7+ test files in .factory/ and .claude/ | High | Accept | Phase 8 |
+| 7 | .factory/hooks/loop-surface-inject.cjs has direct paths to learning-loop-mcp/core/ | High | Accept | Phase 7+8 |
+| 8 | Phase 9 acceptance gate `git grep` missing records/ exclusion for cold-cache | High | Accept | Phase 9 |
+| 9 | Allowlist count is 6, not 5 | Medium | Accept | Phase 8 |
+| 10 | Manifest-arithmetic test cross-walk is a hollow stub | Medium | Accept | Phase 2 |
+| 11 | Cold-session test drops backward-compatible schema validation | Medium | Accept | Phase 6 |
+| 12 | loop-introspect.js references are filesystem paths, not server names — R4 should not rename | Medium | Accept | Phase 8 |
+| 13 | Phase 6→7 dependency chain — cold-session test breaks after file move | Medium | Accept | Phase 6+7 |
+| 14 | meta_state_log_change count: plan.md says 3, actual is 4 | Medium | Accept | plan.md |
+| 15 | Phase 8 mechanical rename risks corrupting filesystem paths | Medium | Accept | Phase 8 |
+
+### Whole-Plan Consistency Sweep
+- Files reread: plan.md, phase-01 through phase-09
+- Decision deltas checked: 15
+- Reconciled stale references: 15 (all findings applied to plan.md + phase files)
+- Unresolved contradictions: 0
+
+**Key changes from red-team review:**
+- Phase 7: Option B → Option A (hooks must move with core/); cross-package consumers 5→9 files; self-imports 38→~68; added .factory/hooks/loop-surface-inject.cjs core path references
+- Phase 8: allowlist count 5→6; test file scope 13→30+; added loop-introspect.js DO NOT RENAME annotation; added regex guidance for mechanical rename
+- Phase 1: e2e test path corrected to `__tests__/debug/`
+- Phase 2: manifest-arithmetic test cross-walk implemented (was hollow stub)
+- Phase 6: backward-compat schema check preserved in new test
+- Phase 9: added records/ exclusion to git grep audit
+- plan.md: meta_state_log_change count 3→4
 
 ## Cross-References
 

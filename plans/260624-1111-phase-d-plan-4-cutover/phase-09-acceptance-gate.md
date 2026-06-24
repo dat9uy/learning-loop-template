@@ -73,7 +73,11 @@ Expected: all 4 tests pass. These are the Plan-4-specific tests; they assert the
 git grep -l "#mcp/" -- ':!node_modules' ':!data' ':!meta-state.jsonl' ':!plans/' ':!docs/journals/' ':!plans/reports/' || echo "OK: 0 #mcp/* imports in non-legacy code"
 
 # 2. No learning-loop-mastra in non-legacy code
-git grep -l "learning-loop-mastra" -- ':!node_modules' ':!data' ':!meta-state.jsonl' ':!plans/' ':!docs/journals/' ':!plans/reports/' ':!docs/operator-notes/mcp-server-rename.md' || echo "OK: 0 learning-loop-mastra in non-legacy code"
+# Exclude: node_modules, data/, meta-state.jsonl (immutable audit log),
+# plans/ + plans/reports/ (historical record), docs/journals/ (historical),
+# docs/operator-notes/mcp-server-rename.md (legitimately references old name),
+# records/ (cold cache at records/meta/.cache/ is regenerated on next run)
+git grep -l "learning-loop-mastra" -- ':!node_modules' ':!data' ':!meta-state.jsonl' ':!plans/' ':!docs/journals/' ':!plans/reports/' ':!docs/operator-notes/mcp-server-rename.md' ':!records/' || echo "OK: 0 learning-loop-mastra in non-legacy code"
 ```
 
 Expected: both audits return 0 files (or the OK message). The exclusions match the historical record (plans/, journals/, meta-state.jsonl are immutable) and the cold cache (data/).
@@ -134,8 +138,8 @@ Plan 4 is the cutover for Phase D (the Mastra migration). It closes Phase D and 
 4. **AGENTS.md §1+§2 update** (Phase 4) — one-line "Phase D shipped" callout added to §1; stale "40 tools across 5 groups" statement on §2 line 51 fixed to "44 tools across 6 groups".
 5. **Master tracker reconciliation** (Phase 5) — D-9, D-15, E1, E4 flipped to ✅ DONE; E2 flipped to 🟡 PARTIAL; "Last updated" header bumped to 2026-06-24.
 6. **Cold-session discoverability fix** (Phase 6) — `cold-session-discoverability.test.cjs` updated to enumerate the mastra manifest (44 tools); legacy e2e test relaxed to `>= 31`; new `cold-session-enumerate-mastra.test.cjs` (5 tests) added.
-7. **Legacy cleanup (C-9)** (Phase 7) — `tools/learning-loop-mcp/{tools,core,scout}/` moved to `tools/learning-loop-mastra/{tools,core,scout}/legacy/`; 5 cross-package + 2 direct + 38 self `#mcp/*` imports migrated; 5 prose references updated; `#mcp/*` alias deleted from `package.json`; new `legacy-cleanup.test.cjs` (7 tests) added.
-8. **JSON key rename (R4)** (Phase 8) — MCP server key renamed `learning-loop-mastra` → `learning-loop` in `.mcp.json`, `.factory/mcp.json`, `.claude/settings.local.json`; 13 test files + 2 probe scripts + 2 build scripts + 3 legacy core files + 1 hook loader updated; new `server-name-rename.test.cjs` (6 tests) added; `docs/operator-notes/mcp-server-rename.md` documents the manual per-machine state updates.
+7. **Legacy cleanup (C-9)** (Phase 7) — `tools/learning-loop-mcp/{tools,core,scout,hooks}/` moved to `tools/learning-loop-mastra/{tools,core,scout,hooks}/legacy/`; 11 cross-package + 2 direct + ~68 self `#mcp/*` imports migrated; 5 prose references updated; `.factory/hooks/loop-surface-inject.cjs` core path references updated; `#mcp/*` alias deleted from `package.json`; new `legacy-cleanup.test.cjs` (7 tests) added.
+8. **JSON key rename (R4)** (Phase 8) — MCP server key renamed `learning-loop-mastra` → `learning-loop` in `.mcp.json`, `.factory/mcp.json`, `.claude/settings.local.json` (6 allowlist entries); 30+ files updated (12+ test files in tools/, 4 in .factory/hooks/__tests__/, 3 in .claude/coordination/__tests__/, hook loader, scripts, source code); new `server-name-rename.test.cjs` (6 tests) added; `docs/operator-notes/mcp-server-rename.md` documents the manual per-machine state updates.
 9. **Acceptance gate + closeout** (Phase 9) — all 10 namespaces pass; cold-session 11/11 GREEN; legacy-cleanup + server-name-rename tests GREEN; 1 final `meta_state_log_change` filed; this journal; PR body.
 
 **Test count baseline:**
@@ -168,7 +172,7 @@ Plan 4 is the cutover for Phase D (the Mastra migration). It closes Phase D and 
 1. **Post-Plan-3 verification was a Phase 0 of Plan 4** (per brainstorm line 152-160; per user decision 2026-06-24 to "include C-9 + R4 in Plan 4" + "Phase 0 of Plan 4 (Recommended)" for the verification step).
 2. **C-9 (legacy cleanup) was included in Plan 4** (per user decision 2026-06-24). The cleanup moves the legacy code to `tools/learning-loop-mastra/{tools,core,scout}/legacy/` (not delete) for forensic continuity per the Phase A convention.
 3. **R4 (JSON rename) was included in Plan 4** (per user decision 2026-06-24). The rename is namespace-only; the filesystem path `tools/learning-loop-mastra/` is unchanged.
-4. **Hooks directory stays in `tools/learning-loop-mcp/hooks/`** (Phase 7 Option B). The hooks are loaded by `.factory/hooks/loop-surface-inject.cjs`; moving them adds risk without value.
+4. **Hooks directory moved to `tools/learning-loop-mastra/hooks/legacy/`** (Phase 7 Option A). Option B is structurally impossible — hooks import `#mcp/core/*` which moves to `core/legacy/`. The `.factory/hooks/loop-surface-inject.cjs` loader is updated in the same commit.
 5. **Cold cache file (`records/meta/.cache/loop-describe-cold.json`) is not modified** — it will be regenerated on the next cold tier computation.
 6. **Historical references in plans/ + journals/ are preserved** — they are the engineering record; R4 does not erase them.
 7. **meta-state.jsonl historical references are preserved** — the audit log is append-only.
@@ -230,9 +234,9 @@ Plan 4 phase-07 moves 31 deterministic tool files from `tools/learning-loop-mcp/
 
 **Import chain analysis:**
 
-- 5 cross-package `#mcp/*` imports migrated to direct relative paths
+- 11 cross-package `#mcp/*` import lines across 9 files migrated to direct relative paths
 - 2 direct path imports in `__tests__/coerce-correctness.test.js` migrated
-- 38 self-imports inside the moved files migrated
+- ~68 self-imports inside the moved files migrated
 - 5 prose references in agent instructions + scout tool descriptions updated
 
 The `#mcp/*` import alias is deleted from `package.json#imports`. No remaining `#mcp/*` references in the project (verified by `legacy-cleanup.test.cjs`).

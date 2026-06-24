@@ -13,8 +13,8 @@ dependencies: ["7"]
 
 **Completes the R4 deferred item from the master tracker.** The MCP server key `learning-loop-mastra` (used in `.mcp.json`, `.factory/mcp.json`, and `.claude/settings.local.json`) is renamed to `learning-loop`. The rename cascades to:
 - 2 MCP config files (`.mcp.json`, `.factory/mcp.json`)
-- 1 settings file (`.claude/settings.local.json`) — 5 `mcp__learning-loop-mastra__*` allowlist entries + 1 `enabledMcpjsonServers` entry
-- 13 test files that reference the server name
+- 1 settings file (`.claude/settings.local.json`) — 6 `mcp__learning-loop-mastra__*` allowlist entries + 1 `enabledMcpjsonServers` entry
+- 30+ files across `tools/`, `.factory/`, `.claude/` that reference the server name (test files, hook loader, hook tests, coordination tests, scripts, source code)
 - 2 probe scripts in `plans/260618-1418-GH-0029-pr5-shim-followup/`
 - Operator-facing state outside the repo (Droid state + Claude Code state) — documented in `docs/operator-notes/mcp-server-rename.md`
 
@@ -24,7 +24,7 @@ dependencies: ["7"]
 
 ## Requirements
 
-- Functional: `.mcp.json` key is `learning-loop` (not `learning-loop-mastra`). `.factory/mcp.json` same. `.claude/settings.local.json` allowlist is `mcp__learning-loop__*` (not `mcp__learning-loop-mastra__*`); `enabledMcpjsonServers` is `["learning-loop"]`. All 13 test files + 2 probe scripts are updated to the new key. Operator-facing note documents the manual state updates.
+- Functional: `.mcp.json` key is `learning-loop` (not `learning-loop-mastra`). `.factory/mcp.json` same. `.claude/settings.local.json` allowlist is `mcp__learning-loop__*` (not `mcp__learning-loop-mastra__*`); `enabledMcpjsonServers` is `["learning-loop"]`. All 30+ files referencing the server name are updated. Operator-facing note documents the manual state updates.
 - Non-functional: `git grep "learning-loop-mastra"` returns 0 matches outside `node_modules`, `data/`, and `meta-state.jsonl` (the meta-state has historical references that are immutable per the loop's append-only audit log).
 
 ## Architecture
@@ -36,9 +36,9 @@ The R4 cascade is mechanical: rename the MCP server key everywhere it appears in
 | Before | After | Files |
 |---|---|---|
 | `"learning-loop-mastra"` (key in mcpServers) | `"learning-loop"` | `.mcp.json`, `.factory/mcp.json` |
-| `mcp__learning-loop-mastra__*` (allowlist) | `mcp__learning-loop__*` | `.claude/settings.local.json` |
+| `mcp__learning-loop-mastra__*` (allowlist, 6 entries) | `mcp__learning-loop__*` | `.claude/settings.local.json` |
 | `enabledMcpjsonServers: ["learning-loop-mastra"]` | `enabledMcpjsonServers: ["learning-loop"]` | `.claude/settings.local.json` |
-| `"learning-loop-mastra"` in test fixtures | `"learning-loop"` | 13 test files (per scout report §6) |
+| `"learning-loop-mastra"` in test fixtures | `"learning-loop"` | 30+ test files across tools/, .factory/, .claude/ (per grep audit) |
 | `"learning-loop-mastra"` in probe scripts | `"learning-loop"` | 2 probe scripts |
 
 **Operator state files (NOT in repo):**
@@ -53,8 +53,13 @@ These are documented in `docs/operator-notes/mcp-server-rename.md`.
 
 - **Modify:** `.mcp.json` (rename key)
 - **Modify:** `.factory/mcp.json` (rename key)
-- **Modify:** `.claude/settings.local.json` (rename allowlist + `enabledMcpjsonServers`)
-- **Modify:** 13 test files (per scout report §6)
+- **Modify:** `.claude/settings.local.json` (rename 6 allowlist entries + `enabledMcpjsonServers`)
+- **Modify:** 12+ test files under `tools/` (per grep audit)
+- **Modify:** 4 test files under `.factory/hooks/__tests__/` (loop-surface-inject*.test.cjs)
+- **Modify:** 3 test files under `.claude/coordination/__tests__/` (claude-code-mcp-loading, inbound-state-gate, gate-integration)
+- **Modify:** `.factory/hooks/loop-surface-inject.cjs` (server name refs at lines 4, 79, 166)
+- **Modify:** `tools/learning-loop-mastra/server.js` (id/name at lines 165-166; log at line 69)
+- **Modify:** `tools/learning-loop-mastra/core/legacy/gate-logic.js:583` (peer-check)
 - **Modify:** 2 probe scripts in `plans/260618-1418-GH-0029-pr5-shim-followup/`
 
 ### Files to create
@@ -64,9 +69,11 @@ These are documented in `docs/operator-notes/mcp-server-rename.md`.
 
 ### Files to NOT modify
 
-- `AGENTS.md` references to "learning-loop-mastra" — see Step 8.6 for the audit.
+- `AGENTS.md` references to "learning-loop-mastra" — see Step 8.7 for the audit.
 - `meta-state.jsonl` historical references — immutable per the loop's append-only audit log.
 - SKILL.md files — they do not reference the server name.
+- `tools/learning-loop-mastra/core/legacy/loop-introspect.js:141,146,153` — these are filesystem paths, NOT server names (per Step 8.6).
+- `tools/learning-loop-mastra/` directory path — the directory is unchanged; only the MCP namespace key is renamed.
 
 ## Implementation Steps
 
@@ -79,9 +86,11 @@ Per scout report §6, the total is **1666 occurrences** across all file types (e
 | MCP config | 4 | `.mcp.json`, `.factory/mcp.json` |
 | `package.json` | 3 | `package.json:8,18,20` (the `#mastra/*` import alias + scripts) |
 | Source code | 6 | `tools/learning-loop-mastra/server.js`, `agent-manifest.json`, `agents-manifest.json`, `storage.js`, `agents/load-agents-manifest.js`, `agents/build-meta-state-tools.js` |
-| Settings | 6 | `.claude/settings.local.json` (5 allowlist + 1 enabledMcpjsonServers) |
+| Settings | 7 | `.claude/settings.local.json` (6 allowlist + 1 enabledMcpjsonServers) |
 | Hook | 3 | `.factory/hooks/loop-surface-inject.cjs` |
-| Test files | ~50+ | 13+ test files |
+| Test files (tools/) | ~20 | 12+ test files under `tools/learning-loop-mcp/__tests__/` and `tools/learning-loop-mastra/__tests__/` |
+| Test files (.factory/) | 4 | `.factory/hooks/__tests__/loop-surface-inject*.test.cjs` (4 files) |
+| Test files (.claude/) | 3 | `.claude/coordination/__tests__/` (claude-code-mcp-loading.test.cjs has 17 refs; inbound-state-gate.test.cjs; gate-integration.test.cjs) |
 | Scripts | 2 | `tools/scripts/run-pnpm-test-namespaced.mjs`, `tools/scripts/refresh-fingerprints-pre-closeout.mjs` |
 | Probe scripts | 2 | `plans/260618-1418-GH-0029-pr5-shim-followup/*probe*.cjs` |
 | Legacy core | 3 | `tools/learning-loop-mcp/core/gate-logic.js:583`, `loop-introspect.js:141,146,153` |
@@ -185,23 +194,42 @@ The `args` value (`"tools/learning-loop-mastra/server.js"`) is the **filesystem 
 
 The doubly-prefixed `mcp__learning-loop-mastra__mastra_meta_state_list` becomes `mcp__learning-loop__mastra_meta_state_list` (which is correct: the MCP namespace is `learning-loop`, the tool prefix is `mastra_`).
 
-### Step 8.4: Update the 13 test files
+### Step 8.4: Update the 30+ test files + hook loader + scripts
 
-Per scout report §6, 13 test files reference `learning-loop-mastra`. The references are in:
-- Test setup (e.g., `mcp-protocol-e2e.test.cjs` references the server entry path)
-- Test fixtures (e.g., `with-mcp-server.js`)
-- Test assertions (e.g., `cold-session-discoverability.test.cjs` may reference the server name in error messages)
-
-Use a script to mechanically rename:
+The rename scope is larger than the scout report's "13 test files." Use `grep -rl` to get the actual file list:
 
 ```bash
-# Find all .test.{js,cjs} files in tools/learning-loop-mcp/__tests__/ and tools/learning-loop-mastra/__tests__/ that reference "learning-loop-mastra"
-grep -rln "learning-loop-mastra" tools/learning-loop-mcp/__tests__/ tools/learning-loop-mastra/__tests__/ --include="*.js" --include="*.cjs"
+grep -rln "learning-loop-mastra" tools/ .factory/ .claude/ --include="*.js" --include="*.cjs" --include="*.mjs" --include="*.json" | grep -v node_modules
 ```
 
-For each file found, replace `"learning-loop-mastra"` with `"learning-loop"`. Be careful: only replace string literals, not path-like references (e.g., `tools/learning-loop-mastra/server.js` is a filesystem path that should NOT be changed — the directory is still named `learning-loop-mastra/`).
+**Critical distinction:** `learning-loop-mastra` appears in BOTH server-name contexts AND filesystem-path contexts. Only rename server-name references; leave filesystem paths alone.
 
-**Recommendation: write a small node script that uses AST or careful regex** to replace only the MCP server key references, not the filesystem paths. Or: do it manually, line by line, with a reviewer.
+**Server-name contexts (RENAME):**
+- `.mcp.json` key: `"learning-loop-mastra": { ... }`
+- `.factory/mcp.json` key: same
+- `mcp__learning-loop-mastra__*` allowlist entries in `.claude/settings.local.json`
+- `enabledMcpjsonServers: ["learning-loop-mastra"]`
+- Test assertions: `config.mcpServers["learning-loop-mastra"]`, `assert.ok(mcpServers["learning-loop-mastra"])`
+- Hook loader: `mcpCfg.mcpServers["learning-loop-mastra"]` (`.factory/hooks/loop-surface-inject.cjs:79`)
+- `server.js` id/name fields: `id: "learning-loop-mastra"`, `name: "learning-loop-mastra"` (lines 165-166)
+- Log messages: `console.error("learning-loop-mastra: registered ...")` (line 69) — optional
+
+**Filesystem-path contexts (DO NOT RENAME):**
+- `tools/learning-loop-mastra/server.js` — the directory is unchanged
+- `#mastra/*` import alias in `package.json` — filesystem path
+- `tools/learning-loop-mastra/storage.js`, `tools/learning-loop-mastra/data/` — filesystem paths
+- `tools/learning-loop-mastra/core/legacy/loop-introspect.js:141,146,153` — filesystem paths (per Step 8.6)
+
+**Recommended regex:** Replace `"learning-loop-mastra"` when it appears as a standalone JSON string value or key (surrounded by `"`), but NOT when followed by `/` (path component). Pattern: replace `"learning-loop-mastra"` (the JSON key/value) but not `learning-loop-mastra/` (the directory path).
+
+**Additional files to update (missed by scout report):**
+- `.factory/hooks/__tests__/loop-surface-inject.test.cjs` (4 refs)
+- `.factory/hooks/__tests__/loop-surface-inject-mcp-failure.test.cjs` (3 refs)
+- `.factory/hooks/__tests__/loop-surface-inject-format-block.test.cjs` (1 ref)
+- `.factory/hooks/__tests__/loop-surface-inject-real-spawn.test.cjs` (2 refs)
+- `.claude/coordination/__tests__/claude-code-mcp-loading.test.cjs` (17 refs — critical: asserts `config.mcpServers["learning-loop-mastra"]`)
+- `.claude/coordination/__tests__/inbound-state-gate.test.cjs` (1 ref)
+- `.claude/coordination/__tests__/gate-integration.test.cjs` (1 ref)
 
 ### Step 8.5: Update the 2 probe scripts and 2 scripts
 
@@ -217,7 +245,7 @@ Read each, find the `learning-loop-mastra` reference, replace with `learning-loo
 - `tools/scripts/run-pnpm-test-namespaced.mjs:28-29,118` — references in test runner; replace if applicable.
 - `tools/scripts/refresh-fingerprints-pre-closeout.mjs:19` — references in closeout script; replace if applicable.
 
-### Step 8.6: Update the 3 legacy core files
+### Step 8.6: Update the legacy core files
 
 **`tools/learning-loop-mastra/core/legacy/gate-logic.js:583`** (the `learning-loop-mcp || learning-loop-mastra` peer-check):
 
@@ -237,9 +265,7 @@ if (serverName === "learning-loop") {
 }
 ```
 
-**`tools/learning-loop-mastra/core/legacy/loop-introspect.js:141,146,153`** (3 references in comments/path):
-
-Read each line; determine if the reference is a path (which is unchanged) or a server name (which is renamed). Replace server name references with `learning-loop`. Leave path references alone.
+**`tools/learning-loop-mastra/core/legacy/loop-introspect.js:141,146,153`** — **DO NOT RENAME.** These 3 references are **filesystem paths** (e.g., `tools/learning-loop-mastra/storage.js`, `tools/learning-loop-mastra/data/mastra-memory.db`), NOT MCP server names. R4 renames the MCP namespace key only; the directory `tools/learning-loop-mastra/` is unchanged. Renaming these paths would break storage resolution.
 
 ### Step 8.7: Update `AGENTS.md`, `CLAUDE.md`, `README.md` (operational references only)
 
@@ -430,7 +456,7 @@ refactor(rename): R4 cascade — MCP server key learning-loop-mastra → learnin
 Phase D Plan 4 phase-08:
 - .mcp.json + .factory/mcp.json: key renamed
 - .claude/settings.local.json: allowlist + enabledMcpjsonServers updated
-- 13 test files + 2 probe scripts + 2 build scripts updated
+- 30+ files updated (test files, hook loader, scripts, source code)
 - 3 legacy core files (now in core/legacy/) updated; peer-check removed
 - .factory/hooks/loop-surface-inject.cjs: server reference updated
 - New docs/operator-notes/mcp-server-rename.md: Droid + Claude Code state
@@ -449,9 +475,9 @@ immutable). plans/ and plans/reports/ are unchanged (historical record).
 
 - [ ] `.mcp.json` key is `learning-loop`.
 - [ ] `.factory/mcp.json` key is `learning-loop`.
-- [ ] `.claude/settings.local.json` allowlist uses `mcp__learning-loop__*`.
+- [ ] `.claude/settings.local.json` allowlist uses `mcp__learning-loop__*` (6 entries).
 - [ ] `.claude/settings.local.json` `enabledMcpjsonServers` is `["learning-loop"]`.
-- [ ] 13 test files updated.
+- [ ] 30+ files updated (12+ in tools/, 4 in .factory/hooks/__tests__/, 3 in .claude/coordination/__tests__/, hook loader, scripts, source code).
 - [ ] 2 probe scripts updated.
 - [ ] 2 build scripts updated.
 - [ ] 3 legacy core files updated (now in `core/legacy/`).
@@ -469,7 +495,7 @@ immutable). plans/ and plans/reports/ are unchanged (historical record).
 |---|---|---|
 | The rename test (Step 8.11) is itself affected by the `learning-loop-mastra` string in the test (e.g., the test asserts non-existence of the string) | Low | The test uses `execSync('grep -rln "learning-loop-mastra" ...')` which shells out; the grep pattern is the literal string. The test's own code uses the string in shell commands, not as an import. The test file does not use the string as an MCP namespace key. |
 | The rename breaks the operator's per-machine state (Droid/Claude Code) | High | The `docs/operator-notes/mcp-server-rename.md` documents the manual update. The PR body also calls this out. The test does not check per-machine state (out of scope). |
-| The 13 test files contain subtle references to the server name (e.g., as part of a longer string) that the mechanical rename misses | Low | The rename test (Step 8.11) uses `grep -rln "learning-loop-mastra" tools/ .claude/ .factory/ --include="*.js" ...` which catches any remaining references. The test's own code uses the string as a literal, but that's in the test's shell command (expected). |
+| The 30+ files contain subtle references to the server name (e.g., as part of a longer string or mixed with filesystem paths) that the mechanical rename misses | Low | The rename test (Step 8.11) uses `grep -rln "learning-loop-mastra" tools/ .claude/ .factory/ --include="*.js" ...` which catches any remaining references. The test's own code uses the string as a literal, but that's in the test's shell command (expected). |
 | The doubly-prefixed `mcp__learning-loop-mastra__mastra_meta_state_list` becomes ambiguous after rename (now `mcp__learning-loop__mastra_meta_state_list` — correct) | Low | The rename is mechanical: replace `learning-loop-mastra` with `learning-loop` everywhere. The doubly-prefixed form becomes `mcp__learning-loop__mastra_meta_state_list` which is the canonical pattern. |
 | The probe scripts in `plans/260618-1418-GH-0029-pr5-shim-followup/` are obsolete (not run anymore) | Medium | Audit the probe scripts before editing. If obsolete, delete them. If still run, update. |
 | The cold cache file at `records/meta/.cache/loop-describe-cold.json` has historical references to `learning-loop-mastra` (frozen) | Low | The cold cache is regenerated on next run; R4 does not modify it. The rename test (Step 8.11 test #6) confirms historical references in plans/reports/ are preserved. The cold cache is a runtime artifact, not a historical record. |

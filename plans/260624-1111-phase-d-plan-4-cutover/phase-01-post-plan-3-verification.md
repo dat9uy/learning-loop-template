@@ -22,13 +22,13 @@ dependencies: []
 
 ## Architecture
 
-- **Test:** `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` (already shipped by Plan 3; conditional on `KIMI_API_KEY`).
+- **Test:** `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs` (already shipped by Plan 3; conditional on `KIMI_API_KEY`).
 - **Journal:** `docs/journals/260623-post-plan-3-verification.md` (operator-filled).
 - **Audit trail:** 1 `meta_state_log_change` with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`.
 
 ## Related Code Files
 
-- **Read (verification):** `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` (the conditional e2e test)
+- **Read (verification):** `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs` (the conditional e2e test)
 - **Read (verification):** `tools/learning-loop-mcp/scout/run-scout.js` (verify scoutAgent can invoke the scout pipeline through real LLM)
 - **Read (verification):** `meta-state.jsonl` (verify agents can read + write meta-state entries through real LLM)
 - **Create:** `docs/journals/260623-post-plan-3-verification.md` (operator-filled; non-empty output for each of 3 agents)
@@ -39,7 +39,7 @@ dependencies: []
 ### Step 1.1: Verify the e2e test exists and is conditional on KIMI_API_KEY
 
 ```bash
-ls -la tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs
+ls -la tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs
 # Should exist (shipped in Plan 3)
 ```
 
@@ -59,7 +59,7 @@ The `.env.example` file has `KIMI_API_KEY` commented out. The loop reads `proces
 ### Step 1.3: Run the e2e test
 
 ```bash
-KIMI_API_KEY=<key> node --test tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs
+KIMI_API_KEY=<key> node --test tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs
 ```
 
 Expected: 3 tests pass (one per agent). If a test fails, the agent is not following the learning loop correctly — escalate before proceeding to Plan 4.
@@ -83,7 +83,7 @@ Create `docs/journals/260623-post-plan-3-verification.md` with this structure:
 
 **Date:** 2026-06-24
 **Plan:** `plans/260624-1111-phase-d-plan-4-cutover/`
-**Test:** `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs`
+**Test:** `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs`
 **LLM:** Kimi router (provider `kimi-for-coding/k2p6` per agents-manifest.json)
 
 ## Summary
@@ -152,7 +152,7 @@ Call the `mastra_meta_state_log_change` MCP tool with:
 ## Success Criteria
 
 - [ ] `docs/journals/260623-post-plan-3-verification.md` exists with non-empty output (or skip-justification) for each of the 3 agents.
-- [ ] `tools/learning-loop-mastra/__tests__/agent-e2e-integration.test.cjs` passes (with `KIMI_API_KEY`) OR is properly skipped (without).
+- [ ] `tools/learning-loop-mastra/__tests__/debug/agent-e2e-integration.test.cjs` passes (with `KIMI_API_KEY`) OR is properly skipped (without).
 - [ ] 1 `meta_state_log_change` entry filed with `change_target: 'docs/journals/260623-post-plan-3-verification.md'`.
 - [ ] Operator has confirmed Plan 4 can proceed (no follow-up needed).
 
