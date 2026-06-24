@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "../../core/legacy/meta-state.js";
-import { buildRegistrySummary } from "../../core/legacy/loop-introspect.js";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
+import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "../../core/meta-state.js";
+import { buildRegistrySummary } from "../../core/loop-introspect.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { writeFileSync, mkdirSync } from "node:fs";

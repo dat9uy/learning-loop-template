@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { buildInverseIndexes } from "../../core/legacy/loop-introspect.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { buildInverseIndexes } from "../../core/loop-introspect.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const root = resolveRoot();

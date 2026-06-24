@@ -82,7 +82,7 @@ describe("cold-session discoverability", () => {
   // ---------------------------------------------------------------------------
 
   test("discoverability hints are well-formed", async () => {
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/loop-introspect.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
     const { buildDiscoverabilityHints } = await import(pathToFileURL(corePath).href);
     const hints = buildDiscoverabilityHints();
 
@@ -124,7 +124,7 @@ describe("cold-session discoverability", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-chain-"));
     copySchemas(tempRoot);
 
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
 
     // meta_state_report: create a finding with evidence_code_ref + mechanism_check.
@@ -191,7 +191,7 @@ describe("cold-session discoverability", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-delete-"));
     process.env.GATE_ROOT = tempRoot;
 
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const sessionId = "test-cold-session-mcp-client-loading";
     const runtime = "droid";
@@ -248,7 +248,7 @@ describe("cold-session discoverability", () => {
     await probeL1(tempRoot, { sessionId, runtime, gapOpen: false });
     await probeL2(tempRoot, { sessionId, runtime, gapOpen: false });
 
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const entries = core.readRegistry(tempRoot);
     const findings = entries.filter((e) =>
@@ -272,7 +272,7 @@ describe("cold-session discoverability", () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "cold-session-stale-"));
     process.env.GATE_ROOT = tempRoot;
 
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const sessionId = `test-cold-session-stale-${Date.now()}`;
 
@@ -322,7 +322,7 @@ describe("cold-session discoverability", () => {
       assert.ok(existsSync(hookPath), "hook file must exist");
       hookSource = readFileSync(hookPath, "utf8");
 
-      const canonicalPath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/loop-introspect.js");
+      const canonicalPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
       const { buildDiscoverabilityHints } = await import(pathToFileURL(canonicalPath).href);
       canonicalHints = buildDiscoverabilityHints();
 
@@ -366,7 +366,7 @@ describe("cold-session discoverability", () => {
     test("canonical PROCESS_HINTS and hook LOCAL_PROCESS_HINTS arrays match exactly (drift prevention)", async () => {
       const hookProcessHints = parseFrozenStringArray(hookSource, "LOCAL_PROCESS_HINTS");
 
-      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/loop-introspect.js");
+      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
       const { buildProcessHints } = await import(pathToFileURL(canonicalToolPath).href);
       const canonicalProcessHints = buildProcessHints();
 

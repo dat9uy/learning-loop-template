@@ -2,7 +2,7 @@ import { z } from "zod";
 import { existsSync, statSync } from "node:fs";
 import { resolve, relative, sep } from "node:path";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { CHECKLIST } from "../../core/legacy/runtime-agnostic-checklist.js";
+import { CHECKLIST } from "../../core/runtime-agnostic-checklist.js";
 
 /**
  * Resolve a user-supplied feature_path relative to the project root.

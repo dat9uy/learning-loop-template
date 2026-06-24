@@ -1,4 +1,4 @@
-import { readRegistry, writeEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, writeEntry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { test } from "node:test";
 import assert from "node:assert";

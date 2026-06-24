@@ -117,7 +117,7 @@ export function validateSourceRef(ref, recordType, root) {
     }
     // Check if the record exists on disk
     // We can't easily check all surfaces, so we do a best-effort check
-    // The full validation in ../../core/legacy/record-validation-rules.js will catch missing refs
+    // The full validation in ../../core/record-validation-rules.js will catch missing refs
     return { valid: true };
   }
 

@@ -1,12 +1,12 @@
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { z } from "zod";
 import {
   readRegistry,
   updateEntry,
-} from "../../core/legacy/meta-state.js";
+} from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { loadPromotedRules, checkResolutionEvidence } from "../../core/legacy/gate-logic.js";
+import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
 
 // The legacy 'expired' status was removed in plan 260611-1000. This set
 // mirrors the canonical TERMINAL_STATUSES in core/meta-state.js. Used to

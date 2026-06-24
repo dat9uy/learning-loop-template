@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import { test } from "node:test";
-import { applyPromotedRules } from "../../core/legacy/gate-logic.js";
-import { metaStateRuleEntrySchema } from "../../core/legacy/meta-state.js";
+import { applyPromotedRules } from "../../core/gate-logic.js";
+import { metaStateRuleEntrySchema } from "../../core/meta-state.js";
 
 await test("consult-checklist rule loads through schema and is a no-op for applyPromotedRules", () => {
   const rule = metaStateRuleEntrySchema.parse({

@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { isAbsolute, join } from "node:path";
-import { computeFileHash } from "../../core/legacy/check-grounding.js";
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
-import { stripEvidenceAnchor } from "../../core/legacy/gate-logic.js";
+import { computeFileHash } from "../../core/check-grounding.js";
+import { readRegistry, updateEntry } from "../../core/meta-state.js";
+import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

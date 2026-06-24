@@ -5,8 +5,8 @@ import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change
 import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
 import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
-import { loadPromotedRules } from "../../core/legacy/gate-logic.js";
-import { listAntiPatterns } from "../../core/legacy/loop-introspect.js";
+import { loadPromotedRules } from "../../core/gate-logic.js";
+import { listAntiPatterns } from "../../core/loop-introspect.js";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -318,7 +318,7 @@ describe("listAntiPatterns G9 status filter", () => {
       });
       const id = JSON.parse(report.content[0].text).id;
       // Force expiry by setting expires_at to past
-      const { updateEntry } = await import("../../core/legacy/meta-state.js");
+      const { updateEntry } = await import("../../core/meta-state.js");
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
       // metaStateListTool auto-applies expiry -> transitions to stale

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { metaStateBatchTool } from "../../tools/legacy/meta-state-batch-tool.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "batch-test-"));

@@ -57,7 +57,7 @@ describe("meta_state_derive_status tool", () => {
     process.env.GATE_ROOT = tempDir;
     try {
       // Write the referenced files (use the post-Plan-4 paths)
-      const srcDir = join(tempDir, "tools", "learning-loop-mastra", "core", "legacy", "lib");
+      const srcDir = join(tempDir, "tools", "learning-loop-mastra", "core", "lib");
       mkdirSync(srcDir, { recursive: true });
       writeFileSync(join(srcDir, "source-ref-validator.js"), "// code");
       const testDir = join(tempDir, "tools", "learning-loop-mastra", "__tests__", "legacy-mcp");
@@ -73,7 +73,7 @@ describe("meta_state_derive_status tool", () => {
         affected_system: "mcp-tools",
         description: "Known derivable finding for acceptance test simulation.",
         status: "active",
-        evidence_code_ref: "tools/learning-loop-mastra/core/legacy/lib/source-ref-validator.js",
+        evidence_code_ref: "tools/learning-loop-mastra/core/lib/source-ref-validator.js",
         evidence_test: "tools/learning-loop-mastra/__tests__/legacy-mcp/source-ref-validator.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };

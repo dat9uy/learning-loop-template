@@ -143,7 +143,7 @@ const checkAndAdd = (sym) => {
       if (isNodeBuiltin) return;
       // Only flag imports that look like they are importing a tool module.
       // Relative imports are already scoped to tool-like paths; non-relative
-      // imports (packages, ../../core/legacy/, #lib/) must also look like a tool path.
+      // imports (packages, ../../core/, #lib/) must also look like a tool path.
       if (!looksLikeToolPath) return;
       matches.push({
         file: "",

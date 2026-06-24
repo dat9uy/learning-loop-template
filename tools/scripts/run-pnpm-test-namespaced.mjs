@@ -22,15 +22,15 @@ import { join } from "node:path";
 //
 // Plan 4 cutover followup (2026-06-24, plan 260624-1609-phase-d-plan-4-test-migration-fix):
 // the 5 mcp-* globs were repointed at tools/learning-loop-mastra/{__tests__/legacy-mcp,
-// core/legacy, core/legacy/lib, tools/legacy}/ and the 117 relative imports in the
+// core, core/lib, tools/legacy}/ and the 117 relative imports in the
 // relocated test files were rewritten. archive-product-records.test.js was deleted
 // (its scripts/archive-product-records.mjs entry was removed by Plan 4). All
 // imports verified to resolve; the 5 namespaces now run the 118 migrated test files.
 const GLOBS = [
   { ns: "mcp-tests", pattern: "tools/learning-loop-mastra/__tests__/legacy-mcp/*.test.js" },
-  { ns: "mcp-core-tests", pattern: "tools/learning-loop-mastra/core/legacy/__tests__/*.test.js" },
-  { ns: "mcp-core", pattern: "tools/learning-loop-mastra/core/legacy/*.test.js" },
-  { ns: "mcp-lib", pattern: "tools/learning-loop-mastra/core/legacy/lib/*.test.js" },
+  { ns: "mcp-core-tests", pattern: "tools/learning-loop-mastra/core/__tests__/*.test.js" },
+  { ns: "mcp-core", pattern: "tools/learning-loop-mastra/core/*.test.js" },
+  { ns: "mcp-lib", pattern: "tools/learning-loop-mastra/core/lib/*.test.js" },
   { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
   { ns: "mastra-cjs", pattern: "tools/learning-loop-mastra/__tests__/*.test.cjs" },

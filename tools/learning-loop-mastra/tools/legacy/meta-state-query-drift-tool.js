@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
-import { readRegistry, filterEntries } from "../../core/legacy/meta-state.js";
-import { queryDrift } from "../../core/legacy/query-drift.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
+import { readRegistry, filterEntries } from "../../core/meta-state.js";
+import { queryDrift } from "../../core/query-drift.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 

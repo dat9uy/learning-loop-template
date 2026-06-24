@@ -1,6 +1,6 @@
 // Legacy cleanup test — asserts no #mcp/* imports remain in the project
 // (post-Phase-D Plan 4 phase-07) and all cross-package consumers resolve
-// to their new locations in tools/learning-loop-mastra/{tools,core,scout}/legacy/.
+// to their new locations in tools/learning-loop-mastra/{core,tools/legacy,scout/legacy}.
 //
 // Test inventory:
 //   1. No #mcp/* imports remain in tools/learning-loop-mastra/**/*.js
@@ -56,10 +56,10 @@ describe("legacy cleanup (C-9)", () => {
   test("cross-package consumers resolve to the new paths", () => {
     const consumers = [
       { file: "tools/learning-loop-mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
-      { file: "tools/learning-loop-mastra/create-loop-workflow.js", importPath: "./core/legacy/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/create-loop-workflow.js", importPath: "./core/envelope-stripper.js" },
       { file: "tools/learning-loop-mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
-      { file: "tools/learning-loop-mastra/workflows/workflow-intake-plan.js", importPath: "../core/legacy/envelope-stripper.js" },
-      { file: "tools/learning-loop-mastra/workflows/workflow-self-improvement.js", importPath: "../core/legacy/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/workflows/workflow-intake-plan.js", importPath: "../core/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/workflows/workflow-self-improvement.js", importPath: "../core/envelope-stripper.js" },
     ];
     for (const { file, importPath } of consumers) {
       const fullPath = join(PROJECT_ROOT, file);
@@ -86,7 +86,7 @@ describe("legacy cleanup (C-9)", () => {
     // Spot-check: 3 representative files exist and are non-empty
     const samples = [
       "tools/learning-loop-mastra/tools/legacy/gate-tool.js",
-      "tools/learning-loop-mastra/core/legacy/envelope-stripper.js",
+      "tools/learning-loop-mastra/core/envelope-stripper.js",
       "tools/learning-loop-mastra/scout/legacy/run-scout.js",
     ];
     for (const f of samples) {

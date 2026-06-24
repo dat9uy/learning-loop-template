@@ -26,7 +26,7 @@ import {
   readPreflightMarker,
   loadPromotedRules,
   applyPromotedRules,
-} from "../../core/legacy/gate-logic.js";
+} from "../../core/gate-logic.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

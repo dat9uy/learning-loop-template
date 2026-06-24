@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { writeGateOverride } from "../../core/legacy/gate-override.js";
-import { loadPromotedRules } from "../../core/legacy/gate-logic.js";
+import { writeGateOverride } from "../../core/gate-override.js";
+import { loadPromotedRules } from "../../core/gate-logic.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const schemaShape = {

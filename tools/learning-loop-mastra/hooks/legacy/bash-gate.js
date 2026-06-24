@@ -23,10 +23,10 @@ import {
   makeGateDecision,
   loadPromotedRules,
   applyPromotedRules,
-} from "../../core/legacy/gate-logic.js";
-import { readRuntimeObservations } from "../../core/legacy/file-readers.js";
-import { checkObservationStaleness } from "../../core/legacy/inbound-state.js";
-import { appendDecisionLog } from "../../core/legacy/gate-decision-log.js";
+} from "../../core/gate-logic.js";
+import { readRuntimeObservations } from "../../core/file-readers.js";
+import { checkObservationStaleness } from "../../core/inbound-state.js";
+import { appendDecisionLog } from "../../core/gate-decision-log.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

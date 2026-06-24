@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 
 // Locks the strict-true contract for 6 guarded boolean fields:
 //   - 2 HIGH/CRITICAL: meta_state_archive.confirm, meta_state_promote_rule.preview, meta_state_sweep.apply

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   metaStateLoopDesignSchema,
   metaStateEntrySchema,
-} from "../../core/legacy/meta-state.js";
+} from "../../core/meta-state.js";
 
 const validDesign = {
   id: "loop-design-cross-reference-fields",

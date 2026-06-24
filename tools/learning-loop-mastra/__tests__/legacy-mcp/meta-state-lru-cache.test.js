@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, statSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRegistry, writeEntry } from "../../core/legacy/meta-state.js";
-import { invalidateCache } from "../../core/legacy/read-registry-cache.js";
+import { readRegistry, writeEntry } from "../../core/meta-state.js";
+import { invalidateCache } from "../../core/read-registry-cache.js";
 
 function makeTempRoot() {
   const tmp = mkdtempSync(join(tmpdir(), "lru-cache-test-"));

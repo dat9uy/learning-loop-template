@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

@@ -1,7 +1,7 @@
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { metaStateBatch } from "../../core/legacy/meta-state.js";
+import { metaStateBatch } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 
 const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
-import { findRecurrentGroups, checkAndEmit } from "../../core/legacy/recurrence-tracker.js";
+import { findRecurrentGroups, checkAndEmit } from "../../core/recurrence-tracker.js";
 import { gateCheckRecurrenceTool } from "../../tools/legacy/gate-check-recurrence-tool.js";
 
 let root;

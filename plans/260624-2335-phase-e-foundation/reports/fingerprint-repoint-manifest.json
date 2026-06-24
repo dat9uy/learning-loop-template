@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-06-24T19:20:49.244Z",
+  "operations": [
+    {
+      "id": "meta-260606T1830Z-context-pollution-stale-workaround-language-audit-trail-nois",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/gate-logic.js#splitSegments",
+      "new_ref": "tools/learning-loop-mastra/core/gate-logic.js#splitSegments",
+      "new_fingerprint": "sha256:dcd915b8d160337e0b9a652dcf3f9ca81de9e2e80f4df0ec3d3c4059e093c2d4"
+    },
+    {
+      "id": "meta-260613T1615Z-import-chain-analysis-is-the-canonical-dead-code-detection-m",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/gate-logic.js#applyPromotedRules",
+      "new_ref": "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
+      "new_fingerprint": "sha256:dcd915b8d160337e0b9a652dcf3f9ca81de9e2e80f4df0ec3d3c4059e093c2d4"
+    },
+    {
+      "id": "meta-260615T1148Z-the-runtime-agnostic-pattern-is-real-in-this-codebase-shim-n",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/gate-logic.js#GLOB_SCOPE_WHITELIST",
+      "new_ref": "tools/learning-loop-mastra/core/gate-logic.js#GLOB_SCOPE_WHITELIST",
+      "new_fingerprint": "sha256:dcd915b8d160337e0b9a652dcf3f9ca81de9e2e80f4df0ec3d3c4059e093c2d4"
+    },
+    {
+      "id": "meta-260615T1920Z-the-new-stripnodeevalbody-function-in-tools-learning-loop-mc",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/gate-logic.js#stripNodeEvalBody",
+      "new_ref": "tools/learning-loop-mastra/core/gate-logic.js#stripNodeEvalBody",
+      "new_fingerprint": "sha256:dcd915b8d160337e0b9a652dcf3f9ca81de9e2e80f4df0ec3d3c4059e093c2d4"
+    },
+    {
+      "id": "meta-260616T1453Z-two-more-dead-write-path-entries-in-write-path-patterns-at-t",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/gate-logic.js#WRITE_PATH_PATTERNS",
+      "new_ref": "tools/learning-loop-mastra/core/gate-logic.js#WRITE_PATH_PATTERNS",
+      "new_fingerprint": "sha256:dcd915b8d160337e0b9a652dcf3f9ca81de9e2e80f4df0ec3d3c4059e093c2d4"
+    },
+    {
+      "id": "meta-260623T1126Z-meta-state-relationships-graph-is-unidirectional-on-reopens",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/loop-introspect.js:285",
+      "new_ref": "tools/learning-loop-mastra/core/loop-introspect.js:285",
+      "new_fingerprint": "sha256:8e3d9ed28165a1c84657661828f7f54799c8461b9b1147638bed0d2f3ed3a71e"
+    },
+    {
+      "id": "meta-260624T1920Z-code-fingerprint-mechanism-is-o-n-per-cited-file-change-each",
+      "old_ref": "tools/learning-loop-mastra/core/legacy/check-grounding.js#computeFileHash",
+      "new_ref": "tools/learning-loop-mastra/core/check-grounding.js#computeFileHash",
+      "new_fingerprint": "sha256:f1c2388a07279e65a32bf6fa7b48dfbf13335c1e89896230ef5c1448ec90297e"
+    }
+  ],
+  "batch_shape": "flat-fields-no-patch-wrapper",
+  "rationale": "Phase E Plan 1 §6 — rename core/legacy/ → core/. Per meta-260624T1920Z-... constraint, repointed in 1 atomic batch."
+}

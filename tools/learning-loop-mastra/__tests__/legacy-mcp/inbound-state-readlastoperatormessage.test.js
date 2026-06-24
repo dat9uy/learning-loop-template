@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { readLastOperatorMessage } from "../../core/legacy/inbound-state.js";
+import { readLastOperatorMessage } from "../../core/inbound-state.js";
 
 let root;
 const originalMarkerPath = process.env.GATE_MARKER_PATH;

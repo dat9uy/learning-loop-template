@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import {
   readRegistry,
   writeEntry,
   updateEntry,
-} from "../../core/legacy/meta-state.js";
+} from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -81,7 +81,7 @@ export const metaStatePromoteRuleTool = {
     if (preview) {
       const matches = [];
       if (pattern_type === "regex" && sample_commands) {
-        const { isSafeRegexPattern } = await import("../../core/legacy/gate-logic.js");
+        const { isSafeRegexPattern } = await import("../../core/gate-logic.js");
         if (!isSafeRegexPattern(pattern)) {
           return {
             content: [{ type: "text", text: JSON.stringify({ preview: true, id, rule_id, pattern, error: "pattern_rejected_by_safety_check" }) }],
@@ -96,7 +96,7 @@ export const metaStatePromoteRuleTool = {
           }
         }
       } else if (pattern_type === "glob" && sample_paths) {
-        const { globMatch } = await import("../../core/legacy/gate-logic.js");
+        const { globMatch } = await import("../../core/gate-logic.js");
         for (const p of sample_paths) {
           try {
             const matched = globMatch(pattern, p);
@@ -123,7 +123,7 @@ export const metaStatePromoteRuleTool = {
 
     // Glob scope whitelist check (RT Finding 4)
     if (pattern_type === "glob") {
-      const { isGlobScopeWhitelisted } = await import("../../core/legacy/gate-logic.js");
+      const { isGlobScopeWhitelisted } = await import("../../core/gate-logic.js");
       if (!isGlobScopeWhitelisted(pattern)) {
         const result = { promoted: false, reason: "pattern_rejected_by_scope_whitelist", id, pattern };
         appendGateLog(root, {

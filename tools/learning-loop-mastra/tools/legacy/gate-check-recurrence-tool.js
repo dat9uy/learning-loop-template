@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { checkAndEmit } from "../../core/legacy/recurrence-tracker.js";
+import { checkAndEmit } from "../../core/recurrence-tracker.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 export const gateCheckRecurrenceTool = {

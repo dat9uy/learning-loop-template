@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
-import { strictBooleanGuard } from "../../core/legacy/strict-boolean-guard.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRegistry, archiveEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, archiveEntry } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 
 function buildPreview(allEntries, override) {

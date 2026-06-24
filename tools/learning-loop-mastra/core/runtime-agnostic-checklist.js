@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 
 const UNIVERSAL_DIRS = [
-  "tools/learning-loop-mastra/core/legacy",
+  "tools/learning-loop-mastra/core",
   "tools/learning-loop-mastra/hooks/legacy",
   "tools/learning-loop-mastra/tools/legacy",
 ];
@@ -79,7 +79,7 @@ function isCodeFile(relPath) {
 }
 
 function isSurfacesJs(relPath) {
-  return relPath.replace(/\\/g, "/").endsWith("tools/learning-loop-mastra/core/legacy/surfaces.js");
+  return relPath.replace(/\\/g, "/").endsWith("tools/learning-loop-mastra/core/surfaces.js");
 }
 
 function isHookFile(relPath) {

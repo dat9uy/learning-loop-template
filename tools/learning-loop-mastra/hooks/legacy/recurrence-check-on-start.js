@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { checkAndEmit } from "../../core/legacy/recurrence-tracker.js";
+import { checkAndEmit } from "../../core/recurrence-tracker.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 function main() {

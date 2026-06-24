@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
-import { readRegistry, updateEntry } from "../../core/legacy/meta-state.js";
+import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

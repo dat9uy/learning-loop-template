@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { queryDrift } from "../../core/legacy/query-drift.js";
+import { queryDrift } from "../../core/query-drift.js";
 
 describe("queryDrift pure function", () => {
   function makeTempDir(prefix) {
@@ -89,7 +89,7 @@ describe("queryDrift pure function", () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
-    const { computeFileHash } = await import("../../core/legacy/check-grounding.js");
+    const { computeFileHash } = await import("../../core/check-grounding.js");
     const actualHash = computeFileHash(join(ctx.root, "src.js"));
     const entry = baseEntry({
       evidence_code_ref: "src.js",
@@ -387,7 +387,7 @@ describe("queryDrift pure function", () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
-    const { computeFileHash } = await import("../../core/legacy/check-grounding.js");
+    const { computeFileHash } = await import("../../core/check-grounding.js");
     const actualHash = computeFileHash(join(ctx.root, "src.js"));
     const entry = baseEntry({
       // Post-migration shape: top-level field ONLY, no nested `evidence: { code_ref }` block.

@@ -156,7 +156,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
       runtime,
       gapOpen,
       entryBuilder: gapOpen ? (() => {
-        const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+        const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
         const { generateId } = require(corePath);
         const id = generateId("mcp-client-loading-missing");
         const now = new Date();
@@ -208,7 +208,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
 
     await probeL1(tempRoot, { sessionId, runtime, gapOpen: false });
 
-    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
+    const corePath = join(projectRoot, "tools/learning-loop-mastra/core/meta-state.js");
     const core = await import(pathToFileURL(corePath).href);
     const entries = core.readRegistry(tempRoot);
     const findings = entries.filter((e) =>

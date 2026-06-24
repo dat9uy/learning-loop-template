@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { writePreflightMarker, readPreflightMarker } from "../../core/legacy/gate-logic.js";
+import { writePreflightMarker, readPreflightMarker } from "../../core/gate-logic.js";
 
 export const gateMarkPreflightTool = {
   name: "gate_mark_preflight",

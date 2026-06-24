@@ -4,11 +4,11 @@ import {
   checkObservationExists,
   makeGateDecision,
   evaluateWritePath,
-} from "../../core/legacy/gate-logic.js";
-import { readRuntimeObservations } from "../../core/legacy/file-readers.js";
+} from "../../core/gate-logic.js";
+import { readRuntimeObservations } from "../../core/file-readers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { checkObservationStaleness } from "../../core/legacy/inbound-state.js";
+import { checkObservationStaleness } from "../../core/inbound-state.js";
 
 export const gateCheckTool = {
   name: "gate_check",

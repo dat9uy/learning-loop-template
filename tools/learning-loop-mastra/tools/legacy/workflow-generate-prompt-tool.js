@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { stripEnvelope } from "../../core/legacy/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { resolveRoot } from "#lib/resolve-root.js";

@@ -15,8 +15,8 @@ import {
   formatSoftWarning,
   exitCode,
 } from "./lib/protocol-adapter.js";
-import { findProjectRoot } from "../../core/legacy/gate-logic.js";
-import { readRuntimeObservations } from "../../core/legacy/file-readers.js";
+import { findProjectRoot } from "../../core/gate-logic.js";
+import { readRuntimeObservations } from "../../core/file-readers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

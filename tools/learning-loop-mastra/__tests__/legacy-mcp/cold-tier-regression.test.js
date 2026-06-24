@@ -1,8 +1,8 @@
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRegistry } from "../../core/legacy/meta-state.js";
-import { checkGrounding } from "../../core/legacy/check-grounding.js";
-import { stripEvidenceAnchor } from "../../core/legacy/gate-logic.js";
+import { readRegistry } from "../../core/meta-state.js";
+import { checkGrounding } from "../../core/check-grounding.js";
+import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { test } from "node:test";
 import assert from "node:assert";
 import { existsSync } from "node:fs";

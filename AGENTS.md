@@ -2,15 +2,48 @@
 
 > **2026-06-12 from-scratch rewrite.** The previous version of this document is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. The rewrite drops all product-surface framing (decisions, experiments, risks, observations, capability records, vendor directories) from the top of the document. **The meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface.** This document is the gate-truth for every agent in every session. See `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8.2 and §3.10 for the full reframe, and `plans/reports/consistency-260612-1300-mastra-research-report.md` for the operational source of truth.
 
-Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mastra/core/legacy/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
+Shared coordination rules for both Claude Code and Droid CLI. All gate logic lives in `tools/learning-loop-mastra/core/` (single source of truth). Both surfaces use the same universal hooks via thin wrappers.
 
 ---
 
 ## 1. The Meta-Surface (the only bound surface)
 
+### 1.1 The 3 layers (Core / Mastra shell / Runtime interface)
+
+The meta-surface is implemented across 3 layers:
+
+- **Core (functional).** Pure logic. Zero `@mastra/*` imports. Lives at
+  `tools/learning-loop-mastra/core/`. Codifies the FCIS invariant (see
+  `core/README.md`). Owns: meta-state, gate decisions, schema validation,
+  fingerprint computation, drift detection.
+
+- **Mastra shell (imperative).** Wraps core in Mastra framework primitives.
+  Lives at `tools/learning-loop-mastra/` (top level): `server.js`,
+  `create-loop-{tool,workflow,agent}.js`, `workflows/`, `agents/`, `tools/`.
+  May import core; core may NOT import the shell.
+
+- **Runtime interface (contract).** The contract that agent runtimes sign
+  to integrate with the loop. Lives at `tools/learning-loop-mastra/interface/`
+  (NEW in Phase E.1b, ships in Plan 2). A runtime satisfies the 5 contract
+  requirements (see `interface/CONTRACT.md`).
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  Layer 3: Runtime Interface                                │
+└─────────────────────────┬──────────────────────────────────┘
+                          │ satisfies
+┌─────────────────────────▼──────────────────────────────────┐
+│  Layer 2: Mastra Shell                                     │
+└─────────────────────────┬──────────────────────────────────┘
+                          │ wraps
+┌─────────────────────────▼──────────────────────────────────┐
+│  Layer 1: Core                                             │
+└────────────────────────────────────────────────────────────┘
+```
+
 The meta-surface is the loop's self-model. It is the **only contract** the loop writes. Everything else (the substrate, the product surface, the legacy `records/<vendor>/` content) is design exploration, archived for forensic continuity, and explicitly not a contract that constrains the loop.
 
-**The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is a 4-kind discriminated union:
+**The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is implemented across the 3 layers (see §1.1): Core owns the data model, Mastra shell owns the tool surface, Runtime interface owns the agent runtime. It is a 4-kind discriminated union:
 
 | Kind | Role | Lifespan |
 |---|---|---|
@@ -56,7 +89,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 Every feature must work identically on Claude Code and Droid CLI (and future runtimes). The shim-not-fork pattern is the canonical way to achieve this:
 
-- **Core logic** lives in `tools/learning-loop-mastra/{core,hooks,tools}/legacy/` (not under `.claude/` or `.factory/`).
+- **Core logic** lives in `tools/learning-loop-mastra/core/` (not under `.claude/` or `.factory/`).
 - **Surface shims** (`.claude/coordination/hooks/*.cjs` and `.factory/coordination/hooks/*.cjs`) are thin wrappers; the universal hook does the real work.
 - **Hook I/O** goes through `tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js` (`parseInput`, `formatOutput`, `normalizeToolName`).
 - **MCP tools** are registered in `tools/learning-loop-mastra/agent-manifest.json`.
@@ -105,6 +138,9 @@ The universal hooks handle tool name differences between surfaces:
 
 ## 3. Meta-Surface Tools (the canonical MCP CRUD surface)
 
+> **Schema reference:** see `tools/learning-loop-mastra/docs/schemas.md` for the
+> canonical schema doc (4 meta-state kinds, runtime-state, wire envelope, parity).
+
 **All meta-surface mutations go through MCP tools.** Both gates unconditionally block direct file writes (Edit/Write/Bash redirects) to `meta-state.jsonl`, `runtime-state.jsonl`, and to `records/**`. There is no observation-dance, no pre-authorized path, and no bypass.
 
 ### Available Meta-Surface Tools
@@ -139,7 +175,7 @@ The universal hooks handle tool name differences between surfaces:
 
 ### Operational Rule
 
-The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mastra/core/legacy/loop-introspect.js#PROCESS_HINTS`.
+The SessionStart hook runs `loop_describe({ tier: "warm" })` and surfaces both `discoverability_hints` (meta-surface contracts) and `process_hints` (agent behavior rules). Read these blocks before answering "what's next?" style questions. For long-running `pnpm test` discipline (read-loop, stuck-detection), call `loop_get_instruction({key: 'pnpm-test-discipline'})` — see `tools/learning-loop-mastra/core/loop-introspect.js#PROCESS_HINTS`.
 
 ---
 

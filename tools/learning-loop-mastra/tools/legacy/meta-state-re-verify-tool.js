@@ -2,8 +2,8 @@ import { z } from "zod";
 import {
   readRegistry,
   updateEntry,
-} from "../../core/legacy/meta-state.js";
-import { runVerification } from "../../core/legacy/verification-runner.js";
+} from "../../core/meta-state.js";
+import { runVerification } from "../../core/verification-runner.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
