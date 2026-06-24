@@ -240,6 +240,36 @@ export const metaStateEntrySchema = z.preprocess(
 );
 
 /**
+ * Identity and audit-trail fields that cannot be patched via meta_state_patch
+ * or meta_state_batch update ops. Single source of truth — the patch tool and
+ * the batch function both consult this set so the two mutation surfaces
+ * enforce the same invariant.
+ *
+ * Notes:
+ * - `entry_kind` is NOT here — the per-kind schemas use z.literal("finding")
+ *   etc. which already prevents changing the kind. Adding it to the deny-list
+ *   would reject every patch because Zod's .default() on the literal adds
+ *   entry_kind to the parsed result even when the user didn't send it.
+ * - `promoted_to_rule` removed from deny-list — the field is no longer written
+ *   on findings after the Phase 2 migration to first-class rule entries.
+ * - `id` and `op` and `_expected_version` are stripped before the patch is
+ *   applied (see metaStateBatch line ~520 and meta_state_patch line ~73), so
+ *   they are safe by construction; listed here for clarity.
+ */
+export const IMMUTABLE_PATCH_FIELDS = new Set([
+  "id",
+  "version",
+  "created_at",
+  "created_by",
+  "code_fingerprint",
+  "consolidated_into",
+  "acked_at",
+  "resolved_at",
+  "resolved_by",
+  "resolution",
+]);
+
+/**
  * Derive the list of patchable kinds from the entry_kind enum.
  * Single source of truth — no separate hardcoded array to drift.
  *
@@ -521,7 +551,20 @@ export function metaStateBatch(root, operations) {
               const current = entries[idx].version ?? 0;
               if (current !== op._expected_version) throw new Error("version_mismatch");
             }
-            const { _expected_version, ...patch } = op;
+            // Strip op discriminator + lookup id + CAS version before checking
+            // the deny-list and applying. Without this, the lookup-key `id` and
+            // the op discriminator `op` would falsely trigger the deny-list.
+            const { op: _op, id: _id, _expected_version, ...patch } = op;
+            // Enforce the same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch
+            // so the batch tool cannot be used to bypass identity/audit-trail
+            // invariants (e.g. pinning a finding's code_fingerprint to a stale hash).
+            // Throws to roll back the entire batch (all-or-nothing semantics).
+            const denied = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+            if (denied.length > 0) {
+              const err = new Error("immutable_field");
+              err.denied_fields = denied;
+              throw err;
+            }
             Object.assign(entries[idx], patch);
             entries[idx].version = (entries[idx].version ?? 0) + 1;
             break;
@@ -552,7 +595,11 @@ export function metaStateBatch(root, operations) {
           unlinkSync(path);
         }
         invalidateCache(root);
-        return { applied: 0, failed_at: i, reason: err.message, op };
+        // Pass through extra context (e.g. denied_fields from immutable_field)
+        // so callers can diagnose which fields triggered the rollback.
+        const extra = {};
+        if (err.denied_fields) extra.denied_fields = err.denied_fields;
+        return { applied: 0, failed_at: i, reason: err.message, op, ...extra };
       }
     }
 
