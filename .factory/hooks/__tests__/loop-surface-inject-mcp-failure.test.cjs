@@ -33,7 +33,7 @@ describe("loop-surface-inject MCP failure reporting", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = {
         hook_event_name: "SessionStart",
@@ -70,7 +70,7 @@ describe("loop-surface-inject MCP failure reporting", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = {
         hook_event_name: "SessionStart",
@@ -112,7 +112,7 @@ describe("loop-surface-inject MCP failure reporting", () => {
     try {
       writeFileSync(
         join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop-mastra": { command: "node", args: ["server.js"] } } }, null, 2)
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
       );
       const input = {
         hook_event_name: "SessionStart",

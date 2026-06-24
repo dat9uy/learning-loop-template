@@ -8,7 +8,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const universalHook = path.join(__dirname, '../../../tools/learning-loop-mcp/hooks/recurrence-check-on-start.js');
+const universalHook = path.join(__dirname, '../../../tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js');
 
 const stdin = require('fs').readFileSync(0, 'utf8');
 try {

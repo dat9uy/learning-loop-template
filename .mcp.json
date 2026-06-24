@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "learning-loop-mastra": {
+    "learning-loop": {
       "command": "node",
       "args": ["tools/learning-loop-mastra/server.js"]
     }

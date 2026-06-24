@@ -22,7 +22,7 @@ let _cached = null;
 
 function isWithinRoot(absPath, root) {
   // Tight containment: exact match OR descendant via separator.
-  // Defends against sibling-prefix bypass (e.g., learning-loop-mastra-evil/...).
+  // Defends against sibling-prefix bypass (e.g., learning-loop-evil/...).
   return absPath === root || absPath.startsWith(root + sep);
 }
 

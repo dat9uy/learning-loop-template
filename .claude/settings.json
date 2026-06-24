@@ -9,7 +9,7 @@
           },
           {
             "type": "command",
-            "command": "node tools/learning-loop-mcp/hooks/session-start-inject-discoverability.cjs"
+            "command": "node tools/learning-loop-mastra/hooks/legacy/session-start-inject-discoverability.cjs"
           }
         ]
       }

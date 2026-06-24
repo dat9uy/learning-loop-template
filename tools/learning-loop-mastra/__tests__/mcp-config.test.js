@@ -8,7 +8,7 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
 
 for (const file of [".mcp.json", ".factory/mcp.json"]) {
-  test(`${file} has exactly 1 mcpServers entry (learning-loop-mastra)`, () => {
+  test(`${file} has exactly 1 mcpServers entry (learning-loop)`, () => {
     const config = JSON.parse(readFileSync(join(projectRoot, file), "utf8"));
     assert.equal(Object.keys(config.mcpServers).length, 1);
     assert(
@@ -16,14 +16,14 @@ for (const file of [".mcp.json", ".factory/mcp.json"]) {
       `${file}: learning-loop-mcp should not be present post-cut-over`,
     );
     assert(
-      "learning-loop-mastra" in config.mcpServers,
-      `${file}: learning-loop-mastra must be the only server`,
+      "learning-loop" in config.mcpServers,
+      `${file}: learning-loop must be the only server`,
     );
   });
 
   test(`${file} mastra entry points at tools/learning-loop-mastra/server.js`, () => {
     const config = JSON.parse(readFileSync(join(projectRoot, file), "utf8"));
-    assert.deepEqual(config.mcpServers["learning-loop-mastra"], {
+    assert.deepEqual(config.mcpServers["learning-loop"], {
       command: "node",
       args: ["tools/learning-loop-mastra/server.js"],
     });

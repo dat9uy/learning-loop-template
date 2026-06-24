@@ -24,7 +24,7 @@ const PREFIX = "mastra_";
 const tools = {};
 
 for (const { file, export: exportName } of MANIFEST) {
-  const mod = await import(`#mcp/${file}`);
+  const mod = await import(`./tools/legacy/${file.replace('tools/', '')}`);
   const legacy = mod[exportName];
   if (!legacy) {
     console.error(`skipped ${file} (missing export "${exportName}")`);
@@ -66,7 +66,7 @@ for (const [key, entry] of Object.entries(AGENTS_MANIFEST.agents)) {
   agents[key] = agent;
 }
 
-console.error(`learning-loop-mastra: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, ${Object.keys(agents).length} agents, storage.id=${storage.id}`);
+console.error(`learning-loop: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, ${Object.keys(agents).length} agents, storage.id=${storage.id}`);
 
 // Custom MCPServer subclass that extracts only the step result from workflow
 // execution output, ensuring parity with legacy createTool handlers.
@@ -162,8 +162,8 @@ class LoopMCPServer extends MCPServer {
 await initStorage();
 
 const server = new LoopMCPServer({
-  id: "learning-loop-mastra",
-  name: "learning-loop-mastra",
+  id: "learning-loop",
+  name: "learning-loop",
   version: "0.1.2",
   description:
     "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2+3). 31 tools + 10 workflows + 3 agents across 6 groups.",
@@ -174,7 +174,7 @@ const server = new LoopMCPServer({
 
 const mastra = new Mastra({
   storage,
-  mcpServers: { "learning-loop-mastra": server },
+  mcpServers: { "learning-loop": server },
 });
 
 await server.startStdio();

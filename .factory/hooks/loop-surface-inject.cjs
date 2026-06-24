@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Droid SessionStart hook: inject loop_describe({tier:"summary"}) into context.
- * Only fires when the project has its own .mcp.json + learning-loop-mastra entry.
+ * Only fires when the project has its own .mcp.json + learning-loop entry.
  * Reads stdin (Droid hook input JSON), guards, spawns MCP server, prints block.
  */
 
@@ -20,22 +20,22 @@ const LOCAL_DISCOVERABILITY_HINTS = Object.freeze([
   "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `superseded` (consolidated into a change-log), `auto-resolved` (closed by mechanism). The legacy `expired` status was removed in plan 260611-1000-remove-expired-status; only `stale` parents are cascade-closeable.",
   "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
   "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
-  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mcp/references/tool-selection-guide.md` for the intent to tool mapping.",
+  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/legacy/references/tool-selection-guide.md` for the intent to tool mapping.",
   "AGENTS.md is the priority-1 prompt (the steering layer: shape of the loop, rules, canonical paths). The tool manifest is the deterministic tool-selection surface. `loop_describe` warm tier `discoverability_hints` is the at-start-up injection. The `learning-loop` skill is the prompt-author docs. Each surface has a distinct role; do not duplicate content across them.",
   "For 'X is related to Y' prompts: (1) meta_state_relationship_validate to lint; (2) meta_state_report({..., reopens: ['<orphan_id>']}); (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step.",
-  "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mcp/**` and `schemas/**` are the template rules. Cite the correct surface.",
+  "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mastra/{core,tools,hooks}/legacy/**` and `schemas/**` are the template rules. Cite the correct surface.",
   "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
   "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
   "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
-  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js.",
+  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js.",
 ]);
 
 // Process-specific rules: agent behavior under operational conditions.
-// Mirrors PROCESS_HINTS in tools/learning-loop-mcp/core/loop-introspect.js.
+// Mirrors PROCESS_HINTS in tools/learning-loop-mastra/core/legacy/loop-introspect.js.
 const LOCAL_PROCESS_HINTS = Object.freeze([
   "pnpm test discipline. `pnpm test` runs 9 namespaces / 1100+ tests in ~13s. Per-namespace logs at `.test-logs/<ns>.log` mirror progress. Rule 1 (silent-command): if a Bash call is silent for >2 min, tail `.test-logs/<ns>.log` instead of re-reading files. Rule 2 (same-file-read): if you read the same file >5 times in 60s with no Edit/Write/Bash, STOP — write a one-line journal to `plans/reports/` and ask the operator. The old 10-min claim was an agent-side `tail -60` artifact; the runner preserves the principle of observable per-namespace progress.",
   "PR-body registry deltas. Every PR that touches `meta-state.jsonl` must enumerate its deltas in the PR body: (a) sweep entries by id+reason, (b) resolved entries by id+resolution note, (c) new entries by id+initial status, (d) promoted rules by finding_id+rule_id, (e) superseded/archived entries by id+target. See `rule-pr-body-registry-deltas` in `meta-state.jsonl` for the canonical rule body and enforcement shape. The CI workflow `meta-state-pr-body-advisory.yml` surfaces the deltas in the PR's Checks tab.",
-  "Runtime-agnostic audit. Before shipping a new feature, audit it against the 6-item checklist in `rule-runtime-agnostic-features` (process rule: core-in-universal-location, shims-in-sync, protocol-adapter-i/o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Use the `check_runtime_agnostic` MCP tool to verify. The regression test is at `tools/learning-loop-mcp/__tests__/runtime-agnostic.test.js`.",
+  "Runtime-agnostic audit. Before shipping a new feature, audit it against the 6-item checklist in `rule-runtime-agnostic-features` (process rule: core-in-universal-location, shims-in-sync, protocol-adapter-i/o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Use the `check_runtime_agnostic` MCP tool to verify. The regression test is at `tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js`.",
 ]);
 
 async function main(inputArg, envArg, spawnImpl) {
@@ -76,7 +76,7 @@ async function main(inputArg, envArg, spawnImpl) {
     return null;
   }
 
-  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop-mastra"];
+  const serverCfg = mcpCfg.mcpServers && mcpCfg.mcpServers["learning-loop"];
   if (!serverCfg) return null;
 
   const tier = env.LL_LOOP_INJECT_TIER === "summary" ? "summary" : "warm";
@@ -117,10 +117,10 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
   try {
     // The meta-state module lives in the project, not in the test temp cwd.
     // Resolve relative to this hook's own location: .factory/hooks/<this>.cjs
-    // -> <project-root>/tools/learning-loop-mcp/core/meta-state.js
+    // -> <project-root>/tools/learning-loop-mastra/core/legacy/meta-state.js (post-Phase-D legacy move)
     const path = require("node:path");
     const projectRoot = path.resolve(__dirname, "..", "..");
-    corePath = path.join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    corePath = path.join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
   } catch (e) {
     // Should not happen — log and bail.
     console.error(`[loop-surface-inject] cannot resolve core path: ${e.message}`);
@@ -162,7 +162,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     severity: "warning",
     affected_system: "mcp-tools",
     subtype: "mcp-connection",
-    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop_mastra__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
+    description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
     evidence_code_ref: "tools/learning-loop-mastra/server.js",
     session_id: sessionId,
     status: "reported",
@@ -202,7 +202,7 @@ async function reportHintDowngrade(input, env, cwd, reason) {
   try {
     const path = require("node:path");
     const projectRoot = path.resolve(__dirname, "..", "..");
-    corePath = path.join(projectRoot, "tools/learning-loop-mcp/core/meta-state.js");
+    corePath = path.join(projectRoot, "tools/learning-loop-mastra/core/legacy/meta-state.js");
   } catch (e) {
     console.error(`[loop-surface-inject] cannot resolve core path: ${e.message}`);
     return;
