@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Verify"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2, 3, 4]
 effort: "30min"
@@ -210,14 +210,14 @@ All 10 items pass.
 
 ## Success Criteria
 
-- [ ] `pnpm test` passes (existing tests preserved + 29 new tests, 0 fail)
-- [ ] Validator returns `{ok: true}` for `claude-code` and `droid`; `{ok: false}` for `mastra-code`
-- [ ] `--list` mode works; `--help` mode exits 2 with usage
-- [ ] `meta_state_log_change` is filed with the interface-spec change
-- [ ] Master tracker updates the Phase E table row for Plan 2
-- [ ] Journal entry is written
-- [ ] All 10 scope-report verification items pass
-- [ ] Plan status flips from `pending` to `done` after merge
+- [x] `pnpm test` passes (existing tests preserved + 29 new tests, 0 fail)
+- [x] Validator returns `{ok: true}` for `claude-code` and `droid`; `{ok: false}` for `mastra-code`
+- [x] `--list` mode works; `--help` mode exits 2 with usage
+- [x] `meta_state_log_change` is filed with the interface-spec change
+- [x] Master tracker updates the Phase E table row for Plan 2
+- [x] Journal entry is written
+- [x] All 10 scope-report verification items pass
+- [x] Plan status flips from `pending` to `done` after merge
 
 ## Risk Assessment
 

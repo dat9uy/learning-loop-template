@@ -1,5 +1,26 @@
 # Project Changelog
 
+## 2026-06-25 — Runtime Interface Contract (Phase E Plan 2)
+
+**Plan:** Phase E Plan 2 (interface spec)
+
+### Added
+
+- **`tools/learning-loop-mastra/interface/`** — New Layer 3 directory containing the explicit runtime-to-loop contract:
+  - `README.md` — overview of the interface layer and its relationship to the 3-layer architecture.
+  - `CONTRACT.md` — the 5 requirements a runtime MUST satisfy: `hook-shim-set`, `mcp-client-config`, `skill-spec`, `identity-marker` (advisory), `settings-integration`.
+  - `contract.js` — read-only validator. Run as `node tools/learning-loop-mastra/interface/contract.js <runtime-id>`.
+  - `RUNTIME_ONBOARDING.md` — step-by-step guide for adding a new runtime (worked example: Mastra Code).
+  - `__tests__/contract.test.js` — 24-test contract validation suite.
+- **`tools/learning-loop-mastra/__tests__/interface/`** — 5 regression-guard tests for the interface layer.
+- **`tools/scripts/run-pnpm-test-namespaced.mjs`** — 3 new GLOB entries for the interface test namespace.
+- **Baseline capture script and report** for the interface layer.
+
+### Changed
+
+- **`.claude/skills/learning-loop/SKILL.md`** and **`.factory/skills/learning-loop/SKILL.md`** — E.0 update: added Runtime contract section and rewritten References section.
+- **`docs/system-architecture.md`** — added 3-layer architecture section documenting Core / Mastra shell / Runtime interface layers.
+
 ## 2026-06-21 — MCP stdio SDK Conversion + Test Deadlock Fix (GH-2246)
 
 **Plan:** `plans/260621-2223-GH-2246-mcp-stdio-sdk-conversion/`

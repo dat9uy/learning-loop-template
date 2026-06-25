@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 2: Interface spec (5-requirement contract + validator + onboarding)"
 description: "Ships E.0 (SKILL.md doc-drift closeout) + E.1b (interface/ directory: 5-requirement contract, validator, onboarding guide, test suite). First-class structure for the runtime interface layer named in AGENTS.md §1.1. ~150 LoC production + ~140 LoC tests + 2 SKILL.md updates."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [phase-e, interface, contract, validator, onboarding, e0, e1b]
@@ -31,30 +31,30 @@ This plan creates the first-class structure: `tools/learning-loop-mastra/interfa
 
 | Phase | Name | Status | TDD Gate |
 |-------|------|--------|----------|
-| 1 | [BaselineAndTests](./phase-01-baselineandtests.md) | Pending | Tests written first (red baseline) |
-| 2 | [SkillMdUpdates](./phase-02-skillmdupdates.md) | Pending | Tool-references test turns green after SKILL.md rewrite |
-| 3 | [InterfaceSpec](./phase-03-interfacespec.md) | Pending | interface-dir-exists + contract-md-exists + contract-js-exports-validate turn green after spec files added |
-| 4 | [OnboardingAndTestSuite](./phase-04-onboardingandtestsuite.md) | Pending | 24-test suite + runtimes-pass-contract turn green after validator exercises real `.claude/` and `.factory/` |
-| 5 | [Verify](./phase-05-verify.md) | Pending | `pnpm test` green + `meta_state_log_change` filed + journal entry |
+| 1 | [BaselineAndTests](./phase-01-baselineandtests.md) | ✅ Done | Tests written first (red baseline) |
+| 2 | [SkillMdUpdates](./phase-02-skillmdupdates.md) | ✅ Done | Tool-references test turns green after SKILL.md rewrite |
+| 3 | [InterfaceSpec](./phase-03-interfacespec.md) | ✅ Done | interface-dir-exists + contract-md-exists + contract-js-exports-validate turn green after spec files added |
+| 4 | [OnboardingAndTestSuite](./phase-04-onboardingandtestsuite.md) | ✅ Done | 24-test suite + runtimes-pass-contract turn green after validator exercises real `.claude/` and `.factory/` |
+| 5 | [Verify](./phase-05-verify.md) | ✅ Done | `pnpm test` green + `meta_state_log_change` filed + journal entry |
 
 **TDD structure applied:** each phase writes the regression tests BEFORE the production change, watches the tests fail (red), applies the minimal change, watches the tests pass (green), then runs the full suite to confirm no regression. The 5 regression guards (interface-dir-exists, contract-md-exists, contract-js-exports-validate, skill-md-references-tools, runtimes-pass-contract) lock the new invariants against silent regression.
 
 ## Acceptance Criteria
 
-- [ ] `tools/learning-loop-mastra/interface/` exists with 4 docs + 1 validator + 1 test file
-- [ ] `interface/README.md` describes what the interface layer is and how it relates to Core + Mastra shell
-- [ ] `interface/CONTRACT.md` enumerates the 5 requirements with verification predicates
-- [ ] `interface/contract.js` exports `validate(runtimeId, rootPath?)` and `validateAll(ids, rootPath?)`; runs as `node contract.js <runtime-id>` from CLI
-- [ ] `interface/RUNTIME_ONBOARDING.md` provides a 5-req checklist + worked example for Mastra Code (~110 LoC)
-- [ ] `interface/__tests__/contract.test.js` contains ~24 tests covering structural, pass-mode, per-requirement, fail-mode, and golden scenarios
-- [ ] `node tools/learning-loop-mastra/interface/contract.js claude-code` returns `{ok: true, missing: [], notes: ["identity-marker-not-adopted"], path_map: {...}}` (exit 0)
-- [ ] `node tools/learning-loop-mastra/interface/contract.js droid` returns the same shape (exit 0)
-- [ ] `node tools/learning-loop-mastra/interface/contract.js mastra-code` returns `{ok: false, missing: [4 — hook-shim-set, mcp-client-config, skill-spec, settings-integration], notes: ["identity-marker-not-adopted"]}` (exit 1) — proves validator handles future runtimes
-- [ ] `node tools/learning-loop-mastra/interface/contract.js --list` exits 0 and prints the 3 known runtime IDs + 5 requirement IDs
-- [ ] Both SKILL.md files reference `loop_describe` AND `meta_state_list` (validator requirement #3)
-- [ ] Both SKILL.md files reference `tools/learning-loop-mastra/interface/CONTRACT.md` + the validator invocation
-- [ ] All existing tests still pass (no regression)
-- [ ] `meta_state_log_change` filed with `change_target: plans/260625-1618-phase-e-interface-spec/plan.md`
+- [x] `tools/learning-loop-mastra/interface/` exists with 4 docs + 1 validator + 1 test file
+- [x] `interface/README.md` describes what the interface layer is and how it relates to Core + Mastra shell
+- [x] `interface/CONTRACT.md` enumerates the 5 requirements with verification predicates
+- [x] `interface/contract.js` exports `validate(runtimeId, rootPath?)` and `validateAll(ids, rootPath?)`; runs as `node contract.js <runtime-id>` from CLI
+- [x] `interface/RUNTIME_ONBOARDING.md` provides a 5-req checklist + worked example for Mastra Code (~110 LoC)
+- [x] `interface/__tests__/contract.test.js` contains ~24 tests covering structural, pass-mode, per-requirement, fail-mode, and golden scenarios
+- [x] `node tools/learning-loop-mastra/interface/contract.js claude-code` returns `{ok: true, missing: [], notes: ["identity-marker-not-adopted"], path_map: {...}}` (exit 0)
+- [x] `node tools/learning-loop-mastra/interface/contract.js droid` returns the same shape (exit 0)
+- [x] `node tools/learning-loop-mastra/interface/contract.js mastra-code` returns `{ok: false, missing: [4 — hook-shim-set, mcp-client-config, skill-spec, settings-integration], notes: ["identity-marker-not-adopted"]}` (exit 1) — proves validator handles future runtimes
+- [x] `node tools/learning-loop-mastra/interface/contract.js --list` exits 0 and prints the 3 known runtime IDs + 5 requirement IDs
+- [x] Both SKILL.md files reference `loop_describe` AND `meta_state_list` (validator requirement #3)
+- [x] Both SKILL.md files reference `tools/learning-loop-mastra/interface/CONTRACT.md` + the validator invocation
+- [x] All existing tests still pass (no regression)
+- [x] `meta_state_log_change` filed with `change_target: plans/260625-1618-phase-e-interface-spec/plan.md`
 
 ## Dependencies
 

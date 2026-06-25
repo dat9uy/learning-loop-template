@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "OnboardingAndTestSuite"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2, 3]
 effort: "3h"
@@ -527,12 +527,12 @@ Expected: all 5 regression-guard tests pass (the 9 tests from Phase 1's red base
 
 ## Success Criteria
 
-- [ ] `interface/RUNTIME_ONBOARDING.md` exists (~110 LoC; 5-req checklist + Mastra Code worked example + troubleshooting)
-- [ ] `interface/__tests__/contract.test.js` contains 24 tests, all passing
-- [ ] `__tests__/interface/runtimes-pass-contract.test.js` contains 5 tests, all passing
-- [ ] All 5 regression-guard tests from Phase 1 pass
-- [ ] No committed `_fixtures/` directory (fixtures are built in-memory with `mkdtempSync`)
-- [ ] Validator's behavior is locked for both real runtimes + fake runtimes + edge cases
+- [x] `interface/RUNTIME_ONBOARDING.md` exists (~110 LoC; 5-req checklist + Mastra Code worked example + troubleshooting)
+- [x] `interface/__tests__/contract.test.js` contains 24 tests, all passing
+- [x] `__tests__/interface/runtimes-pass-contract.test.js` contains 5 tests, all passing
+- [x] All 5 regression-guard tests from Phase 1 pass
+- [x] No committed `_fixtures/` directory (fixtures are built in-memory with `mkdtempSync`)
+- [x] Validator's behavior is locked for both real runtimes + fake runtimes + edge cases
 
 ## Risk Assessment
 

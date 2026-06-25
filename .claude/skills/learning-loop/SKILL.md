@@ -61,6 +61,10 @@ Also use when:
    - unresolved questions, if any
 
 
+## Runtime contract
+
+This skill is Requirement #3 (skill spec) of the runtime interface contract. The runtime that loads it must also satisfy Requirements #1 (hook shims), #2 (MCP client config), #4 (identity marker), and #5 (settings integration). To audit: run `node tools/learning-loop-mastra/interface/contract.js <runtime-id>`. See `tools/learning-loop-mastra/interface/CONTRACT.md`.
+
 ## Prompt Requirements
 
 Every generated prompt must state:
@@ -88,10 +92,15 @@ When budget state blocks prompt generation, return one of these signals instead 
 
 ## References
 
-- `tools/learning-loop-mastra/tools/legacy/references/learning-loop-rules.md` — condensed repo rules from `docs/` and meta evidence.
-- `tools/learning-loop-mastra/tools/legacy/references/resource-budget-rules.md` — hard constraints for external systems with irreversible state.
-- `tools/learning-loop-mastra/tools/legacy/references/prompt-blueprints.md` — reusable prompt skeletons.
-- `tools/learning-loop-mastra/tools/legacy/references/prompt-blueprints-state-gated.md` — state-gated prompt templates for budget-constrained tasks.
-- `tools/learning-loop-mastra/tools/legacy/references/prompt-blueprints-product-build.md` — product-build prompt skeletons.
-- `tools/learning-loop-mastra/tools/legacy/references/meta-evidence-self-improvement.md` — self-improvement and `meta` evidence rules.
-- `tools/learning-loop-mastra/tools/legacy/references/orchestration-patterns.md` — full-lifecycle experiment orchestration, claim update, and promotion rules.
+### Tool manifest
+- `tools/learning-loop-mastra/agent-manifest.json` — current 44-tool manifest, 6 groups (gate, workflow, meta_state, introspection, runtime_agnostic, agent). Call `mastra_loop_describe({tier: "warm"})` to discover the surface at session start. Use `mastra_meta_state_list` to query the registry.
+
+### 3-layer architecture
+- `AGENTS.md` §1.1 — Core / Mastra shell / Runtime interface (the contract you satisfy by being loaded as this skill).
+- `tools/learning-loop-mastra/core/README.md` — FCIS invariant: zero `@mastra/*` imports in core.
+- `tools/learning-loop-mastra/docs/schemas.md` — meta-state 4-kind schema, wire envelope, parity contract.
+
+### Runtime interface contract (Phase E.1b)
+- `tools/learning-loop-mastra/interface/CONTRACT.md` — the 5 requirements a runtime MUST satisfy (hook shims, MCP config, this skill, identity marker, settings).
+- `tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md` — how to onboard a new runtime (worked example: Mastra Code).
+- `node tools/learning-loop-mastra/interface/contract.js <runtime-id>` — validate a runtime against the contract. Returns `{ok, missing[], notes[], path_map}`.

@@ -1,0 +1,55 @@
+{
+  "agent_manifest_groups": [
+    "agent",
+    "gate",
+    "introspection",
+    "meta_state",
+    "runtime_agnostic",
+    "workflow"
+  ],
+  "hook_shims": {
+    "claude-code": {
+      "exists": true,
+      "files": [
+        "bash-coordination-gate.cjs",
+        "inbound-state-gate.cjs",
+        "recurrence-check-on-start.cjs",
+        "write-coordination-gate.cjs"
+      ]
+    },
+    "droid": {
+      "exists": true,
+      "files": [
+        "bash-coordination-gate.cjs",
+        "inbound-state-gate.cjs",
+        "recurrence-check-on-start.cjs",
+        "write-coordination-gate.cjs"
+      ]
+    }
+  },
+  "interface_dir": "present",
+  "mcp_config": {
+    "claude-code": {
+      "exists": true,
+      "has_learning_loop": true
+    },
+    "droid": {
+      "exists": true,
+      "has_learning_loop": true
+    }
+  },
+  "skill_md": {
+    ".claude/skills/learning-loop/SKILL.md": {
+      "exists": true,
+      "interface_contract_ref": false,
+      "loop_describe_count": 0,
+      "meta_state_list_count": 0
+    },
+    ".factory/skills/learning-loop/SKILL.md": {
+      "exists": true,
+      "interface_contract_ref": false,
+      "loop_describe_count": 0,
+      "meta_state_list_count": 0
+    }
+  }
+}

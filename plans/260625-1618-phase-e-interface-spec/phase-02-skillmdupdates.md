@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "SkillMdUpdates"
-status: pending
+status: completed
 priority: P2
 dependencies: [1]
 effort: "30min"
@@ -100,13 +100,13 @@ Expected: ~111 LoC per file (98 + 13 net). If the file exceeds 200 LoC, the refe
 
 ## Success Criteria
 
-- [ ] Both SKILL.md files contain `loop_describe` and `meta_state_list`
-- [ ] Both SKILL.md files reference `tools/learning-loop-mastra/interface/CONTRACT.md`
-- [ ] Both SKILL.md files are byte-identical (`diff` returns no output)
-- [ ] Both SKILL.md files are ≤ 200 LoC after the update
-- [ ] Test #4 (`skill-md-references-tools.test.js`) passes
-- [ ] The broken `tools/learning-loop-mastra/tools/legacy/references/*` paths are removed
-- [ ] The "Runtime contract" section is present in both files
+- [x] Both SKILL.md files contain `loop_describe` and `meta_state_list`
+- [x] Both SKILL.md files reference `tools/learning-loop-mastra/interface/CONTRACT.md`
+- [x] Both SKILL.md files are byte-identical (`diff` returns no output)
+- [x] Both SKILL.md files are ≤ 200 LoC after the update
+- [x] Test #4 (`skill-md-references-tools.test.js`) passes
+- [x] The broken `tools/learning-loop-mastra/tools/legacy/references/*` paths are removed
+- [x] The "Runtime contract" section is present in both files
 
 ## Risk Assessment
 

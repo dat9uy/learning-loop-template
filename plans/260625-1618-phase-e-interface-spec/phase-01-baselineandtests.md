@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "BaselineAndTests"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 effort: "1h"
@@ -102,14 +102,14 @@ Verify the GLOB picks up the new directories by running `pnpm test` and confirmi
 
 ## Success Criteria
 
-- [ ] `pre-plan-baseline.json` is captured and committed
-- [ ] 5 regression-guard tests exist in `__tests__/interface/`
-- [ ] 4 structural tests exist in `interface/__tests__/contract.test.js` (Phase 4 will add 20 more)
-- [ ] All 9 tests fail before any production code change
-- [ ] 2 new GLOB entries added to `tools/scripts/run-pnpm-test-namespaced.mjs`
-- [ ] `pnpm test` lists the new namespaces (even if tests fail; the point is they're discovered)
-- [ ] Baseline manifest is reproducible: running `capture-baseline.cjs` twice produces byte-identical output
-- [ ] No production code is changed in this phase (only test code + manifest)
+- [x] `pre-plan-baseline.json` is captured and committed
+- [x] 5 regression-guard tests exist in `__tests__/interface/`
+- [x] 4 structural tests exist in `interface/__tests__/contract.test.js` (Phase 4 will add 20 more)
+- [x] All 9 tests fail before any production code change
+- [x] 2 new GLOB entries added to `tools/scripts/run-pnpm-test-namespaced.mjs`
+- [x] `pnpm test` lists the new namespaces (even if tests fail; the point is they're discovered)
+- [x] Baseline manifest is reproducible: running `capture-baseline.cjs` twice produces byte-identical output
+- [x] No production code is changed in this phase (only test code + manifest)
 
 ## Risk Assessment
 

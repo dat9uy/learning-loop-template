@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "InterfaceSpec"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2]
 effort: "4h"
@@ -443,15 +443,15 @@ Expected: 0 matches.
 
 ## Success Criteria
 
-- [ ] `tools/learning-loop-mastra/interface/` directory exists
-- [ ] `interface/README.md` exists (~80-100 LoC; references AGENTS.md §1.1, distinguishes from protocol-adapter)
-- [ ] `interface/CONTRACT.md` exists (~80-120 LoC; enumerates 5 requirements with stable IDs)
-- [ ] `interface/contract.js` exists (~160 LoC; exports `validate`, `validateAll`, `REQUIREMENT_IDS`; CLI mode works)
-- [ ] Tests #1, #2, #3 pass (`interface-dir-exists`, `contract-md-exists`, `contract-js-exports-validate`)
-- [ ] Validator returns `{ok: true, ...}` for `claude-code` and `droid` (exit 0)
-- [ ] Validator returns `{ok: false, missing: [4], notes: [...]}` for `mastra-code` (exit 1)
-- [ ] `--list` mode returns 3 runtimes + 5 requirements (exit 0)
-- [ ] FCIS holds: 0 `@mastra/*` imports in `interface/`
+- [x] `tools/learning-loop-mastra/interface/` directory exists
+- [x] `interface/README.md` exists (~80-100 LoC; references AGENTS.md §1.1, distinguishes from protocol-adapter)
+- [x] `interface/CONTRACT.md` exists (~80-120 LoC; enumerates 5 requirements with stable IDs)
+- [x] `interface/contract.js` exists (~160 LoC; exports `validate`, `validateAll`, `REQUIREMENT_IDS`; CLI mode works)
+- [x] Tests #1, #2, #3 pass (`interface-dir-exists`, `contract-md-exists`, `contract-js-exports-validate`)
+- [x] Validator returns `{ok: true, ...}` for `claude-code` and `droid` (exit 0)
+- [x] Validator returns `{ok: false, missing: [4], notes: [...]}` for `mastra-code` (exit 1)
+- [x] `--list` mode returns 3 runtimes + 5 requirements (exit 0)
+- [x] FCIS holds: 0 `@mastra/*` imports in `interface/`
 
 ## Risk Assessment
 
