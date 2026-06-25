@@ -1,9 +1,9 @@
 # Phase E Scope Report: Runtime Interface Structure (3-Layer Architecture Locked)
 
 **Type:** phase-e-scope (advisory; problem-solving inversion applied)
-**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15; revised 2026-06-26 — Plan 2 (Interface spec) shipped via PR #17 + Plan 6 (Mastra shell restructure) added per operator observation; revised 2026-06-26 (Rev 6) — Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review; revised 2026-06-26 (Rev 7) — Plan 6 status flipped to DONE (code review approved; merge to main pending); see "Revision notes" at end)
+**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15; revised 2026-06-26 — Plan 2 (Interface spec) shipped via PR #17 + Plan 6 (Mastra shell restructure) added per operator observation; revised 2026-06-26 (Rev 6) — Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review; revised 2026-06-26 (Rev 7) — Plan 6 status flipped to DONE (code review approved; merge to main pending); revised 2026-06-26 (Rev 8) — Plan 6 squash-merged to main via PR #18 (merge commit de01dcc; CI green; "merge to main pending" caveat lifted); see "Revision notes" at end)
 **Slug:** runtime-interface-structure
-**Status:** partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15; Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal `docs/journals/260625-phase-e-plan-2-interface-spec-shipped.md`; git merge commit dated 2026-06-26 local); Plan 6 (Mastra shell restructure) shipped 2026-06-26 on `phase-e/plan-6-shell-restructure` branch (commit 28e3618; journal `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`; code review APPROVE WITH FOLLOW-UPS; merge to main pending operator approval). Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review (Rev 6). Plans 3/4 still pending.
+**Status:** partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15; Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal `docs/journals/260625-phase-e-plan-2-interface-spec-shipped.md`; git merge commit dated 2026-06-26 local); Plan 6 (Mastra shell restructure) shipped 2026-06-26 via PR #18 squash-merged to main (merge commit `de01dcc`; CI green; journal `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`; code review APPROVE WITH FOLLOW-UPS). Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review (Rev 6). Plans 3/4 still pending.
 **Aligned to:** `plans/reports/predict-260624-2025-phase-e-domain-driven-architecture-report.md` (CAUTION verdict) + `plans/reports/productization-260612-1530-master-tracker.md` Phase E
 **Technique applied:** Inversion Exercise (per `/problem-solving` skill) — flipped the assumption that "the shim pattern IS the runtime interface" to reveal the missing first-class structure.
 
@@ -150,7 +150,7 @@ The 7 phase items (E.0–E.5) cluster naturally into **4 shippable plans** based
 | **1** | **phase-e-foundation** | E.1 | Rename `core/legacy/` → `core/` + add `core/README.md` (FCIS invariant) + add `tools/learning-loop-mastra/docs/schemas.md` + update `AGENTS.md §1` to name the 3 layers. **Pure rename + discipline doc. No new code.** | 0.5d | Mechanical + invariant correctness | None (this is the foundation) | ✅ DONE 2026-06-25 (PR #15) |
 | **2** | **phase-e-interface-spec** | E.0 + E.1b | (E.0) Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to reference the new contract. (E.1b) Create `interface/` with README, CONTRACT.md, contract.js, RUNTIME_ONBOARDING.md, contract.test.js. **The new spec + the docs that point to it.** | ~1.25d | Spec correctness + validator behavior | Plan 1 (FCIS invariant) | ✅ DONE 2026-06-25 (PR #17; journal dated 2026-06-25; git merge 2026-06-26 02:37 local) |
 | **3** | **phase-e-housekeeping** | E.2, E.3, E.4, **Rev 6: Plan 6 follow-ups I-1 + I-2** | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **(Rev 6 / I-1)** Fix `tools/learning-loop-mastra/core/README.md` lines 26/27/46 stale pre-move path references + extend `external-refs-updated.test.js` SEARCH_PATHS to include `tools/learning-loop-mastra/core/` + add `create-loop-\*\\.js` glob pattern to FORBIDDEN_PATH_PATTERNS (closes the regression guard gap surfaced in Plan 6 code review). **(Rev 6 / I-2)** Run `meta_state_re_verify` for entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop` with `META_STATE_VERIFY_EXEC=1` to transition `stale → active` (the fingerprint is grounded; only the status lifecycle is open per Plan 6 code review). **3 small doc/process changes + 2 follow-ups bundled to avoid PR overhead.** | ~2h (was ~1.5h) | Doc accuracy + regression guard extension (low risk) | Plan 1 (FCIS invariant) | 🔵 OPEN (Plan 1 done; can run in parallel with Plan 2 + Plan 6) |
-| **6** | **phase-e-shell-restructure** | **NEW (Rev 5): E.6** | Move `tools/learning-loop-mastra/{server.js, create-loop-{tool,workflow,agent}.js, legacy-handler-adapter.js, schema-parity.js, schemas.js, workflows/, agents/}` into `tools/learning-loop-mastra/mastra/`. Update `AGENTS.md §1.1` line 20-22 to reflect the new location. Update `interface/contract.js` Requirement #2 `args` check from `tools/learning-loop-mastra/server.js` → `tools/learning-loop-mastra/mastra/server.js`. Update ~10-15 import-bearing files + add 1 regression guard test. **Makes Layer 2 actually first-class.** | ~1-1.5d | Mechanical move + path invariant correctness | Plan 2 (interface spec must exist, so the contract `args` check is the path source-of-truth) | ✅ DONE 2026-06-26 (commit 28e3618 on `phase-e/plan-6-shell-restructure`; journal dated 2026-06-26; code review APPROVE WITH FOLLOW-UPS; merge to main pending operator approval — see Rev 7) |
+| **6** | **phase-e-shell-restructure** | **NEW (Rev 5): E.6** | Move `tools/learning-loop-mastra/{server.js, create-loop-{tool,workflow,agent}.js, legacy-handler-adapter.js, schema-parity.js, schemas.js, workflows/, agents/}` into `tools/learning-loop-mastra/mastra/`. Update `AGENTS.md §1.1` line 20-22 to reflect the new location. Update `interface/contract.js` Requirement #2 `args` check from `tools/learning-loop-mastra/server.js` → `tools/learning-loop-mastra/mastra/server.js`. Update ~10-15 import-bearing files + add 1 regression guard test. **Makes Layer 2 actually first-class.** | ~1-1.5d | Mechanical move + path invariant correctness | Plan 2 (interface spec must exist, so the contract `args` check is the path source-of-truth) | ✅ DONE 2026-06-26 (squash-merged to main via PR #18 at `de01dcc`; CI green; code review APPROVE WITH FOLLOW-UPS — see Rev 8) |
 | **4** | **phase-e-mastra-code-validation** | E.5 | Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against the new MCPServer. Satisfy the 5 contract requirements for Mastra Code. Run `interface/contract.js mastra-code` → expect `{ok: true}`. Document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Config + smoke test + contract validation | Plan 2 (interface spec) + Plan 6 (shell paths must be stable before the contract is exercised) | 🔵 OPEN (Plan 6 DONE; dependency satisfied; ready to start) |
 | **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 + R2 + LIM-4 | Bundled hardening plan: (1) `RUNTIME_ID` env var convention + runtime-marker reader. (2) R2 write-gate (per-runtime write allowlist). (3) Path traversal fix in `meta_state_refresh_fingerprint`. **Per user "Bundle" decision.** Parallel to Phase E. | 1–2w | Security + identity primitive correctness | None — can ship in parallel or after Phase E | 🔵 OPEN (parallel dimension) |
 
@@ -163,7 +163,7 @@ Plan 1 (Foundation)         0.5d  [DONE]
   │
   ├──→ Plan 2 (Interface)   1.25d  [DONE]
   │       │
-  │       └──→ Plan 6 (Shell restructure)  ~1-1.5d  [DONE — Rev 7; merge to main pending]
+  │       └──→ Plan 6 (Shell restructure)  ~1-1.5d  [DONE — Rev 8; PR #18 squash-merged to main at de01dcc]
   │               │
   │               └──→ Plan 4 (Mastra Code)  1-2d
   │
@@ -185,7 +185,7 @@ Plan 5 (Hardening)          1-2w  [parallel to all of the above]
 ```
 plans/260624-2335-phase-e-foundation/         [DONE 2026-06-25, PR #15]
 plans/260625-1618-phase-e-interface-spec/     [DONE 2026-06-25, PR #17]
-plans/260626-0302-phase-e-shell-restructure/  [DONE 2026-06-26, commit 28e3618; merge to main pending — Rev 7]
+plans/260626-0302-phase-e-shell-restructure/  [DONE 2026-06-26, PR #18 squash-merged to main at de01dcc — Rev 8]
 plans/260625-0930-phase-e-housekeeping/       [pending; parallel to Plan 6 + can start now]
 plans/260625-0930-phase-e-mastra-code-validation/  [pending; depends on Plan 6 DONE — ready to start]
 plans/260701-0930-hardening-r2-lim3-lim4/     (deferred; parallel)
@@ -298,7 +298,7 @@ plans/260701-0930-hardening-r2-lim3-lim4/     (deferred; parallel)
 
 ## What shipped in Plan 6 (Mastra shell restructure) — 2026-06-26
 
-**Shipped on `phase-e/plan-6-shell-restructure` branch (commit `28e3618`; merge to `main` pending operator approval per Rev 7).** Plan dir: `plans/260626-0302-phase-e-shell-restructure/`. Journal: `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`. Code review report: `plans/260626-0302-phase-e-shell-restructure/reports/code-reviewer-260626-0534-GH-6-phase-e-plan-6-shell-restructure-report.md`. Status flipped to ✅ DONE (Rev 7).
+**Shipped 2026-06-26 via PR #18 squash-merged to `main` (merge commit `de01dcc`; CI green; feature branch `phase-e/plan-6-shell-restructure` deleted after merge per Rev 8).** Plan dir: `plans/260626-0302-phase-e-shell-restructure/`. Journal: `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`. Code review report: `plans/260626-0302-phase-e-shell-restructure/reports/code-reviewer-260626-0534-GH-6-phase-e-plan-6-shell-restructure-report.md`. Status ✅ DONE.
 
 | What | Where | Commit |
 |------|-------|--------|
@@ -647,6 +647,28 @@ The interface contract (shipped in Plan 2) hardcodes the path `tools/learning-lo
 - The risk table R1–R6 — keep. Plan 6 adds a new risk: "Mechanical file moves across ~10-15 files may regress imports if a path is missed." Mitigation: 1 regression guard test + grep pre/post.
 - The "after Phase E" 3-layer ASCII diagram (line ~73-95 in the original) — keep. The conceptual layering is unchanged; Plan 6 only moves files.
 
+### Revision 8 (2026-06-26) — Plan 6 squash-merged to main via PR #18
+
+PR #18 (squash merge of `28e3618` + `95ee070`) was merged to `main` at commit `de01dcccd25cac49859a7e40ee3783fc44dbfc08`. Post-merge CI is green (test workflow run #28205724147 passed). The feature branch `phase-e/plan-6-shell-restructure` was deleted on remote after merge (per project convention).
+
+This rev lifts the "merge to main pending" caveat that Rev 7 carried. Plan 6's status is now final: ✅ DONE with merge evidence on `main`.
+
+**Concrete changes to this report (Rev 8):**
+- Header date stamp: added "revised 2026-06-26 (Rev 8) — Plan 6 squash-merged to main via PR #18 (merge commit de01dcc; CI green; 'merge to main pending' caveat lifted)"
+- Status line: Plan 6 ship description updated from "shipped on feature branch with merge to main pending" → "shipped 2026-06-26 via PR #18 squash-merged to main (merge commit de01dcc; CI green)"
+- Plan split table (line ~153): Plan 6 row updated from `commit 28e3618 on phase-e/plan-6-shell-restructure; ...; merge to main pending operator approval — see Rev 7` → `squash-merged to main via PR #18 at de01dcc; CI green; code review APPROVE WITH FOLLOW-UPS — see Rev 8`
+- Plan-level dependency diagram (line ~166): Plan 6 marker updated from `[DONE — Rev 7; merge to main pending]` → `[DONE — Rev 8; PR #18 squash-merged to main at de01dcc]`
+- Plan-dir naming convention list (line ~188): Plan 6 entry updated from `[DONE 2026-06-26, commit 28e3618; merge to main pending — Rev 7]` → `[DONE 2026-06-26, PR #18 squash-merged to main at de01dcc — Rev 8]`
+- "What shipped in Plan 6" section preamble (line ~301): updated from "Shipped on `phase-e/plan-6-shell-restructure` branch (commit `28e3618`; merge to `main` pending operator approval per Rev 7)" → "Shipped 2026-06-26 via PR #18 squash-merged to `main` (merge commit `de01dcc`; CI green; feature branch `phase-e/plan-6-shell-restructure` deleted after merge per Rev 8)"
+- Status footer (line ~776): Plan 6 ship description updated to reflect PR #18 merge; "merge to main pending" caveat removed from the recommended-next-move block
+
+**What was NOT changed in this revision:**
+- Rev 7's narrative content — keep (the ship-event + caveat narrative is historically accurate for the period between Rev 7 and Rev 8)
+- Rev 6's Plan 3 expansion — keep (still applies; Plan 3 ships independently)
+- Plan 4's dependency on Plan 6 — keep satisfied (Plan 6 is fully done now, not just done-on-branch)
+- Plan 5 (Hardening) — keep parallel
+- The 3-layer architecture, the 5-requirement contract, the risk table, the open questions — keep
+
 ### Revision 7 (2026-06-26) — Plan 6 (Mastra shell restructure) status flipped to DONE
 
 Plan 6 shipped 2026-06-26 on the `phase-e/plan-6-shell-restructure` branch. Ship evidence: commit `28e3618` (single atomic commit per Plan 1 D1 precedent); `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md` (4202 bytes); `meta_state_log_change` entry `meta-260626T0523Z-plans-260626-0302-phase-e-shell-restructure-plan-md`; 13 test namespaces GREEN (phase-e-shell-restructure 11/11); 3 contract smoke tests pass (claude-code=ok, droid=ok, mastra-code=ok:false with 4 missing); code review APPROVE WITH FOLLOW-UPS (`plans/260626-0302-phase-e-shell-restructure/reports/code-reviewer-260626-0534-GH-6-phase-e-plan-6-shell-restructure-report.md`).
@@ -773,4 +795,4 @@ The "after Phase E" tree (line ~184) is **already labeled** as the post-E.1 / po
 
 ---
 
-**Status:** Partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15 + 1 follow-up (PR #16) for the deny-list bypass. Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal; git merge 2026-06-26). Plan 6 (Mastra shell restructure, NEW Rev 5) shipped 2026-06-26 on `phase-e/plan-6-shell-restructure` branch (commit 28e3618; journal + code review filed; merge to main pending operator approval per Rev 7). Plan 3 (Housekeeping) expanded Rev 6 with 2 follow-ups from Plan 6 code review (core/README.md docs drift + entry #9 status lifecycle). Plan 3 (Housekeeping) and Plan 4 (Mastra Code validation) still pending. Plan 5 (Hardening) is the parallel dimension. **Recommended next move:** Plan 3 (Housekeeping, ~2h with Rev 6 follow-ups) — closes the 2 carryovers from Plan 6's code review; can ship in parallel with Plan 4. Plan 4 (Mastra Code validation, 1-2d) — Plan 6 dependency now satisfied; ready to start once Plan 3 lands (or in parallel).
+**Status:** Partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15 + 1 follow-up (PR #16) for the deny-list bypass. Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal; git merge 2026-06-26). Plan 6 (Mastra shell restructure, NEW Rev 5) shipped 2026-06-26 via PR #18 squash-merged to main at `de01dcc` (CI green per Rev 8; feature branch deleted). Plan 3 (Housekeeping) expanded Rev 6 with 2 follow-ups from Plan 6 code review (core/README.md docs drift + entry #9 status lifecycle). Plan 3 (Housekeeping) and Plan 4 (Mastra Code validation) still pending. Plan 5 (Hardening) is the parallel dimension. **Recommended next move:** Plan 3 (Housekeeping, ~2h with Rev 6 follow-ups) — closes the 2 carryovers from Plan 6's code review; can ship in parallel with Plan 4. Plan 4 (Mastra Code validation, 1-2d) — Plan 6 dependency now satisfied; ready to start once Plan 3 lands (or in parallel).
