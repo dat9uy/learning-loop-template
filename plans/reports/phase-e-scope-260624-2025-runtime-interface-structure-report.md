@@ -1,9 +1,9 @@
 # Phase E Scope Report: Runtime Interface Structure (3-Layer Architecture Locked)
 
 **Type:** phase-e-scope (advisory; problem-solving inversion applied)
-**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; see "Revision notes" at end)
+**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15; see "Revision notes" at end)
 **Slug:** runtime-interface-structure
-**Status:** advisory (no contract change yet; awaits operator approval before master-tracker update)
+**Status:** partially executed — Plan 1 (Foundation) shipped 2026-06-25 via `plans/260624-2335-phase-e-foundation/` (PR #15 merged). Plans 2/3/4 still pending. Awaiting operator approval to advance to Plan 2 (Interface spec).
 **Aligned to:** `plans/reports/predict-260624-2025-phase-e-domain-driven-architecture-report.md` (CAUTION verdict) + `plans/reports/productization-260612-1530-master-tracker.md` Phase E
 **Technique applied:** Inversion Exercise (per `/problem-solving` skill) — flipped the assumption that "the shim pattern IS the runtime interface" to reveal the missing first-class structure.
 
@@ -145,13 +145,13 @@ The 7 phase items (E.0–E.5) cluster naturally into **4 shippable plans** based
 
 **Meta-pattern applied:** the items fall into 5 clusters by *kind of work* (rename, new spec, housekeeping, validation, hardening) — not by the original phase order. Each cluster has a single review focus, ships in its own PR, and has clear preconditions. Meta-pattern recognition: every "phase item" is either *foundation* (sets an invariant), *structure* (creates new first-class), *housekeeping* (closes minor doc debt), *validation* (proves the structure works), or *hardening* (security/identity). One cluster per plan.
 
-| # | Plan | Items | Scope | Effort | Review focus | Precondition |
-|---|------|-------|-------|--------|--------------|--------------|
-| **1** | **phase-e-foundation** | E.1 | Rename `core/legacy/` → `core/` + add `core/README.md` (FCIS invariant) + add `tools/learning-loop-mastra/docs/schemas.md` + update `AGENTS.md §1` to name the 3 layers. **Pure rename + discipline doc. No new code.** | 0.5d | Mechanical + invariant correctness | None (this is the foundation) |
-| **2** | **phase-e-interface-spec** | E.0 + E.1b | (E.0) Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to reference the new contract. (E.1b) Create `interface/` with README, CONTRACT.md, contract.js, RUNTIME_ONBOARDING.md, contract.test.js. **The new spec + the docs that point to it.** | ~1.25d | Spec correctness + validator behavior | Plan 1 (FCIS invariant) |
-| **3** | **phase-e-housekeeping** | E.2, E.3, E.4 | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **3 small doc/process changes bundled to avoid PR overhead.** | ~1.5h | Doc accuracy (low risk) | Plan 1 (FCIS invariant) — can run in parallel with Plan 2 |
-| **4** | **phase-e-mastra-code-validation** | E.5 | Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against the new MCPServer. Satisfy the 5 contract requirements for Mastra Code. Run `interface/contract.js mastra-code` → expect `{ok: true}`. Document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Config + smoke test + contract validation | Plan 2 (interface spec must exist) |
-| **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 + R2 + LIM-4 | Bundled hardening plan: (1) `RUNTIME_ID` env var convention + runtime-marker reader. (2) R2 write-gate (per-runtime write allowlist). (3) Path traversal fix in `meta_state_refresh_fingerprint`. **Per user "Bundle" decision.** Parallel to Phase E. | 1–2w | Security + identity primitive correctness | None — can ship in parallel or after Phase E |
+| # | Plan | Items | Scope | Effort | Review focus | Precondition | Status |
+|---|------|-------|-------|--------|--------------|--------------|--------|
+| **1** | **phase-e-foundation** | E.1 | Rename `core/legacy/` → `core/` + add `core/README.md` (FCIS invariant) + add `tools/learning-loop-mastra/docs/schemas.md` + update `AGENTS.md §1` to name the 3 layers. **Pure rename + discipline doc. No new code.** | 0.5d | Mechanical + invariant correctness | None (this is the foundation) | ✅ DONE 2026-06-25 (PR #15) |
+| **2** | **phase-e-interface-spec** | E.0 + E.1b | (E.0) Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to reference the new contract. (E.1b) Create `interface/` with README, CONTRACT.md, contract.js, RUNTIME_ONBOARDING.md, contract.test.js. **The new spec + the docs that point to it.** | ~1.25d | Spec correctness + validator behavior | Plan 1 (FCIS invariant) | 🔵 OPEN (Plan 1 done; ready to plan) |
+| **3** | **phase-e-housekeeping** | E.2, E.3, E.4 | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **3 small doc/process changes bundled to avoid PR overhead.** | ~1.5h | Doc accuracy (low risk) | Plan 1 (FCIS invariant) | 🔵 OPEN (Plan 1 done; can run in parallel with Plan 2) |
+| **4** | **phase-e-mastra-code-validation** | E.5 | Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against the new MCPServer. Satisfy the 5 contract requirements for Mastra Code. Run `interface/contract.js mastra-code` → expect `{ok: true}`. Document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Config + smoke test + contract validation | Plan 2 (interface spec must exist) | 🔵 OPEN (depends on Plan 2) |
+| **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 + R2 + LIM-4 | Bundled hardening plan: (1) `RUNTIME_ID` env var convention + runtime-marker reader. (2) R2 write-gate (per-runtime write allowlist). (3) Path traversal fix in `meta_state_refresh_fingerprint`. **Per user "Bundle" decision.** Parallel to Phase E. | 1–2w | Security + identity primitive correctness | None — can ship in parallel or after Phase E | 🔵 OPEN (parallel dimension) |
 
 **Total Phase E (Plans 1–4) effort: ~4–5 days** (unchanged from the E.0–E.5 view). **Total with hardening (Plans 1–5): ~3–4 weeks** if hardening is included.
 
@@ -189,6 +189,57 @@ plans/260701-0930-hardening-r2-lim3-lim4/    (deferred)
 (Dates are illustrative — actual plan dates set when each plan is authored.)
 
 **Plan 3 (Housekeeping) can ship immediately after Plan 1** without waiting for Plan 2. This means a fast-feedback path: ~0.5d (Plan 1) + 1.5h (Plan 3, parallelizable) = the housekeeping items can land within a day of Plan 1. Plan 2 takes longer (1.25d) but unblocks Plan 4. Plan 4 (Mastra Code) is the slowest and may need `mastracode` npm install + smoke-test debugging.
+
+---
+
+## What shipped in Plan 1 (Foundation) — 2026-06-25
+
+**Shipped via PR #15** (`phase-e/plan-1-foundation` → `main`, merged 2026-06-25). Plan dir: `plans/260624-2335-phase-e-foundation/`. Journal: `docs/journals/260625-phase-e-plan-1-review-fixes.md`. Master tracker: see the deferred-items table for the new `Plan-1/Plan-2/Plan-3/Plan-4` rows.
+
+| What | Where | Commit |
+|------|-------|--------|
+| Plan + scope doc | `plans/260624-2335-phase-e-foundation/plan.md` | `08decb3` |
+| Rename `core/legacy/` → `core/` (~129 import-bearing files) | `tools/learning-loop-mastra/core/` (new top-level) | `bb8af08` |
+| FCIS invariant doc | `tools/learning-loop-mastra/core/README.md` | `66db796` |
+| Schema doc (4 kinds + runtime-state + wire envelope + parity) | `tools/learning-loop-mastra/docs/schemas.md` | `6083959` |
+| 3-layer AGENTS.md §1 (Core / Mastra shell / Runtime interface) | `AGENTS.md` §1.1 | `0f17814` |
+| 7-fingerprint repoint (1 atomic batch op) | `meta-state.jsonl` (7 finding `evidence_code_ref` paths updated) | `49d6f7b` |
+| Sibling existence test for the 7 repointed paths | `plans/260624-2335-phase-e-foundation/__tests__/fingerprint-repoint-existence.test.js` | `73f9ec5` (post-review fix) |
+| 4 phase-e-foundation regression guards | `tools/learning-loop-mastra/__tests__/phase-e-foundation/{fcis-invariant,no-core-legacy-refs,schema-doc-exists,agents-section-1-layers}.test.js` | `66db796` + `0f17814` + `6083959` |
+| 1 new finding filed (post-review) | `meta-260625T0255Z-the-meta-state-batch-mcp-tool-bypasses-the-immutable-patch-f` (`category: mcp-tool-missing`, `status: reported`) | `f5a28bb` (post-review fix) |
+| 1 follow-up deny-list fix (PR #16) | `core/meta-state.js` (`IMMUTABLE_PATCH_FIELDS` moved to core + batch deny-list check); `tools/legacy/meta-state-patch-tool.js` (re-export for back-compat); 2 new tests in `__tests__/legacy-mcp/meta-state-batch-tool.test.js` | `7fa608a` (PR #16, post-Plan-1) |
+
+**Net registry delta (PR #15 + #16):**
+- 1 new finding filed (`meta-260625T0255Z-...`, `status: reported → active → resolved` across the two PRs)
+- 9 fingerprints refreshed (7 repointed + 2 cold-tier drift from the deny-list fix)
+- 0 entries archived, 0 superseded
+- 7 new test files (4 phase-e-foundation regression guards + 1 fingerprint-repoint-existence + 2 batch deny-list tests; 1 of the 7 is plan-specific and run manually)
+- 1 journal entry (review-fixes)
+- 1 plan frontmatter field updated (`status: pending → done`)
+
+**Net source delta:**
+- 1 directory renamed (`core/legacy/` → `core/`)
+- 1 doc added (`core/README.md`, 30 LoC)
+- 1 doc added (`docs/schemas.md`, ~190 LoC)
+- 1 section added to existing doc (`AGENTS.md §1.1`, 35 LoC)
+- 1 deny-list enforcement added to `core/meta-state.js` + 1 re-export in `tools/legacy/meta-state-patch-tool.js`
+
+**What this plan did NOT ship (deferred to Plan 2/3/4):**
+- The `interface/` directory (Plan 2 / E.1b) — 5-requirement contract + validator + onboarding guide
+- The skill spec update (Plan 2 / E.0) — `SKILL.md` files in `.claude/` and `.factory/`
+- R2 ownership in `AGENTS.md §11` (Plan 3 / E.2) — process norm only; gate ships in hardening plan
+- Parity-pin label on `workflow-intentional-skip.js` (Plan 3 / E.3) + `docs/legacy-pins.md`
+- Schema rot cleanup (Plan 3 / E.4) — `core/legacy/schema-descriptions.yaml` still exists; E.4 will delete or rewrite
+- Mastra Code onboarding (Plan 4 / E.5) — depends on Plan 2's contract
+- Hardening (Plan 5, parallel) — LIM-3 + R2 write-gate + LIM-4
+
+**Verification at merge (PR #15):**
+- All 10 test namespaces pass (~1188 tests, 0 fail, 1 skip; baseline preserved)
+- `meta_state_check_grounding` on the 7 repointed findings → `status: grounded, hash match`
+- `node --test plans/260624-2335-phase-e-foundation/__tests__/fingerprint-repoint-existence.test.js` → 3/3 pass
+- Red-team review (3 hostile reviewers) → 5 critical findings applied; all resolved before merge
+
+**Constraint addressed:** `meta-260624T1920Z-code-fingerprint-mechanism-is-o-n-per-cited-file-change-each`. The plan's Phase 6 worked around the O(N) mechanism by using `meta_state_batch` to repoint 7 findings in 1 atomic call. The shared file-index design (the O(1) direction) is still parked as a `loop-design` entry; not in this plan.
 
 ---
 
@@ -392,6 +443,43 @@ The predict report's other 5 recommendations stand:
 
 ## Revision notes
 
+### Revision 4 (2026-06-25) — Plan 1 (Foundation) shipped
+
+The Foundation plan (`plans/260624-2335-phase-e-foundation/`, 6 phases) shipped 2026-06-25 via PR #15, with PR #16 landing the same day as a post-review follow-up to close the `meta_state_batch` bypass. The report's status moved from "advisory, awaiting operator approval to advance to plan authoring" to "partially executed, awaiting operator approval to advance to Plan 2."
+
+**Concrete changes to this report:**
+
+- Header date stamp: added "revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15"
+- Status line: flipped to partially-executed; sub-bullet for "Plan 1 (Foundation) shipped 2026-06-25 via `plans/260624-2335-phase-e-foundation/` (PR #15 merged)"
+- Plan split table (line ~148): added `Status` column; Plan 1 row flipped to `✅ DONE 2026-06-25 (PR #15)`; Plans 2/3/4/5 rows got `🔵 OPEN` markers with dependency notes
+- New "What shipped in Plan 1 (Foundation) — 2026-06-25" section added (table of commits + journal + registry delta + source delta + deferred scope + verification at merge)
+- Final status line: flipped from "advisory only" to "partially executed; awaiting operator approval to advance to Plan 2"
+
+**Net registry delta (PR #15 + #16):**
+
+- 1 finding filed (`meta-260625T0255Z-the-meta-state-batch-mcp-tool-bypasses-the-immutable-patch-f`), then resolved in PR #16
+- 9 fingerprints refreshed (7 rename-repoint + 2 cold-tier drift from the deny-list fix)
+- 0 archived, 0 superseded
+
+**Cross-references:**
+
+- Plan: `plans/260624-2335-phase-e-foundation/plan.md` (status: done)
+- Phase files: `phase-01-baselineandtests.md` through `phase-06-fingerprintrepointandverify.md`
+- Test files: `__tests__/fingerprint-repoint-existence.test.js` (1) + `__tests__/phase-e-foundation/*.test.js` (4)
+- Reports: `plans/260624-2335-phase-e-foundation/reports/{pre-rename-baseline,fingerprint-repoint-manifest,red-team-260625-0046-phase-2-4-5-6-review-report,general-purpose-260625-0046-phase-6-red-team-report}.{json,md}`
+- Journal: `docs/journals/260625-phase-e-plan-1-review-fixes.md` (post-review fixes: bypass finding filed + fingerprint-repoint-existence test created + 2 plan-status updates)
+- Follow-up journal: `docs/journals/260626-fix-batch-bypass-deny-list.md` (PR #16: deny-list moved to core + batch handler consults it + 2 regression tests; the 1 finding from PR #15 resolved)
+
+**What was NOT changed in this revision:**
+
+- The 3-layer architecture (Core / Mastra shell / Runtime interface) — keep. Plan 1 codified it in `AGENTS.md §1.1`.
+- The 5-requirement contract for the runtime interface — keep. Plan 2 (E.0 + E.1b) will create the `interface/` directory.
+- The bundled hardening plan (LIM-3 + R2 write-gate + LIM-4) — keep. Parallel to Phase E.
+- The order of operations (E.0 → E.1 → E.1b → E.2 → E.3 → E.4 → E.5) — keep. Plan 1 covered E.1; remaining items follow.
+- The risk table R1–R6 — keep. Plan 1's shipped scope did not surface new risks.
+- The open questions Q1–Q6 — keep. Q4 (other missing first-class structures) is still open; Plan 2 (E.1b) will surface the answer when the interface contract is exercised.
+- The "post-E.1 / post-E.1b" tree diagram (line ~184) — keep. The post-Plan-1 state is now closer to the E.1 row (`core/` exists; `interface/` and `mastra/` do not yet); the post-E.1b shape is still forward-looking.
+
 ### Revision 3 (2026-06-24 22:10) — plan split added
 
 The user's question "How many plans should we split Phase E into?" triggered a meta-pattern recognition pass over the 7 phase items. Result: **4 shippable plans for Phase E + 1 deferred hardening plan = 5 plans total.** New section "Plan split for execution" inserted with the 5-row plan table, plan-level ordering diagram, rationale, and plan-dir naming convention. Date stamp updated.
@@ -423,4 +511,4 @@ The "after Phase E" tree (line ~184) is **already labeled** as the post-E.1 / po
 
 ---
 
-**Status:** DONE (advisory only; no meta-state mutation, no contract change). Awaits operator approval to advance to plan authoring (`/ck:plan` per the dev rules) and master-tracker update.
+**Status:** Partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15 + 1 follow-up (PR #16) for the deny-list bypass. Plan 2 (Interface spec), Plan 3 (Housekeeping), and Plan 4 (Mastra Code validation) still pending. Plan 5 (Hardening) is the parallel dimension. Master tracker updated; awaiting operator approval to advance to Plan 2 (`/ck:plan` per the dev rules).

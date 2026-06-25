@@ -5,21 +5,21 @@
 **Slug:** productization-master-tracker
 **Status:** active — canonical source for productization phase state
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-06-24 (Phase D Plan 4 cutover: agent-manifest.json reconciled to 44 tools across 6 groups; tools/learning-loop-mcp/tools/ moved to tools/learning-loop-mastra/tools/legacy/; #mcp/* import alias deleted; MCP server key renamed learning-loop-mastra → learning-loop in .mcp.json + .factory/mcp.json + .claude/settings.local.json; D9/D15 flipped ✅ DONE; E1/E4 flipped ✅ DONE; E2 flipped 🟡 PARTIAL; §3.10 + AGENTS.md §1+§2 reconciled; 1 semantic change-log filed; journal + PR body drafted)
+**Last updated:** 2026-06-25 (Phase E Plan 1 Foundation shipped via PR #15: core/legacy/ → core/ rename + core/README.md FCIS invariant + docs/schemas.md + AGENTS.md §1.1 3-layer framing + 7-fingerprint repoint via 1 atomic meta_state_batch call; PR #16 follow-up landed same day to close meta_state_batch deny-list bypass — 1 finding filed+resolved, 2 cold-tier fingerprints refreshed; 5 new test files, 1 journal entry, 1 plan frontmatter flip; refined 4-plan split adopted from scope report Rev 4 — Plan 1 ✅ DONE, Plans 2/3/4 🔵 OPEN, Plan 5 parallel hardening)
 **Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
 
 ---
 
-## Current State Snapshot (as of 2026-06-17)
+## Current State Snapshot (as of 2026-06-25)
 
 | State | Phases / Items |
 |-------|----------------|
-| **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. |
-| **Open** | Phase C — Mastra Phase 0-1 (coexistence + deterministic tools); Plan 1, Plan 1a, Plan 2, Plan 3 closed. Phase D — Mastra Phase 2-3 (workflows + agents + storage); Plan 1 (D1+D2+D3) + Plan 2 (D5+D6) closed; Plans 3-4 open. Phase E — Mastra Phase 4-5 (cut over). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
-| **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). |
-| **Next-up / Hardening** | LIM-3 (caller identity), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough). |
+| **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. Phase C (C1–C7) — Mastra Phase 0-1 (coexistence + deterministic tools + parity gate + cut-over + manifest update) closed 2026-06-17. Phase D (D1–D7) — Mastra Phase 2-3 (workflows + agents + storage + per-agent model config) closed 2026-06-23; Plan 4 (D9 cutover + manifest reconcile + JSON rename) closed 2026-06-24. Phase E Plan 1 (Foundation) — `core/legacy/` → `core/` rename + FCIS doc + schema doc + 3-layer AGENTS.md §1.1 + 7-fingerprint repoint closed 2026-06-25 (PR #15); deny-list bypass follow-up shipped same day (PR #16). |
+| **Open** | Phase E — Plan 2 (Interface spec: `interface/` dir + 5-requirement contract + validator + onboarding guide + skill spec update); Plan 3 (Housekeeping: R2 ownership + parity-pin label + schema rot cleanup); Plan 4 (Mastra Code validation). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
+| **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). E7 — Mode 2 (same Mastra instance) decision. |
+| **Next-up / Hardening** | LIM-3 (caller identity primitive — `RUNTIME_ID` env var), LIM-4 (path traversal, security priority), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs), LIM-9 (`meta_state_batch` passthrough — RESOLVED 2026-06-26 by PR #16; remove from next-up). **Plan 5 (bundled hardening) is the parallel dimension.** |
 
-**Recommended next move:** Phase C (Mastra Phase 0-1) is the next unblocked content phase. The hardening LIMs can run in a dedicated security/quality audit in parallel or immediately before Phase C, per operator preference.
+**Recommended next move:** Phase E Plan 2 (Interface spec) — the only unblocked content phase with a clean precondition (Plan 1 FCIS invariant shipped). Plan 3 (Housekeeping, ~1.5h) can run in parallel. The hardening plan (LIM-3 + R2 + LIM-4) is parallel to all of Phase E and does not block.
 
 ---
 
@@ -220,6 +220,36 @@ The test suite is anchored on **10 namespace directories** declared in `package.
 - [ ] **E6** Hook layer: confirm no Mode 1 changes (per §3.9). Document the Mastra Code hook surface if it differs from Droid/Claude's. If it lacks an equivalent hook layer, document the gap and decide case-by-case.
 - [ ] **E7** Mode 2 (same Mastra instance via `createMastraCode({...})`) decision: deferred per Q6. Only revisit if the operator's "final Mastra-fy" vision requires single-app coupling.
 
+### Phase E — Refined plan split (2026-06-25, per scope report Rev 4)
+
+**Origin:** the scope report at `plans/reports/phase-e-scope-260624-2025-runtime-interface-structure-report.md` (Rev 4) re-scoped Phase E into 4 shippable plans + 1 deferred hardening plan. The 5-row plan split replaces the prior E1–E7 view with named plans tied to specific code/doc surfaces. **The E1–E7 checkboxes above remain the canonical tracker view** (E1/E2/E4 already closed by Phase D Plan 4); the refined split below is the **execution plan** for the remaining work.
+
+| # | Plan | Items | Effort | Precondition | Status |
+|---|------|-------|--------|--------------|--------|
+| **1** | **phase-e-foundation** | E.1 — rename `core/legacy/` → `core/` + `core/README.md` (FCIS invariant) + `docs/schemas.md` + `AGENTS.md §1.1` (3 layers). Pure rename + discipline doc. No new code. | 0.5d | None | ✅ **DONE 2026-06-25** (`plans/260624-2335-phase-e-foundation/`, PR #15 + PR #16 follow-up for deny-list bypass) |
+| **2** | **phase-e-interface-spec** | E.0 (skill spec updates) + E.1b (new `interface/` dir with 5-requirement contract, validator, onboarding guide). **The new spec + the docs that point to it.** | ~1.25d | Plan 1 (FCIS invariant) | 🔵 OPEN (Plan 1 unblocks) |
+| **3** | **phase-e-housekeeping** | E.2 (`AGENTS.md §11` R2 ownership) + E.3 (parity-pin label + `docs/legacy-pins.md`) + E.4 (delete or rewrite `core/legacy/schema-descriptions.yaml`). | ~1.5h | Plan 1 (FCIS invariant) — can run in parallel with Plan 2 | 🔵 OPEN (Plan 1 unblocks) |
+| **4** | **phase-e-mastra-code-validation** | E.5 — smoke-test `createMastraCode({ configDir })` against the new MCPServer; satisfy 5 contract requirements for Mastra Code; document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Plan 2 (interface spec must exist) | 🔵 OPEN (depends on Plan 2) |
+| **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 (caller identity primitive: `RUNTIME_ID` env var + runtime-marker reader) + R2 write-gate (per-runtime write allowlist keyed on `RUNTIME_ID`) + LIM-4 (path traversal fix in `meta_state_refresh_fingerprint`). **Parallel to Phase E.** | 1–2w | None — can ship in parallel or after Phase E | 🔵 OPEN (parallel dimension) |
+
+**Total Phase E (Plans 1–4) effort:** ~4–5 days. **Total with hardening (Plans 1–5):** ~3–4 weeks.
+
+**What Plan 1 shipped (commit log):**
+
+- `08decb3` — plan 1 (foundation) — rename core/legacy → core + FCIS + schema doc + 3-layer AGENTS.md + fingerprint repoint
+- `bb8af08` — rename `core/legacy/` → `core/` + update ~129 import-bearing files
+- `66db796` — add `core/README.md` (FCIS invariant) + lock with test
+- `6083959` — add `docs/schemas.md` (4 meta-state kinds + runtime-state + wire envelope + parity)
+- `0f17814` — name 3 layers in `AGENTS.md §1` (Core / Mastra shell / Runtime interface)
+- `49d6f7b` — repoint 7 fingerprints from `core/legacy/*` to `core/*` (1 atomic batch op)
+- `73f9ec5` — fingerprint-repoint-existence test (Phase 6 Step 9)
+- `f5a28bb` — post-review fixes (file batch-bypass finding + plan status flip)
+- `7fa608a` (PR #16) — deny `IMMUTABLE_PATCH_FIELDS` in `meta_state_batch` update ops
+
+**Net registry delta (PR #15 + #16):** 1 finding filed (`meta-260625T0255Z-the-meta-state-batch-mcp-tool-bypasses-the-immutable-patch-f`) then resolved in PR #16; 9 fingerprints refreshed (7 rename-repoint + 2 cold-tier drift from the deny-list fix); 0 archived, 0 superseded; 5 new test files (4 phase-e-foundation regression guards + 1 fingerprint-repoint-existence sibling test + 2 batch deny-list tests); 1 journal entry (`docs/journals/260625-phase-e-plan-1-review-fixes.md`); 1 follow-up journal (`docs/journals/260626-fix-batch-bypass-deny-list.md`).
+
+**Constraint addressed:** `meta-260624T1920Z-code-fingerprint-mechanism-is-o-n-per-cited-file-change-each`. Plan 1 worked around the O(N) mechanism by using `meta_state_batch` to repoint 7 findings in 1 atomic call. The shared file-index design (O(1) direction) is still parked as a `loop-design` entry; not in this plan.
+
 ---
 
 ## Phase F — Bridge 7 (post-meta-surface product-surface binding)
@@ -307,6 +337,16 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 | E6 | Hook layer: confirm no Mode 1 changes | high | 🔵 OPEN (Phase E scope) | tracker E6 |
 | E7 | Mode 2 (same Mastra instance) decision — revisit if operator's "final Mastra-fy" vision requires single-app coupling | low | ⚪ DEFERRED (= D-12) | tracker E7 |
 
+### Phase E — Refined plan split (per scope report Rev 4)
+
+| ID | Task | Severity | Status | Source |
+|----|------|----------|--------|--------|
+| PE-1 | **Plan 1 — Foundation**: rename `core/legacy/` → `core/` + `core/README.md` (FCIS invariant) + `docs/schemas.md` + `AGENTS.md §1.1` (3 layers). Pure rename + discipline doc. No new code. | high | ✅ DONE (Plan 1, 2026-06-25) | `plans/260624-2335-phase-e-foundation/` (PR #15) + PR #16 deny-list follow-up |
+| PE-2 | **Plan 2 — Interface spec**: E.0 (skill spec updates) + E.1b (new `interface/` dir with 5-requirement contract, validator, onboarding guide). | high | 🔵 OPEN (Plan 1 done; ready to plan) | scope report § "Plan split for execution" row 2 |
+| PE-3 | **Plan 3 — Housekeeping**: E.2 (`AGENTS.md §11` R2 ownership) + E.3 (parity-pin label + `docs/legacy-pins.md`) + E.4 (delete or rewrite `core/legacy/schema-descriptions.yaml`). | medium | 🔵 OPEN (Plan 1 done; can run in parallel with Plan 2) | scope report § "Plan split for execution" row 3 |
+| PE-4 | **Plan 4 — Mastra Code validation**: smoke-test `createMastraCode({ configDir })` against the new MCPServer; satisfy 5 contract requirements; document in `docs/agents/mastra-code.md`. | high | 🔵 OPEN (depends on Plan 2) | scope report § "Plan split for execution" row 4 |
+| PE-5 | **Plan 5 — Hardening** (LIM-3 + R2 write-gate + LIM-4): `RUNTIME_ID` env var convention; runtime-marker reader; per-runtime write allowlist keyed on `RUNTIME_ID`; path traversal fix in `meta_state_refresh_fingerprint`. **Parallel to Phase E.** | high (security) | 🔵 OPEN (parallel dimension) | scope report § "Plan split for execution" row 5; bundled per user "Bundle" decision |
+
 ### Hardening / quality (separate security/quality audit)
 
 | ID | Task | Severity | Status | Source |
@@ -353,8 +393,10 @@ When all three are true for a given skill, that skill is loop-owned. The markdow
 | CR-6 | Plan 2 R-09 arithmetic | Plan 1b — 2026-06-17 |
 | F4 (CRITICAL) | SessionStart hook key update (`loop-surface-inject.cjs:72`) | Plan 3 Group 4 (ready, not shipped) |
 | C-2 | `settings.local.json` dead `mcp__learning-loop-mcp__*` permissions | Plan 3 Group 5 (ready, not shipped) |
+| PE-1 | Phase E Plan 1 (Foundation): `core/legacy/` → `core/` rename + FCIS doc + schema doc + 3-layer AGENTS.md §1 + 7-fingerprint repoint | `plans/260624-2335-phase-e-foundation/` (PR #15) — 2026-06-25; deny-list bypass follow-up in PR #16 same day |
+| BATCH-BYPASS | `meta_state_batch` `update` op bypassed `IMMUTABLE_PATCH_FIELDS` (e.g., `code_fingerprint`) via raw `Object.assign` at `core/meta-state.js:525` | `meta-260625T0255Z-...` filed 2026-06-25 (post-Plan-1 review); resolved 2026-06-26 via PR #16 (deny-list moved to `core/meta-state.js` + batch handler consults it + 2 regression tests in `__tests__/legacy-mcp/meta-state-batch-tool.test.js`); journal `docs/journals/260626-fix-batch-bypass-deny-list.md` |
 
-**Total deferred items:** 22 (5 Phase C continuation ready, 3 Phase D open, 6 Phase E, 5 hardening, 4 Phase G, 3 cross-cutting). 4 of 5 Phase C continuation items are 🟡 READY (Plan 3 ready to cook); 1 is ⚪ DEFERRED (D-12, Mode decision). **Phase C is one `/ck:cook` away from completion.**
+**Total deferred items:** 23 (5 Phase C continuation ready, 3 Phase D open, 6 Phase E original + 5 Phase E refined, 5 hardening, 4 Phase G, 3 cross-cutting). 4 of 5 Phase C continuation items are 🟡 READY (Plan 3 ready to cook); 1 is ⚪ DEFERRED (D-12, Mode decision). **Phase E Plan 1 is DONE (2026-06-25); Phase E Plans 2/3/4 are the next unblocked work.**
 
 ---
 
