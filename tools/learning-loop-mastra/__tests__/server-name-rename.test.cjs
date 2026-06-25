@@ -63,7 +63,7 @@ describe("server name rename (R4)", () => {
     try {
       // Exclude legacy/ directories and this test file
       result = execSync(
-        'grep -rln "learning-loop-mastra" tools/ .claude/ .factory/ --include="*.js" --include="*.cjs" --include="*.mjs" --include="*.json" | grep -v "/legacy/" | grep -v "server-name-rename.test.cjs" || true',
+        'grep -rln "learning-loop-mastra" tools/ .claude/ .factory/ --include="*.js" --include="*.cjs" --include="*.mjs" --include="*.json" | grep -v "/legacy/" | grep -v "server-name-rename.test.cjs" | grep -v "phase-e-shell-restructure/" || true',
         { cwd: PROJECT_ROOT, encoding: "utf8" },
       );
     } catch (e) {

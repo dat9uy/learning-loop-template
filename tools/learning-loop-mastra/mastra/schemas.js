@@ -6,6 +6,6 @@
 // MCPServer, these re-exports are the seams to migrate first. Each tool in
 // tools/learning-loop-mastra/tools/legacy/ keeps `schema` (zod) + `handler` (function) as the
 // contract; the mastra server imports them via direct relative paths and wraps via createLoopTool.
-export { metaStateProposeDesignTool } from "./tools/legacy/meta-state-propose-design-tool.js";
-export { metaStatePatchTool } from "./tools/legacy/meta-state-patch-tool.js";
-export { metaStateReportTool } from "./tools/legacy/meta-state-report-tool.js";
+export { metaStateProposeDesignTool } from "../tools/legacy/meta-state-propose-design-tool.js";
+export { metaStatePatchTool } from "../tools/legacy/meta-state-patch-tool.js";
+export { metaStateReportTool } from "../tools/legacy/meta-state-report-tool.js";

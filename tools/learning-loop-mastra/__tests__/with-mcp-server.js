@@ -125,7 +125,7 @@ export async function connectMcpServer(serverEntry, tempRoot, env = {}) {
 export async function withMcpServer(fn) {
   const tempRoot = prepareTempRoot();
   const handles = await connectMcpServer(
-    join(projectRoot, "tools/learning-loop-mastra/server.js"),
+    join(projectRoot, "tools/learning-loop-mastra/mastra/server.js"),
     tempRoot,
   );
   try {

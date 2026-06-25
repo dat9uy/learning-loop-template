@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
+const SERVER_ENTRY = resolve(__dirname, "..", "mastra", "server.js");
 
 test("server source uses crypto.randomUUID() fallback for runId", () => {
   const source = readFileSync(SERVER_ENTRY, "utf8");

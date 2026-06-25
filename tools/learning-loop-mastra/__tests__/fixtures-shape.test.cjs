@@ -12,7 +12,7 @@ const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 
-const PROD = resolve(__dirname, "..", "agents-manifest.json");
+const PROD = resolve(__dirname, "..", "mastra", "agents-manifest.json");
 const FIXTURE = resolve(__dirname, "fixtures", "agents-manifest.test.json");
 
 // Per-agent entries: ignore `model` (replaced with __MOCK_LLM__ in the fixture).

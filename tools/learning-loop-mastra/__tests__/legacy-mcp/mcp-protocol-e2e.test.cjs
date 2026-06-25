@@ -19,7 +19,7 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
-const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/server.js");
+const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/server.js");
 const MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mastra/tools/manifest.json");
 
 /** Spawn the MCP server and return a connected Client + cleanup handle. */

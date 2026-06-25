@@ -18,7 +18,7 @@ Each shim MUST delegate to a universal hook in `tools/learning-loop-mastra/hooks
 
 The runtime MUST register the loop's MCP server in its MCP config:
 - `mcpServers.learning-loop.command === "node"`
-- `mcpServers.learning-loop.args` contains a string ending in `tools/learning-loop-mastra/server.js`.
+- `mcpServers.learning-loop.args` contains a string ending in `tools/learning-loop-mastra/mastra/server.js`.
 
 **Pass:** entry present AND target matches. **Fail:** entry missing, wrong command, or wrong args. **Note:** Claude Code stores MCP config at the root `.mcp.json`; Droid CLI stores it at `.factory/mcp.json`; the validator resolves the path per runtime.
 

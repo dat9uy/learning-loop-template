@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createLoopWorkflow } from "../create-loop-workflow.js";
-import { stripEnvelope } from "../core/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 
 const CANDIDATES = {
   "schema-change": { candidate: "runtime-schema-validation-experiment", path: "operator-approval → schema-draft → validate → migrate" },

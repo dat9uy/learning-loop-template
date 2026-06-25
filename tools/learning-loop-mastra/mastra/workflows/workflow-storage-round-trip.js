@@ -1,5 +1,5 @@
 import { createLoopWorkflow } from "../create-loop-workflow.js";
-import { getParityDb, getParityDDL } from "../storage.js";
+import { getParityDb, getParityDDL } from "../../storage.js";
 import { z } from "zod";
 
 async function writeRecord({ id, kind, payload }) {

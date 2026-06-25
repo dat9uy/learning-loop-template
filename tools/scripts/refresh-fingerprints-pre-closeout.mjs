@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVER_PATH = join(__dirname, "..", "learning-loop-mastra", "server.js");
+const SERVER_PATH = join(__dirname, "..", "learning-loop-mastra", "mastra", "server.js");
 
 async function main() {
   if (process.env.OPERATOR_MODE !== "1") {

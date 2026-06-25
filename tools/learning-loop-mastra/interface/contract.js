@@ -91,7 +91,7 @@ function checkMcpClientConfig(runtimeId, rootPath) {
   const entry = parsed.data?.mcpServers?.["learning-loop"] ?? null;
   const targetOk = !!entry
     && Array.isArray(entry.args)
-    && entry.args.some((a) => typeof a === "string" && a.endsWith("tools/learning-loop-mastra/server.js"));
+    && entry.args.some((a) => typeof a === "string" && a.endsWith("tools/learning-loop-mastra/mastra/server.js"));
   return { id: "mcp-client-config", ok: !!entry && targetOk, config_path: configPath, entry };
 }
 

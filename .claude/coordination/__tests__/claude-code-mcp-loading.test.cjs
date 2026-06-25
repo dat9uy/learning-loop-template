@@ -174,7 +174,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
             "but Claude Code is not configured to load the project-local MCP server. " +
             "Detected by claude-code-mcp-loading.test.cjs#Claude Code .mcp.json exposes learning-loop. " +
             `runtime: ${runtime}; layer: L1;`,
-          evidence_code_ref: "tools/learning-loop-mastra/server.js",
+          evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
           session_id: sessionId,
           status: "reported",
           auto_resolve: null,

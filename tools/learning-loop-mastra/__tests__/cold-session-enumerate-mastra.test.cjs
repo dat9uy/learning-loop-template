@@ -14,7 +14,7 @@ const { join, resolve } = require("node:path");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const AGENT_MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mastra/agent-manifest.json");
-const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/server.js");
+const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/server.js");
 
 /** Spawn the MCP server and return a connected Client + cleanup handle. */
 async function spawnServer() {

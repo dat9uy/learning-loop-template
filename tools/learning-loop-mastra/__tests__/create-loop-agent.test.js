@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 // Test 1: resolveAgentModel per-agent field wins
 test("resolveAgentModel: per-agent manifest field wins", async () => {
-  const { resolveAgentModel } = await import("../create-loop-agent.js");
+  const { resolveAgentModel } = await import("../mastra/create-loop-agent.js");
   const manifest = { intakeAgent: { model: "anthropic/claude-sonnet-4-6" } };
   assert.equal(
     await resolveAgentModel("intakeAgent", manifest),
@@ -13,7 +13,7 @@ test("resolveAgentModel: per-agent manifest field wins", async () => {
 
 // Test 2: resolveAgentModel env var wins when no per-agent field
 test("resolveAgentModel: env var wins when no per-agent field", async () => {
-  const { resolveAgentModel } = await import("../create-loop-agent.js");
+  const { resolveAgentModel } = await import("../mastra/create-loop-agent.js");
   const orig = process.env.MASTRA_AGENT_MODEL;
   try {
     process.env.MASTRA_AGENT_MODEL = "google/gemini-2.5-flash";
@@ -29,7 +29,7 @@ test("resolveAgentModel: env var wins when no per-agent field", async () => {
 
 // Test 3: resolveAgentModel falls back to code default
 test("resolveAgentModel: falls back to code default", async () => {
-  const { resolveAgentModel } = await import("../create-loop-agent.js");
+  const { resolveAgentModel } = await import("../mastra/create-loop-agent.js");
   const orig = process.env.MASTRA_AGENT_MODEL;
   try {
     delete process.env.MASTRA_AGENT_MODEL;
@@ -42,7 +42,7 @@ test("resolveAgentModel: falls back to code default", async () => {
 
 // Test 4: createLoopAgent constructs Agent with resolved model and no memory field
 test("createLoopAgent: constructs Agent with resolved model and no memory field", async () => {
-  const { createLoopAgent } = await import("../create-loop-agent.js");
+  const { createLoopAgent } = await import("../mastra/create-loop-agent.js");
   const { Agent } = await import("@mastra/core/agent");
   const agent = await createLoopAgent({
     id: "intake_agent",
@@ -60,7 +60,7 @@ test("createLoopAgent: constructs Agent with resolved model and no memory field"
 
 // Test 5: createLoopAgent throws on missing id
 test("createLoopAgent: throws on missing id", async () => {
-  const { createLoopAgent } = await import("../create-loop-agent.js");
+  const { createLoopAgent } = await import("../mastra/create-loop-agent.js");
   await assert.rejects(
     () => createLoopAgent({ name: "test", instructions: "test" }),
     /id is required/,
@@ -69,7 +69,7 @@ test("createLoopAgent: throws on missing id", async () => {
 
 // Test 6: createLoopAgent throws on missing instructions
 test("createLoopAgent: throws on missing instructions", async () => {
-  const { createLoopAgent } = await import("../create-loop-agent.js");
+  const { createLoopAgent } = await import("../mastra/create-loop-agent.js");
   await assert.rejects(
     () => createLoopAgent({ id: "test", name: "test" }),
     /instructions are required/,
@@ -78,7 +78,7 @@ test("createLoopAgent: throws on missing instructions", async () => {
 
 // Test 7: createLoopAgent rejects invalid id format
 test("createLoopAgent: rejects uppercase id", async () => {
-  const { createLoopAgent } = await import("../create-loop-agent.js");
+  const { createLoopAgent } = await import("../mastra/create-loop-agent.js");
   await assert.rejects(
     () =>
       createLoopAgent({

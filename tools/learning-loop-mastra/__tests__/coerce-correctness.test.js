@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 import { stripEnvelope } from "../core/envelope-stripper.js";
 import { strictBooleanGuard } from "../core/strict-boolean-guard.js";
-import { buildParitySchema } from "../schema-parity.js";
+import { buildParitySchema } from "../mastra/schema-parity.js";
 
 // Regression net: single-server wire-format correctness after zod-native migration.
 // Replaces the dual-server parity harness with direct zod-API assertions.

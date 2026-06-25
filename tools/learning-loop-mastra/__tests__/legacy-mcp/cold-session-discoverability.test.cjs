@@ -32,7 +32,7 @@ const { probeL1, probeL2 } = require("./probe-helpers.cjs");
 
 describe("cold-session discoverability", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..", "..");
-  const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
+  const serverEntry = join(projectRoot, "tools/learning-loop-mastra/mastra/server.js");
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -206,7 +206,7 @@ describe("cold-session discoverability", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: `Pre-existing finding (test setup). runtime: ${runtime}; layer: L1;`,
-      evidence_code_ref: "tools/learning-loop-mastra/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "active",
       auto_resolve: null,
@@ -286,7 +286,7 @@ describe("cold-session discoverability", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "Synthetic stale entry for churn regression testing.",
-      evidence_code_ref: "tools/learning-loop-mastra/server.js",
+      evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
       status: "stale",
       auto_resolve: null,

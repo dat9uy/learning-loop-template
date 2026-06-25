@@ -43,7 +43,7 @@ const MCP_ENV = {
   MASTRA_STORAGE_DRIVER: process.env.MASTRA_STORAGE_DRIVER || "libsql",
 };
 
-const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
+const SERVER_ENTRY = resolve(__dirname, "..", "mastra", "server.js");
 
 function withTempStorageRoot(prefix = "storage-parity-") {
   const storageRoot = mkdtempSync(join(tmpdir(), prefix));
@@ -108,10 +108,10 @@ let workflowRead;
 before(async () => {
   await initStorage();
   ({ workflowStorageRoundTrip: workflowRoundTrip } = require(
-    "../workflows/workflow-storage-round-trip.js"
+    "../mastra/workflows/workflow-storage-round-trip.js"
   ));
   ({ workflowStorageRead: workflowRead } = require(
-    "../workflows/workflow-storage-read.js"
+    "../mastra/workflows/workflow-storage-read.js"
   ));
 });
 

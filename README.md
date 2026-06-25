@@ -45,7 +45,7 @@ A refactor that touches no external system does not need a decision record. A ve
 Commands that touch irreversible external systems (docker, sudo, package installs, vendor APIs) are gated by a two-layer enforcement system:
 
 1. **PreToolUse hooks** — universal bash-gate, write-gate, and inbound-state-gate that intercept tool calls for both Claude Code and Droid CLI
-2. **MCP server** (`tools/learning-loop-mastra/server.js`) — meta-surface tools, constraint checks (`gate_check`, `gate_mark_preflight`), and workflow tools
+2. **MCP server** (`tools/learning-loop-mastra/mastra/server.js`) — meta-surface tools, constraint checks (`gate_check`, `gate_mark_preflight`), and workflow tools
 
 The gate reads runtime state from `runtime-state.jsonl` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mcp/core/` — single source of truth.
 

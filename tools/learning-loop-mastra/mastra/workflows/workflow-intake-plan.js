@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createLoopWorkflow } from "../create-loop-workflow.js";
-import { stripEnvelope } from "../core/envelope-stripper.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 
 function classifyVerificationType(entry) {
   const dim = String(entry.dimension || "").toLowerCase();

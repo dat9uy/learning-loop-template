@@ -21,8 +21,8 @@ const { join, resolve } = require("node:path");
 const PKG = resolve(__dirname, "..");
 
 const tools = JSON.parse(readFileSync(join(PKG, "tools/manifest.json"), "utf8"));
-const workflows = JSON.parse(readFileSync(join(PKG, "workflows-manifest.json"), "utf8"));
-const agents = JSON.parse(readFileSync(join(PKG, "agents-manifest.json"), "utf8"));
+const workflows = JSON.parse(readFileSync(join(PKG, "mastra/workflows-manifest.json"), "utf8"));
+const agents = JSON.parse(readFileSync(join(PKG, "mastra/agents-manifest.json"), "utf8"));
 const agentManifest = JSON.parse(readFileSync(join(PKG, "agent-manifest.json"), "utf8"));
 
 describe("manifest arithmetic", () => {

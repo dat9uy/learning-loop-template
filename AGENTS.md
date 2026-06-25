@@ -18,9 +18,15 @@ The meta-surface is implemented across 3 layers:
   fingerprint computation, drift detection.
 
 - **Mastra shell (imperative).** Wraps core in Mastra framework primitives.
-  Lives at `tools/learning-loop-mastra/` (top level): `server.js`,
-  `create-loop-{tool,workflow,agent}.js`, `workflows/`, `agents/`, `tools/`.
-  May import core; core may NOT import the shell.
+  Lives at `tools/learning-loop-mastra/mastra/`: `server.js`,
+  `create-loop-{tool,workflow,agent}.js`, `legacy-handler-adapter.js`,
+  `schema-parity.js`, `schemas.js`, `workflows/`, `agents/`. May import
+  core; core may NOT import the shell.
+
+  > **Path invariant (Phase E Plan 6):** shell files MUST live at
+  > `tools/learning-loop-mastra/mastra/` and MUST NOT be at the top level of
+  > `tools/learning-loop-mastra/`. Enforced by
+  > `tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/no-top-level-shell-files.test.js`.
 
 - **Runtime interface (contract).** The contract that agent runtimes sign
   to integrate with the loop. Lives at `tools/learning-loop-mastra/interface/`
@@ -54,7 +60,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 **The product surface (decisions, experiments, risks, observations, capability records, vendor records, claim records, index entries, resource budgets) is unbound.** The Bridge 5 codegen engine has the ability to generate product-surface records; the loop has not committed to binding. The current `capability`, `index-entry`, `claim`, `resource-budget`, `observation` schemas are design exploration, not contracts. They may or may not be the right shape after the meta-surface re-debates the product surface. **All product-surface record CRUD is paused; no new product records are generated, validated, or migrated.** Legacy product records in `records/<vendor>/` are archived, not deleted.
 
-> **Phase D shipped (2026-06-24):** the MCP server `tools/learning-loop-mastra/server.js` is the canonical server. It exposes 44 tools across 6 groups (gate, workflow, meta_state, introspection, runtime_agnostic, agent), all bound to the meta-surface per §1. The 3 meta-state agents (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`) ship with `memory: false`; per-agent `memory` config is Phase 5 (per `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md#§8 Q5`). The meta-surface is still the only bound surface — Phase D added 14 net tools (3 agents + 2 storage workflows + 8 run_workflow_* + 1 runtime_agnostic) without violating §1.
+> **Phase D shipped (2026-06-24):** the MCP server `tools/learning-loop-mastra/mastra/server.js` is the canonical server. It exposes 44 tools across 6 groups (gate, workflow, meta_state, introspection, runtime_agnostic, agent), all bound to the meta-surface per §1. The 3 meta-state agents (`ask_intake_agent`, `ask_scout_agent`, `ask_self_improvement_agent`) ship with `memory: false`; per-agent `memory` config is Phase 5 (per `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md#§8 Q5`). The meta-surface is still the only bound surface — Phase D added 14 net tools (3 agents + 2 storage workflows + 8 run_workflow_* + 1 runtime_agnostic) without violating §1.
 
 **The substrate** (the vendor APIs the loop operates against — vnstock, fastapi, tanstack, etc.) is replaceable. It exists to provoke learning; the learning is not *about* the substrate. Recent examples of substrate-independent learning: `meta-260606T2106Z-agent-called-meta-state-log-change-...` (the loop noticing its own retry pathology) — no relationship to any vendor.
 
@@ -83,7 +89,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
 - **Consult-gate `rule-cold-session-test-must-pass-before-resolution`** — gates `meta_state_resolve` on the cold-session discoverability test passing. First instance of `pattern_type: resolution-evidence-required`.
 - **Consult-gate `rule-project-skill-boundary`** — blocks cross-project `ck:use-mcp` / `ck:find-skills` skill invocations in projects that already have a local learning-loop-mcp server (glob `.factory/skills/{use-mcp,find-skills}/**`, scope predicate `project_has_learning_loop_mcp`).
-- **MCP server** (`tools/learning-loop-mastra/server.js`) — 44 tools across 6 groups per `tools/learning-loop-mastra/agent-manifest.json` (verified 2026-06-24). All 44 are bound to the meta-surface per §1 (gate=5, workflow=13, meta_state=19, introspection=3, runtime_agnostic=1, agent=3).
+- **MCP server** (`tools/learning-loop-mastra/mastra/server.js`) — 44 tools across 6 groups per `tools/learning-loop-mastra/agent-manifest.json` (verified 2026-06-24). All 44 are bound to the meta-surface per §1 (gate=5, workflow=13, meta_state=19, introspection=3, runtime_agnostic=1, agent=3).
 
 ### Runtime-Agnostic Pattern (rule-runtime-agnostic-features)
 

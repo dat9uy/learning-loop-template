@@ -9,7 +9,7 @@ import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
-const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
+const mastraEntry = join(projectRoot, "tools/learning-loop-mastra/mastra/server.js");
 
 function copySchemas(tempRoot) {
   const schemasSrc = join(projectRoot, "schemas");

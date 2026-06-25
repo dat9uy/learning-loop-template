@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 // ── Test 1: intakeAgent ──────────────────────────────────────────────────────
 
 test("intakeAgent: instantiates with correct id, name, instructions, tools, no memory", async () => {
-  const { intakeAgent } = await import("../agents/intake-agent.js");
+  const { intakeAgent } = await import("../mastra/agents/intake-agent.js");
   assert.equal(intakeAgent.id, "intake_agent");
   assert.equal(intakeAgent.name, "intakeAgent");
   assert.equal(intakeAgent.memory, undefined);
@@ -42,7 +42,7 @@ test("intakeAgent: instantiates with correct id, name, instructions, tools, no m
 // ── Test 2: scoutAgent ───────────────────────────────────────────────────────
 
 test("scoutAgent: instantiates with correct id, name, instructions, tools, no memory", async () => {
-  const { scoutAgent } = await import("../agents/scout-agent.js");
+  const { scoutAgent } = await import("../mastra/agents/scout-agent.js");
   assert.equal(scoutAgent.id, "scout_agent");
   assert.equal(scoutAgent.name, "scoutAgent");
   assert.equal(scoutAgent.memory, undefined);
@@ -62,7 +62,7 @@ test("scoutAgent: instantiates with correct id, name, instructions, tools, no me
 // ── Test 3: selfImprovementAgent ─────────────────────────────────────────────
 
 test("selfImprovementAgent: instantiates with correct id, name, instructions, tools, no memory", async () => {
-  const { selfImprovementAgent } = await import("../agents/self-improvement-agent.js");
+  const { selfImprovementAgent } = await import("../mastra/agents/self-improvement-agent.js");
   assert.equal(selfImprovementAgent.id, "self_improvement_agent");
   assert.equal(selfImprovementAgent.name, "selfImprovementAgent");
   assert.equal(selfImprovementAgent.memory, undefined);

@@ -11,7 +11,7 @@ MCP server that enforces "observe before workaround" for constraint discovery an
 ## Server
 
 - **Name**: `learning-loop-mastra`
-- **Entry**: `tools/learning-loop-mastra/server.js`
+- **Entry**: `tools/learning-loop-mastra/mastra/server.js`
 - **Registered**: 40 tools across 5 groups
 
 ## Tool Domains

@@ -1,6 +1,6 @@
 # MCP Server Restart Protocol
 
-The learning-loop-mastra MCP server (`tools/learning-loop-mastra/server.js`) is a long-lived stdio child process. It does a one-shot import of all tool modules at startup and holds the handlers in memory for the life of the process. Editing a tool file has zero effect on a live server.
+The learning-loop-mastra MCP server (`tools/learning-loop-mastra/mastra/server.js`) is a long-lived stdio child process. It does a one-shot import of all tool modules at startup and holds the handlers in memory for the life of the process. Editing a tool file has zero effect on a live server.
 
 This document covers the canonical path for picking up code changes: a full process restart.
 
@@ -18,7 +18,7 @@ Kill the running server process and let the orchestrator (Claude Code / Droid CL
 
 ```bash
 # Find the server PID
-pgrep -f "tools/learning-loop-mastra/server.js"
+pgrep -f "tools/learning-loop-mastra/mastra/server.js"
 
 # Kill it
 kill <pid>
@@ -52,4 +52,4 @@ The previous in-process reload path (`meta_state_refresh_tools` + `core/mcp-serv
 ## Related
 
 - Finding: `meta-260609T1028Z-mcp-server-tools-learning-loop-mcp-server-js-does-a-one-shot` (subtype: `mcp-server-stale-code`, category: `loop-anti-pattern`)
-- Server entry: `tools/learning-loop-mastra/server.js`
+- Server entry: `tools/learning-loop-mastra/mastra/server.js`

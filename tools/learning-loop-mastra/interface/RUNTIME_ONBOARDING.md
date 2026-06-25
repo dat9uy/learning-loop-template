@@ -18,7 +18,7 @@ You do NOT need this if:
 A runtime MUST satisfy all 5. Validate with `node tools/learning-loop-mastra/interface/contract.js <your-runtime-id>`.
 
 - [ ] **1. Hook shim set.** Create `<your-runtime>/coordination/hooks/{bash,write,inbound-state,recurrence-check-on-start}-*.cjs`. Each shim is a thin wrapper that `execFileSync`s the matching universal script in `tools/learning-loop-mastra/hooks/legacy/`. See `.claude/coordination/hooks/*.cjs` for the canonical 4-file shape.
-- [ ] **2. MCP client config.** Register `learning-loop` in your runtime's MCP config: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/server.js"] }`. See `.factory/mcp.json` for the canonical shape (Droid stores MCP in `.factory/mcp.json`; Claude stores it at the root `.mcp.json`).
+- [ ] **2. MCP client config.** Register `learning-loop` in your runtime's MCP config: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] }`. See `.factory/mcp.json` for the canonical shape (Droid stores MCP in `.factory/mcp.json`; Claude stores it at the root `.mcp.json`).
 - [ ] **3. Skill spec.** Provide `<your-runtime>/skills/learning-loop/SKILL.md` describing how to use the loop's MCP tools. The file MUST reference `loop_describe` AND `meta_state_list`. Template: `.factory/skills/learning-loop/SKILL.md` (post-E.0).
 - [ ] **4. Identity marker (PROPOSED).** Set `RUNTIME_ID=<your-runtime-id>` in your runtime's session env. The validator returns `notes: ["identity-marker-not-adopted"]` when unset (advisory; not yet required). Future hardening plan will make this mandatory for R2 write-gate ownership.
 - [ ] **5. Settings integration.** Wire your runtime's hook system to invoke the 4 shims at the right lifecycle points (SessionStart, UserPromptSubmit, PreToolUse). See `.factory/settings.json` for the canonical shape (Droid uses `Execute` matcher; Claude Code uses `Bash`).
@@ -52,7 +52,7 @@ Reference: scope report lines 49, 124, 155; npm package `mastracode`.
 
 1. **Create the shim set.** Mirror the 4 files in `.claude/coordination/hooks/` to `.mastracode/coordination/hooks/`. Each shim must `execFileSync('node', [<universal-hook-path>], ...)` the matching universal script. No business logic in the shim.
 
-2. **Register MCP client.** Add to `createMastraCode({ configDir: ".mastracode" })`: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/server.js"] }`. Verify by running `mcp_client_list` and checking `learning-loop` is registered.
+2. **Register MCP client.** Add to `createMastraCode({ configDir: ".mastracode" })`: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] }`. Verify by running `mcp_client_list` and checking `learning-loop` is registered.
 
 3. **Copy the skill spec.** Copy `.factory/skills/learning-loop/SKILL.md` to `.mastracode/skills/learning-loop/SKILL.md`. No edits needed — the post-E.0 file is runtime-agnostic.
 
