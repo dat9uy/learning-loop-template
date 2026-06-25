@@ -1,5 +1,25 @@
 # System Architecture
 
+## 3-Layer Architecture
+
+The learning loop is implemented across three layers. This architecture ensures core logic has zero framework imports, the Mastra shell wraps that logic in framework primitives, and the runtime interface defines the contract agent runtimes must satisfy.
+
+```
+Layer 3: Runtime Interface  (tools/learning-loop-mastra/interface/)
+    |  satisfies
+Layer 2: Mastra Shell       (tools/learning-loop-mastra/)
+    |  wraps
+Layer 1: Core               (tools/learning-loop-mastra/core/)
+```
+
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| **Core** | `tools/learning-loop-mastra/core/` | Pure logic: meta-state, gate decisions, schema validation, fingerprint computation, drift detection. Zero `@mastra/*` imports. |
+| **Mastra shell** | `tools/learning-loop-mastra/` (top level) | Wraps core in Mastra framework primitives: `server.js`, `create-loop-*.js`, `workflows/`, `agents/`, `tools/`. |
+| **Runtime interface** | `tools/learning-loop-mastra/interface/` | The 5-requirement contract that agent runtimes (Claude Code, Droid CLI, future Mastra Code) must satisfy. Includes a validator (`contract.js`), the formal spec (`CONTRACT.md`), and an onboarding guide (`RUNTIME_ONBOARDING.md`). |
+
+See `AGENTS.md` section 1.1 for the full layer definitions and `tools/learning-loop-mastra/interface/CONTRACT.md` for the 5 contract requirements.
+
 ## Constraint Gate System
 
 The constraint gate system enforces operational boundaries on AI agent actions through a multi-layer gating architecture. It consists of inbound gates, outbound gates, an MCP server, and observation records.
