@@ -126,7 +126,7 @@ test("droid passes all hard requirements (ok: true, missing: [])", () => {
   assert.deepEqual(result.missing, []);
 });
 
-// --- Group 3: per-requirement pass (10 tests: 5 reqs × 2 runtimes) ---
+// --- Group 3: per-requirement pass (9 tests: 4 reqs × 2 runtimes + 1 advisory-only req 4) ---
 
 test("req 1 (hook-shim-set) alone passes — claude-code shape", () => {
   withRoot({ surface: ".claude", hookShims: HOOK_SHIMS }, (root) => {
@@ -249,6 +249,15 @@ test("req 5 fails when settings file is absent", () => {
 test("req 5 fails on bad JSON in settings file", () => {
   withRoot({ surface: ".claude", settingsPath: ".claude/settings.json" }, (root) => {
     writeFileSync(join(root, ".claude/settings.json"), "{ broken json");
+    const result = validate("claude-code", root);
+    assert.ok(result.missing.includes("settings-integration"));
+  });
+});
+
+// Red-team Finding F6: empty config files (readJsonSafe returns {ok:false,error:"empty file"})
+test("req 5 fails on empty settings file", () => {
+  withRoot({ surface: ".claude", settingsPath: ".claude/settings.json" }, (root) => {
+    writeFileSync(join(root, ".claude/settings.json"), "");
     const result = validate("claude-code", root);
     assert.ok(result.missing.includes("settings-integration"));
   });

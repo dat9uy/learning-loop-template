@@ -11,9 +11,9 @@
   - `CONTRACT.md` — the 5 requirements a runtime MUST satisfy: `hook-shim-set`, `mcp-client-config`, `skill-spec`, `identity-marker` (advisory), `settings-integration`.
   - `contract.js` — read-only validator. Run as `node tools/learning-loop-mastra/interface/contract.js <runtime-id>`.
   - `RUNTIME_ONBOARDING.md` — step-by-step guide for adding a new runtime (worked example: Mastra Code).
-  - `__tests__/contract.test.js` — 24-test contract validation suite.
-- **`tools/learning-loop-mastra/__tests__/interface/`** — 5 regression-guard tests for the interface layer.
-- **`tools/scripts/run-pnpm-test-namespaced.mjs`** — 3 new GLOB entries for the interface test namespace.
+  - `__tests__/contract.test.js` — 25-test contract validation suite (24 ship + 1 empty-file regression guard added in code review follow-up).
+- **`tools/learning-loop-mastra/__tests__/interface/`** — 5 regression-guard test files (21 tests) for the interface layer.
+- **`tools/scripts/run-pnpm-test-namespaced.mjs`** — 2 new GLOB entries for the interface test namespace.
 - **Baseline capture script and report** for the interface layer.
 
 ### Changed
