@@ -32,7 +32,7 @@ files (these are NOT in the repo):
 
 ## What is NOT in the operator's scope
 
-- The MCP server entry path (`tools/learning-loop-mastra/server.js`) is
+- The MCP server entry path (`tools/learning-loop-mastra/mastra/server.js`) is
   unchanged. The directory is still `tools/learning-loop-mastra/`.
 - The MCP tool names (e.g., `mastra_meta_state_log_change`, `ask_intake_agent`)
   are unchanged. The `mastra_` prefix and `ask_` prefix are tool-name

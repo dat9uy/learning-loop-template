@@ -55,11 +55,11 @@ describe("legacy cleanup (C-9)", () => {
 
   test("cross-package consumers resolve to the new paths", () => {
     const consumers = [
-      { file: "tools/learning-loop-mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
-      { file: "tools/learning-loop-mastra/create-loop-workflow.js", importPath: "./core/envelope-stripper.js" },
-      { file: "tools/learning-loop-mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
-      { file: "tools/learning-loop-mastra/workflows/workflow-intake-plan.js", importPath: "../core/envelope-stripper.js" },
-      { file: "tools/learning-loop-mastra/workflows/workflow-self-improvement.js", importPath: "../core/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
+      { file: "tools/learning-loop-mastra/mastra/create-loop-workflow.js", importPath: "./core/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
+      { file: "tools/learning-loop-mastra/mastra/workflows/workflow-intake-plan.js", importPath: "../core/envelope-stripper.js" },
+      { file: "tools/learning-loop-mastra/mastra/workflows/workflow-self-improvement.js", importPath: "../core/envelope-stripper.js" },
     ];
     for (const { file, importPath } of consumers) {
       const fullPath = join(PROJECT_ROOT, file);
@@ -70,8 +70,8 @@ describe("legacy cleanup (C-9)", () => {
   });
 
   test("5 prose references in agent instructions + scout tool descriptions are updated", () => {
-    const scoutAgent = readFileSync(join(PROJECT_ROOT, "tools/learning-loop-mastra/agents/instructions/scout-agent.js"), "utf8");
-    const runScoutTool = readFileSync(join(PROJECT_ROOT, "tools/learning-loop-mastra/agents/run-scout-tool.js"), "utf8");
+    const scoutAgent = readFileSync(join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/agents/instructions/scout-agent.js"), "utf8");
+    const runScoutTool = readFileSync(join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js"), "utf8");
     assert.ok(!scoutAgent.includes("tools/learning-loop-mcp/scout/run-scout.js"),
       "scout-agent.js should not reference the legacy path");
     assert.ok(scoutAgent.includes("tools/learning-loop-mastra/scout/legacy/run-scout.js"),

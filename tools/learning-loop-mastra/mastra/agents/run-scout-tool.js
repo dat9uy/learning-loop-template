@@ -6,7 +6,7 @@
  */
 import { createLoopTool } from "../create-loop-tool.js";
 import { z } from "zod";
-import { runScout } from "../scout/legacy/run-scout.js";
+import { runScout } from "../../scout/legacy/run-scout.js";
 
 export const runScoutTool = createLoopTool({
   id: "run_scout",

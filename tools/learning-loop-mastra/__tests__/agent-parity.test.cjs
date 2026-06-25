@@ -13,7 +13,7 @@ const { join, resolve } = require("node:path");
 
 const { connectMcpServer, prepareTempRoot } = require("./with-mcp-server.js");
 
-const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
+const SERVER_ENTRY = resolve(__dirname, "..", "mastra", "server.js");
 const TEST_MANIFEST = resolve(__dirname, "fixtures", "agents-manifest.test.json");
 
 function makeTempRoot() {

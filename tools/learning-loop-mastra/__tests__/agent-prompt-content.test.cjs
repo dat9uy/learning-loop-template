@@ -16,9 +16,9 @@ const {
   createMockModel,
 } = require("@mastra/core/test-utils/llm-mock");
 
-const { instructions: intakeInstructions } = require("../agents/instructions/intake-agent.js");
-const { instructions: scoutInstructions } = require("../agents/instructions/scout-agent.js");
-const { instructions: selfImproveInstructions } = require("../agents/instructions/self-improvement-agent.js");
+const { instructions: intakeInstructions } = require("../mastra/agents/instructions/intake-agent.js");
+const { instructions: scoutInstructions } = require("../mastra/agents/instructions/scout-agent.js");
+const { instructions: selfImproveInstructions } = require("../mastra/agents/instructions/self-improvement-agent.js");
 
 const INTAKE_MARKER = "Bound surface: the meta-surface";
 const SCOUT_MARKER = "Required start-of-call sequence";

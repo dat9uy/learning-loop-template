@@ -10,7 +10,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(dirname(dirname(dirname(__dirname))));
-const serverEntry = join(projectRoot, "tools", "learning-loop-mastra", "server.js");
+const serverEntry = join(projectRoot, "tools", "learning-loop-mastra", "mastra", "server.js");
 
 async function withSeededMcpServer(fn) {
   const tempRoot = prepareTempRoot();

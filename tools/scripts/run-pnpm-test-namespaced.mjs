@@ -15,7 +15,8 @@ import { spawn } from "node:child_process";
 import { mkdirSync, createWriteStream } from "node:fs";
 import { join } from "node:path";
 
-// Active globs (9). Two dead globs were dropped per Plan B Phase 3:
+// Active globs (12). Plan 6 adds phase-e-shell-restructure (total 13).
+// Two dead globs were dropped per Plan B Phase 3:
 //   - tools/learning-loop-mcp/scout/*.test.js — matches 7 fixture files under
 //     scout/test-fixtures/mini-codebase/__tests__/, not live runners.
 //   - tools/learning-loop-mcp/evals/*.test.js — directory exists, 0 .test.js files.
@@ -39,6 +40,7 @@ const GLOBS = [
   { ns: "phase-e-foundation", pattern: "tools/learning-loop-mastra/__tests__/phase-e-foundation/*.test.js" },
   { ns: "interface-regression-guards", pattern: "tools/learning-loop-mastra/__tests__/interface/*.test.js" },
   { ns: "interface-contract-tests", pattern: "tools/learning-loop-mastra/interface/__tests__/contract.test.js" },
+  { ns: "phase-e-shell-restructure", pattern: "tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/*.test.js" },
 ];
 
 const NS_RE = /^[a-z0-9-]+$/;

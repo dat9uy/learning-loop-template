@@ -22,7 +22,7 @@ function writeYaml(root, path, data) {
 }
 
 test("workflow-intake-orient: direct parity matches legacy handler", async () => {
-  const { workflowIntakeOrient } = await import("../workflows/workflow-intake-orient.js");
+  const { workflowIntakeOrient } = await import("../mastra/workflows/workflow-intake-orient.js");
   const tempRoot = makeTempRoot();
   writeYaml(tempRoot, "records/meta/index/test.yaml", { id: "test", dimension: "product", capability: "auth" });
 
@@ -43,7 +43,7 @@ test("workflow-intake-orient: direct parity matches legacy handler", async () =>
 });
 
 test("workflow-intake-plan: direct parity matches legacy handler", async () => {
-  const { workflowIntakePlan } = await import("../workflows/workflow-intake-plan.js");
+  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
   const orientResult = {
     index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
     meta_triggers: ["trigger1"],
@@ -61,7 +61,7 @@ test("workflow-intake-plan: direct parity matches legacy handler", async () => {
 });
 
 test("workflow-classify-prompt: direct parity matches legacy handler", async () => {
-  const { workflowClassifyPrompt } = await import("../workflows/workflow-classify-prompt.js");
+  const { workflowClassifyPrompt } = await import("../mastra/workflows/workflow-classify-prompt.js");
   const args = { prompt: "fix the auth flow" };
   const run = await workflowClassifyPrompt.createRun();
   const started = await run.start({ inputData: args });
@@ -74,7 +74,7 @@ test("workflow-classify-prompt: direct parity matches legacy handler", async () 
 // Deep-equal structural parity. Locks the field set against future
 // regressions; shape-only assertions above would miss a field drop.
 test("workflow-classify-prompt: deep-equal structural parity", async () => {
-  const { workflowClassifyPrompt } = await import("../workflows/workflow-classify-prompt.js");
+  const { workflowClassifyPrompt } = await import("../mastra/workflows/workflow-classify-prompt.js");
   const run = await workflowClassifyPrompt.createRun();
   const started = await run.start({ inputData: { prompt: "evidence verified" } });
   const expected = {
@@ -86,7 +86,7 @@ test("workflow-classify-prompt: deep-equal structural parity", async () => {
 });
 
 test("workflow-prepare-runtime-request: direct parity matches legacy handler", async () => {
-  const { workflowPrepareRuntimeRequest } = await import("../workflows/workflow-prepare-runtime-request.js");
+  const { workflowPrepareRuntimeRequest } = await import("../mastra/workflows/workflow-prepare-runtime-request.js");
   const args = {
     dimension: "runtime",
     scope: "sandbox",
@@ -107,7 +107,7 @@ test("workflow-prepare-runtime-request: direct parity matches legacy handler", a
 // why_local_insufficient (JS coercion / template literal). The new Zod-validated
 // schema must allow the same. See review-260619-1429-GH-1911 finding #1.
 test("workflow-prepare-runtime-request: tolerates missing evidence_missing/why_local_insufficient (legacy semantics)", async () => {
-  const { workflowPrepareRuntimeRequest } = await import("../workflows/workflow-prepare-runtime-request.js");
+  const { workflowPrepareRuntimeRequest } = await import("../mastra/workflows/workflow-prepare-runtime-request.js");
   const args = {
     dimension: "runtime",
     scope: "sandbox",
@@ -125,7 +125,7 @@ test("workflow-prepare-runtime-request: tolerates missing evidence_missing/why_l
 });
 
 test("workflow-self-improvement: direct parity matches legacy handler", async () => {
-  const { workflowSelfImprovement } = await import("../workflows/workflow-self-improvement.js");
+  const { workflowSelfImprovement } = await import("../mastra/workflows/workflow-self-improvement.js");
   const args = {
     improvement_type: "schema-change",
     description: "Add validation to schema",
@@ -140,7 +140,7 @@ test("workflow-self-improvement: direct parity matches legacy handler", async ()
 });
 
 test("workflow-intentional-skip: direct parity matches legacy handler", async () => {
-  const { workflowIntentionalSkip } = await import("../workflows/workflow-intentional-skip.js");
+  const { workflowIntentionalSkip } = await import("../mastra/workflows/workflow-intentional-skip.js");
   const args = {
     assertion_id: "assert-1",
     skip_reason: "not needed for this release",
@@ -157,7 +157,7 @@ test("workflow-intentional-skip: direct parity matches legacy handler", async ()
 // Deep-equal structural parity: locks rationale format and the
 // blocked_work/allowed_work shape against regressions.
 test("workflow-intentional-skip: deep-equal structural parity", async () => {
-  const { workflowIntentionalSkip } = await import("../workflows/workflow-intentional-skip.js");
+  const { workflowIntentionalSkip } = await import("../mastra/workflows/workflow-intentional-skip.js");
   const run = await workflowIntentionalSkip.createRun();
   const started = await run.start({
     inputData: { assertion_id: "assert-1", skip_reason: "not needed", scope: "docs" },
@@ -173,7 +173,7 @@ test("workflow-intentional-skip: deep-equal structural parity", async () => {
 });
 
 test("workflow-report-phase-status: direct parity matches legacy handler", async () => {
-  const { workflowReportPhaseStatus } = await import("../workflows/workflow-report-phase-status.js");
+  const { workflowReportPhaseStatus } = await import("../mastra/workflows/workflow-report-phase-status.js");
   const args = {
     process_steps_total: 5,
     process_steps_complete: 3,
@@ -187,7 +187,7 @@ test("workflow-report-phase-status: direct parity matches legacy handler", async
 });
 
 test("workflow-intake-orient: deep-equal structural parity", async () => {
-  const { workflowIntakeOrient } = await import("../workflows/workflow-intake-orient.js");
+  const { workflowIntakeOrient } = await import("../mastra/workflows/workflow-intake-orient.js");
   const tempRoot = makeTempRoot();
   writeYaml(tempRoot, "records/meta/index/test.yaml", { id: "test", dimension: "product", capability: "auth" });
 
@@ -211,7 +211,7 @@ test("workflow-intake-orient: deep-equal structural parity", async () => {
 });
 
 test("workflow-intake-plan: deep-equal structural parity", async () => {
-  const { workflowIntakePlan } = await import("../workflows/workflow-intake-plan.js");
+  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
   const orientResult = {
     index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
     meta_triggers: ["trigger1"],
@@ -232,7 +232,7 @@ test("workflow-intake-plan: deep-equal structural parity", async () => {
 });
 
 test("workflow-prepare-runtime-request: deep-equal structural parity", async () => {
-  const { workflowPrepareRuntimeRequest } = await import("../workflows/workflow-prepare-runtime-request.js");
+  const { workflowPrepareRuntimeRequest } = await import("../mastra/workflows/workflow-prepare-runtime-request.js");
   const args = {
     dimension: "runtime",
     scope: "sandbox",
@@ -256,7 +256,7 @@ test("workflow-prepare-runtime-request: deep-equal structural parity", async () 
 });
 
 test("workflow-self-improvement: deep-equal structural parity", async () => {
-  const { workflowSelfImprovement } = await import("../workflows/workflow-self-improvement.js");
+  const { workflowSelfImprovement } = await import("../mastra/workflows/workflow-self-improvement.js");
   const args = {
     improvement_type: "schema-change",
     description: "Add validation to schema",
@@ -280,7 +280,7 @@ test("workflow-self-improvement: deep-equal structural parity", async () => {
 });
 
 test("workflow-report-phase-status: deep-equal structural parity", async () => {
-  const { workflowReportPhaseStatus } = await import("../workflows/workflow-report-phase-status.js");
+  const { workflowReportPhaseStatus } = await import("../mastra/workflows/workflow-report-phase-status.js");
   const args = {
     process_steps_total: 5,
     process_steps_complete: 3,
@@ -296,7 +296,7 @@ test("workflow-report-phase-status: deep-equal structural parity", async () => {
 });
 
 test("workflow-runtime-probe: deep-equal structural parity", async () => {
-  const { workflowRuntimeProbe } = await import("../workflows/workflow-runtime-probe.js");
+  const { workflowRuntimeProbe } = await import("../mastra/workflows/workflow-runtime-probe.js");
   const args = {
     stack: "nodejs",
     probe_type: "test",
@@ -321,7 +321,7 @@ test("workflow-runtime-probe: deep-equal structural parity", async () => {
 // Proves stripEnvelope handles MCP envelope form when agent callers wrap input.
 
 test("workflow_self_improvement handles envelope-form input", async () => {
-  const { workflowSelfImprovement } = await import("../workflows/workflow-self-improvement.js");
+  const { workflowSelfImprovement } = await import("../mastra/workflows/workflow-self-improvement.js");
   const rawInput = {
     improvement_type: "schema-change",
     description: "Add validation to schema",
@@ -348,7 +348,7 @@ test("workflow_self_improvement handles envelope-form input", async () => {
 });
 
 test("workflow_intake_plan handles envelope-form input", async () => {
-  const { workflowIntakePlan } = await import("../workflows/workflow-intake-plan.js");
+  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
   const orientResult = {
     index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
     meta_triggers: ["trigger1"],

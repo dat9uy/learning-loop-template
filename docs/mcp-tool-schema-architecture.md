@@ -5,9 +5,9 @@
 **Why this doc exists:** PR#5's coerce-layer zod-native migration (commit `b7cd756`) shipped a 125-line `schema-parity.js` shim that has a non-obvious interaction with the Mastra SDK and zod 4.4.3 internal APIs. Without this doc, future agents have to re-discover the shim's behavior empirically. This file is the canonical reference.
 
 **Source of truth (read these to verify or extend):**
-- `tools/learning-loop-mastra/schema-parity.js` — the shim
-- `tools/learning-loop-mastra/create-loop-tool.js` — the factory that applies the shim
-- `tools/learning-loop-mastra/server.js` — the canonical MCP server entry
+- `tools/learning-loop-mastra/mastra/schema-parity.js` — the shim
+- `tools/learning-loop-mastra/mastra/create-loop-tool.js` — the factory that applies the shim
+- `tools/learning-loop-mastra/mastra/server.js` — the canonical MCP server entry
 - `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js` — regression net for the shim
 - `plans/reports/scouts-260618-1336-GH-0029-pr5-unresolved-questions-report.md` — full empirical evidence
 
@@ -74,7 +74,7 @@ The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSche
 
 ## 2. The shim: `schema-parity.js`
 
-**File:** `tools/learning-loop-mastra/schema-parity.js` (125 lines)
+**File:** `tools/learning-loop-mastra/mastra/schema-parity.js` (125 lines)
 
 **Purpose:** Recursively unwrap zod wrappers that the migration introduced (`z.preprocess`, `z.union([bool, string]).transform(...)`) and rebuild them in a way that produces byte-identical JSON Schema to the pre-migration baseline.
 
@@ -258,7 +258,7 @@ The meta-state entry `meta-260618T0557Z-tools-learning-loop-mastra-create-loop-t
 
 **Implication:** if zod renames a `_zod.def.type` string, `schema-parity.js` may silently change behavior (passthrough branch at line 110) without SP2 detecting the drift. The 7 parity tests in `coerce-correctness.test.js` are the de facto regression net — they will fail loudly.
 
-**Recommendation:** add `schema-parity.js` to the SP2 fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/schema-parity.js"`).
+**Recommendation:** add `schema-parity.js` to the SP2 fingerprint registry (via `meta_state_log_change` with `evidence_code_ref: "tools/learning-loop-mastra/mastra/schema-parity.js"`).
 
 ---
 
@@ -376,11 +376,11 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 
 | File | What it does |
 |------|--------------|
-| `tools/learning-loop-mastra/schema-parity.js:15-125` | `buildParitySchema` — the shim |
-| `tools/learning-loop-mastra/create-loop-tool.js:17-50` | `normalizeInputSchema` + `attachParityJSONSchema` + `createLoopTool` |
-| `tools/learning-loop-mastra/create-loop-tool.js:38` | The `_zod.toJSONSchema` override assignment |
-| `tools/learning-loop-mastra/create-loop-tool.js:35-37` | The partially-correct comment about the override mechanism |
-| `tools/learning-loop-mastra/server.js:13-43` | Manifest loop, tool registration, `MCPServer.startStdio()` |
+| `tools/learning-loop-mastra/mastra/schema-parity.js:15-125` | `buildParitySchema` — the shim |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:17-50` | `normalizeInputSchema` + `attachParityJSONSchema` + `createLoopTool` |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:38` | The `_zod.toJSONSchema` override assignment |
+| `tools/learning-loop-mastra/mastra/create-loop-tool.js:35-37` | The partially-correct comment about the override mechanism |
+| `tools/learning-loop-mastra/mastra/server.js:13-43` | Manifest loop, tool registration, `MCPServer.startStdio()` |
 | `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js:89-189` | 7 parity tests that lock the shim's behavior |
 | `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js:94-103` | `assertParityMatchesBaseline` — tests `z.toJSONSchema` directly, NOT the MCP path |
 | `tools/learning-loop-mastra/__tests__/with-mcp-server.js` | Helper for spawning the actual server via stdio |

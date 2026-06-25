@@ -14,9 +14,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, sep } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// The mastra package root. Path containment requires the manifest to live
-// here or under __tests__/fixtures/ (the parity test fixture path).
+// The mastra shell root. Path containment requires the manifest to live
+// here or under the package root's __tests__/fixtures/ (the parity test
+// fixture path). After Phase E Plan 6, MASTRA_ROOT is mastra/ (Layer 2);
+// test fixtures live under the package root (Layer 0), so we allow both.
 const MASTRA_ROOT = resolve(__dirname, "..");
+const PACKAGE_ROOT = resolve(__dirname, "..", "..");
 
 let _cached = null;
 
@@ -47,7 +50,7 @@ export function loadAgentsManifest() {
   } catch {
     real = resolved;
   }
-  if (!isWithinRoot(real, MASTRA_ROOT)) {
+  if (!isWithinRoot(real, MASTRA_ROOT) && !isWithinRoot(real, join(PACKAGE_ROOT, "__tests__", "fixtures"))) {
     throw new Error(
       `MASTRA_AGENTS_MANIFEST path "${resolved}" (real: "${real}") ` +
         `resolves outside the mastra package root. Refusing to load.`,

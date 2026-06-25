@@ -9,12 +9,12 @@ import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { storage, initStorage } from "./storage.js";
+import { storage, initStorage } from "../storage.js";
 import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(
-  readFileSync(join(__dirname, "tools", "manifest.json"), "utf8"),
+  readFileSync(join(__dirname, "..", "tools", "manifest.json"), "utf8"),
 );
 const WORKFLOW_MANIFEST = JSON.parse(
   readFileSync(join(__dirname, "workflows-manifest.json"), "utf8"),
@@ -24,7 +24,7 @@ const PREFIX = "mastra_";
 const tools = {};
 
 for (const { file, export: exportName } of MANIFEST) {
-  const mod = await import(`./tools/legacy/${file.replace('tools/', '')}`);
+  const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
   const legacy = mod[exportName];
   if (!legacy) {
     console.error(`skipped ${file} (missing export "${exportName}")`);

@@ -30,12 +30,12 @@ async function getToolDict() {
   const { dirname, join } = await import("node:path");
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const MANIFEST = JSON.parse(
-    readFileSync(join(__dirname, "..", "tools", "manifest.json"), "utf8"),
+    readFileSync(join(__dirname, "..", "..", "tools", "manifest.json"), "utf8"),
   );
   const PREFIX = "mastra_";
   _toolCache = {};
   for (const { file, export: exportName } of MANIFEST) {
-    const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
+    const mod = await import(`../../tools/legacy/${file.replace('tools/', '')}`);
     const legacy = mod[exportName];
     if (!legacy) continue;
     const prefixed = PREFIX + legacy.name;

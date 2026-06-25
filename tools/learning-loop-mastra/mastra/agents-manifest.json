@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "description": "Mastra agents registered by tools/learning-loop-mastra/server.js. Per-agent `model` field overrides MASTRA_AGENT_MODEL and the code default.",
+  "description": "Mastra agents registered by tools/learning-loop-mastra/mastra/server.js. Per-agent `model` field overrides MASTRA_AGENT_MODEL and the code default.",
   "agents": {
     "intake_agent": {
       "id": "intake_agent",

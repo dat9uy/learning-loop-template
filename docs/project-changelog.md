@@ -71,8 +71,8 @@
   - 10 number fields → `z.coerce.number()`.
   - 17 envelope-bearing array fields → `z.preprocess(stripEnvelope, z.array(...))`.
   - 3 envelope-bearing object fields → `z.preprocess(stripEnvelope, z.object({...}))`.
-- **`tools/learning-loop-mastra/create-loop-tool.js`** — collapsed from 146-line imperative factory to ~10-line `createTool` re-export. Deleted `coerceScalar`, `unwrapItem`, `coerceShape`, `wrapSchema`, `coerceParams`.
-- **`tools/learning-loop-mastra/schema-parity.js`** — description preservation fixed (code-review finding). `z.toJSONSchema` parity harness now emits identical JSON Schema for all 39 registered tools.
+- **`tools/learning-loop-mastra/mastra/create-loop-tool.js`** — collapsed from 146-line imperative factory to ~10-line `createTool` re-export. Deleted `coerceScalar`, `unwrapItem`, `coerceShape`, `wrapSchema`, `coerceParams`.
+- **`tools/learning-loop-mastra/mastra/schema-parity.js`** — description preservation fixed (code-review finding). `z.toJSONSchema` parity harness now emits identical JSON Schema for all 39 registered tools.
 
 ### Removed
 
@@ -113,7 +113,7 @@
 ### Resolved
 
 - `meta-260617T2356Z-pr-4-plan-3-cut-over-shipped-meta-state-refresh-tools-to-the` — tool deleted; restart is the canonical path.
-- `meta-260617T2356Z-f4-meta-260616t2123z-the-learning-loop-mastra-peer-mcp-serve` — F4 `evidence_code_ref` patched to `tools/learning-loop-mastra/server.js:13` (the `PREFIX` line).
+- `meta-260617T2356Z-f4-meta-260616t2123z-the-learning-loop-mastra-peer-mcp-serve` — F4 `evidence_code_ref` patched to `tools/learning-loop-mastra/mastra/server.js:13` (the `PREFIX` line).
 - `meta-260617T2357Z-master-tracker-c7-line-193-lists-groups-as-coordination-meta` — tracker C7 line 193 patched to canonical 5-group enumeration matching `agent-manifest.json`.
 - `meta-260617T2357Z-tools-learning-loop-mastra-tests-connect-mcp-server-mutex-te` — mutex test comment patched to reflect actual assertion strength (non-regression check, not strict ordering).
 
@@ -129,9 +129,9 @@
 
 ### Changed
 
-- **`tools/learning-loop-mastra/server.js`** — promoted from peer/secondary to **canonical MCP server**. Now the single source of truth for all MCP tool registrations. All 40 deterministic tools are `mastra_`-prefixed and live in 5 manifest groups (`coordination`, `meta_state`, `runtime_state`, `gate`, `introspection`).
+- **`tools/learning-loop-mastra/mastra/server.js`** — promoted from peer/secondary to **canonical MCP server**. Now the single source of truth for all MCP tool registrations. All 40 deterministic tools are `mastra_`-prefixed and live in 5 manifest groups (`coordination`, `meta_state`, `runtime_state`, `gate`, `introspection`).
 - **`.mcp.json` / `.factory/mcp.json`** — reduced to a single `learning-loop-mastra` server entry. Legacy `learning-loop-mcp` server entry removed.
-- **`package.json`** — `gate:server` script now points to `tools/learning-loop-mastra/server.js` (was `tools/learning-loop-mcp/server.js`).
+- **`package.json`** — `gate:server` script now points to `tools/learning-loop-mastra/mastra/server.js` (was `tools/learning-loop-mcp/server.js`).
 - **SessionStart hook** — updated to key on `mcpServers["learning-loop-mastra"]` and tool `mastra_loop_describe` for server discovery and capability probing.
 - **`agent-manifest.json`** — 5 groups, 40 `mastra_`-prefixed deterministic tools. All legacy non-deterministic tools removed from the canonical surface.
 
@@ -224,7 +224,7 @@
 
 ### Changed
 
-- **`tools/learning-loop-mastra/schemas.js`** — added Plan 3 cut-over header comment (M-C1).
+- **`tools/learning-loop-mastra/mastra/schemas.js`** — added Plan 3 cut-over header comment (M-C1).
 - **`plans/reports/productization-260612-1530-master-tracker.md`** — flipped C4 checkbox to `[x]` and updated last-updated line.
 - **Plan 2 plan/phase files** — corrected test count math: 36 parity tests, 70 mastra-specific tests total; documented `gate_check` exclusion from content parity.
 

@@ -39,7 +39,7 @@ function fakeRoot(opts = {}) {
   if (opts.mcpConfigPath) {
     const mcpFull = join(root, opts.mcpConfigPath);
     mkdirSync(join(mcpFull, ".."), { recursive: true });
-    const content = opts.mcpConfig ?? { mcpServers: { "learning-loop": { command: "node", args: ["tools/learning-loop-mastra/server.js"] } } };
+    const content = opts.mcpConfig ?? { mcpServers: { "learning-loop": { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] } } };
     writeFileSync(mcpFull, JSON.stringify(content));
   }
   // Skill spec

@@ -32,7 +32,7 @@ export async function resolveAgentModel(agentId, agentsManifest) {
     if (perAgent === MOCK_LLM_MARKER) {
       // Test-only: create mock model in the server process
       const { createServerMockModel } = await import(
-        "./__tests__/helpers/mock-model-factory.cjs"
+        "../__tests__/helpers/mock-model-factory.cjs"
       );
       return createServerMockModel();
     }

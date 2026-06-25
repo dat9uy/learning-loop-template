@@ -13,7 +13,7 @@ const { join, resolve } = require("node:path");
 
 const { connectMcpServer } = require("./with-mcp-server.js");
 
-const SERVER_ENTRY = resolve(__dirname, "..", "server.js");
+const SERVER_ENTRY = resolve(__dirname, "..", "mastra", "server.js");
 
 function makeTempRoot() {
   const tempRoot = mkdtempSync(join(tmpdir(), "workflow-mcp-parity-"));

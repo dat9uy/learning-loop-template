@@ -1,0 +1,77 @@
+{
+  "ok": false,
+  "runtimeId": "mastra-code",
+  "rootPath": "/home/datguy/codingProjects/learning-loop-template",
+  "missing": [
+    "hook-shim-set",
+    "mcp-client-config",
+    "skill-spec",
+    "settings-integration"
+  ],
+  "notes": [
+    "identity-marker-not-adopted"
+  ],
+  "path_map": {
+    "hook-shim-set": {
+      "id": "hook-shim-set",
+      "ok": false,
+      "shim_dir": "/home/datguy/codingProjects/learning-loop-template/.mastracode/coordination/hooks",
+      "shims": [
+        {
+          "name": "bash-coordination-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/coordination/hooks/bash-coordination-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "write-coordination-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/coordination/hooks/write-coordination-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "inbound-state-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/coordination/hooks/inbound-state-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "recurrence-check-on-start.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/coordination/hooks/recurrence-check-on-start.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        }
+      ]
+    },
+    "mcp-client-config": {
+      "id": "mcp-client-config",
+      "ok": false,
+      "config_path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/config.json",
+      "entry": null,
+      "parse_error": "ENOENT: no such file or directory, open '/home/datguy/codingProjects/learning-loop-template/.mastracode/config.json'"
+    },
+    "skill-spec": {
+      "id": "skill-spec",
+      "ok": false,
+      "skill_path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/skills/learning-loop/SKILL.md",
+      "has_tools_block": false,
+      "tools_referenced": []
+    },
+    "identity-marker": {
+      "id": "identity-marker",
+      "ok": true,
+      "env_var": "RUNTIME_ID",
+      "expected": "mastra-code",
+      "actual": null,
+      "status": "unset"
+    },
+    "settings-integration": {
+      "id": "settings-integration",
+      "ok": false,
+      "settings_path": "/home/datguy/codingProjects/learning-loop-template/.mastracode/config.json",
+      "commands": [],
+      "shims_referenced": [],
+      "parse_error": "ENOENT: no such file or directory, open '/home/datguy/codingProjects/learning-loop-template/.mastracode/config.json'"
+    }
+  }
+}

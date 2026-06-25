@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "runtimeId": "droid",
+  "rootPath": "/home/datguy/codingProjects/learning-loop-template",
+  "missing": [],
+  "notes": [
+    "skill-spec-no-tools-block",
+    "identity-marker-not-adopted",
+    "bash-coordination-gate.cjs-universal-missing",
+    "write-coordination-gate.cjs-universal-missing",
+    "inbound-state-gate.cjs-universal-missing",
+    "recurrence-check-on-start.cjs-universal-missing"
+  ],
+  "path_map": {
+    "hook-shim-set": {
+      "id": "hook-shim-set",
+      "ok": true,
+      "shim_dir": "/home/datguy/codingProjects/learning-loop-template/.factory/coordination/hooks",
+      "shims": [
+        {
+          "name": "bash-coordination-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.factory/coordination/hooks/bash-coordination-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "write-coordination-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.factory/coordination/hooks/write-coordination-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "inbound-state-gate.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.factory/coordination/hooks/inbound-state-gate.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        },
+        {
+          "name": "recurrence-check-on-start.cjs",
+          "path": "/home/datguy/codingProjects/learning-loop-template/.factory/coordination/hooks/recurrence-check-on-start.cjs",
+          "universal_target": null,
+          "universal_exists": false
+        }
+      ]
+    },
+    "mcp-client-config": {
+      "id": "mcp-client-config",
+      "ok": true,
+      "config_path": "/home/datguy/codingProjects/learning-loop-template/.factory/mcp.json",
+      "entry": {
+        "command": "node",
+        "args": [
+          "tools/learning-loop-mastra/mastra/server.js"
+        ]
+      }
+    },
+    "skill-spec": {
+      "id": "skill-spec",
+      "ok": true,
+      "skill_path": "/home/datguy/codingProjects/learning-loop-template/.factory/skills/learning-loop/SKILL.md",
+      "has_tools_block": false,
+      "tools_referenced": [
+        "loop_describe",
+        "meta_state_list"
+      ]
+    },
+    "identity-marker": {
+      "id": "identity-marker",
+      "ok": true,
+      "env_var": "RUNTIME_ID",
+      "expected": "droid",
+      "actual": null,
+      "status": "unset"
+    },
+    "settings-integration": {
+      "id": "settings-integration",
+      "ok": true,
+      "settings_path": "/home/datguy/codingProjects/learning-loop-template/.factory/settings.json",
+      "commands": [
+        "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/recurrence-check-on-start.cjs",
+        "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/inbound-state-gate.cjs",
+        "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/write-coordination-gate.cjs",
+        "node \"$FACTORY_PROJECT_DIR\"/.factory/coordination/hooks/bash-coordination-gate.cjs"
+      ],
+      "shims_referenced": [
+        "bash-coordination-gate.cjs",
+        "write-coordination-gate.cjs",
+        "inbound-state-gate.cjs",
+        "recurrence-check-on-start.cjs"
+      ]
+    }
+  }
+}

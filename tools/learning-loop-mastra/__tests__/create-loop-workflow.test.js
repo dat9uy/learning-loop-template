@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { z } from "zod";
 
 test("createLoopWorkflow returns object with .createRun function", async () => {
-  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
   const wf = createLoopWorkflow({
     id: "test_workflow",
     description: "Test workflow",
@@ -22,7 +22,7 @@ test("createLoopWorkflow returns object with .createRun function", async () => {
 });
 
 test("createLoopWorkflow throws on empty description", async () => {
-  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
   assert.throws(
     () =>
       createLoopWorkflow({
@@ -36,7 +36,7 @@ test("createLoopWorkflow throws on empty description", async () => {
 });
 
 test("createLoopWorkflow with 1 step runs successfully via .createRun().start()", async () => {
-  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
   const wf = createLoopWorkflow({
     id: "test_single_step",
     description: "Single step workflow",
@@ -58,7 +58,7 @@ test("createLoopWorkflow with 1 step runs successfully via .createRun().start()"
 });
 
 test("createLoopWorkflow with 2 steps produces a 2-step chain", async () => {
-  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
   const wf = createLoopWorkflow({
     id: "test_two_step",
     description: "Two step workflow",
@@ -85,7 +85,7 @@ test("createLoopWorkflow with 2 steps produces a 2-step chain", async () => {
 });
 
 test("createLoopWorkflow with stateSchema accepts state and persists across steps", async () => {
-  const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+  const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
   const wf = createLoopWorkflow({
     id: "test_state",
     description: "State workflow",
@@ -126,7 +126,7 @@ const invalidIds = [
 
 for (const [label, id] of invalidIds) {
   test(`createLoopWorkflow rejects invalid id (${label})`, async () => {
-    const { createLoopWorkflow } = await import("../create-loop-workflow.js");
+    const { createLoopWorkflow } = await import("../mastra/create-loop-workflow.js");
     assert.throws(
       () =>
         createLoopWorkflow({

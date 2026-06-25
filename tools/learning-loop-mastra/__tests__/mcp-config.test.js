@@ -21,11 +21,11 @@ for (const file of [".mcp.json", ".factory/mcp.json"]) {
     );
   });
 
-  test(`${file} mastra entry points at tools/learning-loop-mastra/server.js`, () => {
+  test(`${file} mastra entry points at tools/learning-loop-mastra/mastra/server.js`, () => {
     const config = JSON.parse(readFileSync(join(projectRoot, file), "utf8"));
     assert.deepEqual(config.mcpServers["learning-loop"], {
       command: "node",
-      args: ["tools/learning-loop-mastra/server.js"],
+      args: ["tools/learning-loop-mastra/mastra/server.js"],
     });
   });
 }

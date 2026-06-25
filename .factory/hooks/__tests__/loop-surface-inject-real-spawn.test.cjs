@@ -16,9 +16,9 @@ const { spawnAndCall } = require("../loop-surface-inject.cjs");
 describe("loop-surface-inject real spawnAndCall (regression: chicken-and-egg)", () => {
   test("completes the MCP handshake and returns loop_describe summary", async () => {
     const projectRoot = process.cwd();
-    const serverEntry = join(projectRoot, "tools/learning-loop-mastra/server.js");
+    const serverEntry = join(projectRoot, "tools/learning-loop-mastra/mastra/server.js");
 
-    const serverCfg = { command: "node", args: ["tools/learning-loop-mastra/server.js"] };
+    const serverCfg = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] };
 
     // Race the probe against a wall clock so a deadlock (the old bug)
     // fails this test loudly instead of stalling for the full 10s.

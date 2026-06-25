@@ -163,7 +163,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     affected_system: "mcp-tools",
     subtype: "mcp-connection",
     description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_fingerprint, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
-    evidence_code_ref: "tools/learning-loop-mastra/server.js",
+    evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
     session_id: sessionId,
     status: "reported",
     auto_resolve: null,

@@ -45,7 +45,7 @@ Read file f.md`;
 test("cold-session test 1 prompt reproduces the 1522Z hang estimate", () => {
   // Realistic cold-session test 1 prompt with anti-MCP phrases + multiple file reads.
   // Per F4 red team: comments should be stripped before counting.
-  const prompt = `Read tools/learning-loop-mastra/server.js
+  const prompt = `Read tools/learning-loop-mastra/mastra/server.js
 Read tools/learning-loop-mastra/tools/manifest.json
 Read tools/learning-loop-mastra/core/gate-logic.js
 Read tools/learning-loop-mastra/core/meta-state.js

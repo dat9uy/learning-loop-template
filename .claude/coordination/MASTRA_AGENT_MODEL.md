@@ -67,4 +67,4 @@ In production, env vars come from the deployment system (Docker, K8s, systemd, e
 
 - Kimi provider docs: https://mastra.ai/models/providers/kimi-for-coding
 - Phase 1 probe script: `tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs`
-- Agents manifest: `tools/learning-loop-mastra/agents-manifest.json` (Phase 3)
+- Agents manifest: `tools/learning-loop-mastra/mastra/agents-manifest.json` (Phase 3)

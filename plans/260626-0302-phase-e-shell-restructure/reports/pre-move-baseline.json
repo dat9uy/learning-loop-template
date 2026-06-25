@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-06-26T03:15:00.000Z",
+  "top_level_js_files": 8,
+  "shell_files": ["create-loop-agent.js", "create-loop-tool.js", "create-loop-workflow.js", "legacy-handler-adapter.js", "schema-parity.js", "schemas.js", "server.js"],
+  "expected_mastra_dir_files": 7,
+  "expected_mastra_subdirs": ["workflows", "agents"],
+  "external_refs_count": 38,
+  "external_refs_in_scope": 31,
+  "external_refs_journals_excluded": 5,
+  "meta_state_entries_count": 9,
+  "meta_state_extra_resolved_with_shell_ref": ["meta-260621T1743Z-the-full-pnpm-test-glob-fired-by-pre-commit-hook-package-jso"],
+  "stale_entries_to_reverify": ["meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop"]
+}

@@ -39,7 +39,7 @@ See `CONTRACT.md` for full predicates and verification steps.
 | ID | What | Pass criteria |
 |----|------|---------------|
 | `hook-shim-set` | 4 `.cjs` shims in `<surface>/coordination/hooks/` | Each shim exists as a file |
-| `mcp-client-config` | MCP config has `mcpServers.learning-loop` entry | Entry points to `tools/learning-loop-mastra/server.js` |
+| `mcp-client-config` | MCP config has `mcpServers.learning-loop` entry | Entry points to `tools/learning-loop-mastra/mastra/server.js` |
 | `skill-spec` | `skills/learning-loop/SKILL.md` exists | References `loop_describe` AND `meta_state_list` |
 | `identity-marker` (PROPOSED) | `RUNTIME_ID` env var set | Advisory only today; never fails |
 | `settings-integration` | Settings file references 4 shim basenames | All 4 basenames present in `command` strings |
