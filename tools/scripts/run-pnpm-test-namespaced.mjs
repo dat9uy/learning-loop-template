@@ -36,6 +36,9 @@ const GLOBS = [
   { ns: "mastra-cjs", pattern: "tools/learning-loop-mastra/__tests__/*.test.cjs" },
   { ns: "claude-coord-cjs", pattern: ".claude/coordination/__tests__/*.test.cjs" },
   { ns: "factory-cjs", pattern: ".factory/hooks/__tests__/*.test.cjs" },
+  { ns: "phase-e-foundation", pattern: "tools/learning-loop-mastra/__tests__/phase-e-foundation/*.test.js" },
+  { ns: "interface-regression-guards", pattern: "tools/learning-loop-mastra/__tests__/interface/*.test.js" },
+  { ns: "interface-contract-tests", pattern: "tools/learning-loop-mastra/interface/__tests__/contract.test.js" },
 ];
 
 const NS_RE = /^[a-z0-9-]+$/;
