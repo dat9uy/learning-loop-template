@@ -49,6 +49,20 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     `Phase 5 coverage dropped: ${resolvedWithCheck}/${resolvedTotal} < 70%`
   );
 
+  // Phase 6: sweep-success invariant — limit stale mechanism_check findings.
+  // Catches the regression where a corrective batch left entries stale because
+  // meta_state_sweep's checkStaleness (acked_at || created_at against the 7d
+  // window) re-staled entries with old created_at. Threshold 1 allows the
+  // documented mc=false leftovers; mc=false is excluded because mechanism_check
+  // is explicitly opted out and the entry isn't subject to grounding checks.
+  const staleMcFindings = current.all_findings.filter(
+    (f) => f.status === "stale" && (f.mechanism_check === true || f.mechanism_check === null)
+  );
+  assert.ok(
+    staleMcFindings.length <= 1,
+    `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 1: ${staleMcFindings.map((f) => f.id).join(", ")}`
+  );
+
   // Size sanity: cold tier should not collapse to a near-empty payload
   const currentBytes = Buffer.byteLength(JSON.stringify(current, null, 2), "utf8");
   assert.ok(

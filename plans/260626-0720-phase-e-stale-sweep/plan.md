@@ -146,4 +146,4 @@ This plan completes the registry lifecycle debt surfaced by Plan 3's red-team re
 
 ---
 
-**Status:** Done — all 14 stale `mechanism_check=true` entries transitioned to `active`. 1 fingerprint refreshed. 0 code changes. Retry required `expires_at: null` to prevent auto-resolve sweep re-expiry (10 of 14 entries had past `expires_at` dates). See journal for details.
+**Status:** Done — **corrected by Plan 7 Fix (`plans/260626-1535-phase-e-stale-sweep-fix/`)**. Original commit `1186c33` shipped with 12 of 14 entries still stale (root cause: `checkStaleness` re-staled entries with `created_at > 7d`; see journal for full sequence). Plan 7 Fix applied a corrective batch via 10 `meta_state_ack` invocations setting `status: "active"` + `acked_at` to persist past `checkStaleness`, added a sweep-success assertion to the cold-tier test, investigated the audit-log gap, and corrected this footer + journal + change-log. Do not consider Plan 7 truly done until Plan 7 Fix ships.
