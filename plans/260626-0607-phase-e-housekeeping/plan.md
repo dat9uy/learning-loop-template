@@ -39,22 +39,22 @@ Plan 3 closes the doc/process carryovers from Phase E. It ships 5 small items: (
 
 ## Acceptance Criteria
 
-- [ ] `AGENTS.md §11` ("Runtime interface ownership") inserted at lines 355+; existing §11 ("What changed in this rewrite") renumbered to §12; sections §1–§10 unchanged
-- [ ] `AGENTS.md` total section count: 12 (§1–§12); §11 line range starts after §10's last paragraph; §12 starts where §11 was (line 355)
-- [ ] `tools/learning-loop-mastra/mastra/workflows/workflow-intentional-skip.js` has a 1-line parity-pin comment above `export const workflowIntentionalSkip` (line 47)
-- [ ] `tools/learning-loop-mastra/docs/legacy-pins.md` exists with: title, intro paragraph explaining "parity-pin" convention, numbered list of parity-pinned files (workflow-intentional-skip.js + the 4 actual parity surfaces: schema-parity.js, create-loop-{tool,workflow,agent}.js, build-meta-state-tools.js), and a "do not move to legacy/" rule per file
-- [ ] `tools/learning-loop-mastra/core/schema-descriptions.yaml` deleted; `grep -rn "schema-descriptions" tools/learning-loop-mastra/` returns 0 matches outside `docs/journals/` + the deleted file's prior location
-- [ ] `core/README.md` line 26 says `tools/learning-loop-mastra/mastra/create-loop-*.js (shell factories)` (was `tools/learning-loop-mastra/create-loop-*.js`)
-- [ ] `core/README.md` line 27 says `tools/learning-loop-mastra/mastra/{workflows,agents}/ (shell-defined entities); tools/learning-loop-mastra/tools/legacy/ (separate substrate; NOT under mastra/)` (was `tools/learning-loop-mastra/{workflows,agents,tools}/`)
-- [ ] `core/README.md` line 46 says `**Mastra shell** (\`tools/learning-loop-mastra/mastra/\`) — the imperative shell` (was `**Mastra shell** (\`tools/learning-loop-mastra/\` top level)`)
-- [ ] `core/README.md` line 47 unchanged (`interface/` path is correct post-Plan-2)
-- [ ] `__tests__/phase-e-shell-restructure/external-refs-updated.test.js` SEARCH_PATHS includes `tools/learning-loop-mastra/core/`
-- [ ] `__tests__/phase-e-shell-restructure/external-refs-updated.test.js` FORBIDDEN_PATH_PATTERNS includes `tools/learning-loop-mastra/core/schema-descriptions\\.yaml` (per E.4 deletion — guards future re-creation at the original location; corrected per red-team finding M6)
-- [ ] `pnpm test` GREEN across all 13 namespaces (12 existing + 1 new from Plan 6 `phase-e-shell-restructure`)
-- [ ] Entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop` `status: stale → active` via `meta_state_patch` (per D7; CAS via `_expected_version: 10`)
-- [ ] Cold-tier regression test (`cold-tier-regression.test.cjs`) GREEN after Phase 5
-- [ ] `meta_state_log_change` filed with `change_target: plans/260626-0607-phase-e-housekeeping/plan.md`
-- [ ] Journal entry: `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`
+- [x] `AGENTS.md §11` ("Runtime interface ownership") inserted at lines 355+; existing §11 ("What changed in this rewrite") renumbered to §12; sections §1–§10 unchanged
+- [x] `AGENTS.md` total section count: 12 (§1–§12); §11 line range starts after §10's last paragraph; §12 starts where §11 was (line 355)
+- [x] `tools/learning-loop-mastra/mastra/workflows/workflow-intentional-skip.js` has a 1-line parity-pin comment above `export const workflowIntentionalSkip` (line 47)
+- [x] `tools/learning-loop-mastra/docs/legacy-pins.md` exists with: title, intro paragraph explaining "parity-pin" convention, numbered list of parity-pinned files (workflow-intentional-skip.js + the 4 actual parity surfaces: schema-parity.js, create-loop-{tool,workflow,agent}.js, build-meta-state-tools.js), and a "do not move to legacy/" rule per file
+- [x] `tools/learning-loop-mastra/core/schema-descriptions.yaml` deleted; `grep -rn "schema-descriptions" tools/learning-loop-mastra/` returns 0 matches outside `docs/journals/` + the deleted file's prior location
+- [x] `core/README.md` line 26 says `tools/learning-loop-mastra/mastra/create-loop-*.js (shell factories)` (was `tools/learning-loop-mastra/create-loop-*.js`)
+- [x] `core/README.md` line 27 says `tools/learning-loop-mastra/mastra/{workflows,agents}/ (shell-defined entities); tools/learning-loop-mastra/tools/legacy/ (separate substrate; NOT under mastra/)` (was `tools/learning-loop-mastra/{workflows,agents,tools}/`)
+- [x] `core/README.md` line 46 says `**Mastra shell** (\`tools/learning-loop-mastra/mastra/\`) — the imperative shell` (was `**Mastra shell** (\`tools/learning-loop-mastra/\` top level)`)
+- [x] `core/README.md` line 47 unchanged (`interface/` path is correct post-Plan-2)
+- [x] `__tests__/phase-e-shell-restructure/external-refs-updated.test.js` SEARCH_PATHS includes `tools/learning-loop-mastra/core/`
+- [x] `__tests__/phase-e-shell-restructure/external-refs-updated.test.js` FORBIDDEN_PATH_PATTERNS includes `tools/learning-loop-mastra/core/schema-descriptions\\.yaml` (per E.4 deletion — guards future re-creation at the original location; corrected per red-team finding M6)
+- [x] `pnpm test` GREEN across all 13 namespaces (12 existing + 1 new from Plan 6 `phase-e-shell-restructure`)
+- [x] Entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop` `status: stale → active` via `meta_state_patch` (per D7; CAS via `_expected_version: 10`)
+- [x] Cold-tier regression test (`cold-tier-regression.test.cjs`) GREEN after Phase 5
+- [x] `meta_state_log_change` filed with `change_target: plans/260626-0607-phase-e-housekeeping/plan.md`
+- [x] Journal entry: `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`
 
 ## Dependencies
 

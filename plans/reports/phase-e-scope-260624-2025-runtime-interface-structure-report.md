@@ -1,9 +1,9 @@
 # Phase E Scope Report: Runtime Interface Structure (3-Layer Architecture Locked)
 
 **Type:** phase-e-scope (advisory; problem-solving inversion applied)
-**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15; revised 2026-06-26 — Plan 2 (Interface spec) shipped via PR #17 + Plan 6 (Mastra shell restructure) added per operator observation; revised 2026-06-26 (Rev 6) — Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review; revised 2026-06-26 (Rev 7) — Plan 6 status flipped to DONE (code review approved; merge to main pending); revised 2026-06-26 (Rev 8) — Plan 6 squash-merged to main via PR #18 (merge commit de01dcc; CI green; "merge to main pending" caveat lifted); see "Revision notes" at end)
+**Date:** 2026-06-24 19:25 (revised 2026-06-24 21:30 — 4 corrections applied; revised 2026-06-24 22:10 — plan split added; revised 2026-06-25 — Plan 1 (Foundation) shipped via PR #15; revised 2026-06-26 — Plan 2 (Interface spec) shipped via PR #17 + Plan 6 (Mastra shell restructure) added per operator observation; revised 2026-06-26 (Rev 6) — Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review; revised 2026-06-26 (Rev 7) — Plan 6 status flipped to DONE (code review approved; merge to main pending); revised 2026-06-26 (Rev 8) — Plan 6 squash-merged to main via PR #18 (merge commit de01dcc; CI green; "merge to main pending" caveat lifted); revised 2026-06-26 (Rev 9) — Plan 3 (Housekeeping) shipped via commit 0627770; entry #9 stale → active transition completed via corrective meta_state_patch (audit-trail correction; the original commit's change-log claim was inaccurate); see "Revision notes" at end)
 **Slug:** runtime-interface-structure
-**Status:** partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15; Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal `docs/journals/260625-phase-e-plan-2-interface-spec-shipped.md`; git merge commit dated 2026-06-26 local); Plan 6 (Mastra shell restructure) shipped 2026-06-26 via PR #18 squash-merged to main (merge commit `de01dcc`; CI green; journal `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`; code review APPROVE WITH FOLLOW-UPS). Plan 3 (Housekeeping) expanded with 2 follow-ups from Plan 6 code review (Rev 6). Plans 3/4 still pending.
+**Status:** partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15; Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal `docs/journals/260625-phase-e-plan-2-interface-spec-shipped.md`; git merge commit dated 2026-06-26 local); Plan 6 (Mastra shell restructure) shipped 2026-06-26 via PR #18 squash-merged to main (merge commit `de01dcc`; CI green; journal `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`; code review APPROVE WITH FOLLOW-UPS); Plan 3 (Housekeeping) shipped 2026-06-26 via commit `0627770` on branch `phase-e/plan-3-housekeeping` (per journal `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`; 5 doc/process changes + 1 file deletion + 1 registry lifecycle action; code review APPROVE WITH FOLLOW-UPS per Rev 9). Plan 4 (Mastra Code validation) still pending.
 **Aligned to:** `plans/reports/predict-260624-2025-phase-e-domain-driven-architecture-report.md` (CAUTION verdict) + `plans/reports/productization-260612-1530-master-tracker.md` Phase E
 **Technique applied:** Inversion Exercise (per `/problem-solving` skill) — flipped the assumption that "the shim pattern IS the runtime interface" to reveal the missing first-class structure.
 
@@ -149,7 +149,7 @@ The 7 phase items (E.0–E.5) cluster naturally into **4 shippable plans** based
 |---|------|-------|-------|--------|--------------|--------------|--------|
 | **1** | **phase-e-foundation** | E.1 | Rename `core/legacy/` → `core/` + add `core/README.md` (FCIS invariant) + add `tools/learning-loop-mastra/docs/schemas.md` + update `AGENTS.md §1` to name the 3 layers. **Pure rename + discipline doc. No new code.** | 0.5d | Mechanical + invariant correctness | None (this is the foundation) | ✅ DONE 2026-06-25 (PR #15) |
 | **2** | **phase-e-interface-spec** | E.0 + E.1b | (E.0) Update `.claude/skills/learning-loop/SKILL.md` + `.factory/skills/learning-loop/SKILL.md` to reference the new contract. (E.1b) Create `interface/` with README, CONTRACT.md, contract.js, RUNTIME_ONBOARDING.md, contract.test.js. **The new spec + the docs that point to it.** | ~1.25d | Spec correctness + validator behavior | Plan 1 (FCIS invariant) | ✅ DONE 2026-06-25 (PR #17; journal dated 2026-06-25; git merge 2026-06-26 02:37 local) |
-| **3** | **phase-e-housekeeping** | E.2, E.3, E.4, **Rev 6: Plan 6 follow-ups I-1 + I-2** | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **(Rev 6 / I-1)** Fix `tools/learning-loop-mastra/core/README.md` lines 26/27/46 stale pre-move path references + extend `external-refs-updated.test.js` SEARCH_PATHS to include `tools/learning-loop-mastra/core/` + add `create-loop-\*\\.js` glob pattern to FORBIDDEN_PATH_PATTERNS (closes the regression guard gap surfaced in Plan 6 code review). **(Rev 6 / I-2)** Run `meta_state_re_verify` for entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop` with `META_STATE_VERIFY_EXEC=1` to transition `stale → active` (the fingerprint is grounded; only the status lifecycle is open per Plan 6 code review). **3 small doc/process changes + 2 follow-ups bundled to avoid PR overhead.** | ~2h (was ~1.5h) | Doc accuracy + regression guard extension (low risk) | Plan 1 (FCIS invariant) | 🔵 OPEN (Plan 1 done; can run in parallel with Plan 2 + Plan 6) |
+| **3** | **phase-e-housekeeping** | E.2, E.3, E.4, **Rev 6: Plan 6 follow-ups I-1 + I-2** | (E.2) Add `AGENTS.md §11` for R2 ownership. (E.3) Parity-pin label on `workflow-intentional-skip.js` + `docs/legacy-pins.md`. (E.4) Delete or rewrite `core/legacy/schema-descriptions.yaml`. **(Rev 6 / I-1)** Fix `tools/learning-loop-mastra/core/README.md` lines 26/27/46 stale pre-move path references + extend `external-refs-updated.test.js` SEARCH_PATHS to include `tools/learning-loop-mastra/core/` + add `create-loop-\*\\.js` glob pattern to FORBIDDEN_PATH_PATTERNS (closes the regression guard gap surfaced in Plan 6 code review). **(Rev 6 / I-2)** Run `meta_state_re_verify` for entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop` with `META_STATE_VERIFY_EXEC=1` to transition `stale → active` (the fingerprint is grounded; only the status lifecycle is open per Plan 6 code review). **3 small doc/process changes + 2 follow-ups bundled to avoid PR overhead.** | ~2h (was ~1.5h) | Doc accuracy + regression guard extension (low risk) | Plan 1 (FCIS invariant) | ✅ DONE 2026-06-26 (commit `0627770` on `phase-e/plan-3-housekeeping`; journal `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`; code review APPROVE WITH FOLLOW-UPS — see Rev 9) |
 | **6** | **phase-e-shell-restructure** | **NEW (Rev 5): E.6** | Move `tools/learning-loop-mastra/{server.js, create-loop-{tool,workflow,agent}.js, legacy-handler-adapter.js, schema-parity.js, schemas.js, workflows/, agents/}` into `tools/learning-loop-mastra/mastra/`. Update `AGENTS.md §1.1` line 20-22 to reflect the new location. Update `interface/contract.js` Requirement #2 `args` check from `tools/learning-loop-mastra/server.js` → `tools/learning-loop-mastra/mastra/server.js`. Update ~10-15 import-bearing files + add 1 regression guard test. **Makes Layer 2 actually first-class.** | ~1-1.5d | Mechanical move + path invariant correctness | Plan 2 (interface spec must exist, so the contract `args` check is the path source-of-truth) | ✅ DONE 2026-06-26 (squash-merged to main via PR #18 at `de01dcc`; CI green; code review APPROVE WITH FOLLOW-UPS — see Rev 8) |
 | **4** | **phase-e-mastra-code-validation** | E.5 | Smoke-test `createMastraCode({ configDir })` from npm `mastracode` against the new MCPServer. Satisfy the 5 contract requirements for Mastra Code. Run `interface/contract.js mastra-code` → expect `{ok: true}`. Document in `docs/agents/mastra-code.md`. **The worked example that proves the onboarding flow works.** | 1–2d | Config + smoke test + contract validation | Plan 2 (interface spec) + Plan 6 (shell paths must be stable before the contract is exercised) | 🔵 OPEN (Plan 6 DONE; dependency satisfied; ready to start) |
 | **5** | **hardening-r2-lim3-lim4 (DEFERRED)** | LIM-3 + R2 + LIM-4 | Bundled hardening plan: (1) `RUNTIME_ID` env var convention + runtime-marker reader. (2) R2 write-gate (per-runtime write allowlist). (3) Path traversal fix in `meta_state_refresh_fingerprint`. **Per user "Bundle" decision.** Parallel to Phase E. | 1–2w | Security + identity primitive correctness | None — can ship in parallel or after Phase E | 🔵 OPEN (parallel dimension) |
@@ -167,7 +167,7 @@ Plan 1 (Foundation)         0.5d  [DONE]
   │               │
   │               └──→ Plan 4 (Mastra Code)  1-2d
   │
-  └──→ Plan 3 (Housekeeping)  ~2h (was 1.5h pre-Rev-6; +0.5h for Plan 6 follow-ups)  [parallel to Plan 2 + Plan 6]
+  └──→ Plan 3 (Housekeeping)  ~2h (was 1.5h pre-Rev-6; +0.5h for Plan 6 follow-ups)  [DONE — Rev 9; commit 0627770; PR TBD]
 
 Plan 5 (Hardening)          1-2w  [parallel to all of the above]
 ```
@@ -186,7 +186,7 @@ Plan 5 (Hardening)          1-2w  [parallel to all of the above]
 plans/260624-2335-phase-e-foundation/         [DONE 2026-06-25, PR #15]
 plans/260625-1618-phase-e-interface-spec/     [DONE 2026-06-25, PR #17]
 plans/260626-0302-phase-e-shell-restructure/  [DONE 2026-06-26, PR #18 squash-merged to main at de01dcc — Rev 8]
-plans/260625-0930-phase-e-housekeeping/       [pending; parallel to Plan 6 + can start now]
+plans/260626-0607-phase-e-housekeeping/     [DONE 2026-06-26, commit 0627770 — Rev 9]
 plans/260625-0930-phase-e-mastra-code-validation/  [pending; depends on Plan 6 DONE — ready to start]
 plans/260701-0930-hardening-r2-lim3-lim4/     (deferred; parallel)
 ```
@@ -353,6 +353,68 @@ plans/260701-0930-hardening-r2-lim3-lim4/     (deferred; parallel)
 - Contract smoke reports: `plans/260626-0302-phase-e-shell-restructure/reports/contract-{claude-code,droid,mastra-code}.json`
 - Pre-move baselines: `pre-move-baseline.json`, `pre-move-external-refs.txt`, `pre-repoint-meta-state-lines.txt`
 - Journal: `docs/journals/260626-phase-e-plan-6-shell-restructure-shipped.md`
+
+---
+
+## What shipped in Plan 3 (Housekeeping) — 2026-06-26
+
+**Shipped 2026-06-26 via commit `0627770` on branch `phase-e/plan-3-housekeeping`** (per Rev 9; PR TBD at merge time). Plan dir: `plans/260626-0607-phase-e-housekeeping/`. Journal: `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`. Code review report: `plans/reports/code-reviewer-260626-0756-GH-3-phase-e-plan-3-housekeeping-report.md` (APPROVE WITH FOLLOW-UPS — 2 critical blockers caught and resolved post-review per Rev 9). Status ✅ DONE.
+
+| What | Where | Commit |
+|------|-------|--------|
+| New `## 11. Runtime Interface Ownership (R2)` inserted; existing `## 11` renumbered to `## 12` | `AGENTS.md` (lines 354-365); §6 internal references updated from `§11.7` → `§12.7` and `§11.7.1` → `§12.7.1`; total section count 12 | `0627770` |
+| Parity-pin comment above `export const workflowIntentionalSkip` | `tools/learning-loop-mastra/mastra/workflows/workflow-intentional-skip.js` (line 47) | `0627770` |
+| New `legacy-pins.md` (parity-pin convention + 6 pinned files + "do not move to legacy/" rule) | `tools/learning-loop-mastra/docs/legacy-pins.md` (32 lines) | `0627770` |
+| `core/schema-descriptions.yaml` deleted (orphaned dead code; zero live consumers) | `tools/learning-loop-mastra/core/schema-descriptions.yaml` (-64 lines) | `0627770` |
+| `core/README.md` lines 26/27/46 path fixes (pre-Plan-6 stale refs surfaced in Plan 6 code review) | `tools/learning-loop-mastra/core/README.md` | `0627770` |
+| `external-refs-updated.test.js` extended with `tools/learning-loop-mastra/core/` in SEARCH_PATHS + 2 new FORBIDDEN_PATH_PATTERNS (`create-loop-.*\\.js` + `core/schema-descriptions\\.yaml`) | `tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/external-refs-updated.test.js` | `0627770` |
+| Entry #9 `meta_state_patch` (per D7) — status `stale → active` (corrective patch; see Rev 9 audit-trail correction below) | `meta-state.jsonl` (entry `meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop`, version 10 → 13 across 2 patches) | `0627770` (patch 1) + `meta-260626T1309Z-...` (corrective patch 2) |
+| `meta_state_log_change` filed (original) | `meta-state.jsonl` entry `meta-260626T0734Z-plans-260626-0607-phase-e-housekeeping-plan-md` | `0627770` |
+| `meta_state_log_change` filed (corrective — documents actual transition timeline) | `meta-state.jsonl` entry `meta-260626T1309Z-meta-state-jsonl-meta-260618t0558z-post-migration-sp2-ground` (supersedes the inaccurate `meta-260626T0734Z-...` change-log) | (post-review) |
+| Journal entry | `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md` (8866 bytes) | (post-commit) |
+| Code review report | `plans/reports/code-reviewer-260626-0756-GH-3-phase-e-plan-3-housekeeping-report.md` | (post-commit) |
+
+**Net registry delta (Plan 3):**
+- 2 `meta_state_log_change` entries filed (1 original + 1 corrective)
+- 1 finding transitioned `stale → active` (entry #9, `meta-260618T0558Z-...`)
+- 0 new findings, 0 fingerprints refreshed
+- 0 archived, 0 superseded
+
+**Net source delta:**
+- 1 new doc added (`tools/learning-loop-mastra/docs/legacy-pins.md`, 32 lines)
+- 1 file deleted (`tools/learning-loop-mastra/core/schema-descriptions.yaml`, -64 lines)
+- 1 section inserted + 1 section renumbered in `AGENTS.md` (§11 → §12)
+- 1 line added to `workflow-intentional-skip.js` (parity-pin comment)
+- 3 lines fixed in `core/README.md` (lines 26/27/46)
+- 3 lines added to `external-refs-updated.test.js` (SEARCH_PATHS + 2 FORBIDDEN_PATH_PATTERNS)
+
+**Verification at ship (Plan 3):**
+- All 13 test namespaces GREEN (`pnpm test`, 24.95s wall-clock)
+- `cold-tier-regression.test.js` passes (1/1, 1109ms)
+- `external-refs-updated.test.js` passes (1/1, 8.3ms) — the modified regression guard
+- 11 phase-e-shell-restructure tests pass
+- `meta_state_check_grounding` on entry #9: `status: grounded, hash match: true`, `drift_kind: null`
+- Code review verdict: **APPROVE WITH FOLLOW-UPS** (2 critical blockers — entry #9 status not transitioned + journal file missing — caught and resolved post-review)
+
+**Audit-trail correction (Rev 9):**
+
+The original commit (`0627770`) filed a change-log (`meta-260626T0734Z-...`) claiming entry #9 transitioned `stale → active` at filing time. **The claim was inaccurate at the time**: the patch only stamped `last_verified_at` (version 10 → 12) and left `status: "stale"` unchanged. The discrepancy was caught by the post-commit code review. A corrective `meta_state_patch` was applied against `_expected_version: 12` with the correct shape `{"status": "active", "last_verified_at": "<ISO>"}`, bumping version to 13. A second change-log (`meta-260626T1309Z-...`) was filed to record the actual closeout and supersedes the inaccurate original claim. The registry's append-only nature means both change-logs remain visible to future auditors.
+
+**What this plan did NOT ship (deferred):**
+- 16+ other stale `mechanism_check=true` entries — Plan 3 only addressed entry #9 (the one Plan 6's code review flagged); a future housekeeping plan can sweep the rest
+- R2 write-gate enforcement — AGENTS.md §11 codifies the PROCESS norm; the bundled hardening plan (`hardening-r2-lim3-lim4`) ships the actual write-gate (LIM-3 caller identity + R2 write-gate + LIM-4 path traversal)
+- Mastra Code onboarding (Plan 4 / E.5) — depends on Plan 2's contract + Plan 6's stable paths (both DONE)
+- Hardening (Plan 5, parallel) — LIM-3 + R2 write-gate + LIM-4
+
+**Cross-references (Plan 3):**
+- Plan: `plans/260626-0607-phase-e-housekeeping/plan.md` (status: pending → done on commit)
+- Phase files: `phase-01-e2-r2-ownership.md` through `phase-05-i2-re-verify-entry-9.md`
+- Test files: `tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/external-refs-updated.test.js` (extended; pre-existing test, 1/1 pass)
+- Production files: `AGENTS.md`, `tools/learning-loop-mastra/mastra/workflows/workflow-intentional-skip.js`, `tools/learning-loop-mastra/core/README.md`, `tools/learning-loop-mastra/core/schema-descriptions.yaml` (deleted)
+- New docs: `tools/learning-loop-mastra/docs/legacy-pins.md`
+- Code review report: `plans/reports/code-reviewer-260626-0756-GH-3-phase-e-plan-3-housekeeping-report.md`
+- Scope report: this document, Rev 9
+- Journal: `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`
 
 ---
 
@@ -581,6 +643,44 @@ The predict report's other 5 recommendations stand:
 
 ## Revision notes
 
+### Revision 9 (2026-06-26) — Plan 3 (Housekeeping) shipped + audit-trail correction
+
+Plan 3 (Housekeeping) shipped 2026-06-26 via commit `0627770` on branch `phase-e/plan-3-housekeeping` (PR TBD at merge time). 5 doc/process changes + 1 file deletion + 1 registry lifecycle action, matching the Rev 6 scope. Code review caught 2 critical acceptance criteria failures (entry #9 status not transitioned + journal file missing), both fixed post-review.
+
+**Audit-trail correction (important for future auditors):**
+
+The original commit (`0627770`) filed a change-log (`meta-260626T0734Z-...`) claiming entry #9 transitioned `stale → active` at filing time. **The claim was inaccurate at the time**: the patch only stamped `last_verified_at` (version 10 → 12) and left `status: "stale"` unchanged. The discrepancy was caught by the post-commit code review (`plans/reports/code-reviewer-260626-0756-GH-3-phase-e-plan-3-housekeeping-report.md`). A corrective `meta_state_patch` was applied against `_expected_version: 12` with the correct shape `{"status": "active", "last_verified_at": "<ISO>"}`, bumping version to 13. A second change-log (`meta-260626T1309Z-...`) was filed to record the actual closeout and supersedes the inaccurate original claim. The registry's append-only nature means both change-logs remain visible to future auditors — the original is preserved as a forensic record of what was claimed at filing time; the corrective is the authoritative closeout.
+
+**Concrete changes to this report (Rev 9):**
+- Header date stamp: added "revised 2026-06-26 (Rev 9) — Plan 3 (Housekeeping) shipped via commit 0627770; entry #9 stale → active transition completed via corrective meta_state_patch (audit-trail correction; the original commit's change-log claim was inaccurate)"
+- Status line: Plan 3 added to shipped list; "Plans 3/4 still pending" → "Plan 4 still pending"
+- Plan split table (line ~152): Plan 3 row updated from `🔵 OPEN (Plan 1 done; can run in parallel with Plan 2 + Plan 6)` → `✅ DONE 2026-06-26 (commit 0627770 on phase-e/plan-3-housekeeping; journal docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md; code review APPROVE WITH FOLLOW-UPS — see Rev 9)`
+- Plan-level dependency diagram (line ~170): Plan 3 marker updated from `[parallel to Plan 2 + Plan 6]` → `[DONE — Rev 9; commit 0627770; PR TBD]`
+- Plan-dir naming convention list (line ~189): Plan 3 entry updated from `plans/260625-0930-phase-e-housekeeping/ [pending; parallel to Plan 6 + can start now]` → `plans/260626-0607-phase-e-housekeeping/ [DONE 2026-06-26, commit 0627770 — Rev 9]`
+- New "What shipped in Plan 3 (Housekeeping) — 2026-06-26" section added (table of files + registry delta + source delta + audit-trail correction + deferred scope + cross-references)
+- Status footer: Plan 3 status updated; recommended next move updated from "Plan 3 + Plan 4" → "Plan 4 + Plan 5"
+
+**Net registry delta (commit `0627770` + corrective patches):**
+- 2 `meta_state_log_change` entries filed (1 original + 1 corrective; both append-only preserved)
+- 1 finding transitioned `stale → active` (entry #9, `meta-260618T0558Z-...`, version 10 → 13 across 2 patches)
+- 0 new findings, 0 fingerprints refreshed, 0 archived, 0 superseded
+
+**Net source delta (commit `0627770`):**
+- 1 new doc added (`tools/learning-loop-mastra/docs/legacy-pins.md`, 32 lines)
+- 1 file deleted (`tools/learning-loop-mastra/core/schema-descriptions.yaml`, -64 lines)
+- 1 section inserted + 1 section renumbered in `AGENTS.md` (§11 → §12)
+- 1 line added to `workflow-intentional-skip.js` (parity-pin comment)
+- 3 lines fixed in `core/README.md` (lines 26/27/46)
+- 3 lines added to `external-refs-updated.test.js` (SEARCH_PATHS + 2 FORBIDDEN_PATH_PATTERNS)
+
+**What was NOT changed in this revision:**
+- The Rev 6 Plan 3 expansion — keep (still applies; the bundled I-1 + I-2 follow-ups from Plan 6's code review are now shipped)
+- The Rev 7 + Rev 8 Plan 6 ship narrative — keep (still applies)
+- The earlier 5 plans and their DONE states — keep (Plans 1, 2, 6 are still DONE)
+- The Rev 4 Plan 1, Rev 3 plan-split, Rev 2 corrections — keep
+
+**Recommended next move:** Plan 4 (Mastra Code validation, 1-2d) — Plan 6 dependency satisfied; can ship in parallel with Plan 5. Plan 5 (Hardening, 1-2w) — AGENTS.md §11 process norm (Plan 3 / E.2) is now in place as the convention the gate will enforce.
+
 ### Revision 5 (2026-06-26) — Plan 2 (Interface spec) shipped + Plan 6 (Mastra shell restructure) added
 
 **Two changes this revision:**
@@ -795,4 +895,4 @@ The "after Phase E" tree (line ~184) is **already labeled** as the post-E.1 / po
 
 ---
 
-**Status:** Partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15 + 1 follow-up (PR #16) for the deny-list bypass. Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal; git merge 2026-06-26). Plan 6 (Mastra shell restructure, NEW Rev 5) shipped 2026-06-26 via PR #18 squash-merged to main at `de01dcc` (CI green per Rev 8; feature branch deleted). Plan 3 (Housekeeping) expanded Rev 6 with 2 follow-ups from Plan 6 code review (core/README.md docs drift + entry #9 status lifecycle). Plan 3 (Housekeeping) and Plan 4 (Mastra Code validation) still pending. Plan 5 (Hardening) is the parallel dimension. **Recommended next move:** Plan 3 (Housekeeping, ~2h with Rev 6 follow-ups) — closes the 2 carryovers from Plan 6's code review; can ship in parallel with Plan 4. Plan 4 (Mastra Code validation, 1-2d) — Plan 6 dependency now satisfied; ready to start once Plan 3 lands (or in parallel).
+**Status:** Partially executed — Plan 1 (Foundation) shipped 2026-06-25 via PR #15 + 1 follow-up (PR #16) for the deny-list bypass. Plan 2 (Interface spec) shipped 2026-06-25 via PR #17 (per journal; git merge 2026-06-26). Plan 6 (Mastra shell restructure, NEW Rev 5) shipped 2026-06-26 via PR #18 squash-merged to main at `de01dcc` (CI green per Rev 8; feature branch deleted). Plan 3 (Housekeeping) shipped 2026-06-26 via commit `0627770` on branch `phase-e/plan-3-housekeeping` (per Rev 9; journal `docs/journals/260626-phase-e-plan-3-housekeeping-shipped.md`; 5 doc/process changes + 1 file deletion + 1 registry lifecycle action; code review APPROVE WITH FOLLOW-UPS; entry #9 transitioned stale → active via corrective meta_state_patch — the original commit's change-log claim was inaccurate; audit trail corrected per Rev 9). Plan 4 (Mastra Code validation) still pending. Plan 5 (Hardening) is the parallel dimension. **Recommended next move:** Plan 4 (Mastra Code validation, 1-2d) — Plan 6 dependency satisfied; can ship in parallel with Plan 5. Plan 5 (Hardening, 1-2w) — LIM-3 caller identity + R2 write-gate + LIM-4 path traversal; AGENTS.md §11 process norm (Plan 3 / E.2) is now in place as the convention the gate will enforce.
