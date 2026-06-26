@@ -23,9 +23,10 @@ This is the load-bearing architectural rule. If you add a
 ## What core may NOT import
 
 - `@mastra/*` (the framework)
-- `tools/learning-loop-mastra/create-loop-*.js` (shell factories)
-- Anything under `tools/learning-loop-mastra/{workflows,agents,tools}/`
-  (shell-defined entities)
+- `tools/learning-loop-mastra/mastra/create-loop-*.js` (shell factories)
+- Anything under `tools/learning-loop-mastra/mastra/{workflows,agents}/`
+  (shell-defined entities); `tools/learning-loop-mastra/tools/legacy/`
+  is a separate substrate directory (legacy tool adapters; NOT under `mastra/`)
 
 The reasoning: those would couple core to the shell, breaking the one-way
 dependency. Core must remain portable — if we swap Mastra for another
@@ -43,5 +44,5 @@ framework, only the shell changes.
 See `AGENTS.md` §1.1 for the 3-layer explanation:
 
 - **Core (this directory)** — the functional core
-- **Mastra shell** (`tools/learning-loop-mastra/` top level) — the imperative shell
+- **Mastra shell** (`tools/learning-loop-mastra/mastra/`) — the imperative shell
 - **Runtime interface** (`tools/learning-loop-mastra/interface/`) — the contract (ships in Plan 2)

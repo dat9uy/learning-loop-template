@@ -15,6 +15,8 @@ const FORBIDDEN_PATH_PATTERNS = [
   "tools/learning-loop-mastra/legacy-handler-adapter\\.js",
   "tools/learning-loop-mastra/schema-parity\\.js",
   "tools/learning-loop-mastra/schemas\\.js",
+  "tools/learning-loop-mastra/create-loop-.*\\.js",
+  "tools/learning-loop-mastra/core/schema-descriptions\\.yaml",
 ];
 
 // Search paths (excludes docs/journals/ + records/ + .cache/ + __tests__/phase-e-shell-restructure/)
@@ -23,6 +25,7 @@ const SEARCH_PATHS = [
   "AGENTS.md", "README.md", "CLAUDE.md",
   "tools/learning-loop-mastra/interface/",
   "tools/learning-loop-mastra/__tests__/",
+  "tools/learning-loop-mastra/core/",
   "tools/learning-loop-mastra/agents-manifest.json",
   "tools/learning-loop-mastra/storage.js",
   "tools/scripts/",

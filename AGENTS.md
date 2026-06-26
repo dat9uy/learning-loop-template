@@ -225,7 +225,7 @@ The following substrate carry-overs are retained for forensic continuity but are
 
 ## 6. Internalization Rule (source_refs and evidence_code_ref)
 
-**The loop does not internalize everything it touches.** It internalizes the *contract* (full authority), cites the *internal implementation* (recording, not replacement), and reads the *external system* (consumer, not source). This three-class framework is the operator-confirmed dependency-balance convention from `docs/philosophy.md` Pillar 4 and the 2026-06-12 §11.7 consensus in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md`. The rule below is the citation form of the framework — the part that says *how* to record an internal-implementation event in the meta-surface.
+**The loop does not internalize everything it touches.** It internalizes the *contract* (full authority), cites the *internal implementation* (recording, not replacement), and reads the *external system* (consumer, not source). This three-class framework is the operator-confirmed dependency-balance convention from `docs/philosophy.md` Pillar 4 and the 2026-06-12 §12.7 consensus in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md`. The rule below is the citation form of the framework — the part that says *how* to record an internal-implementation event in the meta-surface.
 
 | Class | Authority | What "cite" means in this class |
 |---|---|---|
@@ -233,7 +233,7 @@ The following substrate carry-overs are retained for forensic continuity but are
 | **Internal implementation** (refactor, scaffold, test, review — anything a `ck:*` skill does) | The skill executes; the loop records | `evidence_journal` on the resulting `change-log` or `finding` points at the artifact the skill produced. A skill run the loop does not know about is a bypass waiting to happen. |
 | **External system** (vendor API, device slot, budget, install/runtime contract) | The operator is the source; the loop is a consumer | Not citable. Observations are operator-authored. The loop queries them, does not define them. |
 
-The most common failure mode of the naive reading ("if the loop touches it, the loop owns it") is a closed loop with no ground truth — see `docs/philosophy.md` Pillar 4 and the failure-mode genealogy in §11.7.1 (the four registry attempts that failed as a pre-mortem home because each encoded a post-state). The plan file (`plans/<date>-<slug>/plan.md`) is the pre-mortem channel precisely because it preserves the temporal direction: the plan is a *pre*-state, the meta-surface is a *post*-state, the two are linked by `evidence_journal`, not collapsed into one shape.
+The most common failure mode of the naive reading ("if the loop touches it, the loop owns it") is a closed loop with no ground truth — see `docs/philosophy.md` Pillar 4 and the failure-mode genealogy in §12.7.1 (the four registry attempts that failed as a pre-mortem home because each encoded a post-state). The plan file (`plans/<date>-<slug>/plan.md`) is the pre-mortem channel precisely because it preserves the temporal direction: the plan is a *pre*-state, the meta-surface is a *post*-state, the two are linked by `evidence_journal`, not collapsed into one shape.
 
 **The citation rule (internal-implementation class only):** when an agent needs to cite a design, finding, or external reference, **cite the code, not the markdown.** The canonical citation path is:
 
@@ -352,7 +352,20 @@ Three structural decisions are filed as `loop-design` entries (active):
 
 ---
 
-## 11. What changed in this rewrite (2026-06-12)
+## 11. Runtime Interface Ownership (R2)
+
+Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, future `.mastracode/coordination/hooks/`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.**
+
+**Convention:**
+- Each runtime agent works on its own branch (e.g., `claude-code/interface-v2`, `mastra-code/interface-v1`).
+- Cross-runtime edits (e.g., a Claude Code session editing `.factory/`) require an operator-approved PR.
+- The `interface/CONTRACT.md` 5-requirement contract is the loop's concern; the runtime's coordination directory is the runtime's concern.
+
+**Enforcement:** Git branch protection + PR review. The bundled hardening plan (`hardening-r2-lim3-lim4`) ships the write-gate (LIM-3 caller identity + R2 write-gate + LIM-4 path traversal) for security-critical enforcement.
+
+---
+
+## 12. What changed in this rewrite (2026-06-12)
 
 This rewrite is a from-scratch replacement of the previous `AGENTS.md`. The previous version is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. Concrete changes:
 

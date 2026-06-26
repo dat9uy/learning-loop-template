@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 3: Housekeeping (R2 ownership + parity-pins + schema rot + Plan 6 follow-ups)"
 description: "Ships E.2 (AGENTS.md §11 Runtime interface ownership), E.3 (parity-pin label + docs/legacy-pins.md), E.4 (delete orphaned core/schema-descriptions.yaml), Rev 6 I-1 (core/README.md docs drift + regression guard extension), and Rev 6 I-2 (meta_state_patch for entry #9 to transition stale → active). 5 doc/process changes + 1 file deletion + 1 registry lifecycle action."
-status: pending
+status: done
 priority: P2
 branch: "phase-e/plan-3-housekeeping"
 tags: [phase-e, housekeeping, r2-ownership, parity-pins, schema-cleanup, registry-lifecycle, e2, e3, e4]
