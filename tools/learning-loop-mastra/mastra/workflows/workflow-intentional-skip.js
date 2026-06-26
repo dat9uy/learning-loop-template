@@ -44,6 +44,7 @@ async function decideSkip({ assertion_id, skip_reason, scope }) {
   return buildOutput(assertion_id, skip_reason, scope, status);
 }
 
+// PARITY-TEST PIN: not legacy. Moving this file breaks the parity-test suite that depends on its location. See docs/legacy-pins.md.
 export const workflowIntentionalSkip = createLoopWorkflow({
   id: "workflow_intentional_skip",
   description:

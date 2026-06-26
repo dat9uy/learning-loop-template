@@ -80,6 +80,25 @@ function main() {
     process.exit(2);
   }
 
+  // --- 1.6. meta-state.jsonl — always block (only via MCP tools) ---
+  // Closes the audit-log gap identified in plans/reports/debugger-260626-1535-
+  // phase-e-plan-7-audit-gap-mechanism-investigation.md: the bash gate (regex
+  // on shell commands) blocks `> meta-state.jsonl` but Claude Code's Write/Edit
+  // tools bypass the bash gate (they are not shell commands). Adding this rule
+  // ensures Write/Edit/Create/ApplyPatch to meta-state.jsonl is also blocked at
+  // the PreToolUse hook layer. All registry mutations MUST go through MCP
+  // tools (meta_state_report, meta_state_ack, meta_state_batch, etc.) so they
+  // are logged to .claude/coordination/gate-log.jsonl.
+  if (globMatch("meta-state.jsonl", relPath)) {
+    console.log(formatOutput({
+      decision: "block",
+      reason: "Direct writes to meta-state.jsonl are blocked. Use MCP tools (meta_state_report, meta_state_ack, meta_state_batch, meta_state_resolve, etc.) to mutate the registry. The bash gate blocks shell writes; this rule closes the parallel Write/Edit path identified in the audit-log gap investigation.",
+      file_path: filePath,
+      matched_rule: "meta-state.jsonl",
+    }));
+    process.exit(2);
+  }
+
   // --- 2. schemas/** — always block (needs validation) ---
   if (globMatch("schemas/**", relPath)) {
     console.log(formatOutput({

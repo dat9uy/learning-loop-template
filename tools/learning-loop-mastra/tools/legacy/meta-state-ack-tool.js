@@ -8,7 +8,8 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateAckTool = {
   name: "meta_state_ack",
-  description: "Acknowledge a reported meta-state entry, promoting it to active. This removes the 24h TTL.",
+  description:
+    "Acknowledge a reported or stale meta-state entry, promoting it to active. For reported entries this removes the 24h TTL. For stale entries this re-pins acked_at so future checkStaleness sweeps use the new reference instead of created_at.",
   schema: {
     id: z.string().describe("Exact entry id to ack"),
     reason: z.string().optional().describe("Operator note"),
@@ -30,7 +31,10 @@ export const metaStateAckTool = {
       };
     }
 
-    if (entry.status !== "reported") {
+    // Allow ack from reported (TTL window) or stale (past staleness window).
+    // Both transitions set acked_at so future checkStaleness sweeps use it
+    // as the staleness reference instead of created_at.
+    if (entry.status !== "reported" && entry.status !== "stale") {
       const result = {
         acked: false,
         reason: "already_active_or_terminal",
@@ -54,6 +58,7 @@ export const metaStateAckTool = {
       acked: true,
       id,
       status: "active",
+      from_status: entry.status,
       ...(reason && { reason }),
     };
 

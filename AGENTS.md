@@ -352,7 +352,20 @@ Three structural decisions are filed as `loop-design` entries (active):
 
 ---
 
-## 11. What changed in this rewrite (2026-06-12)
+## 11. Runtime Interface Ownership (R2)
+
+Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, future `.mastracode/coordination/hooks/`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.**
+
+**Convention:**
+- Each runtime agent works on its own branch (e.g., `claude-code/interface-v2`, `mastra-code/interface-v1`).
+- Cross-runtime edits (e.g., a Claude Code session editing `.factory/`) require an operator-approved PR.
+- The `interface/CONTRACT.md` 5-requirement contract is the loop's concern; the runtime's coordination directory is the runtime's concern.
+
+**Enforcement:** Git branch protection + PR review. The bundled hardening plan (`hardening-r2-lim3-lim4`) ships the write-gate (LIM-3 caller identity + R2 write-gate + LIM-4 path traversal) for security-critical enforcement.
+
+---
+
+## 12. What changed in this rewrite (2026-06-12)
 
 This rewrite is a from-scratch replacement of the previous `AGENTS.md`. The previous version is preserved at `AGENTS.old.260612-1300.md` for forensic continuity. Concrete changes:
 
