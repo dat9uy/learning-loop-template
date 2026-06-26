@@ -1,6 +1,6 @@
-# Brainstorm: Write-Gate Layer Placement (Open Statement for Next Session)
+# Brainstorm: Write-Gate Layer Placement
 
-**Status:** OPEN — open statement for the next `/problem-solving` session. No decisions made; framing the question, surfacing the gap, posing specific explorations.
+**Status:** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan deferred to a separate session per operator decision 2026-06-27. The original open statement (framing + explorations) is preserved below; the convergence addendum at the end captures the locked design.
 
 **Triggered by:** operator observation in `/problem-solving` session — "if we have verification logic, do we need the write-gate? Is write-gate runtime-specific or worthy as a step inside workflow?" Also: "our project structure/docs do not reflect the general encapsulation of each layer."
 
@@ -320,3 +320,131 @@ The user's intuition may be: "we have core-level verification already (gate-logi
 1. **What "verification logic" did you have in mind when you said "if we have verification logic, do we need the write-gate"?** This is the key input for the next session.
 2. **Is the 4th layer (hooks) intentional, or did it grow accidentally?** If intentional, the docs need to acknowledge it. If accidental, we should consider merging.
 3. **Is the runtime hook model a "phase 1" design that's outlived its usefulness, or is it the right long-term model?** If phase 1, what's the phase 2 design?
+
+---
+
+# Convergence Addendum (2026-06-27 session continuation)
+
+**Status:** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan to follow in a separate session.
+
+This addendum captures the scout results, verification landscape evaluation, and locked design produced in the follow-up session. The open questions above are resolved; the design below is the agreed direction.
+
+## Scout findings (relevant context confirmed by code reading)
+
+- **3-layer architecture is well-defined in code and docs.** Core (`tools/learning-loop-mastra/core/`, 28+ files, zero `@mastra/*` imports verified) / Mastra shell (`mastra/`, 5 factory files + server.js + 11 workflows + 4 agents) / Runtime interface (`interface/`, 4 docs including CONTRACT.md + contract.js).
+- **A 4th layer exists in the filesystem but is unnamed in the 3-layer model:** `hooks/legacy/` (3 universal gate scripts + `lib/protocol-adapter.js`) plus per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`, 4 files each). Shim files are ~12-line `execFileSync` delegates; universal scripts hold the policy logic.
+- **The write-gate is the thickest of the three gates.** `hooks/legacy/write-gate.js` = 187 lines with 7 distinct block rules (records, runtime-state.jsonl, meta-state.jsonl, schemas, build artifacts, preflight markers, product/**) + promoted-rule application + preflight marker check. `bash-gate.js` = 148 lines. `inbound-gate.js` = 128 lines. The write-gate has accumulated the most logic.
+- **Mastra `createStep` workflows CAN return blocked decisions.** `mastra/create-loop-workflow.js` shows steps are `execute` handlers returning objects. A `verify-write` step is structurally identical to the existing `plan-probe` or `plan-steps` steps.
+- **`gate_check` MCP tool already exists** (`tools/legacy/gate-tool.js`) and imports the same `core/gate-logic.js` primitives. The hook (Placement A) and the MCP tool (Placement D-adjacent) share logic but are not the same code path — duplication of *coverage* but not of *logic*.
+
+## Verification landscape (the "full verification landscape" evaluation)
+
+The loop has 6+ distinct verification surfaces. None duplicate the write-gate's job — they validate different things:
+
+| Verification | Lives at | What it validates | Duplicates write-gate? |
+|---|---|---|---|
+| **Write-gate** (path policy) | Hook layer → moves to core | "What paths can be written, by what tool, with what authorization" | — (this is the policy) |
+| **Bash-gate** (constraint policy) | Hook layer → moves to core | "What commands can run, with what observation" | No — different scope |
+| **Inbound-gate** (context policy) | Hook layer → moves to core | "What operator messages warrant context injection" | No — soft-only |
+| `record-validation-rules.js` | Core | Schema validity of record content | No — validates content, not path |
+| `check-grounding.js` | Core | SHA-256 fingerprints of evidence_code_ref | No — validates evidence, not writes |
+| `runtime-agnostic-checklist.js` | Core | 6-item feature audit | No — validates features on demand |
+| `inbound-state.js` (staleness) | Core | Staleness of observations | No — used by hooks, not replacement |
+| `consistency-check.js` + `query-drift.js` | Core | Registry hygiene | No — validates registry, not writes |
+| `gate_check` MCP tool | Mastra shell | Lets agents pre-check (Placement D-adjacent) | No — advisory; safety net when hook forgotten |
+
+**Conclusion:** the write-gate is unique — it enforces a *path policy* that none of the other verifications cover. Refactoring does not enable removal.
+
+## The 4 placements (evaluated)
+
+| Placement | Catches built-in tool writes? | Per-runtime cost | Safety posture |
+|---|---|---|---|
+| **A. Runtime hook (current)** | YES | 4 shim files × 2 surfaces + `.mastracode/hooks.json` adapter | Strongest — fires on every tool call |
+| **B. Workflow step** | NO — only MCP-mediated writes | None | Weakest — relies on agent using workflow |
+| **C. Hybrid (A+B)** | YES | Same as A + workflow step | Double-blocking risk; needs shared "authorized" token (does not exist today) |
+| **D. Tool-level guard (via `gate_check`)** | NO — opt-in only | None | Fragile — agent can forget; safety net for Placement A |
+
+**Placement A is the right model. The question is not "should we use the hook?" but "is the hook doing too much?"** Per the scout, the answer is yes — it has accumulated path-policy + session-policy + I/O translation, when the runtime-adapter role should only include the last.
+
+## Resolved open questions
+
+| # | Original question | Resolution |
+|---|---|---|
+| 1 | What "verification logic" did you have in mind? | The 6 verifications don't duplicate the write-gate. No replacement. Refactor reorganizes; it doesn't remove. |
+| 2 | Is the 4th layer (hooks) intentional or accidental? | Intentional but misnamed. Hooks are *boundary adapters* (runtime-specific I/O transport), not a 4th layer. Reinterpret "Runtime interface" to include both MCP server and universal hooks. AGENTS.md §1.1 needs a one-line clarification. |
+| 3 | Is the hook model phase 1 or long-term? | Long-term. The hook is the *safety boundary* that fires on every tool call regardless of agent memory. MCP `gate_check` is advisory. Both have a role. |
+
+## Locked design — Option 2 (refactor hooks into thin adapters, move logic to core)
+
+### File-level changes
+
+**3 NEW core files** (pure logic, zero `@mastra/*`, fully testable):
+
+```
+core/
+├── evaluate-write-gate.js    ← NEW
+│   ├── evaluateWriteGate({ filePath, root }) → { decision, reason, ... }
+│   └── evaluatePreflight({ filePath, root }) → { decision, reason, ... }   (named seam)
+├── evaluate-bash-gate.js     ← NEW
+│   ├── evaluateBashGate({ command, root }) → { decision, reason, ... }
+│   └── PATH_WRITE_PATTERNS   (moved from bash-gate.js lines 35-47)
+└── evaluate-inbound-gate.js  ← NEW
+    ├── evaluateInboundGate({ prompt, root }) → { decision, reason, ... }
+    └── STATE_CHANGE_PATTERNS (moved from inbound-gate.js lines 24-36)
+```
+
+Each evaluator imports primitives from `core/gate-logic.js` (which stays as the primitive library — `globMatch`, `inferSurface`, `readPreflightMarker`, `matchConstraintPattern`, `evaluateWritePath`, `loadPromotedRules`, `applyPromotedRules` — all unchanged).
+
+**3 refactored hook files** (thin I/O wrappers, ~30 lines each):
+
+```
+hooks/legacy/
+├── write-gate.js    ← parse stdin → evaluateWriteGate → formatOutput → exit 0/2
+├── bash-gate.js     ← parse stdin → evaluateBashGate → formatOutput → exit 0/2
+└── inbound-gate.js  ← parse stdin → evaluateInboundGate → formatOutput → exit 0
+```
+
+The hooks import `parseInput` / `formatOutput` / `exitCode` / `extractFilePath` / `extractCommand` / `extractPrompt` from `lib/protocol-adapter.js` (unchanged) and call the new evaluator functions.
+
+### Design choices locked in this session
+
+| Question | Choice | Why |
+|---|---|---|
+| Preflight check placement | Keep in write-gate evaluator; factor as `evaluatePreflight()` | Moving to a workflow step regresses built-in tool safety (Write/Edit to product/** no longer blocked). Named seam keeps the door open for future relaxation. |
+| Module structure | Three separate files (one per gate) | Matches existing core/ pattern (one concern per file: `check-grounding.js`, `consistency-check.js`, `query-drift.js`). gate-logic.js stays a primitive library, not pushed past 1000 LoC. |
+| Hook layer existence | Keep — it is runtime-specific transport | Hook is the *automatic* safety boundary; MCP `gate_check` is *advisory*. Different roles; both needed. Folding them removes the forcing function. |
+
+### Behavior guarantees
+
+- Wire protocol unchanged: stdin JSON, stdout JSON, exit code 0/2.
+- Existing 1189 tests must pass without modification.
+- `gate_check` MCP tool (`tools/legacy/gate-tool.js`) gets updated to import from the new evaluators — same API for callers, same code path internally.
+- Per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`) are unchanged.
+- Mastra Code Plan 4 work (`.mastracode/hooks.json`) is independent and unaffected.
+
+### What this gives us
+
+- Hooks become true transport adapters — no policy logic in them.
+- Core owns the gating policy in named, testable functions.
+- The 3-layer architecture is preserved: hooks are part of "Runtime interface = boundary adapters" exactly as the Phase E scope report intended. AGENTS.md §1.1 needs a one-line clarification only.
+- The "should the write-gate be a workflow step" question is settled: NO, because the hook layer is the safety boundary that fires on every tool call. Workflow-step gates are advisory.
+
+### Remaining design seams (explicit, not hidden)
+
+- `evaluatePreflight` is a separate named function — if we ever want to relax the rule ("workflow can write product/** without the marker if it explicitly authorizes"), the seam is one file edit.
+- The `PATH_WRITE_PATTERNS` and `STATE_CHANGE_PATTERNS` regex lists are data, exported from their evaluator file — easy to find, easy to test, easy to add new patterns.
+- Each evaluator is independently testable without spawning a subprocess — a 5-10x speedup for the gate test suite.
+
+### Effort estimate
+
+- 3 new core files (~150 LoC total, mostly moved from hooks)
+- 3 refactored hook files (~90 LoC total, down from ~460 LoC combined)
+- 3 new test files (one per evaluator, ~30 tests total)
+- 1 doc clarification (AGENTS.md §1.1 one-liner)
+- **Total: 1-2 days, single PR**
+
+## What this addendum is NOT
+
+- Not a plan. The plan to ship this design will be authored in a separate session (per operator decision 2026-06-27: "Update the report only — plan later").
+- Not a critique of the existing code. The current architecture works; this is reorganization, not replacement.
+- Not a Plan 4 blocker. Mastra Code validation (Plan 4) can proceed with the current hook model in parallel.
