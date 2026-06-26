@@ -1,9 +1,10 @@
 # Drift Diagnostic Report
 
-**Date:** 2026-06-26T18:08Z (initial); 2026-06-26T18:23Z (post-Phase 4)
+**Date:** 2026-06-26T18:08Z (initial); 2026-06-26T18:23Z (post-Phase 4); 2026-06-26T19:47Z (post code-review fix)
 **Tool:** `meta_state_consistency_check` (Plan 8 Phase 1+2)
 **Initial drift count:** 3
-**Post-Phase-4 drift count:** 1 (O-3 carryover, expected per plan R6/OO3)
+**Post-Phase-4 drift count:** 1 (O-3 carryover per plan R6/OO3) — **carried over to a post-review fix**
+**Post code-review fix:** 0 (O-1 recovered, O-3 superseded)
 
 ## Summary
 
@@ -92,3 +93,26 @@ The new consistency-check probe returned exactly the 3 known orphans from the pl
 
 - `meta_state_consistency_check` returns `drift_count: 1` (O-3 carryover, expected per R6/OO3).
 - Phase 4 verification criterion ("drift_count: 0") is partially satisfied: 2 of 3 orphans cleanly fixed; 1 carries over due to a known invariant-vs-preserved-content ambiguity.
+
+## Post code-review fix (2026-06-26T19:47Z)
+
+`code-review-260626-1947-GH-3-phase-e-branch-pre-pr-report.md` flagged two CRITICAL pre-PR gaps. Both fixed:
+
+### O-1: entry was dropped from the registry, not transitioned
+
+The gate-log at 2026-06-26T11:22:20Z reported `superseded: true` for O-1 but `meta-state.jsonl` showed the entry was missing entirely. The change-log filed at 2026-06-26T11:20:11Z (before the supersede) describes a `status: active → superseded` transition that did not actually persist. Root cause not identified from available data — likely candidates:
+
+- The supersede tool was invoked from a `tools/scripts/phase-4-supersede.mjs` subprocess with `OPERATOR_MODE=1`; if `GATE_ROOT` wasn't propagated to the subprocess, writes would have hit a tmpdir (the silent-persistence-fail class of bug, cf. finding `meta-260619T2233Z-the-meta-state-log-change-mcp-tool-can-return-logged-true-an`).
+- A subsequent batch or sweep operation may have removed the entry (no batch log entry at that timestamp; unlikely but unverified).
+
+**Recovery:** The O-1 entry was re-introduced via `writeEntry` directly with the post-supersede fields populated (`status: superseded`, `superseded_at: 2026-06-26T11:22:20.225Z`, `superseded_by: operator`, `consolidated_into: meta-260626T1820Z-meta-state-jsonl-meta-260606t1830z-context-pollution-stale-w`, `version: 15`, plus `recovered_by`/`recovered_at` audit fields). The recovery was logged to `gate-log.jsonl` as `tool: meta_state_recover_entry`. Original entry fields (description, evidence_code_ref, etc.) preserved verbatim from git:0627770 (Plan 3 housekeeping plan stub).
+
+**Follow-up recommended:** File a finding for the missing-entry class (silent-persistence-fail variant affecting `meta_state_supersede`). The change-log claim "active→superseded" with no registry record is the same audit-log gap class Plan 7 Fix Phase 3 (commits 27be280, 54fe242) tried to close for the `meta_state_log_change` path.
+
+### O-3: supersede (not ack) clears the F-1 drift
+
+The plan's R6/OO3 acknowledged that `meta_state_ack` would leave `resolution`/`resolved_*` fields on the now-active entry, violating F-1. The plan chose ack to preserve the operator narrative in the `resolution` field. Post-review decision: supersede instead, moving the operator narrative to the change-log's `reason` field (where it belongs as audit-trail content, not state-machine data).
+
+**Action:** Filed `meta-260626T1950Z-meta-state-jsonl-meta-260626t1627z-plan-7-fix-phase-1-de` change-log capturing the operator narrative; ran `meta_state_supersede` with `consolidated_into` pointing at the new change-log.
+
+**Verification:** `meta_state_consistency_check` returns `drift_count: 0`.

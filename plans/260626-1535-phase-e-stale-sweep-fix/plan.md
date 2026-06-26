@@ -118,7 +118,9 @@ Also addresses: test gap (cold-tier regression test doesn't validate sweep succe
   - `.claude/coordination/gate-log.jsonl` (all MCP tool calls)
   - `.claude/coordination/.gate-decision.log` (gate decisions)
   - `git reflog` (commit timestamps)
+- Successor plan: `plans/260626-1734-phase-e-registry-drift-fix/` (shipped 2026-06-26; closes the 3 audit-trail orphans the corrective batch left behind, builds `meta_state_consistency_check` probe)
+- Pre-PR review: `plans/reports/code-review-260626-1947-GH-3-phase-e-branch-pre-pr-report.md`
 
 ---
 
-**Status:** Pending — awaiting operator approval of design decisions + phase structure. Operator has confirmed chronic-re-stale policy (D1) and mc=null scope (D2).
+**Status:** Done — shipped 2026-06-26. Operator confirmed chronic-re-stale policy (D1) and mc=null scope (D2). Corrective batch (789cf5c) + sweep-success assertion (1186c33) + audit-log-gap investigation (789cf5c) + audit-trail orphan fixup (b4acc93) all complete. Successor plan `260626-1734-phase-e-registry-drift-fix` applies the canonical supersede path to the 3 audit-trail orphans this plan surfaced.
