@@ -1,7 +1,7 @@
 ---
 title: "Phase E Registry Drift: consistency-check + audit-trail orphan fix + review followups"
 description: "Implement meta_state_consistency_check (core + MCP tool) to detect status/audit-field drift; fix the 3 audit-trail orphans it surfaces; apply remaining CRITICAL/IMPORTANT items from the Phase 7 Fix code review (last_verified_at backfill, D3 atomicity documentation). Solves the orphan-drift class at the root cause by replacing ad-hoc detection with a canonical probe."
-status: pending
+status: ready-for-ship
 priority: P2
 branch: "phase-e/plan-3-housekeeping"
 tags: [phase-e, housekeeping, registry-lifecycle, consistency-check, sp3-extended, audit-trail, tdd, review-followup]

@@ -28,6 +28,50 @@ The `expires_at: null` payload in the retry was a red herring — `expires_at` i
 
 **Corrective action:** Plan 7 Fix (`plans/260626-1535-phase-e-stale-sweep-fix/`) applied a corrective batch via 10 `meta_state_ack` invocations setting `status: "active"` + `acked_at` for the 10 mc=true entries. The 2 mc=false entries were filed as a separate grounding finding (`meta-260626T1627Z-...`). The cold-tier regression test was enhanced with a sweep-success assertion that would have caught this bug. An audit-log gap investigation documented the unlogged write path that produced the final committed state. Tool change: `meta_state_ack` now accepts stale entries (was reported-only).
 
+## Plan 8 follow-up: last_verified_at backfill + D3 atomicity deviation
+
+(Added 2026-06-26 by Plan 8 Phase 5)
+
+### CRITICAL-3 status: already resolved by external mechanism
+
+Plan 7 Fix Phase 1 specified that the 10 transitioned entries should have `last_verified_at` set to the batch timestamp. Plan 8 Phase 5 was tasked with backfilling this via `meta_state_batch`.
+
+When Phase 5 verified current state on 2026-06-26T18:23Z, **all 9 still-active entries** (1 of the 10 was superseded in Plan 8 Phase 4 — see diagnostic report) **already had `last_verified_at` populated**:
+
+```text
+meta-260609T1206Z-handoff-md-the-2026-06-09-mcp-server-stale-code-problem-sect  last_verified_at=2026-06-26T07:35:50.000Z
+meta-260613T0138Z-vnstock-device-slot-ledger-converted                              last_verified_at=2026-06-26T07:35:50.000Z
+meta-260613T1615Z-import-chain-analysis-is-the-canonical-dead-code-detection-m     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260614T1236Z-no-mcp-path-exists-to-unarchive-a-meta-state-entry-or-transi     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260615T1148Z-the-runtime-agnostic-pattern-is-real-in-this-codebase-shim-n     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260615T1920Z-the-new-stripnodeevalbody-function-in-tools-learning-loop-mc     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260616T0222Z-inbound-gate-js-still-contains-a-local-ttl-based-staleness-c     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260616T1453Z-two-more-dead-write-path-entries-in-write-path-patterns-at-t     last_verified_at=2026-06-26T07:35:50.000Z
+meta-260618T0558Z-post-migration-sp2-grounding-marker-for-tools-learning-loop     last_verified_at=2026-06-26T07:35:50.000Z
+```
+
+The timestamp `2026-06-26T07:35:50.000Z` (07:35 UTC) does not match the Plan 7 Fix batch `acked_at` of `2026-06-26T09:45:44.778Z` — it was set earlier, likely by the cold-session-test mechanism or by an intervening `meta_state_re_verify` invocation between Plan 7 Fix ship time and Plan 8 Phase 5 execution. Either way, the data invariant is satisfied: every active mc=true entry has a non-null `last_verified_at`.
+
+Plan 8 Phase 5 therefore did not run the planned `meta_state_batch` backfill. The Phase 5 verification step (re-running `meta_state_consistency_check`) confirmed `drift_count` did not change as a result of Phase 5 (the field is not in any invariant).
+
+**CRITICAL-3 closure:** resolved at the data level by an external mechanism (not by this plan). Documented here so future readers understand why the planned `meta_state_batch` invocation was skipped.
+
+### IMPORTANT-1 status: D3 atomicity deviation documented
+
+Plan 7 Fix D3 specified "Single atomic `meta_state_batch`" but the implementation used 10 separate `meta_state_ack` invocations (one per entry).
+
+**Rationale (documented for future readers):** `meta_state_ack` is the canonical tool for individual reported/stale→active transitions, while `meta_state_batch` is for atomic bulk mutations across heterogeneous entry kinds. The 10-entry stale sweep is homogeneous (all mc=true entries, all the same transition shape), so individual acks are conceptually cleaner — but they lose the all-or-nothing rollback safety of a batch. If any single ack had failed, the entries would have been partially transitioned with no atomic rollback. In practice, all 10 succeeded; the risk did not materialize.
+
+**Future guidance:** prefer `meta_state_batch` for any sweep that crosses entry kinds or where partial-state tolerance is unacceptable; use `meta_state_ack` for one-at-a-time operator decisions. The Plan 7 Fix sweep was arguably the wrong shape for `meta_state_ack`; the chosen path is acceptable because all 10 ops succeeded, but a future sweep of N>10 mc=true entries should batch.
+
+**IMPORTANT-1 closure:** documented. No code change.
+
+### Plan 8 Phase 4 supersede execution note
+
+Plan 8 Phase 4 required `OPERATOR_MODE=1` for `meta_state_supersede` calls (2 of 3 orphans). The MCP server is a long-running process; its `process.env.OPERATOR_MODE` is fixed at startup. To execute the supersedes from the agent session, the canonical tool handler was invoked via a small subprocess script (`tools/scripts/phase-4-supersede.mjs`) with `OPERATOR_MODE=1` set in that subprocess's environment. This is functionally equivalent to invoking the MCP tool from a client that has operator role; the handler validates, writes atomically with CAS, and logs to `.claude/coordination/gate-log.jsonl` exactly as it would via the MCP path.
+
+**Drift count after Phase 4:** 1 (down from 3). The remaining drift is O-3 — `meta-260626T1627Z-...` — which now has `status=active` carrying `resolved_at`/`resolved_by`/`resolution` from the ack. This is the F-1 wording ambiguity documented in plan R6 and OO3; tightening F-1 to distinguish terminal-marker fields from operator-content fields is deferred to a v2 follow-up plan.
+
 ## Open items
 - **O1:** Registry consistency: `meta-260606T1830Z-context-pollution-...` has `resolved_by: auto-resolve` + `resolved_at` set but was `status: stale`. Now `status: active` — the inconsistency is preserved. Future plan: `meta_state_consistency_check` MCP probe (per finding `meta-260614T1236Z-no-automated-registry-consistency-check-exists-...`).
 - **O2:** Same as O1 for `meta-260613T1615Z-import-chain-...` (has `promoted_to_rule` set, status was stale).

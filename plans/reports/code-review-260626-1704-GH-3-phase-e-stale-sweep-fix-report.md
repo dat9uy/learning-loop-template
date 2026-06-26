@@ -134,6 +134,8 @@ By acking these mc=false entries, the loop preserves an invariant violation it h
 
 **Recommendation:** Either (a) update the plan to drop the `last_verified_at` requirement since `meta_state_ack` is the canonical tool and doesn't set it, or (b) for the 10 transitioned entries, apply a follow-up `meta_state_patch` to set `last_verified_at: <batch-ts>`.
 
+**RESOLVED (2026-06-26 by Plan 8 Phase 5):** All 9 still-active mc=true entries (1 of the original 10 was superseded in Plan 8 Phase 4) have `last_verified_at: 2026-06-26T07:35:50.000Z` already populated — set by an external mechanism (cold-session-test or `meta_state_re_verify` invocation) between Plan 7 Fix ship time and Plan 8 Phase 5 execution. The planned `meta_state_batch` backfill was therefore a no-op. See `docs/journals/260626-phase-e-plan-7-stale-sweep-shipped.md` §Plan 8 follow-up for full closure rationale.
+
 ---
 
 ### CRITICAL-4: D6 violated — Audit-gap fix landed in this plan
@@ -161,6 +163,8 @@ The commit message itself acknowledges this: "Closes concern 2 from Plan 7 Fix f
 **Severity:** Important — but the practical risk is low because `meta_state_ack` is idempotent and the failure mode is recoverable (re-run the remaining entries).
 
 **Recommendation:** Document the rationale (canonical tool choice — `meta_state_ack` is the appropriate tool for individual ack, while `meta_state_batch` is for atomic bulk mutations). Update the plan to reflect this design decision.
+
+**RESOLVED (2026-06-26 by Plan 8 Phase 5):** Deviation documented in `docs/journals/260626-phase-e-plan-7-stale-sweep-shipped.md` §Plan 8 follow-up. Rationale: `meta_state_ack` is the canonical tool for individual reported/stale→active transitions; `meta_state_batch` is for atomic bulk mutations across heterogeneous entry kinds. The Plan 7 Fix sweep was homogeneous so individual acks were conceptually cleaner. All 10 succeeded; partial-state risk did not materialize. Future sweeps of N>10 mc=true entries should batch.
 
 ---
 
