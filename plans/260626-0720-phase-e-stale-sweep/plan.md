@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 7: Stale Sweep — re-verify 14 stale mechanism_check=true entries"
 description: "Sweep all 14 meta-state entries where status=stale AND mechanism_check=true (per Plan 3 red-team Unresolved Q5). For each: verify grounding (Phase 1), refresh drifted fingerprint if needed (Phase 2), transition stale → active via meta_state_batch (Phase 3). Log change + journal at completion (Phase 4). 1 registry lifecycle action batched across 14 entries, 1 fingerprint refresh, 0 code changes."
-status: pending
+status: done
 priority: P3
 branch: "phase-e/stale-sweep"
 tags: [phase-e, housekeeping, registry-lifecycle, stale-sweep, sp2-grounding, batch]
@@ -52,10 +52,10 @@ This plan completes the registry lifecycle debt surfaced by Plan 3's red-team re
 
 | Phase | Name | Status | TDD Gate |
 |-------|------|--------|----------|
-| 1 | [PreconditionsAndDriftDetection](./phase-01-preconditions-and-drift-detection.md) | Pending | All 14 entries have grounded fingerprints (13 match out-of-the-box; 1 to refresh in Phase 2) |
-| 2 | [RefreshDriftedFingerprints](./phase-02-refresh-drifted-fingerprints.md) | Pending | Entry `meta-260609T1206Z` `code_fingerprint` updated to `sha256:24b3eb25ee7c16996b6ca5cbc1f435d3ed38b342c745dc6ef67a81e54cfc5d99`; `meta_state_list --id ...` confirms new fingerprint |
-| 3 | [BatchStaleToActive](./phase-03-batch-stale-to-active.md) | Pending | `meta_state_batch` applies 14 update ops atomically; all 14 entries transition `status: stale → active`; rollback test fails the batch |
-| 4 | [VerificationAndAudit](./phase-04-verification-and-audit.md) | Pending | `meta_state_list --status stale` returns 2 entries (the 2 mechanism_check=false leftovers); cold-tier regression test GREEN; `meta_state_log_change` filed; journal entry exists |
+| 1 | [PreconditionsAndDriftDetection](./phase-01-preconditions-and-drift-detection.md) | Done | All 14 entries have grounded fingerprints (13 match out-of-the-box; 1 refreshed in Phase 2) |
+| 2 | [RefreshDriftedFingerprints](./phase-02-refresh-drifted-fingerprints.md) | Done | Entry `meta-260609T1206Z` `code_fingerprint` updated to `sha256:24b3eb25ee7c16996b6ca5cbc1f435d3ed38b342c745dc6ef67a81e54cfc5d99`; verified via `meta_state_list` |
+| 3 | [BatchStaleToActive](./phase-03-batch-stale-to-active.md) | Done | `meta_state_batch` applied 14+10 update ops (retry needed: `expires_at: null` to prevent sweep re-expiry); all 14 entries `status: active` |
+| 4 | [VerificationAndAudit](./phase-04-verification-and-audit.md) | Done | `meta_state_list --status stale` returns 2 entries (mechanism_check=false); cold-tier + pnpm test GREEN; `meta_state_log_change` filed; journal exists |
 
 **TDD structure applied:** Phase 1 writes the pre-condition probe (fingerprint verification script). Phase 2 invokes the canonical refresh tool. Phase 3 uses batch with CAS per op. Phase 4 runs the existing cold-tier regression test (`tools/learning-loop-mastra/__tests__/legacy-mcp/cold-tier-regression.test.js`) as the safety net.
 
@@ -146,4 +146,4 @@ This plan completes the registry lifecycle debt surfaced by Plan 3's red-team re
 
 ---
 
-**Status:** Pending — plan expansion complete; ready for `/ck:cook`. No red-team or validation gates run (plan is structurally simple; both gates are optional per the ck-plan skill defaults for low-risk registry lifecycle work).
+**Status:** Done — all 14 stale `mechanism_check=true` entries transitioned to `active`. 1 fingerprint refreshed. 0 code changes. Retry required `expires_at: null` to prevent auto-resolve sweep re-expiry (10 of 14 entries had past `expires_at` dates). See journal for details.
