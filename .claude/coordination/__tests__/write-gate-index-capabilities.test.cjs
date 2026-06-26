@@ -105,3 +105,55 @@ describe("write gate records/** always blocked", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 });
+
+describe("write gate meta-state.jsonl always blocked (audit-log gap closure)", () => {
+  // Closes the audit-log gap identified in plans/reports/debugger-260626-1535-
+  // phase-e-plan-7-audit-gap-mechanism-investigation.md. The bash gate blocks
+  // shell writes to meta-state.jsonl but Claude Code's Write/Edit tools bypass
+  // the bash gate. This rule ensures Write/Edit/Create/ApplyPatch to the
+  // registry is also blocked at the PreToolUse hook layer, forcing all
+  // mutations through MCP tools (which log to gate-log.jsonl).
+  function createProjectWithMetaState() {
+    const tmp = mkdtempSync(join(tmpdir(), "write-gate-meta-state-test-"));
+    writeFileSync(join(tmp, "meta-state.jsonl"), "");
+    return tmp;
+  }
+
+  it("blocks Write to meta-state.jsonl unconditionally", () => {
+    const tmp = createProjectWithMetaState();
+    const result = runGate(
+      { tool_name: "Write", tool_input: { file_path: join(tmp, "meta-state.jsonl"), content: "{}" } },
+      { GATE_ROOT: tmp }
+    );
+    assert.equal(result.exitCode, 2);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.decision, "block");
+    assert.equal(parsed.matched_rule, "meta-state.jsonl");
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("blocks Edit to meta-state.jsonl unconditionally", () => {
+    const tmp = createProjectWithMetaState();
+    const result = runGate(
+      { tool_name: "Edit", tool_input: { file_path: join(tmp, "meta-state.jsonl"), old_string: "x", new_string: "y" } },
+      { GATE_ROOT: tmp }
+    );
+    assert.equal(result.exitCode, 2);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.decision, "block");
+    assert.equal(parsed.matched_rule, "meta-state.jsonl");
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("block message references MCP tools and audit-log gap", () => {
+    const tmp = createProjectWithMetaState();
+    const result = runGate(
+      { tool_name: "Write", tool_input: { file_path: join(tmp, "meta-state.jsonl"), content: "{}" } },
+      { GATE_ROOT: tmp }
+    );
+    assert.equal(result.exitCode, 2);
+    const parsed = JSON.parse(result.stdout);
+    assert.ok(parsed.reason.includes("MCP"), "reason should mention MCP tools");
+    rmSync(tmp, { recursive: true, force: true });
+  });
+});
