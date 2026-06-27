@@ -34,10 +34,19 @@ framework, only the shell changes.
 
 ## How to add a new core file
 
-1. Drop the file in this directory.
-2. Write pure logic. No Mastra imports.
-3. Add a test in `__tests__/phase-e-foundation/fcis-invariant.test.js`
-   if the file is non-trivial.
+See `docs/placement.md` §3 for the full process and §2 for the role taxonomy.
+In short: drop the file, write a summary, add a manifest row in `core/placement.yaml`,
+run the placement-manifest test.
+
+## Soft inversion (Mechanism B)
+
+- **Schemas = validation source.** `core/meta-state.js` exports the canonical Zod schemas. They are the runtime-checked layer.
+- **Factories = ergonomic surface.** `core/entry/{finding,rule,change-log,loop-design}.js` wrap the schemas. Every factory returns a **deep-frozen** object with status helpers + relationship methods.
+- **Schema reachable via `factoryInstance.schema`** (NOT `factory.schema` — the latter is the factory function, which has no `.schema` property). Reference equality (not copy). Any caller needing the raw Zod schema reads it off a factory instance.
+
+> **ADR (2026-06-27):** Soft inversion by operator decision. Revisit if (a) `.shape` consumers drop below 3, OR (b) factory methods start needing cross-cutting logic that schemas can't express.
+>
+> **Load-bearing invariant:** `metaState*EntrySchema` must remain a single module-level constant. Any future wrapping of the schema (`.partial()`, `.brand()`, `.merge()`, etc.) breaks the `instance.schema === canonicalSchema` reference-equality contract that the soft-inversion safeguard test enforces. Such wrapping requires an ADR. The existing `buildPatchSchemaFor(kind)` call at `core/meta-state.js:299` already wraps the rule schema with `.partial().strict()` — that's the exception, not the rule.
 
 ## Relationship to other layers
 

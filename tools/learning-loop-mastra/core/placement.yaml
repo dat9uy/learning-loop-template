@@ -1,0 +1,104 @@
+# core/placement.yaml — single source of truth for where code lives.
+# Tested by __tests__/phase-e-foundation/placement-manifest.test.js.
+# New files MUST be added here; tests fail until they are.
+# Paths are relative to core/. Role taxonomy: see docs/placement.md §2.
+
+files:
+  # === facade ===
+  - path: gate-decision-log.js
+    role: facade
+    summary: Appends structured decision rows to .gate-decision.log.
+  - path: gate-logic.js
+    role: facade
+    summary: Gate decision library — globMatch, applyPromotedRules, writePreflightMarker.
+  - path: gate-override.js
+    role: facade
+    summary: Reads/validates .gate-override markers with TTL expiry.
+  - path: inbound-state.js
+    role: facade
+    summary: Reads runtime-state.jsonl sidecar for inbound gate context.
+  - path: loop-introspect.js
+    role: facade
+    summary: Builds inverse indexes + query helpers over the meta-state registry.
+  - path: meta-state.js
+    role: facade
+    summary: Registry CRUD + Zod schemas for the 4-kind meta-state union.
+
+  # === verification ===
+  - path: check-grounding.js
+    role: verification
+    summary: Computes SHA-256 fingerprints and compares to stored values.
+  - path: consistency-check.js
+    role: verification
+    summary: Pure status/audit-field drift detector (no I/O).
+  - path: derive-status.js
+    role: verification
+    summary: Derives effective status from stored refs + filesystem state.
+  - path: query-drift.js
+    role: verification
+    summary: Aggregates drift events across the meta-state registry.
+  - path: runtime-agnostic-checklist.js
+    role: verification
+    summary: 6-item runtime-agnostic pattern checklist for features.
+  - path: verification-runner.js
+    role: verification
+    summary: Executes verification.steps with cmd-allowlist + timeout.
+
+  # === primitive ===
+  - path: envelope-stripper.js
+    role: primitive
+    summary: Strips MCP hookSpecificOutput envelopes from raw text.
+  - path: file-readers.js
+    role: primitive
+    summary: Shared file-reading helpers (readJsonSafe, readLines).
+  - path: slugify.js
+    role: primitive
+    summary: Slugify strings for ids (lowercase, hyphens, alphanumeric).
+  - path: strict-boolean-guard.js
+    role: primitive
+    summary: Coerces string/bool inputs to strict boolean.
+  - path: surfaces.js
+    role: primitive
+    summary: SURFACES constant + read/write helpers for multi-surface dirs.
+
+  # === helper ===
+  - path: record-validation-rules.js
+    role: helper
+    summary: Schema-based record validation with AJV (imports registry from facade).
+
+  # === cache ===
+  - path: loop-introspect-cache.js
+    role: cache
+    summary: TTL cache wrapper around loop-introspect query results.
+  - path: read-registry-cache.js
+    role: cache
+    summary: TTL cache wrapper around readRegistry calls.
+
+  # === helper ===
+  - path: entry/deep-freeze.js
+    role: primitive
+    summary: Recursive Object.freeze helper for nested Zod-parsed data.
+  - path: entry/change-log.js
+    role: helper
+    summary: Factory wrapping metaStateChangeEntrySchema with relationship methods.
+  - path: entry/index.js
+    role: helper
+    summary: factoryFor dispatcher + validateCrossRefs/findOrphans/outboundRefsAll graph API.
+  - path: entry/finding.js
+    role: helper
+    summary: Factory wrapping metaStateFindingEntrySchema with relationship methods.
+  - path: entry/loop-design.js
+    role: helper
+    summary: Factory wrapping metaStateLoopDesignSchema with relationship methods.
+  - path: entry/rule.js
+    role: helper
+    summary: Factory wrapping metaStateRuleEntrySchema with relationship methods.
+  - path: list-probes.js
+    role: helper
+    summary: Lists available runtime probe types.
+  - path: recurrence-tracker.js
+    role: helper
+    summary: Tracks recurring patterns in gate decision log.
+  - path: workflow-registry.js
+    role: helper
+    summary: Reads workflow manifest and provides lookup helpers.
