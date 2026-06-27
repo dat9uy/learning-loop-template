@@ -1,7 +1,7 @@
 ---
 title: "Phase E Mechanism A + B: Placement Manifest + Entry Domain Model"
 description: "Implements the unifier from brainstorm-260627-1246 — Mechanism A encodes the implicit placement topology as docs/placement.md + core/placement.yaml + a manifest invariant test; Mechanism B wraps the 4 meta-state entry kinds in factories that expose outbound/inbound relationship methods, then re-implements meta_state_relationships on top of them. Mechanism A ships first (and guides B); both replace ad-hoc file layering with machine-consultable artifacts. Phase 3 (evaluator refactor) is OUT OF SCOPE — it ships separately per the prior convergence addendum."
-status: pending
+status: done
 priority: P2
 branch: "main"
 tags: [phase-e, mechanism-a, mechanism-b, placement-manifest, entry-factory, soft-inversion]

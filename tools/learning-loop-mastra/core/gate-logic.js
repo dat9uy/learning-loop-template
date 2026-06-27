@@ -575,7 +575,7 @@ export function isGlobScopeWhitelisted(pattern) {
   return GLOB_SCOPE_WHITELIST.some((prefix) => pattern.startsWith(prefix));
 }
 
-function projectHasLearningLoopMcp(root) {
+export function projectHasLearningLoopMcp(root) {
   try {
     const cfgPath = join(root, ".mcp.json");
     if (!existsSync(cfgPath)) return false;

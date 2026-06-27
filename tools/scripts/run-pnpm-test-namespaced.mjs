@@ -31,6 +31,7 @@ const GLOBS = [
   { ns: "mcp-tests", pattern: "tools/learning-loop-mastra/__tests__/legacy-mcp/*.test.js" },
   { ns: "mcp-core-tests", pattern: "tools/learning-loop-mastra/core/__tests__/*.test.js" },
   { ns: "mcp-core", pattern: "tools/learning-loop-mastra/core/*.test.js" },
+  { ns: "mcp-entry", pattern: "tools/learning-loop-mastra/core/entry/*.test.js" },
   { ns: "mcp-lib", pattern: "tools/learning-loop-mastra/core/lib/*.test.js" },
   { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
