@@ -341,6 +341,59 @@ Per operator: *"do it step-by-step, since the mechanism A will be the guide for 
 
 **Effort:** 1-2 days, single PR.
 
+### Phase 2.5 — Dead-code sweep via fallow (gating step before Phase 3)
+
+**Motivation.** Mechanism A prevents *new* accumulation in `core/` (every file must have a manifest entry or the FCIS test fails). It does not address *existing* unreferenced modules left over from prior migrations — e.g., `core/list-probes.js` is imported only by `__tests__/legacy-mcp/list-probes.test.js`, with no production consumer. Phase 3 (evaluator refactor) adds 3 more core files; doing the sweep first means the manifest starts from a clean baseline and the placement rules have nothing to compete with.
+
+This phase also answers the operator concern that prompted this brainstorm: *"the current way of managing core/ is kind of add more and more function file without any coherence."* The placement tree + manifest address new code; this phase retires the legacy residue.
+
+**Sub-step 1 — Configure fallow.**
+
+`fallow dead-code` is the right tool but ships with two warnings that hide real findings:
+- `node_modules not found` → run `pnpm install` at the mastra root first.
+- `No entry points detected — exports may appear unused` → without explicit entry points, every file looks orphan.
+
+Files:
+- NEW: `tools/learning-loop-mastra/.fallowrc.json` with entry points `tools/manifest.json` (parsed as JSON — every MCP tool entry is a live entry point) plus `mastra/server.js` (the loader).
+- Ignore patterns: `scout/legacy/**`, `__tests__/legacy-mcp/**`, `plans/**`, `scout/fixtures/**`. These are intentionally excluded so fallow correctly flags the modules they reference as unreachable, rather than seeing them as live.
+
+**Sub-step 2 — Baseline scan + triage.**
+
+Run:
+```bash
+fallow dead-code --unused-files
+fallow dead-code --unused-exports
+fallow dead-code --unused-deps
+```
+
+For each finding in `core/`, classify against the **admission rule**: *a module belongs in `core/` only if a non-test, non-fixture import site uses it.*
+- **Tested but no prod consumer** (e.g., `list-probes.js`): delete module + matching test in `__tests__/legacy-mcp/`. The test goes too — keeping it would carry dead code forever.
+- **Doc-referenced but no consumer** (e.g., the `helper` row in `docs/placement.md` that lists `list-probes.js`): delete module + fix the doc row.
+- **Pure dead** (no imports, no tests, no docs): delete.
+- **Historical reference** (operator decides to keep): move to `__tests__/_archive/legacy-cli-shims/` with a one-line header pointing to the originating migration plan.
+
+**Sub-step 3 — Wire fallow into CI.**
+
+Add `fallow audit` to the PR diff check (fallow's built-in command for diff-aware review of changed files). The admission rule becomes a CI invariant: any new file under `core/` flagged as unused by `fallow audit` fails the PR until either `core/placement.yaml` is updated and the file is imported by a non-test site, or the file is deleted.
+
+**Files:**
+- NEW: `tools/learning-loop-mastra/.fallowrc.json`
+- NEW (only if any kept): `tools/learning-loop-mastra/__tests__/_archive/legacy-cli-shims/README.md` explaining the convention
+- MODIFIED: `tools/learning-loop-mastra/docs/placement.md` (drop rows for deleted modules)
+- MODIFIED: CI workflow (add `fallow audit` step)
+- DELETED (per triage): modules in `core/` flagged as unused; their `__tests__/legacy-mcp/*.test.js` counterparts
+- POSSIBLE: `core/placement.yaml` regenerated without deleted entries
+
+**Acceptance:**
+- `fallow dead-code --unused-files --unused-exports` reports 0 findings in `core/` (or every finding is archived in `__tests__/_archive/legacy-cli-shims/` with a clear header).
+- All existing tests pass — the 1189 baseline plus any tests added in Phase 1/2.
+- A new core file added in Phase 3 fails `fallow audit` unless `placement.yaml` is updated and the file is imported by a non-test site.
+- `fallow dead-code --unused-deps` reports 0 findings on `package.json`.
+
+**Effort:** 0.5 day, single PR.
+
+**Why before Phase 3 and not after.** Two reasons. First, Phase 3 adds 3 evaluators to `core/`; adding them on top of dead residue dilutes the manifest's signal and makes the layering invariant test noisier. Second, the CI guard from sub-step 3 protects Phase 3 from itself — without it, the next "list-probes.js" will reappear within a sprint.
+
 ### Phase 3 — Evaluator refactor (the original Option 2)
 
 **Files:**
@@ -380,6 +433,7 @@ The prior report is **superseded** by this one for planning purposes. Its Option
 3. **Phase 2 blast radius:** Touching `meta-state.js`'s public surface (adding factory exports) is a larger API surface than Phase 1. Do we want a deprecation path for direct field access, or just add factories alongside?
 4. **`meta_state_relationships` reimplementation:** Phase 2 reuses the same MCP tool name + wire shape. The internal code path changes. Snapshot tests will lock the wire shape. Confirm acceptable.
 5. **Role taxonomy evolution:** The 7-role taxonomy in §3.2 is a starting point. New roles need an ADR per the closed-taxonomy rule. Confirm.
+6. **Manifest path bug surfaced during dead-code analysis:** `tools/manifest.json` references paths like `tools/gate-tool.js`, but those files actually live at `tools/legacy/gate-tool.js`. Either the manifest is broken, or the loader resolves relative to a different root. Resolving this affects Phase 2.5's `.fallowrc.json` entry-point config (does the entry-point list come from the manifest as-is, or do we patch the paths first?). See Phase 2.5 sub-step 1.
 
 ---
 
@@ -393,6 +447,7 @@ The prior report is **superseded** by this one for planning purposes. Its Option
 - FCIS test (extension target): `tools/learning-loop-mastra/__tests__/phase-e-foundation/fcis-invariant.test.js`
 - Doc-existence test (model): `tools/learning-loop-mastra/__tests__/phase-e-foundation/schema-doc-exists.test.js`
 - Existing doc (template): `tools/learning-loop-mastra/docs/schemas.md`
+- Fallow docs (entry points + ignore patterns): https://docs.fallow.tools/explanations/dead-code
 
 ---
 
