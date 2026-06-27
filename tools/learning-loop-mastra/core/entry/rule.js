@@ -23,15 +23,10 @@ export function createRule(data) {
           return false;
         }
       }
-      if (parsed.pattern_type === "glob" && filePath) {
-        // Simple glob matching — delegate to the pattern as a regex fallback
-        try {
-          const re = new RegExp(parsed.pattern);
-          return re.test(filePath);
-        } catch {
-          return false;
-        }
-      }
+      // Glob matching is implemented in `gate-logic.globMatch` (canonical gate
+      // evaluation path). The factory's matches() is a parallel reference impl
+      // for regex only; glob is intentionally rejected here so callers route
+      // through the canonical evaluator rather than this stub.
       return false;
     },
 

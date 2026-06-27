@@ -83,6 +83,18 @@ test("createRule.matches consult-checklist returns false", () => {
   assert.ok(!r.matches("anything", null));
 });
 
+test("createRule.matches glob returns false (handled by gate-logic.globMatch)", () => {
+  const r = createRule({ ...FIXTURE, pattern_type: "glob", pattern: "**/*.test.js" });
+  assert.strictEqual(r.matches("git push", "tools/foo.test.js"), false,
+    "factory.matches() must not handle glob; glob matching lives in gate-logic.globMatch");
+  assert.strictEqual(r.matches("git push", "tools/foo.js"), false);
+});
+
+test("createRule.matches resolution-evidence-required returns false", () => {
+  const r = createRule({ ...FIXTURE, pattern_type: "resolution-evidence-required", pattern: "session-123" });
+  assert.ok(!r.matches("anything", null));
+});
+
 test("createRule.appliesTo with scope_predicate none", () => {
   const r = createRule(FIXTURE);
   assert.ok(r.appliesTo("/any/root"));

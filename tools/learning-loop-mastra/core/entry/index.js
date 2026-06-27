@@ -32,7 +32,7 @@ export function validateCrossRefs(root) {
   const orphans = [];
   for (const entry of entries) {
     const factory = factoryFor(entry);
-    for (const ref of factory.outboundRefs()) {
+    for (const ref of factory.outboundRefs(entries)) {
       const target = entries.find(
         (e) => e.id === ref.id && (e.entry_kind ?? "finding") === ref.kind,
       );
@@ -60,7 +60,7 @@ export function outboundRefsAll(root) {
   const graph = new Map();
   for (const entry of entries) {
     const factory = factoryFor(entry);
-    graph.set(entry.id, factory.outboundRefs());
+    graph.set(entry.id, factory.outboundRefs(entries));
   }
   return graph;
 }

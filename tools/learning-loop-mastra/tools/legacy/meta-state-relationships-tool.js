@@ -87,7 +87,7 @@ export const metaStateRelationshipsTool = {
     };
 
     if (direction === "outbound" || direction === "both") {
-      const refs = factory.outboundRefs();
+      const refs = factory.outboundRefs(entries);
 
       // Dual-field fallback for promoted_to_rule (legacy migration):
       // if the finding doesn't have promoted_to_rule declared, look up

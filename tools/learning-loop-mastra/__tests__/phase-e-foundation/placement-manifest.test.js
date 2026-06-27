@@ -106,7 +106,10 @@ test("role-layering invariants hold for evaluator and facade files", () => {
     helper:       null,  // unrestricted
   };
 
-  const importRe = /from\s+["']\.\/([\w.-]+\.m?js)["']/g;
+  // Match both `./X.js` (sibling) and `../X/Y.js` (parent-dir) relative imports.
+  // Capture group holds the path with any `../` already stripped, so the key
+  // matches the manifest's `path` field directly (e.g., `meta-state.js`, `entry/finding.js`).
+  const importRe = /from\s+["'](?:\.\.\/|\.\/)([\w./-]+\.m?js)["']/g;
 
   for (const entry of manifest.files) {
     const allowed = ALLOWED[entry.role];

@@ -4,9 +4,15 @@ import { deepFreeze } from "./deep-freeze.js";
 export function createLoopDesign(data) {
   const parsed = metaStateLoopDesignSchema.parse(data);
 
-  // Resolve entry kind for proposed_design_for refs:
-  // rule ids start with "rule-", everything else defaults to "finding".
-  function kindForId(id) {
+  // Resolve entry kind for proposed_design_for / addresses refs.
+  // Lookup-first when entries are available (canonical); fall back to a
+  // prefix heuristic when the target entry is not in the registry (dangling
+  // ref case where registry lookup is meaningless).
+  function kindForId(id, entries) {
+    if (entries) {
+      const found = entries.find((e) => e.id === id);
+      if (found) return found.entry_kind ?? "finding";
+    }
     return typeof id === "string" && id.startsWith("rule-") ? "rule" : "finding";
   }
 
@@ -15,16 +21,16 @@ export function createLoopDesign(data) {
     data: parsed,
     schema: metaStateLoopDesignSchema,
 
-    outboundRefs() {
+    outboundRefs(entries) {
       const refs = [];
       if (Array.isArray(parsed.proposed_design_for)) {
         for (const id of parsed.proposed_design_for) {
-          refs.push({ kind: kindForId(id), id, field: "proposed_design_for" });
+          refs.push({ kind: kindForId(id, entries), id, field: "proposed_design_for" });
         }
       }
       if (Array.isArray(parsed.addresses)) {
         for (const id of parsed.addresses) {
-          refs.push({ kind: kindForId(id), id, field: "addresses" });
+          refs.push({ kind: kindForId(id, entries), id, field: "addresses" });
         }
       }
       return refs;

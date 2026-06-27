@@ -48,6 +48,15 @@ run the placement-manifest test.
 >
 > **Load-bearing invariant:** `metaState*EntrySchema` must remain a single module-level constant. Any future wrapping of the schema (`.partial()`, `.brand()`, `.merge()`, etc.) breaks the `instance.schema === canonicalSchema` reference-equality contract that the soft-inversion safeguard test enforces. Such wrapping requires an ADR. The existing `buildPatchSchemaFor(kind)` call at `core/meta-state.js:299` already wraps the rule schema with `.partial().strict()` — that's the exception, not the rule.
 
+## Relationship methods: pure vs registry-aware split
+
+Factory `outboundRefs()` / `inboundRefs(root)` are **pure views** of an entry's own fields. They do not consult the registry. Concretely:
+
+- `createFinding(data).outboundRefs()` emits a `promoted_to_rule` ref only when `data.promoted_to_rule` is set. Legacy findings without that field yield no `promoted_to_rule` ref.
+- `createRule(data).inboundRefs(root)` does emit a `promoted_to_rule` ref from the rule side via `rule.origin` (dual-field fallback), so the inverse direction stays correct.
+
+The registry-aware composition for legacy outbound compat lives in **`tools/legacy/meta-state-relationships-tool.js`**, which calls `buildInverseIndexes(entries)` and patches `outbound.promoted_to_rule` from `origin_inverse` when the finding lacks the field. This is intentional: factories stay schema-pure and import-light, while the tool (which already reads the registry) handles the legacy migration. **Consumers calling `factory.outboundRefs()` directly should not expect legacy dual-field fallback** — go through `meta_state_relationships` for the canonical wire shape.
+
 ## Relationship to other layers
 
 See `AGENTS.md` §1.1 for the 3-layer explanation:
