@@ -1,6 +1,8 @@
 # Brainstorm: Write-Gate Layer Placement
 
-**Status:** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan deferred to a separate session per operator decision 2026-06-27. The original open statement (framing + explorations) is preserved below; the convergence addendum at the end captures the locked design.
+**Status:** ⚠️ **SUPERSEDED** by `brainstorm-260627-1246-phase-e-implicit-topology-refactor-report.md` for planning purposes. This report's Option 2 design (3 evaluators + 3 thin hook adapters) is preserved as Phase 3 of the new report's execution plan. See the new report §5 and §6 for context. Read the new report first; this one is kept for historical reference only.
+
+**Original status (now superseded):** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan deferred to a separate session per operator decision 2026-06-27.
 
 **Triggered by:** operator observation in `/problem-solving` session — "if we have verification logic, do we need the write-gate? Is write-gate runtime-specific or worthy as a step inside workflow?" Also: "our project structure/docs do not reflect the general encapsulation of each layer."
 
@@ -448,3 +450,158 @@ The hooks import `parseInput` / `formatOutput` / `exitCode` / `extractFilePath` 
 - Not a plan. The plan to ship this design will be authored in a separate session (per operator decision 2026-06-27: "Update the report only — plan later").
 - Not a critique of the existing code. The current architecture works; this is reorganization, not replacement.
 - Not a Plan 4 blocker. Mastra Code validation (Plan 4) can proceed with the current hook model in parallel.
+
+---
+
+# Discussion Addendum (2026-06-27 continued) — implicit topology
+
+**Status:** OPEN. Discussion draft for the next round. Not a plan.
+
+**Triggered by:** operator pushback — "the solution is kind of ad-hoc … there is no way to make sure that in the future, the agent could make the correct choice … the current way of managing core/ is kind of add more and more function file without any coherence."
+
+**Technique applied:** Meta-Pattern Recognition + Simplification Cascades (continuation of the same techniques used in the convergence addendum).
+
+## The unifier: implicit vs explicit topology
+
+Both concerns reduce to the same root cause: **the system's topology is implicit — held in developers' heads, not in the code.**
+
+- **Concern 1 (placement):** When a future agent adds a rule, the agent must decide *which layer, which file, which pattern* (hardcoded vs promoted, regex vs glob, consult-checklist). Today that decision lives in operator history (this report's addendum, prior plans), not in any machine-consultable artifact. The convergence addendum moved specific logic; it did not install the *mechanism* that guides the next move.
+
+- **Concern 2 (entry coherence):** `meta-state.js` defines four entry kinds as Zod schemas (`metaStateFindingEntrySchema`, `metaStateRuleEntrySchema`, `metaStateChangeEntrySchema`, `metaStateLoopDesignSchema`). Functions that operate on entries — `writeEntry(root, entry)`, `updateEntry(root, id, patch)`, `applyPromotedRules(command, filePath, rules, root)`, `checkResolutionEvidence(rule, root)`, `writePreflightMarker(surface, coordDir)` — take field names and root paths, not Entry objects. The schemas are the closest thing to a domain model, but they are passive: they validate, they do not own lifecycle, they do not compose with each other.
+
+Same problem, two scales. The convergence addendum's "thin adapter in shell, policy in core, registry in meta-state" pattern is correct *for the rules it moved*, but it doesn't encode the rule that produced it.
+
+## What "explicit topology" would look like
+
+### Mechanism A — placement decision tree (for Concern 1)
+
+A single source-of-truth artifact an agent can consult before adding logic. Candidates:
+
+- **Doc-only:** `docs/code-standards.md` §"Where to put new logic" with a decision tree (input: a one-line description of the logic; output: layer + file).
+- **Code-level:** `core/placement.js` exporting `place({input_kind, has_io, needs_runtime, mutates_registry}) → {layer, file_pattern, rationale}` — callable from agent prompts via the MCP tool surface.
+- **Test-enforced:** `__tests__/phase-e-foundation/fcis-invariant.test.js` already enforces "core has no `@mastra/*`". Extend with a per-file `placement` annotation that the test cross-checks: "if you import `node:fs` AND import `@mastra/*`, the placement test fails with a pointer to the decision tree."
+
+The doc-only version is the cheapest. The test-enforced version is the one that future-proofs the system against the same drift that produced `hooks/legacy/` accumulating policy logic.
+
+A sketch of the decision tree itself:
+
+```
+1. Does it mutate the registry (meta-state.jsonl, runtime-state.jsonl)?
+   → Yes: core/meta-state.js (CRUD) or core/{gate-decision-log,runtime-state}.js
+   → No: continue.
+
+2. Does it parse/transform/match data with NO I/O and NO Mastra imports?
+   → Yes: core/ (single-file per concern, matches existing pattern)
+   → No: continue.
+
+3. Does it wrap a Mastra primitive (tool, workflow, agent, harness)?
+   → Yes: mastra/create-loop-*.js or mastra/{workflows,agents,tools}/
+   → No: continue.
+
+4. Does it translate between a runtime's hook protocol and our internal API?
+   → Yes: hooks/legacy/<gate>.js (universal) + .claude|.factory/coordination/hooks/*.cjs (shim)
+   → No: continue.
+
+5. Is it an MCP tool that exposes a core function?
+   → Yes: tools/legacy/<tool>.js (existing pattern) — not in mastra/ because it is legacy substrate.
+```
+
+This is the rule that produced the convergence addendum's file list. Encoding it makes the rule surviving the session.
+
+### Mechanism B — Entry domain model (for Concern 2)
+
+Convert the four Zod schemas into factories that return **typed Entry values with methods**. Sketch:
+
+```js
+// meta-state.js (proposed additions, NOT a replacement of the schemas)
+export function createFinding(data) {
+  const parsed = metaStateFindingEntrySchema.parse(data);
+  return Object.freeze({
+    kind: 'finding',
+    data: parsed,
+    isActive()      { return parsed.status === 'active'; },
+    isStale()       { return parsed.status === 'stale'; },
+    isBlocking()    { return parsed.severity === 'escalate' && (parsed.status === 'active' || parsed.status === 'reported'); },
+    promote({ rule_id, operator, ...ruleProps }) { /* returns createRule(...) */ },
+    resolve({ by, note }) { /* returns new frozen Finding with resolved status */ },
+    supersedeBy(changeLogId) { /* returns new frozen Finding with status=superseded */ },
+    supersedes(otherFindingId) { /* returns boolean */ },
+  });
+}
+
+export function createRule(data) {
+  const parsed = metaStateRuleEntrySchema.parse(data);
+  return Object.freeze({
+    kind: 'rule',
+    data: parsed,
+    isActive()           { return parsed.status === 'active'; },
+    matches(command, filePath) { /* encapsulates applyPromotedRules's per-rule logic */ },
+    appliesTo(root)      { /* encapsulates projectHasLearningLoopMcp scope_predicate */ },
+    isConsultChecklist() { return parsed.pattern_type === 'consult-checklist'; },
+    supersedes(otherRule) { /* returns boolean */ },
+    checkResolutionEvidence(root) { /* encapsulates checkResolutionEvidence */ },
+  });
+}
+
+// createChangeLog, createLoopDesign follow the same shape
+```
+
+**Reconciliation with FCIS:** the *factories* are pure (input → output, no hidden state). The *returned values* are frozen (immutable). The *methods* read from `this.data` only. There is no `this.state` that mutates. This is "class-as-value" / "class-as-tagged-record," not OO-with-state. The pure-function invariant is preserved; what we gain is **explicit composition surface** — `applyPromotedRules(set, command, filePath)` reads naturally because `set` is `Rule[]`, not "a JSONL blob I have to filter first."
+
+**Concrete payoff for the convergence addendum:**
+
+```js
+// hooks/legacy/write-gate.js (after Mechanism B)
+const rules = loadActiveRules(root);                 // returns Rule[] (post factory)
+const promoted = rules.find(r => r.matches(null, relPath));
+if (promoted) return escalate(promoted);
+
+// Today: hooks/legacy/write-gate.js
+const promotedRules = loadPromotedRules(root);       // returns raw objects
+const promotedCheck = applyPromotedRules(null, relPath, promotedRules);
+if (promotedCheck.decision === "escalate") ...
+```
+
+Same wire behavior, but the hook no longer needs to know about `decision` shapes or "what does escalate look like" — it asks the Rule directly.
+
+## What the convergence addendum would look like with both mechanisms in place
+
+| File | Role today | Role after A+B |
+|---|---|---|
+| `core/evaluate-write-gate.js` | Pure evaluator | Pure evaluator — placement test confirms it (no IO, no Mastra import) |
+| `core/placement.js` | n/a | Decision tree — callable from agent prompts |
+| `core/entry/{finding,rule,change-log,loop-design}.js` | n/a | Factory + methods — `meta-state.js` schemas stay, factories wrap them |
+| `hooks/legacy/write-gate.js` | Calls `applyPromotedRules` | Calls `rules.find(r => r.matches(...))` |
+| `core/gate-logic.js` | Holds everything | Holds primitives only (functions stay; `applyPromotedRules` either stays or moves into `core/entry/rule.js` as `Rule.matches`) |
+
+The "primitives" layer (`globMatch`, `inferSurface`, `splitSegments`, `stripMessageFlags`, `isSafeRegexPattern`) stays as a primitive library. The "Entry" layer is new. The "placement" mechanism is new. The convergence addendum's file moves are unchanged.
+
+## Resolving the FCIS tension explicitly
+
+The user's instinct (each entry kind should be a class) clashes with the FCIS invariant if "class" is read as OO-with-mutable-state. The reconciliation is:
+
+- **Class = value type with methods.** The factory is pure; the returned value is frozen; the methods read from `this.data` only.
+- **Pure functions stay pure.** `globMatch(pattern, filePath)` does not become `GlobPattern.matches(filePath)` — primitives are too small to benefit from wrapping.
+- **The boundary lives between "data we operate on" and "data we expose."** Entry factories expose the domain. Primitives expose raw utilities. The decision rule: *if the function is the public API of an Entry kind, it belongs on the Entry; if it's a primitive used by 3+ Entry kinds, it stays in the primitive library.*
+
+This is the same boundary FCIS already draws at the directory level (core/ vs mastra/). Mechanism B just enforces it at the Entry-kind level.
+
+## Open questions for the operator
+
+1. **Class-as-value vs full OO.** Is the "frozen factory + methods on `this.data`" sketch acceptable, or do you want a richer OO model (e.g., `Entry` base class with subclass overrides, lifecycle methods that mutate)? The former preserves FCIS; the latter breaks it.
+2. **Mechanism A: doc-only or test-enforced?** A placement decision tree is cheap to write; a placement test is more durable. Which one matches the "future agent gets it right" bar?
+3. **Mechanism B scope.** All four entry kinds or just the ones actively operated on (Finding + Rule, which the convergence addendum and `applyPromotedRules` touch)? ChangeLog and LoopDesign are written but rarely composed.
+4. **Refactor vs parallel.** Should Mechanism A+B ship in the same plan as the convergence addendum (Option 2), or in a follow-up plan? Shipping together means a larger PR but a coherent system; follow-up means two smaller PRs but a window where the topology is partially explicit.
+5. **Naming.** If we adopt Mechanism B, do we keep the per-kind schemas as the canonical source (`createFinding` is a thin wrapper) or invert (schemas become derived from the factories' `.schema()` accessor)? The current code has 9 consumers of `metaStateEntrySchema`'s `.shape`; flipping the source is non-trivial.
+
+## What this discussion IS and IS NOT
+
+**IS:**
+- A framing of "the topology needs to be explicit at two scales — placement and domain."
+- A sketch of two concrete mechanisms (decision tree + Entry factories) that would let a future agent navigate the system without operator history.
+- A continuation of the convergence addendum's techniques (Meta-Pattern Recognition + Simplification Cascades).
+
+**IS NOT:**
+- A plan. No file moves are committed.
+- A rejection of Option 2. The convergence addendum's three evaluators are still the right shape; Mechanism A+B sits *above* them and *alongside* them.
+- A critique of FCIS. FCIS is preserved; what changes is the *domain modeling on top of* FCIS.
