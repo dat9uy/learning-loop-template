@@ -1,0 +1,14 @@
+unused-file:__tests__/phase-e-foundation/fixtures/meta-state-fixtures.js
+unused-file:__tests__/with-mcp-server.js
+unused-file:core/lib/source-ref-validator.js
+unused-file:core/list-probes.js
+unused-file:core/record-validation-rules.js
+unused-file:hooks/legacy/bash-gate.js
+unused-file:hooks/legacy/inbound-gate.js
+unused-file:hooks/legacy/lib/protocol-adapter.js
+unused-file:hooks/legacy/recurrence-check-on-start.js
+unused-file:hooks/legacy/session-start-inject-discoverability.cjs
+unused-file:hooks/legacy/write-gate.js
+unused-file:interface/contract.js
+unused-file:tools/legacy/scripts/backfill-mechanism-check.mjs
+unused-file:tools/legacy/scripts/fix-loop-design-refs.mjs

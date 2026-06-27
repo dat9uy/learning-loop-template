@@ -38,6 +38,31 @@ See `docs/placement.md` §3 for the full process and §2 for the role taxonomy.
 In short: drop the file, write a summary, add a manifest row in `core/placement.yaml`,
 run the placement-manifest test.
 
+## Admission rule
+
+A module belongs in `core/` only if a non-test, non-fixture import site uses it.
+
+Rationale: `core/` accumulated helper modules during earlier CLI migrations
+(e.g., `core/list-probes.js` from the CLI-shim era) whose only consumer was
+`__tests__/legacy-mcp/`. The placement manifest (Mechanism A from the phase-E
+implicit-topology refactor) prevents *new* accumulation; the fallow CI guard
+prevents re-accumulation. Together they enforce this rule.
+
+Enforcement:
+- `.fallowrc.json` lists `mastra/server.js` and the `tools/legacy/**/*.js`
+  wrappers as entry points. `__tests__/legacy-mcp/**` is excluded.
+- `fallow audit --gate new-only` runs on every PR; introduced dead code
+  fails the gate.
+- `fallow dead-code --save-regression-baseline` is regenerated on `main`
+  after every cleanup PR; the regression baseline is the numerical floor.
+
+When adding new code to `core/`:
+1. Update `core/placement.yaml` with the new file's path + role + summary.
+2. Ensure the file is imported by a production site (a tool in
+   `tools/legacy/`, a hook in `hooks/legacy/`, or another core facade).
+3. Run `fallow dead-code --unused-files --unused-exports` locally; expect
+   0 findings for the new file.
+
 ## Soft inversion (Mechanism B)
 
 - **Schemas = validation source.** `core/meta-state.js` exports the canonical Zod schemas. They are the runtime-checked layer.

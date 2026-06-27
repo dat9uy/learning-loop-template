@@ -31,7 +31,12 @@ export async function listAllTools(root) {
 
   let manifest = [];
   try {
-    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    // manifest.json uses JSONC (line-start // comments). See tools/manifest.json
+    // header for the rule; this shim only strips full-line comments.
+    manifest = JSON.parse(
+      readFileSync(manifestPath, "utf8")
+        .replace(/^\s*\/\/.*$/gm, ""),
+    );
   } catch {
     return [];
   }

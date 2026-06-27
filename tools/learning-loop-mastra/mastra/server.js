@@ -13,8 +13,13 @@ import { storage, initStorage } from "../storage.js";
 import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// manifest.json uses JSONC (line-start // comments for convention docs).
+// The shim only strips full-line comments; inline `// ...` after code and
+// trailing commas would silently drop content. Keep the manifest header
+// rule strict (see tools/manifest.json:1-11) to avoid this footgun.
 const MANIFEST = JSON.parse(
-  readFileSync(join(__dirname, "..", "tools", "manifest.json"), "utf8"),
+  readFileSync(join(__dirname, "..", "tools", "manifest.json"), "utf8")
+    .replace(/^\s*\/\/.*$/gm, ""),
 );
 const WORKFLOW_MANIFEST = JSON.parse(
   readFileSync(join(__dirname, "workflows-manifest.json"), "utf8"),

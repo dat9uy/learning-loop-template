@@ -1,0 +1,427 @@
+{
+  "finding_counts": {
+    "__tests__/with-mcp-server.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/consistency-check.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "core/entry/change-log.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/entry/finding.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/entry/index.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/entry/loop-design.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/entry/rule.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/envelope-stripper.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/gate-logic.js": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 4
+      },
+      "crap_moderate": {
+        "count": 6
+      }
+    },
+    "core/gate-override.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/inbound-state.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "core/loop-introspect.js": {
+      "complexity_critical": {
+        "count": 3
+      },
+      "crap_critical": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/recurrence-tracker.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/runtime-agnostic-checklist.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 4
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/surfaces.js": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "interface/contract.js": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/agents/load-agents-manifest.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "mastra/create-loop-agent.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "mastra/create-loop-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/create-loop-workflow.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/legacy-handler-adapter.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "mastra/schema-parity.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "mastra/server.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/workflows/workflow-classify-prompt.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/workflows/workflow-intake-orient.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "mastra/workflows/workflow-intake-plan.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/workflows/workflow-intentional-skip.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/workflows/workflow-prepare-runtime-request.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "mastra/workflows/workflow-runtime-probe.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/check-runtime-agnostic-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/legacy/gate-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/loop-describe-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/loop-get-instruction-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-ack-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-archive-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-check-grounding-tool.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-derive-status-tool.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tools/legacy/meta-state-list-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-log-change-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-patch-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-promote-rule-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-propose-design-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-re-verify-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-refresh-fingerprint-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-relationship-validate-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-relationships-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-report-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-resolve-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "tools/legacy/meta-state-supersede-tool.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "tools/legacy/meta-state-sweep-tool.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "tools/legacy/runtime-state-read-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/runtime-state-record-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/legacy/workflow-generate-prompt-tool.js": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 2
+      }
+    }
+  },
+  "runtime_coverage_findings": [],
+  "target_keys": [
+    "core/entry/index.js:dead code",
+    "core/check-grounding.js:dead code",
+    "core/derive-status.js:dead code",
+    "core/recurrence-tracker.js:dead code",
+    "core/gate-logic.js:circular dependency",
+    "core/loop-introspect.js:complexity",
+    "core/entry/finding.js:untested risk",
+    "core/meta-state.js:complexity",
+    "core/entry/rule.js:untested risk",
+    "mastra/schema-parity.js:complexity",
+    "core/entry/change-log.js:untested risk",
+    "core/entry/loop-design.js:untested risk",
+    "tools/legacy/workflow-generate-prompt-tool.js:untested risk",
+    "tools/legacy/meta-state-list-tool.js:complexity",
+    "tools/legacy/meta-state-sweep-tool.js:complexity",
+    "tools/legacy/loop-describe-tool.js:complexity",
+    "tools/legacy/meta-state-promote-rule-tool.js:complexity"
+  ]
+}

@@ -36,7 +36,11 @@ const DELETED_TOOLS = [
   "index_validate_plans",
 ];
 
-const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+// Strip full-line // comments (manifest.json uses JSONC; see tools/manifest.json
+// header for the rule — inline comments and trailing commas are not allowed).
+const manifestRaw = readFileSync(manifestPath, "utf8")
+  .replace(/^\s*\/\/.*$/gm, "");
+const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
 // 1. Manifest has 31 entries (8 workflow tools moved to mastra in Phase D Plan 1)

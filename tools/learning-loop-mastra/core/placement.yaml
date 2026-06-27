@@ -61,11 +61,6 @@ files:
     role: primitive
     summary: SURFACES constant + read/write helpers for multi-surface dirs.
 
-  # === helper ===
-  - path: record-validation-rules.js
-    role: helper
-    summary: Schema-based record validation with AJV (imports registry from facade).
-
   # === cache ===
   - path: loop-introspect-cache.js
     role: cache
@@ -93,9 +88,6 @@ files:
   - path: entry/rule.js
     role: helper
     summary: Factory wrapping metaStateRuleEntrySchema with relationship methods.
-  - path: list-probes.js
-    role: helper
-    summary: Lists available runtime probe types.
   - path: recurrence-tracker.js
     role: helper
     summary: Tracks recurring patterns in gate decision log.

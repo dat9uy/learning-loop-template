@@ -20,7 +20,12 @@ const { join, resolve } = require("node:path");
 
 const PKG = resolve(__dirname, "..");
 
-const tools = JSON.parse(readFileSync(join(PKG, "tools/manifest.json"), "utf8"));
+// manifest.json uses JSONC (line-start // comments). See tools/manifest.json
+// header for the rule; this shim only strips full-line comments.
+const tools = JSON.parse(
+  readFileSync(join(PKG, "tools/manifest.json"), "utf8")
+    .replace(/^\s*\/\/.*$/gm, ""),
+);
 const workflows = JSON.parse(readFileSync(join(PKG, "mastra/workflows-manifest.json"), "utf8"));
 const agents = JSON.parse(readFileSync(join(PKG, "mastra/agents-manifest.json"), "utf8"));
 const agentManifest = JSON.parse(readFileSync(join(PKG, "agent-manifest.json"), "utf8"));

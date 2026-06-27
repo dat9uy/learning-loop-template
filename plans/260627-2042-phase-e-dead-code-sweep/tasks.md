@@ -92,6 +92,6 @@ Run `cat tools/scripts/run-pnpm-test-namespaced.mjs | head -120` (full file if l
 - `__tests__/legacy-mcp/list-probes.test.js` test count: _____________ (verified via grep: 3 `it()` blocks)
 - `core/lib/source-ref-validator.test.js` test count: _____________ (verified via grep: 24 `test()` calls)
 
-**Expected post-deletion delta: −27 tests (3 + 24)** if both test files are in scope.
+**Expected post-deletion delta: −30 tests (3 + 24 + 3 from record-validation-rules.test.js)** if both test files are in scope.
 
 These are the baseline for Phase 5 delta computation.

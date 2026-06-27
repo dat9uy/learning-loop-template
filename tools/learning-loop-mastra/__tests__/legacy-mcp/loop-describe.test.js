@@ -42,7 +42,9 @@ describe("loop_describe regression", () => {
   test("manifest.json is valid JSON", () => {
     const manifestPath = join(import.meta.dirname, "..", "..", "tools", "manifest.json");
     const raw = readFileSync(manifestPath, "utf8");
-    const manifest = JSON.parse(raw);
+    // manifest.json uses JSONC (line-start // comments). See tools/manifest.json
+    // header for the rule; this shim only strips full-line comments.
+    const manifest = JSON.parse(raw.replace(/^\s*\/\/.*$/gm, ""));
     assert.ok(Array.isArray(manifest));
     assert.ok(manifest.length > 0);
   });

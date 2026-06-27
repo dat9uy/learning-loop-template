@@ -1,0 +1,22 @@
+{
+  "clone_groups": [
+    "core/inbound-state.js:17-21|tools/legacy/runtime-state-read-tool.js:17-21",
+    "core/loop-introspect.js:189-211|core/loop-introspect.js:218-249",
+    "core/meta-state.js:378-390|core/meta-state.js:680-693",
+    "core/meta-state.js:484-488|core/meta-state.js:606-610",
+    "core/runtime-agnostic-checklist.js:264-269|core/runtime-agnostic-checklist.js:288-293",
+    "mastra/create-loop-tool.js:29-53|mastra/create-loop-workflow.js:20-31",
+    "mastra/create-loop-workflow.js:50-62|mastra/legacy-handler-adapter.js:14-24",
+    "tools/legacy/meta-state-check-grounding-tool.js:14-21|tools/legacy/meta-state-derive-status-tool.js:14-21",
+    "tools/legacy/meta-state-check-grounding-tool.js:46-81|tools/legacy/meta-state-derive-status-tool.js:43-79",
+    "tools/legacy/meta-state-check-grounding-tool.js:49-74|tools/legacy/meta-state-derive-status-tool.js:46-72|tools/legacy/meta-state-refresh-fingerprint-tool.js:51-75",
+    "tools/legacy/meta-state-check-grounding-tool.js:61-74|tools/legacy/meta-state-derive-status-tool.js:58-72|tools/legacy/meta-state-refresh-fingerprint-tool.js:63-75|tools/legacy/meta-state-relationships-tool.js:73-82",
+    "tools/legacy/meta-state-consistency-check-tool.js:23-36|tools/legacy/meta-state-query-drift-tool.js:30-43",
+    "tools/legacy/meta-state-log-change-tool.js:16-37|tools/legacy/meta-state-refresh-fingerprint-tool.js:20-41",
+    "tools/legacy/meta-state-re-verify-tool.js:22-29|tools/legacy/meta-state-supersede-tool.js:18-25",
+    "tools/legacy/meta-state-re-verify-tool.js:71-84|tools/legacy/meta-state-supersede-tool.js:56-70",
+    "tools/legacy/meta-state-resolve-tool.js:32-43|tools/legacy/meta-state-resolve-tool.js:44-55",
+    "tools/legacy/meta-state-resolve-tool.js:101-118|tools/legacy/meta-state-resolve-tool.js:90-97",
+    "tools/legacy/runtime-state-read-tool.js:7-22|tools/legacy/runtime-state-record-tool.js:7-18"
+  ]
+}

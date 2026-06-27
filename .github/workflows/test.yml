@@ -52,6 +52,30 @@ jobs:
       - name: Run test suite
         run: pnpm test
 
+      - name: Fallow audit (PR gate)
+        if: github.event_name == 'pull_request'
+        run: |
+          cd tools/learning-loop-mastra
+          # Baselines live in the plan dir (committed to git); the local
+          # .fallow/baselines/ cache is gitignored. CI reads from the plan
+          # so the gate works on a fresh checkout.
+          pnpm exec fallow audit \
+            --root . \
+            --gate new-only \
+            --dead-code-baseline ../../plans/260627-2042-phase-e-dead-code-sweep/reports/fallow/dead-code-baseline.json \
+            --health-baseline    ../../plans/260627-2042-phase-e-dead-code-sweep/reports/fallow/health-baseline.json \
+            --dupes-baseline     ../../plans/260627-2042-phase-e-dead-code-sweep/reports/fallow/dupes-baseline.json \
+            --changed-since "${{ github.event.pull_request.base.sha || 'origin/main' }}" \
+            --format sarif \
+            --sarif-file reports/fallow/audit.sarif
+
+      - name: Upload SARIF
+        if: always() && github.event_name == 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tools/learning-loop-mastra/reports/fallow/audit.sarif
+          category: fallow-audit
+
       - name: Upload per-namespace logs on failure
         if: failure()
         uses: actions/upload-artifact@v7

@@ -1,3 +1,19 @@
+// tools/manifest.json — MCP tool registry.
+//
+// JSONC RULES (enforced by the inline shim in 7 consumers; see
+// mastra/server.js:15-19 for the canonical example):
+//   - Only full-line `//` comments are allowed; NO inline `// ...` after code.
+//   - No trailing commas.
+//   - Anything else (block comments, unquoted keys, etc.) will fail the parse.
+//
+// WHY THE PATH REWRITE: entries use the CANONICAL name "tools/X-tool.js"
+// (stable, hand-curated). At server startup, mastra/server.js:26-27 rewrites
+// each path to "../tools/legacy/X-tool.js" (the "legacy MCP wrapper"
+// implementation). This keeps the registry stable while allowing file moves
+// between tools/, tools/legacy/, and future mastra/tools/.
+//
+// Keep entries in sync with dynamicallyLoaded in .fallowrc.json (which
+// fallow needs to credit dynamic imports).
 [
   { "file": "tools/gate-tool.js", "export": "gateCheckTool" },
   { "file": "tools/gate-override-tool.js", "export": "gateOverrideTool" },

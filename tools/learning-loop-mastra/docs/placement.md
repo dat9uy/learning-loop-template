@@ -32,9 +32,9 @@ Adding a role requires an ADR (see §4).
 | `evaluator` | No | `primitive` only | Future thin composers (Phase 3) |
 | `facade` | Yes | All | `meta-state.js`, `gate-logic.js`, `gate-decision-log.js`, `gate-override.js`, `loop-introspect.js`, `inbound-state.js` |
 | `verification` | Yes (on-demand) | `primitive` + `facade` | `check-grounding.js`, `consistency-check.js`, `query-drift.js`, `derive-status.js`, `runtime-agnostic-checklist.js`, `verification-runner.js` |
-| `validator` | No | `primitive` only | (none currently; `record-validation-rules.js` is `helper` due to facade import) |
+| `validator` | No | `primitive` only | (none currently) |
 | `cache` | Yes | Wraps one sibling | `read-registry-cache.js`, `loop-introspect-cache.js` |
-| `helper` | mixed | mixed | `recurrence-tracker.js`, `list-probes.js`, `workflow-registry.js` |
+| `helper` | mixed | mixed | `recurrence-tracker.js`, `workflow-registry.js` |
 
 ## 3. How to add a new core file
 
