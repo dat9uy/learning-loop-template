@@ -74,7 +74,7 @@ jobs:
             --dupes-baseline     ../../plans/260627-2042-phase-e-dead-code-sweep/reports/fallow/dupes-baseline.json \
             --changed-since "${{ github.event.pull_request.base.sha || 'origin/main' }}" \
             --format sarif \
-            --sarif-file reports/fallow/audit.sarif
+            --output-file reports/fallow/audit.sarif
 
       - name: Upload SARIF
         # `if: success()` (not always) — only upload when fallow actually
