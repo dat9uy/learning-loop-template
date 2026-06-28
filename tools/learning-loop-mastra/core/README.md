@@ -63,6 +63,16 @@ When adding new code to `core/`:
 3. Run `fallow dead-code --unused-files --unused-exports` locally; expect
    0 findings for the new file.
 
+## Tool integration checklist
+
+Consult this checklist when wiring a new tool into CI, package scripts, or repo automation. Encoded as the `rule-tool-integration-same-commit-dep` consult-checklist rule (see `meta-state.jsonl`) with a corresponding `PROCESS_HINTS` row in `core/loop-introspect.js`.
+
+1. **Same-commit dependency.** If a workflow adds `pnpm exec <tool>` / `npx <tool>` / `npm run <script>`, the tool MUST be in `devDependencies` (or `dependencies`) in the SAME commit. Verify with `grep '<tool>' package.json` after any `.github/workflows/*.yml` edit. Symptom of skip: CI's `pnpm install --frozen-lockfile` fails with `command not found` on the first PR.
+2. **Baseline flag format.** When wiring `fallow audit`, generate baselines with `fallow <sub> --save-baseline <path>` (audit format: array of `path:export` strings). NEVER `--save-regression-baseline` (regression format: nested objects). The two flags produce INCOMPATIBLE JSON; `fallow audit --*-baseline` fails to parse the regression format.
+3. **Baseline storage.** `fallow` auto-creates `<root>/.fallow/.gitignore: *` that silently gitignores `.fallow/baselines/`. Verify `git ls-files <root>/.fallow/baselines/` returns expected files BEFORE committing. Prefer `plans/<plan-slug>/reports/fallow/` (which inherits the plan's gitignore); if you must keep at `<root>/.fallow/baselines/`, add `!.fallow/baselines/` exception to root `.gitignore`.
+
+Origin findings: `meta-260628T1328Z-commit-6f9402e-...` (item 1), `meta-260628T1328Z-fallow-dead-code-save-regression-baseline-...` (item 2), `meta-260628T1329Z-when-fallow-runs-...` (item 3). All three are already FIXED in commit `9ed520d`; this section exists to prevent recurrence.
+
 ## Soft inversion (Mechanism B)
 
 - **Schemas = validation source.** `core/meta-state.js` exports the canonical Zod schemas. They are the runtime-checked layer.
