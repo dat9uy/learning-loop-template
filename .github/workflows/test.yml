@@ -120,7 +120,7 @@ jobs:
               seen.add(uniq)
               out = pathlib.Path(f"tools/learning-loop-mastra/reports/fallow/audit-{uniq}.sarif")
               out.write_text(json.dumps({**base, "runs": [run]}, indent=2))
-              print(f"run {i} -> {uniq} (rules={len(ids)}, results={len(run.get('results', []))})")
+              print(f"run {i} -> {uniq} (results={len(run.get('results', []))})")
 
           # Remove the original (3-run) SARIF so the legacy upload step can't
           # accidentally find it.
