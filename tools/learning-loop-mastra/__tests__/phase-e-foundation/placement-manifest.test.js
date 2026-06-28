@@ -98,7 +98,12 @@ test("role-layering invariants hold for evaluator and facade files", () => {
   // Allowed import targets per role (local core/ files only; stdlib + npm excluded)
   const ALLOWED = {
     primitive:    ["primitive"],
-    evaluator:    ["primitive"],
+    // Refined 2026-06-28 per plans/260628-2008-phase-e-evaluator-refactor: evaluators
+    // compose primitives + facade functions for state-reading (gate-logic.js,
+    // inbound-state.js). Closed-taxonomy rule (placement.md §4) governs ROLE addition;
+    // this is an import-allow-list refinement for an existing role. Revisit if evaluator
+    // count > 5 OR an evaluator imports > 2 facade files.
+    evaluator:    ["primitive", "facade"],
     facade:       null,  // may import anything
     verification: ["primitive", "facade", "verification"],
     validator:    ["primitive"],

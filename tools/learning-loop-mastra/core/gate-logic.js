@@ -820,3 +820,20 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
   }
   return { decision: "ok" };
 }
+
+// ─── Staleness helpers (shared by inbound + bash evaluators) ───
+
+export const STALENESS_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Filter observations whose updated_at is older than STALENESS_THRESHOLD_MS,
+ * or missing entirely. Returns the stale subset.
+ */
+export function findStaleObservations(observations, now) {
+  return observations.filter((obs) => {
+    if (!obs.updated_at) return true;
+    const updated = new Date(obs.updated_at).getTime();
+    if (isNaN(updated)) return true;
+    return (now - updated) > STALENESS_THRESHOLD_MS;
+  });
+}

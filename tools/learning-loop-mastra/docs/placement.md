@@ -29,7 +29,7 @@ Adding a role requires an ADR (see §4).
 | Role | I/O? | Imports | Examples |
 |---|---|---|---|
 | `primitive` | No | Only stdlib + sibling primitives | `slugify.js`, `strict-boolean-guard.js`, `envelope-stripper.js`, `file-readers.js`, `surfaces.js` |
-| `evaluator` | No | `primitive` only | Future thin composers (Phase 3) |
+| `evaluator` | No | `primitive` + `facade` | Phase 3 evaluators (3 files) compose primitives from `gate-logic.js` and facade functions from `inbound-state.js` for state-reading. Import-allow-list refinement (not a new role); revisit if evaluator count > 5. |
 | `facade` | Yes | All | `meta-state.js`, `gate-logic.js`, `gate-decision-log.js`, `gate-override.js`, `loop-introspect.js`, `inbound-state.js` |
 | `verification` | Yes (on-demand) | `primitive` + `facade` | `check-grounding.js`, `consistency-check.js`, `query-drift.js`, `derive-status.js`, `runtime-agnostic-checklist.js`, `verification-runner.js` |
 | `validator` | No | `primitive` only | (none currently) |

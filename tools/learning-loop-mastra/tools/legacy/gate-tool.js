@@ -1,14 +1,8 @@
 import { z } from "zod";
-import {
-  matchConstraintPattern,
-  checkObservationExists,
-  makeGateDecision,
-  evaluateWritePath,
-} from "../../core/gate-logic.js";
-import { readRuntimeObservations } from "../../core/file-readers.js";
+import { evaluateBashGate } from "../../core/evaluate-bash-gate.js";
+import { evaluateWriteGate } from "../../core/evaluate-write-gate.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { checkObservationStaleness } from "../../core/inbound-state.js";
 
 export const gateCheckTool = {
   name: "gate_check",
@@ -21,47 +15,17 @@ export const gateCheckTool = {
   handler: async ({ command, file_path }) => {
     const root = resolveRoot();
 
-    const observations = readRuntimeObservations(root);
-
-    let constraintDecision = null;
-    let constraintMatch = null;
-    if (command) {
-      constraintMatch = matchConstraintPattern(command);
-      const observationStatus = checkObservationExists(constraintMatch, observations);
-
-      constraintDecision = makeGateDecision(constraintMatch, observationStatus);
-
-      if (constraintMatch) {
-        const staleness = checkObservationStaleness(observations, root);
-        if (staleness.stale) {
-          constraintDecision.inbound_gate = true;
-          if (constraintDecision.decision === "ok") {
-            constraintDecision.decision = "escalate";
-            constraintDecision.reason = staleness.reason;
-            constraintDecision.observation_id = staleness.observation_id;
-          }
-        }
-      }
-    }
-
-    let pathDecision = null;
-    if (file_path) {
-      pathDecision = evaluateWritePath(file_path, observations, (obs) => checkObservationStaleness(obs, root));
-    }
-
     let decision;
-    if (constraintDecision?.hard_block || pathDecision?.hard_block) {
-      decision = constraintDecision?.hard_block ? constraintDecision : pathDecision;
-    } else if (constraintDecision && constraintDecision.decision !== "ok") {
-      decision = constraintDecision;
-    } else if (pathDecision && pathDecision.decision !== "ok") {
-      decision = pathDecision;
+    if (command) {
+      decision = evaluateBashGate({ command, root });
+    } else if (file_path) {
+      decision = evaluateWriteGate({ filePath: file_path, root });
     } else {
-      decision = constraintDecision || pathDecision || { decision: "ok" };
+      decision = { decision: "ok" };
     }
 
     const logCommand = command || file_path || "";
-    console.error(`gate: ${logCommand} → ${decision.decision}${constraintMatch ? ` (${constraintMatch})` : ""}`);
+    console.error(`gate: ${logCommand} → ${decision.decision}`);
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
@@ -69,7 +33,6 @@ export const gateCheckTool = {
       decision: decision.decision,
       command: command || undefined,
       file_path: file_path || undefined,
-      constraint_type: constraintMatch,
       ...decision,
     });
 

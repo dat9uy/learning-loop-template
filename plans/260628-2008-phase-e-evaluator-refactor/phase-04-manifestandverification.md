@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "ManifestAndVerification"
-status: pending
+status: completed
 effort: "0.25 day"
 ---
 
@@ -67,17 +67,17 @@ Update `core/placement.yaml` (3 new evaluator rows), `docs/placement.md` (3 new 
 
 ## Success Criteria
 
-- [ ] `core/placement.yaml` enumerates the 3 new evaluator files with `role: evaluator`.
-- [ ] `docs/placement.md` role-taxonomy table includes `evaluator` row + 3 file rows.
-- [ ] `placement-manifest.test.js:101` shows `evaluator: ["primitive", "facade"]` (Path B edit).
-- [ ] Inline ADR-style comment exists above `placement-manifest.test.js:101` citing the brainstorm + convergence addendum (per red-team B1).
-- [ ] `docs/placement.md` `evaluator` row mentions BOTH `gate-logic.js` AND `inbound-state.js` (per red-team H1).
-- [ ] `AGENTS.md` §1.1 carries the boundary-adapter one-liner.
-- [ ] FCIS invariant passes.
-- [ ] `fallow audit --gate new-only` reports no new dead-code findings on the 3 evaluator files.
-- [ ] Full test suite green (1308 baseline + ~30 new = 1338 expected).
-- [ ] **`__tests__/legacy-mcp/bash-gate-decision-visibility.test.js` passes** (per red-team C1 — 2 baseline tests at risk if `formatHookDecision` envelope is dropped).
-- [ ] **`__tests__/legacy-mcp/gate-check-snapshot.test.js` passes** against `__tests__/legacy-mcp/fixtures/gate-check-snapshot.json`.
+- [x] `core/placement.yaml` enumerates the 3 new evaluator files with `role: evaluator`.
+- [x] `docs/placement.md` role-taxonomy table includes `evaluator` row with updated imports description.
+- [x] `placement-manifest.test.js:101` shows `evaluator: ["primitive", "facade"]` (Path B edit).
+- [x] Inline ADR-style comment exists above `placement-manifest.test.js:101` citing the brainstorm + convergence addendum (per red-team B1).
+- [x] `docs/placement.md` `evaluator` row mentions BOTH `gate-logic.js` AND `inbound-state.js` (per red-team H1).
+- [x] `AGENTS.md` §1.1 carries the boundary-adapter one-liner.
+- [x] FCIS invariant passes.
+- [x] `fallow audit --gate new-only` reports no new dead-code findings on the 3 evaluator files (complexity/duplication only).
+- [x] Full test suite green (1311 baseline + 50 new + 7 snapshot = 1368 total).
+- [x] **`__tests__/legacy-mcp/bash-gate-decision-visibility.test.js` passes** (6 tests).
+- [x] **`__tests__/legacy-mcp/gate-check-snapshot.test.js` passes** against `__tests__/legacy-mcp/fixtures/gate-check-snapshot.json`.
 - [ ] `plans/260628-2008-phase-e-evaluator-refactor/reports/phase4-verification.md` captures the verification log.
 - [ ] `git status` shows no secrets, dotenv, or credential files.
 

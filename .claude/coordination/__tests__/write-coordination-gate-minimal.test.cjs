@@ -208,33 +208,33 @@ describe('write-coordination-gate minimal behavior', () => {
       });
     });
 
-    it('Edit node_modules/** -> exit 0 (not gated)', async () => {
+    it('Edit node_modules/** -> exit 2 (blocked)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'node_modules/foo/bar.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.strictEqual(r.exitCode, 2);
       });
     });
 
-    it('Edit dist/** -> exit 0 (not gated)', async () => {
+    it('Edit dist/** -> exit 2 (blocked)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'dist/bundle.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.strictEqual(r.exitCode, 2);
       });
     });
 
-    it('Edit build/** -> exit 0 (not gated)', async () => {
+    it('Edit build/** -> exit 2 (blocked)', async () => {
       await withTempProject(async (tmpDir) => {
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'build/out.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.strictEqual(r.exitCode, 2);
       });
     });
 

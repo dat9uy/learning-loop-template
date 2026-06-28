@@ -61,6 +61,17 @@ files:
     role: primitive
     summary: SURFACES constant + read/write helpers for multi-surface dirs.
 
+  # === evaluator ===
+  - path: evaluate-write-gate.js
+    role: evaluator
+    summary: Write-gate evaluator — 7-rule cascade + preflight delegation.
+  - path: evaluate-bash-gate.js
+    role: evaluator
+    summary: Bash-gate evaluator — constraint pattern + path-write + promoted-rules combination.
+  - path: evaluate-inbound-gate.js
+    role: evaluator
+    summary: Inbound-gate evaluator — state-change signal + staleness check.
+
   # === cache ===
   - path: loop-introspect-cache.js
     role: cache

@@ -1,0 +1,51 @@
+{
+  "fixtures": [
+    {
+      "fixture_id": "constraint-with-observation",
+      "input": {
+        "command": "pip install vnstock"
+      },
+      "expected_return_json_string": "{\"decision\":\"ok\"}"
+    },
+    {
+      "fixture_id": "constraint-no-observation",
+      "input": {
+        "command": "pip install vnstock"
+      },
+      "expected_return_json_string": "{\"decision\":\"block\",\"reason\":\"Constraint \\\"package-manager\\\" detected. No active observation found. Record an observation before proceeding.\",\"observation_required\":true,\"constraint_type\":\"package-manager\"}"
+    },
+    {
+      "fixture_id": "path-write-records",
+      "input": {
+        "file_path": "records/meta/test.json"
+      },
+      "expected_return_json_string": "{\"decision\":\"block\",\"reason\":\"Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.\",\"file_path\":\"records/meta/test.json\",\"matched_rule\":\"records/**\"}"
+    },
+    {
+      "fixture_id": "product-with-preflight",
+      "input": {
+        "file_path": "product/src/index.ts"
+      },
+      "expected_return_json_string": "{\"decision\":\"ok\"}"
+    },
+    {
+      "fixture_id": "product-no-preflight",
+      "input": {
+        "file_path": "product/src/index.ts"
+      },
+      "expected_return_json_string": "{\"decision\":\"block\",\"reason\":\"Preflight check not completed for surface \\\"product\\\". Use the mark_preflight_complete MCP tool after reviewing the checklist.\",\"surface\":\"product\",\"preflight_checklist\":[\"1. Review the product-build plan for this surface\",\"2. Verify decision records exist in records/product/decisions/\",\"3. Run and review any existing test suites\",\"4. Confirm the change aligns with the approved architecture\",\"5. Verify no schema-breaking changes without migration\",\"6. Call mark_preflight_complete MCP tool for surface \\\"product\\\"\"]}"
+    },
+    {
+      "fixture_id": "safe-command",
+      "input": {
+        "command": "ls -la"
+      },
+      "expected_return_json_string": "{\"decision\":\"ok\"}"
+    },
+    {
+      "fixture_id": "empty-input",
+      "input": {},
+      "expected_return_json_string": "{\"decision\":\"ok\"}"
+    }
+  ]
+}

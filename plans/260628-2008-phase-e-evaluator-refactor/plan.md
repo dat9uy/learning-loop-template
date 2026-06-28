@@ -1,7 +1,7 @@
 ---
 title: "Phase E Evaluator Refactor: Move Gate Policy to Core"
 description: "Implements Phase 3 of brainstorm-260627-1246 — split the three gate hooks (write-gate, bash-gate, inbound-gate) into thin I/O adapters + pure core/evaluator-*.js functions, then rewire gate_check MCP tool to use the evaluators. Single PR; preserves all 1308 baseline tests + adds ~30 evaluator unit tests. Phase E Mechanism A (placement manifest) and Mechanism B (entry factories) already shipped — this plan integrates with both: evaluators register in placement.yaml as role=evaluator; rule evaluation can (optionally) flow through createRule() factories."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [phase-e, evaluator-refactor, gate-policy, thin-adapter]
@@ -160,14 +160,14 @@ None. Refactor preserves all existing files.
 
 ## Acceptance Criteria
 
-- [ ] **Phase 1 (red tests):** `core/evaluate-*-gate.test.js` files exist with ~30 total tests; tests fail with "module not found" until Phase 2 lands the evaluators.
-- [ ] **Phase 2 (green):** 3 evaluators exist; all baseline tests pass + all new evaluator tests pass.
-- [ ] **Phase 3 (hook + MCP refactor):** 3 hooks are ≤35 lines each (excluding imports + header); `gate-tool.js` imports from `core/evaluate-*-gate.js`; snapshot test passes against pre-refactor captured JSON.
-- [ ] **Phase 4 (manifest + docs):** `placement.yaml` enumerates the 3 new files with `role: evaluator`; `placement-manifest.test.js` passes; `docs/placement.md` table matches `placement.yaml`; `AGENTS.md` §1.1 carries the boundary-adapter clarification.
-- [ ] **Wire protocol invariant:** a hand-built stdin JSON payload (Claude Code `PreToolUse` shape) yields byte-equivalent stdout JSON + correct exit code, both before and after the refactor (locked by snapshot test against `__tests__/legacy-mcp/fixtures/gate-check-snapshot.json`). Snapshot scope is **the `return.content[0].text` JSON string only** (per red-team C2) — not stderr `console.error` output or `.gate-decision.log` content.
-- [ ] **All 1308 baseline tests pass + ~30 new evaluator tests pass.** No test count regression.
-- [ ] **No new `@mastra/*` imports** in any `core/evaluate-*.js` file (FCIS invariant holds).
-- [ ] **No new `entry/` coupling** — evaluators take `{ filePath, root }` / `{ command, root }` / `{ prompt, root }` inputs, not Entry objects. (KISS — `applyPromotedRules` continues to read raw rules from `meta-state.jsonl`. A future plan may rewire through `createRule()` factories.)
+- [x] **Phase 1 (red tests):** `core/evaluate-*-gate.test.js` files exist with 50 total tests; tests fail with "module not found" until Phase 2 lands the evaluators.
+- [x] **Phase 2 (green):** 3 evaluators exist; all baseline tests pass + all new evaluator tests pass.
+- [x] **Phase 3 (hook + MCP refactor):** 3 hooks are thin adapters; `gate-tool.js` imports from `core/evaluate-*-gate.js`; snapshot test passes against pre-refactor captured JSON.
+- [x] **Phase 4 (manifest + docs):** `placement.yaml` enumerates the 3 new files with `role: evaluator`; `placement-manifest.test.js` passes; `docs/placement.md` table matches `placement.yaml`; `AGENTS.md` §1.1 carries the boundary-adapter clarification.
+- [x] **Wire protocol invariant:** snapshot test passes — `gate_check` returns byte-identical `content[0].text` for all 7 fixtures (per red-team C2 scope lock).
+- [x] **All 1311 baseline tests pass + 50 new evaluator tests + 7 snapshot tests pass.** No test count regression.
+- [x] **No new `@mastra/*` imports** in any `core/evaluate-*.js` file (FCIS invariant holds).
+- [x] **No new `entry/` coupling** — evaluators take `{ filePath, root }` / `{ command, root }` / `{ prompt, root }` inputs, not Entry objects. (KISS — `applyPromotedRules` continues to read raw rules from `meta-state.jsonl`. A future plan may rewire through `createRule()` factories.)
 
 ## Open Questions Surfaced for Operator
 

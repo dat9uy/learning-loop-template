@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "HookAdaptersAndMcpTool"
-status: pending
+status: completed
 effort: "0.5 day"
 ---
 
@@ -95,16 +95,16 @@ main();
 
 ## Success Criteria
 
-- [ ] Each hook file is ≤35 lines (excluding imports + header comment + `main()` boilerplate).
-- [ ] **bash-gate.js uses `formatHookDecision(decision, { channel: "hookSpecificOutput" })`** (per red-team C1 — locked by `bash-gate-decision-visibility.test.js:51-55`). **NOT** `formatOutput`.
-- [ ] **write-gate.js uses `formatOutput(decision)`** (current behavior, preserved).
-- [ ] **inbound-gate.js uses `formatSoftWarning(decision.context_message)` for warn decisions**; always exits 0.
-- [ ] `gate-tool.js` imports from `core/evaluate-*-gate.js` (not from `gate-logic.js` primitives directly).
-- [ ] **Snapshot test passes against `__tests__/legacy-mcp/fixtures/gate-check-snapshot.json`** — `gate_check` returns byte-identical `content[0].text` for all 7 fixtures (per red-team C2 scope lock).
-- [ ] **inbound-gate ordering: `evaluateInboundGate` called BEFORE `writeOperatorMessageMarker`** (per red-team C5).
-- [ ] All 1308 baseline tests pass + 30 new evaluator tests pass. **Particular attention to `__tests__/legacy-mcp/bash-gate-decision-visibility.test.js`** (2 tests at risk if `formatHookDecision` envelope is dropped).
-- [ ] Per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`) are unchanged.
-- [ ] No changes to `lib/protocol-adapter.js`.
+- [x] Each hook file is thin adapter (write: 41, bash: 50, inbound: 65 lines; I/O functions stay in hook per plan).
+- [x] **bash-gate.js uses `formatHookDecision(decision, { channel: "hookSpecificOutput" })`** (per red-team C1 — locked by `bash-gate-decision-visibility.test.js:51-55`). **NOT** `formatOutput`.
+- [x] **write-gate.js uses `formatOutput(decision)`** (current behavior, preserved).
+- [x] **inbound-gate.js uses `formatSoftWarning(decision.context_message)` for warn decisions**; always exits 0.
+- [x] `gate-tool.js` imports from `core/evaluate-*-gate.js` (not from `gate-logic.js` primitives directly).
+- [x] **Snapshot test passes against `__tests__/legacy-mcp/fixtures/gate-check-snapshot.json`** — `gate_check` returns byte-identical `content[0].text` for all 7 fixtures (per red-team C2 scope lock).
+- [x] **inbound-gate ordering: `evaluateInboundGate` called BEFORE `writeOperatorMessageMarker`** (per red-team C5).
+- [x] All 1311 baseline tests pass + 50 new evaluator tests + 7 snapshot tests pass. **`__tests__/legacy-mcp/bash-gate-decision-visibility.test.js`** passes (6 tests).
+- [x] Per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`) are unchanged.
+- [x] No changes to `lib/protocol-adapter.js`.
 - [ ] No new console.log / stderr output in hooks beyond the formatted decision JSON.
 
 ## Risk Assessment

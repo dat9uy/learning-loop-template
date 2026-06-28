@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Evaluators-TddTests"
-status: pending
+status: completed
 effort: "0.25 day"
 ---
 
@@ -39,11 +39,11 @@ Test files import evaluators from `./evaluate-{name}-gate.js`. Tests assert retu
 
 ## Success Criteria
 
-- [ ] 3 test files exist with the locked import statements (testing against not-yet-created evaluators).
-- [ ] Total ~30 tests covering happy paths + edge cases as listed above.
-- [ ] `pnpm test` (filtered) reports all new tests failing with module-not-found (intended red).
-- [ ] No `@mastra/*` or `node:fs` imports in any test file (pure pattern).
-- [ ] All 1308 baseline tests still pass (new tests don't break existing).
+- [x] 3 test files exist with the locked import statements (testing against not-yet-created evaluators).
+- [x] Total ~50 tests covering happy paths + edge cases as listed above (exceeded ~30 target).
+- [x] `pnpm test` (filtered) reports all new tests failing with module-not-found (intended red).
+- [x] No `@mastra/*` or `node:fs` imports in any test file (pure pattern).
+- [x] All 1311 baseline tests still pass (new tests don't break existing).
 
 ## Risk Assessment
 

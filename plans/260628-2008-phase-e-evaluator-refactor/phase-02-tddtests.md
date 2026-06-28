@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Evaluators-Implementation"
-status: pending
+status: completed
 effort: "0.5 day"
 ---
 
@@ -68,13 +68,13 @@ evaluateInboundGate({ prompt, root })
 
 ## Success Criteria
 
-- [ ] 3 evaluator files exist with the locked signatures matching Phase 1's test imports.
-- [ ] All ~30 Phase-1 tests pass.
-- [ ] All 1308 baseline tests pass (no regression).
-- [ ] FCIS invariant passes (zero `@mastra/*` in new files).
-- [ ] No `node:fs` or `node:path` reads at module top level (pure functions; reads only via `gate-logic.js` primitives).
-- [ ] `evaluatePreflight` named seam is exported from `evaluate-write-gate.js`.
-- [ ] `PATH_WRITE_PATTERNS` and `STATE_CHANGE_PATTERNS` exported from their respective files.
+- [x] 3 evaluator files exist with the locked signatures matching Phase 1's test imports.
+- [x] All 50 Phase-1 tests pass.
+- [x] All 1311 baseline tests pass (no regression).
+- [x] FCIS invariant passes (zero `@mastra/*` in new files).
+- [x] No `node:fs` or `node:path` reads at module top level (pure functions; reads only via `gate-logic.js` primitives).
+- [x] `evaluatePreflight` named seam is exported from `evaluate-write-gate.js`.
+- [x] `PATH_WRITE_PATTERNS` and `STATE_CHANGE_PATTERNS` exported from their respective files.
 
 ## Risk Assessment
 
