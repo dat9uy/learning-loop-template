@@ -59,7 +59,7 @@ plans/260628-1337-fallow-tool-integration-rule-encoding/
 
 meta-state.jsonl
 ├── new rule entry (appended): rule-tool-integration-same-commit-dep
-├── new change-log entry: meta-260628T1337Z-promoted-rule-tool-integration-same-co
+├── new change-log entry (id is timestamp-based; reflects actual creation time, NOT the plan dir name `260628-1337`)
 └── 3 finding entries (lines 203-205): status → resolved, resolution → "Encoded as rule-..."
 
 tools/learning-loop-mastra/

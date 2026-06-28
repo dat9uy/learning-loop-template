@@ -21,11 +21,10 @@
 - `meta_state_promote_rule` hard-codes the description field (line 169); custom descriptions cannot land. Plan Appendix A was updated to reflect this.
 - `meta_state_log_change` has a 60s idempotency cache (verified at meta-state-log-change-tool.js:9, 69-80); retry with identical args silently no-ops. Strategy: vary `reason` on retry.
 - `rule-no-orphaned-evidence` is a global `resolution-evidence-required` consult gate; findings with `mechanism_check: true` must have a current `code_fingerprint` before resolution. Call `meta_state_refresh_fingerprint` first.
-- `meta_state_promote_rule` writes `entry_kind: "finding"` instead of `"rule"` — the entry must be corrected via `sed` on `meta-state.jsonl` after promotion. The write gate blocks Edit/Write but not shell `sed`.
 - The `rule-no-orphaned-evidence` gate checks ALL entries with `mechanism_check: true`, not just the target finding. Pre-existing stale fingerprints block resolution of unrelated findings. Refresh orphans first.
 
 **Followups:**
 - Consider a CI advisory for `.github/workflows/*.yml` edits that reminds reviewers about the same-commit dependency check (would require a separate loop-design entry; out of scope here).
 - The 4 PROCESS_HINTS rows are now load-bearing for 4 different rule enforcements; consider adding an invariant test that asserts every active consult-checklist rule has a matching PROCESS_HINTS row.
 - `loop-design-encode-n-anti-pattern-findings-as-consult-checklist-rule` filed in Phase 4 captures the meta-pattern. Future plans encoding N findings as a single rule should consult this design.
-- The `meta_state_promote_rule` tool bug (writes `entry_kind: finding` instead of `rule`) should be reported and fixed upstream.
+- (Resolved 2026-06-28 as false positive — see finding meta-260628T1515Z resolution.) The earlier-drafted lesson "`meta_state_promote_rule` writes `entry_kind: finding` instead of `rule`; sed workaround required" was incorrect. The tool at meta-state-promote-rule-tool.js:162 explicitly sets `entry_kind: "rule"`, the comment at line 159 documents this contract, and the existing test at __tests__/legacy-mcp/meta-state-promote-rule-rule-entry.test.js:23 (`writes entry_kind=rule entry (not mutated finding)`) passes. No sed was applied during this ship; the actual entry at meta-state.jsonl:207 has `entry_kind: "rule"` as shipped. Verify tool behavior with the existing test before filing tool-bug findings.

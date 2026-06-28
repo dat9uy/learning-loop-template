@@ -11,6 +11,11 @@ const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 const RULE_ID = "rule-tool-integration-same-commit-dep";
 
 await test("rule-tool-integration-same-commit-dep loads through schema and is a no-op for applyPromotedRules", () => {
+  // The description below is a custom value chosen for clarity in this test;
+  // it does NOT match the auto-generated form that meta_state_promote_rule
+  // would produce (which uses `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`).
+  // This test exercises the schema independently of the tool, so any string
+  // that satisfies metaStateRuleEntrySchema#description is acceptable here.
   const rule = metaStateRuleEntrySchema.parse({
     entry_kind: "rule",
     id: RULE_ID,
@@ -55,8 +60,9 @@ await test("hook mirror LOCAL_PROCESS_HINTS contains the same rule id (cold-sess
   // cold-session-discoverability.test.cjs:366-386 enforces strictEqual, but that
   // test runs in isolation. This test asserts the literal id is present in the
   // hook mirror array, giving a faster signal if the mirror is forgotten.
-  // cwd is tools/learning-loop-mastra/ when running via namespaced test runner;
-  // .factory/ lives at the project root. Use __dirname-relative path for portability.
+  // PROJECT_ROOT is resolved via import.meta.dirname + 4 levels up so the path
+  // is stable across runner cwd variations (namespaced runner sets cwd to
+  // tools/learning-loop-mastra/, so a relative ".factory/..." would break).
   const hookSource = readFileSync(join(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"), "utf8");
   assert.ok(
     hookSource.includes(RULE_ID),
