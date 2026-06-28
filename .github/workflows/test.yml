@@ -76,16 +76,77 @@ jobs:
             --format sarif \
             --output-file reports/fallow/audit.sarif
 
-      - name: Upload SARIF
-        # `if: success()` (not always) — only upload when fallow actually
-        # produced the SARIF file. Avoids the "Path does not exist" error
-        # cascade when fallow itself fails. CodeQL Action v3 is deprecated
-        # December 2026; bumped to v4.
+      - name: Split SARIF into per-analyzer files
+        # CodeQL Action v4 enforces "one SARIF run per category per upload".
+        # fallow audit emits a single SARIF file with 3 runs (dead-code,
+        # health, dupes) sharing the same category — v4 rejects that.
+        # Split into per-analyzer files so each can be uploaded under its
+        # own category.
+        if: success() && github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          src = pathlib.Path("tools/learning-loop-mastra/reports/fallow/audit.sarif")
+          data = json.loads(src.read_text())
+          runs = data.get("runs", [])
+          if len(runs) <= 1:
+              # Nothing to split; leave the original file in place for the
+              # first upload step.
+              print(f"Single run in SARIF ({len(runs)}); no split needed.")
+              raise SystemExit(0)
+
+          # Classify each run by its results (most reliable signal — these are
+          # the findings fallow actually emitted) and fall back to rule IDs.
+          # `code-duplication` is the unique dupes marker; `duplicate-export`
+          # is a dead-code rule, so we must match the full substring.
+          def classify(run):
+              result_ids = {r.get("ruleId", "").lower() for r in run.get("results", [])}
+              rule_ids = {r.get("id", "").lower() for r in run.get("tool", {}).get("driver", {}).get("rules", [])}
+              for ids in (result_ids, rule_ids):
+                  if any("code-duplication" in i for i in ids):
+                      return "fallow-dupes"
+                  if any(i for i in ids if "complex" in i or "crap" in i or "refactor" in i):
+                      return "fallow-health"
+                  if any(i for i in ids if "unused" in i or "unreachable" in i or "private-type" in i or "circular" in i or "duplicate-export" in i):
+                      return "fallow-deadcode"
+              return None
+
+          base = {k: data[k] for k in ("$schema", "version") if k in data}
+          seen = set()
+          for i, run in enumerate(runs):
+              cat = classify(run) or f"fallow-{i}"
+              # If classification collides (rare), append the run index.
+              uniq = cat if cat not in seen else f"{cat}-{i}"
+              seen.add(uniq)
+              out = pathlib.Path(f"tools/learning-loop-mastra/reports/fallow/audit-{uniq}.sarif")
+              out.write_text(json.dumps({**base, "runs": [run]}, indent=2))
+              print(f"run {i} -> {uniq} (rules={len(ids)}, results={len(run.get('results', []))})")
+
+          # Remove the original (3-run) SARIF so the legacy upload step can't
+          # accidentally find it.
+          src.unlink()
+          PY
+
+      - name: Upload SARIF (fallow-deadcode)
         if: success() && github.event_name == 'pull_request'
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: tools/learning-loop-mastra/reports/fallow/audit.sarif
-          category: fallow-audit
+          sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-deadcode.sarif
+          category: fallow-deadcode
+
+      - name: Upload SARIF (fallow-health)
+        if: success() && github.event_name == 'pull_request'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-health.sarif
+          category: fallow-health
+
+      - name: Upload SARIF (fallow-dupes)
+        if: success() && github.event_name == 'pull_request'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-dupes.sarif
+          category: fallow-dupes
 
       - name: Upload per-namespace logs on failure
         if: failure()
