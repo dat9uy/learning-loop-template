@@ -113,21 +113,37 @@ jobs:
 
           base = {k: data[k] for k in ("$schema", "version") if k in data}
           seen = set()
+          written = []
           for i, run in enumerate(runs):
               cat = classify(run) or f"fallow-{i}"
               # If classification collides (rare), append the run index.
               uniq = cat if cat not in seen else f"{cat}-{i}"
               seen.add(uniq)
+
+              # CodeQL requires every result to have at least one location.
+              # fallow's code-duplication findings represent clone GROUPS
+              # across files (not a single line), so they arrive with no
+              # `locations`. Strip those — if a run ends up with zero
+              # locatable results, don't write the file (the corresponding
+              # upload step uses hashFiles() to skip itself).
+              locatable = [r for r in run.get("results", []) if r.get("locations")]
+              if not locatable:
+                  print(f"run {i} -> {uniq}: skipped (no locatable results; "
+                        f"results={len(run.get('results', []))})")
+                  continue
+              pruned = {**run, "results": locatable}
               out = pathlib.Path(f"tools/learning-loop-mastra/reports/fallow/audit-{uniq}.sarif")
-              out.write_text(json.dumps({**base, "runs": [run]}, indent=2))
-              print(f"run {i} -> {uniq} (results={len(run.get('results', []))})")
+              out.write_text(json.dumps({**base, "runs": [pruned]}, indent=2))
+              print(f"run {i} -> {uniq} (locatable_results={len(locatable)}, "
+                    f"dropped={len(run.get('results', [])) - len(locatable)})")
+              written.append(uniq)
 
-          # Remove the original (3-run) SARIF so the legacy upload step can't
-          # accidentally find it.
+          # Remove the original (multi-run) SARIF so the legacy upload step
+          # can't accidentally find it.
           src.unlink()
-          PY
+          print(f"Written: {written}")
 
-      - name: Upload SARIF (fallow-deadcode)
+          - name: Upload SARIF (fallow-deadcode)
         if: success() && github.event_name == 'pull_request'
         uses: github/codeql-action/upload-sarif@v4
         with:
@@ -142,7 +158,11 @@ jobs:
           category: fallow-health
 
       - name: Upload SARIF (fallow-dupes)
-        if: success() && github.event_name == 'pull_request'
+        # `if: hashFiles(...) != ''` skips this step when the Split step
+        # did not write a SARIF file for dupes (which happens when fallow
+        # emits no locatable dupes results, i.e. clone groups without
+        # per-file locations).
+        if: success() && github.event_name == 'pull_request' && hashFiles('tools/learning-loop-mastra/reports/fallow/audit-fallow-dupes.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-dupes.sarif
