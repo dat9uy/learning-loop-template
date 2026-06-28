@@ -144,24 +144,26 @@ jobs:
           print(f"Written: {written}")
 
       - name: Upload SARIF (fallow-deadcode)
-        if: success() && github.event_name == 'pull_request'
+        # hashFiles() gates the step on the SARIF file existing — when
+        # `--gate new-only` filters all results out of a category, the
+        # Split step doesn't write a file, and we don't want CodeQL to
+        # fail with "Path does not exist".
+        if: success() && github.event_name == 'pull_request' && hashFiles('tools/learning-loop-mastra/reports/fallow/audit-fallow-deadcode.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-deadcode.sarif
           category: fallow-deadcode
 
       - name: Upload SARIF (fallow-health)
-        if: success() && github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request' && hashFiles('tools/learning-loop-mastra/reports/fallow/audit-fallow-health.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tools/learning-loop-mastra/reports/fallow/audit-fallow-health.sarif
           category: fallow-health
 
       - name: Upload SARIF (fallow-dupes)
-        # `if: hashFiles(...) != ''` skips this step when the Split step
-        # did not write a SARIF file for dupes (which happens when fallow
-        # emits no locatable dupes results, i.e. clone groups without
-        # per-file locations).
+        # dupes are skipped when their clone-group findings have no
+        # per-file locations (CodeQL requires locations).
         if: success() && github.event_name == 'pull_request' && hashFiles('tools/learning-loop-mastra/reports/fallow/audit-fallow-dupes.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
