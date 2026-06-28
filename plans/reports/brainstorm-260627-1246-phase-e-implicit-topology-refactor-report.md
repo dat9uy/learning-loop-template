@@ -406,6 +406,42 @@ Add `fallow audit` to the PR diff check (fallow's built-in command for diff-awar
 
 **Note:** Phase 3 was originally scheduled before Phase 2. The reordering means Phase 3's evaluators can be written *as* Mechanism B-compatible factories from day 1 (e.g., `evaluateWriteGate` returns an Entry-shaped decision object). But Phase 3 is still its own PR.
 
+### Phase 2.5 ship lessons (post-hoc addendum)
+
+The Phase 2.5 `fallow audit` CI gate shipped in commit 9ed520d, but only the first PR run (`#20`, 2026-06-28) actually exercised it. Five issues surfaced in sequence during that first run, each fixed by a separate commit:
+
+1. **Shallow checkout → fallow can't resolve base SHA** — `actions/checkout@v7` defaults to `fetch-depth: 1`, but `fallow audit --changed-since <base.sha>` needs the base SHA in local git history. Fix: add `fetch-depth: 0`. The pattern is already used by `meta-state-pr-body-advisory.yml:24`; make it the default for any future workflow that uses git-history-aware tools.
+2. **`--sarif-file` is broken in fallow 2.102.0** — verified locally; flag is documented but a no-op. SARIF goes to stdout. Fix: switch to `--output-file`. **Always verify a CLI flag with a local repro before trusting it in CI.**
+3. **CodeQL v4 rejects multi-run SARIF** — fallow emits 3 runs (dead-code, health, dupes) in one file; v4 enforces "one run per category per upload" (changelog 2025-07-21). Fix: split the SARIF with an inline Python step before uploading.
+4. **CodeQL requires `locations` on every result** — fallow's code-duplication findings represent clone GROUPS across files with no per-line location. Fix: filter results without `locations`; gate upload steps on `hashFiles()` so empty categories are silently skipped.
+5. **GitHub's workflow linter is stricter than Python's YAML parser** — over-indented `- name:` lines pass `yaml.safe_load()` but fail GitHub's pre-execution check. Fix: align to 8-space indentation matching sibling steps.
+
+**Pattern for future plans that wire SARIF-emitting tools into CI:**
+
+```
+checkout → tool-emits-sarif → split-by-category (if multi-run) →
+filter-locateless → upload-each-category (each gated by hashFiles)
+```
+
+Tools known to emit multi-run SARIF that need splitting: fallow, semgrep (some configs), snyk (multi-scanner). CodeQL itself doesn't — but a future SARIF combiner could.
+
+**Decision on inline Python (the heredoc in `.github/workflows/test.yml`):**
+
+The split step is ~30 lines of Python embedded in the workflow. Considered extracting to `tools/scripts/split-sarif-by-run.py` + a test fixture. **Kept inline** for now, with a 40-line comment block at the top of the heredoc documenting:
+- What the script does and why (CodeQL v4 one-run-per-category rule)
+- The fallow version it was calibrated against (2.102.0)
+- The classifier heuristic (which rule-id substring maps to which category)
+- What would invalidate it (fallow renames, new categories, CodeQL v5)
+- When to promote it to a file (2nd SARIF-emitting consumer, classifier grows past ~5 patterns, need fixture-based tests)
+
+**Re-evaluation triggers for the next planner** (Phase 3 or any future plan touching `fallow` or `tools/learning-loop-mastra/.github/workflows/`):
+- If fallow 3.x ships with a renamed rule, the `classify()` function in the heredoc needs updating. The comment block is the change site.
+- If a 2nd SARIF-emitting tool (semgrep, snyk) is wired into CI, **promote the split script to `tools/scripts/split-sarif-by-run.py` + add a fixture-based test**. Single-consumer heuristics don't justify a file; two consumers do.
+- If CodeQL v5 relaxes the one-run-per-category rule, the 3 separate upload steps collapse into 1. Revisit then.
+- The drift signal for this heredoc: editing it without an adjacent fallow/CodeQL version bump means the heuristic has drifted from its calibration. The comment block makes the drift visible.
+
+**Net cost of these 5 fixes** (commits 0d5e7a4 through dd95b0c): 5 commits, ~80 lines of workflow YAML added (most of it the Python heredoc + comment block + 3 upload steps). All CI failures resolved; the heredoc is now self-documenting.
+
 ---
 
 ## 6. Relationship to the prior report

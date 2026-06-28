@@ -85,6 +85,50 @@ jobs:
         if: success() && github.event_name == 'pull_request'
         run: |
           python3 - <<'PY'
+          # ============================================================================
+          # SARIF SPLIT — inline heredoc by design (not extracted to a script).
+          #
+          # What this does: CodeQL Action v4 enforces "one SARIF run per category per
+          # upload" (see changelog 2025-07-21). fallow audit emits a single SARIF
+          # file with 3 runs (dead-code, health, dupes) sharing the same category —
+          # v4 rejects that. This script splits the 3-run SARIF into 3 single-run
+          # files and removes results without `locations` (CodeQL also rejects
+          # those). The downstream upload steps are gated by `hashFiles()` so a
+          # category with no locatable results is silently skipped.
+          #
+          # Calibrated to: fallow 2.102.0 (rule-id taxonomy below).
+          #
+          # Why inline (not `tools/scripts/split-sarif-by-run.py`):
+          #   - Single consumer (this workflow); YAGNI says don't extract yet.
+          #   - Workflow YAML is glue code; inline Python for glue is conventional.
+          #   - Extracting would add a new file, path-resolution dance, and a test
+          #     that mocks fallow's SARIF (testing fallow, not our shim).
+          #   - This comment block makes the calibration + drift signals visible
+          #     at the change site.
+          #
+          # When to promote to a file:
+          #   - A 2nd tool (semgrep, snyk, etc.) starts emitting multi-run SARIF.
+          #   - The classifier heuristic below needs test coverage against a
+          #     captured fixture (likely with fallow 3.x).
+          #   - The classifier grows past ~5 categories and inline readability
+          #     collapses.
+          #
+          # What would invalidate this script (in priority order):
+          #   1. fallow renames rule IDs — `classify()` below encodes the taxonomy:
+          #      "code-duplication" -> dupes (unique marker; "duplicate-export" is
+          #        a dead-code rule, so don't use substring "duplicate")
+          #      "complex" | "crap" | "refactor" -> health
+          #      "unused" | "unreachable" | "private-type" | "circular" |
+          #        "duplicate-export" -> deadcode
+          #      Unknown -> falls back to f"fallow-{i}".
+          #   2. fallow adds a 4th run category — add a new upload step below
+          #      (fallow-<name>) with its own `hashFiles()` gate.
+          #   3. CodeQL v5+ relaxes the one-run-per-category rule — the per-
+          #      category upload steps become unnecessary; collapse to one.
+          #
+          # Drift signal: if you edit the heredoc without an adjacent fallow or
+          # CodeQL version bump, the heuristic has drifted from its calibration.
+          # ============================================================================
           import json, pathlib
           src = pathlib.Path("tools/learning-loop-mastra/reports/fallow/audit.sarif")
           data = json.loads(src.read_text())
