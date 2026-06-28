@@ -24,7 +24,7 @@ Step 1 — Read the capability record:
 - Note: stack, surface, maps[].source only. No verification state here.
 
 Step 2 — List runtime probes for the stack:
-- pnpm list:probes --stack [stack] (or node tools/list-probes/list-probes.js --stack [stack])
+- (REMOVED: `core/list-probes.js` was deleted in the Phase E dead-code sweep — no production consumers)
 - Match probe path to capability domain by directory name.
 
 Step 3 — Read the matched runtime probe:

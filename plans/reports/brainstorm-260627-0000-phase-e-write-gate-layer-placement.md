@@ -1,0 +1,607 @@
+# Brainstorm: Write-Gate Layer Placement
+
+**Status:** ⚠️ **SUPERSEDED** by `brainstorm-260627-1246-phase-e-implicit-topology-refactor-report.md` for planning purposes. This report's Option 2 design (3 evaluators + 3 thin hook adapters) is preserved as Phase 3 of the new report's execution plan. See the new report §5 and §6 for context. Read the new report first; this one is kept for historical reference only.
+
+**Original status (now superseded):** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan deferred to a separate session per operator decision 2026-06-27.
+
+**Triggered by:** operator observation in `/problem-solving` session — "if we have verification logic, do we need the write-gate? Is write-gate runtime-specific or worthy as a step inside workflow?" Also: "our project structure/docs do not reflect the general encapsulation of each layer."
+
+**Date:** 2026-06-27 (post-midnight session)
+**Slug:** phase-e-write-gate-layer-placement
+**Technique applied:** Inversion Exercise + Meta-Pattern Recognition + Simplification Cascades (per `/problem-solving` skill)
+
+---
+
+## The bigger problem we surfaced
+
+While preparing Plan 4 (Mastra Code validation), the assumption that the **write-gate is a runtime hook** came under scrutiny. The user's framing is precise and worth holding onto:
+
+> "If we have verification logic, do we need the write-gate? Is write-gate runtime-specific or worthy as a step inside workflow?"
+
+This question is not about Plan 4 specifically. It applies to the entire learning loop architecture. The current model (with MCP wrapper as a transport layer, hooks as runtime adapters):
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ Runtime (Claude Code / Droid / Mastra Code)                         │
+│   ├── .claude/coordination/hooks/*.cjs (shim files)                  │
+│   └── .mastracode/hooks.json (declarative config)                    │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ MCP stdio (Claude/Droid) | direct programmatic call (Mastra)
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ MCP Server (tools/learning-loop-mastra/mastra/server.js)             │
+│   ← WRAPPER of Core + Mastra shell, exposed via MCP protocol         │
+│   ← Exists because Claude/Droid cannot call Mastra shell directly    │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ internal function calls (in-process)
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ Mastra Shell (mastra/)                                               │
+│   ├── create-loop-*.js (factories)                                   │
+│   ├── workflows/                                                     │
+│   ├── agents/                                                        │
+│   └── tools/                                                         │
+└──────────────────────────┬───────────────────────────────────────────┘
+                           │ imports (in-process)
+                           ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ Core (core/)                                                         │
+│   ├── gate-logic.js         ← pure verification rules                │
+│   ├── meta-state.js         ← pure registry logic                    │
+│   └── ...                                                            │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ hooks/legacy/ (universal hook scripts)                               │
+│   ├── bash-gate.js          ← thin I/O adapter (stdin/stdout JSON)    │
+│   ├── write-gate.js         ← thin I/O adapter                       │
+│   ├── inbound-gate.js       ← thin I/O adapter                       │
+│   └── recurrence-check.js                                            │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+The 3-layer architecture is *partially* reflected here: the hook scripts in `hooks/legacy/` are thin I/O adapters (≈ runtime interface), and the gate logic in `core/gate-logic.js` is the pure function (≈ core). But:
+
+- The 3-layer model from the Phase E scope report (`plans/reports/phase-e-scope-260624-2025-runtime-interface-structure-report.md`) is **Core / Mastra shell / Runtime interface** — not "Core / Hooks / Runtime". The hooks directory is a 4th layer that isn't named in the architecture.
+- The Mastra shell layer is missing from the hook diagram entirely. The Mastra shell is where workflows live; if a workflow has a "verify write" step, the write-gate could be *inside* the workflow instead of *outside* the tool call.
+- The runtime interface layer (per the 5-req contract) includes hooks as Requirement #1. But the 5-req contract doesn't articulate *where the hook logic comes from* or *why it's at the runtime layer and not in core or shell*.
+- **The MCP server (`tools/learning-loop-mastra/mastra/server.js`) is NOT a separate layer** — it is a transport/wrapper that exposes Core + Mastra shell via the MCP protocol. It belongs at the boundary between runtime and shell, not as a 4th architectural layer.
+
+## The MCP wrapper's role (per operator clarification)
+
+**To be explicit:** the MCP server is the **wrapper of Core + Mastra shell**, exposed via the MCP protocol so external runtimes can consume the shell's tools. It is NOT a separate architectural layer — it is a transport/protocol adapter at the boundary.
+
+**Why the MCP wrapper exists:**
+
+1. **Runtime constraint:** Claude Code and Droid CLI **cannot call Mastra shell directly**. They are not Node.js processes running the same runtime; they communicate with the shell via protocols (MCP, hooks, settings files). The MCP server is the bridge that translates MCP protocol calls into Mastra shell tool/workflow invocations.
+
+2. **Safety / encapsulation:** We **do not want Claude Code (or any runtime) to execute Core directly**. If a runtime could import `core/meta-state.js` and call its functions, an LLM agent could:
+   - Bypass workflow step ordering
+   - Skip verification gates
+   - Mutate state in ways the workflow didn't authorize
+   - "Make mistakes and not follow the workflow/loop logic" (per operator framing)
+
+   The MCP wrapper forces all callers to go through the **proper protocol surface** (MCP tool definitions, server-mediated invocations). Each tool exposed via MCP is a discrete, named operation with a defined input/output contract. The runtime cannot reach into Core's internals.
+
+**What this means for Plan 4 (Mastra Code):**
+
+- **Claude Code / Droid:** MUST go through the MCP wrapper. The wrapper is mandatory.
+- **Mastra Code:** CAN go through the MCP wrapper (CLI/script-invokes-our-server) OR can call Mastra shell directly (programmatic integration via `createMastraCode({ tools, subagents })`).
+- **Programmatic integration is SAFE because** Mastra Code's `createMastraCode()` returns a Harness that calls our tools/workflows through Mastra's framework primitives. The agent still goes through the workflow — there's no way for the agent to "skip" a workflow step any more than it could via MCP. The MCP protocol is the safety boundary for runtimes that CAN'T integrate directly; for runtimes that CAN integrate directly, the framework primitives are the safety boundary.
+
+**Implication for the write-gate placement question (per operator framing):**
+
+- The MCP wrapper is the **runtime-shell boundary** (encapsulation mechanism for safety).
+- The write-gate hook is the **tool-call boundary** (verification mechanism for write authorization).
+- These are two different boundaries serving two different purposes. The write-gate placement question is independent of the MCP wrapper question — even if the MCP wrapper is replaced by direct programmatic integration (Mastra Code case), the write-gate hook may still be needed for built-in tool writes (e.g., Mastra Code's `edit_file`).
+
+**Diagram update — the 4 actual layers / boundaries:**
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ Layer 1: Runtime (Claude Code / Droid / Mastra Code)                   │
+│   - User-facing interface, agent loop, tool calling                    │
+│   - Hooks fire here (PreToolUse, UserPromptSubmit, SessionStart)       │
+│   - Built-in tools (Write, Edit, edit_file, execute_command)           │
+└────────────────────────────────────────────────────────────────────────┘
+                │                       │                       │
+       MCP stdio │              Hook stdin/stdout JSON          │ Programmatic
+                │                       │                       │ (Mastra only)
+                ▼                       ▼                       ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Layer 2: Boundary Adapters                                            │
+│   - MCP Server: wraps Core+Shell, exposes via MCP protocol             │
+│   - hooks/legacy/: thin I/O adapters, call into Core                   │
+│   - (For Mastra Code programmatic: NO MCP; tools imported directly)    │
+└────────────────────────────────────────────────────────────────────────┘
+                │
+                ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Layer 3: Mastra Shell (mastra/)                                        │
+│   - create-loop-{tool,workflow,agent}.js: factories                    │
+│   - workflows/, agents/, tools/                                        │
+│   - Enforces step ordering, agent discipline                          │
+└────────────────────────────────────────────────────────────────────────┘
+                │
+                ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ Layer 4: Core (core/) — pure functional                               │
+│   - gate-logic.js: pure verification                                   │
+│   - meta-state.js: pure registry logic                                 │
+│   - Zero Mastra imports (FCIS invariant)                              │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**The 3-layer architecture from the Phase E scope report (Core / Mastra shell / Runtime interface) is preserved if we re-interpret "Runtime interface" as "Boundary Adapters" (Layer 2).** The hooks directory + MCP server are both boundary adapters. This is consistent with the 3-layer model — the documentation just needs to make "Runtime interface = boundary adapters" explicit.
+
+**The clarification makes the write-gate question sharper:**
+
+The write-gate is currently a **boundary adapter** (hooks/legacy/write-gate.js). Per the user's question: "is it runtime-specific or a step inside workflow?" — the answer is now clearer:
+
+- The hook IS runtime-specific (different config per runtime: shim files vs declarative JSON)
+- The workflow step would be a SHELL-layer concern (inside Mastra shell, inside the workflow definition)
+- These are at DIFFERENT layers (Layer 2 vs Layer 3)
+
+**The placement decision is fundamentally a layer decision.** This makes the question more important and more architectural, not less.
+
+## Two valid placements for the write-gate
+
+## Two valid placements for the write-gate
+
+### Placement A: Runtime hook (current model)
+
+```
+Tool call → Runtime hook fires → core/gate-logic.js verifies → block/allow → tool executes
+```
+
+- **Where it lives:** `hooks/legacy/write-gate.js` (runtime-specific I/O adapter) + `core/gate-logic.js` (verification)
+- **Enforced at:** PreToolUse hook (runtime-level event)
+- **Catches:** ALL writes from BUILT-IN runtime tools (Claude Code Write, Mastra Code edit_file) AND from any MCP server tool
+- **Trade-off:** Runtime-specific config (each runtime needs its own hook config). Defense-in-depth (catches writes that bypass workflows).
+
+### Placement B: Workflow step (alternative)
+
+```
+Tool call → enters workflow → workflow step "verify write" → core/gate-logic.js verifies → block/allow → next step
+```
+
+- **Where it lives:** as a step in `tools/learning-loop-mastra/mastra/workflows/*.js` (Mastra shell)
+- **Enforced at:** workflow execution time (Mastra-level event)
+- **Catches:** Writes that go through our workflows (i.e., the normal path)
+- **Trade-off:** Doesn't catch writes from BUILT-IN tools. More visible (in workflow definition). Composes with other steps.
+
+### Placement C: Hybrid (defense in depth)
+
+Both A and B active. The hook catches abnormal writes; the workflow step is the normal path.
+
+- **Where it lives:** hook in `hooks/legacy/` + workflow step in `mastra/workflows/`
+- **Enforced at:** both layers
+- **Trade-off:** More complex; risk of double-blocking (confusing error); need to keep in sync.
+
+### Placement D: Tool-level guard
+
+Each tool that writes (e.g., `meta_state_report`) calls the gate internally before executing.
+
+- **Where it lives:** inside each tool's `execute()` function
+- **Enforced at:** tool execution time
+- **Trade-off:** Each tool must remember to call the gate. Easy to forget. Doesn't catch BUILT-IN tool writes.
+
+## What we know (from existing code)
+
+- `tools/learning-loop-mastra/core/gate-logic.js` is the source of truth for verification rules
+- `tools/learning-loop-mastra/hooks/legacy/write-gate.js` is a thin I/O adapter (reads JSON, calls gate-logic, writes decision)
+- The 5-req contract's Requirement #1 is "hook shim set" — currently satisfied by Claude Code / Droid shim files
+- The contract validator checks for the shim files, not the gate-logic.js file
+
+## What we don't know (open questions)
+
+1. **What does the Mastra workflow primitive look like for our tools?** Can a workflow step call our core logic and return a block/allow decision? (Likely yes, but unverified.)
+2. **What is the "default" write path for Mastra Code?** Does the agent call our tools (which are workflows) or does it use the built-in edit_file tool? If the former, workflow-step gates work. If the latter, we need the hook.
+3. **Is there a "guard middleware" pattern in Mastra?** The framework may support per-tool guards (e.g., `beforeExecute` hooks on individual tools). This would be Placement D without the forgetting risk.
+4. **What does the Phase E scope report's "3-layer architecture" actually look like in the code?** The report diagrams Core / Mastra shell / Runtime interface, but the actual code has Core / Mastra shell / Hooks / Runtime — 4 layers. Is this a documentation gap or a real architectural issue?
+5. **What does "verification logic" mean in this context?** The user said "if we have verification logic, do we need the write-gate?" — what verification logic exists? Tests? Schema validation? Fingerprinting? The write-gate's job may overlap with these.
+
+## What needs to be explored in the next session
+
+### Exploration 1: Map the actual code organization to the 3-layer architecture
+
+- List every file in `tools/learning-loop-mastra/{core,mastra,hooks/legacy,interface}/`
+- Classify each file as: Core (pure logic), Mastra shell (framework wrapper), Runtime interface (config + adapter), or NEW (4th layer)
+- Identify files that don't fit cleanly into 3 layers
+- Identify files where the layer is ambiguous
+- Produce a "code → layer" map
+
+### Exploration 2: Trace the write-gate's call paths
+
+- For Claude Code: which tools trigger write-gate? (Write, Edit, MultiEdit, NotebookEdit?)
+- For Droid: which tools trigger write-gate? (same as Claude Code?)
+- For Mastra Code: which tools would trigger write-gate? (built-in edit_file? Our tool factories? MCP tools?)
+- Document the FULL call graph: tool → hook → gate-logic → decision → tool
+- Identify which placements (A/B/C/D) cover which call paths
+
+### Exploration 3: Identify the "verification logic" the user referenced
+
+- What verification exists today? (meta_state_check_grounding, runtime-agnostic-checklist, schema validation, test suites?)
+- Which verification runs WHERE? (Core? Shell? Runtime hook?)
+- Is there duplication between the write-gate and other verification?
+- Could the write-gate be REPLACED by a combination of existing verification?
+
+### Exploration 4: Survey Mastra framework primitives for gate placement
+
+- Does Mastra support tool-level `beforeExecute` hooks? (Placement D via framework)
+- Does Mastra support workflow-level step types like "verify and continue"? (Placement B)
+- Does Mastra support per-mode permission policies? (alternative model)
+- Does Mastra's `HarnessConfig` have a hook integration point we're missing?
+- Document all framework primitives relevant to gate placement
+
+### Exploration 5: Survey other runtimes (for the runtime-specific question)
+
+- Does Claude Code support workflow-level gates? (Not really — Claude Code doesn't have a workflow concept like Mastra does)
+- Does Droid support workflow-level gates? (TBD)
+- Does Mastra Code support workflow-level gates? (Yes — Mastra workflows are a thing)
+- This asymmetry means the "placement" decision may be RUNTIME-SPECIFIC, not universal
+- Document per-runtime gate placement options
+
+### Exploration 6: Test the "step inside workflow" hypothesis
+
+- Sketch what a workflow with a "verify write" step would look like
+- What are the step types? (function, agent, tool-call, conditional)
+- Can a step return "block" and abort the workflow?
+- Can the write-gate be a reusable step that any workflow can include?
+- Compare to the current hook model: complexity, audit trail, composability
+
+## Specific questions to pose in the next session
+
+1. **The 3-layer architecture has 4 layers in the code (Core, Mastra shell, Hooks, Runtime). Is the "Hooks" layer a bug, a feature, or a documentation gap?**
+2. **Is the write-gate's job to enforce policy, or is it to catch errors? If it's error-catching, could it be replaced by tool-level validation?**
+3. **The user said "verification logic" — what does this mean concretely? Can we enumerate every verification that exists and see if any duplicate the write-gate?**
+4. **If we move the write-gate to a workflow step, what happens to BUILT-IN tool writes (Claude Code Write, Mastra Code edit_file)? Are they acceptable, or do we need the hook for those?**
+5. **Is the runtime hook layer (hooks/legacy/) the right name for what it does? Or should it be called something else (e.g., "adapters", "shims", "transports")?**
+6. **If we adopt the hybrid (Placement C), what's the contract between the hook and the workflow step? Do they use the same gate-logic.js? Who wins if they disagree?**
+
+## Implications for the 3-layer architecture docs
+
+The Phase E scope report (`plans/reports/phase-e-scope-260624-2025-runtime-interface-structure-report.md`) defines 3 layers. The actual code has 4. Three options:
+
+1. **Update the scope report** to include a 4th "hooks/adapters" layer. This makes the docs match reality.
+2. **Reorganize the code** to fit 3 layers. Move `hooks/legacy/` content into `interface/` (runtime interface) or `core/` (pure logic).
+3. **Reframe the 3 layers** so the hooks fit naturally. E.g., "Runtime interface = the runtime-specific config + adapters, including hooks." This is closer to option 1 but keeps the 3-layer count.
+
+Recommend **option 1 or 3** — the code organization is correct (separate thin adapters from pure logic), the docs just need to reflect it.
+
+## Why this is a real architectural question (not a documentation issue)
+
+The hook layer was introduced because the loop needed to integrate with Claude Code's hook system. The hooks were an ADAPTER to a runtime-specific protocol. Over time, the hooks accumulated verification logic that arguably belongs in Core. The current state is a hybrid: verification logic split between hooks/legacy/ (I/O + some logic) and core/gate-logic.js (pure logic).
+
+The question "is the write-gate runtime-specific or a workflow step?" is asking: should the verification be:
+- **Adapter-pattern:** the runtime has a hook; the hook calls core; the core decides
+- **Workflow-pattern:** the workflow has a step; the step calls core; the core decides
+- **Middleware-pattern:** the core has a wrapper; every write call goes through the wrapper
+
+The first two are structurally identical (thin adapter calling core); the third is fundamentally different (core owns the gating).
+
+The user's intuition may be: "we have core-level verification already (gate-logic.js, schema validation, fingerprints). The hook layer is just plumbing. Could we eliminate the plumbing and have core own the gating entirely?"
+
+## What this brainstorm is NOT
+
+- This is NOT a decision document. We are NOT committing to a placement yet.
+- This is NOT a critique of the existing code. The current architecture works; we're asking if it can be improved.
+- This is NOT a Plan 4 blocker. Plan 4 (Mastra Code validation) can proceed with the current hook model and we can revisit the question later.
+
+## What this brainstorm IS
+
+- A structured framing of a real architectural question
+- A list of specific explorations to run in the next session
+- A pre-read for anyone joining the next `/problem-solving` session
+- An open question that may surface a 4th layer in the 3-layer architecture
+
+## References
+
+- Phase E scope report (3-layer architecture): `plans/reports/phase-e-scope-260624-2025-runtime-interface-structure-report.md`
+- Plan 4 prep research (Mastra Code): `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-report.md`
+- Harness class research: `plans/reports/research-260626-2314-phase-e-plan-4-harness-class-report.md`
+- 5-req interface contract: `tools/learning-loop-mastra/interface/CONTRACT.md`
+- Core gate logic: `tools/learning-loop-mastra/core/gate-logic.js`
+- Universal hook scripts: `tools/learning-loop-mastra/hooks/legacy/{bash,write,inbound}-gate.js`
+- Claude Code hook shims: `.claude/coordination/hooks/*.cjs`
+- Mastra Code hook config (planned): `.mastracode/hooks.json`
+
+## Next session agenda suggestion
+
+1. Run Exploration 1 (code → layer map). Output: a table showing which files belong to which layer.
+2. Run Exploration 2 (write-gate call paths). Output: a call graph per runtime.
+3. Run Exploration 3 (verification logic inventory). Output: a list of every verification + where it lives + whether it duplicates the write-gate.
+4. Based on 1-3, decide:
+   - Is the 3-layer architecture a documentation gap (4th layer needed)?
+   - Is the write-gate a runtime hook, a workflow step, a middleware, or all three?
+   - What's the contract between placements (if hybrid)?
+5. Author a follow-up plan (if needed): `plans/<timestamp>-layer-placement-rationalization/` to reconcile code + docs.
+
+## Open questions for the operator
+
+1. **What "verification logic" did you have in mind when you said "if we have verification logic, do we need the write-gate"?** This is the key input for the next session.
+2. **Is the 4th layer (hooks) intentional, or did it grow accidentally?** If intentional, the docs need to acknowledge it. If accidental, we should consider merging.
+3. **Is the runtime hook model a "phase 1" design that's outlived its usefulness, or is it the right long-term model?** If phase 1, what's the phase 2 design?
+
+---
+
+# Convergence Addendum (2026-06-27 session continuation)
+
+**Status:** CONVERGED on Option 2 (refactor hooks into thin adapters, move logic to core). Plan to follow in a separate session.
+
+This addendum captures the scout results, verification landscape evaluation, and locked design produced in the follow-up session. The open questions above are resolved; the design below is the agreed direction.
+
+## Scout findings (relevant context confirmed by code reading)
+
+- **3-layer architecture is well-defined in code and docs.** Core (`tools/learning-loop-mastra/core/`, 28+ files, zero `@mastra/*` imports verified) / Mastra shell (`mastra/`, 5 factory files + server.js + 11 workflows + 4 agents) / Runtime interface (`interface/`, 4 docs including CONTRACT.md + contract.js).
+- **A 4th layer exists in the filesystem but is unnamed in the 3-layer model:** `hooks/legacy/` (3 universal gate scripts + `lib/protocol-adapter.js`) plus per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`, 4 files each). Shim files are ~12-line `execFileSync` delegates; universal scripts hold the policy logic.
+- **The write-gate is the thickest of the three gates.** `hooks/legacy/write-gate.js` = 187 lines with 7 distinct block rules (records, runtime-state.jsonl, meta-state.jsonl, schemas, build artifacts, preflight markers, product/**) + promoted-rule application + preflight marker check. `bash-gate.js` = 148 lines. `inbound-gate.js` = 128 lines. The write-gate has accumulated the most logic.
+- **Mastra `createStep` workflows CAN return blocked decisions.** `mastra/create-loop-workflow.js` shows steps are `execute` handlers returning objects. A `verify-write` step is structurally identical to the existing `plan-probe` or `plan-steps` steps.
+- **`gate_check` MCP tool already exists** (`tools/legacy/gate-tool.js`) and imports the same `core/gate-logic.js` primitives. The hook (Placement A) and the MCP tool (Placement D-adjacent) share logic but are not the same code path — duplication of *coverage* but not of *logic*.
+
+## Verification landscape (the "full verification landscape" evaluation)
+
+The loop has 6+ distinct verification surfaces. None duplicate the write-gate's job — they validate different things:
+
+| Verification | Lives at | What it validates | Duplicates write-gate? |
+|---|---|---|---|
+| **Write-gate** (path policy) | Hook layer → moves to core | "What paths can be written, by what tool, with what authorization" | — (this is the policy) |
+| **Bash-gate** (constraint policy) | Hook layer → moves to core | "What commands can run, with what observation" | No — different scope |
+| **Inbound-gate** (context policy) | Hook layer → moves to core | "What operator messages warrant context injection" | No — soft-only |
+| `record-validation-rules.js` | Core | Schema validity of record content | No — validates content, not path |
+| `check-grounding.js` | Core | SHA-256 fingerprints of evidence_code_ref | No — validates evidence, not writes |
+| `runtime-agnostic-checklist.js` | Core | 6-item feature audit | No — validates features on demand |
+| `inbound-state.js` (staleness) | Core | Staleness of observations | No — used by hooks, not replacement |
+| `consistency-check.js` + `query-drift.js` | Core | Registry hygiene | No — validates registry, not writes |
+| `gate_check` MCP tool | Mastra shell | Lets agents pre-check (Placement D-adjacent) | No — advisory; safety net when hook forgotten |
+
+**Conclusion:** the write-gate is unique — it enforces a *path policy* that none of the other verifications cover. Refactoring does not enable removal.
+
+## The 4 placements (evaluated)
+
+| Placement | Catches built-in tool writes? | Per-runtime cost | Safety posture |
+|---|---|---|---|
+| **A. Runtime hook (current)** | YES | 4 shim files × 2 surfaces + `.mastracode/hooks.json` adapter | Strongest — fires on every tool call |
+| **B. Workflow step** | NO — only MCP-mediated writes | None | Weakest — relies on agent using workflow |
+| **C. Hybrid (A+B)** | YES | Same as A + workflow step | Double-blocking risk; needs shared "authorized" token (does not exist today) |
+| **D. Tool-level guard (via `gate_check`)** | NO — opt-in only | None | Fragile — agent can forget; safety net for Placement A |
+
+**Placement A is the right model. The question is not "should we use the hook?" but "is the hook doing too much?"** Per the scout, the answer is yes — it has accumulated path-policy + session-policy + I/O translation, when the runtime-adapter role should only include the last.
+
+## Resolved open questions
+
+| # | Original question | Resolution |
+|---|---|---|
+| 1 | What "verification logic" did you have in mind? | The 6 verifications don't duplicate the write-gate. No replacement. Refactor reorganizes; it doesn't remove. |
+| 2 | Is the 4th layer (hooks) intentional or accidental? | Intentional but misnamed. Hooks are *boundary adapters* (runtime-specific I/O transport), not a 4th layer. Reinterpret "Runtime interface" to include both MCP server and universal hooks. AGENTS.md §1.1 needs a one-line clarification. |
+| 3 | Is the hook model phase 1 or long-term? | Long-term. The hook is the *safety boundary* that fires on every tool call regardless of agent memory. MCP `gate_check` is advisory. Both have a role. |
+
+## Locked design — Option 2 (refactor hooks into thin adapters, move logic to core)
+
+### File-level changes
+
+**3 NEW core files** (pure logic, zero `@mastra/*`, fully testable):
+
+```
+core/
+├── evaluate-write-gate.js    ← NEW
+│   ├── evaluateWriteGate({ filePath, root }) → { decision, reason, ... }
+│   └── evaluatePreflight({ filePath, root }) → { decision, reason, ... }   (named seam)
+├── evaluate-bash-gate.js     ← NEW
+│   ├── evaluateBashGate({ command, root }) → { decision, reason, ... }
+│   └── PATH_WRITE_PATTERNS   (moved from bash-gate.js lines 35-47)
+└── evaluate-inbound-gate.js  ← NEW
+    ├── evaluateInboundGate({ prompt, root }) → { decision, reason, ... }
+    └── STATE_CHANGE_PATTERNS (moved from inbound-gate.js lines 24-36)
+```
+
+Each evaluator imports primitives from `core/gate-logic.js` (which stays as the primitive library — `globMatch`, `inferSurface`, `readPreflightMarker`, `matchConstraintPattern`, `evaluateWritePath`, `loadPromotedRules`, `applyPromotedRules` — all unchanged).
+
+**3 refactored hook files** (thin I/O wrappers, ~30 lines each):
+
+```
+hooks/legacy/
+├── write-gate.js    ← parse stdin → evaluateWriteGate → formatOutput → exit 0/2
+├── bash-gate.js     ← parse stdin → evaluateBashGate → formatOutput → exit 0/2
+└── inbound-gate.js  ← parse stdin → evaluateInboundGate → formatOutput → exit 0
+```
+
+The hooks import `parseInput` / `formatOutput` / `exitCode` / `extractFilePath` / `extractCommand` / `extractPrompt` from `lib/protocol-adapter.js` (unchanged) and call the new evaluator functions.
+
+### Design choices locked in this session
+
+| Question | Choice | Why |
+|---|---|---|
+| Preflight check placement | Keep in write-gate evaluator; factor as `evaluatePreflight()` | Moving to a workflow step regresses built-in tool safety (Write/Edit to product/** no longer blocked). Named seam keeps the door open for future relaxation. |
+| Module structure | Three separate files (one per gate) | Matches existing core/ pattern (one concern per file: `check-grounding.js`, `consistency-check.js`, `query-drift.js`). gate-logic.js stays a primitive library, not pushed past 1000 LoC. |
+| Hook layer existence | Keep — it is runtime-specific transport | Hook is the *automatic* safety boundary; MCP `gate_check` is *advisory*. Different roles; both needed. Folding them removes the forcing function. |
+
+### Behavior guarantees
+
+- Wire protocol unchanged: stdin JSON, stdout JSON, exit code 0/2.
+- Existing 1189 tests must pass without modification.
+- `gate_check` MCP tool (`tools/legacy/gate-tool.js`) gets updated to import from the new evaluators — same API for callers, same code path internally.
+- Per-runtime shim files (`.claude/coordination/hooks/*.cjs`, `.factory/coordination/hooks/*.cjs`) are unchanged.
+- Mastra Code Plan 4 work (`.mastracode/hooks.json`) is independent and unaffected.
+
+### What this gives us
+
+- Hooks become true transport adapters — no policy logic in them.
+- Core owns the gating policy in named, testable functions.
+- The 3-layer architecture is preserved: hooks are part of "Runtime interface = boundary adapters" exactly as the Phase E scope report intended. AGENTS.md §1.1 needs a one-line clarification only.
+- The "should the write-gate be a workflow step" question is settled: NO, because the hook layer is the safety boundary that fires on every tool call. Workflow-step gates are advisory.
+
+### Remaining design seams (explicit, not hidden)
+
+- `evaluatePreflight` is a separate named function — if we ever want to relax the rule ("workflow can write product/** without the marker if it explicitly authorizes"), the seam is one file edit.
+- The `PATH_WRITE_PATTERNS` and `STATE_CHANGE_PATTERNS` regex lists are data, exported from their evaluator file — easy to find, easy to test, easy to add new patterns.
+- Each evaluator is independently testable without spawning a subprocess — a 5-10x speedup for the gate test suite.
+
+### Effort estimate
+
+- 3 new core files (~150 LoC total, mostly moved from hooks)
+- 3 refactored hook files (~90 LoC total, down from ~460 LoC combined)
+- 3 new test files (one per evaluator, ~30 tests total)
+- 1 doc clarification (AGENTS.md §1.1 one-liner)
+- **Total: 1-2 days, single PR**
+
+## What this addendum is NOT
+
+- Not a plan. The plan to ship this design will be authored in a separate session (per operator decision 2026-06-27: "Update the report only — plan later").
+- Not a critique of the existing code. The current architecture works; this is reorganization, not replacement.
+- Not a Plan 4 blocker. Mastra Code validation (Plan 4) can proceed with the current hook model in parallel.
+
+---
+
+# Discussion Addendum (2026-06-27 continued) — implicit topology
+
+**Status:** OPEN. Discussion draft for the next round. Not a plan.
+
+**Triggered by:** operator pushback — "the solution is kind of ad-hoc … there is no way to make sure that in the future, the agent could make the correct choice … the current way of managing core/ is kind of add more and more function file without any coherence."
+
+**Technique applied:** Meta-Pattern Recognition + Simplification Cascades (continuation of the same techniques used in the convergence addendum).
+
+## The unifier: implicit vs explicit topology
+
+Both concerns reduce to the same root cause: **the system's topology is implicit — held in developers' heads, not in the code.**
+
+- **Concern 1 (placement):** When a future agent adds a rule, the agent must decide *which layer, which file, which pattern* (hardcoded vs promoted, regex vs glob, consult-checklist). Today that decision lives in operator history (this report's addendum, prior plans), not in any machine-consultable artifact. The convergence addendum moved specific logic; it did not install the *mechanism* that guides the next move.
+
+- **Concern 2 (entry coherence):** `meta-state.js` defines four entry kinds as Zod schemas (`metaStateFindingEntrySchema`, `metaStateRuleEntrySchema`, `metaStateChangeEntrySchema`, `metaStateLoopDesignSchema`). Functions that operate on entries — `writeEntry(root, entry)`, `updateEntry(root, id, patch)`, `applyPromotedRules(command, filePath, rules, root)`, `checkResolutionEvidence(rule, root)`, `writePreflightMarker(surface, coordDir)` — take field names and root paths, not Entry objects. The schemas are the closest thing to a domain model, but they are passive: they validate, they do not own lifecycle, they do not compose with each other.
+
+Same problem, two scales. The convergence addendum's "thin adapter in shell, policy in core, registry in meta-state" pattern is correct *for the rules it moved*, but it doesn't encode the rule that produced it.
+
+## What "explicit topology" would look like
+
+### Mechanism A — placement decision tree (for Concern 1)
+
+A single source-of-truth artifact an agent can consult before adding logic. Candidates:
+
+- **Doc-only:** `docs/code-standards.md` §"Where to put new logic" with a decision tree (input: a one-line description of the logic; output: layer + file).
+- **Code-level:** `core/placement.js` exporting `place({input_kind, has_io, needs_runtime, mutates_registry}) → {layer, file_pattern, rationale}` — callable from agent prompts via the MCP tool surface.
+- **Test-enforced:** `__tests__/phase-e-foundation/fcis-invariant.test.js` already enforces "core has no `@mastra/*`". Extend with a per-file `placement` annotation that the test cross-checks: "if you import `node:fs` AND import `@mastra/*`, the placement test fails with a pointer to the decision tree."
+
+The doc-only version is the cheapest. The test-enforced version is the one that future-proofs the system against the same drift that produced `hooks/legacy/` accumulating policy logic.
+
+A sketch of the decision tree itself:
+
+```
+1. Does it mutate the registry (meta-state.jsonl, runtime-state.jsonl)?
+   → Yes: core/meta-state.js (CRUD) or core/{gate-decision-log,runtime-state}.js
+   → No: continue.
+
+2. Does it parse/transform/match data with NO I/O and NO Mastra imports?
+   → Yes: core/ (single-file per concern, matches existing pattern)
+   → No: continue.
+
+3. Does it wrap a Mastra primitive (tool, workflow, agent, harness)?
+   → Yes: mastra/create-loop-*.js or mastra/{workflows,agents,tools}/
+   → No: continue.
+
+4. Does it translate between a runtime's hook protocol and our internal API?
+   → Yes: hooks/legacy/<gate>.js (universal) + .claude|.factory/coordination/hooks/*.cjs (shim)
+   → No: continue.
+
+5. Is it an MCP tool that exposes a core function?
+   → Yes: tools/legacy/<tool>.js (existing pattern) — not in mastra/ because it is legacy substrate.
+```
+
+This is the rule that produced the convergence addendum's file list. Encoding it makes the rule surviving the session.
+
+### Mechanism B — Entry domain model (for Concern 2)
+
+Convert the four Zod schemas into factories that return **typed Entry values with methods**. Sketch:
+
+```js
+// meta-state.js (proposed additions, NOT a replacement of the schemas)
+export function createFinding(data) {
+  const parsed = metaStateFindingEntrySchema.parse(data);
+  return Object.freeze({
+    kind: 'finding',
+    data: parsed,
+    isActive()      { return parsed.status === 'active'; },
+    isStale()       { return parsed.status === 'stale'; },
+    isBlocking()    { return parsed.severity === 'escalate' && (parsed.status === 'active' || parsed.status === 'reported'); },
+    promote({ rule_id, operator, ...ruleProps }) { /* returns createRule(...) */ },
+    resolve({ by, note }) { /* returns new frozen Finding with resolved status */ },
+    supersedeBy(changeLogId) { /* returns new frozen Finding with status=superseded */ },
+    supersedes(otherFindingId) { /* returns boolean */ },
+  });
+}
+
+export function createRule(data) {
+  const parsed = metaStateRuleEntrySchema.parse(data);
+  return Object.freeze({
+    kind: 'rule',
+    data: parsed,
+    isActive()           { return parsed.status === 'active'; },
+    matches(command, filePath) { /* encapsulates applyPromotedRules's per-rule logic */ },
+    appliesTo(root)      { /* encapsulates projectHasLearningLoopMcp scope_predicate */ },
+    isConsultChecklist() { return parsed.pattern_type === 'consult-checklist'; },
+    supersedes(otherRule) { /* returns boolean */ },
+    checkResolutionEvidence(root) { /* encapsulates checkResolutionEvidence */ },
+  });
+}
+
+// createChangeLog, createLoopDesign follow the same shape
+```
+
+**Reconciliation with FCIS:** the *factories* are pure (input → output, no hidden state). The *returned values* are frozen (immutable). The *methods* read from `this.data` only. There is no `this.state` that mutates. This is "class-as-value" / "class-as-tagged-record," not OO-with-state. The pure-function invariant is preserved; what we gain is **explicit composition surface** — `applyPromotedRules(set, command, filePath)` reads naturally because `set` is `Rule[]`, not "a JSONL blob I have to filter first."
+
+**Concrete payoff for the convergence addendum:**
+
+```js
+// hooks/legacy/write-gate.js (after Mechanism B)
+const rules = loadActiveRules(root);                 // returns Rule[] (post factory)
+const promoted = rules.find(r => r.matches(null, relPath));
+if (promoted) return escalate(promoted);
+
+// Today: hooks/legacy/write-gate.js
+const promotedRules = loadPromotedRules(root);       // returns raw objects
+const promotedCheck = applyPromotedRules(null, relPath, promotedRules);
+if (promotedCheck.decision === "escalate") ...
+```
+
+Same wire behavior, but the hook no longer needs to know about `decision` shapes or "what does escalate look like" — it asks the Rule directly.
+
+## What the convergence addendum would look like with both mechanisms in place
+
+| File | Role today | Role after A+B |
+|---|---|---|
+| `core/evaluate-write-gate.js` | Pure evaluator | Pure evaluator — placement test confirms it (no IO, no Mastra import) |
+| `core/placement.js` | n/a | Decision tree — callable from agent prompts |
+| `core/entry/{finding,rule,change-log,loop-design}.js` | n/a | Factory + methods — `meta-state.js` schemas stay, factories wrap them |
+| `hooks/legacy/write-gate.js` | Calls `applyPromotedRules` | Calls `rules.find(r => r.matches(...))` |
+| `core/gate-logic.js` | Holds everything | Holds primitives only (functions stay; `applyPromotedRules` either stays or moves into `core/entry/rule.js` as `Rule.matches`) |
+
+The "primitives" layer (`globMatch`, `inferSurface`, `splitSegments`, `stripMessageFlags`, `isSafeRegexPattern`) stays as a primitive library. The "Entry" layer is new. The "placement" mechanism is new. The convergence addendum's file moves are unchanged.
+
+## Resolving the FCIS tension explicitly
+
+The user's instinct (each entry kind should be a class) clashes with the FCIS invariant if "class" is read as OO-with-mutable-state. The reconciliation is:
+
+- **Class = value type with methods.** The factory is pure; the returned value is frozen; the methods read from `this.data` only.
+- **Pure functions stay pure.** `globMatch(pattern, filePath)` does not become `GlobPattern.matches(filePath)` — primitives are too small to benefit from wrapping.
+- **The boundary lives between "data we operate on" and "data we expose."** Entry factories expose the domain. Primitives expose raw utilities. The decision rule: *if the function is the public API of an Entry kind, it belongs on the Entry; if it's a primitive used by 3+ Entry kinds, it stays in the primitive library.*
+
+This is the same boundary FCIS already draws at the directory level (core/ vs mastra/). Mechanism B just enforces it at the Entry-kind level.
+
+## Open questions for the operator
+
+1. **Class-as-value vs full OO.** Is the "frozen factory + methods on `this.data`" sketch acceptable, or do you want a richer OO model (e.g., `Entry` base class with subclass overrides, lifecycle methods that mutate)? The former preserves FCIS; the latter breaks it.
+2. **Mechanism A: doc-only or test-enforced?** A placement decision tree is cheap to write; a placement test is more durable. Which one matches the "future agent gets it right" bar?
+3. **Mechanism B scope.** All four entry kinds or just the ones actively operated on (Finding + Rule, which the convergence addendum and `applyPromotedRules` touch)? ChangeLog and LoopDesign are written but rarely composed.
+4. **Refactor vs parallel.** Should Mechanism A+B ship in the same plan as the convergence addendum (Option 2), or in a follow-up plan? Shipping together means a larger PR but a coherent system; follow-up means two smaller PRs but a window where the topology is partially explicit.
+5. **Naming.** If we adopt Mechanism B, do we keep the per-kind schemas as the canonical source (`createFinding` is a thin wrapper) or invert (schemas become derived from the factories' `.schema()` accessor)? The current code has 9 consumers of `metaStateEntrySchema`'s `.shape`; flipping the source is non-trivial.
+
+## What this discussion IS and IS NOT
+
+**IS:**
+- A framing of "the topology needs to be explicit at two scales — placement and domain."
+- A sketch of two concrete mechanisms (decision tree + Entry factories) that would let a future agent navigate the system without operator history.
+- A continuation of the convergence addendum's techniques (Meta-Pattern Recognition + Simplification Cascades).
+
+**IS NOT:**
+- A plan. No file moves are committed.
+- A rejection of Option 2. The convergence addendum's three evaluators are still the right shape; Mechanism A+B sits *above* them and *alongside* them.
+- A critique of FCIS. FCIS is preserved; what changes is the *domain modeling on top of* FCIS.

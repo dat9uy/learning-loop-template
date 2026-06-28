@@ -12,7 +12,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, createWriteStream } from "node:fs";
+import { mkdirSync, createWriteStream, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 // Active globs (12). Plan 6 adds phase-e-shell-restructure (total 13).
@@ -31,6 +31,7 @@ const GLOBS = [
   { ns: "mcp-tests", pattern: "tools/learning-loop-mastra/__tests__/legacy-mcp/*.test.js" },
   { ns: "mcp-core-tests", pattern: "tools/learning-loop-mastra/core/__tests__/*.test.js" },
   { ns: "mcp-core", pattern: "tools/learning-loop-mastra/core/*.test.js" },
+  { ns: "mcp-entry", pattern: "tools/learning-loop-mastra/core/entry/*.test.js" },
   { ns: "mcp-lib", pattern: "tools/learning-loop-mastra/core/lib/*.test.js" },
   { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
@@ -138,13 +139,42 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   const elapsed = ((Date.now() - start) / 1000).toFixed(2);
 
+  // Aggregate per-namespace test counts by parsing the `ℹ tests N / ℹ pass N / ℹ fail N`
+  // lines that node --test emits into each .test-logs/<ns>.log. node --test reporter
+  // output is stable across Node 18/20/22 (spec reporter format), so the regex is safe.
+  let totalTests = 0;
+  let totalPass = 0;
+  let totalFail = 0;
+  const TESTS_RE = /^ℹ tests (\d+)$/;
+  const PASS_RE = /^ℹ pass (\d+)$/;
+  const FAIL_RE = /^ℹ fail (\d+)$/;
+  for (const { ns } of results) {
+    const logPath = join(LOG_DIR, `${ns}.log`);
+    let log;
+    try {
+      log = readFileSync(logPath, "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of log.split("\n")) {
+      const testsM = TESTS_RE.exec(line);
+      if (testsM) { totalTests += Number(testsM[1]); continue; }
+      const passM = PASS_RE.exec(line);
+      if (passM) { totalPass += Number(passM[1]); continue; }
+      const failM = FAIL_RE.exec(line);
+      if (failM) { totalFail += Number(failM[1]); continue; }
+    }
+  }
+
   if (failed.length === 0) {
-    process.stdout.write(`[suite] ==> pass (${GLOBS.length} globs, ${elapsed}s)\n`);
+    process.stdout.write(
+      `[suite] ==> pass (${GLOBS.length} globs, ${totalTests} tests, ${elapsed}s)\n`,
+    );
     process.exit(0);
   }
 
   process.stdout.write(
-    `[suite] ==> FAIL (${failed.length} globs failed, ${elapsed}s)\n`,
+    `[suite] ==> FAIL (${failed.length} globs failed, ${totalFail} failed tests, ${elapsed}s)\n`,
   );
   process.exit(1);
 }

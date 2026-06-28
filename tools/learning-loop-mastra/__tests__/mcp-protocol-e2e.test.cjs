@@ -59,7 +59,12 @@ async function spawnServer() {
 
 describe("mastra mcp protocol e2e", () => {
   let server;
-  const TOOL_COUNT = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).length;
+  // manifest.json uses JSONC (line-start // comments). See tools/manifest.json
+  // header for the rule; this shim only strips full-line comments.
+  const TOOL_COUNT = JSON.parse(
+    readFileSync(MANIFEST_PATH, "utf8")
+      .replace(/^\s*\/\/.*$/gm, ""),
+  ).length;
 
   before(async () => {
     server = await spawnServer();

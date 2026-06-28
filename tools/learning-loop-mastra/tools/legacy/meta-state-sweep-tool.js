@@ -2,6 +2,7 @@ import { z } from "zod";
 import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "../../core/meta-state.js";
 import { buildRegistrySummary } from "../../core/loop-introspect.js";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
+import { metaStateReportTool } from "./meta-state-report-tool.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -109,6 +110,7 @@ export const metaStateSweepTool = {
     }
     const root = resolveRoot();
     const entries = readRegistry(root);
+    const entryById = new Map(entries.map((e) => [e.id, e]));
     const transitions = [];
 
     for (const entry of entries) {
@@ -123,6 +125,8 @@ export const metaStateSweepTool = {
 
     if (apply) {
       const results = [];
+      const staleReports = [];
+      const sweepTimestamp = new Date().toISOString();
       for (const t of transitions) {
         const isStaleTransition = t.to === "stale";
         const patch = {
@@ -130,7 +134,7 @@ export const metaStateSweepTool = {
           _expected_version: t.expected_version,
         };
         if (!isStaleTransition) {
-          patch.resolved_at = new Date().toISOString();
+          patch.resolved_at = sweepTimestamp;
           patch.resolved_by = "auto-resolve";
         }
         const r = await updateEntry(root, t.id, patch);
@@ -138,17 +142,77 @@ export const metaStateSweepTool = {
           results.push({ id: t.id, applied: false, reason: "version_mismatch" });
         } else if (r === true) {
           results.push({ id: t.id, applied: true, to: t.to });
+
+          // Emit a follow-up report for each newly-stale entry so the
+          // operator gets a structured prompt to triage (re-verify or resolve)
+          // rather than discovering the staleness only via the Phase 6
+          // cold-tier invariant. The follow-up uses mechanism_check=false so
+          // that, when it later ages out, it does not contribute to the
+          // stale-mc threshold itself.
+          if (isStaleTransition) {
+            const original = entryById.get(t.id);
+            const evidenceSuffix = original?.evidence_code_ref
+              ? ` (evidence_code_ref: ${original.evidence_code_ref})`
+              : "";
+            try {
+              const reportResult = await metaStateReportTool.handler({
+                category: "stale-ref",
+                severity: "warning",
+                affected_system: "meta-state-tools",
+                description:
+                  `Entry ${t.id}${evidenceSuffix} aged out and was transitioned ` +
+                  `from active to stale by meta_state_sweep on ${sweepTimestamp} ` +
+                  `because acked_at || created_at exceeded STALENESS_WINDOW_MS. ` +
+                  `Operator action: re-verify via meta_state_re_verify if the ` +
+                  `underlying issue is still relevant, or resolve via ` +
+                  `meta_state_resolve if the fix already shipped.`,
+                reopens: [t.id],
+                mechanism_check: false,
+              });
+              const reported = JSON.parse(reportResult.content[0].text);
+              staleReports.push({ original_id: t.id, follow_up_id: reported.id });
+            } catch (err) {
+              // Sweep must not fail because follow-up emission failed; log
+              // and continue so other stale entries still get triaged.
+              staleReports.push({ original_id: t.id, error: err.message || String(err) });
+            }
+          }
         }
       }
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_sweep", applied: results.length, results });
+      appendGateLog(root, {
+        timestamp: sweepTimestamp,
+        tool: "meta_state_sweep",
+        applied: results.length,
+        results,
+        stale_reports: staleReports,
+      });
 
       // Emit registry-summary.md (Phase 7 of plan 260606)
       const summary = buildRegistrySummary(entries);
       emitRegistrySummaryMd(root, entries, summary);
 
-      return { content: [{ type: "text", text: JSON.stringify({ swept: true, results }) }] };
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ swept: true, results, stale_reports: staleReports }),
+          },
+        ],
+      };
     }
 
-    return { content: [{ type: "text", text: JSON.stringify({ swept: false, dry_run: true, transitions, summary_preview: buildRegistrySummary(entries) }) }] };
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            swept: false,
+            dry_run: true,
+            transitions,
+            summary_preview: buildRegistrySummary(entries),
+          }),
+        },
+      ],
+    };
   },
 };

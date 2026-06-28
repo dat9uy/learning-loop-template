@@ -29,8 +29,11 @@ async function getToolDict() {
   const { fileURLToPath } = await import("node:url");
   const { dirname, join } = await import("node:path");
   const __dirname = dirname(fileURLToPath(import.meta.url));
+  // manifest.json uses JSONC (line-start // comments). See tools/manifest.json
+  // header for the rule; this shim only strips full-line comments.
   const MANIFEST = JSON.parse(
-    readFileSync(join(__dirname, "..", "..", "tools", "manifest.json"), "utf8"),
+    readFileSync(join(__dirname, "..", "..", "tools", "manifest.json"), "utf8")
+      .replace(/^\s*\/\/.*$/gm, ""),
   );
   const PREFIX = "mastra_";
   _toolCache = {};

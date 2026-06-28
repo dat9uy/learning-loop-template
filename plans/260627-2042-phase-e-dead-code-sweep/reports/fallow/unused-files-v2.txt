@@ -1,0 +1,4 @@
+unused-file:__tests__/with-mcp-server.js
+unused-file:core/lib/source-ref-validator.js
+unused-file:core/list-probes.js
+unused-file:core/record-validation-rules.js

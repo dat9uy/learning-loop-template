@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+
+  "entry": [
+    "mastra/server.js",
+    "mastra/create-loop-tool.js",
+    "mastra/create-loop-workflow.js",
+    "mastra/create-loop-agent.js",
+    "mastra/legacy-handler-adapter.js",
+    "mastra/agents/load-agents-manifest.js",
+    "mastra/schemas.js",
+    "mastra/schema-parity.js",
+    "storage.js",
+    "scripts/**"
+  ],
+
+  "dynamicallyLoaded": [
+    "tools/legacy/**/*.js",
+    "hooks/legacy/**/*.js",
+    "hooks/legacy/**/*.cjs",
+    "interface/**/*.js",
+    "__tests__/with-mcp-server.js"
+  ],
+
+  "ignorePatterns": [
+    "__tests__/legacy-mcp/**",
+    "__tests__/fixtures/**",
+    "__tests__/phase-e-foundation/fixtures/**",
+    "tools/legacy/evals/**",
+    "tools/legacy/references/**",
+    "tools/legacy/fixtures/**",
+    "tools/legacy/scripts/**",
+    "scout/legacy/**",
+    "plans/**",
+    "docs/**",
+    "**/*.test.js",
+    "**/*.test.cjs",
+    "**/*.spec.js",
+    "**/*.spec.cjs"
+  ],
+
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "warn",
+    "unused-dependencies": "error",
+    "unused-dev-dependencies": "warn",
+    "circular-dependencies": "error",
+    "boundary-violation": "off",
+    "unresolved-imports": "error",
+    "duplicate-exports": "error",
+    "stale-suppressions": "warn"
+  },
+
+  "audit": {
+    "gate": "new-only"
+  }
+}
