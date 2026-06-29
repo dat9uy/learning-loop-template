@@ -1,10 +1,11 @@
 {
   "clone_groups": [
     "core/inbound-state.js:17-21|tools/legacy/runtime-state-read-tool.js:17-21",
-    "core/loop-introspect.js:189-211|core/loop-introspect.js:218-249",
+    "core/loop-introspect.js:190-212|core/loop-introspect.js:219-250",
     "core/meta-state.js:378-390|core/meta-state.js:680-693",
     "core/meta-state.js:484-488|core/meta-state.js:606-610",
     "core/runtime-agnostic-checklist.js:264-269|core/runtime-agnostic-checklist.js:288-293",
+    "hooks/legacy/bash-gate.js:21-28|hooks/legacy/write-gate.js:20-27",
     "mastra/create-loop-tool.js:29-53|mastra/create-loop-workflow.js:20-31",
     "mastra/create-loop-workflow.js:50-62|mastra/legacy-handler-adapter.js:14-24",
     "tools/legacy/meta-state-check-grounding-tool.js:14-21|tools/legacy/meta-state-derive-status-tool.js:14-21",

@@ -48,15 +48,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install subdir dependencies (fallow audit gate)
-        # fallow's analyzers emit "WARN node_modules directory not found"
-        # in CI when subdir deps aren't materialized. Root pnpm install
-        # hoists via workspace but may not create the symlink that fallow's
-        # import resolution reads at tools/learning-loop-mastra/node_modules/.
-        # This step forces a subdir install before fallow runs so the
-        # analyzers see the same node_modules locally and in CI.
-        run: pnpm --dir tools/learning-loop-mastra install --frozen-lockfile
-
       - name: Seed cold-session sentinel
         # AGENTS.md §8: fresh checkouts must run `pnpm test:cold-session` once
         # to seed .cold-session-sentinel.json. The cold-session-freshness
