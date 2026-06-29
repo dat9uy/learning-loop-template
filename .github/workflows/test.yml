@@ -222,3 +222,18 @@ jobs:
           path: .test-logs/
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Upload fallow SARIF on failure
+        # Preserves reports/fallow/audit.sarif on failure so the next session
+        # can read the actual CI output (rule IDs + locations) instead of
+        # the truncated public log. Without this, diagnosing a future
+        # CI-vs-local divergence requires re-running with debug logs.
+        # Relies on the Split SARIF step being `success()`-gated so its
+        # unlink does not fire on the failure path.
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fallow-sarif
+          path: tools/learning-loop-mastra/reports/fallow/audit.sarif
+          if-no-files-found: ignore
+          retention-days: 7

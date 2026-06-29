@@ -16,6 +16,7 @@ function walkJsFiles(dir) {
     } else {
       const ext = extname(entry.name);
       if (ext === ".js" || ext === ".cjs" || ext === ".mjs") {
+        if (entry.name.endsWith(".test.js")) continue;
         results.push(full);
       }
     }

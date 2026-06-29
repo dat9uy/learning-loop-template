@@ -405,9 +405,13 @@ console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
   const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');
   const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'tools', 'legacy', 'gate-tool.js');
   const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
-  const checksRegardless = gateToolCode.includes('if (constraintMatch)') && gateToolCode.includes('checkObservationStaleness');
+  // After evaluator refactor: gate-tool.js delegates to evaluateBashGate, which
+  // internally calls checkObservationStaleness. Verify the delegation chain exists.
+  const evaluatorPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'evaluate-bash-gate.js');
+  const evaluatorCode = fs.readFileSync(evaluatorPath, 'utf8');
+  const checksRegardless = gateToolCode.includes('evaluateBashGate') && evaluatorCode.includes('checkObservationStaleness');
   assert(hasStalenessCheck, 'MCP server has staleness check function');
-  assert(checksRegardless, 'MCP server checks staleness regardless of decision (F3 fix)');
+  assert(checksRegardless, 'MCP server delegates to evaluator which checks staleness regardless of decision (F3 fix)');
 }
 
 // --- Category 8: Test Isolation ---

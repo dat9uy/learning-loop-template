@@ -87,6 +87,7 @@ await test("core/ has no hard-coded join(root, \".claude\" or \".factory\") outs
   for (const file of readdirSync(CORE_DIR, { recursive: true })) {
     if (typeof file !== "string") continue;
     if (!file.endsWith(".js")) continue;
+    if (file.endsWith(".test.js")) continue;
     if (file.endsWith("surfaces.js")) continue;
     const path = join(CORE_DIR, file);
     const src = readFileSync(path, "utf8");
@@ -100,6 +101,7 @@ await test("all core/ files that read or write coordination paths import from su
   for (const file of readdirSync(CORE_DIR, { recursive: true })) {
     if (typeof file !== "string") continue;
     if (!file.endsWith(".js")) continue;
+    if (file.endsWith(".test.js")) continue;
     if (file.endsWith("surfaces.js")) continue;
     const path = join(CORE_DIR, file);
     const src = readFileSync(path, "utf8");

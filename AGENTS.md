@@ -31,7 +31,11 @@ The meta-surface is implemented across 3 layers:
 - **Runtime interface (contract).** The contract that agent runtimes sign
   to integrate with the loop. Lives at `tools/learning-loop-mastra/interface/`
   (NEW in Phase E.1b, ships in Plan 2). A runtime satisfies the 5 contract
-  requirements (see `interface/CONTRACT.md`).
+  requirements (see `interface/CONTRACT.md`). **Hooks** (universal scripts in
+  `hooks/legacy/` + per-runtime shim files in `.claude/coordination/hooks/`,
+  `.factory/coordination/hooks/`) are boundary adapters within Runtime
+  interface — they translate runtime-specific protocol to/from Core. Policy
+  lives in Core, not in hooks.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
