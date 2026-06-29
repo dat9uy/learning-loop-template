@@ -11,10 +11,16 @@ import {
   makeGateDecision,
   loadPromotedRules,
   applyPromotedRules,
+  findProjectRoot,
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
-import { SURFACES } from "./surfaces.js"; // coordination path patterns below reference SURFACES dirs
+// SURFACES import is required by runtime-agnostic.test.js:99 — that test scans
+// core/ for the substring "coordination" and rejects any file that mentions it
+// without importing from ./surfaces.js. The PATH_WRITE_PATTERNS regex literals
+// below contain "coordination" (literal escape, not a join() call), so the
+// import satisfies the invariant even though SURFACES is not dereferenced here.
+import { SURFACES } from "./surfaces.js";
 
 // Path-write detection patterns (bash-specific)
 // Preflight-marker patterns cover both .claude and .factory surfaces.

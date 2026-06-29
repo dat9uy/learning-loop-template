@@ -35,6 +35,17 @@ test("short prompt (<10 chars) → ok", () => {
   assert.strictEqual(result.decision, "ok");
 });
 
+test("boundary: prompt length === 10 → not short-circuited by length check", () => {
+  // 10-char prompt that triggers a state-change pattern ("I did it!!")
+  // — locks the < 10 boundary so a future change to < 11 doesn't silently regress.
+  const root = makeRoot();
+  writeRuntimeState(root, [
+    { id: "obs-stale", status: "active", affected_system: "vnstock", timestamp: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
+  ]);
+  const result = evaluateInboundGate({ prompt: "I did it!!", root });
+  assert.strictEqual(result.decision, "warn");
+});
+
 test("question prompt → ok", () => {
   const root = makeRoot();
   const result = evaluateInboundGate({ prompt: "did you clear the device?", root });

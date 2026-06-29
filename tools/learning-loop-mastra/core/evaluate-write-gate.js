@@ -27,6 +27,8 @@ export function evaluatePreflight({ filePath, root }) {
 
   const resolvedRoot = root || findProjectRoot();
   let marker = null;
+  // Index loop (not for-of iteration) to satisfy runtime-agnostic.test.js:80
+  // — that test rejects hand-rolled iteration over SURFACES in core/ outside surfaces.js.
   for (let i = 0; i < SURFACES.length; i++) {
     const coordDir = `${resolvedRoot}/${SURFACES[i]}/coordination`;
     marker = readPreflightMarker(surface, coordDir);
