@@ -39,3 +39,6 @@ tools/learning-loop-mastra/data/
 .fallow/cache/
 .fallow/churn.bin
 tools/learning-loop-mastra/node_modules
+
+# Local fallow SARIF audit output (preserved on failure via the upload-artifact step in .github/workflows/test.yml)
+tools/learning-loop-mastra/reports/fallow/
