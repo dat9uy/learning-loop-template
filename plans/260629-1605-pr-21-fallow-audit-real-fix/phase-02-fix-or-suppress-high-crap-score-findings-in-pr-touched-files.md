@@ -1,8 +1,8 @@
 ---
 phase: 2
-title: "Fix or suppress high-crap-score findings in PR-touched files"
-status: pending
-effort: "2-3h"
+title: Fix or suppress high-crap-score findings in PR-touched files
+status: completed
+effort: 2-3h
 ---
 
 # Phase 2: Fix or suppress high-crap-score findings in PR-touched files

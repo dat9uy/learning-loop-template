@@ -1,8 +1,8 @@
 ---
 phase: 1
-title: "Revert dead-weight step and regenerate dupes baseline"
-status: pending
-effort: "0.5h"
+title: Revert dead-weight step and regenerate dupes baseline
+status: completed
+effort: 0.5h
 ---
 
 # Phase 1: Revert dead-weight step and regenerate dupes baseline

@@ -5,7 +5,7 @@ description: >-
   hypothesis from meta-state finding
   meta-260629T1450Z-pr-21-fallow-audit-gate-exits-1-in-ci-jobs-28352732928-28356
   and preserve CI SARIF output for any future drift regardless of root cause.
-status: pending
+status: completed
 priority: P2
 issue: 21
 branch: 260628-2008-phase-e-evaluator-refactor
@@ -43,7 +43,7 @@ Total diff: ~6 lines added, 0 removed, in a single file (`.github/workflows/test
 
 | Phase | Name | Status | TDD Gate |
 |-------|------|--------|----------|
-| 1 | [Add subdir install + SARIF upload-artifact](./phase-01-add-subdir-install-sarif-upload-artifact.md) | Pending | Completed |
+| 1 | [Add subdir install + SARIF upload-artifact](./phase-01-add-subdir-install-sarif-upload-artifact.md) | Completed | Completed |
 
 ## Dependencies
 
@@ -55,9 +55,20 @@ Total diff: ~6 lines added, 0 removed, in a single file (`.github/workflows/test
 
 ## Acceptance Criteria
 
-- [ ] `.github/workflows/test.yml` has exactly 2 new steps and 0 modifications to existing steps
-- [ ] `pnpm test` passes locally with no syntax error in the workflow YAML
-- [ ] PR #21 CI run completes
-- [ ] If gate exits 0: meta-state finding resolved via `meta_state_resolve` with the PR run URL as evidence
-- [ ] If gate exits 1: SARIF artifact downloaded; finding description updated with the rule IDs that fired
-- [ ] The SARIF upload step remains in the workflow regardless of outcome (proves future diagnostic capability)
+- [x] `.github/workflows/test.yml` has exactly 2 new steps and 0 modifications to existing steps — both steps were added in `f524cb4`; subdir install was reverted in `84348cd` after the hypothesis was refuted; SARIF upload-artifact preserved (current state: 1 of 2 steps still in workflow, by design)
+- [x] `pnpm test` passes locally with no syntax error in the workflow YAML — passes per `97c2b5b` commit message
+- [x] PR #21 CI run completes — runs 28352732928, 28356182770, 28358847609 (diagnostic), 28367374832 (final green)
+- [x] Gate exits 1 path: SARIF artifact downloaded; finding description updated with the rule IDs that fired — preserved SARIF at run 28358847609 surfaced 4 high-crap-score + 1 code-duplication findings + stale dupes baseline; meta-state finding resolved with this evidence
+- [x] Meta-state finding `meta-260629T1450Z-...` resolved via `meta_state_resolve` with the PR run URL as evidence — resolved 2026-06-29T11:07:35Z; resolution note explains the refuted hypothesis + real cause via SARIF data
+- [x] The SARIF upload step remains in the workflow regardless of outcome (proves future diagnostic capability) — preserved at `.github/workflows/test.yml:226-237` (verified 2026-06-29T20:50Z)
+
+## Ship evidence
+
+| Commit | What it shipped | Phase |
+|--------|-----------------|-------|
+| `f524cb4` ci(fallow): diagnose CI-vs-local fallow audit gate divergence | Phase 1: added subdir install step + SARIF upload-artifact step (~6 lines, 1 file) | 1 |
+| `84348cd` ci(fallow): drop dead-weight subdir install + refresh dupes baseline | Refuted hypothesis cleanup: subdir install reverted (pnpm hoisting covers the subdir); SARIF upload-artifact intentionally preserved | 1 (cleanup) |
+
+**Outcome:** the env-drift hypothesis was *refuted* by direct test — pnpm hoisting already materializes the subdir's deps, so the install step ran "Already up to date" with no behavioral effect. The diagnostic's value was preserved in the SARIF upload-artifact step, which captured the actual CI findings (4 high-crap-score + 1 code-duplication + stale dupes baseline) and informed the real-fix plan `260629-1605-pr-21-fallow-audit-real-fix`.
+
+**Status: done — hypothesis tested (refuted); SARIF artifact preserved; meta-state finding resolved with SARIF evidence.**
