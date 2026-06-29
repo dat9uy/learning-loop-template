@@ -24,6 +24,7 @@ import { SURFACES } from "./surfaces.js";
 
 // Path-write detection patterns (bash-specific)
 // Preflight-marker patterns cover both .claude and .factory surfaces.
+// fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
   /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,

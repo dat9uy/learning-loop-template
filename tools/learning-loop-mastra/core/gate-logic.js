@@ -412,52 +412,6 @@ export function inferSurface(filePath) {
   return null;
 }
 
-export function evaluateWritePath(filePath, observations, checkStalenessFn) {
-  if (!filePath || typeof filePath !== "string") {
-    return { decision: "ok" };
-  }
-  const normalized = normalize(filePath.replace(/^\.\//, ""));
-
-  // records/observations/** is blocked unconditionally (Phase A migration)
-  if (globMatch("records/observations/**", normalized)) {
-    return {
-      decision: "block",
-      reason: "records/observations/** is blocked unconditionally (observations migrated to runtime-state.jsonl)",
-      hard_block: true,
-    };
-  }
-
-  // Check all write-path patterns (evidence, index, capabilities) via observations
-  const matchingObs = observations.find((obs) => pathMatchesObservation(obs, normalized));
-  if (matchingObs) {
-    const staleness = checkStalenessFn ? checkStalenessFn([matchingObs]) : { stale: false };
-    if (staleness.stale) {
-      return {
-        decision: "escalate",
-        reason: staleness.reason,
-        observation_id: staleness.observation_id,
-        inbound_gate: true,
-      };
-    }
-    return { decision: "ok" };
-  }
-
-  // If the path matches a known write-path pattern but has no observation → block
-  const knownWritePatterns = Object.values(WRITE_PATH_PATTERNS).flat();
-  for (const pattern of knownWritePatterns) {
-    if (globMatch(pattern, normalized)) {
-      return {
-        decision: "block",
-        observation_required: true,
-        constraint_type: "write-path",
-      };
-    }
-  }
-
-  // Other paths (records/claims/**, docs/**, etc.) → ok
-  return { decision: "ok" };
-}
-
 // ─── Promoted Rules (meta-state as rule registry) ───
 
 /** Whitelist for glob patterns to prevent path traversal. */
@@ -823,7 +777,8 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
 
 // ─── Staleness helpers (shared by inbound + bash evaluators) ───
 
-export const STALENESS_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+// Implementation detail of findStaleObservations below; not exported.
+const STALENESS_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Filter observations whose updated_at is older than STALENESS_THRESHOLD_MS,

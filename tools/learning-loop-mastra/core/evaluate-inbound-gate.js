@@ -10,6 +10,7 @@ import { findProjectRoot, findStaleObservations } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 
 // State-change signal patterns (from hooks/legacy/inbound-gate.js:24-36)
+// fallow-ignore-next-line unused-export
 export const STATE_CHANGE_PATTERNS = [
   /\b(i|we)?\s*(cleared|clear|removed|delete[ds]?|wiped|reset)\s*(the|my|all)?\s*(device|slot|container|sandbox|cache|venv|vnstock)\b/i,
   /\b(i|we)?\s*(registered|created|installed|started|launched|ran|executed|bootstrapped)\b/i,

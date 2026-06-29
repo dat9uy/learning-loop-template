@@ -21,6 +21,7 @@ import { SURFACES } from "./surfaces.js";
  * Named seam for the product/** preflight check (locked by convergence addendum).
  * Returns { decision: "ok" } or { decision: "block", reason, surface?, preflight_checklist? }.
  */
+// fallow-ignore-next-line unused-export
 export function evaluatePreflight({ filePath, root }) {
   const surface = inferSurface(filePath);
   if (!surface) return { decision: "ok" };
