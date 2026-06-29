@@ -48,6 +48,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install subdir dependencies (fallow audit gate)
+        # fallow's analyzers emit "WARN node_modules directory not found"
+        # in CI when subdir deps aren't materialized. Root pnpm install
+        # hoists via workspace but may not create the symlink that fallow's
+        # import resolution reads at tools/learning-loop-mastra/node_modules/.
+        # This step forces a subdir install before fallow runs so the
+        # analyzers see the same node_modules locally and in CI.
+        run: pnpm --dir tools/learning-loop-mastra install --frozen-lockfile
+
       - name: Seed cold-session sentinel
         # AGENTS.md §8: fresh checkouts must run `pnpm test:cold-session` once
         # to seed .cold-session-sentinel.json. The cold-session-freshness
@@ -220,5 +229,20 @@ jobs:
         with:
           name: test-logs
           path: .test-logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload fallow SARIF on failure
+        # Preserves reports/fallow/audit.sarif on failure so the next session
+        # can read the actual CI output (rule IDs + locations) instead of
+        # the truncated public log. Without this, diagnosing a future
+        # CI-vs-local divergence requires re-running with debug logs.
+        # Relies on the Split SARIF step being `success()`-gated so its
+        # unlink does not fire on the failure path.
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fallow-sarif
+          path: tools/learning-loop-mastra/reports/fallow/audit.sarif
           if-no-files-found: ignore
           retention-days: 7
