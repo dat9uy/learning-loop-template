@@ -9,8 +9,8 @@
 import { findProjectRoot, findStaleObservations } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 
-// State-change signal patterns (from hooks/legacy/inbound-gate.js:24-36)
-// fallow-ignore-next-line unused-export
+// State-change signal patterns (from hooks/legacy/inbound-gate.js:24-36).
+// Exported so tests can pin the pattern set; also surfaced via stateChangeDetected().
 export const STATE_CHANGE_PATTERNS = [
   /\b(i|we)?\s*(cleared|clear|removed|delete[ds]?|wiped|reset)\s*(the|my|all)?\s*(device|slot|container|sandbox|cache|venv|vnstock)\b/i,
   /\b(i|we)?\s*(registered|created|installed|started|launched|ran|executed|bootstrapped)\b/i,
@@ -25,7 +25,7 @@ export const STATE_CHANGE_PATTERNS = [
   /\bthe\s+\w+\s+(is|was|has\s+been)\s+(cleared|reset|fixed|ready|running|working|broken|done)\b/i,
 ];
 
-function detectStateChange(prompt) {
+function stateChangeDetected(prompt) {
   if (!prompt || typeof prompt !== "string") return false;
   return STATE_CHANGE_PATTERNS.some((p) => p.test(prompt));
 }
@@ -50,29 +50,31 @@ function buildContextMessage(staleObservations) {
  * Always returns decision "ok" or "warn" (never blocks).
  */
 export function evaluateInboundGate({ prompt, root }) {
-  if (!prompt || typeof prompt !== "string" || prompt.length < 10) {
-    return { decision: "ok" };
-  }
-  if (prompt.endsWith("?")) {
-    return { decision: "ok" };
-  }
-  if (!detectStateChange(prompt)) {
-    return { decision: "ok" };
-  }
+  if (!isWatchablePrompt(prompt)) return { decision: "ok" };
+  return evaluateStateChangeWarning(prompt, root);
+}
 
+function isWatchablePrompt(prompt) {
+  return Boolean(prompt) && typeof prompt === "string" && prompt.length >= 10;
+}
+
+function evaluateStateChangeWarning(prompt, root) {
+  if (!stateChangeDetected(prompt)) return { decision: "ok" };
   const resolvedRoot = root || findProjectRoot();
+  const stale = loadStaleActiveObservations(resolvedRoot);
+  if (!stale) return { decision: "ok" };
+  return warnDecision(stale);
+}
+
+function loadStaleActiveObservations(resolvedRoot) {
   const all = readRuntimeObservations(resolvedRoot);
   const active = all.filter((obs) => obs.status === "active");
-  if (active.length === 0) {
-    return { decision: "ok" };
-  }
+  if (active.length === 0) return null;
+  const stale = findStaleObservations(active, Date.now());
+  return stale.length === 0 ? null : stale;
+}
 
-  const now = Date.now();
-  const stale = findStaleObservations(active, now);
-  if (stale.length === 0) {
-    return { decision: "ok" };
-  }
-
+function warnDecision(stale) {
   return {
     decision: "warn",
     context_message: buildContextMessage(stale),

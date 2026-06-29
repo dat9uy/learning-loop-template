@@ -24,27 +24,31 @@ function main() {
   const stdin = readFileSync(0, "utf8");
   const input = parseInput(stdin);
 
-  const normalizedTool = normalizeToolName(input.tool_name);
-  if (normalizedTool !== "bash") process.exit(0);
-
+  if (normalizeToolName(input.tool_name) !== "bash") process.exit(0);
   const command = extractCommand(input.tool_input);
   if (!command) process.exit(0);
 
   const root = resolveRoot();
   const decision = evaluateBashGate({ command, root });
-
-  if (decision.decision !== "ok") {
-    appendDecisionLog(root, {
-      command_prefix: command,
-      rule_id: decision.rule_id ?? decision.meta_state_id ?? null,
-      decision: decision.decision,
-      reason: decision.reason,
-      matched_pattern: decision.pattern_type ?? decision.constraint_type ?? null,
-      skipped_via_override: false,
-    });
-    console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
-  }
+  emitIfBlocked(decision, command, root);
   process.exit(exitCode(decision));
+}
+
+function emitIfBlocked(decision, command, root) {
+  if (decision.decision === "ok") return;
+  appendDecisionLog(root, buildLogEntry(decision, command));
+  console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
+}
+
+function buildLogEntry(decision, command) {
+  return {
+    command_prefix: command,
+    rule_id: decision.rule_id ?? null,
+    decision: decision.decision,
+    reason: decision.reason,
+    matched_pattern: decision.pattern_type ?? decision.constraint_type ?? null,
+    skipped_via_override: false,
+  };
 }
 
 main();
