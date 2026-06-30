@@ -79,6 +79,8 @@ The plan's open question 2 (relocate baselines out of `plans/`) and open questio
 - Phase 4 test case: assert the `Upload SARIF` step in `test.yml` is the Action's (NOT a `github/codeql-action/upload-sarif@v4` direct invocation) — i.e., the explicit 3 `codeql-action/upload-sarif@v4` calls (current `test.yml:190-216`) are deleted.
 - Phase 5 end-to-end: confirm first PR run shows SARIF in Code Scanning under a single `category: fallow` entry, and the SARIF file contains 3 runs (one per analyzer).
 
+> **2026-06-30 annotation:** D2 remains correct. The PR #22 failure was caused by codeql-action v4's `areAllRunsUnique` validator rejecting runs with identical `tool.driver.{name,version}` metadata (the dupes run was uniquely identified via `automationDetails.id`, but dead-code and health runs collided because `build_audit_sarif` in fallow's `crates/api/src/audit_output.rs` does not set `automationDetails.id` on those runs — see `plans/reports/research-260630-1425-GH-2011-fallow-sarif-internals-audit.md` § Layer 2). This is **orthogonal** to the per-analyzer categories decision. The recovery in `plans/260630-0536-fallow-action-swap-with-sarif-split/` (Option B) patches `automationDetails.id` per run while keeping the single `category: fallow` (D2 stands). Per-analyzer categories are deferred to follow-up F-7 until F-6 (upstream fallow fix) lands.
+
 ---
 
 ## D3 — Baseline path style
