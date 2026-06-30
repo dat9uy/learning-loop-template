@@ -17,5 +17,7 @@ test("contract.js exports validate as named export", async () => {
 test("contract.js exports REQUIREMENT_IDS constant", async () => {
   const mod = await import(CONTRACT_JS);
   assert.ok(Array.isArray(mod.REQUIREMENT_IDS), "expected REQUIREMENT_IDS to be an array");
-  assert.equal(mod.REQUIREMENT_IDS.length, 5, "expected 5 requirement IDs");
+  // Phase E Plan 4: REQUIREMENT_IDS grew 5 → 7 with additive Req #6 (hook-declarative-config)
+  // and Req #7 (settings-no-bypass) for Mastra Code (declarative-hook runtimes).
+  assert.equal(mod.REQUIREMENT_IDS.length, 7, "expected 7 requirement IDs (5 base + Req #6 + Req #7)");
 });

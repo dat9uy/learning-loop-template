@@ -80,6 +80,71 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     `Cold tier collapsed to ${currentBytes} bytes — structural regression suspected`
   );
 
+  // No-orphan invariant (MOVED BEFORE grounding invariant, 2026-06-30):
+  // The orphan check was previously masked by the hash_mismatch grounding
+  // check below — when any finding's evidence_code_ref has drifted, the
+  // grounding assertion throws first and the orphan loop is never reached,
+  // hiding orphan paths (e.g., references to files in OTHER repos like
+  // `crates/api/src/audit_output.rs` from a Fallow audit). Re-ordering so
+  // orphan detection runs first ensures CI surfaces ALL file-existence gaps
+  // before any drift-related failure.
+
+  // No-orphan invariant: every non-terminal finding with evidence_code_ref has a resolvable file.
+  // Skip scout-generated descriptive references (e.g., "file.js:writes via... at line N")
+  // and known probe artifacts (tools/test.js) — these are transient findings whose refs
+  // intentionally describe behavior rather than point to stable code locations.
+  // Plan 260611-1000 removed the 'expired' status; 'stale' is non-terminal.
+  const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded", "archived"]);
+  const findingsWithCodeRef = current.all_findings.filter(
+    (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
+  );
+  for (const finding of findingsWithCodeRef) {
+    const path = resolveEvidencePath(finding.evidence_code_ref);
+    if (!existsSync(path)) {
+      const stripped = stripEvidenceAnchor(finding.evidence_code_ref);
+      // Tighter regex: skip ONLY multi-word descriptive refs (e.g., scout findings
+      // like "file.js:writes via... at line N"). The previous regex /:\s*\w+/
+      // also matched single-token symbol refs like "file.rs:build_audit_sarif",
+      // causing real orphans (paths in OTHER repos) to be silently skipped. The
+      // new regex requires at least one whitespace separator between words,
+      // distinguishing prose from a single function/symbol name.
+      const isDescriptive = /:\s*\w+\s+\w+/.test(stripped);
+      const isProbeArtifact = stripped === "tools/test.js";
+      if (isDescriptive || isProbeArtifact) {
+        continue;
+      }
+    }
+    assert.ok(
+      existsSync(path),
+      `Finding ${finding.id} has orphan evidence_code_ref: ${finding.evidence_code_ref} (resolved to ${path})`
+    );
+  }
+
+  // No-orphan invariant: every change-log with evidence_code_ref has a resolvable file.
+  // Same descriptive-ref skip as for findings. Additionally, change-logs are
+  // immutable historical records — if the cited file moved (e.g., during a
+  // cutover), the change-log cannot be retroactively patched. Skip orphans on
+  // change-logs for the same reason markdown drift is skipped on findings.
+  const allEntries = readRegistry(root);
+  const changeLogsWithCodeRef = allEntries.filter(
+    (e) => e.entry_kind === "change-log" && typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0
+  );
+  for (const cl of changeLogsWithCodeRef) {
+    const path = resolveEvidencePath(cl.evidence_code_ref);
+    if (!existsSync(path)) {
+      const stripped = stripEvidenceAnchor(cl.evidence_code_ref);
+      // Tighter regex: same fix as the findings loop above — only skip multi-word
+      // descriptive refs, not single-token symbol refs that point to non-existent paths.
+      const isDescriptive = /:\s*\w+\s+\w+/.test(stripped);
+      if (isDescriptive) {
+        continue;
+      }
+      // Change-logs are immutable; orphan refs from pre-cutover eras cannot be fixed.
+      // Document this as a known drift class rather than failing the structural invariant.
+      continue;
+    }
+  }
+
   // Grounding invariant: active mechanism_check=true findings should be grounded.
   // Skip self-referential findings whose evidence points to this test file,
   // since editing the test necessarily changes its hash.
@@ -141,53 +206,9 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     );
   }
 
-  // No-orphan invariant: every non-terminal finding with evidence_code_ref has a resolvable file.
-  // Skip scout-generated descriptive references (e.g., "file.js:writes via... at line N")
-  // and known probe artifacts (tools/test.js) — these are transient findings whose refs
-  // intentionally describe behavior rather than point to stable code locations.
-  // Plan 260611-1000 removed the 'expired' status; 'stale' is non-terminal.
-  const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded", "archived"]);
-  const findingsWithCodeRef = current.all_findings.filter(
-    (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
-  );
-  for (const finding of findingsWithCodeRef) {
-    const path = resolveEvidencePath(finding.evidence_code_ref);
-    if (!existsSync(path)) {
-      const stripped = stripEvidenceAnchor(finding.evidence_code_ref);
-      const isDescriptive = /:\s*\w+/.test(stripped);
-      const isProbeArtifact = stripped === "tools/test.js";
-      if (isDescriptive || isProbeArtifact) {
-        continue;
-      }
-    }
-    assert.ok(
-      existsSync(path),
-      `Finding ${finding.id} has orphan evidence_code_ref: ${finding.evidence_code_ref} (resolved to ${path})`
-    );
-  }
-
-  // No-orphan invariant: every change-log with evidence_code_ref has a resolvable file.
-  // Same descriptive-ref skip as for findings. Additionally, change-logs are
-  // immutable historical records — if the cited file moved (e.g., during a
-  // cutover), the change-log cannot be retroactively patched. Skip orphans on
-  // change-logs for the same reason markdown drift is skipped on findings.
-  const allEntries = readRegistry(root);
-  const changeLogsWithCodeRef = allEntries.filter(
-    (e) => e.entry_kind === "change-log" && typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0
-  );
-  for (const cl of changeLogsWithCodeRef) {
-    const path = resolveEvidencePath(cl.evidence_code_ref);
-    if (!existsSync(path)) {
-      const stripped = stripEvidenceAnchor(cl.evidence_code_ref);
-      const isDescriptive = /:\s*\w+/.test(stripped);
-      if (isDescriptive) {
-        continue;
-      }
-      // Change-logs are immutable; orphan refs from pre-cutover eras cannot be fixed.
-      // Document this as a known drift class rather than failing the structural invariant.
-      continue;
-    }
-  }
+  // (No-orphan invariant: MOVED to BEFORE the grounding invariant above so orphan
+  //  detection isn't shadowed by drift failures. See the comment block at the
+  //  top of the test body for the rationale.)
 
   // Active findings subset invariant: active_findings is a strict subset of all_findings
   // with status in {reported, active}

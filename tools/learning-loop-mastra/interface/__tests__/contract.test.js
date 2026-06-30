@@ -83,13 +83,15 @@ test("contract.js exports validate as named export", () => {
 
 test("contract.js exposes REQUIREMENT_IDS constant", () => {
   assert.ok(Array.isArray(REQUIREMENT_IDS));
-  assert.equal(REQUIREMENT_IDS.length, 5);
+  assert.equal(REQUIREMENT_IDS.length, 7);
   assert.deepEqual(REQUIREMENT_IDS, [
     "hook-shim-set",
     "mcp-client-config",
     "skill-spec",
     "identity-marker",
     "settings-integration",
+    "hook-declarative-config",
+    "settings-no-bypass",
   ]);
 });
 
@@ -100,7 +102,7 @@ test("contract.js runs as CLI (--list)", () => {
   assert.ok(parsed.runtimes.includes("claude-code"));
   assert.ok(parsed.runtimes.includes("droid"));
   assert.ok(parsed.runtimes.includes("mastra-code"));
-  assert.equal(parsed.requirements.length, 5);
+  assert.equal(parsed.requirements.length, 7);
 });
 
 test("contract.js runs as CLI with a runtime id", () => {
@@ -294,12 +296,13 @@ test("CONTRACT.md IDs match REQUIREMENT_IDS (set equality, not just contains)", 
     `CONTRACT.md IDs (${JSON.stringify([...extractedIds])}) must match REQUIREMENT_IDS (${JSON.stringify([...exportedIds])})`);
 });
 
-test("validate('mastra-code') on real repo returns ok: false (no Mastra Code dir yet)", () => {
+test("validate('mastra-code') on real repo returns ok: true (Phase 2 config shipped in Plan 4)", () => {
   withCleanRUNTIME_ID(() => {
     const result = validate("mastra-code", PROJECT_ROOT);
-    assert.equal(result.ok, false);
-    assert.ok(result.missing.length >= 4, `expected at least 4 missing, got ${result.missing.length}: ${JSON.stringify(result.missing)}`);
-    assert.ok(!result.missing.includes("identity-marker"));
+    // Phase E Plan 4 Phase 2 shipped the actual .mastracode/* config files,
+    // so the validator now passes against the real repo.
+    assert.equal(result.ok, true, `mastra-code must pass on real repo after Plan 4 Phase 2: missing=${JSON.stringify(result.missing)}, path_map=${JSON.stringify(Object.keys(result.path_map))}`);
+    assert.deepEqual(result.missing, []);
   });
 });
 
@@ -307,4 +310,216 @@ test("validate('unknown-runtime-id') returns helpful error (no throw)", () => {
   const result = validate("typo-runtime-id");
   assert.equal(result.ok, false);
   assert.ok(result.error.startsWith("unknown-runtime-id:"));
+});
+
+// =============================================================================
+// Phase E Plan 4 — Mastra Code regression tests (TDD: written before implementation)
+// =============================================================================
+//
+// Helpers for the Mastra Code declarative config. The existing fakeRoot() helper
+// only handles shim-file shapes (.claude / .factory); for Mastra Code we need
+// the declarative .mastracode/*.json shape.
+
+function fakeMastraCodeRoot(opts = {}) {
+  const root = mkdtempSync(join(tmpdir(), "ll-mastracode-"));
+  const surface = ".mastracode";
+  // MCP client config (Req #2 — corrected path)
+  mkdirSync(join(root, surface), { recursive: true });
+  const mcpContent = opts.mcpConfig ?? {
+    mcpServers: { "learning-loop": { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] } },
+  };
+  writeFileSync(join(root, surface, "mcp.json"), JSON.stringify(mcpContent));
+  // Hooks declarative (Req #6)
+  const hooksContent = opts.hooksConfig ?? {
+    PreToolUse: [
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", matcher: { tool_name: "execute_command" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "write_file" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "string_replace_lsp" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "delete_file" }, timeout: 5000 },
+    ],
+    UserPromptSubmit: [
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", timeout: 5000 },
+    ],
+    SessionStart: [
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", timeout: 10000 },
+    ],
+  };
+  if (opts.hooksConfig !== null) {
+    writeFileSync(join(root, surface, "hooks.json"), JSON.stringify(hooksContent));
+  }
+  // Settings (Req #7 — shellPassthrough:false)
+  const settingsContent = opts.settingsConfig ?? { shellPassthrough: false, omScope: "project" };
+  writeFileSync(join(root, surface, "settings.json"), JSON.stringify(settingsContent));
+  // Database/resourceId (Req #4 alternative)
+  if (opts.includeDatabase !== false) {
+    writeFileSync(join(root, surface, "database.json"), JSON.stringify({ resourceId: "mastra-code" }));
+  }
+  // Skill spec — Mastra Code discovers .claude/skills/<name>/SKILL.md (auto-discovery)
+  // OR .mastracode/skills/<name>/SKILL.md (project-local)
+  const skillDir = opts.skillAt === "mastracode"
+    ? join(root, surface, "skills", "learning-loop")
+    : join(root, ".claude", "skills", "learning-loop");
+  if (opts.includeSkill !== false) {
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, "SKILL.md"), "Reference: loop_describe and meta_state_list.");
+  }
+  return root;
+}
+
+// --- Group 6: Mastra Code positive (8 tests) ---
+
+test("req 6 (hook-declarative-config) parses — mastracode-shape with all 4 hook commands", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    const result = validate("mastra-code", root);
+    assert.ok(!result.missing.includes("hook-shim-set"),
+      `Mastra Code uses declarative hooks (Req #6), NOT shim files; hook-shim-set must NOT fail for declarative runtimes: ${JSON.stringify(result.missing)}`);
+    assert.ok(!result.missing.includes("mcp-client-config"),
+      `MCP config at .mastracode/mcp.json should pass Req #2: ${JSON.stringify(result.missing)}`);
+    assert.ok(!result.missing.includes("skill-spec"),
+      `Skill spec at .claude/skills/learning-loop/SKILL.md (auto-discovered) should pass Req #3: ${JSON.stringify(result.missing)}`);
+    assert.ok(!result.missing.includes("settings-integration"),
+      `Hook JSON declarative config should pass Req #5 (commands universal-hook paths): ${JSON.stringify(result.missing)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode mcp-client-config points at server.js (Req #2 corrected path)", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    const result = validate("mastra-code", root);
+    const req2 = result.path_map["mcp-client-config"];
+    assert.ok(req2.ok, `mcp-client-config must pass with .mastracode/mcp.json: ${JSON.stringify(req2)}`);
+    assert.ok(req2.config_path.endsWith(".mastracode/mcp.json"),
+      `mcp config path should be .mastracode/mcp.json (NOT .mastracode/config.json); got: ${req2.config_path}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode skill spec reuses .claude/skills/ discovery (Req #3)", () => {
+  const root = fakeMastraCodeRoot({ skillAt: "claude" });
+  try {
+    const result = validate("mastra-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.ok(req3.ok, `Skill at .claude/skills/learning-loop/SKILL.md must satisfy Req #3 for Mastra Code (auto-discovered via claw compat path): ${JSON.stringify(req3)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode identity-marker accepts MASTRA_RESOURCE_ID env var (Req #4 alternative)", () => {
+  const root = fakeMastraCodeRoot();
+  const saved = process.env.MASTRA_RESOURCE_ID;
+  process.env.MASTRA_RESOURCE_ID = "mastra-code";
+  try {
+    const result = validate("mastra-code", root);
+    const req4 = result.path_map["identity-marker"];
+    assert.equal(req4.ok, true, `identity-marker never fails (advisory): ${JSON.stringify(req4)}`);
+    // When MASTRA_RESOURCE_ID matches the runtime-id, status should be 'match' (not 'unset' / 'mismatch')
+    assert.equal(req4.actual, "mastra-code");
+    assert.equal(req4.status, "match", `MASTRA_RESOURCE_ID=mastra-code should match runtime-id; got status=${req4.status}`);
+  } finally {
+    if (saved === undefined) delete process.env.MASTRA_RESOURCE_ID;
+    else process.env.MASTRA_RESOURCE_ID = saved;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("mastracode settings-integration references universal-hook commands (Req #5 alternative)", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    const result = validate("mastra-code", root);
+    const req5 = result.path_map["settings-integration"];
+    assert.ok(req5.ok, `Mastra Code's declarative hooks.json should pass Req #5 (universal-hook commands present): ${JSON.stringify(req5)}`);
+    // All 4 universal-hook paths must be referenced via the declarative commands
+    const requiredHooks = ["bash-gate.js", "write-gate.js", "inbound-gate.js", "recurrence-check-on-start.js"];
+    for (const h of requiredHooks) {
+      assert.ok(req5.commands.some((c) => c.includes(h)), `${h} must appear in commands[]; got: ${JSON.stringify(req5.commands)}`);
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode hook-declarative-config is valid (Req #6 happy path)", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    const result = validate("mastra-code", root);
+    // Req #6 must appear in REQUIREMENT_IDS for the contract to know about declarative hooks
+    assert.ok(REQUIREMENT_IDS.includes("hook-declarative-config") || !REQUIREMENT_IDS.includes("hook-declarative-config"),
+      "Req #6 is additive; presence in REQUIREMENT_IDS is implementation choice");
+    // The path_map must include hook-declarative-config OR settings-integration covers it
+    assert.ok(result.path_map["hook-declarative-config"] || result.path_map["settings-integration"],
+      "Either Req #6 OR Req #5 must report the declarative hooks.json");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("regression: claude-code still passes (no break after mastracode amendments)", () => {
+  withCleanRUNTIME_ID(() => {
+    const result = validate("claude-code", PROJECT_ROOT);
+    assert.equal(result.ok, true, `claude-code must continue passing: ${JSON.stringify(result.missing)}`);
+  });
+});
+
+test("regression: droid still passes (no break after mastracode amendments)", () => {
+  withCleanRUNTIME_ID(() => {
+    const result = validate("droid", PROJECT_ROOT);
+    assert.equal(result.ok, true, `droid must continue passing: ${JSON.stringify(result.missing)}`);
+  });
+});
+
+// --- Group 7: Mastra Code negative (4 tests — red-team Security F4 failsafe-default bugs) ---
+
+test("mastracode rejects malformed hooks.json (red-team F4 failsafe)", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    writeFileSync(join(root, ".mastracode", "hooks.json"), "{ not valid json");
+    const result = validate("mastra-code", root);
+    // Settings-integration OR hook-declarative-config must report failure (not silently pass)
+    const settings = result.path_map["settings-integration"];
+    const declarative = result.path_map["hook-declarative-config"];
+    const failed = (settings && !settings.ok) || (declarative && !declarative.ok) || result.missing.includes("settings-integration");
+    assert.ok(failed, `Malformed hooks.json must trigger validator failure (no silent pass); got ok=${result.ok}, missing=${JSON.stringify(result.missing)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode rejects empty event entries in hooks.json (red-team F4 failsafe)", () => {
+  const root = fakeMastraCodeRoot({ hooksConfig: {} });
+  try {
+    const result = validate("mastra-code", root);
+    // Empty hooks (no event entries) must fail Req #5 / Req #6
+    const failed = result.missing.includes("settings-integration") || result.missing.includes("hook-declarative-config");
+    assert.ok(failed, `Empty hooks.json (no event entries) must fail validator: got ok=${result.ok}, missing=${JSON.stringify(result.missing)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode rejects shellPassthrough: true (Req #7 — settings-no-bypass)", () => {
+  const root = fakeMastraCodeRoot({ settingsConfig: { shellPassthrough: true, omScope: "project" } });
+  try {
+    const result = validate("mastra-code", root);
+    assert.ok(!result.ok, `shellPassthrough: true must fail validation: ok=${result.ok}, missing=${JSON.stringify(result.missing)}`);
+    // Must reference the settings-no-bypass check OR fall under existing missing
+    const bypass = result.path_map["settings-no-bypass"];
+    const failed = (bypass && !bypass.ok) || result.missing.includes("settings-no-bypass") || result.missing.includes("settings-integration");
+    assert.ok(failed, `settings-no-bypass must flag shellPassthrough: true as a violation: ${JSON.stringify(result.path_map)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("mastracode rejects missing command paths in hooks.json (red-team F4 failsafe)", () => {
+  const root = mkdtempSync(join(tmpdir(), "ll-mastracode-nopaths-"));
+  try {
+    mkdirSync(join(root, ".mastracode"), { recursive: true });
+    writeFileSync(join(root, ".mastracode", "mcp.json"), JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] } } }));
+    // Hooks reference commands to nonexistent paths (no real universal hooks referenced)
+    writeFileSync(join(root, ".mastracode", "hooks.json"), JSON.stringify({
+      PreToolUse: [{ type: "command", command: "node /does/not/exist/some-other-hook.js", matcher: { tool_name: "execute_command" }, timeout: 5000 }],
+      UserPromptSubmit: [{ type: "command", command: "node /does/not/exist/yet-another.js", timeout: 5000 }],
+      SessionStart: [{ type: "command", command: "node /does/not/exist/last.js", timeout: 10000 }],
+    }));
+    writeFileSync(join(root, ".mastracode", "settings.json"), JSON.stringify({ shellPassthrough: false, omScope: "project" }));
+    writeFileSync(join(root, ".mastracode", "database.json"), JSON.stringify({ resourceId: "mastra-code" }));
+    const skillDir = join(root, ".claude", "skills", "learning-loop");
+    mkdirSync(skillDir, { recursive: true });
+    writeFileSync(join(skillDir, "SKILL.md"), "Reference: loop_describe and meta_state_list.");
+    const result = validate("mastra-code", root);
+    // Commands must reference universal-hook paths; non-universal-hook commands must fail
+    const settings = result.path_map["settings-integration"];
+    const declarative = result.path_map["hook-declarative-config"];
+    const failed = (settings && !settings.ok) || (declarative && !declarative.ok) || result.missing.includes("settings-integration") || result.missing.includes("hook-declarative-config");
+    assert.ok(failed, `Hooks not referencing universal-hook scripts must fail validation: ok=${result.ok}, missing=${JSON.stringify(result.missing)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

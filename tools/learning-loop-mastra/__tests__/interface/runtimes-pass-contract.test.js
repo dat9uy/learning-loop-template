@@ -22,18 +22,19 @@ test("validate('droid') on real repo returns ok: true", () => {
   assert.ok(result.notes.includes("identity-marker-not-adopted"));
 });
 
-test("validate('mastra-code') on real repo returns ok: false (no Mastra Code dir yet)", () => {
+test("validate('mastra-code') on real repo returns ok: true (Phase E Plan 4 shipped .mastracode/)", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("mastra-code", PROJECT_ROOT);
-  assert.equal(result.ok, false);
-  assert.ok(result.missing.length >= 4);
-  assert.ok(!result.missing.includes("identity-marker"), "identity-marker should be advisory (not in missing)");
+  // Phase E Plan 4 Phase 2 shipped .mastracode/{mcp,hooks,settings,database}.json;
+  // the contract validator now passes against the real repo.
+  assert.equal(result.ok, true, `mastra-code must pass on real repo after Plan 4: missing=${JSON.stringify(result.missing)}`);
+  assert.deepEqual(result.missing, []);
 });
 
-test("path_map includes all 5 requirement entries for claude-code", () => {
+test("path_map includes all 7 requirement entries for claude-code", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("claude-code", PROJECT_ROOT);
-  for (const id of ["hook-shim-set", "mcp-client-config", "skill-spec", "identity-marker", "settings-integration"]) {
+  for (const id of ["hook-shim-set", "mcp-client-config", "skill-spec", "identity-marker", "settings-integration", "hook-declarative-config", "settings-no-bypass"]) {
     assert.ok(id in result.path_map, `expected path_map to contain "${id}"`);
   }
 });

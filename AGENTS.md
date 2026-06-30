@@ -358,7 +358,7 @@ Three structural decisions are filed as `loop-design` entries (active):
 
 ## 11. Runtime Interface Ownership (R2)
 
-Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, future `.mastracode/coordination/hooks/`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.**
+Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Note: Mastra Code uses declarative JSON hooks (`.mastracode/hooks.json`), NOT shim files — verify via `node interface/contract.js mastra-code` (expect `path_map["hook-declarative-config"].ok === true` after Phase E Plan 4).
 
 **Convention:**
 - Each runtime agent works on its own branch (e.g., `claude-code/interface-v2`, `mastra-code/interface-v1`).
