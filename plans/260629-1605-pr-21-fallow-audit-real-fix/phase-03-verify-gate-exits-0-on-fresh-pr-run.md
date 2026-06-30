@@ -1,8 +1,8 @@
 ---
 phase: 3
-title: "Verify gate exits 0 on fresh PR run"
-status: pending
-effort: "0.5h"
+title: Verify gate exits 0 on fresh PR run
+status: completed
+effort: 0.5h
 ---
 
 # Phase 3: Verify gate exits 0 on fresh PR run

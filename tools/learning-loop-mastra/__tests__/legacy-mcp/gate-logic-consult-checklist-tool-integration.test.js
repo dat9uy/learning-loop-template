@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { applyPromotedRules } from "../../core/gate-logic.js";
-import { metaStateRuleEntrySchema } from "../../core/meta-state.js";
+import { metaStateRuleEntrySchema, readRegistry } from "../../core/meta-state.js";
 import { buildProcessHints } from "../../core/loop-introspect.js";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
@@ -67,5 +67,40 @@ await test("hook mirror LOCAL_PROCESS_HINTS contains the same rule id (cold-sess
   assert.ok(
     hookSource.includes(RULE_ID),
     `LOCAL_PROCESS_HINTS in .factory/hooks/loop-surface-inject.cjs must contain literal substring ${RULE_ID}`,
+  );
+});
+
+// Phase 3 of plans/260629-2011-fallow-tools-v2-action-swap/: extend the rule
+// with a 4th item covering third-party GitHub Action SHA pinning. TDD guard:
+// the live registry rule MUST carry the 4th item; PROCESS_HINTS MUST mention
+// SHA pinning. If a future contributor reverts either, these tests fail.
+await test("registry rule has 4th item covering 3rd-party Action SHA pin", () => {
+  const entries = readRegistry(PROJECT_ROOT);
+  const rule = entries.find((e) => e.id === RULE_ID);
+  assert.ok(rule, `rule ${RULE_ID} must exist in registry`);
+  assert.strictEqual(rule.entry_kind, "rule");
+  const items = JSON.parse(rule.pattern).items;
+  const fourth = items.find((i) => i.id === "third-party-action-sha-pin");
+  assert.ok(fourth, "4th item `third-party-action-sha-pin` must be present in the rule pattern");
+  assert.match(
+    fourth.description,
+    /commit SHA/,
+    "4th item description must mention `commit SHA` pinning",
+  );
+  assert.match(
+    fourth.description,
+    /cryptograph|verif|signed|Ed25519|SHA-256/,
+    "4th item description must reference cryptographic verification",
+  );
+});
+
+await test("PROCESS_HINTS mentions 3rd-party Action SHA pin", () => {
+  const hints = buildProcessHints();
+  const matched = hints.find(
+    (h) => /fallow-rs\/fallow@<commit-sha>/.test(h) || /third-party Action.*SHA/i.test(h) || /SHA.{0,40}pin/i.test(h),
+  );
+  assert.ok(
+    matched,
+    "PROCESS_HINTS row must reference SHA pinning for third-party Actions (e.g., `fallow-rs/fallow@<commit-sha>` or 'third-party Action SHA pin')",
   );
 });

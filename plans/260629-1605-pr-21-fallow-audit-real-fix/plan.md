@@ -1,15 +1,30 @@
 ---
-title: "Fix PR #21 fallow audit gate real cause: high-crap-score + stale dupes baseline"
-description: "Three-phase fix for the real cause of PR #21's gate failure (env-drift was a red herring per the diagnostic at plans/reports/diagnostic-260629-pr-21-fallow-audit-gate-root-cause.md). Phase 1: revert the dead-weight subdir install step and regenerate the stale dupes baseline. Phase 2: refactor or suppress the 4 high-crap-score findings (3 in PR-touched core/evaluate-*.js files, 1 in pre-existing hooks/legacy/bash-gate.js). Phase 3: verify gate exits 0 on a fresh PR run."
-status: pending
+title: >-
+  Fix PR #21 fallow audit gate real cause: high-crap-score + stale dupes
+  baseline
+description: >-
+  Three-phase fix for the real cause of PR #21's gate failure (env-drift was a
+  red herring per the diagnostic at
+  plans/reports/diagnostic-260629-pr-21-fallow-audit-gate-root-cause.md). Phase
+  1: revert the dead-weight subdir install step and regenerate the stale dupes
+  baseline. Phase 2: refactor or suppress the 4 high-crap-score findings (3 in
+  PR-touched core/evaluate-*.js files, 1 in pre-existing
+  hooks/legacy/bash-gate.js). Phase 3: verify gate exits 0 on a fresh PR run.
+status: completed
 priority: P1
 issue: 21
-branch: "260628-2008-phase-e-evaluator-refactor"
-tags: [ci, fallow, pr-21, refactor, audit-gate]
-blockedBy: ["260629-1538-fallow-ci-env-drift-diagnostic"]
+branch: 260628-2008-phase-e-evaluator-refactor
+tags:
+  - ci
+  - fallow
+  - pr-21
+  - refactor
+  - audit-gate
+blockedBy:
+  - 260629-1538-fallow-ci-env-drift-diagnostic
 blocks: []
-created: "2026-06-29T08:51:06.267Z"
-createdBy: "ck:plan"
+created: '2026-06-29T08:51:06.267Z'
+createdBy: 'ck:plan'
 source: skill
 ---
 
@@ -39,9 +54,9 @@ This plan fixes all 5 plus the stale baseline through 3 phases.
 
 | Phase | Name | Status | TDD Gate |
 |-------|------|--------|----------|
-| 1 | [Revert dead-weight step and regenerate dupes baseline](./phase-01-revert-dead-weight-step-and-regenerate-dupes-baseline.md) | Pending | YAML parses; regenerated baseline file matches current repo paths (sanity-check via `jq 'length' plans/.../dupes-baseline.json` returning a non-zero count and `jq -r '.[0]' plans/.../dupes-baseline.json` returning a path that exists) |
-| 2 | [Fix or suppress high-crap-score findings in PR-touched files](./phase-02-fix-or-suppress-high-crap-score-findings-in-pr-touched-files.md) | Pending | Local `pnpm exec fallow audit --root tools/learning-loop-mastra --gate all --format sarif --output-file /tmp/audit.sarif` reports 0 high-crap-score findings in `core/evaluate-*.js`; per-file decision documented for the legacy file |
-| 3 | [Verify gate exits 0 on fresh PR run](./phase-03-verify-gate-exits-0-on-fresh-pr-run.md) | Pending | PR #21 CI run completes with the `test` check passing (green); meta-state finding resolved with the green-run URL |
+| 1 | [Revert dead-weight step and regenerate dupes baseline](./phase-01-revert-dead-weight-step-and-regenerate-dupes-baseline.md) | Completed | YAML parses; regenerated baseline file matches current repo paths (sanity-check via `jq 'length' plans/.../dupes-baseline.json` returning a non-zero count and `jq -r '.[0]' plans/.../dupes-baseline.json` returning a path that exists) |
+| 2 | [Fix or suppress high-crap-score findings in PR-touched files](./phase-02-fix-or-suppress-high-crap-score-findings-in-pr-touched-files.md) | Completed | Local `pnpm exec fallow audit --root tools/learning-loop-mastra --gate all --format sarif --output-file /tmp/audit.sarif` reports 0 high-crap-score findings in `core/evaluate-*.js`; per-file decision documented for the legacy file |
+| 3 | [Verify gate exits 0 on fresh PR run](./phase-03-verify-gate-exits-0-on-fresh-pr-run.md) | Completed | PR #21 CI run completes with the `test` check passing (green); meta-state finding resolved with the green-run URL |
 
 ## Dependencies
 
@@ -53,10 +68,21 @@ This plan fixes all 5 plus the stale baseline through 3 phases.
 
 ## Acceptance Criteria
 
-- [ ] `.github/workflows/test.yml` no longer contains the `pnpm --dir tools/learning-loop-mastra install --frozen-lockfile` step; the SARIF upload-artifact step is preserved
-- [ ] `dupes-baseline.json` regenerated; file contains paths matching the current repo (sanity-check passes)
-- [ ] 3 high-crap-score findings in PR-touched `core/evaluate-*.js` files are eliminated (via refactor OR a documented suppression with justification)
-- [ ] The 1 high-crap-score finding in `hooks/legacy/bash-gate.js` is decided on: refactored, deleted, or excluded via `.fallowrc.json` ignorePatterns — with rationale documented in this plan or a follow-up journal
-- [ ] PR #21 CI run `test` check passes (green)
-- [ ] Meta-state finding `meta-260629T1450Z-...` resolves with the green-run URL as evidence
-- [ ] Local test suite passes (`pnpm test`, currently 1369 tests)
+- [x] `.github/workflows/test.yml` no longer contains the `pnpm --dir tools/learning-loop-mastra install --frozen-lockfile` step; the SARIF upload-artifact step is preserved — done in `84348cd`
+- [x] `dupes-baseline.json` regenerated; file contains paths matching the current repo (sanity-check passes) — done in `84348cd` (now 19 entries, all matching current clone groups)
+- [x] 3 high-crap-score findings in PR-touched `core/evaluate-*.js` files are eliminated (via refactor OR a documented suppression with justification) — done in `97c2b5b` (CC 16/6/9 dropped to 4/3/2)
+- [x] The 1 high-crap-score finding in `hooks/legacy/bash-gate.js` is decided on: refactored, deleted, or excluded via `.fallowrc.json` ignorePatterns — with rationale documented in this plan or a follow-up journal — refactored in `97c2b5b` (CC 8 → 5; CRAP below 30)
+- [x] PR #21 CI run `test` check passes (green) — run 28367374832 (job 84036499110) + new fallow audit check (run 84036728851)
+- [x] Meta-state finding `meta-260629T1450Z-...` resolves with the green-run URL as evidence — resolved 2026-06-29T11:07:35Z with resolution containing both run URLs
+- [x] Local test suite passes (`pnpm test`, currently 1369 tests) — all 1369 tests pass per `97c2b5b` commit message
+
+## Ship evidence
+
+| Commit | What it shipped | Phase |
+|--------|-----------------|-------|
+| `84348cd` ci(fallow): drop dead-weight subdir install + refresh dupes baseline | Phase 1: revert dead-weight step; regenerate dupes baseline (19 entries, all matching) | 1 |
+| `97c2b5b` refactor(evaluators): drop cyclomatic complexity below fallow threshold | Phase 2: drop CRAP below 30 in 3 PR-touched evaluators + 1 legacy bash-gate | 2 |
+| `2d4a332` chore(meta-state): refresh bash-gate.js SHA-256 fingerprint | Refresh cold-tier fingerprint after `97c2b5b` mutated the file | 2 (followup) |
+| `a2bbd83` fix(gate): review followups for phase E evaluator refactor (#21) | Phase 3: PR #21 merged; CI test check green | 3 |
+
+**Status: done — all 3 phases shipped; meta-state finding resolved; PR #21 merged.**
