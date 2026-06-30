@@ -284,3 +284,47 @@ test("no per-analyzer upload categories leaked (T14-new)", () => {
     "per-analyzer category fallow-dupes must not appear (D2: single `category: fallow`)",
   );
 });
+
+test("patch step + upload step are PR-gated (do not run on push to main) (T17-new)", () => {
+  // Regression guard for the post-merge CI failure on main (run 28444039075).
+  // The fallow Action is gated `if: github.event_name == 'pull_request'`, so
+  // steps.analyze.outputs.sarif is empty on push events. Without PR-only
+  // gating, the patch step's `realpath` would crash on `${""%.sarif}-patched.sarif`
+  // = `-patched.sarif` (parses `-p` as an option).
+  const patchStep = findStepByName(job.steps, /Patch fallow SARIF per analyzer/);
+  assert.ok(patchStep, "Patch step must be present");
+  assert.match(
+    patchStep.if ?? "",
+    /github\.event_name\s*==\s*['"]pull_request['"]/,
+    `Patch step must be gated to pull_request events (got: ${JSON.stringify(patchStep.if)})`,
+  );
+  const uploadStep = findStepByName(job.steps, /Upload fallow SARIF to Code Scanning/);
+  assert.ok(uploadStep, "Upload step must be present");
+  assert.match(
+    uploadStep.if ?? "",
+    /github\.event_name\s*==\s*['"]pull_request['"]/,
+    `Upload step must be gated to pull_request events (got: ${JSON.stringify(uploadStep.if)})`,
+  );
+});
+
+test("patch step guards empty SARIF input (belt-and-suspenders for PR-gating) (T18-new)", () => {
+  // Belt-and-suspenders: even if the PR-only `if:` is removed in a future
+  // refactor, the patch step's `run:` block must short-circuit on empty
+  // SARIF input BEFORE the realpath call that crashes on `-patched.sarif`.
+  const patchStep = findStepByName(job.steps, /Patch fallow SARIF per analyzer/);
+  assert.ok(patchStep, "Patch step must be present");
+  const runBlock = patchStep.run ?? "";
+  // The empty-input guard must come BEFORE the realpath line.
+  const emptyGuardIdx = runBlock.search(/SARIF_INPUT\s*=\s*"\$\{\{\s*steps\.analyze\.outputs\.sarif\s*\}\}"/);
+  const realpathIdx = runBlock.search(/realpath\s+--relative-base/);
+  assert.ok(emptyGuardIdx >= 0, "Patch step must read SARIF_INPUT from steps.analyze.outputs.sarif");
+  assert.ok(realpathIdx > 0, "Patch step must use realpath for output path canonicalization");
+  // After the SARIF_INPUT assignment, there must be an empty/empty-file guard
+  // BEFORE the realpath call.
+  const between = runBlock.slice(emptyGuardIdx, realpathIdx);
+  assert.match(
+    between,
+    /if\s+\[\s*-z\s+"\$\{?SARIF_INPUT\}?"\s*\]\s*\|\|\s*\[\s*!\s*-s\s+"\$\{?SARIF_INPUT\}?"\s*\]/,
+    "Patch step must guard empty/empty-file SARIF_INPUT before realpath call",
+  );
+});

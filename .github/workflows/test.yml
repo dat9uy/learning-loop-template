@@ -117,9 +117,14 @@ jobs:
         # an empty object { }, this sets automationDetails.id based on the rule
         # ID prefix so codeql-action's areAllRunsUnique validator accepts the
         # multi-run SARIF (plan 260630-0536 §"Corrected design").
+        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
           SARIF_INPUT="${{ steps.analyze.outputs.sarif }}"
+          if [ -z "$SARIF_INPUT" ] || [ ! -s "$SARIF_INPUT" ]; then
+            echo "SARIF input is missing or empty (likely a non-PR event); skipping patch"
+            exit 0
+          fi
           SARIF_OUTPUT="$(realpath --relative-base="$GITHUB_WORKSPACE" "${SARIF_INPUT%.sarif}-patched.sarif")"
 
           # Pre-checks: file exists, is non-empty, has SARIF schema, is under 50 MB
@@ -162,7 +167,7 @@ jobs:
           echo "Patched SARIF written to $SARIF_OUTPUT"
 
       - name: Upload fallow SARIF to Code Scanning
-        if: success()
+        if: success() && github.event_name == 'pull_request'
         # SHA-pinned per rule-tool-integration-same-commit-dep item 4 (third-party
         # Action SHA pin). The single explicit upload of the patched SARIF under
         # `category: fallow`. Resolved via
