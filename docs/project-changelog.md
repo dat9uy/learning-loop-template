@@ -1,5 +1,24 @@
 # Project Changelog
 
+## 2026-07-01 — Local Pre-Commit Parity: Fallow Gate + JSON Key-Path Anchors
+
+**Change-log:** `meta-260701T0042Z-...` (consolidates 2 deferred findings from Phase E Plan 4)
+
+### Changed
+
+- **`tools/learning-loop-mastra/core/gate-logic.js:638-647`** — `stripEvidenceAnchor` now recognizes dotted JSON key-path suffixes (e.g., `package.json:simple-git-hooks.pre-commit`) in addition to the existing `#anchor` and `:digits` forms. Required-dot guard prevents misinterpreting version literals like `:1.0.0` as key paths.
+- **`package.json:scripts.fallow:gate`** — new script wrapping `fallow audit --root tools/learning-loop-mastra --gate new-only` to mirror CI's Fallow PR gate locally.
+- **`package.json:simple-git-hooks.pre-commit`** — chain extended to `pnpm test && pnpm fallow:gate` so dead code / high CRAP / dupes are caught before push (CI-only failure mode closed; PR #25 refactor round-trip class of bug prevented).
+
+### Tests
+
+- **`tools/learning-loop-mastra/__tests__/legacy-mcp/strip-evidence-anchor.test.js`** — 4 new tests covering key-path suffix, Windows path, mixed colon/dot conservative skip, and bare-key preservation.
+
+### Resolved
+
+- `meta-260701T0032Z-stripevidenceanchor-in-tools-learning-loop-mastra-core-gate` — superseded.
+- `meta-260701T0009Z-ci-s-fallow-pr-gate-fallow-audit-gate-new-only-threshold-cra` — superseded.
+
 ## 2026-06-25 — Runtime Interface Contract (Phase E Plan 2)
 
 **Plan:** Phase E Plan 2 (interface spec)

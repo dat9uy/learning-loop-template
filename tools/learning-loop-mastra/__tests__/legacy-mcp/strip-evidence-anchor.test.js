@@ -34,4 +34,22 @@ describe("stripEvidenceAnchor", () => {
   test("strips suffix from absolute path", () => {
     assert.strictEqual(stripEvidenceAnchor("/home/user/file.js:3-12"), "/home/user/file.js");
   });
+
+  test("strips JSON key-path suffix (dotted word chain)", () => {
+    assert.strictEqual(stripEvidenceAnchor("package.json:simple-git-hooks.pre-commit"), "package.json");
+  });
+
+  test("does not strip mixed colon/dot suffix (conservative)", () => {
+    // A nested colon/dot chain is not a recognized suffix shape; the helper
+    // returns the input unchanged so callers can spot the malformed ref.
+    assert.strictEqual(stripEvidenceAnchor("tools/config.json:scripts.fallow:gate"), "tools/config.json:scripts.fallow:gate");
+  });
+
+  test("strips key-path suffix from Windows path", () => {
+    assert.strictEqual(stripEvidenceAnchor("C:\\path\\file.json:top.level"), "C:\\path\\file.json");
+  });
+
+  test("preserves bare key without dot", () => {
+    assert.strictEqual(stripEvidenceAnchor("package.json:foo"), "package.json:foo");
+  });
 });
