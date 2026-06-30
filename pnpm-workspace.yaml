@@ -1,10 +1,10 @@
 packages: []
 allowBuilds:
-  '@google/genai': set this to true or false
-  agent-browser: set this to true or false
-  bufferutil: set this to true or false
-  edgedriver: set this to true or false
-  geckodriver: set this to true or false
-  onnxruntime-node: set this to true or false
-  protobufjs: set this to true or false
+  '@google/genai': true
+  agent-browser: true
+  bufferutil: true
+  edgedriver: true
+  geckodriver: true
+  onnxruntime-node: true
+  protobufjs: true
   simple-git-hooks: true
