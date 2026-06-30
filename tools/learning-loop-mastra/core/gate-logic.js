@@ -638,6 +638,11 @@ export function stripEvidenceAnchor(codeRef) {
   let stripped = codeRef.replace(/#[\w$.\s-]+$/, "");
   // Strip :line or :start-end range suffix (digits only — keeps Windows drive letters safe)
   stripped = stripped.replace(/:\d+(?:-\d+)?$/, "");
+  // Strip dotted JSON key-path suffix (e.g., `package.json:simple-git-hooks.pre-commit`).
+  // Requires at least one dot to distinguish a key-path from a single token; version-like
+  // suffixes (`:1.0.0`) also match (digits are word chars) but collapsing them to the bare
+  // file path is benign — version literals carry no grounding meaning.
+  stripped = stripped.replace(/:[\w-]+(?:\.[\w-]+)+$/, "");
   return stripped;
 }
 
