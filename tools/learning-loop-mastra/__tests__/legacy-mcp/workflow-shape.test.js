@@ -2,6 +2,14 @@
 // Phase 4 TDD gate: these cases must all PASS after the CI swap. RED before
 // the swap (hand-rolled pnpm exec fallow audit is still present), GREEN after.
 //
+// Amendment plan 260630-0536-fallow-action-swap-with-sarif-split:
+// The Action's built-in SARIF upload is disabled (`sarif: false`). An inline
+// jq patch step rewrites `runs[i].automationDetails.id` on runs where it's
+// null so codeql-action v4's areAllRunsUnique validator accepts the multi-run
+// SARIF. A single explicit `codeql-action/upload-sarif@v4` call uploads the
+// patched file under `category: fallow`. The failure-upload step points at the
+// patched file so failure artifacts contain the patched SARIF.
+//
 // Operator overrides reflected in these tests:
 //   D1 — `version:` is set dynamically from a `Resolve fallow version` setup step,
 //        not hard-coded in the Action `with:` block
@@ -11,6 +19,7 @@
 //        Action's analyze step id per deep-dive §3.1), NOT `steps.fallow.outputs.sarif`
 //
 // Evidence trail: plans/reports/researcher-260629-2011-fallow-tools-v2-action-deep-dive-report.md
+// Amendment source: plans/reports/research-260630-1425-GH-2011-fallow-sarif-internals-audit.md
 
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
@@ -125,32 +134,49 @@ test("fallow Action step preserves all 3 baseline paths (in-package, D3)", () =>
   );
 });
 
-test("no Python heredoc remains in test.yml (SARIF split is no longer needed)", () => {
-  // Migration A drops the Python split entirely; the Action handles SARIF
-  // generation + Code Scanning upload in a single category.
+test("no Python heredoc remains; exactly one codeql-action/upload-sarif call (SHA-pinned) (T7-update)", () => {
+  // Amendment: Action handles SARIF generation locally; the workflow itself
+  // adds an explicit codeql-action/upload-sarif call AFTER patching the file.
+  // Python heredoc must be deleted; the upload call must appear exactly once
+  // and be SHA-pinned per rule-tool-integration-same-commit-dep item 4.
   assert.ok(!/python3 - <<'PY'/.test(wfRaw), "Python SARIF-split heredoc must be deleted");
-  assert.ok(
-    !/codeql-action\/upload-sarif/.test(wfRaw),
-    "Explicit codeql-action/upload-sarif@v4 steps must be removed (Action handles upload under single `category: fallow`)",
+  // Match only `uses:` declarations, not comments referencing the action.
+  const uploadCalls =
+    wfRaw.match(/^\s*uses:\s*github\/codeql-action\/upload-sarif@/gm) ?? [];
+  assert.strictEqual(
+    uploadCalls.length,
+    1,
+    `Expected exactly 1 codeql-action/upload-sarif uses: declaration (got ${uploadCalls.length})`,
+  );
+  // The single occurrence must be SHA-pinned to a 40-hex SHA, not @v4
+  const sarifMatch = wfRaw.match(/uses:\s*github\/codeql-action\/upload-sarif@[^\s]+/);
+  assert.ok(sarifMatch, "codeql-action/upload-sarif step must declare uses:");
+  assert.match(
+    sarifMatch[0],
+    /github\/codeql-action\/upload-sarif@[a-f0-9]{40}$/,
+    `codeql-action/upload-sarif must be SHA-pinned to 40-hex (got: ${sarifMatch[0]})`,
   );
 });
 
-test("failure upload step is preserved and re-pointed at analyze.outputs.sarif (D5)", () => {
-  // D5: the Action's analyze step is id `analyze` (deep-dive §3.1, §14.8),
-  // NOT `fallow`. The plan's Phase 2 draft had this wrong.
-  // The path lives inside `with.path` for actions/upload-artifact@v7
-  // (NOT at the step level like the old `run:` heredoc).
+test("failure upload step points at patched SARIF path (T8-update)", () => {
+  // Amendment: the patch step writes alongside the input as
+  // `<input>.patched.sarif`. The failure upload step's path must reference the
+  // patched file (so failure artifacts contain the file actually uploaded to
+  // Code Scanning), NOT the raw Action output.
   const fail = findStepByName(job.steps, /Upload fallow SARIF on failure/);
   assert.ok(fail, "Failure upload step must be preserved");
   const pathValue = fail.with?.path;
   assert.match(
     pathValue,
-    /\$\{\{\s*steps\.analyze\.outputs\.sarif\s*\}\}/,
-    `Failure upload must point at the Action's analyze step output (got: ${JSON.stringify(pathValue)})`,
+    /fallow-results-patched\.sarif/,
+    `Failure upload must point at the patched SARIF (got: ${JSON.stringify(pathValue)})`,
   );
+  // Old ${{ steps.analyze.outputs.sarif }} reference must be gone — the
+  // analyze step now has `id: analyze` but its output is the raw file; we
+  // want the patched file in the failure artifact.
   assert.ok(
-    !/steps\.fallow\.outputs\.sarif/.test(pathValue),
-    "must NOT reference the (incorrect) steps.fallow.outputs.sarif",
+    !/steps\.analyze\.outputs\.sarif/.test(pathValue),
+    "Failure upload must NOT reference the raw analyze step output",
   );
 });
 
@@ -158,4 +184,103 @@ test("test.yml parses as valid YAML", () => {
   // Sanity check: if parseYaml above didn't throw, this passes.
   // The check is explicit so a future parse failure surfaces in the test name.
   assert.ok(wf && wf.jobs && wf.jobs.test, "parsed workflow must have jobs.test");
+});
+
+// Amendment T10-T15: tests for the SARIF patch + single-upload design
+// (plan 260630-0536-fallow-action-swap-with-sarif-split phase 2).
+
+test("fallow Action has `sarif: false` (Action's built-in upload disabled) (T10-new)", () => {
+  // Amendment: the Action's internal codeql-action/upload-sarif step is
+  // disabled by `sarif: false`. The workflow's own explicit upload step is the
+  // one that ingests the patched SARIF. Without this flip, the Action's
+  // built-in upload hits codeql-action's areAllRunsUnique rejection on
+  // fallow's multi-run SARIF.
+  const step = findFallowActionStep(job.steps);
+  assert.strictEqual(
+    step.with.sarif,
+    false,
+    "fallow Action must set sarif: false (Action's built-in upload must be disabled)",
+  );
+});
+
+test("fallow Action has `id: analyze` so steps.analyze.outputs.sarif resolves (T15-new)", () => {
+  // Without `id: analyze`, `${{ steps.analyze.outputs.sarif }}` resolves to
+  // empty string — the patch step would read an empty path and the
+  // failure-upload step would silently produce empty files.
+  const step = findFallowActionStep(job.steps);
+  assert.strictEqual(
+    step.id,
+    "analyze",
+    `fallow Action must declare id: analyze (got: ${JSON.stringify(step.id)})`,
+  );
+});
+
+test("inline jq patch step present with automationDetails classifier (T11-new)", () => {
+  // Amendment: a step named "Patch fallow SARIF per analyzer (jq)" must run
+  // after the Action. It uses jq to rewrite automationDetails.id per run so
+  // codeql-action's areAllRunsUnique validator accepts the multi-run SARIF.
+  const patchStep = findStepByName(job.steps, /Patch fallow SARIF per analyzer/);
+  assert.ok(patchStep, "Patch step must be present");
+  const runBlock = patchStep.run ?? "";
+  assert.match(runBlock, /jq\s/, "patch step must invoke jq");
+  assert.match(
+    runBlock,
+    /\.automationDetails/,
+    "patch step must reference .automationDetails in the jq expression",
+  );
+  // Classifier prefixes — the dead-code/health/dupes routing.
+  assert.match(
+    runBlock,
+    /fallow\/audit\/(dead-code|health|dupes)/,
+    "patch step must classify runs into dead-code/health/dupes",
+  );
+});
+
+test("patch step reads from the Action's analyze step output (T12-new)", () => {
+  // Amendment: the patch step must read SARIF_INPUT from steps.analyze.outputs.sarif
+  // (the Action's SARIF output), NOT from a hardcoded path. Accepts either the
+  // full expression or the artifacts-dir default fallback.
+  const patchStep = findStepByName(job.steps, /Patch fallow SARIF per analyzer/);
+  assert.ok(patchStep, "Patch step must be present");
+  const runBlock = patchStep.run ?? "";
+  assert.match(
+    runBlock,
+    /steps\.analyze\.outputs\.sarif/,
+    "patch step must read from steps.analyze.outputs.sarif",
+  );
+});
+
+test("exactly 1 explicit codeql-action/upload-sarif call with category: fallow (T13-new)", () => {
+  // Amendment: the upload step must use category: fallow and point at the
+  // patched SARIF file (not the raw Action output).
+  const uploadStep = findStepByName(job.steps, /Upload fallow SARIF to Code Scanning/);
+  assert.ok(uploadStep, "explicit Upload fallow SARIF to Code Scanning step must exist");
+  assert.strictEqual(
+    uploadStep.with?.category,
+    "fallow",
+    `Upload step must set category: fallow (got: ${JSON.stringify(uploadStep.with?.category)})`,
+  );
+  assert.match(
+    uploadStep.with?.sarif_file ?? "",
+    /fallow-results-patched\.sarif/,
+    `Upload step's sarif_file must reference patched SARIF (got: ${JSON.stringify(uploadStep.with?.sarif_file)})`,
+  );
+});
+
+test("no per-analyzer upload categories leaked (T14-new)", () => {
+  // Amendment: per-analyzer Code Scanning categories are deferred (F-7, after
+  // F-6 lands upstream). No `category: fallow-deadcode` / `fallow-health` /
+  // `fallow-dupes` should appear anywhere in the workflow.
+  assert.ok(
+    !/fallow-deadcode/.test(wfRaw),
+    "per-analyzer category fallow-deadcode must not appear (D2: single `category: fallow`)",
+  );
+  assert.ok(
+    !/fallow-health/.test(wfRaw),
+    "per-analyzer category fallow-health must not appear (D2: single `category: fallow`)",
+  );
+  assert.ok(
+    !/fallow-dupes/.test(wfRaw),
+    "per-analyzer category fallow-dupes must not appear (D2: single `category: fallow`)",
+  );
 });

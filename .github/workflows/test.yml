@@ -82,6 +82,7 @@ jobs:
           echo "Resolved fallow version: $version"
 
       - name: Fallow audit (PR gate)
+        id: analyze    # exposes steps.analyze.outputs.sarif for the patch step below
         if: github.event_name == 'pull_request'
         # Pinned to commit SHA per rule-tool-integration-same-commit-dep 4th item
         # (third-party Action SHA pin + crypto verify). The Action verifies the CLI
@@ -90,13 +91,17 @@ jobs:
         # Resolved via `git ls-remote https://github.com/fallow-rs/fallow refs/tags/v2`
         # on 2026-06-29; revisitable via `tools/learning-loop-mastra/scripts/refresh-action-sha.sh`
         # (out of scope for this plan; tracked as F-5).
+        # `sarif: false` disables the Action's built-in codeql-action/upload-sarif
+        # step (which rejects fallow's multi-run SARIF via areAllRunsUnique).
+        # The workflow's own jq patch + upload step ingests the SARIF instead
+        # (plan 260630-0536-fallow-action-swap-with-sarif-split phase 2).
         uses: fallow-rs/fallow@7ec8073ec5bab7950a2faeab315db79ce39ae75d
         with:
           root: tools/learning-loop-mastra
           command: audit
           gate: new-only
           format: sarif
-          sarif: true
+          sarif: false    # Action's built-in upload disabled (see comment above)
           version: ${{ steps.fallow-version.outputs.version }}
           # Baselines live in-package at <root>/baselines/fallow/ (rule
           # baseline-storage, 3rd item). Path is relative to `root:` above,
@@ -105,6 +110,68 @@ jobs:
           dead-code-baseline: baselines/fallow/dead-code-baseline.json
           health-baseline:    baselines/fallow/health-baseline.json
           dupes-baseline:     baselines/fallow/dupes-baseline.json
+
+      - name: Patch fallow SARIF per analyzer (jq)
+        # Idempotent: runs with automationDetails.id already set (or null) are
+        # passed through. For runs where automationDetails is missing, null, or
+        # an empty object { }, this sets automationDetails.id based on the rule
+        # ID prefix so codeql-action's areAllRunsUnique validator accepts the
+        # multi-run SARIF (plan 260630-0536 §"Corrected design").
+        run: |
+          set -euo pipefail
+          SARIF_INPUT="${{ steps.analyze.outputs.sarif }}"
+          SARIF_OUTPUT="$(realpath --relative-base="$GITHUB_WORKSPACE" "${SARIF_INPUT%.sarif}-patched.sarif")"
+
+          # Pre-checks: file exists, is non-empty, has SARIF schema, is under 50 MB
+          if [ ! -s "$SARIF_INPUT" ]; then
+            echo "::error::SARIF input is missing or empty: $SARIF_INPUT"
+            exit 1
+          fi
+          if [ "$(wc -c < "$SARIF_INPUT")" -gt 52428800 ]; then
+            echo "::error::SARIF input exceeds 50 MB cap: $(wc -c < "$SARIF_INPUT") bytes"
+            exit 1
+          fi
+          if ! jq -e '."$schema" | test("sarif-2\\.1")' "$SARIF_INPUT" > /dev/null; then
+            echo "::error::SARIF input missing sarif-2.1 schema"
+            exit 1
+          fi
+
+          # Atomic write: write to .tmp then rename, so a failed jq leaves no partial file
+          TMP_OUTPUT="${SARIF_OUTPUT}.tmp"
+          jq '
+            .runs |= map(
+              if ((.automationDetails | type) == "null") or
+                 ((.automationDetails | type) == "object" and (.automationDetails | length == 0))
+              then
+                .automationDetails = {
+                  id: (
+                    if (.tool.driver.rules[0].id // "" | test("^fallow/(unused|private|duplicate-export|unlisted)-"))
+                    then "fallow/audit/dead-code"
+                    elif (.tool.driver.rules[0].id // "" | test("^fallow/(high|low|long|duplicated)-"))
+                    then "fallow/audit/health"
+                    else "fallow/audit/dupes"
+                    end
+                  )
+                }
+              else .
+              end
+            )
+          ' "$SARIF_INPUT" > "$TMP_OUTPUT"
+
+          mv "$TMP_OUTPUT" "$SARIF_OUTPUT"
+          echo "Patched SARIF written to $SARIF_OUTPUT"
+
+      - name: Upload fallow SARIF to Code Scanning
+        if: success()
+        # SHA-pinned per rule-tool-integration-same-commit-dep item 4 (third-party
+        # Action SHA pin). The single explicit upload of the patched SARIF under
+        # `category: fallow`. Resolved via
+        # `git ls-remote https://github.com/github/codeql-action refs/tags/v4`
+        # on 2026-06-30.
+        uses: github/codeql-action/upload-sarif@411bbbe57033eedfc1a82d68c01345aa96c737d7
+        with:
+          sarif_file: fallow-results-patched.sarif
+          category: fallow
 
       - name: Upload per-namespace logs on failure
         if: failure()
@@ -116,16 +183,17 @@ jobs:
           retention-days: 7
 
       - name: Upload fallow SARIF on failure
-        # Preserves the Action's SARIF on failure so the next session can read
+        # Preserves the patched SARIF on failure so the next session can read
         # the actual CI output (rule IDs + locations) instead of the truncated
         # public log. Without this, diagnosing a future CI-vs-local divergence
         # requires re-running with debug logs.
-        # The Action's analyze step is id `analyze` (deep-dive §3.1, §14.8),
-        # NOT `fallow` — the plan's Phase 2 draft had this wrong.
+        # Path is the patched file (same as the upload step's source) so the
+        # failure artifact matches what would have been uploaded to Code
+        # Scanning. The patch step is idempotent and deterministic.
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: fallow-sarif
-          path: ${{ steps.analyze.outputs.sarif }}
+          path: fallow-results-patched.sarif
           if-no-files-found: ignore
           retention-days: 7
