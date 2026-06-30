@@ -46,23 +46,53 @@ If the validator is missing or buggy, the contract is the source of truth: read 
 
 ## Worked example: Mastra Code
 
-Reference: scope report lines 49, 124, 155; npm package `mastracode`.
+Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-report.md`; `plans/reports/research-260626-2314-phase-e-plan-4-harness-class-report.md`; npm package `mastracode`.
 
-**Target:** `.mastracode/` (new runtime dir at project root).
+**Target:** `.mastracode/` (new runtime dir at project root). Mastra Code uses **declarative JSON config** — NOT shim files.
 
-1. **Create the shim set.** Mirror the 4 files in `.claude/coordination/hooks/` to `.mastracode/coordination/hooks/`. Each shim must `execFileSync('node', [<universal-hook-path>], ...)` the matching universal script. No business logic in the shim.
+1. **Create `.mastracode/mcp.json`** — MCP server registration:
+   ```json
+   {
+     "mcpServers": {
+       "learning-loop": {
+         "command": "node",
+         "args": ["tools/learning-loop-mastra/mastra/server.js"]
+       }
+     }
+   }
+   ```
+   Satisfies Req #2 (`mcp-client-config`). Resolves contract path `.mastracode/mcp.json` (NOT `.mastracode/config.json`; that was a pre-Plan-4 bug).
 
-2. **Register MCP client.** Add to `createMastraCode({ configDir: ".mastracode" })`: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] }`. Verify by running `mcp_client_list` and checking `learning-loop` is registered.
+2. **Create `.mastracode/hooks.json`** — declarative lifecycle hooks. Must contain `PreToolUse`, `UserPromptSubmit`, and `SessionStart` entries whose `command` fields reference the canonical universal-hook paths under `tools/learning-loop-mastra/hooks/legacy/`:
+   - `bash-gate.js` (PreToolUse, matcher `tool_name: "execute_command"`)
+   - `write-gate.js` (PreToolUse, matcher `tool_name: "write_file" | "string_replace_lsp" | "delete_file"`)
+   - `inbound-gate.js` (UserPromptSubmit, no matcher)
+   - `recurrence-check-on-start.js` (SessionStart, no matcher)
 
-3. **Copy the skill spec.** Copy `.factory/skills/learning-loop/SKILL.md` to `.mastracode/skills/learning-loop/SKILL.md`. No edits needed — the post-E.0 file is runtime-agnostic.
+   Satisfies Req #5 (`settings-integration`) AND Req #6 (`hook-declarative-config`).
 
-4. **Set the identity marker.** In your Mastra Code session config: `env: { RUNTIME_ID: "mastra-code" }`. Note: the runtime-id is `mastra-code` (with hyphen); the surface dir is `.mastracode` (without). If your config layout differs from what `RUNTIMES["mastra-code"]` declares in `interface/contract.js`, amend the const.
+3. **Create `.mastracode/settings.json`** — minimal settings:
+   ```json
+   {
+     "shellPassthrough": false,
+     "omScope": "project"
+   }
+   ```
+   `shellPassthrough: false` is REQUIRED (Req #7 — settings-no-bypass). Setting it to `true` would bypass the bash-gate entirely.
 
-5. **Configure settings.** Wire Mastra Code's hook system to invoke the 4 shims at SessionStart / UserPromptSubmit / PreToolUse. Mastra Code's API differs from Claude Code's; consult `docs/agents/mastra-code.md` (to be written in E.5 / Plan 4).
+4. **Create `.mastracode/database.json`** — runtime resource identity:
+   ```json
+   { "resourceId": "mastra-code" }
+   ```
+   Alternative (or complementary) to `process.env.MASTRA_RESOURCE_ID="mastra-code"`.
 
-6. **Run the validator.** `node tools/learning-loop-mastra/interface/contract.js mastra-code`. Expect `{ok: true, missing: [], notes: []}` (or `notes: ["identity-marker-not-adopted"]` if you skipped step 4).
+5. **Skill spec** — copy `.factory/skills/learning-loop/SKILL.md` to either `.mastracode/skills/learning-loop/SKILL.md` OR `.claude/skills/learning-loop/SKILL.md` (Mastra Code's auto-discovery includes the Claude-compat path; the existing file satisfies Req #3 without duplication).
 
-7. **Smoke test.** From a Mastra Code session, run `mastra_loop_describe({tier: "warm"})`. Expect the 6-group manifest back. Then run `mastra_meta_state_list({entry_kind: "rule"})`. Expect ≥ 1 rule.
+6. **Wire Mastra Code** — no programmatic wiring required for Plan 4 (MCP-only integration). When `createMastraCode({ cwd: projectRoot })` is called (or `pnpm smoke:mastracode` is invoked), the McpManager discovers `.mastracode/mcp.json` automatically and connects to the loop's MCP server. Discovery priority: `.claude/settings.local.json` > `~/.mastracode/mcp.json` > `<root>/.mastracode/mcp.json` > `<project>/.mastracode/mcp.json`.
+
+7. **Run the validator.** `node tools/learning-loop-mastra/interface/contract.js mastra-code`. Expect `{ok: true, missing: [], notes: [...]}` (notes may include `identity-marker-not-adopted` if `MASTRA_RESOURCE_ID` is unset, and `skill-spec-no-tools-block` if the SKILL.md uses prose rather than a `tools:` block).
+
+8. **Smoke test.** `pnpm smoke:mastracode`. Exit 0; stdout JSON contains `mcp_tool_names[]` with all 44 MCP tools (namespaced as `learning-loop_mastra_<tool>`).
 
 ## Troubleshooting
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * tools/learning-loop-mastra/interface/contract.js
- * Runtime-interface contract validator. Verifies 5 requirements in CONTRACT.md.
+ * Runtime-interface contract validator. Verifies 7 requirements in CONTRACT.md
+ * (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
+ *  both additive Phase E Plan 4 for declarative-hook runtimes like Mastra Code).
  *
  * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
  *      node tools/learning-loop-mastra/interface/contract.js --list
@@ -17,7 +19,23 @@ import { join, resolve } from "node:path";
 const RUNTIMES = {
   "claude-code": { surface: ".claude",     mcp_config: ".mcp.json",            settings: "settings.json" },
   "droid":       { surface: ".factory",    mcp_config: ".factory/mcp.json",    settings: "settings.json" },
-  "mastra-code": { surface: ".mastracode", mcp_config: ".mastracode/config.json", settings: "config.json" },
+  // Phase E Plan 4 — Mastra Code uses declarative config (.mastracode/*.json).
+  // mcp_config: canonical Mastra-Code path (was incorrectly '.mastracode/config.json' pre-Plan-4).
+  // declarative_hooks: path to .mastracode/hooks.json (Req #6).
+  // settings_path: explicit .mastracode/settings.json (Req #7).
+  // db_path: .mastracode/database.json (Req #4 alternative).
+  "mastra-code": {
+    surface: ".mastracode",
+    mcp_config: ".mastracode/mcp.json",
+    settings: ".mastracode/hooks.json",
+    settings_path: ".mastracode/settings.json",
+    declarative_hooks: ".mastracode/hooks.json",
+    db_path: ".mastracode/database.json",
+    skill_discovery_paths: [
+      ".mastracode/skills/learning-loop/SKILL.md",
+      ".claude/skills/learning-loop/SKILL.md",      // Claude-compatible auto-discovery
+    ],
+  },
 };
 
 const SHIM_BASENAMES = [
@@ -27,14 +45,34 @@ const SHIM_BASENAMES = [
   "recurrence-check-on-start.cjs",
 ];
 
+// Universal-hook basenames referenced by declarative hooks.json entries.
+const UNIVERSAL_HOOK_PATHS = [
+  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+];
+// Canonical hooks required for Req #5/Req #6 (Mastra Code declarative config)
+const REQUIRED_HOOK_COMMANDS = [
+  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+];
+
 const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
 
+// Phase E Plan 4 — additive Reqs #6 (hook-declarative-config) and #7 (settings-no-bypass)
+// for runtimes with declarative hook configs (e.g., Mastra Code).
+// Req #1 stays monomorphic (shim files only); Req #6 is parallel/alternative.
 export const REQUIREMENT_IDS = [
   "hook-shim-set",
   "mcp-client-config",
   "skill-spec",
   "identity-marker",
   "settings-integration",
+  "hook-declarative-config",
+  "settings-no-bypass",
 ];
 
 function readJsonSafe(p) {
@@ -57,7 +95,21 @@ function findUniversalHookPath(shimContent) {
 }
 
 function checkHookShimSet(runtimeId, rootPath) {
-  const { surface } = RUNTIMES[runtimeId];
+  const runtime = RUNTIMES[runtimeId];
+  const { surface } = runtime;
+  // Phase E Plan 4: declarative runtimes (those with `declarative_hooks`) don't use shim files.
+  // Req #1 (hook-shim-set) is N/A for them; the contract uses Req #6 (hook-declarative-config)
+  // instead. Report OK with `applicable:false` so the contract doesn't fail.
+  if (runtime.declarative_hooks) {
+    return {
+      id: "hook-shim-set",
+      ok: true,
+      applicable: false,
+      note: "runtime uses declarative hooks (Req #6); Req #1 N/A",
+      shim_dir: join(rootPath, surface, "coordination", "hooks"),
+      shims: SHIM_BASENAMES.map((b) => ({ name: b, path: join(rootPath, surface, "coordination", "hooks", b), universal_target: null, universal_exists: false })),
+    };
+  }
   const shimDir = join(rootPath, surface, "coordination", "hooks");
   const shims = SHIM_BASENAMES.map((basename) => {
     const shimPath = join(shimDir, basename);
@@ -95,51 +147,272 @@ function checkMcpClientConfig(runtimeId, rootPath) {
   return { id: "mcp-client-config", ok: !!entry && targetOk, config_path: configPath, entry };
 }
 
-function checkSkillSpec(runtimeId, rootPath) {
-  const { surface } = RUNTIMES[runtimeId];
-  const skillPath = join(rootPath, surface, "skills", "learning-loop", "SKILL.md");
-  if (!existsSync(skillPath)) {
-    return { id: "skill-spec", ok: false, skill_path: skillPath, has_tools_block: false, tools_referenced: [] };
+function resolveSkillPath(candidates, rootPath) {
+  // Returns the absolute path of the first candidate that exists on disk, or null.
+  for (const candidate of candidates) {
+    const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
+    if (existsSync(absolute)) return absolute;
   }
-  const content = readFileSync(skillPath, "utf8");
+  return null;
+}
+
+function checkSkillSpec(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  const surface = runtime.surface;
+  // Phase E Plan 4: Mastra Code can satisfy Req #3 via Claude-compat discovery
+  // (.claude/skills/) or via project-local .mastracode/skills/.
+  const skillDiscoveryPaths = runtime.skill_discovery_paths ?? [
+    join(rootPath, surface, "skills", "learning-loop", "SKILL.md"),
+  ];
+  const resolvedSkillPath = resolveSkillPath(skillDiscoveryPaths, rootPath);
+  if (resolvedSkillPath === null) {
+    return {
+      id: "skill-spec",
+      ok: false,
+      skill_path: skillDiscoveryPaths[0],
+      has_tools_block: false,
+      tools_referenced: [],
+      searched_paths: skillDiscoveryPaths,
+    };
+  }
+  const content = readFileSync(resolvedSkillPath, "utf8");
   const hasToolsBlock = /^tools:\s*$/m.test(content) || /^\s*-\s+loop_describe/m.test(content);
   const toolsReferenced = REQUIRED_TOOL_REFS.filter((n) => content.includes(n));
   const ok = toolsReferenced.length === REQUIRED_TOOL_REFS.length;
-  return { id: "skill-spec", ok, skill_path: skillPath, has_tools_block: hasToolsBlock, tools_referenced: toolsReferenced };
+  return { id: "skill-spec", ok, skill_path: resolvedSkillPath, has_tools_block: hasToolsBlock, tools_referenced: toolsReferenced };
+}
+
+// Phase E Plan 4: RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive
+// alternative for Mastra Code. MASTRA_RESOURCE_ID is spoofable until LIM-3 caller-identity
+// ships in Plan 5 (deferral D5).
+// Read fresh on each call so test env-var mutations are honored.
+function identityCandidates() {
+  return [
+    { name: "RUNTIME_ID", value: process.env.RUNTIME_ID ?? null },
+    { name: "MASTRA_RESOURCE_ID", value: process.env.MASTRA_RESOURCE_ID ?? null },
+  ];
 }
 
 function checkIdentityMarker(runtimeId) {
-  const expected = runtimeId;
-  const actual = process.env.RUNTIME_ID ?? null;
-  const status = actual === null ? "unset" : actual === expected ? "match" : "mismatch";
-  return { id: "identity-marker", ok: true, env_var: "RUNTIME_ID", expected, actual, status };
+  // First match wins; both unset => 'unset'.
+  const candidates = identityCandidates();
+  const match = candidates.find((c) => c.value !== null) ?? candidates[0];
+  const actual = match.value;
+  const status = actual === null ? "unset" : actual === runtimeId ? "match" : "mismatch";
+  return { id: "identity-marker", ok: true, env_var: match.name, expected: runtimeId, actual, status };
 }
 
+// Claude Code / Droid shape: entry.hooks[].command
+// Mastra Code declarative shape: entry.command
+// Cyclomatic floor: any "iterate filtered commands" loop needs (loop + typeof-filter),
+// and supporting both shapes in one entry-pass requires two such loops. The CC is
+// unavoidable for the dual-shape contract validator.
+function addMastraShapeCommand(entry, commands) {
+  if (typeof entry?.command === "string") commands.push(entry.command);
+}
+
+// fallow-ignore-next-line complexity
+function addClaudeShapeCommands(entry, commands) {
+  for (const h of entry?.hooks ?? []) {
+    if (typeof h?.command === "string") commands.push(h.command);
+  }
+}
+
+// Supports BOTH shapes:
+//   Claude Code / Droid: { PreToolUse: [{ matcher, hooks: [{ command }] }] }
+//   Mastra Code declarative: { PreToolUse: [{ command, matcher: { tool_name } }] }
+// CC floor: nested iteration over hook config entries (for-event + for-entry).
+// fallow-ignore-next-line complexity
 function collectHookCommands(hooksObj) {
   const commands = [];
   for (const block of Object.values(hooksObj ?? {})) {
     if (!Array.isArray(block)) continue;
     for (const entry of block) {
-      if (!Array.isArray(entry.hooks)) continue;
-      for (const h of entry.hooks) {
-        if (typeof h.command === "string") commands.push(h.command);
-      }
+      addClaudeShapeCommands(entry, commands);
+      addMastraShapeCommand(entry, commands);
     }
   }
   return commands;
 }
 
-function checkSettingsIntegration(runtimeId, rootPath) {
-  const { surface, settings } = RUNTIMES[runtimeId];
-  const settingsPath = join(rootPath, surface, settings);
+function findReferencedDeclarativeHooks(commands) {
+  // Required: all 4 universal-hook paths must be referenced; match by basename.
+  return REQUIRED_HOOK_COMMANDS.filter((p) => commands.some((c) => c.includes(p.split("/").pop())));
+}
+
+function findReferencedShimBasenames(commands) {
+  return SHIM_BASENAMES.filter((b) => commands.some((c) => c.includes(b)));
+}
+
+function evaluateDeclarativeSettingsIntegration(hooksPath) {
+  const parsed = readJsonSafe(hooksPath);
+  if (!parsed.ok) {
+    return {
+      id: "settings-integration",
+      ok: false,
+      settings_path: hooksPath,
+      commands: [],
+      shims_referenced: [],
+      parse_error: parsed.error,
+      note: "declarative-hooks (Mastra Code)",
+    };
+  }
+  const commands = collectHookCommands(parsed.data);
+  const hooksReferenced = findReferencedDeclarativeHooks(commands);
+  const ok = hooksReferenced.length === REQUIRED_HOOK_COMMANDS.length;
+  return {
+    id: "settings-integration",
+    ok,
+    settings_path: hooksPath,
+    commands,
+    hooks_referenced: hooksReferenced,
+    note: "declarative-hooks (Mastra Code)",
+  };
+}
+
+function evaluateShimFileSettingsIntegration(settingsPath) {
   const parsed = readJsonSafe(settingsPath);
   if (!parsed.ok) {
     return { id: "settings-integration", ok: false, settings_path: settingsPath, commands: [], shims_referenced: [], parse_error: parsed.error };
   }
   const commands = collectHookCommands(parsed.data?.hooks);
-  const shimsReferenced = SHIM_BASENAMES.filter((b) => commands.some((c) => c.includes(b)));
+  const shimsReferenced = findReferencedShimBasenames(commands);
   const ok = shimsReferenced.length === SHIM_BASENAMES.length;
   return { id: "settings-integration", ok, settings_path: settingsPath, commands, shims_referenced: shimsReferenced };
+}
+
+function checkSettingsIntegration(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  // Phase E Plan 4: Mastra Code has two settings-like files (hooks.json + settings.json);
+  // Claude Code and Droid use a single settings.json with a `hooks` block.
+  // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
+  // universal-hook commands in the declarative config. For shim-file runtimes, require all
+  // 4 shim basenames in the conventional settings.json hooks.
+  if (runtime.declarative_hooks) {
+    return evaluateDeclarativeSettingsIntegration(join(rootPath, runtime.declarative_hooks));
+  }
+  return evaluateShimFileSettingsIntegration(join(rootPath, runtime.surface, runtime.settings));
+}
+
+/**
+ * Phase E Plan 4 — Req #6 (hook-declarative-config).
+ * For runtimes with declarative hook configs (Mastra Code + future), assert that
+ * `<surface>/hooks.json` parses AND has the 4 required event-type entries
+ * (PreToolUse, UserPromptSubmit, SessionStart — PostToolUse/Stop/Notification optional)
+ * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/legacy/`.
+ * Parallel/alternative to Req #1 (which stays monomorphic on shim files).
+ */
+const REQUIRED_DECLARATIVE_EVENTS = ["PreToolUse", "UserPromptSubmit", "SessionStart"];
+
+function findMissingDeclarativeEvents(eventTypes) {
+  return REQUIRED_DECLARATIVE_EVENTS.filter((e) => !eventTypes.includes(e));
+}
+
+function findReferencedUniversalHooks(commands) {
+  return UNIVERSAL_HOOK_PATHS.filter((p) => commands.some((c) => c.includes(p)));
+}
+
+function findBogusHookCommands(commands) {
+  // Failsafe: every PreToolUse/write command MUST reference a known universal hook
+  // (red-team Security F4: silent passes on bogus paths are unacceptable).
+  return commands.filter((c) => !UNIVERSAL_HOOK_PATHS.some((p) => c.includes(p)));
+}
+
+function evaluateDeclarativeHooks(hooksPath, hooksData) {
+  const eventTypes = Object.keys(hooksData ?? {});
+  const allCommands = collectHookCommands(hooksData);
+  const missingEvents = findMissingDeclarativeEvents(eventTypes);
+  const universalHooksReferenced = findReferencedUniversalHooks(allCommands);
+  const bogusCommands = findBogusHookCommands(allCommands);
+  const ok = missingEvents.length === 0
+    && universalHooksReferenced.length >= REQUIRED_HOOK_COMMANDS.length
+    && bogusCommands.length === 0;
+  return {
+    id: "hook-declarative-config",
+    ok,
+    hooks_path: hooksPath,
+    event_types: eventTypes,
+    required_events: REQUIRED_DECLARATIVE_EVENTS,
+    missing_events: missingEvents,
+    universal_hooks_referenced: universalHooksReferenced,
+    bogus_commands: bogusCommands,
+  };
+}
+
+function checkHookDeclarativeConfig(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  // Shim-file runtimes don't apply Req #6; report N/A as OK.
+  if (!runtime.declarative_hooks) {
+    return { id: "hook-declarative-config", ok: true, applicable: false, note: "runtime uses shim-file hooks (Req #1); Req #6 N/A" };
+  }
+  const hooksPath = join(rootPath, runtime.declarative_hooks);
+  const parsed = readJsonSafe(hooksPath);
+  if (!parsed.ok) {
+    return {
+      id: "hook-declarative-config",
+      ok: false,
+      hooks_path: hooksPath,
+      event_types: [],
+      universal_hooks_referenced: [],
+      parse_error: parsed.error,
+    };
+  }
+  return evaluateDeclarativeHooks(hooksPath, parsed.data);
+}
+
+// Phase E Plan 4 — Req #7 (settings-no-bypass).
+// Each entry is a documented bypass for the loop's gates; enabling any is rejected.
+// `shellPassthrough:true` bypasses the bash-gate hook entirely; `disableHooks:true`
+// disables all hooks; `disableMcp:true` disables MCP server connections (the loop IS
+// the MCP server, so this breaks the integration).
+const BYPASS_FIELDS = ["shellPassthrough", "disableHooks", "disableMcp"];
+
+function getBypassViolations(settingsData) {
+  if (!settingsData || typeof settingsData !== "object") return [];
+  return BYPASS_FIELDS
+    .filter((field) => settingsData[field] === true)
+    .map((field) => `${field}:true`);
+}
+
+function evaluateSettingsBypass(settingsPath) {
+  const parsed = readJsonSafe(settingsPath);
+  if (!parsed.ok) {
+    // Bad JSON in settings => treat as bypass attempt (fail closed).
+    return {
+      id: "settings-no-bypass",
+      ok: false,
+      settings_path: settingsPath,
+      violations: ["malformed-settings-json"],
+      parse_error: parsed.error,
+    };
+  }
+  const violations = getBypassViolations(parsed.data);
+  return {
+    id: "settings-no-bypass",
+    ok: violations.length === 0,
+    settings_path: settingsPath,
+    violations,
+  };
+}
+
+/**
+ * Phase E Plan 4 — Req #7 (settings-no-bypass).
+ * Reject settings that bypass our gates (e.g., Mastra Code's `shellPassthrough: true`).
+ * Adversarial: an operator who sets shellPassthrough: true would bypass the bash-gate hook
+ * entirely (hooks don't fire when commands are passed-through). Reject loudly.
+ */
+function checkSettingsNoBypass(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  // Only applies to runtimes with declarative settings (Mastra Code today; future too).
+  if (!runtime.settings_path) {
+    return { id: "settings-no-bypass", ok: true, applicable: false, note: "runtime has no declarative settings path; Req #7 N/A" };
+  }
+  const settingsPath = join(rootPath, runtime.settings_path);
+  // No settings file => no bypass possible; vacuously OK.
+  if (!existsSync(settingsPath)) {
+    return { id: "settings-no-bypass", ok: true, applicable: false, settings_path: settingsPath, note: "no settings file present" };
+  }
+  return evaluateSettingsBypass(settingsPath);
 }
 
 /**
@@ -175,6 +448,9 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     checkSkillSpec(runtimeId, resolvedRoot),
     checkIdentityMarker(runtimeId),
     checkSettingsIntegration(runtimeId, resolvedRoot),
+    // Phase E Plan 4: Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
+    checkHookDeclarativeConfig(runtimeId, resolvedRoot),
+    checkSettingsNoBypass(runtimeId, resolvedRoot),
   ];
   const missing = checks.filter((c) => !c.ok).map((c) => c.id);
   const notes = [];
