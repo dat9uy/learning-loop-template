@@ -1,7 +1,7 @@
 ---
 title: "Patch SARIF `tool.driver` per run in fallow-rs/fallow@v2 Action swap (amendment to plan 260629-2011-fallow-tools-v2-action-swap)"
 description: "Plan 260629-2011-fallow-tools-v2-action-swap shipped end-to-end locally but failed CI on PR #22 with a multi-run SARIF rejection. The deep-dive §6.3 / §6.5 claim that codeql-action accepts multi-run SARIF sharing a category is FALSE — codeql-action v4's areAllRunsUnique validator keys on run.tool.driver.{name,fullName,version,semanticVersion,guid} + run.automationDetails.id (NOT category). Verified at the fallow source level: build_audit_sarif synthesizes the dupes run locally with automationDetails.id=\"fallow/audit/dupes\" but passes dead-code and health runs verbatim from upstream builders that don't set automationDetails.id, so dead-code and health collide on createRunKey. Fix: inline jq patch that rewrites only the runs with null automationDetails, classifier based on rules[0].id prefix, then 1 explicit codeql-action/upload-sarif@<sha> call with category: fallow. F-6 (upstream fix in fallow) is deferred per operator instruction; the local patch retires when F-6 ships."
-status: pending
+status: completed
 priority: P2
 branch: "260629-2011-fallow-tools-v2-action-swap"
 tags: [ci, fallow, action-swap, sarif-patch, codeql-v4, plan-amendment]
@@ -11,6 +11,8 @@ created: "2026-06-30T05:36:12.000Z"
 createdBy: "operator"
 addresses: ["meta-260630T1238Z-the-fallow-rs-fallow-v2-action-s-internal-codeql-action-uplo"]
 source: skill
+shipped_in_pr: "https://github.com/dat9uy/learning-loop-template/pull/23"
+shipped_at: "2026-06-30T17:35:00.000Z"
 ---
 
 # Patch SARIF `tool.driver` per run in fallow-rs/fallow@v2 Action swap
@@ -85,9 +87,9 @@ Key changes from the old Python heredoc:
 
 | Phase | Name | Status | TDD Gate |
 |-------|------|--------|----------|
-| 1 | [Correct the design evidence](./phase-01-phase-1-correct-design-evidence.md) | Pending | Deep-dive §6.3 / §6.5 corrected with the actual codeql-action source citation + the live SARIF diff + the fallow source-level evidence. Decision record D2 annotated to confirm it remains correct (already "Drop (Migration A)"; PR #22 failure was an orthogonal bug). |
-| 2 | [Patch SARIF per run + 1 explicit upload](./phase-02-phase-2-patch-sarif-1-explicit-upload.md) | Pending | Workflow-shape test asserts: (a) `sarif: false` on Action; (b) inline jq patch step present; (c) 1 explicit `codeql-action/upload-sarif@<sha>` call with `category: fallow`; (d) no per-analyzer upload calls. Local test suite baseline (from step 2.0) green. |
-| 3 | [Verify in CI on PR](./phase-03-phase-3-verify-in-ci.md) | Pending | Fresh PR run on a no-change branch reports `verdict=pass`; SARIF uploaded to Code Scanning under `category: fallow`; failure-upload step's path resolves to a real file. |
+| 1 | [Correct the design evidence](./phase-01-phase-1-correct-design-evidence.md) | Complete | Deep-dive §6.3 / §6.5 corrected with the actual codeql-action source citation + the live SARIF diff + the fallow source-level evidence. Decision record D2 annotated to confirm it remains correct (already "Drop (Migration A)"; PR #22 failure was an orthogonal bug). |
+| 2 | [Patch SARIF per run + 1 explicit upload](./phase-02-phase-2-patch-sarif-1-explicit-upload.md) | Complete | Workflow-shape test asserts: (a) `sarif: false` on Action; (b) inline jq patch step present; (c) 1 explicit `codeql-action/upload-sarif@<sha>` call with `category: fallow`; (d) no per-analyzer upload calls. Local test suite baseline (from step 2.0) green. |
+| 3 | [Verify in CI on PR](./phase-03-phase-3-verify-in-ci.md) | Complete | Fresh PR run on a no-change branch reports `verdict=pass`; SARIF uploaded to Code Scanning under `category: fallow`; failure-upload step's path resolves to a real file. |
 
 ## Dependencies
 
@@ -125,20 +127,20 @@ Key changes from the old Python heredoc:
 
 ## Acceptance Criteria
 
-- [ ] `meta-state.jsonl` has an active finding (`meta-260630T1238Z-the-fallow-rs-fallow-v2-action-s-internal-codeql-action-uplo`) documenting the deep-dive §6.3/§6.5 error and pointing at the corrected source (codeql-action `createRunKey` + fallow `build_audit_sarif`)
-- [ ] Deep-dive report updated: §6.3 / §6.5 claim corrected with the actual `createRunKey` function and the live SARIF diff (3 runs; automationDetails.id null on dead-code and health, set on dupes)
-- [ ] Decision record updated: D2 (per-analyzer categories) **annotated** to confirm it remains correct (was already "Drop (Migration A)" before this plan; the PR #22 failure was an orthogonal bug, not a category-routing issue). Per-analyzer categories deferred to a follow-up after F-6 lands.
-- [ ] `.github/workflows/test.yml` has `sarif: false` on the Action invocation
-- [ ] Inline jq patch step present: reads `fallow-results.sarif` from the Action's artifacts-dir, patches each `runs[i]` where `automationDetails == null` to set `automationDetails.id` based on `runs[i].tool.driver.rules[0].id` prefix, writes to `<artifacts-dir>/fallow-results-patched.sarif`
-- [ ] 1 explicit `codeql-action/upload-sarif@<sha>` call present with `category: fallow`, `sarif_file: <artifacts-dir>/fallow-results-patched.sarif`
-- [ ] All workflow-shape tests still pass (the existing 9 must be updated to reflect the corrected design — `sarif: false`, single category, no `codeql-action/upload-sarif@<sha>` direct call inside the Action's composite, no per-analyzer upload calls)
-- [ ] New workflow-shape tests added: patch step exists; patch step is jq-based (no Python dependency); patch step reads from artifacts-dir; upload step has correct category
-- [ ] Local test suite green (1380+/1380+)
-- [ ] Fresh PR run on a no-change branch reports `verdict=pass`; SARIF visible in Code Scanning under `category: fallow`
-- [ ] Failure-upload step's path resolves to a real file on a failing run
-- [ ] PR #22 closed with a comment linking to the new plan
-- [ ] Original plan's ship journal updated to note the amendment
-- [ ] F-6 (upstream fix to fallow) explicitly deferred — NOT filed in this plan's scope. Owner assigned to "operator", target follow-up plan when convenient.
+- [x] `meta-state.jsonl` has an active finding (`meta-260630T1238Z-the-fallow-rs-fallow-v2-action-s-internal-codeql-action-uplo`) documenting the deep-dive §6.3/§6.5 error and pointing at the corrected source (codeql-action `createRunKey` + fallow `build_audit_sarif`)
+- [x] Deep-dive report updated: §6.3 / §6.5 claim corrected with the actual `createRunKey` function and the live SARIF diff (3 runs; automationDetails.id null on dead-code and health, set on dupes)
+- [x] Decision record updated: D2 (per-analyzer categories) **annotated** to confirm it remains correct (was already "Drop (Migration A)" before this plan; the PR #22 failure was an orthogonal bug, not a category-routing issue). Per-analyzer categories deferred to a follow-up after F-6 lands.
+- [x] `.github/workflows/test.yml` has `sarif: false` on the Action invocation
+- [x] Inline jq patch step present: reads `fallow-results.sarif` from the Action's artifacts-dir, patches each `runs[i]` where `automationDetails == null` to set `automationDetails.id` based on `runs[i].tool.driver.rules[0].id` prefix, writes to `<artifacts-dir>/fallow-results-patched.sarif`
+- [x] 1 explicit `codeql-action/upload-sarif@<sha>` call present with `category: fallow`, `sarif_file: <artifacts-dir>/fallow-results-patched.sarif`
+- [x] All workflow-shape tests still pass (the existing 9 must be updated to reflect the corrected design — `sarif: false`, single category, no `codeql-action/upload-sarif@<sha>` direct call inside the Action's composite, no per-analyzer upload calls)
+- [x] New workflow-shape tests added: patch step exists; patch step is jq-based (no Python dependency); patch step reads from artifacts-dir; upload step has correct category
+- [x] Local test suite green (1393/1393; +13 over baseline of 1380)
+- [x] Fresh PR run on a no-change branch reports `verdict=pass`; SARIF visible in Code Scanning under `category: fallow` (PR #23 all 3 checks pass)
+- [ ] Failure-upload step's path resolves to a real file on a failing run (Step 3.5 destructive test deferred per operator choice; T8-update + if-no-files-found: ignore cover the path)
+- [x] PR #22 closed with a comment linking to the new plan
+- [x] Original plan's ship journal updated to note the amendment
+- [x] F-6 (upstream fix to fallow) explicitly deferred — NOT filed in this plan's scope. Owner assigned to "operator", target follow-up plan when convenient.
 
 ## Risks
 
@@ -217,8 +219,9 @@ Key changes from the old Python heredoc:
 
 ---
 
-Status: pending
+Status: completed
 Created: 2026-06-30T05:36:12.000Z
+Shipped: 2026-06-30T17:35:00.000Z (PR #23)
 Branch: 260629-2011-fallow-tools-v2-action-swap
 Refactored: 2026-06-30T14:25 — Option A (split + 3 uploads) replaced with Option B (patch in-place + 1 upload) per operator pushback. See `plans/reports/research-260630-1425-GH-2011-fallow-sarif-internals-audit.md` for the source-level evidence.
 
