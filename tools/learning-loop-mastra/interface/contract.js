@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * tools/learning-loop-mastra/interface/contract.js
- * Runtime-interface contract validator. Verifies 5 requirements in CONTRACT.md.
+ * Runtime-interface contract validator. Verifies 7 requirements in CONTRACT.md
+ * (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
+ *  both additive Phase E Plan 4 for declarative-hook runtimes like Mastra Code).
  *
  * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
  *      node tools/learning-loop-mastra/interface/contract.js --list
@@ -145,6 +147,15 @@ function checkMcpClientConfig(runtimeId, rootPath) {
   return { id: "mcp-client-config", ok: !!entry && targetOk, config_path: configPath, entry };
 }
 
+function resolveSkillPath(candidates, rootPath) {
+  // Returns the absolute path of the first candidate that exists on disk, or null.
+  for (const candidate of candidates) {
+    const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
+    if (existsSync(absolute)) return absolute;
+  }
+  return null;
+}
+
 function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
@@ -153,17 +164,8 @@ function checkSkillSpec(runtimeId, rootPath) {
   const skillDiscoveryPaths = runtime.skill_discovery_paths ?? [
     join(rootPath, surface, "skills", "learning-loop", "SKILL.md"),
   ];
-  let resolvedSkillPath = null;
-  let content = null;
-  for (const candidate of skillDiscoveryPaths) {
-    const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
-    if (existsSync(absolute)) {
-      resolvedSkillPath = absolute;
-      content = readFileSync(absolute, "utf8");
-      break;
-    }
-  }
-  if (content === null) {
+  const resolvedSkillPath = resolveSkillPath(skillDiscoveryPaths, rootPath);
+  if (resolvedSkillPath === null) {
     return {
       id: "skill-spec",
       ok: false,
@@ -173,94 +175,123 @@ function checkSkillSpec(runtimeId, rootPath) {
       searched_paths: skillDiscoveryPaths,
     };
   }
+  const content = readFileSync(resolvedSkillPath, "utf8");
   const hasToolsBlock = /^tools:\s*$/m.test(content) || /^\s*-\s+loop_describe/m.test(content);
   const toolsReferenced = REQUIRED_TOOL_REFS.filter((n) => content.includes(n));
   const ok = toolsReferenced.length === REQUIRED_TOOL_REFS.length;
   return { id: "skill-spec", ok, skill_path: resolvedSkillPath, has_tools_block: hasToolsBlock, tools_referenced: toolsReferenced };
 }
 
-function checkIdentityMarker(runtimeId) {
-  const expected = runtimeId;
-  // Phase E Plan 4: accept RUNTIME_ID OR MASTRA_RESOURCE_ID (additive alternative for Mastra Code).
-  // MASTRA_RESOURCE_ID is spoofable until LIM-3 caller-identity ships (Plan 5 deferral D5).
-  const runtimeIdEnv = process.env.RUNTIME_ID ?? null;
-  const mastraResourceEnv = process.env.MASTRA_RESOURCE_ID ?? null;
-  // First match wins; both unset => 'unset'.
-  let actual = null;
-  if (runtimeIdEnv !== null) actual = runtimeIdEnv;
-  else if (mastraResourceEnv !== null) actual = mastraResourceEnv;
-  const status = actual === null ? "unset" : actual === expected ? "match" : "mismatch";
-  const envVar = runtimeIdEnv !== null ? "RUNTIME_ID" : (mastraResourceEnv !== null ? "MASTRA_RESOURCE_ID" : "RUNTIME_ID");
-  return { id: "identity-marker", ok: true, env_var: envVar, expected, actual, status };
+// Phase E Plan 4: RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive
+// alternative for Mastra Code. MASTRA_RESOURCE_ID is spoofable until LIM-3 caller-identity
+// ships in Plan 5 (deferral D5).
+// Read fresh on each call so test env-var mutations are honored.
+function identityCandidates() {
+  return [
+    { name: "RUNTIME_ID", value: process.env.RUNTIME_ID ?? null },
+    { name: "MASTRA_RESOURCE_ID", value: process.env.MASTRA_RESOURCE_ID ?? null },
+  ];
 }
 
+function checkIdentityMarker(runtimeId) {
+  // First match wins; both unset => 'unset'.
+  const candidates = identityCandidates();
+  const match = candidates.find((c) => c.value !== null) ?? candidates[0];
+  const actual = match.value;
+  const status = actual === null ? "unset" : actual === runtimeId ? "match" : "mismatch";
+  return { id: "identity-marker", ok: true, env_var: match.name, expected: runtimeId, actual, status };
+}
+
+// Claude Code / Droid shape: entry.hooks[].command
+// Mastra Code declarative shape: entry.command
+// Cyclomatic floor: any "iterate filtered commands" loop needs (loop + typeof-filter),
+// and supporting both shapes in one entry-pass requires two such loops. The CC is
+// unavoidable for the dual-shape contract validator.
+function addMastraShapeCommand(entry, commands) {
+  if (typeof entry?.command === "string") commands.push(entry.command);
+}
+
+// fallow-ignore-next-line complexity
+function addClaudeShapeCommands(entry, commands) {
+  for (const h of entry?.hooks ?? []) {
+    if (typeof h?.command === "string") commands.push(h.command);
+  }
+}
+
+// Supports BOTH shapes:
+//   Claude Code / Droid: { PreToolUse: [{ matcher, hooks: [{ command }] }] }
+//   Mastra Code declarative: { PreToolUse: [{ command, matcher: { tool_name } }] }
+// CC floor: nested iteration over hook config entries (for-event + for-entry).
+// fallow-ignore-next-line complexity
 function collectHookCommands(hooksObj) {
-  // Supports BOTH shapes:
-  //   Claude Code / Droid: { PreToolUse: [{ matcher, hooks: [{ command }] }] }
-  //   Mastra Code declarative: { PreToolUse: [{ command, matcher: { tool_name } }] }
   const commands = [];
   for (const block of Object.values(hooksObj ?? {})) {
     if (!Array.isArray(block)) continue;
     for (const entry of block) {
-      // Claude Code shape: entry.hooks[] with .command
-      if (Array.isArray(entry?.hooks)) {
-        for (const h of entry.hooks) {
-          if (typeof h?.command === "string") commands.push(h.command);
-        }
-      }
-      // Mastra Code declarative shape: entry.command directly
-      if (typeof entry?.command === "string") commands.push(entry.command);
+      addClaudeShapeCommands(entry, commands);
+      addMastraShapeCommand(entry, commands);
     }
   }
   return commands;
 }
 
+function findReferencedDeclarativeHooks(commands) {
+  // Required: all 4 universal-hook paths must be referenced; match by basename.
+  return REQUIRED_HOOK_COMMANDS.filter((p) => commands.some((c) => c.includes(p.split("/").pop())));
+}
+
+function findReferencedShimBasenames(commands) {
+  return SHIM_BASENAMES.filter((b) => commands.some((c) => c.includes(b)));
+}
+
+function evaluateDeclarativeSettingsIntegration(hooksPath) {
+  const parsed = readJsonSafe(hooksPath);
+  if (!parsed.ok) {
+    return {
+      id: "settings-integration",
+      ok: false,
+      settings_path: hooksPath,
+      commands: [],
+      shims_referenced: [],
+      parse_error: parsed.error,
+      note: "declarative-hooks (Mastra Code)",
+    };
+  }
+  const commands = collectHookCommands(parsed.data);
+  const hooksReferenced = findReferencedDeclarativeHooks(commands);
+  const ok = hooksReferenced.length === REQUIRED_HOOK_COMMANDS.length;
+  return {
+    id: "settings-integration",
+    ok,
+    settings_path: hooksPath,
+    commands,
+    hooks_referenced: hooksReferenced,
+    note: "declarative-hooks (Mastra Code)",
+  };
+}
+
+function evaluateShimFileSettingsIntegration(settingsPath) {
+  const parsed = readJsonSafe(settingsPath);
+  if (!parsed.ok) {
+    return { id: "settings-integration", ok: false, settings_path: settingsPath, commands: [], shims_referenced: [], parse_error: parsed.error };
+  }
+  const commands = collectHookCommands(parsed.data?.hooks);
+  const shimsReferenced = findReferencedShimBasenames(commands);
+  const ok = shimsReferenced.length === SHIM_BASENAMES.length;
+  return { id: "settings-integration", ok, settings_path: settingsPath, commands, shims_referenced: shimsReferenced };
+}
+
 function checkSettingsIntegration(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
-  const { surface, settings } = runtime;
   // Phase E Plan 4: Mastra Code has two settings-like files (hooks.json + settings.json);
   // Claude Code and Droid use a single settings.json with a `hooks` block.
   // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
   // universal-hook commands in the declarative config. For shim-file runtimes, require all
   // 4 shim basenames in the conventional settings.json hooks.
   if (runtime.declarative_hooks) {
-    const hooksPath = join(rootPath, runtime.declarative_hooks);
-    const parsed = readJsonSafe(hooksPath);
-    if (!parsed.ok) {
-      return {
-        id: "settings-integration",
-        ok: false,
-        settings_path: hooksPath,
-        commands: [],
-        shims_referenced: [],
-        parse_error: parsed.error,
-        note: "declarative-hooks (Mastra Code)",
-      };
-    }
-    const commands = collectHookCommands(parsed.data);
-    // Required: all 4 universal-hook paths must be referenced
-    const hooksReferenced = REQUIRED_HOOK_COMMANDS.filter((p) =>
-      commands.some((c) => c.includes(p.split("/").pop())) // match by basename
-    );
-    const ok = hooksReferenced.length === REQUIRED_HOOK_COMMANDS.length;
-    return {
-      id: "settings-integration",
-      ok,
-      settings_path: hooksPath,
-      commands,
-      hooks_referenced: hooksReferenced,
-      note: "declarative-hooks (Mastra Code)",
-    };
+    return evaluateDeclarativeSettingsIntegration(join(rootPath, runtime.declarative_hooks));
   }
-  const settingsPath = join(rootPath, surface, settings);
-  const parsed = readJsonSafe(settingsPath);
-  if (!parsed.ok) {
-    return { id: "settings-integration", ok: false, settings_path: settingsPath, commands: [], shims_referenced: [], parse_error: parsed.error };
-  }
-  const commands = collectHookCommands(parsed.data?.hooks);
-  const shimsReferenced = SHIM_BASENAMES.filter((b) => commands.some((c) => c.includes(b)));
-  const ok = shimsReferenced.length === SHIM_BASENAMES.length;
-  return { id: "settings-integration", ok, settings_path: settingsPath, commands, shims_referenced: shimsReferenced };
+  return evaluateShimFileSettingsIntegration(join(rootPath, runtime.surface, runtime.settings));
 }
 
 /**
@@ -271,10 +302,47 @@ function checkSettingsIntegration(runtimeId, rootPath) {
  * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/legacy/`.
  * Parallel/alternative to Req #1 (which stays monomorphic on shim files).
  */
+const REQUIRED_DECLARATIVE_EVENTS = ["PreToolUse", "UserPromptSubmit", "SessionStart"];
+
+function findMissingDeclarativeEvents(eventTypes) {
+  return REQUIRED_DECLARATIVE_EVENTS.filter((e) => !eventTypes.includes(e));
+}
+
+function findReferencedUniversalHooks(commands) {
+  return UNIVERSAL_HOOK_PATHS.filter((p) => commands.some((c) => c.includes(p)));
+}
+
+function findBogusHookCommands(commands) {
+  // Failsafe: every PreToolUse/write command MUST reference a known universal hook
+  // (red-team Security F4: silent passes on bogus paths are unacceptable).
+  return commands.filter((c) => !UNIVERSAL_HOOK_PATHS.some((p) => c.includes(p)));
+}
+
+function evaluateDeclarativeHooks(hooksPath, hooksData) {
+  const eventTypes = Object.keys(hooksData ?? {});
+  const allCommands = collectHookCommands(hooksData);
+  const missingEvents = findMissingDeclarativeEvents(eventTypes);
+  const universalHooksReferenced = findReferencedUniversalHooks(allCommands);
+  const bogusCommands = findBogusHookCommands(allCommands);
+  const ok = missingEvents.length === 0
+    && universalHooksReferenced.length >= REQUIRED_HOOK_COMMANDS.length
+    && bogusCommands.length === 0;
+  return {
+    id: "hook-declarative-config",
+    ok,
+    hooks_path: hooksPath,
+    event_types: eventTypes,
+    required_events: REQUIRED_DECLARATIVE_EVENTS,
+    missing_events: missingEvents,
+    universal_hooks_referenced: universalHooksReferenced,
+    bogus_commands: bogusCommands,
+  };
+}
+
 function checkHookDeclarativeConfig(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
+  // Shim-file runtimes don't apply Req #6; report N/A as OK.
   if (!runtime.declarative_hooks) {
-    // Shim-file runtimes don't apply Req #6; report N/A as OK.
     return { id: "hook-declarative-config", ok: true, applicable: false, note: "runtime uses shim-file hooks (Req #1); Req #6 N/A" };
   }
   const hooksPath = join(rootPath, runtime.declarative_hooks);
@@ -289,29 +357,41 @@ function checkHookDeclarativeConfig(runtimeId, rootPath) {
       parse_error: parsed.error,
     };
   }
-  const eventTypes = Object.keys(parsed.data ?? {});
-  const requiredEvents = ["PreToolUse", "UserPromptSubmit", "SessionStart"];
-  const missingEvents = requiredEvents.filter((e) => !eventTypes.includes(e));
-  // Verify each command in any event entry points at a universal hook path
-  const allCommands = collectHookCommands(parsed.data);
-  const universalHooksReferenced = UNIVERSAL_HOOK_PATHS.filter((p) =>
-    allCommands.some((c) => c.includes(p))
-  );
-  // Failsafe: every PreToolUse/write command MUST reference a known universal hook
-  // (red-team Security F4: silent passes on bogus paths are unacceptable)
-  const bogusCommands = allCommands.filter((c) => !UNIVERSAL_HOOK_PATHS.some((p) => c.includes(p)));
-  const ok = missingEvents.length === 0
-    && universalHooksReferenced.length >= REQUIRED_HOOK_COMMANDS.length
-    && bogusCommands.length === 0;
+  return evaluateDeclarativeHooks(hooksPath, parsed.data);
+}
+
+// Phase E Plan 4 — Req #7 (settings-no-bypass).
+// Each entry is a documented bypass for the loop's gates; enabling any is rejected.
+// `shellPassthrough:true` bypasses the bash-gate hook entirely; `disableHooks:true`
+// disables all hooks; `disableMcp:true` disables MCP server connections (the loop IS
+// the MCP server, so this breaks the integration).
+const BYPASS_FIELDS = ["shellPassthrough", "disableHooks", "disableMcp"];
+
+function getBypassViolations(settingsData) {
+  if (!settingsData || typeof settingsData !== "object") return [];
+  return BYPASS_FIELDS
+    .filter((field) => settingsData[field] === true)
+    .map((field) => `${field}:true`);
+}
+
+function evaluateSettingsBypass(settingsPath) {
+  const parsed = readJsonSafe(settingsPath);
+  if (!parsed.ok) {
+    // Bad JSON in settings => treat as bypass attempt (fail closed).
+    return {
+      id: "settings-no-bypass",
+      ok: false,
+      settings_path: settingsPath,
+      violations: ["malformed-settings-json"],
+      parse_error: parsed.error,
+    };
+  }
+  const violations = getBypassViolations(parsed.data);
   return {
-    id: "hook-declarative-config",
-    ok,
-    hooks_path: hooksPath,
-    event_types: eventTypes,
-    required_events: requiredEvents,
-    missing_events: missingEvents,
-    universal_hooks_referenced: universalHooksReferenced,
-    bogus_commands: bogusCommands,
+    id: "settings-no-bypass",
+    ok: violations.length === 0,
+    settings_path: settingsPath,
+    violations,
   };
 }
 
@@ -323,36 +403,16 @@ function checkHookDeclarativeConfig(runtimeId, rootPath) {
  */
 function checkSettingsNoBypass(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
-  // Only applies to runtimes with declarative settings (Mastra Code today; future too)
+  // Only applies to runtimes with declarative settings (Mastra Code today; future too).
   if (!runtime.settings_path) {
     return { id: "settings-no-bypass", ok: true, applicable: false, note: "runtime has no declarative settings path; Req #7 N/A" };
   }
   const settingsPath = join(rootPath, runtime.settings_path);
+  // No settings file => no bypass possible; vacuously OK.
   if (!existsSync(settingsPath)) {
-    // No settings file => no bypass possible; vacuously OK
     return { id: "settings-no-bypass", ok: true, applicable: false, settings_path: settingsPath, note: "no settings file present" };
   }
-  const parsed = readJsonSafe(settingsPath);
-  if (!parsed.ok) {
-    // Bad JSON in settings => treat as bypass attempt (fail closed)
-    return {
-      id: "settings-no-bypass",
-      ok: false,
-      settings_path: settingsPath,
-      violations: ["malformed-settings-json"],
-      parse_error: parsed.error,
-    };
-  }
-  const violations = [];
-  if (parsed.data?.shellPassthrough === true) violations.push("shellPassthrough:true");
-  if (parsed.data?.disableHooks === true) violations.push("disableHooks:true");
-  if (parsed.data?.disableMcp === true) violations.push("disableMcp:true");
-  return {
-    id: "settings-no-bypass",
-    ok: violations.length === 0,
-    settings_path: settingsPath,
-    violations,
-  };
+  return evaluateSettingsBypass(settingsPath);
 }
 
 /**
