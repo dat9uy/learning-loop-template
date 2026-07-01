@@ -73,6 +73,9 @@ export const REQUIREMENT_IDS = [
   "settings-integration",
   "hook-declarative-config",
   "settings-no-bypass",
+  // Plan 5 Phase 4 additions: per-runtime write allowlist must exist + cover all runtimes.
+  "r2-allowlist-present",
+  "r2-allowlist-coverage",
 ];
 
 function readJsonSafe(p) {
@@ -416,6 +419,57 @@ function checkSettingsNoBypass(runtimeId, rootPath) {
 }
 
 /**
+ * Plan 5 Phase 4 — Req #9 (`r2-allowlist-present`).
+ * The project MUST have `.loop/r2-allowlist.json` declaring the per-runtime
+ * writable surfaces. Required keys: `version: 1`, `runtimes`, `universal`.
+ */
+function checkR2AllowlistPresent(rootPath) {
+  const allowlistPath = join(rootPath, ".loop", "r2-allowlist.json");
+  if (!existsSync(allowlistPath)) {
+    return { id: "r2-allowlist-present", ok: false, allowlist_path: allowlistPath, parse_error: null };
+  }
+  const parsed = readJsonSafe(allowlistPath);
+  if (!parsed.ok) {
+    return { id: "r2-allowlist-present", ok: false, allowlist_path: allowlistPath, parse_error: parsed.error };
+  }
+  const data = parsed.data ?? {};
+  const hasKeys = data.version === 1
+    && typeof data.runtimes === "object" && data.runtimes !== null
+    && Array.isArray(data.universal);
+  return {
+    id: "r2-allowlist-present",
+    ok: hasKeys,
+    allowlist_path: allowlistPath,
+    version: data.version,
+    runtimes: data.runtimes ? Object.keys(data.runtimes) : [],
+    universal_count: Array.isArray(data.universal) ? data.universal.length : 0,
+  };
+}
+
+/**
+ * Plan 5 Phase 4 — Req #10 (`r2-allowlist-coverage`).
+ * Every registered runtime id (per `interface/contract.js` runtime registry) MUST
+ * have a matching entry in `runtimes`. `unknown` is NOT a valid entry.
+ */
+function checkR2AllowlistCoverage(runtimeId, rootPath) {
+  const allowlistPath = join(rootPath, ".loop", "r2-allowlist.json");
+  if (!existsSync(allowlistPath)) {
+    return { id: "r2-allowlist-coverage", ok: true, applicable: false, note: "no allowlist present (Req #9 will fail first)" };
+  }
+  const parsed = readJsonSafe(allowlistPath);
+  if (!parsed.ok) {
+    return { id: "r2-allowlist-coverage", ok: false, note: "parse-error", parse_error: parsed.error };
+  }
+  const entry = parsed.data?.runtimes?.[runtimeId];
+  return {
+    id: "r2-allowlist-coverage",
+    ok: entry?.identity === runtimeId,
+    expected: runtimeId,
+    found: entry?.identity ?? null,
+  };
+}
+
+/**
  * Validate a runtime against the 5-requirement contract.
  * @param {string} runtimeId - One of: "claude-code", "droid", "mastra-code".
  * @param {string} [rootPath=process.cwd()] - Project root (defaults to cwd).
@@ -451,6 +505,9 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     // Phase E Plan 4: Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
     checkHookDeclarativeConfig(runtimeId, resolvedRoot),
     checkSettingsNoBypass(runtimeId, resolvedRoot),
+    // Plan 5 Phase 4: Reqs #9 (r2-allowlist-present) + #10 (r2-allowlist-coverage).
+    checkR2AllowlistPresent(resolvedRoot),
+    checkR2AllowlistCoverage(runtimeId, resolvedRoot),
   ];
   const missing = checks.filter((c) => !c.ok).map((c) => c.id);
   const notes = [];

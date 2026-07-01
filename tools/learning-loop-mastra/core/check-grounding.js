@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, isAbsolute } from "node:path";
 import { stripEvidenceAnchor } from "./gate-logic.js";
+import { resolveInsideRoot, PathContainmentError } from "./path-containment.js";
 
 /**
  * SP2 Grounding Check — pure function (no subprocess).
@@ -139,7 +140,35 @@ export function checkGrounding(entry, codeContext) {
   // meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
   // for the gate-bug class this closes.
   const strippedRef = stripEvidenceAnchor(codeRef);
-  const absPath = isAbsolute(strippedRef) ? strippedRef : join(root, strippedRef);
+  let absPath;
+  try {
+    absPath = resolveInsideRoot(strippedRef, root);
+  } catch (err) {
+    if (err instanceof PathContainmentError) {
+      // Path escapes root — treat as missing code reference.
+      return {
+        id: entry.id,
+        raw_status: entry.status ?? "unknown",
+        grounding: {
+          evidence_code_ref: strippedRef,
+          code_ref_exists: false,
+          code_ref_hash: null,
+          code_fingerprint: null,
+          hash_match: null,
+          tests_referenced: false,
+          tests_run: false,
+          test_passed: null,
+          path_containment: err.code,
+          checked_at: new Date(now()).toISOString(),
+          duration_ms: now() - t0,
+        },
+        status: "drifted",
+        drift_kind: "code_missing",
+        fingerprint_was_recorded: false,
+      };
+    }
+    throw err;
+  }
   const codeRefExists = existsSync(absPath);
 
   // Compute hash if file exists (catch read race)

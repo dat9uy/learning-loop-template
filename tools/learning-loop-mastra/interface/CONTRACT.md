@@ -1,6 +1,6 @@
 # Runtime Interface Contract
 
-The 7 requirements that an agent runtime MUST satisfy to integrate with the learning loop. The validator (`contract.js`) enforces this contract.
+The 9 requirements that an agent runtime MUST satisfy to integrate with the learning loop. The validator (`contract.js`) enforces this contract.
 
 ## Requirements
 
@@ -31,9 +31,27 @@ The runtime MUST provide a SKILL.md describing how to use the loop's MCP tools. 
 - Droid CLI: `.factory/skills/learning-loop/SKILL.md`
 - Mastra Code: `.mastracode/skills/learning-loop/SKILL.md` OR (via Claude-compatible auto-discovery) `.claude/skills/learning-loop/SKILL.md`
 
-### 4. `identity-marker` (PROPOSED, non-blocking)
+### 4. `identity-marker` (Plan 5 — Ed25519 signed capability token)
 
-The runtime SHOULD set its session env to one of `RUNTIME_ID=<runtimeId>` or `MASTRA_RESOURCE_ID=<runtimeId>`. **NEVER fails.** When unset: `notes: ["identity-marker-not-adopted"]`. When mismatched: `notes: ["identity-marker-mismatch"]`. The marker is the target convention from the bundled hardening plan (LIM-3 caller identity); existing runtimes do not yet set it. **Note (Phase E Plan 4):** `MASTRA_RESOURCE_ID` is an additive alternative for Mastra Code (accepted but spoofable until LIM-3 caller-identity ships in Plan 5). First match wins; both unset ⇒ advisory note only.
+The runtime MUST publish a signed capability token at
+`<surface>/coordination/runtime-id-token.json` whose signature is Ed25519
+verifiable against the runtime's registered public key. **Pass modes** (the
+contract supports two):
+
+- **Interactive mode (default for operator shells):** STRICT. The contract
+  validator MUST find the token file, parse it, and find a registered public
+  key whose fingerprint matches `envelope.pubkey_fingerprint`. Missing or
+  expired or invalid-signed tokens fail with `missing: ["identity-marker"]`.
+- **CI mode (default in `pnpm test` via `--ci-mode` flag):** ADVISORY. The
+  contract emits `notes: ["identity-marker-not-adopted"]` but does not fail.
+  CI runners do not run a SessionStart hook, so a token file cannot exist;
+  CI mode is the documented escape hatch.
+
+`MASTRA_RESOURCE_ID` env var is **advisory only** and accepted only by the
+contract validator's fallback path. The MCP server verifier (Phase 1) is
+**Ed25519-only** and does NOT honor `MASTRA_RESOURCE_ID` — this split
+prevents an attacker from spoofing identity by setting
+`MASTRA_RESOURCE_ID=droid` in a Claude Code session.
 
 ### 5. `settings-integration`
 
@@ -60,6 +78,28 @@ The runtime's declarative settings file (e.g., `.mastracode/settings.json`) MUST
 - `disableMcp: true` — disables MCP server connections; rejected (the learning loop IS the MCP server).
 
 **Pass:** no bypass fields enabled, AND settings JSON parses (malformed JSON in the settings file is treated as a bypass attempt — fail closed). **Fail:** any bypass field set to `true`. **Applicability:** declarative-settings runtimes only. For shim-file runtimes (Claude Code, Droid CLI), this requirement reports `applicable:false` and trivially passes.
+
+### 8. `r2-allowlist-present` (Plan 5 — per-runtime write allowlist)
+
+The project MUST have a `.loop/r2-allowlist.json` file declaring the per-runtime
+writable surfaces. Required keys:
+
+- `version: 1`
+- `runtimes: { <runtimeId>: { identity, own, deny } }` — one entry per registered runtime
+- `universal: string[]` — patterns every runtime may write
+- `protected_paths: string[]` — patterns NO runtime may write (immutable in v1)
+
+**Pass:** file exists, JSON parses, all required keys present. **Fail:** file
+missing, JSON malformed, or required keys missing.
+
+### 9. `r2-allowlist-coverage` (Plan 5 — runtime coverage)
+
+Every registered runtime id (per `interface/contract.js` runtime registry) MUST
+have a matching entry in `runtimes`. `unknown` is NOT a valid entry. **Pass:**
+`allowlist.runtimes[runtimeId].identity === runtimeId` for every runtime
+that the contract validator knows about. **Fail:** missing entry OR
+identity mismatch (e.g., `claude-code` registered but `droid` entry
+present).
 
 ## How to verify
 

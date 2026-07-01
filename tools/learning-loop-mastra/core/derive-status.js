@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
+import { resolveInsideRoot, PathContainmentError } from "./path-containment.js";
 
 /**
  * Source-of-truth enums. Export so introspection layers (e.g. core/loop-introspect.js
@@ -85,8 +86,13 @@ export function deriveStatus(entry, codeContext) {
 }
 
 function checkExists(root, path) {
-  const fullPath = isAbsolute(path) ? path : join(root, path);
-  return existsSync(fullPath);
+  try {
+    const fullPath = resolveInsideRoot(path, root);
+    return existsSync(fullPath);
+  } catch (err) {
+    if (err instanceof PathContainmentError) return false;
+    throw err;
+  }
 }
 
 // fallow-ignore-next-line complexity

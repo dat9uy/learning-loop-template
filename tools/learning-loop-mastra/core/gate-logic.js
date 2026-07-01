@@ -21,6 +21,7 @@ import { SURFACES } from "./surfaces.js";
 import { readRegistry, metaStateRuleEntrySchema } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
+import { resolveInsideRoot } from "./path-containment.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
@@ -669,7 +670,13 @@ export function checkResolutionEvidence(rule, root) {
       // `path/to/file.js:37` as a literal file path and flagged it as
       // code_ref_missing even when the file existed. See finding
       // meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref.
-      const absPath = isAbsolute(codeRef) ? codeRef : join(root, stripEvidenceAnchor(codeRef));
+      let absPath;
+      try {
+        absPath = resolveInsideRoot(stripEvidenceAnchor(codeRef), root);
+      } catch {
+        orphans.push({ id: entry.id, reason: "code_ref_missing" });
+        continue;
+      }
       let currentHash;
       try {
         currentHash = computeFileHash(absPath);

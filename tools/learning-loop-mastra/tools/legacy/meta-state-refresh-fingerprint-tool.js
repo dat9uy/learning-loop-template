@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { isAbsolute, join } from "node:path";
 import { computeFileHash } from "../../core/check-grounding.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
+import { resolveInsideRoot, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -113,7 +113,23 @@ export const metaStateRefreshFingerprintTool = {
     // Without this, `path/to/file.js:37` and `path/to/file.js#functionName`
     // would be treated as literal file paths and fail with code_missing.
     const strippedCodeRef = stripEvidenceAnchor(rawCodeRef);
-    const absPath = isAbsolute(strippedCodeRef) ? strippedCodeRef : join(root, strippedCodeRef);
+    let absPath;
+    try {
+      absPath = resolveInsideRoot(strippedCodeRef, root);
+    } catch (err) {
+      if (err instanceof PathContainmentError) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            error: "code_missing",
+            id,
+            evidence_code_ref: strippedCodeRef,
+            path_containment: err.code,
+            cache_hit: false,
+          }) }],
+        };
+      }
+      throw err;
+    }
     let hash;
     try {
       hash = computeFileHash(absPath);

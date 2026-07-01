@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { existsSync, statSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { runVerification } from "../../core/verification-runner.js";
+import { resolveInsideRoot, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -14,7 +14,17 @@ import { resolveRoot } from "#lib/resolve-root.js";
 const testRunCache = new Map();
 
 function runTest(root, testPath) {
-  const fullPath = isAbsolute(testPath) ? testPath : join(root, testPath);
+  let fullPath;
+  try {
+    fullPath = resolveInsideRoot(testPath, root);
+  } catch (err) {
+    if (err instanceof PathContainmentError) {
+      // Path escapes root — refuse to invoke the test runner.
+      testRunCache.set(`${root}::${testPath}::denied`, null);
+      return null;
+    }
+    throw err;
+  }
   if (!existsSync(fullPath)) return null;
   const mtime = statSync(fullPath).mtimeMs;
   const key = `${fullPath}:${mtime}`;
