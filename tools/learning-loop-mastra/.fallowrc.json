@@ -19,6 +19,9 @@
     "hooks/legacy/**/*.js",
     "hooks/legacy/**/*.cjs",
     "interface/**/*.js",
+    "core/identity/**/*.js",
+    "core/r2/**/*.js",
+    "core/path-containment.js",
     "__tests__/with-mcp-server.js"
   ],
 

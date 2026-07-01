@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "protected_paths": [
+    ".loop/r2-allowlist.json",
+    "tools/learning-loop-mastra/core/identity/**",
+    "tools/learning-loop-mastra/core/r2/**",
+    "tools/learning-loop-mastra/core/path-containment.js",
+    "tools/learning-loop-mastra/core/surfaces.js",
+    "tools/learning-loop-mastra/core/gate-logic.js",
+    ".claude/coordination/hooks/",
+    ".factory/coordination/hooks/",
+    ".mastracode/hooks.json"
+  ],
+  "universal": [
+    "records/**",
+    "plans/**",
+    "docs/**",
+    "AGENTS.md"
+  ],
+  "runtimes": {
+    "claude-code": {
+      "identity": "claude-code",
+      "own": [".claude/**"],
+      "deny": [".factory/**", ".mastracode/**"]
+    },
+    "droid": {
+      "identity": "droid",
+      "own": [".factory/**"],
+      "deny": [".claude/**", ".mastracode/**"]
+    },
+    "mastra-code": {
+      "identity": "mastra-code",
+      "own": [".mastracode/**"],
+      "deny": [".claude/**", ".factory/**"]
+    }
+  }
+}

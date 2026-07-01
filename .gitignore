@@ -44,3 +44,7 @@ tools/learning-loop-mastra/node_modules
 
 # Local fallow SARIF audit output (preserved on failure via the upload-artifact step in .github/workflows/test.yml)
 tools/learning-loop-mastra/reports/fallow/
+
+# Plan 5 Phase 1 — runtime identity keys + tokens (Ed25519 seed, 0600 perms; outside project by design)
+**/runtime-private-key.bin
+**/runtime-id-token.json

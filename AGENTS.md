@@ -365,7 +365,7 @@ Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/ho
 - Cross-runtime edits (e.g., a Claude Code session editing `.factory/`) require an operator-approved PR.
 - The `interface/CONTRACT.md` 5-requirement contract is the loop's concern; the runtime's coordination directory is the runtime's concern.
 
-**Enforcement:** Git branch protection + PR review. The bundled hardening plan (`hardening-r2-lim3-lim4`) ships the write-gate (LIM-3 caller identity + R2 write-gate + LIM-4 path traversal) for security-critical enforcement.
+**Enforcement:** Per-runtime write allowlist via `.loop/r2-allowlist.json` enforced by the createLoopTool R2 gate (Plan 5, shipped 2026-07-01). Branch protection + PR review remain for non-critical paths. The R2 gate keys on the Ed25519 verified runtime identity (LIM-3); path containment (LIM-4) is applied BEFORE the ownership check so symlink-escape attempts are refused with `path_containment: "outside_root"`. See `docs/security/plan-5-hardening.md` for the operator-facing summary.
 
 ---
 
