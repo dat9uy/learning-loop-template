@@ -284,7 +284,17 @@ traceability:
   `.mastracode`) and rewrote the `shims-in-sync` checklist item to enumerate the
   real shim files and verify byte-identity across all surfaces (the prior
   implementation could not find shims — it derived shim names from universal-hook
-  names, which do not match — and only compared two surfaces).
+  names, which do not match — and only compared two surfaces). A subsequent pass
+  derived every remaining ad-hoc surface-name regex/path literal across the
+  gate/core from `SURFACES` (`evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`,
+  `evaluate-write-gate.js` `preflight-marker` block rule,
+  `runtime-state-record-tool.js` `hasPreflightMarker`, and the
+  `runtime-agnostic-checklist.js` auditors) so adding a 4th runtime requires
+  editing only `surfaces.js`. That pass closed a direct-write bypass: a write to
+  `.mastracode/coordination/.loop-preflight-*` previously matched no write-gate
+  rule and was allowed (the `preflight-marker` rule hard-coded `.claude`/
+  `.factory`); it is now blocked, consistent with the invariant that preflight
+  markers may only be created via `mark_preflight_complete`.
 
 ## Troubleshooting: verify `LOOP_SURFACE` is set
 

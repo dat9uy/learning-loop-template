@@ -3,7 +3,13 @@ import { readFileSync, existsSync, appendFileSync, writeFileSync } from "node:fs
 import { join, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { SURFACES } from "../../core/surfaces.js";
 
+// SIDECAR_FILENAME + computeFingerprint are shared text with the sibling
+// runtime-state-read-tool.js (read-only tool). Extracting a shared helper is
+// out of scope for the surface-derivation change; the read tool's
+// computeFingerprint is currently dead code (separate cleanup).
+// fallow-ignore-next-line code-duplication
 const SIDECAR_FILENAME = "runtime-state.jsonl";
 
 function computeFingerprint(row) {
@@ -12,9 +18,8 @@ function computeFingerprint(row) {
 }
 
 function hasPreflightMarker(root) {
-  const claudeMarker = join(root, ".claude", "coordination", ".loop-preflight-runtime-state");
-  const factoryMarker = join(root, ".factory", "coordination", ".loop-preflight-runtime-state");
-  return existsSync(claudeMarker) || existsSync(factoryMarker);
+  return SURFACES.some((surface) =>
+    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-state")));
 }
 
 export const runtimeStateRecordTool = {
@@ -38,6 +43,7 @@ export const runtimeStateRecordTool = {
     metadata: z.record(z.unknown()).optional()
       .describe("Optional metadata object"),
   },
+  // fallow-ignore-next-line complexity
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();
 

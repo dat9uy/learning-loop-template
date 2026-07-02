@@ -15,7 +15,7 @@ import {
   loadPromotedRules,
   applyPromotedRules,
 } from "./gate-logic.js";
-import { SURFACES } from "./surfaces.js";
+import { SURFACES, getAllCoordinationPaths } from "./surfaces.js";
 
 /**
  * Named seam for the product/** preflight check (locked by convergence addendum).
@@ -58,6 +58,11 @@ function buildPreflightChecklist(surface) {
     `6. Call mark_preflight_complete MCP tool for surface "${surface}"`,
   ];
 }
+
+// Preflight-marker paths across every runtime surface, derived from SURFACES so
+// a direct write to any surface's coordination/.loop-preflight-* is blocked.
+// The marker may only be created via the mark_preflight_complete MCP tool.
+const PREFLIGHT_MARKER_PATHS = getAllCoordinationPaths(".loop-preflight-*");
 
 // ─── Write-gate rule registry ───────────────────────────────────────────────
 // Each rule has:
@@ -104,10 +109,8 @@ const WRITE_GATE_RULES = [
   },
   {
     name: "preflight-marker",
-    matchedRule: ".claude/coordination/.loop-preflight-*",
-    match: (relPath) =>
-      globMatch(".claude/coordination/.loop-preflight-*", relPath) ||
-      globMatch(".factory/coordination/.loop-preflight-*", relPath),
+    matchedRule: PREFLIGHT_MARKER_PATHS.join(" | "),
+    match: (relPath) => PREFLIGHT_MARKER_PATHS.some((g) => globMatch(g, relPath)),
     reason: "Preflight marker files can only be created via the mark_preflight_complete MCP tool. Direct writes are blocked.",
   },
   {

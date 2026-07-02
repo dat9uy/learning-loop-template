@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { SURFACES } from "./surfaces.js";
 
 const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/core",
@@ -8,11 +9,20 @@ const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/tools/legacy",
 ];
 
-const SHIM_DIRS = [
-  ".claude/coordination/hooks",
-  ".factory/coordination/hooks",
-  ".mastracode/coordination/hooks",
-];
+// Surface coordination/hooks dirs, derived from SURFACES so a new runtime is
+// picked up automatically (single source of truth).
+const SHIM_DIRS = SURFACES.map((surface) => `${surface}/coordination/hooks`);
+
+// Surface-name regex fragments derived from SURFACES. Surface names start with
+// ".", a regex metachar, so the alternation matches the leading dot literally
+// via `\.(...)`. Deriving these from SURFACES (instead of hand-rolled
+// `\.claude|\.factory` literals) means the auditors cover every runtime surface
+// — a file hard-coding `.mastracode` (or any future surface) paths is caught.
+const SURFACE_NAMES = SURFACES.map((s) => s.slice(1)); // ["claude","factory","mastracode"]
+const SURFACE_ALT = SURFACE_NAMES.join("|");
+const HAND_CODED_SURFACE_PATH = new RegExp(`join\\s*\\(\\s*root\\s*,\\s*"\\.(${SURFACE_ALT})"`);
+const TOUCHES_SURFACES = new RegExp(`\\.(${SURFACE_ALT})|coordination`);
+const TOUCHES_SURFACES_OR_KEYWORDS = new RegExp(`\\.(${SURFACE_ALT})|coordination|SURFACES`);
 
 function loadText(root, relPath) {
   const path = join(root, relPath);
@@ -302,9 +312,9 @@ export const CHECKLIST = [
     verify(featurePath, root) {
       const offenders = [];
       for (const { file, src } of iterAuditCodeFiles(root, featurePath)) {
-        if (!/\.(claude|factory)|coordination|SURFACES/.test(src)) continue;
+        if (!TOUCHES_SURFACES_OR_KEYWORDS.test(src)) continue;
         const handRolledLoop = /for\s*\(\s*const\s+\w+\s+of\s*SURFACES\s*\)/.test(src);
-        const hardCodedPath = /join\s*\(\s*root\s*,\s*"\.(claude|factory)"/.test(src);
+        const hardCodedPath = HAND_CODED_SURFACE_PATH.test(src);
         if (handRolledLoop || hardCodedPath) offenders.push(file);
       }
       if (offenders.length) {
@@ -323,7 +333,7 @@ export const CHECKLIST = [
     verify(featurePath, root) {
       const offenders = [];
       for (const { file, src } of iterAuditCodeFiles(root, featurePath)) {
-        const touchesSurfaces = /\.(claude|factory)|coordination/.test(src);
+        const touchesSurfaces = TOUCHES_SURFACES.test(src);
         if (!touchesSurfaces) continue;
         const importsHelpers =
           src.includes('from "./surfaces.js"') ||

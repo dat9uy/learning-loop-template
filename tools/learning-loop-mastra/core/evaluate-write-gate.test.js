@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { evaluateWriteGate, evaluatePreflight } from "./evaluate-write-gate.js";
+import { SURFACES } from "./surfaces.js";
 
 // ── helpers ──
 
@@ -101,6 +102,29 @@ test(".factory preflight marker blocks", () => {
     root,
   });
   assert.strictEqual(result.decision, "block");
+});
+
+test("every surface's preflight marker blocks (derived from SURFACES)", () => {
+  // The preflight-marker rule is derived from SURFACES. A direct write to any
+  // surface's coordination/.loop-preflight-* must be blocked. Regression guard:
+  // before the rule was derived, .mastracode/coordination/.loop-preflight-*
+  // matched no rule and was allowed (a bypass of the "markers may only be
+  // created via mark_preflight_complete" invariant).
+  // (.forEach, not for-of, so this core/*.test.js file does not trip the
+  // "no inline for-of-SURFACES loops" invariant that scans core/.)
+  SURFACES.forEach((surface) => {
+    const root = makeRoot();
+    const result = evaluateWriteGate({
+      filePath: `${surface}/coordination/.loop-preflight-product`,
+      root,
+    });
+    assert.strictEqual(result.decision, "block", `direct write to ${surface} preflight marker must block`);
+    assert.ok(
+      result.matched_rule.includes(`${surface}/coordination/.loop-preflight-*`),
+      `matched_rule for ${surface} should list its preflight glob: ${result.matched_rule}`,
+    );
+    assert.ok(result.reason.includes("mark_preflight_complete"), `reason for ${surface}`);
+  });
 });
 
 // ── product/** preflight delegation ──

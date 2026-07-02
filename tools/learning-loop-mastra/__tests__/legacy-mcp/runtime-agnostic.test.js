@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 
 import { CHECKLIST, stripCommentsAndStrings } from "../../core/runtime-agnostic-checklist.js";
 import { SURFACES } from "../../core/surfaces.js";
-import { PATH_WRITE_PATTERNS } from "../../core/evaluate-bash-gate.js";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/core");
@@ -83,7 +82,11 @@ await test("core/ has no inline for-of-SURFACES loops outside surfaces.js", () =
   assert.deepStrictEqual(offenders, [], `core/ files with hand-rolled SURFACES loops: ${offenders.join(", ")}`);
 });
 
-await test("core/ has no hard-coded join(root, \".claude\" or \".factory\") outside surfaces.js", () => {
+await test("core/ has no hard-coded join(root, <surface>) outside surfaces.js", () => {
+  // Surface alternation derived from SURFACES so the enforcement covers every
+  // runtime (a file hard-coding join(root, ".mastracode") is caught too).
+  const surfaceAlt = SURFACES.map((s) => s.slice(1)).join("|");
+  const hardCodedSurfacePath = new RegExp(`join\\s*\\(\\s*root\\s*,\\s*"\\.(${surfaceAlt})"`);
   const offenders = [];
   for (const file of readdirSync(CORE_DIR, { recursive: true })) {
     if (typeof file !== "string") continue;
@@ -92,7 +95,7 @@ await test("core/ has no hard-coded join(root, \".claude\" or \".factory\") outs
     if (file.endsWith("surfaces.js")) continue;
     const path = join(CORE_DIR, file);
     const src = readFileSync(path, "utf8");
-    if (/join\s*\(\s*root\s*,\s*"\.(claude|factory)"/.test(src)) offenders.push(file);
+    if (hardCodedSurfacePath.test(src)) offenders.push(file);
   }
   assert.deepStrictEqual(offenders, [], `core/ files with hard-coded surface paths: ${offenders.join(", ")}`);
 });
@@ -188,6 +191,42 @@ await test("shims-in-sync passes against the real repo (all 3 surfaces, byte-ide
   assert.ok(result.ok, `real-repo shims-in-sync should pass: ${result.found ?? ""}`);
 });
 
+await test("cross-surface-iteration flags a hard-coded .mastracode surface path", () => {
+  // Regression guard: the auditor's hardCodedPath regex is derived from SURFACES,
+  // so a file with join(root, ".mastracode", ...) is flagged. The prior
+  // hand-rolled /\.claude|\.factory/ regex did not match .mastracode, so such a
+  // file was a false negative.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-mastracode-hardcode-"));
+  mkdirSync(join(root, "feature"), { recursive: true });
+  writeFileSync(
+    join(root, "feature", "hook.js"),
+    'const x = join(root, ".mastracode", "coordination", ".marker");',
+    "utf8",
+  );
+  const item = CHECKLIST.find((i) => i.id === "cross-surface-iteration");
+  const result = item.verify("feature", root);
+  assert.strictEqual(result.ok, false, "hard-coded .mastracode path should be flagged");
+  assert.ok(result.found.includes("hook.js"), `failure should name the offending file: ${result.found}`);
+});
+
+await test("parameterized-for-new-surfaces flags a .mastracode-touching file that does not import surfaces.js", () => {
+  // Regression guard: the auditor's touchesSurfaces regex is derived from
+  // SURFACES, so a file touching .mastracode (even without the "coordination"
+  // keyword) is audited. The prior /\.claude|\.factory/|coordination/ regex
+  // did not match .mastracode, so a .mastracode-only file was skipped entirely.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-mastracode-nosurfaces-"));
+  mkdirSync(join(root, "feature"), { recursive: true });
+  writeFileSync(
+    join(root, "feature", "hook.js"),
+    'const p = join(root, ".mastracode", "session.json");',
+    "utf8",
+  );
+  const item = CHECKLIST.find((i) => i.id === "parameterized-for-new-surfaces");
+  const result = item.verify("feature", root);
+  assert.strictEqual(result.ok, false, "a .mastracode-touching file not importing surfaces.js should be flagged");
+  assert.ok(result.found.includes("hook.js"), `failure should name the offending file: ${result.found}`);
+});
+
 await test("stripCommentsAndStrings removes comments and template literals before regex testing", () => {
   const input = [
     "    // This comment contains .claude which is a false-positive bait",
@@ -209,23 +248,6 @@ await test("stripCommentsAndStrings removes comments and template literals befor
 await test("GLOB_SCOPE_WHITELIST includes both surface prefixes via SURFACES", () => {
   const src = readFileSync(join(CORE_DIR, "gate-logic.js"), "utf8");
   assert.ok(src.includes("...SURFACES.map"), "GLOB_SCOPE_WHITELIST must use SURFACES.map(...) to derive prefixes");
-});
-
-await test("PATH_WRITE_PATTERNS blocks .mastracode preflight-marker redirects (all surfaces)", () => {
-  // Every surface's preflight-marker redirect must be detected as a path-write.
-  // Regression guard for the .mastracode literals added to PATH_WRITE_PATTERNS.
-  for (const surface of SURFACES) {
-    const redirect = `echo done > ${surface}/coordination/.loop-preflight-product`;
-    const tee = `echo done | tee ${surface}/coordination/.loop-preflight-product`;
-    assert.ok(
-      PATH_WRITE_PATTERNS.some((p) => p.test(redirect)),
-      `redirect to ${surface} should be detected as a path-write`,
-    );
-    assert.ok(
-      PATH_WRITE_PATTERNS.some((p) => p.test(tee)),
-      `tee to ${surface} should be detected as a path-write`,
-    );
-  }
 });
 
 await test("inbound-gate.js writes the operator marker via surfaces.js helper, not a hard-coded surface list", () => {

@@ -3,7 +3,7 @@
  *
  * Signature contract (locked):
  *   evaluateBashGate({ command, root }) → { decision, reason?, hard_block?, constraint_type?, rule_id?, pattern_type? }
- *   PATH_WRITE_PATTERNS → RegExp[] (13 patterns)
+ *   PATH_WRITE_PATTERNS → RegExp[] (3 records + 2×SURFACES preflight + 4 state-file patterns)
  *
  * Tests import from ./evaluate-bash-gate.js (does not exist yet → ERR_MODULE_NOT_FOUND = intended TDD red).
  */
@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { evaluateBashGate, PATH_WRITE_PATTERNS } from "./evaluate-bash-gate.js";
+import { SURFACES } from "./surfaces.js";
 
 // ── helpers ──
 
@@ -146,35 +147,33 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS is exported and has 13 entries", () => {
+test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4 state files)", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 13);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);
   }
 });
 
-test("PATH_WRITE_PATTERNS snapshot (catches hook-file drift)", () => {
-  const patternStrings = PATH_WRITE_PATTERNS.map((p) => p.source);
-  // 13 patterns: 3 records + 6 preflight (2 per surface × 3 surfaces) + 4 state files.
-  // Preflight patterns are literals per surface (regex literals cannot be derived
-  // from SURFACES at module load without breaking the literal-test expectations).
-  assert.deepStrictEqual(patternStrings, [
-    ">{1,2}\\s*[\"']?\\.?\\/?records\\/[^\\s\"';&|]+[\"']?",
-    "<<['\"]?\\w+['\"]?\\s*>\\s*[\"']?\\.?\\/?records\\/",
-    "\\btee\\b.*[\"']?\\.?\\/?records\\/[^\\s\"';&|]+[\"']?",
-    ">{1,2}\\s*[\"']?\\.?\\/?\\.claude\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    "\\btee\\b.*[\"']?\\.?\\/?\\.claude\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    ">{1,2}\\s*[\"']?\\.?\\/?\\.factory\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    "\\btee\\b.*[\"']?\\.?\\/?\\.factory\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    ">{1,2}\\s*[\"']?\\.?\\/?\\.mastracode\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    "\\btee\\b.*[\"']?\\.?\\/?\\.mastracode\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
-    ">{1,2}\\s*[\"']?\\.?\\/?meta-state\\.jsonl[\"']?",
-    "\\btee\\b.*[\"']?\\.?\\/?meta-state\\.jsonl[\"']?",
-    ">{1,2}\\s*[\"']?\\.?\\/?runtime-state\\.jsonl[\"']?",
-    "\\btee\\b.*[\"']?\\.?\\/?runtime-state\\.jsonl[\"']?",
-  ]);
+test("PATH_WRITE_PATTERNS blocks every surface's preflight-marker redirect and tee", () => {
+  // Derived from SURFACES: each runtime surface's coordination/.loop-preflight-*
+  // redirect (`>`/`>>`) and `tee` must be detected. Catches the failure mode
+  // where a surface is added to SURFACES but not covered by the patterns.
+  // (.forEach, not for-of, so this core/*.test.js file does not trip the
+  // "no inline for-of-SURFACES loops" invariant that scans core/.)
+  SURFACES.forEach((surface) => {
+    const redirect = `echo done > ${surface}/coordination/.loop-preflight-product`;
+    const tee = `echo done | tee ${surface}/coordination/.loop-preflight-product`;
+    assert.ok(
+      PATH_WRITE_PATTERNS.some((p) => p.test(redirect)),
+      `redirect to ${surface} should be detected as a path-write`,
+    );
+    assert.ok(
+      PATH_WRITE_PATTERNS.some((p) => p.test(tee)),
+      `tee to ${surface} should be detected as a path-write`,
+    );
+  });
 });
 
 // ── decision combination ──
