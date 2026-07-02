@@ -88,7 +88,16 @@ function runGlob({ ns, pattern }) {
         ["--test", "--test-timeout=30000", pattern],
         {
           stdio: ["ignore", "pipe", "pipe"],
-          env: { ...process.env, FORCE_COLOR: "0" },
+          env: {
+            ...process.env,
+            FORCE_COLOR: "0",
+            // Plan 5-Lite Phase 1: server.js pins the runtime identity from
+            // LOOP_SURFACE at boot. Tests run as claude-code by default; the
+            // pin-runtime-id test deletes/overrides this locally for its own
+            // cases. This backstop lets .cjs tests that spawn server.js
+            // directly (inheriting process.env) boot without setting it per-file.
+            LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude",
+          },
         },
       );
 

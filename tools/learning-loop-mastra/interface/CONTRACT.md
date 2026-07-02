@@ -1,6 +1,6 @@
 # Runtime Interface Contract
 
-The 7 requirements that an agent runtime MUST satisfy to integrate with the learning loop. The validator (`contract.js`) enforces this contract.
+The 10 requirements that an agent runtime MUST satisfy to integrate with the learning loop. The validator (`contract.js`) enforces this contract.
 
 ## Requirements
 
@@ -60,6 +60,18 @@ The runtime's declarative settings file (e.g., `.mastracode/settings.json`) MUST
 - `disableMcp: true` — disables MCP server connections; rejected (the learning loop IS the MCP server).
 
 **Pass:** no bypass fields enabled, AND settings JSON parses (malformed JSON in the settings file is treated as a bypass attempt — fail closed). **Fail:** any bypass field set to `true`. **Applicability:** declarative-settings runtimes only. For shim-file runtimes (Claude Code, Droid CLI), this requirement reports `applicable:false` and trivially passes.
+
+### 9. `.mastracode-config-presence` (Plan 5-Lite Phase 3 — additive for Mastra Code)
+
+For the `mastra-code` runtime, the `.mastracode/` directory MUST exist and contain all four config files: `mcp.json`, `hooks.json`, `settings.json`, `database.json`. **Pass:** directory exists AND all four files present. **Fail:** directory missing OR any of the four files missing. **Applicability:** `mastra-code` only. For shim-file runtimes (Claude Code, Droid CLI), this requirement reports `applicable:false` and trivially passes.
+
+### 10. `mastracode-session-start-pins-loop-surface` (Plan 5-Lite Phase 3 — LOOP_SURFACE wiring via mcp.json env field)
+
+The runtime's MCP config (`<surface>/mcp.json`) MUST set `env.LOOP_SURFACE` on the `learning-loop` server entry so the harness passes the surface to the spawned `server.js`, where `pinRuntimeIdAtBoot()` reads it at boot. For `mastra-code`: `mcpServers["learning-loop"].env.LOOP_SURFACE === ".mastracode"`. **Pass:** the env field is present and equals the runtime's surface. **Fail:** env field missing OR wrong value. **Applicability:** `mastra-code` only (the env-field wiring is the operator-chosen approach for all three runtimes, but the contract asserts it for Mastra Code to lock the third-runtime regression; the `.mcp.json` and `.factory/mcp.json` env fields are covered by `__tests__/mcp-config.test.js`). For non-mastra-code runtimes, this requirement reports `applicable:false` and trivially passes.
+
+### 11. `tools-manifest-has-path-fields` (Plan 5-Lite Phase 3 — project-wide invariant)
+
+Every entry in `tools/learning-loop-mastra/tools/manifest.json` MUST declare `pathFields: string[]` (may be `[]`). This is the boot-time invariant enforced by `mastra/server.js#validateToolManifest` (Phase 1 R3); surfaced here as a contract requirement so a manifest regression fails loudly in the contract validator, not only at server boot. The manifest is JSONC (full-line `//` comments only); the validator strips comments before parsing. **Pass:** every entry has a `pathFields` array. **Fail:** any entry missing `pathFields` OR `pathFields` is not an array. **Applicability:** ALL runtimes (project-wide invariant).
 
 ## How to verify
 

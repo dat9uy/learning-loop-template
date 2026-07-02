@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "LIM-4 Path Containment (realpath + hardlink rejection)"
-status: pending
+status: completed
 priority: P1
 dependencies: []
 plan: "260701-2250-plan-5-lite-r2-lim4"
@@ -234,12 +234,12 @@ export function resolveSafePath(root, userPath) {
 
 ## Success Criteria
 
-- [ ] Red-team R5 finding has passing tests (`hardlink_rejected`, TOCTOU documented pattern)
-- [ ] Red-team R15 finding has passing test (`path_with_colon_suffix`)
-- [ ] All 7 audit sites migrated from `path.join` to `resolveSafePath`
-- [ ] Per-call cost ≤ 0.2ms (measured by `bench` or simple `console.time` in test)
-- [ ] No `path.join(root, userPath)` calls remain in `core/` or `tools/legacy/` that take user input (verified by a grep guard test)
-- [ ] `pnpm test` passes (~165 tests; +5 from LIM-4 new files)
+- [x] Red-team R5 finding has passing tests (`hardlink_rejected`, TOCTOU documented pattern)
+- [x] Red-team R15 finding has passing test (`path_with_colon_suffix`)
+- [x] All 7 audit sites migrated from `path.join` to `resolveSafePath`
+- [x] Per-call cost ≤ 0.2ms (measured by `bench` or simple `console.time` in test)
+- [x] No `path.join(root, userPath)` calls remain in `core/` or `tools/legacy/` that take user input (verified by a grep guard test)
+- [x] `pnpm test` passes (~165 tests; +5 from LIM-4 new files)
 
 ## Tests / Validation
 

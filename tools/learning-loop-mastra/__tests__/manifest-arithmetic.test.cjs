@@ -1,12 +1,12 @@
 // Manifest arithmetic test — cross-walks the 4 manifest files in the mastra
-// package and asserts the 44-tool total + 6-group structure + 13 in workflow
+// package and asserts the 45-tool total + 6-group structure + 13 in workflow
 // group. Catches future drift between the source-of-truth files.
 //
 // Test inventory:
 //   1. tools/manifest.json has 31 entries
 //   2. workflows-manifest.json has 10 entries
 //   3. agents-manifest.json has 3 entries
-//   4. agent-manifest.json#groups totals 44
+//   4. agent-manifest.json#groups totals 45
 //   5. agent-manifest.json#workflow.tools has 13 entries (8 run + 3 mastra + 2 storage)
 //   6. agent-manifest.json has 6 groups
 //   7. Cross-walk: every entry in tools/manifest.json is in agent-manifest.json#groups
@@ -43,12 +43,12 @@ describe("manifest arithmetic", () => {
     assert.strictEqual(Object.keys(agents.agents).length, 3);
   });
 
-  test("agent-manifest.json#groups totals 44", () => {
+  test("agent-manifest.json#groups totals 45", () => {
     const total = Object.values(agentManifest.groups).reduce(
       (sum, g) => sum + g.tools.length,
       0,
     );
-    assert.strictEqual(total, 44, `expected 44 total, got ${total}`);
+    assert.strictEqual(total, 45, `expected 45 total, got ${total}`);
   });
 
   test("agent-manifest.json#workflow.tools has 13 entries", () => {

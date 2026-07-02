@@ -1,15 +1,15 @@
 ---
 title: "Plan 5-Lite: R2 Write-Gate + LIM-4 Path Containment (LIM-3 dropped)"
 description: "Per-runtime write allowlist for MCP tools + realpath containment for user-supplied write paths. The originally-bundled LIM-3 Ed25519 caller identity is dropped per threat-model review — see reframe report."
-status: pending
+status: completed
 priority: P1
-branch: "main"
+branch: "hardening/plan-5-lite-r2-lim4"
 tags: ["hardening", "security", "lim-4", "r2", "phase-e-deferred"]
 blockedBy: []
 blocks: []
 created: "2026-07-01T22:50:00.000Z"
 createdBy: "ck:plan"
-updated: "2026-07-01T23:30:00.000Z"
+updated: "2026-07-02T03:10:00.000Z"
 addresses:
   red-team:
     - R1 (CRITICAL: allowlist self-bootstrap)
@@ -41,9 +41,9 @@ Ship **R2 (per-runtime write allowlist) + LIM-4 (realpath path containment) + id
 
 | Phase | Name | Status | Effort | File | Addresses |
 |-------|------|--------|--------|------|-----------|
-| 1 | R2 Write-Gate (per-runtime allowlist) + identity pinning | Pending | 1.5d | [Phase 1: R2 Write-Gate](./phase-01-r2-write-gate.md) | R1, R2, R3, R4, R9, R10 |
-| 2 | LIM-4 Path Containment (realpath + hardlink rejection) | Pending | 1d | [Phase 2: LIM-4 Path Containment](./phase-02-lim-4-path-containment.md) | R5, R15 |
-| 3 | Cross-Cutting (contracts, docs, shim wiring, audit-log hardening) | Pending | 0.5d | [Phase 3: Cross-Cutting](./phase-03-cross-cutting.md) | R6, R11, R13, R17 |
+| 1 | R2 Write-Gate (per-runtime allowlist) + identity pinning | Completed | 1.5d | [Phase 1: R2 Write-Gate](./phase-01-r2-write-gate.md) | R1, R2, R3, R4, R9, R10 |
+| 2 | LIM-4 Path Containment (realpath + hardlink rejection) | Completed | 1d | [Phase 2: LIM-4 Path Containment](./phase-02-lim-4-path-containment.md) | R5, R15 |
+| 3 | Cross-Cutting (contracts, docs, shim wiring, audit-log hardening) | Completed | 0.5d | [Phase 3: Cross-Cutting](./phase-03-cross-cutting.md) | R6, R11, R13, R17 |
 
 **Total effort:** ~3d (down from original Plan 5's 5.5d, due to dropping LIM-3 alone was 2.5d).
 
@@ -67,15 +67,15 @@ Ship **R2 (per-runtime write allowlist) + LIM-4 (realpath path containment) + id
 
 ## Acceptance criteria
 
-- [ ] All 6 red-team must-fix findings (R1-R6) have passing tests
-- [ ] All 3 runtime shims (Claude / Droid / Mastra Code) inject `LOOP_SURFACE` at process boot (Phase 3 S1-S4)
-- [ ] All 7 LIM-4 audit sites migrated from `path.join` to `resolveSafePath` (Phase 2 step 4)
-- [ ] All 31 legacy tools + 10 workflow tools + agent tools flow through R2 (Phase 1 R4 verified)
-- [ ] `.loop/r2-allowlist.json` is committed to git and pre-commit hook fires on it (Phase 3 NF1)
-- [ ] `pnpm test` passes (~170 tests; +25 from Plan 5-Lite new files)
-- [ ] `docs/security/plan-5-hardening.md` exists with the gating chain, shim wiring, and runbook
-- [ ] No `--no-verify` needed for pre-commit hook
-- [ ] `update_r2_allowlist` MCP tool works for operator-only allowlist edits (with `gate_mark_preflight`)
+- [x] All 6 red-team must-fix findings (R1-R6) have passing tests
+- [x] All 3 runtime shims (Claude / Droid / Mastra Code) inject `LOOP_SURFACE` at process boot (Phase 3 S1-S4)
+- [x] All 7 LIM-4 audit sites migrated from `path.join` to `resolveSafePath` (Phase 2 step 4)
+- [x] All 31 legacy tools + 10 workflow tools + agent tools flow through R2 (Phase 1 R4 verified)
+- [x] `.loop/r2-allowlist.json` is committed to git and pre-commit hook fires on it (Phase 3 NF1)
+- [x] `pnpm test` passes (~170 tests; +25 from Plan 5-Lite new files)
+- [x] `docs/security/plan-5-hardening.md` exists with the gating chain, shim wiring, and runbook
+- [x] No `--no-verify` needed for pre-commit hook
+- [x] `update_r2_allowlist` MCP tool works for operator-only allowlist edits (with `gate_mark_preflight`)
 
 ## Corrections from scout + red-team reviews
 
@@ -102,8 +102,8 @@ Per `--tdd` flag, every phase writes regression tests BEFORE the implementation.
 
 ## Status
 
-**Status:** pending (awaiting user approval to start cook after red-team review).
-**Recommended next step:** `/ck:cook plans/260701-2250-plan-5-lite-r2-lim4` (after optional `/ck:plan validate` and `/ck:plan red-team` per the deep-mode workflow; both already auto-ran in this expansion).
+**Status:** completed — implemented via `/ck:cook --auto --tdd`, all 3 phases TDD-verified (1501 pass / 0 fail). Code review found + fixed 1 HIGH-severity regression (H1: refresh-fingerprint ENOENT-preservation). 5 source-file surface-divergence items deferred to a follow-up plan (documented in `docs/security/plan-5-hardening.md` § Out-of-Scope).
+**Recommended next step:** commit on `hardening/plan-5-lite-r2-lim4` and open PR. Follow-up plan for the 5 surface-divergence source files.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "R2 Write-Gate (per-runtime allowlist) + identity pinning"
-status: pending
+status: completed
 priority: P1
 dependencies: []
 plan: "260701-2250-plan-5-lite-r2-lim4"
@@ -282,13 +282,13 @@ export function getPinnedRuntimeId() {
 
 ## Success Criteria
 
-- [ ] All red-team R1, R2, R3, R4 findings have passing tests
-- [ ] `pnpm test` passes (~160 tests; +15 from Plan 5-Lite new files)
-- [ ] No `--no-verify` needed for pre-commit hook (R13)
-- [ ] `getPinnedRuntimeId()` returns the frozen, immutable runtime id
-- [ ] `withR2Gate` is the single source of write authorization in the MCP server
-- [ ] All 31 legacy tools + 10 workflow tools + agent tools flow through R2 (R4 verified)
-- [ ] `.loop/r2-allowlist.json` is committed to git and matches F4 schema
+- [x] All red-team R1, R2, R3, R4 findings have passing tests
+- [x] `pnpm test` passes (~160 tests; +15 from Plan 5-Lite new files)
+- [x] No `--no-verify` needed for pre-commit hook (R13)
+- [x] `getPinnedRuntimeId()` returns the frozen, immutable runtime id
+- [x] `withR2Gate` is the single source of write authorization in the MCP server
+- [x] All 31 legacy tools + 10 workflow tools + agent tools flow through R2 (R4 verified)
+- [x] `.loop/r2-allowlist.json` is committed to git and matches F4 schema
 
 ## Tests / Validation
 

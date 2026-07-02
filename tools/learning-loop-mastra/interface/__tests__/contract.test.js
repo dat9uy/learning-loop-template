@@ -55,6 +55,15 @@ function fakeRoot(opts = {}) {
     const content = opts.settings ?? { hooks: {} };
     writeFileSync(settingsFull, JSON.stringify(content));
   }
+  // Tool manifest (Req #11 — project-wide invariant). Default: valid manifest
+  // with pathFields on every entry. Set opts.manifest to override;
+  // opts.manifest === null skips the write (so Req #11 fails).
+  if (opts.manifest !== null) {
+    const manifestDir = join(root, "tools/learning-loop-mastra/tools");
+    mkdirSync(manifestDir, { recursive: true });
+    const entries = opts.manifest ?? [{ file: "tools/sample-tool.js", export: "sampleTool", pathFields: [] }];
+    writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify(entries));
+  }
   return root;
 }
 
@@ -83,7 +92,7 @@ test("contract.js exports validate as named export", () => {
 
 test("contract.js exposes REQUIREMENT_IDS constant", () => {
   assert.ok(Array.isArray(REQUIREMENT_IDS));
-  assert.equal(REQUIREMENT_IDS.length, 7);
+  assert.equal(REQUIREMENT_IDS.length, 10);
   assert.deepEqual(REQUIREMENT_IDS, [
     "hook-shim-set",
     "mcp-client-config",
@@ -92,6 +101,9 @@ test("contract.js exposes REQUIREMENT_IDS constant", () => {
     "settings-integration",
     "hook-declarative-config",
     "settings-no-bypass",
+    ".mastracode-config-presence",
+    "mastracode-session-start-pins-loop-surface",
+    "tools-manifest-has-path-fields",
   ]);
 });
 
@@ -102,7 +114,7 @@ test("contract.js runs as CLI (--list)", () => {
   assert.ok(parsed.runtimes.includes("claude-code"));
   assert.ok(parsed.runtimes.includes("droid"));
   assert.ok(parsed.runtimes.includes("mastra-code"));
-  assert.equal(parsed.requirements.length, 7);
+  assert.equal(parsed.requirements.length, 10);
 });
 
 test("contract.js runs as CLI with a runtime id", () => {
@@ -275,7 +287,8 @@ test("validate('claude-code') on empty dir returns all hard reqs missing", () =>
       assert.equal(result.ok, false);
       // hook-shim-set, mcp-client-config, skill-spec, settings-integration all fail (4)
       // identity-marker is advisory (passes)
-      assert.equal(result.missing.length, 4);
+      // tools-manifest-has-path-fields is project-wide; empty dir has no manifest (1)
+      assert.equal(result.missing.length, 5);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -287,8 +300,9 @@ test("CONTRACT.md IDs match REQUIREMENT_IDS (set equality, not just contains)", 
   const contractPath = join(import.meta.dirname, "..", "CONTRACT.md");
   const content = readFileSync(contractPath, "utf8");
   // Extract backticked IDs from sections like "### N. `hook-shim-set`"
+  // Allow leading/dotted IDs (e.g., ".mastracode-config-presence").
   const extractedIds = new Set();
-  const re = /###?\s*\d+\.\s*`([a-z][a-z0-9-]+)`/g;
+  const re = /###?\s*\d+\.\s*`([a-z.][a-z0-9.-]+)`/g;
   let m;
   while ((m = re.exec(content)) !== null) extractedIds.add(m[1]);
   const exportedIds = new Set(REQUIREMENT_IDS);
@@ -362,6 +376,13 @@ function fakeMastraCodeRoot(opts = {}) {
   if (opts.includeSkill !== false) {
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), "Reference: loop_describe and meta_state_list.");
+  }
+  // Tool manifest (Req #11 — project-wide invariant). Default: valid manifest.
+  if (opts.manifest !== null) {
+    const manifestDir = join(root, "tools/learning-loop-mastra/tools");
+    mkdirSync(manifestDir, { recursive: true });
+    const entries = opts.manifest ?? [{ file: "tools/sample-tool.js", export: "sampleTool", pathFields: [] }];
+    writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify(entries));
   }
   return root;
 }
@@ -522,4 +543,251 @@ test("mastracode rejects missing command paths in hooks.json (red-team F4 failsa
     const failed = (settings && !settings.ok) || (declarative && !declarative.ok) || result.missing.includes("settings-integration") || result.missing.includes("hook-declarative-config");
     assert.ok(failed, `Hooks not referencing universal-hook scripts must fail validation: ok=${result.ok}, missing=${JSON.stringify(result.missing)}`);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+// =============================================================================
+// Plan 5-Lite Phase 3 — Contract Req #9, #10, #11 (TDD)
+// =============================================================================
+
+// --- Req #9 (.mastracode-config-presence) ---
+
+test("req 9 (.mastracode-config-presence) passes for mastra-code when all 4 files present", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    const result = validate("mastra-code", root);
+    const req9 = result.path_map[".mastracode-config-presence"];
+    assert.equal(req9.ok, true, `Req #9 must pass with all 4 files: ${JSON.stringify(req9)}`);
+    assert.deepEqual(req9.missing, []);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 9 fails for mastra-code when a required file is missing", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    // Remove database.json
+    rmSync(join(root, ".mastracode", "database.json"));
+    const result = validate("mastra-code", root);
+    const req9 = result.path_map[".mastracode-config-presence"];
+    assert.equal(req9.ok, false);
+    assert.ok(req9.missing.includes("database.json"));
+    assert.ok(result.missing.includes(".mastracode-config-presence"));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 9 is not applicable for claude-code", () => {
+  const root = fakeRoot({ surface: ".claude", hookShims: HOOK_SHIMS, mcpConfigPath: ".mcp.json" });
+  try {
+    const result = validate("claude-code", root);
+    const req9 = result.path_map[".mastracode-config-presence"];
+    assert.equal(req9.ok, true);
+    assert.equal(req9.applicable, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 9 is not applicable for droid", () => {
+  const root = fakeRoot({ surface: ".factory", hookShims: HOOK_SHIMS, mcpConfigPath: ".factory/mcp.json" });
+  try {
+    const result = validate("droid", root);
+    const req9 = result.path_map[".mastracode-config-presence"];
+    assert.equal(req9.ok, true);
+    assert.equal(req9.applicable, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+// --- Req #10 (mastracode-session-start-pins-loop-surface) ---
+
+test("req 10 (mastracode-session-start-pins-loop-surface) passes when .mastracode/mcp.json has env.LOOP_SURFACE=.mastracode", () => {
+  const root = fakeMastraCodeRoot({
+    mcpConfig: {
+      mcpServers: {
+        "learning-loop": {
+          command: "node",
+          args: ["tools/learning-loop-mastra/mastra/server.js"],
+          env: { LOOP_SURFACE: ".mastracode" },
+        },
+      },
+    },
+  });
+  try {
+    const result = validate("mastra-code", root);
+    const req10 = result.path_map["mastracode-session-start-pins-loop-surface"];
+    assert.equal(req10.ok, true, `Req #10 must pass with env.LOOP_SURFACE=.mastracode: ${JSON.stringify(req10)}`);
+    assert.equal(req10.env_loop_surface, ".mastracode");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 10 fails when .mastracode/mcp.json env.LOOP_SURFACE is missing", () => {
+  const root = fakeMastraCodeRoot();
+  try {
+    // Default fakeMastraCodeRoot mcpConfig has NO env field.
+    const result = validate("mastra-code", root);
+    const req10 = result.path_map["mastracode-session-start-pins-loop-surface"];
+    assert.equal(req10.ok, false);
+    assert.equal(req10.env_loop_surface, null);
+    assert.ok(result.missing.includes("mastracode-session-start-pins-loop-surface"));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 10 fails when .mastracode/mcp.json env.LOOP_SURFACE has the wrong value", () => {
+  const root = fakeMastraCodeRoot({
+    mcpConfig: {
+      mcpServers: {
+        "learning-loop": {
+          command: "node",
+          args: ["tools/learning-loop-mastra/mastra/server.js"],
+          env: { LOOP_SURFACE: ".claude" },
+        },
+      },
+    },
+  });
+  try {
+    const result = validate("mastra-code", root);
+    const req10 = result.path_map["mastracode-session-start-pins-loop-surface"];
+    assert.equal(req10.ok, false);
+    assert.equal(req10.env_loop_surface, ".claude");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 10 is not applicable for claude-code", () => {
+  const root = fakeRoot({ surface: ".claude", hookShims: HOOK_SHIMS, mcpConfigPath: ".mcp.json" });
+  try {
+    const result = validate("claude-code", root);
+    const req10 = result.path_map["mastracode-session-start-pins-loop-surface"];
+    assert.equal(req10.ok, true);
+    assert.equal(req10.applicable, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+// --- Req #11 (tools-manifest-has-path-fields) ---
+
+test("req 11 (tools-manifest-has-path-fields) passes when every entry has pathFields: []", () => {
+  const root = fakeRoot({
+    surface: ".claude",
+    hookShims: HOOK_SHIMS,
+    mcpConfigPath: ".mcp.json",
+    manifest: [
+      { file: "tools/a-tool.js", export: "aTool", pathFields: [] },
+      { file: "tools/b-tool.js", export: "bTool", pathFields: ["path"] },
+    ],
+  });
+  try {
+    const result = validate("claude-code", root);
+    const req11 = result.path_map["tools-manifest-has-path-fields"];
+    assert.equal(req11.ok, true, `Req #11 must pass when every entry has pathFields: ${JSON.stringify(req11)}`);
+    assert.equal(req11.entries, 2);
+    assert.deepEqual(req11.missing_path_fields, []);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 11 fails when an entry is missing pathFields", () => {
+  const root = fakeRoot({
+    surface: ".claude",
+    hookShims: HOOK_SHIMS,
+    mcpConfigPath: ".mcp.json",
+    manifest: [
+      { file: "tools/a-tool.js", export: "aTool", pathFields: [] },
+      { file: "tools/b-tool.js", export: "bTool" }, // missing pathFields
+    ],
+  });
+  try {
+    const result = validate("claude-code", root);
+    const req11 = result.path_map["tools-manifest-has-path-fields"];
+    assert.equal(req11.ok, false);
+    assert.ok(req11.missing_path_fields.includes("tools/b-tool.js"));
+    assert.ok(result.missing.includes("tools-manifest-has-path-fields"));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 11 fails when pathFields is not an array", () => {
+  const root = fakeRoot({
+    surface: ".claude",
+    hookShims: HOOK_SHIMS,
+    mcpConfigPath: ".mcp.json",
+    manifest: [{ file: "tools/a-tool.js", export: "aTool", pathFields: "path" }],
+  });
+  try {
+    const result = validate("claude-code", root);
+    const req11 = result.path_map["tools-manifest-has-path-fields"];
+    assert.equal(req11.ok, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 11 fails when manifest.json is missing", () => {
+  const root = fakeRoot({
+    surface: ".claude",
+    hookShims: HOOK_SHIMS,
+    mcpConfigPath: ".mcp.json",
+    manifest: null, // skip manifest write
+  });
+  try {
+    const result = validate("claude-code", root);
+    const req11 = result.path_map["tools-manifest-has-path-fields"];
+    assert.equal(req11.ok, false);
+    assert.ok(result.missing.includes("tools-manifest-has-path-fields"));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 11 strips JSONC full-line comments before parsing", () => {
+  const root = fakeRoot({
+    surface: ".claude",
+    hookShims: HOOK_SHIMS,
+    mcpConfigPath: ".mcp.json",
+    manifest: null,
+  });
+  try {
+    const manifestDir = join(root, "tools/learning-loop-mastra/tools");
+    mkdirSync(manifestDir, { recursive: true });
+    writeFileSync(
+      join(manifestDir, "manifest.json"),
+      [
+        '// This is a full-line comment.',
+        '// Another comment line.',
+        '[ { "file": "tools/a-tool.js", "export": "aTool", "pathFields": [] } ]',
+      ].join("\n"),
+    );
+    const result = validate("claude-code", root);
+    const req11 = result.path_map["tools-manifest-has-path-fields"];
+    assert.equal(req11.ok, true, `JSONC full-line comments must be stripped: ${JSON.stringify(req11)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 11 is applicable to all runtimes (project-wide invariant)", () => {
+  // Verify applicability for claude-code, droid, and mastra-code does NOT
+  // report applicable:false (it is a hard requirement for every runtime).
+  const claudeRoot = fakeRoot({ surface: ".claude", hookShims: HOOK_SHIMS, mcpConfigPath: ".mcp.json" });
+  const droidRoot = fakeRoot({ surface: ".factory", hookShims: HOOK_SHIMS, mcpConfigPath: ".factory/mcp.json" });
+  const mastraRoot = fakeMastraCodeRoot();
+  try {
+    const c = validate("claude-code", claudeRoot).path_map["tools-manifest-has-path-fields"];
+    assert.notEqual(c.applicable, false, "claude-code: Req #11 must NOT be applicable:false");
+    const d = validate("droid", droidRoot).path_map["tools-manifest-has-path-fields"];
+    assert.notEqual(d.applicable, false, "droid: Req #11 must NOT be applicable:false");
+    const m = validate("mastra-code", mastraRoot).path_map["tools-manifest-has-path-fields"];
+    assert.notEqual(m.applicable, false, "mastra-code: Req #11 must NOT be applicable:false");
+  } finally {
+    rmSync(claudeRoot, { recursive: true, force: true });
+    rmSync(droidRoot, { recursive: true, force: true });
+    rmSync(mastraRoot, { recursive: true, force: true });
+  }
+});
+
+// --- Req #9/#10/#11 against the real repo (regression) ---
+
+test("req 9/10/11 pass on the real repo for mastra-code", () => {
+  withCleanRUNTIME_ID(() => {
+    const result = validate("mastra-code", PROJECT_ROOT);
+    assert.equal(result.ok, true, `mastra-code must pass on real repo: missing=${JSON.stringify(result.missing)}`);
+    assert.equal(result.path_map[".mastracode-config-presence"].ok, true);
+    assert.equal(result.path_map["mastracode-session-start-pins-loop-surface"].ok, true);
+    assert.equal(result.path_map["tools-manifest-has-path-fields"].ok, true);
+  });
+});
+
+test("req 11 passes on the real repo for claude-code and droid", () => {
+  withCleanRUNTIME_ID(() => {
+    const c = validate("claude-code", PROJECT_ROOT);
+    assert.equal(c.path_map["tools-manifest-has-path-fields"].ok, true);
+    const d = validate("droid", PROJECT_ROOT);
+    assert.equal(d.path_map["tools-manifest-has-path-fields"].ok, true);
+  });
 });

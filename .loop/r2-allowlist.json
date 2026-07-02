@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "schema": "r2-allowlist/v1",
+  "claude-code": {
+    "own": [".claude/**"],
+    "deny": [
+      ".claude/.loop/r2-allowlist.json",
+      ".factory/**",
+      ".mastracode/**",
+      ".loop/r2-allowlist.json",
+      "runtime-state.jsonl",
+      ".gate-override"
+    ]
+  },
+  "droid": {
+    "own": [".factory/**"],
+    "deny": [
+      ".factory/.loop/r2-allowlist.json",
+      ".claude/**",
+      ".mastracode/**",
+      ".loop/r2-allowlist.json",
+      "runtime-state.jsonl",
+      ".gate-override"
+    ]
+  },
+  "mastra-code": {
+    "own": [".mastracode/**"],
+    "deny": [
+      ".mastracode/.loop/r2-allowlist.json",
+      ".claude/**",
+      ".factory/**",
+      ".loop/r2-allowlist.json",
+      "runtime-state.jsonl",
+      ".gate-override"
+    ]
+  },
+  "universal": [
+    "records/**",
+    "plans/**",
+    "docs/**",
+    "AGENTS.md",
+    "tools/learning-loop-mastra/**",
+    ".loop/.cache/**",
+    "meta-state.jsonl"
+  ]
+}

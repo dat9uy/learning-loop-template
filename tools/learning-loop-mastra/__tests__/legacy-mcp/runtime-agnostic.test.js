@@ -46,7 +46,7 @@ await test("surfaces.js exports all cross-surface helpers", () => {
 await test("surfaces.js SURFACES is frozen and contains the canonical runtimes", async () => {
   const mod = await import("../../core/surfaces.js");
   assert.ok(Object.isFrozen(mod.SURFACES), "SURFACES must be Object.frozen");
-  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory"]);
+  assert.deepStrictEqual([...mod.SURFACES], [".claude", ".factory", ".mastracode"]);
 });
 
 await test("surfaces.js helper signatures are stable", () => {

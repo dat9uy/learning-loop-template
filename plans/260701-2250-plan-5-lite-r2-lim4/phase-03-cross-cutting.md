@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Cross-Cutting (contracts, docs, shim wiring, audit-log hardening)"
-status: pending
+status: completed
 priority: P1
 dependencies: [phase-01-r2-write-gate, phase-02-lim-4-path-containment]
 plan: "260701-2250-plan-5-lite-r2-lim4"
@@ -279,14 +279,14 @@ Throw cross_runtime_write_denied
 
 ## Success Criteria
 
-- [ ] Red-team R6, R11, R13, R17 findings have passing tests
-- [ ] Scout factually-incorrect claims corrected: shims are wired (S1-S4), workflows covered (Phase 1 R4), verification-runner migrated (Phase 2 5c)
-- [ ] Contract validator covers Req #9, #10, #11
-- [ ] All SURFACES hard-coded test arrays updated to import the registry (C3)
-- [ ] `docs/security/plan-5-hardening.md` exists with all sections
-- [ ] All 3 runtime shims wired and tested
-- [ ] `pnpm test` passes (~170 tests; +10 from Phase 3 new files)
-- [ ] `pnpm precommit` fires on `.loop/r2-allowlist.json`
+- [x] Red-team R6, R11, R13, R17 findings have passing tests
+- [x] Scout factually-incorrect claims corrected: shims are wired (S1-S4), workflows covered (Phase 1 R4), verification-runner migrated (Phase 2 5c)
+- [x] Contract validator covers Req #9, #10, #11
+- [x] All SURFACES hard-coded test arrays updated to import the registry (C3)
+- [x] `docs/security/plan-5-hardening.md` exists with all sections
+- [x] All 3 runtime shims wired and tested
+- [x] `pnpm test` passes (~170 tests; +10 from Phase 3 new files)
+- [x] `pnpm precommit` fires on `.loop/r2-allowlist.json`
 
 ## Tests / Validation
 

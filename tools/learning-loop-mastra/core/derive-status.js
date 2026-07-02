@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
+import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 
 /**
  * Source-of-truth enums. Export so introspection layers (e.g. core/loop-introspect.js
@@ -85,8 +86,19 @@ export function deriveStatus(entry, codeContext) {
 }
 
 function checkExists(root, path) {
-  const fullPath = isAbsolute(path) ? path : join(root, path);
-  return existsSync(fullPath);
+  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+  // A missing file inside root (ENOENT, resolvedPath === null) is the
+  // legitimate "code-missing"/"code-only" case and returns false; an actual
+  // escape (resolvedPath set) re-throws. See core/path-containment.js.
+  try {
+    const fullPath = resolveSafePath(root, path);
+    return existsSync(fullPath);
+  } catch (err) {
+    if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
+      return false;
+    }
+    throw err;
+  }
 }
 
 // fallow-ignore-next-line complexity

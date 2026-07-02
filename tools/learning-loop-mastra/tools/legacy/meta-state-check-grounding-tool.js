@@ -5,6 +5,7 @@ import { isAbsolute, join } from "node:path";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { runVerification } from "../../core/verification-runner.js";
+import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -14,7 +15,19 @@ import { resolveRoot } from "#lib/resolve-root.js";
 const testRunCache = new Map();
 
 function runTest(root, testPath) {
-  const fullPath = isAbsolute(testPath) ? testPath : join(root, testPath);
+  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+  // A missing test file inside root (ENOENT, resolvedPath === null) returns
+  // null (skip running tests); an actual escape (resolvedPath set) propagates.
+  // See core/path-containment.js. Invoked at moment of use per NF3.
+  let fullPath;
+  try {
+    fullPath = resolveSafePath(root, testPath);
+  } catch (err) {
+    if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
+      return null;  // missing test file — skip running tests
+    }
+    throw err;
+  }
   if (!existsSync(fullPath)) return null;
   const mtime = statSync(fullPath).mtimeMs;
   const key = `${fullPath}:${mtime}`;

@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { isAbsolute, join } from "node:path";
+import { resolve as pathResolve } from "node:path";
 import { computeFileHash } from "../../core/check-grounding.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
+import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -113,7 +114,29 @@ export const metaStateRefreshFingerprintTool = {
     // Without this, `path/to/file.js:37` and `path/to/file.js#functionName`
     // would be treated as literal file paths and fail with code_missing.
     const strippedCodeRef = stripEvidenceAnchor(rawCodeRef);
-    const absPath = isAbsolute(strippedCodeRef) ? strippedCodeRef : join(root, strippedCodeRef);
+    // LIM-4: realpath containment — rejects traversal, symlink-escape, and
+    // hardlink-escape. See core/path-containment.js. Invoked at the moment
+    // of use (inside the handler) per NF3 TOCTOU closure.
+    // A missing file inside root (ENOENT, resolvedPath === null) is preserved
+    // as the documented `code_missing` response; an actual escape (resolvedPath
+    // set) propagates. Mirrors the ENOENT-preservation pattern at the other 6
+    // audit sites (e.g. check-grounding.js, meta-state-check-grounding-tool.js).
+    let absPath;
+    try {
+      absPath = resolveSafePath(root, strippedCodeRef);
+    } catch (err) {
+      if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            error: "code_missing",
+            id,
+            evidence_code_ref: pathResolve(root, strippedCodeRef),
+            cache_hit: false,
+          }) }],
+        };
+      }
+      throw err;
+    }
     let hash;
     try {
       hash = computeFileHash(absPath);
