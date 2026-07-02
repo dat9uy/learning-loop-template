@@ -66,6 +66,9 @@ files:
   - path: r2/allowlist-cache.js
     role: cache
     summary: Loads and caches .loop/r2-allowlist.json per root; invalidateAllowlist on operator edit.
+  - path: r2/allowlist-shape.js
+    role: evaluator
+    summary: validateR2AllowlistShape — pure schema validator for r2-allowlist/v1 before the atomic write.
   - path: r2/denial-log.js
     role: facade
     summary: Appends one JSON-serialized R2 denial line to the cross-surface decision log.

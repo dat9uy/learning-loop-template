@@ -31,6 +31,8 @@ import { globMatch } from "../gate-logic.js";
  * legitimate edit path for `.loop/r2-allowlist.json`; `runtime-state.jsonl`
  * and `.gate-override` are operator-controlled.
  */
+// Test-only fixture consumed by ownership.test.js (Fallow's ignorePatterns excludes __tests__ consumers).
+// fallow-ignore-next-line unused-export
 export const BOOTSTRAP_DENY_PATTERNS = Object.freeze([
   ".loop/r2-allowlist.json",
   "**/.loop/r2-allowlist.json",
@@ -49,6 +51,11 @@ const BOOTSTRAP_HINT =
  * @param {{ runtime: string, path: string, allowlist: object, root: string }} params
  * @returns {{ allowed: boolean, reason: string, hint?: string, normalized_path?: string }}
  */
+// Decision cascade over the per-runtime allowlist + BOOTSTRAP_DENY table; the
+// branch count is inherent to the R1/R6 rules. r2/ownership.test.js covers it
+// (CRAP drops below threshold with coverage); cyclomatic/cognitive stay high by
+// design, so suppress the complexity finding rather than split the cascade.
+// fallow-ignore-next-line complexity
 export function checkR2Ownership({ runtime, path: userPath, allowlist, root }) {
   // 1. BOOTSTRAP_DENY first (R1).
   for (const pattern of BOOTSTRAP_DENY_PATTERNS) {

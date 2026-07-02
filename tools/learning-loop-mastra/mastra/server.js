@@ -15,6 +15,7 @@ import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
 import { pinRuntimeIdAtBoot } from "../core/identity-pin.js";
 import { validateToolManifest } from "../core/r2/path-field-detector.js";
 import { invalidateAllowlist, loadAllowlist } from "../core/r2/allowlist-cache.js";
+import { validateR2AllowlistShape } from "../core/r2/allowlist-shape.js";
 import { findProjectRoot } from "../core/gate-logic.js";
 
 // Pin runtime identity before any await; see core/identity-pin.js.
@@ -64,19 +65,6 @@ for (const entry of MANIFEST) {
 // invalidates the allowlist cache, and logs intent BEFORE the rename.
 const R2_ALLOWLIST_PATH = ".loop/r2-allowlist.json";
 const R2_OPERATOR_PREFLIGHT = ".loop/.r2-operator-preflight";
-
-function validateR2AllowlistShape(parsed) {
-  if (!parsed || typeof parsed !== "object") throw new Error("r2_allowlist_invalid: root must be an object");
-  if (parsed.schema !== "r2-allowlist/v1") throw new Error('r2_allowlist_invalid: schema must be "r2-allowlist/v1"');
-  if (typeof parsed.version !== "number") throw new Error("r2_allowlist_invalid: version must be a number");
-  for (const runtime of ["claude-code", "droid", "mastra-code"]) {
-    const entry = parsed[runtime];
-    if (!entry || typeof entry !== "object") throw new Error(`r2_allowlist_invalid: missing runtime "${runtime}"`);
-    if (!Array.isArray(entry.own)) throw new Error(`r2_allowlist_invalid: ${runtime}.own must be an array`);
-    if (!Array.isArray(entry.deny)) throw new Error(`r2_allowlist_invalid: ${runtime}.deny must be an array`);
-  }
-  if (!Array.isArray(parsed.universal)) throw new Error("r2_allowlist_invalid: universal must be an array");
-}
 
 tools[`${PREFIX}update_r2_allowlist`] = createLoopTool({
   id: `${PREFIX}update_r2_allowlist`,

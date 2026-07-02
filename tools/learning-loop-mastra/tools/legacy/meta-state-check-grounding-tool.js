@@ -12,6 +12,11 @@ import { resolveRoot } from "#lib/resolve-root.js";
 /** Per-process test-runner cache (keyed by absolute file path + mtime string).
  *  Cleared on process restart. mtime changes invalidate the cache.
  *  Same pattern as SP1's `meta_state_derive_status` tool. */
+// This runTest/testRunCache block is duplicated in meta-state-derive-status-tool.js;
+// both legacy tools were touched in lockstep to add LIM-4 realpath containment.
+// Dedup is low-value (legacy dynamically-loaded shims), so suppress the introduced
+// clone group rather than extract a shared helper into throwaway code.
+// fallow-ignore-next-line code-duplication
 const testRunCache = new Map();
 
 function runTest(root, testPath) {

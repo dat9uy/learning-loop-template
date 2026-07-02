@@ -56,11 +56,14 @@ function canonicalRoot(root) {
   return realpathCache.get(root);
 }
 
+// Test-only: clear the realpath cache between tests.
+// fallow-ignore-next-line unused-export
 export function clearRealpathCache() {
   realpathCache.clear();
 }
 
 /* istanbul ignore next -- error fallback is exercised by tests but covered as defensive */
+// fallow-ignore-next-line unused-export
 export function isHardlinked(absPath) {
   try {
     const stats = lstatSync(absPath);
