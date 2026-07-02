@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Droid CLI SessionStart hook — checks the gate decision log for recurring
- * false-positive patterns and auto-files findings.
- * Delegates to universal recurrence-check-on-start.js (single source of truth).
+ * Universal hook shim — delegates to universal recurrence-check-on-start.js (single source of truth).
+ * Mirrored byte-identical across all runtime surfaces (.claude, .factory, .mastracode);
+ * enforced by the `shims-in-sync` runtime-agnostic checklist item.
  */
 'use strict';
 

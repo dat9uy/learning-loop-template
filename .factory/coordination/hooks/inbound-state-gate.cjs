@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Droid CLI Inbound State Gate — UserPromptSubmit hook.
- * Delegates to universal inbound-gate.js (single source of truth).
+ * Universal hook shim — delegates to universal inbound-gate.js (single source of truth).
+ * Mirrored byte-identical across all runtime surfaces (.claude, .factory, .mastracode);
+ * enforced by the `shims-in-sync` runtime-agnostic checklist item.
  */
 'use strict';
 

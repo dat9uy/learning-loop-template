@@ -25,7 +25,7 @@ function validateMarker(parsed) {
 
 /**
  * Read the active gate-override marker from the first surface that has a
- * VALID (non-expired) one. Iterates SURFACES in order (.claude, .factory)
+ * VALID (non-expired) one. Iterates SURFACES in order (.claude, .factory, .mastracode)
  * and returns the first valid marker; an expired or malformed marker on
  * one surface does not block a valid marker on another.
  * Returns null if no valid marker exists.
@@ -34,6 +34,7 @@ function validateMarker(parsed) {
  * @param {string} root
  * @returns {object|null}
  */
+// fallow-ignore-next-line complexity
 export function readGateOverride(root) {
   const cached = overrideCache.get(root);
   if (cached) {
@@ -50,8 +51,8 @@ export function readGateOverride(root) {
   }
 
   // Iterate SURFACES and call validateMarker per surface. This preserves
-  // the "first VALID wins" contract: an expired or malformed marker on
-  // .claude falls through to a valid marker on .factory (and vice versa).
+  // the "first VALID wins" contract: an expired or malformed marker on one
+  // surface falls through to a valid marker on another.
   for (const surface of SURFACES) {
     const path = join(root, surface, "coordination", OVERRIDE_FILE);
     let parsed = null;
@@ -120,6 +121,7 @@ export function writeGateOverride(root, { rule_id, ttl_seconds, operator_note })
   readModifyWriteOnAllSurfaces(
     root,
     OVERRIDE_FILE,
+    // fallow-ignore-next-line complexity
     (current) => {
       const ruleIds = [];
       if (current && Array.isArray(current.rule_ids)) {

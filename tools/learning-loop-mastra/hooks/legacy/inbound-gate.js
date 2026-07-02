@@ -5,7 +5,7 @@
  */
 
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   parseInput,
@@ -14,6 +14,7 @@ import {
 } from "./lib/protocol-adapter.js";
 import { evaluateInboundGate } from "../../core/evaluate-inbound-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
+import { writeToAllSurfaces } from "../../core/surfaces.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -33,13 +34,7 @@ function writeOperatorMessageMarker(root, prompt) {
       return;
     }
 
-    for (const dir of [".claude", ".factory"]) {
-      const markerPath = join(root, dir, "coordination", ".last-operator-message");
-      mkdirSync(dirname(markerPath), { recursive: true });
-      const tmpPath = markerPath + ".tmp";
-      writeFileSync(tmpPath, JSON.stringify(marker, null, 2));
-      renameSync(tmpPath, markerPath);
-    }
+    writeToAllSurfaces(root, ".last-operator-message", JSON.stringify(marker, null, 2));
   } catch {
     // marker write failure never blocks
   }

@@ -15,24 +15,36 @@ import {
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
-// SURFACES import is required by runtime-agnostic.test.js:99 — that test scans
-// core/ for the substring "coordination" and rejects any file that mentions it
-// without importing from ./surfaces.js. The PATH_WRITE_PATTERNS regex literals
-// below contain "coordination" (literal escape, not a join() call), so the
-// import satisfies the invariant even though SURFACES is not dereferenced here.
 import { SURFACES } from "./surfaces.js";
 
-// Path-write detection patterns (bash-specific)
-// Preflight-marker patterns cover both .claude and .factory surfaces.
+// Escape regex metacharacters in a literal path segment. Surface names start
+// with ".", which is a regex metachar, so it must be escaped to match literally.
+function escapeForRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Preflight-marker path-write patterns, derived from SURFACES so every runtime
+// surface's coordination/.loop-preflight-* redirect is detected without
+// hand-rolling per-surface regex literals. Two forms per surface: shell redirect
+// (`>`/`>>`) and `tee`. Built once at module load.
+function preflightMarkerPatterns() {
+  return SURFACES.flatMap((surface) => {
+    const seg = escapeForRegex(surface);
+    return [
+      new RegExp(`>{1,2}\\s*["']?\\.?\\/?${seg}\\/coordination\\/\\.loop-preflight-[^\\s"';&|]+["']?`),
+      new RegExp(`\\btee\\b.*["']?\\.?\\/?${seg}\\/coordination\\/\\.loop-preflight-[^\\s"';&|]+["']?`),
+    ];
+  });
+}
+
+// Path-write detection patterns (bash-specific).
+// Preflight-marker patterns are derived from SURFACES (all runtime surfaces).
 // fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
   /<<['"]?\w+['"]?\s*>\s*["']?\.?\/?records\//,
   /\btee\b.*["']?\.?\/?records\/[^\s"';&|]+["']?/,
-  />{1,2}\s*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
-  /\btee\b.*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
-  />{1,2}\s*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
-  /\btee\b.*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
+  ...preflightMarkerPatterns(),
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
