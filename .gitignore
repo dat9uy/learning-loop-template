@@ -44,3 +44,6 @@ tools/learning-loop-mastra/node_modules
 
 # Local fallow SARIF audit output (preserved on failure via the upload-artifact step in .github/workflows/test.yml)
 tools/learning-loop-mastra/reports/fallow/
+
+# c8 Istanbul coverage output consumed by Fallow --coverage (PR #28)
+coverage/

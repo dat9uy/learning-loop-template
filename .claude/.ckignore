@@ -3,3 +3,5 @@
 !.venv
 # !node_modules removed 2026-06-18 (PR#5 research complete — see plan 260618-1418-GH-0029-pr5-shim-followup). Re-add with rationale if needed for future zod/Mastra investigation.
 !node_modules
+# Allow coverage/ — c8 Istanbul output consumed by Fallow --coverage (PR #28 fix)
+!coverage

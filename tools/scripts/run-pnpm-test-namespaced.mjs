@@ -36,6 +36,11 @@ const GLOBS = [
   { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
   { ns: "mastra-cjs", pattern: "tools/learning-loop-mastra/__tests__/*.test.cjs" },
+  // R2 write-allowlist + path-containment security suite. Lives in __tests__/r2/
+  // (not top-level), so the mastra-js `__tests__/*.test.js` glob misses it; without
+  // this entry the suite never runs and Fallow --coverage sees checkR2Ownership at
+  // ~22% (incidental) instead of the real figure, flagging a critical CRAP finding.
+  { ns: "r2-tests", pattern: "tools/learning-loop-mastra/__tests__/r2/*.test.js" },
   { ns: "claude-coord-cjs", pattern: ".claude/coordination/__tests__/*.test.cjs" },
   { ns: "factory-cjs", pattern: ".factory/hooks/__tests__/*.test.cjs" },
   { ns: "phase-e-foundation", pattern: "tools/learning-loop-mastra/__tests__/phase-e-foundation/*.test.js" },
