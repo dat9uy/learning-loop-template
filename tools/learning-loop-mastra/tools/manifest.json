@@ -12,38 +12,45 @@
 // implementation). This keeps the registry stable while allowing file moves
 // between tools/, tools/legacy/, and future mastra/tools/.
 //
+// pathFields (R3 / Plan 5-Lite Phase 1): declares which arg names carry WRITE
+// path values that the R2 gate must ownership-check. Empty array [] means
+// "this tool takes no write-path args" → the gate short-circuits to allow.
+// Most legacy tools write to FIXED internal paths (meta-state.jsonl, records/**)
+// resolved from non-path args (ids, structured data) → they declare [].
+// validateToolManifest throws at boot if any entry is missing pathFields.
+//
 // Keep entries in sync with dynamicallyLoaded in .fallowrc.json (which
 // fallow needs to credit dynamic imports).
 [
-  { "file": "tools/gate-tool.js", "export": "gateCheckTool" },
-  { "file": "tools/gate-override-tool.js", "export": "gateOverrideTool" },
-  { "file": "tools/gate-check-recurrence-tool.js", "export": "gateCheckRecurrenceTool" },
-  { "file": "tools/mark-preflight-complete-tool.js", "export": "gateMarkPreflightTool" },
-  { "file": "tools/runtime-state-record-tool.js", "export": "runtimeStateRecordTool" },
-  { "file": "tools/workflow-generate-prompt-tool.js", "export": "workflowGeneratePromptTool" },
-  { "file": "tools/notify-artifact-tool.js", "export": "workflowNotifyArtifactTool" },
-  { "file": "tools/trigger-workflow-tool.js", "export": "workflowTriggerTool" },
-  { "file": "tools/runtime-state-read-tool.js", "export": "runtimeStateReadTool" },
-  { "file": "tools/meta-state-report-tool.js", "export": "metaStateReportTool" },
-  { "file": "tools/meta-state-list-tool.js", "export": "metaStateListTool" },
-  { "file": "tools/meta-state-ack-tool.js", "export": "metaStateAckTool" },
-  { "file": "tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool" },
-  { "file": "tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool" },
-  { "file": "tools/loop-describe-tool.js", "export": "loopDescribeTool" },
-  { "file": "tools/loop-get-instruction-tool.js", "export": "loopGetInstructionTool" },
-  { "file": "tools/meta-state-sweep-tool.js", "export": "metaStateSweepTool" },
-  { "file": "tools/meta-state-log-change-tool.js", "export": "metaStateLogChangeTool" },
-  { "file": "tools/meta-state-patch-tool.js", "export": "metaStatePatchTool" },
-  { "file": "tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool" },
-  { "file": "tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool" },
-  { "file": "tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool" },
-  { "file": "tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool" },
-  { "file": "tools/meta-state-propose-design-tool.js", "export": "metaStateProposeDesignTool" },
-  { "file": "tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool" },
-  { "file": "tools/meta-state-batch-tool.js", "export": "metaStateBatchTool" },
-  { "file": "tools/meta-state-archive-tool.js", "export": "metaStateArchiveTool" },
-  { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool" },
-  { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool" },
-  { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool" },
-  { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool" }
+  { "file": "tools/gate-tool.js", "export": "gateCheckTool", "pathFields": [] },
+  { "file": "tools/gate-override-tool.js", "export": "gateOverrideTool", "pathFields": [] },
+  { "file": "tools/gate-check-recurrence-tool.js", "export": "gateCheckRecurrenceTool", "pathFields": [] },
+  { "file": "tools/mark-preflight-complete-tool.js", "export": "gateMarkPreflightTool", "pathFields": [] },
+  { "file": "tools/runtime-state-record-tool.js", "export": "runtimeStateRecordTool", "pathFields": [] },
+  { "file": "tools/workflow-generate-prompt-tool.js", "export": "workflowGeneratePromptTool", "pathFields": [] },
+  { "file": "tools/notify-artifact-tool.js", "export": "workflowNotifyArtifactTool", "pathFields": [] },
+  { "file": "tools/trigger-workflow-tool.js", "export": "workflowTriggerTool", "pathFields": [] },
+  { "file": "tools/runtime-state-read-tool.js", "export": "runtimeStateReadTool", "pathFields": [] },
+  { "file": "tools/meta-state-report-tool.js", "export": "metaStateReportTool", "pathFields": [] },
+  { "file": "tools/meta-state-list-tool.js", "export": "metaStateListTool", "pathFields": [] },
+  { "file": "tools/meta-state-ack-tool.js", "export": "metaStateAckTool", "pathFields": [] },
+  { "file": "tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool", "pathFields": [] },
+  { "file": "tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool", "pathFields": [] },
+  { "file": "tools/loop-describe-tool.js", "export": "loopDescribeTool", "pathFields": [] },
+  { "file": "tools/loop-get-instruction-tool.js", "export": "loopGetInstructionTool", "pathFields": [] },
+  { "file": "tools/meta-state-sweep-tool.js", "export": "metaStateSweepTool", "pathFields": [] },
+  { "file": "tools/meta-state-log-change-tool.js", "export": "metaStateLogChangeTool", "pathFields": [] },
+  { "file": "tools/meta-state-patch-tool.js", "export": "metaStatePatchTool", "pathFields": [] },
+  { "file": "tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool", "pathFields": [] },
+  { "file": "tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool", "pathFields": [] },
+  { "file": "tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool", "pathFields": [] },
+  { "file": "tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool", "pathFields": [] },
+  { "file": "tools/meta-state-propose-design-tool.js", "export": "metaStateProposeDesignTool", "pathFields": [] },
+  { "file": "tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool", "pathFields": [] },
+  { "file": "tools/meta-state-batch-tool.js", "export": "metaStateBatchTool", "pathFields": [] },
+  { "file": "tools/meta-state-archive-tool.js", "export": "metaStateArchiveTool", "pathFields": [] },
+  { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool", "pathFields": [] },
+  { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool", "pathFields": [] },
+  { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool", "pathFields": [] },
+  { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool", "pathFields": [] }
 ]

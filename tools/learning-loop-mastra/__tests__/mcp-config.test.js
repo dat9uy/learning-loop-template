@@ -7,7 +7,15 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const projectRoot = resolve(__dirname, "..", "..", "..");
 
-for (const file of [".mcp.json", ".factory/mcp.json"]) {
+// Each runtime's mcp.json sets env.LOOP_SURFACE so the harness passes the
+// surface to the spawned server.js, where pinRuntimeIdAtBoot() reads it at boot.
+const EXPECTED_ENV = {
+  ".mcp.json": ".claude",
+  ".factory/mcp.json": ".factory",
+  ".mastracode/mcp.json": ".mastracode",
+};
+
+for (const [file, surface] of Object.entries(EXPECTED_ENV)) {
   test(`${file} has exactly 1 mcpServers entry (learning-loop)`, () => {
     const config = JSON.parse(readFileSync(join(projectRoot, file), "utf8"));
     assert.equal(Object.keys(config.mcpServers).length, 1);
@@ -21,11 +29,12 @@ for (const file of [".mcp.json", ".factory/mcp.json"]) {
     );
   });
 
-  test(`${file} mastra entry points at tools/learning-loop-mastra/mastra/server.js`, () => {
+  test(`${file} mastra entry points at server.js with env.LOOP_SURFACE=${surface}`, () => {
     const config = JSON.parse(readFileSync(join(projectRoot, file), "utf8"));
     assert.deepEqual(config.mcpServers["learning-loop"], {
       command: "node",
       args: ["tools/learning-loop-mastra/mastra/server.js"],
+      env: { LOOP_SURFACE: surface },
     });
   });
 }

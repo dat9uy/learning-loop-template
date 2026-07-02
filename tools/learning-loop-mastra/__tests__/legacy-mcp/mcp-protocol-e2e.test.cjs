@@ -30,6 +30,9 @@ async function spawnServer() {
   const transport = new StdioClientTransport({
     command: "node",
     args: [SERVER_ENTRY],
+    // Plan 5-Lite Phase 1: pass LOOP_SURFACE so server.js can pin the runtime
+    // identity at boot (the SDK default env inheritance omits it).
+    env: { ...process.env, LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude" },
   });
 
   const client = new Client({ name: "e2e-test", version: "1.0.0" });

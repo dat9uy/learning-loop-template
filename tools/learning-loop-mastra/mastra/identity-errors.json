@@ -1,0 +1,6 @@
+{
+  "MISSING_LOOP_SURFACE": "LOOP_SURFACE environment variable is not set; cannot pin runtime identity. Set LOOP_SURFACE to one of: .claude, .factory, .mastracode before starting the MCP server.",
+  "INVALID_LOOP_SURFACE": "LOOP_SURFACE='{value}' is not a recognized surface. Allowed surfaces: {allowed}.",
+  "MISSING_RUNTIME_MAPPING": "No runtime mapping for surface '{surface}'.",
+  "PIN_NOT_INITIALIZED": "pinRuntimeIdAtBoot() has not been called; getPinnedRuntimeId() is unavailable until the pin is set at boot."
+}

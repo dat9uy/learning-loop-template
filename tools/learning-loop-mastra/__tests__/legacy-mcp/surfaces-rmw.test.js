@@ -33,7 +33,7 @@ await test("readModifyWriteOnAllSurfaces reads existing value, applies modifier,
     updated: true,
   }));
 
-  assert.strictEqual(results.length, 2);
+  assert.strictEqual(results.length, SURFACES.length);
   assert.ok(results.every((r) => r.action === "wrote"));
 
   for (const surface of SURFACES) {
@@ -55,7 +55,7 @@ await test("readModifyWriteOnAllSurfaces removes file when modifier returns null
 
   const results = readModifyWriteOnAllSurfaces(root, "markers/rmw.json", () => null, { removeOnNull: true });
 
-  assert.strictEqual(results.length, 2);
+  assert.strictEqual(results.length, SURFACES.length);
   assert.ok(results.every((r) => r.action === "removed"));
   for (const surface of SURFACES) {
     assert.ok(!existsSync(surfacePath(surface, "markers/rmw.json")));
@@ -73,7 +73,7 @@ await test("readModifyWriteOnAllSurfaces is fail-open when modifier throws", () 
     },
   );
 
-  assert.strictEqual(calls, 2);
-  assert.strictEqual(results.length, 2);
+  assert.strictEqual(calls, SURFACES.length);
+  assert.strictEqual(results.length, SURFACES.length);
   assert.ok(results.every((r) => r.action === "skipped"));
 });

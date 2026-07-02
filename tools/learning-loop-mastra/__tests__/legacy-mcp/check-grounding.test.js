@@ -9,6 +9,7 @@ import {
   META_STATE_GROUNDING_STATUSES,
   META_STATE_GROUNDING_DRIFT_KINDS,
 } from "../../core/check-grounding.js";
+import { PathContainmentError } from "../../core/path-containment.js";
 
 describe("checkGrounding pure function", () => {
   function makeTempDir(prefix) {
@@ -303,8 +304,11 @@ describe("checkGrounding pure function", () => {
     assert.strictEqual(result.status, "grounded");
   });
 
-  // T-23: path traversal accepted as-is
-  test("handles path traversal (../, defensively)", () => {
+  // T-23: path traversal (../) outside root is rejected by LIM-4 path containment.
+  // A ref that escapes the project root is a broken/unsafe finding; checkGrounding
+  // surfaces it as a PathContainmentError(outside_root) rather than silently
+  // grounding against a file outside the audited tree.
+  test("rejects path traversal (../) outside root with PathContainmentError", () => {
     const ctx = baseContext();
     // Create a file outside the root, then refer to it via ../
     const sibling = mkdtempSync(join(tmpdir(), "sibling-"));
@@ -313,12 +317,10 @@ describe("checkGrounding pure function", () => {
       mechanism_check: true,
       evidence_code_ref: "../" + join(sibling.split("/").pop(), "external.js"),
     });
-    // Resolves to <sibling>/external.js — should exist
-    const result = checkGrounding(entry, ctx);
-    assert.ok(result.grounding.evidence_code_ref);
-    // Note: we don't assert status — the result depends on what ../ resolves to
-    // The key assertion is that the function does NOT throw
-    assert.strictEqual(typeof result.status, "string");
+    assert.throws(
+      () => checkGrounding(entry, ctx),
+      (err) => err instanceof PathContainmentError && err.reason === "outside_root",
+    );
   });
 
   // T-24: non-string evidence_code_ref and evidence_test (defensive)

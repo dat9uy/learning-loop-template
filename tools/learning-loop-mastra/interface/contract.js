@@ -65,6 +65,9 @@ const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
 // Phase E Plan 4 — additive Reqs #6 (hook-declarative-config) and #7 (settings-no-bypass)
 // for runtimes with declarative hook configs (e.g., Mastra Code).
 // Req #1 stays monomorphic (shim files only); Req #6 is parallel/alternative.
+// Plan 5-Lite Phase 3 — additive Reqs #9 (.mastracode-config-presence),
+// #10 (mastracode-session-start-pins-loop-surface), #11 (tools-manifest-has-path-fields).
+// Req #8 is intentionally skipped (gap preserved from the plan).
 export const REQUIREMENT_IDS = [
   "hook-shim-set",
   "mcp-client-config",
@@ -73,6 +76,9 @@ export const REQUIREMENT_IDS = [
   "settings-integration",
   "hook-declarative-config",
   "settings-no-bypass",
+  ".mastracode-config-presence",
+  "mastracode-session-start-pins-loop-surface",
+  "tools-manifest-has-path-fields",
 ];
 
 function readJsonSafe(p) {
@@ -415,6 +421,129 @@ function checkSettingsNoBypass(runtimeId, rootPath) {
   return evaluateSettingsBypass(settingsPath);
 }
 
+// Plan 5-Lite Phase 3 — Req #9 (.mastracode-config-presence).
+// For mastra-code, assert .mastracode/ exists with the 4 config files.
+// Other runtimes: applicable:false.
+const MASTRACODE_REQUIRED_FILES = ["mcp.json", "hooks.json", "settings.json", "database.json"];
+
+function checkMastracodeConfigPresence(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  if (runtime.surface !== ".mastracode") {
+    return {
+      id: ".mastracode-config-presence",
+      ok: true,
+      applicable: false,
+      note: "runtime does not use .mastracode/; Req #9 N/A",
+    };
+  }
+  const dir = join(rootPath, ".mastracode");
+  const missing = MASTRACODE_REQUIRED_FILES.filter((f) => !existsSync(join(dir, f)));
+  return {
+    id: ".mastracode-config-presence",
+    ok: missing.length === 0,
+    dir,
+    required_files: MASTRACODE_REQUIRED_FILES,
+    missing,
+  };
+}
+
+// Plan 5-Lite Phase 3 — Req #10 (mastracode-session-start-pins-loop-surface).
+// For mastra-code, assert .mastracode/mcp.json sets env.LOOP_SURFACE on the
+// learning-loop server entry (the operator-chosen env-field wiring approach;
+// shim wiring was replaced by this simpler, more robust mechanism).
+// Other runtimes: applicable:false.
+function checkMastracodeSessionStartPinsLoopSurface(runtimeId, rootPath) {
+  const runtime = RUNTIMES[runtimeId];
+  if (runtime.surface !== ".mastracode") {
+    return {
+      id: "mastracode-session-start-pins-loop-surface",
+      ok: true,
+      applicable: false,
+      note: "runtime does not use .mastracode/; Req #10 N/A",
+    };
+  }
+  const configPath = join(rootPath, ".mastracode", "mcp.json");
+  const parsed = readJsonSafe(configPath);
+  if (!parsed.ok) {
+    return {
+      id: "mastracode-session-start-pins-loop-surface",
+      ok: false,
+      config_path: configPath,
+      env_loop_surface: null,
+      parse_error: parsed.error,
+    };
+  }
+  const entry = parsed.data?.mcpServers?.["learning-loop"] ?? null;
+  const envSurface = entry?.env?.LOOP_SURFACE ?? null;
+  return {
+    id: "mastracode-session-start-pins-loop-surface",
+    ok: envSurface === ".mastracode",
+    config_path: configPath,
+    env_loop_surface: envSurface,
+  };
+}
+
+// Plan 5-Lite Phase 3 — Req #11 (tools-manifest-has-path-fields).
+// Project-wide invariant: every entry in tools/manifest.json declares
+// pathFields: string[] (may be []). The manifest is JSONC (full-line // comments
+// only); the validator strips comments before parsing, mirroring the shim in
+// mastra/server.js. Applicable to ALL runtimes.
+const MANIFEST_REL = "tools/learning-loop-mastra/tools/manifest.json";
+
+function stripJsoncFullLineComments(text) {
+  return text.replace(/^\s*\/\/.*$/gm, "");
+}
+
+function checkToolsManifestHasPathFields(_runtimeId, rootPath) {
+  const manifestPath = join(rootPath, MANIFEST_REL);
+  let raw;
+  try {
+    raw = readFileSync(manifestPath, "utf8");
+  } catch (error) {
+    return {
+      id: "tools-manifest-has-path-fields",
+      ok: false,
+      manifest_path: manifestPath,
+      entries: [],
+      missing_path_fields: [],
+      error: error.message,
+    };
+  }
+  let entries;
+  try {
+    entries = JSON.parse(stripJsoncFullLineComments(raw));
+  } catch (error) {
+    return {
+      id: "tools-manifest-has-path-fields",
+      ok: false,
+      manifest_path: manifestPath,
+      entries: [],
+      missing_path_fields: [],
+      error: `manifest parse failed: ${error.message}`,
+    };
+  }
+  if (!Array.isArray(entries)) {
+    return {
+      id: "tools-manifest-has-path-fields",
+      ok: false,
+      manifest_path: manifestPath,
+      entries,
+      missing_path_fields: [],
+      error: "manifest is not an array",
+    };
+  }
+  const missing = entries
+    .filter((e) => !e || !Array.isArray(e.pathFields))
+    .map((e) => e?.file ?? JSON.stringify(e));
+  return {
+    id: "tools-manifest-has-path-fields",
+    ok: missing.length === 0,
+    manifest_path: manifestPath,
+    entries: entries.length,
+    missing_path_fields: missing,
+  };
+}
+
 /**
  * Validate a runtime against the 5-requirement contract.
  * @param {string} runtimeId - One of: "claude-code", "droid", "mastra-code".
@@ -451,6 +580,12 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     // Phase E Plan 4: Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
     checkHookDeclarativeConfig(runtimeId, resolvedRoot),
     checkSettingsNoBypass(runtimeId, resolvedRoot),
+    // Plan 5-Lite Phase 3: Req #9 (.mastracode-config-presence),
+    // Req #10 (mastracode-session-start-pins-loop-surface),
+    // Req #11 (tools-manifest-has-path-fields — project-wide invariant).
+    checkMastracodeConfigPresence(runtimeId, resolvedRoot),
+    checkMastracodeSessionStartPinsLoopSurface(runtimeId, resolvedRoot),
+    checkToolsManifestHasPathFields(runtimeId, resolvedRoot),
   ];
   const missing = checks.filter((c) => !c.ok).map((c) => c.id);
   const notes = [];

@@ -178,6 +178,26 @@ The bash gate detects file writes via shell patterns and requires a matching `wr
 
 This algorithm differs from the inbound gate's 30-minute threshold. See Known Issues (F2).
 
+### MCP-Tool Write-Authorization Layer (R2 + Path Containment)
+
+Distinct from the bash/write gates above (which gate agent *shell commands* and tool calls), the MCP tools themselves carry a second write-authorization layer that gates every write an MCP tool performs during `execute`. This layer is the single authorization point for MCP-tool writes; the bash/write gates do not see inside tool execution.
+
+**Files:**
+- `tools/learning-loop-mastra/mastra/with-r2-gate.js` — `withR2Gate` wrapper applied to every tool via `createLoopTool`
+- `tools/learning-loop-mastra/core/identity-pin.js` — `pinRuntimeIdAtBoot()`, first statement of `mastra/server.js`
+- `tools/learning-loop-mastra/core/path-containment.js` — `resolveSafePath` (LIM-4 realpath containment)
+- `.loop/r2-allowlist.json` — per-runtime own/deny + universal ownership table
+
+**Behavior:**
+1. At server boot, `pinRuntimeIdAtBoot()` reads `process.env.LOOP_SURFACE` (set via the `env` field of each runtime's `mcp.json`), validates it against the supported surfaces, and freezes the runtime id for the process lifetime (no setter exported).
+2. Each MCP tool's `execute` is wrapped by `withR2Gate`. For every declared write-path (`pathFields` in `tools/manifest.json`), the gate resolves the path via `resolveSafePath` and checks ownership against `.loop/r2-allowlist.json` (per-runtime own/deny plus universal entries).
+3. `validateToolManifest` runs at boot and throws if any tool lacks `pathFields`, enforcing default-deny for undeclared write paths.
+4. `resolveSafePath` realpath-resolves user paths and rejects traversal, symlink, and hardlink escape. It is the path-safety layer beneath the R2 gate and is also used directly at the seven audit-log/recording sites that previously used `path.join`.
+
+Audit-log entries (`gate-decision-log.js`, `r2/denial-log.js`) assert no raw newlines and pre-resolve the recorded `path` field via realpath.
+
+For the full gating chain, allowlist schema, and operator runbook, see `docs/security/plan-5-hardening.md`.
+
 ### Constraint Gate MCP Server
 
 **File:** `tools/learning-loop-mcp/server.js`

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { appendDecisionLog, readDecisionLog } from "../../core/gate-decision-log.js";
+import { SURFACES } from "../../core/surfaces.js";
 
 let root;
 
@@ -33,7 +34,7 @@ await test("appendDecisionLog appends one line per call to all surfaces", () => 
     });
   }
 
-  for (const surface of [".claude", ".factory"]) {
+  for (const surface of SURFACES) {
     const path = surfaceLogPath(surface);
     assert.ok(existsSync(path), `expected ${path} to exist`);
     const lines = readFileSync(path, "utf8").trim().split("\n").filter(Boolean);

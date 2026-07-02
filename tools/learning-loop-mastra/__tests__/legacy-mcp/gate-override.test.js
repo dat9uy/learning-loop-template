@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { readGateOverride, writeGateOverride } from "../../core/gate-override.js";
 import { applyPromotedRules, loadPromotedRules } from "../../core/gate-logic.js";
 import { gateOverrideTool } from "../../tools/legacy/gate-override-tool.js";
+import { SURFACES } from "../../core/surfaces.js";
 
 let root;
 
@@ -40,7 +41,7 @@ function writeRule(ruleId, pattern) {
 
 await test("writeGateOverride creates marker on all surfaces", () => {
   writeGateOverride(root, { rule_id: "rule-foo", ttl_seconds: 3600, operator_note: "test" });
-  for (const surface of [".claude", ".factory"]) {
+  for (const surface of SURFACES) {
     const path = join(root, surface, "coordination", ".gate-override");
     assert.ok(existsSync(path), `expected ${path} to exist`);
     const parsed = JSON.parse(readFileSync(path, "utf8"));
@@ -63,7 +64,7 @@ await test("readGateOverride returns marker when valid", () => {
 await test("readGateOverride returns null when expired", () => {
   writeGateOverride(root, { rule_id: "rule-foo", ttl_seconds: 3600, operator_note: "old" });
   const oldCreatedAt = new Date(Date.now() - 7200 * 1000).toISOString();
-  for (const surface of [".claude", ".factory"]) {
+  for (const surface of SURFACES) {
     const path = join(root, surface, "coordination", ".gate-override");
     const parsed = JSON.parse(readFileSync(path, "utf8"));
     parsed.created_at = oldCreatedAt;

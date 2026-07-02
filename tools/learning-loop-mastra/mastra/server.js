@@ -4,13 +4,23 @@ import { createTool } from "@mastra/core/tools";
 import { makeCoreTool } from "@mastra/core/utils";
 import { RequestContext } from "@mastra/core/request-context";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { createLoopTool } from "./create-loop-tool.js";
 import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { storage, initStorage } from "../storage.js";
 import { loadAgentsManifest } from "./agents/load-agents-manifest.js";
+import { pinRuntimeIdAtBoot } from "../core/identity-pin.js";
+import { validateToolManifest } from "../core/r2/path-field-detector.js";
+import { invalidateAllowlist, loadAllowlist } from "../core/r2/allowlist-cache.js";
+import { validateR2AllowlistShape } from "../core/r2/allowlist-shape.js";
+import { findProjectRoot } from "../core/gate-logic.js";
+
+// Pin runtime identity before any await; see core/identity-pin.js.
+// Synchronous, idempotent, freezes the runtime id for process lifetime (R2).
+pinRuntimeIdAtBoot();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // manifest.json uses JSONC (line-start // comments for convention docs).
@@ -21,6 +31,9 @@ const MANIFEST = JSON.parse(
   readFileSync(join(__dirname, "..", "tools", "manifest.json"), "utf8")
     .replace(/^\s*\/\/.*$/gm, ""),
 );
+// R3 default-deny: every manifest entry MUST declare pathFields. Throws at
+// boot (loud failure) if any entry is missing the field.
+validateToolManifest(MANIFEST);
 const WORKFLOW_MANIFEST = JSON.parse(
   readFileSync(join(__dirname, "workflows-manifest.json"), "utf8"),
 );
@@ -28,7 +41,8 @@ const WORKFLOW_MANIFEST = JSON.parse(
 const PREFIX = "mastra_";
 const tools = {};
 
-for (const { file, export: exportName } of MANIFEST) {
+for (const entry of MANIFEST) {
+  const { file, export: exportName } = entry;
   const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
   const legacy = mod[exportName];
   if (!legacy) {
@@ -41,8 +55,48 @@ for (const { file, export: exportName } of MANIFEST) {
     description: legacy.description,
     inputSchema: legacy.schema,
     execute: adaptLegacyHandler(legacy),
+    pathFields: entry.pathFields ?? [],
   });
 }
+
+// F9: update_r2_allowlist — the operator-only path to edit .loop/r2-allowlist.json.
+// Requires a preflight marker (.loop/.r2-operator-preflight) so accidental calls
+// do not mutate the gate. Validates the schema before an atomic temp+rename,
+// invalidates the allowlist cache, and logs intent BEFORE the rename.
+const R2_ALLOWLIST_PATH = ".loop/r2-allowlist.json";
+const R2_OPERATOR_PREFLIGHT = ".loop/.r2-operator-preflight";
+
+tools[`${PREFIX}update_r2_allowlist`] = createLoopTool({
+  id: `${PREFIX}update_r2_allowlist`,
+  description: "Operator-only: atomically replace .loop/r2-allowlist.json (R2 per-runtime write allowlist). Requires a preflight marker at .loop/.r2-operator-preflight. Validates the schema before write and invalidates the in-process allowlist cache.",
+  inputSchema: {
+    allowlist: z.record(z.unknown()).describe("Full replacement allowlist object with schema='r2-allowlist/v1', version=1, per-runtime own/deny arrays, and universal array."),
+  },
+  pathFields: [],
+  execute: async ({ allowlist }) => {
+    const root = findProjectRoot();
+    const preflightPath = join(root, R2_OPERATOR_PREFLIGHT);
+    if (!existsSync(preflightPath)) {
+      throw new Error(
+        `r2_allowlist_preflight_missing: create the marker file at ${R2_OPERATOR_PREFLIGHT} before editing the allowlist (operator-only guard).`,
+      );
+    }
+    // Validate the replacement shape before touching disk.
+    validateR2AllowlistShape(allowlist);
+    const target = join(root, R2_ALLOWLIST_PATH);
+    const tmp = `${target}.tmp`;
+    // Log intent BEFORE the rename (R6 ordering).
+    console.error(`r2: update_r2_allowlist replacing ${R2_ALLOWLIST_PATH} (operator-preflight present)`);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(tmp, JSON.stringify(allowlist, null, 2), "utf8");
+    renameSync(tmp, target);
+    // Invalidate the cache so the next R2 call re-reads the new allowlist.
+    invalidateAllowlist(root);
+    // Verify by re-loading.
+    const reloaded = loadAllowlist(root);
+    return { ok: true, schema: reloaded.schema, version: reloaded.version };
+  },
+});
 
 const workflows = {};
 for (const { file, export: exportName } of WORKFLOW_MANIFEST) {
@@ -102,10 +156,16 @@ class LoopMCPServer extends MCPServer {
         );
         continue;
       }
-      const workflowToolDefinition = createTool({
+      const workflowToolDefinition = createLoopTool({
         id: workflowToolName,
         description: `Run workflow '${workflowKey}'. Workflow description: ${workflowDescription}`,
         inputSchema: workflow.inputSchema,
+        // Workflow tools take structured run inputs, not raw write-path args.
+        // pathFields: [] short-circuits the R2 gate to allow (R4: workflow
+        // tools still flow through createLoopTool so the gate is the single
+        // write-authorization point; a future workflow that accepts a write-
+        // path arg would declare it here).
+        pathFields: [],
         execute: async (inputData, context) => {
           this.logger.debug(
             `Executing workflow tool '${workflowToolName}' for workflow '${workflow.id}' with input:`,

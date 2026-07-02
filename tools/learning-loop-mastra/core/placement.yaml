@@ -51,6 +51,27 @@ files:
   - path: file-readers.js
     role: primitive
     summary: Shared file-reading helpers (readJsonSafe, readLines).
+  - path: path-containment.js
+    role: primitive
+    summary: resolveSafePath — realpath containment + hardlink rejection for user-supplied paths.
+  - path: identity-pin.js
+    role: facade
+    summary: Process-boot runtime identity pin (frozen, immutable for process lifetime).
+  - path: r2/ownership.js
+    role: evaluator
+    summary: checkR2Ownership — per-runtime allowlist + BOOTSTRAP_DENY decision cascade.
+  - path: r2/path-field-detector.js
+    role: evaluator
+    summary: detectPathFields + validateToolManifest — declared write-path args with default-deny.
+  - path: r2/allowlist-cache.js
+    role: cache
+    summary: Loads and caches .loop/r2-allowlist.json per root; invalidateAllowlist on operator edit.
+  - path: r2/allowlist-shape.js
+    role: evaluator
+    summary: validateR2AllowlistShape — pure schema validator for r2-allowlist/v1 before the atomic write.
+  - path: r2/denial-log.js
+    role: facade
+    summary: Appends one JSON-serialized R2 denial line to the cross-surface decision log.
   - path: slugify.js
     role: primitive
     summary: Slugify strings for ids (lowercase, hyphens, alphanumeric).

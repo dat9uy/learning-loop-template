@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import patterns from "./patterns.json" with { type: "json" };
+import { resolveSafePath } from "./path-containment.js";
 
 const VERIFY_ALLOWLIST = new Set(patterns["meta-state-verify-cmd-allowlist"] || []);
 
@@ -30,9 +31,10 @@ export function runVerification(root, step) {
   if (!VERIFY_ALLOWLIST.has(step.cmd)) {
     return { status: "failed", signal: "cmd_not_allowlisted" };
   }
-  const cwd = step.cwd
-    ? (isAbsolute(step.cwd) ? step.cwd : join(root, step.cwd))
-    : root;
+  // LIM-4: realpath containment for user-supplied step.cwd. Out-of-tree cwd
+  // throws PathContainmentError (escape); step.cwd must resolve inside root.
+  // See core/path-containment.js. Invoked at moment of use per NF3.
+  const cwd = step.cwd ? resolveSafePath(root, step.cwd) : root;
   const timeout = step.timeout_ms ?? 10_000;
   try {
     const result = spawnSync(step.cmd, step.args ?? [], {

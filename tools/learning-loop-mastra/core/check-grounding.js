@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { join, isAbsolute } from "node:path";
+import { join, isAbsolute, resolve as pathResolve } from "node:path";
+// Pre-existing cycle: gate-logic.js imports computeFileHash from here; we import
+// stripEvidenceAnchor from there. The audit gate's dead-code baseline does not
+// suppress project-level circular-dep findings, so suppress at this import edge.
+// Breaking the cycle (extracting computeFileHash into a shared lib) is out of
+// scope for the R2/path-containment PR.
+// fallow-ignore-next-line circular-dependency
 import { stripEvidenceAnchor } from "./gate-logic.js";
+import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 
 /**
  * SP2 Grounding Check — pure function (no subprocess).
@@ -139,8 +146,26 @@ export function checkGrounding(entry, codeContext) {
   // meta-260607T1517Z-consult-gate-rule-no-orphaned-evidence-origin-meta-260607t00
   // for the gate-bug class this closes.
   const strippedRef = stripEvidenceAnchor(codeRef);
-  const absPath = isAbsolute(strippedRef) ? strippedRef : join(root, strippedRef);
-  const codeRefExists = existsSync(absPath);
+  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+  // See core/path-containment.js. Invoked at moment of use per NF3. A missing
+  // file inside root (ENOENT, resolvedPath === null) is the legitimate
+  // "code_missing" case and is preserved as code_ref_exists: false; an actual
+  // escape (resolvedPath set) re-throws.
+  let absPath;
+  let codeRefExists = false;
+  try {
+    absPath = resolveSafePath(root, strippedRef);
+    codeRefExists = existsSync(absPath);
+  } catch (err) {
+    if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
+      // Missing file inside root — report the resolved path for grounding
+      // output. pathResolve handles both relative and absolute inputs.
+      absPath = pathResolve(root, strippedRef);
+      codeRefExists = false;
+    } else {
+      throw err;
+    }
+  }
 
   // Compute hash if file exists (catch read race)
   let codeRefHash = null;

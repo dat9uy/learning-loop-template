@@ -66,6 +66,10 @@ export async function connectMcpServer(serverEntry, tempRoot, env = {}) {
     args: [serverEntry],
     env: {
       ...process.env,
+      // Plan 5-Lite Phase 1: server.js pins the runtime identity from
+      // LOOP_SURFACE at boot. Tests run as claude-code by default; override
+      // via the `env` arg to connectMcpServer for cross-runtime scenarios.
+      LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude",
       GATE_ROOT: tempRoot,
       MASTRA_STORAGE_DRIVER: "memory",
       ...env,

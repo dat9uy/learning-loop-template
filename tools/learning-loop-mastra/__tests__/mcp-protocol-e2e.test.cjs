@@ -40,6 +40,10 @@ async function spawnServer() {
   const transport = new StdioClientTransport({
     command: "node",
     args: [SERVER_ENTRY],
+    // Plan 5-Lite Phase 1: server.js pins LOOP_SURFACE at boot; the SDK's
+    // default env inheritance is a safe subset that omits LOOP_SURFACE, so we
+    // pass the full parent env explicitly.
+    env: { ...process.env, LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude" },
   });
 
   const client = new Client({ name: "mastra-e2e-test", version: "1.0.0" });

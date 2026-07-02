@@ -21,6 +21,7 @@ import { SURFACES } from "./surfaces.js";
 import { readRegistry, metaStateRuleEntrySchema } from "./meta-state.js";
 import { computeFileHash } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
+import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
@@ -669,13 +670,24 @@ export function checkResolutionEvidence(rule, root) {
       // `path/to/file.js:37` as a literal file path and flagged it as
       // code_ref_missing even when the file existed. See finding
       // meta-260607T1625Z-gate-line-suffix-not-stripped-from-evidence-code-ref.
-      const absPath = isAbsolute(codeRef) ? codeRef : join(root, stripEvidenceAnchor(codeRef));
+      // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+      // See core/path-containment.js. A missing file inside root (ENOENT,
+      // resolvedPath === null) or a read-race FileNotFoundError is preserved as
+      // code_ref_missing; security rejections (escape, hardlink, realpath_failed)
+      // propagate. Invoked at moment of use per NF3.
       let currentHash;
       try {
+        const absPath = resolveSafePath(root, stripEvidenceAnchor(codeRef));
         currentHash = computeFileHash(absPath);
-      } catch {
-        orphans.push({ id: entry.id, reason: "code_ref_missing" });
-        continue;
+      } catch (err) {
+        const isMissing = err instanceof PathContainmentError
+          ? (err.reason === "outside_root" && err.resolvedPath === null)
+          : err.name === "FileNotFoundError";
+        if (isMissing) {
+          orphans.push({ id: entry.id, reason: "code_ref_missing" });
+          continue;
+        }
+        throw err;
       }
       if (entry.code_fingerprint && entry.code_fingerprint !== currentHash) {
         orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected: entry.code_fingerprint, actual: currentHash });

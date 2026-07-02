@@ -24,6 +24,10 @@ async function spawnServer() {
   const transport = new StdioClientTransport({
     command: "node",
     args: [SERVER_ENTRY],
+    // Plan 5-Lite Phase 1: server.js pins LOOP_SURFACE at boot; the SDK's
+    // default env inheritance is a safe subset that omits LOOP_SURFACE, so we
+    // pass the full parent env explicitly.
+    env: { ...process.env, LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude" },
   });
 
   const client = new Client({ name: "cold-session-enumerate-mastra", version: "1.0.0" });
@@ -63,16 +67,16 @@ describe("cold-session enumerate mastra manifest", () => {
     }
   }
 
-  test("agent-manifest.json declares 44 tools across 6 groups", () => {
-    assert.strictEqual(declaredTools.length, 44,
-      `expected 44 tools in agent-manifest.json, got ${declaredTools.length}`);
+  test("agent-manifest.json declares 45 tools across 6 groups", () => {
+    assert.strictEqual(declaredTools.length, 45,
+      `expected 45 tools in agent-manifest.json, got ${declaredTools.length}`);
     assert.strictEqual(Object.keys(agentManifest.groups).length, 6,
       `expected 6 groups in agent-manifest.json, got ${Object.keys(agentManifest.groups).length}`);
   });
 
-  test("server registers all 44 declared tools", () => {
-    assert.strictEqual(tools.length, 44,
-      `server should expose 44 tools, got ${tools.length}`);
+  test("server registers all 45 declared tools", () => {
+    assert.strictEqual(tools.length, 45,
+      `server should expose 45 tools, got ${tools.length}`);
   });
 
   test("every declared tool is registered", () => {

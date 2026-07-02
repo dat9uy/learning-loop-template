@@ -1,6 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { buildParitySchema } from "./schema-parity.js";
+import { withR2Gate } from "./with-r2-gate.js";
 
 /**
  * Factory seam for the loop's tools. Pre-Phase 2 this wrapped inputSchema with
@@ -53,12 +54,16 @@ function attachParityJSONSchema(schema) {
   return schema;
 }
 
-export function createLoopTool({ id, description, inputSchema, execute }) {
+export function createLoopTool({ id, description, inputSchema, execute, pathFields = [] }) {
   const normalized = attachParityJSONSchema(normalizeInputSchema(inputSchema));
+  // R2 write-gate is the single write-authorization point for every loop tool.
+  // Tools with pathFields: [] (no write-path args) short-circuit to allow;
+  // tools that declare write-path args are ownership-checked per runtime.
+  const gatedExecute = withR2Gate({ id, execute, pathFields });
   return createTool({
     id,
     description,
     inputSchema: normalized,
-    execute,
+    execute: gatedExecute,
   });
 }

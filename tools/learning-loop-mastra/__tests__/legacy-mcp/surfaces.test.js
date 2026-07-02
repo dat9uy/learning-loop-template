@@ -24,8 +24,8 @@ afterEach(() => {
 
 // ─── SURFACES ───
 
-await test("SURFACES is frozen and equals [.claude, .factory]", () => {
-  assert.deepStrictEqual(SURFACES, [".claude", ".factory"]);
+await test("SURFACES is frozen and equals the canonical runtime set", () => {
+  assert.deepStrictEqual(SURFACES, [".claude", ".factory", ".mastracode"]);
   assert.throws(() => {
     SURFACES.push(".cursor");
   });
@@ -41,6 +41,7 @@ await test("getAllCoordinationPaths maps each surface to <surface>/coordination/
   assert.deepStrictEqual(paths, [
     ".claude/coordination/hooks/bash-gate.js",
     ".factory/coordination/hooks/bash-gate.js",
+    ".mastracode/coordination/hooks/bash-gate.js",
   ]);
 });
 
@@ -49,6 +50,7 @@ await test("getAllCoordinationPaths handles nested subpaths", () => {
   assert.deepStrictEqual(paths, [
     ".claude/coordination/a/b/c.txt",
     ".factory/coordination/a/b/c.txt",
+    ".mastracode/coordination/a/b/c.txt",
   ]);
 });
 
@@ -99,11 +101,11 @@ await test("readFromAllSurfaces returns parsed content for each surface", () => 
   }
 
   const results = readFromAllSurfaces(root, "markers/read.json");
-  assert.strictEqual(results.length, 2);
-  assert.strictEqual(results[0].surface, ".claude");
-  assert.deepStrictEqual(results[0].parsed, { surface: ".claude", value: 42 });
-  assert.strictEqual(results[1].surface, ".factory");
-  assert.deepStrictEqual(results[1].parsed, { surface: ".factory", value: 42 });
+  assert.strictEqual(results.length, SURFACES.length);
+  for (let i = 0; i < SURFACES.length; i++) {
+    assert.strictEqual(results[i].surface, SURFACES[i]);
+    assert.deepStrictEqual(results[i].parsed, { surface: SURFACES[i], value: 42 });
+  }
 });
 
 await test("readFromAllSurfaces({ first: true }) returns the first hit, skipping missing", () => {

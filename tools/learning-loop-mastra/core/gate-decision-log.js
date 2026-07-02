@@ -19,8 +19,16 @@ function oneLinePrefix(prefix) {
  * does not abort the others. Fail-open: errors are swallowed and logged to
  * stderr so the failure is visible without breaking the gate's contract.
  *
+ * R6 hardening (Plan 5-Lite Phase 3): the serialized line MUST NOT contain a
+ * raw `\n` or `\r` — a malicious entry could otherwise inject a forged line
+ * into the JSONL log. `oneLinePrefix` strips residual newlines from
+ * `command_prefix`; the assertion below is a belt-and-suspenders guard that
+ * throws BEFORE the line reaches `appendToAllSurfaces` if any raw newline
+ * survives serialization (e.g., via a field added in the future).
+ *
  * @param {string} root
  * @param {object} entry
+ * @throws {Error} if the serialized line contains a raw `\n` or `\r`.
  */
 export function appendDecisionLog(root, entry) {
   const line = JSON.stringify({
@@ -32,6 +40,10 @@ export function appendDecisionLog(root, entry) {
     matched_pattern: entry.matched_pattern ?? null,
     skipped_via_override: entry.skipped_via_override ?? false,
   });
+
+  if (line.includes("\n") || line.includes("\r")) {
+    throw new Error("gate_log entry contains unescaped newline");
+  }
 
   appendToAllSurfaces(root, DECISION_LOG_FILE, line);
 }

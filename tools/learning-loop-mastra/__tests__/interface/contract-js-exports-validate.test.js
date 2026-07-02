@@ -17,7 +17,8 @@ test("contract.js exports validate as named export", async () => {
 test("contract.js exports REQUIREMENT_IDS constant", async () => {
   const mod = await import(CONTRACT_JS);
   assert.ok(Array.isArray(mod.REQUIREMENT_IDS), "expected REQUIREMENT_IDS to be an array");
-  // Phase E Plan 4: REQUIREMENT_IDS grew 5 → 7 with additive Req #6 (hook-declarative-config)
-  // and Req #7 (settings-no-bypass) for Mastra Code (declarative-hook runtimes).
-  assert.equal(mod.REQUIREMENT_IDS.length, 7, "expected 7 requirement IDs (5 base + Req #6 + Req #7)");
+  // Plan 5-Lite Phase 3: REQUIREMENT_IDS grew 7 → 10 with additive
+  // Req #9 (.mastracode-config-presence), Req #10 (mastracode-session-start-pins-loop-surface),
+  // and Req #11 (tools-manifest-has-path-fields). Req #8 is intentionally skipped (gap).
+  assert.equal(mod.REQUIREMENT_IDS.length, 10, "expected 10 requirement IDs (5 base + Req #6 + #7 + #9 + #10 + #11)");
 });

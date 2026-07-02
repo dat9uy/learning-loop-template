@@ -5,16 +5,34 @@ import { isAbsolute, join } from "node:path";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { runVerification } from "../../core/verification-runner.js";
+import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 /** Per-process test-runner cache (keyed by absolute file path + mtime string).
  *  Cleared on process restart. mtime changes invalidate the cache.
  *  Same pattern as SP1's `meta_state_derive_status` tool. */
+// This runTest/testRunCache block is duplicated in meta-state-derive-status-tool.js;
+// both legacy tools were touched in lockstep to add LIM-4 realpath containment.
+// Dedup is low-value (legacy dynamically-loaded shims), so suppress the introduced
+// clone group rather than extract a shared helper into throwaway code.
+// fallow-ignore-next-line code-duplication
 const testRunCache = new Map();
 
 function runTest(root, testPath) {
-  const fullPath = isAbsolute(testPath) ? testPath : join(root, testPath);
+  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
+  // A missing test file inside root (ENOENT, resolvedPath === null) returns
+  // null (skip running tests); an actual escape (resolvedPath set) propagates.
+  // See core/path-containment.js. Invoked at moment of use per NF3.
+  let fullPath;
+  try {
+    fullPath = resolveSafePath(root, testPath);
+  } catch (err) {
+    if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
+      return null;  // missing test file — skip running tests
+    }
+    throw err;
+  }
   if (!existsSync(fullPath)) return null;
   const mtime = statSync(fullPath).mtimeMs;
   const key = `${fullPath}:${mtime}`;

@@ -36,6 +36,11 @@ const GLOBS = [
   { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
   { ns: "mastra-cjs", pattern: "tools/learning-loop-mastra/__tests__/*.test.cjs" },
+  // R2 write-allowlist + path-containment security suite. Lives in __tests__/r2/
+  // (not top-level), so the mastra-js `__tests__/*.test.js` glob misses it; without
+  // this entry the suite never runs and Fallow --coverage sees checkR2Ownership at
+  // ~22% (incidental) instead of the real figure, flagging a critical CRAP finding.
+  { ns: "r2-tests", pattern: "tools/learning-loop-mastra/__tests__/r2/*.test.js" },
   { ns: "claude-coord-cjs", pattern: ".claude/coordination/__tests__/*.test.cjs" },
   { ns: "factory-cjs", pattern: ".factory/hooks/__tests__/*.test.cjs" },
   { ns: "phase-e-foundation", pattern: "tools/learning-loop-mastra/__tests__/phase-e-foundation/*.test.js" },
@@ -88,7 +93,16 @@ function runGlob({ ns, pattern }) {
         ["--test", "--test-timeout=30000", pattern],
         {
           stdio: ["ignore", "pipe", "pipe"],
-          env: { ...process.env, FORCE_COLOR: "0" },
+          env: {
+            ...process.env,
+            FORCE_COLOR: "0",
+            // Plan 5-Lite Phase 1: server.js pins the runtime identity from
+            // LOOP_SURFACE at boot. Tests run as claude-code by default; the
+            // pin-runtime-id test deletes/overrides this locally for its own
+            // cases. This backstop lets .cjs tests that spawn server.js
+            // directly (inheriting process.env) boot without setting it per-file.
+            LOOP_SURFACE: process.env.LOOP_SURFACE || ".claude",
+          },
         },
       );
 

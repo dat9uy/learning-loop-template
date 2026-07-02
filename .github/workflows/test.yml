@@ -110,6 +110,16 @@ jobs:
           dead-code-baseline: baselines/fallow/dead-code-baseline.json
           health-baseline:    baselines/fallow/health-baseline.json
           dupes-baseline:     baselines/fallow/dupes-baseline.json
+          # Feed c8 Istanbul coverage so Fallow scores per-function CRAP from real
+          # coverage instead of assuming 0% (which inflates CRAP to comp×(comp+1)
+          # and fails the gate on every new function with cyclomatic ≥ ~5). Mirrors
+          # the local `pnpm fallow:gate` script (package.json) so local pre-commit
+          # and CI agree on CRAP. Coverage is emitted by the c8-wrapped `pnpm test`
+          # step above (c8 is a devDependency in the same commit — see
+          # rule-tool-integration-same-commit-dep). Paths are absolute because
+          # Fallow resolves `--coverage` relative to `root:`; `--coverage-root`
+          # strips the checkout prefix so paths match the root-relative analysis.
+          args: --coverage ${{ github.workspace }}/coverage/coverage-final.json --coverage-root ${{ github.workspace }}/tools/learning-loop-mastra
 
       - name: Patch fallow SARIF per analyzer (jq)
         # Idempotent: runs with automationDetails.id already set (or null) are
