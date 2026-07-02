@@ -8,7 +8,11 @@ const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/tools/legacy",
 ];
 
-const SHIM_DIRS = [".claude/coordination/hooks", ".factory/coordination/hooks"];
+const SHIM_DIRS = [
+  ".claude/coordination/hooks",
+  ".factory/coordination/hooks",
+  ".mastracode/coordination/hooks",
+];
 
 function loadText(root, relPath) {
   const path = join(root, relPath);
@@ -38,6 +42,7 @@ function loadText(root, relPath) {
  *   remains best-effort; the rule's `enforcement: "agent"` (the agent
  *   itself) is the canonical check.
  */
+// fallow-ignore-next-line unused-export
 export function stripCommentsAndStrings(text) {
   return text
     .replace(/\/\*[\s\S]*?\*\//g, "") // block comments /* ... */
@@ -106,6 +111,36 @@ function pass() {
 }
 
 /**
+ * Walk the feature path and yield { file, src } for each code file that is not
+ * surfaces.js itself, with `src` comment/template-stripped. Shared prologue for
+ * the surface-audit checklist items (cross-surface-iteration,
+ * parameterized-for-new-surfaces) so they do not duplicate the walk+filter+load.
+ */
+function* iterAuditCodeFiles(root, featurePath) {
+  for (const file of walkFiles(root, featurePath)) {
+    if (!isCodeFile(file)) continue;
+    if (isSurfacesJs(file)) continue;
+    const src = stripCommentsAndStrings(loadText(root, file));
+    yield { file, src };
+  }
+}
+
+/**
+ * Build the per-surface shim map for every SHIM_DIRS entry: the sorted .cjs
+ * filenames present in that surface's coordination/hooks dir (empty if the dir
+ * is absent), plus a name->path lookup. Used by the shims-in-sync verify.
+ */
+function buildShimMaps(root) {
+  return SHIM_DIRS.map((d) => {
+    const dir = join(root, d);
+    const names = existsSync(dir)
+      ? readdirSync(dir).filter((f) => f.endsWith(".cjs")).sort()
+      : [];
+    return { dir: d, names: new Set(names), byName: new Map(names.map((n) => [n, join(dir, n)])) };
+  });
+}
+
+/**
  * Runtime-agnostic checklist — shared between the regression test and the
  * check_runtime_agnostic MCP tool. Each item has an id, human description,
  * and a verify(featurePath, root) function returning { ok, expected?, found?, fix_suggestion? }.
@@ -148,36 +183,38 @@ export const CHECKLIST = [
   },
   {
     id: "shims-in-sync",
-    description: "If hooks are added, both .claude and .factory shim directories contain the shim (mirror by hand, no helper; see SHIM_DIRS).",
+    description: "Every runtime surface's coordination/hooks/ directory contains the same set of .cjs shims, byte-identical across all surfaces (.claude, .factory, .mastracode; mirror by hand, no helper; see SHIM_DIRS).",
+    // fallow-ignore-next-line complexity
     verify(featurePath, root) {
-      const hookFiles = [];
-      for (const file of walkFiles(root, featurePath)) {
-        if (!isCodeFile(file)) continue;
-        if (isHookFile(file)) hookFiles.push(file);
-      }
-      if (hookFiles.length === 0) return pass();
+      // Enumerate the actual .cjs shims in each surface's hooks dir. Shim
+      // filenames use a separate convention from the universal hook files
+      // (e.g. bash-gate.js -> bash-coordination-gate.cjs), so they cannot be
+      // derived from universal hook names — read the real directory contents.
+      const perSurface = buildShimMaps(root);
+
+      const allNames = new Set();
+      for (const s of perSurface) for (const n of s.names) allNames.add(n);
 
       const issues = [];
-      for (const file of hookFiles) {
-        const shimName = basename(file, extname(file)) + ".cjs";
-        const [claudeShim, factoryShim] = SHIM_DIRS.map((d) => join(root, d, shimName));
-        const claudeExists = existsSync(claudeShim);
-        const factoryExists = existsSync(factoryShim);
-        if (!claudeExists) issues.push(`${SHIM_DIRS[0]}/${shimName}`);
-        if (!factoryExists) issues.push(`${SHIM_DIRS[1]}/${shimName}`);
-        if (claudeExists && factoryExists) {
-          const claudeHash = createHash("sha256").update(readFileSync(claudeShim, "utf8")).digest("hex");
-          const factoryHash = createHash("sha256").update(readFileSync(factoryShim, "utf8")).digest("hex");
-          if (claudeHash !== factoryHash) {
-            issues.push(`${shimName} (claude=${claudeHash.slice(0, 8)} factory=${factoryHash.slice(0, 8)})`);
+      for (const name of allNames) {
+        const present = perSurface.filter((s) => s.byName.has(name));
+        if (present.length < perSurface.length) {
+          for (const s of perSurface) {
+            if (!s.byName.has(name)) issues.push(`${s.dir}/${name}`);
           }
+          continue; // missing shim reported; skip content check for this name
+        }
+        const hashes = present.map((s) =>
+          createHash("sha256").update(readFileSync(s.byName.get(name), "utf8")).digest("hex"));
+        if (!hashes.every((h) => h === hashes[0])) {
+          issues.push(`${name} (hashes differ across surfaces)`);
         }
       }
       if (issues.length) {
         return fail(
           issues.join(", "),
-          "matching shim content in both .claude/coordination/hooks and .factory/coordination/hooks",
-          "Add the missing .cjs shim to both runtime coordination directories (or copy the shim so the contents match) so Claude Code and Droid CLI stay in sync.",
+          `same set of .cjs shims, byte-identical, across all surfaces: ${SHIM_DIRS.join(", ")}`,
+          "Mirror each .cjs shim byte-identical into every runtime's coordination/hooks/ directory so all surfaces stay in sync.",
         );
       }
       return pass();
@@ -186,6 +223,7 @@ export const CHECKLIST = [
   {
     id: "protocol-adapter-i-o",
     description: "Hook I/O is normalized through hooks/lib/protocol-adapter.js (use `parseInput` / `formatOutput` / `normalizeToolName`).",
+    // fallow-ignore-next-line complexity
     verify(featurePath, root) {
       const hookFiles = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -263,12 +301,9 @@ export const CHECKLIST = [
     description: "Cross-surface iteration uses surfaces.js helpers, not hard-coded surface paths (use `writeToAllSurfaces`, `readFromAllSurfaces`, `appendToAllSurfaces`, `readJsonlFromAllSurfaces`, or `readModifyWriteOnAllSurfaces`).",
     verify(featurePath, root) {
       const offenders = [];
-      for (const file of walkFiles(root, featurePath)) {
-        if (!isCodeFile(file)) continue;
-        if (isSurfacesJs(file)) continue;
-        const src = stripCommentsAndStrings(loadText(root, file));
+      for (const { file, src } of iterAuditCodeFiles(root, featurePath)) {
         if (!/\.(claude|factory)|coordination|SURFACES/.test(src)) continue;
-        const handRolledLoop = /for\s*\(\s*const\s+\w+\s+of\s+SURFACES\s*\)/.test(src);
+        const handRolledLoop = /for\s*\(\s*const\s+\w+\s+of\s*SURFACES\s*\)/.test(src);
         const hardCodedPath = /join\s*\(\s*root\s*,\s*"\.(claude|factory)"/.test(src);
         if (handRolledLoop || hardCodedPath) offenders.push(file);
       }
@@ -287,10 +322,7 @@ export const CHECKLIST = [
     description: "SURFACES is the single source of truth for supported runtimes (import `SURFACES` from `core/surfaces.js`; do not hard-code surface names).",
     verify(featurePath, root) {
       const offenders = [];
-      for (const file of walkFiles(root, featurePath)) {
-        if (!isCodeFile(file)) continue;
-        if (isSurfacesJs(file)) continue;
-        const src = stripCommentsAndStrings(loadText(root, file));
+      for (const { file, src } of iterAuditCodeFiles(root, featurePath)) {
         const touchesSurfaces = /\.(claude|factory)|coordination/.test(src);
         if (!touchesSurfaces) continue;
         const importsHelpers =

@@ -155,16 +155,16 @@ already iterates it. The migrations fall into 3 shapes:
 
 ## Success Criteria
 
-- [ ] `inbound-gate.js` uses `writeToAllSurfaces`; `GATE_MARKER_PATH` branch
+- [x] `inbound-gate.js` uses `writeToAllSurfaces`; `GATE_MARKER_PATH` branch
   unchanged; no unused imports left.
-- [ ] `mark-preflight-complete-tool.js` derives `coordDirs` from `SURFACES.map`;
+- [x] `mark-preflight-complete-tool.js` derives `coordDirs` from `SURFACES.map`;
   `GATE_COORD_DIR` branch unchanged.
-- [ ] `evaluate-bash-gate.js` has `.mastracode` preflight-marker literals for
+- [x] `evaluate-bash-gate.js` has `.mastracode` preflight-marker literals for
   both `>` and `tee` forms.
-- [ ] `runtime-agnostic-checklist.js` `SHIM_DIRS` has 3 entries and
+- [x] `runtime-agnostic-checklist.js` `SHIM_DIRS` has 3 entries and
   `shims-in-sync` verifies all 3 (no 2-element destructure).
-- [ ] `gate-override.js` comments mention all surfaces; logic untouched.
-- [ ] `grep -rn '\.claude.*\.factory' tools/learning-loop-mastra/{core,hooks,tools}`
+- [x] `gate-override.js` comments mention all surfaces; logic untouched.
+- [x] `grep -rn '\.claude.*\.factory' tools/learning-loop-mastra/{core,hooks,tools}`
   (excluding tests, `surfaces.js`, and comments) returns nothing for cross-surface
   I/O.
 

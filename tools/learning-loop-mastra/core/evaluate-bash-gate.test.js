@@ -3,7 +3,7 @@
  *
  * Signature contract (locked):
  *   evaluateBashGate({ command, root }) → { decision, reason?, hard_block?, constraint_type?, rule_id?, pattern_type? }
- *   PATH_WRITE_PATTERNS → RegExp[] (11 patterns)
+ *   PATH_WRITE_PATTERNS → RegExp[] (13 patterns)
  *
  * Tests import from ./evaluate-bash-gate.js (does not exist yet → ERR_MODULE_NOT_FOUND = intended TDD red).
  */
@@ -146,9 +146,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS is exported and has 11 entries", () => {
+test("PATH_WRITE_PATTERNS is exported and has 13 entries", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 11);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 13);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);
@@ -157,8 +157,9 @@ test("PATH_WRITE_PATTERNS is exported and has 11 entries", () => {
 
 test("PATH_WRITE_PATTERNS snapshot (catches hook-file drift)", () => {
   const patternStrings = PATH_WRITE_PATTERNS.map((p) => p.source);
-  // 11 patterns: 3 records + 4 preflight (2 per surface) + 4 state files
-  // Preflight patterns are generated from SURFACES for cross-surface consistency.
+  // 13 patterns: 3 records + 6 preflight (2 per surface × 3 surfaces) + 4 state files.
+  // Preflight patterns are literals per surface (regex literals cannot be derived
+  // from SURFACES at module load without breaking the literal-test expectations).
   assert.deepStrictEqual(patternStrings, [
     ">{1,2}\\s*[\"']?\\.?\\/?records\\/[^\\s\"';&|]+[\"']?",
     "<<['\"]?\\w+['\"]?\\s*>\\s*[\"']?\\.?\\/?records\\/",
@@ -167,6 +168,8 @@ test("PATH_WRITE_PATTERNS snapshot (catches hook-file drift)", () => {
     "\\btee\\b.*[\"']?\\.?\\/?\\.claude\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
     ">{1,2}\\s*[\"']?\\.?\\/?\\.factory\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
     "\\btee\\b.*[\"']?\\.?\\/?\\.factory\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
+    ">{1,2}\\s*[\"']?\\.?\\/?\\.mastracode\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
+    "\\btee\\b.*[\"']?\\.?\\/?\\.mastracode\\/coordination\\/\\.loop-preflight-[^\\s\"';&|]+[\"']?",
     ">{1,2}\\s*[\"']?\\.?\\/?meta-state\\.jsonl[\"']?",
     "\\btee\\b.*[\"']?\\.?\\/?meta-state\\.jsonl[\"']?",
     ">{1,2}\\s*[\"']?\\.?\\/?runtime-state\\.jsonl[\"']?",

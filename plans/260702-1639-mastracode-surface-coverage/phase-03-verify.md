@@ -94,18 +94,18 @@ shim-dir set from `SURFACES` so a 4th runtime is picked up automatically — sam
 
 ## Success Criteria
 
-- [ ] `runtime-agnostic.test.js` derives shim dirs from `SURFACES`; the
+- [x] `runtime-agnostic.test.js` derives shim dirs from `SURFACES`; the
   name-set test covers all 3 surfaces.
-- [ ] Regression test for missing `.mastracode` shim passes (and would fail
+- [x] Regression test for missing `.mastracode` shim passes (and would fail
   against a 2-element-destructure `shims-in-sync`).
-- [ ] Regression tests for the 3 behavior-changing source files
+- [x] Regression tests for the 3 behavior-changing source files
   (`inbound-gate`, `mark-preflight`, `evaluate-bash-gate`) assert `.mastracode`
   coverage.
-- [ ] `pnpm test` green; `pnpm fallow:gate` green; pre-commit ran clean without
+- [x] `pnpm test` green; `pnpm fallow:gate` green; pre-commit ran clean without
   `--no-verify`.
-- [ ] Site-by-site review of all 5 files complete; review notes recorded in the
+- [x] Site-by-site review of all 5 files complete; review notes recorded in the
   plan's `reports/` dir or journal.
-- [ ] `docs/security/plan-5-hardening.md` Out-of-Scope updated; the 5-file list
+- [x] `docs/security/plan-5-hardening.md` Out-of-Scope updated; the 5-file list
   removed from "tracked for follow-up".
 - [ ] Branch `hardening/plan-5-lite-r2-lim4` was already pushed/PR'd by Plan
   5-Lite; this follow-up ships on a new branch (e.g.

@@ -65,11 +65,11 @@ check). Adding the mastra-code surface is a file copy, not a code change.
 
 ## Success Criteria
 
-- [ ] Grep confirms exactly the 5 source files (plus cosmetic comments) hard-code
+- [x] Grep confirms exactly the 5 source files (plus cosmetic comments) hard-code
   the 2-surface list; no surprises.
-- [ ] `.mastracode/coordination/hooks/` exists with 4 shims, each SHA256-equal to
+- [x] `.mastracode/coordination/hooks/` exists with 4 shims, each SHA256-equal to
   its `.claude` and `.factory` copies.
-- [ ] No source behavior change in this phase (files created only).
+- [x] No source behavior change in this phase (files created only).
 
 ## Risk Assessment
 

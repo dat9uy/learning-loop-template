@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Droid CLI Write Gate — PreToolUse hook for Edit/Create/ApplyPatch.
- * Delegates to universal write-gate.js (single source of truth).
+ * Universal hook shim — delegates to universal write-gate.js (single source of truth).
+ * Mirrored byte-identical across all runtime surfaces (.claude, .factory, .mastracode);
+ * enforced by the `shims-in-sync` runtime-agnostic checklist item.
  */
 'use strict';
 

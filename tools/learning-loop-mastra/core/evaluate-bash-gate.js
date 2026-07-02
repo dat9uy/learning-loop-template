@@ -23,7 +23,7 @@ import { checkObservationStaleness } from "./inbound-state.js";
 import { SURFACES } from "./surfaces.js";
 
 // Path-write detection patterns (bash-specific)
-// Preflight-marker patterns cover both .claude and .factory surfaces.
+// Preflight-marker patterns cover all three surfaces (.claude, .factory, .mastracode).
 // fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
@@ -33,6 +33,8 @@ export const PATH_WRITE_PATTERNS = [
   /\btee\b.*["']?\.?\/?\.claude\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   />{1,2}\s*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   /\btee\b.*["']?\.?\/?\.factory\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
+  />{1,2}\s*["']?\.?\/?\.mastracode\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
+  /\btee\b.*["']?\.?\/?\.mastracode\/coordination\/\.loop-preflight-[^\s"';&|]+["']?/,
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,

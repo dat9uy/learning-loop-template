@@ -274,28 +274,17 @@ traceability:
   the LIM-3 caller-identity master-tracker row for `resolved_by` spoofing is
   deferred (LIM-3 was dropped from Plan 5-Lite; the `resolved_by` field is
   operator-supplied and not yet cryptographically authenticated).
-- **Surface-divergence follow-up (source files)**: Phase 3 C3 extended the
-  `SURFACES` registry to `.mastracode` and updated the test files that hard-coded
-  the 2-surface list, but several source files still hard-code
-  `[".claude", ".factory"]` and therefore do not yet cover the mastra-code
-  surface. These are pre-existing (not regressions) and were out of the accepted
-  C3 scope (which enumerated test files only); tracked for a follow-up plan:
-  - `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js:36` — writes the
-    last-operator-message marker to each surface's `coordination/` dir via a
-    hard-coded `for (const dir of [".claude", ".factory"])` loop.
-  - `tools/learning-loop-mastra/tools/legacy/mark-preflight-complete-tool.js`
-    — writes the preflight marker to `.claude/coordination` and
-    `.factory/coordination` only.
-  - `tools/learning-loop-mastra/core/evaluate-bash-gate.js`
-    (`PATH_WRITE_PATTERNS`) — bash-gate regex literals detect preflight-marker
-    writes to `.claude/coordination/.loop-preflight-*` and
-    `.factory/coordination/.loop-preflight-*` but not the `.mastracode`
-    equivalent. (R2 gates MCP tool writes independently of this bash gate.)
-  - `tools/learning-loop-mastra/core/runtime-agnostic-checklist.js`
-    (`SHIM_DIRS`) — programmatically verifies both shim dirs contain a shim;
-    does not yet verify `.mastracode/coordination/hooks`.
-  - `tools/learning-loop-mastra/core/gate-override.js` — already iterates
-    `SURFACES` (covered); only its doc comment still lists 2 surfaces (cosmetic).
+- **Surface-divergence follow-up (source files)** — **CLOSED** by
+  `plans/260702-1639-mastracode-surface-coverage/`. The five source files that
+  hard-coded the 2-surface list (`inbound-gate.js`, `mark-preflight-complete-tool.js`,
+  `evaluate-bash-gate.js` `PATH_WRITE_PATTERNS`, `runtime-agnostic-checklist.js`
+  `SHIM_DIRS`, and `gate-override.js` comments) now iterate `SURFACES` / derive
+  from it, covering `.mastracode`. The follow-up also reconciled the per-surface
+  `.cjs` shims byte-identical across all three surfaces (`.claude`, `.factory`,
+  `.mastracode`) and rewrote the `shims-in-sync` checklist item to enumerate the
+  real shim files and verify byte-identity across all surfaces (the prior
+  implementation could not find shims — it derived shim names from universal-hook
+  names, which do not match — and only compared two surfaces).
 
 ## Troubleshooting: verify `LOOP_SURFACE` is set
 
