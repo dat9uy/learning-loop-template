@@ -141,7 +141,7 @@ These three kinds have simpler, binary or fixed status models.
 Findings with `mechanism_check: true` participate in the grounding system (SP2):
 
 1. `meta_state_check_grounding` computes the SHA-256 of the file at `evidence_code_ref` and compares it to `code_fingerprint`
-2. `meta_state_refresh_fingerprint` updates the stored fingerprint after a legitimate code change
+2. `meta_state_refresh_file_index` upserts the path's current hash into the shared `file-index.jsonl` after a legitimate code change, re-grounding every anchored finding in one call
 3. `meta_state_derive_status` reasons about whether a finding is still true based on code drift, test signals, and derivation kinds
 
 The consult-gate `rule-no-orphaned-evidence` blocks `meta_state_resolve` when any active `mechanism_check=true` finding has drifted (`hash_mismatch`). This prevents resolving findings against stale evidence.

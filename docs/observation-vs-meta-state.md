@@ -12,7 +12,7 @@ This document defines the boundary between two systems that sound similar but se
 | Layer | Home | What it tracks | Who owns it | Durability |
 |-------|------|----------------|-------------|------------|
 | **Domain** | `records/observations/*.yaml` | External system state (budgets, device slots, vendor API status) | Operator (via MCP CRUD tools) | Durable, versioned |
-| **Meta** | `tools/learning-loop-mcp/meta-state.jsonl` (exposed as 11 MCP tools: `meta_state_report`, `meta_state_list`, `meta_state_ack`, `meta_state_resolve`, `meta_state_promote_rule`, `meta_state_log_change`, `meta_state_sweep`, `meta_state_derive_status`, `meta_state_check_grounding`, `meta_state_refresh_fingerprint`, `meta_state_query_drift`) | System-level findings (agent decisions, reasoning, bug reports) AND change-log entries (agent logs its own system modifications) | Agent (via MCP `meta_state_*` tools) | Discriminated union: `entry_kind: "finding"` is ephemeral (24h TTL with auto-resolve); `entry_kind: "change-log"` is immutable audit log (no TTL, no auto-resolve) |
+| **Meta** | `tools/learning-loop-mcp/meta-state.jsonl` (exposed as 11 MCP tools: `meta_state_report`, `meta_state_list`, `meta_state_ack`, `meta_state_resolve`, `meta_state_promote_rule`, `meta_state_log_change`, `meta_state_sweep`, `meta_state_derive_status`, `meta_state_check_grounding`, `meta_state_refresh_file_index`, `meta_state_query_drift`) | System-level findings (agent decisions, reasoning, bug reports) AND change-log entries (agent logs its own system modifications) | Agent (via MCP `meta_state_*` tools) | Discriminated union: `entry_kind: "finding"` is ephemeral (24h TTL with auto-resolve); `entry_kind: "change-log"` is immutable audit log (no TTL, no auto-resolve) |
 | **Gate** | `core/gate-logic.js` | Constraint pattern matching, observation existence | Code (regex, rules) | Stateless, reads fresh every call |
 
 ## Internalization via Code-Pointed Findings
@@ -21,7 +21,7 @@ When an agent internalizes an external reference (a plan, a report, a design dis
 
 1. `meta_state_report({ evidence_code_ref: 'path/to/code.js:line', mechanism_check: true })` creates a finding.
 2. `local:meta-state:<id>` is the canonical `source_ref` for records that build on that finding.
-3. `meta_state_derive_status({ id })` and `meta_state_refresh_fingerprint({ id })` keep the finding current as the code changes.
+3. `meta_state_derive_status({ id })` and `meta_state_refresh_file_index({ path })` keep the finding current as the code changes.
 
 Markdown paths (`local:plans/...`, `local:docs/...`) are accepted only as an escape hatch and are rejected by `record_create_decision`. See the "Internalization Rule" section in `AGENTS.md` for the operator-facing contract and the `LL_LOOP_INJECT_TIER` env var.
 

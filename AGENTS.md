@@ -89,7 +89,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 - **Write gate** — blocks Edit/Write/Create/ApplyPatch to `records/**`, `schemas/**`, `node_modules/**`, `dist/**`, `build/**`, `runtime-state.jsonl`, and unknown multi-segment paths. Allowed: `docs/**`, `plans/**`, `product/**`, `tools/**`, `.claude/**`, `.factory/**`, single-segment files. (The `product/**` and `records/**` allowances are substrate carry-overs from the legacy product-surface era; the meta-surface does not need them.)
   - **Note (2026-06-22, Plan 2 PR):** `.gitignore` was expanded from `records/meta/.cache/` → `records/meta/`. The product-surface meta directory (legacy `records/<vendor>/` files + cold-tier cache) is now fully git-ignored, consistent with the 2026-06-12 reframe. The legacy `records/<vendor>/` content is archived in-place, not deleted. The write-gate's `records/**` block stays in place for runtime writes (a different concern from git-ignoring generated content).
 - **Inbound gate** — warns when operator state-change messages may have stale observations.
-- **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_fingerprint` to unblock.
+- **Consult-gate `rule-no-orphaned-evidence`** — blocks `meta_state_resolve` when any active finding with `mechanism_check: true` has a stale `code_fingerprint` (source code drifted since fingerprint was stored). Refresh via `meta_state_refresh_file_index` to unblock.
 - **Consult-gate `rule-no-new-artifact-types`** — blocks commands matching the refined regex `(propose|design|create)\s+(a|an|new|separate|own|the)?\s*(schema|artifact|directory|convention)|new\s+(schema|artifact|directory|convention)`. Fixes the G8 subcommand-class false positive (7 recurrences, 2026-06-02..2026-06-06).
 - **Consult-gate `rule-cold-session-test-must-pass-before-resolution`** — gates `meta_state_resolve` on the cold-session discoverability test passing. First instance of `pattern_type: resolution-evidence-required`.
 - **Consult-gate `rule-project-skill-boundary`** — blocks cross-project `ck:use-mcp` / `ck:find-skills` skill invocations in projects that already have a local learning-loop-mcp server (glob `.factory/skills/{use-mcp,find-skills}/**`, scope predicate `project_has_learning_loop_mcp`).
@@ -167,7 +167,7 @@ The universal hooks handle tool name differences between surfaces:
 | `meta_state_patch` | Update an existing entry with CAS via `_expected_version` (closes the CRUD-U gap documented in `meta-260608T0848Z-crud-coverage-gap-...`) |
 | `meta_state_derive_status` | Compute derived status of a finding (SP1; pure function over `evidence_code_ref`) |
 | `meta_state_check_grounding` | SHA-256 fingerprint check; drift detection (SP2) |
-| `meta_state_refresh_fingerprint` | Re-compute and store the current fingerprint after a refactor |
+| `meta_state_refresh_file_index` | Re-hash a cited path into the shared `file-index.jsonl`; one call re-grounds all anchored findings (O(1) per file change) |
 | `meta_state_query_drift` | Aggregate drift events across the registry (SP3) |
 | `meta_state_propose_design` | Create a `loop-design` entry (the "design, not yet shipped" surface) |
 | `meta_state_relationships` | 1-hop inbound/outbound cross-reference traversal |
@@ -243,7 +243,7 @@ The most common failure mode of the naive reading ("if the loop touches it, the 
 
 1. Report a `meta_state_report` finding with `evidence_code_ref` set to the code location (e.g., `tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js#buildDiscoverabilityHints`).
 2. In the record's `source_refs`, use `local:meta-state:<id>` where `<id>` is the finding's id.
-3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_refresh_fingerprint` can re-check it after refactors.
+3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_check_grounding` can re-check it after refactors; refresh its path's hash in `file-index.jsonl` via `meta_state_refresh_file_index`.
 
 Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. Use them only as a *transitional* bridge when a design has no code point yet: file `meta_state_log_change` with `change_target: '<plan-path>'`, then cite the resulting change-log id (`local:meta-state:<id>`) in `source_refs` — the change-log id is the code-pointed cite target; the markdown path is only the artifact being logged, not a citation form. The escape-hatch pattern is also the philosophy: skill markdown is the readable spec for internal-implementation work, and the migration to loop-owned MCP tools is Phase G of the productization master tracker (cite-or-else, not replacement).
 
@@ -268,7 +268,7 @@ The meta-surface workflow is:
 1. **Discover** — call `loop_describe({tier: "warm"})` to read active rules and findings.
 2. **Cite** — follow the Internalization Rule (§6). Cite code, not markdown.
 3. **Record** — use `meta_state_report`, `meta_state_log_change`, or `meta_state_propose_design` to mutate the registry. Cite the entry id (`local:meta-state:<id>`) in any downstream references.
-4. **Resolve** — when a finding's `evidence_code_ref` is no longer valid, use `meta_state_refresh_fingerprint` to update the fingerprint, then `meta_state_resolve` to mark it resolved.
+4. **Resolve** — when a finding's `evidence_code_ref` is no longer valid, use `meta_state_refresh_file_index({ path })` to update the path's hash in the shared fingerprint index, then `meta_state_resolve` to mark it resolved.
 5. **Promote** — when a finding recurs or has cross-surface implications, use `meta_state_promote_rule` to lift it into a `rule` entry.
 6. **Drift-check** — periodically call `meta_state_query_drift` to surface findings whose code has drifted since the fingerprint was stored.
 

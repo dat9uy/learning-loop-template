@@ -37,11 +37,11 @@ There should normally be exactly one server process. If `pgrep` returns more tha
 | Edited `server.js` itself or `tools/manifest.json` | Full restart |
 | Edited `core/*.js` modules that the tools import | Full restart |
 | MCP shows "Not connected" | Check the process list; if no server is running, restart the session |
-| Test fails with `hash_mismatch` on a finding whose evidence file you just edited | `meta_state_refresh_fingerprint` (separate concern; see "Drift" below) |
+| Test fails with `hash_mismatch` on a finding whose evidence file you just edited | `meta_state_refresh_file_index` (separate concern; see "Drift" below) |
 
 ## Drift after edits
 
-`server.js` and core modules have `evidence_code_ref` pointing at them from various findings. After editing these files, `meta_state_check_grounding` will report `drifted: hash_mismatch` for those findings. This is expected — the drift is real. Refresh the fingerprints via `meta_state_refresh_fingerprint` (per finding) or `meta_state_refresh_fingerprint` with the broader sweep if you have a script for it.
+`server.js` and core modules have `evidence_code_ref` pointing at them from various findings. After editing these files, `meta_state_check_grounding` will report `drifted: hash_mismatch` for those findings. This is expected — the drift is real. Refresh the path's hash in the shared fingerprint index via `meta_state_refresh_file_index({ path })` — one call re-grounds every finding anchored to that path (the index is the authoritative baseline). For a bulk re-seed across all cited paths, run `node tools/learning-loop-mastra/tools/legacy/scripts/seed-file-index.mjs`.
 
 Do not interpret the drift as a regression in the changed code. The drift is in the *recorded* fingerprint, not the code.
 
