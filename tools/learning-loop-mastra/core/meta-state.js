@@ -496,15 +496,25 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
   const key = canonicalIndexKey(evidenceCodeRef);
   return enqueue(root, () => {
     const path = getFileIndexPath(root);
-    const map = readFileIndex(root);
+    // Clone the cached Map before mutating: readFileIndex returns its cached
+    // entries by reference, so an in-place `set` would mutate the shared cache
+    // object. If the write below throws, the cache would be left holding a key
+    // that was never persisted to disk — and since the file's mtime/size are
+    // unchanged by a failed write, the next readFileIndex would return that
+    // phantom baseline and mask drift. Cloning + invalidating in `finally`
+    // makes a failed write impossible to desync the cache from the file.
+    const map = new Map(readFileIndex(root));
     map.set(key, hash);
     const lines = [...map.entries()].map(
       ([p, h]) => JSON.stringify({ path: p, code_fingerprint: h, updated_at: new Date().toISOString() }),
     );
     const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    _invalidateFileIndexCache(root);
+    try {
+      writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+    } finally {
+      _invalidateFileIndexCache(root);
+    }
     return true;
   });
 }

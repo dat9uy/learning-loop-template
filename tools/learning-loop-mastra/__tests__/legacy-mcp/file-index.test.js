@@ -1,6 +1,6 @@
 import { describe, test, beforeEach } from "node:test";
 import assert from "node:assert";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, isAbsolute } from "node:path";
 import {
@@ -140,6 +140,42 @@ describe("file-index sidecar helpers", () => {
     assert.strictEqual(FILE_INDEX_FILENAME, "file-index.jsonl");
     const root = makeRoot();
     assert.strictEqual(getFileIndexPath(root), join(root, "file-index.jsonl"));
+  });
+
+  // Cache-desync guard: readFileIndex returns its cached Map by reference, so
+  // upsert must NOT mutate that shared object in place. A prior caller holding
+  // the reference must not see a key it never observed. Cloning before the set
+  // (plus invalidating in finally) keeps the cache honest on both success and
+  // failure paths.
+  test("upsert does not mutate a previously-returned readFileIndex Map (clone before mutate)", async () => {
+    const root = makeRoot();
+    await upsertFileIndexEntry(root, "a.js", VALID_HASH);
+    const before = readFileIndex(root); // cached reference
+    assert.strictEqual(before.get("a.js"), VALID_HASH);
+    await upsertFileIndexEntry(root, "b.js", VALID_HASH_2);
+    assert.strictEqual(before.has("b.js"), false, "prior ref must not see the new key (clone, not in-place mutate)");
+    const after = readFileIndex(root);
+    assert.strictEqual(after.get("a.js"), VALID_HASH);
+    assert.strictEqual(after.get("b.js"), VALID_HASH_2);
+  });
+
+  // Cache-desync guard on write failure: if the atomic write throws (disk full,
+  // EACCES, etc.), the cache must NOT retain a phantom baseline for a key that
+  // was never persisted. The finally-invalidate ensures the next read re-reads
+  // the unchanged file instead of returning a poisoned Map.
+  test("failed write does not leave a phantom baseline in the cache (finally invalidate)", async () => {
+    const root = makeRoot();
+    await upsertFileIndexEntry(root, "good.js", VALID_HASH);
+    // Make the index directory read-only so the tmp write throws EACCES.
+    chmodSync(root, 0o500);
+    try {
+      await assert.rejects(upsertFileIndexEntry(root, "phantom.js", VALID_HASH_2));
+    } finally {
+      chmodSync(root, 0o700);
+    }
+    const map = readFileIndex(root);
+    assert.strictEqual(map.has("phantom.js"), false, "failed write must not poison the cache");
+    assert.strictEqual(map.get("good.js"), VALID_HASH, "prior entries intact");
   });
 });
 

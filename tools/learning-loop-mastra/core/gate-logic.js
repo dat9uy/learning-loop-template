@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
 import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
-import { computeFileHash } from "./check-grounding.js";
+import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 
@@ -698,7 +698,12 @@ export function checkResolutionEvidence(rule, root) {
       const canonical = stripEvidenceAnchor(codeRef);
       const fileIndex = readFileIndex(root);
       const indexBaseline = fileIndex.has(canonical) ? fileIndex.get(canonical) : null;
-      const perRecord = typeof entry.code_fingerprint === "string" ? entry.code_fingerprint : null;
+      // Validate the per-record fallback against TERMINAL_HASH_REGEX (mirrors
+      // checkGrounding's per-record branch): a corrupt stored value must never
+      // be compared as a baseline — it's dropped to null so a malformed value
+      // can't surface as a false fingerprint_mismatch.
+      const perRecord = typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
+        ? entry.code_fingerprint : null;
       const expected = indexBaseline ?? perRecord;
       if (expected && expected !== currentHash) {
         orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected, actual: currentHash });
