@@ -151,6 +151,20 @@ jobs:
             exit 1
           fi
 
+          # Drop results that carry no location. fallow emits its
+          # `fallow/code-duplication` clone-group summaries with locations: null
+          # (a clone group spans multiple regions and has no single primary
+          # location), and GitHub Code Scanning rejects any location-less result
+          # with `locationFromSarifResult: expected at least one location`, which
+          # fails the whole upload. The Fallow audit gate (previous step) still
+          # enforces the duplication policy; this filter only affects what Code
+          # Scanning can surface, and location-less results can't be surfaced
+          # there anyway.
+          DROPPED=$(jq '[.runs[].results[] | select(.locations == null or (.locations | length == 0))] | length' "$SARIF_INPUT")
+          if [ "$DROPPED" -gt 0 ]; then
+            echo "::warning::Dropped $DROPPED fallow SARIF result(s) with no location (fallow code-duplication clone-group summaries carry no SARIF location). The Fallow audit gate still enforces the duplication policy."
+          fi
+
           # Atomic write: write to .tmp then rename, so a failed jq leaves no partial file
           TMP_OUTPUT="${SARIF_OUTPUT}.tmp"
           jq '
@@ -170,6 +184,7 @@ jobs:
                 }
               else .
               end
+              | .results |= map(select(.locations != null and (.locations | length > 0)))
             )
           ' "$SARIF_INPUT" > "$TMP_OUTPUT"
 

@@ -40,10 +40,15 @@ function extractPatchScript() {
   const endMatch = remaining.search(/\n      -\s/);
   const blockEnd = endMatch >= 0 ? blockStart + endMatch : wfRaw.length;
   const block = wfRaw.slice(blockStart, blockEnd);
-  // The first non-pre-check, non-write, non-mv command is the jq invocation.
-  // We extract just the jq filter by finding the `jq '...'` line.
-  const jqMatch = block.match(/jq\s+'([\s\S]*?)'/);
-  assert.ok(jqMatch, "Patch step must contain a `jq '...'` filter");
+  // The patch step may contain more than one `jq '...'` invocation (e.g. a
+  // single-line dropped-result count query). Anchor on the `> "$TMP_OUTPUT"`
+  // redirect so we extract the actual patch filter written to the output file,
+  // not an earlier count query whose closing quote is followed by `)` not `>`.
+  const jqMatch = block.match(/jq\s+'([^']*)'\s+"\$SARIF_INPUT"\s*>\s*"\$TMP_OUTPUT"/);
+  assert.ok(
+    jqMatch,
+    "Patch step must contain a `jq '...' \"$SARIF_INPUT\" > \"$TMP_OUTPUT\"` filter",
+  );
   return jqMatch[1];
 }
 
@@ -177,5 +182,69 @@ test("empty-rules run falls through to dupes classifier", () => {
     patched.runs[0].automationDetails.id,
     "fallow/audit/dupes",
     "Empty-rules run should fall through to dupes",
+  );
+});
+
+test("patch filter drops results with null or empty locations", () => {
+  // fallow emits fallow/code-duplication clone-group summaries with
+  // locations: null (a clone group spans multiple regions, no single primary
+  // location). GitHub Code Scanning rejects any location-less result, so the
+  // patch filter must drop them; the Fallow audit gate still enforces the
+  // duplication policy separately.
+  const input = {
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "fallow",
+            version: "2.102.0",
+            rules: [{ id: "fallow/unused-file" }],
+          },
+        },
+        automationDetails: {},
+        results: [
+          {
+            ruleId: "fallow/unused-file",
+            level: "warning",
+            message: { text: "unused export" },
+            locations: [
+              {
+                physicalLocation: { artifactLocation: { uri: "a.js" } },
+              },
+            ],
+          },
+          {
+            ruleId: "fallow/code-duplication",
+            level: "warning",
+            message: { text: "Clone group 1 (29 lines, 2 instances)" },
+            locations: null,
+          },
+          {
+            ruleId: "fallow/code-duplication",
+            level: "warning",
+            message: { text: "Clone group 2 (14 lines, 2 instances)" },
+            locations: [],
+          },
+        ],
+      },
+    ],
+  };
+  const filter = extractPatchScript();
+  const patched = applyPatch(filter, input);
+  assert.strictEqual(
+    patched.runs[0].results.length,
+    1,
+    "Null-location and empty-location results must be dropped",
+  );
+  assert.strictEqual(
+    patched.runs[0].results[0].ruleId,
+    "fallow/unused-file",
+    "The located result must survive",
+  );
+  assert.strictEqual(
+    patched.runs[0].automationDetails.id,
+    "fallow/audit/dead-code",
   );
 });
