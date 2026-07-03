@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Field Strip"
-status: pending
+status: completed
 priority: P2
 dependencies: [5]
 ---

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Vestigial Deprecation"
-status: pending
+status: completed
 priority: P2
 dependencies: [3, 4]
 ---

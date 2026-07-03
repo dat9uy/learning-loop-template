@@ -1,7 +1,7 @@
 ---
 title: "Fingerprint File-Index Migration: per-finding hash to path-keyed shared index"
 description: "Migrate the meta-state code-fingerprint mechanism from a per-finding stored hash to a shared path-keyed file-index sidecar, so a cited-file edit re-grounds all anchored findings in one operation (O(findings/file) -> O(1)). Vestigial migration leaves the per-record field as dead-data fallback; checkGrounding stays a pure function (index passed via codeContext). Substrate (JSONL vs DB) is out of scope."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-state, fingerprint, grounding, file-index, vestigial-migration, tdd]

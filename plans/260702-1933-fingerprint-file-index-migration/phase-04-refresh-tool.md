@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Refresh Tool"
-status: pending
+status: completed
 priority: P1
 dependencies: [3]
 ---

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Repoint CheckGrounding"
-status: pending
+status: completed
 priority: P1
 dependencies: [1, 2]
 ---

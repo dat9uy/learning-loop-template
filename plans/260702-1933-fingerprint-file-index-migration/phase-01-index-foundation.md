@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Index Foundation"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---

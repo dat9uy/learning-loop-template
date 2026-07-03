@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Hash Cache"
-status: pending
+status: completed
 priority: P2
 dependencies: [1]
 ---
