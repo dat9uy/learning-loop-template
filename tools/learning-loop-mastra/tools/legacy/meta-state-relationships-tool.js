@@ -4,6 +4,7 @@ import { factoryFor } from "../../core/entry/index.js";
 import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { findEntryOrNotFound } from "#lib/find-entry.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
@@ -70,14 +71,9 @@ export const metaStateRelationshipsTool = {
   },
   handler: async ({ id, direction = "both" }) => {
     const root = resolveRoot();
+    const { entry, notFoundResponse } = findEntryOrNotFound(root, id);
+    if (notFoundResponse) return notFoundResponse;
     const entries = readRegistry(root);
-    const entry = entries.find((e) => e.id === id);
-
-    if (!entry) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ error: "entry_not_found", id }) }],
-      };
-    }
 
     const factory = factoryFor(entry);
     const result = {

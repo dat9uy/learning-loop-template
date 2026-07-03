@@ -15,6 +15,7 @@ import {
 import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { createTtlCache } from "#lib/ttl-cache.js";
 
 // Idempotency cache: same (canonicalPath, mtimeMs, size) within 60s returns the
 // cached response. Keyed on the file's CURRENT state (mtimeMs + size — the same
@@ -24,25 +25,10 @@ import { resolveRoot } from "#lib/resolve-root.js";
 // Phase 5 stops writing it — that would make every call a hit and mask drift.
 // mtime+size never goes static while the file is being edited. In-process Map;
 // cleared on MCP server restart.
-const _idempotencyCache = new Map();
-const CACHE_TTL_MS = 60_000;
+const _idempotencyCache = createTtlCache(60_000);
 
 function _cacheKey(canonicalPath, mtimeMs, size) {
   return `${canonicalPath}::${mtimeMs}::${size}`;
-}
-
-function _cacheGet(key) {
-  const entry = _idempotencyCache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.stored_at > CACHE_TTL_MS) {
-    _idempotencyCache.delete(key);
-    return null;
-  }
-  return entry;
-}
-
-function _cacheSet(key, result) {
-  _idempotencyCache.set(key, { result, stored_at: Date.now() });
 }
 
 // Test-only exports. Production code must not call these.
@@ -52,8 +38,7 @@ export function _clearIdempotencyCacheForTests() {
 }
 
 export function _backdateIdempotencyCacheForTests(key, ageMs) {
-  const entry = _idempotencyCache.get(key);
-  if (entry) entry.stored_at = Date.now() - ageMs;
+  _idempotencyCache.backdate(key, ageMs);
 }
 
 export const metaStateRefreshFileIndexTool = {
@@ -108,10 +93,10 @@ export const metaStateRefreshFileIndexTool = {
     // Idempotency: keyed on (canonicalPath, mtimeMs, size) — the file's current
     // state. An unchanged file hits; a real edit (new mtime/size) misses (F13).
     const cacheKey = _cacheKey(canonicalPath, stat.mtimeMs, stat.size);
-    const cached = _cacheGet(cacheKey);
+    const cached = _idempotencyCache.get(cacheKey);
     if (cached) {
       return {
-        content: [{ type: "text", text: JSON.stringify({ ...cached.result, cache_hit: true }) }],
+        content: [{ type: "text", text: JSON.stringify({ ...cached, cache_hit: true }) }],
       };
     }
 
@@ -130,7 +115,7 @@ export const metaStateRefreshFileIndexTool = {
     const ok = await upsertFileIndexEntry(root, canonicalPath, hash);
     if (!ok) {
       const resultObj = { error: "upsert_failed", path: canonicalPath, code_fingerprint: hash };
-      _cacheSet(cacheKey, resultObj);
+      _idempotencyCache.set(cacheKey, resultObj);
       return { content: [{ type: "text", text: JSON.stringify({ ...resultObj, cache_hit: false }) }] };
     }
 
@@ -143,7 +128,7 @@ export const metaStateRefreshFileIndexTool = {
       findings_regrounded: findingsRegrounded,
       ...(reason !== undefined ? { reason } : {}),
     };
-    _cacheSet(cacheKey, resultObj);
+    _idempotencyCache.set(cacheKey, resultObj);
     // F10: caller identity + optional reason recorded in the gate log. session_id
     // identifies the agent/process; the tool name anchors the audit trail.
     appendGateLog(root, {

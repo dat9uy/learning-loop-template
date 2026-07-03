@@ -78,6 +78,7 @@ describe("server name rename (R4)", () => {
       for (const line of lines) {
         if (line.includes("learning-loop-mastra") &&
             !line.includes("tools/learning-loop-mastra/") &&
+            !line.includes("../learning-loop-mastra/") &&
             !line.includes("../../learning-loop-mastra/") &&
             !line.includes('"learning-loop-mastra"') &&
             !line.includes("'learning-loop-mastra'")) {
