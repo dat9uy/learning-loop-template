@@ -116,7 +116,7 @@ describe("loop_describe new behavior", () => {
     }
   });
 
-  test("SP2: warm tier surfaces check_grounding + refresh_fingerprint", async () => {
+  test("SP2: warm tier surfaces check_grounding + refresh_file_index", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-sp2-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -128,7 +128,7 @@ describe("loop_describe new behavior", () => {
         "SP2 check tool must appear in warm response"
       );
       assert.ok(
-        names.includes("metaStateRefreshFingerprintTool"),
+        names.includes("metaStateRefreshFileIndexTool"),
         "SP2 refresh tool must appear in warm response"
       );
     } finally {

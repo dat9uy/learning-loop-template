@@ -56,8 +56,14 @@ export const META_STATE_GROUNDING_DRIFT_KINDS = [
   "hash_mismatch", "code_missing", "test_failed",
 ];
 
-/** Internal: validates the canonical format of a stored code_fingerprint. */
-const TERMINAL_HASH_REGEX = /^sha256:[a-f0-9]{64}$/;
+/**
+ * Internal: validates the canonical format of a stored code_fingerprint.
+ * Exported so the file-index sidecar (core/meta-state.js#readFileIndex) can
+ * validate index baselines against the same regex — a corrupt index value is
+ * dropped on read rather than feeding a false baseline (H-2 defense preserved
+ * on the index path). Shared with the index to avoid a second copy of the regex.
+ */
+export const TERMINAL_HASH_REGEX = /^sha256:[a-f0-9]{64}$/;
 
 /** Thrown by computeFileHash when the file is missing or unreadable. */
 export class FileNotFoundError extends Error {
@@ -179,10 +185,24 @@ export function checkGrounding(entry, codeContext) {
     }
   }
 
-  // Validate stored fingerprint against regex (per H-2)
-  const storedFingerprint = typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
-    ? entry.code_fingerprint
-    : null;
+  // Baseline resolution (Phase 3 repoint): the file-index sidecar is the
+  // authoritative baseline, passed in via codeContext.fileIndex (a
+  // Map<canonicalKey, hash> or undefined) so this pure function stays pure
+  // (no disk read of the sidecar). The index key is the stripped relative
+  // evidence_code_ref — the same form checkGrounding resolves the file from —
+  // so a `:line`/`#anchor` suffix collapses to the index entry. Both the index
+  // baseline and the per-record field are validated against TERMINAL_HASH_REGEX
+  // (red-team F6): a corrupt index value falls through to the per-record field
+  // rather than feeding a false baseline. The per-record field is the vestigial
+  // fallback; the 30 unit tests pass no fileIndex and exercise this branch
+  // byte-identically to today.
+  const idx = codeContext.fileIndex;
+  const canonical = stripEvidenceAnchor(codeRef);
+  const rawIndex = idx && idx.has(canonical) ? idx.get(canonical) : null;
+  const indexBaseline = typeof rawIndex === "string" && TERMINAL_HASH_REGEX.test(rawIndex) ? rawIndex : null;
+  const storedFingerprint = indexBaseline
+    ?? (typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
+        ? entry.code_fingerprint : null);
   const hashMatch = codeRefHash !== null && storedFingerprint !== null
     ? codeRefHash === storedFingerprint
     : null;

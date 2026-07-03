@@ -9,7 +9,7 @@ import { PathContainmentError, clearRealpathCache } from "../../core/path-contai
 import { checkGrounding } from "../../core/check-grounding.js";
 import { deriveStatus } from "../../core/derive-status.js";
 import { runVerification } from "../../core/verification-runner.js";
-import { metaStateRefreshFingerprintTool } from "../../tools/legacy/meta-state-refresh-fingerprint-tool.js";
+import { metaStateRefreshFileIndexTool } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
 import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
 import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
@@ -42,8 +42,8 @@ function withGateRoot(tempDir, fn) {
 }
 
 describe("audit-site migrations — path containment rejection", () => {
-  // ---- Site 1: meta-state-refresh-fingerprint-tool.js:116 ----
-  test("refresh_fingerprint_rejects_traversal (evidence_code_ref escape)", async () => {
+  // ---- Site 1: meta-state-refresh-file-index-tool.js (refresh_file_index path escape) ----
+  test("refresh_file_index_rejects_traversal (evidence_code_ref escape)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "audit-refresh-"));
     try {
       process.env.GATE_ROOT = tempDir;
@@ -54,14 +54,13 @@ describe("audit-site migrations — path containment rejection", () => {
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Traversal test for refresh fingerprint.",
+        description: "Traversal test for refresh file index.",
         evidence_code_ref: "../../../etc/passwd",
         mechanism_check: true,
       });
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const id = JSON.parse(raw.trim().split("\n")[0]).id;
+      // The refresh tool takes the cited path directly (not the finding id).
       await assert.rejects(
-        () => metaStateRefreshFingerprintTool.handler({ id }),
+        () => metaStateRefreshFileIndexTool.handler({ path: "../../../etc/passwd" }),
         (err) => err instanceof PathContainmentError && err.reason === "outside_root",
       );
     } finally {
@@ -76,7 +75,7 @@ describe("audit-site migrations — path containment rejection", () => {
   // PathContainmentError. The escape case (above) throws; the missing-file
   // case (here) is a legitimate "code-missing" result. Mirrors the ENOENT
   // preservation at the other 6 audit sites.
-  test("refresh_fingerprint_missing_file_inside_root_returns_code_missing (no throw)", async () => {
+  test("refresh_file_index_missing_file_inside_root_returns_code_missing (no throw)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "audit-refresh-missing-"));
     try {
       process.env.GATE_ROOT = tempDir;
@@ -84,16 +83,14 @@ describe("audit-site migrations — path containment rejection", () => {
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Missing-file test for refresh fingerprint.",
+        description: "Missing-file test for refresh file index.",
         evidence_code_ref: "does-not-exist.js",
         mechanism_check: true,
       });
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const id = JSON.parse(raw.trim().split("\n")[0]).id;
-      const result = await metaStateRefreshFingerprintTool.handler({ id });
+      const result = await metaStateRefreshFileIndexTool.handler({ path: "does-not-exist.js" });
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.error, "code_missing");
-      assert.strictEqual(parsed.id, id);
+      assert.strictEqual(parsed.path, "does-not-exist.js");
       assert.strictEqual(parsed.cache_hit, false);
     } finally {
       delete process.env.GATE_ROOT;
@@ -313,7 +310,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const vr = runVerification(tempDir, { cmd: "echo", args: ["ok"], cwd: "subdir" });
       assert.strictEqual(vr.status, "passed");
 
-      // Site 1: refresh fingerprint with legit evidence_code_ref
+      // Site 1: refresh file index with legit evidence_code_ref
       await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
@@ -322,9 +319,7 @@ describe("audit-site migrations — path containment rejection", () => {
         evidence_code_ref: "src.js",
         mechanism_check: true,
       });
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const id = JSON.parse(raw.trim().split("\n")[0]).id;
-      const refresh = await metaStateRefreshFingerprintTool.handler({ id });
+      const refresh = await metaStateRefreshFileIndexTool.handler({ path: "src.js" });
       const parsed = JSON.parse(refresh.content[0].text);
       assert.strictEqual(parsed.status, "refreshed");
     } finally {
@@ -337,7 +332,7 @@ describe("audit-site migrations — path containment rejection", () => {
   // ---- LOCK: grep guard — no migrated user-path pattern remains ----
   test("grep guard: no `isAbsolute(...) ? ... : join(root,` user-path pattern at audit sites", () => {
     const siteFiles = [
-      "tools/learning-loop-mastra/tools/legacy/meta-state-refresh-fingerprint-tool.js",
+      "tools/learning-loop-mastra/tools/legacy/meta-state-refresh-file-index-tool.js",
       "tools/learning-loop-mastra/core/check-grounding.js",
       "tools/learning-loop-mastra/core/derive-status.js",
       "tools/learning-loop-mastra/core/gate-logic.js",

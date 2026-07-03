@@ -20,7 +20,7 @@
   { "file": "./tools/meta-state-patch-tool.js", "export": "metaStatePatchTool" },
   { "file": "./tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool" },
   { "file": "./tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool" },
-  { "file": "./tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool" },
+  { "file": "./tools/meta-state-refresh-file-index-tool.js", "export": "metaStateRefreshFileIndexTool" },
   { "file": "./tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool" },
   { "file": "./tools/meta-state-propose-design-tool.js", "export": "metaStateProposeDesignTool" },
   { "file": "./tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool" },

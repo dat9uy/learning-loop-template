@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
 import * as introspect from "../../core/loop-introspect.js";
-import { readRegistry } from "../../core/meta-state.js";
+import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
 
 export const loopDescribeTool = {
@@ -81,7 +81,7 @@ export const loopDescribeTool = {
         // Registry summary (Phase 7 of plan 260606)
         const lineageStart = Date.now();
         const lineageMs = Date.now() - lineageStart;
-        result.registry_summary = introspect.buildRegistrySummary(allEntries);
+        result.registry_summary = introspect.buildRegistrySummary(allEntries, readFileIndex(root));
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
@@ -146,7 +146,7 @@ export const loopDescribeTool = {
           try {
             const payload = {
               all_entries: allEntries,
-              registry_summary: introspect.buildRegistrySummary(allEntries),
+              registry_summary: introspect.buildRegistrySummary(allEntries, readFileIndex(root)),
               inverse_indexes: Object.fromEntries(
                 Object.entries(introspect.buildInverseIndexes(allEntries)).map(([k, v]) => [k, Object.fromEntries(v)])
               ),

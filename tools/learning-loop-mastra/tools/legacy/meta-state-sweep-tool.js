@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS } from "../../core/meta-state.js";
+import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS, readFileIndex } from "../../core/meta-state.js";
 import { buildRegistrySummary } from "../../core/loop-introspect.js";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { metaStateReportTool } from "./meta-state-report-tool.js";
@@ -187,8 +187,9 @@ export const metaStateSweepTool = {
         stale_reports: staleReports,
       });
 
-      // Emit registry-summary.md (Phase 7 of plan 260606)
-      const summary = buildRegistrySummary(entries);
+      // Emit registry-summary.md (Phase 7 of plan 260606). Pass the file-index so
+      // the Drift section displays the index-authoritative fingerprint (F12).
+      const summary = buildRegistrySummary(entries, readFileIndex(root));
       emitRegistrySummaryMd(root, entries, summary);
 
       return {
@@ -209,7 +210,7 @@ export const metaStateSweepTool = {
             swept: false,
             dry_run: true,
             transitions,
-            summary_preview: buildRegistrySummary(entries),
+            summary_preview: buildRegistrySummary(entries, readFileIndex(root)),
           }),
         },
       ],

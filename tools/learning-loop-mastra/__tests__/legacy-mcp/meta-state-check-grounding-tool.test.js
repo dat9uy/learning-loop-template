@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { readFileIndex, canonicalIndexKey, _resetFileIndexCacheForTests } from "../../core/meta-state.js";
 
 function getGateLogPath(tempDir) {
   return join(tempDir, ".claude", "coordination", "gate-log.jsonl");
@@ -95,10 +96,11 @@ describe("meta_state_check_grounding tool", () => {
     }
   });
 
-  // T4: auto-records code_fingerprint on first call; idempotent on second call
-  test("auto-records code_fingerprint on first call when absent (idempotent on second call)", async () => {
+  // T4: auto-populates the path-keyed fingerprint index on first call; idempotent on second call
+  test("auto-populates file-index.jsonl on first call when the path is absent (idempotent on second call)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "sp2-check-tool-4-"));
     process.env.GATE_ROOT = tempDir;
+    _resetFileIndexCacheForTests();
     try {
       writeFileSync(join(tempDir, "src.js"), "// code");
 
@@ -114,28 +116,31 @@ describe("meta_state_check_grounding tool", () => {
       const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
       const id = JSON.parse(raw.trim().split("\n")[0]).id;
 
-      // First call: should auto-record
+      // First call: should auto-populate the index (the authoritative baseline)
       const r1 = await metaStateCheckGroundingTool.handler({ id });
       const p1 = JSON.parse(r1.content[0].text);
       assert.strictEqual(p1.fingerprint_was_recorded, true);
       assert.ok(p1.grounding.code_fingerprint);
 
-      // Verify entry now has code_fingerprint
-      const rawAfter = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const entryAfter = JSON.parse(rawAfter.trim().split("\n")[0]);
-      assert.ok(entryAfter.code_fingerprint, "Entry should have code_fingerprint set after first check");
-      const storedHash = entryAfter.code_fingerprint;
+      // Verify the index now has the hash at the canonical key (NOT the per-record field)
+      const idx1 = readFileIndex(tempDir);
+      const storedHash = idx1.get(canonicalIndexKey("src.js"));
+      assert.ok(storedHash, "file-index.jsonl should have the hash at the canonical key after first check");
+      assert.strictEqual(p1.grounding.code_fingerprint, storedHash);
+      // The per-record field is vestigial — auto-populate does NOT write it.
+      const entryAfter = JSON.parse(readFileSync(join(tempDir, "meta-state.jsonl"), "utf8").trim().split("\n")[0]);
+      assert.strictEqual(entryAfter.code_fingerprint, undefined, "per-record field must not be written by auto-populate");
 
-      // Second call: should NOT re-record
+      // Second call: the index already has the key → should NOT re-populate
       const r2 = await metaStateCheckGroundingTool.handler({ id });
       const p2 = JSON.parse(r2.content[0].text);
       assert.strictEqual(p2.fingerprint_was_recorded, false);
 
-      // Verify entry's code_fingerprint is unchanged
-      const rawFinal = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
-      const entryFinal = JSON.parse(rawFinal.trim().split("\n")[0]);
-      assert.strictEqual(entryFinal.code_fingerprint, storedHash);
+      // Verify the index entry is unchanged
+      const idx2 = readFileIndex(tempDir);
+      assert.strictEqual(idx2.get(canonicalIndexKey("src.js")), storedHash);
     } finally {
+      _resetFileIndexCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }

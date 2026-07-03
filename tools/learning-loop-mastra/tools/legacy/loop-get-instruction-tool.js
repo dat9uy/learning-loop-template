@@ -30,7 +30,7 @@ export const HINT_SUGGESTIONS = [
   "Prefer `local:meta-state:<id>` source_refs and set `evidence_code_ref` to a code path so the loop can re-check it.",
   "When you provide `evidence_code_ref`, `mechanism_check` defaults to true; pass `false` only if you intentionally want to opt out.",
   "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch.",
-  "Call `meta_state_derive_status` before resolving; call `meta_state_refresh_fingerprint` after refactoring the cited code.",
+  "Call `meta_state_derive_status` before resolving; call `meta_state_refresh_file_index({ path })` after refactoring cited code to re-ground the path's hash in the shared fingerprint index.",
   "For design-only choices, log a change-log entry and cite its id in `source_refs`.",
   "Use `stale` for past-TTL findings and `meta_state_re_verify` to re-validate; do not use the legacy `expired` status.",
   "Set `reopens: ['<stale_id>']` on the new finding, then cascade-resolve the stale parent.",

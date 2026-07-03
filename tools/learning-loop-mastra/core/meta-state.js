@@ -1,8 +1,23 @@
 // fallow-ignore-file complexity — registry CRUD with Zod, CAS, TTL
-import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync, statSync } from "node:fs";
+import { join, isAbsolute } from "node:path";
 import { z } from "zod";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
+// TERMINAL_HASH_REGEX is the canonical stored-fingerprint format. Shared with
+// the index so a corrupt index value is dropped on read (H-2 defense preserved
+// on the index path) instead of feeding a false baseline. check-grounding.js
+// does not import this module, so this edge is acyclic.
+import { TERMINAL_HASH_REGEX } from "./check-grounding.js";
+// Canonical index key form delegates to gate-logic.js#stripEvidenceAnchor so the
+// index key never diverges from the path checkGrounding resolves. gate-logic.js
+// already imports from this module (readRegistry), so this adds a second edge of
+// the same pre-existing meta-state ↔ gate-logic cycle. Both modules use the
+// import only inside functions (no top-level cross-module binding use), so the
+// cycle is runtime-safe — see the identical suppression in check-grounding.js.
+// Breaking the cycle (extracting stripEvidenceAnchor into a shared path lib) is
+// out of scope for this migration.
+// fallow-ignore-next-line circular-dependency
+import { stripEvidenceAnchor } from "./gate-logic.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
 // `expired` was removed in plan 260611-1000-remove-expired-status. The legacy
@@ -87,7 +102,7 @@ export const metaStateFindingEntrySchema = z.object({
   mechanism_check: z.coerce.boolean().optional()
     .describe("Opt-in flag (SP2): include this finding in grounding checks. Defaults to true when evidence_code_ref is set; false otherwise. The meta_state_report tool applies this default automatically; the field is omitted from the entry if the caller provides neither mechanism_check nor evidence_code_ref. Pass mechanism_check: false to explicitly opt out (the response includes a warning). When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
-    .describe("SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; updated by meta_state_refresh_fingerprint on explicit refresh."),
+    .describe("@deprecated — baseline now lives in file-index.jsonl; this per-record field is a vestigial fallback, no longer written. SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; refresh via meta_state_refresh_file_index. The regex is unchanged so legacy entries still validate."),
   code_ref: z.string().optional()
     .describe("Optional code reference with SHA-256 fingerprint for validation."),
   ledger_ref: z.string().optional()
@@ -186,7 +201,7 @@ export const metaStateRuleEntrySchema = z.object({
   evidence_test: z.string().optional()
     .describe("Test file reference"),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
-    .describe("SHA-256 of evidence_code_ref; populated by SP2 check_grounding"),
+    .describe("@deprecated — baseline now lives in file-index.jsonl; this per-record field is a vestigial fallback, no longer written. SHA-256 of evidence_code_ref; populated by SP2 check_grounding. The regex is unchanged so legacy entries still validate."),
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
@@ -367,6 +382,131 @@ function _readAndParseRegistry(root) {
  */
 export function readRegistry(root) {
   return readRegistryWithCache(root, _readAndParseRegistry);
+}
+
+// ─── File-index sidecar (path-keyed shared fingerprint index) ──────────────
+// The grounding baseline moved off the per-finding `code_fingerprint` to a
+// shared `file-index.jsonl` sidecar so one file edit re-grounds all anchored
+// findings in a single upsert (O(findings_per_file) -> O(1)). One JSONL line
+// per { path, code_fingerprint, updated_at }; uniqueness is structural (read
+// whole map -> set key -> write whole map). Single writer (MCP server), same
+// per-root `enqueue` queue as writeEntry — no new race class.
+//
+// The per-record `code_fingerprint` field stays as a vestigial fallback (see
+// check-grounding.js); this index is the authoritative baseline. Phase 1 is
+// additive only — nothing reads the index yet.
+export const FILE_INDEX_FILENAME = "file-index.jsonl";
+
+/** Path to the sidecar, mirroring getRegistryPath. */
+export function getFileIndexPath(root) {
+  return join(root, FILE_INDEX_FILENAME);
+}
+
+/**
+ * Canonical index key: the stripped relative evidence_code_ref (no `:line`,
+ * no `#anchor`, no root prefix, no absolute path). Single source of truth so
+ * the refresh tool, auto-populate, and lookup can't diverge (red-team F3).
+ * `evidence_code_ref` values in the registry are relative; the grounding
+ * result's absolute `absPath` MUST NOT be used as a key.
+ */
+export function canonicalIndexKey(evidenceCodeRef) {
+  return stripEvidenceAnchor(evidenceCodeRef);
+}
+
+// mtime+size cache for readFileIndex (mirrors read-registry-cache.js). Why
+// mtime+size not just mtime: some filesystems have coarse mtime granularity;
+// the size check catches "same mtime, different content" in O(1).
+const _fileIndexCache = new Map();
+
+/** Test-only: reset the file-index read cache between assertions. */
+export function _resetFileIndexCacheForTests() {
+  _fileIndexCache.clear();
+}
+
+function _invalidateFileIndexCache(root) {
+  _fileIndexCache.delete(root);
+}
+
+/**
+ * Read the file-index sidecar into a Map<canonicalKey, hash>. Empty/missing
+ * file -> empty Map. Cached on (mtimeMs, size); upsertFileIndexEntry and any
+ * direct write invalidate it.
+ *
+ * Validation (red-team F6): each line's hash is tested against TERMINAL_HASH_REGEX;
+ * a line whose hash fails is dropped (treated as absent), mirroring the per-record
+ * `code_fingerprint` validation in check-grounding.js.
+ *
+ * Resilience: malformed JSON lines are skipped with a defensive try-catch. This
+ * is NEW behavior — the registry reader `_readAndParseRegistry` throws on
+ * malformed JSON; the index reader is deliberately more defensive because a
+ * single poisoned line must not break grounding for every other cited path.
+ */
+export function readFileIndex(root) {
+  const path = getFileIndexPath(root);
+  let stat;
+  try {
+    stat = statSync(path);
+  } catch {
+    _fileIndexCache.delete(root);
+    return new Map();
+  }
+  const { mtimeMs, size } = stat;
+  const cached = _fileIndexCache.get(root);
+  if (cached && cached.mtimeMs === mtimeMs && cached.size === size) {
+    return cached.entries;
+  }
+  const raw = readFileSync(path, "utf8");
+  const map = new Map();
+  for (const line of raw.split("\n")) {
+    if (line.trim() === "") continue;
+    let row;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      // Malformed JSON line — skip (NEW resilience; see jsdoc).
+      continue;
+    }
+    const key = typeof row.path === "string" ? canonicalIndexKey(row.path) : null;
+    const hash = typeof row.code_fingerprint === "string" ? row.code_fingerprint : null;
+    if (key === null || !TERMINAL_HASH_REGEX.test(hash)) {
+      // Drop lines with a missing/invalid path or a hash that fails the regex
+      // (F6) — never feed a corrupt baseline into grounding.
+      continue;
+    }
+    map.set(key, hash);
+  }
+  _fileIndexCache.set(root, { entries: map, mtimeMs, size });
+  return map;
+}
+
+/**
+ * Upsert one path's current hash into the sidecar (atomic tmp+rename under the
+ * per-root write queue). Returns true on success, false if the hash is invalid
+ * or the path is absolute (rejected as a key — F3). `updated_at` is stamped
+ * with the current time. Invalidates the read cache.
+ */
+export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
+  // Reject absolute paths as keys (F3) and validate the hash before any write.
+  if (typeof evidenceCodeRef !== "string" || isAbsolute(stripEvidenceAnchor(evidenceCodeRef))) {
+    return false;
+  }
+  if (typeof hash !== "string" || !TERMINAL_HASH_REGEX.test(hash)) {
+    return false;
+  }
+  const key = canonicalIndexKey(evidenceCodeRef);
+  return enqueue(root, () => {
+    const path = getFileIndexPath(root);
+    const map = readFileIndex(root);
+    map.set(key, hash);
+    const lines = [...map.entries()].map(
+      ([p, h]) => JSON.stringify({ path: p, code_fingerprint: h, updated_at: new Date().toISOString() }),
+    );
+    const tmpPath = path + ".tmp";
+    writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
+    renameSync(tmpPath, path);
+    _invalidateFileIndexCache(root);
+    return true;
+  });
 }
 
 /**

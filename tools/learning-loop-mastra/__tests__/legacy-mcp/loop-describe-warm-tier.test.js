@@ -43,7 +43,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(sourceRef.includes("local:meta-state:<id>"));
 
     assert.ok(grounding.includes("meta_state_derive_status"));
-    assert.ok(grounding.includes("meta_state_refresh_fingerprint"));
+    assert.ok(grounding.includes("meta_state_refresh_file_index"));
 
     assert.ok(noCode.includes("meta_state_log_change"));
     assert.ok(noCode.includes("change_target"));

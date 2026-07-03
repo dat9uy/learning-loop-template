@@ -86,7 +86,7 @@ test("selfImprovementAgent: instantiates with correct id, name, instructions, to
     "mastra_meta_state_ack",
     "mastra_meta_state_log_change",
     "mastra_meta_state_propose_design",
-    "mastra_meta_state_refresh_fingerprint",
+    "mastra_meta_state_refresh_file_index",
     "mastra_meta_state_resolve",
     "mastra_meta_state_promote_rule",
     "mastra_meta_state_check_grounding",

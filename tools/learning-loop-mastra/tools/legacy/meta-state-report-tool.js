@@ -41,7 +41,7 @@ export const metaStateReportTool = {
         code: "evidence_without_mechanism_check",
         message:
           "evidence_code_ref is set but mechanism_check is false; the fingerprint will not be tracked. " +
-          "Pass mechanism_check: true to opt in to grounding checks via meta_state_refresh_fingerprint.",
+          "Pass mechanism_check: true to opt in to grounding checks; the path-keyed fingerprint index is refreshed via meta_state_refresh_file_index.",
         suggestion: "Remove mechanism_check or set it to true to opt in to grounding checks.",
       });
     }

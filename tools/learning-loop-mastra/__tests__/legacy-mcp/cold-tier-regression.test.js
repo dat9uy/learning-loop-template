@@ -1,6 +1,6 @@
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRegistry } from "../../core/meta-state.js";
+import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { test } from "node:test";
@@ -9,6 +9,13 @@ import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 
 const root = resolveRoot();
+// Phase 3 surgical update (red-team F1): load the path-keyed fingerprint index
+// and pass it into the grounding loop. After Phase 5 stops writing the per-record
+// field, the fallback would be frozen-stale/undefined; the cold-tier test must
+// exercise the AUTHORITATIVE path (the index), asserting the same `grounded`
+// invariant via the authoritative baseline. The skip-classes and assertions
+// below are unchanged — only the call gains `fileIndex`.
+const fileIndex = readFileIndex(root);
 
 function resolveEvidencePath(codeRef) {
   const stripped = stripEvidenceAnchor(codeRef);
@@ -161,7 +168,7 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     if (evidencePath === selfPath) {
       continue;
     }
-    const grounding = checkGrounding(finding, { root });
+    const grounding = checkGrounding(finding, { root, fileIndex });
     if (grounding.drift_kind === "code_missing") {
       continue;
     }
