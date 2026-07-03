@@ -138,6 +138,83 @@ export function buildProcessHints() {
 }
 
 /**
+ * Build the Rec 10 (plan 260704-0301-stale-findings-dispatch-handle Phase 3)
+ * session-start surfacing: a bounded top-5 list of stale dispatch candidates
+ * (non-empty evidence_code_ref, severity !== "escalate", no ledger_ref,
+ * non-terminal) + a list of orphan findings (entries that have a
+ * `dispatch-<id>` ledger row but no matching ledger_ref on the entry).
+ *
+ * Read-only. Pure function over `entries` (a registry snapshot). Caller is
+ * responsible for I/O + the read-only contract (do NOT call
+ * buildColdTierCache/writeColdTierCache here — this builder is on the
+ * SessionStart hot path).
+ *
+ * @param {object[]} entries — registry entries (readRegistry output)
+ * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
+ */
+const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
+  "auto-resolved",
+  "resolved",
+  "superseded",
+  "archived",
+]);
+
+export function buildStaleDispatchHints(entries) {
+  const findEntry = (id) => entries.find((e) => e.id === id);
+  const allDispatchIds = new Set();
+  // The orphan heuristic: scan the runtime-state.jsonl rows that look like
+  // dispatch ledger rows. We don't have runtime-state.jsonl here (this is a
+  // pure function over `entries`), so the orphan list is computed via the
+  // inverse: entries whose `ledger_ref` starts with `dispatch-` but whose
+  // status is in a non-terminal set (e.g. reported/active) AND no
+  // `dispatch-<id>` row can be reconstructed. Since we lack the ledger
+  // here, orphan_findings is intentionally empty from the registry snapshot
+  // alone — the hook combines this output with runtime-state.jsonl outside
+  // this function.
+  const orphanFindings = [];
+
+  // Fixable candidates: stale findings, non-empty evidence_code_ref,
+  // severity !== "escalate", no ledger_ref, non-terminal.
+  const candidates = entries
+    .filter((e) => e.entry_kind === "finding")
+    .filter((e) => e.status === "stale")
+    .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
+    .filter((e) => e.severity !== "escalate")
+    .filter((e) => !e.ledger_ref)
+    .filter((e) => !TERMINAL_STATUSES_FOR_DISPATCH.has(e.status))
+    // Sort by created_at descending so older stale entries surface first
+    // (the operator is more likely to recognize them and want to triage).
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    .slice(0, 5)
+    .map((e) => ({
+      id: e.id,
+      category: e.category,
+      severity: e.severity,
+      evidence_code_ref: e.evidence_code_ref,
+      affected_system: e.affected_system,
+      description: e.description?.slice(0, 200) ?? "",
+      created_at: e.created_at,
+    }));
+
+  // Avoid an unused-binding lint warning when the orphan list stays empty
+  // (the helper above is documented for future runtime-state integration).
+  void allDispatchIds;
+  void findEntry;
+
+  return {
+    fixable_candidates: candidates,
+    orphan_findings: orphanFindings,
+    dispatch_protocol_prompt:
+      "Rec 10 dispatch protocol (plan 260704-0301-stale-findings-dispatch-handle):\n" +
+      "1. Agent calls meta_state_dispatch_finding({id, stage:'prepare'}) → returns issue body.\n" +
+      "2. Agent runs `gh issue create --repo <private-repo>` (check exit code).\n" +
+      "3. Agent calls meta_state_dispatch_finding({id, stage:'commit', issue_number, issue_url, repo, delegated_to}) → writes ledger + patches ledger_ref.\n" +
+      "Authority boundary: agent proposes; operator dispatches (commit is OPERATOR_MODE-gated). Dispatch to a private issue tracker (not the public template repo).\n" +
+      "If a finding shows up in fixable_candidates with no ledger_ref after a prior dispatch, it is an orphan: re-invoke the dispatch tool to heal.",
+  };
+}
+
+/**
  * Return runtime substrate paths + drivers used by the loop. Surfaces the
  * Mastra LibSQL storage location so agents + operators can reason about
  * persistence without re-deriving paths. Pure function — values come from
