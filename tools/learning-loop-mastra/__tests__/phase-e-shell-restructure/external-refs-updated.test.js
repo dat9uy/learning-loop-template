@@ -32,10 +32,10 @@ const SEARCH_PATHS = [
   ".claude/skills/", ".factory/skills/",
   ".claude/coordination/", ".factory/hooks/",
   ".claude/coordination/MASTRA_AGENT_MODEL.md",
-  "docs/mcp-server-restart-protocol.md",
-  "docs/operator-notes/",
+  "docs/_archive-260703/mcp-server-restart-protocol.md",
+  "docs/_archive-260703/operator-notes/",
   "docs/mcp-tool-schema-architecture.md",
-  "docs/project-changelog.md",
+  "docs/_archive-260703/project-changelog.md",
 ];
 
 test("no external refs to pre-move shell paths in production files", () => {

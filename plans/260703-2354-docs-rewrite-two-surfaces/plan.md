@@ -1,9 +1,9 @@
 ---
 title: "Docs Rewrite by Two Surfaces x Abstraction Levels + Interface Reframe"
 description: "Archive AGENTS.md + docs/ and write a fresh docs architecture organized by two surfaces (concept/implementation) x abstraction levels (L0-L4); reframe the runtime interface from MCP-wrapper to transport-agnostic concept contract."
-status: pending
+status: completed
 priority: P2
-branch: "main"
+branch: "docs/rewrite-two-surfaces"
 tags: [docs, architecture, interface, direction]
 blockedBy: []
 blocks: []
@@ -42,12 +42,12 @@ Rule: a doc at level L references only levels ≤ L. Concept surface = {L0,L1}; 
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Archive stale docs + light-touch keeps](./phase-01-archive-stale-docs-light-touch-keeps.md) | Pending |
-| 2 | [Write loop-engine.md (L1 concept)](./phase-02-write-loop-engine-md-l1-concept.md) | Pending |
-| 3 | [Interface reframe (L2 runtime-contract)](./phase-03-interface-reframe-l2-runtime-contract.md) | Pending |
-| 4 | [Rewrite architecture.md (L3)](./phase-04-rewrite-architecture-md-l3.md) | Pending |
-| 5 | [Rewrite AGENTS.md thin + citations + trajectory.md compaction](./phase-05-rewrite-agents-md-thin-citations.md) | Pending |
-| 6 | [Stop auto-writer + verify](./phase-06-stop-auto-writer-verify.md) | Pending |
+| 1 | [Archive stale docs + light-touch keeps](./phase-01-archive-stale-docs-light-touch-keeps.md) | Done |
+| 2 | [Write loop-engine.md (L1 concept)](./phase-02-write-loop-engine-md-l1-concept.md) | Done |
+| 3 | [Interface reframe (L2 runtime-contract)](./phase-03-interface-reframe-l2-runtime-contract.md) | Done |
+| 4 | [Rewrite architecture.md (L3)](./phase-04-rewrite-architecture-md-l3.md) | Done |
+| 5 | [Rewrite AGENTS.md thin + citations + trajectory.md compaction](./phase-05-rewrite-agents-md-thin-citations.md) | Done |
+| 6 | [Stop auto-writer + verify](./phase-06-stop-auto-writer-verify.md) | Done |
 
 Phase dependencies: 2,3,4 blockedBy 1 · 5 blockedBy 2,3,4 · 6 blockedBy 5.
 

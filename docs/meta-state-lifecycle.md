@@ -3,9 +3,25 @@ date: "2026-06-10T00:00:00Z"
 tags: [meta-state, lifecycle, status, registry, mcp]
 ---
 
+<!-- level: L1 | surface: concept -->
+
 # Meta-State Lifecycle and Status Management
 
 This document describes the lifecycle of entries in `meta-state.jsonl`, the registry that serves as the loop's self-model. It covers the four entry kinds, their valid statuses, transition rules, and the tools that drive each transition.
+
+## Layer Separation: Domain, Meta, Gate
+
+The loop keeps two state systems separate. **Domain state** (observations) is external system state — budgets, device slots, vendor API status — operator-managed and durable. **Meta-state** (this registry) is the loop's self-model — findings, change-logs, rules — agent-maintained. The **gate** sits between them.
+
+| Layer | What it tracks | Who owns it | Durability |
+|-------|----------------|-------------|------------|
+| Domain | External system state (budgets, device slots, vendor status) | Operator | Durable, versioned |
+| Meta | System-level findings + change-log (this registry) | Agent | Discriminated union: findings ephemeral, change-logs permanent |
+| Gate | Constraint pattern matching, observation existence | Code | Stateless, reads fresh every call |
+
+**The gate is meta-only.** It reads domain observations to check whether they *exist* (meta-level: "has someone recorded this constraint?"). It does not enforce domain resource limits (domain-level: "do we have budget left?"). Budget enforcement belongs to the agent, which has the context to decide. The gate is the first filter; the agent is the second filter; meta-state is the audit trail.
+
+Getting this boundary wrong produces two failure modes: the gate enforcing domain budgets blocks unrelated commands globally when one budget exhausts; or budget data leaking into meta-state conflates domain state with reasoning. Domain state stays in observations; meta-state tracks reasoning, not numbers.
 
 ## The Four Entry Kinds
 
@@ -163,7 +179,6 @@ The consult-gate `rule-no-orphaned-evidence` blocks `meta_state_resolve` when an
 ## Related Documents
 
 - `AGENTS.md` — operational rules for agents, including the Internalization Rule and gate protocols
-- `docs/observation-vs-meta-state.md` — separation between domain observations and meta-state findings
-- `docs/operator-guide.md` — mechanics for operators, including resolving findings and consult-gate behavior
 - `docs/trajectory.md` — long-term direction, Bridge 6 (self-model as product)
-- `tools/learning-loop-mcp/core/meta-state.js` — source-of-truth schema definitions and registry operations
+- `docs/architecture.md` — gate system internals, the 3-layer mechanism that realizes this separation
+- `tools/learning-loop-mastra/core/meta-state.js` — source-of-truth schema definitions and registry operations
