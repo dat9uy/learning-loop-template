@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
-import { readRegistry, filterEntries } from "../../core/meta-state.js";
+import { readRegistry, filterEntries, readFileIndex } from "../../core/meta-state.js";
 import { queryDrift } from "../../core/query-drift.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -42,11 +42,17 @@ export const metaStateQueryDriftTool = {
     const registry = readRegistry(root);
     const nonTerminal = filterEntries(registry, { status: filter?.status });
 
+    // fileIndex: the cached path-keyed fingerprint sidecar — the authoritative
+    // grounding baseline (Phase 3 repoint). Loaded here so queryDrift's
+    // checkGrounding call exercises the index path, not the stale per-record
+    // fallback (red-team F5: without this, every edited file reports false drift).
+    const fileIndex = readFileIndex(root);
     const codeContext = {
       root,
       run_grounding,
       run_tests: false,
       test_passed: null,
+      fileIndex,
       now: () => Date.now(),
     };
 

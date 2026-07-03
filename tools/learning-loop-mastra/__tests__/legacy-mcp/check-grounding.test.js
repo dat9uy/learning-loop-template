@@ -390,6 +390,114 @@ describe("checkGrounding pure function", () => {
     assert.strictEqual(result.grounding.evidence_code_ref, undefined);
     assert.strictEqual(result.grounding.code_ref_exists, undefined);
   });
+
+  // ── File-index baseline (Phase 3 repoint) ──────────────────────────────
+  // The index is passed in via codeContext.fileIndex (Map<canonicalKey, hash>);
+  // the pure function stays pure. Index baseline wins over the per-record field;
+  // both are validated against TERMINAL_HASH_REGEX (F6).
+  test("index-authoritative: fileIndex baseline wins over the per-record field", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const realHash = computeFileHash(join(ctx.root, "src.js"));
+    const stalePerRecord = "sha256:" + "0".repeat(64);
+    const fileIndex = new Map([["src.js", realHash]]);
+    const entry = baseEntry({
+      mechanism_check: true,
+      evidence_code_ref: "src.js",
+      code_fingerprint: stalePerRecord,
+    });
+    const result = checkGrounding(entry, { ...ctx, fileIndex });
+    assert.strictEqual(result.status, "grounded");
+    assert.strictEqual(result.drift_kind, null);
+    assert.strictEqual(result.grounding.code_fingerprint, realHash, "exposed baseline is the index value");
+    assert.strictEqual(result.grounding.hash_match, true);
+  });
+
+  test("index-missing: falls back to the per-record field (byte-identical to today)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const realHash = computeFileHash(join(ctx.root, "src.js"));
+    const entry = baseEntry({
+      mechanism_check: true,
+      evidence_code_ref: "src.js",
+      code_fingerprint: realHash,
+    });
+    // No fileIndex → fallback to the per-record field, exactly as before.
+    const result = checkGrounding(entry, ctx);
+    assert.strictEqual(result.status, "grounded");
+    assert.strictEqual(result.grounding.hash_match, true);
+  });
+
+  test("index-missing + no per-record: hash_match null -> grounded (file exists)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({ mechanism_check: true, evidence_code_ref: "src.js" });
+    const result = checkGrounding(entry, ctx);
+    assert.strictEqual(result.status, "grounded");
+    assert.strictEqual(result.grounding.hash_match, null);
+  });
+
+  // Red-team F6: a corrupt index value (fails TERMINAL_HASH_REGEX) must fall
+  // through to the per-record field, never feed a false baseline.
+  test("index-corrupt (fails regex): falls through to per-record fallback (F6)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const realHash = computeFileHash(join(ctx.root, "src.js"));
+    const corruptIndex = new Map([["src.js", "sha256:BAD"]]);
+    const entry = baseEntry({
+      mechanism_check: true,
+      evidence_code_ref: "src.js",
+      code_fingerprint: realHash,
+    });
+    const result = checkGrounding(entry, { ...ctx, fileIndex: corruptIndex });
+    assert.strictEqual(result.grounding.code_fingerprint, realHash, "corrupt index dropped; per-record used");
+    assert.strictEqual(result.status, "grounded");
+  });
+
+  test("index key is canonical (stripped): :line and #anchor resolve to the index entry", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const realHash = computeFileHash(join(ctx.root, "src.js"));
+    // Index keyed on the bare path; evidence_code_ref carries a :line suffix.
+    const fileIndex = new Map([["src.js", realHash]]);
+    const entry = baseEntry({
+      mechanism_check: true,
+      evidence_code_ref: "src.js:42",
+    });
+    const result = checkGrounding(entry, { ...ctx, fileIndex });
+    assert.strictEqual(result.grounding.code_fingerprint, realHash);
+    assert.strictEqual(result.status, "grounded");
+  });
+
+  // ── Phase 6 field-strip invariant ──────────────────────────────────────
+  // After the strip, findings have NO per-record code_fingerprint. The index is
+  // the sole baseline. A no-field finding grounds via the index; a no-field +
+  // no-index finding grounds on file-existence (hash_match: null). Locks the
+  // post-strip shape so a future refactor that deletes the fallback branch
+  // breaks these tests (the fallback branch stays — it reads an absent field).
+  test("Phase 6: no code_fingerprint + index has the key -> grounded via the index", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const realHash = computeFileHash(join(ctx.root, "src.js"));
+    const fileIndex = new Map([["src.js", realHash]]);
+    // No code_fingerprint on the entry — the post-strip shape.
+    const entry = baseEntry({ mechanism_check: true, evidence_code_ref: "src.js" });
+    const result = checkGrounding(entry, { ...ctx, fileIndex });
+    assert.strictEqual(result.status, "grounded");
+    assert.strictEqual(result.grounding.code_fingerprint, realHash, "index owns the baseline");
+    assert.strictEqual(result.grounding.hash_match, true);
+  });
+
+  test("Phase 6: no code_fingerprint + no index entry -> grounded on file-existence (hash_match null)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    // No code_fingerprint, no fileIndex — the post-strip shape for an un-indexed path.
+    const entry = baseEntry({ mechanism_check: true, evidence_code_ref: "src.js" });
+    const result = checkGrounding(entry, ctx);
+    assert.strictEqual(result.status, "grounded");
+    assert.strictEqual(result.grounding.code_fingerprint, null);
+    assert.strictEqual(result.grounding.hash_match, null);
+  });
 });
 
 describe("META_STATE_GROUNDING_* constants", () => {

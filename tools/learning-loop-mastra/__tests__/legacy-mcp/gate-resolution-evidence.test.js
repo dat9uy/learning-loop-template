@@ -217,6 +217,50 @@ describe("checkResolutionEvidence", () => {
     assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
   });
 
+  test("rule-no-orphaned-evidence drops a corrupt per-record code_fingerprint (regex-validated fallback, not a false mismatch)", async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
+    const core = await importCore(tempRoot);
+    const { checkResolutionEvidence } = await importGateLogic();
+
+    const dummyFile = join(tempRoot, "dummy.js");
+    writeFileSync(dummyFile, "const c = 4;");
+
+    const findingId = core.generateId("orphan-test");
+    // Write the entry directly to the registry (bypassing the write schema,
+    // which rejects corrupt fingerprints) — this is the threat model: an out-
+    // of-band-poisoned registry. readRegistry does not re-validate, so the
+    // corrupt value reaches the gate raw.
+    const poisoned = {
+      id: findingId,
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Poisoned-registry fixture with a corrupt per-record fingerprint.",
+      status: "active",
+      created_at: new Date().toISOString(),
+      version: 0,
+      mechanism_check: true,
+      evidence_code_ref: "dummy.js",
+      // Malformed value (not 64 hex chars) — must be dropped, not compared.
+      code_fingerprint: "sha256:CORRUPT",
+    };
+    writeFileSync(join(tempRoot, "meta-state.jsonl"), JSON.stringify(poisoned) + "\n", "utf8");
+
+    const rule = {
+      id: "rule-no-orphaned-evidence",
+      pattern: "*",
+      applies_to_resolution: "*",
+    };
+
+    const result = checkResolutionEvidence(rule, tempRoot);
+    // No index entry + corrupt per-record dropped to null -> no baseline to
+    // compare -> no orphan. A malformed stored value must never surface as a
+    // false fingerprint_mismatch (mirrors checkGrounding's per-record branch).
+    assert.strictEqual(result.satisfied, true);
+    assert.strictEqual(result.rule_id, "rule-no-orphaned-evidence");
+  });
+
   test("rule-no-orphaned-evidence allows resolution when active finding has mechanism_check=true but no code_fingerprint", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
     const core = await importCore(tempRoot);

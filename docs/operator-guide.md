@@ -116,7 +116,7 @@ The global rule `rule-no-orphaned-evidence` gates `meta_state_resolve`. Before a
 { resolved: false, reason: "resolution_evidence_required", orphans: [...] }
 ```
 
-To unblock: refresh the fingerprint (`meta_state_refresh_fingerprint`) or update the evidence reference, then retry resolution. This ensures grounded findings stay grounded and prevents resolving against stale evidence.
+To unblock: refresh the path's hash in the shared fingerprint index (`meta_state_refresh_file_index({ path: <evidence_code_ref> })`) or update the evidence reference, then retry resolution. This ensures grounded findings stay grounded and prevents resolving against stale evidence.
 
 ## Runtime Validation
 

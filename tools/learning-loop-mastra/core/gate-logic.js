@@ -18,8 +18,8 @@ import { dirname, isAbsolute, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 import { SURFACES } from "./surfaces.js";
-import { readRegistry, metaStateRuleEntrySchema } from "./meta-state.js";
-import { computeFileHash } from "./check-grounding.js";
+import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-state.js";
+import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 
@@ -689,8 +689,24 @@ export function checkResolutionEvidence(rule, root) {
         }
         throw err;
       }
-      if (entry.code_fingerprint && entry.code_fingerprint !== currentHash) {
-        orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected: entry.code_fingerprint, actual: currentHash });
+      // Baseline resolution (Phase 3 repoint, red-team F2): the file-index
+      // sidecar is the authoritative baseline, with the per-record field as the
+      // vestigial fallback. Without repointing this gate, every edited source
+      // file fails CI post-migration because the live hash no longer matches the
+      // frozen per-record value. Both baselines are compared to the live hash;
+      // a mismatch against the authoritative baseline is fingerprint_mismatch.
+      const canonical = stripEvidenceAnchor(codeRef);
+      const fileIndex = readFileIndex(root);
+      const indexBaseline = fileIndex.has(canonical) ? fileIndex.get(canonical) : null;
+      // Validate the per-record fallback against TERMINAL_HASH_REGEX (mirrors
+      // checkGrounding's per-record branch): a corrupt stored value must never
+      // be compared as a baseline — it's dropped to null so a malformed value
+      // can't surface as a false fingerprint_mismatch.
+      const perRecord = typeof entry.code_fingerprint === "string" && TERMINAL_HASH_REGEX.test(entry.code_fingerprint)
+        ? entry.code_fingerprint : null;
+      const expected = indexBaseline ?? perRecord;
+      if (expected && expected !== currentHash) {
+        orphans.push({ id: entry.id, reason: "fingerprint_mismatch", expected, actual: currentHash });
       }
     }
     if (orphans.length > 0) {

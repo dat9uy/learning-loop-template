@@ -43,7 +43,7 @@
   { "file": "tools/meta-state-patch-tool.js", "export": "metaStatePatchTool", "pathFields": [] },
   { "file": "tools/meta-state-derive-status-tool.js", "export": "metaStateDeriveStatusTool", "pathFields": [] },
   { "file": "tools/meta-state-check-grounding-tool.js", "export": "metaStateCheckGroundingTool", "pathFields": [] },
-  { "file": "tools/meta-state-refresh-fingerprint-tool.js", "export": "metaStateRefreshFingerprintTool", "pathFields": [] },
+  { "file": "tools/meta-state-refresh-file-index-tool.js", "export": "metaStateRefreshFileIndexTool", "pathFields": [] },
   { "file": "tools/meta-state-query-drift-tool.js", "export": "metaStateQueryDriftTool", "pathFields": [] },
   { "file": "tools/meta-state-propose-design-tool.js", "export": "metaStateProposeDesignTool", "pathFields": [] },
   { "file": "tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool", "pathFields": [] },

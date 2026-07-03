@@ -27,7 +27,7 @@ export const metaStatePatchTool = {
     mechanism_check: z.coerce.boolean().optional()
       .describe("Script-caller passthrough: opt-in flag for fingerprint tracking on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; ignored for other kinds."),
     code_fingerprint: z.string().optional()
-      .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_fingerprint` instead. Ignored for other kinds."),
+      .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_file_index` to refresh the path-keyed fingerprint index instead. Ignored for other kinds."),
   },
   handler: async ({ id, entry_kind, patch, _expected_version, mechanism_check, code_fingerprint }) => {
     const root = resolveRoot();
@@ -79,6 +79,12 @@ export const metaStatePatchTool = {
         id,
         denied_fields: deniedFields,
         immutable_fields: [...IMMUTABLE_PATCH_FIELDS],
+        // CV-B: code_fingerprint is a back-door write to the deprecated per-record
+        // baseline. It is blocked here (no-op); point the caller at the authoritative
+        // refresh path so they don't keep trying to patch a vestigial field.
+        ...(deniedFields.includes("code_fingerprint")
+          ? { deprecation_note: "code_fingerprint is deprecated; the baseline lives in file-index.jsonl. Use meta_state_refresh_file_index({ path }) to refresh a cited path's hash." }
+          : {}),
       };
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };

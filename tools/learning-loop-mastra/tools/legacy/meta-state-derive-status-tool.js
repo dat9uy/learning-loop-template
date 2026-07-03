@@ -1,51 +1,11 @@
 import { z } from "zod";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
-import { spawnSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import { deriveStatus } from "../../core/derive-status.js";
-import { readRegistry } from "../../core/meta-state.js";
-import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-
-/** Per-process test-runner cache (keyed by absolute file path + mtime string).
- *  Cleared on process restart. mtime changes invalidate the cache.
- *  Per H-3 mitigation: cache stores the boolean result only. */
-const testRunCache = new Map();
-
-function runTest(root, testPath) {
-  // LIM-4: realpath containment — rejects traversal/symlink/hardlink escape.
-  // A missing test file inside root (ENOENT, resolvedPath === null) returns
-  // null (skip running tests); an actual escape (resolvedPath set) propagates.
-  // See core/path-containment.js. Invoked at moment of use per NF3.
-  let fullPath;
-  try {
-    fullPath = resolveSafePath(root, testPath);
-  } catch (err) {
-    if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
-      return null;  // missing test file — skip running tests
-    }
-    throw err;
-  }
-  if (!existsSync(fullPath)) return null;
-  const mtime = statSync(fullPath).mtimeMs;
-  const key = `${fullPath}:${mtime}`;
-  if (testRunCache.has(key)) return testRunCache.get(key);
-  try {
-    const result = spawnSync("pnpm", ["test", "--", fullPath], {
-      cwd: root,
-      timeout: 30_000,
-      encoding: "utf8",
-    });
-    const passed = result.status === 0;
-    testRunCache.set(key, passed);
-    return passed;
-  } catch {
-    testRunCache.set(key, null);
-    return null;
-  }
-}
+import { runTest } from "#lib/run-test.js";
+import { findEntryOrNotFound } from "#lib/find-entry.js";
 
 export const metaStateDeriveStatusTool = {
   name: "meta_state_derive_status",
@@ -68,16 +28,8 @@ export const metaStateDeriveStatusTool = {
       };
     }
 
-    const entries = readRegistry(root);
-    const entry = entries.find((e) => e.id === id);
-    if (!entry) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({
-          error: "entry_not_found",
-          id,
-        }) }],
-      };
-    }
+    const { entry, notFoundResponse } = findEntryOrNotFound(root, id);
+    if (notFoundResponse) return notFoundResponse;
 
     // Build codeContext. test_passed is computed only when run_tests is true
     // and the entry has an evidence_test field (per the H-4 mitigation: the

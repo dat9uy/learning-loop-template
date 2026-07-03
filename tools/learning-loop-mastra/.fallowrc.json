@@ -39,6 +39,17 @@
     "**/*.spec.cjs"
   ],
 
+  "ignoreExports": [
+    {
+      "file": "core/meta-state.js",
+      "exports": [
+        "FILE_INDEX_FILENAME",
+        "getFileIndexPath",
+        "_resetFileIndexCacheForTests"
+      ]
+    }
+  ],
+
   "rules": {
     "unused-files": "error",
     "unused-exports": "warn",

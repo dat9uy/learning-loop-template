@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readRegistry, META_STATE_FINDING_CATEGORIES } from "./meta-state.js";
+import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 
@@ -96,7 +96,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
   "When you pass `evidence_code_ref` to `meta_state_report`, `mechanism_check` is auto-defaulted to `true` (so the loop will hash and re-check the code). Pass `mechanism_check: false` explicitly to opt out — the response will include a `warnings` array explaining the tradeoff.",
   "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
-  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_fingerprint({ id })` to re-hash the code after a refactor.",
+  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_file_index({ path })` to re-hash a cited path's code in the shared fingerprint index after a refactor — one call re-grounds every finding anchored to that path.",
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
   "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `superseded` (consolidated into a change-log), `auto-resolved` (closed by mechanism). The legacy `expired` status was removed in plan 260611-1000-remove-expired-status; only `stale` parents are cascade-closeable.",
   "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
@@ -278,7 +278,7 @@ function buildColdTierCache(root) {
   const allEntries = readRegistry(root);
   const payload = {
     all_entries: allEntries,
-    registry_summary: buildRegistrySummary(allEntries),
+    registry_summary: buildRegistrySummary(allEntries, readFileIndex(root)),
     inverse_indexes: Object.fromEntries(
       Object.entries(buildInverseIndexes(allEntries)).map(([k, v]) => [k, Object.fromEntries(v)])
     ),
@@ -388,7 +388,7 @@ export function buildInverseIndexes(entries) {
  * Returns { counts, coverage, top_references, drift }.
  * Pure function — O(N) over entries. No I/O.
  */
-export function buildRegistrySummary(entries) {
+export function buildRegistrySummary(entries, fileIndex) {
   const counts = {};
   for (const entry of entries) {
     const kind = entry.entry_kind || "finding";
@@ -441,6 +441,12 @@ export function buildRegistrySummary(entries) {
     .map(([id, count]) => ({ id, count }));
 
   // Drift: most recent active findings with mechanism_check=true
+  // F12: display the index-authoritative fingerprint (file-index.jsonl), falling
+  // back to the vestigial per-record field. Agents that read this surface (e.g.
+  // selfImprovementAgent's "REFUSE resolve when stale" check) must consult the
+  // authoritative baseline, not a frozen per-record value that may be stale.
+  // `fileIndex` is passed in (optional) to keep this function pure — callers with
+  // a root pass readFileIndex(root); callers without it pass nothing (fallback).
   const driftEntries = entries
     .filter((e) => e.entry_kind === "finding" && e.mechanism_check === true && e.status !== "resolved")
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
@@ -449,7 +455,7 @@ export function buildRegistrySummary(entries) {
       id: e.id,
       status: e.status,
       created_at: e.created_at,
-      code_fingerprint: e.code_fingerprint || null,
+      code_fingerprint: (fileIndex && fileIndex.get(canonicalIndexKey(e.evidence_code_ref))) ?? e.code_fingerprint ?? null,
     }));
 
   return {

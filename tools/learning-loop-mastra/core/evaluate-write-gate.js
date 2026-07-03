@@ -93,6 +93,12 @@ const WRITE_GATE_RULES = [
     reason: "Direct writes to meta-state.jsonl are blocked. Use MCP tools (meta_state_report, meta_state_ack, meta_state_batch, meta_state_resolve, etc.) to mutate the registry. The bash gate blocks shell writes; this rule closes the parallel Write/Edit path identified in the audit-log gap investigation.",
   },
   {
+    name: "file-index",
+    matchedRule: "file-index.jsonl",
+    match: (relPath) => globMatch("file-index.jsonl", relPath),
+    reason: "Direct writes to file-index.jsonl are blocked. Use the meta_state_refresh_file_index MCP tool (or upsertFileIndexEntry internally) to mutate the path-keyed fingerprint sidecar. Direct writes bypass hash validation and the single-writer queue — poisoning the index would mask drift with no audit trail.",
+  },
+  {
     name: "schemas",
     matchedRule: "schemas/**",
     match: (relPath) => globMatch("schemas/**", relPath),

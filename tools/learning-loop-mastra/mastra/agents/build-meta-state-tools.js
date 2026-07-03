@@ -9,7 +9,7 @@
  *   runtime_state_read, check_runtime_agnostic.
  *
  * Write tools (8): meta_state_report, meta_state_ack, meta_state_log_change,
- *   meta_state_propose_design, meta_state_refresh_fingerprint, meta_state_resolve,
+ *   meta_state_propose_design, meta_state_refresh_file_index, meta_state_resolve,
  *   meta_state_promote_rule, meta_state_check_grounding.
  *
  * Excluded from all agents: meta_state_batch, meta_state_archive,
@@ -70,7 +70,7 @@ const WRITE_NAMES = [
   "mastra_meta_state_ack",
   "mastra_meta_state_log_change",
   "mastra_meta_state_propose_design",
-  "mastra_meta_state_refresh_fingerprint",
+  "mastra_meta_state_refresh_file_index",
   "mastra_meta_state_resolve",
   "mastra_meta_state_promote_rule",
   "mastra_meta_state_check_grounding",

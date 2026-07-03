@@ -58,6 +58,14 @@ test("meta-state.jsonl blocks", () => {
   assert.strictEqual(result.matched_rule, "meta-state.jsonl");
 });
 
+test("file-index.jsonl blocks (path-keyed fingerprint sidecar; F4)", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({ filePath: "file-index.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.ok(result.reason.includes("file-index.jsonl"));
+  assert.strictEqual(result.matched_rule, "file-index.jsonl");
+});
+
 test("schemas/** blocks", () => {
   const root = makeRoot();
   const result = evaluateWriteGate({ filePath: "schemas/meta-state-entry.json", root });

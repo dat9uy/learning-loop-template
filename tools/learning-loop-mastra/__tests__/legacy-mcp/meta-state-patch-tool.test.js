@@ -237,3 +237,38 @@ test("meta_state_patch deny-list rejects identity/audit-trail field mutations", 
     teardown();
   }
 });
+
+// CV-B: code_fingerprint is a deprecated back-door write to the per-record
+// baseline. It must be blocked (no-op) with a deprecation note pointing at the
+// authoritative refresh path (meta_state_refresh_file_index).
+test("meta_state_patch blocks code_fingerprint with a deprecation note pointing at refresh_file_index (CV-B)", async () => {
+  const root = setup();
+  try {
+    const reportResult = await reportCall({
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for code_fingerprint patch block (min 20 chars)",
+    });
+    const id = reportResult.id;
+
+    const result = await patchCall({
+      id,
+      entry_kind: "finding",
+      code_fingerprint: "sha256:" + "a".repeat(64),
+    });
+
+    assert.equal(result.patched, false, "code_fingerprint patch must be a no-op");
+    assert.equal(result.reason, "immutable_field");
+    assert.ok(result.denied_fields.includes("code_fingerprint"));
+    assert.ok(
+      typeof result.deprecation_note === "string" && result.deprecation_note.includes("meta_state_refresh_file_index"),
+      "denial must point the caller at meta_state_refresh_file_index",
+    );
+    // The registry entry must be unchanged (no code_fingerprint written).
+    const entry = readRegistry(root).find((e) => e.id === id);
+    assert.equal(entry.code_fingerprint, undefined);
+  } finally {
+    teardown();
+  }
+});

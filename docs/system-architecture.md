@@ -399,7 +399,7 @@ The meta-state machinery is decomposed into 4 sub-projects, each adding tools to
 |---|---|---|---|
 | **SP0 (Self-Modification Affordance)** | SHIPPED (475 tests) | `meta_state_log_change`, `meta_state_sweep` | Agent logs its own system changes as first-class change-log entries |
 | **SP1 (Derivation Query)** | SHIPPED (511 tests) | `meta_state_derive_status` | Pure-function verifier: "is this finding's mechanism still live?" (file exists, hash matches, tests pass) |
-| **SP2 (Grounding Check)** | SHIPPED (552 tests) | `meta_state_check_grounding`, `meta_state_refresh_fingerprint` | Pure-function grounding + explicit recovery: hash-mismatch detection + fingerprint refresh on legitimate code change |
+| **SP2 (Grounding Check)** | SHIPPED (552 tests) | `meta_state_check_grounding`, `meta_state_refresh_file_index` | Pure-function grounding + explicit recovery: hash-mismatch detection + path-keyed fingerprint index refresh (one call re-grounds all anchored findings) |
 | **SP2 gap closure** | SHIPPED (557 tests) | (no new tools) | `loop_describe` warm-tier surfacing + `agent-manifest.json` backfill |
 | **SP3 (Drift Query)** | SHIPPED (674 tests) | `meta_state_query_drift` | Read-only drift aggregation: joins SP1 + SP2 across the registry to surface entries where asserted status disagrees with derived/grounded state |
 | **Original 5 (260602-self-enforcing-loop)** | SHIPPED (407 tests) | `meta_state_report`, `meta_state_list`, `meta_state_ack`, `meta_state_resolve`, `meta_state_promote_rule` | Foundational CRUD + rule promotion |
@@ -434,7 +434,7 @@ flowchart TD
         direction LR
         T_SP0["<b>SP0</b> (Self-Modification)<br/>log_change, sweep"]:::sp0
         T_SP1["<b>SP1</b> (Derivation)<br/>derive_status"]:::sp1
-        T_SP2["<b>SP2</b> (Grounding)<br/>check_grounding,<br/>refresh_fingerprint"]:::sp2
+        T_SP2["<b>SP2</b> (Grounding)<br/>check_grounding,<br/>refresh_file_index"]:::sp2
         T_SP3["<b>SP3</b> (Drift)<br/>query_drift"]:::sp3
         T_SP0 --- T_SP1 --- T_SP2 --> T_SP3
     end

@@ -21,7 +21,7 @@ The 4-question framework for picking a tool:
 | Promote a finding from `reported` to `active` | `meta_state_ack` |
 | Close a finding (with `resolution` text) | `meta_state_resolve` |
 | Re-check if a finding is still true | `meta_state_derive_status` |
-| Re-hash a finding's evidence after a refactor | `meta_state_refresh_fingerprint` |
+| Re-hash a cited path's code after a refactor (re-grounds all anchored findings) | `meta_state_refresh_file_index` |
 | Query the registry (filterable) | `meta_state_list` |
 | Update an existing entry (with CAS) | `meta_state_patch` |
 | Promote a finding into a gate-enforced rule | `meta_state_promote_rule` |
