@@ -19,7 +19,7 @@ export const FINDING_FIXTURE = {
 export const LEGACY_FINDING_FIXTURE = {
   id: "meta-legacy-finding",
   entry_kind: "finding",
-  category: "stale-ref",
+  category: "gate-logic-bug",
   severity: "warning",
   affected_system: "meta",
   description: "Legacy finding without promoted_to_rule (dual-field test).",

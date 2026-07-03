@@ -58,9 +58,12 @@ const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) |
 
 // Source-of-truth categories for finding entries. Export so introspection
 // layers (e.g. core/loop-introspect.js) can derive from the same source.
+// `stale-ref` was removed in plan 260704-0301-stale-findings-dispatch-handle
+// (Rec 8 collapse): stale findings are no longer recorded as a category — the
+// information is surfaced as a derived view via `meta_state_relationships`.
 export const META_STATE_FINDING_CATEGORIES = [
   "gate-logic-bug", "record-repair-gap", "schema-drift",
-  "stale-ref", "mcp-tool-missing", "budget-check",
+  "mcp-tool-missing", "budget-check",
   "loop-anti-pattern",
 ];
 
@@ -74,7 +77,7 @@ export const metaStateFindingEntrySchema = z.object({
   created_at: z.string().optional().describe("ISO timestamp"),
   category: z.enum([
     "gate-logic-bug", "record-repair-gap", "schema-drift",
-    "stale-ref", "mcp-tool-missing", "budget-check",
+    "mcp-tool-missing", "budget-check",
     "loop-anti-pattern",
   ]).describe("Category of the finding"),
   severity: z.enum(["warning", "escalate"]).describe("Severity level"),
