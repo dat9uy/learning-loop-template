@@ -22,6 +22,12 @@ Define the explicit close flow for a dispatched finding (refresh file index → 
 
 **Rec 10 surfacing.** `session-start-inject-discoverability.cjs` is the read-only hook (writes only `.claude/session-context.json`; imports `core/loop-introspect.js` `buildDiscoverabilityHints`/`buildProcessHints` at L17, calls them at L26-27, writes at L34-37). Add a new `buildStaleDispatchHints(root)` builder in `core/loop-introspect.js` (which already reads the registry via `readRegistry` at L188+), call it from the hook alongside the existing builders, and include its output in `session-context.json`. Do NOT fold this into `recurrence-check-on-start.js` (it writes findings via `recurrence-tracker` — not read-only).
 
+**INC-10 — Orphan surfacing:** the `buildStaleDispatchHints` builder outputs two lists:
+- `fixable_candidates` — findings matching the ranking predicate below (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal; top-5).
+- `orphan_findings` — findings with `status: "reported" | "active"` AND a `dispatch-<id>` ledger row exists in `runtime-state.jsonl` BUT the finding's `ledger_ref` is NOT set (or doesn't match the row's id). These are orphans from a failed `updateEntry` retry — surface them with a clear "re-invoke `meta_state_dispatch_finding` to heal" prompt. Top-N = 5.
+
+Both lists are surfaced in the same `session-context.json` block; the dispatch protocol prompt explains both flows.
+
 **Ranking predicate (validation P3-W4).** "Fixability" is defined concretely: a stale finding is **fixable** iff it has a non-empty `evidence_code_ref` (localized to an editable file under the repo root) AND `severity !== "escalate"` AND no `ledger_ref` set (not already dispatched). Rank fixable candidates by `severity` (warning before escalate — but escalate is filtered out, so this is a tiebreaker), then `age` (older first), then `category` (a stable tiebreaker). **Top-N = 5** (validation P3-W3).
 
 **Dispatch protocol prompt.** The Rec 10 hint includes the protocol the agent follows (Phase 2): "agent calls `meta_state_dispatch_finding({id, stage:"prepare"})` → runs `gh issue create --repo <private-coordination-repo>` [check exit code] → calls `meta_state_dispatch_finding({id, stage:"commit", issue_number, issue_url, repo})`. Agent proposes; **operator dispatches** (commit is operator-gated). Dispatch to a **private coordination repo** — do not default to the public template repo."
@@ -39,7 +45,7 @@ Define the explicit close flow for a dispatched finding (refresh file index → 
 3. **Test first (red):** four TTL cases —
    (a) dispatched `reported` finding → TTL fires → `stale` → `ledger_ref` + ledger event survive (not cleared by `checkExpiry`).
    (b) dispatched finding ages to `stale` → `re_verify` recovers → `ledger_ref` persists stale→active.
-   (c) **forward-looking contract** (red-team M3): a finding with `ledger_ref` set AND a modified `evidence_code_ref` file is NOT transitioned to `auto-resolved` by `meta_state_sweep({apply:true})`. Today this is vacuously true (no auto-resolve branch), but the test sets up the modified-file condition so a future re-addition of the path WITHOUT the `ledger_ref`-skip would fail.
+   (c) **regression-pin (renamed from "forward-looking contract", P3 F12):** a finding with `ledger_ref` set AND a modified `evidence_code_ref` file is NOT transitioned to `auto-resolved` by `meta_state_sweep({apply:true})`. Today this is vacuously true (no auto-resolve branch in `meta-state-sweep-tool.js:73-76`'s `if (!isStaleTransition)` block is dead code), but the test sets up the modified-file condition so a future re-addition of the path WITHOUT the `ledger_ref`-skip would fail. **Renamed** "regression-pin" to match its actual scope: pins future behavior; does NOT verify current behavior (which is vacuously true). Optional hardening (F12 mitigation B): stub the sweep tool with a synthetic `auto-resolved` write during the test to assert the gate catches it; skipped in v1 because the dead-code path makes a stub-by-mock-test the more invasive change.
    (d) `ledger_ref` not duplicated/orphaned by a sweep between dispatch and resolve (trivially true in v1 — sweep skips `stale` entries — but pins the invariant).
    Run; fails.
 4. **Make TTL tests green** by ensuring `checkExpiry`/`checkStaleness` and `re_verify` carry `ledger_ref` through transitions (it is a patchable field preserved by `updateEntry`; verify no transition strips it). Test (c) carries a comment: this is a forward-looking contract; if the file-modification auto-resolve path is re-added in the lifecycle-redesign plan, it MUST skip `ledger_ref`-set entries or this test fails.
@@ -50,7 +56,7 @@ Define the explicit close flow for a dispatched finding (refresh file index → 
 
 ## Success Criteria
 - [ ] Close-flow test green: `refresh_file_index` → `log_change` → `resolve` closes a dispatched finding; without `refresh_file_index`, `resolve` is blocked by `fingerprint_mismatch`.
-- [ ] Four TTL tests green: `ledger_ref` + ledger event survive reported→stale; `re_verify` carries `ledger_ref` stale→active; **a `ledger_ref`-set finding with a modified `evidence_code_ref` is NOT auto-resolved** (forward-looking contract); sweep between dispatch and resolve neither orphans nor duplicates `ledger_ref`.
+- [ ] Four TTL tests green: `ledger_ref` + ledger event survive reported→stale; `re_verify` carries `ledger_ref` stale→active; **a `ledger_ref`-set finding with a modified `evidence_code_ref` is NOT auto-resolved** (regression-pin, P3 F12); sweep between dispatch and resolve neither orphans nor duplicates `ledger_ref`.
 - [ ] Rec 10: `buildStaleDispatchHints` returns the top-5 fixable stale findings (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal, non-`stale-ref`-category), ranked by age.
 - [ ] Rec 10 hook writes only `.claude/session-context.json` (read-only — no `meta-state.jsonl` write).
 - [ ] Rec 10 prompt includes the dispatch protocol (prepare → `gh issue create --repo <private-coord-repo>` [check exit code] → commit) and the authority boundary ("agent proposes; operator dispatches; private coordination repo").
@@ -60,6 +66,6 @@ Define the explicit close flow for a dispatched finding (refresh file index → 
 ## Risk Assessment
 - **Medium — reported→stale TTL is live in v1** (deferred surgeries don't ship this plan); dispatch/TTL interaction untested. Mitigation: the four TTL tests pin the behavior; `ledger_ref` is a patchable field preserved by `updateEntry` (verified).
 - **Medium — Rec 10 surface vs dispatch authority.** Mitigation: surfacing is ungated (read-only); commit-dispatch is tool-gated (operator, Phase 2). The prompt states the boundary explicitly.
-- **Low — sweep auto-resolve path absent in v1** (scout correction). TTL test (c) is a forward-looking contract (sets up the modified-file condition so a future re-addition without the `ledger_ref`-skip fails), not a vacuous pin (red-team M3).
+- **Low — sweep auto-resolve path absent in v1** (scout correction). TTL test (c) is a **regression-pin** (renamed from "forward-looking contract", P3 F12): sets up the modified-file condition so a future re-addition without the `ledger_ref`-skip fails. Today it is vacuously true (no auto-resolve branch); in v1 it pins future behavior, does not verify current behavior.
 - **Low — close flow blocks on `fingerprint_mismatch` without refresh.** Mitigation: the close flow orders `refresh_file_index` before `resolve` (test gates this).
 - **Low — fixability undefined.** Mitigation: defined concretely (non-empty `evidence_code_ref` + `severity !== "escalate"` + no `ledger_ref`); top-N = 5 (validation P3-W3/W4).

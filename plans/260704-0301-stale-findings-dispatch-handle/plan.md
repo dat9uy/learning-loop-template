@@ -12,6 +12,101 @@ createdBy: "ck:plan"
 source: skill
 ---
 
+## Validation Log
+
+### Session 1 — 2026-07-04
+**Trigger:** `/ck:plan validate` after red-team edits applied. User flagged that `LOOP_DISPATCH_REPO` env var contradicts the two-surfaces split ("the only repo is this repo?"). Scout follow-up found 11 inconsistencies (1 HIGH, 3 MEDIUM, 7 LOW).
+**Questions asked:** 4 (plus 1 follow-up clarification on Q3).
+
+#### Questions & Answers
+
+1. **[Architecture — manifest scope]** Phase 2 creates `meta_state_dispatch_finding` and updates `tools/manifest.json`, but `agent-manifest.json:19` lists agent-available tools and is NOT mentioned in the plan.
+   - Options: Add to Phase 2 (Recommended) | Skip — defer to lifecycle-redesign | Document gap, leave to operator
+   - **Answer:** Add to Phase 2 (Recommended)
+   - **Rationale:** Without updating `agent-manifest.json`, the agent does not discover `meta_state_dispatch_finding` via the manifest surface. 1-line edit, low risk.
+
+2. **[Risk — migration lock]** Phase 1's migration uses 30× serial `meta_state_supersede` calls. Should the plan add a single-flight guard?
+   - Options: Keep current CAS-only (Recommended) | Add advisory lock file | Add hard lock + abort-on-conflict
+   - **Answer:** Keep current CAS-only (Recommended)
+   - **Rationale:** Registry is single-writer per the parallelism model; concurrent operator writes are an unsupported pattern. CAS via `_expected_version` is sufficient; advisory locks add complexity without addressing a real risk.
+
+3. **[Architecture — coord_repo simplification]** Phase 2's `LOOP_DISPATCH_REPO` env var. User pushed back: "why the env var in there? Isn't we agree that the core MCP don't call github? And the only repo is this repo?"
+   - **Answer (custom):** Drop the env var entirely; simplify Phase 2 to remove `LOOP_DISPATCH_REPO`, `LOOP_DISPATCH_ALLOWED_REPOS`, `LOOP_DISPATCH_REQUIRE_PRIVATE`, `LOOP_DISPATCH_FORCE_PUBLIC`, and `default_coord_repo` field. The agent runs `gh issue create` without `--repo` (defaults to current git remote = THIS repo). Disclosure mitigation is procedural (per Rec 10 surfacing prompt), not tool-level — confirming INC-1 from the consistency scout.
+   - **Rationale:** P2 F8 was added in red-team as a mitigation, but the brainstorm's Addendum 3 (`brainstorm-260704-...md:63,190`) explicitly rejected tool-level gates: "the disclosure mitigation is procedural (private coord repo + operator-edited description), not tool-level." Plan was internally inconsistent.
+
+4. **[Architecture — L1/L2 split]** Phase 4's split between L1 role statement (no mechanisms) and L2 mechanism mapping.
+   - Options: Honor the strict split (Recommended) | L1 stays inline + L2 mechanism table | Revert F11
+   - **Answer:** Honor the strict split (Recommended)
+   - **Rationale:** Update existing L1 inline references (e.g., `meta_state_log_change` → `change-log` role name) to maintain consistency. Adds minor cleanup to Phase 4 step 2.
+
+#### Confirmed Decisions
+- **agent-manifest.json update in Phase 2 (Q1)** — added as Phase 2 step.
+- **No single-flight guard (Q2)** — CAS-only migration per plan.
+- **Drop `LOOP_DISPATCH_REPO` + related env vars (Q3 + INC-1)** — Phase 2 simplified; procedural disclosure only.
+- **Honor L1/L2 strict split (Q4 + F11)** — Phase 4 step 2 also updates existing inline tool references to role names.
+
+#### Action Items
+- [ ] Phase 1: add `tools/learning-loop-mastra/__tests__/legacy-mcp/fix-loop-design-refs.test.js` to step 0 scope (INC-4: also mutates live registry)
+- [ ] Phase 1: add `meta-state-sweep-tool.js:24-25` comment update to step 2 (INC-5: dead-code reference)
+- [ ] Phase 2: add `agent-manifest.json` update (Q1)
+- [ ] Phase 2: drop `LOOP_DISPATCH_REPO` / allowlist / content-gate / bypass (Q3 + INC-1)
+- [ ] Phase 2: resolve INC-2 schema drift (moot after INC-1 fix — `repo` becomes commit-only as originally stated)
+- [ ] Phase 2: document orphan self-heal trigger explicitly (INC-10)
+- [ ] Phase 4: fix step-numbering references (INC-3 + INC-9) — use actual step numbers 1-10
+- [ ] Phase 4: use full path `tools/learning-loop-mastra/docs/schemas.md:35` consistently (INC-6)
+- [ ] Phase 4: clarify Status line reference (INC-7) — specify "main-body Status line (L100)" or "Addendum 2's Status line (L186)"
+- [ ] Phase 4: rephrase cap-test headroom wording (INC-8)
+
+#### Impact on Phases
+- **Phase 1:** +1 test isolation (fix-loop-design-refs), +1 dead-code comment update, path consistency
+- **Phase 2:** +1 manifest update, -4 env vars (P2 F8 reversal), schema drift auto-resolved, +1 orphan-self-heal note
+- **Phase 3:** no change
+- **Phase 4:** step numbering fixes, path consistency, status line clarification, wording fixes
+
+### Verification Results
+- **Tier:** Standard (4 phases, Fact Checker + Contract Verifier, 10 claims/phase)
+- **Claims checked:** 7 (focused on load-bearing claims)
+- **Verified:** 7 | **Failed:** 0 | **Unverified:** 0
+- **Tier-specific notes:**
+  - B1 (live-registry test): VERIFIED — `meta-state-sweep-summary.test.js:9,18` confirmed
+  - F1 (4th schema site): VERIFIED — `schemas/meta-state.schema.json:21` confirmed
+  - F3 (additional test pins at L257, L317): VERIFIED
+  - F6 (preflight vs OPERATOR_MODE): VERIFIED — `runtime-state-record-tool.js:23-29, 50-57` confirmed
+  - F9 (24h TTL window): VERIFIED — all 14 reported entries expire within 24h
+  - Phase 4 lifecycle.md grep clean: VERIFIED
+  - Phase 4 loop-engine.md L5 implementation-agnostic: VERIFIED
+- **Contract Verifier gap:** `agent-manifest.json:19` not in plan — surfaced as Q1 (now resolved).
+
+### Whole-Plan Consistency Sweep
+- Files reread: plan.md, phase-01-..., phase-02-..., phase-03-..., phase-04-...
+- Decision deltas checked: 11 inconsistencies (1 HIGH + 3 MEDIUM + 7 LOW)
+- Reconciled stale references: 11 (ALL inconsistencies resolved in this session)
+- **Unresolved contradictions:** 0
+
+#### Inconsistencies surfaced by scout (Session 1) — RESOLVED
+- **INC-1 (HIGH):** `LOOP_DISPATCH_REPO` env var contradicts two-surfaces split; brainstorm Addendum 3 already rejected tool-level gates → **RESOLVED** by Q3 answer (drop env vars + allowlist + content-gate + bypass). Phase 2 simplified to procedural disclosure only.
+- **INC-2 (MEDIUM):** Schema says `repo` is "commit-only" but content-gate test fires on prepare → **RESOLVED** by INC-1 fix (no prepare-side gate; schema is now consistent).
+- **INC-3 (MEDIUM):** Phase 4 step-numbering drift — references to non-existent steps 11/12; labels for steps 7 (cross-check) and 9 (closeout) swapped → **RESOLVED** (step references corrected to actual 1-10 numbering).
+- **INC-4 (MEDIUM):** `fix-loop-design-refs.test.js` also mutates live registry → **RESOLVED** (added to Phase 1 step 0 scope; both tests now use tempDir).
+- **INC-5 (LOW):** Dead-code comment at `meta-state-sweep-tool.js:24-25` not updated alongside L40 description → **RESOLVED** (step 2 now updates both).
+- **INC-6 (LOW):** `docs/schemas.md:35` vs `tools/learning-loop-mastra/docs/schemas.md:35` path drift → **RESOLVED** (consistent full-path usage in Phase 4 success criteria + step 4-5).
+- **INC-7 (LOW):** "the addendum's Status line" ambiguous (L100 main-body vs L186 Addendum 2) → **RESOLVED** (specified "main-body Status line at L100" explicitly in step 9).
+- **INC-8 (LOW):** "threshold of 10 has zero headroom" wording drift → **RESOLVED** (rephrased to "post-migration count of 10 has zero headroom against the original threshold of 3").
+- **INC-9 (LOW):** Step 7/9 label swap (subset of INC-3) → **RESOLVED** (cross-check confirmed at step 7; closeout at step 9).
+- **INC-10 (LOW):** Orphan self-heal requires re-invocation; no proactive scan → **RESOLVED** (Phase 3 `buildStaleDispatchHints` builder outputs both `fixable_candidates` AND `orphan_findings`; surfacing prompt explains operator action).
+
+#### NONE-FOUND checks (consistency confirmed)
+- Lifecycle status set treated consistently as live-but-deprecated.
+- Citation asymmetry (`local:meta-state:<id>` vs issue URL) consistently framed.
+- Frontmatter dependencies consistent (Phase 1: [], Phase 2: [1], Phase 3: [1,2], Phase 4: [1,2,3]).
+- Rec 8/9/10/11/12 + Q11 numbering consistent with source report.
+- Single-writer model consistently stated.
+- `dispatch` exit placement consistent (non-terminal routing action; L1 role, L2 mechanism).
+
+#### Validation Outcome
+**Recommendation: PROCEED to `/ck:cook` or implementation.** Zero unresolved contradictions. All 11 inconsistencies resolved. The plan now has internal consistency between its stated principle (two-surfaces split, registry single-writer, L1 role-only) and its proposed changes (no tool-level gates, B1 + INC-4 test isolation fixes, L1/L2 mechanism split).
+
+
 # Stale-Findings Triage + GitHub-Issue Dispatch (Dispatch-Handle Model)
 
 ## Overview
@@ -40,9 +135,10 @@ Two halves of one move:
 ## Dependencies
 
 - **No cross-plan blockers.** `260614-1856-GH-1259-fix-stale-records-references` (different "stale" — observation paths, not findings) and `260626-1535-phase-e-stale-sweep-fix` (shipped 2026-06-26; predecessor context on the same `checkStaleness`/sweep machinery) neither block nor are blocked by this plan.
-- **Phase 1 → Phase 2:** dispatch launches on a clean queue. Phase 1's first step is the sweep producer fix — without it, removing the enum breaks sweep at runtime (schema validation failure).
+- **P0 B1 precondition (precedes Phase 1):** `tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js` must switch from live `GATE_ROOT` to `mkdtempSync` isolation BEFORE Phase 1 step 1. Without this, every `pnpm test` run (the pre-commit hook) mutates the live `meta-state.jsonl` — this is the user-reported "pre-commit auto-updates reported to stale" confusion mechanism. This is Phase 1 step 0.
+- **Phase 1 → Phase 2:** dispatch launches on a clean queue. Phase 1's step 2 is the sweep producer fix — without it, removing the enum breaks sweep at runtime (schema validation failure).
 - **Phase 1 migration is single-worktree serial** (the `consolidates` field is a cross-entry dependency). Run the 30× `meta_state_supersede` migration in the main worktree before dispatch begins (non-atomic; `meta_state_batch` cannot set `consolidated_into` — see Phase 1).
-- **Phase 4 → [1, 2, 3]:** Phase 4 is the closure phase — L1 docs (needs Phase 2's `dispatch` tool) + source-report closeout (marks Rec 10 `[DONE]`, needs Phase 3). Ships last.
+- **Phase 4 → [1, 2, 3]:** Phase 4 is the closure phase — L1 docs (needs Phase 2's `dispatch` tool) + source-report closeout (marks Rec 10 `[DONE]`, needs Phase 3). Ships last. Internal execution order (P2 F5): doc edits (steps 1-4, 8, 11) → cross-check (step 9, needs Phase 2) → closeout (steps 5-7, 10, 12, needs Phases 1, 2, 3).
 - **Lifecycle-redesign plan (separate, later):** drop `auto-resolved`; drop `ack`/`active` (collapse to one `open` state); re-architect `OPERATOR_MODE` → delegated scoped authority; the general change-log trigger rule (addendum 2 Rec 12). Dispatch is built compatible (explicit `resolve`, no `ack`, `delegated_to` recorded in the ledger).
 
 ## Scope boundary
@@ -63,6 +159,12 @@ The "parallel worktrees" goal is sound **only if the parallelism unit is the cod
 
 **Git-hook constraint:** `package.json:40-42` sets `simple-git-hooks` `pre-commit: "pnpm test && pnpm fallow:gate"`. The test suite includes the grounding + cap invariants that read `meta-state.jsonl` + `file-index.jsonl`. A feature worktree that edits code must refresh `file-index.jsonl` (and patch `meta-state.jsonl` if drift findings appear) before `pnpm test` passes — the hook forces those writes at commit time. So a "code-only" worktree still writes the index/registry at commit.
 
+**P0 B1 (precommit auto-update of reported→stale, the user's reported confusion):** **TWO tests** mutate the live registry on every `pnpm test` run (the pre-commit hook):
+- `tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js:9,18` calls `metaStateSweepTool.handler({apply:true})` against the LIVE registry (no `GATE_ROOT` override; sets `OPERATOR_MODE="1"` to bypass the operator gate). Auto-transitions past-TTL `reported` entries → `stale` on the live `meta-state.jsonl`. This is the user-reported "pre-commit auto-updates reported to stale which confused the agent" symptom.
+- `tools/learning-loop-mastra/__tests__/legacy-mcp/fix-loop-design-refs.test.js:8,23,51` (INC-4) — runs `tools/scripts/fix-loop-design-refs.mjs` against `resolveRoot()` with no `GATE_ROOT` override; mutates the live registry via `updateEntry` (change-log entries persist across pre-commits).
+
+Phase 1 step 0 switches BOTH tests to `mkdtempSync` isolation (template: `meta-state-sweep.test.js:11-46`), eliminating live-registry mutation from pre-commit.
+
 **Rules:**
 1. **Worktrees edit code; the registry is single-writer.** Feature worktrees touch `tools/**` / `core/**` / `product/**` source only. The hook-forced index/registry refresh in the worktree is local-validation-only and **must be `git restore`d before commit** (red-team M2): `git restore --staged meta-state.jsonl file-index.jsonl runtime-state.jsonl && git checkout -- meta-state.jsonl file-index.jsonl runtime-state.jsonl`. `meta-state.jsonl` + `file-index.jsonl` + `runtime-state.jsonl` are git-tracked; a worktree's hook-forced write committed and merged would be an authority-state write originating in a feature worktree — violating this rule. (No pre-commit guard rejects this today; the `git restore` is a documented manual step until a guard is added in a separate hardening plan.)
 2. **Registry authority writes (`dispatch` commit, `resolve`, `meta_state_log_change`) happen in the main worktree**, single-writer, against the merged tree.
@@ -80,21 +182,25 @@ The `ack`/`active`/`auto-resolved` surgeries are deferred, so the reported→sta
 
 ## Acceptance criteria
 
-- **Rec 8:** `stale-ref` absent from all three category-enum sites (`core/meta-state.js:63`, `:77`, `docs/schemas.md:35`); sweep no longer emits stale-ref follow-ups (regression test green); **all 30 stale-ref entries (16 stale + 14 reported) migrated to `superseded`** under one change-log; `meta_state_list({status:"stale"})` total ≈ 12 (the 14 reported no longer age to stale); **cap-test count drops 11→10** (29/30 stale-refs are `mc=false` by design; only 1 `mc=true` counts); cap test passes at the re-tightened threshold **12** (10 + 2 headroom); the derived view (`meta_state_relationships`) surfaces the same information including the "superseded target" arm.
-- **Dispatch:** the core tool does **not** spawn `gh` (two-surfaces: the agent runs `gh`). `prepare({id})` returns the issue body with `local:meta-state:<id>`; `commit({id, issue_number, issue_url, repo})` writes the `dispatch-<id>` ledger event + patches `ledger_ref`; `gh issue view <n> --json` confirms the issue exists in the **coord repo** and its body cites `local:meta-state:<id>`; re-dispatch (prepare or commit) is refused via a ledger scan and returns the existing coords; concurrent-race produces ONE ledger row + ONE `ledger_ref`.
+- **P0 B1 (precondition):** `tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js` switched from live `GATE_ROOT` to `mkdtempSync` isolation. Verified by reading `meta-state.jsonl` before/after a `pnpm test` run (entry count + `updated_at` unchanged). **This is the root cause of the user-reported "pre-commit auto-updates reported to stale" confusion; without this fix, the plan does not actually solve the user's complaint.**
+- **Rec 8:** `stale-ref` absent from **all four** category-enum sites (`core/meta-state.js:63`, `:77`, `docs/schemas.md:35`, `schemas/meta-state.schema.json:21`); sweep no longer emits stale-ref follow-ups (regression test green); **all 30 stale-ref entries (16 stale + 14 reported) migrated to `superseded`** under one change-log; `meta_state_list({status:"stale"})` total ≈ 12 (the 14 reported no longer age to stale); **cap-test count drops 11→10** (29/30 stale-refs are `mc=false` by design; only 1 `mc=true` counts); cap test passes at the re-tightened threshold **12** (10 + 2 headroom); the derived view (`meta_state_relationships`) surfaces the same information including the "superseded target" arm. **Three test pins retargeted** (P1 F3): `meta-state-sweep-stale-transition.test.js:168` AND F3 case (L225-269) AND F4 case (L271-321).
+- **Dispatch:** the core tool does **not** spawn `gh` (two-surfaces: the agent runs `gh`). `prepare({id})` returns the issue body with `local:meta-state:<id>` AND advisory `coord_repo_hint` text (no env-var default — INC-1 reversal: P2 F8's `LOOP_DISPATCH_REPO` / `LOOP_DISPATCH_ALLOWED_REPOS` / `LOOP_DISPATCH_REQUIRE_PRIVATE` / `LOOP_DISPATCH_FORCE_PUBLIC` dropped; coord-repo policy is procedural per brainstorm Addendum 3); `commit({id, issue_number, issue_url, repo})` writes the `dispatch-<id>` ledger event + patches `ledger_ref`; `gh issue view <n> --json` confirms the issue exists in the **coord repo** (default: current git remote via `gh`'s implicit default; explicit `--repo` from operator) and its body cites `local:meta-state:<id>`; re-dispatch (prepare or commit) is refused via a ledger scan and returns the existing coords; **concurrent-dispatch test (renamed, P2 F7)** uses `Promise.all` to assert ONE ledger row + ONE `ledger_ref` under true concurrency; **orthogonal-gate tests (P2 F6)** assert preflight-vs-OPERATOR_MODE gate split; `agent-manifest.json:19` includes `mastra_meta_state_dispatch_finding` (Q1 fix) for agent discovery.
 - **Close:** a dispatched finding can be `resolve`d with a PR/issue ref + a change-log after a `meta_state_refresh_file_index` step; the change-log and the resolution note cross-reference.
 - **Parallelism / merge reconciliation:** after two feature-worktree fix PRs merge, `seed-file-index.mjs` produces a `file-index.jsonl` whose fingerprints match the merged tree; grounding reconciliation resolves merge-introduced drift; no `meta-state.jsonl` authority write originated in a feature worktree (worktree's hook-forced index/registry refresh is `git restore`d before commit — red-team M2).
-- **TTL:** the four test cases in phase-03 pass (including the forward-looking `ledger_ref`-set + modified-`evidence_code_ref` auto-resolve contract).
-- **Concept:** `docs/loop-engine.md` carries the "deferred decision" statement and the explicit-exits set including `dispatch` and `supersede` (Phase 4 ships after Phases 1-3 — it's the closure phase: L1 docs + source-report closeout).
-- **Report closeout:** `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md` marks Rec 8, Rec 10, Rec 11 as `[DONE]` (resolved by this plan's Phases 1 and 3); Rec 12 noted half-solved (scoped dispatch-close case shipped, general trigger rule deferred); Rec 9 left open (no consult-gate built); addendum `**Status**` line updated to "shipped → see `plans/260704-0301-stale-findings-dispatch-handle/`".
-- **Rec 10:** at SessionStart, the surface emits a bounded **top-5** of fixable stale dispatch candidates (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal) with the dispatch protocol prompt ("agent proposes; operator dispatches; private coordination repo"); a non-operator agent can surface + propose but cannot commit-dispatch (tool-gated).
+- **TTL:** the four test cases in phase-03 pass (including the **regression-pin** `ledger_ref`-set + modified-`evidence_code_ref` contract — P3 F12 renamed from "forward-looking").
+- **Concept:** `docs/loop-engine.md` carries the "deferred decision" statement and the explicit-exits set including `dispatch` and `supersede` — **role names only, no mechanism/tool names** (P3 F11); mechanism mapping goes in `docs/meta-state-lifecycle.md` (L2). Phase 4 ships after Phases 1-3 — it's the closure phase: L1 docs + source-report closeout.
+- **Report closeout:** `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md` marks Rec 8, Rec 10, Rec 11 as `[DONE]` (resolved by this plan's Phases 1 and 3); Rec 12 noted half-solved (scoped dispatch-close case shipped, general trigger rule deferred); Rec 9 left open (no consult-gate built); **Q11** (operator/agent symmetry in addendum 2) noted as a separate open question, not addressed by this plan; addendum `**Status**` line updated to "shipped → see `plans/260704-0301-stale-findings-dispatch-handle/`".
+- **Rec 10:** at SessionStart, the surface emits a bounded **top-5** of fixable stale dispatch candidates (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal) AND a list of orphan findings (INC-10) — total surface output is bounded but the two lists are distinguished. The dispatch protocol prompt instructs ("agent proposes; operator dispatches; private coordination repo; agent picks `--repo` explicitly or relies on `gh`'s default to current git remote"); a non-operator agent can surface + propose but cannot commit-dispatch (tool-gated, P2 F6).
 
 ## References
 
 - Brainstorm: `plans/reports/brainstorm-260704-stale-findings-github-dispatch-report.md`
 - Addendum (Recs 8/10/12, two-surfaces framing): `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md`
+- **Red-team review (resolves user-reported pre-commit concern):** `plans/reports/red-team-260704-stale-findings-dispatch-handle.md` — P0 B1 finding is the root cause fix.
 - Predecessor (sweep machinery context, shipped): `plans/260626-1535-phase-e-stale-sweep-fix/plan.md`
 - L1 doc: `docs/loop-engine.md` · Lifecycle doc: `docs/meta-state-lifecycle.md`
 - Core: `tools/learning-loop-mastra/core/meta-state.js`, `core/loop-introspect.js`, `core/gate-logic.js`
 - Sweep: `tools/learning-loop-mastra/tools/legacy/meta-state-sweep-tool.js`
+- Sweep test that mutates live registry (must be fixed in Phase 1 step 0): `tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js:9,18`
 - Cap test: `tools/learning-loop-mastra/__tests__/legacy-mcp/cold-tier-regression.test.js`
+- JSON Schema (4th site, P0 F1): `schemas/meta-state.schema.json:21`

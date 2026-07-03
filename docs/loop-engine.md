@@ -4,6 +4,25 @@
 
 The learning loop is an engine. Its memory is the record. Its telos is to grow the deterministic surface and shrink the agentic one. This document names the engine's invariant, its concept vocabulary, and the two surfaces that must never share vocabulary. It is implementation-agnostic: it names roles, not mechanisms. The mechanism that realizes each role today lives in `docs/architecture.md`; the contract a runtime must satisfy to participate lives in `docs/runtime-contract.md`.
 
+## A finding is a deferred decision, not a thing to be removed
+
+A finding is the loop's way of deferring a decision the engine cannot yet make. It is not "something bad to be cleaned up." Every finding has explicit exits, and the loop is wrong if it silently closes one. The exits, named in role form:
+
+- **promote** — the gap recurs; the loop lifts it to a rule (the deterministic surface grows). The role that runs the gate does not change; the rule itself replaces the finding as the source of authority.
+- **resolve** — the underlying issue is gone (fixed, no longer relevant, or no longer the loop's job). The finding is closed with a recorded reason.
+- **re-verify** — the underlying issue is still relevant, but the finding's grounding drifted; the loop re-checks the evidence and resumes the deferral (typically followed by promote, resolve, or a sustained deferral).
+- **supersede** — the finding consolidates into a change-log (a record of a system change has absorbed the gap). Lineage preserved via the change-log's consolidates record.
+- **dispatch** — the finding is routed to a parallel-fix work unit via an external issue-tracker substrate. The finding stays in its current state while work happens; it resolves when the fix ships. **Dispatch is a non-terminal routing action, not a terminal status.**
+
+No mechanism silently closes a finding. Every exit is an explicit decision recorded against the entry (the recorded reason, the consolidating change-log, etc.). "Stale" is a re-verifiability hint, not a close.
+
+## The invariant
+
+Every cognitive step the loop takes is either:
+
+- **deterministic** — rule-enforced, registry-driven, no judgment deferred to a model; or
+- **agentic** — deferred to a model or an operator+runtime session because it cannot yet be encoded.
+
 ## The invariant
 
 Every cognitive step the loop takes is either:
@@ -17,7 +36,7 @@ The loop's telos: **grow the deterministic surface; shrink the agentic surface.*
 
 "Learning" = the deterministic surface grows. Everything else (which primitive ran the step, whether the operator or an agent did it) is mechanism.
 
-**Status of the cycle (state this inline, not in a footnote):** the cycle is half-wired. The record step and the promotion step exist today. Recurrence detection over **gate decisions** is wired — when a rule recurs on the same command pattern within a window, a finding is emitted automatically. The unwired half is recurrence detection over **agentic-deferral change-logs**: which deferrals recur and are ready to promote is not yet detected mechanically, so promotion stays operator-triggered. A human decides when to promote. Closing the change-log half is the open design question at the end of this doc, not a solved part of the invariant.
+**Status of the cycle (state this inline, not in a footnote):** the cycle is half-wired. The record step and the promotion step exist today. Recurrence detection over **gate decisions** is wired — when a rule recurs on the same command pattern within a window, a finding is recorded automatically. The unwired half is recurrence detection over **agentic-deferral change-logs**: which deferrals recur and are ready to promote is not yet detected mechanically, so promotion stays operator-triggered. A human decides when to promote. Closing the change-log half is the open design question at the end of this doc, not a solved part of the invariant.
 
 ## Concept vocabulary
 
