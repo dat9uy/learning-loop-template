@@ -1,6 +1,8 @@
-# Runtime Onboarding
+<!-- level: L3 | surface: implementation -->
 
-How to add a new agent runtime that integrates with the learning loop. Read end-to-end before starting. Use the checklist at each step. The worked example at the end (Mastra Code) is the canonical reference.
+# Runtime Onboarding — MCP-Transport Onboarding (1 of N transports)
+
+How to add a new agent runtime that integrates with the learning loop on the MCP+hooks transport. The transport-agnostic participation contract lives at `docs/runtime-contract.md`; this guide is the MCP-transport onboarding path — one of N transports. Read end-to-end before starting. Use the checklist at each step. The worked example at the end (Mastra Code) is the canonical reference.
 
 ## When to onboard a new runtime
 
@@ -69,7 +71,25 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
    - `inbound-gate.js` (UserPromptSubmit, no matcher)
    - `recurrence-check-on-start.js` (SessionStart, no matcher)
 
-   Satisfies Req #5 (`settings-integration`) AND Req #6 (`hook-declarative-config`).
+   Full shape:
+   ```json
+   {
+     "PreToolUse": [
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", "matcher": { "tool_name": "execute_command" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "write_file" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "string_replace_lsp" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "delete_file" }, "timeout": 5000 }
+     ],
+     "UserPromptSubmit": [
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", "timeout": 5000 }
+     ],
+     "SessionStart": [
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", "timeout": 10000 }
+     ]
+   }
+   ```
+
+   Satisfies Req #5 (`settings-integration`) AND Req #6 (`hook-declarative-config`). Mastra Code uses declarative JSON hooks, NOT shim files — the biggest departure from Claude Code/Droid CLI (which use per-runtime shim files in `<surface>/coordination/hooks/`). Mastra Code's built-in tool names (discovered live via probe): `execute_command`, `write_file`, `string_replace_lsp`, `delete_file`, `view`, `find_files`.
 
 3. **Create `.mastracode/settings.json`** — minimal settings:
    ```json
@@ -92,19 +112,37 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
 
 7. **Run the validator.** `node tools/learning-loop-mastra/interface/contract.js mastra-code`. Expect `{ok: true, missing: [], notes: [...]}` (notes may include `identity-marker-not-adopted` if `MASTRA_RESOURCE_ID` is unset, and `skill-spec-no-tools-block` if the SKILL.md uses prose rather than a `tools:` block).
 
-8. **Smoke test.** `pnpm smoke:mastracode`. Exit 0; stdout JSON contains `mcp_tool_names[]` with all 44 MCP tools (namespaced as `learning-loop_mastra_<tool>`).
+8. **Smoke test.** `pnpm smoke:mastracode`. Exit 0; stdout JSON contains `ok: true`, `mcp_servers[0].connected === true` (learning-loop server, stdio transport), `mcp_tool_names.length === 44`, `roundtrip.ok === true` (`learning-loop_mastra_loop_describe` invoked successfully), and `wire_format_probe.exit_code === 0` (universal bash-gate parses the Mastra-Code-shaped payload).
+
+   **Tool namespacing** (MCP tools from the loop's server are auto-namespaced `<serverName>_<toolName>` by Mastra Code's McpManager, verified live at `mastracode@0.26.0`):
+
+   | Pattern | Example | Count |
+   |---|---|---|
+   | `learning-loop_mastra_<tool>` | `learning-loop_mastra_loop_describe` | 30 |
+   | `learning-loop_ask_<agent>` | `learning-loop_ask_intake_agent` | 3 |
+   | `learning-loop_run_workflow_<workflow>` | `learning-loop_run_workflow_intake_orient` | 11 |
+
+   **Total:** 44 tools exposed via MCP.
 
 ## Troubleshooting
 
-- **`hook-shim-set` failing.** Each shim must exist with the exact basename pattern. Check the trailing `-gate.cjs` / `-check.cjs` extension.
-- **`mcp-client-config` failing.** Your runtime's MCP config must have a `learning-loop` key under `mcpServers`. Some runtimes use `mcp_servers` (snake-case); the validator checks for `mcpServers` (camelCase).
-- **`skill-spec` failing.** The file must exist AND reference `loop_describe` AND `meta_state_list`. A blank SKILL.md fails — write the contract section from the template at `.factory/skills/learning-loop/SKILL.md`.
-- **`settings-integration` failing on bad JSON.** Run `node -e "JSON.parse(require('fs').readFileSync('<your-settings-file>'))"` to confirm. If it throws, fix the JSON.
+| Symptom | Cause | Fix |
+|---|---|---|
+| `hook-shim-set` failing | Shim missing or wrong basename | Each shim must exist with the exact `-gate.cjs` / `-check.cjs` basename in `<surface>/coordination/hooks/` |
+| `mcp-client-config` failing | `learning-loop` key missing under `mcpServers`, or wrong `args` path | Some runtimes use `mcp_servers` (snake-case); the validator checks `mcpServers` (camelCase). Ensure `args` ends with `tools/learning-loop-mastra/mastra/server.js` |
+| `hook-declarative-config` failing (Mastra Code) | `hooks.json` malformed or missing event entries | Validate JSON; ensure `PreToolUse`, `UserPromptSubmit`, `SessionStart` all present |
+| `settings-no-bypass` failing (Mastra Code) | `shellPassthrough: true` in `.mastracode/settings.json` | Set to `false` |
+| `skill-spec` failing | `SKILL.md` not found, or does not reference `loop_describe` AND `meta_state_list` | Copy `.factory/skills/learning-loop/SKILL.md` to `<surface>/skills/learning-loop/`; write the contract section, do not leave it blank |
+| `settings-integration` failing on bad JSON | Settings file does not parse | Run `node -e "JSON.parse(require('fs').readFileSync('<your-settings-file>'))"` to confirm; fix the JSON |
+| Tools not loading (Mastra Code) | MCP server not starting | Run `node tools/learning-loop-mastra/mastra/server.js` directly to check for errors |
+| LibSQL lock conflict (Mastra Code) | Both Mastra Code and loop write to same DB | Configure `.mastracode/database.json` with a sibling path |
+| `identity-marker-not-adopted` in notes | `MASTRA_RESOURCE_ID` / `RUNTIME_ID` not set | Advisory only; set via `.mastracode/database.json` or env var |
 
 ## Cross-references
 
-- `interface/CONTRACT.md` — the formal 5-requirement spec (authoritative).
+- `docs/runtime-contract.md` — the transport-agnostic runtime participation contract (the concept; this guide is its MCP-transport realization).
+- `interface/CONTRACT.md` — the MCP-transport conformance checklist (authoritative).
 - `interface/contract.js` — the validator (single source of truth for "is X met").
 - `AGENTS.md` §1.1 — the 3-layer architecture (where the runtime interface lives).
-- `AGENTS.md` §2 — hook matrix (the per-runtime implementation pattern).
+- `docs/architecture.md` gate-flow section — the per-runtime hook wiring pattern (gate-event flow).
 - `.claude/coordination/hooks/README.md` — the existing per-runtime docs pattern.

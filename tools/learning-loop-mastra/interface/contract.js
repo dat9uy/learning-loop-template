@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
  * tools/learning-loop-mastra/interface/contract.js
- * Runtime-interface contract validator. Verifies 7 requirements in CONTRACT.md
- * (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
- *  both additive Phase E Plan 4 for declarative-hook runtimes like Mastra Code).
+ * MCP-transport conformance validator (1 of N transports). The transport-agnostic
+ * runtime participation contract lives at docs/runtime-contract.md; this file
+ * validates the MCP+hooks transport's conformance to it. Verifies the requirements
+ * in CONTRACT.md (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
+ * both additive Phase E Plan 4 for declarative-hook runtimes like Mastra Code).
  *
  * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
  *      node tools/learning-loop-mastra/interface/contract.js --list
@@ -17,8 +19,8 @@ import { join, resolve } from "node:path";
 // mcp_config = path to MCP server config (relative to project root).
 // settings = path to settings file with hooks arrays (relative to surface).
 const RUNTIMES = {
-  "claude-code": { surface: ".claude",     mcp_config: ".mcp.json",            settings: "settings.json" },
-  "droid":       { surface: ".factory",    mcp_config: ".factory/mcp.json",    settings: "settings.json" },
+  "claude-code": { surface: ".claude",     mcp_config: ".mcp.json",            settings: "settings.json", transport: "mcp" },
+  "droid":       { surface: ".factory",    mcp_config: ".factory/mcp.json",    settings: "settings.json", transport: "mcp" },
   // Phase E Plan 4 — Mastra Code uses declarative config (.mastracode/*.json).
   // mcp_config: canonical Mastra-Code path (was incorrectly '.mastracode/config.json' pre-Plan-4).
   // declarative_hooks: path to .mastracode/hooks.json (Req #6).
@@ -26,6 +28,7 @@ const RUNTIMES = {
   // db_path: .mastracode/database.json (Req #4 alternative).
   "mastra-code": {
     surface: ".mastracode",
+    transport: "mcp",
     mcp_config: ".mastracode/mcp.json",
     settings: ".mastracode/hooks.json",
     settings_path: ".mastracode/settings.json",

@@ -21,7 +21,7 @@ The loop has one bound surface and one trajectory.
 | `rule` | A promoted invariant the loop enforces (`gate` or `agent` enforcement) | Forever (until superseded) |
 | `loop-design` | A deferred design that will create or modify rules, schemas, or tools | Active → inactive → archived |
 
-The 21+ `meta_state_*` MCP tools in `tools/learning-loop-mcp/tools/` are the only authoritative interface to the meta-surface. Direct writes to `meta-state.jsonl` are blocked by both write and bash gates.
+The 21+ `meta_state_*` MCP tools in `tools/learning-loop-mastra/tools/` are the only authoritative interface to the meta-surface. Direct writes to `meta-state.jsonl` are blocked by both write and bash gates.
 
 **The trajectory**: knowledge moves from human-readable docs into the loop, one mechanism at a time. Today's docs are tomorrow's tools. Today's escape hatches are tomorrow's MCP tools. The loop's destination is the limit of that gradient.
 
@@ -47,7 +47,7 @@ Commands that touch irreversible external systems (docker, sudo, package install
 1. **PreToolUse hooks** — universal bash-gate, write-gate, and inbound-state-gate that intercept tool calls for both Claude Code and Droid CLI
 2. **MCP server** (`tools/learning-loop-mastra/mastra/server.js`) — meta-surface tools, constraint checks (`gate_check`, `gate_mark_preflight`), and workflow tools
 
-The gate reads runtime state from `runtime-state.jsonl` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mcp/core/` — single source of truth.
+The gate reads runtime state from `runtime-state.jsonl` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mastra/core/` — single source of truth.
 
 ### The escape hatch rule
 
@@ -75,7 +75,7 @@ The loop does not internalize everything it touches. Three classes:
 |------|---------|
 | `meta-state.jsonl` | The loop's self-model. 4-kind discriminated union. |
 | `runtime-state.jsonl` | Mutable operator state: ledger events and budget states for external systems. |
-| `tools/learning-loop-mcp/` | MCP server, gate logic, validation, and workflow tools. Single source of truth for both Claude Code and Droid CLI. |
+| `tools/learning-loop-mastra/` | MCP server, gate logic, validation, and workflow tools. Single source of truth for all runtimes. |
 | `records/_unbound/` | Archived legacy product-surface content (observations, decisions, etc.), not a contract. |
 | `product/<stack>/` | Per-stack runtime probes. Phase A of the productization master tracker re-debates the product surface. |
 | `plans/<date>-<slug>/` | Active and historical plans. The pre-mortem channel. |
@@ -91,10 +91,11 @@ The loop does not internalize everything it touches. Three classes:
 | Understand why the loop exists | `docs/philosophy.md` |
 | Know where the loop is heading | `docs/trajectory.md` |
 | Get the agent coordination reference | `AGENTS.md` |
-| Learn the day-to-day mechanics | `docs/operator-guide.md` |
+| Understand the engine invariant and concept vocabulary | `docs/loop-engine.md` |
 | Understand the 4-kind union and status transitions | `docs/meta-state-lifecycle.md` |
-| See the constraint gate architecture | `docs/system-architecture.md` |
-| Understand observation vs. meta-state separation | `docs/observation-vs-meta-state.md` |
+| See the constraint gate architecture | `docs/architecture.md` |
+| See the runtime participation contract | `docs/runtime-contract.md` |
+| Understand observation vs. meta-state layer separation | `docs/meta-state-lifecycle.md` § Layer Separation |
 
 ---
 

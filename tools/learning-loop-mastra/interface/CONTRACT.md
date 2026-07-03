@@ -1,8 +1,19 @@
-# Runtime Interface Contract
+<!-- level: L2 | surface: implementation -->
 
-The 10 requirements that an agent runtime MUST satisfy to integrate with the learning loop. The validator (`contract.js`) enforces this contract.
+# Runtime Interface Contract — MCP-Transport Conformance
 
-## Requirements
+The transport-agnostic runtime participation contract lives at `docs/runtime-contract.md` (the concept: 4 capabilities a runtime must provide to participate, stated without reference to any transport). This file is the **MCP-transport conformance checklist**: the mechanism checks that prove a runtime wired on the MCP+hooks transport satisfies those 4 capabilities. The validator (`contract.js`) enforces this checklist.
+
+## The 4 runtime capabilities (concept)
+
+These are the transport-agnostic capabilities from `docs/runtime-contract.md`. The 10 mechanism checks below each derive from one of them.
+
+1. **Capability surface** — expose the loop's deterministic-steps and agentic-steps to its agent. *(MCP transport: the server registered in `mcpServers.learning-loop`; the SKILL.md that surfaces the tools. → Req #2, #3)*
+2. **Gate enforcement** — route lifecycle events (pre-tool, pre-write, pre-prompt, session-start) into the loop's gate evaluation. *(MCP transport: hook shims or declarative hooks delegating to the universal gate scripts. → Req #1, #5, #6, #7)*
+3. **Record routing** — the runtime never writes `records/**`, `meta-state.jsonl`, `runtime-state.jsonl` directly; writes go through the loop. *(MCP transport: the MCP server is the only write path; bypass fields that disable it are rejected. → Req #7, #11)*
+4. **Identity + discoverability** — the runtime identifies its surface at boot and surfaces loop-discoverability to its operator/agent. *(MCP transport: `RUNTIME_ID`/`MASTRA_RESOURCE_ID` env marker; `LOOP_SURFACE` env wiring; session-start recurrence hook. → Req #4, #9, #10)*
+
+## MCP-transport conformance checklist
 
 ### 1. `hook-shim-set`
 

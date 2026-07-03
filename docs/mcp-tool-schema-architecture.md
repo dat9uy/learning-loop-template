@@ -23,7 +23,7 @@ The MCP server exposes tools to clients via `tools/list`. Each tool's `inputSche
 
 ```
 ┌─────────────────────────────┐
-│ tools/learning-loop-mcp/    │  22 tool inputSchemas
+│ tools/learning-loop-mastra/ │  22 tool inputSchemas
 │ tools/*.js (per-tool file)  │  e.g. z.preprocess(stripEnvelope, z.array(...))
 └──────────────┬──────────────┘  .default([])
                │  re-exported via #mcp/* import map
@@ -385,8 +385,8 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 | `tools/learning-loop-mastra/__tests__/coerce-correctness.test.js:94-103` | `assertParityMatchesBaseline` — tests `z.toJSONSchema` directly, NOT the MCP path |
 | `tools/learning-loop-mastra/__tests__/with-mcp-server.js` | Helper for spawning the actual server via stdio |
 | `tools/learning-loop-mastra/__tests__/mcp-protocol-e2e.test.cjs` | Existing e2e pattern (could be extended for tools/list parity) |
-| `tools/learning-loop-mcp/core/envelope-stripper.js` | `stripEnvelope` — undefined-safe envelope stripper used in 17 inputSchemas |
-| `tools/learning-loop-mcp/core/strict-boolean-guard.js` | `strictBooleanGuard` — the 6-field boolean guard |
+| `tools/learning-loop-mastra/core/envelope-stripper.js` | `stripEnvelope` — undefined-safe envelope stripper used in 17 inputSchemas |
+| `tools/learning-loop-mastra/core/strict-boolean-guard.js` | `strictBooleanGuard` — the 6-field boolean guard |
 | `node_modules/zod/v4/core/to-json-schema.js:49` | The override check `const overrideSchema = schema._zod.toJSONSchema?.()` |
 | `node_modules/zod/v4/core/to-json-schema.js:442-448` | `createStandardJSONSchemaMethod` |
 | `node_modules/.pnpm/@mastra+mcp@1.10.0_*/node_modules/@mastra/mcp/dist/index.js:4403-4408` | `MCPServer.convertSchema` |

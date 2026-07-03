@@ -1,3 +1,5 @@
+<!-- level: L1 | surface: concept -->
+
 # Review in the Learning Loop
 
 The learning loop is adversarial by design. Claims are challenged by experiments. Experiments are challenged by cleanup rules. Decisions are challenged by superseding decisions. This document describes when and how to apply external review — the skeptical agent or operator who reads records they did not write.
