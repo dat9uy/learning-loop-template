@@ -1,25 +1,18 @@
 import { z } from "zod";
-import { readFileSync, existsSync, appendFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { createHash } from "node:crypto";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { SURFACES } from "../../core/surfaces.js";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { appendLedgerEvent } from "../../core/runtime-state.js";
 
-// SIDECAR_FILENAME + computeFingerprint are shared text with the sibling
-// runtime-state-read-tool.js (read-only tool). Extracting a shared helper is
-// out of scope for the surface-derivation change; the read tool's
-// computeFingerprint is currently dead code (separate cleanup).
-// fallow-ignore-next-line code-duplication
-const SIDECAR_FILENAME = "runtime-state.jsonl";
-
-function computeFingerprint(row) {
-  const data = `${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}`;
-  return "sha256:" + createHash("sha256").update(data).digest("hex");
-}
-
+// Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
+// which is OPERATOR_MODE-gated). P2 F6 — orthogonal-gate design: each public
+// tool has exactly ONE gate; the helper appendLedgerEvent enforces neither.
+// stay-at-the-tool-boundary invariant.
 function hasPreflightMarker(root) {
   return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-state")));
+    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-state"))
+  );
 }
 
 export const runtimeStateRecordTool = {
@@ -43,7 +36,6 @@ export const runtimeStateRecordTool = {
     metadata: z.record(z.unknown()).optional()
       .describe("Optional metadata object"),
   },
-  // fallow-ignore-next-line complexity
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();
 
@@ -69,16 +61,12 @@ export const runtimeStateRecordTool = {
       metadata: metadata ?? {},
     };
 
-    row.fingerprint = computeFingerprint(row);
-
-    const sidecarPath = join(root, SIDECAR_FILENAME);
-    const line = JSON.stringify(row) + "\n";
-    appendFileSync(sidecarPath, line, "utf8");
+    const written = appendLedgerEvent(root, row);
 
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ ok: true, id, fingerprint: row.fingerprint }),
+        text: JSON.stringify({ ok: true, id, fingerprint: written.fingerprint }),
       }],
     };
   },
