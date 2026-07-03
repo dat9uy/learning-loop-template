@@ -19,6 +19,8 @@ product/*/dist/
 .claude/coordination/.loop-preflight-*
 .factory/coordination/.last-operator-message
 .factory/coordination/.loop-preflight-*
+.mastracode/coordination/.last-operator-message
+.mastracode/coordination/.loop-preflight-*
 # Cold-session freshness sentinel (local state; re-created by pnpm test:cold-session)
 tools/learning-loop-mcp/__tests__/.cold-session-sentinel.json
 # Session-start injected discoverability hints + task-status cache (local runtime state)
