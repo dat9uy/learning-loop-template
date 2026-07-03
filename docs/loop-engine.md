@@ -17,7 +17,7 @@ The loop's telos: **grow the deterministic surface; shrink the agentic surface.*
 
 "Learning" = the deterministic surface grows. Everything else (which primitive ran the step, whether the operator or an agent did it) is mechanism.
 
-**Status of the cycle (state this inline, not in a footnote):** the cycle is half-wired. The record step and the promotion step exist today, but the **recurrence→promotion bridge is unwired** — promotion is operator-triggered, not recurrence-detected. An agentic deferral gets recorded; whether it recurses is not yet detected mechanically; a human decides when to promote. Closing that bridge is the open design question at the end of this doc, not a solved part of the invariant.
+**Status of the cycle (state this inline, not in a footnote):** the cycle is half-wired. The record step and the promotion step exist today. Recurrence detection over **gate decisions** is wired — when a rule recurs on the same command pattern within a window, a finding is emitted automatically. The unwired half is recurrence detection over **agentic-deferral change-logs**: which deferrals recur and are ready to promote is not yet detected mechanically, so promotion stays operator-triggered. A human decides when to promote. Closing the change-log half is the open design question at the end of this doc, not a solved part of the invariant.
 
 ## Concept vocabulary
 
@@ -76,5 +76,5 @@ These are the irreducible judgments that survive in the concept surface — the 
 
 These are named here so a reader knows the engine is unfinished. They are not solved in this doc.
 
-1. **The recurrence→promotion bridge is unwired.** The cycle's promotion step exists, but recurrence detection does not: promotion is operator-triggered today. Wiring a recurrence query ("find agentic-deferral patterns that recur and are ready to promote") is the missing half that would let the deterministic surface grow without a human in the loop on every promotion.
+1. **The change-log half of the recurrence→promotion bridge is unwired.** The bridge has two halves. The gate-decision half is wired: when a rule recurs on a command pattern within a window, a finding is emitted automatically. The change-log half is unwired: which agentic-deferral change-logs recur and are ready to promote is not detected mechanically, so promotion stays operator-triggered. Wiring a change-log recurrence query ("find agentic-deferral patterns that recur and are ready to promote") is the missing half that would let the deterministic surface grow without a human in the loop on every promotion.
 2. **Agentic/deterministic provenance is absent from the registry data model.** A record does not today declare whether the step that produced it was a deterministic-step or an agentic-step. Adding provenance would make the boundary queryable and the loss-function measurable, but it is a schema change and is deferred.

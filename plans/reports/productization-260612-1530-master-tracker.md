@@ -1,12 +1,12 @@
 # Productization Master Tracker — Meta-Surface Atomic Front (Bridge 5+6 + Mastra Migration)
 
-**Type:** tracker (canonical, in-flight)
+**Type:** tracker (lifecycle-complete — historical record)
 **Date:** 2026-06-12
 **Slug:** productization-master-tracker
-**Status:** active — canonical source for productization phase state
+**Status:** **closed 2026-07-04 — lifecycle complete.** Phases A–E shipped; Plan 5-Lite (R2 + LIM-4) shipped; the docs-rewrite two-surfaces plan shipped. **This tracker is no longer the canonical source for in-flight work.** Next steps — the recurrence→promotion bridge, the stale-findings triage workflow, the `legacy/` rename, the `workflow_intake_orient` re-point — are **not bounded by this tracker** and are tracked in their own plans. The body below is preserved as the historical record of the productization atomic front (Phases A–G). Do not add new phase state here.
 **Aligned to:** `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` §3.8 (operator-approved contract, 2026-06-12 reframe)
-**Last updated:** 2026-07-01 (Plan 5 reframed to Plan 5-Lite — R2 + LIM-4 only; LIM-3 Ed25519 caller identity dropped per threat-model review; PR #27 closed; new plan at `plans/260701-2250-plan-5-lite-r2-lim4/`; reframe report `plans/reports/from-ask-to-planner-reframe-260701-2250-GH-5-plan-5-lite-r2-lim4-report.md`)
-**Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension)
+**Last updated:** 2026-07-04 (lifecycle closed; Phase G demoted from keystone to one candidate mechanism per `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md`; the keystone for the stated ambition is the recurrence→promotion bridge, not Phase G)
+**Scope:** the meta-surface is the only bound surface; the product surface is unbound and re-debated from the meta-surface; the `ck:*` skill family is owned by the loop as MCP tools via Phase G (post-productization, parallel dimension — Phase G is now a candidate mechanism for internalizing agentic self-development, not a keystone)
 
 ---
 
@@ -15,11 +15,11 @@
 | State | Phases / Items |
 |-------|----------------|
 | **Done** | Phase A (A1–A5) — product-surface re-debate closed 2026-06-13. Phase B (B1–B6) — Bridge 5 codegen engine + LIM-2 fix + loop-design flip closed 2026-06-14. LIM-2 and LIM-7 resolved. Phase C (C1–C7) — Mastra Phase 0-1 (coexistence + deterministic tools + parity gate + cut-over + manifest update) closed 2026-06-17. Phase D (D1–D7) — Mastra Phase 2-3 (workflows + agents + storage + per-agent model config) closed 2026-06-23; Plan 4 (D9 cutover + manifest reconcile + JSON rename) closed 2026-06-24. Phase E Plan 1 (Foundation) — `core/legacy/` → `core/` rename + FCIS doc + schema doc + 3-layer AGENTS.md §1.1 + 7-fingerprint repoint closed 2026-06-25 (PR #15); deny-list bypass follow-up shipped same day (PR #16). Phase E Plan 2 (Interface spec) — 5-req contract + validator + onboarding guide closed 2026-06-25 (PR #17). Phase E Plan 4 (Mastra Code Validation) — MCP-only integration + `.mastracode/` config + 7-req contract (5 base + Req #6 hook-declarative-config + Req #7 settings-no-bypass) + 44 MCP tools round-trip verified closed 2026-06-30 (journal `docs/journals/260630-phase-e-plan-4-shipped.md`). Phase E Plan 6 (Shell restructure) — shell files moved to `mastra/` subdirectory closed 2026-06-26. Phase E closed. |
-| **Open** | Phase E — Plan 3 (Housekeeping: R2 ownership + parity-pin label + schema rot cleanup); Phase E closed (Plan 4 shipped 2026-06-30). Phase F — Bridge 7 (product-surface binding). Phase G — Skill Migration Track (`ck:*` → MCP tools). |
+| **Open (frozen at closure 2026-07-04)** | Phase E Plan 3 (Housekeeping) — leftover; Phase F (Bridge 7, product-surface binding) — parked behind the recurrence→promotion bridge; Phase G (Skill Migration Track, `ck:*` → MCP tools) — **demoted from keystone to one candidate mechanism**, not started, not gated by this tracker anymore. |
 | **Parked** | LIM-1 — full `core/schema-to-zod.js` codegen engine recreation (YAGNI for current meta-surface scope; behind Bridge 7). E7 — Mode 2 (same Mastra instance) decision. |
 | **Next-up / Hardening** | LIM-4 (path traversal, security priority — covered by Plan 5-Lite Phase 2), LIM-5 (test harness), LIM-6 (idempotency cache + silent gate-log), LIM-8 (3 workflow tool passthroughs). LIM-9 (`meta_state_batch` passthrough) RESOLVED 2026-06-26 by PR #16. **LIM-3 Ed25519 caller identity (PR #27's Phase 1) is dropped from Plan 5 — see reframe report 2026-07-01; deferred until MCP becomes network-accessible.** Tracker-row "LIM-3" (a distinct issue: `meta_state_resolve` / `meta_state_log_change` audit-trail identity) remains open as a separate hardening item. **Plan 5-Lite (R2 + LIM-4 only; ~3d; replaces the original Plan 5) is the parallel dimension.** |
 
-**Recommended next move:** Plan 5-Lite (R2 write-gate + LIM-4 path containment) — security-priority items now unblocked since Phase E closed 2026-06-30. Branch `hardening/plan-5-lite-r2-lim4` from `main`; ~3d effort. Phase F (Bridge 7) and Phase G (Skill Migration) are the next strategic phases. Phase E Plan 3 (Housekeeping, ~1.5h) can run in parallel.
+**Recommended next move (historical, at closure 2026-07-04):** Plan 5-Lite shipped. The next move is **not set by this tracker** — see `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md`. The reframed keystone is the change-log half of the recurrence→promotion bridge; Phase G is one candidate mechanism for agentic self-development, evaluated after the concept is named — not a tracker keystoned item.
 
 ---
 
@@ -266,6 +266,8 @@ The test suite is anchored on **10 namespace directories** declared in `package.
 ---
 
 ## Phase G — Skill Migration Track (post-productization, parallel dimension)
+
+> **Demoted 2026-07-04 (tracker closure):** Phase G is no longer a keystone. Per the two-surfaces predict report, it is **one candidate mechanism** for internalizing agentic self-development (Q3), to be evaluated after the recurrence→promotion bridge is wired and the concept of loop-owned agentic self-development is named. G1–G3 below are preserved as the historical migration design; they are not tracker-bound commitments.
 
 **Bucket:** move the `ck:*` skill family from session-scoped markdown skills into loop-owned MCP tools. This is a **mechanics** track, not a content/code/self-model track — Phases A-F are about *what the loop records / builds*; Phase G is about *how the work gets done* in a single session. **It can ship before, alongside, or after any of A-F, in any order** — the migration does not depend on the product surface binding.
 
