@@ -88,22 +88,14 @@ function runStep(step) {
   console.error(`\n─── ${step.name} ───`);
   console.error(`  ${step.why}`);
   console.error(`  $ ${step.cmd} ${step.args.join(" ")}\n`);
-  const result = spawnSync(step.cmd, step.args, {
-    stdio: "inherit",
-    env: process.env,
-  });
-  if (result.error) {
-    console.error(`\n[gate:self-verify] ${step.name} failed to spawn: ${result.error.message}`);
-    process.exit(1);
-  }
-  if (result.status !== 0) {
-    const sig = result.signal ? ` (signal: ${result.signal})` : "";
-    console.error(
-      `\n[gate:self-verify] ${step.name} exited with status ${result.status}${sig}. ` +
-        `Aborting before further steps (file-index seed via seed-file-index.mjs is idempotent; re-run safe).`,
-    );
-    process.exit(result.status ?? 1);
-  }
+  const result = spawnSync(step.cmd, step.args, { stdio: "inherit", env: process.env });
+  if (result.status === 0) return;
+  const signalSuffix = result.signal ? ` (signal: ${result.signal})` : "";
+  console.error(
+    `\n[gate:self-verify] ${step.name} exited with status ${result.status}${signalSuffix}. ` +
+      `Aborting before further steps (file-index seed via seed-file-index.mjs is idempotent; re-run safe).`,
+  );
+  process.exit(result.status ?? 1);
 }
 
 for (const step of STEPS) {
