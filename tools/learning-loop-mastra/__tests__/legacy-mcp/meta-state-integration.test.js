@@ -85,7 +85,7 @@ describe("meta-state end-to-end lifecycle", () => {
     process.env.GATE_ROOT = tempDir;
 
     const reportResult = await metaStateReportTool.handler({
-      category: "stale-ref",
+      category: "loop-anti-pattern",
       severity: "escalate",
       affected_system: "mcp-tools",
       description: "MCP tool references a file that was deleted during refactoring",

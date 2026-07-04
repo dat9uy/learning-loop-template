@@ -122,10 +122,12 @@ describe("meta_state_sweep stale transitions", () => {
   });
 
   // F-series: follow-up report emission (closes meta-260627T0045Z gap).
-  // meta_state_sweep must emit a meta_state_report for each newly-stale
-  // entry so operators get a structured prompt to triage, not just a
-  // discoverability-only Phase 6 invariant signal.
-  test("F1: apply emits one follow-up report per stale transition with reopens + mc=false", async () => {
+  // Phase 1 (Rec 8 collapse, plan 260704-0301-stale-findings-dispatch-handle)
+  // REMOVED the stale-ref follow-up emission block from meta-state-sweep-tool.js
+  // at :94-108 (now :60-95). The follow-up is replaced by the derived view in
+  // meta_state_relationships + the Rec 10 surfacing in Phase 3. The F-series
+  // now asserts the absence of follow-up emission (the producer is gone).
+  test("F1: apply does NOT emit stale-ref follow-up; original is transitioned to stale", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-follow-up-"));
     process.env.GATE_ROOT = tempDir;
     process.env.OPERATOR_MODE = "1";
@@ -134,7 +136,7 @@ describe("meta_state_sweep stale transitions", () => {
         category: "gate-logic-bug",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "An entry to verify follow-up report emission after stale transition",
+        description: "An entry to verify sweep no longer emits stale-ref follow-ups",
       });
       const originalId = JSON.parse(report.content[0].text).id;
 
@@ -153,37 +155,24 @@ describe("meta_state_sweep stale transitions", () => {
       assert.ok(applied, "sweep should have applied the stale transition");
       assert.strictEqual(applied.to, "stale");
 
-      // Exactly one follow-up report was emitted, referencing the original
-      assert.ok(Array.isArray(sweepText.stale_reports), "stale_reports array missing");
-      assert.strictEqual(sweepText.stale_reports.length, 1);
-      assert.strictEqual(sweepText.stale_reports[0].original_id, originalId);
-      const followUpId = sweepText.stale_reports[0].follow_up_id;
-      assert.ok(followUpId, "follow_up_id missing");
+      // Phase 1: stale_reports is removed from the response (producer gone).
+      assert.deepStrictEqual(
+        sweepText.stale_reports ?? [],
+        [],
+        `sweep must not emit stale-ref follow-ups; got ${JSON.stringify(sweepText.stale_reports)}`
+      );
 
-      // Follow-up entry exists in the registry with the right shape
+      // No follow-up entry exists in the registry re-opening the original.
       const after = readRegistry(tempDir);
-      const followUp = after.find((e) => e.id === followUpId);
-      assert.ok(followUp, "follow-up entry not in registry");
-      assert.strictEqual(followUp.status, "reported");
-      assert.strictEqual(followUp.category, "stale-ref");
-      assert.strictEqual(followUp.severity, "warning");
-      assert.strictEqual(followUp.affected_system, "meta-state-tools");
-      assert.strictEqual(followUp.mechanism_check, false, "follow-up must opt out of mechanism_check");
-      assert.ok(
-        Array.isArray(followUp.reopens) && followUp.reopens.includes(originalId),
-        "follow-up must reference original via reopens"
-      );
-      assert.ok(
-        followUp.description.includes(originalId),
-        "follow-up description must mention the original entry id"
-      );
+      const followUps = after.filter((e) => e.reopens?.includes(originalId));
+      assert.deepStrictEqual(followUps, [], `registry must not contain stale-ref follow-ups re-opening ${originalId}`);
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperator;
     }
   });
 
-  test("F2: dry-run does NOT emit follow-up reports", async () => {
+  test("F2: dry-run does NOT mutate registry (no follow-up reports)", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-dry-noreport-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -191,7 +180,7 @@ describe("meta_state_sweep stale transitions", () => {
         category: "gate-logic-bug",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "An entry to verify dry-run is non-mutating including no follow-up reports",
+        description: "An entry to verify dry-run is non-mutating",
       });
       const id = JSON.parse(report.content[0].text).id;
 
@@ -210,7 +199,7 @@ describe("meta_state_sweep stale transitions", () => {
       assert.strictEqual(sweepText.dry_run, true);
       assert.strictEqual(sweepText.transitions.length, 1);
 
-      // Registry size unchanged — dry-run must not emit follow-up reports
+      // Registry size unchanged — dry-run must not mutate registry
       const afterCount = readRegistry(tempDir).length;
       assert.strictEqual(
         afterCount,
@@ -222,7 +211,9 @@ describe("meta_state_sweep stale transitions", () => {
     }
   });
 
-  test("F3: sweep succeeds even if follow-up emission throws on one entry", async () => {
+  test("F3: sweep applies all 3 stale transitions; zero stale_ref follow-ups emitted", async () => {
+    // Phase 1 retarget: the assertion `sweepText.stale_reports.length === 3`
+    // (old follow-up emission count) becomes `length === 0` (no follow-ups).
     tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-resilient-"));
     process.env.GATE_ROOT = tempDir;
     process.env.OPERATOR_MODE = "1";
@@ -234,7 +225,7 @@ describe("meta_state_sweep stale transitions", () => {
           category: "gate-logic-bug",
           severity: "warning",
           affected_system: "gate-logic",
-          description: `Entry ${i} to verify sweep resilience when one follow-up fails`,
+          description: `Entry ${i} for sweep resilience test`,
         });
         ids.push(JSON.parse(r.content[0].text).id);
       }
@@ -252,9 +243,12 @@ describe("meta_state_sweep stale transitions", () => {
 
       assert.strictEqual(sweepText.swept, true);
       assert.strictEqual(sweepText.results.length, 3);
-      // All 3 follow-ups should have been attempted; even if one failed,
-      // the sweep returned a successful response with results
-      assert.strictEqual(sweepText.stale_reports.length, 3);
+      // Phase 1: zero follow-ups emitted (the producer is gone).
+      assert.deepStrictEqual(
+        sweepText.stale_reports ?? [],
+        [],
+        `sweep must not emit stale-ref follow-ups; got ${JSON.stringify(sweepText.stale_reports)}`
+      );
 
       // All 3 originals are now stale in the registry
       const after = readRegistry(tempDir);
@@ -268,12 +262,11 @@ describe("meta_state_sweep stale transitions", () => {
     }
   });
 
-  test("F4: Phase 6 invariant unaffected — follow-ups do not count toward stale-mc threshold", async () => {
-    // This test simulates the Phase 6 filter logic from cold-tier-regression.test.js
-    // and asserts that follow-up reports (status=reported, mc=false) do not count
-    // toward the stale-mc threshold. Mirrors the real-world case where entries
-    // have evidence_code_ref (mc=true) — matching meta-260619T2233Z and
-    // meta-260619T2237Z, the two stale findings that triggered this fix.
+  test("F4: Phase 6 invariant — exactly 1 stale mc finding (original only)", async () => {
+    // Phase 1 retarget: the assertion `followUps.length === 1` (old follow-up
+    // count) becomes `followUps.length === 0` (no follow-ups). The Phase 6
+    // mc threshold assertion itself is unchanged — the original entry still
+    // counts as 1 stale mc finding.
     tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-threshold-"));
     process.env.GATE_ROOT = tempDir;
     process.env.OPERATOR_MODE = "1";
@@ -302,9 +295,8 @@ describe("meta_state_sweep stale transitions", () => {
         (f) => f.status === "stale" && (f.mechanism_check === true || f.mechanism_check === null)
       );
 
-      // Exactly 1 stale mc finding: the original. The follow-up is in
-      // status=reported (not stale) and mc=false, so it is excluded from
-      // both halves of the filter.
+      // Exactly 1 stale mc finding: the original. No follow-up emitted in
+      // Phase 1, so the count is 1 either way.
       assert.strictEqual(
         staleMcFindings.length,
         1,
@@ -312,11 +304,9 @@ describe("meta_state_sweep stale transitions", () => {
       );
       assert.strictEqual(staleMcFindings[0].id, originalId);
 
-      // Verify the follow-up exists but does not contribute to the count
+      // Phase 1: no follow-up exists.
       const followUps = after.filter((e) => e.reopens?.includes(originalId));
-      assert.strictEqual(followUps.length, 1, "exactly one follow-up report");
-      assert.strictEqual(followUps[0].status, "reported");
-      assert.strictEqual(followUps[0].mechanism_check, false);
+      assert.deepStrictEqual(followUps, [], `registry must not contain stale-ref follow-ups; got ${followUps.map((f) => f.id).join(", ")}`);
     } finally {
       process.env.GATE_ROOT = originalEnv;
       process.env.OPERATOR_MODE = originalOperator;

@@ -71,7 +71,7 @@ describe("cold-session discoverability", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.ok(manifest.groups, "manifest must have groups");
     const totalTools = Object.values(manifest.groups).reduce((sum, g) => sum + g.tools.length, 0);
-    assert.strictEqual(totalTools, 45, `expected 45 tools in agent-manifest.json, got ${totalTools}`);
+    assert.strictEqual(totalTools, 46, `expected 46 tools in agent-manifest.json (added meta_state_dispatch_finding in plan 260704-0301-stale-findings-dispatch-handle Phase 2), got ${totalTools}`);
     assert.strictEqual(Object.keys(manifest.groups).length, 6, "expected 6 groups");
 
     writeSentinel("manifest");

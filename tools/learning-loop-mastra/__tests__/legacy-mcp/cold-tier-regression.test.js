@@ -63,19 +63,18 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // documented mc=false leftovers; mc=false is excluded because mechanism_check
   // is explicitly opted out and the entry isn't subject to grounding checks.
   //
-  // TODO(temporary bypass, 2026-07-03): threshold relaxed from 3 to 25 to unblock
-  // PR #30 (file-index migration). Registry now carries 11 stale mechanism_check
-  // findings; each tracks a real underlying issue that needs dedicated resolution
-  // in a follow-up plan (post-merge). The relaxed gate gives the follow-up plan
-  // headroom to land its findings without blocking every other commit. When the
-  // dedicated plan ships, re-tighten the threshold to a value that matches the
-  // actual known-stale count at that time.
+  // Plan 260704-0301-stale-findings-dispatch-handle Phase 1: post-migration
+  // count of 10 stale-mc findings has zero headroom against the original
+  // threshold of 3. Re-tightened to 12 (10 + 2 headroom for organic drift)
+  // to absorb new stale findings without immediately breaking the gate.
+  // Tightening to the documented 3 requires resolving the 10 real underlying
+  // issues in a follow-up plan.
   const staleMcFindings = current.all_findings.filter(
     (f) => f.status === "stale" && (f.mechanism_check === true || f.mechanism_check === null)
   );
   assert.ok(
-    staleMcFindings.length <= 25,
-    `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 25 (temporarily relaxed): ${staleMcFindings.map((f) => f.id).join(", ")}`
+    staleMcFindings.length <= 12,
+    `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 12 (re-tightened for post-Rec 8 migration with 2 headroom): ${staleMcFindings.map((f) => f.id).join(", ")}`
   );
 
   // Size sanity: cold tier should not collapse to a near-empty payload

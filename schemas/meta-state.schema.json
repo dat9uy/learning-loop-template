@@ -18,7 +18,7 @@
         "entry_kind": { "const": "finding" },
         "created_at": { "type": "string", "format": "date-time" },
         "category": {
-          "enum": ["gate-logic-bug", "record-repair-gap", "schema-drift", "stale-ref", "mcp-tool-missing", "budget-check", "loop-anti-pattern"]
+          "enum": ["gate-logic-bug", "record-repair-gap", "schema-drift", "mcp-tool-missing", "budget-check", "loop-anti-pattern"]
         },
         "severity": { "enum": ["warning", "escalate"] },
         "affected_system": {

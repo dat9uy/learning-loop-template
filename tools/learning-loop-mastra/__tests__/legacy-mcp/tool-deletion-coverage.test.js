@@ -43,9 +43,10 @@ const manifestRaw = readFileSync(manifestPath, "utf8")
 const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 31 entries (8 workflow tools moved to mastra in Phase D Plan 1)
-await test("manifest has 31 entries", () => {
-  assert.strictEqual(manifest.length, 31, `Expected 31, got ${manifest.length}`);
+// 1. Manifest has 32 entries (8 workflow tools moved to mastra in Phase D Plan 1;
+// meta_state_dispatch_finding added in plan 260704-0301-stale-findings-dispatch-handle Phase 2)
+await test("manifest has 32 entries", () => {
+  assert.strictEqual(manifest.length, 32, `Expected 32, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest

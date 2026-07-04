@@ -31,8 +31,8 @@ const agents = JSON.parse(readFileSync(join(PKG, "mastra/agents-manifest.json"),
 const agentManifest = JSON.parse(readFileSync(join(PKG, "agent-manifest.json"), "utf8"));
 
 describe("manifest arithmetic", () => {
-  test("tools/manifest.json has 31 entries", () => {
-    assert.strictEqual(tools.length, 31);
+  test("tools/manifest.json has 32 entries", () => {
+    assert.strictEqual(tools.length, 32);
   });
 
   test("workflows-manifest.json has 10 entries", () => {
@@ -43,12 +43,12 @@ describe("manifest arithmetic", () => {
     assert.strictEqual(Object.keys(agents.agents).length, 3);
   });
 
-  test("agent-manifest.json#groups totals 45", () => {
+  test("agent-manifest.json#groups totals 46", () => {
     const total = Object.values(agentManifest.groups).reduce(
       (sum, g) => sum + g.tools.length,
       0,
     );
-    assert.strictEqual(total, 45, `expected 45 total, got ${total}`);
+    assert.strictEqual(total, 46, `expected 46 total, got ${total}`);
   });
 
   test("agent-manifest.json#workflow.tools has 13 entries", () => {

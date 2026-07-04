@@ -3,11 +3,27 @@ date: "2026-06-10T00:00:00Z"
 tags: [meta-state, lifecycle, status, registry, mcp]
 ---
 
-<!-- level: L1 | surface: concept -->
+<!-- level: L2 | surface: mechanism -->
 
 # Meta-State Lifecycle and Status Management
 
-This document describes the lifecycle of entries in `meta-state.jsonl`, the registry that serves as the loop's self-model. It covers the four entry kinds, their valid statuses, transition rules, and the tools that drive each transition.
+This document is the L2 mechanism surface for the meta-state registry. It names the tools (L2) that realize the L1 exit roles named in `docs/loop-engine.md`. The L1 doc holds the conceptual statement (a finding is a deferred decision with explicit exits: promote, resolve, re-verify, supersede, dispatch); this L2 doc maps each L1 exit to the mechanism that runs it. Implementation detail — change with care.
+
+## Finding Exit Roles → Mechanism Tools
+
+The L1 doc (`docs/loop-engine.md`) names five exit roles for a finding. Each is realized today by exactly one mechanism (the table below). The roles are stable; the tools can be renamed or split without breaking the L1 contract, but the table must stay accurate.
+
+| L1 exit role (from `docs/loop-engine.md`) | Mechanism tool (L2) | Effect on finding |
+|---|---|---|
+| **promote** | `meta_state_promote_rule` | `finding` becomes the origin of a new `rule` entry; `promoted_to_rule` back-pointer set |
+| **resolve** | `meta_state_resolve` | `status` → `resolved`; `resolved_at`, `resolved_by`, `resolution` recorded |
+| **re-verify** | `meta_state_re_verify` | `stale` → `active` on passing verification; `last_verified_at` refreshed |
+| **supersede** | `meta_state_supersede` | `status` → `superseded`; `consolidated_into` points at the absorbing change-log |
+| **dispatch** | `meta_state_dispatch_finding` | Non-terminal routing action — ledger event + `ledger_ref` back-pointer; finding stays in its current status until resolve/promote |
+
+**Dispatch is not a terminal status** — it is a routing action that lets the finding stay in its current state while a fix happens in an external issue-tracker substrate. The finding resolves when the fix ships.
+
+The rest of this document describes the lifecycle status model + the L2 tools in detail.
 
 ## Layer Separation: Domain, Meta, Gate
 

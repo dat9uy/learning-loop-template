@@ -57,13 +57,70 @@ function groupInbound(refs) {
 }
 
 /**
+ * Compute dangling outbound refs: refs whose target is stale, missing, or
+ * superseded. Replaces the old `stale-ref` follow-up emission that sweep used
+ * to produce — the information is now a derived view over the relationship
+ * graph instead of a recorded finding kind.
+ *
+ * Read-only / pure function over `entries` (the registry snapshot the caller
+ * has already loaded). `refs` is the outbound-ref array produced by the
+ * factory — `{ kind, id, field }` per ref.
+ *
+ * Reason classification:
+ *   - target not in registry         -> "missing"
+ *   - target.entry_kind !== expected -> "missing" (kind mismatch is the
+ *                                       same informational class)
+ *   - target.status === "stale"      -> "stale"
+ *   - target.status === "superseded" -> "superseded"
+ *   - target.status === "resolved"   -> "resolved" (terminal, the ref
+ *                                       cannot be resolved by re-verifying
+ *                                       or re-dispatching)
+ *   - target.status === "auto-resolved" -> "resolved" (same as resolved)
+ *
+ * Returns the dangling list. Refs whose target is in {reported, active}
+ * are NOT dangling — those are healthy ongoing references.
+ */
+function computeDanglingRefs(refs, entries) {
+  const entryById = new Map(entries.map((e) => [e.id, e]));
+  const dangling = [];
+  for (const ref of refs) {
+    const target = entryById.get(ref.id);
+    if (!target) {
+      dangling.push({
+        field: ref.field,
+        target_id: ref.id,
+        target_kind: ref.kind,
+        reason: "missing",
+      });
+      continue;
+    }
+    const status = target.status;
+    if (status === "stale") {
+      dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "stale" });
+    } else if (status === "superseded") {
+      dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "superseded" });
+    } else if (status === "resolved" || status === "auto-resolved") {
+      dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "resolved" });
+    }
+  }
+  return dangling;
+}
+
+/**
  * Read-only tool: queries the relationship graph without mutating the registry.
  * Reimplemented on top of factory methods (Mechanism B). Wire shape is preserved;
  * the dual-field promoted_to_rule migration logic is retained for legacy findings.
+ *
+ * Phase 1 (Rec 8 collapse, plan 260704-0301-stale-findings-dispatch-handle):
+ * the `dangling_refs` derived field surfaces refs whose target is stale,
+ * missing, superseded, or resolved. This replaces the old `stale-ref`
+ * follow-up emission that sweep used to produce — the same information is
+ * now a derived query over the relationship graph instead of a recorded
+ * finding kind.
  */
 export const metaStateRelationshipsTool = {
   name: "meta_state_relationships",
-  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). Read-only, no operator gate required.",
+  description: "Query the relationship graph for a single meta-state entry. Returns inbound, outbound, or both directions of cross-references (1-hop traversal only). The `dangling_refs` derived field surfaces outbound refs whose target is stale, missing, superseded, or resolved — replacing the old stale-ref follow-up emission. Read-only, no operator gate required.",
   schema: {
     id: z.string().min(1).describe("Entry id to query relationships for"),
     direction: z.enum(["inbound", "outbound", "both"]).optional().default("both")
@@ -102,6 +159,11 @@ export const metaStateRelationshipsTool = {
 
       const outbound = groupOutbound(refs);
       result.outbound = Object.keys(outbound).length > 0 ? outbound : null;
+
+      // Derived view: refs whose target is unhealthy (stale/missing/superseded/resolved).
+      // Replaces the old stale-ref follow-up emission (Phase 1 Rec 8 collapse).
+      const dangling = computeDanglingRefs(refs, entries);
+      result.dangling_refs = dangling.length > 0 ? dangling : null;
     }
 
     if (direction === "inbound" || direction === "both") {

@@ -154,10 +154,10 @@ test("meta_state_list combines session_id with other filters (AND logic)", async
     assert.equal(parsed.entries[0].category, "loop-anti-pattern");
     assert.equal(parsed.entries[0].session_id, sessionC);
 
-    // AND filter: sessionC + category=stale-ref → 0 entries
+    // AND filter: sessionC + category=mcp-tool-missing → 0 entries
     const none = await metaStateListTool.handler({
       session_id: sessionC,
-      category: "stale-ref",
+      category: "mcp-tool-missing",
     });
     const parsedNone = JSON.parse(none.content[0].text);
     assert.equal(parsedNone.count, 0);

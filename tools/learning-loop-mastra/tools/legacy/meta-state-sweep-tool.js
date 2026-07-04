@@ -2,7 +2,6 @@ import { z } from "zod";
 import { readRegistry, checkExpiry, updateEntry, STALENESS_WINDOW_MS, readFileIndex } from "../../core/meta-state.js";
 import { buildRegistrySummary } from "../../core/loop-introspect.js";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
-import { metaStateReportTool } from "./meta-state-report-tool.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -20,9 +19,6 @@ const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded", "s
  * Two stale paths:
  *   1. status: "reported" past expires_at -> "stale" (handled by checkExpiry in core/meta-state.js)
  *   2. status: "active" past STALENESS_WINDOW_MS -> "stale" (this function, NEW)
- *
- * The file-modification case (active finding whose evidence_code_ref file mtime
- * > last_verified_at) is preserved as auto-resolve; not part of this function.
  */
 function checkStaleness(entry) {
   if (entry.entry_kind !== "finding") return null;
@@ -37,7 +33,7 @@ function checkStaleness(entry) {
 
 export const metaStateSweepTool = {
   name: "meta_state_sweep",
-  description: "Walk the meta-state registry and propose (or apply) lifecycle transitions: expiry for reported entries past expires_at, auto-resolve for entries whose watched file was modified after creation. Dry-run by default. Operator-only (env: OPERATOR_MODE=1). CAS-safe via the version field. Use to keep the registry honest without manual per-entry work.",
+  description: "Walk the meta-state registry and propose (or apply) lifecycle transitions: expiry for reported entries past expires_at, and staleness-window transitions for active entries. Dry-run by default. Operator-only (env: OPERATOR_MODE=1). CAS-safe via the version field. Use to keep the registry honest without manual per-entry work.",
   schema: {
     apply: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, commit the transitions. Default false (dry-run)."),
   },
@@ -47,7 +43,6 @@ export const metaStateSweepTool = {
     }
     const root = resolveRoot();
     const entries = readRegistry(root);
-    const entryById = new Map(entries.map((e) => [e.id, e]));
     const transitions = [];
 
     for (const entry of entries) {
@@ -62,7 +57,6 @@ export const metaStateSweepTool = {
 
     if (apply) {
       const results = [];
-      const staleReports = [];
       const sweepTimestamp = new Date().toISOString();
       for (const t of transitions) {
         const isStaleTransition = t.to === "stale";
@@ -79,41 +73,6 @@ export const metaStateSweepTool = {
           results.push({ id: t.id, applied: false, reason: "version_mismatch" });
         } else if (r === true) {
           results.push({ id: t.id, applied: true, to: t.to });
-
-          // Emit a follow-up report for each newly-stale entry so the
-          // operator gets a structured prompt to triage (re-verify or resolve)
-          // rather than discovering the staleness only via the Phase 6
-          // cold-tier invariant. The follow-up uses mechanism_check=false so
-          // that, when it later ages out, it does not contribute to the
-          // stale-mc threshold itself.
-          if (isStaleTransition) {
-            const original = entryById.get(t.id);
-            const evidenceSuffix = original?.evidence_code_ref
-              ? ` (evidence_code_ref: ${original.evidence_code_ref})`
-              : "";
-            try {
-              const reportResult = await metaStateReportTool.handler({
-                category: "stale-ref",
-                severity: "warning",
-                affected_system: "meta-state-tools",
-                description:
-                  `Entry ${t.id}${evidenceSuffix} aged out and was transitioned ` +
-                  `from active to stale by meta_state_sweep on ${sweepTimestamp} ` +
-                  `because acked_at || created_at exceeded STALENESS_WINDOW_MS. ` +
-                  `Operator action: re-verify via meta_state_re_verify if the ` +
-                  `underlying issue is still relevant, or resolve via ` +
-                  `meta_state_resolve if the fix already shipped.`,
-                reopens: [t.id],
-                mechanism_check: false,
-              });
-              const reported = JSON.parse(reportResult.content[0].text);
-              staleReports.push({ original_id: t.id, follow_up_id: reported.id });
-            } catch (err) {
-              // Sweep must not fail because follow-up emission failed; log
-              // and continue so other stale entries still get triaged.
-              staleReports.push({ original_id: t.id, error: err.message || String(err) });
-            }
-          }
         }
       }
       appendGateLog(root, {
@@ -121,14 +80,13 @@ export const metaStateSweepTool = {
         tool: "meta_state_sweep",
         applied: results.length,
         results,
-        stale_reports: staleReports,
       });
 
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify({ swept: true, results, stale_reports: staleReports }),
+            text: JSON.stringify({ swept: true, results }),
           },
         ],
       };

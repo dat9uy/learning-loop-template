@@ -32,7 +32,7 @@ anti-patterns, budget checks.
 |-------|------|----------|-------|
 | `id` | string | auto | `meta-YYMMDDTHHmmZ-slug` |
 | `entry_kind` | `"finding"` | default | Discriminator |
-| `category` | enum | yes | `gate-logic-bug`, `record-repair-gap`, `schema-drift`, `stale-ref`, `mcp-tool-missing`, `budget-check`, `loop-anti-pattern` |
+| `category` | enum | yes | `gate-logic-bug`, `record-repair-gap`, `schema-drift`, `mcp-tool-missing`, `budget-check`, `loop-anti-pattern` |
 | `severity` | enum | yes | `warning`, `escalate` |
 | `affected_system` | enum | yes | `meta`, `gate-logic`, `record-validation`, `index-extractor`, `mcp-tools`, `workflow-registry`, `vnstock_vendor`, `vnstock`, `fastapi`, `tanstack`, `product`, `api`, `web`, `meta-state-tools`, `runtime-state` |
 | `description` | string | yes | min 20 chars |

@@ -52,5 +52,6 @@
   { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool", "pathFields": [] },
   { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool", "pathFields": [] },
   { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool", "pathFields": [] },
+  { "file": "tools/meta-state-dispatch-finding-tool.js", "export": "metaStateDispatchFindingTool", "pathFields": [] },
   { "file": "tools/check-runtime-agnostic-tool.js", "export": "checkRuntimeAgnosticTool", "pathFields": [] }
 ]

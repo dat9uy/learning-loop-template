@@ -97,10 +97,22 @@ The original report sat in old vocabulary ("systematize memory + runtime-agnosti
 
 **Trigger (operator, 2026-07-04):** stale findings are growing; a test caps the count and is currently over; we want a workflow for tackling stale/reported findings for both operator and agents.
 
+**Status (updated 2026-07-04):** shipped → see `plans/260704-0301-stale-findings-dispatch-handle/`. Rec 8, Rec 10, Rec 11 closed. Rec 9 left open. Rec 12 half-solved (scoped dispatch-close case shipped in Phase 3; general trigger rule deferred to a separate plan). Q11 remains an open question in Addendum 2. See plan phases for evidence: `phase-01-rec-8-collapse-stale-ref-to-derived-view.md` (Rec 8 + Rec 11), `phase-02-dispatch-tool-meta-state-dispatch-finding.md` (dispatch surface), `phase-03-close-flow-rec-10-session-start-surfacing.md` (Rec 10 + Rec 12 scoped), `phase-04-docs-l1-concept-lifecycle.md` (L1 doc + Rec 7 closeout).
+
+Lock background — decisions agreed at brainstorm time:
+- **Dispatch model = B (dispatch handle).** Registry stays the single bound record; GitHub Issues is a one-way coordination substrate (`finding → issue → resolve-on-close`); back-pointer via `ledger_ref` → `runtime-state.jsonl`. No two-way sync (rejects Approach A's drift recursion).
+- **Scope this round:** Rec 8 collapse (stale-ref → derived view, migrate 16, re-tighten cap) + dispatch feature (export + link-back only) + L1 concept statement *"findings are deferred decisions, not things to be removed."*
+- **Authority:** operator dispatches; agent proposes candidates (maps to Q9).
+- **Close:** manual `meta_state_resolve` + change-log required; operator/agent symmetric.
+- **Lifecycle surgeries deferred** to a dedicated lifecycle-redesign plan: drop `auto-resolved`, drop `ack`/`active`, re-architect `OPERATOR_MODE` → delegated scoped authority. Dispatch is built compatible (explicit resolve, no ack needed, `delegated_to` recorded in ledger).
+- **Resolved Q6–Q8, Q10** (see brainstorm report): Q6 stale-ref is a contract (enum) → remove + update tests; Q7 derived view as output mode of existing tools (no new tool); Q8 migrate 16 as `superseded` into one change-log (preserves lineage, supersedes the `auto-resolved` suggestion in Rec 8); Q10 re-tighten cap to non-terminal non-stale-ref count (~12).
+- **Q11 half-solved** (scoped to the dispatch-close case only; general change-log trigger rule still deferred — see Addendum 2).
+- **Next:** `/ck:plan --tdd` (recommended) or `/ck:plan` with the brainstorm report as context. Phase 1 (Rec 8) is prerequisite for phase 2 (dispatch launches on a clean queue).
+
 ### Verified state
 
 - **28 stale** findings; **14 reported** (24h TTL); staleness window 7d (`core/meta-state.js:57` `STALENESS_WINDOW_MS`).
-- The cap test (`__tests__/legacy-mcp/cold-tier-regression.test.js:76-78`) limits stale `mechanism_check` findings to **25**, temporarily relaxed from **3** (TODO at L66: "re-tighten … when the dedicated plan ships"). Current 28 > 25 → the gate is already breached and running on the relaxed bypass.
+- The cap test (`__tests__/legacy-mcp/cold-tier-regression.test.js:76-78`) limits stale `mechanism_check` findings to **25**, temporarily relaxed from **3** (TODO at L66: "re-tighten … when the dedicated plan ships"). **Correction (verified 2026-07-04 against `meta-state.jsonl`):** the cap-test count is `stale + (mechanism_check === true || null)` = **11 today**, NOT 28 — the earlier "28 > 25 → gate breached" conflated *total stale* (28) with the *cap-test count* (11). The gate is **passing at 11/25**; the original threshold of 3 is what 11 breaches. Of the 16 `stale-ref`, 15 are `mechanism_check: false` (sweep follow-ups, intentionally excluded from the cap per `meta-state-sweep-tool.js`'s comment) and only 1 is `mc=true`. So the Rec 8 migration drops the cap-test count by **1** (11→10), not 16 — see the brainstorm report for the corrected re-tighten target (~10). The migration's value is hygiene + recursion collapse, not unblocking a breached gate.
 - Stale by category: **`stale-ref`: 16**, `loop-anti-pattern`: 7, `mcp-tool-missing`: 3, `schema-drift`: 1, `budget-check`: 1. By system: `meta-state-tools`: 17, `mcp-tools`: 5, `gate-logic`: 3, `meta`: 2, `vnstock`: 1.
 - Existing lifecycle machinery (do not reinvent): `meta_state_sweep` (expiry + auto-resolve, dry-run default), `meta_state_re_verify` (stale→active on pass), `meta_state_ack`/`resolve`/`supersede`, `reopens` + `cascade_from` (1-step cascade-close of a stale parent), `meta_state_relationships` (1-hop traversal), `meta_state_query_drift`, `meta_state_relationship_validate` (orphan-id lint).
 
@@ -123,14 +135,14 @@ If `stale-ref` becomes a **derived view**, not a recorded finding:
 - 16 stale entries vanish (they are not findings; they are a query output).
 - The `stale-ref` category is eliminated as a recorded kind.
 - The recursion breaks: there are no stale-ref findings to go stale.
-- The cap-test count drops from 28 → ~12 (the *real* underlying-issue stale: 7 anti-pattern + 3 mcp-tool-missing + 1 schema-drift + 1 budget-check), and the threshold can re-tighten from 25 toward 3 per the test's own TODO.
+- The cap-test count drops from **11 → ~10** (not 28 → 12 — see the correction at line 113: 15 of 16 `stale-ref` are `mc=false` and already excluded from the cap; only 1 `mc=true` stale-ref counts). The *total* stale count drops 28 → 12; the cap-test count (which counts only `mc=true|null`) drops 11 → 10. The threshold can re-tighten from 25 toward ~10 per the test's own TODO (re-tightening to the original 3 requires resolving the ~10 real underlying issues first).
 - `meta_state_relationship_validate` (already lints orphan ids) + `meta_state_relationships` (already does 1-hop traversal) become the *surfaces* for the view — no new primitive, just "do not persist what these already compute."
 
-One insight eliminates a category, 16 records, a recursion, and a breached gate.
+One insight eliminates a category, 16 noise records, and a recursion. (The gate was already passing at 11/25 — see the correction at line 113; the recursion is hygiene debt, not a breached gate.)
 
 ### Technique 3 — Scale Game
 
-At 1000×: if every stale entry can spawn a stale-ref finding, and stale-refs themselves go stale and spawn stale-refs, the registry grows **quadratically** with the stale count — unbounded. Under the destination sentence (self-referential loop with verification autonomy), this is a leak the loop cannot self-correct, because the correction (record a stale-ref finding) *is* the leak. The cap test is the symptom; the recursion is the cause. Capping the count without removing the recursion moves the breach, not the bug.
+At 1000×: if every stale entry can spawn a stale-ref finding, and stale-refs themselves go stale and spawn stale-refs, the registry grows **quadratically** with the stale count — unbounded. Under the destination sentence (self-referential loop with verification autonomy), this is a leak the loop cannot self-correct, because the correction (record a stale-ref finding) *is* the leak. The recursion is the cause; the cap test (which counts only `mc=true|null`, and which sweep's `mc=false` follow-ups already opt out of) is not the symptom of a breach today — it is passing at 11/25 — but it would eventually surface the recursion if `mc=true` stale-refs accumulated. Removing the recursion is the fix; capping the count alone would mask it.
 
 ### The workflow, in two-surface terms
 
@@ -153,13 +165,19 @@ At 1000×: if every stale entry can spawn a stale-ref finding, and stale-refs th
 
 ### Recommendations (addendum)
 
-8. **Stop recording `stale-ref` as a finding kind; make it a derived view.** Extend `meta_state_relationship_validate` / `meta_state_relationships` to surface "findings whose ref target is stale or missing" as a query output. Migrate the 16 existing `stale-ref` findings out of the registry (resolve them as `auto-resolved` with a change-log noting the migration). This collapses the recursion and re-tightens the gate. **Highest-value move — one insight, 16 records, one breached gate.**
+**[DONE 2026-07-04 — plan 260704-0301 Phase 1 + Phase 4].** Collapsed `stale-ref` to a derived view (`meta_state_relationships.dangling_refs`); migrated 30 stale-ref entries (16 stale + 14 reported) to `superseded` under one change-log `meta-260704T0443Z-meta-state-finding-categories` (`consolidates=30`); removed `stale-ref` from all 4 enum sites. The 16 stale-recursion records are gone; the remaining 12 stale entries are real underlying issues (7 loop-anti-pattern + 3 mcp-tool-missing + 1 schema-drift + 1 budget-check), per the post-migration state verified in Phase 1 step 8.
 
-9. **Encode the triage workflow as a consult-gate or skill, not a doc.** Per the docs-rewrite philosophy ("md is debt owned by the loop; procedural knowledge is loop-encoded, not doc'd"), the operator + agent triage steps above are procedure → they belong in a loop-encoded consult-gate or a skill, not in `docs/`. The L1 doc states the *concept* (three deterministic exits); the *procedure* is loop-encoded.
+8. **Stop recording `stale-ref` as a finding kind; make it a derived view.** Extend `meta_state_relationship_validate` / `meta_state_relationships` to surface "findings whose ref target is stale or missing" as a query output. Migrate the 16 existing `stale-ref` findings out of the registry as `superseded` (consolidated into one change-log noting the migration) — `superseded` preserves the lineage that the recursion existed so it doesn't quietly recur, and matches the "deferred decision, not removed" framing (status block above supersedes the earlier `auto-resolved` suggestion). This collapses the recursion (16 noise records). **Highest-value hygiene move — one insight, 16 records, one recursion.** (Note: the gate was passing at 11/25, not breached — see the correction at line 113; the value is hygiene + concept cleanliness, not unblocking a breach.)
+
+9. **Encode the triage workflow as a consult-gate or skill, not a doc.** **[LEFT OPEN 2026-07-04].** Per the docs-rewrite philosophy ("md is debt owned by the loop; procedural knowledge is loop-encoded, not doc'd"), the operator + agent triage steps above are procedure → they belong in a loop-encoded consult-gate or a skill, not in `docs/`. The L1 doc states the *concept* (three deterministic exits); the *procedure* is loop-encoded. This plan shipped the L1 statement + dispatch mechanism + session-start surfacing; the consult-gate/skill for operator triage is not built. Defer to a future plan.
+
+**[DONE 2026-07-04 — plan 260704-0301 Phase 3].** Added `buildStaleDispatchHints(root)` in `core/loop-introspect.js`. The hook `tools/learning-loop-mastra/hooks/legacy/session-start-inject-discoverability.cjs` calls it and writes `stale_dispatch_hints` (top-5 fixable candidates + orphan findings + dispatch protocol prompt) into `.claude/session-context.json`. Surfacing is read-only (no `meta-state.jsonl` write via this hook); commit-dispatch is OPERATOR_MODE-gated (Phase 2). End-to-end tested via `build-stale-dispatch-hints.test.js` (8 cases green).
 
 10. **Wire the stale queue into session-start discoverability.** Today `recurrence-check-on-start` runs at SessionStart; add a stale-queue surfacing so the agent sees the top-N addressable stale findings at boot. This is the agent half of the workflow and the natural consumer of the derived `stale-ref` view.
 
-11. **Re-tighten the cap-test threshold after the `stale-ref` migration.** The test's own TODO (L66-72) asks for this; the migration makes it possible — the real underlying-issue count (~12 today, trending down with triage) becomes the ceiling, not the self-referential 28.
+**[DONE 2026-07-04 — plan 260704-0301 Phase 1 + Phase 4].** Threshold 25 → 12 in `tools/learning-loop-mastra/__tests__/legacy-mcp/cold-tier-regression.test.js`. Post-migration count of 10 stale-mc findings + 2 headroom = 12 (10 + 2 headroom, not the 3 original). Re-tightening to the original 3 requires resolving the ~10 real underlying issues in a follow-up plan. See `phase-01-rec-8-collapse-stale-ref-to-derived-view.md` step 12 + `phase-04-docs-l1-concept-lifecycle.md`.
+
+11. **Re-tighten the cap-test threshold after the `stale-ref` migration.** The test's own TODO (L66-72) asks for this; the migration makes it possible — the real underlying-issue `mc=true|null` count (~10 today: 7 anti-pattern + 3 mcp-tool-missing, trending down with triage) becomes the ceiling, not 11 (the current cap-count, which already excludes the 15 `mc=false` stale-refs). Re-tightening to the original threshold of 3 requires resolving those ~10 real issues first — a follow-up, not this move.
 
 ### Unresolved questions (addendum)
 
@@ -172,6 +190,10 @@ At 1000×: if every stale entry can spawn a stale-ref finding, and stale-refs th
 ---
 
 ## Addendum 2: change-log trigger ambiguity (added 2026-07-04, emerged executing Rec 1/2)
+
+**Status (updated 2026-07-04):** Rec 12 is **half-solved** by the brainstorm (`plans/reports/brainstorm-260704-stale-findings-github-dispatch-report.md`) — the scoped rule shipped in plan 260704-0301 Phase 3 (close flow: fix for a dispatched finding IS a change-log trigger; operator/agent symmetric). The **general** trigger rule (which actions across doc/contract/schema/lifecycle edits become change-logs) remains unresolved — deferred to a dedicated lifecycle-redesign plan alongside the auto-resolved / ack-active / OPERATOR_MODE surgeries.
+
+**Q11 (operator/agent symmetry):** noted as a separate open question, **NOT** addressed by plan 260704-0301. The symmetry question is downstream of Rec 12's general trigger rule; building a consult-gate for symmetry without a stable trigger rule would shift the same ambiguity to the gate's input. Defer until Rec 12 is solved in the lifecycle-redesign plan.
 
 **Finding:** while executing Rec 1/2, the operator + agent hit an unscripted gap — *is a `change-log` entry required for these edits?* The `record` concept role (`loop-engine.md`) and the `change-log` 4-kind define *what* a change-log is (an immutable record that a system change happened) but not *when* an action triggers one. The boundary between "this happened → change-log," "this is a gap → finding," and "this needs no record" is unwritten. **Both operator and agents are unsure**, which means change-logs are under-filed (changes happen unrecorded, the audit trail loses entries) or over-filed (noise that ages into the stale-ref recursion). This is a concept-surface (L1) gap in the `record` role, and it feeds the stale-findings problem directly: a change-log with no crisp trigger is either missing or noise.
 
