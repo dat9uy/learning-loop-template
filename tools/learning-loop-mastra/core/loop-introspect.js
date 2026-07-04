@@ -170,21 +170,38 @@ const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
 
 const DISPATCH_PREFIX = "dispatch-";
 
+/**
+ * Shared tail for the stale-dispatch candidate lists: sort oldest-first,
+ * take top-5, project to the dispatch summary shape. The filter chains
+ * differ between fixable candidates and orphan findings (different
+ * status / ledger_ref / dispatchId predicates); this helper collapses
+ * only the duplicated sort + slice + map tail (DRY).
+ *
+ * @param {object[]} filtered — already-filtered finding entries
+ * @param {(e: object) => object} mapFn — projection to the summary shape
+ * @returns {object[]} — top-5 oldest-first summary entries
+ */
+function top5OldestFirst(filtered, mapFn) {
+  return filtered
+    .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
+    .slice(0, 5)
+    .map(mapFn);
+}
+
 export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   // Fixable candidates: stale findings, non-empty evidence_code_ref,
   // severity !== "escalate", no ledger_ref, non-terminal.
   // Sort oldest-first: the operator is more likely to recognize and triage
   // long-queued stale entries before newly-staled ones (validation P3-W4).
-  const candidates = entries
-    .filter((e) => e.entry_kind === "finding")
-    .filter((e) => e.status === "stale")
-    .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
-    .filter((e) => e.severity !== "escalate")
-    .filter((e) => !e.ledger_ref)
-    .filter((e) => !TERMINAL_STATUSES_FOR_DISPATCH.has(e.status))
-    .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
-    .slice(0, 5)
-    .map((e) => ({
+  const candidates = top5OldestFirst(
+    entries
+      .filter((e) => e.entry_kind === "finding")
+      .filter((e) => e.status === "stale")
+      .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
+      .filter((e) => e.severity !== "escalate")
+      .filter((e) => !e.ledger_ref)
+      .filter((e) => !TERMINAL_STATUSES_FOR_DISPATCH.has(e.status)),
+    (e) => ({
       id: e.id,
       category: e.category,
       severity: e.severity,
@@ -192,7 +209,8 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
       affected_system: e.affected_system,
       description: e.description?.slice(0, 200) ?? "",
       created_at: e.created_at,
-    }));
+    }),
+  );
 
   // Orphan findings (INC-10): a dispatch-<id> ledger row exists for this
   // finding (dispatchIds.has(e.id)) but the finding is still reported/active
@@ -201,14 +219,13 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   // dispatch tool's same-coords no-op path to heal the back-pointer.
   // `ledger_ref` set to anything (even a stale value) means the back-pointer
   // exists; the pure-orphan condition is `!ledger_ref` (the failed-patch case).
-  const orphanFindings = entries
-    .filter((e) => e.entry_kind === "finding")
-    .filter((e) => e.status === "reported" || e.status === "active")
-    .filter((e) => dispatchIds.has(e.id))
-    .filter((e) => !e.ledger_ref)
-    .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
-    .slice(0, 5)
-    .map((e) => ({
+  const orphanFindings = top5OldestFirst(
+    entries
+      .filter((e) => e.entry_kind === "finding")
+      .filter((e) => e.status === "reported" || e.status === "active")
+      .filter((e) => dispatchIds.has(e.id))
+      .filter((e) => !e.ledger_ref),
+    (e) => ({
       id: e.id,
       category: e.category,
       severity: e.severity,
@@ -216,7 +233,8 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
       status: e.status,
       description: e.description?.slice(0, 200) ?? "",
       created_at: e.created_at,
-    }));
+    }),
+  );
 
   return {
     fixable_candidates: candidates,

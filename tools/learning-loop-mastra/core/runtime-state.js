@@ -41,17 +41,21 @@ export function readRuntimeStateRows(root) {
  * Canonical sidecar filename. Kept here (not imported from the tool file)
  * to avoid circular-import risk between record-tool and dispatch-tool —
  * both depend on this module, neither should depend on the other.
+ * Module-private: no external importer; the public surface is
+ * `readRuntimeStateRows` / `appendLedgerEvent`.
  */
-export const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
+const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
 
 /**
  * Compute the SHA-256 fingerprint of a runtime-state row.
  * Format matches the in-file `fingerprint` field convention used since the
  * earliest runtime-state rows; mirrors the fingerprint regex used by the
  * index sidecar (file-index.jsonl) — different data shape, same prefix.
+ * Module-private: only `appendLedgerEvent` calls this; kept non-exported so
+ * the public surface stays minimal.
  */
 // fallow-ignore-next-line code-duplication
-export function computeRuntimeStateFingerprint(row) {
+function computeRuntimeStateFingerprint(row) {
   const data = `${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}`;
   return "sha256:" + createHash("sha256").update(data).digest("hex");
 }
