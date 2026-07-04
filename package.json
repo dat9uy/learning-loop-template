@@ -18,6 +18,7 @@
     "test:debug": "node --test --test-timeout=120000 tools/learning-loop-mastra/__tests__/debug/*.test.cjs",
     "test:cold-session": "node --test tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
     "fallow:gate": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\"",
+    "gate:self-verify": "node tools/learning-loop-mastra/scripts/gate-self-verify.mjs",
     "gate:server": "node tools/learning-loop-mastra/mastra/server.js"
   },
   "dependencies": {

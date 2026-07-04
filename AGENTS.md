@@ -87,6 +87,29 @@ Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, n
 
 ---
 
+## 7. Local Fallow Gate Self-Verify (`pnpm gate:self-verify`)
+
+**The contract.** local `pnpm fallow:gate` is not a reliable pre-push check for complexity findings. Fallow may report `crap: ?` and `introduced: true` on baselined functions when Istanbul coverage fails to match — a local artifact, NOT a real CI regression. Two coupled issues produce this:
+
+1. **Coverage-matching artifact** — Fallow's coverage matcher can fail for some functions despite 100% statement coverage in `coverage-final.json`, yielding `crap: ?` and a false `introduced: true`.
+2. **Cascading file-index desync** — editing a source file changes its SHA-256, desyncing `file-index.jsonl`, which fails the cold-tier grounding test, which produces incomplete coverage, which compounds the false positives.
+
+**The ritual.** Use `pnpm gate:self-verify` instead of bare `pnpm fallow:gate` during fix loops. It re-seeds `file-index.jsonl` (so coverage matches current fingerprints), regenerates Istanbul coverage with `pnpm test`, then delegates to `pnpm fallow:gate`. The wrapper prints the local-verification caveat at startup.
+
+**Cross-check rule.** If fallow reports an introduced finding that lacks `crap` or `coverage_pct`, treat it as coverage-unmatched (local artifact), not a regression. The CI SARIF is the source of truth — do not chase `introduced: true` findings locally.
+
+**When to use which gate:**
+
+| Gate | Use case |
+|---|---|
+| `pnpm test` | Iterative test feedback during development |
+| `pnpm fallow:gate` | Stable coverage+complexity audit AFTER refresh_file_index |
+| `pnpm gate:self-verify` | Pre-push local CI-equivalent (test + coverage + fallow) |
+
+The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnpm fallow:gate` directly because it operates on already-committed state where fingerprints are stable. The `gate:self-verify` wrapper is the fix-loop companion; it does not replace the pre-commit hook.
+
+---
+
 ## 10. Where This Project Is Heading
 
 The long-term direction lives in `docs/trajectory.md` — read it before reasoning about loop design. The destination: *a self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior.* The Bridges table (the gate-truth gradient from human-driven to machine-driven) is canonical in `docs/trajectory.md` §4; the engine/instance inversion and the skill-migration track are there too. See `docs/loop-engine.md` for the engine invariant that underpins the trajectory.
