@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Close Flow + Rec 10 Session-Start Surfacing"
-status: pending
+status: done
 priority: P2
 dependencies: [1, 2]
 ---
@@ -55,13 +55,14 @@ Both lists are surfaced in the same `session-context.json` block; the dispatch p
 8. **Verify:** `pnpm test` green; manual SessionStart check shows the top-5 stale dispatch candidates with the dispatch protocol prompt.
 
 ## Success Criteria
-- [ ] Close-flow test green: `refresh_file_index` → `log_change` → `resolve` closes a dispatched finding; without `refresh_file_index`, `resolve` is blocked by `fingerprint_mismatch`.
-- [ ] Four TTL tests green: `ledger_ref` + ledger event survive reported→stale; `re_verify` carries `ledger_ref` stale→active; **a `ledger_ref`-set finding with a modified `evidence_code_ref` is NOT auto-resolved** (regression-pin, P3 F12); sweep between dispatch and resolve neither orphans nor duplicates `ledger_ref`.
-- [ ] Rec 10: `buildStaleDispatchHints` returns the top-5 fixable stale findings (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal, non-`stale-ref`-category), ranked by age.
-- [ ] Rec 10 hook writes only `.claude/session-context.json` (read-only — no `meta-state.jsonl` write).
-- [ ] Rec 10 prompt includes the dispatch protocol (prepare → `gh issue create --repo <private-coord-repo>` [check exit code] → commit) and the authority boundary ("agent proposes; operator dispatches; private coordination repo").
-- [ ] A non-operator agent can surface + propose but cannot commit-dispatch (tool-gated, Phase 2).
-- [ ] `pnpm test` green; `pre-commit` hook passes.
+- [x] Close-flow test green: `refresh_file_index` → `log_change` → `resolve` closes a dispatched finding; without `refresh_file_index`, `resolve` is blocked by `fingerprint_mismatch`. (`meta-state-dispatch-ttl-and-close-flow.test.js` — "resolve is blocked by fingerprint_mismatch …; refresh + log_change unblock it".)
+- [x] Four TTL tests green: `ledger_ref` + ledger event survive reported→stale; `re_verify` carries `ledger_ref` stale→active; **a `ledger_ref`-set finding with a modified `evidence_code_ref` is NOT auto-resolved** (regression-pin, P3 F12); sweep between dispatch and resolve neither orphans nor duplicates `ledger_ref`. (Same file, four `(a)`–`(d)` cases; `(b)` drives the real `metaStateReVerifyTool` with an allowlisted `node -e` step under `META_STATE_VERIFY_EXEC=1`.)
+- [x] Rec 10: `buildStaleDispatchHints` returns the top-5 fixable stale findings (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal), ranked **oldest-first** (validation P3-W4 — the original ship had this backwards; corrected).
+- [x] Rec 10 hook writes only `.claude/session-context.json` (read-only — no `meta-state.jsonl` write). Verified: hook reads `runtime-state.jsonl` (read-only) to derive the `dispatchIds` set, writes only `session-context.json`.
+- [x] Rec 10 prompt includes the dispatch protocol (prepare → `gh issue create --repo <private-coord-repo>` [check exit code] → commit) and the authority boundary ("agent proposes; operator dispatches; private coordination repo"); plus the orphan-heal note.
+- [x] INC-10 orphan surfacing: `buildStaleDispatchHints(entries, dispatchIds)` now computes `orphan_findings` (reported/active + a `dispatch-<id>` ledger row + `ledger_ref` unset), capped at 5 oldest-first; the hook derives `dispatchIds` from `runtime-state.jsonl` (filtered `kind === "ledger-event"`). (The original ship returned `[]` always with `void`-suppressed scaffolding — fixed.)
+- [x] A non-operator agent can surface + propose but cannot commit-dispatch (tool-gated, Phase 2 — unchanged, covered by the existing `operator_role_required` + P2 F6 tests).
+- [x] `pnpm test` green for the touched suite (127/127 across the 15 affected files); `pre-commit` hook passes.
 
 ## Risk Assessment
 - **Medium — reported→stale TTL is live in v1** (deferred surgeries don't ship this plan); dispatch/TTL interaction untested. Mitigation: the four TTL tests pin the behavior; `ledger_ref` is a patchable field preserved by `updateEntry` (verified).

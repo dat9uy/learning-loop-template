@@ -38,8 +38,21 @@ async function main() {
   try {
     const { buildStaleDispatchHints } = require("../../core/loop-introspect.js");
     const { readRegistry } = require("../../core/meta-state.js");
+    const { readRuntimeStateRows } = require("../../core/runtime-state.js");
     const entries = readRegistry(projectRoot);
-    stale_dispatch_hints = buildStaleDispatchHints(entries);
+    // INC-10 orphan detection: find finding ids that have a `dispatch-<id>`
+    // ledger row in runtime-state.jsonl. The builder is a pure function over
+    // entries + this set, so it stays unit-testable without the sidecar.
+    let dispatchIds = [];
+    try {
+      const rows = readRuntimeStateRows(projectRoot);
+      dispatchIds = rows
+        .filter((r) => r && typeof r.id === "string" && r.id.startsWith("dispatch-") && r.kind === "ledger-event")
+        .map((r) => r.id.slice("dispatch-".length));
+    } catch (rowsErr) {
+      console.error(`[session-start] readRuntimeStateRows failed: ${rowsErr.message}`);
+    }
+    stale_dispatch_hints = buildStaleDispatchHints(entries, new Set(dispatchIds));
   } catch (err) {
     console.error(`[session-start] buildStaleDispatchHints failed: ${err.message}`);
   }

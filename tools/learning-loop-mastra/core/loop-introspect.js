@@ -141,15 +141,24 @@ export function buildProcessHints() {
  * Build the Rec 10 (plan 260704-0301-stale-findings-dispatch-handle Phase 3)
  * session-start surfacing: a bounded top-5 list of stale dispatch candidates
  * (non-empty evidence_code_ref, severity !== "escalate", no ledger_ref,
- * non-terminal) + a list of orphan findings (entries that have a
- * `dispatch-<id>` ledger row but no matching ledger_ref on the entry).
+ * non-terminal) + a list of orphan findings (INC-10: reported/active findings
+ * that have a `dispatch-<id>` ledger row but no `ledger_ref` back-pointer —
+ * the residue of a commit whose `ledger_ref` patch failed mid-flight).
  *
- * Read-only. Pure function over `entries` (a registry snapshot). Caller is
- * responsible for I/O + the read-only contract (do NOT call
+ * Read-only. Pure function over `entries` (a registry snapshot) + the caller-
+ * supplied `dispatchIds` set (finding ids that have a `dispatch-<id>` ledger
+ * row in runtime-state.jsonl). The caller (the SessionStart hook) reads
+ * runtime-state.jsonl and passes the set; this builder does no I/O so it stays
+ * unit-testable without touching the sidecar. Do NOT call
  * buildColdTierCache/writeColdTierCache here — this builder is on the
- * SessionStart hot path).
+ * SessionStart hot path.
+ *
+ * Ranking (validation P3-W4): severity (escalate filtered out, so this is a
+ * tiebreaker), then age OLDEST FIRST, then category (stable tiebreaker).
+ * Top-N = 5.
  *
  * @param {object[]} entries — registry entries (readRegistry output)
+ * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
 const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
@@ -159,22 +168,13 @@ const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
   "archived",
 ]);
 
-export function buildStaleDispatchHints(entries) {
-  const findEntry = (id) => entries.find((e) => e.id === id);
-  const allDispatchIds = new Set();
-  // The orphan heuristic: scan the runtime-state.jsonl rows that look like
-  // dispatch ledger rows. We don't have runtime-state.jsonl here (this is a
-  // pure function over `entries`), so the orphan list is computed via the
-  // inverse: entries whose `ledger_ref` starts with `dispatch-` but whose
-  // status is in a non-terminal set (e.g. reported/active) AND no
-  // `dispatch-<id>` row can be reconstructed. Since we lack the ledger
-  // here, orphan_findings is intentionally empty from the registry snapshot
-  // alone — the hook combines this output with runtime-state.jsonl outside
-  // this function.
-  const orphanFindings = [];
+const DISPATCH_PREFIX = "dispatch-";
 
+export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   // Fixable candidates: stale findings, non-empty evidence_code_ref,
   // severity !== "escalate", no ledger_ref, non-terminal.
+  // Sort oldest-first: the operator is more likely to recognize and triage
+  // long-queued stale entries before newly-staled ones (validation P3-W4).
   const candidates = entries
     .filter((e) => e.entry_kind === "finding")
     .filter((e) => e.status === "stale")
@@ -182,9 +182,7 @@ export function buildStaleDispatchHints(entries) {
     .filter((e) => e.severity !== "escalate")
     .filter((e) => !e.ledger_ref)
     .filter((e) => !TERMINAL_STATUSES_FOR_DISPATCH.has(e.status))
-    // Sort by created_at descending so older stale entries surface first
-    // (the operator is more likely to recognize them and want to triage).
-    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
     .slice(0, 5)
     .map((e) => ({
       id: e.id,
@@ -196,10 +194,29 @@ export function buildStaleDispatchHints(entries) {
       created_at: e.created_at,
     }));
 
-  // Avoid an unused-binding lint warning when the orphan list stays empty
-  // (the helper above is documented for future runtime-state integration).
-  void allDispatchIds;
-  void findEntry;
+  // Orphan findings (INC-10): a dispatch-<id> ledger row exists for this
+  // finding (dispatchIds.has(e.id)) but the finding is still reported/active
+  // AND its `ledger_ref` back-pointer was never set — the commit's CAS patch
+  // failed mid-flight. Surface them so the operator can re-invoke the
+  // dispatch tool's same-coords no-op path to heal the back-pointer.
+  // `ledger_ref` set to anything (even a stale value) means the back-pointer
+  // exists; the pure-orphan condition is `!ledger_ref` (the failed-patch case).
+  const orphanFindings = entries
+    .filter((e) => e.entry_kind === "finding")
+    .filter((e) => e.status === "reported" || e.status === "active")
+    .filter((e) => dispatchIds.has(e.id))
+    .filter((e) => !e.ledger_ref)
+    .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""))
+    .slice(0, 5)
+    .map((e) => ({
+      id: e.id,
+      category: e.category,
+      severity: e.severity,
+      affected_system: e.affected_system,
+      status: e.status,
+      description: e.description?.slice(0, 200) ?? "",
+      created_at: e.created_at,
+    }));
 
   return {
     fixable_candidates: candidates,
@@ -210,7 +227,7 @@ export function buildStaleDispatchHints(entries) {
       "2. Agent runs `gh issue create --repo <private-repo>` (check exit code).\n" +
       "3. Agent calls meta_state_dispatch_finding({id, stage:'commit', issue_number, issue_url, repo, delegated_to}) → writes ledger + patches ledger_ref.\n" +
       "Authority boundary: agent proposes; operator dispatches (commit is OPERATOR_MODE-gated). Dispatch to a private issue tracker (not the public template repo).\n" +
-      "If a finding shows up in fixable_candidates with no ledger_ref after a prior dispatch, it is an orphan: re-invoke the dispatch tool to heal.",
+      "If a finding appears in orphan_findings (dispatch row exists but ledger_ref is unset), re-invoke meta_state_dispatch_finding with stage:'commit' and the original coords to heal the back-pointer.",
   };
 }
 

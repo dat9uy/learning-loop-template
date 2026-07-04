@@ -381,4 +381,40 @@ describe("meta_state_dispatch_finding", () => {
       process.env.GATE_ROOT = originalEnv;
     }
   });
+
+  test("commit rejects non-finite or non-positive issue_number (invalid_coords)", async () => {
+    // z.coerce.number() turns a non-numeric string into NaN and "" into 0;
+    // neither is a real `gh issue create` result. The handler must reject
+    // both before writing the ledger row.
+    const tempDir = setupTempRegistry();
+    const clearOp = withOperator();
+    try {
+      const id = await seedFinding(tempDir);
+
+      // NaN via coerce of a non-numeric string.
+      const rNaN = await metaStateDispatchFindingTool.handler({
+        id, stage: "commit", issue_number: "not-a-number", issue_url: "https://x/y/issues/1",
+      });
+      const bNaN = JSON.parse(rNaN.content[0].text);
+      assert.strictEqual(bNaN.dispatched, false);
+      assert.strictEqual(bNaN.reason, "invalid_coords");
+
+      // 0 (coerce of "") is not a valid issue number.
+      const rZero = await metaStateDispatchFindingTool.handler({
+        id, stage: "commit", issue_number: 0, issue_url: "https://x/y/issues/0",
+      });
+      const bZero = JSON.parse(rZero.content[0].text);
+      assert.strictEqual(bZero.dispatched, false);
+      assert.strictEqual(bZero.reason, "invalid_coords");
+
+      // No ledger row written and no ledger_ref patched.
+      const sidecarPath = join(tempDir, "runtime-state.jsonl");
+      assert.ok(!existsSync(sidecarPath), "invalid_coords must not write runtime-state.jsonl");
+      const f = readRegistry(tempDir).find((e) => e.id === id);
+      assert.ok(!f.ledger_ref, "invalid_coords must not set ledger_ref");
+    } finally {
+      clearOp();
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
 });

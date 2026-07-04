@@ -1,7 +1,7 @@
 ---
 title: "Stale-Findings Triage + GitHub-Issue Dispatch (Dispatch-Handle Model)"
 description: "Collapse the stale-ref finding category into a derived view (Rec 8), add a dispatch-handle MCP tool that routes fixable findings to GitHub Issues with a ledger_ref back-pointer, define the close flow, wire Rec 10 session-start surfacing, and add the L1 'deferred decision' concept statement. Registry stays single-writer; worktrees edit code only."
-status: pending
+status: done
 priority: P2
 branch: "main"
 tags: [meta-state, stale-ref, dispatch, github-issues, derived-view, rec-8, rec-10, concept-surface]
@@ -127,10 +127,10 @@ Two halves of one move:
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Rec 8 Collapse — stale-ref to derived view](./phase-01-rec-8-collapse-stale-ref-to-derived-view.md) | Pending |
-| 2 | [Dispatch Tool — meta_state_dispatch_finding](./phase-02-dispatch-tool-meta-state-dispatch-finding.md) | Pending |
-| 3 | [Close Flow + Rec 10 Session-Start Surfacing](./phase-03-close-flow-rec-10-session-start-surfacing.md) | Pending |
-| 4 | [Docs — L1 Concept + Lifecycle](./phase-04-docs-l1-concept-lifecycle.md) | Pending |
+| 1 | [Rec 8 Collapse — stale-ref to derived view](./phase-01-rec-8-collapse-stale-ref-to-derived-view.md) | Done |
+| 2 | [Dispatch Tool — meta_state_dispatch_finding](./phase-02-dispatch-tool-meta-state-dispatch-finding.md) | Done |
+| 3 | [Close Flow + Rec 10 Session-Start Surfacing](./phase-03-close-flow-rec-10-session-start-surfacing.md) | Done |
+| 4 | [Docs — L1 Concept + Lifecycle](./phase-04-docs-l1-concept-lifecycle.md) | Done |
 
 ## Dependencies
 
@@ -190,7 +190,7 @@ The `ack`/`active`/`auto-resolved` surgeries are deferred, so the reported→sta
 - **TTL:** the four test cases in phase-03 pass (including the **regression-pin** `ledger_ref`-set + modified-`evidence_code_ref` contract — P3 F12 renamed from "forward-looking").
 - **Concept:** `docs/loop-engine.md` carries the "deferred decision" statement and the explicit-exits set including `dispatch` and `supersede` — **role names only, no mechanism/tool names** (P3 F11); mechanism mapping goes in `docs/meta-state-lifecycle.md` (L2). Phase 4 ships after Phases 1-3 — it's the closure phase: L1 docs + source-report closeout.
 - **Report closeout:** `plans/reports/from-ck-predict-to-operator-260704-0105-direction-gaps-legacy-cleanup-two-surfaces-reframe-report.md` marks Rec 8, Rec 10, Rec 11 as `[DONE]` (resolved by this plan's Phases 1 and 3); Rec 12 noted half-solved (scoped dispatch-close case shipped, general trigger rule deferred); Rec 9 left open (no consult-gate built); **Q11** (operator/agent symmetry in addendum 2) noted as a separate open question, not addressed by this plan; addendum `**Status**` line updated to "shipped → see `plans/260704-0301-stale-findings-dispatch-handle/`".
-- **Rec 10:** at SessionStart, the surface emits a bounded **top-5** of fixable stale dispatch candidates (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal) AND a list of orphan findings (INC-10) — total surface output is bounded but the two lists are distinguished. The dispatch protocol prompt instructs ("agent proposes; operator dispatches; private coordination repo; agent picks `--repo` explicitly or relies on `gh`'s default to current git remote"); a non-operator agent can surface + propose but cannot commit-dispatch (tool-gated, P2 F6).
+- **Rec 10:** at SessionStart, the surface emits a bounded **top-5** of fixable stale dispatch candidates (non-empty `evidence_code_ref`, `severity !== "escalate"`, no `ledger_ref`, non-terminal, ranked **oldest-first**) AND a list of orphan findings (INC-10: reported/active findings with a `dispatch-<id>` ledger row but no `ledger_ref` back-pointer) — total surface output is bounded but the two lists are distinguished. The dispatch protocol prompt instructs ("agent proposes; operator dispatches; private coordination repo; agent picks `--repo` explicitly or relies on `gh`'s default to current git remote"); a non-operator agent can surface + propose but cannot commit-dispatch (tool-gated, P2 F6). (Phase 3 originally shipped without the orphan list and with newest-first ranking; both corrected — `buildStaleDispatchHints(entries, dispatchIds)` + hook reads `runtime-state.jsonl`.)
 
 ## References
 

@@ -18,6 +18,26 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 
 /**
+ * Read all rows from runtime-state.jsonl. Empty/missing file -> []. Malformed
+ * lines are skipped (parsed to null then filtered). Shared by
+ * `runtime_state_record` (read-your-own-writes checks), the dispatch tool
+ * (idempotency scan), and the SessionStart hook (INC-10 orphan detection).
+ * DRY: previously each caller reimplemented the JSONL read.
+ */
+export function readRuntimeStateRows(root) {
+  const path = join(root, RUNTIME_STATE_FILENAME);
+  if (!existsSync(path)) return [];
+  const raw = readFileSync(path, "utf8");
+  return raw
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    })
+    .filter(Boolean);
+}
+
+/**
  * Canonical sidecar filename. Kept here (not imported from the tool file)
  * to avoid circular-import risk between record-tool and dispatch-tool —
  * both depend on this module, neither should depend on the other.

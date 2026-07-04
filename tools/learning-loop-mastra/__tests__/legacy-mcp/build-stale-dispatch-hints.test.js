@@ -15,10 +15,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
+  // Save GATE_ROOT so the e2e test can restore it in finally (F8: the prior
+  // implementation leaked GATE_ROOT or deleted it via a convoluted ternary).
+  let prevGateRoot;
   function setupTempRegistry() {
+    prevGateRoot = process.env.GATE_ROOT;
     const tempDir = mkdtempSync(join(tmpdir(), "build-stale-dispatch-"));
     process.env.GATE_ROOT = tempDir;
     return tempDir;
+  }
+  function restoreGateRoot() {
+    if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
+    else process.env.GATE_ROOT = prevGateRoot;
   }
 
   function makeEntry(opts) {
@@ -85,21 +93,66 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
     assert.deepStrictEqual(result.fixable_candidates, []);
   });
 
-  test("caps fixable_candidates at 5 (top-N)", () => {
+  test("caps fixable_candidates at 5 (top-N), oldest first", () => {
     const entries = Array.from({ length: 10 }, (_, i) =>
       makeEntry({
         id: `meta-stale-${i}`,
         evidence_code_ref: `tools/x${i}.js:1`,
-        // Older first → newer last; sort by created_at descending, so the
-        // top-5 should be the most-recently-created.
+        // i=0 → 10s ago (oldest); i=9 → 1s ago (newest). Ranking is oldest-first
+        // (validation P3-W4), so the top-5 should be the OLDEST five.
         created_at: new Date(Date.now() - (10 - i) * 1000).toISOString(),
       })
     );
     const result = buildStaleDispatchHints(entries);
     assert.strictEqual(result.fixable_candidates.length, 5);
-    // The first candidate should be the most-recently-created (i=9).
-    assert.strictEqual(result.fixable_candidates[0].id, "meta-stale-9");
-    assert.strictEqual(result.fixable_candidates[4].id, "meta-stale-5");
+    // The first candidate should be the oldest (i=0); the fifth is i=4.
+    assert.strictEqual(result.fixable_candidates[0].id, "meta-stale-0");
+    assert.strictEqual(result.fixable_candidates[4].id, "meta-stale-4");
+  });
+
+  test("orphan_findings: a reported finding with a dispatch row but no ledger_ref is surfaced", () => {
+    // meta-orphan-1 has a dispatch-<id> row (dispatchIds) but no ledger_ref.
+    const entries = [
+      makeEntry({ id: "meta-orphan-1", status: "reported", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-orphan-2", status: "active", evidence_code_ref: "x.js:1" }),
+      // Not an orphan: stale (orphans are reported/active only).
+      makeEntry({ id: "meta-not-orphan-stale", status: "stale", evidence_code_ref: "x.js:1" }),
+      // Not an orphan: ledger_ref set (back-pointer exists).
+      makeEntry({ id: "meta-not-orphan-patched", status: "reported", evidence_code_ref: "x.js:1", ledger_ref: "dispatch-meta-not-orphan-patched" }),
+      // Not an orphan: no dispatch row for this id.
+      makeEntry({ id: "meta-no-row", status: "reported", evidence_code_ref: "x.js:1" }),
+    ];
+    const dispatchIds = new Set(["meta-orphan-1", "meta-orphan-2", "meta-not-orphan-patched", "meta-not-orphan-stale"]);
+    const result = buildStaleDispatchHints(entries, dispatchIds);
+    const orphanIds = result.orphan_findings.map((o) => o.id);
+    assert.deepStrictEqual(orphanIds.sort(), ["meta-orphan-1", "meta-orphan-2"]);
+    // The prompt explains the heal action.
+    assert.ok(result.dispatch_protocol_prompt.includes("orphan_findings"));
+  });
+
+  test("orphan_findings is empty when dispatchIds is empty (no prior dispatches)", () => {
+    const entries = [
+      makeEntry({ id: "meta-r-1", status: "reported", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-a-1", status: "active", evidence_code_ref: "x.js:1" }),
+    ];
+    const result = buildStaleDispatchHints(entries, new Set());
+    assert.deepStrictEqual(result.orphan_findings, []);
+  });
+
+  test("orphan_findings caps at 5, oldest first", () => {
+    const entries = Array.from({ length: 8 }, (_, i) =>
+      makeEntry({
+        id: `meta-orphan-${i}`,
+        status: "reported",
+        evidence_code_ref: "x.js:1",
+        created_at: new Date(Date.now() - (8 - i) * 1000).toISOString(),
+      })
+    );
+    const dispatchIds = new Set(entries.map((e) => e.id));
+    const result = buildStaleDispatchHints(entries, dispatchIds);
+    assert.strictEqual(result.orphan_findings.length, 5);
+    assert.strictEqual(result.orphan_findings[0].id, "meta-orphan-0");
+    assert.strictEqual(result.orphan_findings[4].id, "meta-orphan-4");
   });
 
   test("dispatches integrate end-to-end: prepare + commit → ledger_ref set → no longer in candidates", async () => {
@@ -140,7 +193,7 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
       assert.ok(!afterIds.includes(id), `entry ${id} should NOT be in fixable_candidates after dispatch`);
     } finally {
       delete process.env.OPERATOR_MODE;
-      process.env.GATE_ROOT = process.env.GATE_ROOT ? undefined : process.env.GATE_ROOT;
+      restoreGateRoot();
     }
   });
 });

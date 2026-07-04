@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
-import { appendLedgerEvent } from "../../core/runtime-state.js";
+import { appendLedgerEvent, readRuntimeStateRows } from "../../core/runtime-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 
 /**
  * meta_state_dispatch_finding — two-mode tool for routing fixable findings
@@ -41,22 +39,11 @@ function dispatchLedgerId(findingId) {
   return `dispatch-${findingId}`;
 }
 
-function readRuntimeState(root) {
-  const path = join(root, "runtime-state.jsonl");
-  if (!existsSync(path)) return [];
-  const raw = readFileSync(path, "utf8");
-  return raw
-    .split("\n")
-    .filter((l) => l.trim() !== "")
-    .map((l) => {
-      try { return JSON.parse(l); } catch { return null; }
-    })
-    .filter(Boolean);
-}
-
 function findDispatchRow(rows, findingId) {
   const target = dispatchLedgerId(findingId);
-  return rows.find((r) => r && r.id === target) || null;
+  // Filter by kind=ledger-event so a future budget-state row reusing the
+  // `dispatch-` prefix can't be mistaken for a dispatch ledger row.
+  return rows.find((r) => r && r.id === target && r.kind === "ledger-event") || null;
 }
 
 /**
@@ -132,7 +119,7 @@ export const metaStateDispatchFindingTool = {
     if (stage === "prepare") {
       // Idempotency: if a dispatch row exists, return its coords so the
       // agent does NOT re-run `gh issue create`.
-      const rows = readRuntimeState(root);
+      const rows = readRuntimeStateRows(root);
       const existing = findDispatchRow(rows, id);
       if (existing) {
         const result = {
@@ -177,8 +164,17 @@ export const metaStateDispatchFindingTool = {
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_dispatch_finding", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
+    // Defensive: z.coerce.number() yields NaN on a non-numeric string and 0 on
+    // an empty string; both would otherwise be written to the ledger as the
+    // issue number. Reject them explicitly. `gh issue create` returns a
+    // positive integer, so <= 0 is never a real issue number.
+    if (!Number.isFinite(issue_number) || issue_number <= 0) {
+      const result = { dispatched: false, reason: "invalid_coords", id, stage, issue_number };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_dispatch_finding", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
 
-    const rows = readRuntimeState(root);
+    const rows = readRuntimeStateRows(root);
     const existing = findDispatchRow(rows, id);
     if (existing) {
       const exNum = existing.metadata?.issue_number;
