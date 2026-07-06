@@ -23,13 +23,6 @@ Every cognitive step the loop takes is either:
 - **deterministic** — rule-enforced, registry-driven, no judgment deferred to a model; or
 - **agentic** — deferred to a model or an operator+runtime session because it cannot yet be encoded.
 
-## The invariant
-
-Every cognitive step the loop takes is either:
-
-- **deterministic** — rule-enforced, registry-driven, no judgment deferred to a model; or
-- **agentic** — deferred to a model or an operator+runtime session because it cannot yet be encoded.
-
 The loop's telos: **grow the deterministic surface; shrink the agentic surface.** The intended cycle is one:
 
 > agentic deferral → recorded as a finding or change-log → promoted to a rule when it recurs → becomes deterministic.
@@ -77,7 +70,7 @@ The record is a discriminated union of four kinds: **finding** (an observed gap 
 
 These are the irreducible judgments that survive in the concept surface — the "why" the loop cannot proceduralize. Each is a compact pointer; the deep treatment lives in `docs/philosophy.md` and `docs/trajectory.md`.
 
-1. **Escape-hatch gradient.** Anything an agent must open (a doc, a skill) to know what to do next is a *gap*, not a permanent dependency. The split between loop-encoded and escape-hatch tracks what the loop has internalized; the direction of travel is to move the escape hatch into the loop. The escape hatch is not wrong; it is temporary.
+1. **Escape-hatch gradient.** Anything an agent must open (a doc, a skill) to know what to do next is a *gap*, not a permanent dependency. The split between loop-encoded and escape-hatch tracks what the loop has internalized; the direction of travel is to move the escape hatch into the loop. The escape hatch is not wrong; it is temporary. The gradient's subject is *instruction injection* — how an instruction reaches the runtime — not the file format of the artifact that carries it.
 2. **Three-class dependency balance.** The loop internalizes the *contract* (full authority), cites the *internal implementation* (records that it happened, does not replace it), and reads the *external system* (consumer, not source). Confusing these classes produces a closed loop with no ground truth.
 3. **Decisions are boundaries, not permissions.** A decision record is "yes, within these lines, and no outside them." The blocked actions are more important than the allowed actions; a decision without blocked actions is a wish.
 4. **Dimensional verification.** Confidence is always partial and scoped. A thing can be proven to install and simultaneously unproven for production. Never conflate dimensions; each answers a distinct question.

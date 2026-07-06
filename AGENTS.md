@@ -119,3 +119,17 @@ The long-term direction lives in `docs/trajectory.md` — read it before reasoni
 ## 11. Runtime Interface Ownership (R2)
 
 Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
+
+---
+
+## 12. How to Approach: Placing Procedural Knowledge
+
+When you add procedural knowledge — a triage procedure, a guardrail, a surfacing rule, a contract note — decide where it belongs on the injection × consumption two axes (see `docs/philosophy.md` § "Skills Are the Same Kind of Escape Hatch" for the model; `docs/loop-engine.md` for the invariant these axes rest on):
+
+1. **Identify the instruction.** What is the procedure, the guardrail, or the surfacing rule you are adding? Name it before placing it.
+2. **Injection axis — when does it need to surface?** If timing matters (the instruction must appear at the right moment, not when the model happens to open it), it needs *deterministic injection* — a hook or gate surfaces it — so it belongs at least at **state-2**. If the model opening it ad hoc is enough, *agentic injection* (state-1) suffices.
+3. **Consumption axis — who decides?** If the content needs model judgment (read prose, weigh context, decide), consumption stays *agentic* — it lives at **state-2**, the loop's permanent home for judgment-bound content. If the judgment can be fully encoded (a rule or gate fires without the model), consumption is *deterministic* — it goes to **state-3 (encoded)**.
+4. **Guardrails.** Actions on operator-judgment boundaries (consult-gates — see `docs/loop-engine.md` escape-hatch #5 "What stays human forever" and #6 "Adversarial mindset") must be deterministic: **state-3 for the guardrail**, even when the content it guards stays at state-2.
+5. **Cross-reference.** `docs/loop-engine.md` for the invariant (`deterministic-step` / `agentic-step`); `docs/philosophy.md` for the two-axis model and the three states.
+
+The lens in one line: state-1 (agentic injection, agentic consumption) is an unwired instruction the model opens ad hoc — a gap, not a permanent dependency. State-2 (deterministic injection, agentic consumption) is where the loop lives — it injects deterministically, consumes agenticly. State-3 (deterministic injection, deterministic consumption) is the terminus for what can be fully encoded.
