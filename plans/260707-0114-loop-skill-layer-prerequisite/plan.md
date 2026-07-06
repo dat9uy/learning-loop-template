@@ -1,7 +1,7 @@
 ---
 title: "Loop-maintained skill layer prerequisite"
 description: "Wire skills from escape-hatch (state-1) to wired (state-2): generalize the skill contract (Req #3 + maturity frontmatter), extend the write-gate + mirror to <surface>/skills/** (dedicated skills preflight marker), extract the bound-artifacts constant, and land the L1 recursion-bound statement + authoring subsection in loop-engine.md. Ships the loop-owned skill-layer mechanism the later Rec 12 trigger consumer sits on."
-status: pending
+status: completed
 priority: P2
 branch: "docs/skill-layer-consensus-rec12-broadening"
 tags: [skill-layer, l1, l2, l3, write-gate, mirror, bound-artifacts, two-axis]
@@ -10,6 +10,8 @@ blocks: []
 created: "2026-07-06T18:21:58.521Z"
 createdBy: "ck:plan"
 source: skill
+completed: "2026-07-06T19:15:00Z"
+completedBy: "ck:cook"
 ---
 
 # Plan: Loop-maintained skill layer prerequisite
