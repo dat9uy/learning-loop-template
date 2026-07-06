@@ -23,13 +23,6 @@ Every cognitive step the loop takes is either:
 - **deterministic** — rule-enforced, registry-driven, no judgment deferred to a model; or
 - **agentic** — deferred to a model or an operator+runtime session because it cannot yet be encoded.
 
-## The invariant
-
-Every cognitive step the loop takes is either:
-
-- **deterministic** — rule-enforced, registry-driven, no judgment deferred to a model; or
-- **agentic** — deferred to a model or an operator+runtime session because it cannot yet be encoded.
-
 The loop's telos: **grow the deterministic surface; shrink the agentic surface.** The intended cycle is one:
 
 > agentic deferral → recorded as a finding or change-log → promoted to a rule when it recurs → becomes deterministic.
