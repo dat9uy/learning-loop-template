@@ -16,36 +16,95 @@ import { basename, dirname, join } from "node:path";
 export const SURFACES = Object.freeze([".claude", ".factory", ".mastracode"]);
 
 /**
- * All coordination-relative paths for a given subpath across all surfaces.
+ * Section-aware path generator. Returns the per-surface path for a given
+ * section (e.g. "coordination", "skills") and subpath.
+ *
  * @example
- * getAllCoordinationPaths("hooks/bash-gate.js")
- * // => [".claude/coordination/hooks/bash-gate.js", ".factory/coordination/hooks/bash-gate.js"]
+ * getAllSurfacePaths("coordination", "hooks/bash-gate.js")
+ * // => [".claude/coordination/hooks/bash-gate.js", ".factory/coordination/hooks/bash-gate.js", ".mastracode/coordination/hooks/bash-gate.js"]
+ *
+ * @param {string} section — section name (e.g. "coordination", "skills")
+ * @param {string} subpath — relative path under the section
+ * @returns {string[]} per-surface paths
  */
-export function getAllCoordinationPaths(subpath) {
-  return SURFACES.map((s) => `${s}/coordination/${subpath}`);
+export function getAllSurfacePaths(section, subpath) {
+  return SURFACES.map((s) => `${s}/${section}/${subpath}`);
 }
 
 /**
- * Atomic write to all surface coordination directories.
- * Uses write-temp + rename for atomicity. Missing directories are created.
- * Best-effort per surface: one failure does not abort the others.
- * @param {string} root — project root directory
- * @param {string} subpath — relative path under coordination/
- * @param {string} content — file content (string)
+ * Back-compat wrapper around getAllSurfacePaths("coordination", subpath).
+ * Preserves the legacy signature for callers that only know about coordination.
+ * @param {string} subpath
+ * @returns {string[]}
  */
-export function writeToAllSurfaces(root, subpath, content) {
+export function getAllCoordinationPaths(subpath) {
+  return getAllSurfacePaths("coordination", subpath);
+}
+
+/**
+ * Atomic write-temp + rename for every surface, scoped to a section.
+ * Best-effort per surface: one failure does not abort the others.
+ * Returns a per-surface result array (red-team fix: surface errors are no
+ * longer swallowed silently — callers can detect partial-mirror failure).
+ *
+ * @param {string} root — project root directory
+ * @param {string} section — section name (e.g. "coordination", "skills")
+ * @param {string} subpath — relative path under the section
+ * @param {string} content — file content (string)
+ * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
+ */
+// Reserved as the canonical section-aware mirror fan-out per plan 260707-0114
+// acceptance. Consumed internally by writeToAllSurfaces (back-compat, has
+// external callers) and writeToAllSkills; current skill edits use gated-Edit-
+// per-mirror (red-team #6), so no external import exists yet.
+// fallow-ignore-next-line unused-export
+export function writeToAllSurfacesSection(root, section, subpath, content) {
+  const results = [];
   for (const surface of SURFACES) {
-    const dir = join(root, surface, "coordination", dirname(subpath));
-    const realPath = join(root, surface, "coordination", subpath);
+    const dir = join(root, surface, section, dirname(subpath));
+    const realPath = join(root, surface, section, subpath);
     const tmpPath = `${realPath}.tmp`;
     try {
       mkdirSync(dir, { recursive: true });
       writeFileSync(tmpPath, content, "utf8");
       renameSync(tmpPath, realPath);
-    } catch {
-      // best-effort: swallow per-surface errors
+      results.push({ surface, action: "wrote" });
+    } catch (err) {
+      results.push({ surface, action: "failed", error: err?.message ?? String(err) });
     }
   }
+  return results;
+}
+
+/**
+ * Back-compat wrapper around writeToAllSurfacesSection(root, "coordination", subpath, content).
+ * Returns void to preserve the legacy contract; new callers should use
+ * writeToAllSurfacesSection directly (it returns per-surface results).
+ *
+ * @param {string} root
+ * @param {string} subpath
+ * @param {string} content
+ */
+export function writeToAllSurfaces(root, subpath, content) {
+  writeToAllSurfacesSection(root, "coordination", subpath, content);
+}
+
+/**
+ * Skills-section write helper. Returns per-surface results so callers can
+ * detect partial-mirror failure (the `learning-loop` mirror fan-out is a
+ * critical path; the validator's parity test is the byte-identity backstop).
+ *
+ * @param {string} root
+ * @param {string} subpath — relative path under <surface>/skills/
+ * @param {string} content
+ * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
+ */
+// Reserved as the skills-mirror fan-out per plan 260707-0114 acceptance. No
+// consumer today: skill edits go through gated-Edit-per-mirror (red-team #6).
+// Consumers land with the next skill materialization that uses the fan-out.
+// fallow-ignore-next-line unused-export
+export function writeToAllSkills(root, subpath, content) {
+  return writeToAllSurfacesSection(root, "skills", subpath, content);
 }
 
 /**
@@ -87,9 +146,9 @@ export function readFromAllSurfaces(root, subpath, options = {}) {
  * Append a line to all surface coordination files (true append, never overwrites).
  * Creates the parent directory if missing. Best-effort per surface: one
  * failure does not abort the others; errors are logged to stderr.
- * @param {string} root — project root directory
- * @param {string} subpath — relative path under coordination/
- * @param {string} line — content to append (a single line; "\n" is added)
+ * @param {string} root
+ * @param {string} subpath
+ * @param {string} line
  */
 export function appendToAllSurfaces(root, subpath, line) {
   for (const surface of SURFACES) {
@@ -118,6 +177,11 @@ export function appendToAllSurfaces(root, subpath, line) {
  * @param {"asc"|"none"} options.sort — default "asc"
  * @returns {Array}
  */
+// Inherited complexity: pre-existing cross-surface JSONL reader (dedupe +
+// since + sort options). Untouched by the skill-layer work; flagged because
+// surfaces.js is in the changed-since set. Logic is correct and covered by
+// surfaces-read-jsonl.test.js.
+// fallow-ignore-next-line complexity
 export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
   const { dedupe = true, since = 0, sort = "asc" } = options;
   const sinceMs = typeof since === "string" ? new Date(since).getTime() : since;
@@ -180,6 +244,11 @@ export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
  *   Override only when the caller's semantic explicitly is "remove on null".
  * @returns {Array<{ surface, action: "wrote" | "removed" | "skipped" }>}
  */
+// Inherited complexity: pre-existing read-modify-write fan-out (per-surface
+// lock + read + modify + write + remove-on-null). Untouched by the skill-layer
+// work; flagged because surfaces.js is in the changed-since set. Covered by
+// surfaces-rmw.test.js.
+// fallow-ignore-next-line complexity
 export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = {}) {
   const { removeOnNull = false } = options;
   const results = [];

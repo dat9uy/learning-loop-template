@@ -84,6 +84,29 @@ These are the irreducible judgments that survive in the concept surface — the 
 12. **Loss-function question.** Self-referential learning needs a stated target. Proposed composite: drift recovery rate (findings caught + resolved vs drifted) and findings-per-promoted-rule ratio (efficiency of the finding → rule → invariant pipeline). A loop with no stated loss function optimizes whatever is easiest to measure.
 13. **Operator-capture guard.** When the operator's corrections shape what the loop learns and the loop's gates shape what the operator sees, they co-adapt; the meta-surface becomes a record of operator preferences, not system truths. A discovered-vs-acked annotation on change-logs would surface an operator-capture index. Not yet implemented; the schema decision is open.
 
+## The recursion-bound statement (skills)
+
+A skill file is a bound artifact (per the L2 contract: `tools/learning-loop-mastra/interface/CONTRACT.md` Req #3). Editing a skill triggers a change-log entry; the change-log is a record write (MCP tool, already logged in `meta-state.jsonl`), not a bound-artifact edit. **The recursion is bounded: skill edits emit change-logs, change-logs are records, records are not skills.** This is the intended invariant — true on disk now that the phase-5 skills write-gate makes skill files bound artifacts.
+
+**Honest framing:** the change-log step is operator-triggered today. Auto-detecting a skill edit that did not emit a change-log (the gap detector) is deferred to the broadened Rec 12 plan. Until that lands, the invariant holds when the operator follows the gated authoring path; a violation produces a record drift, not a hard failure.
+
+## Authoring loop-maintained skills
+
+The maintainer standard for any loop-maintained skill (a skill mirrored across `.claude`/`.factory`/`.mastracode` and declaring `maturity:` frontmatter):
+
+1. **Maturity levels** (per `docs/philosophy.md` — injection × consumption axes):
+   - `state-1` — escape-hatch: session-scoped markdown, no deterministic injection.
+   - `state-2` — wired: deterministic injection (SessionStart discovery / contract) + agenticly consumed. The current target for `learning-loop` and `coordination-gate`.
+   - `state-3` — encoded: deterministic injection + deterministic consumption, realized by the `deterministic-step` role.
+2. **Mirror requirement** — skills mirror across `.claude`/`.factory`/`.mastracode` via `writeToAllSkills` (phase 4 fan-out in `core/surfaces.js`). The byte-identity invariant is asserted by `legacy-mcp/skills-mirror-parity.test.js`; a single-surface placement fails the contract with `skill-mirror-gap`.
+3. **Frontmatter discipline** — `maturity:` (state-1/2/3) is hard-required by `CONTRACT.md` Req #3. Per-skill frontmatter parse is error-isolated (one bad skill yields a per-skill fail, does not abort the validator); size cap is 64KB (billion-laughs guard).
+4. **Gated authoring path** — direct writes to `<surface>/skills/**` are blocked by the phase-5 write-gate (`evaluateWriteGate` skills rule). To edit a skill:
+   1. `gate_mark_preflight(surface: "skills")` — unlocks the dedicated `.loop-preflight-skills` marker (30-minute TTL).
+   2. Write to the skill (Edit each mirror via `writeToAllSkills` for byte-identity, OR `Edit` per mirror if the change is a manual fix).
+   3. `meta_state_log_change` — record the system change (the change-log half of self-maintenance).
+5. **Tool-ref check** — `learning-loop` MUST reference `loop_describe` AND `meta_state_list` (it documents the loop's tool surface). Other loop-maintained skills are not required to reference those tools.
+6. **External symlinks excluded** — `.claude/skills/mastra` (and any future external symlink) is out of the contract + write-gate's scope (not loop-maintained).
+
 ## Open design questions (deferred to the next session)
 
 These are named here so a reader knows the engine is unfinished. They are not solved in this doc.

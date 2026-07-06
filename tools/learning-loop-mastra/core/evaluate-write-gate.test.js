@@ -160,6 +160,75 @@ test("product/** with .factory marker → ok", () => {
   assert.strictEqual(result.decision, "ok");
 });
 
+// ── skills/** preflight delegation (Phase 5) ──
+// Phase 5 introduces a dedicated `skills` preflight marker (`.loop-preflight-skills`).
+// The skills rule delegates to findPreflightMarker("skills", root) — explicitly,
+// NOT via inferSurface (which returns null for surface-prefix paths).
+
+function writeSkillsPreflightMarker(root, surface, coordDirName = ".claude") {
+  const dir = join(root, coordDirName, "coordination");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, `.loop-preflight-skills`),
+    JSON.stringify({ surface: "skills", completed_at: new Date().toISOString() }),
+  );
+}
+
+test(".claude/skills/learning-loop/SKILL.md (no .loop-preflight-skills marker) → block", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({ filePath: ".claude/skills/learning-loop/SKILL.md", root });
+  assert.strictEqual(result.decision, "block", "skills/** must block without dedicated preflight marker");
+  assert.ok(result.matched_rule.includes(".claude/skills/**"), `matched_rule should list .claude/skills/**: ${result.matched_rule}`);
+});
+
+test(".factory/skills/coordination-gate/SKILL.md (no marker) → block", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({ filePath: ".factory/skills/coordination-gate/SKILL.md", root });
+  assert.strictEqual(result.decision, "block");
+});
+
+test(".mastracode/skills/learning-loop/SKILL.md (no marker) → block", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({ filePath: ".mastracode/skills/learning-loop/SKILL.md", root });
+  assert.strictEqual(result.decision, "block");
+  assert.ok(result.matched_rule.includes(".mastracode/skills/**"));
+});
+
+test(".claude/skills/learning-loop/SKILL.md (with .loop-preflight-skills marker) → ok", () => {
+  const root = makeRoot();
+  writeSkillsPreflightMarker(root, "skills");
+  const result = evaluateWriteGate({ filePath: ".claude/skills/learning-loop/SKILL.md", root });
+  assert.strictEqual(result.decision, "ok", "skills-marker must unlock skills/** writes");
+});
+
+test(".claude/skills/learning-loop/references/foo.md (nested, no marker) → block", () => {
+  const root = makeRoot();
+  const result = evaluateWriteGate({ filePath: ".claude/skills/learning-loop/references/foo.md", root });
+  assert.strictEqual(result.decision, "block", "nested skills paths must be covered by **");
+});
+
+test("docs/**, tools/**, core/**, plans/** stay ok (regression: Rec 12 boundary respected)", () => {
+  const root = makeRoot();
+  for (const safePath of [
+    "docs/foo.md",
+    "tools/x.js",
+    "core/y.js",
+    "plans/z.md",
+    "README.md",
+  ]) {
+    const result = evaluateWriteGate({ filePath: safePath, root });
+    assert.strictEqual(result.decision, "ok", `${safePath} must stay ok (Rec 12 boundary): ${JSON.stringify(result)}`);
+  }
+});
+
+test("skills marker is independent of product marker (separate surfaces)", () => {
+  // .loop-preflight-product must NOT unlock skills/** — separate markers.
+  const root = makeRoot();
+  writePreflightMarker(root, "product");
+  const result = evaluateWriteGate({ filePath: ".claude/skills/learning-loop/SKILL.md", root });
+  assert.strictEqual(result.decision, "block", "product marker must NOT unlock skills/** (separate surfaces)");
+});
+
 // ── promoted rules ──
 
 test("promoted rule matching file path → escalate", () => {
