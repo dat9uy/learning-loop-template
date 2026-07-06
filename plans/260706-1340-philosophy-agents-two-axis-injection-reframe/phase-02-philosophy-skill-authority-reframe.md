@@ -1,7 +1,19 @@
+---
+phase: 2
+title: "philosophy.md — skill authority + escape-hatch reframe"
+status: pending
+effort: "medium"
+priority: P2
+dependencies: [1]
+---
+
 # Phase 2: philosophy.md — skill authority + escape-hatch reframe
 
+## Overview
+Rewrite two cross-referencing `philosophy.md` sections together — "Skills Are the Same Kind of Escape Hatch" (lines ~29-35) + Pillar 4 "Skill Authority vs Loop Authority" (lines ~69-84). Drop "MCP tool" as terminus; introduce the injection × consumption two-axis model + three states; reframe skill as the agentic-injection mechanism; relabel the migration sequence as state-1 → state-2 → state-3. The two sections are one phase so no inconsistent intermediate state ships.
+
 ## Context
-- Source report: `plans/reports/from-problem-solving-260706-1340-injection-consumption-two-axis-l1-reframe-report.md`
+- Source report: `plans/reports/from-concept-debate-to-prerequisite-260706-1359-loop-skill-layer-injection-two-axis-report.md` (§"The L1 framing (spine)" + §"Rec 9 in this framing" — consolidates the prior 1340 reframing).
 - Operator decisions: state-2 = permanent home for judgment-bound content (decision 1); escape-hatch kept as state-1 name, decoupled from file format (decision 2); "internalize as MCP tool" is solution-centric (operator point 1).
 - Two sections rewrite **together** (same doc, same concept, cross-referencing — splitting creates an inconsistent intermediate state).
 
@@ -9,7 +21,8 @@
 - `docs/philosophy.md`:
   - "Skills Are the Same Kind of Escape Hatch" section (lines ~29-35).
   - Pillar 4 "Skill Authority vs Loop Authority" (lines ~72-84).
-- **Do NOT touch:** Pillar 1 (verification), Pillar 2 (decisions), Pillar 3 (evidence), "State Machine and Observations", or anything outside the two named sections.
+  - **Core Premise line 13** — single-phrase rephrase: "records, observations, index entries, or MCP tools" → replace "MCP tools" with the new vocabulary (e.g. "deterministic steps") so no stale terminus language survives in Core Premise (validation decision Q2).
+- **Do NOT touch:** Pillar 1 (verification), Pillar 2 (decisions), Pillar 3 (evidence), "State Machine and Observations", or anything outside the two named sections **and the line-13 phrase**. Line 13 is the only Core Premise edit; the rest of Core Premise stays byte-identical.
 
 ## Change 1: "Skills Are the Same Kind of Escape Hatch" (lines 29-35)
 
@@ -37,7 +50,7 @@ The pillar currently: skills execute; the loop records; the meta-surface survive
 ### Revision (must contain)
 1. **Keep** the authority split (skill executes = agentic; loop records = deterministic) — it is correct.
 2. **Reframe "skill"** as the **agentic-injection mechanism** (markdown the runtime loads for the model to read), **not a concept role**. The concept role is `agentic-step` (per `loop-engine.md`); the skill is its L3 realization.
-3. **Drop "MCP tool" as the named terminus** (operator point 1). Name the terminus as **"deterministic step"** (rule-enforced, registry-driven, no model judgment — `loop-engine.md` invariant), of which an MCP tool / consult-gate / hook are L3 realizations.
+3. **Drop "MCP tool" as the named terminus** (operator point 1). Name the terminus as **"state-3 (encoded)"** (deterministic injection + deterministic consumption — the two-axis state). Then name **`deterministic-step`** as the `loop-engine.md` concept role that *realizes* state-3 (rule-enforced, registry-driven, no model judgment), of which an MCP tool / consult-gate / hook are L3 realizations — layered exactly like point 2 layers `agentic-step` (concept role) → skill (L3 realization). This keeps the two vocabularies cleanly distinct: state-3 is the two-axis state; deterministic-step is the engine concept role that realizes it (validation decision Q4).
 4. **Relabel the migration sequence as the state-1 → state-2 → state-3 path:**
    - citation-only = state-1 (agentic injection; the skill markdown is read ad hoc)
    - citation-only-artifact = state-2 (deterministic injection via the registry citation; agentic consumption)
@@ -53,21 +66,23 @@ The pillar currently: skills execute; the loop records; the meta-surface survive
 - The migration sequence order and its non-triviality — keep, relabeled.
 
 ## Implementation steps
-1. `Read` `docs/philosophy.md` lines 29-35 + 72-84 to confirm exact current wording.
+1. `Read` `docs/philosophy.md` lines 13, 29-35, + 72-84 to confirm exact current wording.
 2. `Edit` the "Skills Are the Same Kind of Escape Hatch" section per Change 1.
-3. `Edit` Pillar 4 per Change 2.
-4. Verify Pillars 1-3 + "State Machine and Observations" untouched (diff scope check).
+3. `Edit` Pillar 4 per Change 2 (terminus = state-3; deterministic-step realizes it — Q4).
+4. `Edit` Core Premise line 13: replace "MCP tools" with "deterministic steps" (Q2).
+5. Verify Pillars 1-3 + "State Machine and Observations" + the rest of Core Premise untouched (diff scope check — only line 13's one phrase changed outside the two named sections).
 
 ## Validation
-- `grep -n "MCP tool" docs/philosophy.md` → absent from the two rewritten sections (check any remaining occurrences are unrelated / decide whether to rephrase them).
+- `grep -c "MCP tool" docs/philosophy.md` → **0** after phase 2 (all 3 prior occurrences — lines 13, 33, 84 — rephrased).
 - `grep -n "internalize the skill into the loop" docs/philosophy.md` → no occurrences.
 - `grep -n "state-2\|injection\|consumption" docs/philosophy.md` → present in the rewritten sections.
+- `grep -n "state-3" docs/philosophy.md` → present in Pillar 4 as the named terminus, with `deterministic-step` named as its realizing concept role (Q4).
 - Escape-hatch defined as state-1, explicitly decoupled from file format.
 - State-2 framed as the permanent home for judgment-bound content (decision 1).
-- Pillars 1-3 + "State Machine and Observations" byte-identical to pre-phase (diff check).
+- Pillars 1-3 + "State Machine and Observations" + the rest of Core Premise byte-identical to pre-phase (diff check — only line 13's one phrase changed outside the two named sections).
 - File under 800 lines (currently ~196; this is a section rewrite, not growth — keep it tight).
 
 ## Risk + rollback
-- **Risk:** `philosophy.md` is L1 deep-treatment; rewriting two sections shifts the framing every future session inherits. **Mitigation:** the 1340 report is the agreed reference; the two-axis model is verified against the reductio (meta-state descriptions = state-2 by design); operator signed off on state-2-permanent + escape-hatch-kept. The two sections are one phase so no inconsistent intermediate state ships.
+- **Risk:** `philosophy.md` is L1 deep-treatment; rewriting two sections shifts the framing every future session inherits. **Mitigation:** the 1359 consolidated report is the agreed reference; the two-axis model is verified against the reductio (meta-state descriptions = state-2 by design); operator signed off on state-2-permanent + escape-hatch-kept. The two sections are one phase so no inconsistent intermediate state ships.
 - **Risk:** introducing "state-1/2/3" conflicts with `loop-engine.md`. **Mitigation:** phase 1 names "instruction injection" only, not state-N; the state-N vocabulary is philosophy.md's expansion, consistent with `loop-engine.md`'s deterministic-step / agentic-step.
-- **Rollback:** `git revert` the `philosophy.md` commit; the two sections are self-contained.
+- **Rollback:** `git revert` the `philosophy.md` commit; the two sections + the line-13 phrase are self-contained.

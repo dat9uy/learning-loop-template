@@ -1,7 +1,19 @@
+---
+phase: 1
+title: "loop-engine.md — instruction injection note"
+status: pending
+effort: "low"
+priority: P2
+dependencies: []
+---
+
 # Phase 1: loop-engine.md — instruction injection note
 
+## Overview
+Add one sentence to `loop-engine.md` escape-hatch #1 naming "instruction injection" as the gradient's subject. Establishes the canonical L1 term phases 2 + 3 reference. Changes no vocabulary.
+
 ## Context
-- Source report: `plans/reports/from-problem-solving-260706-1340-injection-consumption-two-axis-l1-reframe-report.md`
+- Source report: `plans/reports/from-concept-debate-to-prerequisite-260706-1359-loop-skill-layer-injection-two-axis-report.md` (§"The L1 framing (spine)" — consolidates the prior 1340 reframing).
 - `loop-engine.md` is the L1 invariant. This phase adds one sentence; changes no vocabulary.
 
 ## File to modify
