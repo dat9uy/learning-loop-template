@@ -1,7 +1,7 @@
 ---
 title: "philosophy.md + AGENTS.md two-axis injection reframe"
 description: "Rewrite the L1/L2 docs to the agreed instruction-injection × consumption two-axis framing so future sessions approach the loop through the two-axis lens instead of the solution-centric 'skill / MCP tool' framing."
-status: pending
+status: complete
 priority: P2
 branch: "docs/l1-two-axis-injection-reframe"
 tags: [docs, l1-framing, two-axis, injection-consumption]
@@ -15,7 +15,7 @@ source: skill
 # Plan: philosophy.md + AGENTS.md two-axis injection reframe
 
 **Date:** 2026-07-06
-**Status:** ready to implement — framing agreed (1359 consolidated report + 4 operator decisions below).
+**Status:** implemented — all 3 phases complete; code-reviewed 17/17 acceptance criteria MET (2026-07-06). Framing agreed (1359 consolidated report + 4 operator decisions below).
 **Source:** `plans/reports/from-concept-debate-to-prerequisite-260706-1359-loop-skill-layer-injection-two-axis-report.md` (consolidates the prior 1124 + 1311 + 1340 reports; the 1340 originals are deleted on merge — its L1 two-axis framing lives in §"The L1 framing (spine)" of the 1359 report).
 
 ## Why
@@ -33,9 +33,9 @@ The 1311 ck-predict report worked reverse (machinery → terminology) and coined
 
 | Phase | File | Change | Depends on | Status |
 |---|---|---|---|---|
-| 1 | [phase-01](./phase-01-loop-engine-injection-note.md) → `docs/loop-engine.md` | One sentence: name "instruction injection" as the escape-hatch gradient's subject (not file format). Establishes the canonical L1 term. | — | Pending |
-| 2 | [phase-02](./phase-02-philosophy-skill-authority-reframe.md) → `docs/philosophy.md` | Rewrite two sections together: "Skills Are the Same Kind of Escape Hatch" + Pillar 4 "Skill Authority vs Loop Authority". Drop "MCP tool" as terminus; add the injection × consumption two-axis model + three states; reframe skill as agentic-injection mechanism; relabel migration sequence as state-1→2→3. | Phase 1 | Pending |
-| 3 | [phase-03](./phase-03-agents-how-to-approach.md) → `AGENTS.md` | Add "How to Approach: Placing Procedural Knowledge" — the injection × consumption lens for deciding where new procedural knowledge belongs. | Phases 1–2 | Pending |
+| 1 | [phase-01](./phase-01-loop-engine-injection-note.md) → `docs/loop-engine.md` | One sentence: name "instruction injection" as the escape-hatch gradient's subject (not file format). Establishes the canonical L1 term. | — | ✅ Complete |
+| 2 | [phase-02](./phase-02-philosophy-skill-authority-reframe.md) → `docs/philosophy.md` | Rewrite two sections together: "Skills Are the Same Kind of Escape Hatch" + Pillar 4 "Skill Authority vs Loop Authority". Drop "MCP tool" as terminus; add the injection × consumption two-axis model + three states; reframe skill as agentic-injection mechanism; relabel migration sequence as state-1→2→3. | Phase 1 | ✅ Complete |
+| 3 | [phase-03](./phase-03-agents-how-to-approach.md) → `AGENTS.md` | Add "How to Approach: Placing Procedural Knowledge" — the injection × consumption lens for deciding where new procedural knowledge belongs. | Phases 1–2 | ✅ Complete |
 
 Phase 2's two sections are one phase (same doc, same concept, cross-referencing — splitting would create an inconsistent intermediate state where one section uses the new framing and the other doesn't).
 
@@ -101,3 +101,13 @@ Re-read `plan.md` + all 3 phase files after propagation. Checks:
 - "MCP tool" in plan.md → only in contexts describing the old/replaced language or the drop action; none claim it as the terminus.
 - ck status reads the plan: title, `pending`, 0/3 phases.
 - **Unresolved contradictions: 0.** Plan is eligible for implementation.
+
+### Implementation Results (session 2, 2026-07-06)
+
+- All 3 phases implemented + validated; mandatory `code-reviewer` subagent returned DONE — 17/17 acceptance criteria MET, no concerns, no blockers.
+- **Phase 1** (`docs/loop-engine.md`): appended one sentence to escape-hatch #1 naming "instruction injection" as the gradient's subject. `grep -c "instruction injection"` = 1 (line 80); concept vocabulary counts unchanged (deterministic-step=6, agentic-step=7, record=26, rule=20, promotion=10); 98 lines (< 800).
+- **Phase 2** (`docs/philosophy.md`): rewrote "Skills Are the Same Kind of Escape Hatch" + Pillar 4 intro + "Long-term direction"→"migration path" + Core Premise line 13 phrase. `grep -c "MCP tool"` = 0; no "internalize the skill into the loop"; state-1/2/3 + injection × consumption introduced; terminus = state-3 (encoded), `deterministic-step` named as the realizing concept role (Q4 distinctness); state-2 framed as permanent home (decision 1); escape-hatch decoupled from file format (decision 2). `git diff` = 4 hunks only; dependency-balance table + "single most important sentence" + Pillars 1-3 + "State Machine and Observations" + rest of Core Premise byte-identical. 216 lines (< 800).
+- **Phase 3** (`AGENTS.md`): appended §12 "How to Approach: Placing Procedural Knowledge" (additive only). Cross-refs `docs/loop-engine.md` + `docs/philosophy.md` (escape-hatch #5 + #6); §§1, 6, 7, 10, 11 byte-identical. 134 lines (< 800).
+- **Reviewer note — "MCP tool" literal:** Phase 2's binding grep requires 0 "MCP tool" occurrences; the plan's Change-2 prose named "an MCP tool / consult-gate / hook" as example L3 realizations. Resolved by naming them "a consult-gate, a hook, or an executable tool" — the semantic point (deterministic-step has multiple L3 realizations, paralleling `agentic-step` → skill) is preserved without the forbidden literal. Reviewer validated this as sound and intent-aligned (the reframe's purpose is to drop "MCP tool" as a solution-centric L1 term).
+- **Docs-consistency check:** remaining "MCP tool" occurrences in `docs/` are descriptive/mechanism references (MCP server, transport, gate internals, archived docs), not the L1 terminus usage removed from `philosophy.md`. `docs/trajectory.md:20` uses "loop-owned MCP tools" as related terminus framing — rewriting `trajectory.md` is explicitly out of scope (deferred to the skill-layer prerequisite plan per the Dependencies section). No in-scope doc updates warranted; `docs-manager` step condition ("if changes warrant") not met.
+- **Inbound gate note:** stale `vnstock-device-slot-*` observations surfaced on finalize are pre-existing vendor-substrate state (May 2026) unrelated to this docs-only L1 reframe; not affected, not updated (product-surface CRUD paused per `AGENTS.md`).

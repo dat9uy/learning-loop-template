@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "philosophy.md — skill authority + escape-hatch reframe"
-status: pending
+status: complete
 effort: "medium"
 priority: P2
 dependencies: [1]

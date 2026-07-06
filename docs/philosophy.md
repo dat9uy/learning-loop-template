@@ -10,7 +10,7 @@ Without the loop, every session repeats the same discoveries, re-runs the same e
 
 ### Docs Are the Escape Hatch
 
-`docs/` is outside the loop. If an agent must open a doc to know what to do next, that knowledge is a **gap** — it belongs in records, observations, index entries, or MCP tools, not in a human-readable file.
+`docs/` is outside the loop. If an agent must open a doc to know what to do next, that knowledge is a **gap** — it belongs in records, observations, index entries, or deterministic steps, not in a human-readable file.
 
 This document exists for irreducible judgment: the "why" behind loop design, not the "what" of loop operation. Procedural knowledge (naming conventions, intake steps, approval protocols, experiment formats) belongs in encoded artifacts. Philosophy belongs here. When you find yourself writing "Step 1, do X; Step 2, do Y" in a doc, stop. That is a loop gap. Encode it.
 
@@ -28,11 +28,23 @@ The escape-hatch rule is not static. It is a gradient.
 
 ### Skills Are the Same Kind of Escape Hatch
 
-`docs/` is not the only escape hatch. **The `ck:*` skill family is the same shape, in a different filename.** Skill markdown is human-readable, session-loaded, not recorded in the meta-surface as authoritative, and consumed by the agent to know how to execute.
+`docs/` is not the only escape hatch. **The `ck:*` skill family is the same shape, in a different filename.** A skill markdown and a doc are both *agentic-injection artifacts* when unwired: the model opens them ad hoc, reads the prose, and decides what to do.
 
-The skill escape-hatch rule is the same as the doc escape-hatch rule: **anything an agent must open to know what to do next is a gap**. The escape hatch is not wrong; it is *temporary*. The trajectory is to internalize the skill into the loop as an MCP tool. The skill markdown becomes the readable spec; the MCP tool becomes the authoritative executor.
+The escape-hatch rule is the same in both cases: **anything an agent must open to know what to do next is a gap** — an instruction reached by *agentic injection*, with no deterministic wiring to surface it at the right moment. The escape hatch is not wrong; it is *temporary*. And it is a *state*, not a file format: a `.md` is an escape hatch only while it is reached agenticly.
 
-See "Pillar 4 — Skill Authority vs. Loop Authority" below for the dependency-balance convention and the post-productization migration plan.
+The trajectory is to move an instruction across two axes — **injection** (how it reaches the runtime: agentic vs deterministic) and **consumption** (how it is executed: agentic vs deterministic) — through three states:
+
+| State | Injection | Consumption | What lives here |
+|---|---|---|---|
+| **1 — escape-hatch** | agentic (model opens ad hoc) | agentic (model reads + decides) | An unwired instruction the model opens when it decides it needs it. |
+| **2 — wired** | **deterministic** (a hook/gate surfaces it at the right moment) | **agentic** (model reads + decides) | The loop's **permanent home** for content that genuinely needs judgment. |
+| **3 — encoded (terminus)** | deterministic | **deterministic** (a rule/gate fires without model judgment) | A promoted rule; a consult-gate that blocks an action. |
+
+State-2 is not a waystation toward state-3. Content that needs judgment stays here permanently: the loop *injects* deterministically (so it surfaces at the right moment) but *consumes* agenticly (the model still interprets it). Meta-state finding descriptions are state-2 by design — the SessionStart hook surfaces them (deterministic injection); the model interprets each one (agentic consumption).
+
+This is the loop's reason to exist. A pure deterministic program can do states 2–3 but cannot *consume* prose (state-1's job); a pure-agentic system does state-1 but cannot reliably *inject* (timing is the model's whim). The loop couples deterministic injection to agentic consumption — it occupies state-2, which neither extreme can do alone.
+
+See "Pillar 4 — Skill Authority vs. Loop Authority" below for the dependency-balance convention and the migration path.
 
 ## Four Philosophical Pillars
 
@@ -67,9 +79,9 @@ Always read the index first. Evidence second. Never the other way around. The in
 
 ### 4. Skill Authority vs. Loop Authority
 
-The loop owns what survives across sessions. Skills own what happens in a single session. The two are not equivalent.
+The loop owns what survives across sessions. Skills own what happens in a single session. The two are not equivalent: a skill *executes* — an agentic step — while the loop *records* — a deterministic step.
 
-A skill can execute, scaffold, test, or review — all of which are useful, none of which are loop-citable by default. The loop's self-model (`meta-state.jsonl`) records the *result* of the work (a `finding`, a `change-log`) and the *commitment* the result implies (a `rule` or `change-log`). The skill is what *happened*; the loop is what *lasts*.
+A skill is the **agentic-injection mechanism**: the markdown a runtime loads for the model to read, not a concept role. The concept role is `agentic-step` (per `docs/loop-engine.md`); a `ck:*` skill is one L3 realization of it. A skill can execute, scaffold, test, or review — all useful, none loop-citable by default. The loop's self-model (`meta-state.jsonl`) records the *result* of the work (a `finding`, a `change-log`) and the *commitment* the result implies (a `rule` or `change-log`). The skill is what *happened*; the loop is what *lasts*.
 
 **The dependency-balance convention (operator-confirmed, 2026-06-12):**
 
@@ -81,7 +93,15 @@ A skill can execute, scaffold, test, or review — all of which are useful, none
 
 **The single most important sentence:** *Skills execute; the loop records; the meta-surface is the only thing that survives.* The plan-file convention is what makes that sentence *operational* — it is the artifact where operator intent meets agent execution without either one bypassing the loop.
 
-**Long-term direction:** the loop will *own* the `ck:plan`, `ck:cook`, and `ck:journal` skills as MCP tools. The migration sequence is smallest-first, lowest-risk-first: `ck:plan` (citation-only contract) → `ck:journal` (citation-only artifact) → `ck:cook` (full execution mechanics). The order is non-trivial: each migration must (a) preserve the markdown skill as the readable spec, (b) make the resulting artifact loop-citable at creation time, and (c) enforce the consult-gates the markdown skill was skipping. See `docs/trajectory.md` for the migration track; see `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 for the consensus that produced this pillar.
+**The migration path (state-1 → state-2 → state-3).** The terminus is **state-3 (encoded)** — deterministic injection *and* deterministic consumption, the two-axis state where a rule or gate fires without model judgment. The `loop-engine.md` concept role that *realizes* state-3 is **`deterministic-step`** (rule-enforced, registry-driven, no judgment deferred to a model); a consult-gate, a hook, or an executable tool are L3 realizations of it — layered exactly as `agentic-step` (concept role) is realized by a `ck:*` skill (L3). The two vocabularies stay distinct: state-3 names the two-axis state; `deterministic-step` names the engine role that realizes it.
+
+The migration sequence is smallest-first, lowest-risk-first, and non-trivial: `ck:plan` (citation-only contract) → `ck:journal` (citation-only artifact) → `ck:cook` (full execution mechanics) — the state-1 → state-2 → state-3 path:
+
+- **citation-only = state-1** — agentic injection; the skill markdown is read ad hoc.
+- **citation-only-artifact = state-2** — deterministic injection (the registry citation surfaces it); agentic consumption.
+- **full-execution = state-3** — deterministic consumption; a tool or gate executes without the model.
+
+Each migration must (a) preserve the markdown as the readable spec — keep the content agentic (consumption stays agentic until state-3); (b) make the artifact loop-citable at creation — add deterministic injection (citability); and (c) enforce the consult-gates the markdown was skipping — add deterministic guardrails (a consult-gate is deterministic consumption of the guardrail). See `docs/trajectory.md` for the migration track; see `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 for the consensus that produced this pillar.
 
 ## State Machine and Observations
 

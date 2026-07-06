@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "loop-engine.md — instruction injection note"
-status: pending
+status: complete
 effort: "low"
 priority: P2
 dependencies: []

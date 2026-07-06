@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "AGENTS.md — How to Approach: Placing Procedural Knowledge"
-status: pending
+status: complete
 effort: "low"
 priority: P2
 dependencies: [1, 2]
