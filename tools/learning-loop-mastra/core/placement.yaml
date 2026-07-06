@@ -129,3 +129,6 @@ files:
   - path: workflow-registry.js
     role: helper
     summary: Reads workflow manifest and provides lookup helpers.
+  - path: bound-artifacts.js
+    role: facade
+    summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js (Phase 3 of loop-skill-layer-prerequisite).

@@ -15,7 +15,8 @@ import {
   loadPromotedRules,
   applyPromotedRules,
 } from "./gate-logic.js";
-import { SURFACES, getAllCoordinationPaths } from "./surfaces.js";
+import { SURFACES, getAllCoordinationPaths, getAllSurfacePaths } from "./surfaces.js";
+import { BOUND_ARTIFACTS } from "./bound-artifacts.js";
 
 /**
  * Named seam for the product/** preflight check (locked by convergence addendum).
@@ -64,6 +65,14 @@ function buildPreflightChecklist(surface) {
 // The marker may only be created via the mark_preflight_complete MCP tool.
 const PREFLIGHT_MARKER_PATHS = getAllCoordinationPaths(".loop-preflight-*");
 
+// Skills paths across every runtime surface, derived from SURFACES so the
+// skills rule covers .claude + .factory + .mastracode consistently.
+// The skills rule is preflight-delegating (like product/**) but uses an
+// EXPLICIT surface="skills" lookup — NOT inferSurface (which returns null
+// for surface-prefix paths; red-team finding). The marker is named
+// `.loop-preflight-skills` and is created via gate_mark_preflight({surface:"skills"}).
+const SKILL_PATHS = getAllSurfacePaths("skills", "**");
+
 // ─── Write-gate rule registry ───────────────────────────────────────────────
 // Each rule has:
 //   - name: stable identifier used internally + surfaced in matched_rule
@@ -72,52 +81,30 @@ const PREFLIGHT_MARKER_PATHS = getAllCoordinationPaths(".loop-preflight-*");
 //   - reason: human-readable reason returned when the rule blocks
 // `evaluateWriteGate` walks this array in order; the first matching rule wins.
 // `product/**` is a special case — it delegates to `evaluatePreflight` (matchedRule: null).
+//
+// The first 6 entries are derived from BOUND_ARTIFACTS (the shared
+// simple-glob rule constant in core/bound-artifacts.js). The remaining 3 are
+// special-cased here: preflight-marker (delegates to findPreflightMarker via
+// PREFLIGHT_MARKER_PATHS), skills (preflight-delegating with explicit
+// surface="skills" — the dedicated `.loop-preflight-skills` marker), and
+// product/** (delegates to evaluatePreflight).
+// Rule order is load-bearing (first-match-wins) — see
+// legacy-mcp/bound-artifacts.test.js for the pinned-order assertion.
 // fallow-ignore-next-line complexity
 const WRITE_GATE_RULES = [
-  {
-    name: "records",
-    matchedRule: "records/**",
-    match: (relPath) => globMatch("records/**", relPath),
-    reason: "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",
-  },
-  {
-    name: "runtime-state",
-    matchedRule: "runtime-state.jsonl",
-    match: (relPath) => globMatch("runtime-state.jsonl", relPath),
-    reason: "Direct writes to runtime-state.jsonl are blocked. Use runtime_state_record MCP tool to create entries.",
-  },
-  {
-    name: "meta-state",
-    matchedRule: "meta-state.jsonl",
-    match: (relPath) => globMatch("meta-state.jsonl", relPath),
-    reason: "Direct writes to meta-state.jsonl are blocked. Use MCP tools (meta_state_report, meta_state_ack, meta_state_batch, meta_state_resolve, etc.) to mutate the registry. The bash gate blocks shell writes; this rule closes the parallel Write/Edit path identified in the audit-log gap investigation.",
-  },
-  {
-    name: "file-index",
-    matchedRule: "file-index.jsonl",
-    match: (relPath) => globMatch("file-index.jsonl", relPath),
-    reason: "Direct writes to file-index.jsonl are blocked. Use the meta_state_refresh_file_index MCP tool (or upsertFileIndexEntry internally) to mutate the path-keyed fingerprint sidecar. Direct writes bypass hash validation and the single-writer queue — poisoning the index would mask drift with no audit trail.",
-  },
-  {
-    name: "schemas",
-    matchedRule: "schemas/**",
-    match: (relPath) => globMatch("schemas/**", relPath),
-    reason: "Schema changes require validation. Run pnpm validate:records first, then approve.",
-  },
-  {
-    name: "build-artifacts",
-    matchedRule: "**/node_modules/**",
-    match: (relPath) =>
-      globMatch("{,**/}node_modules/**", relPath) ||
-      globMatch("{,**/}dist/**", relPath) ||
-      globMatch("{,**/}build/**", relPath),
-    reason: "Build artifacts are not git-tracked",
-  },
+  ...BOUND_ARTIFACTS,
   {
     name: "preflight-marker",
     matchedRule: PREFLIGHT_MARKER_PATHS.join(" | "),
     match: (relPath) => PREFLIGHT_MARKER_PATHS.some((g) => globMatch(g, relPath)),
     reason: "Preflight marker files can only be created via the mark_preflight_complete MCP tool. Direct writes are blocked.",
+  },
+  {
+    name: "skills",
+    matchedRule: SKILL_PATHS.join(" | "),
+    match: (relPath) => SKILL_PATHS.some((g) => globMatch(g, relPath)),
+    reason:
+      "Direct writes to <surface>/skills/** are blocked. Loop-maintained skills are gated artifacts mirrored across runtimes. Use the gated authoring path: gate_mark_preflight(surface:'skills') → write → meta_state_log_change. External symlinked content under .agents/skills/** is out of scope (not loop-maintained).",
   },
   {
     name: "product",
@@ -142,7 +129,43 @@ export function evaluateWriteGate({ filePath, root }) {
   if (matched.name === "product") {
     return evaluatePreflight({ filePath: relPath, root: resolvedRoot });
   }
+  if (matched.name === "skills") {
+    // Skills rule: preflight-delegating with EXPLICIT surface="skills".
+    // Do NOT call inferSurface (it returns null for surface-prefix paths).
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+  }
   return blockResult(matched, filePath);
+}
+
+/**
+ * Skills preflight check — named seam for the dedicated `.loop-preflight-skills`
+ * marker. Returns { decision: "ok" } if any surface has a non-stale
+ * `.loop-preflight-skills` marker; otherwise { decision: "block", reason,
+ * surface: "skills", preflight_checklist }.
+ *
+ * Phase 5 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.
+ */
+// fallow-ignore-next-line unused-export
+export function evaluateSkillsPreflight({ filePath, root }) {
+  const resolvedRoot = root || findProjectRoot();
+  const marker = findPreflightMarker("skills", resolvedRoot);
+  if (marker) return { decision: "ok" };
+
+  return {
+    decision: "block",
+    reason:
+      "Skills preflight check not completed. Loop-maintained skills are gated artifacts mirrored across runtimes. Use the gated authoring path: gate_mark_preflight(surface:'skills') → write → meta_state_log_change.",
+    surface: "skills",
+    preflight_checklist: [
+      "1. Identify the loop-maintained skill being edited (declared `maturity:` frontmatter, mirrored across ≥ 2 surfaces)",
+      "2. Verify the edit keeps the cross-surface mirrors byte-identical (skills-mirror-parity.test.js is the backstop)",
+      "3. Read the authoring standard in `docs/loop-engine.md` \"Authoring loop-maintained skills\" subsection",
+      "4. Confirm the change is consistent with the loop's design (no breaking changes to maturity semantics, mirror layout, or gated-path contract)",
+      "5. Stage a meta_state_log_change entry describing the system change (this is the change-log half of self-maintenance)",
+      "6. Call gate_mark_preflight MCP tool with surface:\"skills\" to unlock the gated write (30-minute TTL)",
+    ],
+    matched_rule: SKILL_PATHS.join(" | "),
+  };
 }
 
 function isValidFilePath(filePath) {
