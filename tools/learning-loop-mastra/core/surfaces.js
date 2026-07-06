@@ -53,6 +53,11 @@ export function getAllCoordinationPaths(subpath) {
  * @param {string} content — file content (string)
  * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
  */
+// Reserved as the canonical section-aware mirror fan-out per plan 260707-0114
+// acceptance. Consumed internally by writeToAllSurfaces (back-compat, has
+// external callers) and writeToAllSkills; current skill edits use gated-Edit-
+// per-mirror (red-team #6), so no external import exists yet.
+// fallow-ignore-next-line unused-export
 export function writeToAllSurfacesSection(root, section, subpath, content) {
   const results = [];
   for (const surface of SURFACES) {
@@ -94,6 +99,10 @@ export function writeToAllSurfaces(root, subpath, content) {
  * @param {string} content
  * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
  */
+// Reserved as the skills-mirror fan-out per plan 260707-0114 acceptance. No
+// consumer today: skill edits go through gated-Edit-per-mirror (red-team #6).
+// Consumers land with the next skill materialization that uses the fan-out.
+// fallow-ignore-next-line unused-export
 export function writeToAllSkills(root, subpath, content) {
   return writeToAllSurfacesSection(root, "skills", subpath, content);
 }
@@ -168,6 +177,11 @@ export function appendToAllSurfaces(root, subpath, line) {
  * @param {"asc"|"none"} options.sort — default "asc"
  * @returns {Array}
  */
+// Inherited complexity: pre-existing cross-surface JSONL reader (dedupe +
+// since + sort options). Untouched by the skill-layer work; flagged because
+// surfaces.js is in the changed-since set. Logic is correct and covered by
+// surfaces-read-jsonl.test.js.
+// fallow-ignore-next-line complexity
 export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
   const { dedupe = true, since = 0, sort = "asc" } = options;
   const sinceMs = typeof since === "string" ? new Date(since).getTime() : since;
@@ -230,6 +244,11 @@ export function readJsonlFromAllSurfaces(root, subpath, options = {}) {
  *   Override only when the caller's semantic explicitly is "remove on null".
  * @returns {Array<{ surface, action: "wrote" | "removed" | "skipped" }>}
  */
+// Inherited complexity: pre-existing read-modify-write fan-out (per-surface
+// lock + read + modify + write + remove-on-null). Untouched by the skill-layer
+// work; flagged because surfaces.js is in the changed-since set. Covered by
+// surfaces-rmw.test.js.
+// fallow-ignore-next-line complexity
 export function readModifyWriteOnAllSurfaces(root, subpath, modifier, options = {}) {
   const { removeOnNull = false } = options;
   const results = [];

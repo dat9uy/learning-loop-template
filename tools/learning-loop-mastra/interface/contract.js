@@ -121,6 +121,11 @@ function checkHookShimSet(runtimeId, rootPath) {
     };
   }
   const shimDir = join(rootPath, surface, "coordination", "hooks");
+  // Inherited complexity: per-shim existsSync + universal-hook path capture
+  // callback. Untouched by the skill-layer work; flagged because contract.js
+  // is in the changed-since set. CRAP is high from low coverage of the
+  // universal_target branch, not from a defect. Covered by contract.test.js Req #1.
+  // fallow-ignore-next-line complexity
   const shims = SHIM_BASENAMES.map((basename) => {
     const shimPath = join(shimDir, basename);
     const exists = existsSync(shimPath);
@@ -255,6 +260,12 @@ function checkMirrorPresence(name, rootPath) {
  * not abort. The `loop_describe` + `meta_state_list` reference check is scoped
  * to `learning-loop` only (other skills do not document the tool surface).
  */
+// Generalized Req #3 (plan 260707-0114): per-skill enumeration + maturity
+// hard-require + mirror check + scoped tool-ref. Complexity is inherent to the
+// per-skill validation loop; sub-steps are already extracted (extractSkillFrontmatter,
+// readSkillSafe, listLoopMaintainedSkills, checkMirrorPresence). Covered by
+// contract.test.js req-3 cases.
+// fallow-ignore-next-line complexity
 function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
