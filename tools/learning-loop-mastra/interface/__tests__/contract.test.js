@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -42,11 +42,23 @@ function fakeRoot(opts = {}) {
     const content = opts.mcpConfig ?? { mcpServers: { "learning-loop": { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] } } };
     writeFileSync(mcpFull, JSON.stringify(content));
   }
-  // Skill spec
+  // Skill spec — supports multi-skill enumeration (Phase 2).
+  // opts.skillSpec is the legacy single-skill string content (writes to
+  // skills/learning-loop/SKILL.md). opts.extraSkills is a {name, content} map
+  // that adds additional skill directories under skills/<name>/SKILL.md.
+  // opts.skillDirMirrors overrides per-skill mirror layout (default: same dir
+  // as the skill — single-runtime tests).
   if (opts.skillSpec !== undefined) {
     const skillDir = join(root, surface, "skills", "learning-loop");
     mkdirSync(skillDir, { recursive: true });
     writeFileSync(join(skillDir, "SKILL.md"), opts.skillSpec);
+  }
+  if (opts.extraSkills) {
+    for (const [name, content] of Object.entries(opts.extraSkills)) {
+      const skillDir = join(root, surface, "skills", name);
+      mkdirSync(skillDir, { recursive: true });
+      writeFileSync(join(skillDir, "SKILL.md"), content);
+    }
   }
   // Settings
   if (opts.settingsPath !== undefined) {
@@ -157,11 +169,27 @@ test("req 2 (mcp-client-config) alone passes — claude-code shape", () => {
 });
 
 test("req 3 (skill-spec) alone passes — claude-code shape", () => {
-  const skillContent = "Reference: loop_describe and meta_state_list.";
-  withRoot({ surface: ".claude", skillSpec: skillContent }, (root) => {
+  // Phase 2: SKILL.md must declare `maturity:` frontmatter to be enumerated
+  // as loop-maintained. The fixture includes a maturity field + a fakeRoot
+  // creates a matching .factory mirror (so the mirror check passes).
+  const skillContent = `---
+name: learning-loop
+description: test
+maturity: state-2
+---
+
+Reference: loop_describe and meta_state_list.
+`;
+  const root = fakeRoot({ surface: ".claude", skillSpec: skillContent });
+  // fakeRoot writes to one surface; mirror check requires ≥ 2 surfaces,
+  // so also create the .factory mirror.
+  const factoryDir = join(root, ".factory", "skills", "learning-loop");
+  mkdirSync(factoryDir, { recursive: true });
+  writeFileSync(join(factoryDir, "SKILL.md"), skillContent);
+  try {
     const result = validate("claude-code", root);
     assert.ok(!result.missing.includes("skill-spec"));
-  });
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test("req 5 (settings-integration) alone passes — claude-code shape", () => {
@@ -196,11 +224,23 @@ test("req 2 (mcp-client-config) alone passes — droid shape", () => {
 });
 
 test("req 3 (skill-spec) alone passes — droid shape", () => {
-  const skillContent = "Reference: loop_describe and meta_state_list.";
-  withRoot({ surface: ".factory", skillSpec: skillContent }, (root) => {
+  const skillContent = `---
+name: learning-loop
+description: test
+maturity: state-2
+---
+
+Reference: loop_describe and meta_state_list.
+`;
+  const root = fakeRoot({ surface: ".factory", skillSpec: skillContent });
+  // Mirror in .claude so the mirror check passes (≥ 2 surfaces).
+  const claudeDir = join(root, ".claude", "skills", "learning-loop");
+  mkdirSync(claudeDir, { recursive: true });
+  writeFileSync(join(claudeDir, "SKILL.md"), skillContent);
+  try {
     const result = validate("droid", root);
     assert.ok(!result.missing.includes("skill-spec"));
-  });
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test("req 5 (settings-integration) alone passes — droid shape", () => {
@@ -246,10 +286,16 @@ test("req 2 fails when mcpServers entry is missing", () => {
   });
 });
 
-test("req 3 fails when SKILL.md is absent", () => {
+test("req 3 passes vacuously when the surface has no skills and no fallback", () => {
+  // Phase 2 contract: a surface with no loop-maintained skills passes
+  // vacuously (no skills to validate). The cross-runtime parity test
+  // is the backstop for "all 3 surfaces must agree".
+  // (Legacy expectation was "fail when SKILL.md is absent" — that pre-Phase-2
+  // behavior is replaced by the empty-enumeration-is-OK semantics.)
   withRoot({ surface: ".claude" }, (root) => {
     const result = validate("claude-code", root);
-    assert.ok(result.missing.includes("skill-spec"));
+    assert.ok(!result.missing.includes("skill-spec"),
+      `skill-spec should pass vacuously on empty surface: ${JSON.stringify(result.missing)}`);
   });
 });
 
@@ -285,10 +331,12 @@ test("validate('claude-code') on empty dir returns all hard reqs missing", () =>
     try {
       const result = validate("claude-code", root);
       assert.equal(result.ok, false);
-      // hook-shim-set, mcp-client-config, skill-spec, settings-integration all fail (4)
-      // identity-marker is advisory (passes)
-      // tools-manifest-has-path-fields is project-wide; empty dir has no manifest (1)
-      assert.equal(result.missing.length, 5);
+      // Phase 2 contract: skill-spec passes vacuously when the surface has
+      // no skills (no loop-maintained skills to validate). The 4 remaining
+      // hard-fail reqs are: hook-shim-set, mcp-client-config,
+      // settings-integration + tools-manifest-has-path-fields.
+      // identity-marker is advisory (passes).
+      assert.equal(result.missing.length, 4, `expected 4 missing (skill-spec passes vacuously); missing=${JSON.stringify(result.missing)}`);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -375,7 +423,23 @@ function fakeMastraCodeRoot(opts = {}) {
     : join(root, ".claude", "skills", "learning-loop");
   if (opts.includeSkill !== false) {
     mkdirSync(skillDir, { recursive: true });
-    writeFileSync(join(skillDir, "SKILL.md"), "Reference: loop_describe and meta_state_list.");
+    // Phase 2: SKILL.md must declare `maturity:` frontmatter to satisfy the
+    // generalized contract. The mirror check (≥ 2 surfaces) requires a
+    // .factory mirror; create it here so the contract passes.
+    const skillContent = opts.skillContent ?? `---
+name: learning-loop
+description: test
+maturity: state-2
+---
+
+Reference: loop_describe and meta_state_list.
+`;
+    writeFileSync(join(skillDir, "SKILL.md"), skillContent);
+    // Phase 2 mirror: write the same content to .factory/skills/learning-loop
+    // so the ≥ 2 surfaces check passes.
+    const factorySkillDir = join(root, ".factory", "skills", "learning-loop");
+    mkdirSync(factorySkillDir, { recursive: true });
+    writeFileSync(join(factorySkillDir, "SKILL.md"), skillContent);
   }
   // Tool manifest (Req #11 — project-wide invariant). Default: valid manifest.
   if (opts.manifest !== null) {
@@ -790,4 +854,210 @@ test("req 11 passes on the real repo for claude-code and droid", () => {
     const d = validate("droid", PROJECT_ROOT);
     assert.equal(d.path_map["tools-manifest-has-path-fields"].ok, true);
   });
+});
+
+// =============================================================================
+// Plan 260707-0114 Phase 2 — Req #3 generalization + maturity: frontmatter
+// =============================================================================
+
+const LOOP_MATURITY_CONTENT = `---
+name: learning-loop
+description: test
+maturity: state-2
+---
+
+# Learning Loop
+
+Reference: loop_describe and meta_state_list.
+`;
+
+const CG_MATURITY_CONTENT = `---
+name: coordination-gate
+description: test
+maturity: state-2
+---
+
+# Coordination Gate
+
+No tool references expected.
+`;
+
+const NO_MATURITY_CONTENT = `---
+name: orphan-skill
+description: no maturity
+---
+
+# Orphan
+`;
+
+test("req 3 enumerates multi-skill surface, passes when both have maturity (mirror in 2 surfaces)", () => {
+  // Phase 2 mirror check requires ≥ 2 surfaces with the skill. Build the
+  // root manually so we can write both .claude + .factory mirrors.
+  const root = mkdtempSync(join(tmpdir(), "ll-multiskill-"));
+  try {
+    for (const surface of [".claude", ".factory"]) {
+      const llDir = join(root, surface, "skills", "learning-loop");
+      mkdirSync(llDir, { recursive: true });
+      writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+      const cgDir = join(root, surface, "skills", "coordination-gate");
+      mkdirSync(cgDir, { recursive: true });
+      writeFileSync(join(cgDir, "SKILL.md"), CG_MATURITY_CONTENT);
+    }
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, true, `multi-skill enumeration must pass: ${JSON.stringify(req3)}`);
+    assert.ok(Array.isArray(req3.skills), "skill-spec must expose per-skill results array");
+    const names = req3.skills.map((s) => s.name);
+    assert.ok(names.includes("learning-loop"), `must enumerate learning-loop: ${JSON.stringify(names)}`);
+    assert.ok(names.includes("coordination-gate"), `must enumerate coordination-gate: ${JSON.stringify(names)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 hard-fails per-skill when maturity: frontmatter is missing", () => {
+  withRoot({
+    surface: ".claude",
+    skillSpec: NO_MATURITY_CONTENT,
+  }, (root) => {
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false, "missing maturity must fail skill-spec");
+    const skill = req3.skills.find((s) => s.name === "learning-loop");
+    assert.ok(skill, "learning-loop must be enumerated");
+    assert.equal(skill.reason, "maturity-not-declared");
+  });
+});
+
+test("req 3 hard-fails per-skill when maturity: is not a valid state-N value", () => {
+  const badMaturity = LOOP_MATURITY_CONTENT.replace("maturity: state-2", "maturity: state-bogus");
+  withRoot({
+    surface: ".claude",
+    skillSpec: badMaturity,
+  }, (root) => {
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false);
+    const skill = req3.skills.find((s) => s.name === "learning-loop");
+    assert.equal(skill.reason, "maturity-not-declared");
+  });
+});
+
+test("req 3 excludes the external `mastra` symlink (no maturity: frontmatter)", () => {
+  // Simulate the real-repo state: .claude/skills/mastra/ is a symlinked
+  // external skill with no maturity: frontmatter. The validator must NOT
+  // enumerate it (otherwise the cross-surface bypass would fail the contract).
+  // Create a real symlink to mirror the real-repo shape.
+  const root = mkdtempSync(join(tmpdir(), "ll-mastra-symlink-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Mirror in .factory (≥ 2 surfaces for mirror check).
+    const factorySkills = join(root, ".factory", "skills");
+    mkdirSync(factorySkills, { recursive: true });
+    const factoryLlDir = join(factorySkills, "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // External skill directory + symlink (real-repo shape: .agents/skills/mastra).
+    const externalDir = join(root, ".agents", "skills", "mastra");
+    mkdirSync(externalDir, { recursive: true });
+    writeFileSync(join(externalDir, "SKILL.md"), NO_MATURITY_CONTENT);
+    // Create the symlink at .claude/skills/mastra → externalDir. Symlinks
+    // are first-class on Linux/macOS; this test is skipped on filesystems
+    // that reject them (rare in dev environments).
+    try {
+      symlinkSync(externalDir, join(claudeSkills, "mastra"));
+    } catch {
+      // Filesystem doesn't allow symlinks — skip the symlink dimension.
+      // The validator's symlink-detection relies on lstatSync; if symlinks
+      // can't be created, this dimension can't be exercised.
+      return;
+    }
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    const names = req3.skills.map((s) => s.name);
+    assert.ok(!names.includes("mastra"), `mastra must be excluded (symlink): ${JSON.stringify(names)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 tool-ref check is scoped to learning-loop (coordination-gate without refs passes)", () => {
+  // coordination-gate does NOT reference loop_describe / meta_state_list.
+  // The tool-ref check must be scoped to learning-loop only. Build the
+  // root manually so we have 2-surface mirrors.
+  const root = mkdtempSync(join(tmpdir(), "ll-toolfref-scope-"));
+  try {
+    for (const surface of [".claude", ".factory"]) {
+      const llDir = join(root, surface, "skills", "learning-loop");
+      mkdirSync(llDir, { recursive: true });
+      writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+      const cgDir = join(root, surface, "skills", "coordination-gate");
+      mkdirSync(cgDir, { recursive: true });
+      writeFileSync(join(cgDir, "SKILL.md"), CG_MATURITY_CONTENT);
+    }
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, true, `coordination-gate should not be checked for tool refs: ${JSON.stringify(req3)}`);
+    const cg = req3.skills.find((s) => s.name === "coordination-gate");
+    assert.equal(cg.tools_referenced.length, 0, "coordination-gate reports no tool refs (not required)");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 error-isolates malformed frontmatter (one bad skill, others still evaluated)", () => {
+  const MALFORMED = `---
+name: bad-skill
+description: test
+maturity: state-2
+  unparseable: [ : , yaml
+---
+
+# Bad
+`;
+  withRoot({
+    surface: ".claude",
+    skillSpec: LOOP_MATURITY_CONTENT,
+    extraSkills: { "bad-skill": MALFORMED },
+  }, (root) => {
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false, "bad-skill must fail; learning-loop must still be evaluated");
+    const bad = req3.skills.find((s) => s.name === "bad-skill");
+    assert.equal(bad.reason, "frontmatter-unparseable");
+    const ll = req3.skills.find((s) => s.name === "learning-loop");
+    assert.ok(ll, "learning-loop must still appear in per-skill results (error isolation)");
+  });
+});
+
+test("req 3 hard-fails on oversized frontmatter (>64KB; billion-laughs guard)", () => {
+  // Build a frontmatter that exceeds the size cap. Use a large but valid YAML.
+  const huge = "description: \"" + "x".repeat(70 * 1024) + "\"";
+  const OVERSIZED = `---\nname: huge-skill\n${huge}\nmaturity: state-2\n---\n\n# Huge\n`;
+  withRoot({
+    surface: ".claude",
+    skillSpec: LOOP_MATURITY_CONTENT,
+    extraSkills: { "huge-skill": OVERSIZED },
+  }, (root) => {
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false);
+    const huge = req3.skills.find((s) => s.name === "huge-skill");
+    assert.equal(huge.reason, "frontmatter-too-large");
+  });
+});
+
+test("req 3 fails when a loop-maintained skill is missing its mirror in another surface", () => {
+  // Create learning-loop ONLY in .claude (with maturity). The contract
+  // must detect the mirror gap (single-surface placement is not loop-maintained).
+  const root = mkdtempSync(join(tmpdir(), "ll-mirror-gap-"));
+  try {
+    const claudeDir = join(root, ".claude", "skills", "learning-loop");
+    mkdirSync(claudeDir, { recursive: true });
+    writeFileSync(join(claudeDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // .factory + .mastracode deliberately absent
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false, "missing .factory mirror must fail");
+    const ll = req3.skills.find((s) => s.name === "learning-loop");
+    assert.ok(ll.reason === "skill-mirror-gap", `reason should be skill-mirror-gap; got: ${ll.reason}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

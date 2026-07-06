@@ -12,8 +12,9 @@
  *
  * FCIS: zero `@mastra/*` imports.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, lstatSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { parse as parseYaml } from "yaml";
 
 // Per-runtime config layout. Surface = runtime dir at project root.
 // mcp_config = path to MCP server config (relative to project root).
@@ -165,30 +166,162 @@ function resolveSkillPath(candidates, rootPath) {
   return null;
 }
 
+// Phase 2 (plan 260707-0114) — frontmatter parser + maturity hard-require.
+// Local to contract.js so the contract validator has no dependency on
+// core/gate-logic.js's private `extractFrontmatter` (not exported). The
+// error-isolation + size cap (64KB; billion-laughs guard) match the
+// per-skill try/catch contract. `schema: "core"` enables the alias-expansion
+// guard (no YAML anchors pointing at recursive structures).
+const SKILL_FRONTMATTER_MAX_BYTES = 64 * 1024;
+const VALID_MATURITY = ["state-1", "state-2", "state-3"];
+
+function extractSkillFrontmatter(content) {
+  if (!content || typeof content !== "string") return { ok: false, reason: "empty-content" };
+  if (content.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
+  const trimmed = content.trimStart();
+  if (!trimmed.startsWith("---")) return { ok: false, reason: "no-frontmatter" };
+  const end = trimmed.indexOf("---", 3);
+  if (end === -1) return { ok: false, reason: "frontmatter-unparseable" };
+  const yamlBlock = trimmed.slice(3, end).trim();
+  if (!yamlBlock) return { ok: false, reason: "no-frontmatter" };
+  if (yamlBlock.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
+  try {
+    const parsed = parseYaml(yamlBlock, { uniqueKeys: false, schema: "core" });
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { ok: true, frontmatter: parsed };
+    }
+    return { ok: false, reason: "frontmatter-unparseable" };
+  } catch {
+    return { ok: false, reason: "frontmatter-unparseable" };
+  }
+}
+
+function readSkillSafe(skillPath) {
+  let content;
+  try {
+    content = readFileSync(skillPath, "utf8");
+  } catch {
+    return { ok: false, reason: "unreadable" };
+  }
+  if (content.length > SKILL_FRONTMATTER_MAX_BYTES) return { ok: false, reason: "frontmatter-too-large" };
+  return { ok: true, content };
+}
+
+function listLoopMaintainedSkills(skillsDir) {
+  // Enumerate <surface>/skills/<name>/SKILL.md entries. Symlinks (e.g.
+  // .claude/skills/mastra → ../../.agents/skills/mastra) are external and
+  // out of the contract's scope — the threat-model boundary is documented
+  // in phase 5 + CONTRACT.md. The lstatSync call distinguishes a symlink
+  // (entry.isSymbolicLink() is true) from a regular directory.
+  const out = [];
+  if (!existsSync(skillsDir)) return out;
+  let entries;
+  try {
+    entries = readdirSync(skillsDir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    if (entry.isSymbolicLink()) continue; // external skill — out of scope
+    if (!entry.isDirectory()) continue;
+    const skillMd = join(skillsDir, entry.name, "SKILL.md");
+    if (!existsSync(skillMd)) continue;
+    out.push({ name: entry.name, skillMd });
+  }
+  return out;
+}
+
+function checkMirrorPresence(name, rootPath) {
+  // The skill is "mirrored" if it appears in at least 2 of the 3 runtime
+  // surfaces (parity-test asserts byte-identity; the contract only checks
+  // the binary "is the mirror present somewhere"). Single-surface
+  // placements are NOT loop-maintained (the mirror convention requires
+  // ≥ 2 surfaces). Until phase 4 materializes `.mastracode/skills/`, the
+  // .claude + .factory pair (2 surfaces) is the loop-maintained state.
+  let count = 0;
+  for (const surface of [".claude", ".factory", ".mastracode"]) {
+    if (existsSync(join(rootPath, surface, "skills", name, "SKILL.md"))) count++;
+  }
+  return count >= 2;
+}
+
+/**
+ * Phase 2 (plan 260707-0114) — generalized Req #3 (skill-spec).
+ *
+ * Enumerates every <surface>/skills/<name>/SKILL.md that declares a
+ * `maturity:` frontmatter (the loop-maintained marker). The external `mastra`
+ * symlink (no maturity:) is excluded by this filter. Per-skill error isolation:
+ * a malformed or oversized frontmatter yields a per-skill fail; the loop does
+ * not abort. The `loop_describe` + `meta_state_list` reference check is scoped
+ * to `learning-loop` only (other skills do not document the tool surface).
+ */
 function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
-  // Phase E Plan 4: Mastra Code can satisfy Req #3 via Claude-compat discovery
-  // (.claude/skills/) or via project-local .mastracode/skills/.
-  const skillDiscoveryPaths = runtime.skill_discovery_paths ?? [
-    join(rootPath, surface, "skills", "learning-loop", "SKILL.md"),
-  ];
-  const resolvedSkillPath = resolveSkillPath(skillDiscoveryPaths, rootPath);
-  if (resolvedSkillPath === null) {
-    return {
-      id: "skill-spec",
-      ok: false,
-      skill_path: skillDiscoveryPaths[0],
-      has_tools_block: false,
-      tools_referenced: [],
-      searched_paths: skillDiscoveryPaths,
-    };
+  const skillsDir = join(rootPath, surface, "skills");
+  const skills = listLoopMaintainedSkills(skillsDir);
+
+  // Fallback: if the surface's enumeration is empty AND the runtime has a
+  // skill_discovery_paths list (mastra-code's Claude-compat discovery), walk
+  // the fallback paths to find skills. The fallback is read-only — it
+  // only narrows the surface's apparent skill set when the surface itself
+  // is empty.
+  if (skills.length === 0 && Array.isArray(runtime.skill_discovery_paths)) {
+    for (const candidate of runtime.skill_discovery_paths) {
+      const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
+      if (!existsSync(absolute)) continue;
+      // The candidate is a SKILL.md path; derive the name from the parent.
+      const name = absolute.split("/").slice(-2, -1)[0];
+      skills.push({ name, skillMd: absolute });
+    }
   }
-  const content = readFileSync(resolvedSkillPath, "utf8");
-  const hasToolsBlock = /^tools:\s*$/m.test(content) || /^\s*-\s+loop_describe/m.test(content);
-  const toolsReferenced = REQUIRED_TOOL_REFS.filter((n) => content.includes(n));
-  const ok = toolsReferenced.length === REQUIRED_TOOL_REFS.length;
-  return { id: "skill-spec", ok, skill_path: resolvedSkillPath, has_tools_block: hasToolsBlock, tools_referenced: toolsReferenced };
+
+  // Pre-maturity filter: drop skills with no frontmatter / no maturity:
+  // (the external `mastra` symlink lands here, by design).
+  const evaluated = [];
+  for (const { name, skillMd } of skills) {
+    const read = readSkillSafe(skillMd);
+    if (!read.ok) {
+      evaluated.push({ name, ok: false, reason: read.reason, skill_path: skillMd });
+      continue;
+    }
+    const fm = extractSkillFrontmatter(read.content);
+    if (!fm.ok) {
+      evaluated.push({ name, ok: false, reason: fm.reason, skill_path: skillMd });
+      continue;
+    }
+    const maturity = fm.frontmatter.maturity;
+    if (!maturity || !VALID_MATURITY.includes(maturity)) {
+      evaluated.push({ name, ok: false, reason: "maturity-not-declared", skill_path: skillMd });
+      continue;
+    }
+    // Mirror check.
+    if (!checkMirrorPresence(name, rootPath)) {
+      evaluated.push({ name, ok: false, reason: "skill-mirror-gap", skill_path: skillMd });
+      continue;
+    }
+    // Tool-ref check — scoped to learning-loop ONLY.
+    const toolsReferenced = name === "learning-loop"
+      ? REQUIRED_TOOL_REFS.filter((n) => read.content.includes(n))
+      : [];
+    if (name === "learning-loop" && toolsReferenced.length !== REQUIRED_TOOL_REFS.length) {
+      evaluated.push({ name, ok: false, reason: "learning-loop-missing-tool-refs", skill_path: skillMd, tools_referenced: toolsReferenced });
+      continue;
+    }
+    const hasToolsBlock = /^tools:\s*$/m.test(read.content) || /^\s*-\s+loop_describe/m.test(read.content);
+    evaluated.push({ name, ok: true, reason: null, skill_path: skillMd, tools_referenced: toolsReferenced, has_tools_block: hasToolsBlock, maturity });
+  }
+  // Empty enumeration is vacuously OK (a surface may have no skills yet —
+  // mastra-code during phase 2/3 has no .mastracode/skills/ mirror; the
+  // cross-runtime parity test in legacy-mcp/skills-mirror-parity.test.js
+  // is the backstop for "all 3 surfaces must agree").
+  const allOk = evaluated.every((s) => s.ok);
+  return {
+    id: "skill-spec",
+    ok: allOk,
+    skills: evaluated,
+    has_tools_block: evaluated.some((s) => s.ok && s.has_tools_block),
+  };
 }
 
 // Phase E Plan 4: RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive

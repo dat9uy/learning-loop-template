@@ -35,7 +35,17 @@ The runtime MUST register the loop's MCP server in its MCP config:
 
 ### 3. `skill-spec`
 
-The runtime MUST provide a SKILL.md describing how to use the loop's MCP tools. The file MUST reference `loop_describe` AND `meta_state_list` (in any section). **Pass:** file present AND both tool names referenced. **Note:** a structured `tools:` block is an upgrade target; prose references pass today.
+The runtime MUST host loop-maintained skills at `<surface>/skills/<name>/SKILL.md`, mirrored across all participating runtimes. A skill is **loop-maintained** iff its SKILL.md declares a `maturity:` frontmatter field set to one of `state-1`, `state-2`, or `state-3` (the injection-determinism-by-maturity convention). The validator enumerates only `maturity:`-declaring skills — non-loop-maintained content (e.g. the `.claude/skills/mastra` external symlink) is excluded from the enumeration. The `maturity:` field is hard-required (a skill with frontmatter but no valid `maturity:` is a per-skill `maturity-not-declared` fail).
+
+`learning-loop` MUST reference `loop_describe` AND `meta_state_list` (it documents the loop's tool surface). Other loop-maintained skills are NOT required to reference those tools — the tool-ref check is scoped to `learning-loop` only.
+
+**Mirror requirement:** a loop-maintained skill is mirrored when the same `<name>` SKILL.md exists in ≥ 2 of the 3 runtime surfaces (`.claude`, `.factory`, `.mastracode`). A single-surface placement fails with `skill-mirror-gap`. The cross-runtime parity test (`legacy-mcp/skills-mirror-parity.test.js`) is the backstop for byte-identity.
+
+**Skill files are gated artifacts:** direct writes to `<surface>/skills/**` are blocked by the write-gate (`.loop-preflight-skills` marker required); edits go through the gated authoring path (`gate_mark_preflight(surface: "skills")` → write → `meta_state_log_change`).
+
+**Per-skill error isolation:** a malformed or oversized frontmatter (size cap: 64KB; billion-laughs guard) yields a per-skill `frontmatter-unparseable` / `frontmatter-too-large` fail, and the loop continues with the remaining skills.
+
+**Pass:** every loop-maintained skill in the surface passes (maturity declared + mirror present + tool-ref check satisfied where applicable). **Fail:** any loop-maintained skill fails its per-skill validation. **Note:** a structured `tools:` block is an upgrade target; prose references pass today. **Threat-model boundary:** the write-gate protects loop-maintained skills only; external symlinked content under `.agents/skills/**` is out of the gate's scope (not loop-maintained, not mirrored).
 
 **Discovery paths by runtime:**
 - Claude Code: `.claude/skills/learning-loop/SKILL.md`

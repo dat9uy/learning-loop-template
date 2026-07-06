@@ -2,6 +2,7 @@
 name: coordination-gate
 description: MCP server for constraint checks, record CRUD, preflight gating, and workflow orchestration. All tools are namespaced by domain.
 user-invocable: false
+maturity: state-2
 ---
 
 # Coordination Gate

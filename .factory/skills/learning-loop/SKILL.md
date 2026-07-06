@@ -1,6 +1,7 @@
 ---
 name: learning-loop
 description: Create prompts for this repo's learning-loop system. Use when asking how to prompt agents for evidence, records, experiments, runtime proofs, or meta self-improvement.
+maturity: state-2
 ---
 
 # Learning Loop
@@ -64,6 +65,8 @@ Also use when:
 ## Runtime contract
 
 This skill is Requirement #3 (skill spec) of the runtime interface contract. The runtime that loads it must also satisfy Requirements #1 (hook shims), #2 (MCP client config), #4 (identity marker), and #5 (settings integration). To audit: run `node tools/learning-loop-mastra/interface/contract.js <runtime-id>`. See `tools/learning-loop-mastra/interface/CONTRACT.md`.
+
+**Authoring loop-maintained skills** — see the maintainer standard in `docs/loop-engine.md` under the "Authoring loop-maintained skills" subsection (mirror + `maturity:` + `meta_state_log_change` step).
 
 ## Prompt Requirements
 
