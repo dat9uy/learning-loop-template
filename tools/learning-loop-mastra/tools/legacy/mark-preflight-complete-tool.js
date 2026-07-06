@@ -7,9 +7,9 @@ import { SURFACES } from "../../core/surfaces.js";
 
 export const gateMarkPreflightTool = {
   name: "gate_mark_preflight",
-  description: "Mark the preflight checklist as completed for a given surface. This is the ONLY way to create a preflight marker — direct file writes to .loop-preflight-* are blocked by the write gate. After calling this tool, product/** writes for the surface are unlocked for 30 minutes. The marker file (.loop-preflight-<surface>) is stored in each runtime's coordination/ dir (.claude, .factory, .mastracode) and has a 30-minute TTL. Use when you are about to write to `product/**` paths and have walked through the 6-step preflight checklist. Not for record CRUD (records are gated differently) and not for general command checks (use `gate_check` instead).",
+  description: "Mark the preflight checklist as completed for a given surface. This is the ONLY way to create a preflight marker — direct file writes to .loop-preflight-* are blocked by the write gate. After calling this tool, writes to that surface's gated paths are unlocked for 30 minutes. The marker file (.loop-preflight-<surface>) is stored in each runtime's coordination/ dir (.claude, .factory, .mastracode) and has a 30-minute TTL. Use when you are about to write to gated paths — `product/**` (surface: \"product\") or `<runtime-surface>/skills/**` (surface: \"skills\") — and have walked through the 6-step preflight checklist. Not for record CRUD (records are gated differently) and not for general command checks (use `gate_check` instead).",
   schema: {
-    surface: z.string().describe("Surface to mark as preflight-complete (e.g., 'product'). Must match the surface inferred by the write gate for product/** paths."),
+    surface: z.string().describe("Surface to mark as preflight-complete. Currently 'product' (unlocks product/** writes) and 'skills' (unlocks <runtime-surface>/skills/** writes). The marker is named .loop-preflight-<surface>; the write gate reads it back for matching paths."),
   },
   handler: async ({ surface }) => {
     const root = resolveRoot();
@@ -43,7 +43,7 @@ export const gateMarkPreflightTool = {
           surface,
           completed_at: marker.completed_at,
           ttl_minutes: 30,
-          note: "Product writes for this surface are unlocked for 30 minutes. After TTL expires, you must call mark_preflight_complete again.",
+          note: `Writes to gated paths for surface "${surface}" are unlocked for 30 minutes. After TTL expires, call gate_mark_preflight again.`,
         }),
       }],
     };
