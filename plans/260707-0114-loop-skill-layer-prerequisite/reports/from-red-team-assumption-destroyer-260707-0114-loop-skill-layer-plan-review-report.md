@@ -1,0 +1,72 @@
+# Red-team review: 260707-0114 loop-skill-layer prerequisite (plan)
+
+Scope Auditor lens. All claims verified against the codebase at HEAD on `docs/skill-layer-consensus-rec12-broadening`.
+
+## Finding 1: Preflight marker surface mismatch — the skills gate will NEVER unlock
+- Severity: Critical
+- Location: Phase 5, "Implementation Steps" step 4; Phase 6, step 2; plan.md "Risks" row 3
+- Flaw: The plan assumes `gate_mark_preflight(surface: "product")` unlocks `<surface>/skills/**` writes. It does not, given the marker naming. `gate_mark_preflight` writes the marker to filename `.loop-preflight-<surface-arg>` (`core/gate-logic.js` `writePreflightMarker`: `join(coordDir, \`.loop-preflight-${surface}\`)`). Calling it with `surface: "product"` produces `.loop-preflight-product` in each `<runtime>/coordination/` dir. `findPreflightMarker(surface, root)` reads `.loop-preflight-<surface>` for the surface argument passed. Phase 5 step 4 instructs the implementer to compute `surface` from the path prefix (`relPath.split("/")[0]` → `.claude` / `.factory` / `.mastracode`) and pass THAT to `findPreflightMarker`. That call reads `.loop-preflight-.claude`, which `gate_mark_preflight(surface: "product")` never creates. The skills rule blocks forever.
+- Failure scenario: Phase 6 runs `gate_mark_preflight({surface: "product"})`, then writes `.claude/skills/learning-loop/SKILL.md`. Phase 5's skills rule calls `findPreflightMarker(".claude", root)` → returns null → `decision: "block"`. Phase 6 cannot edit the skill at all. The end-to-end proof (phase 6's purpose) fails.
+- Evidence: `tools/learning-loop-mastra/core/gate-logic.js` `writePreflightMarker` (line ~391: `const markerPath = join(coordDir, \`.loop-preflight-${surface}\`)`); `tools/learning-loop-mastra/tools/legacy/mark-preflight-complete-tool.js:11-26` (schema + handler write `.loop-preflight-<surface>` for the argument value); phase-05 step 4 ("compute `surface` from the path prefix ... pass it to a `findPreflightMarker(surface, root)` directly"); phase-06 step 2 ("`gate_mark_preflight(surface: 'product')` unlocks both").
+- Suggested fix: The skills rule must NOT derive surface from the path prefix. It must call `findPreflightMarker("product", resolvedRoot)` (hardcode the marker-surface as `"product"` to reuse the product marker) OR introduce a dedicated `skills` surface value + a `gate_mark_preflight({surface: "skills"})` flow (which the plan explicitly rejected as YAGNI). Pick one; the current design is internally inconsistent. Update the risk-table claim to match whichever is chosen.
+
+## Finding 2: Risk table understates the preflight coupling scope
+- Severity: High
+- Location: plan.md "Risks" row 3 ("one marker unlocks both for 30 min"); Phase 5 overview ("the preflight unlock couples skills and product for the surface")
+- Flaw: `gate_mark_preflight` writes the marker to ALL three coordination dirs in one call (`mark-preflight-complete-tool.js:19-27`: `SURFACES.map((s) => join(root, s, "coordination"))`), and `findPreflightMarker` checks all three (`evaluate-write-gate.js` `findPreflightMarker` iterates `SURFACES`). One `gate_mark_preflight({surface: "product"})` call therefore unlocks `product/**` AND `.claude/skills/**` AND `.factory/skills/**` AND `.mastracode/skills/**` simultaneously. The plan's "for the surface" / "one marker unlocks both" framing implies a per-runtime coupling; the actual scope is all-runtimes + product + skills in a single 30-min window.
+- Failure scenario: Operator prefights to edit `.claude/skills/...`; the same marker silently permits `.factory/skills/**` and `.mastracode/skills/**` direct edits in the same window, defeating the per-surface preflight intent and the mirror-parity backstop (a hot-fix to one mirror can be written directly without re-fanning-out).
+- Evidence: `mark-preflight-complete-tool.js:19-21` writes to every surface; `evaluate-write-gate.js` `findPreflightMarker` (lines 41-49) iterates `SURFACES`; phase-05 overview reuses the same marker for skills.
+- Suggested fix: Either (a) accept the broader coupling and rewrite the risk row to state the true scope ("one call unlocks product + skills on all 3 runtimes for 30 min"), or (b) scope the skills marker per runtime (a dedicated marker file per runtime prefix), which requires a new marker path the plan does not scope.
+
+## Finding 3: Phase 2 YAML-parser instruction is misleading; contract.js gains a new import + a new code path
+- Severity: Medium
+- Location: Phase 2, step 5 ("the repo already has a YAML parser — check `core/` for the existing one, do not add a new dependency")
+- Flaw: There is no YAML parser *module* in `core/`; `core/gate-logic.js:19` imports the `yaml` npm package (`import { parse as parseYaml } from "yaml"`), declared at the root `package.json` (`"yaml": "^2.8.4"`). `interface/contract.js` today has zero yaml import and zero frontmatter parsing (`grep` confirms no `yaml`/`frontmatter`/`matter` in contract.js). An implementer reading "check core/ for the existing one" literally will not find a reusable local module; they must add `import { parse as parseYaml } from "yaml"` to contract.js and write a frontmatter-extraction helper (gate-logic has one, but it is not exported for reuse — `parseYaml` is imported, the frontmatter-strip wrapper around it is inline). The "do not add a new dependency" reassurance is true at the package level but obscures a real new import + parsing code path in the contract validator.
+- Failure scenario: Implementer searches `core/` for a parser module, finds none, either adds `js-yaml` (duplicate dep) or copies gate-logic's inline frontmatter stripper (DRY violation + duplicated bug surface).
+- Evidence: `tools/learning-loop-mastra/core/gate-logic.js:19` (only `core/` yaml import); root `package.json` `"yaml": "^2.8.4"`; `interface/contract.js:1-12` (no yaml import); phase-02 step 5 wording.
+- Suggested fix: Reword to: "Reuse the `yaml` npm package (already a dependency, used in `core/gate-logic.js:19`); import `parse as parseYaml` from `yaml` in contract.js. Extract the frontmatter-strip into a shared helper if gate-logic's inline version is reusable; otherwise add a minimal local stripper."
+
+## Finding 4: Phase 4 "leave companions YAGNI" + Phase 6 "invoke the fan-out" hides a missing mirror invocation path
+- Severity: High
+- Location: Phase 4, step 3 ("if not needed, leave them coordination-only (YAGNI)"); Phase 6, step 4 ("invoke the phase-4 fan-out ... if the fan-out is an internal helper not exposed as an MCP tool, perform the mirror via the gated path")
+- Flaw: The only atomic surface-write helper is `readModifyWriteOnAllSurfaces` (`core/surfaces.js:183`); `writeToAllSurfaces` is a plain fan-out write. Phase 4 makes `writeToAllSkills` a wrapper but explicitly defers the read/append/RMW companions as YAGNI. Phase 6 step 4 then says "invoke the phase-4 fan-out" to re-mirror after the edit — but no MCP tool calls `writeToAllSkills`. The plan's fallback ("perform the mirror via the gated path — preflight marker for each surface, write each mirror") requires the operator to write each of 3 mirror files individually through the gate, with no atomicity across surfaces. If one mirror write fails mid-sequence, the parity invariant is broken with no compensating action. The plan provides no mechanism for the mirror step it claims phase 6 performs.
+- Failure scenario: Phase 6 edits `.claude/skills/learning-loop/SKILL.md`, then must mirror to `.factory` + `.mastracode`. There is no `mirror_skills` MCP tool. The operator writes `.factory/...` (gate permits via marker) and `.mastracode/...` (gate permits via marker); one write fails (disk full / typo). `skills-mirror-parity.test.js` goes red, but the plan's flow has no rollback step. The "fan-out" the plan claims to invoke does not exist as a callable unit.
+- Evidence: `core/surfaces.js` exports (only `writeToAllSurfaces` + `getAllCoordinationPaths` are simple fan-outs; `readModifyWriteOnAllSurfaces` is coordination-only and not section-parameterized); phase-04 step 3 ("if not needed, leave them coordination-only"); phase-06 step 4 hedging language.
+- Suggested fix: Either (a) scope phase 4 to expose a `mirrorSkill(name)` callable (MCP tool or internal helper invoked by the gate's allow-path) that does the atomic 3-surface fan-out, OR (b) explicitly accept non-atomic mirror in phase 6 and add a parity-check + retry step. As written, the mirror step is hand-waved.
+
+## Finding 5: Phase 2 validator `readdir` does not exclude the `mastra` symlink → false failures on a non-loop skill
+- Severity: Medium
+- Location: Phase 2, step 5 ("Enumerate `<surface>/skills/*/SKILL.md` (readdir on `<root>/<surface>/skills/`)"); Phase 4, note ("`.claude/skills/mastra` ... are symlinks ... NOT loop-maintained skills; exclude them from the mirror + parity test")
+- Flaw: `.claude/skills/mastra` is a symlink to `../../.agents/skills/mastra`; same in `.factory`. Phase 4 excludes the symlink from the parity test only. Phase 2's generalized `checkSkillSpec` enumerates `<surface>/skills/*/SKILL.md` via readdir with NO symlink exclusion. `readdir` yields `mastra`; the validator will resolve `.claude/skills/mastra/SKILL.md` (the symlink target), parse frontmatter, and either find no `maturity:` → emit `maturity-not-declared` for a non-loop skill, or hard-fail the aggregate `ok`. The plan's "advisory vs hard-fail" discriminator (dir absent vs skill missing) does not cover "symlinked non-loop skill present".
+- Failure scenario: `node contract.js claude-code` after phase 2 + 6 reports `skill-spec` failure because `mastra` (a symlinked external skill) lacks `maturity:` frontmatter. The operator chases a phantom skill the loop does not own.
+- Evidence: `.claude/skills/mastra -> ../../.agents/skills/mastra` (verified via `ls -la`); phase-04 note excludes symlink only from parity test; phase-02 step 5 has no symlink guard.
+- Suggested fix: Phase 2 step 5 must add: skip entries where `lstatSync` is a symlink, OR enumerate only directories whose SKILL.md frontmatter contains a `loop-maintained: true` marker, OR maintain an explicit canonical set (`learning-loop`, `coordination-gate`) the validator iterates. The exclusion must be shared between the validator (phase 2) and the parity test (phase 4), not defined twice.
+
+## Finding 6: Phase 1 grep invariant contradicts its own implementation step (4 occurrences, 1 reframed)
+- Severity: Medium
+- Location: Phase 1, "Success Criteria" (`grep -c "loop-owned MCP tools" docs/trajectory.md` = 0); Phase 1, step 3 (reframe "the trajectory terminus sentence")
+- Flaw: `grep -c "loop-owned MCP tools" docs/trajectory.md` returns 4 today (lines 20, 22, 103, 134). Phase 1 step 3 only reframes the line-22 "skill-migration track, in one sentence" terminus. Lines 20, 103, 134 are not the terminus statement — they are gradient/section references that legitimately use "loop-owned MCP tools" as the existing vocabulary. The success criterion (count = 0) cannot be met without also rewriting lines 20, 103, 134, which is scope creep beyond "reframe the terminus" and risks altering the gradient description the plan does not intend to touch.
+- Failure scenario: Implementer either (a) removes all 4 occurrences (rewriting §4.7 references the plan did not scope, changing meaning) or (b) leaves 3 and the success criterion fails the phase-1 gate.
+- Evidence: `grep -n "loop-owned MCP tools" docs/trajectory.md` → lines 20, 22, 103, 134; phase-01 step 3 only targets the "terminus sentence"; success criterion requires count = 0.
+- Suggested fix: Either relax the invariant to target only the line-22 sentence (`grep -c "MCP tools become authoritative executors"` = 0), or explicitly scope which occurrences change and which stay (and why lines 20/103/134 keep the phrase).
+
+## Finding 7: Phase 1 line refs for `loop-engine.md` are off, and the recursion-bound statement placement is underspecified
+- Severity: Medium
+- Location: Phase 1, "Implementation Steps" step 4 ("escape-hatch #1 (line ~73) + the open-questions section (line ~91+)")
+- Flaw: `loop-engine.md:73` is "These are the irreducible judgments..." (the preamble to the escape-hatch list). Escape-hatch #1 ("Escape-hatch gradient") is at line 76, not ~73. The "instruction injection" anchor the plan.md "Decisions" section cites as `loop-engine.md:73` is actually at line 76 ("The gradient's subject is *instruction injection*"). Phase 1 step 4 also says "place it as a short paragraph, not a new escape-hatch item" but does not specify whether it goes after escape-hatch #1 (which is where the bound is conceptually closest) or in the open-questions section (line ~91+) — two different placements with different framing weight.
+- Failure scenario: Implementer lands the recursion-bound statement in the open-questions section (line ~91+) where it reads as a deferred question rather than a mechanism invariant; or wastes time hunting for "escape-hatch #1 at line ~73".
+- Evidence: `docs/loop-engine.md:73-76` (verified: line 73 is the preamble, line 76 is escape-hatch #1); phase-01 step 4 line refs.
+- Suggested fix: Correct the line refs (`loop-engine.md:76` for escape-hatch #1; `:77` for the "instruction injection" anchor) and pin placement: "immediately after escape-hatch #1, as a short paragraph labeled as a mechanism invariant."
+
+## Metrics
+- Type Coverage: N/A (plan document, no code).
+- Test Coverage: Phase 1 grep-invariants verifiable; phase 2–6 test-first cases specified but not yet executable.
+- Linting Issues: N/A.
+
+## Unresolved questions
+- Does the operator accept that one `gate_mark_preflight({surface:"product"})` call unlocks product + skills across all 3 runtimes for 30 min (Finding 2)? The risk table currently misrepresents the scope.
+- Is the phase-6 mirror step required to be atomic across 3 surfaces (Finding 4)? If yes, phase 4 must expose a callable fan-out; if no, phase 6 needs a parity-retry step.
+- Which canonical-skill enumeration model does the validator use (symlink-skip vs explicit set vs `loop-maintained:` marker) (Finding 5)? The choice affects both phase 2 and phase 4.
+
+Status: DONE_WITH_CONCERNS
+Summary: 7 findings — 1 Critical (preflight marker surface mismatch makes the skills gate never unlock), 2 High (coupling scope misstated; missing mirror invocation path), 4 Medium (YAML-parser instruction misleading, validator omits symlink exclusion, phase-1 grep invariant contradicts its step, phase-1 line refs off).
