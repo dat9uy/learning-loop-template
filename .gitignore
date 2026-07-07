@@ -40,13 +40,6 @@ tools/learning-loop-mastra/data/
 # Phase E Plan 4 — Mastra Code runtime DB (generated from .mastracode/database.json)
 .mastracode/data/
 
-# Plan 260707-0812 Phase 4 — Meta-state registry sidecars (M2 single-writer guard).
-# The registry is single-writer per AGENTS.md §1.1: only the migration commit on
-# main (via meta_state_batch) writes these files. Feature worktrees must not
-# commit them; untracked here so `git rm --cached` + .gitignore prevents re-tracking.
-meta-state.jsonl
-file-index.jsonl
-runtime-state.jsonl
 
 # Plan 2 PR — `records/meta/.cache/` → `records/meta/` expansion (consistent with 2026-06-12 meta-surface reframe; see AGENTS.md §1 and the comment at line 12 above).
 
