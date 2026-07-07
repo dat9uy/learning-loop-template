@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { readRegistry, updateEntry } from "../../core/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
+import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -49,15 +50,11 @@ export const metaStateSupersedeTool = {
       ...(resolution && { resolution }),
       _expected_version: expectedVersion,
     };
-    const updateResult = await updateEntry(root, id, patch);
-    if (updateResult === "version_mismatch") {
-      const fresh = readRegistry(root).find((e) => e.id === id);
-      const result = { superseded: false, reason: "version_mismatch", id, current_version: fresh?.version ?? 0 };
+    const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_supersede");
+    if (!updateOutcome.ok) {
+      const result = { superseded: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
       appendGateLog(root, { timestamp: now, tool: "meta_state_supersede", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
-    if (updateResult !== true) {
-      throw new Error(`meta_state_supersede: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`);
     }
     const result = {
       superseded: true,

@@ -9,7 +9,8 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
-import { isOpen, isStaleView, derivedStaleSet, STALENESS_WINDOW_MS } from "../../core/stale-view.js";
+import { isOpen, isStaleView, derivedStaleSet } from "../../core/stale-view.js";
+import { STALENESS_WINDOW_MS } from "../../core/constants.js";
 
 const now = new Date("2026-07-07T12:00:00Z").getTime();
 const RECENT = new Date(now - 1000).toISOString();        // 1s ago

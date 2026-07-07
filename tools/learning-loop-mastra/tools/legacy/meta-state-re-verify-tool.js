@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
   readRegistry,
-  updateEntry,
 } from "../../core/meta-state.js";
+import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { runVerification } from "../../core/verification-runner.js";
 import { isOpen } from "../../core/stale-view.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -72,14 +72,11 @@ export const metaStateReVerifyTool = {
     if (allPassed) {
       patch.last_verified_at = now;
     }
-    const updateResult = await updateEntry(root, id, patch);
-    if (updateResult === "version_mismatch") {
-      const result = { re_verified: false, reason: "version_mismatch", id };
+    const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_re_verify");
+    if (!updateOutcome.ok) {
+      const result = { re_verified: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
       appendGateLog(root, { timestamp: now, tool: "meta_state_re_verify", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
-    if (updateResult !== true) {
-      throw new Error(`meta_state_re_verify: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`);
     }
     const result = {
       re_verified: allPassed,

@@ -146,36 +146,12 @@ export const metaStateRelationshipsTool = {
     };
 
     if (direction === "outbound" || direction === "both") {
-      const refs = factory.outboundRefs(entries);
-
-      // Dual-field fallback for promoted_to_rule (legacy migration):
-      // if the finding doesn't have promoted_to_rule declared, look up
-      // origin_inverse to find the rule that originated from this finding.
-      // Mirrors the current tool's lines 43-53.
-      if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
-        const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
-        if (!hasPromoted) {
-          const inverse = buildInverseIndexes(entries);
-          const rulesFromOrigin = inverse.origin_inverse.get(id);
-          if (rulesFromOrigin && rulesFromOrigin.length > 0) {
-            refs.push({ kind: "rule", id: rulesFromOrigin[0], field: "promoted_to_rule" });
-          }
-        }
-      }
-
-      const outbound = groupOutbound(refs);
-      result.outbound = Object.keys(outbound).length > 0 ? outbound : null;
-
-      // Derived view: refs whose target is unhealthy (stale/missing/superseded/resolved).
-      // Replaces the old stale-ref follow-up emission (Phase 1 Rec 8 collapse).
-      const dangling = computeDanglingRefs(refs, entries);
-      result.dangling_refs = dangling.length > 0 ? dangling : null;
+      result.outbound = resolveOutboundRefs(factory, entry, id, entries);
+      result.dangling_refs = resolveDanglingRefs(factory, entries);
     }
 
     if (direction === "inbound" || direction === "both") {
-      const refs = factory.inboundRefs(entries);
-      const inbound = groupInbound(refs);
-      result.inbound = Object.keys(inbound).length > 0 ? inbound : null;
+      result.inbound = resolveInboundRefs(factory, entries);
     }
 
     appendGateLog(root, {
@@ -190,3 +166,41 @@ export const metaStateRelationshipsTool = {
     };
   },
 };
+
+// Resolve outbound refs for the entry, including the dual-field fallback for
+// promoted_to_rule (legacy migration: if the finding doesn't have
+// promoted_to_rule declared, look up origin_inverse to find the rule that
+// originated from this finding). Returns the grouped wire shape, or null when
+// the entry has no outbound refs.
+function resolveOutboundRefs(factory, entry, id, entries) {
+  const refs = factory.outboundRefs(entries);
+  if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
+    const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
+    if (!hasPromoted) {
+      const inverse = buildInverseIndexes(entries);
+      const rulesFromOrigin = inverse.origin_inverse.get(id);
+      if (rulesFromOrigin && rulesFromOrigin.length > 0) {
+        refs.push({ kind: "rule", id: rulesFromOrigin[0], field: "promoted_to_rule" });
+      }
+    }
+  }
+  const outbound = groupOutbound(refs);
+  return Object.keys(outbound).length > 0 ? outbound : null;
+}
+
+// Dangling outbound refs: refs whose target is stale-view, missing, superseded,
+// or resolved. Refs whose target is open-but-not-stale are healthy. Returns
+// the dangling list (or null when empty).
+function resolveDanglingRefs(factory, entries) {
+  const refs = factory.outboundRefs(entries);
+  const dangling = computeDanglingRefs(refs, entries);
+  return dangling.length > 0 ? dangling : null;
+}
+
+// Inbound refs grouped by the wire-shape key. Returns the grouped shape, or
+// null when the entry has no inbound refs.
+function resolveInboundRefs(factory, entries) {
+  const refs = factory.inboundRefs(entries);
+  const inbound = groupInbound(refs);
+  return Object.keys(inbound).length > 0 ? inbound : null;
+}

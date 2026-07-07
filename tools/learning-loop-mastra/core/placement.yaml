@@ -90,6 +90,9 @@ files:
   - path: constants.js
     role: primitive
     summary: Shared core constants (STALENESS_WINDOW_MS) — single source of truth to prevent cross-module drift.
+  - path: update-entry-helpers.js
+    role: helper
+    summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede (Phase 4 extraction).
 
   # === evaluator ===
   - path: evaluate-write-gate.js
@@ -123,6 +126,9 @@ files:
   - path: entry/finding.js
     role: helper
     summary: Factory wrapping metaStateFindingEntrySchema with relationship methods.
+  - path: entry/inbound-from-loop-design.js
+    role: helper
+    summary: Shared per-kind inbound-ref extractor for loop-design entries. Used by finding.js and rule.js inboundRefs dispatchers (Phase 4 dedup).
   - path: entry/loop-design.js
     role: helper
     summary: Factory wrapping metaStateLoopDesignSchema with relationship methods.

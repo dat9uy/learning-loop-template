@@ -34,42 +34,55 @@ export const metaStateRelationshipValidateTool = {
 
     const entryById = new Map(entries.map((e) => [e.id, e]));
     const referenced = Array.from(new Set(description.match(FINDING_ID_REGEX) ?? []));
+    const claimed = collectClaimed(entryById.get(entry_id));
+    const { orphans, unknown_refs } = classifyReferences(referenced, entryById, claimed);
 
-    const claimed = new Set();
-    if (entry_id) {
-      const entry = entryById.get(entry_id);
-      if (entry && Array.isArray(entry.reopens)) {
-        for (const id of entry.reopens) claimed.add(id);
-      }
-    }
-
-    const orphans = [];
-    const unknown_refs = [];
-    for (const id of referenced) {
-      const target = entryById.get(id);
-      if (!target) {
-        unknown_refs.push(id);
-        continue;
-      }
-      if (isOrphanStatus(target) && !claimed.has(id)) {
-        orphans.push(id);
-      }
-    }
-
-    const warned = orphans.length > 0 || unknown_refs.length > 0;
-    const result = { warned, referenced };
-
-    if (orphans.length > 0) result.orphans = orphans;
-    if (unknown_refs.length > 0) result.unknown_refs = unknown_refs;
-
-    if (orphans.length > 0) {
-      result.suggestion = `Pass reopens: ${JSON.stringify(orphans)} on your meta_state_report call. ` +
-        `Then call meta_state_resolve({ id: '<parent_id>', cascade_from: ['<new_finding_id>'] }) ` +
-        `to close each stale parent in 1 step.`;
-    } else if (unknown_refs.length > 0) {
-      result.suggestion = `${unknown_refs.join(", ")} not in registry. Did you typo? If intentional, ignore.`;
-    }
-
+    const result = buildResult(orphans, unknown_refs, referenced);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };
+
+// Resolve the `reopens` set on the optional `entry_id`. The new finding
+// declares it via `reopens: [...]` so those ids are not orphans.
+function collectClaimed(entry) {
+  const claimed = new Set();
+  if (!entry || !Array.isArray(entry.reopens)) return claimed;
+  for (const id of entry.reopens) claimed.add(id);
+  return claimed;
+}
+
+// Walk the referenced ids and bucket them: unknown (not in registry) vs orphan
+// (stale-view AND not in the claimed set).
+function classifyReferences(referenced, entryById, claimed) {
+  const orphans = [];
+  const unknown_refs = [];
+  for (const id of referenced) {
+    const target = entryById.get(id);
+    if (!target) {
+      unknown_refs.push(id);
+      continue;
+    }
+    if (isOrphanStatus(target) && !claimed.has(id)) {
+      orphans.push(id);
+    }
+  }
+  return { orphans, unknown_refs };
+}
+
+// Assemble the wire result with the operator-facing suggestion text. The
+// suggestion is the prescriptive next step (reopens on the new entry + a
+// cascade-resolve on each stale parent).
+function buildResult(orphans, unknown_refs, referenced) {
+  const warned = orphans.length > 0 || unknown_refs.length > 0;
+  const result = { warned, referenced };
+  if (orphans.length > 0) result.orphans = orphans;
+  if (unknown_refs.length > 0) result.unknown_refs = unknown_refs;
+  if (orphans.length > 0) {
+    result.suggestion = `Pass reopens: ${JSON.stringify(orphans)} on your meta_state_report call. ` +
+      `Then call meta_state_resolve({ id: '<parent_id>', cascade_from: ['<new_finding_id>'] }) ` +
+      `to close each stale parent in 1 step.`;
+  } else if (unknown_refs.length > 0) {
+    result.suggestion = `${unknown_refs.join(", ")} not in registry. Did you typo? If intentional, ignore.`;
+  }
+  return result;
+}

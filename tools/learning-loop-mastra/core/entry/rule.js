@@ -1,6 +1,7 @@
 import { metaStateRuleEntrySchema } from "../meta-state.js";
 import { checkResolutionEvidence, projectHasLearningLoopMcp } from "../gate-logic.js";
 import { deepFreeze } from "./deep-freeze.js";
+import { inboundFromLoopDesign } from "./inbound-from-loop-design.js";
 
 export function createRule(data) {
   const parsed = metaStateRuleEntrySchema.parse(data);
@@ -82,15 +83,7 @@ export function createRule(data) {
         if (kind === "rule" && entry.supersedes === parsed.id) {
           refs.push({ kind: "rule", id: entry.id, field: "supersedes" });
         }
-        // Cross-kind: loop-design.addresses or proposed_design_for referencing this rule
-        if (kind === "loop-design") {
-          if (Array.isArray(entry.addresses) && entry.addresses.includes(parsed.id)) {
-            refs.push({ kind: "loop-design", id: entry.id, field: "addresses" });
-          }
-          if (Array.isArray(entry.proposed_design_for) && entry.proposed_design_for.includes(parsed.id)) {
-            refs.push({ kind: "loop-design", id: entry.id, field: "proposed_design_for" });
-          }
-        }
+        if (kind === "loop-design") refs.push(...inboundFromLoopDesign(entry, parsed));
       }
       return refs;
     },
