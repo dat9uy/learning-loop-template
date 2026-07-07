@@ -120,8 +120,6 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   expires_at: z.string().nullable().optional()
     .describe("Vestigial — no longer written by any tool. Legacy entries may still carry the field for read-compat. See plan 260707-0812 Phase 2."),
-  acked_at: z.string().nullable().optional()
-    .describe("Removed — meta_state_ack is gone. Legacy entries may still carry the field for read-compat; the field is no longer read by any tool."),
   resolved_at: z.string().nullable().optional()
     .describe("ISO timestamp when the entry was resolved. Set by meta_state_resolve."),
   resolved_by: z.string().nullable().optional()
@@ -289,7 +287,6 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "created_by",
   "code_fingerprint",
   "consolidated_into",
-  "acked_at",
   "resolved_at",
   "resolved_by",
   "resolution",

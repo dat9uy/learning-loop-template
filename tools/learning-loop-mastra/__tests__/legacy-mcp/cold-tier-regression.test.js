@@ -109,7 +109,7 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // and known probe artifacts (tools/test.js) — these are transient findings whose refs
   // intentionally describe behavior rather than point to stable code locations.
   // Plan 260611-1000 removed the 'expired' status; 'stale' is non-terminal.
-  const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded", "archived"]);
+  const terminalStatuses = new Set(["resolved", "superseded", "archived"]);
   const findingsWithCodeRef = current.all_findings.filter(
     (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
   );
@@ -225,8 +225,9 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   //  detection isn't shadowed by drift failures. See the comment block at the
   //  top of the test body for the rationale.)
 
-  // Active findings subset invariant: active_findings is a strict subset of all_findings
-  // with status in {reported, active}
+  // Active findings subset invariant: active_findings is a strict subset of
+  // all_findings; every active_findings entry satisfies `isOpen` (post-migration
+  // the open set is status:"open", with legacy active/reported/stale tolerated).
   const allFindingIds = new Set(current.all_findings.map((f) => f.id));
   for (const af of current.active_findings) {
     assert.ok(

@@ -155,7 +155,6 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
 
   const id = generateId("mcp-connection-missing");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const entry = {
     id,
     entry_kind: "finding",
@@ -169,8 +168,6 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
-    expires_at: expiresAt,
-    acked_at: null,
     resolved_at: null,
     resolved_by: null,
     version: 0,
@@ -235,7 +232,6 @@ async function reportHintDowngrade(input, env, cwd, reason) {
 
   const id = generateId("hint-downgrade");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const entry = {
     id,
     entry_kind: "finding",
@@ -249,8 +245,6 @@ async function reportHintDowngrade(input, env, cwd, reason) {
     status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
-    expires_at: expiresAt,
-    acked_at: null,
     resolved_at: null,
     resolved_by: null,
     version: 0,

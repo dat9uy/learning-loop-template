@@ -35,14 +35,23 @@ function buildPreview(allEntries, override) {
 const ARCHIVE_DECISION_RULE = (entry) => {
   if (entry.status === "archived") return false;
   // Plan 260707-0812 Phase 2 (red-team H1): the decision rule keys on `isOpen`
-  // (covers open/active/reported/stale) plus age; the `!entry.acked_at` check
-  // is removed — `acked_at` is going away with `meta_state_ack`, and without
-  // it `undefined` would mass-archive legacy entries without `acked_at` set.
+  // (covers open/active/reported/stale) plus age. The `!entry.acked_at` check
+  // is removed — `acked_at` is gone with `meta_state_ack`, and without it
+  // `undefined` would mass-archive legacy entries without `acked_at` set.
   //
-  // Rule 1: isOpen AND created > 30d ago
-  if (isOpen(entry) && entry.created_at) {
-    const ageMs = Date.now() - new Date(entry.created_at).getTime();
-    if (ageMs > 30 * 24 * 60 * 60 * 1000) return true;
+  // Rule 1: isOpen AND age > 30d, measured from the freshness reference time
+  // (`last_verified_at` || `created_at`). Using `last_verified_at` when present
+  // keeps an open finding that was re-verified recently out of the archive set
+  // even when it was created >30d ago — the post-collapse freshness model
+  // centers on `last_verified_at` (the same field `isStaleView`/`re_verify`
+  // use), so the archive rule must not contradict it by keying on `created_at`
+  // alone.
+  if (isOpen(entry)) {
+    const ref = entry.last_verified_at || entry.created_at;
+    if (ref) {
+      const ageMs = Date.now() - new Date(ref).getTime();
+      if (ageMs > 30 * 24 * 60 * 60 * 1000) return true;
+    }
   }
   // Rule 2: resolved > 90d
   if (entry.status === "resolved" && entry.resolved_at) {

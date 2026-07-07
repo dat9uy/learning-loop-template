@@ -31,7 +31,7 @@
         "evidence_code_ref": { "type": "string" },
         "evidence_test": { "type": "string" },
         "status": {
-          "enum": ["reported", "active", "resolved", "superseded", "auto-resolved", "stale"]
+          "enum": ["open", "resolved", "superseded"]
         },
         "consolidated_into": { "type": "string" },
         "last_verified_at": { "type": "string", "format": "date-time" },
@@ -44,7 +44,6 @@
         "code_ref": { "type": "string" },
         "ledger_ref": { "type": "string" },
         "expires_at": { "type": "string", "format": "date-time" },
-        "acked_at": { "type": "string", "format": "date-time" },
         "resolved_at": { "type": "string", "format": "date-time" },
         "resolved_by": { "type": "string" },
         "resolution": { "type": "string" },

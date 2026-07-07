@@ -6,7 +6,6 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isOpen } from "./constants.js";
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
@@ -44,7 +43,7 @@ export function readRuntimeObservations(root) {
       } catch {
         continue; // skip malformed lines
       }
-      if (!isOpen(entry)) continue;
+      if (entry.status !== "active") continue;
       const constraints = AFFECTED_SYSTEM_TO_CONSTRAINTS[entry.affected_system];
       if (!constraints) continue;
       for (const constraintType of constraints) {

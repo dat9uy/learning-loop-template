@@ -261,7 +261,7 @@ describe("meta_state_batch", () => {
 
   it("update op with any IMMUTABLE_PATCH_FIELDS key is rejected (deny-list is exhaustive)", async () => {
     // Sanity: the deny-list covers all of {id, version, created_at, created_by,
-    // code_fingerprint, consolidated_into, acked_at, resolved_at, resolved_by, resolution}.
+    // code_fingerprint, consolidated_into, resolved_at, resolved_by, resolution}.
     // We test a non-code_fingerprint field to confirm the list is enforced
     // broadly, not just for code_fingerprint.
     const ops = [

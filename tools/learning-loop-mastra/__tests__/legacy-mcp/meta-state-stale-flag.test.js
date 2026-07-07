@@ -220,18 +220,19 @@ describe("stale status schema + behavior (TDD red)", () => {
       });
       const changeLogId = JSON.parse(change.content[0].text).id;
 
-      // Manually transition the finding to stale (the modern past-TTL state;
-      // 'expired' was removed in plan 260611-1000).
-      await import("../../core/meta-state.js").then(({ updateEntry }) =>
-        updateEntry(tempDir, findingId, { status: "stale" })
-      );
+      // Post-migration (plan 260707-0812): `stale` is no longer a persisted
+      // status — it is a derived evidence-freshness view, so there is no
+      // `stale → superseded` transition to test. `meta_state_supersede` accepts
+      // any `isOpen` finding, so superseding the freshly-reported `open` finding
+      // is the canonical post-migration path this test exercises.
 
-      // Subtest A: supersede
+      // Subtest A: supersede. `_expected_version` is omitted so supersede
+      // defaults it to the finding's current version (CAS auto-passes); the
+      // explicit CAS-mismatch case is covered by Subtest D below.
       const resultA = JSON.parse(
         (await metaStateSupersedeTool.handler({
           id: findingId,
           consolidated_into: changeLogId,
-          _expected_version: 1,
         })).content[0].text
       );
       assert.strictEqual(resultA.superseded, true);
