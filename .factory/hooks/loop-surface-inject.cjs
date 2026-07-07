@@ -146,7 +146,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "mcp-connection"
-      && (e.status === "active" || e.status === "reported"),
+      && (e.status === "open" || e.status === "active" || e.status === "reported"),
     );
   } catch {
     // registry may not exist yet — treat as no existing finding
@@ -166,7 +166,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_file_index, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
     evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
     session_id: sessionId,
-    status: "reported",
+    status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
     expires_at: expiresAt,
@@ -226,7 +226,7 @@ async function reportHintDowngrade(input, env, cwd, reason) {
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "hint-downgrade"
-      && (e.status === "active" || e.status === "reported"),
+      && (e.status === "open" || e.status === "active" || e.status === "reported"),
     );
   } catch {
     // registry may not exist yet
@@ -246,7 +246,7 @@ async function reportHintDowngrade(input, env, cwd, reason) {
     description: `SessionStart hook tier downgraded to summary (reason=${reason}, session_id=${sessionId}). Discoverability hints were not rendered. To re-enable hints, unset LL_LOOP_INJECT_TIER or set it to 'warm'.`,
     evidence_code_ref: ".factory/hooks/loop-surface-inject.cjs",
     session_id: sessionId,
-    status: "reported",
+    status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
     expires_at: expiresAt,

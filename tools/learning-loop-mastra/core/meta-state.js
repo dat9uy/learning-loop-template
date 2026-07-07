@@ -91,6 +91,8 @@ export const metaStateFindingEntrySchema = z.object({
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   subtype: z.string().optional()
     .describe("Subtype for loop-anti-pattern findings (e.g., escape-hatch-abuse, new-artifact-type, schema-bloat)"),
+  recurrence_key: z.string().optional()
+    .describe("Dedup key for recurring-false-positive findings (`rule_id::command_prefix_normalized`). Set by recurrence-tracker; read by checkAndEmit to suppress duplicate findings for the same recurrent group. Required to survive writeEntry's schema validation now that recurrence routes through writeEntry (plan 260707-0812 Phase 2 C2)."),
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
