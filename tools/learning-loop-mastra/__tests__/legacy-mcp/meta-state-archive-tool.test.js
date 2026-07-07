@@ -159,7 +159,7 @@ describe("meta_state_archive", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule that must not be archived via override.",
-        status: "open",
+        status: "active",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({
@@ -320,7 +320,7 @@ describe("meta_state_archive", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule for preview rejection.",
-        status: "open",
+        status: "active",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({

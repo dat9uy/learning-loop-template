@@ -34,7 +34,7 @@ test("loop_describe warm tier returns rules (renamed from promoted_rules) and lo
       pattern_type: "regex",
       pattern: "test-pattern-1",
       description: "Test rule description that is at least 20 characters long.",
-      status: "open",
+      status: "active",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });
@@ -148,7 +148,7 @@ test("loop_describe hot tier returns rules (renamed from promoted_rules)", async
       pattern_type: "glob",
       pattern: "records/**/risks/*.yaml",
       description: "Rule 3 description that is at least 20 characters long.",
-      status: "open",
+      status: "active",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });

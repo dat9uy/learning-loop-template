@@ -59,7 +59,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "docker\\s+run",
@@ -77,7 +77,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-secrets",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "glob",
         pattern: "product/**/secrets/**",
@@ -93,7 +93,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "docker\\s+run",
@@ -108,7 +108,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-secrets",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "glob",
         pattern: "product/**/secrets/**",
@@ -123,7 +123,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "docker\\s+run",
@@ -138,7 +138,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "agent",
         pattern_type: "regex",
         pattern: "docker\\s+run",
@@ -153,7 +153,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-bad",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "[invalid(",
@@ -168,7 +168,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-first",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: ".*",
@@ -176,7 +176,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-second",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: ".*",
@@ -200,7 +200,7 @@ describe("gate promoted rules new behavior", () => {
         pattern_type: "regex",
         pattern: "test",
         description: "Cache hit test rule for loadPromotedRules regression coverage",
-        status: "open",
+        status: "active",
         promoted_at: new Date().toISOString(),
         promoted_by: "operator",
       }) + "\n"
@@ -228,7 +228,7 @@ describe("gate promoted rules new behavior", () => {
         pattern_type: "regex",
         pattern: "test",
         description: "Cache miss test rule for loadPromotedRules regression coverage",
-        status: "open",
+        status: "active",
         promoted_at: new Date().toISOString(),
         promoted_by: "operator",
       }) + "\n"
@@ -248,7 +248,7 @@ describe("gate promoted rules new behavior", () => {
         pattern_type: "regex",
         pattern: "test",
         description: "Cache miss test rule for loadPromotedRules regression coverage",
-        status: "open",
+        status: "active",
         promoted_at: new Date().toISOString(),
         promoted_by: "operator",
       }) +
@@ -261,7 +261,7 @@ describe("gate promoted rules new behavior", () => {
           pattern_type: "regex",
           pattern: "second",
           description: "Second cache miss test rule for loadPromotedRules regression coverage",
-          status: "open",
+          status: "active",
           promoted_at: new Date().toISOString(),
           promoted_by: "operator",
         }) +
@@ -277,7 +277,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-redos",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "(a+)+",
@@ -292,7 +292,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-traversal",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "glob",
         pattern: "**/secrets/**",
@@ -330,7 +330,7 @@ describe("gate promoted rules new behavior", () => {
         pattern_type: "regex",
         pattern: "active",
         description: "Active rule for loadPromotedRules status filter regression coverage",
-        status: "open",
+        status: "active",
         promoted_at: new Date().toISOString(),
         promoted_by: "operator",
       }) +
@@ -356,7 +356,7 @@ describe("gate promoted rules new behavior", () => {
           pattern_type: "regex",
           pattern: "agent",
           description: "Agent rule for loadPromotedRules status filter regression coverage",
-          status: "open",
+          status: "active",
           promoted_at: new Date().toISOString(),
           promoted_by: "operator",
         }) +
@@ -377,7 +377,7 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
   const activeRule = {
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
-    status: "open",
+    status: "active",
     enforcement: "gate",
     pattern_type: "regex",
     pattern: "propose|design|create|new\\s+(schema|artifact|directory|convention)",
@@ -509,7 +509,7 @@ describe("gate promoted rules G8 stripMessageFlags", () => {
       {
         id: "rule-no-new-artifact-types",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
@@ -533,7 +533,7 @@ describe("gate promoted rules G8 subcommand-class fix (P1)", () => {
   const activeRule = {
     id: "rule-no-new-artifact-types",
     entry_kind: "rule",
-    status: "open",
+    status: "active",
     enforcement: "gate",
     pattern_type: "regex",
     pattern:
@@ -611,7 +611,7 @@ describe("gate promoted rules status semantics (P1)", () => {
         pattern_type: "regex",
         pattern: "test",
         description: "Active rule for status semantics regression coverage",
-        status: "open",
+        status: "active",
         promoted_at: new Date().toISOString(),
         promoted_by: "operator",
       }) + "\n"
@@ -644,7 +644,7 @@ describe("gate promoted rules status semantics (P1)", () => {
       {
         id: "rule-resolved-test",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "match-me",
@@ -671,7 +671,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       JSON.stringify({
         id: "rule-bad-pattern-type",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "this-is-not-a-valid-pattern-type",
         pattern: ".*",
@@ -701,7 +701,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       JSON.stringify({
         id: "rule-missing-enforcement",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         // enforcement: missing — required by metaStateRuleEntrySchema
         pattern_type: "regex",
         pattern: ".*",
@@ -732,7 +732,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       pattern_type: "regex",
       pattern: "valid-pattern",
       description: "Valid test rule for F-3 mixed-registry regression test",
-      status: "open",
+      status: "active",
       promoted_at: new Date().toISOString(),
       promoted_by: "operator",
     };
@@ -744,7 +744,7 @@ describe("loadPromotedRules schema validation (F-3 fix)", () => {
       pattern_type: "totally-bogus",
       pattern: ".*",
       description: "Invalid test rule for F-3 mixed-registry regression test",
-      status: "open",
+      status: "active",
       promoted_at: new Date().toISOString(),
       promoted_by: "operator",
     };

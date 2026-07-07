@@ -38,7 +38,7 @@ test("meta_state_list with entry_kind='rule' returns only rule entries", async (
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
-      status: "open",
+      status: "active",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });
@@ -108,7 +108,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
-      status: "open",
+      status: "active",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });

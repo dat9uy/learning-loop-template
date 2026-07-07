@@ -26,7 +26,7 @@ test("buildInverseIndexes on single-edge entries", () => {
     {
       id: "rule-a",
       entry_kind: "rule",
-      status: "open",
+      status: "active",
       origin: "finding-a",
     },
   ];
@@ -39,7 +39,7 @@ test("buildInverseIndexes structural contract on synthetic fixture", () => {
   // Use a synthetic multi-kind fixture so all 5 inverse keys are
   // guaranteed non-empty Maps (Red-team F11 precondition).
   const fixture = [
-    { id: "rule-xxx", entry_kind: "rule", status: "open", origin: "meta-finding-1" },
+    { id: "rule-xxx", entry_kind: "rule", status: "active", origin: "meta-finding-1" },
     { id: "meta-finding-1", entry_kind: "finding", status: "open", promoted_to_rule: "rule-xxx" },
     { id: "loop-design-yyy", entry_kind: "loop-design", status: "open", addresses: ["meta-finding-1"] },
     { id: "meta-change-1", entry_kind: "change-log", status: "open", supersedes: "meta-change-0" },

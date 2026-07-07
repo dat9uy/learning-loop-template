@@ -52,7 +52,7 @@ describe("meta_state_list compact mode", () => {
       {
         id: "compact-rule-active",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         origin: "compact-finding-active",
         enforcement: "gate",
         pattern_type: "regex",

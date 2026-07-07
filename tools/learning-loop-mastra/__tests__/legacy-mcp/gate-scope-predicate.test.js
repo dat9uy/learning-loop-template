@@ -58,7 +58,7 @@ describe("gate scope predicate", () => {
       pattern_type: "regex",
       pattern: "test",
       description: "Test rule for scope-predicate regression coverage",
-      status: "open",
+      status: "active",
       promoted_at: new Date().toISOString(),
       promoted_by: "operator",
       ...extra,
@@ -105,7 +105,7 @@ describe("gate scope predicate", () => {
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
         id: "rule-test-no-mcp",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
@@ -128,7 +128,7 @@ describe("gate scope predicate", () => {
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
         id: "rule-test-other",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",
@@ -151,7 +151,7 @@ describe("gate scope predicate", () => {
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify({
         id: "rule-test-bad",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "test",

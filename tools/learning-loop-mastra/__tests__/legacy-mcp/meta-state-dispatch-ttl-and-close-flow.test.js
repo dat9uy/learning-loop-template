@@ -240,7 +240,7 @@ describe("dispatch close flow (refresh_file_index → log_change → resolve)", 
       await writeEntry(tempDir, {
         id: "rule-no-orphaned-evidence",
         entry_kind: "rule",
-        status: "open",
+        status: "active",
         enforcement: "agent",
         pattern_type: "resolution-evidence-required",
         pattern: "*",

@@ -54,7 +54,7 @@ function makeValidRule(id) {
     description: "A valid rule for write validation test",
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
-    status: "open",
+    status: "active",
     created_at: new Date().toISOString(),
     version: 0,
   };

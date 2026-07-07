@@ -102,7 +102,7 @@ describe("meta_state_resolve change-log immutability", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule that must not be resolved via meta_state_resolve.",
-        status: "open",
+        status: "active",
         created_at: "2026-06-02T00:00:00.000Z",
       };
       writeFileSync(

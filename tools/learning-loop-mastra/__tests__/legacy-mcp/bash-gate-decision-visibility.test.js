@@ -63,7 +63,7 @@ await test("escalate decision: stdout receives hookSpecificOutput envelope; exit
     pattern_type: "regex",
     pattern: "test-escalate-token",
     description: "Test rule for decision visibility phase",
-    status: "open",
+    status: "active",
     promoted_at: new Date().toISOString(),
     promoted_by: "operator",
   };
