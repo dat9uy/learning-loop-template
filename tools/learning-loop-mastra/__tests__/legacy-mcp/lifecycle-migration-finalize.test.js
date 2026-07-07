@@ -68,27 +68,30 @@ describe("Phase 4: post-migration registry invariants (live)", () => {
     assert.ok(designs.length >= 0, "loop-designs with status: active preserved (separate enum)");
   });
 
-  test("registry count preserved at 229 (no adds/losses through the migration)", (t) => {
+  test("registry suffered no losses through the migration (count >= 229)", (t) => {
     if (!registryPresent) { t.skip(SKIP_REASON); return; }
-    // Plan 260707-0812 invariant: "229 → 229, 22 finding flips, no adds/losses".
-    // Achieved by running the migration via `meta_state_batch` only — that path
-    // does not run the compaction filter (which `updateEntry` does and which
-    // drops terminal entries past the 7d TTL). The batch write path keeps the
-    // registry byte-identical aside from the 22 status flips.
-    assert.strictEqual(
-      liveEntries.length,
-      229,
-      `expected 229 entries (the pre-migration total), got ${liveEntries.length}`
+    // Durable invariant: the migration (meta_state_batch status flips) must not
+    // DROP entries. The strict "=== 229" snapshot only held at migration time —
+    // the registry legitimately grows as new findings are reported, so the
+    // durable guard is "no losses" (>= the pre-migration total), not a frozen
+    // count. Combined with the 0-active/0-stale checks below, this locks the
+    // migration without breaking on legitimate new findings.
+    assert.ok(
+      liveEntries.length >= 229,
+      `expected at least 229 entries (no losses through the migration), got ${liveEntries.length}`
     );
   });
 
-  test("22 finding entries now status: open (the migrated set)", async (t) => {
+  test("the 22 migrated findings are open (>= 22 open; 0 active, 0 stale)", async (t) => {
     if (!registryPresent) { t.skip(SKIP_REASON); return; }
     const findings = await listEntries({ entry_kind: "finding", status: "open" });
-    assert.strictEqual(
-      findings.length,
-      22,
-      `expected exactly 22 finding open (10 active + 12 stale flipped), got ${findings.length}`
+    // Durable invariant: the 10 active + 12 stale findings were flipped to
+    // open. "0 active + 0 stale" (asserted above) proves none remain
+    // un-flipped; ">= 22 open" proves they landed in `open` (not terminal).
+    // New open findings add to the count, so the guard is >= 22, not === 22.
+    assert.ok(
+      findings.length >= 22,
+      `expected at least 22 finding open (the 22 flipped + any new open findings), got ${findings.length}`
     );
   });
 });
