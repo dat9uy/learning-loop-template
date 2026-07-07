@@ -42,7 +42,7 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_events.length, 1);
     const ev = result.drift_events[0];
     assert.strictEqual(ev.id, entry.id);
-    assert.strictEqual(ev.raw_status, "active");
+    assert.strictEqual(ev.raw_status, "open");
     assert.strictEqual(ev.derived_status, "resolved-by-mechanism");
     assert.strictEqual(ev.drift_kind, "assertion_lags_derivation");
     assert.strictEqual(ev.recommendation, "resolve");
@@ -244,7 +244,7 @@ describe("queryDrift pure function", () => {
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
     const reportedEntry = baseEntry({
       id: "meta-260601T0000Z-reported",
-      status: "open",
+      status: "reported",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });

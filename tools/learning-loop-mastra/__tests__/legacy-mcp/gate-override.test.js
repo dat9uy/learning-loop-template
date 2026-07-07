@@ -31,7 +31,7 @@ function writeRule(ruleId, pattern) {
     pattern_type: "regex",
     pattern,
     description: `Test rule ${ruleId} for gate-override regression coverage`,
-    status: "open",
+    status: "active",
     promoted_at: new Date().toISOString(),
     promoted_by: "operator",
   };

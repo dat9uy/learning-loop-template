@@ -159,7 +159,7 @@ describe("Phase 1: terminal compaction invariant", () => {
       severity: "warning",
       affected_system: "gate-logic",
       description: "Fresh entry to trigger updateEntry on.",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     };
@@ -173,14 +173,14 @@ describe("Phase 1: terminal compaction invariant", () => {
       severity: "warning",
       affected_system: "gate-logic",
       description: "Third entry that exists to ensure the compaction path runs.",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     };
     await writeEntry(root, thirdEntry);
 
     // Update the third entry — this triggers the compaction filter.
-    await updateEntry(root, thirdEntry.id, { status: "active" });
+    await updateEntry(root, thirdEntry.id, { status: "open" });
 
     // After updateEntry, the old superseded entry should be compacted away
     const after = readRegistry(root);

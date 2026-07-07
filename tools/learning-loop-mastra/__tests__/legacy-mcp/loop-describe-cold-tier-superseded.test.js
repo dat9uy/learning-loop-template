@@ -51,7 +51,7 @@ async function seedRegistry(root) {
     applies_to: { tools: ["meta_state_query_drift"], rules: ["rule-no-new-artifact-types"], statuses: ["superseded"] },
     consolidates: [finding1Id, finding2Id, finding3Id].join(","),
     evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
-    status: "open",
+    status: "active",
     created_at: "2026-06-06T00:30:00.000Z",
     version: 0,
   });

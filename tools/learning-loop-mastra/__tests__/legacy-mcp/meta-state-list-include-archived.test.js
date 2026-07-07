@@ -61,7 +61,7 @@ describe("meta_state_list include_archived semantic unification", () => {
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Auto-resolved finding must be returned with include_archived",
+        description: "Second open finding returned by default list (min 20 chars)",
         created_at: new Date().toISOString(),
       },
       {
@@ -82,14 +82,20 @@ describe("meta_state_list include_archived semantic unification", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  test("default list excludes all 4 terminal statuses", async () => {
+  test("default list excludes all terminal statuses (resolved, superseded, archived)", async () => {
     const result = await metaStateListTool.handler({});
     const text = JSON.parse(result.content[0].text);
-    assert.strictEqual(text.count, 1);
-    assert.strictEqual(text.entries[0].id, "archived-active-finding");
+    // Default excludes the 3 terminal statuses (resolved, superseded, archived);
+    // the two open findings are returned.
+    assert.strictEqual(text.count, 2);
+    const ids = text.entries.map((e) => e.id).sort();
+    assert.deepStrictEqual(ids, [
+      "archived-active-finding",
+      "archived-auto-resolved-finding",
+    ]);
   });
 
-  test("include_archived: true surfaces all 4 terminal statuses", async () => {
+  test("include_archived: true surfaces all terminal statuses", async () => {
     const result = await metaStateListTool.handler({ include_archived: true });
     const text = JSON.parse(result.content[0].text);
     const ids = text.entries.map((e) => e.id).sort();

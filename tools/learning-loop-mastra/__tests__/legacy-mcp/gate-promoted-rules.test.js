@@ -123,7 +123,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "active",
+        status: "inactive",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "docker\\s+run",

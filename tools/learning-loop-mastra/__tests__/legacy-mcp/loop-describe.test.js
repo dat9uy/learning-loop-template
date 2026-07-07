@@ -353,7 +353,6 @@ describe("listAntiPatterns G9 status filter", () => {
         description: "Reported anti-pattern entry for G9 testing two",
       });
       const id2 = JSON.parse(report2.content[0].text).id;
-      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 2);
     } finally {

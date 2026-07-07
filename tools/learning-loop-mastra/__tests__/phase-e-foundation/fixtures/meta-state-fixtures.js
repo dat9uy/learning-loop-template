@@ -9,7 +9,7 @@ export const FINDING_FIXTURE = {
   severity: "warning",
   affected_system: "meta",
   description: "Snapshot test finding fixture.",
-  status: "active",
+  status: "open",
   consolidated_into: "meta-test-changelog",
   reopens: ["meta-stale-parent"],
   promoted_to_rule: "rule-test-rule",
@@ -23,7 +23,7 @@ export const LEGACY_FINDING_FIXTURE = {
   severity: "warning",
   affected_system: "meta",
   description: "Legacy finding without promoted_to_rule (dual-field test).",
-  status: "active",
+  status: "open",
   created_at: "2026-06-27T00:00:00Z",
 };
 

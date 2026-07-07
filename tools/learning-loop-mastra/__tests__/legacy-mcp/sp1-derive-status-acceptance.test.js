@@ -27,7 +27,7 @@ describe("SP1 derive_status acceptance", () => {
       evidence_code_ref: codeRef,
       mechanism_check: true,
       status: "open",
-      created_at: "2026-06-06T00:00:00Z",
+      created_at: new Date().toISOString(),
       version: 0,
     };
 

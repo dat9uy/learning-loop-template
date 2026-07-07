@@ -59,16 +59,21 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
     }
   });
 
-  // Test 2 (per-tool — guarded-boolean pipe-collapse): meta_state_sweep.apply
-  // must collapse to type:boolean (not anyOf). This is the load-bearing proof
-  // that schema-parity.js lines 30-35 (pipe-collapse branch) ran.
-  test("meta_state_sweep.apply collapses to type:boolean (not anyOf)", { timeout: 5000 }, () => {
+  // Test 2 (per-tool — read-only sweep): meta_state_sweep lost its `apply`
+  // mode in Plan 260707-0812 Phase 3. The schema is now `{}` (empty). This test
+  // locks the read-only contract: no `apply` property means sweep cannot
+  // mutate the registry. Replaces the old guarded-boolean pipe-collapse proof
+  // (the schema-parity.js pipe-collapse branch is still exercised by the
+  // universal contract test above on other tools' schemas).
+  test("meta_state_sweep has no apply property (read-only, apply mode removed)", { timeout: 5000 }, () => {
     const t = byName.get("mastra_meta_state_sweep");
     assert.ok(t, "mastra_meta_state_sweep must be registered");
-    const apply = t.inputSchema.properties.apply;
-    assert.ok(apply, "apply property must exist");
-    assert.strictEqual(apply.type, "boolean", `apply.type must be "boolean" (got ${JSON.stringify(apply.type)}); anyOf would indicate the shim's pipe-collapse branch regressed`);
-    assert.strictEqual(apply.default, false, "apply.default must be false (shim's default-recovery branch)");
+    assert.strictEqual(
+      Object.keys(t.inputSchema.properties).length, 0,
+      `sweep inputSchema must have no properties (got ${JSON.stringify(Object.keys(t.inputSchema.properties))})`,
+    );
+    assert.strictEqual(t.inputSchema.properties.apply, undefined,
+      "apply property must NOT exist — sweep is read-only (Plan 260707-0812 Phase 3 removed apply mode)");
   });
 
   // Test 3 (per-tool — preprocess + default([])): meta_state_archive.candidates

@@ -8,7 +8,7 @@ import {
 const validDesign = {
   id: "loop-design-cross-reference-fields",
   title: "Cross-reference fields on rule and loop-design schemas",
-  status: "open",
+  status: "active",
   proposed_design_for: ["metaStateRuleEntrySchema", "metaStateLoopDesignSchema"],
   addresses: ["meta-260606T1543Z-meta-state-cross-reference-field-design"],
   description: "Adds typed cross-reference fields (proposed_design_for, addresses, origin) to the new rule and loop-design schemas. This eliminates the need for a generic related_to field on findings.",

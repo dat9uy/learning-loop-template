@@ -339,9 +339,9 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(previewText.sample_matches[0].matched, true);
       assert.strictEqual(previewText.sample_matches[1].matched, false);
 
-      // Entry should still be reported, not active
+      // Entry should still be open (not promoted/activated as a rule)
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries[0].status, "reported");
+      assert.strictEqual(entries[0].status, "open");
       assert.strictEqual(entries[0].promoted_to_rule, undefined);
     } finally {
       process.env.GATE_ROOT = originalEnv;

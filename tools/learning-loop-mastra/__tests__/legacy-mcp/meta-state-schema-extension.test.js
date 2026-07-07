@@ -111,7 +111,7 @@ describe("meta-state schema extension (Phase 1)", () => {
           change_target: "test",
           change_diff: { added: [], removed: [], changed: [] },
           reason: "Test change-log with new fields (min 20 chars)",
-          status: "open",
+          status: "active",
           created_at: new Date().toISOString(),
           ...baseFields,
         };

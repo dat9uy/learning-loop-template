@@ -531,7 +531,7 @@ describe("meta_state_resolve consultation", () => {
       // Verify registry was NOT mutated
       const after = core.readRegistry(tempRoot);
       const target = after.find((e) => e.id === targetId);
-      assert.strictEqual(target.status, "active");
+      assert.strictEqual(target.status, "open");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

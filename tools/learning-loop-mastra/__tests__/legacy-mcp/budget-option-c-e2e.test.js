@@ -51,7 +51,7 @@ function createRuntimeStateEntry(root, affectedSystem, constraints = ["vendor-ap
       source_ref: "local:meta-state:rule-test",
       fingerprint: "sha256:test",
       timestamp: new Date().toISOString(),
-      status: "open",
+      status: "active",
       metadata: { action: "test", authorization: constraint },
     });
   }
@@ -69,7 +69,7 @@ function createExhaustedBudget(root) {
     source_ref: "local:meta-state:rule-test",
     fingerprint: "sha256:test",
     timestamp: new Date().toISOString(),
-    status: "open",
+    status: "active",
     metadata: { budget: 1, current: 1, resource: "device_slots" },
   };
   writeFileSync(sidecarPath, JSON.stringify(entry) + "\n", "utf8");
@@ -200,7 +200,7 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(entries.length, 1);
       assert.strictEqual(entries[0].category, "budget-check");
       assert.strictEqual(entries[0].affected_system, "vnstock_vendor");
-      assert.strictEqual(entries[0].status, "reported");
+      assert.strictEqual(entries[0].status, "open");
       assert.ok(entries[0].id.startsWith("meta-"));
     } finally {
       process.env.GATE_ROOT = originalEnv;

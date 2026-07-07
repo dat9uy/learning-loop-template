@@ -20,7 +20,7 @@ describe("meta_state_resolve change-log immutability", () => {
         change_target: "test/path.js",
         change_diff: { added: ["x"], removed: [], changed: [] },
         reason: "Test entry to verify resolve rejects change-log entries.",
-        status: "open",
+        status: "active",
         created_at: "2026-06-02T00:00:00.000Z",
         version: 0,
       };

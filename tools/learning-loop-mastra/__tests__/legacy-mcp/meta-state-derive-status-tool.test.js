@@ -83,7 +83,7 @@ describe("meta_state_derive_status tool", () => {
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.derived_status, "resolved-by-mechanism");
       assert.strictEqual(parsed.derivation.kind, "mechanism-shipped");
-      assert.strictEqual(parsed.recommendation, "resolve");
+      assert.strictEqual(parsed.recommendation, "re_verify");
       assert.strictEqual(parsed.drift, true);
       assert.strictEqual(parsed.derivation.signals.code_ref_exists, true);
       assert.strictEqual(parsed.derivation.signals.test_file_exists, true);

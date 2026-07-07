@@ -63,7 +63,7 @@ describe("cold-session churn regression", () => {
     const entries = readRegistry(tempRoot);
     const l2After = entries.find((e) => e.id === l2Entry.id);
     assert.ok(l2After, "L2 finding should still exist");
-    assert.strictEqual(l2After.status, "reported", "L2 finding status should remain reported");
+    assert.strictEqual(l2After.status, "open", "L2 finding status should remain open");
   });
 
   test("tryClaimSessionId deduplicates on exact runtime+layer (no cross-resolution)", async () => {

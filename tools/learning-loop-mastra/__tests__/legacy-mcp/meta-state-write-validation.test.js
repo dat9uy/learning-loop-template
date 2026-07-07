@@ -37,7 +37,7 @@ function makeValidChangeLog(id) {
     change_target: "test",
     change_diff: { added: [], removed: [], changed: [] },
     reason: "A valid change-log for write validation test",
-    status: "open",
+    status: "active",
     created_at: new Date().toISOString(),
     version: 0,
   };
@@ -71,7 +71,7 @@ function makeValidLoopDesign(id) {
     affected_system: "mcp-tools",
     created_at: new Date().toISOString(),
     created_by: "test",
-    status: "open",
+    status: "active",
     version: 0,
   };
 }
@@ -143,7 +143,7 @@ describe("updateEntry validation", () => {
 
     const registry = readRegistry(root);
     const updated = registry.find((e) => e.id === entry.id);
-    assert.strictEqual(updated.status, "active");
+    assert.strictEqual(updated.status, "open");
   });
 
   test("T-5: updateEntry accepts promoted_to_rule patch", async () => {

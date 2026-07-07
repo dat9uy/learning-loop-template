@@ -38,7 +38,7 @@ describe("meta_state_relationships consolidated_into traversal", () => {
       {
         id: "consolidating-change-log",
         entry_kind: "change-log",
-        status: "open",
+        status: "active",
         change_dimension: "semantic",
         change_target: "tools/test.js",
         change_diff: { added: [], removed: [], changed: [] },

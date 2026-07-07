@@ -31,7 +31,7 @@ await test("rule-tool-integration-same-commit-dep loads through schema and is a 
       ],
     }),
     description: "Tool integration hygiene: same-commit dependency, baseline flag format, and baseline storage.",
-    status: "open",
+    status: "active",
     promoted_at: "2026-06-28T07:42:50.719Z",
     promoted_by: "operator",
   });

@@ -129,18 +129,18 @@ test("cascade_from leaves the child registry entry unchanged", async () => {
     });
     const after = core.readRegistry(tempRoot);
     const child = after.find((e) => e.id === childId);
-    assert.strictEqual(child.status, "active", "child must remain active after cascade");
+    assert.strictEqual(child.status, "open", "child must remain open after cascade");
     assert.strictEqual(child.resolved_at, undefined);
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
 });
 
-test("cascade_from on reported parent returns cascade_parent_is_reported (preserves ack flow)", async () => {
+test("cascade_from on a fresh open parent succeeds (ack-flow block removed post-collapse)", async () => {
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-stale-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-reported");
-  const childId = core.generateId("child-reported-parent");
+  const parentId = core.generateId("parent-fresh-open");
+  const childId = core.generateId("child-fresh-open-parent");
 
   await core.writeEntry(tempRoot, {
     id: parentId,
@@ -148,7 +148,7 @@ test("cascade_from on reported parent returns cascade_parent_is_reported (preser
     category: "gate-logic-bug",
     severity: "warning",
     affected_system: "gate-logic",
-    description: "A parent finding that is still in the 24h TTL reported window.",
+    description: "A parent finding that is freshly reported (now open post-collapse).",
     status: "open",
     created_at: new Date().toISOString(),
     version: 0,
@@ -165,14 +165,16 @@ test("cascade_from on reported parent returns cascade_parent_is_reported (preser
       resolved_by: "operator",
     });
     const parsed = JSON.parse(result.content[0].text);
-    assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.reason, "cascade_parent_is_reported");
+    // Plan 260707-0812: the legacy `reported` TTL block (`cascade_parent_is_reported`)
+    // and `meta_state_ack` were removed — a fresh open parent is cascade-resolved
+    // in 1 step like any other open parent.
+    assert.strictEqual(parsed.resolved, true, "fresh open parent must cascade-resolve (ack flow removed)");
+    assert.strictEqual(parsed.status, "resolved");
     assert.strictEqual(parsed.id, parentId);
-    assert.ok(parsed.hint, "expected a hint to ack the parent first");
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "reported", "parent must remain reported (not cascade-resolved)");
+    assert.strictEqual(parent.status, "resolved", "parent must be resolved (not blocked by ack flow)");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }

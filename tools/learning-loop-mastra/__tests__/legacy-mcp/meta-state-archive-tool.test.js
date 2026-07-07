@@ -169,7 +169,7 @@ describe("meta_state_archive", () => {
         change_target: "test/path.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Test change-log that must not be archived via override.",
-        status: "open",
+        status: "active",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({
@@ -243,7 +243,7 @@ describe("meta_state_archive", () => {
     assert.ok(parsed.preview.find((p) => p.id === "archive-preview-2"), "preview includes second id");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.status !== "archived"), "must not archive before confirmation");
   });
 
   it("archives multi-id override when confirm is true", async () => {
@@ -340,7 +340,7 @@ describe("meta_state_archive", () => {
         change_target: "test/path.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Test change-log for preview rejection.",
-        status: "open",
+        status: "active",
         created_at: new Date().toISOString(),
       }),
     ].join("\n") + "\n";
@@ -365,7 +365,7 @@ describe("meta_state_archive", () => {
     assert.equal(findingPreview.rejected_reason, undefined, "finding must not be flagged");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.status !== "archived"), "must not archive before confirmation");
   });
 
   it("preview handles missing and already-archived entries", async () => {
@@ -417,6 +417,6 @@ describe("meta_state_archive", () => {
     assert.equal(activePreview.rejected_reason, undefined, "active finding not rejected");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.id !== "archive-preview-active" || e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.id !== "archive-preview-active" || e.status !== "archived"), "must not archive before confirmation");
   });
 });

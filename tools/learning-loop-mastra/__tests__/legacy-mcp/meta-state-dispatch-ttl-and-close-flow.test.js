@@ -70,30 +70,32 @@ async function seedDispatchedFinding(tempDir, opts = {}) {
 }
 
 describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
-  test("(a) dispatched reported finding → TTL fires → stale → ledger_ref + ledger event survive", async () => {
+  test("(a) dispatched open finding → sweep is read-only → ledger_ref + ledger event survive (no status mutation)", async () => {
     const tempDir = setupTempRegistry();
     process.env.OPERATOR_MODE = "1";
     try {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "tools/x.js:1",
         status: "open",
-        // Backdate expires_at so checkExpiry fires reported→stale.
       });
 
-      // Precondition: reported + ledger_ref set + ledger row exists.
+      // Precondition: open + ledger_ref set + ledger row exists.
       const before = readRegistry(tempDir).find((e) => e.id === id);
-      assert.strictEqual(before.status, "reported");
+      assert.strictEqual(before.status, "open");
       assert.strictEqual(before.ledger_ref, `dispatch-${id}`);
       assert.ok(readRuntimeStateRows(tempDir).some((r) => r.id === `dispatch-${id}`));
 
-      // Sweep apply: should transition reported→stale.
-      const sweepRes = await metaStateSweepTool.handler({ apply: true });
-      assert.strictEqual(JSON.parse(sweepRes.content[0].text).swept, true);
+      // Sweep is read-only (Plan 260707-0812 Phase 3): no status writes.
+      const sweepRes = await metaStateSweepTool.handler({});
+      const sweepBody = JSON.parse(sweepRes.content[0].text);
+      assert.strictEqual(sweepBody.swept, false, "sweep is read-only — swept must be false");
+      assert.strictEqual(sweepBody.read_only, true);
+      assert.strictEqual(sweepBody.dry_run, true);
 
       const after = readRegistry(tempDir).find((e) => e.id === id);
-      assert.strictEqual(after.status, "stale", "reported→stale transition fired");
-      // The invariant: ledger_ref survives the transition (not stripped).
-      assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref must survive reported→stale");
+      assert.strictEqual(after.status, "open", "sweep must not mutate status");
+      // The invariant: ledger_ref survives (not stripped).
+      assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref must survive read-only sweep");
       // The ledger row survives too.
       assert.ok(readRuntimeStateRows(tempDir).some((r) => r.id === `dispatch-${id}`), "ledger row must survive");
     } finally {
@@ -101,12 +103,12 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
     }
   });
 
-  test("(b) re_verify carries ledger_ref stale→active", async () => {
+  test("(b) re_verify stamps last_verified_at, status stays open, ledger_ref survives", async () => {
     const tempDir = setupTempRegistry();
     process.env.OPERATOR_MODE = "1";
     process.env.META_STATE_VERIFY_EXEC = "1";
     try {
-      // Seed a stale dispatched finding with a passing verification step.
+      // Seed a dispatched finding with a passing verification step.
       const report = await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
@@ -115,12 +117,10 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
         evidence_code_ref: "tools/x.js:1",
       });
       const id = JSON.parse(report.content[0].text).id;
-      await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
       await metaStateDispatchFindingTool.handler({
         id, stage: "commit", issue_number: 202,
         issue_url: "https://github.com/example/coord/issues/202", repo: "example/coord",
       });
-      await updateEntry(tempDir, id, { status: "open" });
       // Attach a trivially-passing verification step (node is allowlisted).
       invalidateCache(tempDir);
       const entry = readRegistry(tempDir).find((e) => e.id === id);
@@ -129,28 +129,26 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
       });
       assert.strictEqual(entry.ledger_ref, `dispatch-${id}`);
 
-      // Re-verify: stale→active on a passing step.
+      // Re-verify: on pass stamps last_verified_at only; status stays open.
       const r = await metaStateReVerifyTool.handler({ id });
       const body = JSON.parse(r.content[0].text);
       assert.strictEqual(body.re_verified, true, "re_verify must pass");
-      assert.strictEqual(body.status, "active");
+      assert.strictEqual(body.status, "open", "re_verify must not transition status");
 
       const after = readRegistry(tempDir).find((e) => e.id === id);
-      assert.strictEqual(after.status, "active");
-      assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref must survive stale→active");
+      assert.strictEqual(after.status, "open", "status stays open after re_verify");
+      assert.ok(after.last_verified_at, "last_verified_at must be stamped on pass");
+      assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref must survive re_verify");
     } finally {
       restoreEnv();
     }
   });
 
   test("(c) regression-pin: a ledger_ref-set finding with a modified evidence file is NOT auto-resolved by sweep", async () => {
-    // Today sweep only does checkExpiry (reported→stale) + checkStaleness
-    // (active→stale); there is NO file-modification→auto-resolved branch.
-    // This test pins that: an active, ledger_ref-set finding past its
-    // staleness window, with a MODIFIED evidence file, transitions to
-    // `stale` (not `auto-resolved`) and keeps its ledger_ref. If a future
-    // lifecycle-redesign re-adds a file-mod→auto-resolved branch WITHOUT
-    // skipping ledger_ref-set entries, this test fails. (phase-03 P3 F12.)
+    // Plan 260707-0812 Phase 3: sweep is read-only and performs NO status
+    // writes, so there is no file-modification→auto-resolved branch. This
+    // test pins that: a dispatched, ledger_ref-set finding with a MODIFIED
+    // evidence file stays `open` (not auto-resolved) and keeps its ledger_ref.
     const tempDir = setupTempRegistry();
     process.env.OPERATOR_MODE = "1";
     try {
@@ -159,18 +157,17 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "evidence-c.js",
         status: "open",
-        // Backdate acked_at past the 7d staleness window so checkStaleness fires.
       });
 
       // Modify the evidence file (the condition a future auto-resolve branch
       // would key on).
       writeFileSync(dummyPath, "const v = 2;\n");
 
-      await metaStateSweepTool.handler({ apply: true });
+      await metaStateSweepTool.handler({});
 
       const after = readRegistry(tempDir).find((e) => e.id === id);
       assert.notStrictEqual(after.status, "auto-resolved", "sweep must NOT auto-resolve a dispatched finding");
-      assert.strictEqual(after.status, "stale", "active past window transitions to stale, not auto-resolved");
+      assert.strictEqual(after.status, "open", "sweep is read-only — status stays open");
       assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref survives sweep");
     } finally {
       restoreEnv();
@@ -186,14 +183,13 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
         status: "open",
       });
 
-      // Run sweep apply twice (simulating repeated pre-commit sweeps between
-      // dispatch and resolve). Sweep skips already-stale entries, so the
-      // second run is a no-op for this finding.
-      await metaStateSweepTool.handler({ apply: true });
-      await metaStateSweepTool.handler({ apply: true });
+      // Run sweep twice (simulating repeated pre-commit sweeps between
+      // dispatch and resolve). Sweep is read-only, so neither run mutates.
+      await metaStateSweepTool.handler({});
+      await metaStateSweepTool.handler({});
 
       const after = readRegistry(tempDir).find((e) => e.id === id);
-      assert.strictEqual(after.status, "stale");
+      assert.strictEqual(after.status, "open", "sweep is read-only — status stays open");
       assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "ledger_ref not orphaned");
       // Exactly one dispatch ledger row — no duplication.
       const dispatchRows = readRuntimeStateRows(tempDir).filter((r) => r.id === `dispatch-${id}`);

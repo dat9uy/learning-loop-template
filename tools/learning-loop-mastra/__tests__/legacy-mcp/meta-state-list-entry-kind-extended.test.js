@@ -69,7 +69,7 @@ test("meta_state_list with entry_kind='loop-design' returns only loop-design ent
       id: "loop-design-test-1",
       entry_kind: "loop-design",
       title: "Test design that is at least 10 chars",
-      status: "open",
+      status: "active",
       proposed_design_for: ["rule-test-1"],
       addresses: [],
       description: "Test design description that is at least 20 characters long.",
@@ -116,7 +116,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       id: "loop-design-test-2",
       entry_kind: "loop-design",
       title: "Test design that is at least 10 chars",
-      status: "open",
+      status: "active",
       proposed_design_for: ["rule-test-2"],
       addresses: [],
       description: "Test design description that is at least 20 characters long.",
@@ -165,7 +165,7 @@ test("meta_state_list with entry_kind='finding' returns the same entries as befo
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Test change-log description that is at least 20 characters.",
-      status: "open",
+      status: "active",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -187,7 +187,7 @@ test("meta_state_list with entry_kind='change-log' returns the same entries as b
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Test change-log description that is at least 20 characters.",
-      status: "open",
+      status: "active",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 

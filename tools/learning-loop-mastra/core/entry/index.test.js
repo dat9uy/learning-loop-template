@@ -12,7 +12,7 @@ import {
 const FINDING = {
   id: "meta-test-finding", entry_kind: "finding",
   category: "gate-logic-bug", severity: "warning", affected_system: "meta",
-  description: "Test finding for index tests.", status: "active",
+  description: "Test finding for index tests.", status: "open",
   consolidated_into: "meta-test-changelog", promoted_to_rule: "rule-test-rule",
   created_at: "2026-06-27T00:00:00Z",
 };

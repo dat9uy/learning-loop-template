@@ -105,7 +105,7 @@ await test("findRecurrentGroups: cross-surface dedup", () => {
   assert.strictEqual(groups[0].count, 3);
 });
 
-await test("checkAndEmit: emits finding when no existing", () => {
+await test("checkAndEmit: emits finding when no existing", async () => {
   const now = Date.now();
   const prefix = 'node -e "x"';
   writeEntries([
@@ -113,7 +113,7 @@ await test("checkAndEmit: emits finding when no existing", () => {
     makeEntry(now - 3 * 60000, prefix),
     makeEntry(now - 1 * 60000, prefix),
   ]);
-  const result = checkAndEmit(root);
+  const result = await checkAndEmit(root);
   assert.strictEqual(result.findings_emitted, 1);
   assert.strictEqual(result.checked_groups, 1);
 
@@ -126,11 +126,11 @@ await test("checkAndEmit: emits finding when no existing", () => {
   assert.strictEqual(finding.subtype, "recurring-false-positive");
   assert.strictEqual(finding.category, "gate-logic-bug");
   assert.strictEqual(finding.severity, "warning");
-  assert.strictEqual(finding.status, "reported");
-  assert.ok(finding.recurrence_key);
+  assert.strictEqual(finding.status, "open");
+  assert.strictEqual(finding.recurrence_key, "rule-no-new-artifact-types::node -e x");
 });
 
-await test("checkAndEmit: dedup against existing finding", () => {
+await test("checkAndEmit: dedup against existing finding", async () => {
   const now = Date.now();
   const prefix = 'node -e "x"';
   writeEntries([
@@ -154,12 +154,12 @@ await test("checkAndEmit: dedup against existing finding", () => {
   };
   writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(existingFinding) + "\n");
 
-  const result = checkAndEmit(root);
+  const result = await checkAndEmit(root);
   assert.strictEqual(result.findings_emitted, 0);
   assert.strictEqual(result.checked_groups, 1);
 });
 
-await test("checkAndEmit: dry-run via env var", () => {
+await test("checkAndEmit: dry-run via env var", async () => {
   const now = Date.now();
   writeEntries([
     makeEntry(now - 5 * 60000, "a"),
@@ -168,7 +168,7 @@ await test("checkAndEmit: dry-run via env var", () => {
   ]);
   process.env.GATE_RECURSION_DRY_RUN = "1";
   try {
-    const result = checkAndEmit(root);
+    const result = await checkAndEmit(root);
     assert.strictEqual(result.findings_emitted, 0);
     assert.strictEqual(result.checked_groups, 1);
     assert.strictEqual(existsSync(join(root, "meta-state.jsonl")), false);

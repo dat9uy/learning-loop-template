@@ -197,7 +197,7 @@ describe("meta-state schema new behavior", () => {
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Change-log schema now accepts top-level evidence_code_ref per dual-field unification.",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
       evidence_code_ref: "core/meta-state.js:55",
     });
@@ -211,7 +211,7 @@ describe("meta-state schema new behavior", () => {
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Nested evidence.code_ref is no longer accepted after schema flatten.",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
       evidence: { code_ref: "core/meta-state.js:55" },
     });
@@ -237,7 +237,7 @@ describe("meta-state schema new behavior", () => {
       change_target: "test",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "A test change-log for evidence coverage test",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
       ...stub,
     });
@@ -267,7 +267,7 @@ describe("meta-state change-log schema", () => {
       change_target: "core/meta-state.js",
       change_diff: { added: ["entry_kind"], removed: [], changed: [] },
       reason: "SP0 introduces a discriminated union to support change-log entries alongside findings.",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
@@ -280,7 +280,7 @@ describe("meta-state change-log schema", () => {
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "This change dimension does not exist in the schema.",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, false);
@@ -293,7 +293,7 @@ describe("meta-state change-log schema", () => {
       change_target: "",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Empty target should be rejected by the schema.",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, false);
@@ -306,7 +306,7 @@ describe("meta-state change-log schema", () => {
       change_target: "tools/manifest.json",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "too short",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, false);
@@ -325,7 +325,7 @@ describe("meta-state change-log schema", () => {
         change_target: target,
         change_diff: { added: [], removed: [], changed: [] },
         reason: `Testing open change_target with value: ${target}`,
-        status: "open",
+        status: "active",
         created_at: new Date().toISOString(),
       });
       assert.strictEqual(result.success, true, `Expected target "${target}" to be valid`);
@@ -346,7 +346,7 @@ describe("meta-state change-log schema", () => {
         statuses: ["active"],
         schemas: ["core/meta-state.js"],
       },
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);
@@ -384,7 +384,7 @@ describe("meta-state discriminated union", () => {
       reason: "Change-log entries must not carry finding-only fields like severity.",
       severity: "warning",
       affected_system: "gate-logic",
-      status: "open",
+      status: "active",
       created_at: new Date().toISOString(),
     });
     assert.strictEqual(result.success, true);

@@ -106,7 +106,7 @@ describe("meta_state_list entry_kind filter", () => {
       const text = JSON.parse(result.content[0].text);
       assert.strictEqual(text.count, 1);
       assert.strictEqual(text.entries[0].entry_kind, "finding");
-      assert.strictEqual(text.entries[0].status, "reported");
+      assert.strictEqual(text.entries[0].status, "open");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }
