@@ -68,23 +68,17 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // count of 10 stale-mc findings has zero headroom against the original
   // threshold of 3. Re-tightened to 12 (10 + 2 headroom for organic drift)
   // to absorb new stale findings without immediately breaking the gate.
-  // Tightening to the documented 3 requires resolving the 10 real underlying
-  // issues in a follow-up plan.
-  const staleMcFindings = current.all_findings.filter(
-    (f) => f.status === "stale" && (f.mechanism_check === true || f.mechanism_check === null)
-  );
-  assert.ok(
-    staleMcFindings.length <= 12,
-    `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 12 (re-tightened for post-Rec 8 migration with 2 headroom): ${staleMcFindings.map((f) => f.id).join(", ")}`
-  );
+  // Phase 6 removed in Phase 4 (plan 260707-0812): the legacy `status:"stale"`
+  // assertion is gone because the 22-finding migration (active + stale → open)
+  // landed and there are no persisted "stale" statuses left. The derived-view
+  // cap below is the post-migration threshold; tightening it requires
+  // resolving the underlying mechanism_check issues in a follow-up plan.
 
-  // Phase 7 (plan 260707-0812 Phase 1): derived-stale view cap. Sourced from
-  // the new `derivedStaleSet` predicate (age > STALENESS_WINDOW_MS OR hash
-  // drift via file-index.jsonl) over the live registry, scoped to
-  // mechanism_check true|null. Threshold 16 = precompute 14 + 2 headroom
-  // (matches the existing 12-vs-10 headroom convention). Both this and the
-  // Phase 6 legacy `status:"stale"` assertion are green during Phase 1 — the
-  // legacy one is removed in Phase 4 once the migration lands.
+  // Phase 7 (plan 260707-0812 Phase 1, finalized Phase 4): derived-stale view
+  // cap. Sourced from the new `derivedStaleSet` predicate (age >
+  // STALENESS_WINDOW_MS OR hash drift via file-index.jsonl) over the live
+  // registry, scoped to mechanism_check true|null. Threshold 16 = precompute
+  // 14 + 2 headroom (matches the original 12-vs-10 headroom convention).
   const derivedStaleMc = derivedStaleSet(current.all_findings, {
     now: Date.now(),
     fileIndex,
