@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
+import { isOpen, isStaleView } from "./stale-view.js";
 
 /**
  * Source-of-truth enums. Export so introspection layers (e.g. core/loop-introspect.js
@@ -20,9 +21,10 @@ export const META_STATE_RECOMMENDATIONS = [
 
 /** Terminal raw_status values: a `resolved-by-mechanism` derivation is NOT drift
  *  if the entry is already in a terminal state (the agent's claim is consistent).
- *  The legacy 'expired' status was removed in plan 260611-1000; 'stale' is
- *  non-terminal (cascade-closeable) so it is not in this set. */
-const TERMINAL_RAW_STATUSES = new Set(["auto-resolved", "resolved"]);
+ *  Plan 260707-0812 Phase 2: `stale` and `auto-resolved` are removed — `stale` is
+ *  a derived view, and `auto-resolved` was a dead write-path removed by the enum
+ *  collapse. `superseded` is closed via a change-log. */
+const TERMINAL_RAW_STATUSES = new Set(["resolved", "superseded"]);
 
 /**
  * Derive the effective status of a meta-state finding entry.
@@ -117,11 +119,19 @@ function computeDerivedStatus(kind) {
 
 // fallow-ignore-next-line complexity
 function computeRecommendation(derivedStatus, kind, rawStatus) {
-  if (kind === "mechanism-shipped" && (rawStatus === "reported" || rawStatus === "active")) {
-    return "resolve";
-  }
-  if (kind === "mechanism-shipped" && rawStatus === "stale") {
+  // Plan 260707-0812 Phase 2: drive the "open vs. terminal" branch from
+  // isOpen / TERMINAL_RAW_STATUSES — the literal status equality sites were
+  // removed because the persisted enum no longer carries "reported"/"active".
+  //
+  // Order matters: stale-view matches BEFORE generic open so the re_verify
+  // recommendation wins for aged/open findings (otherwise "resolve" wins
+  // for any open finding, masking the stale-view signal).
+  const entry = { status: rawStatus };
+  if (kind === "mechanism-shipped" && isStaleView(entry)) {
     return "re_verify";
+  }
+  if (kind === "mechanism-shipped" && isOpen(entry)) {
+    return "resolve";
   }
   if (kind === "mechanism-shipped" && TERMINAL_RAW_STATUSES.has(rawStatus)) {
     return "log_drift";

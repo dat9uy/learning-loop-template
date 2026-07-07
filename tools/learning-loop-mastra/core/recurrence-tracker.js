@@ -1,9 +1,8 @@
-import { appendFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { join } from "node:path";
 import { readDecisionLog } from "./gate-decision-log.js";
-import { readRegistry } from "./meta-state.js";
+import { readRegistry, writeEntry } from "./meta-state.js";
 import { slugify } from "./slugify.js";
+import { isOpen } from "./stale-view.js";
 
 const RECURRENCE_THRESHOLD_N = 3;
 const RECURRENCE_WINDOW_MS = 10 * 60 * 1000;
@@ -82,14 +81,14 @@ function generateFindingId(prefix) {
  * @param {object} options
  * @returns {{ checked_groups: number, findings_emitted: number, recurrent: Array }}
  */
-export function checkAndEmit(root, options = {}) {
+export async function checkAndEmit(root, options = {}) {
   const recurrent = findRecurrentGroups(root, options);
 
   const existing = readRegistry(root).filter(
     (e) =>
       e.entry_kind === "finding"
       && e.subtype === "recurring-false-positive"
-      && (e.status === "active" || e.status === "reported")
+      && isOpen(e)
       && e.recurrence_key,
   );
   const existingKeys = new Set(existing.map((e) => e.recurrence_key));
@@ -103,6 +102,10 @@ export function checkAndEmit(root, options = {}) {
       const durationMin = Math.round(
         (new Date(group.last_ts).getTime() - new Date(group.first_ts).getTime()) / 60000,
       );
+      // Plan 260707-0812 Phase 2 (red-team C2): route through `writeEntry`
+      // (which validates via metaStateFindingEntrySchema) instead of raw
+      // appendFileSync (which bypassed safeParse). Status is `open`, not
+      // `reported`; `expires_at` is removed (vestigial).
       const finding = {
         id: generateFindingId(group.command_prefix_normalized),
         entry_kind: "finding",
@@ -116,11 +119,10 @@ export function checkAndEmit(root, options = {}) {
           `First: ${group.first_ts}. Last: ${group.last_ts}. Samples: ${group.sample_commands.join(" | ")}`,
         evidence_code_ref: "tools/learning-loop-mcp/core/recurrence-tracker.js",
         mechanism_check: true,
-        status: "reported",
+        status: "open",
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       };
-      appendFileSync(join(root, "meta-state.jsonl"), JSON.stringify(finding) + "\n", "utf8");
+      await writeEntry(root, finding);
     }
   }
 

@@ -8,9 +8,12 @@
  *   meta_state_query_drift, meta_state_derive_status, meta_state_relationships,
  *   runtime_state_read, check_runtime_agnostic.
  *
- * Write tools (8): meta_state_report, meta_state_ack, meta_state_log_change,
+ * Write tools (7): meta_state_report, meta_state_log_change,
  *   meta_state_propose_design, meta_state_refresh_file_index, meta_state_resolve,
  *   meta_state_promote_rule, meta_state_check_grounding.
+ *
+ * Plan 260707-0812 Phase 2: meta_state_ack was removed. Lifecycle engagement
+ * signals flow through resolve/promote/supersede/dispatch/re-verify instead.
  *
  * Excluded from all agents: meta_state_batch, meta_state_archive,
  *   meta_state_supersede, meta_state_sweep, meta_state_patch,
@@ -67,7 +70,6 @@ const READ_ONLY_NAMES = [
 // Write tool names for selfImprovementAgent
 const WRITE_NAMES = [
   "mastra_meta_state_report",
-  "mastra_meta_state_ack",
   "mastra_meta_state_log_change",
   "mastra_meta_state_propose_design",
   "mastra_meta_state_refresh_file_index",

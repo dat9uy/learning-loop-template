@@ -67,7 +67,6 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       // Derived view: a dangling_refs block surfaces the stale/missing/superseded target.
       assert.ok(Array.isArray(body.dangling_refs), "dangling_refs should be an array");
       const reopens = body.dangling_refs.find((d) => d.field === "reopens" && d.target_id === targetId);
-      assert.ok(reopens, `dangling_refs should include reopens → ${targetId}; got ${JSON.stringify(body.dangling_refs)}`);
       assert.strictEqual(reopens.reason, "superseded",
         `dangling reason should be 'superseded'; got ${reopens.reason}`);
     } finally {
@@ -135,7 +134,6 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       assert.deepStrictEqual(
         dangling,
         [],
-        `dangling_refs should be empty for healthy target; got ${JSON.stringify(dangling)}`
       );
     } finally {
       process.env.GATE_ROOT = originalEnv;
@@ -163,10 +161,14 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       });
       const sourceId = JSON.parse(sourceReport.content[0].text).id;
 
-      // Mark the target as stale (bypass the operator-mode sweep).
+      // Plan 260707-0812 Phase 2: `isStaleView` derives the stale predicate from
+      // age + drift. Mark the target as `status: "stale"` AND backdate its
+      // `created_at` so the predicate returns true (a fresh stale entry
+      // wouldn't surface under the derived view; only age-eligible ones do).
       const reg = readRegistry(tempDir);
       const target = reg.find((e) => e.id === targetId);
       target.status = "stale";
+      target.created_at = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
       writeFileSync(join(tempDir, "meta-state.jsonl"),
         reg.map((e) => JSON.stringify(e)).join("\n") + "\n");
 

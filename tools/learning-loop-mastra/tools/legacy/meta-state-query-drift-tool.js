@@ -19,8 +19,12 @@ export const metaStateQueryDriftTool = {
   description: "Aggregate drift events across the meta-state registry. Joins SP1's deriveStatus + SP2's checkGrounding. Read-only: the agent decides what to do with the result.",
   schema: {
     filter: z.preprocess(stripEnvelope, z.object({
-      status: z.enum(["active", "reported"]).optional()
-        .describe("Optional filter: only return entries with this status"),
+      // Plan 260707-0812 Phase 2: input enum accepts `open` (the canonical
+      // post-collapse status) and the legacy open-equivalent set; the filter
+      // is mapped via isOpen in the registry reader so consumers see a
+      // consistent set pre- and post-migration.
+      status: z.enum(["open", "active", "reported", "stale"]).optional()
+        .describe("Optional filter: only return entries with this status, mapped via isOpen"),
     })).optional()
       .describe("Optional filter on the registry before computing drift"),
     run_grounding: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false)

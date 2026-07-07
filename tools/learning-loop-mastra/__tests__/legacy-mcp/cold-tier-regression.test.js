@@ -3,6 +3,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
+import { derivedStaleSet, isOpen } from "../../core/stale-view.js";
 import { test } from "node:test";
 import assert from "node:assert";
 import { existsSync } from "node:fs";
@@ -75,6 +76,22 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   assert.ok(
     staleMcFindings.length <= 12,
     `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 12 (re-tightened for post-Rec 8 migration with 2 headroom): ${staleMcFindings.map((f) => f.id).join(", ")}`
+  );
+
+  // Phase 7 (plan 260707-0812 Phase 1): derived-stale view cap. Sourced from
+  // the new `derivedStaleSet` predicate (age > STALENESS_WINDOW_MS OR hash
+  // drift via file-index.jsonl) over the live registry, scoped to
+  // mechanism_check true|null. Threshold 16 = precompute 14 + 2 headroom
+  // (matches the existing 12-vs-10 headroom convention). Both this and the
+  // Phase 6 legacy `status:"stale"` assertion are green during Phase 1 — the
+  // legacy one is removed in Phase 4 once the migration lands.
+  const derivedStaleMc = derivedStaleSet(current.all_findings, {
+    now: Date.now(),
+    fileIndex,
+  }).filter((f) => f.mechanism_check === true || f.mechanism_check === null);
+  assert.ok(
+    derivedStaleMc.length <= 16,
+    `Phase 7: derived-stale cap broken — ${derivedStaleMc.length} derived stale mechanism_check findings exceed threshold 16 (14 + 2 headroom; precompute from plan 260707-0812 Phase 1): ${derivedStaleMc.map((f) => f.id).join(", ")}`
   );
 
   // Size sanity: cold tier should not collapse to a near-empty payload
@@ -223,8 +240,8 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
       `active_findings entry ${af.id} is not present in all_findings`
     );
     assert.ok(
-      af.status === "reported" || af.status === "active",
-      `active_findings entry ${af.id} has unexpected status: ${af.status}`
+      isOpen(af),
+      `active_findings entry ${af.id} has unexpected status: ${af.status} (isOpen must be true)`
     );
   }
 

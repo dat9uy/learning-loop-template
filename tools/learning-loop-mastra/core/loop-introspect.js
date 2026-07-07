@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
+import { isOpen, isStaleView } from "./stale-view.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -161,8 +162,11 @@ export function buildProcessHints() {
  * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
+// Plan 260707-0812 Phase 2: terminal Set collapses to {resolved, superseded}
+// (+archived runtime-applied). The 4-member version mirrored the legacy enum;
+// `auto-resolved` is gone (dead write path) and the open-set lives in
+// `isOpen`/`isStaleView` instead of literal status equality.
 const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
-  "auto-resolved",
   "resolved",
   "superseded",
   "archived",
@@ -196,7 +200,11 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   const candidates = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      .filter((e) => e.status === "stale")
+      // Phase 2: source the fixable-candidate filter from the derived view
+      // (`isStaleView`) rather than literal `status === "stale"`. Tolerates
+      // legacy `stale` entries pre-migration and stays correct after the
+      // migration flips them to `open`.
+      .filter((e) => isStaleView(e))
       .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
       .filter((e) => e.severity !== "escalate")
       .filter((e) => !e.ledger_ref)
@@ -222,7 +230,10 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   const orphanFindings = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      .filter((e) => e.status === "reported" || e.status === "active")
+      // Phase 2: orphan-findings filter uses `isOpen` instead of literal
+      // active|reported; this stays correct through the migration and matches
+      // the post-Phase-4 canonical set.
+      .filter((e) => isOpen(e))
       .filter((e) => dispatchIds.has(e.id))
       .filter((e) => !e.ledger_ref),
     (e) => ({
@@ -294,12 +305,14 @@ export function listAllGatePatterns(root) {
 }
 
 /**
- * List active findings (reported or active status) from meta-state.
+ * List active findings (open or open-equivalent status) from meta-state.
+ * Plan 260707-0812 Phase 2: filter is `isOpen(e)` instead of literal
+ * reported|active. `open` is the canonical post-migration status; legacy
+ * `active`/`reported`/`stale` are tolerated by `isOpen` pre-migration.
  */
 export function listActiveFindings(root, { categories } = {}) {
   const entries = readRegistry(root);
-  const activeStatuses = new Set(["reported", "active"]);
-  let findings = entries.filter((e) => activeStatuses.has(e.status) && e.entry_kind === "finding");
+  let findings = entries.filter((e) => isOpen(e) && e.entry_kind === "finding");
   if (categories && categories.length > 0) {
     findings = findings.filter((e) => categories.includes(e.category));
   }
@@ -311,9 +324,10 @@ export function listActiveFindings(root, { categories } = {}) {
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  // Anti-patterns are surfaced in reported/active states; filter out closed
-  // statuses so the list does not include resolved/auto-resolved findings.
-  const CLOSED_STATUSES = new Set(["auto-resolved", "resolved"]);
+  // Anti-patterns are surfaced in open states; filter out closed statuses so
+  // the list does not include resolved/superseded findings. `archived` is
+  // excluded by the `isOpen` check (it tolerates null but not `archived`).
+  const CLOSED_STATUSES = new Set(["resolved", "superseded"]);
   let findings = entries.filter(
     (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
   );

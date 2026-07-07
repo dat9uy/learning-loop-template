@@ -1,4 +1,5 @@
 import { metaStateFindingEntrySchema } from "../meta-state.js";
+import { isOpen, isStaleView } from "../stale-view.js";
 import { deepFreeze } from "./deep-freeze.js";
 
 export function createFinding(data) {
@@ -8,9 +9,13 @@ export function createFinding(data) {
     data: parsed,
     schema: metaStateFindingEntrySchema,
 
-    isActive()  { return parsed.status === "active"; },
-    isStale()   { return parsed.status === "stale"; },
-    isBlocking(){ return parsed.severity === "escalate"; },
+    // Plan 260707-0812 Phase 2: `isActive`/`isStale` renamed to
+    // `isOpen`/`isStaleView`. Semantics: the open predicate tolerates legacy
+    // `active`/`reported`/`stale` as open; the stale-view predicate checks
+    // age + drift. See core/stale-view.js for the canonical implementations.
+    isOpen()     { return isOpen(parsed); },
+    isStaleView(){ return isStaleView(parsed); },
+    isBlocking() { return parsed.severity === "escalate"; },
 
     outboundRefs() {
       const refs = [];

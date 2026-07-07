@@ -21,6 +21,10 @@ async function importMetaStateResolveTool() {
 }
 
 async function writeStaleParent(core, tempRoot, id, opts = {}) {
+  // Plan 260707-0812 Phase 2: `stale` is no longer a status. The "stale parent"
+  // is modeled as an aged open finding (backdated created_at so isStaleView
+  // returns true). This preserves the cascade semantics — the parent is
+  // open-eligible but surfaced in the derived stale view.
   await core.writeEntry(tempRoot, {
     id,
     entry_kind: "finding",
@@ -28,7 +32,7 @@ async function writeStaleParent(core, tempRoot, id, opts = {}) {
     severity: "warning",
     affected_system: "gate-logic",
     description: "A parent finding that is past its staleness window.",
-    status: "stale",
+    status: "open",
     created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     last_verified_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     version: 0,
@@ -36,7 +40,7 @@ async function writeStaleParent(core, tempRoot, id, opts = {}) {
   });
 }
 
-async function writeChild(core, tempRoot, childId, parentId, status = "active") {
+async function writeChild(core, tempRoot, childId, parentId, status = "open") {
   await core.writeEntry(tempRoot, {
     id: childId,
     entry_kind: "finding",
@@ -107,7 +111,7 @@ test("cascade_from with missing child returns cascade_child_not_found", async ()
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "stale");
+    assert.strictEqual(parent.status, "open", "failed cascade must leave parent status unchanged");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
@@ -147,9 +151,11 @@ test("cascade_from with unresolved child returns cascade_child_unresolved", asyn
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
 
-  // After plan 260611-1000, only `stale`, `reported`, and `superseded` are
-  // non-validating statuses. The legacy `expired` was removed.
-  for (const badStatus of ["reported", "stale", "superseded"]) {
+  // After plan 260707-0812, only `superseded` and the runtime-applied
+  // `archived` are non-cascade-eligible child statuses. `resolved` is now
+  // explicitly accepted as a valid child (the cascade is the canonical way
+  // to close the parent once the underlying issue is resolved).
+  for (const badStatus of ["superseded"]) {
     const parentId = core.generateId(`parent-stale-${badStatus}`);
     const childId = core.generateId(`child-${badStatus}`);
 
@@ -233,7 +239,7 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     subtype: "mcp-client-loading",
     description: "Blocking finding for resolution evidence test.",
     session_id: "test-session-id",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   });
@@ -246,7 +252,7 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     pattern: "test-session-id",
     applies_to_resolution: parentId,
     description: "Rule entry for resolution evidence test.",
-    status: "active",
+    status: "active", // rule status: rule entries use the rule enum (active/inactive), unchanged by Phase 2
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
     created_at: new Date().toISOString(),
@@ -268,7 +274,7 @@ test("cascade_from fails the operator gate before child validation (consult-gate
 
     const after = core.readRegistry(tempRoot);
     const parent = after.find((e) => e.id === parentId);
-    assert.strictEqual(parent.status, "stale");
+    assert.strictEqual(parent.status, "open", "failed cascade must leave parent status unchanged");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }
@@ -287,7 +293,7 @@ test("cascade_from on active parent closes in 1 step (sanity check)", async () =
     severity: "warning",
     affected_system: "gate-logic",
     description: "A parent finding that is active.",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   });
@@ -310,11 +316,16 @@ test("cascade_from on active parent closes in 1 step (sanity check)", async () =
   }
 });
 
-test("cascade_from on reported parent returns cascade_parent_is_reported (preserves ack flow)", async () => {
+test("cascade_from on terminal parent returns already_terminal", async () => {
+  // Plan 260707-0812 Phase 2: ack removed; the legacy `cascade_parent_is_reported`
+  // branch is gone. Terminal parents (resolved/superseded/archived) hit the
+  // early-return `already_terminal` guard before the cascade branch — so the
+  // cascade branch is never reached for terminal parents. This test asserts
+  // the reachable behavior.
   const tempRoot = mkdtempSync(join(tmpdir(), "meta-cascade-"));
   const core = await importCore(tempRoot);
-  const parentId = core.generateId("parent-reported-cascade");
-  const childId = core.generateId("child-of-reported");
+  const parentId = core.generateId("parent-terminal-cascade");
+  const childId = core.generateId("child-of-terminal");
 
   await core.writeEntry(tempRoot, {
     id: parentId,
@@ -322,10 +333,11 @@ test("cascade_from on reported parent returns cascade_parent_is_reported (preser
     category: "gate-logic-bug",
     severity: "warning",
     affected_system: "gate-logic",
-    description: "A parent in the 24h TTL reported window.",
-    status: "reported",
-    created_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    description: "A terminal parent (resolved) — already_terminal fires before cascade.",
+    status: "resolved",
+    created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    resolved_at: new Date(Date.now() - 60_000).toISOString(),
+    resolved_by: "operator",
     version: 0,
   });
   await writeChild(core, tempRoot, childId, parentId);
@@ -341,8 +353,8 @@ test("cascade_from on reported parent returns cascade_parent_is_reported (preser
     });
     const parsed = JSON.parse(result.content[0].text);
     assert.strictEqual(parsed.resolved, false);
-    assert.strictEqual(parsed.reason, "cascade_parent_is_reported");
-    assert.ok(parsed.hint);
+    assert.strictEqual(parsed.reason, "already_terminal");
+    assert.strictEqual(parsed.current_status, "resolved");
   } finally {
     process.env.GATE_ROOT = originalEnv;
   }

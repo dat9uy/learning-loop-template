@@ -4,6 +4,7 @@ import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, archiveEntry } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
+import { isOpen } from "../../core/stale-view.js";
 
 function buildPreview(allEntries, override) {
   return override.map((id) => {
@@ -33,10 +34,15 @@ function buildPreview(allEntries, override) {
 
 const ARCHIVE_DECISION_RULE = (entry) => {
   if (entry.status === "archived") return false;
-  // Rule 1: reported > 30d AND not acked
-  if (entry.status === "reported" && entry.created_at) {
+  // Plan 260707-0812 Phase 2 (red-team H1): the decision rule keys on `isOpen`
+  // (covers open/active/reported/stale) plus age; the `!entry.acked_at` check
+  // is removed — `acked_at` is going away with `meta_state_ack`, and without
+  // it `undefined` would mass-archive legacy entries without `acked_at` set.
+  //
+  // Rule 1: isOpen AND created > 30d ago
+  if (isOpen(entry) && entry.created_at) {
     const ageMs = Date.now() - new Date(entry.created_at).getTime();
-    if (ageMs > 30 * 24 * 60 * 60 * 1000 && !entry.acked_at) return true;
+    if (ageMs > 30 * 24 * 60 * 60 * 1000) return true;
   }
   // Rule 2: resolved > 90d
   if (entry.status === "resolved" && entry.resolved_at) {
@@ -48,7 +54,7 @@ const ARCHIVE_DECISION_RULE = (entry) => {
 
 export const metaStateArchiveTool = {
   name: "meta_state_archive",
-  description: "Archive findings to reduce registry size. Decision rule (NOT enforced, documented): archive entries that are (status=reported AND age > 30d AND not acked) OR (status=resolved AND resolved > 90d). Operator can override by passing override ids with a reason. Only entry_kind=finding can be archived; rules, change-logs, and loop-designs are rejected. Multi-id overrides require a preview/confirm step: pass override with more than one id to receive a preview, then call again with confirm: true to archive. Archived entries stay in meta-state.jsonl with status=archived, archived_at, archived_by, archived_reason fields. Default meta_state_list excludes archived; pass include_archived: true to include. Re-archiving is a no-op (returns already_archived).",
+  description: "Archive findings to reduce registry size. Decision rule (NOT enforced, documented): archive entries that are isOpen AND age > 30d OR (status=resolved AND resolved > 90d). Operator can override by passing override ids with a reason. Only entry_kind=finding can be archived; rules, change-logs, and loop-designs are rejected. Multi-id overrides require a preview/confirm step: pass override with more than one id to receive a preview, then call again with confirm: true to archive. Archived entries stay in meta-state.jsonl with status=archived, archived_at, archived_by, archived_reason fields. Default meta_state_list excludes archived; pass include_archived: true to include. Re-archiving is a no-op (returns already_archived).",
   schema: {
     candidates: z.preprocess(stripEnvelope, z.array(z.string())).default([])
       .describe("Optional explicit list of entry ids to evaluate against the decision rule. If empty, the rule is applied to the entire registry."),

@@ -11,7 +11,10 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 // Set of statuses excluded by default from `meta_state_list` results.
-const EXCLUDABLE_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
+// Plan 260707-0812 Phase 2: collapses to {resolved, superseded} (the canonical
+// terminal set); `archived` is excluded upstream by the entry_kind/status
+// filter pair, not here.
+const EXCLUDABLE_STATUSES = new Set(["resolved", "superseded"]);
 
 const REF_FIELDS = [
   "consolidated_into",

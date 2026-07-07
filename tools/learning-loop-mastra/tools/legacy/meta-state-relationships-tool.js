@@ -5,6 +5,7 @@ import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { findEntryOrNotFound } from "#lib/find-entry.js";
+import { isStaleView } from "../../core/stale-view.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
@@ -57,27 +58,32 @@ function groupInbound(refs) {
 }
 
 /**
- * Compute dangling outbound refs: refs whose target is stale, missing, or
- * superseded. Replaces the old `stale-ref` follow-up emission that sweep used
- * to produce — the information is now a derived view over the relationship
- * graph instead of a recorded finding kind.
+ * Compute dangling outbound refs: refs whose target is stale-view, missing,
+ * or superseded. Replaces the old `stale-ref` follow-up emission that sweep
+ * used to produce — the information is now a derived view over the
+ * relationship graph instead of a recorded finding kind.
  *
  * Read-only / pure function over `entries` (the registry snapshot the caller
  * has already loaded). `refs` is the outbound-ref array produced by the
  * factory — `{ kind, id, field }` per ref.
  *
+ * Plan 260707-0812 Phase 2 (red-team H3):
+ *   - the stale-branch uses `isStaleView(target)` (covers literal `stale` and
+ *     any open entry that is stale-view by age/drift) instead of `status === "stale"`
+ *   - the dead `auto-resolved` branch is dropped (the enum-collapse removed
+ *     `auto-resolved`; the read-site here is the only place that mentioned it)
+ *
  * Reason classification:
  *   - target not in registry         -> "missing"
  *   - target.entry_kind !== expected -> "missing" (kind mismatch is the
  *                                       same informational class)
- *   - target.status === "stale"      -> "stale"
+ *   - isStaleView(target)            -> "stale"
  *   - target.status === "superseded" -> "superseded"
  *   - target.status === "resolved"   -> "resolved" (terminal, the ref
  *                                       cannot be resolved by re-verifying
  *                                       or re-dispatching)
- *   - target.status === "auto-resolved" -> "resolved" (same as resolved)
  *
- * Returns the dangling list. Refs whose target is in {reported, active}
+ * Returns the dangling list. Refs whose target is open but not stale-view
  * are NOT dangling — those are healthy ongoing references.
  */
 function computeDanglingRefs(refs, entries) {
@@ -95,11 +101,11 @@ function computeDanglingRefs(refs, entries) {
       continue;
     }
     const status = target.status;
-    if (status === "stale") {
+    if (isStaleView(target)) {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "stale" });
     } else if (status === "superseded") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "superseded" });
-    } else if (status === "resolved" || status === "auto-resolved") {
+    } else if (status === "resolved") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "resolved" });
     }
   }

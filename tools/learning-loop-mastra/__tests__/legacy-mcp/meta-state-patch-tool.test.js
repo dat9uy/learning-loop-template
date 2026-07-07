@@ -4,7 +4,6 @@ import { metaStatePatchTool } from "../../tools/legacy/meta-state-patch-tool.js"
 import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
 import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -36,10 +35,6 @@ async function logChangeCall(args) {
 
 async function resolveCall(args) {
   return JSON.parse((await metaStateResolveTool.handler(args)).content[0].text);
-}
-
-async function ackCall(args) {
-  return JSON.parse((await metaStateAckTool.handler(args)).content[0].text);
 }
 
 test("meta_state_patch happy path patches a finding's evidence_journal with CAS", async () => {
@@ -183,6 +178,8 @@ test("meta_state_patch full lifecycle: create -> patch -> resolve", async () => 
     });
     const id = reportResult.id;
 
+    // Plan 260707-0812 Phase 2: ack removed; report writes status:"open" directly,
+    // so we skip the ack step and resolve the open finding directly.
     const patchResult = await patchCall({
       id,
       entry_kind: "finding",
@@ -190,9 +187,6 @@ test("meta_state_patch full lifecycle: create -> patch -> resolve", async () => 
     });
     assert.equal(patchResult.patched, true);
     assert.equal(patchResult.version, 1);
-
-    const ackResult = await ackCall({ id });
-    assert.equal(ackResult.acked, true);
 
     const resolveResult = await resolveCall({
       id,

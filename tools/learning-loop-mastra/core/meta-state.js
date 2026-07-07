@@ -20,11 +20,13 @@ import { TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { stripEvidenceAnchor } from "./gate-logic.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
-// `expired` was removed in plan 260611-1000-remove-expired-status. The legacy
-// past-TTL status was migrated to `stale` (a non-terminal, re-verifiable state
-// closed via meta_state_resolve with cascade_from). `superseded` is terminal
-// (consolidated into a change-log); `auto-resolved` is closed by mechanism.
-export const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
+// Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
+// status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied
+// at archive time, outside the enum). `reported`/`active`/`stale`/`auto-resolved`
+// are removed from the enum — read sites use `isOpen`/`isStaleView` instead.
+// `archived` lives outside the enum because it is applied by `archiveEntry`
+// after the entry has been removed from the canonical set.
+export const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
 const AFFECTED_SYSTEM_ENUM = [
   "meta",
   "gate-logic",
@@ -54,7 +56,11 @@ function withDefaults(entry) {
   return entry;
 }
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
+// Plan 260707-0812 Phase 1: STALENESS_WINDOW_MS is sourced from core/constants.js
+// (the shared canonical owner) so core/stale-view.js and meta-state-sweep-tool.js
+// cannot drift. The env-var override `META_STATE_STALENESS_WINDOW_MS` is honored
+// by constants.js. Re-exported below for backward compat with callers that
+// import STALENESS_WINDOW_MS directly from this module.
 
 // Source-of-truth categories for finding entries. Export so introspection
 // layers (e.g. core/loop-introspect.js) can derive from the same source.
@@ -88,8 +94,8 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["reported", "active", "resolved", "superseded", "auto-resolved", "stale"]).optional()
-    .describe("Status — 'reported' (24h TTL), 'active' (operator-acked), 'stale' (past TTL or past staleness window; re-verifiable via meta_state_re_verify), 'resolved' (closed), 'superseded' (consolidated into a change-log), 'auto-resolved' (closed by mechanism). The legacy 'expired' status was removed in plan 260611-1000; new entries use 'stale' instead. Use meta_state_ack or meta_state_promote_rule for status transitions."),
+  status: z.enum(["open", "resolved", "superseded"]).optional()
+    .describe("Status — 'open' (newly reported or unresolved; replaces the legacy 'reported'/'active'/'stale' trio), 'resolved' (closed), 'superseded' (consolidated into a change-log). 'archived' is applied at runtime by archiveEntry and is not in the enum. Read sites should use the isOpen/isStaleView predicates from core/stale-view.js instead of literal status equality."),
   consolidated_into: z.string().optional()
     .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
   last_verified_at: z.string().optional()
@@ -111,9 +117,9 @@ export const metaStateFindingEntrySchema = z.object({
   ledger_ref: z.string().optional()
     .describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   expires_at: z.string().nullable().optional()
-    .describe("ISO timestamp when a reported entry expires (24h TTL). Set by writeEntry; cleared by meta_state_ack."),
+    .describe("Vestigial — no longer written by any tool. Legacy entries may still carry the field for read-compat. See plan 260707-0812 Phase 2."),
   acked_at: z.string().nullable().optional()
-    .describe("ISO timestamp when operator acked the entry (status → active). Set by meta_state_ack."),
+    .describe("Removed — meta_state_ack is gone. Legacy entries may still carry the field for read-compat; the field is no longer read by any tool."),
   resolved_at: z.string().nullable().optional()
     .describe("ISO timestamp when the entry was resolved. Set by meta_state_resolve."),
   resolved_by: z.string().nullable().optional()
@@ -765,35 +771,57 @@ export function metaStateBatch(root, operations) {
 }
 
 /**
- * Check if a reported entry has expired (24h TTL without ack).
- * Returns "stale" if past expires_at and status is reported,
- * null otherwise.
+ * Check if a reported entry has expired (24h TTL).
+ *
+ * Plan 260707-0812 Phase 2: this function no longer transitions status to
+ * `stale`. `stale` is a derived view (see core/stale-view.js#isStaleView), and
+ * the 24h `expires_at` field is unrelated to the 7d `STALENESS_WINDOW_MS`
+ * constant — they are different clocks (red-team M1). The function is
+ * retained as a no-op so callers that imported it keep working; phase 4
+ * deletes it after sweep's apply:true mode is removed.
  */
 export function checkExpiry(entry) {
-  if (entry.status === "stale") return null;
-  if (entry.status !== "reported") return null;
+  if (!entry) return null;
   if (!entry.expires_at) return null;
   if (Date.now() > new Date(entry.expires_at).getTime()) {
-    return "stale";
+    return "stale"; // legacy signal — kept for callers; no longer a status transition
   }
   return null;
 }
 
-export { STALENESS_WINDOW_MS };
+export { STALENESS_WINDOW_MS } from "./constants.js";
 
 /**
  * Filter entries by optional criteria (category, status, affected_system, session_id).
  * All provided filters must match (AND logic).
+ *
+ * Plan 260707-0812 Phase 2: status filtering treats the canonical open set
+ * (`open`) and the legacy open-equivalent set (`active`/`reported`/`stale`)
+ * as a single bucket so consumers see a consistent open set pre-migration.
+ * `status:"open"` returns entries where `isOpen(e)` is true; `status:"stale"`,
+ * `status:"active"`, and `status:"reported"` still return legacy entries
+ * pre-migration (backward compat until phase 4).
  */
 export function filterEntries(entries, filters) {
   return entries.filter((entry) => {
     if (filters.entry_kind && entry.entry_kind !== filters.entry_kind) return false;
     if (filters.category && entry.category !== filters.category) return false;
     if (filters.session_id && entry.session_id !== filters.session_id) return false;
-    if (filters.status && entry.status !== filters.status) return false;
+    if (filters.status && !matchesStatusFilter(entry, filters.status)) return false;
     if (filters.affected_system && entry.affected_system !== filters.affected_system) return false;
     return true;
   });
+}
+
+function matchesStatusFilter(entry, status) {
+  if (entry.status === status) return true;
+  // Backward-compat: legacy `stale`/`active`/`reported` map to `open` until
+  // phase 4 migrates them. Pre-migration consumers see the consistent open set.
+  if (status === "open" && (entry.status === "active" || entry.status === "reported" || entry.status === "stale")) {
+    return true;
+  }
+  // After migration (or for clean registries) literal equality suffices.
+  return false;
 }
 
 /**
@@ -821,7 +849,7 @@ export function tryClaimSessionId(root, key, entryBuilder) {
       e.entry_kind === "finding"
       && e.session_id === key.sessionId
       && e.subtype === key.subtype
-      && (e.status === "active" || e.status === "reported")
+      && (e.status === "open" || e.status === "active" || e.status === "reported")
       && e.description.includes(`runtime: ${key.runtime}`)
       && e.description.includes(`layer: ${key.layer}`),
     );

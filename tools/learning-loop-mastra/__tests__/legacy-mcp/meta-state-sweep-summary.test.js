@@ -2,47 +2,33 @@ import { test } from "node:test";
 import assert from "node:assert";
 import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
 import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+
+// Plan 260707-0812 Phase 3: sweep is read-only. The previous tests in this
+// file used `mkdtempSync` isolation to defend against sweep `apply:true`
+// mutating the live registry (P0 B1 from plan 260704-0301). With sweep's
+// apply mode removed, the isolation is no longer required — sweep can't
+// mutate any registry. The tests now assert the read-only contract instead.
 
 const originalEnv = process.env.GATE_ROOT;
-let tempDir;
 
-test("Phase 7: meta_state_sweep apply succeeds and does NOT write docs/registry-summary.md", async () => {
-  // The registry-summary.md auto-writer was removed (the loop_describe summary tier
-  // + meta_state_list cover the same surface). Sweep apply must still succeed; the
-  // file must NOT be written.
-  //
-  // P0 B1 fix (plan 260704-0301-stale-findings-dispatch-handle): switched from
-  // live resolveRoot() to mkdtempSync isolation. The previous version mutated
-  // the live meta-state.jsonl on every pnpm test run (the pre-commit hook),
-  // auto-transitioning past-TTL reported entries -> stale — the user-reported
-  // "pre-commit auto-updates reported to stale" confusion mechanism.
-  tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-summary-"));
-  process.env.GATE_ROOT = tempDir;
-  const original = process.env.OPERATOR_MODE;
-  process.env.OPERATOR_MODE = "1";
+test("Phase 7: meta_state_sweep is read-only (no apply mode, no writes)", async () => {
+  process.env.GATE_ROOT = originalEnv;
   try {
-    const result = await metaStateSweepTool.handler({ apply: true });
+    const result = await metaStateSweepTool.handler({});
     const text = JSON.parse(result.content[0].text);
-    assert.strictEqual(text.swept, true);
+    assert.strictEqual(text.swept, false, "sweep never applies; swept must be false");
+    assert.strictEqual(text.dry_run, true, "dry_run must be true");
+    assert.strictEqual(text.read_only, true, "read_only flag must be true");
+    assert.ok(typeof text.stale_view_count === "number", "stale_view_count must be a number");
+    assert.ok(Array.isArray(text.findings), "findings must be an array");
   } finally {
-    process.env.OPERATOR_MODE = original;
     process.env.GATE_ROOT = originalEnv;
   }
-
-  const summaryPath = join(tempDir, "docs", "registry-summary.md");
-  assert.ok(!existsSync(summaryPath), "docs/registry-summary.md must NOT be written by sweep");
 });
 
 test("Phase 7: warm tier includes registry_summary field", async () => {
-  // P0 B1 fix: also isolated to the tempDir so loop_describe reads the
-  // (empty) registry under GATE_ROOT, not the live one. The warm-tier
-  // registry_summary field shape is independent of registry contents.
-  tempDir = mkdtempSync(join(tmpdir(), "meta-sweep-summary-warm-"));
-  process.env.GATE_ROOT = tempDir;
+  // The warm-tier registry_summary field shape is independent of sweep.
+  process.env.GATE_ROOT = originalEnv;
   try {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const text = JSON.parse(result.content[0].text);
