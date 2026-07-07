@@ -15,23 +15,18 @@
  * persisted values; this tolerance makes the code/migration order
  * non-breaking.
  *
- * `STALENESS_WINDOW_MS` is re-exported from `core/meta-state.js` — the same
- * source `checkStaleness` uses today. Re-exporting keeps a single source of
- * truth so the derived view and sweep (read-only in phase 3) cannot diverge.
+ * `STALENESS_WINDOW_MS` and `isOpen` come from `core/constants.js` (the shared
+ * primitive-layer source). This module re-exports `isOpen` so callers of the
+ * predicate-pair API (`isOpen`/`isStaleView`/`derivedStaleSet`) don't need a
+ * separate import; `isOpen`'s canonical home is `core/constants.js` so
+ * low-layer primitives (e.g. `file-readers.js`) can use it without importing
+ * a verification-tier module.
  */
 
 import { canonicalIndexKey } from "./meta-state.js";
 import { STALENESS_WINDOW_MS, isOpen } from "./constants.js";
 
-/**
- * Re-export the canonical `isOpen` predicate and `STALENESS_WINDOW_MS` from
- * `core/constants.js` (the shared primitive-layer source) so callers of this
- * module's predicate-pair API (`isOpen`/`isStaleView`/`derivedStaleSet`) don't
- * need a separate import. `isOpen`'s canonical home is `core/constants.js` so
- * low-layer primitives (e.g. `file-readers.js`) can use it without importing
- * a verification-tier module; this re-export preserves the public API.
- */
-export { STALENESS_WINDOW_MS, isOpen };
+export { isOpen };
 
 /**
  * Reference time for staleness: prefer the most recent verification stamp

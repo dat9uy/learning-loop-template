@@ -94,10 +94,10 @@ export const metaStateListTool = {
     // `stale` and `updateEntry`'s compaction deleted terminal entries older
     // than 7 days, so every list call mutated the live registry — including
     // re-staling terminal (archived/resolved) entries once the `reported`-only
-    // guard was lifted from `checkExpiry`. That contradicts the collapsed
-    // status model, where `stale` is a derived evidence-freshness view (see
-    // `core/stale-view.js`), not a writable status. The past-TTL signal stays
-    // available via `checkExpiry`/`isStaleView` for callers that want it.
+    // guard was lifted. That contradicts the collapsed status model, where
+    // `stale` is a derived evidence-freshness view (see `core/stale-view.js`),
+    // not a writable status. The past-TTL signal stays available via
+    // `isStaleView` for callers that want it. (Phase 4 deleted `checkExpiry`.)
     let result = entries;
 
     // Filter pipeline order: ref_by/ref_field first (most selective),

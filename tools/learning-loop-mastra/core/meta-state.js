@@ -773,27 +773,6 @@ export function metaStateBatch(root, operations) {
 }
 
 /**
- * Check if a reported entry has expired (24h TTL).
- *
- * Plan 260707-0812 Phase 2: this function no longer transitions status to
- * `stale`. `stale` is a derived view (see core/stale-view.js#isStaleView), and
- * the 24h `expires_at` field is unrelated to the 7d `STALENESS_WINDOW_MS`
- * constant — they are different clocks (red-team M1). The function is
- * retained as a no-op so callers that imported it keep working; phase 4
- * deletes it after sweep's apply:true mode is removed.
- */
-export function checkExpiry(entry) {
-  if (!entry) return null;
-  if (!entry.expires_at) return null;
-  if (Date.now() > new Date(entry.expires_at).getTime()) {
-    return "stale"; // legacy signal — kept for callers; no longer a status transition
-  }
-  return null;
-}
-
-export { STALENESS_WINDOW_MS } from "./constants.js";
-
-/**
  * Filter entries by optional criteria (category, status, affected_system, session_id).
  * All provided filters must match (AND logic).
  *

@@ -4,7 +4,6 @@ import {
   readRegistry,
   writeEntry,
   updateEntry,
-  checkExpiry,
   filterEntries,
   generateId,
   tryClaimSessionId,
@@ -82,30 +81,6 @@ describe("meta-state registry core", () => {
     assert.strictEqual(updated.last_verified_at, now);
     assert.strictEqual(updated.category, e.category);
     process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkExpiry returns stale when expires_at is past (Phase 2 vestigial behavior)", async () => {
-    // Plan 260707-0812 Phase 2: `checkExpiry` retains the past-`expires_at` signal
-    // for legacy entries that still carry the field, but no new entries are written
-    // with it. The function returns "stale" if expires_at is past (regardless of
-    // status); callers should treat this as an informational signal, not a status
-    // transition (the enum no longer carries "stale" — the derived view is in
-    // core/stale-view.js).
-    const yesterday = new Date(Date.now() - 25 * 60 * 60 * 1000);
-    const e = makeEntry({
-      status: "open",
-      expires_at: yesterday.toISOString(),
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, "stale");
-  });
-
-  test("checkExpiry returns null on active entry with no TTL", async () => {
-    const e = makeEntry({
-      status: "open",
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, null);
   });
 
   test("filterEntries by category", async () => {
@@ -206,16 +181,6 @@ describe("meta-state registry core", () => {
     const result = await updateEntry(tempDir, "meta-000000T0000Z-nonexistent", { status: "open" });
     assert.strictEqual(result, null);
     process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkExpiry returns null when entry has no expires_at (vestigial field)", async () => {
-    // Plan 260707-0812 Phase 2: `expires_at` is vestigial — no longer written.
-    // This test asserts the no-`expires_at` case returns null (the field is absent).
-    const e = makeEntry({
-      status: "open",
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, null);
   });
 
   test("filterEntries with empty filters returns all entries", async () => {

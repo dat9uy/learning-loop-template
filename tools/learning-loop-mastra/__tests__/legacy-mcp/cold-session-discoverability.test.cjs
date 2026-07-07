@@ -295,10 +295,6 @@ describe("cold-session discoverability", () => {
     const before = core.readRegistry(tempRoot);
     assert.strictEqual(before.filter((e) => e.session_id === sessionId).length, 1, "pre-test: exactly one stale entry");
 
-    // checkExpiry on stale should return null — no re-expiration.
-    const staleEntry = before.find((e) => e.id === id);
-    assert.strictEqual(core.checkExpiry(staleEntry), null, "stale entries should not re-expire");
-
     delete process.env.GATE_ROOT;
   });
 

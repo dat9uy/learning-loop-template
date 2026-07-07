@@ -7,7 +7,6 @@ import {
   metaStateFindingEntrySchema,
   TERMINAL_STATUSES,
   readRegistry,
-  checkExpiry,
 } from "../../core/meta-state.js";
 import { summarize } from "../../core/loop-introspect.js";
 import { deriveStatus, META_STATE_RECOMMENDATIONS } from "../../core/derive-status.js";
@@ -126,21 +125,7 @@ describe("stale status schema + behavior (TDD red)", () => {
     assert.strictEqual(TERMINAL_STATUSES.has("stale"), false, "stale must not be terminal");
   });
 
-  test("T7: checkExpiry is a no-op after Phase 2 (stale is a derived view, not a status transition)", () => {
-    // Plan 260707-0812 Phase 2: checkExpiry no longer transitions status to
-    // `stale`. The past-TTL signal is preserved for callers but the
-    // `reported→stale` write path is removed. This test asserts the
-    // vestigial-return behavior (still returns "stale" so existing callers
-    // get a signal, but no write happens).
-    const entry = {
-      id: "meta-260601T0000Z-test",
-      status: "open",
-      expires_at: new Date(Date.now() - 1000).toISOString(),
-    };
-    assert.strictEqual(checkExpiry(entry), "stale", "vestigial signal preserved; no status write");
-  });
-
-  test("T8: runVerification rejects cmd not in allowlist", () => {
+  test("T7: runVerification rejects cmd not in allowlist", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "verify-runner-"));
     const bad = runVerification(tempDir, { cmd: "rm", args: ["-rf", "/"] });
     assert.strictEqual(bad.status, "failed");
@@ -150,7 +135,7 @@ describe("stale status schema + behavior (TDD red)", () => {
     assert.strictEqual(good.status, "passed");
   });
 
-  test("T9: meta_state_re_verify round-trip (Phase 3: stamps last_verified_at, finding stays open)", async () => {
+  test("T8: meta_state_re_verify round-trip (Phase 3: stamps last_verified_at, finding stays open)", async () => {
     const tempDir = setup();
     process.env.OPERATOR_MODE = "1";
     process.env.META_STATE_VERIFY_EXEC = "1";
@@ -209,7 +194,7 @@ describe("stale status schema + behavior (TDD red)", () => {
     }
   });
 
-  test("T10: meta_state_supersede end-to-end", async () => {
+  test("T9: meta_state_supersede end-to-end", async () => {
     const tempDir = setup();
     process.env.OPERATOR_MODE = "1";
     try {
