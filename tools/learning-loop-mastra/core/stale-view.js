@@ -21,39 +21,17 @@
  */
 
 import { canonicalIndexKey } from "./meta-state.js";
-import { STALENESS_WINDOW_MS } from "./constants.js";
+import { STALENESS_WINDOW_MS, isOpen } from "./constants.js";
 
 /**
- * The terminal statuses that `isOpen` excludes. Mirrors `TERMINAL_STATUSES` in
- * `core/meta-state.js` plus `archived` (runtime-applied, outside the enum).
- *
- * Defined here rather than imported to keep this module dependency-light — the
- * derived view is consumed by introspection + sweep; both should not need to
- * transitively pull `core/meta-state.js`'s registry reader.
+ * Re-export the canonical `isOpen` predicate and `STALENESS_WINDOW_MS` from
+ * `core/constants.js` (the shared primitive-layer source) so callers of this
+ * module's predicate-pair API (`isOpen`/`isStaleView`/`derivedStaleSet`) don't
+ * need a separate import. `isOpen`'s canonical home is `core/constants.js` so
+ * low-layer primitives (e.g. `file-readers.js`) can use it without importing
+ * a verification-tier module; this re-export preserves the public API.
  */
-const TERMINAL_STATUSES = new Set(["resolved", "superseded", "archived"]);
-
-/**
- * Re-export the staleness window from `core/constants.js` (the shared
- * canonical source) so callers don't have to take a third import just to
- * read the constant.
- */
-export { STALENESS_WINDOW_MS };
-
-/**
- * `isOpen(finding)` — true when the finding is not in a terminal status.
- *
- * Tolerates legacy `active`/`reported`/`stale` (and missing status) as open.
- * This is the key transition property that lets the migration land without a
- * coordinated code+data deploy: legacy entries keep flowing through `isOpen`
- * filters, then phase 4 flips them to `open` for steady-state uniformity.
- */
-export function isOpen(entry) {
-  if (!entry || typeof entry !== "object") return false;
-  const status = entry.status;
-  if (status === null || status === undefined) return true;
-  return !TERMINAL_STATUSES.has(status);
-}
+export { STALENESS_WINDOW_MS, isOpen };
 
 /**
  * Reference time for staleness: prefer the most recent verification stamp

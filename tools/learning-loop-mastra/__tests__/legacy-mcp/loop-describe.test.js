@@ -307,7 +307,7 @@ describe("listAntiPatterns G9 status filter", () => {
     }
   });
 
-  test("stale entries are included in anti-patterns (non-terminal)", async () => {
+  test("past-TTL open entries stay open and are included in anti-patterns (non-terminal)", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-stale-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -316,19 +316,21 @@ describe("listAntiPatterns G9 status filter", () => {
         subtype: "escape-hatch-abuse",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "Stale anti-pattern entry for G9 testing",
+        description: "Past-TTL anti-pattern entry for G9 testing",
       });
       const id = JSON.parse(report.content[0].text).id;
-      // Force expiry by setting expires_at to past
+      // Set expires_at to past (vestigial TTL signal).
       const { updateEntry } = await import("../../core/meta-state.js");
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
-      // metaStateListTool auto-applies expiry -> transitions to stale
+      // meta_state_list is read-only: it no longer transitions past-TTL entries
+      // to `stale`. `stale` is a derived evidence-freshness view (see
+      // core/stale-view.js), not a writable status, so the entry stays `open`.
       await metaStateListTool.handler({});
 
       const result = listAntiPatterns(tempDir);
-      assert.strictEqual(result.length, 1, "stale anti-patterns should be included");
-      assert.strictEqual(result[0].status, "stale");
+      assert.strictEqual(result.length, 1, "open anti-patterns are included (non-terminal)");
+      assert.strictEqual(result[0].status, "open", "past-TTL entry stays open; meta_state_list does not transition status");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

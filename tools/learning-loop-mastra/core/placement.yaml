@@ -37,6 +37,9 @@ files:
   - path: derive-status.js
     role: verification
     summary: Derives effective status from stored refs + filesystem state.
+  - path: stale-view.js
+    role: verification
+    summary: Derived evidence-freshness view (isOpen, isStaleView, derivedStaleSet) replacing persisted status:"stale".
   - path: query-drift.js
     role: verification
     summary: Aggregates drift events across the meta-state registry.
@@ -84,6 +87,9 @@ files:
   - path: surfaces.js
     role: primitive
     summary: SURFACES constant + read/write helpers for multi-surface dirs.
+  - path: constants.js
+    role: primitive
+    summary: Shared core constants (STALENESS_WINDOW_MS) — single source of truth to prevent cross-module drift.
 
   # === evaluator ===
   - path: evaluate-write-gate.js

@@ -2,9 +2,7 @@ import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import {
   readRegistry,
-  checkExpiry,
   filterEntries,
-  updateEntry,
 } from "../../core/meta-state.js";
 import { buildInverseIndexes, summarize } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -57,7 +55,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (auto-resolved, resolved, superseded). Runs auto-resolve and expiry checks before returning. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
+  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -80,7 +78,6 @@ export const metaStateListTool = {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
-    const updated = [];
 
     // Validate ref_by/ref_field pair
     if ((ref_by && !ref_field) || (!ref_by && ref_field)) {
@@ -92,22 +89,16 @@ export const metaStateListTool = {
       };
     }
 
-    for (const entry of entries) {
-      let newStatus = null;
-      const expired = checkExpiry(entry);
-
-      if (expired) {
-        newStatus = expired;
-      }
-
-      if (newStatus && newStatus !== entry.status) {
-        await updateEntry(root, entry.id, { status: newStatus });
-        entry.status = newStatus;
-      }
-      updated.push(entry);
-    }
-
-    let result = updated;
+    // Read-only: meta_state_list does not write status. The legacy
+    // `checkExpiry`→`updateEntry` side effect flipped past-TTL entries to
+    // `stale` and `updateEntry`'s compaction deleted terminal entries older
+    // than 7 days, so every list call mutated the live registry — including
+    // re-staling terminal (archived/resolved) entries once the `reported`-only
+    // guard was lifted from `checkExpiry`. That contradicts the collapsed
+    // status model, where `stale` is a derived evidence-freshness view (see
+    // `core/stale-view.js`), not a writable status. The past-TTL signal stays
+    // available via `checkExpiry`/`isStaleView` for callers that want it.
+    let result = entries;
 
     // Filter pipeline order: ref_by/ref_field first (most selective),
     // then id (set membership), then existing filters.
@@ -117,7 +108,7 @@ export const metaStateListTool = {
       let matchingIds = new Set();
 
       if (INVERSE_BACKED_REF_FIELDS.has(ref_field)) {
-        const inverse = buildInverseIndexes(updated);
+        const inverse = buildInverseIndexes(entries);
         const inverseMap = {
           supersedes: inverse.supersedes_inverse,
           addresses: inverse.addresses_inverse,
@@ -128,7 +119,7 @@ export const metaStateListTool = {
         matchingIds = new Set(refs);
       } else if (ref_field === "consolidated_into") {
         // Scan: pick change-logs where consolidates === ref_by
-        for (const e of updated) {
+        for (const e of entries) {
           if (e.entry_kind === "change-log" && e.consolidates === ref_by) {
             matchingIds.add(e.id);
           }
@@ -136,7 +127,7 @@ export const metaStateListTool = {
       } else if (ref_field === "proposed_design_for") {
         // Scan: pick loop-designs where proposed_design_for includes ref_by.
         // Tolerate the wire-format wrap {item: [...]}.
-        for (const e of updated) {
+        for (const e of entries) {
           if (e.entry_kind === "loop-design") {
             const refs = e.proposed_design_for;
             if (Array.isArray(refs) && refs.includes(ref_by)) {

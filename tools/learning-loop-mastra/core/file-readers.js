@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isOpen } from "./stale-view.js";
+import { isOpen } from "./constants.js";
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
