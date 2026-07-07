@@ -51,7 +51,7 @@ function createRuntimeStateEntry(root, affectedSystem, constraints = ["vendor-ap
       source_ref: "local:meta-state:rule-test",
       fingerprint: "sha256:test",
       timestamp: new Date().toISOString(),
-      status: "active",
+      status: "open",
       metadata: { action: "test", authorization: constraint },
     });
   }
@@ -69,7 +69,7 @@ function createExhaustedBudget(root) {
     source_ref: "local:meta-state:rule-test",
     fingerprint: "sha256:test",
     timestamp: new Date().toISOString(),
-    status: "active",
+    status: "open",
     metadata: { budget: 1, current: 1, resource: "device_slots" },
   };
   writeFileSync(sidecarPath, JSON.stringify(entry) + "\n", "utf8");

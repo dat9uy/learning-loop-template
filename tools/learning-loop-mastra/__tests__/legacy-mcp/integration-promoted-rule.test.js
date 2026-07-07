@@ -146,7 +146,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
 
       const listResult = await metaStateListTool.handler({
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
       });
       const listText = JSON.parse(listResult.content[0].text);

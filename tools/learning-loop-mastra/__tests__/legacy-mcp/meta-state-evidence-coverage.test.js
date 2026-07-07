@@ -65,7 +65,7 @@ test("T-3: 3 of 4 union branches expose evidence_code_ref top-level", () => {
     change_target: "test",
     change_diff: { added: [], removed: [], changed: [] },
     reason: "A test change-log for evidence coverage test",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     evidence_code_ref: "x.js",
   });

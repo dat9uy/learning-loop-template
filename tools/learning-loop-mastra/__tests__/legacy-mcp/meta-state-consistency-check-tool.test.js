@@ -46,7 +46,7 @@ describe("meta_state_consistency_check tool", () => {
     const entry = {
       id: "meta-260601T0000Z-f1-breach",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       resolved_at: "2026-06-01T00:00:00.000Z",
       resolved_by: "operator",
     };
@@ -111,7 +111,7 @@ describe("meta_state_consistency_check tool", () => {
     const entry = {
       id: "meta-260601T0000Z-readonly-test",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
     };
     writeFileSync(registryPath, JSON.stringify(entry) + "\n");
     // Wait a moment so any modification would produce a different mtime.
@@ -136,7 +136,7 @@ describe("meta_state_consistency_check tool", () => {
     process.env.GATE_ROOT = tempDir;
     const entries = [
       // F-1 breach on a finding
-      { id: "meta-260601T0000Z-f1", entry_kind: "finding", status: "active",
+      { id: "meta-260601T0000Z-f1", entry_kind: "finding", status: "open",
         resolved_at: "2026-06-01T00:00:00.000Z", resolved_by: "op" },
       // F-3 breach on a finding (resolved without resolved_by)
       { id: "meta-260601T0000Z-f3", entry_kind: "finding", status: "resolved" },
@@ -176,7 +176,7 @@ describe("meta_state_consistency_check tool", () => {
     const entry = {
       id: "meta-260601T0000Z-shape-test",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       resolved_at: "2026-06-01T00:00:00.000Z",
     };
     writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(entry) + "\n");
@@ -206,13 +206,13 @@ describe("meta_state_consistency_check tool", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "consistency-check-tool-8-"));
     process.env.GATE_ROOT = tempDir;
     const entries = [
-      { id: "meta-260601T0000Z-a", entry_kind: "finding", status: "active",
+      { id: "meta-260601T0000Z-a", entry_kind: "finding", status: "open",
         resolved_at: "2026-06-01T00:00:00.000Z" },
-      { id: "meta-260601T0000Z-b", entry_kind: "finding", status: "active",
+      { id: "meta-260601T0000Z-b", entry_kind: "finding", status: "open",
         resolved_by: "op" },
-      { id: "meta-260601T0000Z-c", entry_kind: "finding", status: "active",
+      { id: "meta-260601T0000Z-c", entry_kind: "finding", status: "open",
         resolution: "operator narrative" },
-      { id: "meta-260601T0000Z-d", entry_kind: "finding", status: "active" },
+      { id: "meta-260601T0000Z-d", entry_kind: "finding", status: "open" },
       { id: "meta-260601T0000Z-e", entry_kind: "finding", status: "resolved" },
     ];
     writeFileSync(

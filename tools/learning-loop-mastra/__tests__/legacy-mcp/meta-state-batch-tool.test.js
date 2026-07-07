@@ -24,9 +24,9 @@ describe("meta_state_batch", () => {
     root = makeTempRoot();
     // Seed with 3 baseline findings
     const lines = [
-      JSON.stringify({ id: "batch-base-1", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 1 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
-      JSON.stringify({ id: "batch-base-2", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 2 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
-      JSON.stringify({ id: "batch-base-3", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 3 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "batch-base-1", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 1 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "batch-base-2", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 2 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "batch-base-3", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Baseline 3 for batch test (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
     process.env.GATE_ROOT = root;
@@ -48,9 +48,8 @@ describe("meta_state_batch", () => {
           severity: "warning",
           affected_system: "mcp-tools",
           description: "New entry for atomic batch test (min 20 chars)",
-          status: "reported",
+          status: "open",
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
       {
@@ -111,9 +110,8 @@ describe("meta_state_batch", () => {
           severity: "warning",
           affected_system: "mcp-tools",
           description: "Entry A for rollback test (min 20 chars)",
-          status: "reported",
+          status: "open",
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
       {
@@ -130,9 +128,8 @@ describe("meta_state_batch", () => {
           severity: "warning",
           affected_system: "mcp-tools",
           description: "Entry C for rollback test (min 20 chars)",
-          status: "reported",
+          status: "open",
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
     ];
@@ -161,9 +158,8 @@ describe("meta_state_batch", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: `Ceiling entry ${i} for batch test (min 20 chars)`,
-        status: "reported",
+        status: "open",
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       },
     }));
 
@@ -185,9 +181,8 @@ describe("meta_state_batch", () => {
           severity: "warning",
           affected_system: "mcp-tools",
           description: "Concurrent entry X for serialization test (min 20 chars)",
-          status: "reported",
+          status: "open",
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
     ];
@@ -201,9 +196,8 @@ describe("meta_state_batch", () => {
           severity: "warning",
           affected_system: "mcp-tools",
           description: "Concurrent entry Y for serialization test (min 20 chars)",
-          status: "reported",
+          status: "open",
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
     ];

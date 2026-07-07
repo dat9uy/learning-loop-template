@@ -51,7 +51,7 @@ async function seedRegistry(root) {
     applies_to: { tools: ["meta_state_query_drift"], rules: ["rule-no-new-artifact-types"], statuses: ["superseded"] },
     consolidates: [finding1Id, finding2Id, finding3Id].join(","),
     evidence_code_ref: "tools/learning-loop-mastra/core/gate-logic.js#applyPromotedRules",
-    status: "active",
+    status: "open",
     created_at: "2026-06-06T00:30:00.000Z",
     version: 0,
   });
@@ -69,8 +69,6 @@ async function seedRegistry(root) {
       status: "superseded",
       consolidated_into: changeLogId,
       created_at: "2026-06-02T04:12:54.031Z",
-      expires_at: "2026-06-03T04:12:54.031Z",
-      acked_at: null,
       version: 0,
     });
   }
@@ -125,8 +123,6 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
         evidence: { code_ref: "tools/learning-loop-mastra/core/gate-logic.js" },
         status: "superseded",
         created_at: "2026-06-06T00:01:00.000Z",
-        expires_at: "2026-06-07T00:01:00.000Z",
-        acked_at: null,
         version: 0,
       });
 
@@ -168,8 +164,6 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
         status: "superseded",
         consolidated_into: TEST_IDS.NONEXISTENT_TARGET,
         created_at: "2026-06-06T00:02:00.000Z",
-        expires_at: "2026-06-07T00:02:00.000Z",
-        acked_at: null,
         version: 0,
       });
 
@@ -200,10 +194,8 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
         affected_system: "gate-logic",
         description: "An active finding with no supersede linkage for the empty lineage test.",
         evidence: { code_ref: "tools/learning-loop-mastra/core/gate-logic.js" },
-        status: "reported",
+        status: "open",
         created_at: "2026-06-06T00:03:00.000Z",
-        expires_at: "2026-06-07T00:03:00.000Z",
-        acked_at: null,
         version: 0,
       });
 

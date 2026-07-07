@@ -38,7 +38,7 @@ test("meta_state_list with entry_kind='rule' returns only rule entries", async (
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });
@@ -49,7 +49,7 @@ test("meta_state_list with entry_kind='rule' returns only rule entries", async (
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -69,7 +69,7 @@ test("meta_state_list with entry_kind='loop-design' returns only loop-design ent
       id: "loop-design-test-1",
       entry_kind: "loop-design",
       title: "Test design that is at least 10 chars",
-      status: "active",
+      status: "open",
       proposed_design_for: ["rule-test-1"],
       addresses: [],
       description: "Test design description that is at least 20 characters long.",
@@ -84,7 +84,7 @@ test("meta_state_list with entry_kind='loop-design' returns only loop-design ent
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -108,7 +108,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       pattern_type: "regex",
       pattern: "test-pattern",
       description: "Test rule description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       promoted_at: "2026-06-06T20:00:00.000Z",
       promoted_by: "operator",
     });
@@ -116,7 +116,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       id: "loop-design-test-2",
       entry_kind: "loop-design",
       title: "Test design that is at least 10 chars",
-      status: "active",
+      status: "open",
       proposed_design_for: ["rule-test-2"],
       addresses: [],
       description: "Test design description that is at least 20 characters long.",
@@ -131,7 +131,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -155,7 +155,7 @@ test("meta_state_list with entry_kind='finding' returns the same entries as befo
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
     await writeTestEntry(root, {
@@ -165,7 +165,7 @@ test("meta_state_list with entry_kind='finding' returns the same entries as befo
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Test change-log description that is at least 20 characters.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -187,7 +187,7 @@ test("meta_state_list with entry_kind='change-log' returns the same entries as b
       change_target: "core/meta-state.js",
       change_diff: { added: [], removed: [], changed: [] },
       reason: "Test change-log description that is at least 20 characters.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 

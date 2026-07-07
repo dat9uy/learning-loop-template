@@ -15,9 +15,9 @@ function writeRegistry(root, entries) {
 }
 
 const SEED_ENTRIES = [
-  { id: "alpha", entry_kind: "finding", status: "active", category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "alpha finding for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
-  { id: "beta", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "beta finding for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
-  { id: "gamma", entry_kind: "change-log", status: "active", change_dimension: "surface", change_target: "tools/test.js", change_diff: { added: ["id filter"], removed: [], changed: [] }, reason: "gamma change-log for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
+  { id: "alpha", entry_kind: "finding", status: "open", category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "alpha finding for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
+  { id: "beta", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "beta finding for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
+  { id: "gamma", entry_kind: "change-log", status: "open", change_dimension: "surface", change_target: "tools/test.js", change_diff: { added: ["id filter"], removed: [], changed: [] }, reason: "gamma change-log for id-filter test (min 20 chars)", created_at: new Date().toISOString() },
 ];
 
 describe("meta_state_list id filter", () => {
@@ -70,7 +70,7 @@ describe("meta_state_list id filter", () => {
   test("id composes with status filter (AND)", async () => {
     const resolved = { id: "delta-resolved", entry_kind: "finding", status: "resolved", category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "resolved entry for compose test (min 20 chars)", created_at: new Date().toISOString(), resolved_at: new Date().toISOString(), resolved_by: "test" };
     writeFileSync(join(root, "meta-state.jsonl"), [...SEED_ENTRIES, resolved].map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-    const result = await metaStateListTool.handler({ id: ["alpha", "delta-resolved"], status: "active" });
+    const result = await metaStateListTool.handler({ id: ["alpha", "delta-resolved"], status: "open" });
     const text = JSON.parse(result.content[0].text);
     assert.strictEqual(text.count, 1);
     assert.strictEqual(text.entries[0].id, "alpha");

@@ -55,7 +55,7 @@ test("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale pare
         severity: "warning",
         affected_system: "mcp-tools",
         description: `E2E fixture for ${fid} (min 20 chars)`,
-        status: "stale",
+        status: "open",
         created_at: new Date(now - 60 * 60 * 1000).toISOString(),
         last_verified_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
         version: 0,
@@ -87,9 +87,7 @@ test("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale pare
     // uses meta_state_ack but we update directly here to keep the test
     // hermetic — the cascade_child_unresolved gate is the focus).
     await updateEntry(tempRoot, newId, {
-      status: "active",
-      acked_at: new Date().toISOString(),
-      expires_at: null,
+      status: "open",
     });
 
     // Step 3: relationships inbound shows reopened_by on the first parent.

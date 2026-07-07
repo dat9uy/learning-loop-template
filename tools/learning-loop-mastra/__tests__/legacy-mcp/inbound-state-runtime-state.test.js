@@ -38,7 +38,7 @@ function writeSidecar(rows) {
 await test("meta observation with updated_at newer than marker → stale: false", () => {
   writeMarker(ts(10));
   const result = checkObservationStaleness(
-    [{ id: "obs-1", status: "active", affected_system: "meta", updated_at: ts(5) }],
+    [{ id: "obs-1", status: "open", affected_system: "meta", updated_at: ts(5) }],
     root
   );
   assert.deepStrictEqual(result, { stale: false });
@@ -47,7 +47,7 @@ await test("meta observation with updated_at newer than marker → stale: false"
 await test("meta observation with updated_at older than marker → stale: true", () => {
   writeMarker(ts(5));
   const result = checkObservationStaleness(
-    [{ id: "obs-1", status: "active", affected_system: "meta", updated_at: ts(10) }],
+    [{ id: "obs-1", status: "open", affected_system: "meta", updated_at: ts(10) }],
     root
   );
   assert.strictEqual(result.stale, true);
@@ -57,7 +57,7 @@ await test("meta observation with updated_at older than marker → stale: true",
 await test("legacy observation (no affected_system) uses updated_at path", () => {
   writeMarker(ts(10));
   const result = checkObservationStaleness(
-    [{ id: "obs-legacy", status: "active", constraint: "vendor-api", updated_at: ts(5) }],
+    [{ id: "obs-legacy", status: "open", constraint: "vendor-api", updated_at: ts(5) }],
     root
   );
   assert.deepStrictEqual(result, { stale: false });
@@ -71,7 +71,7 @@ await test("vnstock observation with sidecar newer than marker → stale: false"
     { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.deepStrictEqual(result, { stale: false });
@@ -83,7 +83,7 @@ await test("vnstock observation with sidecar older than marker → stale: true",
     { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.strictEqual(result.stale, true);
@@ -94,7 +94,7 @@ await test("vnstock observation with no sidecar entries → stale: true", () => 
   writeMarker(ts(5));
   writeSidecar([]);
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.strictEqual(result.stale, true);
@@ -105,7 +105,7 @@ await test("vnstock observation with no sidecar entries → stale: true", () => 
 await test("vnstock observation with no sidecar file → stale: true", () => {
   writeMarker(ts(5));
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.strictEqual(result.stale, true);
@@ -120,7 +120,7 @@ await test("vnstock observation with multiple sidecar rows uses latest", () => {
     { affected_system: "vnstock", kind: "ledger-event", id: "slot-3", timestamp: ts(15), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.deepStrictEqual(result, { stale: false });
@@ -135,8 +135,8 @@ await test("mixed meta + vnstock: meta passes, vnstock sidecar is fresh → stal
   ]);
   const result = checkObservationStaleness(
     [
-      { id: "obs-meta", status: "active", affected_system: "meta", updated_at: ts(5) },
-      { id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" },
+      { id: "obs-meta", status: "open", affected_system: "meta", updated_at: ts(5) },
+      { id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" },
     ],
     root
   );
@@ -150,8 +150,8 @@ await test("mixed meta + vnstock: meta passes, vnstock sidecar stale → stale: 
   ]);
   const result = checkObservationStaleness(
     [
-      { id: "obs-meta", status: "active", affected_system: "meta", updated_at: ts(1) },
-      { id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" },
+      { id: "obs-meta", status: "open", affected_system: "meta", updated_at: ts(1) },
+      { id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" },
     ],
     root
   );
@@ -175,7 +175,7 @@ await test("inactive observations are skipped", () => {
 
 await test("no operator marker → stale: false for non-meta observation", () => {
   const result = checkObservationStaleness(
-    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    [{ id: "obs-vnstock", status: "open", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
   assert.deepStrictEqual(result, { stale: false });
@@ -200,7 +200,7 @@ await test("success criterion: 18 vnstock ledger events with fresh sidecar → s
     });
     observations.push({
       id: `obs-vnstock-${i}`,
-      status: "active",
+      status: "open",
       affected_system: "vnstock",
       constraint: "vendor-api",
     });
@@ -219,7 +219,7 @@ await test("fastapi observation checks sidecar for affected_system=fastapi", () 
     { affected_system: "fastapi", kind: "ledger-event", id: "fp-1", timestamp: ts(10), value: 0, delta: 0 },
   ]);
   const result = checkObservationStaleness(
-    [{ id: "obs-fp", status: "active", affected_system: "fastapi", constraint: "vendor-api" }],
+    [{ id: "obs-fp", status: "open", affected_system: "fastapi", constraint: "vendor-api" }],
     root
   );
   assert.strictEqual(result.stale, true);

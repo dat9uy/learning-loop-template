@@ -30,7 +30,7 @@ describe("meta_state_list compact mode", () => {
       {
         id: "compact-finding-active",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -52,7 +52,7 @@ describe("meta_state_list compact mode", () => {
       {
         id: "compact-rule-active",
         entry_kind: "rule",
-        status: "active",
+        status: "open",
         origin: "compact-finding-active",
         enforcement: "gate",
         pattern_type: "regex",
@@ -64,7 +64,7 @@ describe("meta_state_list compact mode", () => {
       {
         id: "compact-change-log",
         entry_kind: "change-log",
-        status: "active",
+        status: "open",
         change_dimension: "surface",
         change_target: "tools/test.js",
         change_diff: { added: [], removed: [], changed: [] },
@@ -74,7 +74,7 @@ describe("meta_state_list compact mode", () => {
       {
         id: "compact-loop-design",
         entry_kind: "loop-design",
-        status: "active",
+        status: "open",
         title: "Design for compact test",
         description: "Loop design for compact test (min 20 chars)",
         affected_system: "mcp-tools",
@@ -262,7 +262,7 @@ describe("meta_state_list compact mode session_id", () => {
       {
         id: "compact-finding-with-session",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",

@@ -12,7 +12,7 @@ await test("consult-checklist rule loads through schema and is a no-op for apply
     pattern_type: "consult-checklist",
     pattern: "{}",
     description: "New features must follow the runtime-agnostic checklist (shim-not-fork + cross-surface helpers).",
-    status: "active",
+    status: "open",
     promoted_at: "2026-06-15T00:00:00.000Z",
     promoted_by: "operator",
   });

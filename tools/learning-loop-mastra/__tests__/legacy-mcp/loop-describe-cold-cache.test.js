@@ -29,8 +29,8 @@ describe("loop_describe cold tier sidecar cache", () => {
   it("first call builds cache file", async () => {
     // Seed with minimal findings so loop_describe has data
     const lines = [
-      JSON.stringify({ id: "cold-test-1", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache test 1 (min 20 chars)", created_at: new Date().toISOString() }),
-      JSON.stringify({ id: "cold-test-2", entry_kind: "finding", status: "reported", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache test 2 (min 20 chars)", created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }),
+      JSON.stringify({ id: "cold-test-1", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache test 1 (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-2", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache test 2 (min 20 chars)", created_at: new Date().toISOString()}),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
@@ -50,7 +50,7 @@ describe("loop_describe cold tier sidecar cache", () => {
 
   it("second call reads cache (no readAllEntriesForLineage re-parse)", async () => {
     const lines = [
-      JSON.stringify({ id: "cold-test-3", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache hit test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-3", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cold cache hit test (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
@@ -71,7 +71,7 @@ describe("loop_describe cold tier sidecar cache", () => {
 
   it("writeEntry invalidates and rebuilds cache", async () => {
     const lines = [
-      JSON.stringify({ id: "cold-test-4", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cache invalidation test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-4", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cache invalidation test (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
@@ -88,9 +88,8 @@ describe("loop_describe cold tier sidecar cache", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "New finding after cache build (min 20 chars)",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
 
     // Next call should rebuild
@@ -102,7 +101,7 @@ describe("loop_describe cold tier sidecar cache", () => {
 
   it("mtime/sha mismatch triggers rebuild", async () => {
     const lines = [
-      JSON.stringify({ id: "cold-test-5", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for sha mismatch test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-5", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for sha mismatch test (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
@@ -111,8 +110,8 @@ describe("loop_describe cold tier sidecar cache", () => {
 
     // Manually edit the registry (simulate external writer)
     const newLines = [
-      JSON.stringify({ id: "cold-test-5", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for sha mismatch test (min 20 chars)", created_at: new Date().toISOString() }),
-      JSON.stringify({ id: "cold-test-external", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Externally added finding (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-5", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for sha mismatch test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-external", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Externally added finding (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), newLines, "utf8");
 
@@ -123,7 +122,7 @@ describe("loop_describe cold tier sidecar cache", () => {
 
   it("description_mode=summary projects from cache", async () => {
     const lines = [
-      JSON.stringify({ id: "cold-test-6", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "A".repeat(500), created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-6", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "A".repeat(500), created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 
@@ -143,7 +142,7 @@ describe("loop_describe cold tier sidecar cache", () => {
 
   it("cache miss falls back to old path and writes new cache", async () => {
     const lines = [
-      JSON.stringify({ id: "cold-test-7", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cache miss fallback test (min 20 chars)", created_at: new Date().toISOString() }),
+      JSON.stringify({ id: "cold-test-7", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "Finding for cache miss fallback test (min 20 chars)", created_at: new Date().toISOString() }),
     ].join("\n") + "\n";
     writeFileSync(join(root, "meta-state.jsonl"), lines, "utf8");
 

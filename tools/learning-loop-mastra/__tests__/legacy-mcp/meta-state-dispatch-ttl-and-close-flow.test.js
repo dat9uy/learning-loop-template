@@ -76,9 +76,8 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
     try {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "tools/x.js:1",
-        status: "reported",
+        status: "open",
         // Backdate expires_at so checkExpiry fires reported→stale.
-        expires_at: new Date(Date.now() - 1000).toISOString(),
       });
 
       // Precondition: reported + ledger_ref set + ledger row exists.
@@ -121,7 +120,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
         id, stage: "commit", issue_number: 202,
         issue_url: "https://github.com/example/coord/issues/202", repo: "example/coord",
       });
-      await updateEntry(tempDir, id, { status: "stale" });
+      await updateEntry(tempDir, id, { status: "open" });
       // Attach a trivially-passing verification step (node is allowlisted).
       invalidateCache(tempDir);
       const entry = readRegistry(tempDir).find((e) => e.id === id);
@@ -159,9 +158,8 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
       writeFileSync(dummyPath, "const v = 1;\n");
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "evidence-c.js",
-        status: "active",
+        status: "open",
         // Backdate acked_at past the 7d staleness window so checkStaleness fires.
-        acked_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       });
 
       // Modify the evidence file (the condition a future auto-resolve branch
@@ -185,8 +183,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
     try {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "tools/x.js:1",
-        status: "reported",
-        expires_at: new Date(Date.now() - 1000).toISOString(),
+        status: "open",
       });
 
       // Run sweep apply twice (simulating repeated pre-commit sweeps between
@@ -227,9 +224,8 @@ describe("dispatch close flow (refresh_file_index → log_change → resolve)", 
         severity: "warning",
         affected_system: "meta-state-tools",
         description: "Close-flow fixture: dispatched finding whose evidence file is edited (min 20 chars)",
-        status: "active",
+        status: "open",
         created_at: new Date().toISOString(),
-        acked_at: new Date().toISOString(),
         version: 0,
         mechanism_check: true,
         evidence_code_ref: "evidence-close.js",
@@ -244,7 +240,7 @@ describe("dispatch close flow (refresh_file_index → log_change → resolve)", 
       await writeEntry(tempDir, {
         id: "rule-no-orphaned-evidence",
         entry_kind: "rule",
-        status: "active",
+        status: "open",
         enforcement: "agent",
         pattern_type: "resolution-evidence-required",
         pattern: "*",

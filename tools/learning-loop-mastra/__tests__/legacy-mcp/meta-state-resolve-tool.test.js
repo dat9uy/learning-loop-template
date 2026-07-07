@@ -20,7 +20,7 @@ describe("meta_state_resolve change-log immutability", () => {
         change_target: "test/path.js",
         change_diff: { added: ["x"], removed: [], changed: [] },
         reason: "Test entry to verify resolve rejects change-log entries.",
-        status: "active",
+        status: "open",
         created_at: "2026-06-02T00:00:00.000Z",
         version: 0,
       };
@@ -65,7 +65,7 @@ describe("meta_state_resolve change-log immutability", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for resolve regression check.",
-        status: "reported",
+        status: "open",
         created_at: "2026-06-02T00:00:00.000Z",
       };
       writeFileSync(
@@ -102,7 +102,7 @@ describe("meta_state_resolve change-log immutability", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule that must not be resolved via meta_state_resolve.",
-        status: "active",
+        status: "open",
         created_at: "2026-06-02T00:00:00.000Z",
       };
       writeFileSync(

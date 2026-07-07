@@ -106,7 +106,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const entry = {
         id: "meta-260702T0000Z-traversal",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         evidence_code_ref: "../../../etc/passwd",
         mechanism_check: true,
       };
@@ -127,7 +127,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const entry = {
         id: "meta-260702T0000Z-traversal-ds",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         evidence_code_ref: "../../../etc/passwd",
         mechanism_check: true,
       };
@@ -147,7 +147,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const entry = {
         id: "meta-260702T0000Z-traversal-ds-test",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         evidence_test: "../../../etc/passwd",
         mechanism_check: true,
       };
@@ -170,7 +170,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const entry = {
         id: "meta-260702T0000Z-missing",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         evidence_code_ref: "missing.js",
         mechanism_check: true,
       };
@@ -198,7 +198,7 @@ describe("audit-site migrations — path containment rejection", () => {
         subtype: "test",
         description: "Traversal test for resolution evidence.",
         evidence_code_ref: "../../../etc/passwd",
-        status: "active",
+        status: "open",
         mechanism_check: true,
       });
       const { checkResolutionEvidence } = await importGateLogic();
@@ -255,7 +255,7 @@ describe("audit-site migrations — path containment rejection", () => {
         affected_system: "mcp-tools",
         subtype: "test",
         description: "Traversal test for derive-status tool.",
-        status: "active",
+        status: "open",
         evidence_code_ref: "src.js",
         evidence_test: "../../../etc/passwd",
         created_at: "2026-07-02T00:00:00.000Z",
@@ -296,7 +296,7 @@ describe("audit-site migrations — path containment rejection", () => {
       const entry = {
         id: "meta-260702T0000Z-legit",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         evidence_code_ref: "src.js",
         mechanism_check: true,
       };

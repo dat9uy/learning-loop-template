@@ -149,9 +149,8 @@ await test("checkAndEmit: dedup against existing finding", () => {
     subtype: "recurring-false-positive",
     recurrence_key: `rule-no-new-artifact-types::${normalized}`,
     description: "existing recurring false positive",
-    status: "reported",
+    status: "open",
     created_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };
   writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(existingFinding) + "\n");
 

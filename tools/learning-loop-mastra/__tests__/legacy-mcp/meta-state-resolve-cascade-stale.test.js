@@ -25,7 +25,7 @@ async function writeStaleParent(core, tempRoot, id) {
     severity: "warning",
     affected_system: "gate-logic",
     description: "A parent finding that is past its staleness window.",
-    status: "stale",
+    status: "open",
     created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     last_verified_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
     version: 0,
@@ -40,7 +40,7 @@ async function writeChild(core, tempRoot, childId, parentId) {
     severity: "warning",
     affected_system: "gate-logic",
     description: "A child finding that reopens the parent.",
-    status: "active",
+    status: "open",
     reopens: [parentId],
     created_at: new Date().toISOString(),
     version: 0,
@@ -149,9 +149,8 @@ test("cascade_from on reported parent returns cascade_parent_is_reported (preser
     severity: "warning",
     affected_system: "gate-logic",
     description: "A parent finding that is still in the 24h TTL reported window.",
-    status: "reported",
+    status: "open",
     created_at: new Date().toISOString(),
-    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     version: 0,
   });
   await writeChild(core, tempRoot, childId, parentId);
@@ -192,7 +191,7 @@ test("cascade_from on active parent closes in 1 step (sanity check: active path 
     severity: "warning",
     affected_system: "gate-logic",
     description: "A parent finding that is active.",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   });

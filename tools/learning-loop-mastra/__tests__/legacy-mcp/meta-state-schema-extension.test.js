@@ -20,7 +20,7 @@ describe("meta-state schema extension (Phase 1)", () => {
       category: "gate-logic-bug",
       severity: "warning",
       description: "Legacy entry without affected_system field (min 20 chars)",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.affected_system, "meta");
@@ -34,7 +34,7 @@ describe("meta-state schema extension (Phase 1)", () => {
       severity: "warning",
       affected_system: "vnstock",
       description: "New entry with vnstock affected_system (min 20 chars)",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.affected_system, "vnstock");
@@ -48,7 +48,7 @@ describe("meta-state schema extension (Phase 1)", () => {
       severity: "warning",
       affected_system: "invalid-system",
       description: "Entry with invalid affected_system value (min 20 chars)",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, false);
   });
@@ -62,7 +62,7 @@ describe("meta-state schema extension (Phase 1)", () => {
       affected_system: "meta",
       description: "Entry with optional code_ref field (min 20 chars)",
       code_ref: "tools/test.js:42",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.code_ref, "tools/test.js:42");
@@ -77,7 +77,7 @@ describe("meta-state schema extension (Phase 1)", () => {
       affected_system: "vnstock",
       description: "Entry with optional ledger_ref field (min 20 chars)",
       ledger_ref: "vnstock-device-slot",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
     assert.strictEqual(result.data.ledger_ref, "vnstock-device-slot");
@@ -100,7 +100,7 @@ describe("meta-state schema extension (Phase 1)", () => {
           category: "gate-logic-bug",
           severity: "warning",
           description: "Finding with new fields (min 20 chars)",
-          status: "active",
+          status: "open",
           ...baseFields,
         };
       } else if (kind === "change-log") {
@@ -111,7 +111,7 @@ describe("meta-state schema extension (Phase 1)", () => {
           change_target: "test",
           change_diff: { added: [], removed: [], changed: [] },
           reason: "Test change-log with new fields (min 20 chars)",
-          status: "active",
+          status: "open",
           created_at: new Date().toISOString(),
           ...baseFields,
         };
@@ -162,8 +162,8 @@ describe("read-registry cache affected_system extension", () => {
   test("cache hit when affected_system values unchanged", () => {
     tempDir = mkdtempSync(join(tmpdir(), "cache-test-"));
     writeRegistry(tempDir, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active", affected_system: "meta" },
-      { id: "meta-test-2", entry_kind: "finding", status: "active", affected_system: "vnstock" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open", affected_system: "meta" },
+      { id: "meta-test-2", entry_kind: "finding", status: "open", affected_system: "vnstock" },
     ]);
     invalidateCache(tempDir);
 
@@ -175,7 +175,7 @@ describe("read-registry cache affected_system extension", () => {
   test("cache miss when file changes (size/mtime)", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "cache-test-"));
     writeRegistry(tempDir, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active", affected_system: "meta" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open", affected_system: "meta" },
     ]);
     invalidateCache(tempDir);
 
@@ -183,8 +183,8 @@ describe("read-registry cache affected_system extension", () => {
 
     // Add entry with different affected_system
     writeRegistry(tempDir, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active", affected_system: "meta" },
-      { id: "meta-test-2", entry_kind: "finding", status: "active", affected_system: "fastapi" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open", affected_system: "meta" },
+      { id: "meta-test-2", entry_kind: "finding", status: "open", affected_system: "fastapi" },
     ]);
 
     const second = readRegistry(tempDir);
@@ -195,7 +195,7 @@ describe("read-registry cache affected_system extension", () => {
   test("writeEntry invalidates cache with affected_system", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "cache-test-"));
     writeRegistry(tempDir, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active", affected_system: "meta" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open", affected_system: "meta" },
     ]);
     invalidateCache(tempDir);
 
@@ -209,9 +209,8 @@ describe("read-registry cache affected_system extension", () => {
       severity: "warning",
       affected_system: "vnstock",
       description: "Test finding for cache invalidation (min 20 chars)",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
 
     const after = readRegistry(tempDir);

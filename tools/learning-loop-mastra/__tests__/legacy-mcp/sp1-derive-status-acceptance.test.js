@@ -26,9 +26,8 @@ describe("SP1 derive_status acceptance", () => {
       evidence: { code_ref: codeRef },
       evidence_code_ref: codeRef,
       mechanism_check: true,
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T00:00:00Z",
-      expires_at: "2026-06-07T00:00:00Z",
       version: 0,
     };
 

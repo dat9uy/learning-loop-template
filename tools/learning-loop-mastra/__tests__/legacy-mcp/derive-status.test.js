@@ -20,7 +20,7 @@ describe("deriveStatus pure function", () => {
     return {
       id: "meta-260601T0000Z-test",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       ...overrides,
     };
   }
@@ -124,7 +124,7 @@ describe("deriveStatus pure function", () => {
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
     const entryReported = baseEntry({
-      status: "reported",
+      status: "open",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
@@ -134,7 +134,7 @@ describe("deriveStatus pure function", () => {
     writeFileSync(join(ctx2.root, "src.js"), "// code");
     writeFileSync(join(ctx2.root, "src.test.js"), "// test");
     const entryActive = baseEntry({
-      status: "active",
+      status: "open",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
@@ -150,7 +150,7 @@ describe("deriveStatus pure function", () => {
 
   test("returns recommendation: no_action when signals match raw_status assertion", () => {
     const ctx = baseContext();
-    const entry = baseEntry({ status: "active" });
+    const entry = baseEntry({ status: "open" });
     const result = deriveStatus(entry, ctx);
     assert.strictEqual(result.recommendation, "no_action");
   });
@@ -160,7 +160,7 @@ describe("deriveStatus pure function", () => {
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
     const entry = baseEntry({
-      status: "active",
+      status: "open",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
@@ -231,12 +231,12 @@ describe("deriveStatus pure function", () => {
 
   test("sets drift: false when kind is code-missing or code-only regardless of raw_status", () => {
     const ctx1 = baseContext();
-    const entry1 = baseEntry({ status: "active", evidence_code_ref: "missing.js" });
+    const entry1 = baseEntry({ status: "open", evidence_code_ref: "missing.js" });
     assert.strictEqual(deriveStatus(entry1, ctx1).drift, false);
 
     const ctx2 = baseContext();
     writeFileSync(join(ctx2.root, "src.js"), "// code");
-    const entry2 = baseEntry({ status: "active", evidence_code_ref: "src.js", evidence_test: "missing.test.js" });
+    const entry2 = baseEntry({ status: "open", evidence_code_ref: "src.js", evidence_test: "missing.test.js" });
     assert.strictEqual(deriveStatus(entry2, ctx2).drift, false);
   });
 

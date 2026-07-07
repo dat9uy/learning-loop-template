@@ -28,9 +28,8 @@ describe("cold-session churn regression", () => {
       description: "L2 probe gap. runtime: droid; layer: L2;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       version: 0,
     };
     const { writeEntry } = await import(pathToFileURL(corePath).href);
@@ -52,9 +51,8 @@ describe("cold-session churn regression", () => {
       description: "L1 probe gap. runtime: droid; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       version: 0,
     }));
 
@@ -88,9 +86,8 @@ describe("cold-session churn regression", () => {
       description: "L1 probe gap. runtime: droid; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       version: 0,
     }));
     assert.strictEqual(first.claimed, true);
@@ -106,9 +103,8 @@ describe("cold-session churn regression", () => {
       description: "L1 probe gap. runtime: droid; layer: L1;",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       version: 0,
     }));
     assert.strictEqual(second.claimed, false, "second L1 claim should be deduplicated");

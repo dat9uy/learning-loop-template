@@ -62,7 +62,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-override-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -120,7 +120,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-active-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -159,7 +159,7 @@ describe("meta_state_archive", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule that must not be archived via override.",
-        status: "active",
+        status: "open",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({
@@ -169,13 +169,13 @@ describe("meta_state_archive", () => {
         change_target: "test/path.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Test change-log that must not be archived via override.",
-        status: "active",
+        status: "open",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({
         id: "archive-finding-ok",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -209,7 +209,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -219,7 +219,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-2",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -251,7 +251,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-confirm-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -261,7 +261,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-confirm-2",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -289,7 +289,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-single-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -320,13 +320,13 @@ describe("meta_state_archive", () => {
         pattern_type: "glob",
         pattern: "test/**",
         description: "Test rule for preview rejection.",
-        status: "active",
+        status: "open",
         created_at: new Date().toISOString(),
       }),
       JSON.stringify({
         id: "archive-preview-finding",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -340,7 +340,7 @@ describe("meta_state_archive", () => {
         change_target: "test/path.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Test change-log for preview rejection.",
-        status: "active",
+        status: "open",
         created_at: new Date().toISOString(),
       }),
     ].join("\n") + "\n";
@@ -386,7 +386,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-active",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",

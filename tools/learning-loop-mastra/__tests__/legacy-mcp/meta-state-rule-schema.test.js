@@ -12,7 +12,7 @@ const validRule = {
   pattern_type: "regex",
   pattern: "(propose|design|create)\\s+(a|an|new|separate|own|the)?\\s*(schema|artifact|directory|convention)|new\\s+(schema|artifact|directory|convention)",
   description: "Gate-enforced rule: blocks attempts to create new schema/artifact/directory/convention types without explicit operator approval. The rule's pattern was refined 2026-06-06 to require a context qualifier.",
-  status: "active",
+  status: "open",
   promoted_at: "2026-06-01T22:00:13.387Z",
   promoted_by: "operator",
 };

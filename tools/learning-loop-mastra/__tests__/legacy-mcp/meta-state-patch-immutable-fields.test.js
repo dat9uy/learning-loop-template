@@ -24,7 +24,7 @@ test("immutable_field error response includes full IMMUTABLE_PATCH_FIELDS list",
     severity: "warning",
     affected_system: "gate-logic",
     description: "A finding for patch immutable fields test.",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   });
@@ -67,7 +67,7 @@ test("immutable_field error response still includes denied_fields (backward comp
     severity: "warning",
     affected_system: "gate-logic",
     description: "A finding for patch backward compat test.",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   });

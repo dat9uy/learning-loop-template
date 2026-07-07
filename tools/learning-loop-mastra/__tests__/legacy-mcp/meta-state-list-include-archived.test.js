@@ -27,7 +27,7 @@ describe("meta_state_list include_archived semantic unification", () => {
       {
         id: "archived-active-finding",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -57,7 +57,7 @@ describe("meta_state_list include_archived semantic unification", () => {
       {
         id: "archived-auto-resolved-finding",
         entry_kind: "finding",
-        status: "auto-resolved",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",

@@ -69,7 +69,7 @@ export function deriveStatus(entry, codeContext) {
   // Kind computation
   const kind = computeKind(codeRefExists, testFileExists, codeRef, testPath);
   const derived_status = computeDerivedStatus(kind);
-  const recommendation = computeRecommendation(derived_status, kind, entry.status);
+  const recommendation = computeRecommendation(entry, derived_status, kind);
   const drift = computeDrift(derived_status, entry.status);
 
   return {
@@ -118,22 +118,22 @@ function computeDerivedStatus(kind) {
 }
 
 // fallow-ignore-next-line complexity
-function computeRecommendation(derivedStatus, kind, rawStatus) {
+function computeRecommendation(entry, derivedStatus, kind) {
   // Plan 260707-0812 Phase 2: drive the "open vs. terminal" branch from
   // isOpen / TERMINAL_RAW_STATUSES — the literal status equality sites were
   // removed because the persisted enum no longer carries "reported"/"active".
   //
   // Order matters: stale-view matches BEFORE generic open so the re_verify
   // recommendation wins for aged/open findings (otherwise "resolve" wins
-  // for any open finding, masking the stale-view signal).
-  const entry = { status: rawStatus };
+  // for any open finding, masking the stale-view signal). The full `entry`
+  // is passed so isStaleView can read `last_verified_at`/`created_at`.
   if (kind === "mechanism-shipped" && isStaleView(entry)) {
     return "re_verify";
   }
   if (kind === "mechanism-shipped" && isOpen(entry)) {
     return "resolve";
   }
-  if (kind === "mechanism-shipped" && TERMINAL_RAW_STATUSES.has(rawStatus)) {
+  if (kind === "mechanism-shipped" && TERMINAL_RAW_STATUSES.has(entry.status)) {
     return "log_drift";
   }
   if (kind === "code-missing") return "investigate";

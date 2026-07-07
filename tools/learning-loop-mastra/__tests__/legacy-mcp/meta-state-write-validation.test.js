@@ -37,7 +37,7 @@ function makeValidChangeLog(id) {
     change_target: "test",
     change_diff: { added: [], removed: [], changed: [] },
     reason: "A valid change-log for write validation test",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   };
@@ -54,7 +54,7 @@ function makeValidRule(id) {
     description: "A valid rule for write validation test",
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
-    status: "active",
+    status: "open",
     created_at: new Date().toISOString(),
     version: 0,
   };
@@ -71,7 +71,7 @@ function makeValidLoopDesign(id) {
     affected_system: "mcp-tools",
     created_at: new Date().toISOString(),
     created_by: "test",
-    status: "active",
+    status: "open",
     version: 0,
   };
 }
@@ -138,7 +138,7 @@ describe("updateEntry validation", () => {
     const entry = makeValidFinding("meta-260607T1206Z-test-update-good");
     await writeEntry(root, entry);
 
-    const result = await updateEntry(root, entry.id, { status: "active" });
+    const result = await updateEntry(root, entry.id, { status: "open" });
     assert.strictEqual(result, true);
 
     const registry = readRegistry(root);
