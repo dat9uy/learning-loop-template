@@ -98,7 +98,15 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
       assert.ok(findingIds.includes(finding1Id));
       assert.ok(findingIds.includes(finding2Id));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -141,7 +149,15 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
       // And it must not be in orphans (orphans is for entries WITH a pointer that doesn't resolve)
       assert.strictEqual(text.orphans, undefined, "orphans must be omitted when no entries have a non-resolving pointer");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -175,7 +191,15 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
       assert.strictEqual(text.orphans[0].consolidated_into, TEST_IDS.NONEXISTENT_TARGET);
       assert.strictEqual(text.orphans[0].note, "change-log not found");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -206,7 +230,15 @@ describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
       // When there are no orphans, the field should be omitted (not an empty array)
       assert.strictEqual(text.orphans, undefined, "orphans field should be omitted when empty");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

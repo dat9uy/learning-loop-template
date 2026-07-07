@@ -46,7 +46,15 @@ describe("meta_state_derive_status tool", () => {
         if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
       }
     }
@@ -91,7 +99,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -120,7 +136,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -137,7 +161,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -179,7 +211,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -209,7 +249,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -244,7 +292,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -299,7 +355,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -332,7 +396,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });

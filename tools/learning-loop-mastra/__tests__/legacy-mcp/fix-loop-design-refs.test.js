@@ -85,7 +85,11 @@ test("Phase 1: fix-loop-design-refs fixes broken refs and is idempotent", () => 
     }).toString();
     assert.ok(secondRun.includes("No changes needed"), "Second run should be idempotent");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -106,7 +110,11 @@ test("Phase 1: fix-loop-design-refs emits change-log entry", () => {
     const latest = changeLogs[changeLogs.length - 1];
     assert.ok(latest.reason.includes("loop-design"), "Change-log reason should mention loop-design");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -145,6 +153,10 @@ test("Phase 1: fix-loop-design-refs change-log is CAS-consistent (C2)", () => {
       );
     }
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });

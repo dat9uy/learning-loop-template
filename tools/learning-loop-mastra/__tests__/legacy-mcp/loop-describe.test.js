@@ -29,7 +29,15 @@ describe("loop_describe regression", () => {
       const listText = JSON.parse(listResult.content[0].text);
       assert.strictEqual(listText.count, 1);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -70,7 +78,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(typeof text.rule_count, "number");
       assert.strictEqual(text.tools, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -86,7 +102,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.tools[0].description, undefined);
       assert.ok(Array.isArray(text.rules));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -112,7 +136,15 @@ describe("loop_describe new behavior", () => {
       assert.ok(Array.isArray(text.active_findings));
       assert.strictEqual(text.active_findings.length, 1);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -132,7 +164,15 @@ describe("loop_describe new behavior", () => {
         "SP2 refresh tool must appear in warm response"
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -148,7 +188,15 @@ describe("loop_describe new behavior", () => {
         "SP3 query_drift tool must appear in warm response"
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -161,7 +209,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.tier, "cold");
       assert.ok(Array.isArray(text.all_findings));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -191,7 +247,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.active_findings.length, 1);
       assert.strictEqual(text.active_findings[0].category, "loop-anti-pattern");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -203,7 +267,15 @@ describe("loop_describe new behavior", () => {
       const text = JSON.parse(result.content[0].text);
       assert.strictEqual(text.tier, "warm");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -217,7 +289,15 @@ describe("loop_describe new behavior", () => {
         assert.strictEqual(text.tier, tier);
       }
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -237,7 +317,15 @@ describe("loop_describe new behavior", () => {
       // degraded may be true or false depending on imports; just verify field exists
       assert.ok(typeof text.degraded === "boolean");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -263,7 +351,15 @@ describe("loop_describe new behavior", () => {
       );
       assert.ok(legacy, "Legacy category entry should be surfaced in warm tier");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -277,7 +373,15 @@ describe("loop_describe new behavior", () => {
       // Should still return tools even if some imports failed
       assert.ok(text.tools.length > 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -303,7 +407,15 @@ describe("listAntiPatterns G9 status filter", () => {
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -332,7 +444,15 @@ describe("listAntiPatterns G9 status filter", () => {
       assert.strictEqual(result.length, 1, "open anti-patterns are included (non-terminal)");
       assert.strictEqual(result[0].status, "open", "past-TTL entry stays open; meta_state_list does not transition status");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -358,7 +478,15 @@ describe("listAntiPatterns G9 status filter", () => {
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 2);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -390,7 +518,15 @@ describe("loop_describe change-log isolation", () => {
       assert.strictEqual(text.active_findings.length, 1);
       assert.strictEqual(text.active_findings[0].category, "loop-anti-pattern");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -416,7 +552,15 @@ describe("loop_describe change-log isolation", () => {
       assert.strictEqual(text.all_findings.length, 1);
       assert.strictEqual(text.all_findings[0].entry_kind, "finding");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -442,7 +586,15 @@ describe("meta_state_resolve change-log guard", () => {
       assert.strictEqual(text.resolved, false);
       assert.strictEqual(text.reason, "change_log_immutable");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

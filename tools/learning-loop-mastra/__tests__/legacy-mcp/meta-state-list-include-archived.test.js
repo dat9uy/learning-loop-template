@@ -78,7 +78,11 @@ describe("meta_state_list include_archived semantic unification", () => {
   });
 
   after(() => {
-    process.env.GATE_ROOT = originalGateRoot;
+    if (originalGateRoot === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalGateRoot;
+    }
     rmSync(root, { recursive: true, force: true });
   });
 

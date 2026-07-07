@@ -23,7 +23,11 @@ function setup() {
 }
 
 function teardown() {
-  process.env.GATE_ROOT = originalEnv;
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
 }
 
 test("full lifecycle: report → list (open) → resolve → list (terminal)", async () => {

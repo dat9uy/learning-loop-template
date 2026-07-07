@@ -84,7 +84,15 @@ test("cascade_from on stale parent closes in 1 step (no 2-step migrate)", async 
     assert.ok(parent.resolved_at);
     assert.strictEqual(parent.resolved_by, "operator");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -113,7 +121,15 @@ test("cascade_from with missing child returns cascade_child_not_found", async ()
     const parent = after.find((e) => e.id === parentId);
     assert.strictEqual(parent.status, "open", "failed cascade must leave parent status unchanged");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -143,7 +159,15 @@ test("cascade_from with child not reopening parent returns cascade_child_not_reo
     assert.strictEqual(parsed.bad_children[0].expected_reopens, parentId);
     assert.deepStrictEqual(parsed.bad_children[0].actual_reopens, ["some-other-parent"]);
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -182,7 +206,15 @@ test("cascade_from with unresolved child returns cascade_child_unresolved", asyn
       assert.strictEqual(parsed.bad_children[0].child_id, childId, `status=${badStatus}`);
       assert.strictEqual(parsed.bad_children[0].child_status, badStatus, `status=${badStatus}`);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   }
 });
@@ -217,7 +249,15 @@ test("cascade_from with multiple stale-parent children closes in 1 step (multi-r
     assert.strictEqual(parent.status, "resolved");
     assert.ok(parent.resolved_at);
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -276,7 +316,15 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     const parent = after.find((e) => e.id === parentId);
     assert.strictEqual(parent.status, "open", "failed cascade must leave parent status unchanged");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -312,7 +360,15 @@ test("cascade_from on active parent closes in 1 step (sanity check)", async () =
     assert.strictEqual(parsed.resolved, true);
     assert.strictEqual(parsed.status, "resolved");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });
 
@@ -356,6 +412,14 @@ test("cascade_from on terminal parent returns already_terminal", async () => {
     assert.strictEqual(parsed.reason, "already_terminal");
     assert.strictEqual(parsed.current_status, "resolved");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
   }
 });

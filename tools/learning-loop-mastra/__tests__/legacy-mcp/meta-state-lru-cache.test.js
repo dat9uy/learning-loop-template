@@ -151,7 +151,11 @@ describe("readRegistry LRU cache", () => {
     }));
 
     const result = await metaStateBatchTool.handler({ operations: ops });
-    process.env.GATE_ROOT = originalGateRoot;
+    if (originalGateRoot === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalGateRoot;
+    }
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.applied, 10, "batch must apply all 10 ops");
 

@@ -186,7 +186,15 @@ describe("meta-state schema new behavior", () => {
       assert.strictEqual(entries[0].subtype, "escape-hatch-abuse");
       assert.strictEqual(entries[0].promoted_to_rule, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 

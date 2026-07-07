@@ -533,7 +533,15 @@ describe("meta_state_resolve consultation", () => {
       const target = after.find((e) => e.id === targetId);
       assert.strictEqual(target.status, "open");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -581,7 +589,15 @@ describe("meta_state_resolve consultation", () => {
       assert.strictEqual(parsed.resolved, true);
       assert.strictEqual(parsed.status, "resolved");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -630,7 +646,15 @@ describe("meta_state_resolve consultation", () => {
       assert.strictEqual(parsed.resolved, true);
       assert.strictEqual(parsed.status, "resolved");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

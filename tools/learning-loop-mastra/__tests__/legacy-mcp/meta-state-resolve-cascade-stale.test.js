@@ -77,7 +77,11 @@ test("cascade_from on stale parent closes the parent in 1 step (no migrate)", as
     assert.ok(parent.resolved_at, "resolved_at must be set");
     assert.strictEqual(parent.resolved_by, "operator");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -105,7 +109,11 @@ test("cascade_from on stale parent updates the parent registry entry to resolved
     assert.ok(parent.resolved_at, "resolved_at must be set on the registry entry");
     assert.strictEqual(parent.resolved_by, "operator");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -132,7 +140,11 @@ test("cascade_from leaves the child registry entry unchanged", async () => {
     assert.strictEqual(child.status, "open", "child must remain open after cascade");
     assert.strictEqual(child.resolved_at, undefined);
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -176,7 +188,11 @@ test("cascade_from on a fresh open parent succeeds (ack-flow block removed post-
     const parent = after.find((e) => e.id === parentId);
     assert.strictEqual(parent.status, "resolved", "parent must be resolved (not blocked by ack flow)");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -212,6 +228,10 @@ test("cascade_from on active parent closes in 1 step (sanity check: active path 
     assert.strictEqual(parsed.resolved, true);
     assert.strictEqual(parsed.status, "resolved");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });

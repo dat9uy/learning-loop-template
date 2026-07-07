@@ -51,7 +51,11 @@ test("immutable_field error response includes full IMMUTABLE_PATCH_FIELDS list",
       "immutable_fields must match the exported IMMUTABLE_PATCH_FIELDS Set"
     );
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
@@ -89,6 +93,10 @@ test("immutable_field error response still includes denied_fields (backward comp
     assert.ok(Array.isArray(parsed.denied_fields));
     assert.ok(parsed.denied_fields.includes("resolved_at"));
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });

@@ -12,7 +12,11 @@ import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
 const originalEnv = process.env.GATE_ROOT;
 
 test("Phase 7: meta_state_sweep is read-only (no apply mode, no writes)", async () => {
-  process.env.GATE_ROOT = originalEnv;
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
   try {
     const result = await metaStateSweepTool.handler({});
     const text = JSON.parse(result.content[0].text);
@@ -22,13 +26,21 @@ test("Phase 7: meta_state_sweep is read-only (no apply mode, no writes)", async 
     assert.ok(typeof text.stale_view_count === "number", "stale_view_count must be a number");
     assert.ok(Array.isArray(text.findings), "findings must be an array");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });
 
 test("Phase 7: warm tier includes registry_summary field", async () => {
   // The warm-tier registry_summary field shape is independent of sweep.
-  process.env.GATE_ROOT = originalEnv;
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
   try {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const text = JSON.parse(result.content[0].text);
@@ -39,6 +51,10 @@ test("Phase 7: warm tier includes registry_summary field", async () => {
     assert.ok(text.registry_summary.drift, "registry_summary should have drift");
     assert.ok(text.registry_summary.last_generated_at, "registry_summary should have last_generated_at");
   } finally {
-    process.env.GATE_ROOT = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
   }
 });

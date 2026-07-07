@@ -53,7 +53,15 @@ describe("SP1 derive_status acceptance", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -86,7 +94,15 @@ describe("SP1 derive_status acceptance", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });

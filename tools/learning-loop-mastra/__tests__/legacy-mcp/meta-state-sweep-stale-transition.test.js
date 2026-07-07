@@ -47,7 +47,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
       const updated = after.find((e) => e.id === id);
       assert.strictEqual(updated.status, "open", "sweep must not transition status");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -80,7 +88,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
         "sweep must surface the same ids on repeat"
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -108,7 +124,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
       const followUps = after.filter((e) => e.reopens?.includes(originalId));
       assert.deepStrictEqual(followUps, [], `registry must not contain stale-ref follow-ups re-opening ${originalId}`);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -145,7 +169,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
         assert.strictEqual(original.status, "open", "sweep must not write status");
       }
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

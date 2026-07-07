@@ -70,7 +70,15 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       assert.strictEqual(reopens.reason, "superseded",
         `dangling reason should be 'superseded'; got ${reopens.reason}`);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -99,7 +107,15 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       assert.strictEqual(reopens.reason, "missing",
         `dangling reason should be 'missing'; got ${reopens.reason}`);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -136,7 +152,15 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
         [],
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -184,7 +208,15 @@ describe("meta_state_relationships derived view: dangling outbound refs", () => 
       assert.strictEqual(reopens.reason, "stale",
         `dangling reason should be 'stale'; got ${reopens.reason}`);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

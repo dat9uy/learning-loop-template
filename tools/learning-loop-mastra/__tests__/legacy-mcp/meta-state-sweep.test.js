@@ -45,7 +45,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
       const after = readRegistry(tempDir);
       assert.strictEqual(after.find((e) => e.id === id).status, "open", "sweep must not mutate");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -60,7 +68,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
       assert.strictEqual(text.stale_view_count, 0);
       assert.deepStrictEqual(text.findings, []);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -90,7 +106,15 @@ describe("meta_state_sweep (read-only, Phase 3)", () => {
       assert.strictEqual(text.stale_view_count, 0, "resolved entry must not be in stale view");
       assert.deepStrictEqual(text.findings, []);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

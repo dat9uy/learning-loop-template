@@ -54,7 +54,15 @@ describe("meta_state_sweep does not emit stale-ref follow-up (Phase 3 read-only)
         `registry must not contain stale-ref follow-ups re-opening ${id}; got ${followUps.map((f) => f.id).join(", ")}`
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -86,7 +94,15 @@ describe("meta_state_sweep does not emit stale-ref follow-up (Phase 3 read-only)
       const afterCount = readRegistry(tempDir).length;
       assert.strictEqual(afterCount, beforeCount, "dry-run must not mutate registry");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

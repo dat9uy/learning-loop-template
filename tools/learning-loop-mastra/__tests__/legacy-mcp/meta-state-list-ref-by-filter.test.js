@@ -31,7 +31,11 @@ describe("meta_state_list ref_by/ref_field filter", () => {
   });
 
   after(() => {
-    process.env.GATE_ROOT = originalGateRoot;
+    if (originalGateRoot === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalGateRoot;
+    }
     rmSync(root, { recursive: true, force: true });
   });
 
