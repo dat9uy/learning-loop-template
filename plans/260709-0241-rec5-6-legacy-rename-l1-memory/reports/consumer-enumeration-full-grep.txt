@@ -1,0 +1,324 @@
+.claude/coordination/__tests__/claude-code-mcp-loading.test.cjs:59:        evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
+.claude/coordination/hooks/bash-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/bash-gate.js');
+.claude/coordination/hooks/inbound-state-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/inbound-gate.js');
+.claude/coordination/hooks/recurrence-check-on-start.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js');
+.claude/coordination/hooks/write-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/write-gate.js');
+.claude/settings.json:12:            "command": "node tools/learning-loop-mastra/hooks/legacy/session-start-inject-discoverability.cjs"
+.factory/coordination/hooks/bash-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/bash-gate.js');
+.factory/coordination/hooks/inbound-state-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/inbound-gate.js');
+.factory/coordination/hooks/recurrence-check-on-start.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js');
+.factory/coordination/hooks/write-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/write-gate.js');
+.factory/hooks/loop-surface-inject.cjs:23:  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/legacy/references/tool-selection-guide.md` for the intent to tool mapping.",
+.mastracode/coordination/hooks/bash-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/bash-gate.js');
+.mastracode/coordination/hooks/inbound-state-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/inbound-gate.js');
+.mastracode/coordination/hooks/recurrence-check-on-start.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js');
+.mastracode/coordination/hooks/write-coordination-gate.cjs:13:const universalHook = path.join(projectRoot, 'tools/learning-loop-mastra/hooks/legacy/write-gate.js');
+.mastracode/hooks.json:5:      "command": "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+.mastracode/hooks.json:12:      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+.mastracode/hooks.json:19:      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+.mastracode/hooks.json:26:      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+.mastracode/hooks.json:35:      "command": "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+.mastracode/hooks.json:43:      "command": "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+AGENTS.md:24:  `create-loop-{tool,workflow,agent}.js`, `legacy-handler-adapter.js`,
+AGENTS.md:38:  `hooks/legacy/` + per-runtime shim files in `.claude/coordination/hooks/`,
+CLAUDE.md:3:See `AGENTS.md` for the agent coordination reference (layer definitions, 4-kind union, internalization rule, R2 ownership). Depth lives in `docs/`: `docs/loop-engine.md` (engine invariant + concept vocabulary), `docs/runtime-contract.md` (runtime participation contract), `docs/architecture.md` (gate system, 3-layer architecture, meta-state self-learning loop), `docs/meta-state-lifecycle.md` (4-kind lifecycle), `docs/trajectory.md` (long-term direction). All runtimes share the same rules via universal hooks in `tools/learning-loop-mastra/hooks/legacy/`.
+CLAUDE.md:7:- **Hooks:** `tools/learning-loop-mastra/hooks/legacy/{bash,write,inbound}-gate.js`
+docs/architecture.md:61:**File:** `.claude/coordination/hooks/inbound-state-gate.cjs` (shim) → `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js` (universal)
+docs/architecture.md:115:- `.claude/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/legacy/bash-gate.js`)
+docs/architecture.md:116:- `.claude/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/legacy/write-gate.js`)
+docs/architecture.md:117:- `.factory/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/legacy/bash-gate.js`)
+docs/architecture.md:118:- `.factory/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/legacy/write-gate.js`)
+docs/architecture.md:122:Outbound gates intercept agent tool usage before execution. Claude Code and Droid CLI use shim files that delegate to the same universal hook scripts in `tools/learning-loop-mastra/hooks/legacy/`; Mastra Code uses declarative `hooks.json` entries pointing at the same universal scripts. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks on protected paths and delegates `product/**` to the preflight check.
+file-index.jsonl:3:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js","code_fingerprint":"sha256:a83c8df72cd8589e987720fac790e9ca16a4cd464b9a2d527aee6e7236f0baba","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:5:{"path":"tools/learning-loop-mastra/hooks/legacy/inbound-gate.js","code_fingerprint":"sha256:993811bc38b75b93b7715b982bc2165c6f210374dafc14dff64735a0fdfa47a8","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:7:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-log-change-tool.js","code_fingerprint":"sha256:1a73bb3aff8d0a064ce3a6160f328b42bad0ee0d833c7a575d1ae1629a8cd921","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:8:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-report-tool.js","code_fingerprint":"sha256:edf31677e4fe85a583fca4b7a00450182070eda660281476ba261b82005deb94","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:11:{"path":"tools/learning-loop-mastra/hooks/legacy/bash-gate.js","code_fingerprint":"sha256:d4459e33b4f3fffffbbe0a48cbf0a6e6869b9d7e75e46cf5d527e505ab0b0b01","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:12:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-supersede-tool.js","code_fingerprint":"sha256:460a940adfe8b1033d86752475098082871b145bc8e5808981df963cb1d425ed","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:13:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-sweep-tool.js","code_fingerprint":"sha256:152fc6437d6de46dacd867005728a48d1e0f0efb0534a425e0c3330532358959","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:16:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-promote-rule-tool.js","code_fingerprint":"sha256:a059f13879ad2155c5a54b845533eaaa1bcb8c708ff02a4c9585cce85f2b00d6","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:22:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-dispatch-finding-tool.js","code_fingerprint":"sha256:0c881dc02dfef66445d0da60397c96c61daf63b1c4dd13e11a60df99a7d40cd7","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:23:{"path":"tools/learning-loop-mastra/hooks/legacy/session-start-inject-discoverability.cjs","code_fingerprint":"sha256:cb59ff9ebcb3b6819dbf272e93c75111ade79a78e4507d3a864f917a81882333","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:24:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-re-verify-tool.js","code_fingerprint":"sha256:4762fb9b792ac811253b5e866def3f99808c1ad70cb66ca57b0162ce9913edf7","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:25:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-archive-tool.js","code_fingerprint":"sha256:afd57ea09f5cfdc0ffc0e1a2bd9da701661454cd3c7098e006051eb40adaa14a","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:26:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-relationship-validate-tool.js","code_fingerprint":"sha256:69af87aacb0102a120c86a4c380ee8c3707b566d8f32323cce42f60a41c26722","updated_at":"2026-07-08T15:20:27.129Z"}
+file-index.jsonl:27:{"path":"tools/learning-loop-mastra/tools/legacy/meta-state-relationships-tool.js","code_fingerprint":"sha256:bb6f6f9ebc1898a8bd2a555e53efc3abd66e7aae23dd2107f4ee8cbde65f0a75","updated_at":"2026-07-08T15:20:27.129Z"}
+scripts/probe-mastracode.cjs:207:    const probe = spawn('node', [join(PROJECT_ROOT, 'tools/learning-loop-mastra/hooks/legacy/bash-gate.js')], { stdio: ['pipe', 'pipe', 'pipe'] });
+tools/learning-loop-mastra/.fallowrc.json:9:    "mastra/legacy-handler-adapter.js",
+tools/learning-loop-mastra/.fallowrc.json:18:    "tools/legacy/**/*.js",
+tools/learning-loop-mastra/.fallowrc.json:19:    "hooks/legacy/**/*.js",
+tools/learning-loop-mastra/.fallowrc.json:20:    "hooks/legacy/**/*.cjs",
+tools/learning-loop-mastra/.fallowrc.json:29:    "tools/legacy/evals/**",
+tools/learning-loop-mastra/.fallowrc.json:30:    "tools/legacy/references/**",
+tools/learning-loop-mastra/.fallowrc.json:31:    "tools/legacy/fixtures/**",
+tools/learning-loop-mastra/.fallowrc.json:32:    "tools/legacy/scripts/**",
+tools/learning-loop-mastra/.fallowrc.json:33:    "scout/legacy/**",
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:3:// to their new locations in tools/learning-loop-mastra/{core,tools/legacy,scout/legacy}.
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:58:      { file: "tools/learning-loop-mastra/mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:60:      { file: "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:76:    assert.ok(scoutAgent.includes("tools/learning-loop-mastra/scout/legacy/run-scout.js"),
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:80:    assert.ok(runScoutTool.includes("tools/learning-loop-mastra/scout/legacy/run-scout.js"),
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:87:      "tools/learning-loop-mastra/tools/legacy/gate-tool.js",
+tools/learning-loop-mastra/__tests__/legacy-cleanup.test.cjs:89:      "tools/learning-loop-mastra/scout/legacy/run-scout.js",
+tools/learning-loop-mastra/__tests__/legacy-mcp/bash-gate-decision-visibility.test.js:8:import { formatHookDecision, formatOutput } from "../../hooks/legacy/lib/protocol-adapter.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/bash-gate-decision-visibility.test.js:10:const UNIVERSAL_HOOK = new URL("../../hooks/legacy/bash-gate.js", import.meta.url).pathname;
+tools/learning-loop-mastra/__tests__/legacy-mcp/budget-option-c-e2e.test.js:6:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/budget-option-c-e2e.test.js:7:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/budget-option-c-e2e.test.js:8:import { gateCheckTool } from "../../tools/legacy/gate-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/build-inverse-indexes.test.js:99:  const { loopDescribeTool } = await import("../../tools/legacy/loop-describe-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/build-stale-dispatch-hints.test.js:10:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/build-stale-dispatch-hints.test.js:12:import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs:140:      evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
+tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs:157:    assert.strictEqual(written.evidence_code_ref, "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs:174:    assert.strictEqual(patched.evidence_code_ref, "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs:319:      const toolPath = join(projectRoot, "tools/learning-loop-mastra/tools/legacy/loop-get-instruction-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/cold-tier-regression.test.js:1:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/file-index-o1-regression.test.js:6:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/file-index-o1-regression.test.js:7:import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/fix-loop-design-refs.test.js:17:const scriptPath = new URL("../../tools/legacy/scripts/fix-loop-design-refs.mjs", import.meta.url);
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-check-snapshot.test.js:12:import { gateCheckTool } from "../../tools/legacy/gate-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-override.test.js:9:import { gateOverrideTool } from "../../tools/legacy/gate-override-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-recurrence.test.js:9:import { gateCheckRecurrenceTool } from "../../tools/legacy/gate-check-recurrence-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-recurrence.test.js:200:  const wrapper = new URL("../../hooks/legacy/recurrence-check-on-start.js", import.meta.url).pathname;
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-resolution-evidence.test.js:23:  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-resolve-tool.js")).href;
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-scope-predicate.test.js:4:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/gate-scope-predicate.test.js:5:import { metaStatePromoteRuleTool } from "../../tools/legacy/meta-state-promote-rule-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/hash-cache.test.js:9:} from "../../tools/legacy/meta-state-check-grounding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/integration-promoted-rule.test.js:3:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/integration-promoted-rule.test.js:4:import { metaStatePromoteRuleTool } from "../../tools/legacy/meta-state-promote-rule-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/integration-promoted-rule.test.js:5:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/integration-promoted-rule.test.js:6:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/lifecycle-migration-finalize.test.js:22:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-cold-cache.test.js:6:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-cold-tier-superseded.test.js:15:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-description-mode.test.js:3:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-rule-and-loop-design.test.js:6:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-warm-tier.test.js:6:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe-warm-tier.test.js:136:    const { loopGetInstructionTool } = await import("../../tools/legacy/loop-get-instruction-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js:3:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js:4:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js:5:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js:6:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-describe.test.js:7:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/loop-get-instruction.test.js:3:import { loopGetInstructionTool } from "../../tools/legacy/loop-get-instruction-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-archive-tool.test.js:6:import { metaStateArchiveTool } from "../../tools/legacy/meta-state-archive-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-archive-tool.test.js:7:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-batch-tool.test.js:7:import { metaStateBatchTool } from "../../tools/legacy/meta-state-batch-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-check-grounding-tool.test.js:6:import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-check-grounding-tool.test.js:7:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-check-grounding-tool.test.js:8:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-check-grounding-tool.test.js:281:      new URL("../../tools/legacy/meta-state-check-grounding-tool.js", import.meta.url),
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-consistency-check-tool.test.js:10:// implemented in tools/legacy/meta-state-consistency-check-tool.js.
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-consistency-check-tool.test.js:17:import { metaStateConsistencyCheckTool } from "../../tools/legacy/meta-state-consistency-check-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-derive-status-tool.test.js:6:import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-derive-status-tool.test.js:7:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-finding-tool.test.js:22:import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-finding-tool.test.js:23:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:16:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:17:import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:18:import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:19:import { metaStateReVerifyTool } from "../../tools/legacy/meta-state-re-verify-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:20:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:21:import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests as clearRefreshCache } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js:22:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-integration.test.js:13:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-integration.test.js:14:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-integration.test.js:15:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-compact.test.js:6:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-compact.test.js:7:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind-extended.test.js:6:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind.test.js:3:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind.test.js:4:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-entry-kind.test.js:5:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-id-filter.test.js:6:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-include-archived.test.js:6:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-list-ref-by-filter.test.js:6:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-log-change-codegen.test.js:4:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-log-change.test.js:8:} from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-lru-cache.test.js:136:    const { metaStateBatchTool } = await import("../../tools/legacy/meta-state-batch-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-immutable-fields.test.js:32:  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-immutable-fields.test.js:79:  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-tool.test.js:3:import { metaStatePatchTool } from "../../tools/legacy/meta-state-patch-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-tool.test.js:4:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-tool.test.js:5:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-patch-tool.test.js:6:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-promote-rule-rule-entry.test.js:3:import { metaStatePromoteRuleTool } from "../../tools/legacy/meta-state-promote-rule-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-promote-rule-rule-entry.test.js:4:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-propose-design-codegen.test.js:4:import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-propose-design-tool.test.js:3:import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-query-drift-tool.test.js:6:import { metaStateQueryDriftTool } from "../../tools/legacy/meta-state-query-drift-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-query-drift-tool.test.js:7:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-query-drift-tool.test.js:281:      const { metaStateResolveTool } = await import("../../tools/legacy/meta-state-resolve-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-refresh-file-index-tool.test.js:9:} from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-refresh-file-index-tool.test.js:10:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationship-validate-tool.test.js:6:import { metaStateRelationshipValidateTool } from "../../tools/legacy/meta-state-relationship-validate-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships-dangling-refs.test.js:17:import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships-dangling-refs.test.js:18:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships-tool.test.js:6:import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-relationships.test.js:6:import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-backfill-integration.test.js:9:  const { metaStatePatchTool } = await import("../../tools/legacy/meta-state-patch-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-backfill-integration.test.js:10:  const { metaStateRelationshipsTool } = await import("../../tools/legacy/meta-state-relationships-tool.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js:8:import { metaStateRelationshipValidateTool } from "../../tools/legacy/meta-state-relationship-validate-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js:9:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js:10:import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js:11:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-report-description.test.js:3:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-report-tool-extension.test.js:6:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-cascade-stale.test.js:16:  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-resolve-tool.js")).href;
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-cascade.test.js:19:  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-resolve-tool.js")).href;
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-tool.test.js:6:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-resolve-tool.test.js:7:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-schema.test.js:3:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-script-caller-passthrough.test.js:3:import { metaStatePatchTool } from "../../tools/legacy/meta-state-patch-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-script-caller-passthrough.test.js:5:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-script-caller-passthrough.test.js:6:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-script-caller-passthrough.test.js:7:import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-session-id-roundtrip.test.js:6:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-session-id-roundtrip.test.js:7:import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-stale-flag.test.js:14:import { metaStateReVerifyTool } from "../../tools/legacy/meta-state-re-verify-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-stale-flag.test.js:15:import { metaStateSupersedeTool } from "../../tools/legacy/meta-state-supersede-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-stale-flag.test.js:16:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-stale-flag.test.js:17:import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-no-stale-ref-followup.test.js:11:import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-no-stale-ref-followup.test.js:12:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-stale-transition.test.js:3:import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-stale-transition.test.js:4:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js:3:import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep-summary.test.js:4:import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep.test.js:3:import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep.test.js:4:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/meta-state-sweep.test.js:5:import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:12:import { metaStateRefreshFileIndexTool } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:13:import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:14:import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:15:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:335:      "tools/learning-loop-mastra/tools/legacy/meta-state-refresh-file-index-tool.js",
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:339:      "tools/learning-loop-mastra/tools/legacy/meta-state-check-grounding-tool.js",
+tools/learning-loop-mastra/__tests__/legacy-mcp/path-containment-audit-sites.test.js:340:      "tools/learning-loop-mastra/tools/legacy/meta-state-derive-status-tool.js",
+tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js:14:const PROTOCOL_ADAPTER_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js");
+tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js:190:  const result = item.verify("tools/learning-loop-mastra/hooks/legacy", MCP_ROOT);
+tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js:254:  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js"), "utf8");
+tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js:265:  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/tools/legacy/mark-preflight-complete-tool.js"), "utf8");
+tools/learning-loop-mastra/__tests__/legacy-mcp/scout-bucket-classifier.test.js:7:import { classifyBucket } from "../../scout/legacy/bucket-classifier.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/scout-budget-estimator.test.js:3:import { estimateBudget } from "../../scout/legacy/budget-estimator.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/scout-dangling-detector.test.js:7:import { detectDangling } from "../../scout/legacy/dangling-detector.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/scout-run-scout.test.js:9:import { runScout } from "../../scout/legacy/run-scout.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/sp1-derive-status-acceptance.test.js:6:import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/sp2-check-grounding-acceptance.test.js:6:import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/sp2-check-grounding-acceptance.test.js:7:import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+tools/learning-loop-mastra/__tests__/legacy-mcp/sp2-check-grounding-acceptance.test.js:8:import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/__tests__/manifest-arithmetic.test.cjs:63:    // The tool files live in tools/learning-loop-mastra/tools/legacy/ (post-Phase-D move).
+tools/learning-loop-mastra/__tests__/phase-e-foundation/meta-state-relationships-snapshot.test.js:28:const { metaStateRelationshipsTool } = await import("../../tools/legacy/meta-state-relationships-tool.js");
+tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/external-refs-updated.test.js:15:  "tools/learning-loop-mastra/legacy-handler-adapter\\.js",
+tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/meta-state-fingerprints-repointed.test.js:34:      entryLine.includes("tools/learning-loop-mastra/legacy-handler-adapter.js") ||
+tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/shell-files-in-mastra-dir.test.js:15:  "legacy-handler-adapter.js",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:3:    "core/inbound-state.js:17-21|tools/legacy/runtime-state-read-tool.js:17-21",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:8:    "hooks/legacy/bash-gate.js:21-28|hooks/legacy/write-gate.js:20-27",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:10:    "mastra/create-loop-workflow.js:50-62|mastra/legacy-handler-adapter.js:14-24",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:11:    "tools/legacy/meta-state-check-grounding-tool.js:14-21|tools/legacy/meta-state-derive-status-tool.js:14-21",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:12:    "tools/legacy/meta-state-check-grounding-tool.js:46-81|tools/legacy/meta-state-derive-status-tool.js:43-79",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:13:    "tools/legacy/meta-state-check-grounding-tool.js:49-74|tools/legacy/meta-state-derive-status-tool.js:46-72|tools/legacy/meta-state-refresh-fingerprint-tool.js:51-75",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:14:    "tools/legacy/meta-state-check-grounding-tool.js:61-74|tools/legacy/meta-state-derive-status-tool.js:58-72|tools/legacy/meta-state-refresh-fingerprint-tool.js:63-75|tools/legacy/meta-state-relationships-tool.js:73-82",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:15:    "tools/legacy/meta-state-consistency-check-tool.js:23-36|tools/legacy/meta-state-query-drift-tool.js:30-43",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:16:    "tools/legacy/meta-state-log-change-tool.js:16-37|tools/legacy/meta-state-refresh-fingerprint-tool.js:20-41",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:17:    "tools/legacy/meta-state-re-verify-tool.js:22-29|tools/legacy/meta-state-supersede-tool.js:18-25",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:18:    "tools/legacy/meta-state-re-verify-tool.js:71-84|tools/legacy/meta-state-supersede-tool.js:56-70",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:19:    "tools/legacy/meta-state-resolve-tool.js:32-43|tools/legacy/meta-state-resolve-tool.js:44-55",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:20:    "tools/legacy/meta-state-resolve-tool.js:101-118|tools/legacy/meta-state-resolve-tool.js:90-97",
+tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json:21:    "tools/legacy/runtime-state-read-tool.js:7-22|tools/legacy/runtime-state-record-tool.js:7-18"
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:175:    "mastra/legacy-handler-adapter.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:216:    "tools/legacy/check-runtime-agnostic-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:221:    "tools/legacy/gate-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:229:    "tools/legacy/loop-describe-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:237:    "tools/legacy/loop-get-instruction-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:245:    "tools/legacy/meta-state-ack-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:250:    "tools/legacy/meta-state-archive-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:264:    "tools/legacy/meta-state-check-grounding-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:272:    "tools/legacy/meta-state-derive-status-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:277:    "tools/legacy/meta-state-list-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:285:    "tools/legacy/meta-state-log-change-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:290:    "tools/legacy/meta-state-patch-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:298:    "tools/legacy/meta-state-promote-rule-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:306:    "tools/legacy/meta-state-propose-design-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:311:    "tools/legacy/meta-state-re-verify-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:319:    "tools/legacy/meta-state-refresh-fingerprint-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:324:    "tools/legacy/meta-state-relationship-validate-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:332:    "tools/legacy/meta-state-relationships-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:346:    "tools/legacy/meta-state-report-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:351:    "tools/legacy/meta-state-resolve-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:359:    "tools/legacy/meta-state-supersede-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:364:    "tools/legacy/meta-state-sweep-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:375:    "tools/legacy/runtime-state-read-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:380:    "tools/legacy/runtime-state-record-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:385:    "tools/legacy/workflow-generate-prompt-tool.js": {
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:408:    "tools/legacy/workflow-generate-prompt-tool.js:untested risk",
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:409:    "tools/legacy/meta-state-list-tool.js:complexity",
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:410:    "tools/legacy/meta-state-sweep-tool.js:complexity",
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:411:    "tools/legacy/loop-describe-tool.js:complexity",
+tools/learning-loop-mastra/baselines/fallow/health-baseline.json:412:    "tools/legacy/meta-state-promote-rule-tool.js:complexity"
+tools/learning-loop-mastra/core/README.md:28:  (shell-defined entities); `tools/learning-loop-mastra/tools/legacy/`
+tools/learning-loop-mastra/core/README.md:52:- `.fallowrc.json` lists `mastra/server.js` and the `tools/legacy/**/*.js`
+tools/learning-loop-mastra/core/README.md:62:   `tools/legacy/`, a hook in `hooks/legacy/`, or another core facade).
+tools/learning-loop-mastra/core/README.md:94:The registry-aware composition for legacy outbound compat lives in **`tools/legacy/meta-state-relationships-tool.js`**, which calls `buildInverseIndexes(entries)` and patches `outbound.promoted_to_rule` from `origin_inverse` when the finding lacks the field. This is intentional: factories stay schema-pure and import-light, while the tool (which already reads the registry) handles the legacy migration. **Consumers calling `factory.outboundRefs()` directly should not expect legacy dual-field fallback** — go through `meta_state_relationships` for the canonical wire shape.
+tools/learning-loop-mastra/core/consistency-check.js:9:// layer (tools/legacy/meta-state-consistency-check-tool.js) is
+tools/learning-loop-mastra/core/evaluate-inbound-gate.js:12:// State-change signal patterns (from hooks/legacy/inbound-gate.js:24-36).
+tools/learning-loop-mastra/core/loop-introspect.js:110:  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/legacy/references/tool-selection-guide.md` for the intent to tool mapping.",
+tools/learning-loop-mastra/core/runtime-agnostic-checklist.js:8:  "tools/learning-loop-mastra/hooks/legacy",
+tools/learning-loop-mastra/core/runtime-agnostic-checklist.js:9:  "tools/learning-loop-mastra/tools/legacy",
+tools/learning-loop-mastra/core/runtime-agnostic-checklist.js:107:  return normalized.startsWith("tools/learning-loop-mastra/tools/legacy/") && normalized.endsWith("-tool.js");
+tools/learning-loop-mastra/docs/legacy-pins.md:3:Files that must NOT be moved to `tools/learning-loop-mastra/tools/legacy/` (or any other "legacy" location), because they enforce parity contracts that the loop's wire-format correctness depends on.
+tools/learning-loop-mastra/docs/placement.md:18:   → Yes: `hooks/legacy/<gate>.js` (universal) + `.claude|.factory/coordination/hooks/*.cjs` (shim)
+tools/learning-loop-mastra/docs/placement.md:22:   → Yes: `tools/legacy/<tool>.js` (legacy substrate, NOT in `mastra/`)
+tools/learning-loop-mastra/interface/CONTRACT.md:26:Each shim MUST delegate to a universal hook in `tools/learning-loop-mastra/hooks/legacy/` via `child_process.execFileSync('node', [<universal-hook-path>], ...)`. **Pass:** all 4 shims exist as files in `<surface>/coordination/hooks/`. **Note:** the contract does NOT require byte-identical shims across runtimes (verified: Claude Code and Droid CLI shims differ in content but both delegate to the same universal hooks). The validator additionally reports each shim's `universal_target` (the path it delegates to) in `path_map` for documentation, but does NOT fail when the target is absent — universal hook wiring is git-tracked and not runtime-mutable (red-team Finding F1: real shims pass `[universalHook]` as a `path.join` result, not as a string literal; a regex-based check would silently fail for both runtimes). **Applicability:** N/A for declarative-hook runtimes (use Req #6 instead); validator reports `applicable:false` for those runtimes.
+tools/learning-loop-mastra/interface/CONTRACT.md:70:- `PreToolUse`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/bash-gate.js` (bash coordination gate); plus write/edit/delete entries referencing `tools/learning-loop-mastra/hooks/legacy/write-gate.js` for built-in write/edit/delete tool names (e.g., Mastra Code's `write_file`, `string_replace_lsp`, `delete_file`).
+tools/learning-loop-mastra/interface/CONTRACT.md:71:- `UserPromptSubmit`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js`.
+tools/learning-loop-mastra/interface/CONTRACT.md:72:- `SessionStart`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js`.
+tools/learning-loop-mastra/interface/README.md:62:- `tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js` = the **loop-to-tool-name I/O adapter** (normalizes hook stdin/stdout between Claude Code and Droid CLI).
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:22:- [ ] **1. Hook shim set.** Create `<your-runtime>/coordination/hooks/{bash,write,inbound-state,recurrence-check-on-start}-*.cjs`. Each shim is a thin wrapper that `execFileSync`s the matching universal script in `tools/learning-loop-mastra/hooks/legacy/`. See `.claude/coordination/hooks/*.cjs` for the canonical 4-file shape.
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:68:2. **Create `.mastracode/hooks.json`** — declarative lifecycle hooks. Must contain `PreToolUse`, `UserPromptSubmit`, and `SessionStart` entries whose `command` fields reference the canonical universal-hook paths under `tools/learning-loop-mastra/hooks/legacy/`:
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:78:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", "matcher": { "tool_name": "execute_command" }, "timeout": 5000 },
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:79:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "write_file" }, "timeout": 5000 },
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:80:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "string_replace_lsp" }, "timeout": 5000 },
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:81:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "delete_file" }, "timeout": 5000 }
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:84:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", "timeout": 5000 }
+tools/learning-loop-mastra/interface/RUNTIME_ONBOARDING.md:87:       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", "timeout": 10000 }
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:24:const VALID_UNIVERSAL_HOOK = "tools/learning-loop-mastra/hooks/legacy/bash-gate.js";
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:397:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", matcher: { tool_name: "execute_command" }, timeout: 5000 },
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:398:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "write_file" }, timeout: 5000 },
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:399:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "string_replace_lsp" }, timeout: 5000 },
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:400:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "delete_file" }, timeout: 5000 },
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:403:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", timeout: 5000 },
+tools/learning-loop-mastra/interface/__tests__/contract.test.js:406:      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", timeout: 10000 },
+tools/learning-loop-mastra/interface/contract.js:54:  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+tools/learning-loop-mastra/interface/contract.js:55:  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+tools/learning-loop-mastra/interface/contract.js:56:  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+tools/learning-loop-mastra/interface/contract.js:57:  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+tools/learning-loop-mastra/interface/contract.js:61:  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+tools/learning-loop-mastra/interface/contract.js:62:  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+tools/learning-loop-mastra/interface/contract.js:63:  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+tools/learning-loop-mastra/interface/contract.js:64:  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+tools/learning-loop-mastra/interface/contract.js:138:        const idx = captured.indexOf("tools/learning-loop-mastra/hooks/legacy/");
+tools/learning-loop-mastra/interface/contract.js:455: * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/legacy/`.
+tools/learning-loop-mastra/mastra/agents/build-meta-state-tools.js:24:import { adaptLegacyHandler } from "../legacy-handler-adapter.js";
+tools/learning-loop-mastra/mastra/agents/build-meta-state-tools.js:44:    const mod = await import(`../../tools/legacy/${file.replace('tools/', '')}`);
+tools/learning-loop-mastra/mastra/agents/instructions/scout-agent.js:2:export const instructions = `You are scoutAgent. You wrap the pure-function scout pipeline at tools/learning-loop-mastra/scout/legacy/run-scout.js and surface its output as a structured readiness report for the loop self-improvement work. You are READ-ONLY over the filesystem and the meta-surface.
+tools/learning-loop-mastra/mastra/agents/instructions/scout-agent.js:11:3. Invoke the runScout tool (a createTool(...) wrapper exposing tools/learning-loop-mastra/scout/legacy/run-scout.js#runScout) with input shape { projectRoot: string, excludeGlobs?: string[] }. The tool must call the pure function directly — no test file edits, no fixture edits, no file writes anywhere.
+tools/learning-loop-mastra/mastra/agents/instructions/scout-agent.js:16:Output shape: a 5-section markdown report with section headings "Test Inventory", "MCP-First Bucket Distribution", "Dangling Matches", "Gap Table", "Prompt Budget Audit". Follow tools/learning-loop-mastra/scout/legacy/run-scout.js#projectToMarkdown exactly (lines 155-204). Do not invent extra sections. Do not paraphrase bucket reasons.
+tools/learning-loop-mastra/mastra/agents/run-scout-tool.js:2: * createTool wrapper over tools/learning-loop-mastra/scout/legacy/run-scout.js#runScout.
+tools/learning-loop-mastra/mastra/agents/run-scout-tool.js:9:import { runScout } from "../../scout/legacy/run-scout.js";
+tools/learning-loop-mastra/mastra/agents/run-scout-tool.js:14:    "Run the scout pipeline at tools/learning-loop-mastra/scout/legacy/run-scout.js. Returns a ScoutOutput JSON object. Read-only; never edits tests or fixtures.",
+tools/learning-loop-mastra/mastra/create-loop-workflow.js:4:import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+tools/learning-loop-mastra/mastra/schemas.js:7:// tools/learning-loop-mastra/tools/legacy/ keeps `schema` (zod) + `handler` (function) as the
+tools/learning-loop-mastra/mastra/schemas.js:9:export { metaStateProposeDesignTool } from "../tools/legacy/meta-state-propose-design-tool.js";
+tools/learning-loop-mastra/mastra/schemas.js:10:export { metaStatePatchTool } from "../tools/legacy/meta-state-patch-tool.js";
+tools/learning-loop-mastra/mastra/schemas.js:11:export { metaStateReportTool } from "../tools/legacy/meta-state-report-tool.js";
+tools/learning-loop-mastra/mastra/server.js:9:import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+tools/learning-loop-mastra/mastra/server.js:46:  const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
+tools/learning-loop-mastra/scripts/gate-self-verify.mjs:70:    args: ["tools/learning-loop-mastra/tools/legacy/scripts/seed-file-index.mjs"],
+tools/learning-loop-mastra/tools/legacy/check-runtime-agnostic-tool.test.js:19:  mkdirSync(join(root, "tools/learning-loop-mastra/tools/legacy"), { recursive: true });
+tools/learning-loop-mastra/tools/legacy/check-runtime-agnostic-tool.test.js:71:    join(root, "tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"),
+tools/learning-loop-mastra/tools/legacy/check-runtime-agnostic-tool.test.js:76:  const result = parseResult(await callTool("tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"));
+tools/learning-loop-mastra/tools/manifest.json:11:// each path to "../tools/legacy/X-tool.js" (the "legacy MCP wrapper"
+tools/learning-loop-mastra/tools/manifest.json:13:// between tools/, tools/legacy/, and future mastra/tools/.
+tools/scripts/run-pnpm-test-namespaced.mjs:26:// core, core/lib, tools/legacy}/ and the 117 relative imports in the
+tools/scripts/run-pnpm-test-namespaced.mjs:36:  { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
