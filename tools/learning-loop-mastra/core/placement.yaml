@@ -144,3 +144,9 @@ files:
   - path: bound-artifacts.js
     role: facade
     summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js (Phase 3 of loop-skill-layer-prerequisite).
+  - path: change-log-bound-paths.js
+    role: facade
+    summary: Rec 12 detection set (CHANGE_LOG_BOUND_PATHS) + canonicalizeChangeTarget — sibling of bound-artifacts.js for gap detection (Phase 1 of rec12-closed-loop).
+  - path: git-diff.js
+    role: facade
+    summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder (Phase 2 of rec12-closed-loop).
