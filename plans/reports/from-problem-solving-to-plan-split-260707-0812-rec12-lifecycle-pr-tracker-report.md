@@ -59,9 +59,9 @@ Update each row's status + dates as sessions progress. Status legend: `TODO` →
 
 - **Slug:** `…-rec12-l1-trigger-statement-and-symmetry`
 - **Plan dir:** `plans/260708-1135-rec12-l1-trigger-statement-and-symmetry/` _(cut 2026-07-08, validated)_
-- **Branch / PR:** `rec12-l1-trigger-statement-and-symmetry` (off main @ `7a47fbe`, post-PR-#39) / TBD
-- **Status:** `COOKING` (cook started 2026-07-08 — phase 1 + phase 2 done; change-log entry `meta-260708T1204Z-docs-loop-engine-md` recorded; docs-only diff verified)
-- **Dates:** cut 2026-07-08 / cook-start 2026-07-08 / shipped __
+- **Branch / PR:** `rec12-l1-trigger-statement-and-symmetry` (off main @ `7a47fbe`, post-PR-#39) / PR #40 (squash `e0294b2`)
+- **Status:** `SHIPPED` (PR #40 merged 2026-07-08; change-log `meta-260708T1204Z-docs-loop-engine-md` recorded; docs-only diff verified; all 8 acceptance criteria met)
+- **Dates:** cut 2026-07-08 / cook-start 2026-07-08 / shipped 2026-07-08
 - **Depends on:** Plan 2 (Q11 symmetry comments on the authority result — `log_change` is trigger-gated, not authority-gated)
 - **Scope:**
   - `docs/loop-engine.md` `record` role: change-log trigger statement — *an action becomes a change-log when it changes a bound artifact (concept- or implementation-surface doc, runtime contract, registry schema, tool manifest, tracker lifecycle, or `tools/**`/`core/**` source) or a rule/policy; not for in-session scratch, plan drafts, or reversible edits inside a not-yet-shipped plan.*
