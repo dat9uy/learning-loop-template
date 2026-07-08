@@ -37,7 +37,7 @@ These are ROLES in the engine, not mechanisms. They use lowercase common nouns; 
 
 - **deterministic-step** — a step whose outcome is fixed by a rule or registry state. Anyone may run it; the outcome does not depend on judgment.
 - **agentic-step** — a step deferred to a model or an operator+runtime session because it cannot yet be encoded. The step itself is not recorded during deferral; only its *outcome* is recorded, via the promotion path.
-- **record** — the durable form of what happened: a finding, a change-log, a rule, a loop-design. The record is the loop's memory across sessions.
+- **record** — the durable form of what happened: a finding, a change-log, a rule, a loop-design. The record is the loop's memory across sessions. See § The change-log trigger (Rec 12) for when an action becomes a change-log.
 - **rule** — a promoted record that enforces an invariant. A rule is what a recurring agentic deferral becomes once it is encoded.
 - **promotion** — the lift from "this agentic deferral happened once" to "this is now a deterministic rule." Promotion is how the deterministic surface grows.
 
@@ -84,11 +84,15 @@ These are the irreducible judgments that survive in the concept surface — the 
 12. **Loss-function question.** Self-referential learning needs a stated target. Proposed composite: drift recovery rate (findings caught + resolved vs drifted) and findings-per-promoted-rule ratio (efficiency of the finding → rule → invariant pipeline). A loop with no stated loss function optimizes whatever is easiest to measure.
 13. **Operator-capture guard.** When the operator's corrections shape what the loop learns and the loop's gates shape what the operator sees, they co-adapt; the meta-surface becomes a record of operator preferences, not system truths. A discovered-vs-acked annotation on change-logs would surface an operator-capture index. Not yet implemented; the schema decision is open.
 
-## The recursion-bound statement (skills)
+## The change-log trigger (Rec 12)
 
-A skill file is a bound artifact (per the L2 contract: `tools/learning-loop-mastra/interface/CONTRACT.md` Req #3). Editing a skill triggers a change-log entry; the change-log is a record write (MCP tool, already logged in `meta-state.jsonl`), not a bound-artifact edit. **The recursion is bounded: skill edits emit change-logs, change-logs are records, records are not skills.** This is the intended invariant — true on disk now that the phase-5 skills write-gate makes skill files bound artifacts.
+An action becomes a change-log when it changes a bound artifact (a concept- or implementation-surface doc, a runtime contract, a registry schema, a tool manifest, a tracker lifecycle, or `tools/**` / `core/**` source) or a rule/policy. Not for in-session scratch, plan drafts, or reversible edits inside a not-yet-shipped plan.
 
-**Honest framing:** the change-log step is operator-triggered today. Auto-detecting a skill edit that did not emit a change-log (the gap detector) is deferred to the broadened Rec 12 plan. Until that lands, the invariant holds when the operator follows the gated authoring path; a violation produces a record drift, not a hard failure.
+Skills are the first bound artifact with the gate wired: a skill file is a bound artifact (per the L2 contract: `tools/learning-loop-mastra/interface/CONTRACT.md` Req #3). Editing a skill triggers a change-log entry; the change-log is a record write (MCP tool, already logged in `meta-state.jsonl`), not a bound-artifact edit. **The recursion is bounded: bound-artifact edits emit change-logs, change-logs are records, records are not bound artifacts → the recursion is bounded.** This is the intended invariant — true on disk now that the phase-5 skills write-gate makes skill files bound artifacts.
+
+**Symmetry (Q11):** there is no operator exemption (escape-hatch #13 — the operator-capture guard). Operator edits and agent edits are recorded symmetrically. Authority governs *which actions may run*; the trigger governs *which are recorded* — orthogonal. `meta_state_log_change` is trigger-gated, not authority-gated (open in both `live` and `autonomous` session modes).
+
+**Honest framing:** the change-log step is operator-triggered today. Auto-detecting a bound-artifact edit that did not emit a change-log (the gap detector) is deferred to Plan 4 (`rec12-closed-loop`: (b) change-log gap detection + (c) session-start gap injection). Until that lands, the invariant holds when the operator follows the gated authoring path; a violation produces a record drift, not a hard failure.
 
 ## Authoring loop-maintained skills
 
