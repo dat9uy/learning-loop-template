@@ -20,7 +20,7 @@ describe("checkGrounding pure function", () => {
     return {
       id: "meta-260601T0000Z-test",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       ...overrides,
     };
   }
@@ -380,7 +380,7 @@ describe("checkGrounding pure function", () => {
     const entry = baseEntry({
       entry_kind: "change-log",
       change_target: "tools/x.js",
-      status: "active",
+      status: "open",
     });
     const result = checkGrounding(entry, ctx);
     assert.strictEqual(result.status, "skipped");

@@ -26,9 +26,8 @@ describe("SP1 derive_status acceptance", () => {
       evidence: { code_ref: codeRef },
       evidence_code_ref: codeRef,
       mechanism_check: true,
-      status: "active",
-      created_at: "2026-06-06T00:00:00Z",
-      expires_at: "2026-06-07T00:00:00Z",
+      status: "open",
+      created_at: new Date().toISOString(),
       version: 0,
     };
 
@@ -54,7 +53,15 @@ describe("SP1 derive_status acceptance", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -87,7 +94,15 @@ describe("SP1 derive_status acceptance", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });

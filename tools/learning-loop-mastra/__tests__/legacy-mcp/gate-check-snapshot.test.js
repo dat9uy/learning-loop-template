@@ -45,7 +45,11 @@ for (const fixture of snapshot.fixtures) {
         `Wire shape mismatch for ${fixture.fixture_id}:\n  actual: ${actual}\n  expected: ${fixture.expected_return_json_string}`,
       );
     } finally {
-      process.env.GATE_ROOT = origRoot;
+      if (origRoot === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = origRoot;
+      }
       rmSync(root, { recursive: true, force: true });
     }
   });

@@ -112,108 +112,85 @@ describe("meta_state_query_drift tool", () => {
     }
   });
 
-  // T-29: Filter status active
-  test("T-29: filter status active returns only active entries", async () => {
+  // T-29: Filter status active → migrated to `open` after Phase 2.
+  // Plan 260707-0812 Phase 2: `meta_state_ack` removed; new findings are
+  // written with `status: "open"`. The legacy `status: "active"`/`status: "reported"`
+  // filter values still return legacy entries via filterEntries' backward-compat
+  // mapping, but new entries land as `open`.
+  test("T-29: filter status active returns legacy active entries (post-migration empty)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "query-drift-tool-29-"));
     process.env.GATE_ROOT = tempDir;
     try {
       writeFileSync(join(tempDir, "src.js"), "// code");
       writeFileSync(join(tempDir, "src.test.js"), "// test");
-      const r1 = await metaStateReportTool.handler({
+      await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Active entry for filter test one.",
+        description: "Open entry for filter test one.",
         evidence_code_ref: "src.js",
         evidence_test: "src.test.js",
       });
-      // ack to make it active
-      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
-      const id1 = JSON.parse(r1.content[0].text).id;
-      await metaStateAckTool.handler({ id: id1, reason: "test ack" });
 
-      const r2 = await metaStateReportTool.handler({
-        category: "loop-anti-pattern",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        description: "Reported entry for filter test two.",
-        evidence_code_ref: "src.js",
-        evidence_test: "src.test.js",
-      });
-      const id2 = JSON.parse(r2.content[0].text).id;
-      // id2 is still reported
-
+      // Post-Phase 2: filter by `active` returns nothing because no new
+      // entries land with `active` (ack is gone). The legacy mapping keeps
+      // the schema permissive but the steady state is `open`.
       const result = await metaStateQueryDriftTool.handler({ filter: { status: "active" } });
-      assert.strictEqual(result.drift_count, 1);
-      assert.strictEqual(result.drift_events[0].raw_status, "active");
+      assert.strictEqual(result.drift_count, 0);
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
   });
 
-  // T-30: Filter status reported
-  test("T-30: filter status reported returns only reported entries", async () => {
+  // T-30: Filter status reported → migrated. No new entries land as
+  // `reported` post-Phase 2; the filter is forward-compat for legacy entries.
+  test("T-30: filter status reported returns legacy reported entries (post-migration empty)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "query-drift-tool-30-"));
     process.env.GATE_ROOT = tempDir;
     try {
       writeFileSync(join(tempDir, "src.js"), "// code");
       writeFileSync(join(tempDir, "src.test.js"), "// test");
-      const r1 = await metaStateReportTool.handler({
+      await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Active entry for reported-only filter test.",
+        description: "Open entry for reported-only filter test.",
         evidence_code_ref: "src.js",
         evidence_test: "src.test.js",
       });
-      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
-      const id1 = JSON.parse(r1.content[0].text).id;
-      await metaStateAckTool.handler({ id: id1, reason: "test ack" });
-
-      const r2 = await metaStateReportTool.handler({
-        category: "loop-anti-pattern",
-        severity: "warning",
-        affected_system: "mcp-tools",
-        description: "Reported entry for reported-only filter test.",
-        evidence_code_ref: "src.js",
-        evidence_test: "src.test.js",
-      });
-      // r2 is reported
 
       const result = await metaStateQueryDriftTool.handler({ filter: { status: "reported" } });
-      assert.strictEqual(result.drift_count, 1);
-      assert.strictEqual(result.drift_events[0].raw_status, "reported");
+      assert.strictEqual(result.drift_count, 0);
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
   });
 
-  // T-31: No filter → both active and reported
-  test("T-31: no filter returns both active and reported entries", async () => {
+  // T-31: No filter → all open entries
+  test("T-31: no filter returns all open entries", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "query-drift-tool-31-"));
     process.env.GATE_ROOT = tempDir;
     try {
       writeFileSync(join(tempDir, "src.js"), "// code");
       writeFileSync(join(tempDir, "src.test.js"), "// test");
-      const r1 = await metaStateReportTool.handler({
+      // Post-Phase 2: both entries are `status: "open"` (no ack, no
+      // reported/active split). The no-filter path returns all open entries.
+      await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Active entry for no-filter test one.",
+        description: "Open entry for no-filter test one.",
         evidence_code_ref: "src.js",
         evidence_test: "src.test.js",
       });
-      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
-      const id1 = JSON.parse(r1.content[0].text).id;
-      await metaStateAckTool.handler({ id: id1, reason: "test ack" });
 
       await metaStateReportTool.handler({
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
-        description: "Reported entry for no-filter test two.",
+        description: "Open entry for no-filter test two.",
         evidence_code_ref: "src.js",
         evidence_test: "src.test.js",
       });
@@ -221,7 +198,7 @@ describe("meta_state_query_drift tool", () => {
       const result = await metaStateQueryDriftTool.handler({});
       assert.strictEqual(result.drift_count, 2);
       const statuses = result.drift_events.map((e) => e.raw_status).sort();
-      assert.deepStrictEqual(statuses, ["active", "reported"]);
+      assert.deepStrictEqual(statuses, ["open", "open"]);
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
@@ -229,7 +206,7 @@ describe("meta_state_query_drift tool", () => {
   });
 
   // T-32: Invalid filter status (zod-like rejection)
-  test("T-32: invalid filter.status value yields empty result (function only accepts active/reported)", async () => {
+  test("T-32: invalid filter.status value yields empty result (function only accepts open/active/reported/stale)", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "query-drift-tool-32-"));
     process.env.GATE_ROOT = tempDir;
     try {

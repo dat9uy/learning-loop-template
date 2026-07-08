@@ -76,7 +76,15 @@ describe("gate scope predicate", () => {
       assert.strictEqual(rules.length, 1);
       assert.strictEqual(rules[0].id, "rule-test-none");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -93,7 +101,15 @@ describe("gate scope predicate", () => {
       assert.strictEqual(rules.length, 1);
       assert.strictEqual(rules[0].id, "rule-test-match");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -115,7 +131,15 @@ describe("gate scope predicate", () => {
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -138,7 +162,15 @@ describe("gate scope predicate", () => {
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -161,7 +193,15 @@ describe("gate scope predicate", () => {
       const rules = loadPromotedRules(tempDir);
       assert.strictEqual(rules.length, 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -187,7 +227,15 @@ describe("gate scope predicate", () => {
       );
     } finally {
       console.warn = originalWarn;
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });
@@ -234,7 +282,15 @@ describe("gate scope predicate", () => {
       assert.strictEqual(rules.length, 1);
       assert.strictEqual(rules[0].scope_predicate, "project_has_learning_loop_mcp");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
       teardownTempDir(tempDir);
     }
@@ -267,7 +323,15 @@ describe("gate scope predicate", () => {
       assert.strictEqual(promoteText.promoted, false);
       assert.strictEqual(promoteText.reason, "pattern_rejected_by_scope_whitelist");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
       teardownTempDir(tempDir);
     }
@@ -316,7 +380,15 @@ describe("gate scope predicate", () => {
       assert.strictEqual(promoteText.promoted, false);
       assert.strictEqual(promoteText.reason, "rule_id_already_active");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
       teardownTempDir(tempDir);
     }
@@ -348,7 +420,15 @@ describe("gate scope predicate", () => {
       const result3 = applyPromotedRules(null, ".factory/skills/other/test.sh", rules);
       assert.strictEqual(result3.decision, "ok");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       teardownTempDir(tempDir);
     }
   });

@@ -1,9 +1,10 @@
 import { z } from "zod";
 import {
   readRegistry,
-  updateEntry,
 } from "../../core/meta-state.js";
+import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { runVerification } from "../../core/verification-runner.js";
+import { isOpen } from "../../core/stale-view.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -11,7 +12,7 @@ const HISTORY_CAP = 50;
 
 export const metaStateReVerifyTool = {
   name: "meta_state_re_verify",
-  description: "Re-verify a stale meta-state entry by running its verification.steps. Each step is executed via core/verification-runner.js with cmd-allowlist + shell:false + 10s timeout. On a full pass, transitions the entry stale -> active and stamps last_verified_at. On any failure, stays stale and appends to verification.history (FIFO cap 50). Gated on META_STATE_VERIFY_EXEC=1 (default off). Use to close the TTL recursion: stale findings can be re-validated rather than auto-killed.",
+  description: "Re-verify a meta-state entry by running its verification.steps. Each step is executed via core/verification-runner.js with cmd-allowlist + shell:false + 10s timeout. Plan 260707-0812 Phase 3: the trigger predicate is `isOpen` (covers open/active/reported/stale) — there is no `status: 'stale'` hard-requirement. On a full pass, stamps `last_verified_at` and leaves the entry `open` (no status transition). On any failure, appends to `verification.history` (FIFO cap 50) and leaves the entry `open`. The trigger for re-verify is the derived stale view (the operator/caller decides); the tool just re-grounds. Gated on META_STATE_VERIFY_EXEC=1 (default off).",
   schema: {
     id: z.string().describe("Entry id to re-verify"),
     _expected_version: z.coerce.number().optional()
@@ -30,8 +31,11 @@ export const metaStateReVerifyTool = {
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_re_verify", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
-    if (entry.status !== "stale") {
-      const result = { re_verified: false, reason: "wrong_status", id, current_status: entry.status };
+    // Plan 260707-0812 Phase 3: drop the `status: "stale"` hard-requirement.
+    // re_verify accepts any `isOpen` finding. The caller decides when to
+    // trigger (typically when the derived stale view surfaces the entry).
+    if (!isOpen(entry)) {
+      const result = { re_verified: false, reason: "wrong_status", id, current_status: entry.status ?? null };
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_re_verify", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
@@ -57,27 +61,27 @@ export const metaStateReVerifyTool = {
     }
     // FIFO cap
     while (history.length > HISTORY_CAP) history.shift();
+    // Plan 260707-0812 Phase 3: on pass, stamp `last_verified_at` only — the
+    // entry stays `open` (no status transition). The pre-Phase-3 behavior was
+    // to set `status: "active"`; that transition is removed because the
+    // status enum no longer carries `active`.
     const patch = {
       verification: { ...entry.verification, history },
       _expected_version: expectedVersion,
     };
     if (allPassed) {
-      patch.status = "active";
       patch.last_verified_at = now;
     }
-    const updateResult = await updateEntry(root, id, patch);
-    if (updateResult === "version_mismatch") {
-      const result = { re_verified: false, reason: "version_mismatch", id };
+    const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_re_verify");
+    if (!updateOutcome.ok) {
+      const result = { re_verified: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
       appendGateLog(root, { timestamp: now, tool: "meta_state_re_verify", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
-    if (updateResult !== true) {
-      throw new Error(`meta_state_re_verify: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`);
     }
     const result = {
       re_verified: allPassed,
       id,
-      status: allPassed ? "active" : "stale",
+      status: entry.status ?? "open",
       history_appended: stepResults.length,
       step_results: stepResults,
       last_verified_at: allPassed ? now : (entry.last_verified_at || null),

@@ -30,15 +30,19 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
   }
 
   function makeEntry(opts) {
+    // Plan 260707-0812 Phase 2: `status: "stale"` is no longer a status. The
+    // derived stale predicate (`isStaleView`) needs a `created_at` past the
+    // 7d window. We backdate by default so the fixture continues to surface
+    // in stale-view as the tests intend.
     return {
       id: opts.id ?? `meta-test-${Math.random().toString(36).slice(2, 10)}`,
       entry_kind: "finding",
-      created_at: opts.created_at ?? new Date().toISOString(),
+      created_at: opts.created_at ?? new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       category: opts.category ?? "gate-logic-bug",
       severity: opts.severity ?? "warning",
       affected_system: opts.affected_system ?? "meta",
       description: opts.description ?? "Build-stale-dispatch-hints test fixture",
-      status: opts.status ?? "stale",
+      status: opts.status ?? "open",
       ...(opts.evidence_code_ref !== undefined
         ? { evidence_code_ref: opts.evidence_code_ref }
         : {}),
@@ -82,25 +86,29 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
     assert.deepStrictEqual(result.fixable_candidates, []);
   });
 
-  test("excludes non-stale findings (active, reported, terminal)", () => {
+  test("excludes non-stale findings (open + fresh, terminal)", () => {
+    // Plan 260707-0812 Phase 2: legacy `active`/`reported`/`stale`/`auto-resolved`
+    // statuses are gone. The remaining non-stale states are: open (with fresh
+    // created_at — below the 7d window) and terminal (resolved/superseded).
+    const RECENT = new Date().toISOString();
     const result = buildStaleDispatchHints([
-      makeEntry({ id: "meta-active", status: "active", evidence_code_ref: "x.js:1" }),
-      makeEntry({ id: "meta-reported", status: "reported", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-fresh-open", status: "open", created_at: RECENT, evidence_code_ref: "x.js:1" }),
       makeEntry({ id: "meta-resolved", status: "resolved", evidence_code_ref: "x.js:1" }),
       makeEntry({ id: "meta-superseded", status: "superseded", evidence_code_ref: "x.js:1" }),
-      makeEntry({ id: "meta-auto-resolved", status: "auto-resolved", evidence_code_ref: "x.js:1" }),
     ]);
     assert.deepStrictEqual(result.fixable_candidates, []);
   });
 
   test("caps fixable_candidates at 5 (top-N), oldest first", () => {
+    // Plan 260707-0812 Phase 2: `isStaleView` checks age + drift. Each entry
+    // is backdated past the 7d window so all 10 surface in the derived view.
     const entries = Array.from({ length: 10 }, (_, i) =>
       makeEntry({
         id: `meta-stale-${i}`,
         evidence_code_ref: `tools/x${i}.js:1`,
-        // i=0 → 10s ago (oldest); i=9 → 1s ago (newest). Ranking is oldest-first
-        // (validation P3-W4), so the top-5 should be the OLDEST five.
-        created_at: new Date(Date.now() - (10 - i) * 1000).toISOString(),
+        // i=0 → 10 days ago (oldest); i=9 → 9 days ago (newest in the set).
+        // All backdated past the 7d window so they surface in stale-view.
+        created_at: new Date(Date.now() - (10 - i + 7) * 24 * 60 * 60 * 1000).toISOString(),
       })
     );
     const result = buildStaleDispatchHints(entries);
@@ -110,19 +118,21 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
     assert.strictEqual(result.fixable_candidates[4].id, "meta-stale-4");
   });
 
-  test("orphan_findings: a reported finding with a dispatch row but no ledger_ref is surfaced", () => {
-    // meta-orphan-1 has a dispatch-<id> row (dispatchIds) but no ledger_ref.
+  test("orphan_findings: an open finding with a dispatch row but no ledger_ref is surfaced", () => {
+    // Plan 260707-0812 Phase 2: orphans are `isOpen` (the canonical open set,
+    // including legacy `active`/`reported`/`stale`). meta-orphan-1/2 have a
+    // dispatch-<id> row but no ledger_ref — they surface as orphans.
     const entries = [
-      makeEntry({ id: "meta-orphan-1", status: "reported", evidence_code_ref: "x.js:1" }),
-      makeEntry({ id: "meta-orphan-2", status: "active", evidence_code_ref: "x.js:1" }),
-      // Not an orphan: stale (orphans are reported/active only).
-      makeEntry({ id: "meta-not-orphan-stale", status: "stale", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-orphan-1", status: "open", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-orphan-2", status: "open", evidence_code_ref: "x.js:1" }),
+      // Not an orphan: terminal (orphan filter is `isOpen(e) && !ledger_ref`).
+      makeEntry({ id: "meta-not-orphan-terminal", status: "resolved", evidence_code_ref: "x.js:1" }),
       // Not an orphan: ledger_ref set (back-pointer exists).
-      makeEntry({ id: "meta-not-orphan-patched", status: "reported", evidence_code_ref: "x.js:1", ledger_ref: "dispatch-meta-not-orphan-patched" }),
+      makeEntry({ id: "meta-not-orphan-patched", status: "open", evidence_code_ref: "x.js:1", ledger_ref: "dispatch-meta-not-orphan-patched" }),
       // Not an orphan: no dispatch row for this id.
-      makeEntry({ id: "meta-no-row", status: "reported", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-no-row", status: "open", evidence_code_ref: "x.js:1" }),
     ];
-    const dispatchIds = new Set(["meta-orphan-1", "meta-orphan-2", "meta-not-orphan-patched", "meta-not-orphan-stale"]);
+    const dispatchIds = new Set(["meta-orphan-1", "meta-orphan-2", "meta-not-orphan-patched", "meta-not-orphan-terminal"]);
     const result = buildStaleDispatchHints(entries, dispatchIds);
     const orphanIds = result.orphan_findings.map((o) => o.id);
     assert.deepStrictEqual(orphanIds.sort(), ["meta-orphan-1", "meta-orphan-2"]);
@@ -132,8 +142,8 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
 
   test("orphan_findings is empty when dispatchIds is empty (no prior dispatches)", () => {
     const entries = [
-      makeEntry({ id: "meta-r-1", status: "reported", evidence_code_ref: "x.js:1" }),
-      makeEntry({ id: "meta-a-1", status: "active", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-r-1", status: "open", evidence_code_ref: "x.js:1" }),
+      makeEntry({ id: "meta-a-1", status: "open", evidence_code_ref: "x.js:1" }),
     ];
     const result = buildStaleDispatchHints(entries, new Set());
     assert.deepStrictEqual(result.orphan_findings, []);
@@ -143,7 +153,7 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
     const entries = Array.from({ length: 8 }, (_, i) =>
       makeEntry({
         id: `meta-orphan-${i}`,
-        status: "reported",
+        status: "open",
         evidence_code_ref: "x.js:1",
         created_at: new Date(Date.now() - (8 - i) * 1000).toISOString(),
       })
@@ -170,11 +180,12 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
         return JSON.parse(r.content[0].text).id;
       })();
 
-      // Make it stale.
+      // Make it stale-view by backdating created_at past the 7d window.
+      // Plan 260707-0812 Phase 2: `expires_at` no longer drives staleness.
       const reg = readRegistry(tempDir);
       const entry = reg.find((e) => e.id === id);
-      entry.expires_at = new Date(Date.now() - 1000).toISOString();
-      await updateEntry(tempDir, id, { status: "stale", expires_at: entry.expires_at });
+      entry.created_at = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+      await updateEntry(tempDir, id, { created_at: entry.created_at });
 
       // Before dispatch: should be in fixable_candidates.
       const beforeEntries = readRegistry(tempDir);

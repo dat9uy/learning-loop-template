@@ -6,7 +6,7 @@ import {
   readdirSync,
   unlinkSync,
 } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_LOG_BACKUPS = 5;
@@ -41,15 +41,51 @@ function rotateGateLog(logDir) {
 }
 
 /**
- * Append a JSONL entry to the gate log. Never blocks on failure.
+ * Validate that a `root` is usable for the gate log. Throws on bad input
+ * rather than silently creating junk directories (e.g., the literal path
+ * `undefined/.claude/coordination` produced when a test resets
+ * `process.env.GATE_ROOT = undefined`, which Node coerces to the string
+ * "undefined" and `resolveRoot()` resolves to `<cwd>/undefined`).
+ *
+ * `GATE_LOG_DIR` overrides are accepted as-is (operators can target any
+ * absolute path); only the `join(root, ...)` fallback is validated.
+ */
+function resolveLogDir(root) {
+  if (process.env.GATE_LOG_DIR) return process.env.GATE_LOG_DIR;
+  if (typeof root !== "string" || root === "" || root === "undefined") {
+    throw new Error(
+      `appendGateLog: invalid root ${JSON.stringify(root)} — pass a non-empty string (use resolveRoot() from #lib/resolve-root.js)`,
+    );
+  }
+  if (!isAbsolute(root)) {
+    throw new Error(
+      `appendGateLog: root must be an absolute path, got ${JSON.stringify(root)} — use resolveRoot() (or pass GATE_LOG_DIR to override)`,
+    );
+  }
+  return join(root, ".claude", "coordination");
+}
+
+/**
+ * Append a JSONL entry to the gate log. I/O failures are swallowed (a logging
+ * failure must never block a gate decision); contract failures (bad `root`)
+ * throw — surface the bug to the caller instead of creating bogus directories
+ * like `<cwd>/undefined/.claude/coordination/`.
  */
 export function appendGateLog(root, entry) {
+  let logDir;
   try {
-    const logDir = process.env.GATE_LOG_DIR || join(root, ".claude", "coordination");
+    logDir = resolveLogDir(root);
+  } catch (err) {
+    // Contract failure (bad root). Surface to caller — silent mkdir of bogus
+    // paths is worse than a thrown error here (it was the root cause of the
+    // `undefined/.claude/coordination/` artifact on disk).
+    throw err;
+  }
+  try {
     mkdirSync(logDir, { recursive: true });
     rotateGateLog(logDir);
     appendFileSync(join(logDir, "gate-log.jsonl"), JSON.stringify(entry) + "\n");
   } catch {
-    // log failure never blocks gate decision
+    // I/O failure (disk full, permission denied, etc.) — never blocks gate.
   }
 }

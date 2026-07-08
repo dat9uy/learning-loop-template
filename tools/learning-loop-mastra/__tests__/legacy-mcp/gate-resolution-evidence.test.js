@@ -60,7 +60,7 @@ describe("checkResolutionEvidence", () => {
       subtype: "mcp-client-loading",
       description: "Test finding for resolution-evidence check.",
       session_id: "test-session-id",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -91,7 +91,7 @@ describe("checkResolutionEvidence", () => {
       subtype: "mcp-client-loading",
       description: "Test finding for resolution-evidence check.",
       session_id: "test-session-id",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -154,7 +154,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding for orphan check.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -198,7 +198,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding for orphan check.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -237,7 +237,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Poisoned-registry fixture with a corrupt per-record fingerprint.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -277,7 +277,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding for orphan check.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -317,7 +317,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding with :line suffix in evidence_code_ref.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -351,7 +351,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding with #anchor suffix in evidence_code_ref.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -384,7 +384,7 @@ describe("checkResolutionEvidence", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding pointing at a non-existent file with :line suffix.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
       mechanism_check: true,
@@ -408,7 +408,7 @@ describe("applyPromotedRules resolution-evidence-required", () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       id: "rule-test",
-      status: "active",
+      status: "open",
       enforcement: "gate",
       pattern_type: "resolution-evidence-required",
       pattern: "test-session-id",
@@ -425,7 +425,7 @@ describe("applyPromotedRules resolution-evidence-required", () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       id: "rule-test",
-      status: "active",
+      status: "open",
       enforcement: "gate",
       pattern_type: "resolution-evidence-required",
       pattern: "test-session-id",
@@ -456,7 +456,7 @@ describe("applyPromotedRules resolution-evidence-required", () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       id: "rule-test",
-      status: "active",
+      status: "open",
       enforcement: "gate",
       pattern_type: "resolution-evidence-required",
       pattern: "test-session-id",
@@ -480,7 +480,7 @@ describe("meta_state_resolve consultation", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "Target finding that should be resolved by operator.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -493,7 +493,7 @@ describe("meta_state_resolve consultation", () => {
       subtype: "mcp-client-loading",
       description: "Blocking finding for resolution test.",
       session_id: "test-session-id",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -531,9 +531,17 @@ describe("meta_state_resolve consultation", () => {
       // Verify registry was NOT mutated
       const after = core.readRegistry(tempRoot);
       const target = after.find((e) => e.id === targetId);
-      assert.strictEqual(target.status, "active");
+      assert.strictEqual(target.status, "open");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -549,7 +557,7 @@ describe("meta_state_resolve consultation", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "Target finding that should be resolved by operator.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -581,7 +589,15 @@ describe("meta_state_resolve consultation", () => {
       assert.strictEqual(parsed.resolved, true);
       assert.strictEqual(parsed.status, "resolved");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -598,7 +614,7 @@ describe("meta_state_resolve consultation", () => {
       affected_system: "mcp-tools",
       subtype: "mcp-client-loading",
       description: "Target finding that should be resolved by operator.",
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });
@@ -630,7 +646,15 @@ describe("meta_state_resolve consultation", () => {
       assert.strictEqual(parsed.resolved, true);
       assert.strictEqual(parsed.status, "resolved");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

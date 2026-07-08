@@ -29,7 +29,15 @@ describe("loop_describe regression", () => {
       const listText = JSON.parse(listResult.content[0].text);
       assert.strictEqual(listText.count, 1);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -70,7 +78,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(typeof text.rule_count, "number");
       assert.strictEqual(text.tools, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -86,7 +102,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.tools[0].description, undefined);
       assert.ok(Array.isArray(text.rules));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -112,7 +136,15 @@ describe("loop_describe new behavior", () => {
       assert.ok(Array.isArray(text.active_findings));
       assert.strictEqual(text.active_findings.length, 1);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -132,7 +164,15 @@ describe("loop_describe new behavior", () => {
         "SP2 refresh tool must appear in warm response"
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -148,7 +188,15 @@ describe("loop_describe new behavior", () => {
         "SP3 query_drift tool must appear in warm response"
       );
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -161,7 +209,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.tier, "cold");
       assert.ok(Array.isArray(text.all_findings));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -191,7 +247,15 @@ describe("loop_describe new behavior", () => {
       assert.strictEqual(text.active_findings.length, 1);
       assert.strictEqual(text.active_findings[0].category, "loop-anti-pattern");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -203,7 +267,15 @@ describe("loop_describe new behavior", () => {
       const text = JSON.parse(result.content[0].text);
       assert.strictEqual(text.tier, "warm");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -217,7 +289,15 @@ describe("loop_describe new behavior", () => {
         assert.strictEqual(text.tier, tier);
       }
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -237,7 +317,15 @@ describe("loop_describe new behavior", () => {
       // degraded may be true or false depending on imports; just verify field exists
       assert.ok(typeof text.degraded === "boolean");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -263,7 +351,15 @@ describe("loop_describe new behavior", () => {
       );
       assert.ok(legacy, "Legacy category entry should be surfaced in warm tier");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -277,7 +373,15 @@ describe("loop_describe new behavior", () => {
       // Should still return tools even if some imports failed
       assert.ok(text.tools.length > 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -303,11 +407,19 @@ describe("listAntiPatterns G9 status filter", () => {
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
-  test("stale entries are included in anti-patterns (non-terminal)", async () => {
+  test("past-TTL open entries stay open and are included in anti-patterns (non-terminal)", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-g9-stale-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -316,21 +428,31 @@ describe("listAntiPatterns G9 status filter", () => {
         subtype: "escape-hatch-abuse",
         severity: "warning",
         affected_system: "gate-logic",
-        description: "Stale anti-pattern entry for G9 testing",
+        description: "Past-TTL anti-pattern entry for G9 testing",
       });
       const id = JSON.parse(report.content[0].text).id;
-      // Force expiry by setting expires_at to past
+      // Set expires_at to past (vestigial TTL signal).
       const { updateEntry } = await import("../../core/meta-state.js");
       await updateEntry(tempDir, id, { expires_at: new Date(Date.now() - 1000).toISOString() });
 
-      // metaStateListTool auto-applies expiry -> transitions to stale
+      // meta_state_list is read-only: it no longer transitions past-TTL entries
+      // to `stale`. `stale` is a derived evidence-freshness view (see
+      // core/stale-view.js), not a writable status, so the entry stays `open`.
       await metaStateListTool.handler({});
 
       const result = listAntiPatterns(tempDir);
-      assert.strictEqual(result.length, 1, "stale anti-patterns should be included");
-      assert.strictEqual(result[0].status, "stale");
+      assert.strictEqual(result.length, 1, "open anti-patterns are included (non-terminal)");
+      assert.strictEqual(result[0].status, "open", "past-TTL entry stays open; meta_state_list does not transition status");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -353,13 +475,18 @@ describe("listAntiPatterns G9 status filter", () => {
         description: "Reported anti-pattern entry for G9 testing two",
       });
       const id2 = JSON.parse(report2.content[0].text).id;
-      const { metaStateAckTool } = await import("../../tools/legacy/meta-state-ack-tool.js");
-      await metaStateAckTool.handler({ id: id2, reason: "ack" });
-
       const result = listAntiPatterns(tempDir);
       assert.strictEqual(result.length, 2);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -391,7 +518,15 @@ describe("loop_describe change-log isolation", () => {
       assert.strictEqual(text.active_findings.length, 1);
       assert.strictEqual(text.active_findings[0].category, "loop-anti-pattern");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -417,7 +552,15 @@ describe("loop_describe change-log isolation", () => {
       assert.strictEqual(text.all_findings.length, 1);
       assert.strictEqual(text.all_findings[0].entry_kind, "finding");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });
@@ -443,7 +586,15 @@ describe("meta_state_resolve change-log guard", () => {
       assert.strictEqual(text.resolved, false);
       assert.strictEqual(text.reason, "change_log_immutable");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

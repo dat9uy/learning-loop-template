@@ -98,7 +98,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     try {
       assert.strictEqual(result.exitCode, 0, "Expected exit 0 (ok) — bash gate does not output for ok");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -118,7 +126,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(result.decision?.decision, "block");
       assert.strictEqual(result.decision?.observation_required, true);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -138,7 +154,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(result.decision?.hard_block, true);
       assert.ok(result.decision?.reason?.includes("importlib.util.find_spec"));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -156,7 +180,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     try {
       assert.strictEqual(text.decision, "ok");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -175,7 +207,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(text.decision, "block");
       assert.strictEqual(text.observation_required, true);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -200,10 +240,18 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(entries.length, 1);
       assert.strictEqual(entries[0].category, "budget-check");
       assert.strictEqual(entries[0].affected_system, "vnstock_vendor");
-      assert.strictEqual(entries[0].status, "reported");
+      assert.strictEqual(entries[0].status, "open");
       assert.ok(entries[0].id.startsWith("meta-"));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -231,7 +279,15 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
       assert.strictEqual(listText.entries[0].category, "budget-check");
       assert.strictEqual(listText.entries[0].affected_system, "vnstock_vendor");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

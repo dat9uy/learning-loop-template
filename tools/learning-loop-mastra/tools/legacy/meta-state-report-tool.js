@@ -9,7 +9,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateReportTool = {
   name: "meta_state_report",
-  description: "Report a new meta-state finding to the agent-maintained registry. Status starts as reported with a 24h TTL until acked by an operator. Use this to internalize external references for `source_refs`. Optional but recommended: pass `evidence_code_ref` (code location) so the loop can hash and re-check it on demand via `meta_state_derive_status`. Markdown paths in `source_refs` are deprecated and will be rejected by `record_create_decision`. Use when you observe a loop issue (gate bug, missing tool, anti-pattern) that needs operator review. Not for system changes (use `meta_state_log_change` instead) or for closing a finding (use `meta_state_resolve` instead). When `evidence_code_ref` is provided, `mechanism_check` defaults to `true`; pass `mechanism_check: false` explicitly to opt out (a warning is returned). To re-surface a stale finding from the same finding (the cross-reference affordance), pass `reopens: ['<old_stale_id>']`. The legacy 'expired' status was removed in plan 260611-1000; only 'stale' parents are cascade-closeable. Run `meta_state_relationship_validate({ description, entry_id? })` first to lint orphan ids.",
+  description: "Report a new meta-state finding to the agent-maintained registry. New entries are written with status:`open` (the canonical post-collapse status; replaces `reported`). Use this to internalize external references for `source_refs`. Optional but recommended: pass `evidence_code_ref` (code location) so the loop can hash and re-check it on demand via `meta_state_derive_status`. Markdown paths in `source_refs` are deprecated and will be rejected by `record_create_decision`. Use when you observe a loop issue (gate bug, missing tool, anti-pattern) that needs operator review. Not for system changes (use `meta_state_log_change` instead) or for closing a finding (use `meta_state_resolve` instead). When `evidence_code_ref` is provided, `mechanism_check` defaults to `true`; pass `mechanism_check: false` explicitly to opt out (a warning is returned). To re-surface a stale finding from the same finding (the cross-reference affordance), pass `reopens: ['<old_stale_id>']`. `meta_state_ack` was removed in plan 260707-0812; lifecycle state changes go through resolve/promote/supersede/dispatch/re-verify. Run `meta_state_relationship_validate({ description, entry_id? })` first to lint orphan ids.",
   schema: metaStateFindingEntrySchema.shape,
   handler: async ({
     category,
@@ -27,7 +27,10 @@ export const metaStateReportTool = {
     const root = resolveRoot();
     const id = generateId(slugify(description));
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    // Plan 260707-0812 Phase 2: `expires_at` is no longer computed or written.
+    // The 24h TTL was tied to the legacy `reported` lifecycle that no longer
+    // exists post-enum-collapse. The derived stale view uses
+    // `STALENESS_WINDOW_MS` (7d by default), which is unrelated.
 
     // Auto-default: if caller provides evidence_code_ref, opt them into
     // mechanism_check unless they explicitly opted out.
@@ -72,10 +75,13 @@ export const metaStateReportTool = {
       // this; honor it here so callers can use the canonical MCP surface.
       ...(session_id && { session_id }),
       ...(reopens && { reopens }),
-      status: "reported",
+      // Plan 260707-0812 Phase 2 (red-team C2): new findings are written with
+      // `status:"open"` (the canonical post-collapse status), not "reported".
+      // `expires_at` and `acked_at` writes are removed — `expires_at` is
+      // unrelated to the derived stale view (M1) and becomes vestigial;
+      // `acked_at` is removed entirely with meta_state_ack.
+      status: "open",
       created_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
-      acked_at: null,
       resolved_at: null,
       resolved_by: null,
     };
@@ -94,8 +100,7 @@ export const metaStateReportTool = {
     const result = {
       reported: true,
       id,
-      status: "reported",
-      expires_at: expiresAt.toISOString(),
+      status: "open",
       ...(warnings.length > 0 && { warnings }),
     };
 

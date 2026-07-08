@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { readRegistry } from "../../core/meta-state.js";
+import { isOpen } from "../../core/stale-view.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import {
   metaStateFindingEntrySchema,
@@ -23,22 +24,22 @@ test("T-1: 0 entries carry nested evidence.code_ref", () => {
   );
 });
 
-// ── T-2: all active findings with mechanism_check have a ref ─────────────
-test("T-2: all active findings with mechanism_check=true have a code_ref", () => {
+// ── T-2: all open findings with mechanism_check have a ref ─────────────
+test("T-2: all open findings with mechanism_check=true have a code_ref", () => {
   const entries = readRegistry(root);
-  const activeFindings = entries.filter(
+  const openFindings = entries.filter(
     (e) =>
       e.entry_kind === "finding" &&
-      (e.status === "active" || e.status === "reported") &&
+      isOpen(e) &&
       e.mechanism_check === true
   );
-  const orphans = activeFindings.filter(
+  const orphans = openFindings.filter(
     (e) => !e.evidence_code_ref && !e.evidence?.code_ref
   );
   assert.strictEqual(
     orphans.length,
     0,
-    `Expected 0 active findings missing code_ref, found ${orphans.length}: ` +
+    `Expected 0 open findings missing code_ref, found ${orphans.length}: ` +
       orphans.map((e) => e.id).join(", ")
   );
 });
@@ -58,7 +59,7 @@ test("T-3: 3 of 4 union branches expose evidence_code_ref top-level", () => {
   });
   assert.ok(finding.success, "finding schema accepts evidence_code_ref");
 
-  // change-log schema — currently fails (uses nested evidence block)
+  // change-log schema — status is always "active" (immutable audit log)
   const changeLog = metaStateChangeEntrySchema.safeParse({
     entry_kind: "change-log",
     change_dimension: "semantic",

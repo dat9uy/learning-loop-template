@@ -76,7 +76,7 @@ test("Phase 6: summary mode reduces cold-tier size", async () => {
 // is caught immediately.
 test("m1: summarize description length === 200 returns full text with no ellipsis", () => {
   const desc = "a".repeat(200);
-  const entry = { id: "test-200", entry_kind: "finding", status: "active", description: desc };
+  const entry = { id: "test-200", entry_kind: "finding", status: "open", description: desc };
   const result = summarize(entry);
   assert.strictEqual(result.description_preview.length, 200, "Should return full 200 chars, no slice");
   assert.ok(!result.description_preview.endsWith("..."), "Boundary case (200) should NOT add ellipsis");
@@ -85,7 +85,7 @@ test("m1: summarize description length === 200 returns full text with no ellipsi
 
 test("m1: summarize description length === 201 returns 200 chars + '...' (203 total)", () => {
   const desc = "a".repeat(201);
-  const entry = { id: "test-201", entry_kind: "finding", status: "active", description: desc };
+  const entry = { id: "test-201", entry_kind: "finding", status: "open", description: desc };
   const result = summarize(entry);
   assert.strictEqual(result.description_preview.length, 203, "Should return 200 chars + '...' (3 chars)");
   assert.ok(result.description_preview.endsWith("..."), "Off-by-one case (201) SHOULD add ellipsis");

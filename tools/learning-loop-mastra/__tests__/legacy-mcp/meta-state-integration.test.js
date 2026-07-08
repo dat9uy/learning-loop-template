@@ -1,115 +1,85 @@
-import { describe, test } from "node:test";
-import assert from "node:assert";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
-import { metaStateAckTool } from "../../tools/legacy/meta-state-ack-tool.js";
-import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { readRegistry } from "../../core/meta-state.js";
+// Integration test for plan 260707-0812 (lifecycle-status-stale-mechanism).
+//
+// Replaces the legacy ack-based integration scenarios. The lifecycle flow
+// now goes: report → list (open) → resolve/supersede → list (filtered).
+// `meta_state_ack` is removed in Phase 2; engagement signals flow through
+// resolve/promote/supersede/dispatch/re-verify.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
+import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
 
-describe("meta-state end-to-end lifecycle", () => {
-  let tempDir;
-  const originalEnv = process.env.GATE_ROOT;
+const originalEnv = process.env.GATE_ROOT;
 
-  test("report creates entry, list finds it, ack promotes, resolve terminates", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-e2e-"));
-    process.env.GATE_ROOT = tempDir;
-    try {
-      // 1. Report
-      const reportResult = await metaStateReportTool.handler({
-        category: "gate-logic-bug",
-        severity: "warning",
-        affected_system: "gate-logic",
-        description: "Gate logic allows suspicious pattern through without matching",
-        evidence_journal: "docs/journals/test.md",
-      });
-      const reportText = JSON.parse(reportResult.content[0].text);
-      assert.strictEqual(reportText.reported, true);
-      assert.strictEqual(reportText.status, "reported");
-      assert.ok(reportText.id);
-      assert.ok(reportText.expires_at);
+function setup() {
+  const tempDir = mkdtempSync(join(tmpdir(), "meta-state-integration-"));
+  process.env.GATE_ROOT = tempDir;
+  return tempDir;
+}
 
-      // 2. List default excludes nothing (reported is non-terminal)
-      const listResult1 = await metaStateListTool.handler({});
-      const listText1 = JSON.parse(listResult1.content[0].text);
-      assert.strictEqual(listText1.count, 1);
-      assert.strictEqual(listText1.entries[0].status, "reported");
+function teardown() {
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
+}
 
-      // 3. Ack
-      const ackResult = await metaStateAckTool.handler({
-        id: reportText.id,
-        reason: "Confirmed by operator review",
-      });
-      const ackText = JSON.parse(ackResult.content[0].text);
-      assert.strictEqual(ackText.acked, true);
-      assert.strictEqual(ackText.status, "active");
-
-      // 4. List sees active
-      const listResult2 = await metaStateListTool.handler({});
-      const listText2 = JSON.parse(listResult2.content[0].text);
-      assert.strictEqual(listText2.count, 1);
-      assert.strictEqual(listText2.entries[0].status, "active");
-      assert.strictEqual(listText2.entries[0].expires_at, null);
-
-      // 5. Resolve
-      const resolveResult = await metaStateResolveTool.handler({
-        id: reportText.id,
-        resolution: "Fixed in PR #42",
-        resolved_by: "operator",
-      });
-      const resolveText = JSON.parse(resolveResult.content[0].text);
-      assert.strictEqual(resolveText.resolved, true);
-      assert.strictEqual(resolveText.status, "resolved");
-
-      // 6. List default excludes terminal
-      const listResult3 = await metaStateListTool.handler({});
-      const listText3 = JSON.parse(listResult3.content[0].text);
-      assert.strictEqual(listText3.count, 0);
-
-      // 7. List with status filter shows resolved (the include_expired param
-      // was removed in plan 260611-1000-remove-expired-status phase 3; use
-      // status filter to access terminal entries).
-      const listResult4 = await metaStateListTool.handler({ status: "resolved" });
-      const listText4 = JSON.parse(listResult4.content[0].text);
-      assert.strictEqual(listText4.count, 1);
-      assert.strictEqual(listText4.entries[0].status, "resolved");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
-
-  test("ack rejects already-active entry", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-ack-dup-"));
-    process.env.GATE_ROOT = tempDir;
-
+test("full lifecycle: report → list (open) → resolve → list (terminal)", async () => {
+  setup();
+  try {
+    // 1. Report — writes status:"open" (Phase 2 canonical)
     const reportResult = await metaStateReportTool.handler({
       category: "loop-anti-pattern",
-      severity: "escalate",
+      severity: "warning",
       affected_system: "mcp-tools",
       description: "MCP tool references a file that was deleted during refactoring",
+      evidence_journal: "docs/journals/test.md",
     });
     const reportText = JSON.parse(reportResult.content[0].text);
+    assert.strictEqual(reportText.reported, true);
+    assert.strictEqual(reportText.status, "open", "Phase 2: report writes open");
+    assert.ok(reportText.id);
 
-    try {
-      // First ack succeeds
-      await metaStateAckTool.handler({ id: reportText.id });
+    // 2. List default includes the new open finding
+    const listResult1 = await metaStateListTool.handler({});
+    const listText1 = JSON.parse(listResult1.content[0].text);
+    assert.strictEqual(listText1.count, 1);
+    assert.strictEqual(listText1.entries[0].status, "open");
 
-      // Second ack fails
-      const ack2 = await metaStateAckTool.handler({ id: reportText.id });
-      const ack2Text = JSON.parse(ack2.content[0].text);
-      assert.strictEqual(ack2Text.acked, false);
-      assert.strictEqual(ack2Text.reason, "already_active_or_terminal");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
+    // 3. Resolve
+    const resolveResult = await metaStateResolveTool.handler({
+      id: reportText.id,
+      resolution: "Fixed in PR #42",
+      resolved_by: "operator",
+    });
+    const resolveText = JSON.parse(resolveResult.content[0].text);
+    assert.strictEqual(resolveText.resolved, true);
+    assert.strictEqual(resolveText.status, "resolved");
 
-  test("resolve rejects terminal entry", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-resolve-dup-"));
-    process.env.GATE_ROOT = tempDir;
+    // 4. List default excludes terminal entries
+    const listResult2 = await metaStateListTool.handler({});
+    const listText2 = JSON.parse(listResult2.content[0].text);
+    assert.strictEqual(listText2.count, 0);
 
+    // 5. List with status filter shows resolved
+    const listResult3 = await metaStateListTool.handler({ status: "resolved" });
+    const listText3 = JSON.parse(listResult3.content[0].text);
+    assert.strictEqual(listText3.count, 1);
+    assert.strictEqual(listText3.entries[0].status, "resolved");
+  } finally {
+    teardown();
+  }
+});
+
+test("resolve rejects already-terminal entry", async () => {
+  setup();
+  try {
     const reportResult = await metaStateReportTool.handler({
       category: "mcp-tool-missing",
       severity: "warning",
@@ -118,97 +88,42 @@ describe("meta-state end-to-end lifecycle", () => {
     });
     const reportText = JSON.parse(reportResult.content[0].text);
 
-    try {
-      // Resolve once
-      await metaStateResolveTool.handler({ id: reportText.id });
+    await metaStateResolveTool.handler({ id: reportText.id });
 
-      // Resolve again fails
-      const resolve2 = await metaStateResolveTool.handler({ id: reportText.id });
-      const resolve2Text = JSON.parse(resolve2.content[0].text);
-      assert.strictEqual(resolve2Text.resolved, false);
-      assert.strictEqual(resolve2Text.reason, "already_terminal");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
+    const resolve2 = await metaStateResolveTool.handler({ id: reportText.id });
+    const resolve2Text = JSON.parse(resolve2.content[0].text);
+    assert.strictEqual(resolve2Text.resolved, false);
+    assert.strictEqual(resolve2Text.reason, "already_terminal");
+  } finally {
+    teardown();
+  }
+});
 
-  test("list filters by category and status", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-filter-"));
-    process.env.GATE_ROOT = tempDir;
-
+test("list filters by category and status", async () => {
+  setup();
+  try {
     await metaStateReportTool.handler({
-      category: "gate-logic-bug",
+      category: "loop-anti-pattern",
       severity: "warning",
-      affected_system: "gate-logic",
-      description: "First gate logic issue found during smoke test run",
+      affected_system: "mcp-tools",
+      description: "First finding in mcp-tools category for filter test",
     });
     await metaStateReportTool.handler({
       category: "schema-drift",
       severity: "warning",
-      affected_system: "record-validation",
-      description: "Schema drift in observation records after v2 migration",
-    });
-    const report3 = await metaStateReportTool.handler({
-      category: "gate-logic-bug",
-      severity: "escalate",
       affected_system: "gate-logic",
-      description: "Second gate logic issue that causes silent bypass",
+      description: "Second finding in gate-logic category for filter test",
     });
-    const report3Text = JSON.parse(report3.content[0].text);
 
-    try {
-      await metaStateAckTool.handler({ id: report3Text.id });
-
-      // Filter by category
-      const catResult = await metaStateListTool.handler({ category: "gate-logic-bug" });
-      const catText = JSON.parse(catResult.content[0].text);
-      assert.strictEqual(catText.count, 2);
-
-      // Filter by status
-      const statResult = await metaStateListTool.handler({ status: "active" });
-      const statText = JSON.parse(statResult.content[0].text);
-      assert.strictEqual(statText.count, 1);
-      assert.strictEqual(statText.entries[0].status, "active");
-
-      // Filter by both
-      const bothResult = await metaStateListTool.handler({
-        category: "gate-logic-bug",
-        status: "reported",
-      });
-      const bothText = JSON.parse(bothResult.content[0].text);
-      assert.strictEqual(bothText.count, 1);
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
-
-  test("budget-check category and vnstock_vendor affected_system accepted", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-budget-"));
-    process.env.GATE_ROOT = tempDir;
-
-    const reportResult = await metaStateReportTool.handler({
-      category: "budget-check",
-      severity: "warning",
-      affected_system: "vnstock_vendor",
-      description: "Agent checked budget before vendor-api curl. Budget 1/1, fingerprint matches, proceeding.",
-      evidence_code_ref: "runtime-state.jsonl",
+    const filterResult = await metaStateListTool.handler({
+      category: "loop-anti-pattern",
+      status: "open",
     });
-    const reportText = JSON.parse(reportResult.content[0].text);
-
-    try {
-      assert.strictEqual(reportText.reported, true);
-      assert.ok(reportText.id);
-
-      // Filter by budget-check category
-      const listResult = await metaStateListTool.handler({ category: "budget-check" });
-      const listText = JSON.parse(listResult.content[0].text);
-      assert.strictEqual(listText.count, 1);
-      assert.strictEqual(listText.entries[0].category, "budget-check");
-      assert.strictEqual(listText.entries[0].affected_system, "vnstock_vendor");
-      assert.strictEqual(listText.entries[0].status, "reported");
-      assert.ok(listText.entries[0].id.startsWith("meta-"));
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-    }
-  });
+    const filterText = JSON.parse(filterResult.content[0].text);
+    assert.strictEqual(filterText.count, 1);
+    assert.strictEqual(filterText.entries[0].category, "loop-anti-pattern");
+    assert.strictEqual(filterText.entries[0].status, "open");
+  } finally {
+    teardown();
+  }
 });

@@ -96,7 +96,7 @@ describe("meta-state schema new behavior", () => {
       severity: "warning",
       affected_system: "gate-logic",
       description: "Valid description with enough length to pass.",
-      status: "reported",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
   });
@@ -107,7 +107,7 @@ describe("meta-state schema new behavior", () => {
       severity: "warning",
       affected_system: "gate-logic",
       description: "Valid description with enough length to pass.",
-      status: "active",
+      status: "open",
     });
     assert.strictEqual(result.success, true);
   });
@@ -186,7 +186,15 @@ describe("meta-state schema new behavior", () => {
       assert.strictEqual(entries[0].subtype, "escape-hatch-abuse");
       assert.strictEqual(entries[0].promoted_to_rule, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -406,7 +414,7 @@ describe("meta-state readRegistry legacy coercion", () => {
       severity: "warning",
       affected_system: "gate-logic",
       description: "Legacy entry without entry_kind field.",
-      status: "reported",
+      status: "open",
       created_at: "2026-06-01T00:00:00.000Z",
     };
     const path = join(tempDir, "meta-state.jsonl");
@@ -426,7 +434,7 @@ describe("meta-state readRegistry legacy coercion", () => {
       change_target: "core/meta-state.js",
       change_diff: { added: ["entry_kind"], removed: [], changed: [] },
       reason: "Round-trip test for change-log entries.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-02T00:00:00.000Z",
     };
     const path = join(tempDir, "meta-state.jsonl");
@@ -442,9 +450,9 @@ describe("meta-state filterEntries entry_kind", () => {
 
   test("filterEntries({ entry_kind: change-log }) returns only change-log entries", () => {
     const entries = [
-      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "reported" },
-      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "active" },
-      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "active" },
+      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "open" },
+      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "open" },
+      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "open" },
     ];
     const result = filterEntries(entries, { entry_kind: "change-log" });
     assert.strictEqual(result.length, 1);
@@ -453,9 +461,9 @@ describe("meta-state filterEntries entry_kind", () => {
 
   test("filterEntries({ entry_kind: finding }) returns only finding entries", () => {
     const entries = [
-      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "reported" },
-      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "active" },
-      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "active" },
+      { id: "f1", entry_kind: "finding", category: "gate-logic-bug", status: "open" },
+      { id: "c1", entry_kind: "change-log", change_dimension: "surface", change_target: "t1", status: "open" },
+      { id: "f2", entry_kind: "finding", category: "schema-drift", status: "open" },
     ];
     const result = filterEntries(entries, { entry_kind: "finding" });
     assert.strictEqual(result.length, 2);

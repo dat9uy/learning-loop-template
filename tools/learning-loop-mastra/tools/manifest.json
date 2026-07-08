@@ -33,7 +33,6 @@
   { "file": "tools/runtime-state-read-tool.js", "export": "runtimeStateReadTool", "pathFields": [] },
   { "file": "tools/meta-state-report-tool.js", "export": "metaStateReportTool", "pathFields": [] },
   { "file": "tools/meta-state-list-tool.js", "export": "metaStateListTool", "pathFields": [] },
-  { "file": "tools/meta-state-ack-tool.js", "export": "metaStateAckTool", "pathFields": [] },
   { "file": "tools/meta-state-resolve-tool.js", "export": "metaStateResolveTool", "pathFields": [] },
   { "file": "tools/meta-state-promote-rule-tool.js", "export": "metaStatePromoteRuleTool", "pathFields": [] },
   { "file": "tools/loop-describe-tool.js", "export": "loopDescribeTool", "pathFields": [] },

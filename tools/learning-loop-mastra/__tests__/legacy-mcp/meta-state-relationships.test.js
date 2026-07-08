@@ -60,7 +60,7 @@ test("meta_state_relationships: inbound reopened_by for finding with reopens", a
       severity: "warning",
       affected_system: "gate-logic",
       description: "A parent finding that is past its staleness window.",
-      status: "stale",
+      status: "open",
     };
     const child = {
       id: "meta-child-reopens",
@@ -69,7 +69,7 @@ test("meta_state_relationships: inbound reopened_by for finding with reopens", a
       severity: "warning",
       affected_system: "gate-logic",
       description: "A child finding that reopens the parent.",
-      status: "active",
+      status: "open",
       reopens: ["meta-parent-stale"],
     };
     const fs = await import("node:fs");

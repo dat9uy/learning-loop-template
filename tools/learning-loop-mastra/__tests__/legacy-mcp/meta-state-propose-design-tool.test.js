@@ -16,7 +16,11 @@ function setup() {
 }
 
 function teardown() {
-  process.env.GATE_ROOT = originalEnv;
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
 }
 
 async function call(args) {

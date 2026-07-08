@@ -11,6 +11,14 @@ function makeTempRoot() {
 }
 
 async function writeFixture(root, id, status) {
+  // Plan 260707-0812 Phase 2: enum collapsed to {open, resolved, superseded}.
+  // The fixture function still accepts a `status` argument for the test name,
+  // but for non-{open,resolved,superseded} legacy statuses (e.g., "stale"),
+  // we write `status: "open"` AND backdate `created_at` so the derived
+  // `isStaleView` predicate returns true (the original intent of the test).
+  const OPAQUE = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  const REMAPPED = (status === "stale" || status === "active" || status === "reported") ? "open" : status;
+  const createdAt = REMAPPED === "open" ? OPAQUE : new Date().toISOString();
   await writeEntry(root, {
     id,
     entry_kind: "finding",
@@ -18,9 +26,8 @@ async function writeFixture(root, id, status) {
     severity: "warning",
     affected_system: "mcp-tools",
     description: `Fixture for lint test (id=${id}, status=${status}) (min 20 chars)`,
-    status,
-    created_at: new Date().toISOString(),
-    acked_at: null,
+    status: REMAPPED,
+    created_at: createdAt,
     resolved_at: null,
     resolved_by: null,
     version: 0,
@@ -63,7 +70,7 @@ describe("meta_state_relationship_validate", () => {
       affected_system: "mcp-tools",
       description: "New finding that reopens meta-260608T1522Z-claimed (min 20 chars).",
       reopens: ["meta-260608T1522Z-claimed"],
-      status: "active",
+      status: "open",
       created_at: new Date().toISOString(),
       version: 0,
     });

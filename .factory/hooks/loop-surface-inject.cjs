@@ -17,7 +17,7 @@ const LOCAL_DISCOVERABILITY_HINTS = Object.freeze([
   "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
   "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_file_index({ path })` to re-hash a cited path's code in the shared fingerprint index after a refactor — one call re-grounds every finding anchored to that path.",
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
-  "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `superseded` (consolidated into a change-log), `auto-resolved` (closed by mechanism). The legacy `expired` status was removed in plan 260611-1000-remove-expired-status; only `stale` parents are cascade-closeable.",
+  "Findings have 3 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log). `archived` is applied at runtime by `meta_state_archive` (not in the persisted enum). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed in plans 260611-1000 and 260707-0812; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
   "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
   "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
   "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/legacy/references/tool-selection-guide.md` for the intent to tool mapping.",
@@ -146,7 +146,7 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "mcp-connection"
-      && (e.status === "active" || e.status === "reported"),
+      && (e.status === "open" || e.status === "active" || e.status === "reported"),
     );
   } catch {
     // registry may not exist yet — treat as no existing finding
@@ -155,7 +155,6 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
 
   const id = generateId("mcp-connection-missing");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const entry = {
     id,
     entry_kind: "finding",
@@ -166,11 +165,9 @@ async function reportMcpConnectionFailure(input, env, cwd, reason) {
     description: `MCP server probe failed at session start (reason=${reason}, session_id=${sessionId}). The 5 SP0-SP3 tools (meta_state_log_change, meta_state_derive_status, meta_state_check_grounding, meta_state_refresh_file_index, meta_state_query_drift) may be unreachable in this session. Workarounds: (1) try mcp__learning_loop__* tools directly (the probe may have failed transiently); (2) reconnect via session config; (3) fall back to direct file I/O via Node scripts that import core/meta-state.js.`,
     evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
     session_id: sessionId,
-    status: "reported",
+    status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
-    expires_at: expiresAt,
-    acked_at: null,
     resolved_at: null,
     resolved_by: null,
     version: 0,
@@ -226,7 +223,7 @@ async function reportHintDowngrade(input, env, cwd, reason) {
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "hint-downgrade"
-      && (e.status === "active" || e.status === "reported"),
+      && (e.status === "open" || e.status === "active" || e.status === "reported"),
     );
   } catch {
     // registry may not exist yet
@@ -235,7 +232,6 @@ async function reportHintDowngrade(input, env, cwd, reason) {
 
   const id = generateId("hint-downgrade");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const entry = {
     id,
     entry_kind: "finding",
@@ -246,11 +242,9 @@ async function reportHintDowngrade(input, env, cwd, reason) {
     description: `SessionStart hook tier downgraded to summary (reason=${reason}, session_id=${sessionId}). Discoverability hints were not rendered. To re-enable hints, unset LL_LOOP_INJECT_TIER or set it to 'warm'.`,
     evidence_code_ref: ".factory/hooks/loop-surface-inject.cjs",
     session_id: sessionId,
-    status: "reported",
+    status: "open",
     auto_resolve: null,
     created_at: now.toISOString(),
-    expires_at: expiresAt,
-    acked_at: null,
     resolved_at: null,
     resolved_by: null,
     version: 0,

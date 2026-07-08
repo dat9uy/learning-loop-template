@@ -1,5 +1,6 @@
 import { deriveStatus } from "./derive-status.js";
 import { checkGrounding } from "./check-grounding.js";
+import { isOpen } from "./stale-view.js";
 
 /**
  * SP3 Drift Aggregation — pure function (no I/O, no subprocess).
@@ -72,12 +73,15 @@ export function queryDrift(entries, codeContext = {}) {
  */
 // fallow-ignore-next-line complexity
 function computeIsDrift(derivation, grounding, entry) {
-  // Terminal statuses (auto-resolved, resolved, superseded) are always
-  // non-drift — the entry's claim is consistent with its terminal state, since
-  // the entry is no longer the canonical source. The TERMINAL_STATUSES set in
-  // core/meta-state.js is the source of truth for which statuses count.
-  const rawActive = entry.status === "active" || entry.status === "reported";
-  if (!rawActive) return false;
+  // Terminal statuses (resolved, superseded) are always non-drift — the entry's
+  // claim is consistent with its terminal state, since the entry is no longer
+  // the canonical source. The TERMINAL_STATUSES set in core/meta-state.js is
+  // the source of truth for which statuses count.
+  //
+  // Plan 260707-0812 Phase 2: `isOpen` replaces the literal active|reported
+  // check — also covers `open` (the canonical new status) and tolerates legacy
+  // `active`/`reported`/`stale` pre-migration.
+  if (!isOpen(entry)) return false;
 
   // Case 1 & 2: SP1 says resolved-by-mechanism → drift (derivation source)
   if (derivation.derived_status === "resolved-by-mechanism") return true;

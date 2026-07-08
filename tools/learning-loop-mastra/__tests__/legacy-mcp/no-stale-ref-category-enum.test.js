@@ -59,6 +59,35 @@ test("schemas/meta-state.schema.json enum does not include stale-ref", () => {
   );
 });
 
+// Plan 260707-0812: the finding status enum collapses to {open, resolved,
+// superseded} (+ archived runtime-applied). The JSON Schema is one of the 3
+// required declaration sites (parity with the zod enum in core/meta-state.js).
+// This locks the collapse so the JSON Schema can't silently drift back to the
+// legacy 6-status set (which would reject post-migration `status:"open"`
+// findings under external validation).
+test("schemas/meta-state.schema.json finding.status enum is collapsed to {open, resolved, superseded}", () => {
+  const schemaPath = join(root, "schemas", "meta-state.schema.json");
+  const raw = JSON.parse(readFileSync(schemaPath, "utf8"));
+  const statusEnum = raw?.$defs?.finding?.properties?.status?.enum;
+  assert.ok(Array.isArray(statusEnum), "finding.status enum should be an array");
+  assert.deepStrictEqual(
+    statusEnum,
+    ["open", "resolved", "superseded"],
+    `finding.status enum must be exactly [open, resolved, superseded], got [${statusEnum.join(", ")}]`
+  );
+  for (const legacy of ["reported", "active", "stale", "auto-resolved"]) {
+    assert.ok(!statusEnum.includes(legacy), `legacy status "${legacy}" must be removed from the enum`);
+  }
+});
+
+test("schemas/meta-state.schema.json has no acked_at (meta_state_ack removed)", () => {
+  const schemaPath = join(root, "schemas", "meta-state.schema.json");
+  const raw = JSON.parse(readFileSync(schemaPath, "utf8"));
+  const findingProps = raw?.$defs?.finding?.properties;
+  assert.ok(findingProps, "finding properties should exist");
+  assert.ok(!("acked_at" in findingProps), "acked_at must be absent from the finding schema (meta_state_ack is gone)");
+});
+
 test("docs/schemas.md category row does not list stale-ref", () => {
   const docPath = new URL("../../docs/schemas.md", import.meta.url).pathname;
   const text = readFileSync(docPath, "utf8");

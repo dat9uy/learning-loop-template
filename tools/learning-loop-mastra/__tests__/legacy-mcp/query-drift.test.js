@@ -23,7 +23,7 @@ describe("queryDrift pure function", () => {
     return {
       id: "meta-260601T0000Z-test",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       ...overrides,
     };
   }
@@ -42,7 +42,7 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_events.length, 1);
     const ev = result.drift_events[0];
     assert.strictEqual(ev.id, entry.id);
-    assert.strictEqual(ev.raw_status, "active");
+    assert.strictEqual(ev.raw_status, "open");
     assert.strictEqual(ev.derived_status, "resolved-by-mechanism");
     assert.strictEqual(ev.drift_kind, "assertion_lags_derivation");
     assert.strictEqual(ev.recommendation, "resolve");
@@ -217,13 +217,13 @@ describe("queryDrift pure function", () => {
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
     const activeEntry = baseEntry({
       id: "meta-260601T0000Z-active",
-      status: "active",
+      status: "open",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
     const reportedEntry = baseEntry({
       id: "meta-260601T0000Z-reported",
-      status: "reported",
+      status: "open",
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
@@ -258,8 +258,8 @@ describe("queryDrift pure function", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
-    const activeEntry = baseEntry({ id: "a-1", status: "active", evidence_code_ref: "src.js", evidence_test: "src.test.js" });
-    const reportedEntry = baseEntry({ id: "b-1", status: "reported", evidence_code_ref: "src.js", evidence_test: "src.test.js" });
+    const activeEntry = baseEntry({ id: "a-1", status: "open", evidence_code_ref: "src.js", evidence_test: "src.test.js" });
+    const reportedEntry = baseEntry({ id: "b-1", status: "open", evidence_code_ref: "src.js", evidence_test: "src.test.js" });
     const result = queryDrift([activeEntry, reportedEntry], ctx);
     assert.strictEqual(result.drift_count, 2);
   });

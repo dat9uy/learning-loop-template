@@ -7,21 +7,23 @@ import {
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
+import { isOpen } from "../../core/stale-view.js";
 
-// The legacy 'expired' status was removed in plan 260611-1000. This set
-// mirrors the canonical TERMINAL_STATUSES in core/meta-state.js. Used to
-// short-circuit cascade paths on already-terminal parents.
-const TERMINAL_STATUSES = new Set(["auto-resolved", "resolved", "superseded"]);
+// Plan 260707-0812 Phase 2: TERMINAL_STATUSES collapses to {resolved, superseded}.
+// `archived` is runtime-applied and excluded from the short-circuit (an
+// already-archived entry is filtered upstream by the entry_kind check; this set
+// only gates the resolved/superseded branch).
+const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state finding as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Only entry_kind=finding can be resolved; rules, loop-designs, and change-logs are rejected. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. Only `stale` and `active` parents are cascade-closeable; `reported` parents must be acked first (canonical `meta_state_ack` flow). The legacy 2-step `expired -> stale -> resolved` path was removed in plan 260611-1000.",
+  description: "Mark a meta-state finding as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Only entry_kind=finding can be resolved; rules, loop-designs, and change-logs are rejected. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. The parent must be isOpen (status ∈ {open, active, reported, stale}); terminal parents are rejected by the already_terminal guard above. `meta_state_ack` was removed in plan 260707-0812; engagement signals flow through resolve/promote/supersede/dispatch/re-verify.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
     cascade_from: z.preprocess(stripEnvelope, z.array(z.string())).optional()
-      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided, each child must exist, have `reopens` containing this entry's id, and be in `active` or `resolved` status. The parent is closed in 1 call. Only `stale` and `active` parents are cascade-closeable; `reported` parents return `cascade_parent_is_reported` and must be acked first via `meta_state_ack`."),
+      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided, each child must exist, have `reopens` containing this entry's id, and be isOpen or resolved. The parent must also be isOpen (open/active/reported/stale); terminal parents are rejected by the already_terminal guard. The legacy `reported -> active -> resolved` ack flow was removed in plan 260707-0812."),
   },
   handler: async ({ id, resolution, resolved_by, cascade_from }) => {
     const root = resolveRoot();
@@ -118,14 +120,12 @@ export const metaStateResolveTool = {
     }
 
     // Cascade branch: when cascade_from is provided, validate children, then
-    // close the parent in 1 step. Only `stale` and `active` parents are
-    // cascade-closeable. `reported` parents are rejected explicitly to
-    // preserve the canonical reported -> active -> resolved flow
-    // (meta_state_ack must run first). Terminal parents hit the early-return
-    // above; `superseded` parents are terminal. The legacy 2-step
-    // `expired -> stale -> resolved` path was removed in plan 260611-1000
-    // because no entry in the registry carries `status: "expired"` anymore
-    // (the 13 historical entries were migrated to `stale` in commit 4be590f).
+    // close the parent in 1 step. Plan 260707-0812 Phase 2 (red-team C3):
+    // the reported-cascade block is removed — `meta_state_ack` is gone, so
+    // legacy `reported` parents are isOpen and cascade-closeable like every
+    // other open parent. The parent must be isOpen; terminal parents hit the
+    // early-return above. `expires_at`/`acked_at` writes were dropped with
+    // the enum collapse.
     if (cascade_from?.length > 0) {
       const childValidation = validateCascadeChildren(root, entry, cascade_from, entries);
       if (!childValidation.valid) {
@@ -133,21 +133,22 @@ export const metaStateResolveTool = {
         return { content: [{ type: "text", text: JSON.stringify({ resolved: false, ...childValidation }) }] };
       }
 
-      if (entry.status === "reported") {
+      if (!isOpen(entry)) {
         const result = {
           resolved: false,
-          reason: "cascade_parent_is_reported",
+          reason: "cascade_parent_not_open",
           id: entry.id,
-          hint: "ack the parent via meta_state_ack before cascade-resolving",
+          current_status: entry.status ?? null,
         };
         appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_resolve", ...result });
         return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
 
-      // Parent is `stale` or `active` — fall through to the normal resolve
-      // path below. The consult-gate was already consulted above (it does
-      // not gate on `cascade_from`). The patch sets `status: "resolved"`,
-      // `resolved_at`, `resolved_by`, optional `resolution` in 1 call.
+      // Parent is open (open/active/reported/stale) — fall through to the
+      // normal resolve path below. The consult-gate was already consulted
+      // above (it does not gate on `cascade_from`). The patch sets
+      // `status: "resolved"`, `resolved_at`, `resolved_by`, optional
+      // `resolution` in 1 call.
     }
 
     const now = new Date().toISOString();
@@ -209,7 +210,11 @@ function validateCascadeChildren(root, parent, childIds, entries) {
       });
       continue;
     }
-    if (child.status !== "active" && child.status !== "resolved") {
+    // Plan 260707-0812 Phase 2 (red-team C3): child status check uses
+    // isOpen (covers open/active/reported/stale) instead of literal active
+    // and `child.status !== "resolved"`. This is the resolved+any-open
+    // cascade invariant — same shape, sourced from the predicate.
+    if (!isOpen(child) && child.status !== "resolved") {
       badChildren.push({
         child_id: childId,
         reason: "unresolved",

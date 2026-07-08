@@ -17,6 +17,7 @@
     "test": "pnpm exec c8 --reporter=json --reports-directory=coverage --include \"tools/learning-loop-mastra/**/*.js\" --exclude \"**/*.test.js\" --exclude \"**/*.test.cjs\" --exclude \"**/fixtures/**\" --clean node tools/scripts/run-pnpm-test-namespaced.mjs && node tools/scripts/sanitize-coverage.mjs",
     "test:debug": "node --test --test-timeout=120000 tools/learning-loop-mastra/__tests__/debug/*.test.cjs",
     "test:cold-session": "node --test tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
+    "check:freshness": "node --test tools/learning-loop-mastra/__tests__/freshness/*.test.js",
     "fallow:gate": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\"",
     "gate:self-verify": "node tools/learning-loop-mastra/scripts/gate-self-verify.mjs",
     "gate:server": "node tools/learning-loop-mastra/mastra/server.js"

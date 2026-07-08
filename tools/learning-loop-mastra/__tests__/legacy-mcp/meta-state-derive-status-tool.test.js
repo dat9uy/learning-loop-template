@@ -24,7 +24,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for derive status tool lookup.",
-        status: "active",
+        status: "open",
         evidence_code_ref: "src.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };
@@ -46,7 +46,15 @@ describe("meta_state_derive_status tool", () => {
         if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
       }
     }
@@ -72,7 +80,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Known derivable finding for acceptance test simulation.",
-        status: "active",
+        status: "open",
         evidence_code_ref: "tools/learning-loop-mastra/core/lib/source-ref-validator.js",
         evidence_test: "tools/learning-loop-mastra/__tests__/legacy-mcp/source-ref-validator.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
@@ -83,7 +91,7 @@ describe("meta_state_derive_status tool", () => {
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.derived_status, "resolved-by-mechanism");
       assert.strictEqual(parsed.derivation.kind, "mechanism-shipped");
-      assert.strictEqual(parsed.recommendation, "resolve");
+      assert.strictEqual(parsed.recommendation, "re_verify");
       assert.strictEqual(parsed.drift, true);
       assert.strictEqual(parsed.derivation.signals.code_ref_exists, true);
       assert.strictEqual(parsed.derivation.signals.test_file_exists, true);
@@ -91,7 +99,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -120,7 +136,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -137,7 +161,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -166,7 +198,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for run_tests path.",
-        status: "active",
+        status: "open",
         evidence_test: "failing.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };
@@ -179,7 +211,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -196,7 +236,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for run_tests false path.",
-        status: "active",
+        status: "open",
         evidence_test: "src.test.js",
         created_at: "2026-06-01T06:39:41.872Z",
       };
@@ -209,7 +249,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -225,7 +273,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for gate log line.",
-        status: "active",
+        status: "open",
         created_at: "2026-06-01T06:39:41.872Z",
       };
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(entry) + "\n", "utf8");
@@ -244,7 +292,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -261,7 +317,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for env handling.",
-        status: "active",
+        status: "open",
         created_at: "2026-06-01T06:39:41.872Z",
       };
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(entry) + "\n", "utf8");
@@ -286,7 +342,7 @@ describe("meta_state_derive_status tool", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "This is a very long description with many words to test id-only lookup behavior.",
-        status: "active",
+        status: "open",
         created_at: "2026-06-01T06:39:41.872Z",
       };
       writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(entry) + "\n", "utf8");
@@ -299,7 +355,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });
@@ -332,7 +396,15 @@ describe("meta_state_derive_status tool", () => {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        process.env.GATE_ROOT = originalEnv;
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          if (originalEnv === undefined) {
+            delete process.env.GATE_ROOT;
+          } else {
+            process.env.GATE_ROOT = originalEnv;
+          }
+        }
       }
     }
   });

@@ -48,7 +48,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.deepStrictEqual(afterFirst[0].category, afterSecond[0].category);
       assert.deepStrictEqual(afterFirst[0].subtype, afterSecond[0].subtype);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -85,7 +93,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(gateResult.decision, "escalate");
       assert.strictEqual(gateResult.rule_id, "rule-test-new-artifact");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -117,7 +133,15 @@ describe("integration: promoted rule end-to-end", () => {
       const gateResult = applyPromotedRules("ls -la", null, rules);
       assert.strictEqual(gateResult.decision, "ok");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -146,7 +170,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
 
       const listResult = await metaStateListTool.handler({
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
       });
       const listText = JSON.parse(listResult.content[0].text);
@@ -158,7 +182,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.ok(ruleEntry, "Rule entry should exist in registry");
       assert.strictEqual(ruleEntry.origin, listText.entries[0].id);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -192,7 +224,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(text.rules.length, 1);
       assert.strictEqual(text.rules[0].rule_id, "rule-test-describe");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -237,7 +277,15 @@ describe("integration: promoted rule end-to-end", () => {
       ]);
       assert.strictEqual(gateResult.decision, "ok");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -274,7 +322,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(after[0].category, "loop-anti-pattern");
       assert.strictEqual(after[1].category, "mcp-tool-missing");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -304,7 +360,15 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(text.legacy_findings, undefined);
       assert.ok(text.active_findings.length > 0);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });
@@ -339,12 +403,20 @@ describe("integration: promoted rule end-to-end", () => {
       assert.strictEqual(previewText.sample_matches[0].matched, true);
       assert.strictEqual(previewText.sample_matches[1].matched, false);
 
-      // Entry should still be reported, not active
+      // Entry should still be open (not promoted/activated as a rule)
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries[0].status, "reported");
+      assert.strictEqual(entries[0].status, "open");
       assert.strictEqual(entries[0].promoted_to_rule, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
       process.env.OPERATOR_MODE = originalOperatorMode;
     }
   });

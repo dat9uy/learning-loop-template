@@ -21,8 +21,11 @@ product/*/dist/
 .factory/coordination/.loop-preflight-*
 .mastracode/coordination/.last-operator-message
 .mastracode/coordination/.loop-preflight-*
-# Cold-session freshness sentinel (local state; re-created by pnpm test:cold-session)
-tools/learning-loop-mcp/__tests__/.cold-session-sentinel.json
+# Cold-session freshness sentinel — local state, re-created by pnpm test:cold-session.
+# Intentionally untracked: a time-based freshness gate must not live as committed
+# state (it misleads agents into attributing failures as "pre-existing"). Enforced
+# by `pnpm check:freshness`, not by the regression suite.
+tools/learning-loop-mastra/__tests__/legacy-mcp/.cold-session-sentinel.json
 # Session-start injected discoverability hints + task-status cache (local runtime state)
 .claude/session-context.json
 .claude/task-status-cache.json
@@ -36,6 +39,7 @@ tools/learning-loop-mastra/data/
 **/*.db-shm
 # Phase E Plan 4 — Mastra Code runtime DB (generated from .mastracode/database.json)
 .mastracode/data/
+
 
 # Plan 2 PR — `records/meta/.cache/` → `records/meta/` expansion (consistent with 2026-06-12 meta-surface reframe; see AGENTS.md §1 and the comment at line 12 above).
 

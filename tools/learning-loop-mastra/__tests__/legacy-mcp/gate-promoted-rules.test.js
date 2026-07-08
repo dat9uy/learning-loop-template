@@ -45,7 +45,7 @@ describe("gate promoted rules regression", () => {
         id: "meta-test",
         entry_kind: "finding",
         category: "gate-logic-bug",
-        status: "active",
+        status: "open",
       }) + "\n"
     );
     const rules = loadPromotedRules(tempDir);
@@ -123,7 +123,7 @@ describe("gate promoted rules new behavior", () => {
       {
         id: "rule-no-docker",
         entry_kind: "rule",
-        status: "reported",
+        status: "inactive",
         enforcement: "gate",
         pattern_type: "regex",
         pattern: "docker\\s+run",

@@ -14,7 +14,7 @@ export const gateCheckRecurrenceTool = {
     const options = {};
     if (threshold != null) options.threshold = threshold;
     if (window_minutes != null) options.windowMs = window_minutes * 60 * 1000;
-    const result = checkAndEmit(root, options);
+    const result = await checkAndEmit(root, options);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };

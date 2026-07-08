@@ -138,12 +138,12 @@ describe("updateEntry validation", () => {
     const entry = makeValidFinding("meta-260607T1206Z-test-update-good");
     await writeEntry(root, entry);
 
-    const result = await updateEntry(root, entry.id, { status: "active" });
+    const result = await updateEntry(root, entry.id, { status: "open" });
     assert.strictEqual(result, true);
 
     const registry = readRegistry(root);
     const updated = registry.find((e) => e.id === entry.id);
-    assert.strictEqual(updated.status, "active");
+    assert.strictEqual(updated.status, "open");
   });
 
   test("T-5: updateEntry accepts promoted_to_rule patch", async () => {

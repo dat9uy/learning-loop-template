@@ -71,7 +71,7 @@ describe("cold-session discoverability", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.ok(manifest.groups, "manifest must have groups");
     const totalTools = Object.values(manifest.groups).reduce((sum, g) => sum + g.tools.length, 0);
-    assert.strictEqual(totalTools, 46, `expected 46 tools in agent-manifest.json (added meta_state_dispatch_finding in plan 260704-0301-stale-findings-dispatch-handle Phase 2), got ${totalTools}`);
+    assert.strictEqual(totalTools, 45, `expected 45 tools in agent-manifest.json (meta_state_ack removed by the ack deprecation), got ${totalTools}`);
     assert.strictEqual(Object.keys(manifest.groups).length, 6, "expected 6 groups");
 
     writeSentinel("manifest");
@@ -140,11 +140,9 @@ describe("cold-session discoverability", () => {
       evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
       mechanism_check: true,
       session_id: `test-chain-${Date.now()}`,
-      status: "reported",
+      status: "open",
       auto_resolve: null,
       created_at: now.toISOString(),
-      expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      acked_at: null,
       resolved_at: null,
       resolved_by: null,
       version: 0,
@@ -208,11 +206,9 @@ describe("cold-session discoverability", () => {
       description: `Pre-existing finding (test setup). runtime: ${runtime}; layer: L1;`,
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "active",
+      status: "open",
       auto_resolve: null,
       created_at: new Date().toISOString(),
-      expires_at: null,
-      acked_at: new Date().toISOString(),
       resolved_at: null,
       resolved_by: null,
       version: 0,
@@ -288,11 +284,9 @@ describe("cold-session discoverability", () => {
       description: "Synthetic stale entry for churn regression testing.",
       evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
       session_id: sessionId,
-      status: "stale",
+      status: "open",
       auto_resolve: null,
       created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-      expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      acked_at: null,
       resolved_at: null,
       resolved_by: null,
       version: 0,
@@ -300,10 +294,6 @@ describe("cold-session discoverability", () => {
 
     const before = core.readRegistry(tempRoot);
     assert.strictEqual(before.filter((e) => e.session_id === sessionId).length, 1, "pre-test: exactly one stale entry");
-
-    // checkExpiry on stale should return null — no re-expiration.
-    const staleEntry = before.find((e) => e.id === id);
-    assert.strictEqual(core.checkExpiry(staleEntry), null, "stale entries should not re-expire");
 
     delete process.env.GATE_ROOT;
   });

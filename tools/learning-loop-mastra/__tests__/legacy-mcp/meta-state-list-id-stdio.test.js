@@ -17,9 +17,9 @@ async function withSeededMcpServer(fn) {
 
   // Seed the registry with 3 entries
   const seedEntries = [
-    { id: "alpha", entry_kind: "finding", status: "active", category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "alpha for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
-    { id: "beta", entry_kind: "finding", status: "active", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "beta for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
-    { id: "gamma", entry_kind: "change-log", status: "active", change_dimension: "surface", change_target: "tools/test.js", change_diff: { added: ["id filter"], removed: [], changed: [] }, reason: "gamma for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
+    { id: "alpha", entry_kind: "finding", status: "open", category: "gate-logic-bug", severity: "warning", affected_system: "gate-logic", description: "alpha for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
+    { id: "beta", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "beta for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
+    { id: "gamma", entry_kind: "change-log", status: "open", change_dimension: "surface", change_target: "tools/test.js", change_diff: { added: ["id filter"], removed: [], changed: [] }, reason: "gamma for stdio id filter test (min 20 chars)", created_at: new Date().toISOString() },
   ];
   writeFileSync(
     join(tempRoot, "meta-state.jsonl"),

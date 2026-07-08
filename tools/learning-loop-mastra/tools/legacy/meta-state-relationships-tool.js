@@ -5,6 +5,7 @@ import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { findEntryOrNotFound } from "#lib/find-entry.js";
+import { isStaleView } from "../../core/stale-view.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
@@ -57,27 +58,32 @@ function groupInbound(refs) {
 }
 
 /**
- * Compute dangling outbound refs: refs whose target is stale, missing, or
- * superseded. Replaces the old `stale-ref` follow-up emission that sweep used
- * to produce — the information is now a derived view over the relationship
- * graph instead of a recorded finding kind.
+ * Compute dangling outbound refs: refs whose target is stale-view, missing,
+ * or superseded. Replaces the old `stale-ref` follow-up emission that sweep
+ * used to produce — the information is now a derived view over the
+ * relationship graph instead of a recorded finding kind.
  *
  * Read-only / pure function over `entries` (the registry snapshot the caller
  * has already loaded). `refs` is the outbound-ref array produced by the
  * factory — `{ kind, id, field }` per ref.
  *
+ * Plan 260707-0812 Phase 2 (red-team H3):
+ *   - the stale-branch uses `isStaleView(target)` (covers literal `stale` and
+ *     any open entry that is stale-view by age/drift) instead of `status === "stale"`
+ *   - the dead `auto-resolved` branch is dropped (the enum-collapse removed
+ *     `auto-resolved`; the read-site here is the only place that mentioned it)
+ *
  * Reason classification:
  *   - target not in registry         -> "missing"
  *   - target.entry_kind !== expected -> "missing" (kind mismatch is the
  *                                       same informational class)
- *   - target.status === "stale"      -> "stale"
+ *   - isStaleView(target)            -> "stale"
  *   - target.status === "superseded" -> "superseded"
  *   - target.status === "resolved"   -> "resolved" (terminal, the ref
  *                                       cannot be resolved by re-verifying
  *                                       or re-dispatching)
- *   - target.status === "auto-resolved" -> "resolved" (same as resolved)
  *
- * Returns the dangling list. Refs whose target is in {reported, active}
+ * Returns the dangling list. Refs whose target is open but not stale-view
  * are NOT dangling — those are healthy ongoing references.
  */
 function computeDanglingRefs(refs, entries) {
@@ -95,11 +101,11 @@ function computeDanglingRefs(refs, entries) {
       continue;
     }
     const status = target.status;
-    if (status === "stale") {
+    if (isStaleView(target)) {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "stale" });
     } else if (status === "superseded") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "superseded" });
-    } else if (status === "resolved" || status === "auto-resolved") {
+    } else if (status === "resolved") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "resolved" });
     }
   }
@@ -140,36 +146,12 @@ export const metaStateRelationshipsTool = {
     };
 
     if (direction === "outbound" || direction === "both") {
-      const refs = factory.outboundRefs(entries);
-
-      // Dual-field fallback for promoted_to_rule (legacy migration):
-      // if the finding doesn't have promoted_to_rule declared, look up
-      // origin_inverse to find the rule that originated from this finding.
-      // Mirrors the current tool's lines 43-53.
-      if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
-        const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
-        if (!hasPromoted) {
-          const inverse = buildInverseIndexes(entries);
-          const rulesFromOrigin = inverse.origin_inverse.get(id);
-          if (rulesFromOrigin && rulesFromOrigin.length > 0) {
-            refs.push({ kind: "rule", id: rulesFromOrigin[0], field: "promoted_to_rule" });
-          }
-        }
-      }
-
-      const outbound = groupOutbound(refs);
-      result.outbound = Object.keys(outbound).length > 0 ? outbound : null;
-
-      // Derived view: refs whose target is unhealthy (stale/missing/superseded/resolved).
-      // Replaces the old stale-ref follow-up emission (Phase 1 Rec 8 collapse).
-      const dangling = computeDanglingRefs(refs, entries);
-      result.dangling_refs = dangling.length > 0 ? dangling : null;
+      result.outbound = resolveOutboundRefs(factory, entry, id, entries);
+      result.dangling_refs = resolveDanglingRefs(factory, entries);
     }
 
     if (direction === "inbound" || direction === "both") {
-      const refs = factory.inboundRefs(entries);
-      const inbound = groupInbound(refs);
-      result.inbound = Object.keys(inbound).length > 0 ? inbound : null;
+      result.inbound = resolveInboundRefs(factory, entries);
     }
 
     appendGateLog(root, {
@@ -184,3 +166,41 @@ export const metaStateRelationshipsTool = {
     };
   },
 };
+
+// Resolve outbound refs for the entry, including the dual-field fallback for
+// promoted_to_rule (legacy migration: if the finding doesn't have
+// promoted_to_rule declared, look up origin_inverse to find the rule that
+// originated from this finding). Returns the grouped wire shape, or null when
+// the entry has no outbound refs.
+function resolveOutboundRefs(factory, entry, id, entries) {
+  const refs = factory.outboundRefs(entries);
+  if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
+    const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
+    if (!hasPromoted) {
+      const inverse = buildInverseIndexes(entries);
+      const rulesFromOrigin = inverse.origin_inverse.get(id);
+      if (rulesFromOrigin && rulesFromOrigin.length > 0) {
+        refs.push({ kind: "rule", id: rulesFromOrigin[0], field: "promoted_to_rule" });
+      }
+    }
+  }
+  const outbound = groupOutbound(refs);
+  return Object.keys(outbound).length > 0 ? outbound : null;
+}
+
+// Dangling outbound refs: refs whose target is stale-view, missing, superseded,
+// or resolved. Refs whose target is open-but-not-stale are healthy. Returns
+// the dangling list (or null when empty).
+function resolveDanglingRefs(factory, entries) {
+  const refs = factory.outboundRefs(entries);
+  const dangling = computeDanglingRefs(refs, entries);
+  return dangling.length > 0 ? dangling : null;
+}
+
+// Inbound refs grouped by the wire-shape key. Returns the grouped shape, or
+// null when the entry has no inbound refs.
+function resolveInboundRefs(factory, entries) {
+  const refs = factory.inboundRefs(entries);
+  const inbound = groupInbound(refs);
+  return Object.keys(inbound).length > 0 ? inbound : null;
+}

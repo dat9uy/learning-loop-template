@@ -10,7 +10,8 @@ const FIXTURE = {
   severity: "warning",
   affected_system: "meta",
   description: "Test finding for factory unit tests.",
-  status: "active",
+  // Plan 260707-0812 Phase 2: enum collapsed to {open, resolved, superseded}.
+  status: "open",
   consolidated_into: "meta-test-changelog",
   reopens: ["meta-stale-parent"],
   promoted_to_rule: "rule-test-rule",
@@ -56,14 +57,24 @@ test("createFinding.outboundRefs returns correct refs", () => {
   assert.strictEqual(reopensRef.kind, "finding");
 });
 
-test("createFinding status helpers", () => {
-  const active = createFinding({ ...FIXTURE, status: "active" });
-  assert.ok(active.isActive());
-  assert.ok(!active.isStale());
+test("createFinding status helpers (isOpen / isStaleView)", () => {
+  // Plan 260707-0812 Phase 2: predicates reworked to isOpen/isStaleView.
+  // The canonical status is now `open`. The enum no longer accepts
+  // `active`/`stale` directly (those were removed); the `isOpen` tolerance
+  // is exercised at the predicate level in stale-view.test.js (the entry
+  // helper cannot construct them anymore — the schema blocks them).
+  const RECENT = new Date().toISOString();
+  const open   = createFinding({ ...FIXTURE, status: "open",   created_at: RECENT });
+  assert.ok(open.isOpen());
+  assert.ok(!open.isStaleView());
+  assert.ok(!open.isBlocking());
 
-  const stale = createFinding({ ...FIXTURE, status: "stale" });
-  assert.ok(!stale.isActive());
-  assert.ok(stale.isStale());
+  const resolved = createFinding({ ...FIXTURE, status: "resolved" });
+  assert.ok(!resolved.isOpen());
+  assert.ok(!resolved.isStaleView());
+
+  const blocking = createFinding({ ...FIXTURE, severity: "escalate" });
+  assert.ok(blocking.isBlocking());
 });
 
 test("createFinding.inboundRefs scans registry for refs to this finding", () => {

@@ -71,10 +71,11 @@ async function seedG8Findings(root) {
       affected_system: "gate-logic",
       description: `G8 subcommand-class false positive recurrence for id ${id}.`,
       evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
-      // Plan 260611-1000 removed the 'expired' status. Use 'stale' instead
-      // (the modern past-TTL/non-terminal equivalent). The test still
-      // exercises the supersede transition; the source status is incidental.
-      status: "stale",
+      // Plan 260707-0812 collapsed the finding enum to {open, resolved, superseded};
+      // 'stale' is now a derived view, not a status. Use 'open' (the non-terminal
+      // source) — the test still exercises the supersede transition; the source
+      // status is incidental.
+      status: "open",
       created_at: now,
       acked_at: null,
       version: 0,

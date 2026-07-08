@@ -16,7 +16,7 @@
     },
     "meta_state": {
       "description": "Meta-state registry for loop self-awareness findings",
-      "tools": ["mastra_meta_state_report", "mastra_meta_state_list", "mastra_meta_state_ack", "mastra_meta_state_resolve", "mastra_meta_state_promote_rule", "mastra_meta_state_sweep", "mastra_meta_state_log_change", "mastra_meta_state_patch", "mastra_meta_state_derive_status", "mastra_meta_state_check_grounding", "mastra_meta_state_refresh_file_index", "mastra_meta_state_query_drift", "mastra_meta_state_batch", "mastra_meta_state_archive", "mastra_meta_state_relationship_validate", "mastra_meta_state_propose_design", "mastra_meta_state_relationships", "mastra_meta_state_re_verify", "mastra_meta_state_supersede", "mastra_meta_state_dispatch_finding"],
+      "tools": ["mastra_meta_state_report", "mastra_meta_state_list", "mastra_meta_state_resolve", "mastra_meta_state_promote_rule", "mastra_meta_state_sweep", "mastra_meta_state_log_change", "mastra_meta_state_patch", "mastra_meta_state_derive_status", "mastra_meta_state_check_grounding", "mastra_meta_state_refresh_file_index", "mastra_meta_state_query_drift", "mastra_meta_state_batch", "mastra_meta_state_archive", "mastra_meta_state_relationship_validate", "mastra_meta_state_propose_design", "mastra_meta_state_relationships", "mastra_meta_state_re_verify", "mastra_meta_state_supersede", "mastra_meta_state_dispatch_finding"],
       "ordering": "any"
     },
     "introspection": {

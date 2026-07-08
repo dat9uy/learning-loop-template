@@ -42,7 +42,15 @@ describe("meta_state_list entry_kind filter", () => {
       assert.ok(kinds.includes("finding"));
       assert.ok(kinds.includes("change-log"));
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -58,7 +66,15 @@ describe("meta_state_list entry_kind filter", () => {
       assert.strictEqual(text.entries[0].entry_kind, "finding");
       assert.strictEqual(text.entry_kind_filter, "finding");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -74,7 +90,15 @@ describe("meta_state_list entry_kind filter", () => {
       assert.strictEqual(text.entries[0].entry_kind, "change-log");
       assert.strictEqual(text.entry_kind_filter, "change-log");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -106,9 +130,17 @@ describe("meta_state_list entry_kind filter", () => {
       const text = JSON.parse(result.content[0].text);
       assert.strictEqual(text.count, 1);
       assert.strictEqual(text.entries[0].entry_kind, "finding");
-      assert.strictEqual(text.entries[0].status, "reported");
+      assert.strictEqual(text.entries[0].status, "open");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

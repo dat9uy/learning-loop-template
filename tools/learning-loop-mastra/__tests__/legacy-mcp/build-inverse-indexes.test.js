@@ -20,7 +20,7 @@ test("buildInverseIndexes on single-edge entries", () => {
     {
       id: "finding-a",
       entry_kind: "finding",
-      status: "active",
+      status: "open",
       promoted_to_rule: "rule-a",
     },
     {
@@ -40,10 +40,10 @@ test("buildInverseIndexes structural contract on synthetic fixture", () => {
   // guaranteed non-empty Maps (Red-team F11 precondition).
   const fixture = [
     { id: "rule-xxx", entry_kind: "rule", status: "active", origin: "meta-finding-1" },
-    { id: "meta-finding-1", entry_kind: "finding", status: "active", promoted_to_rule: "rule-xxx" },
-    { id: "loop-design-yyy", entry_kind: "loop-design", status: "active", addresses: ["meta-finding-1"] },
-    { id: "meta-change-1", entry_kind: "change-log", status: "active", supersedes: "meta-change-0" },
-    { id: "meta-finding-2", entry_kind: "finding", status: "active", reopens: ["meta-finding-1"] },
+    { id: "meta-finding-1", entry_kind: "finding", status: "open", promoted_to_rule: "rule-xxx" },
+    { id: "loop-design-yyy", entry_kind: "loop-design", status: "open", addresses: ["meta-finding-1"] },
+    { id: "meta-change-1", entry_kind: "change-log", status: "open", supersedes: "meta-change-0" },
+    { id: "meta-finding-2", entry_kind: "finding", status: "open", reopens: ["meta-finding-1"] },
   ];
 
   const inverse = buildInverseIndexes(fixture);

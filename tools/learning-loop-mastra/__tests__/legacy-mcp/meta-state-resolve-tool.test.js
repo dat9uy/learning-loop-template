@@ -48,7 +48,15 @@ describe("meta_state_resolve change-log immutability", () => {
       assert.strictEqual(entry.status, "active");
       assert.strictEqual(entry.resolved_at, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -65,7 +73,7 @@ describe("meta_state_resolve change-log immutability", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Test finding for resolve regression check.",
-        status: "reported",
+        status: "open",
         created_at: "2026-06-02T00:00:00.000Z",
       };
       writeFileSync(
@@ -83,7 +91,15 @@ describe("meta_state_resolve change-log immutability", () => {
       assert.strictEqual(parsed.resolved, true);
       assert.strictEqual(parsed.status, "resolved");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -127,7 +143,15 @@ describe("meta_state_resolve change-log immutability", () => {
       assert.strictEqual(entry.status, "active");
       assert.strictEqual(entry.resolved_at, undefined);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

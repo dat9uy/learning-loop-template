@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
+import { isOpen, isStaleView } from "./stale-view.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -98,7 +99,7 @@ const DISCOVERABILITY_HINTS = Object.freeze([
   "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
   "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_file_index({ path })` to re-hash a cited path's code in the shared fingerprint index after a refactor — one call re-grounds every finding anchored to that path.",
   "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
-  "Findings have 6 statuses: `reported` (24h TTL), `active` (operator-acked), `stale` (past TTL or past staleness window; re-verifiable via meta_state_re_verify), `resolved` (closed), `superseded` (consolidated into a change-log), `auto-resolved` (closed by mechanism). The legacy `expired` status was removed in plan 260611-1000-remove-expired-status; only `stale` parents are cascade-closeable.",
+  "Findings have 3 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log). `archived` is applied at runtime by `meta_state_archive` (not in the persisted enum). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed in plans 260611-1000 and 260707-0812; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
   "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
   "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
   "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/legacy/references/tool-selection-guide.md` for the intent to tool mapping.",
@@ -161,8 +162,11 @@ export function buildProcessHints() {
  * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
+// Plan 260707-0812 Phase 2: terminal Set collapses to {resolved, superseded}
+// (+archived runtime-applied). The 4-member version mirrored the legacy enum;
+// `auto-resolved` is gone (dead write path) and the open-set lives in
+// `isOpen`/`isStaleView` instead of literal status equality.
 const TERMINAL_STATUSES_FOR_DISPATCH = new Set([
-  "auto-resolved",
   "resolved",
   "superseded",
   "archived",
@@ -196,7 +200,11 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   const candidates = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      .filter((e) => e.status === "stale")
+      // Phase 2: source the fixable-candidate filter from the derived view
+      // (`isStaleView`) rather than literal `status === "stale"`. Tolerates
+      // legacy `stale` entries pre-migration and stays correct after the
+      // migration flips them to `open`.
+      .filter((e) => isStaleView(e))
       .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
       .filter((e) => e.severity !== "escalate")
       .filter((e) => !e.ledger_ref)
@@ -222,7 +230,10 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
   const orphanFindings = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      .filter((e) => e.status === "reported" || e.status === "active")
+      // Phase 2: orphan-findings filter uses `isOpen` instead of literal
+      // active|reported; this stays correct through the migration and matches
+      // the post-Phase-4 canonical set.
+      .filter((e) => isOpen(e))
       .filter((e) => dispatchIds.has(e.id))
       .filter((e) => !e.ledger_ref),
     (e) => ({
@@ -294,16 +305,28 @@ export function listAllGatePatterns(root) {
 }
 
 /**
- * List active findings (reported or active status) from meta-state.
+ * Apply an optional `categories` allow-list filter to a finding array.
+ * Returns the input unchanged when the filter is empty/undefined. Shared by
+ * the three findings listers (`listActiveFindings`, `listAllFindings`,
+ * `listAntiPatterns`) to avoid duplicating the allow-list predicate.
+ */
+function filterByCategories(findings, categories) {
+  if (!categories || categories.length === 0) return findings;
+  return findings.filter((e) => categories.includes(e.category));
+}
+
+/**
+ * List active findings (open or open-equivalent status) from meta-state.
+ * Plan 260707-0812 Phase 2: filter is `isOpen(e)` instead of literal
+ * reported|active. `open` is the canonical post-migration status; legacy
+ * `active`/`reported`/`stale` are tolerated by `isOpen` pre-migration.
  */
 export function listActiveFindings(root, { categories } = {}) {
   const entries = readRegistry(root);
-  const activeStatuses = new Set(["reported", "active"]);
-  let findings = entries.filter((e) => activeStatuses.has(e.status) && e.entry_kind === "finding");
-  if (categories && categories.length > 0) {
-    findings = findings.filter((e) => categories.includes(e.category));
-  }
-  return findings;
+  return filterByCategories(
+    entries.filter((e) => isOpen(e) && e.entry_kind === "finding"),
+    categories,
+  );
 }
 
 /**
@@ -311,16 +334,16 @@ export function listActiveFindings(root, { categories } = {}) {
  */
 export function listAntiPatterns(root, { categories } = {}) {
   const entries = readRegistry(root);
-  // Anti-patterns are surfaced in reported/active states; filter out closed
-  // statuses so the list does not include resolved/auto-resolved findings.
-  const CLOSED_STATUSES = new Set(["auto-resolved", "resolved"]);
-  let findings = entries.filter(
-    (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
+  // Anti-patterns are surfaced in open states; filter out closed statuses so
+  // the list does not include resolved/superseded findings. `archived` is
+  // excluded by the `isOpen` check (it tolerates null but not `archived`).
+  const CLOSED_STATUSES = new Set(["resolved", "superseded"]);
+  return filterByCategories(
+    entries.filter(
+      (e) => e.category === "loop-anti-pattern" && !CLOSED_STATUSES.has(e.status)
+    ),
+    categories,
   );
-  if (categories && categories.length > 0) {
-    findings = findings.filter((e) => categories.includes(e.category));
-  }
-  return findings;
 }
 
 /**
@@ -328,11 +351,10 @@ export function listAntiPatterns(root, { categories } = {}) {
  */
 export function listAllFindings(root, { categories } = {}) {
   const entries = readRegistry(root);
-  let findings = entries.filter((e) => e.entry_kind === "finding");
-  if (categories && categories.length > 0) {
-    findings = findings.filter((e) => categories.includes(e.category));
-  }
-  return findings;
+  return filterByCategories(
+    entries.filter((e) => e.entry_kind === "finding"),
+    categories,
+  );
 }
 
 /**
@@ -412,87 +434,115 @@ function buildColdTierCache(root) {
  * Pure function — O(N) over entries. No I/O.
  */
 export function buildInverseIndexes(entries) {
-  const addressesInverse = new Map();
-  const supersedesInverse = new Map();
-  const originInverse = new Map();
-  const promotedToRuleInverse = new Map();
-  const reopensInverse = new Map();
-  const consolidatedIntoInverse = new Map();
-
+  const state = newIndexState();
   for (const entry of entries) {
-    // addresses: loop-design -> findings that address it
-    if (entry.entry_kind === "loop-design" && Array.isArray(entry.addresses)) {
-      for (const findingId of entry.addresses) {
-        if (!addressesInverse.has(findingId)) addressesInverse.set(findingId, []);
-        addressesInverse.get(findingId).push(entry.id);
-      }
-    }
-
-    // supersedes: change-log -> entries it supersedes
-    if (entry.entry_kind === "change-log" && entry.supersedes) {
-      const targetId = entry.supersedes;
-      if (!supersedesInverse.has(targetId)) supersedesInverse.set(targetId, []);
-      supersedesInverse.get(targetId).push(entry.id);
-    }
-
-    // origin: finding -> rules that originated from it
-    if (entry.entry_kind === "rule" && entry.origin) {
-      const findingId = entry.origin;
-      if (!originInverse.has(findingId)) originInverse.set(findingId, []);
-      originInverse.get(findingId).push(entry.id);
-      // Dual-field unification: rule.origin is the canonical promoted_to_rule ref.
-      // Populate promoted_to_rule_inverse from the rule side so inverse indexes
-      // stay complete after migration from finding.promoted_to_rule -> rule.origin.
-      if (!promotedToRuleInverse.has(entry.id)) promotedToRuleInverse.set(entry.id, []);
-      const ptrArr = promotedToRuleInverse.get(entry.id);
-      if (!ptrArr.includes(findingId)) ptrArr.push(findingId);
-    }
-
-    // promoted_to_rule: rule.id -> findings that promoted it
-    if (entry.promoted_to_rule && typeof entry.promoted_to_rule === "string") {
-      const ruleId = entry.promoted_to_rule;
-      if (!promotedToRuleInverse.has(ruleId)) promotedToRuleInverse.set(ruleId, []);
-      promotedToRuleInverse.get(ruleId).push(entry.id);
-    }
-
-    // reopens: finding -> stale findings it re-surfaces (inverse direction).
-    // The legacy 'expired' status was removed in plan 260611-1000; only stale
-    // parents are cascade-closeable today.
-    if (entry.entry_kind === "finding" && Array.isArray(entry.reopens)) {
-      for (const staleId of entry.reopens) {
-        if (!reopensInverse.has(staleId)) reopensInverse.set(staleId, []);
-        reopensInverse.get(staleId).push(entry.id);
-      }
-    }
-
-    // consolidated_into: the forward ref is on the change-log side
-    // (`change-log.consolidates`, CSV or array of finding ids). The inverse
-    // is keyed by change-log id and holds the findings it consolidates.
-    // This powers `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
-    // returning `inbound.consolidated_by`. (See meta-state.js JSDoc for the
-    // canonical direction description.)
-    if (entry.entry_kind === "change-log" && entry.consolidates !== undefined) {
-      const ids = typeof entry.consolidates === "string"
-        ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
-        : Array.isArray(entry.consolidates)
-          ? entry.consolidates
-          : [];
-      if (!consolidatedIntoInverse.has(entry.id)) consolidatedIntoInverse.set(entry.id, []);
-      const arr = consolidatedIntoInverse.get(entry.id);
-      for (const id of ids) {
-        if (!arr.includes(id)) arr.push(id);
-      }
-    }
+    indexAddresses(entry, state);
+    indexSupersedes(entry, state);
+    indexOrigin(entry, state);
+    indexPromotedToRule(entry, state);
+    indexReopens(entry, state);
+    indexConsolidatedInto(entry, state);
   }
+  return state.export();
+}
 
+function newIndexState() {
   return {
-    addresses_inverse: addressesInverse,
-    supersedes_inverse: supersedesInverse,
-    origin_inverse: originInverse,
-    promoted_to_rule_inverse: promotedToRuleInverse,
-    reopens_inverse: reopensInverse,
-    consolidated_into_inverse: consolidatedIntoInverse,
+    addresses_inverse: new Map(),
+    supersedes_inverse: new Map(),
+    origin_inverse: new Map(),
+    promoted_to_rule_inverse: new Map(),
+    reopens_inverse: new Map(),
+    consolidated_into_inverse: new Map(),
+    export() {
+      return {
+        addresses_inverse: this.addresses_inverse,
+        supersedes_inverse: this.supersedes_inverse,
+        origin_inverse: this.origin_inverse,
+        promoted_to_rule_inverse: this.promoted_to_rule_inverse,
+        reopens_inverse: this.reopens_inverse,
+        consolidated_into_inverse: this.consolidated_into_inverse,
+      };
+    },
   };
+}
+
+function pushToIndex(index, key, value) {
+  if (!index.has(key)) index.set(key, []);
+  index.get(key).push(value);
+}
+
+function pushUnique(index, key, value) {
+  if (!index.has(key)) index.set(key, []);
+  const arr = index.get(key);
+  if (!arr.includes(value)) arr.push(value);
+}
+
+function indexAddresses(entry, state) {
+  // addresses: loop-design -> findings that address it
+  if (entry.entry_kind !== "loop-design" || !Array.isArray(entry.addresses)) return;
+  for (const findingId of entry.addresses) {
+    pushToIndex(state.addresses_inverse, findingId, entry.id);
+  }
+}
+
+function indexSupersedes(entry, state) {
+  // supersedes: change-log -> entries it supersedes
+  if (entry.entry_kind !== "change-log" || !entry.supersedes) return;
+  pushToIndex(state.supersedes_inverse, entry.supersedes, entry.id);
+}
+
+function indexOrigin(entry, state) {
+  // origin: finding -> rules that originated from it
+  if (entry.entry_kind !== "rule" || !entry.origin) return;
+  const findingId = entry.origin;
+  pushToIndex(state.origin_inverse, findingId, entry.id);
+  // Dual-field unification: rule.origin is the canonical promoted_to_rule ref.
+  // Populate promoted_to_rule_inverse from the rule side so inverse indexes
+  // stay complete after migration from finding.promoted_to_rule -> rule.origin.
+  // DEDUPED: rule.origin contributes once even if a finding also declares
+  // promoted_to_rule pointing at this rule (synthetic fixture for the
+  // migration period). The inverse direction (`indexPromotedToRule`) does NOT
+  // dedup, so a dual-field entry produces 2 refs — test fixture locks this.
+  pushUnique(state.promoted_to_rule_inverse, entry.id, findingId);
+}
+
+function indexPromotedToRule(entry, state) {
+  // promoted_to_rule: rule.id -> findings that promoted it
+  if (!entry.promoted_to_rule || typeof entry.promoted_to_rule !== "string") return;
+  pushToIndex(state.promoted_to_rule_inverse, entry.promoted_to_rule, entry.id);
+}
+
+function indexReopens(entry, state) {
+  // reopens: finding -> stale findings it re-surfaces (inverse direction).
+  // The legacy 'expired' status was removed in plan 260611-1000; only stale
+  // parents are cascade-closeable today.
+  if (entry.entry_kind !== "finding" || !Array.isArray(entry.reopens)) return;
+  for (const staleId of entry.reopens) {
+    pushToIndex(state.reopens_inverse, staleId, entry.id);
+  }
+}
+
+function indexConsolidatedInto(entry, state) {
+  // consolidated_into: the forward ref is on the change-log side
+  // (`change-log.consolidates`, CSV or array of finding ids). The inverse
+  // is keyed by change-log id and holds the findings it consolidates.
+  // This powers `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
+  // returning `inbound.consolidated_by`. (See meta-state.js JSDoc for the
+  // canonical direction description.)
+  if (entry.entry_kind !== "change-log" || entry.consolidates === undefined) return;
+  const ids = typeof entry.consolidates === "string"
+    ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
+    : Array.isArray(entry.consolidates)
+      ? entry.consolidates
+      : [];
+  if (!state.consolidated_into_inverse.has(entry.id)) {
+    state.consolidated_into_inverse.set(entry.id, []);
+  }
+  const arr = state.consolidated_into_inverse.get(entry.id);
+  for (const id of ids) {
+    if (!arr.includes(id)) arr.push(id);
+  }
 }
 
 /**
@@ -501,6 +551,18 @@ export function buildInverseIndexes(entries) {
  * Pure function — O(N) over entries. No I/O.
  */
 export function buildRegistrySummary(entries, fileIndex) {
+  return {
+    counts: computeCounts(entries),
+    coverage: computeCoverage(entries),
+    top_references: computeTopReferences(entries),
+    drift: computeDriftEntries(entries, fileIndex),
+    last_generated_at: new Date().toISOString(),
+  };
+}
+
+// Bucket entries by (kind, status). Unknown kinds default to "finding" so the
+// bucket stays the same shape as legacy registries with implicit kind.
+function computeCounts(entries) {
   const counts = {};
   for (const entry of entries) {
     const kind = entry.entry_kind || "finding";
@@ -508,58 +570,78 @@ export function buildRegistrySummary(entries, fileIndex) {
     if (!counts[kind]) counts[kind] = {};
     counts[kind][status] = (counts[kind][status] || 0) + 1;
   }
+  return counts;
+}
 
+// Coverage = mechanism_check adoption on resolved findings + broken refs
+// (loop-design.proposed_design_for pointing to non-existent ids) + orphan
+// findings (no consolidated_into, no promoted_to_rule, no addressing design).
+function computeCoverage(entries) {
   const resolved = entries.filter((e) => e.entry_kind === "finding" && e.status === "resolved");
   const mechanismCheckCount = resolved.filter((e) => e.mechanism_check === true).length;
-  const coverage = {
+  const entryIds = new Set(entries.map((e) => e.id));
+  const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
+  return {
     resolved_total: resolved.length,
     mechanism_check_count: mechanismCheckCount,
     mechanism_check_pct: resolved.length > 0 ? Math.round((mechanismCheckCount / resolved.length) * 100) : 0,
-    broken_refs: 0,
-    orphan_count: 0,
+    broken_refs: countBrokenRefs(loopDesigns, entryIds),
+    orphan_count: countOrphanFindings(entries, loopDesigns),
   };
+}
 
-  // Count broken refs (proposed_design_for pointing to non-existent ids)
-  const entryIds = new Set(entries.map((e) => e.id));
-  const loopDesigns = entries.filter((e) => e.entry_kind === "loop-design");
+function countBrokenRefs(loopDesigns, entryIds) {
+  let count = 0;
   for (const design of loopDesigns) {
-    if (design.proposed_design_for) {
-      const refs = design.proposed_design_for ?? [];
-      for (const ref of refs) {
-        if (!entryIds.has(ref)) coverage.broken_refs++;
-      }
+    if (!design.proposed_design_for) continue;
+    const refs = design.proposed_design_for ?? [];
+    for (const ref of refs) {
+      if (!entryIds.has(ref)) count++;
     }
   }
+  return count;
+}
 
-  // Count orphan findings
+function countOrphanFindings(entries, loopDesigns) {
+  let count = 0;
   for (const entry of entries) {
     if (entry.entry_kind !== "finding") continue;
     if (entry.consolidated_into || entry.promoted_to_rule) continue;
     const hasDesign = loopDesigns.some((d) => d.addresses?.includes(entry.id));
-    if (!hasDesign) coverage.orphan_count++;
+    if (!hasDesign) count++;
   }
+  return count;
+}
 
-  // Top references: most-cited entry ids (sum of inverse-index sizes)
+// Top 5 most-cited entry ids across all 6 inverse-index maps. Citation = sum
+// of inverse-index sizes for the entry.
+function computeTopReferences(entries) {
   const inverse = buildInverseIndexes(entries);
   const citationCounts = new Map();
-  for (const map of [inverse.addresses_inverse, inverse.supersedes_inverse, inverse.origin_inverse, inverse.promoted_to_rule_inverse, inverse.reopens_inverse, inverse.consolidated_into_inverse]) {
+  for (const map of [
+    inverse.addresses_inverse,
+    inverse.supersedes_inverse,
+    inverse.origin_inverse,
+    inverse.promoted_to_rule_inverse,
+    inverse.reopens_inverse,
+    inverse.consolidated_into_inverse,
+  ]) {
     for (const [id, refs] of map.entries()) {
       citationCounts.set(id, (citationCounts.get(id) || 0) + refs.length);
     }
   }
-  const topReferences = Array.from(citationCounts.entries())
+  return Array.from(citationCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([id, count]) => ({ id, count }));
+}
 
-  // Drift: most recent active findings with mechanism_check=true
-  // F12: display the index-authoritative fingerprint (file-index.jsonl), falling
-  // back to the vestigial per-record field. Agents that read this surface (e.g.
-  // selfImprovementAgent's "REFUSE resolve when stale" check) must consult the
-  // authoritative baseline, not a frozen per-record value that may be stale.
-  // `fileIndex` is passed in (optional) to keep this function pure — callers with
-  // a root pass readFileIndex(root); callers without it pass nothing (fallback).
-  const driftEntries = entries
+// Drift: 5 most-recent non-resolved mechanism_check findings. F12: display the
+// index-authoritative fingerprint (file-index.jsonl), falling back to the
+// vestigial per-record field. `fileIndex` is optional — callers with a root
+// pass readFileIndex(root); callers without it pass nothing (fallback).
+function computeDriftEntries(entries, fileIndex) {
+  return entries
     .filter((e) => e.entry_kind === "finding" && e.mechanism_check === true && e.status !== "resolved")
     .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
     .slice(0, 5)
@@ -569,14 +651,6 @@ export function buildRegistrySummary(entries, fileIndex) {
       created_at: e.created_at,
       code_fingerprint: (fileIndex && fileIndex.get(canonicalIndexKey(e.evidence_code_ref))) ?? e.code_fingerprint ?? null,
     }));
-
-  return {
-    counts,
-    coverage,
-    top_references: topReferences,
-    drift: driftEntries,
-    last_generated_at: new Date().toISOString(),
-  };
 }
 
 /**

@@ -4,7 +4,6 @@ import {
   readRegistry,
   writeEntry,
   updateEntry,
-  checkExpiry,
   filterEntries,
   generateId,
   tryClaimSessionId,
@@ -17,7 +16,6 @@ const REGISTRY_FILENAME = "meta-state.jsonl";
 
 function makeEntry(overrides = {}) {
   const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return {
     id: overrides.id ?? generateId("test"),
     entry_kind: overrides.entry_kind ?? "finding",
@@ -28,10 +26,10 @@ function makeEntry(overrides = {}) {
     evidence_journal: overrides.evidence_journal ?? "docs/journals/test.md",
     ...(overrides.evidence_code_ref && { evidence_code_ref: overrides.evidence_code_ref }),
     ...(overrides.evidence_test && { evidence_test: overrides.evidence_test }),
-    status: overrides.status ?? "reported",
+    // Plan 260707-0812 Phase 2: enum collapsed to {open, resolved, superseded}.
+    // `expires_at` and `acked_at` are vestigial — no longer written by any tool.
+    status: overrides.status ?? "open",
     created_at: overrides.created_at ?? now.toISOString(),
-    expires_at: overrides.expires_at ?? tomorrow.toISOString(),
-    acked_at: overrides.acked_at ?? null,
     resolved_at: overrides.resolved_at ?? null,
     resolved_by: overrides.resolved_by ?? null,
     ...overrides,
@@ -74,35 +72,15 @@ describe("meta-state registry core", () => {
     const e = makeEntry({ id: generateId("patch-test") });
     await writeEntry(tempDir, e);
     const now = new Date().toISOString();
-    await updateEntry(tempDir, e.id, { status: "active", acked_at: now });
+    await updateEntry(tempDir, e.id, { last_verified_at: now });
     const entries = readRegistry(tempDir);
     const updated = entries.find((entry) => entry.id === e.id);
     assert.ok(updated);
-    assert.strictEqual(updated.status, "active");
-    assert.strictEqual(updated.acked_at, now);
+    // Plan 260707-0812 Phase 2: enum is {open, resolved, superseded}; the
+    // legacy `acked_at` field is gone (replaced by `last_verified_at`).
+    assert.strictEqual(updated.last_verified_at, now);
     assert.strictEqual(updated.category, e.category);
     process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkExpiry returns stale when 24h passed on reported entry", async () => {
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 25 * 60 * 60 * 1000);
-    const e = makeEntry({
-      status: "reported",
-      created_at: yesterday.toISOString(),
-      expires_at: yesterday.toISOString(),
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, "stale");
-  });
-
-  test("checkExpiry returns null on active entry with no TTL", async () => {
-    const e = makeEntry({
-      status: "active",
-      expires_at: null,
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, null);
   });
 
   test("filterEntries by category", async () => {
@@ -118,13 +96,13 @@ describe("meta-state registry core", () => {
 
   test("filterEntries by status", async () => {
     const entries = [
-      makeEntry({ id: "b1", status: "reported" }),
-      makeEntry({ id: "b2", status: "active" }),
-      makeEntry({ id: "b3", status: "reported" }),
+      makeEntry({ id: "b1", status: "open" }),
+      makeEntry({ id: "b2", status: "open" }),
+      makeEntry({ id: "b3", status: "open" }),
     ];
-    const result = filterEntries(entries, { status: "active" });
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].id, "b2");
+    const result = filterEntries(entries, { status: "open" });
+    assert.strictEqual(result.length, 3);
+    assert.deepStrictEqual(result.map((e) => e.id).sort(), ["b1", "b2", "b3"]);
   });
 
   test("filterEntries by affected_system", async () => {
@@ -139,13 +117,13 @@ describe("meta-state registry core", () => {
 
   test("filterEntries by multiple fields (intersection)", async () => {
     const entries = [
-      makeEntry({ id: "d1", category: "gate-logic-bug", status: "reported" }),
-      makeEntry({ id: "d2", category: "gate-logic-bug", status: "active" }),
-      makeEntry({ id: "d3", category: "schema-drift", status: "reported" }),
+      makeEntry({ id: "d1", category: "gate-logic-bug", status: "open" }),
+      makeEntry({ id: "d2", category: "gate-logic-bug", status: "open" }),
+      makeEntry({ id: "d3", category: "schema-drift", status: "open" }),
     ];
-    const result = filterEntries(entries, { category: "gate-logic-bug", status: "reported" });
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].id, "d1");
+    const result = filterEntries(entries, { category: "gate-logic-bug", status: "open" });
+    assert.strictEqual(result.length, 2);
+    assert.deepStrictEqual(result.map((e) => e.id).sort(), ["d1", "d2"]);
   });
 
   test("compaction removes old terminal entries on updateEntry", async () => {
@@ -154,13 +132,13 @@ describe("meta-state registry core", () => {
     const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     const oldTerminal = makeEntry({
       id: generateId("old-terminal"),
-      status: "auto-resolved",
+      status: "resolved",
       created_at: eightDaysAgo.toISOString(),
       resolved_at: eightDaysAgo.toISOString(),
     });
     const freshReported = makeEntry({
       id: generateId("fresh-reported"),
-      status: "reported",
+      status: "open",
     });
     await writeEntry(tempDir, oldTerminal);
     await writeEntry(tempDir, freshReported);
@@ -200,19 +178,9 @@ describe("meta-state registry core", () => {
     process.env.GATE_ROOT = tempDir;
     const e = makeEntry({ id: generateId("exists") });
     await writeEntry(tempDir, e);
-    const result = await updateEntry(tempDir, "meta-000000T0000Z-nonexistent", { status: "active" });
+    const result = await updateEntry(tempDir, "meta-000000T0000Z-nonexistent", { status: "open" });
     assert.strictEqual(result, null);
     process.env.GATE_ROOT = originalEnv;
-  });
-
-  test("checkExpiry returns null when expires_at is in future", async () => {
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const e = makeEntry({
-      status: "reported",
-      expires_at: tomorrow.toISOString(),
-    });
-    const result = checkExpiry(e);
-    assert.strictEqual(result, null);
   });
 
   test("filterEntries with empty filters returns all entries", async () => {
@@ -245,9 +213,8 @@ describe("meta-state registry core", () => {
       description: "Claim test finding. runtime: droid; layer: L2;",
       evidence_code_ref: "tools/test.js",
       session_id: key.sessionId,
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       version: 0,
     });
 
@@ -330,7 +297,7 @@ describe("meta-state change-log compaction guard", () => {
         severity: "warning",
         affected_system: "gate-logic",
         description: "Old terminal finding that should be compacted.",
-        status: "auto-resolved",
+        status: "resolved",
         created_at: eightDaysAgo.toISOString(),
         resolved_at: eightDaysAgo.toISOString(),
       };
@@ -341,7 +308,7 @@ describe("meta-state change-log compaction guard", () => {
         change_target: "core/test.js",
         change_diff: { added: [], removed: [], changed: [] },
         reason: "Old change-log entry that must NOT be compacted even if terminal.",
-        status: "active",
+        status: "active", // change-log immutable audit log: status="active" (literal)
         created_at: eightDaysAgo.toISOString(),
       };
       await writeEntry(tempDir, oldTerminal);
@@ -357,7 +324,7 @@ describe("meta-state change-log compaction guard", () => {
         severity: "warning",
         affected_system: "gate-logic",
         description: "Fresh entry to trigger compaction.",
-        status: "reported",
+        status: "open",
         created_at: new Date().toISOString(),
       };
       await writeEntry(tempDir, fresh);
@@ -383,7 +350,7 @@ describe("meta-state description marker drift detector", () => {
     const active = entries.filter((e) =>
       e.entry_kind === "finding"
       && e.subtype === "mcp-client-loading"
-      && (e.status === "active" || e.status === "reported"),
+      && (e.status === "active" || e.status === "open"),
     );
 
     // If no active entries, the test trivially passes.

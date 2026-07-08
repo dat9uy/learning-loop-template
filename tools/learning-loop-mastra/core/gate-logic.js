@@ -22,6 +22,7 @@ import { readRegistry, metaStateRuleEntrySchema, readFileIndex } from "./meta-st
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { readGateOverride } from "./gate-override.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
+import { isOpen } from "./stale-view.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATTERNS_RAW = JSON.parse(readFileSync(join(__dirname, "patterns.json"), "utf8"));
@@ -655,7 +656,7 @@ export function checkResolutionEvidence(rule, root) {
   if (rule_id === "rule-no-orphaned-evidence") {
     const entries = readRegistry(root);
     const activeGrounded = entries.filter(
-      (e) => e.entry_kind === "finding" && (e.status === "active" || e.status === "reported") && e.mechanism_check === true
+      (e) => e.entry_kind === "finding" && isOpen(e) && e.mechanism_check === true
     );
     const orphans = [];
     for (const entry of activeGrounded) {
@@ -722,7 +723,7 @@ export function checkResolutionEvidence(rule, root) {
     e.entry_kind === "finding"
     && e.subtype === "mcp-client-loading"
     && e.session_id === pattern
-    && (e.status === "active" || e.status === "reported"),
+    && isOpen(e),
   );
   if (blocking) {
     return {

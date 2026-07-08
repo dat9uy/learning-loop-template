@@ -43,7 +43,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries[0].change_dimension, "semantic");
       assert.strictEqual(entries[0].status, "active");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -64,7 +72,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(text.change_dimension, "surface");
       assert.ok(text.created_at);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -86,7 +102,15 @@ describe("meta_state_log_change tool", () => {
       assert.ok(entry.id);
       assert.strictEqual(entry.change_dimension, "mechanical");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -136,7 +160,15 @@ describe("meta_state_log_change tool", () => {
       assert.deepStrictEqual(entries[0].applies_to.tools, ["meta_state_log_change", "meta_state_list"]);
       assert.deepStrictEqual(entries[0].applies_to.surfaces, ["meta"]);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -157,7 +189,15 @@ describe("meta_state_log_change tool", () => {
       const entries = readRegistry(tempDir);
       assert.strictEqual(entries[0].supersedes, "meta-260601T0000Z-old-design");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -176,7 +216,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries[0].entry_kind, "change-log");
       assert.strictEqual(entries[0].change_target, "tools/meta-state-list-tool.js");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -200,7 +248,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries[0].evidence_journal, "journal.md");
       assert.strictEqual(entries[0].evidence, undefined, "log-change tool must NOT write nested evidence block");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -234,7 +290,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries[0].id, parsed1.id);
     } finally {
       _clearIdempotencyCacheForTests();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -268,7 +332,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries.length, 2);
     } finally {
       _clearIdempotencyCacheForTests();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -300,7 +372,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries.length, 2);
     } finally {
       _clearIdempotencyCacheForTests();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -340,7 +420,15 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(entries.length, 1);
     } finally {
       _clearIdempotencyCacheForTests();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

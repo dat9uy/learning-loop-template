@@ -17,7 +17,11 @@ function setup() {
 }
 
 function teardown() {
-  process.env.GATE_ROOT = originalRoot;
+  if (originalRoot === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalRoot;
+  }
 }
 
 test("meta_state_report persists session_id when provided", async () => {

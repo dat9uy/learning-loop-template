@@ -87,7 +87,15 @@ describe("meta_state_dispatch_finding", () => {
       const sidecarPath = join(tempDir, "runtime-state.jsonl");
       assert.ok(!existsSync(sidecarPath), "prepare must not write runtime-state.jsonl");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -125,7 +133,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(f.ledger_ref, `dispatch-${id}`);
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -149,7 +165,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(body.issue_url, "https://github.com/example/repo/issues/99");
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -178,7 +202,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(sidecar.length, 1, `expected 1 ledger row, got ${sidecar.length}`);
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -208,7 +240,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(sidecar.length, 1);
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -231,7 +271,15 @@ describe("meta_state_dispatch_finding", () => {
       const f = after.find((e) => e.id === id);
       assert.ok(!f.ledger_ref, "refused commit must not set ledger_ref");
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -250,7 +298,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(body.reason, "operator_role_required");
     } finally {
       clearPreflightMarker(tempDir);
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -276,7 +332,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(f.ledger_ref, `dispatch-${id}`);
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -309,7 +373,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(sidecar.length, 1, `expected 1 ledger row, got ${sidecar.length}`);
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -335,7 +407,7 @@ describe("meta_state_dispatch_finding", () => {
         delta: null,
         source_ref: `local:meta-state:${id}`,
         timestamp: new Date().toISOString(),
-        status: "active",
+        status: "open",
         fingerprint: null,
         metadata: {
           issue_number: coords.issue_number,
@@ -363,7 +435,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.strictEqual(after.ledger_ref, `dispatch-${id}`, "orphan self-heal should patch ledger_ref");
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -378,7 +458,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.ok(body.issue_title);
       assert.ok(body.issue_body);
     } finally {
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 
@@ -414,7 +502,15 @@ describe("meta_state_dispatch_finding", () => {
       assert.ok(!f.ledger_ref, "invalid_coords must not set ledger_ref");
     } finally {
       clearOp();
-      process.env.GATE_ROOT = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
     }
   });
 });

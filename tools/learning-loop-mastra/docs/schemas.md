@@ -36,27 +36,21 @@ anti-patterns, budget checks.
 | `severity` | enum | yes | `warning`, `escalate` |
 | `affected_system` | enum | yes | `meta`, `gate-logic`, `record-validation`, `index-extractor`, `mcp-tools`, `workflow-registry`, `vnstock_vendor`, `vnstock`, `fastapi`, `tanstack`, `product`, `api`, `web`, `meta-state-tools`, `runtime-state` |
 | `description` | string | yes | min 20 chars |
-| `status` | enum | auto | `reported` → `active` → `stale` / `resolved` / `superseded` / `auto-resolved` |
+| `status` | enum | auto | `open` / `resolved` / `superseded` (+ `archived` runtime-applied, outside the enum). The legacy `reported`/`active`/`stale`/`auto-resolved` statuses were collapsed in plan 260707-0812; read sites use `isOpen`/`isStaleView` from `core/stale-view.js`. |
 | `evidence_code_ref` | string | no | e.g. `path/to/file.js:line` |
 | `code_fingerprint` | string | auto | `sha256:<64-hex>` — set by SP2 grounding |
 | `mechanism_check` | boolean | auto | Opt-in for grounding checks; defaults to true when `evidence_code_ref` is set |
-| `expires_at` | string | auto | 24h TTL; cleared by `meta_state_ack` |
+| `expires_at` | string | auto | Vestigial — no longer written by any tool. Legacy entries may still carry the field for read-compat. |
 | `reopens` | string[] | no | Finding ids whose stale lifecycle this entry re-surfaces |
 
 **Status lifecycle:**
 
 ```
-reported (24h TTL)
-  ↓ meta_state_ack
-active (operator-acked, no TTL)
-  ↓ TTL or staleness window
-stale (re-verifiable via meta_state_re_verify)
-  ↓ meta_state_resolve
-resolved (terminal)
-
-reported/active
-  ↓ meta_state_supersede
+open (newly reported; replaces reported/active/stale)
+  ↓ meta_state_resolve / meta_state_supersede / meta_state_dispatch_finding
+resolved (terminal, closed)
 superseded (terminal, consolidated into a change-log)
+archived (runtime-applied, outside the enum)
 ```
 
 **Full schema:** 30+ fields. See `core/meta-state.js:56-111` for the complete

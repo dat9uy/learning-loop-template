@@ -34,9 +34,9 @@ describe("readRegistry LRU cache", () => {
 
   it("cold cache miss returns parsed entries", () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
-      { id: "meta-test-2", entry_kind: "finding", status: "reported" },
-      { id: "meta-test-3", entry_kind: "change-log", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
+      { id: "meta-test-2", entry_kind: "finding", status: "open" },
+      { id: "meta-test-3", entry_kind: "change-log", status: "open" },
     ]);
     invalidateCache(root);
     const entries = readRegistry(root);
@@ -46,7 +46,7 @@ describe("readRegistry LRU cache", () => {
 
   it("warm cache hit returns the SAME array reference", () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
     ]);
     invalidateCache(root);
     const first = readRegistry(root);
@@ -56,7 +56,7 @@ describe("readRegistry LRU cache", () => {
 
   it("mtime change invalidates cache", async () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
     ]);
     invalidateCache(root);
     const before = readRegistry(root);
@@ -65,8 +65,8 @@ describe("readRegistry LRU cache", () => {
     const mtimeBefore = statSync(registryPath).mtimeMs;
     await sleep(1100);
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
-      { id: "meta-test-2", entry_kind: "finding", status: "reported" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
+      { id: "meta-test-2", entry_kind: "finding", status: "open" },
     ]);
     const mtimeAfter = statSync(registryPath).mtimeMs;
     assert.notEqual(mtimeBefore, mtimeAfter, "mtime must have changed");
@@ -78,7 +78,7 @@ describe("readRegistry LRU cache", () => {
 
   it("size change invalidates cache even at same mtime", async () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
     ]);
     invalidateCache(root);
     const before = readRegistry(root);
@@ -88,8 +88,8 @@ describe("readRegistry LRU cache", () => {
 
     // Write different content but preserve mtime
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
-      { id: "meta-test-2", entry_kind: "finding", status: "reported" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
+      { id: "meta-test-2", entry_kind: "finding", status: "open" },
     ]);
     // Restore original mtime to simulate 1s-granularity filesystem
     const { utimesSync } = await import("node:fs");
@@ -102,7 +102,7 @@ describe("readRegistry LRU cache", () => {
 
   it("writeEntry invalidates cache", async () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
     ]);
     invalidateCache(root);
     const before = readRegistry(root);
@@ -115,9 +115,8 @@ describe("readRegistry LRU cache", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding for writeEntry invalidation (min 20 chars)",
-      status: "reported",
+      status: "open",
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
 
     const after = readRegistry(root);
@@ -127,7 +126,7 @@ describe("readRegistry LRU cache", () => {
 
   it("meta_state_batch invalidates cache once", async () => {
     writeRegistry(root, [
-      { id: "meta-test-1", entry_kind: "finding", status: "active" },
+      { id: "meta-test-1", entry_kind: "finding", status: "open" },
     ]);
     invalidateCache(root);
     const before = readRegistry(root);
@@ -146,14 +145,17 @@ describe("readRegistry LRU cache", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: `Batch entry ${i} for cache invalidation test (min 20 chars)`,
-        status: "reported",
+        status: "open",
         created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       },
     }));
 
     const result = await metaStateBatchTool.handler({ operations: ops });
-    process.env.GATE_ROOT = originalGateRoot;
+    if (originalGateRoot === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalGateRoot;
+    }
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.applied, 10, "batch must apply all 10 ops");
 

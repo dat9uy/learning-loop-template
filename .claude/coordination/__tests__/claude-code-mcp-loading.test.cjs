@@ -59,7 +59,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
         evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
         mechanism_check: true,
       });
-      assert.strictEqual(reportResult.status, "reported");
+      assert.strictEqual(reportResult.status, "open");
       const findingId = reportResult.id;
       assert.ok(findingId.startsWith("meta-"));
 
@@ -176,7 +176,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
             `runtime: ${runtime}; layer: L1;`,
           evidence_code_ref: "tools/learning-loop-mastra/mastra/server.js",
           session_id: sessionId,
-          status: "reported",
+          status: "open",
           auto_resolve: null,
           created_at: now.toISOString(),
           expires_at: expiresAt,

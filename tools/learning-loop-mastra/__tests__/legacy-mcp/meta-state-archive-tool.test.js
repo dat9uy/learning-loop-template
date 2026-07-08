@@ -62,7 +62,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-override-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -120,7 +120,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-active-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -175,7 +175,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-finding-ok",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -209,7 +209,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -219,7 +219,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-2",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -243,7 +243,7 @@ describe("meta_state_archive", () => {
     assert.ok(parsed.preview.find((p) => p.id === "archive-preview-2"), "preview includes second id");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.status !== "archived"), "must not archive before confirmation");
   });
 
   it("archives multi-id override when confirm is true", async () => {
@@ -251,7 +251,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-confirm-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -261,7 +261,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-confirm-2",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -289,7 +289,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-single-1",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -326,7 +326,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-finding",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -365,7 +365,7 @@ describe("meta_state_archive", () => {
     assert.equal(findingPreview.rejected_reason, undefined, "finding must not be flagged");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.status !== "archived"), "must not archive before confirmation");
   });
 
   it("preview handles missing and already-archived entries", async () => {
@@ -386,7 +386,7 @@ describe("meta_state_archive", () => {
       JSON.stringify({
         id: "archive-preview-active",
         entry_kind: "finding",
-        status: "active",
+        status: "open",
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -417,6 +417,6 @@ describe("meta_state_archive", () => {
     assert.equal(activePreview.rejected_reason, undefined, "active finding not rejected");
 
     const entries = readRegistry(root);
-    assert.ok(entries.every((e) => e.id !== "archive-preview-active" || e.status === "active"), "must not archive before confirmation");
+    assert.ok(entries.every((e) => e.id !== "archive-preview-active" || e.status !== "archived"), "must not archive before confirmation");
   });
 });

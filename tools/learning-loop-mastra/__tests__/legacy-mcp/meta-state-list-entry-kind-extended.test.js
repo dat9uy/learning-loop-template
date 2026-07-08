@@ -16,7 +16,11 @@ function setupFixture() {
 }
 
 function teardown() {
-  process.env.GATE_ROOT = originalEnv;
+  if (originalEnv === undefined) {
+    delete process.env.GATE_ROOT;
+  } else {
+    process.env.GATE_ROOT = originalEnv;
+  }
 }
 
 async function call(args) {
@@ -49,7 +53,7 @@ test("meta_state_list with entry_kind='rule' returns only rule entries", async (
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -84,7 +88,7 @@ test("meta_state_list with entry_kind='loop-design' returns only loop-design ent
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -131,7 +135,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
 
@@ -155,7 +159,7 @@ test("meta_state_list with entry_kind='finding' returns the same entries as befo
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Test finding description that is at least 20 characters long.",
-      status: "active",
+      status: "open",
       created_at: "2026-06-06T20:00:00.000Z",
     });
     await writeTestEntry(root, {

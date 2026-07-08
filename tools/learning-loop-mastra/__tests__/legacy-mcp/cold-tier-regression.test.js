@@ -3,6 +3,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
+import { derivedStaleSet, isOpen } from "../../core/stale-view.js";
 import { test } from "node:test";
 import assert from "node:assert";
 import { existsSync } from "node:fs";
@@ -67,14 +68,24 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // count of 10 stale-mc findings has zero headroom against the original
   // threshold of 3. Re-tightened to 12 (10 + 2 headroom for organic drift)
   // to absorb new stale findings without immediately breaking the gate.
-  // Tightening to the documented 3 requires resolving the 10 real underlying
-  // issues in a follow-up plan.
-  const staleMcFindings = current.all_findings.filter(
-    (f) => f.status === "stale" && (f.mechanism_check === true || f.mechanism_check === null)
-  );
+  // Phase 6 removed in Phase 4 (plan 260707-0812): the legacy `status:"stale"`
+  // assertion is gone because the 22-finding migration (active + stale → open)
+  // landed and there are no persisted "stale" statuses left. The derived-view
+  // cap below is the post-migration threshold; tightening it requires
+  // resolving the underlying mechanism_check issues in a follow-up plan.
+
+  // Phase 7 (plan 260707-0812 Phase 1, finalized Phase 4): derived-stale view
+  // cap. Sourced from the new `derivedStaleSet` predicate (age >
+  // STALENESS_WINDOW_MS OR hash drift via file-index.jsonl) over the live
+  // registry, scoped to mechanism_check true|null. Threshold 16 = precompute
+  // 14 + 2 headroom (matches the original 12-vs-10 headroom convention).
+  const derivedStaleMc = derivedStaleSet(current.all_findings, {
+    now: Date.now(),
+    fileIndex,
+  }).filter((f) => f.mechanism_check === true || f.mechanism_check === null);
   assert.ok(
-    staleMcFindings.length <= 12,
-    `Phase 6: sweep-success broken — ${staleMcFindings.length} stale mechanism_check findings exceed threshold 12 (re-tightened for post-Rec 8 migration with 2 headroom): ${staleMcFindings.map((f) => f.id).join(", ")}`
+    derivedStaleMc.length <= 16,
+    `Phase 7: derived-stale cap broken — ${derivedStaleMc.length} derived stale mechanism_check findings exceed threshold 16 (14 + 2 headroom; precompute from plan 260707-0812 Phase 1): ${derivedStaleMc.map((f) => f.id).join(", ")}`
   );
 
   // Size sanity: cold tier should not collapse to a near-empty payload
@@ -98,7 +109,7 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // and known probe artifacts (tools/test.js) — these are transient findings whose refs
   // intentionally describe behavior rather than point to stable code locations.
   // Plan 260611-1000 removed the 'expired' status; 'stale' is non-terminal.
-  const terminalStatuses = new Set(["auto-resolved", "resolved", "superseded", "archived"]);
+  const terminalStatuses = new Set(["resolved", "superseded", "archived"]);
   const findingsWithCodeRef = current.all_findings.filter(
     (f) => !terminalStatuses.has(f.status) && typeof f.evidence_code_ref === "string" && f.evidence_code_ref.length > 0
   );
@@ -214,8 +225,9 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   //  detection isn't shadowed by drift failures. See the comment block at the
   //  top of the test body for the rationale.)
 
-  // Active findings subset invariant: active_findings is a strict subset of all_findings
-  // with status in {reported, active}
+  // Active findings subset invariant: active_findings is a strict subset of
+  // all_findings; every active_findings entry satisfies `isOpen` (post-migration
+  // the open set is status:"open", with legacy active/reported/stale tolerated).
   const allFindingIds = new Set(current.all_findings.map((f) => f.id));
   for (const af of current.active_findings) {
     assert.ok(
@@ -223,8 +235,8 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
       `active_findings entry ${af.id} is not present in all_findings`
     );
     assert.ok(
-      af.status === "reported" || af.status === "active",
-      `active_findings entry ${af.id} has unexpected status: ${af.status}`
+      isOpen(af),
+      `active_findings entry ${af.id} has unexpected status: ${af.status} (isOpen must be true)`
     );
   }
 

@@ -6,11 +6,16 @@
 //
 // Conditional-emission invariant (enforced by regression-guard tests):
 //   - Pass path (gapOpen=false, no prior finding): writes NOTHING.
-//   - Pass path (gapOpen=false, prior active finding): resolves it (1 write).
+//   - Pass path (gapOpen=false, prior open finding): resolves it (1 write).
 //   - Fail path (gapOpen=true): dedup-write via tryClaimSessionId (1 write on
 //     first novel failure; 0 writes on duplicate).
 
 const { tryClaimSessionId, readRegistry, updateEntry, generateId } = require("../../core/meta-state");
+
+// Non-terminal = open-equivalent (open/active/reported/stale/null). Mirrors
+// `isOpen` from core/stale-view.js; inlined here so this CommonJS helper does
+// not need a dynamic ESM import. Gap-close resolves any non-terminal finding.
+const TERMINAL_STATUSES = new Set(["resolved", "superseded", "archived"]);
 
 async function defaultWriteFn(root, id, patch) {
   return updateEntry(root, id, patch);
@@ -30,13 +35,13 @@ async function defaultWriteFn(root, id, patch) {
  */
 async function probeL1(root, { sessionId, runtime, gapOpen, writeFn = defaultWriteFn, entryBuilder } = {}) {
   if (!gapOpen) {
-    // Gap-close branch: resolve any active finding for this layer.
+    // Gap-close branch: resolve any open (non-terminal) finding for this layer.
     // On a passing run with no prior finding, this is a no-op (no write).
     const existing = readRegistry(root).find((e) =>
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "mcp-client-loading"
-      && (e.status === "active" || e.status === "reported")
+      && !TERMINAL_STATUSES.has(e.status)
       && e.description.includes(`runtime: ${runtime}`)
       && e.description.includes("layer: L1"),
     );
@@ -73,7 +78,7 @@ async function probeL1(root, { sessionId, runtime, gapOpen, writeFn = defaultWri
         `runtime: ${runtime}; layer: L1;`,
       evidence_code_ref: "tools/learning-loop-mcp/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       auto_resolve: null,
       created_at: now.toISOString(),
       expires_at: expiresAt,
@@ -106,13 +111,13 @@ async function probeL1(root, { sessionId, runtime, gapOpen, writeFn = defaultWri
  */
 async function probeL2(root, { sessionId, runtime, gapOpen, writeFn = defaultWriteFn, entryBuilder } = {}) {
   if (!gapOpen) {
-    // Gap-close branch: resolve any active finding for this layer.
+    // Gap-close branch: resolve any open (non-terminal) finding for this layer.
     // On a passing run with no prior finding, this is a no-op (no write).
     const existing = readRegistry(root).find((e) =>
       e.entry_kind === "finding"
       && e.session_id === sessionId
       && e.subtype === "mcp-client-loading"
-      && (e.status === "active" || e.status === "reported")
+      && !TERMINAL_STATUSES.has(e.status)
       && e.description.includes(`runtime: ${runtime}`)
       && e.description.includes("layer: L2"),
     );
@@ -149,7 +154,7 @@ async function probeL2(root, { sessionId, runtime, gapOpen, writeFn = defaultWri
         `runtime: ${runtime}; layer: L2;`,
       evidence_code_ref: "tools/learning-loop-mcp/server.js",
       session_id: sessionId,
-      status: "reported",
+      status: "open",
       auto_resolve: null,
       created_at: now.toISOString(),
       expires_at: expiresAt,

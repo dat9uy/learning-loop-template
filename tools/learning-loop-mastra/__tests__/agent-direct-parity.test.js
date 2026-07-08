@@ -72,18 +72,22 @@ test("selfImprovementAgent: instantiates with correct id, name, instructions, to
     instructions.includes("Per-call sequence"),
     "instructions must contain the locked marker phrase",
   );
-  // Tools: 8 read-only + 8 write = 16
+  // Tools: 8 read-only + 7 write = 15 (meta_state_ack removed in plan 260707-0812 Phase 2)
   const toolNames = Object.keys(selfImprovementAgent.listTools());
-  assert.equal(toolNames.length, 16, `expected 16 tools, got ${toolNames.length}: ${toolNames.join(", ")}`);
+  assert.equal(toolNames.length, 15, `expected 15 tools, got ${toolNames.length}: ${toolNames.join(", ")}`);
   // Excluded: mastra_meta_state_batch
   assert.ok(
     !toolNames.includes("mastra_meta_state_batch"),
     "mastra_meta_state_batch must be excluded from selfImprovementAgent",
   );
+  // Excluded: mastra_meta_state_ack (removed in plan 260707-0812 Phase 2)
+  assert.ok(
+    !toolNames.includes("mastra_meta_state_ack"),
+    "mastra_meta_state_ack must be excluded from selfImprovementAgent",
+  );
   // Write tools present
   for (const name of [
     "mastra_meta_state_report",
-    "mastra_meta_state_ack",
     "mastra_meta_state_log_change",
     "mastra_meta_state_propose_design",
     "mastra_meta_state_refresh_file_index",
