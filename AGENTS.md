@@ -21,7 +21,7 @@ The meta-surface is implemented across 3 layers:
 
 - **Mastra shell (imperative).** Wraps core in Mastra framework primitives.
   Lives at `tools/learning-loop-mastra/mastra/`: `server.js`,
-  `create-loop-{tool,workflow,agent}.js`, `legacy-handler-adapter.js`,
+  `create-loop-{tool,workflow,agent}.js`, `handler-adapter.js`,
   `schema-parity.js`, `schemas.js`, `workflows/`, `agents/`. May import
   core; core may NOT import the shell.
 
@@ -35,7 +35,7 @@ The meta-surface is implemented across 3 layers:
   A runtime satisfies the MCP-transport conformance checklist (see
   `interface/CONTRACT.md`); the transport-agnostic participation contract
   lives at `docs/runtime-contract.md`. **Hooks** (universal scripts in
-  `hooks/legacy/` + per-runtime shim files in `.claude/coordination/hooks/`,
+  `hooks/universal/` + per-runtime shim files in `.claude/coordination/hooks/`,
   `.factory/coordination/hooks/`, or declarative `.mastracode/hooks.json`)
   are boundary adapters within Runtime interface — they translate
   runtime-specific protocol to/from Core. Policy lives in Core, not in hooks.

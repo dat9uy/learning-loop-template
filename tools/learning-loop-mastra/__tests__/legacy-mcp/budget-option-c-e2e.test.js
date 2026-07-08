@@ -3,15 +3,15 @@ import assert from "node:assert";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
-import { gateCheckTool } from "../../tools/legacy/gate-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
+import { gateCheckTool } from "../../tools/handlers/gate-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BASH_HOOK = join(__dirname, "..", "..", "hooks", "legacy", "bash-gate.js");
+const BASH_HOOK = join(__dirname, "..", "..", "hooks", "universal", "bash-gate.js");
 
 function runBashHook(input, envOverrides = {}) {
   const result = spawnSync("node", [BASH_HOOK], {

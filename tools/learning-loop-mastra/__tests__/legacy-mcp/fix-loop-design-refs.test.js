@@ -14,7 +14,7 @@ import { join } from "node:path";
 // live registry into a temp root, set GATE_ROOT for both the parent and the
 // child script process, then assert against the temp root only.
 const liveRoot = resolveRoot();
-const scriptPath = new URL("../../tools/legacy/scripts/fix-loop-design-refs.mjs", import.meta.url);
+const scriptPath = new URL("../../tools/handlers/scripts/fix-loop-design-refs.mjs", import.meta.url);
 const originalEnv = process.env.GATE_ROOT;
 
 let tempDir;

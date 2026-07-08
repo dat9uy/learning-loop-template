@@ -6,7 +6,7 @@
 // (e.g., status=active must not carry resolved_at).
 //
 // Pure function: no I/O, no subprocess, no resolveRoot call. The tool
-// layer (tools/legacy/meta-state-consistency-check-tool.js) is
+// layer (tools/handlers/meta-state-consistency-check-tool.js) is
 // responsible for root resolution and registry reading.
 //
 // v1 invariant set: F-1, F-2, F-3, F-4, NEW-1. See plan

@@ -21,7 +21,7 @@
  */
 
 import { createLoopTool } from "../create-loop-tool.js";
-import { adaptLegacyHandler } from "../legacy-handler-adapter.js";
+import { adaptLegacyHandler } from "../handler-adapter.js";
 
 // Lazy-loaded tool cache — constructed once on first call
 let _toolCache = null;
@@ -41,7 +41,7 @@ async function getToolDict() {
   const PREFIX = "mastra_";
   _toolCache = {};
   for (const { file, export: exportName } of MANIFEST) {
-    const mod = await import(`../../tools/legacy/${file.replace('tools/', '')}`);
+    const mod = await import(`../../tools/handlers/${file.replace('tools/', '')}`);
     const legacy = mod[exportName];
     if (!legacy) continue;
     const prefixed = PREFIX + legacy.name;

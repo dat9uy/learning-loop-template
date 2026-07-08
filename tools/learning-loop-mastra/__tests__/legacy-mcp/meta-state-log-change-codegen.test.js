@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 import { metaStateChangeEntrySchema } from "../../core/meta-state.js";
 
 const MIGRATED_FIELDS = {

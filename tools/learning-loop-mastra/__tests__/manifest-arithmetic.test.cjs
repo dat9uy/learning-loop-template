@@ -60,11 +60,11 @@ describe("manifest arithmetic", () => {
   });
 
   test("every tools/manifest.json file exists in mastra legacy package", () => {
-    // The tool files live in tools/learning-loop-mastra/tools/legacy/ (post-Phase-D move).
+    // The tool files live in tools/learning-loop-mastra/tools/handlers/ (post-Phase-D move).
     // The mastra server loads them via direct relative paths (server.js:25-27).
     // Verify each file exists; the MCP name derivation is tested by the
     // server's own tool registration (cold-session tests).
-    const legacyToolsDir = resolve(PKG, "tools", "legacy");
+    const legacyToolsDir = resolve(PKG, "tools", "handlers");
     for (const { file } of tools) {
       const toolPath = join(legacyToolsDir, file.replace(/^tools\//, ""));
       assert.ok(

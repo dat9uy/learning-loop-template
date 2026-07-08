@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { writeColdTierCache, readColdTierCache } from "../../core/loop-introspect-cache.js";
 import { writeEntry } from "../../core/meta-state.js";

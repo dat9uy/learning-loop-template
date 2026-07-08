@@ -1,6 +1,6 @@
 // Legacy cleanup test — asserts no #mcp/* imports remain in the project
 // (post-Phase-D Plan 4 phase-07) and all cross-package consumers resolve
-// to their new locations in tools/learning-loop-mastra/{core,tools/legacy,scout/legacy}.
+// to their new locations in tools/learning-loop-mastra/{core,tools/handlers,scout/pipeline}.
 //
 // Test inventory:
 //   1. No #mcp/* imports remain in tools/learning-loop-mastra/**/*.js
@@ -55,9 +55,9 @@ describe("legacy cleanup (C-9)", () => {
 
   test("cross-package consumers resolve to the new paths", () => {
     const consumers = [
-      { file: "tools/learning-loop-mastra/mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
+      { file: "tools/learning-loop-mastra/mastra/schemas.js", importPath: "./tools/handlers/meta-state-propose-design-tool.js" },
       { file: "tools/learning-loop-mastra/mastra/create-loop-workflow.js", importPath: "./core/envelope-stripper.js" },
-      { file: "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
+      { file: "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js", importPath: "../scout/pipeline/run-scout.js" },
       { file: "tools/learning-loop-mastra/mastra/workflows/workflow-self-improvement.js", importPath: "../core/envelope-stripper.js" },
     ];
     for (const { file, importPath } of consumers) {
@@ -73,20 +73,20 @@ describe("legacy cleanup (C-9)", () => {
     const runScoutTool = readFileSync(join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js"), "utf8");
     assert.ok(!scoutAgent.includes("tools/learning-loop-mcp/scout/run-scout.js"),
       "scout-agent.js should not reference the legacy path");
-    assert.ok(scoutAgent.includes("tools/learning-loop-mastra/scout/legacy/run-scout.js"),
+    assert.ok(scoutAgent.includes("tools/learning-loop-mastra/scout/pipeline/run-scout.js"),
       "scout-agent.js should reference the new legacy/ path");
     assert.ok(!runScoutTool.includes("tools/learning-loop-mcp/scout/run-scout.js"),
       "run-scout-tool.js should not reference the legacy path");
-    assert.ok(runScoutTool.includes("tools/learning-loop-mastra/scout/legacy/run-scout.js"),
+    assert.ok(runScoutTool.includes("tools/learning-loop-mastra/scout/pipeline/run-scout.js"),
       "run-scout-tool.js should reference the new legacy/ path");
   });
 
   test("moved files are importable from their new locations", () => {
     // Spot-check: 3 representative files exist and are non-empty
     const samples = [
-      "tools/learning-loop-mastra/tools/legacy/gate-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/gate-tool.js",
       "tools/learning-loop-mastra/core/envelope-stripper.js",
-      "tools/learning-loop-mastra/scout/legacy/run-scout.js",
+      "tools/learning-loop-mastra/scout/pipeline/run-scout.js",
     ];
     for (const f of samples) {
       const fullPath = join(PROJECT_ROOT, f);

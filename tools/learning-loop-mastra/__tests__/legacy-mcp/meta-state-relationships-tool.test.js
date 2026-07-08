@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
+import { metaStateRelationshipsTool } from "../../tools/handlers/meta-state-relationships-tool.js";
 
 function makeTempRoot() {
   return mkdtempSync(join(tmpdir(), "relationships-test-"));

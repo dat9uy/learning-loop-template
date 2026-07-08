@@ -12,7 +12,7 @@ const EXPECTED_FILES = [
   "create-loop-tool.js",
   "create-loop-workflow.js",
   "create-loop-agent.js",
-  "legacy-handler-adapter.js",
+  "handler-adapter.js",
   "schema-parity.js",
   "schemas.js",
 ];

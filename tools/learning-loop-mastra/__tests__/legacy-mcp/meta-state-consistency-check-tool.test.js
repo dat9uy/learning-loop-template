@@ -7,14 +7,14 @@
 //
 // TDD: this file is created BEFORE the implementation. Tests are initially
 // RED (failing — Cannot find module) and turn GREEN after the tool is
-// implemented in tools/legacy/meta-state-consistency-check-tool.js.
+// implemented in tools/handlers/meta-state-consistency-check-tool.js.
 
 import { describe, test } from "node:test";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateConsistencyCheckTool } from "../../tools/legacy/meta-state-consistency-check-tool.js";
+import { metaStateConsistencyCheckTool } from "../../tools/handlers/meta-state-consistency-check-tool.js";
 
 function getGateLogPath(tempDir) {
   return join(tempDir, ".claude", "coordination", "gate-log.jsonl");

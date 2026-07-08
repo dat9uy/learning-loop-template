@@ -9,7 +9,7 @@
 import { findProjectRoot, findStaleObservations } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 
-// State-change signal patterns (from hooks/legacy/inbound-gate.js:24-36).
+// State-change signal patterns (from hooks/universal/inbound-gate.js:24-36).
 // Exported so tests can pin the pattern set; also surfaced via stateChangeDetected().
 export const STATE_CHANGE_PATTERNS = [
   /\b(i|we)?\s*(cleared|clear|removed|delete[ds]?|wiped|reset)\s*(the|my|all)?\s*(device|slot|container|sandbox|cache|venv|vnstock)\b/i,

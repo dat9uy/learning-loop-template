@@ -6,7 +6,7 @@ import { RequestContext } from "@mastra/core/request-context";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { createLoopTool } from "./create-loop-tool.js";
-import { adaptLegacyHandler } from "./legacy-handler-adapter.js";
+import { adaptLegacyHandler } from "./handler-adapter.js";
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -43,7 +43,7 @@ const tools = {};
 
 for (const entry of MANIFEST) {
   const { file, export: exportName } = entry;
-  const mod = await import(`../tools/legacy/${file.replace('tools/', '')}`);
+  const mod = await import(`../tools/handlers/${file.replace('tools/', '')}`);
   const legacy = mod[exportName];
   if (!legacy) {
     console.error(`skipped ${file} (missing export "${exportName}")`);

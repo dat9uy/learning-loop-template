@@ -9,10 +9,10 @@ import { PathContainmentError, clearRealpathCache } from "../../core/path-contai
 import { checkGrounding } from "../../core/check-grounding.js";
 import { deriveStatus } from "../../core/derive-status.js";
 import { runVerification } from "../../core/verification-runner.js";
-import { metaStateRefreshFileIndexTool } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
-import { metaStateCheckGroundingTool } from "../../tools/legacy/meta-state-check-grounding-tool.js";
-import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateRefreshFileIndexTool } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateCheckGroundingTool } from "../../tools/handlers/meta-state-check-grounding-tool.js";
+import { metaStateDeriveStatusTool } from "../../tools/handlers/meta-state-derive-status-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 
 const projectRoot = pathResolve(process.cwd());
 
@@ -332,12 +332,12 @@ describe("audit-site migrations — path containment rejection", () => {
   // ---- LOCK: grep guard — no migrated user-path pattern remains ----
   test("grep guard: no `isAbsolute(...) ? ... : join(root,` user-path pattern at audit sites", () => {
     const siteFiles = [
-      "tools/learning-loop-mastra/tools/legacy/meta-state-refresh-file-index-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-refresh-file-index-tool.js",
       "tools/learning-loop-mastra/core/check-grounding.js",
       "tools/learning-loop-mastra/core/derive-status.js",
       "tools/learning-loop-mastra/core/gate-logic.js",
-      "tools/learning-loop-mastra/tools/legacy/meta-state-check-grounding-tool.js",
-      "tools/learning-loop-mastra/tools/legacy/meta-state-derive-status-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-check-grounding-tool.js",
+      "tools/learning-loop-mastra/tools/handlers/meta-state-derive-status-tool.js",
       "tools/learning-loop-mastra/core/verification-runner.js",
     ];
     // The migrated patterns we expect to be GONE after migration. Each is the

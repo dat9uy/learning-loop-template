@@ -8,8 +8,8 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateSweepTool } from "../../tools/handlers/meta-state-sweep-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -4,7 +4,7 @@ const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const HOOK_PATH = path.resolve(__dirname, "..", "..", "hooks", "legacy", "session-start-inject-discoverability.cjs");
+const HOOK_PATH = path.resolve(__dirname, "..", "..", "hooks", "universal", "session-start-inject-discoverability.cjs");
 const CONTEXT_PATH = path.resolve(__dirname, "..", "..", "..", "..", ".claude", "session-context.json");
 
 test("SessionStart hook writes discoverability hints to session-context.json", { timeout: 15000 }, async () => {

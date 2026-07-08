@@ -31,7 +31,7 @@ test("9 meta-state entries have been repointed to mastra/ paths", () => {
       entryLine.includes("tools/learning-loop-mastra/server.js") ||
       entryLine.includes("tools/learning-loop-mastra/create-loop-tool.js") ||
       entryLine.includes("tools/learning-loop-mastra/create-loop-workflow.js") ||
-      entryLine.includes("tools/learning-loop-mastra/legacy-handler-adapter.js") ||
+      entryLine.includes("tools/learning-loop-mastra/handler-adapter.js") ||
       entryLine.includes("tools/learning-loop-mastra/schema-parity.js") ||
       entryLine.includes("tools/learning-loop-mastra/schemas.js");
     if (hasPreMovePath) {

@@ -1,10 +1,10 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
-import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
+import { metaStateResolveTool } from "../../tools/handlers/meta-state-resolve-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { loadPromotedRules } from "../../core/gate-logic.js";
 import { listAntiPatterns } from "../../core/loop-introspect.js";
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";

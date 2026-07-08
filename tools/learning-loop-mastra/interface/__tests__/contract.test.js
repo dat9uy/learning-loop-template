@@ -21,7 +21,7 @@ const HOOK_SHIMS = [
   "recurrence-check-on-start.cjs",
 ];
 
-const VALID_UNIVERSAL_HOOK = "tools/learning-loop-mastra/hooks/legacy/bash-gate.js";
+const VALID_UNIVERSAL_HOOK = "tools/learning-loop-mastra/hooks/universal/bash-gate.js";
 const VALID_SHIM_CONTENT = `#!/usr/bin/env node\n'use strict';\nconst { execFileSync } = require('child_process');\nconst path = require('path');\nconst universalHook = path.join(__dirname, '../../../${VALID_UNIVERSAL_HOOK}');\nconst stdin = require('fs').readFileSync(0, 'utf8');\ntry { execFileSync('node', [universalHook], { input: stdin, stdio: ['pipe', 'inherit', 'inherit'] }); process.exit(0); } catch (err) { process.exit(err.status ?? 1); }\n`;
 
 function fakeRoot(opts = {}) {
@@ -394,16 +394,16 @@ function fakeMastraCodeRoot(opts = {}) {
   // Hooks declarative (Req #6)
   const hooksContent = opts.hooksConfig ?? {
     PreToolUse: [
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", matcher: { tool_name: "execute_command" }, timeout: 5000 },
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "write_file" }, timeout: 5000 },
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "string_replace_lsp" }, timeout: 5000 },
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", matcher: { tool_name: "delete_file" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/write-gate.js", matcher: { tool_name: "write_file" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/write-gate.js", matcher: { tool_name: "string_replace_lsp" }, timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/write-gate.js", matcher: { tool_name: "delete_file" }, timeout: 5000 },
     ],
     UserPromptSubmit: [
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", timeout: 5000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js", timeout: 5000 },
     ],
     SessionStart: [
-      { type: "command", command: "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", timeout: 10000 },
+      { type: "command", command: "node tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js", timeout: 10000 },
     ],
   };
   if (opts.hooksConfig !== null) {

@@ -16,7 +16,7 @@ beforeEach(() => {
 
   // Minimal project structure required by the checklist predicates.
   mkdirSync(join(root, "tools/learning-loop-mastra/core"), { recursive: true });
-  mkdirSync(join(root, "tools/learning-loop-mastra/tools/legacy"), { recursive: true });
+  mkdirSync(join(root, "tools/learning-loop-mastra/tools/handlers"), { recursive: true });
   writeFileSync(
     join(root, "tools/learning-loop-mastra/agent-manifest.json"),
     JSON.stringify({ version: "1.0.0", server: "learning-loop-mcp", groups: {} }, null, 2),
@@ -68,12 +68,12 @@ await test("tool reports cross-surface-iteration failure for hard-coded surface 
 
 await test("tool reports manifest-registered failure for unregistered tool file", async () => {
   writeFileSync(
-    join(root, "tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"),
+    join(root, "tools/learning-loop-mastra/tools/handlers/my-feature-tool.js"),
     `export const myFeatureTool = { name: "my_feature", handler: async () => ({}) };\n`,
     "utf8",
   );
 
-  const result = parseResult(await callTool("tools/learning-loop-mastra/tools/legacy/my-feature-tool.js"));
+  const result = parseResult(await callTool("tools/learning-loop-mastra/tools/handlers/my-feature-tool.js"));
 
   assert.ok(result.items_failed >= 1, `expected at least 1 failure, got ${result.items_failed}`);
   const ids = result.failures.map((f) => f.item_id);

@@ -12,7 +12,7 @@ import assert from "node:assert";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import {
   readRegistry,
   writeEntry,

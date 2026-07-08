@@ -2,28 +2,28 @@
   "PreToolUse": [
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/bash-gate.js",
       "matcher": { "tool_name": "execute_command" },
       "timeout": 5000,
       "description": "Learning-loop bash coordination gate"
     },
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js",
       "matcher": { "tool_name": "write_file" },
       "timeout": 5000,
       "description": "Learning-loop write coordination gate (matches write_file)"
     },
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js",
       "matcher": { "tool_name": "string_replace_lsp" },
       "timeout": 5000,
       "description": "Learning-loop write coordination gate (matches string_replace_lsp)"
     },
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js",
       "matcher": { "tool_name": "delete_file" },
       "timeout": 5000,
       "description": "Learning-loop write coordination gate (matches delete_file)"
@@ -32,7 +32,7 @@
   "UserPromptSubmit": [
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
       "timeout": 5000,
       "description": "Learning-loop inbound state gate (meta-state first)"
     }
@@ -40,7 +40,7 @@
   "SessionStart": [
     {
       "type": "command",
-      "command": "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+      "command": "node tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
       "timeout": 10000,
       "description": "Learning-loop gate-log recurrence check"
     }

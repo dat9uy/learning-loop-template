@@ -13,13 +13,13 @@ import { writeEntry, readRegistry, updateEntry } from "../../core/meta-state.js"
 import { invalidateCache } from "../../core/read-registry-cache.js";
 import { readRuntimeStateRows } from "../../core/runtime-state.js";
 import { computeFileHash } from "../../core/check-grounding.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
-import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
-import { metaStateReVerifyTool } from "../../tools/legacy/meta-state-re-verify-tool.js";
-import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests as clearRefreshCache } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateDispatchFindingTool } from "../../tools/handlers/meta-state-dispatch-finding-tool.js";
+import { metaStateSweepTool } from "../../tools/handlers/meta-state-sweep-tool.js";
+import { metaStateReVerifyTool } from "../../tools/handlers/meta-state-re-verify-tool.js";
+import { metaStateResolveTool } from "../../tools/handlers/meta-state-resolve-tool.js";
+import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests as clearRefreshCache } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 
 const PREV_GATE_ROOT = process.env.GATE_ROOT;
 const PREV_LOOP_SESSION_MODE = process.env.LOOP_SESSION_MODE;

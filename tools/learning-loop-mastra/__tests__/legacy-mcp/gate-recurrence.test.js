@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
 import { findRecurrentGroups, checkAndEmit } from "../../core/recurrence-tracker.js";
-import { gateCheckRecurrenceTool } from "../../tools/legacy/gate-check-recurrence-tool.js";
+import { gateCheckRecurrenceTool } from "../../tools/handlers/gate-check-recurrence-tool.js";
 
 let root;
 
@@ -197,7 +197,7 @@ await test("SessionStart hook runs checkAndEmit and exits 0", () => {
     makeEntry(now - 3 * 60000, "a"),
     makeEntry(now - 1 * 60000, "a"),
   ]);
-  const wrapper = new URL("../../hooks/legacy/recurrence-check-on-start.js", import.meta.url).pathname;
+  const wrapper = new URL("../../hooks/universal/recurrence-check-on-start.js", import.meta.url).pathname;
   const result = spawnSync(process.execPath, [wrapper], {
     input: "{}",
     env: { ...process.env, GATE_ROOT: root },

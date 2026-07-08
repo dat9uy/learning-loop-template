@@ -11,7 +11,7 @@ const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const CORE_DIR = join(MCP_ROOT, "tools/learning-loop-mastra/core");
 const SHIM_DIRS = SURFACES.map((s) => join(MCP_ROOT, s, "coordination/hooks"));
 const MANIFEST_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/agent-manifest.json");
-const PROTOCOL_ADAPTER_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js");
+const PROTOCOL_ADAPTER_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/hooks/universal/lib/protocol-adapter.js");
 
 await test("runtime-agnostic checklist has 6 items and surfaces.js passes them all", () => {
   assert.strictEqual(CHECKLIST.length, 6, "checklist must have 6 items");
@@ -187,7 +187,7 @@ await test("shims-in-sync flags a missing .mastracode shim", () => {
 
 await test("shims-in-sync passes against the real repo (all 3 surfaces, byte-identical)", () => {
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
-  const result = item.verify("tools/learning-loop-mastra/hooks/legacy", MCP_ROOT);
+  const result = item.verify("tools/learning-loop-mastra/hooks/universal", MCP_ROOT);
   assert.ok(result.ok, `real-repo shims-in-sync should pass: ${result.found ?? ""}`);
 });
 
@@ -251,7 +251,7 @@ await test("GLOB_SCOPE_WHITELIST includes both surface prefixes via SURFACES", (
 });
 
 await test("inbound-gate.js writes the operator marker via surfaces.js helper, not a hard-coded surface list", () => {
-  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js"), "utf8");
+  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/hooks/universal/inbound-gate.js"), "utf8");
   assert.ok(src.includes("writeToAllSurfaces"), "inbound-gate.js must use writeToAllSurfaces for the marker write");
   assert.ok(
     !/for\s*\(\s*const\s+\w+\s+of\s*\[\s*"\.claude"\s*,\s*"\.factory"\s*\]/.test(src),
@@ -262,7 +262,7 @@ await test("inbound-gate.js writes the operator marker via surfaces.js helper, n
 });
 
 await test("mark-preflight-complete-tool.js derives coordination dirs from SURFACES, not a hard-coded list", () => {
-  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/tools/legacy/mark-preflight-complete-tool.js"), "utf8");
+  const src = readFileSync(join(MCP_ROOT, "tools/learning-loop-mastra/tools/handlers/mark-preflight-complete-tool.js"), "utf8");
   assert.ok(src.includes("SURFACES.map"), "mark-preflight tool must derive coordDirs via SURFACES.map");
   assert.ok(
     !/`\$\{root\}\/\.claude\/coordination`/.test(src) && !/`\$\{root\}\/\.factory\/coordination`/.test(src),

@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
+import { metaStateDeriveStatusTool } from "../../tools/handlers/meta-state-derive-status-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 

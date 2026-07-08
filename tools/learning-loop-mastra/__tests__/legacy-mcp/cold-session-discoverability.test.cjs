@@ -137,7 +137,7 @@ describe("cold-session discoverability", () => {
       severity: "warning",
       affected_system: "mcp-tools",
       description: "Cold-session chain test: meta_state_report + meta_state_patch.",
-      evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
+      evidence_code_ref: "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
       mechanism_check: true,
       session_id: `test-chain-${Date.now()}`,
       status: "open",
@@ -154,7 +154,7 @@ describe("cold-session discoverability", () => {
     const afterWrite = core.readRegistry(tempRoot);
     const written = afterWrite.find((e) => e.id === id);
     assert.ok(written, "finding must exist after writeEntry");
-    assert.strictEqual(written.evidence_code_ref, "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js");
+    assert.strictEqual(written.evidence_code_ref, "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js");
     assert.strictEqual(written.mechanism_check, true);
 
     // meta_state_patch: update description + evidence_journal (self-id ref).
@@ -171,7 +171,7 @@ describe("cold-session discoverability", () => {
     assert.strictEqual(patched.description, "Cold-session chain test (patched).");
     assert.strictEqual(patched.evidence_journal, "plans/260612-1700-meta-surface-re-debate/phase-a-remaining-work.md");
     // evidence_code_ref preserved.
-    assert.strictEqual(patched.evidence_code_ref, "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js");
+    assert.strictEqual(patched.evidence_code_ref, "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js");
 
     // Negative: patching a non-existent id returns null.
     const fakeId = "meta-260601T0000Z-does-not-exist";
@@ -316,7 +316,7 @@ describe("cold-session discoverability", () => {
       const { buildDiscoverabilityHints } = await import(pathToFileURL(canonicalPath).href);
       canonicalHints = buildDiscoverabilityHints();
 
-      const toolPath = join(projectRoot, "tools/learning-loop-mastra/tools/legacy/loop-get-instruction-tool.js");
+      const toolPath = join(projectRoot, "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js");
       loopGetInstruction = await import(pathToFileURL(toolPath).href);
     });
 

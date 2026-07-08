@@ -403,7 +403,7 @@ console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
   const serverCode = fs.readFileSync(serverPath, 'utf8');
   const inboundStateCode = fs.readFileSync(inboundStatePath, 'utf8');
   const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');
-  const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'tools', 'legacy', 'gate-tool.js');
+  const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'tools', 'handlers', 'gate-tool.js');
   const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
   // After evaluator refactor: gate-tool.js delegates to evaluateBashGate, which
   // internally calls checkObservationStaleness. Verify the delegation chain exists.

@@ -12,7 +12,7 @@ const FORBIDDEN_PATH_PATTERNS = [
   "tools/learning-loop-mastra/create-loop-tool\\.js",
   "tools/learning-loop-mastra/create-loop-workflow\\.js",
   "tools/learning-loop-mastra/create-loop-agent\\.js",
-  "tools/learning-loop-mastra/legacy-handler-adapter\\.js",
+  "tools/learning-loop-mastra/handler-adapter\\.js",
   "tools/learning-loop-mastra/schema-parity\\.js",
   "tools/learning-loop-mastra/schemas\\.js",
   "tools/learning-loop-mastra/create-loop-.*\\.js",

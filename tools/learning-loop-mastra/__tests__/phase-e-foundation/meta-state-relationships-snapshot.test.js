@@ -25,7 +25,7 @@ function createTempRegistry() {
 }
 
 // Import the tool once (module-level). We set GATE_ROOT before each handler call.
-const { metaStateRelationshipsTool } = await import("../../tools/legacy/meta-state-relationships-tool.js");
+const { metaStateRelationshipsTool } = await import("../../tools/handlers/meta-state-relationships-tool.js");
 
 // --- Finding (with promoted_to_rule) ---
 

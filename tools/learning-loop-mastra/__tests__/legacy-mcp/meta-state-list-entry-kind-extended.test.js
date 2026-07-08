@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
 import { writeEntry, generateId } from "../../core/meta-state.js";
 
 const originalEnv = process.env.GATE_ROOT;

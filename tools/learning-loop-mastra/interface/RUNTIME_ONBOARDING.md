@@ -19,7 +19,7 @@ You do NOT need this if:
 
 A runtime MUST satisfy all 5. Validate with `node tools/learning-loop-mastra/interface/contract.js <your-runtime-id>`.
 
-- [ ] **1. Hook shim set.** Create `<your-runtime>/coordination/hooks/{bash,write,inbound-state,recurrence-check-on-start}-*.cjs`. Each shim is a thin wrapper that `execFileSync`s the matching universal script in `tools/learning-loop-mastra/hooks/legacy/`. See `.claude/coordination/hooks/*.cjs` for the canonical 4-file shape.
+- [ ] **1. Hook shim set.** Create `<your-runtime>/coordination/hooks/{bash,write,inbound-state,recurrence-check-on-start}-*.cjs`. Each shim is a thin wrapper that `execFileSync`s the matching universal script in `tools/learning-loop-mastra/hooks/universal/`. See `.claude/coordination/hooks/*.cjs` for the canonical 4-file shape.
 - [ ] **2. MCP client config.** Register `learning-loop` in your runtime's MCP config: `mcpServers.learning-loop = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] }`. See `.factory/mcp.json` for the canonical shape (Droid stores MCP in `.factory/mcp.json`; Claude stores it at the root `.mcp.json`).
 - [ ] **3. Skill spec.** Provide `<your-runtime>/skills/<skill-name>/SKILL.md` for every loop-maintained skill. The SKILL.md MUST declare `maturity:` frontmatter (one of `state-1`, `state-2`, `state-3`) to be enumerated as loop-maintained. `learning-loop` MUST additionally reference `loop_describe` AND `meta_state_list` (it documents the loop's tool surface). Skills must be mirrored across ≥ 2 of the 3 runtime surfaces. Template: `.factory/skills/learning-loop/SKILL.md` (post-Phase-2). Skill files are gated artifacts — direct writes require the `.loop-preflight-skills` preflight marker.
 - [ ] **4. Identity marker (PROPOSED).** Set `RUNTIME_ID=<your-runtime-id>` in your runtime's session env. The validator returns `notes: ["identity-marker-not-adopted"]` when unset (advisory; not yet required). Future hardening plan will make this mandatory for R2 write-gate ownership.
@@ -65,7 +65,7 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
    ```
    Satisfies Req #2 (`mcp-client-config`). Resolves contract path `.mastracode/mcp.json` (NOT `.mastracode/config.json`; that was a pre-Plan-4 bug).
 
-2. **Create `.mastracode/hooks.json`** — declarative lifecycle hooks. Must contain `PreToolUse`, `UserPromptSubmit`, and `SessionStart` entries whose `command` fields reference the canonical universal-hook paths under `tools/learning-loop-mastra/hooks/legacy/`:
+2. **Create `.mastracode/hooks.json`** — declarative lifecycle hooks. Must contain `PreToolUse`, `UserPromptSubmit`, and `SessionStart` entries whose `command` fields reference the canonical universal-hook paths under `tools/learning-loop-mastra/hooks/universal/`:
    - `bash-gate.js` (PreToolUse, matcher `tool_name: "execute_command"`)
    - `write-gate.js` (PreToolUse, matcher `tool_name: "write_file" | "string_replace_lsp" | "delete_file"`)
    - `inbound-gate.js` (UserPromptSubmit, no matcher)
@@ -75,16 +75,16 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
    ```json
    {
      "PreToolUse": [
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/bash-gate.js", "matcher": { "tool_name": "execute_command" }, "timeout": 5000 },
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "write_file" }, "timeout": 5000 },
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "string_replace_lsp" }, "timeout": 5000 },
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/write-gate.js", "matcher": { "tool_name": "delete_file" }, "timeout": 5000 }
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", "matcher": { "tool_name": "execute_command" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js", "matcher": { "tool_name": "write_file" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js", "matcher": { "tool_name": "string_replace_lsp" }, "timeout": 5000 },
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/write-gate.js", "matcher": { "tool_name": "delete_file" }, "timeout": 5000 }
      ],
      "UserPromptSubmit": [
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/inbound-gate.js", "timeout": 5000 }
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js", "timeout": 5000 }
      ],
      "SessionStart": [
-       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js", "timeout": 10000 }
+       { "type": "command", "command": "node tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js", "timeout": 10000 }
      ]
    }
    ```

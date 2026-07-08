@@ -59,6 +59,6 @@ The 4 transport-agnostic capabilities live in `docs/runtime-contract.md`; the 10
 
 The word "interface" appears in two contexts:
 - `interface/` (this directory) = the **runtime-to-loop contract** (what runtimes must provide to consume the loop).
-- `tools/learning-loop-mastra/hooks/legacy/lib/protocol-adapter.js` = the **loop-to-tool-name I/O adapter** (normalizes hook stdin/stdout between Claude Code and Droid CLI).
+- `tools/learning-loop-mastra/hooks/universal/lib/protocol-adapter.js` = the **loop-to-tool-name I/O adapter** (normalizes hook stdin/stdout between Claude Code and Droid CLI).
 
 These are different concepts. The runtime interface is about what runtimes must provide; the protocol adapter is about how the loop normalizes its own internal I/O.

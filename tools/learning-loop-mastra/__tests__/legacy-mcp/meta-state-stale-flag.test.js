@@ -11,10 +11,10 @@ import {
 import { summarize } from "../../core/loop-introspect.js";
 import { deriveStatus, META_STATE_RECOMMENDATIONS } from "../../core/derive-status.js";
 import { runVerification } from "../../core/verification-runner.js";
-import { metaStateReVerifyTool } from "../../tools/legacy/meta-state-re-verify-tool.js";
-import { metaStateSupersedeTool } from "../../tools/legacy/meta-state-supersede-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateReVerifyTool } from "../../tools/handlers/meta-state-re-verify-tool.js";
+import { metaStateSupersedeTool } from "../../tools/handlers/meta-state-supersede-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 
 describe("stale status schema + behavior (TDD red)", () => {
   const originalEnv = process.env.GATE_ROOT;

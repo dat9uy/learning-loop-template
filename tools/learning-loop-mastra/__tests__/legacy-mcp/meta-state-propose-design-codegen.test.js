@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { metaStateProposeDesignTool } from "../../tools/legacy/meta-state-propose-design-tool.js";
+import { metaStateProposeDesignTool } from "../../tools/handlers/meta-state-propose-design-tool.js";
 import { metaStateLoopDesignSchema } from "../../core/meta-state.js";
 
 const MIGRATED_FIELDS = {

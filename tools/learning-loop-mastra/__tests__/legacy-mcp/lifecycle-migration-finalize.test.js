@@ -19,7 +19,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
 import { buildStaleDispatchHints } from "../../core/loop-introspect.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";

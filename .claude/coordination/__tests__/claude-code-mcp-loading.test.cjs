@@ -56,7 +56,7 @@ describe("Claude Code MCP client-side loading acceptance", () => {
         severity: "warning",
         affected_system: "mcp-tools",
         description: "Claude Code MCP loading direct test finding.",
-        evidence_code_ref: "tools/learning-loop-mastra/tools/legacy/loop-describe-tool.js",
+        evidence_code_ref: "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
         mechanism_check: true,
       });
       assert.strictEqual(reportResult.status, "open");

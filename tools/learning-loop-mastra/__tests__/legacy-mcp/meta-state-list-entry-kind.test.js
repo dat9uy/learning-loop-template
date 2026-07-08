@@ -1,8 +1,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

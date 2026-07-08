@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { metaStatePromoteRuleTool } from "../../tools/legacy/meta-state-promote-rule-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStatePromoteRuleTool } from "../../tools/handlers/meta-state-promote-rule-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { mkdtempSync } from "node:fs";
