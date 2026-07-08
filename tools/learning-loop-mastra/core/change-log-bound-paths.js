@@ -186,6 +186,32 @@ function splitCompound(target) {
 }
 
 /**
+ * Canonicalize the compound `change_target` string into a Set of
+ * repo-relative paths. Returns empty set on a missing/empty input.
+ */
+function canonicalizeChangeTargets(changeTarget) {
+  if (typeof changeTarget !== "string" || changeTarget.length === 0) return new Set();
+  return new Set(
+    splitCompound(changeTarget)
+      .map(canonicalizeToken)
+      .filter((c) => c !== null),
+  );
+}
+
+/**
+ * Canonicalize `applies_to.schemas` array into a Set of repo-relative
+ * paths. Returns empty set on a missing/non-array input.
+ */
+function canonicalizeSchemas(schemas) {
+  if (!Array.isArray(schemas)) return new Set();
+  return new Set(
+    schemas
+      .map(canonicalizeToken)
+      .filter((c) => c !== null),
+  );
+}
+
+/**
  * Canonicalize a change-log entry's free-text `change_target` (split on
  * ` + `) + `applies_to.schemas` (array) into a Set<repo-relative path/dir>.
  *
@@ -198,26 +224,9 @@ function splitCompound(target) {
  * @returns {Set<string>} — canonicalized repo-relative paths/dirs
  */
 export function canonicalizeChangeTarget(entry) {
-  const result = new Set();
-  if (!entry || typeof entry !== "object") return result;
-
-  // change_target — may be compound ("a + b + c") or a single token.
-  if (typeof entry.change_target === "string" && entry.change_target.length > 0) {
-    for (const raw of splitCompound(entry.change_target)) {
-      const canon = canonicalizeToken(raw);
-      if (canon !== null) result.add(canon);
-    }
-  }
-
-  // applies_to.schemas — array of path tokens (or bare loop-internal tokens
-  // that need repo-relativeization per red-team C3).
-  const schemas = entry?.applies_to?.schemas;
-  if (Array.isArray(schemas)) {
-    for (const raw of schemas) {
-      const canon = canonicalizeToken(raw);
-      if (canon !== null) result.add(canon);
-    }
-  }
-
-  return result;
+  if (!entry || typeof entry !== "object") return new Set();
+  return new Set([
+    ...canonicalizeChangeTargets(entry.change_target),
+    ...canonicalizeSchemas(entry?.applies_to?.schemas),
+  ]);
 }

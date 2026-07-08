@@ -43,9 +43,8 @@ function runGit(args, { cwd, timeoutMs = GIT_TIMEOUT_MS } = {}) {
       encoding: "utf8",
       timeout: timeoutMs,
     });
-    if (result.error) return { ok: false, stdout: "" };
-    if (result.status !== 0) return { ok: false, stdout: "" };
-    return { ok: true, stdout: result.stdout || "" };
+    if (result.error || result.status !== 0) return { ok: false, stdout: "" };
+    return { ok: true, stdout: result.stdout };
   } catch {
     return { ok: false, stdout: "" };
   }
@@ -60,6 +59,43 @@ function parseNameOnly(stdout) {
     .filter((p) => p.length > 0);
 }
 
+/** True iff `root` is a non-empty string (the only shape `cwd` accepts). */
+function isValidRoot(root) {
+  return typeof root === "string" && root.length > 0;
+}
+
+/** True iff `root` is inside a git work-tree. Guards all subsequent calls. */
+function isInsideWorkTree(root) {
+  const inside = runGit(["rev-parse", "--is-inside-work-tree"], { cwd: root });
+  return inside.ok && inside.stdout.trim() === "true";
+}
+
+/**
+ * Resolve the merge-base of `baseBranch` and HEAD. Returns null when the
+ * branch is missing (no such ref) or git fails — callers bail to empty.
+ */
+function resolveMergeBase(root, baseBranch) {
+  const mergeBase = runGit(["merge-base", baseBranch, "HEAD"], { cwd: root });
+  if (!mergeBase.ok) return null;
+  const base = mergeBase.stdout.trim();
+  return base.length > 0 ? base : null;
+}
+
+/** Run a `git` subcommand and parse `--name-only` output; [] on any failure. */
+function readNamesOrEmpty(args, root) {
+  const result = runGit(args, { cwd: root });
+  return result.ok ? parseNameOnly(result.stdout) : [];
+}
+
+/** Set-union of the input name arrays; O(n) dedupe. */
+function unionPaths(...arrays) {
+  const out = new Set();
+  for (const arr of arrays) {
+    for (const p of arr) out.add(p);
+  }
+  return out;
+}
+
 /**
  * Read the set of repo-relative paths touched on the current branch vs
  * `baseBranch`'s merge-base, plus uncommitted working-tree edits.
@@ -69,43 +105,17 @@ function parseNameOnly(stdout) {
  * @returns {Set<string>} — repo-relative touched paths; never throws
  */
 export function readBranchTouchedPaths(root, { baseBranch = "main" } = {}) {
-  const empty = new Set();
-  if (typeof root !== "string" || root.length === 0) return empty;
-
-  // 1. Inside a work-tree? — guards all subsequent calls.
-  const inside = runGit(["rev-parse", "--is-inside-work-tree"], { cwd: root });
-  if (!inside.ok || inside.stdout.trim() !== "true") return empty;
-
-  // 2. Resolve merge-base. If base missing (no such branch), bail.
-  const mergeBase = runGit(["merge-base", baseBranch, "HEAD"], { cwd: root });
-  if (!mergeBase.ok) return empty;
-  const base = mergeBase.stdout.trim();
-  if (base.length === 0) return empty;
-
-  // 3. Committed-on-branch diff (base..HEAD). On main this is empty by
-  //    design (merge-base == HEAD); we still attempt to keep the contract
-  //    simple — if it is empty, no committed divergence to add.
-  const committed = runGit(["diff", "--name-only", `${base}..HEAD`], { cwd: root });
-  const committedPaths = committed.ok ? parseNameOnly(committed.stdout) : [];
-
-  // 4. Uncommitted tracked working-tree edits — always attempt (covers the
-  //    on-main working-tree case and the no-divergence-but-edits case).
-  const uncommitted = runGit(["diff", "--name-only", "HEAD"], { cwd: root });
-  const uncommittedPaths = uncommitted.ok ? parseNameOnly(uncommitted.stdout) : [];
-
-  // 5. Untracked-but-not-ignored files (e.g. brand-new files added in this
-  //    session, before the first commit). `git diff` does not list them;
-  //    `git ls-files --others --exclude-standard` does. Excluding the
-  //    standard ignore list (.gitignore) keeps the surface deterministic —
-  //    a brand-new `.env` or `node_modules/` is correctly skipped.
-  const untracked = runGit(["ls-files", "--others", "--exclude-standard"], { cwd: root });
-  const untrackedPaths = untracked.ok ? parseNameOnly(untracked.stdout) : [];
-
-  // 6. Union + dedupe. Sets are O(1) — keep the more-specific Set type so
-  //    phase 3's caller-supplied-set contract is preserved end-to-end.
-  const touched = new Set();
-  for (const p of committedPaths) touched.add(p);
-  for (const p of uncommittedPaths) touched.add(p);
-  for (const p of untrackedPaths) touched.add(p);
-  return touched;
+  if (!isValidRoot(root)) return new Set();
+  if (!isInsideWorkTree(root)) return new Set();
+  const base = resolveMergeBase(root, baseBranch);
+  if (base === null) return new Set();
+  // Committed-on-branch diff (base..HEAD), uncommitted tracked edits
+  // (`git diff HEAD`), and untracked-but-not-ignored files
+  // (`git ls-files --others --exclude-standard`). The standard ignore list
+  // (.gitignore) keeps the surface deterministic — a brand-new `.env` or
+  // `node_modules/` is correctly skipped.
+  const committed = readNamesOrEmpty(["diff", "--name-only", `${base}..HEAD`], root);
+  const uncommitted = readNamesOrEmpty(["diff", "--name-only", "HEAD"], root);
+  const untracked = readNamesOrEmpty(["ls-files", "--others", "--exclude-standard"], root);
+  return unionPaths(committed, uncommitted, untracked);
 }
