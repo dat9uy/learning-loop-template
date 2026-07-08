@@ -7,10 +7,10 @@
 //   3. idempotency: re-prepare returns existing coords (no re-prepare body)
 //   4. idempotency: re-commit same coords no-op
 //   5. idempotency: commit with different coords refused
-//   6. non-operator commit refused (operator_role_required)
+//   6. non-operator commit refused (live_session_required)
 //   7. P2 F6 — orthogonal-gate tests:
-//      (a) with-preflight + WITHOUT OPERATOR_MODE → refused
-//      (b) without-preflight + WITH OPERATOR_MODE → succeeds (dispatch bypasses preflight)
+//      (a) with-preflight + WITHOUT LOOP_SESSION_MODE=live → refused
+//      (b) without-preflight + WITH LOOP_SESSION_MODE=live → succeeds (dispatch bypasses preflight)
 //   8. P2 F7 — concurrent-dispatch test (Promise.all) — CAS safety
 //   9. orphan self-heal: re-invoking commit with same coords patches missing ledger_ref
 
@@ -26,7 +26,7 @@ import { SURFACES } from "../../core/surfaces.js";
 
 describe("meta_state_dispatch_finding", () => {
   const originalEnv = process.env.GATE_ROOT;
-  const originalOperator = process.env.OPERATOR_MODE;
+  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
   function setupTempRegistry() {
     const tempDir = mkdtempSync(join(tmpdir(), "meta-dispatch-"));
@@ -64,8 +64,8 @@ describe("meta_state_dispatch_finding", () => {
   }
 
   function withOperator() {
-    process.env.OPERATOR_MODE = "1";
-    return () => { delete process.env.OPERATOR_MODE; };
+    process.env.LOOP_SESSION_MODE = "live";
+    return () => { delete process.env.LOOP_SESSION_MODE; };
   }
 
   test("prepare: builds body + no ledger row, no ledger_ref change", async () => {
@@ -252,9 +252,9 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("non-operator commit is refused (operator_role_required)", async () => {
+  test("non-operator commit is refused (live_session_required)", async () => {
     const tempDir = setupTempRegistry();
-    delete process.env.OPERATOR_MODE;
+    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({
@@ -263,7 +263,7 @@ describe("meta_state_dispatch_finding", () => {
       });
       const body = JSON.parse(r.content[0].text);
       assert.strictEqual(body.dispatched, false);
-      assert.strictEqual(body.reason, "operator_role_required");
+      assert.strictEqual(body.reason, "live_session_required");
 
       // No ledger row written.
       assert.ok(!existsSync(join(tempDir, "runtime-state.jsonl")), "refused commit must not write ledger");
@@ -283,10 +283,10 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("P2 F6 (a): commit with preflight + WITHOUT OPERATOR_MODE → refused", async () => {
+  test("P2 F6 (a): commit with preflight + WITHOUT LOOP_SESSION_MODE=live → refused", async () => {
     const tempDir = setupTempRegistry();
     setPreflightMarker(tempDir);
-    delete process.env.OPERATOR_MODE;
+    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({
@@ -295,7 +295,7 @@ describe("meta_state_dispatch_finding", () => {
       });
       const body = JSON.parse(r.content[0].text);
       assert.strictEqual(body.dispatched, false);
-      assert.strictEqual(body.reason, "operator_role_required");
+      assert.strictEqual(body.reason, "live_session_required");
     } finally {
       clearPreflightMarker(tempDir);
       if (originalEnv === undefined) {
@@ -310,10 +310,10 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("P2 F6 (b): commit WITHOUT preflight + WITH OPERATOR_MODE → succeeds", async () => {
+  test("P2 F6 (b): commit WITHOUT preflight + WITH LOOP_SESSION_MODE=live → succeeds", async () => {
     // Orthogonal-gate design: the dispatch tool bypasses preflight by design.
-    // It checks OPERATOR_MODE only. A preflight-installed non-operator agent
-    // is refused at the OPERATOR_MODE check; a non-preflight operator is OK.
+    // It checks LOOP_SESSION_MODE only. A preflight-installed non-operator agent
+    // is refused at the LOOP_SESSION_MODE check; a non-preflight operator is OK.
     const tempDir = setupTempRegistry();
     clearPreflightMarker(tempDir);
     const clearOp = withOperator();
@@ -447,9 +447,9 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("prepare is ungated (any session can run it, even without OPERATOR_MODE)", async () => {
+  test("prepare is ungated (any session can run it, even without LOOP_SESSION_MODE=live)", async () => {
     const tempDir = setupTempRegistry();
-    delete process.env.OPERATOR_MODE;
+    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({ id, stage: "prepare" });

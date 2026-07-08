@@ -22,7 +22,7 @@ import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests as clearR
 import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
 
 const PREV_GATE_ROOT = process.env.GATE_ROOT;
-const PREV_OPERATOR = process.env.OPERATOR_MODE;
+const PREV_LOOP_SESSION_MODE = process.env.LOOP_SESSION_MODE;
 const PREV_VERIFY_EXEC = process.env.META_STATE_VERIFY_EXEC;
 
 function setupTempRegistry() {
@@ -34,8 +34,8 @@ function setupTempRegistry() {
 function restoreEnv() {
   if (PREV_GATE_ROOT === undefined) delete process.env.GATE_ROOT;
   else process.env.GATE_ROOT = PREV_GATE_ROOT;
-  if (PREV_OPERATOR === undefined) delete process.env.OPERATOR_MODE;
-  else process.env.OPERATOR_MODE = PREV_OPERATOR;
+  if (PREV_LOOP_SESSION_MODE === undefined) delete process.env.LOOP_SESSION_MODE;
+  else process.env.LOOP_SESSION_MODE = PREV_LOOP_SESSION_MODE;
   if (PREV_VERIFY_EXEC === undefined) delete process.env.META_STATE_VERIFY_EXEC;
   else process.env.META_STATE_VERIFY_EXEC = PREV_VERIFY_EXEC;
 }
@@ -72,7 +72,7 @@ async function seedDispatchedFinding(tempDir, opts = {}) {
 describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
   test("(a) dispatched open finding → sweep is read-only → ledger_ref + ledger event survive (no status mutation)", async () => {
     const tempDir = setupTempRegistry();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     try {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "tools/x.js:1",
@@ -105,7 +105,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
 
   test("(b) re_verify stamps last_verified_at, status stays open, ledger_ref survives", async () => {
     const tempDir = setupTempRegistry();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     process.env.META_STATE_VERIFY_EXEC = "1";
     try {
       // Seed a dispatched finding with a passing verification step.
@@ -150,7 +150,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
     // test pins that: a dispatched, ledger_ref-set finding with a MODIFIED
     // evidence file stays `open` (not auto-resolved) and keeps its ledger_ref.
     const tempDir = setupTempRegistry();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     try {
       const dummyPath = join(tempDir, "evidence-c.js");
       writeFileSync(dummyPath, "const v = 1;\n");
@@ -176,7 +176,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
 
   test("(d) sweep between dispatch and resolve neither orphans nor duplicates ledger_ref", async () => {
     const tempDir = setupTempRegistry();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     try {
       const id = await seedDispatchedFinding(tempDir, {
         evidence_code_ref: "tools/x.js:1",
@@ -203,7 +203,7 @@ describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
 describe("dispatch close flow (refresh_file_index → log_change → resolve)", () => {
   test("resolve is blocked by fingerprint_mismatch after an evidence edit; refresh + log_change unblock it", async () => {
     const tempDir = setupTempRegistry();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     try {
       const dummyPath = join(tempDir, "evidence-close.js");
       writeFileSync(dummyPath, "const v = 1;\n");

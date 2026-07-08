@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Verify"
-status: pending
+status: complete
 effort: "medium"
 ---
 

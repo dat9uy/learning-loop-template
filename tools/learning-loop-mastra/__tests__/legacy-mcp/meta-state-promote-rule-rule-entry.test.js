@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const originalEnv = process.env.GATE_ROOT;
-const originalOperatorMode = process.env.OPERATOR_MODE;
+const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
 function setup() {
   const tempDir = mkdtempSync(join(tmpdir(), "promote-rule-"));
@@ -23,7 +23,7 @@ function teardown() {
   } else {
     process.env.GATE_ROOT = originalEnv;
   }
-  process.env.OPERATOR_MODE = originalOperatorMode;
+  process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
 }
 
 test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)", async () => {
@@ -38,7 +38,7 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-entry-kind",
@@ -78,7 +78,7 @@ test("meta_state_promote_rule rejects 'tool' enforcement enum", async () => {
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     // The tool's schema should reject 'tool' at the zod validation layer
     // But since zod runs in the tool handler, we need to verify the behavior
     // by passing it and seeing it fail
@@ -112,7 +112,7 @@ test("meta_state_promote_rule accepts pattern_type=resolution-evidence-required"
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-resolution-evidence",

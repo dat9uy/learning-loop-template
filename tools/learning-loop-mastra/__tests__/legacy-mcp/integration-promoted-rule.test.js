@@ -14,7 +14,7 @@ import { join } from "node:path";
 describe("integration: promoted rule end-to-end", () => {
   let tempDir;
   const originalEnv = process.env.GATE_ROOT;
-  const originalOperatorMode = process.env.OPERATOR_MODE;
+  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
   test("migration idempotency: running twice produces same state", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "integration-migration-"));
@@ -57,7 +57,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -76,7 +76,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-new-artifact",
@@ -102,7 +102,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -120,7 +120,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-new-artifact",
@@ -142,7 +142,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -160,7 +160,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-list",
@@ -191,7 +191,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -209,7 +209,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-describe",
@@ -233,7 +233,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -251,7 +251,7 @@ describe("integration: promoted rule end-to-end", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-recovery",
@@ -286,7 +286,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -331,7 +331,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -369,7 +369,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 
@@ -417,7 +417,7 @@ describe("integration: promoted rule end-to-end", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     }
   });
 });

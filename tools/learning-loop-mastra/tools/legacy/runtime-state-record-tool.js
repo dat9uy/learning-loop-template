@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { appendLedgerEvent } from "../../core/runtime-state.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
-// which is OPERATOR_MODE-gated). P2 F6 — orthogonal-gate design: each public
+// which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
 // tool has exactly ONE gate; the helper appendLedgerEvent enforces neither.
 // stay-at-the-tool-boundary invariant.
 function hasPreflightMarker(root) {

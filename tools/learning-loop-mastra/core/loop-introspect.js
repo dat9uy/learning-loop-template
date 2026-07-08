@@ -255,7 +255,7 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
       "1. Agent calls meta_state_dispatch_finding({id, stage:'prepare'}) → returns issue body.\n" +
       "2. Agent runs `gh issue create --repo <private-repo>` (check exit code).\n" +
       "3. Agent calls meta_state_dispatch_finding({id, stage:'commit', issue_number, issue_url, repo, delegated_to}) → writes ledger + patches ledger_ref.\n" +
-      "Authority boundary: agent proposes; operator dispatches (commit is OPERATOR_MODE-gated). Dispatch to a private issue tracker (not the public template repo).\n" +
+      "Authority boundary: agent proposes; operator dispatches (commit is LOOP_SESSION_MODE=live-gated). Dispatch to a private issue tracker (not the public template repo).\n" +
       "If a finding appears in orphan_findings (dispatch row exists but ledger_ref is unset), re-invoke meta_state_dispatch_finding with stage:'commit' and the original coords to heal the back-pointer.",
   };
 }

@@ -8,21 +8,11 @@ import {
 } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-
-/**
- * Placeholder operator-role check.
- * The codebase does not yet have a role system; this checks an env var
- * as a lightweight gate until auth infrastructure is added.
- */
-function checkOperatorRole() {
-  // In production, this should integrate with the actual auth/role system.
-  // For now, respect the MCP server's operator context or env override.
-  return process.env.OPERATOR_MODE === "1" || process.env.OPERATOR_MODE === "true";
-}
+import { isLiveSession } from "#lib/session-mode.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a meta-state finding to an active rule. Requires operator role. Writes a new entry_kind: 'rule' entry and updates the source finding's promoted_to_rule to the rule id string. Use preview:true to test pattern matches without activating.",
+  description: "Promote a meta-state finding to an active rule. Requires LOOP_SESSION_MODE=live. Writes a new entry_kind: 'rule' entry and updates the source finding's promoted_to_rule to the rule id string. Use preview:true to test pattern matches without activating.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
@@ -51,9 +41,10 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-    // Operator role check (placeholder until auth system exists)
-    if (!preview && !checkOperatorRole()) {
-      const result = { promoted: false, reason: "operator_role_required", id };
+    // Session-mode gate (plan 260708-0833): refuses when LOOP_SESSION_MODE is
+    // unset or any value other than strict "live". Default = autonomous.
+    if (!preview && !isLiveSession()) {
+      const result = { promoted: false, reason: "live_session_required", id };
       appendGateLog(root, {
         timestamp: new Date().toISOString(),
         tool: "meta_state_promote_rule",

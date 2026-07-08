@@ -3,6 +3,7 @@ import { readRegistry, updateEntry } from "../../core/meta-state.js";
 import { appendLedgerEvent, readRuntimeStateRows } from "../../core/runtime-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { isLiveSession } from "#lib/session-mode.js";
 
 /**
  * meta_state_dispatch_finding — two-mode tool for routing fixable findings
@@ -18,7 +19,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
  *     a `dispatch-<id>` ledger row already exists, agent does NOT re-run gh).
  *   - commit({id, issue_number, issue_url, repo, delegated_to}): writes the
  *     `dispatch-<id>` ledger event and patches the finding's `ledger_ref`
- *     back-pointer. OPERATOR_MODE-gated (orthogonal to preflight).
+ *     back-pointer. LOOP_SESSION_MODE=live-gated (orthogonal to preflight).
  *
  * Idempotency (handles H1 orphan-retry + H2 concurrent-race): both stages
  * scan runtime-state.jsonl for a row with `id === "dispatch-<finding_id>"`
@@ -166,8 +167,8 @@ async function handleCommitStage(root, finding, id, coords) {
   const { issue_number, issue_url, repo, delegated_to } = coords;
   const ledgerId = dispatchLedgerId(id);
 
-  if (process.env.OPERATOR_MODE !== "1" && process.env.OPERATOR_MODE !== "true") {
-    return finish(root, new Date().toISOString(), { dispatched: false, reason: "operator_role_required", id, stage: "commit" });
+  if (!isLiveSession()) {
+    return finish(root, new Date().toISOString(), { dispatched: false, reason: "live_session_required", id, stage: "commit" });
   }
   if (issue_number === undefined || !issue_url) {
     return finish(root, new Date().toISOString(), { dispatched: false, reason: "missing_coords", id, stage: "commit" });
@@ -290,7 +291,7 @@ export const metaStateDispatchFindingTool = {
     "prepare({id}) builds the issue title/body + coord-repo hint (read-only, " +
     "ungated, idempotent). commit({id, issue_number, issue_url, repo, " +
     "delegated_to}) writes the dispatch-<id> ledger event + patches " +
-    "ledger_ref (OPERATOR_MODE-gated, idempotent on re-commit). " +
+    "ledger_ref (LOOP_SESSION_MODE=live-gated, idempotent on re-commit). " +
     "Citation: the issue body cites `local:meta-state:<id>` (loop-citable); " +
     "the registry-side `ledger_ref` is human-citable. They are NOT symmetric.",
   schema: {
