@@ -120,7 +120,7 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
    |---|---|---|
    | `learning-loop_mastra_<tool>` | `learning-loop_mastra_loop_describe` | 30 |
    | `learning-loop_ask_<agent>` | `learning-loop_ask_intake_agent` | 3 |
-   | `learning-loop_run_workflow_<workflow>` | `learning-loop_run_workflow_intake_orient` | 11 |
+   | `learning-loop_run_workflow_<workflow>` | `learning-loop_run_workflow_classify_prompt` | 11 |
 
    **Total:** 44 tools exposed via MCP.
 

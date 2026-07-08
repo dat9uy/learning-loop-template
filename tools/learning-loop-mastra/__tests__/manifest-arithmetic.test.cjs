@@ -1,13 +1,13 @@
 // Manifest arithmetic test — cross-walks the 4 manifest files in the mastra
-// package and asserts the 45-tool total + 6-group structure + 13 in workflow
+// package and asserts the 43-tool total + 6-group structure + 11 in workflow
 // group. Catches future drift between the source-of-truth files.
 //
 // Test inventory:
 //   1. tools/manifest.json has 31 entries
-//   2. workflows-manifest.json has 10 entries
+//   2. workflows-manifest.json has 8 entries
 //   3. agents-manifest.json has 3 entries
-//   4. agent-manifest.json#groups totals 45
-//   5. agent-manifest.json#workflow.tools has 13 entries (8 run + 3 mastra + 2 storage)
+//   4. agent-manifest.json#groups totals 43
+//   5. agent-manifest.json#workflow.tools has 11 entries (6 run + 3 mastra + 2 storage)
 //   6. agent-manifest.json has 6 groups
 //   7. Cross-walk: every entry in tools/manifest.json is in agent-manifest.json#groups
 //   8. Cross-walk: every run_<id> from workflows-manifest.json is in agent-manifest.json#workflow
@@ -35,24 +35,24 @@ describe("manifest arithmetic", () => {
     assert.strictEqual(tools.length, 31);
   });
 
-  test("workflows-manifest.json has 10 entries", () => {
-    assert.strictEqual(workflows.length, 10);
+  test("workflows-manifest.json has 8 entries", () => {
+    assert.strictEqual(workflows.length, 8);
   });
 
   test("agents-manifest.json has 3 entries", () => {
     assert.strictEqual(Object.keys(agents.agents).length, 3);
   });
 
-  test("agent-manifest.json#groups totals 45", () => {
+  test("agent-manifest.json#groups totals 43", () => {
     const total = Object.values(agentManifest.groups).reduce(
       (sum, g) => sum + g.tools.length,
       0,
     );
-    assert.strictEqual(total, 45, `expected 45 total, got ${total}`);
+    assert.strictEqual(total, 43, `expected 43 total, got ${total}`);
   });
 
-  test("agent-manifest.json#workflow.tools has 13 entries", () => {
-    assert.strictEqual(agentManifest.groups.workflow.tools.length, 13);
+  test("agent-manifest.json#workflow.tools has 11 entries", () => {
+    assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
   });
 
   test("agent-manifest.json has 6 groups", () => {
@@ -78,7 +78,7 @@ describe("manifest arithmetic", () => {
     const workflowTools = new Set(agentManifest.groups.workflow.tools);
     for (const { file } of workflows) {
       // The run_<id> naming is `run_<workflow_id>` per server.js:93.
-      // The workflow_id is the file basename minus .js (e.g., workflow-intake-orient).
+      // The workflow_id is the file basename minus .js (e.g., workflow-classify-prompt).
       const id = file.replace(/^workflows\//, "").replace(/\.js$/, "").replace(/-/g, "_");
       const mcpName = `run_${id}`;
       assert.ok(

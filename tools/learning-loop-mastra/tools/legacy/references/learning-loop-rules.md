@@ -2,7 +2,7 @@
 
 Use these as prompt constraints. If exact wording matters, read the source docs before drafting.
 
-MCP tools: `workflow_classify_prompt`, `workflow_intake_orient` implement parts of this reference mechanically.
+MCP tools: `workflow_classify_prompt` implement parts of this reference mechanically.
 
 ## Source Docs to Read
 

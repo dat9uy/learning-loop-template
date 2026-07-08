@@ -52,7 +52,7 @@ test("smoke:mastracode stdout is valid JSON", { timeout: 60000 }, () => {
   assert.ok("status" in parsed, "probe output must have `status` field");
 });
 
-test("smoke:mastracode live branch: MCP server connected + 44 tools", { timeout: 60000 }, () => {
+test("smoke:mastracode live branch: MCP server connected + 43 tools", { timeout: 60000 }, () => {
   const result = spawnSync("node", [PROBE_PATH], {
     cwd: PROJECT_ROOT,
     encoding: "utf8",
@@ -68,7 +68,7 @@ test("smoke:mastracode live branch: MCP server connected + 44 tools", { timeout:
   assert.equal(parsed.mcp_servers[0].name, "learning-loop");
   assert.equal(parsed.mcp_servers[0].connected, true, "learning-loop server must be connected");
   assert.equal(parsed.mcp_servers[0].transport, "stdio", "transport must be stdio");
-  assert.equal(parsed.mcp_tool_names.length, 44, `expected 44 MCP tools, got ${parsed.mcp_tool_names.length}`);
+  assert.equal(parsed.mcp_tool_names.length, 43, `expected 43 MCP tools, got ${parsed.mcp_tool_names.length}`);
 });
 
 test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow>", { timeout: 60000 }, () => {
@@ -83,7 +83,7 @@ test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow
   // Three patterns observed in mastracode@0.26.0:
   //   1. Primitives (30 tools): `learning-loop_mastra_<tool>` (e.g., loop_describe, meta_state_list, gate_check)
   //   2. Agent wrappers:        `learning-loop_ask_<agent>` (e.g., ask_intake_agent)
-  //   3. Workflow runners:      `learning-loop_run_workflow_<workflow>` (e.g., run_workflow_intake_orient)
+  //   3. Workflow runners:      `learning-loop_run_workflow_<workflow>` (e.g., run_workflow_classify_prompt)
   const expectedPrefixes = ["learning-loop_mastra_", "learning-loop_ask_", "learning-loop_run_workflow_"];
   for (const name of parsed.mcp_tool_names) {
     const ok = expectedPrefixes.some((p) => name.startsWith(p));

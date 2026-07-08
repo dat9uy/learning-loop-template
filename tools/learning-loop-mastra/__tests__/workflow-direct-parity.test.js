@@ -21,45 +21,6 @@ function writeYaml(root, path, data) {
   writeFileSync(fullPath, JSON.stringify(data, null, 2));
 }
 
-test("workflow-intake-orient: direct parity matches legacy handler", async () => {
-  const { workflowIntakeOrient } = await import("../mastra/workflows/workflow-intake-orient.js");
-  const tempRoot = makeTempRoot();
-  writeYaml(tempRoot, "records/meta/index/test.yaml", { id: "test", dimension: "product", capability: "auth" });
-
-  const prevGateRoot = process.env.GATE_ROOT;
-  process.env.GATE_ROOT = tempRoot;
-  try {
-    const args = { root: tempRoot };
-    const run = await workflowIntakeOrient.createRun();
-    const started = await run.start({ inputData: args });
-    assert.equal(started.status, "success");
-    assert.ok(started.result, "result must exist");
-    assert.ok(Array.isArray(started.result.index_entries), "index_entries must be array");
-    assert.ok(Array.isArray(started.result.meta_triggers), "meta_triggers must be array");
-  } finally {
-    if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
-    else process.env.GATE_ROOT = prevGateRoot;
-  }
-});
-
-test("workflow-intake-plan: direct parity matches legacy handler", async () => {
-  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
-  const orientResult = {
-    index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
-    meta_triggers: ["trigger1"],
-    observations: [],
-    capability_files: [],
-    missing_decisions: [],
-  };
-  const args = { orient_result: orientResult };
-  const run = await workflowIntakePlan.createRun();
-  const started = await run.start({ inputData: args });
-  assert.equal(started.status, "success");
-  assert.equal(started.result.status, "ready");
-  assert.ok(Array.isArray(started.result.steps), "steps must be array");
-  assert.ok(started.result.steps.length > 0, "must have at least one step");
-});
-
 test("workflow-classify-prompt: direct parity matches legacy handler", async () => {
   const { workflowClassifyPrompt } = await import("../mastra/workflows/workflow-classify-prompt.js");
   const args = { prompt: "fix the auth flow" };
@@ -79,7 +40,7 @@ test("workflow-classify-prompt: deep-equal structural parity", async () => {
   const started = await run.start({ inputData: { prompt: "evidence verified" } });
   const expected = {
     category: "evidence",
-    confidence: started.result.confidence,
+    confidence: 1.0,
     suggested_tools: ["validate_records"],
   };
   assert.deepStrictEqual(started.result, expected);
@@ -184,51 +145,6 @@ test("workflow-report-phase-status: direct parity matches legacy handler", async
   assert.equal(started.status, "success");
   assert.equal(typeof started.result.status, "string");
   assert.equal(typeof started.result.lifecycle_complete, "boolean");
-});
-
-test("workflow-intake-orient: deep-equal structural parity", async () => {
-  const { workflowIntakeOrient } = await import("../mastra/workflows/workflow-intake-orient.js");
-  const tempRoot = makeTempRoot();
-  writeYaml(tempRoot, "records/meta/index/test.yaml", { id: "test", dimension: "product", capability: "auth" });
-
-  const prevGateRoot = process.env.GATE_ROOT;
-  process.env.GATE_ROOT = tempRoot;
-  try {
-    const run = await workflowIntakeOrient.createRun();
-    const started = await run.start({ inputData: { root: tempRoot } });
-    assert.equal(started.status, "success");
-    assert.deepStrictEqual(started.result, {
-      index_entries: [{ filename: "test.yaml", id: "test", dimension: "product", capability: "auth" }],
-      meta_triggers: [],
-      observations: [],
-      capability_files: [],
-      missing_decisions: ["test"],
-    });
-  } finally {
-    if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
-    else process.env.GATE_ROOT = prevGateRoot;
-  }
-});
-
-test("workflow-intake-plan: deep-equal structural parity", async () => {
-  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
-  const orientResult = {
-    index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
-    meta_triggers: ["trigger1"],
-    observations: [],
-    capability_files: [],
-    missing_decisions: [],
-  };
-  const run = await workflowIntakePlan.createRun();
-  const started = await run.start({ inputData: { orient_result: orientResult } });
-  assert.equal(started.status, "success");
-  assert.deepStrictEqual(started.result, {
-    status: "ready",
-    steps: [
-      { step_number: 1, action: "read_record", record_id: "test", verification_type: "runtime", suggested_tool: "trigger_workflow", questions: [] },
-      { step_number: 2, action: "review_meta_trigger", record_id: "trigger1", verification_type: "static", questions: ["Does this meta trigger require a schema update?"] },
-    ],
-  });
 });
 
 test("workflow-prepare-runtime-request: deep-equal structural parity", async () => {
@@ -344,29 +260,5 @@ test("workflow_self_improvement handles envelope-form input", async () => {
     canonical_adoption_path: "operator-approval → schema-draft → validate → migrate",
     description: "Add validation to schema",
     proposed_changes: ["add zod schema"],
-  });
-});
-
-test("workflow_intake_plan handles envelope-form input", async () => {
-  const { workflowIntakePlan } = await import("../mastra/workflows/workflow-intake-plan.js");
-  const orientResult = {
-    index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
-    meta_triggers: ["trigger1"],
-    observations: [],
-    capability_files: [],
-    missing_decisions: [],
-  };
-  const envelopeInput = {
-    content: [{ type: "text", text: JSON.stringify({ orient_result: orientResult }) }],
-  };
-  const run = await workflowIntakePlan.createRun();
-  const started = await run.start({ inputData: envelopeInput });
-  assert.equal(started.status, "success");
-  assert.deepStrictEqual(started.result, {
-    status: "ready",
-    steps: [
-      { step_number: 1, action: "read_record", record_id: "test", verification_type: "runtime", suggested_tool: "trigger_workflow", questions: [] },
-      { step_number: 2, action: "review_meta_trigger", record_id: "trigger1", verification_type: "static", questions: ["Does this meta trigger require a schema update?"] },
-    ],
   });
 });

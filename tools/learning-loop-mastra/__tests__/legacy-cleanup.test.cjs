@@ -58,7 +58,6 @@ describe("legacy cleanup (C-9)", () => {
       { file: "tools/learning-loop-mastra/mastra/schemas.js", importPath: "./tools/legacy/meta-state-propose-design-tool.js" },
       { file: "tools/learning-loop-mastra/mastra/create-loop-workflow.js", importPath: "./core/envelope-stripper.js" },
       { file: "tools/learning-loop-mastra/mastra/agents/run-scout-tool.js", importPath: "../scout/legacy/run-scout.js" },
-      { file: "tools/learning-loop-mastra/mastra/workflows/workflow-intake-plan.js", importPath: "../core/envelope-stripper.js" },
       { file: "tools/learning-loop-mastra/mastra/workflows/workflow-self-improvement.js", importPath: "../core/envelope-stripper.js" },
     ];
     for (const { file, importPath } of consumers) {

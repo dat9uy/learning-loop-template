@@ -121,7 +121,7 @@ describe("migration parity contract — schema-parity.js shim", () => {
   });
 
   test("preprocess() inside z.object() recovers baseline", () => {
-    // Real migration: meta_state_query_drift.filter, workflow_intake_plan.orient_result
+    // Real migration: meta_state_query_drift.filter, workflow_prepare_runtime_request.input
     const baseline = z.object({
       tags: z.array(z.string()).optional(),
     });

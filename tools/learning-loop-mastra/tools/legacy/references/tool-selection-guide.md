@@ -66,8 +66,6 @@ The 4-question framework for picking a tool:
 
 | Intent | Tool |
 |---|---|
-| Run the intake orient phase | `workflow_intake_orient` |
-| Plan a verification sequence from orient output | `workflow_intake_plan` |
 | Classify a user prompt into one of 8 categories | `workflow_classify_prompt` |
 | Convert vendor evidence markdown to experiment YAML | `workflow_convert_evidence` |
 | Map a candidate assertion to an experiment draft | `workflow_candidate_to_experiment` |

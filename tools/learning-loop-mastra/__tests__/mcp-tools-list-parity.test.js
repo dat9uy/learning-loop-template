@@ -26,7 +26,6 @@ const MIGRATED_TOOL_NAMES = [
   "mastra_meta_state_query_drift",
   "mastra_meta_state_derive_status",
   "mastra_meta_state_list",
-  "run_workflow_intake_plan",
   "run_workflow_self_improvement",
   "mastra_workflow_generate_prompt",
   // "mastra_trigger_workflow" intentionally omitted: server logs

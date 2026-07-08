@@ -2,7 +2,7 @@
 
 Use these blueprints when the user wants to run an experiment and update a claim in one continuous workflow, or when they want to verify that an experiment's evidence aligns with a claim before promotion.
 
-MCP tools: `workflow_intake_plan`, `workflow_report_phase_status` implement orient/plan/phase-reporting mechanically.
+MCP tool `workflow_report_phase_status` implements phase-reporting mechanically.
 
 These prompts chain existing blueprints; they do not replace `prompt-blueprints.md` or `learning-loop-rules.md`.
 
