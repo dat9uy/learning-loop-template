@@ -40,7 +40,7 @@ test("workflow-classify-prompt: deep-equal structural parity", async () => {
   const started = await run.start({ inputData: { prompt: "evidence verified" } });
   const expected = {
     category: "evidence",
-    confidence: started.result.confidence,
+    confidence: 1.0,
     suggested_tools: ["validate_records"],
   };
   assert.deepStrictEqual(started.result, expected);
@@ -145,18 +145,6 @@ test("workflow-report-phase-status: direct parity matches legacy handler", async
   assert.equal(started.status, "success");
   assert.equal(typeof started.result.status, "string");
   assert.equal(typeof started.result.lifecycle_complete, "boolean");
-});
-
-test("workflow-classify-prompt: deep-equal structural parity", async () => {
-  const { workflowClassifyPrompt } = await import("../mastra/workflows/workflow-classify-prompt.js");
-  const run = await workflowClassifyPrompt.createRun();
-  const started = await run.start({ inputData: { prompt: "evidence verified" } });
-  const expected = {
-    category: "evidence",
-    confidence: started.result.confidence,
-    suggested_tools: ["validate_records"],
-  };
-  assert.deepStrictEqual(started.result, expected);
 });
 
 test("workflow-prepare-runtime-request: deep-equal structural parity", async () => {
