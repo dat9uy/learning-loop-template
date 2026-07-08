@@ -6,7 +6,7 @@ import { join } from "node:path";
 import {
   computeFileHashCached,
   _clearHashCacheForTests,
-} from "../../tools/legacy/meta-state-check-grounding-tool.js";
+} from "../../tools/handlers/meta-state-check-grounding-tool.js";
 
 function makeRoot() {
   return mkdtempSync(join(tmpdir(), "hash-cache-test-"));

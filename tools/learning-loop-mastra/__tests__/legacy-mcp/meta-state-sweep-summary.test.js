@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { metaStateSweepTool } from "../../tools/legacy/meta-state-sweep-tool.js";
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { metaStateSweepTool } from "../../tools/handlers/meta-state-sweep-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 
 // Plan 260707-0812 Phase 3: sweep is read-only. The previous tests in this
 // file used `mkdtempSync` isolation to defend against sweep `apply:true`

@@ -9,7 +9,7 @@ import assert from "node:assert";
 import { readFileSync, mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { gateCheckTool } from "../../tools/legacy/gate-tool.js";
+import { gateCheckTool } from "../../tools/handlers/gate-tool.js";
 
 const SNAPSHOT_PATH = join(new URL(".", import.meta.url).pathname, "fixtures", "gate-check-snapshot.json");
 const snapshot = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8"));

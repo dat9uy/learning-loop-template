@@ -15,11 +15,11 @@
    → No: continue.
 
 4. Does it translate between a runtime's hook protocol and our internal API?
-   → Yes: `hooks/legacy/<gate>.js` (universal) + `.claude|.factory/coordination/hooks/*.cjs` (shim)
+   → Yes: `hooks/universal/<gate>.js` (universal) + `.claude|.factory/coordination/hooks/*.cjs` (shim)
    → No: continue.
 
 5. Is it an MCP tool that exposes a core function?
-   → Yes: `tools/legacy/<tool>.js` (legacy substrate, NOT in `mastra/`)
+   → Yes: `tools/handlers/<tool>.js` (legacy substrate, NOT in `mastra/`)
    → No: escalate to operator — outside documented layers.
 
 ## 2. Role taxonomy (closed)

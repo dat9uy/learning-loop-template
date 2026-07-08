@@ -25,7 +25,7 @@ This is the load-bearing architectural rule. If you add a
 - `@mastra/*` (the framework)
 - `tools/learning-loop-mastra/mastra/create-loop-*.js` (shell factories)
 - Anything under `tools/learning-loop-mastra/mastra/{workflows,agents}/`
-  (shell-defined entities); `tools/learning-loop-mastra/tools/legacy/`
+  (shell-defined entities); `tools/learning-loop-mastra/tools/handlers/`
   is a separate substrate directory (legacy tool adapters; NOT under `mastra/`)
 
 The reasoning: those would couple core to the shell, breaking the one-way
@@ -49,7 +49,7 @@ implicit-topology refactor) prevents *new* accumulation; the fallow CI guard
 prevents re-accumulation. Together they enforce this rule.
 
 Enforcement:
-- `.fallowrc.json` lists `mastra/server.js` and the `tools/legacy/**/*.js`
+- `.fallowrc.json` lists `mastra/server.js` and the `tools/handlers/**/*.js`
   wrappers as entry points. `__tests__/legacy-mcp/**` is excluded.
 - `fallow audit --gate new-only` runs on every PR; introduced dead code
   fails the gate.
@@ -59,7 +59,7 @@ Enforcement:
 When adding new code to `core/`:
 1. Update `core/placement.yaml` with the new file's path + role + summary.
 2. Ensure the file is imported by a production site (a tool in
-   `tools/legacy/`, a hook in `hooks/legacy/`, or another core facade).
+   `tools/handlers/`, a hook in `hooks/universal/`, or another core facade).
 3. Run `fallow dead-code --unused-files --unused-exports` locally; expect
    0 findings for the new file.
 
@@ -91,7 +91,7 @@ Factory `outboundRefs()` / `inboundRefs(root)` are **pure views** of an entry's 
 - `createFinding(data).outboundRefs()` emits a `promoted_to_rule` ref only when `data.promoted_to_rule` is set. Legacy findings without that field yield no `promoted_to_rule` ref.
 - `createRule(data).inboundRefs(root)` does emit a `promoted_to_rule` ref from the rule side via `rule.origin` (dual-field fallback), so the inverse direction stays correct.
 
-The registry-aware composition for legacy outbound compat lives in **`tools/legacy/meta-state-relationships-tool.js`**, which calls `buildInverseIndexes(entries)` and patches `outbound.promoted_to_rule` from `origin_inverse` when the finding lacks the field. This is intentional: factories stay schema-pure and import-light, while the tool (which already reads the registry) handles the legacy migration. **Consumers calling `factory.outboundRefs()` directly should not expect legacy dual-field fallback** — go through `meta_state_relationships` for the canonical wire shape.
+The registry-aware composition for legacy outbound compat lives in **`tools/handlers/meta-state-relationships-tool.js`**, which calls `buildInverseIndexes(entries)` and patches `outbound.promoted_to_rule` from `origin_inverse` when the finding lacks the field. This is intentional: factories stay schema-pure and import-light, while the tool (which already reads the registry) handles the legacy migration. **Consumers calling `factory.outboundRefs()` directly should not expect legacy dual-field fallback** — go through `meta_state_relationships` for the canonical wire shape.
 
 ## Relationship to other layers
 

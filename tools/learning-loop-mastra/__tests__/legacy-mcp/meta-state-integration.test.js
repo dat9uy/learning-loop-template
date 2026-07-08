@@ -10,9 +10,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateResolveTool } from "../../tools/legacy/meta-state-resolve-tool.js";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateResolveTool } from "../../tools/handlers/meta-state-resolve-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
 
 const originalEnv = process.env.GATE_ROOT;
 

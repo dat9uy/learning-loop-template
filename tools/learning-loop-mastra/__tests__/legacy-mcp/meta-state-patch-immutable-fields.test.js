@@ -29,7 +29,7 @@ test("immutable_field error response includes full IMMUTABLE_PATCH_FIELDS list",
     version: 0,
   });
 
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js")).href;
   const { metaStatePatchTool, IMMUTABLE_PATCH_FIELDS } = await import(toolPath);
 
   const originalEnv = process.env.GATE_ROOT;
@@ -76,7 +76,7 @@ test("immutable_field error response still includes denied_fields (backward comp
     version: 0,
   });
 
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-patch-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js")).href;
   const { metaStatePatchTool } = await import(toolPath);
 
   const originalEnv = process.env.GATE_ROOT;

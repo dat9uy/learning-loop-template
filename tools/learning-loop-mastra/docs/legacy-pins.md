@@ -1,6 +1,6 @@
 # Legacy Pins (Parity-Test + Parity-Semantic)
 
-Files that must NOT be moved to `tools/learning-loop-mastra/tools/legacy/` (or any other "legacy" location), because they enforce parity contracts that the loop's wire-format correctness depends on.
+Files that must NOT be moved to `tools/learning-loop-mastra/tools/handlers/` (or any other "legacy" location), because they enforce parity contracts that the loop's wire-format correctness depends on.
 
 ## Convention
 

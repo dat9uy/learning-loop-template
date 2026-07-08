@@ -8,9 +8,9 @@
 //
 // WHY THE PATH REWRITE: entries use the CANONICAL name "tools/X-tool.js"
 // (stable, hand-curated). At server startup, mastra/server.js:26-27 rewrites
-// each path to "../tools/legacy/X-tool.js" (the "legacy MCP wrapper"
+// each path to "../tools/handlers/X-tool.js" (the "legacy MCP wrapper"
 // implementation). This keeps the registry stable while allowing file moves
-// between tools/, tools/legacy/, and future mastra/tools/.
+// between tools/, tools/handlers/, and future mastra/tools/.
 //
 // pathFields (R3 / Plan 5-Lite Phase 1): declares which arg names carry WRITE
 // path values that the R2 gate must ownership-check. Empty array [] means

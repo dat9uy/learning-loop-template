@@ -19,8 +19,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateDispatchFindingTool } from "../../tools/handlers/meta-state-dispatch-finding-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { SURFACES } from "../../core/surfaces.js";
 

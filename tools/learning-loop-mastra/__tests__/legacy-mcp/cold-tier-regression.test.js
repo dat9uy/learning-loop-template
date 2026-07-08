@@ -1,4 +1,4 @@
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";

@@ -7,9 +7,9 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { buildStaleDispatchHints } from "../../core/loop-introspect.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
-import { metaStateDispatchFindingTool } from "../../tools/legacy/meta-state-dispatch-finding-tool.js";
+import { metaStateDispatchFindingTool } from "../../tools/handlers/meta-state-dispatch-finding-tool.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

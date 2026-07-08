@@ -23,7 +23,7 @@ import { join } from "node:path";
 //
 // Plan 4 cutover followup (2026-06-24, plan 260624-1609-phase-d-plan-4-test-migration-fix):
 // the 5 mcp-* globs were repointed at tools/learning-loop-mastra/{__tests__/legacy-mcp,
-// core, core/lib, tools/legacy}/ and the 117 relative imports in the
+// core, core/lib, tools/handlers}/ and the 117 relative imports in the
 // relocated test files were rewritten. archive-product-records.test.js was deleted
 // (its scripts/archive-product-records.mjs entry was removed by Plan 4). All
 // imports verified to resolve; the 5 namespaces now run the 118 migrated test files.
@@ -33,7 +33,7 @@ const GLOBS = [
   { ns: "mcp-core", pattern: "tools/learning-loop-mastra/core/*.test.js" },
   { ns: "mcp-entry", pattern: "tools/learning-loop-mastra/core/entry/*.test.js" },
   { ns: "mcp-lib", pattern: "tools/learning-loop-mastra/core/lib/*.test.js" },
-  { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/legacy/*.test.js" },
+  { ns: "mcp-tools", pattern: "tools/learning-loop-mastra/tools/handlers/*.test.js" },
   { ns: "mastra-js", pattern: "tools/learning-loop-mastra/__tests__/*.test.js" },
   { ns: "mastra-cjs", pattern: "tools/learning-loop-mastra/__tests__/*.test.cjs" },
   // R2 write-allowlist + path-containment security suite. Lives in __tests__/r2/

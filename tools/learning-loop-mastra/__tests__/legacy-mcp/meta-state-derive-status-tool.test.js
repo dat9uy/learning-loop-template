@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateDeriveStatusTool } from "../../tools/legacy/meta-state-derive-status-tool.js";
-import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change-tool.js";
+import { metaStateDeriveStatusTool } from "../../tools/handlers/meta-state-derive-status-tool.js";
+import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 
 describe("meta_state_derive_status tool", () => {
   const originalEnv = process.env.GATE_ROOT;

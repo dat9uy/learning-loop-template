@@ -133,7 +133,7 @@ describe("readRegistry LRU cache", () => {
     assert.equal(before.length, 1);
 
     // Batch write 10 entries — cache should be invalidated once, not 10 times
-    const { metaStateBatchTool } = await import("../../tools/legacy/meta-state-batch-tool.js");
+    const { metaStateBatchTool } = await import("../../tools/handlers/meta-state-batch-tool.js");
     const originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
     const ops = Array.from({ length: 10 }, (_, i) => ({

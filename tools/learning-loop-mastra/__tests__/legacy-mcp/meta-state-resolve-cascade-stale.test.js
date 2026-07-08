@@ -13,7 +13,7 @@ async function importCore(tempRoot) {
 }
 
 async function importMetaStateResolveTool() {
-  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/legacy/meta-state-resolve-tool.js")).href;
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/handlers/meta-state-resolve-tool.js")).href;
   return await import(toolPath);
 }
 

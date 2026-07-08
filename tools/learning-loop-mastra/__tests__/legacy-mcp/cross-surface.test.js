@@ -12,9 +12,9 @@ import assert from "node:assert";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BASH_HOOK = join(__dirname, "..", "..", "hooks", "legacy", "bash-gate.js");
-const WRITE_HOOK = join(__dirname, "..", "..", "hooks", "legacy", "write-gate.js");
-const INBOUND_HOOK = join(__dirname, "..", "..", "hooks", "legacy", "inbound-gate.js");
+const BASH_HOOK = join(__dirname, "..", "..", "hooks", "universal", "bash-gate.js");
+const WRITE_HOOK = join(__dirname, "..", "..", "hooks", "universal", "write-gate.js");
+const INBOUND_HOOK = join(__dirname, "..", "..", "hooks", "universal", "inbound-gate.js");
 
 function runHook(hookPath, input, envOverrides = {}) {
   const result = spawnSync("node", [hookPath], {

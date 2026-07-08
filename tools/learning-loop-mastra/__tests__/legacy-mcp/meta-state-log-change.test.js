@@ -5,7 +5,7 @@ import {
   metaStateLogChangeTool,
   _clearIdempotencyCacheForTests,
   _backdateIdempotencyCacheForTests,
-} from "../../tools/legacy/meta-state-log-change-tool.js";
+} from "../../tools/handlers/meta-state-log-change-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";

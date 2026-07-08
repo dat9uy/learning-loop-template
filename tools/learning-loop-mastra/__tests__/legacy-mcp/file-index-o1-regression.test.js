@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
-import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
+import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
 import { readFileIndex, canonicalIndexKey, _resetFileIndexCacheForTests } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 

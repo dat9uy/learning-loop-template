@@ -6,8 +6,8 @@ import { join } from "node:path";
 import {
   metaStateRefreshFileIndexTool,
   _clearIdempotencyCacheForTests,
-} from "../../tools/legacy/meta-state-refresh-file-index-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+} from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readFileIndex, getFileIndexPath } from "../../core/meta-state.js";
 
 function gateLog(tempDir) {

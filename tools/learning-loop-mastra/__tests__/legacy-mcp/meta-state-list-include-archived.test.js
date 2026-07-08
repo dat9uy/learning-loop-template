@@ -3,7 +3,7 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
 
 function makeTempRoot() {
   return mkdtempSync(join(tmpdir(), "include-archived-test-"));

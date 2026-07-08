@@ -14,8 +14,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateRelationshipsTool } from "../../tools/legacy/meta-state-relationships-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateRelationshipsTool } from "../../tools/handlers/meta-state-relationships-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 
 describe("meta_state_relationships derived view: dangling outbound refs", () => {

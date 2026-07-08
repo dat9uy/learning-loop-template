@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { metaStateBatchTool } from "../../tools/legacy/meta-state-batch-tool.js";
+import { metaStateBatchTool } from "../../tools/handlers/meta-state-batch-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 
 function makeTempRoot() {

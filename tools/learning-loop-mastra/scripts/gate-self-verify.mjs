@@ -67,7 +67,7 @@ const STEPS = [
   {
     name: "seed file-index.jsonl",
     cmd: "node",
-    args: ["tools/learning-loop-mastra/tools/legacy/scripts/seed-file-index.mjs"],
+    args: ["tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs"],
     why: "Re-hash every cited path so file-index.jsonl matches the current source tree (cold-tier grounding invariant).",
   },
   {

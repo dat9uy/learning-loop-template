@@ -3,8 +3,8 @@ import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateQueryDriftTool } from "../../tools/legacy/meta-state-query-drift-tool.js";
-import { metaStateReportTool } from "../../tools/legacy/meta-state-report-tool.js";
+import { metaStateQueryDriftTool } from "../../tools/handlers/meta-state-query-drift-tool.js";
+import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 
 function getGateLogPath(tempDir) {
   return join(tempDir, ".claude", "coordination", "gate-log.jsonl");
@@ -278,7 +278,7 @@ describe("meta_state_query_drift tool", () => {
         evidence_test: "src.test.js",
       });
       const id1 = JSON.parse(r1.content[0].text).id;
-      const { metaStateResolveTool } = await import("../../tools/legacy/meta-state-resolve-tool.js");
+      const { metaStateResolveTool } = await import("../../tools/handlers/meta-state-resolve-tool.js");
       await metaStateResolveTool.handler({ id: id1, resolution: "fixed" });
       const result = await metaStateQueryDriftTool.handler({});
       assert.strictEqual(result.drift_count, 0);

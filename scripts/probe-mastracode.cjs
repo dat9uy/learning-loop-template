@@ -204,7 +204,7 @@ async function verifyWireFormat() {
   // the .mastracode/hooks.json `command` entries actually work end-to-end.
   const { spawn } = require('node:child_process');
   return new Promise((resolve) => {
-    const probe = spawn('node', [join(PROJECT_ROOT, 'tools/learning-loop-mastra/hooks/legacy/bash-gate.js')], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const probe = spawn('node', [join(PROJECT_ROOT, 'tools/learning-loop-mastra/hooks/universal/bash-gate.js')], { stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     probe.stdout.on('data', (c) => { stdout += c; });

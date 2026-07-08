@@ -51,17 +51,17 @@ const SHIM_BASENAMES = [
 
 // Universal-hook basenames referenced by declarative hooks.json entries.
 const UNIVERSAL_HOOK_PATHS = [
-  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+  "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/write-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
 ];
 // Canonical hooks required for Req #5/Req #6 (Mastra Code declarative config)
 const REQUIRED_HOOK_COMMANDS = [
-  "tools/learning-loop-mastra/hooks/legacy/bash-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/write-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/inbound-gate.js",
-  "tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js",
+  "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/write-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
+  "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
 ];
 
 const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
@@ -135,7 +135,7 @@ function checkHookShimSet(runtimeId, rootPath) {
       const content = readFileSync(shimPath, "utf8");
       const captured = findUniversalHookPath(content);
       if (captured) {
-        const idx = captured.indexOf("tools/learning-loop-mastra/hooks/legacy/");
+        const idx = captured.indexOf("tools/learning-loop-mastra/hooks/universal/");
         universalTarget = idx >= 0 ? join(rootPath, captured.slice(idx)) : null;
         if (universalTarget) universalExists = existsSync(universalTarget);
       }
@@ -452,7 +452,7 @@ function checkSettingsIntegration(runtimeId, rootPath) {
  * For runtimes with declarative hook configs (Mastra Code + future), assert that
  * `<surface>/hooks.json` parses AND has the 4 required event-type entries
  * (PreToolUse, UserPromptSubmit, SessionStart — PostToolUse/Stop/Notification optional)
- * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/legacy/`.
+ * AND each `command` points at a universal hook script in `tools/learning-loop-mastra/hooks/universal/`.
  * Parallel/alternative to Req #1 (which stays monomorphic on shim files).
  */
 const REQUIRED_DECLARATIVE_EVENTS = ["PreToolUse", "UserPromptSubmit", "SessionStart"];

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 
 import { readGateOverride, writeGateOverride } from "../../core/gate-override.js";
 import { applyPromotedRules, loadPromotedRules } from "../../core/gate-logic.js";
-import { gateOverrideTool } from "../../tools/legacy/gate-override-tool.js";
+import { gateOverrideTool } from "../../tools/handlers/gate-override-tool.js";
 import { SURFACES } from "../../core/surfaces.js";
 
 let root;

@@ -23,7 +23,7 @@ The runtime MUST provide 4 hook shims in `<surface>/coordination/hooks/`:
 - `inbound-state-gate.cjs`
 - `recurrence-check-on-start.cjs`
 
-Each shim MUST delegate to a universal hook in `tools/learning-loop-mastra/hooks/legacy/` via `child_process.execFileSync('node', [<universal-hook-path>], ...)`. **Pass:** all 4 shims exist as files in `<surface>/coordination/hooks/`. **Note:** the contract does NOT require byte-identical shims across runtimes (verified: Claude Code and Droid CLI shims differ in content but both delegate to the same universal hooks). The validator additionally reports each shim's `universal_target` (the path it delegates to) in `path_map` for documentation, but does NOT fail when the target is absent — universal hook wiring is git-tracked and not runtime-mutable (red-team Finding F1: real shims pass `[universalHook]` as a `path.join` result, not as a string literal; a regex-based check would silently fail for both runtimes). **Applicability:** N/A for declarative-hook runtimes (use Req #6 instead); validator reports `applicable:false` for those runtimes.
+Each shim MUST delegate to a universal hook in `tools/learning-loop-mastra/hooks/universal/` via `child_process.execFileSync('node', [<universal-hook-path>], ...)`. **Pass:** all 4 shims exist as files in `<surface>/coordination/hooks/`. **Note:** the contract does NOT require byte-identical shims across runtimes (verified: Claude Code and Droid CLI shims differ in content but both delegate to the same universal hooks). The validator additionally reports each shim's `universal_target` (the path it delegates to) in `path_map` for documentation, but does NOT fail when the target is absent — universal hook wiring is git-tracked and not runtime-mutable (red-team Finding F1: real shims pass `[universalHook]` as a `path.join` result, not as a string literal; a regex-based check would silently fail for both runtimes). **Applicability:** N/A for declarative-hook runtimes (use Req #6 instead); validator reports `applicable:false` for those runtimes.
 
 ### 2. `mcp-client-config`
 
@@ -67,9 +67,9 @@ For shim-file runtimes (Claude Code, Droid CLI): the validator reads the runtime
 ### 6. `hook-declarative-config` (Phase E Plan 4 — additive for declarative-hook runtimes)
 
 For runtimes using declarative hook configs (Mastra Code, future), the runtime MUST provide `<surface>/hooks.json` (or equivalent) containing:
-- `PreToolUse`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/bash-gate.js` (bash coordination gate); plus write/edit/delete entries referencing `tools/learning-loop-mastra/hooks/legacy/write-gate.js` for built-in write/edit/delete tool names (e.g., Mastra Code's `write_file`, `string_replace_lsp`, `delete_file`).
-- `UserPromptSubmit`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/inbound-gate.js`.
-- `SessionStart`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/legacy/recurrence-check-on-start.js`.
+- `PreToolUse`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/bash-gate.js` (bash coordination gate); plus write/edit/delete entries referencing `tools/learning-loop-mastra/hooks/universal/write-gate.js` for built-in write/edit/delete tool names (e.g., Mastra Code's `write_file`, `string_replace_lsp`, `delete_file`).
+- `UserPromptSubmit`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/inbound-gate.js`.
+- `SessionStart`: at least one entry whose `command` references `tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js`.
 
 **Pass:** JSON parses, all 3 required event entries present, AND every `command` references a known universal-hook path (no silent passes on bogus commands). **Fail:** malformed JSON, missing event entries, OR commands referencing paths that are not in the canonical universal-hook set (red-team Security F4). **Applicability:** declarative-hook runtimes only (e.g., Mastra Code). For shim-file runtimes, this requirement reports `applicable:false` and trivially passes.
 

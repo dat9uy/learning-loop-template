@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { metaStateArchiveTool } from "../../tools/legacy/meta-state-archive-tool.js";
-import { metaStateListTool } from "../../tools/legacy/meta-state-list-tool.js";
+import { metaStateArchiveTool } from "../../tools/handlers/meta-state-archive-tool.js";
+import { metaStateListTool } from "../../tools/handlers/meta-state-list-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 
 function makeTempRoot() {

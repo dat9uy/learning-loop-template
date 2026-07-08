@@ -5,8 +5,8 @@ import { SURFACES } from "./surfaces.js";
 
 const UNIVERSAL_DIRS = [
   "tools/learning-loop-mastra/core",
-  "tools/learning-loop-mastra/hooks/legacy",
-  "tools/learning-loop-mastra/tools/legacy",
+  "tools/learning-loop-mastra/hooks/universal",
+  "tools/learning-loop-mastra/tools/handlers",
 ];
 
 // Surface coordination/hooks dirs, derived from SURFACES so a new runtime is
@@ -104,7 +104,7 @@ function isHookFile(relPath) {
 
 function isToolFile(relPath) {
   const normalized = relPath.replace(/\\/g, "/");
-  return normalized.startsWith("tools/learning-loop-mastra/tools/legacy/") && normalized.endsWith("-tool.js");
+  return normalized.startsWith("tools/learning-loop-mastra/tools/handlers/") && normalized.endsWith("-tool.js");
 }
 
 function deriveToolName(relPath) {

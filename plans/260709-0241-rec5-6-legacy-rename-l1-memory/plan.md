@@ -1,7 +1,7 @@
 ---
 title: "Rec 5 + Rec 6: legacy/ rename to canonical dirs + L1 memory-substrate paragraph"
 description: "Rec 5: rename the live `legacy/` dirs to descriptive canonical names (tools/legacy/→tools/handlers/, hooks/legacy/→hooks/universal/, scout/legacy/→scout/pipeline/, mastra/legacy-handler-adapter.js→mastra/handler-adapter.js) and update every import-path + cross-runtime gate reference in lockstep, so `legacy/` is reserved for dead code and a future cleanup agent cannot mis-delete canonical code on the name. Rec 6: add the 'three stores realize it' half of the memory-substrate statement to docs/loop-engine.md (L1) to close the Rec 7 seam. Operator decision 2026-07-09 (UQ4 = Option A, descriptive subdirs)."
-status: pending
+status: shipped
 priority: P2
 branch: "main"
 tags: [rec-5, rec-6, legacy-rename, l1-docs, two-surfaces]
@@ -9,6 +9,8 @@ blockedBy: []
 blocks: []
 created: "2026-07-09T00:00:00Z"
 createdBy: "ck:plan"
+shipped_at: "2026-07-09T03:57:00Z"
+shipped_commit: "pending (cook will commit)"
 source: skill
 ---
 

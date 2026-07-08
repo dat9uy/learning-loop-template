@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { loopDescribeTool } from "../../tools/legacy/loop-describe-tool.js";
+import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { summarize } from "../../core/loop-introspect.js";
 
 const TIER = "cold";
