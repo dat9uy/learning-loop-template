@@ -9,10 +9,10 @@
       "cache_ttl": 0
     },
     "workflow": {
-      "description": "Learning-loop workflow orchestration (8 run_workflow_* + 3 mastra_workflow_* + 2 storage workflows)",
-      "tools": ["run_workflow_intake_orient", "run_workflow_intake_plan", "run_workflow_classify_prompt", "run_workflow_prepare_runtime_request", "mastra_workflow_generate_prompt", "run_workflow_self_improvement", "run_workflow_intentional_skip", "run_workflow_report_phase_status", "run_workflow_runtime_probe", "mastra_workflow_notify_artifact", "mastra_workflow_trigger", "run_workflow_storage_read", "run_workflow_storage_round_trip"],
+      "description": "Learning-loop workflow orchestration (6 run_workflow_* + 3 mastra_workflow_* + 2 storage workflows)",
+      "tools": ["run_workflow_classify_prompt", "run_workflow_prepare_runtime_request", "mastra_workflow_generate_prompt", "run_workflow_self_improvement", "run_workflow_intentional_skip", "run_workflow_report_phase_status", "run_workflow_runtime_probe", "mastra_workflow_notify_artifact", "mastra_workflow_trigger", "run_workflow_storage_read", "run_workflow_storage_round_trip"],
       "ordering": "linear",
-      "typical_chain": ["run_workflow_intake_orient", "run_workflow_intake_plan", "mastra_workflow_notify_artifact"]
+      "typical_chain": ["mastra_workflow_notify_artifact"]
     },
     "meta_state": {
       "description": "Meta-state registry for loop self-awareness findings",

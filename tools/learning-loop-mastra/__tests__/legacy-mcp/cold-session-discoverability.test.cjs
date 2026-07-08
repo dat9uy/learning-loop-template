@@ -71,7 +71,7 @@ describe("cold-session discoverability", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.ok(manifest.groups, "manifest must have groups");
     const totalTools = Object.values(manifest.groups).reduce((sum, g) => sum + g.tools.length, 0);
-    assert.strictEqual(totalTools, 45, `expected 45 tools in agent-manifest.json (meta_state_ack removed by the ack deprecation), got ${totalTools}`);
+    assert.strictEqual(totalTools, 43, `expected 43 tools in agent-manifest.json (meta_state_ack + run_workflow_intake_orient + run_workflow_intake_plan removed), got ${totalTools}`);
     assert.strictEqual(Object.keys(manifest.groups).length, 6, "expected 6 groups");
 
     writeSentinel("manifest");

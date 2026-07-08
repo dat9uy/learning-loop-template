@@ -60,39 +60,6 @@ describe("workflow parity harness", () => {
     assert.equal(typeof result.category, "string", "must have category");
   });
 
-  test("run_workflow_intake_orient matches legacy output shape", { timeout: 10000 }, async () => {
-    const tempRoot = handles.tempRoot;
-    writeYaml(tempRoot, "records/meta/index/test.yaml", { id: "test", dimension: "product", capability: "auth" });
-    const prevGateRoot = process.env.GATE_ROOT;
-    process.env.GATE_ROOT = tempRoot;
-    try {
-      const result = await handles.callTool("run_workflow_intake_orient", { root: tempRoot });
-      assert.ok(result, "result must exist");
-      assert.ok(Array.isArray(result.index_entries), "index_entries must be array");
-      assert.ok(Array.isArray(result.meta_triggers), "meta_triggers must be array");
-      assert.ok(Array.isArray(result.observations), "observations must be array");
-      assert.ok(Array.isArray(result.capability_files), "capability_files must be array");
-      assert.ok(Array.isArray(result.missing_decisions), "missing_decisions must be array");
-    } finally {
-      if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
-      else process.env.GATE_ROOT = prevGateRoot;
-    }
-  });
-
-  test("run_workflow_intake_plan matches legacy output shape", { timeout: 10000 }, async () => {
-    const orientResult = {
-      index_entries: [{ id: "test", dimension: "runtime", scope: "container" }],
-      meta_triggers: ["trigger1"],
-      observations: [],
-      capability_files: [],
-      missing_decisions: [],
-    };
-    const result = await handles.callTool("run_workflow_intake_plan", { orient_result: orientResult });
-    assert.equal(result.status, "ready");
-    assert.ok(Array.isArray(result.steps), "steps must be array");
-    assert.ok(result.steps.length > 0, "must have at least one step");
-  });
-
   test("run_workflow_classify_prompt matches legacy output", { timeout: 10000 }, async () => {
     const result = await handles.callTool("run_workflow_classify_prompt", { prompt: "fix the auth flow" });
     assert.equal(typeof result.category, "string");
@@ -157,13 +124,13 @@ describe("workflow parity harness", () => {
     assert.ok(Array.isArray(result.expected_outputs));
   });
 
-  test("tools/list enumerates 32 mastra_* + 10 run_workflow_* = 42 mastra-and-workflow total", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 32 mastra_* + 8 run_workflow_* = 40 mastra-and-workflow total", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
     assert.equal(mastra.length, 32, `must have 32 mastra_* tools (meta_state_ack removed in plan 260707-0812 Phase 2, meta_state_dispatch_finding added), got ${mastra.length}`);
-    assert.equal(runWorkflows.length, 10, `must have 10 run_workflow_* tools (8 existing + 2 storage), got ${runWorkflows.length}`);
-    assert.equal(tools.length, 45, `total must be 45 (32 mastra_* + 10 run_workflow_* + 3 ask_*), got ${tools.length}`);
+    assert.equal(runWorkflows.length, 8, `must have 8 run_workflow_* tools (6 existing + 2 storage), got ${runWorkflows.length}`);
+    assert.equal(tools.length, 43, `total must be 43 (32 mastra_* + 8 run_workflow_* + 3 ask_*), got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

@@ -86,19 +86,22 @@ await test("agent-manifest does not have budget group", () => {
   assert.strictEqual(agentManifest.groups.budget, undefined, "budget group should be removed");
 });
 
-// 8. agent-manifest.json workflow group has 13 tools after Phase D Plan 4 (5 run_workflow_* + 3 mastra_workflow_* + 2 storage + 3 more)
-await test("agent-manifest workflow group has 13 tools", () => {
-  assert.strictEqual(agentManifest.groups.workflow.tools.length, 13);
-  // 8 in-scope workflows migrated to Mastra createWorkflow in Phase D Plan 1.
+// 8. agent-manifest.json workflow group has 11 tools after intake-chain deprecation (6 run_workflow_* + 3 mastra_workflow_* + 2 storage)
+await test("agent-manifest workflow group has 11 tools", () => {
+  assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
+  // 6 in-scope workflows migrated to Mastra createWorkflow in Phase D Plan 1.
   const migratedInThisPlan = [
-    "workflow_intake_orient",
-    "workflow_intake_plan",
     "workflow_classify_prompt",
     "workflow_prepare_runtime_request",
     "workflow_self_improvement",
     "workflow_intentional_skip",
     "workflow_report_phase_status",
     "workflow_runtime_probe",
+  ];
+  // 2 intake-chain workflows deleted in this plan; check via run_<id> MCP names.
+  const deletedInThisPlan = [
+    "workflow_intake_orient",
+    "workflow_intake_plan",
   ];
   // 5 workflows deleted in earlier phases; kept here as a regression guard.
   const historicallyDeleted = [
@@ -108,7 +111,10 @@ await test("agent-manifest workflow group has 13 tools", () => {
     "workflow_candidate_to_experiment",
     "workflow_vendor_doc_assist",
   ];
-  for (const tool of [...migratedInThisPlan, ...historicallyDeleted]) {
+  for (const tool of migratedInThisPlan) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(tool), false, `${tool} should not be in workflow group`);
+  }
+  for (const tool of [...deletedInThisPlan, ...historicallyDeleted]) {
+    assert.strictEqual(agentManifest.groups.workflow.tools.includes(`run_${tool}`), false, `run_${tool} should not be in workflow group`);
   }
 });

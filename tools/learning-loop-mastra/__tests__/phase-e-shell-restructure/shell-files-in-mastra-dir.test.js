@@ -57,11 +57,9 @@ test("mastra/workflows-manifest.json and mastra/agents-manifest.json are at the 
   );
 });
 
-test("mastra/workflows/ contains all 10 workflow files", () => {
+test("mastra/workflows/ contains all 8 workflow files", () => {
   const expectedWorkflows = [
     "workflow-classify-prompt.js",
-    "workflow-intake-orient.js",
-    "workflow-intake-plan.js",
     "workflow-intentional-skip.js",
     "workflow-prepare-runtime-request.js",
     "workflow-report-phase-status.js",
