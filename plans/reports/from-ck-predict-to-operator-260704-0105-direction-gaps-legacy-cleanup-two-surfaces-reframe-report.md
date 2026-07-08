@@ -12,20 +12,23 @@
 
 ---
 
-## Status reconciliation (2026-07-08)
+## Status reconciliation (2026-07-08; updated 2026-07-09)
 
 Cross-checked against `plans/reports/from-problem-solving-to-plan-split-260707-0812-rec12-lifecycle-pr-tracker-report.md` + git history + codebase scout. The **lifecycle-redesign arc (the 4-plan tracker) is fully shipped**: PR #38 (`46a8884` enum + stale mechanism), #39 (`7a47fbe` authority dissolution), #40 (`e0294b2` Rec 12 (a) trigger + symmetry, docs), #41 (`96bdf34` Rec 12 (b)+(c) closed loop). The tracker file is slightly stale (Plan 4 row says `SHIPPED-LOCAL / pending PR`); #41 is merged to main.
 
-**Remaining (never absorbed into the tracker, still open):**
-- **Rec 4** (`workflow_intake_orient`) — 🔁 reframed from "re-point" to **deprecate the intake chain**; plan cut at `plans/260708-2258-deprecate-intake-chain/`. The records substrate restructured to `records/_unbound/` after the report; `loop_describe` is already the bound-surface orient.
-- **Rec 5** (legacy `legacy/` rename) — ❌ unstarted; `tools/legacy/`, `scout/legacy/`, `hooks/legacy/` still named; `server.js:9` still imports `legacy-handler-adapter.js`.
-- **Rec 6** (memory-substrate paragraph in L1) — ⚠️ partial; `loop-engine.md:5,40` has "the record is the memory" but not the "three stores realize it" half (still L3-only in `architecture.md`).
+**2026-07-09 update — Rec 4, 5, 6 shipped** (PRs #42, #43):
+- **Rec 4** — ✅ DONE via PR #42 (`09f7e8a`, plan `260708-2258-deprecate-intake-chain`). Deterministic intake chain (`workflow_intake_orient` + `workflow_intake_plan`) deleted; `loop_describe` retained as the bound-surface orient. Per-file change-logs committed in-PR. **UQ1 follow-up filed** as finding `meta-260709T0159Z` (intake_agent redundancy — the *agentic* orient+plan surface is partially redundant with `loop_describe`; slim/delete/keep decision for a follow-up plan, not blocking).
+- **Rec 5** — ✅ DONE via PR #43 (`89fb6f2`). `tools/legacy/` → `tools/handlers/`; `mastra/legacy-handler-adapter.js` → `mastra/handler-adapter.js` (`server.js:9` imports `./handler-adapter.js`, `adaptLegacyHandler`); `hooks/legacy/`, `scout/legacy/` renamed. **UQ4 resolved** — target name = `handlers/`.
+- **Rec 6** — ✅ DONE via PR #43. `loop-engine.md:40` now carries the full memory-substrate paragraph: "The record is the loop's memory across sessions, and three stores realize it: `meta-state.jsonl` … `runtime-state.jsonl` … `file-index.jsonl`." L1 now names the three-stores-realize-it half; L3 (`architecture.md`) and L2 (`runtime-contract.md`) stay the mechanism/contract detail.
+
+**Remaining (still open):**
 - **Rec 9** (triage consult-gate/skill) — ❌ left open (deferred).
 - **Rec 3 / UQ1-3** (promotion query shape) — ⚠️ partial; #41 shipped the *gap detector* (bound-edit minus `log_change`), not the *promotion-candidate* query; shape still undesigned.
+- **Rec 4 UQ1** (`intake_agent` slim/delete/keep) — ⚠️ filed as `meta-260709T0159Z`; decision pending.
 
-**Done (shipped):** Rec 1, 2, 7, 8, 10, 11, 12 (all 3 components); UQ5-11.
+**Done (shipped):** Rec 1, 2, 4, 5, 6, 7, 8, 10, 11, 12 (all 3 components); UQ4, UQ5-11.
 
-Suggested next move (matches the report's own priority): Rec 4 then Rec 5 — both independent, self-contained, "highest-value lowest-risk."
+Suggested next move (2026-07-09): see the triage report `plans/reports/from-problem-solving-to-operator-260709-0450-rec456-shipped-next-move-findings-triage-report.md` — top candidates are (a) `intake_agent` slim (Rec 4 UQ1, continuity + lowest-risk) and (b) the inbound-state-gate context-leak fix (`meta-260708T2338Z`, concrete simplification cascade, active pollution). The remaining report-level items (Rec 9 consult-gate, Rec 3/UQ1-3 promotion query, the transport-L1 debate `meta-260704T1213Z`) are higher-scope and should not be started without an explicit decision.
 
 ---
 
@@ -90,11 +93,11 @@ The original report sat in old vocabulary ("systematize memory + runtime-agnosti
 
 3. **Specify the promotion query before any schema work (Q2, derived).** **[PARTIAL — 2026-07-08]** #41 shipped the *change-log gap detector* (bound-edit minus `log_change` = drift signal), which the tracker equates to loop-engine.md open Q1's "missing half." But the actual *promotion-candidate query* — "find agentic-deferral change-logs whose pattern recurs within a window and is not yet a rule" — is distinct and its shape is still undesigned (UQ1 grouping key, UQ2 provenance field, UQ3 reuse `findRecurrentGroups` window). The change-log schema (incl. the open provenance field from `loop-engine.md` Open Question 2) then serves the query. Do not optimize the changelog without this query — that was the original report's solution-first mistake.
 
-4. **Re-point `workflow_intake_orient` to the bound meta-surface.** **[REFRAMED → DEPRECATE — 2026-07-08; plan cut]** Reconciliation found the records substrate was restructured after this report: product records moved to `records/_unbound/` (explicitly "unbound"), meta-surface = `records/meta/`, and the paths `workflow_intake_orient` reads (`records/{index,capabilities,decisions}` + `records/{vnstock,fastapi,tanstack,product}/...`) are now **absent** — the tool silently returns empty. Operator decision 2026-07-08: scrap the whole intake chain (`workflow_intake_orient` + the coupled `workflow_intake_plan`, whose only input is `orient_result`); `loop_describe` is already the bound-surface orient (verified — `loop-introspect.js` reads only `meta-state.jsonl`/`file-index.jsonl`/`runtime-state.jsonl`, never `records/_unbound/`). Plan: `plans/260708-2258-deprecate-intake-chain/`. The original "re-point" recommendation is superseded by deprecation.
+4. **Re-point `workflow_intake_orient` to the bound meta-surface.** **[DONE 2026-07-09 — PR #42 / `09f7e8a`; reframed from re-point to deprecate]** Reconciliation found the records substrate was restructured after this report: product records moved to `records/_unbound/` (explicitly "unbound"), meta-surface = `records/meta/`, and the paths `workflow_intake_orient` reads (`records/{index,capabilities,decisions}` + `records/{vnstock,fastapi,tanstack,product}/...`) are now **absent** — the tool silently returns empty. Operator decision 2026-07-08: scrap the whole intake chain (`workflow_intake_orient` + the coupled `workflow_intake_plan`, whose only input is `orient_result`); `loop_describe` is already the bound-surface orient (verified — `loop-introspect.js` reads only `meta-state.jsonl`/`file-index.jsonl`/`runtime-state.jsonl`, never `records/_unbound/`). Plan `plans/260708-2258-deprecate-intake-chain/` shipped per-file change-logs in-PR. The original "re-point" recommendation is superseded by deprecation. **UQ1 follow-up filed** as `meta-260709T0159Z` (the *agentic* `intake_agent` surface is partially redundant with `loop_describe`; slim/delete/keep decision deferred to a follow-up plan).
 
-5. **Run the legacy rename as a standalone L3 hygiene pass.** **[NOT DONE / UNSTARTED — 2026-07-08]** Verified: `tools/legacy/`, `scout/legacy/`, `hooks/legacy/` still carry the name; `mastra/server.js:9` still imports `legacy-handler-adapter.js`. Unchanged from original Rec 1, now categorized: rename `tools/legacy/` → canonical (`tools/implementations/` or `tools/handlers/`), drop `legacy` from live code paths (`mastra/legacy-handler-adapter.js`, `hooks/legacy/`, `scout/legacy/`), reserve `legacy/` for dead code. Then dead-code removal (`AGENTS.old`, `trajectory.old`, archived docs, stranded fixtures, one-shot migration scripts) is trivial and safe. Highest-value lowest-risk first move; independent of the concept surface.
+5. **Run the legacy rename as a standalone L3 hygiene pass.** **[DONE 2026-07-09 — PR #43 / `89fb6f2`]** Verified shipped: `tools/legacy/` → `tools/handlers/`; `mastra/legacy-handler-adapter.js` → `mastra/handler-adapter.js` (`server.js:9` imports `./handler-adapter.js`, exports `adaptLegacyHandler`); `hooks/legacy/`, `scout/legacy/` renamed. Target name chosen = `handlers/` (resolves UQ4). The `legacy/` name is now reserved for dead code; dead-code removal (`AGENTS.old`, `trajectory.old`, archived docs, stranded fixtures, one-shot migration scripts) is the trivial follow-on. Highest-value lowest-risk first move; independent of the concept surface — now complete.
 
-6. **Add the one-paragraph "Memory substrate" note to L1.** **[PARTIAL — 2026-07-08]** `loop-engine.md:5,40` now states "the record is the memory" (first half). `runtime-contract.md` (L2) splits the three concerns and `architecture.md` (L3) names the three stores (`meta-state.jsonl`, `runtime-state.jsonl`, `file-index.jsonl`), but the concept surface (L1) still does not name the *three stores realize it* half. One paragraph in `loop-engine.md` completing "the record is the memory; three stores realize it" closes the seam the original Rec 7 flagged.
+6. **Add the one-paragraph "Memory substrate" note to L1.** **[DONE 2026-07-09 — PR #43 / `89fb6f2`]** `loop-engine.md:40` now carries the full paragraph: "The record is the loop's memory across sessions, and three stores realize it: `meta-state.jsonl` holds the four kinds … `runtime-state.jsonl` holds mutable runtime state … `file-index.jsonl` holds the path-keyed evidence fingerprints." The concept surface (L1) now names the *three stores realize it* half; `runtime-contract.md` (L2) splits the concerns and `architecture.md` (L3) names the stores as mechanism detail. The seam the original Rec 7 flagged is closed.
 
 7. **Keep promotion operator-triggered; encode it as a contract note.** **[DONE — 2026-07-08]** `loop-engine.md:32` states "promotion stays operator-triggered. A human decides when to promote." `meta_state_promote_rule` is `LOOP_SESSION_MODE=live`-gated (PR #39 / `7a47fbe`). The bridge surfaces recurrence candidates; the operator promotes via `meta_state_promote_rule`. This respects escape-hatch #5 (class-approval stays human) and #6 (adversarial mindset — records are challenged, not auto-promoted).
 
@@ -108,10 +111,10 @@ The original report sat in old vocabulary ("systematize memory + runtime-agnosti
 4. **Legacy rename target name.** `tools/implementations/` vs `tools/handlers/` vs `tools/mcp/` — the original report left this open; the reframe does not resolve it. Pick one in the rename plan.
 5. **Should the L1 bridge correction ship as a docs patch now, or roll into the next docs pass?** It is a factual drift (code wired, doc says unwired); per the adversarial mindset, drift between concept and implementation surface should be fixed on sight. **[RESOLVED 2026-07-04 — shipped as a docs patch; see Rec 1 DONE]**
 
-### Status (2026-07-08) of UQ1-4
+### Status (2026-07-09) of UQ1-4
 
 - **UQ1-3 (promotion query shape, provenance, gate-decision overlap)** — ⚠️ still open. #41 shipped the *gap detector* (drift = bound-edit minus `log_change`), not the *promotion-candidate* query. The grouping key, provenance-field requirement, and window reuse are still undesigned. These gate any future "auto-surface promotion candidates" work.
-- **UQ4 (legacy rename target name)** — ❌ still open; depends on Rec 5 being started. Candidates unchanged: `tools/implementations/` / `tools/handlers/` / `tools/mcp/`.
+- **UQ4 (legacy rename target name)** — ✅ RESOLVED 2026-07-09 (PR #43): target = `tools/handlers/`; adapter = `handler-adapter.js` (`adaptLegacyHandler`).
 
 ---
 
