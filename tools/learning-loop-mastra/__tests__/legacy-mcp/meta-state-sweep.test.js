@@ -8,7 +8,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-// Plan 260707-0812 Phase 3: sweep is read-only (no apply mode, no OPERATOR_MODE
+// Plan 260707-0812 Phase 3: sweep is read-only (no apply mode, no session-mode
 // gate). The previous apply:true tests are gone; the remaining tests assert the
 // read-only contract, the no-mutation invariant, and the terminal-skip behavior.
 

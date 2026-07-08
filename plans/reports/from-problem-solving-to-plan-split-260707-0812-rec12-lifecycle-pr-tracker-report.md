@@ -36,21 +36,24 @@ Update each row's status + dates as sessions progress. Status legend: `TODO` →
 ### Plan 2 — lifecycle authority dissolution (P3)
 
 - **Slug:** `…-lifecycle-authority-dissolution-session-mode`
-- **Plan dir:** `plans/<timestamp>-lifecycle-authority-dissolution-session-mode/` _(to cut)_
-- **Branch / PR:** TBD
-- **Status:** `TODO`
-- **Dates:** cut __ / cook-start __ / shipped __
-- **Depends on:** Plan 1 (uses the new `open` status model)
-- **Scope:**
+- **Plan dir:** `plans/260708-0833-lifecycle-authority-dissolution-session-mode/` _(cut 2026-07-08, post-PR-#38)_
+- **Branch / PR:** `lifecycle-authority-dissolution-session-mode` (off main @ `46a8884`) / TBD
+- **Status:** `PLAN_CUT` (scope verified against `main` @ `46a8884`; validation pending)
+- **Dates:** cut 2026-07-08 / cook-start __ / shipped __
+- **Depends on:** Plan 1 (uses the new `open` status model; Plan 1 shipped via PR #38 squash `46a8884`)
+- **Scope:** (corrected post-PR-#38 — see Deviation below)
   - Replace `OPERATOR_MODE` env var with `LOOP_SESSION_MODE=live|autonomous` (session declaration, set once).
-  - 4 gate sites → `LOOP_SESSION_MODE=live` checks: `meta-state-promote-rule-tool.js:20`, `meta-state-supersede-tool.js:17`, `meta-state-sweep-tool.js:41`, `meta-state-dispatch-finding-tool.js:169` (commit stage).
-  - Migrate 11 test files that set `OPERATOR_MODE="1"` to `LOOP_SESSION_MODE=live` where they exercise gated tools.
-  - Update 2 comment/prompt strings: `runtime-state.js:13`, `loop-introspect.js:247`.
+  - **3 gate sites** (not 4) → `LOOP_SESSION_MODE=live` checks: `meta-state-promote-rule-tool.js:17,20,55` (checkOperatorRole helper + call), `meta-state-supersede-tool.js:18`, `meta-state-dispatch-finding-tool.js:169` (commit stage). `meta-state-sweep-tool.js` lost its gate in Plan 1 (now read-only, "No operator gate") — NOT touched.
+  - Extract one shared `isLiveSession()` helper in `core/session-mode.js` (DRY — 3 sites repeat the identical env check).
+  - Reason string `operator_role_required` → `live_session_required`.
+  - **8 test files** (not 11) migrated: `meta-state-promote-rule-rule-entry`, `integration-promoted-rule`, `meta-state-dispatch-finding-tool`, `meta-state-dispatch-ttl-and-close-flow`, `meta-state-stale-flag` (covers supersede), `meta-state-sweep` (1 ref — verify incidental), `gate-scope-predicate`, `build-stale-dispatch-hints` (2 refs — string assertions).
+  - Update comment/description/prompt strings (6 sites): `meta-state-supersede-tool.js:9`, `meta-state-dispatch-finding-tool.js:21,293`, `runtime-state-record-tool.js:9`, `core/runtime-state.js:13`, `core/loop-introspect.js:258` (was 247).
   - Default = `autonomous` (fail-closed — class-approval refused until `live` declared; UQ3 recommendation).
   - Open (no mode gate): `resolve` / `re_verify` / `archive` / `report` / `log_change` / `propose_design` / `patch`.
   - No grant machinery; no new operator-authored ledger event (tools' existing `*_by` / `*_at` fields remain the authorship record).
-- **Exit criteria:** `OPERATOR_MODE` absent from all 4 gate sites + all 11 test files; gated tools refuse in `autonomous`, run in `live`; open tools run in both; no grant-checking code path exists; no duplicate ledger event.
-- **Note:** conceptually parallel to Plan 1's stale work but shares `meta-state-sweep-stale-transition.test.js` → serial after Plan 1.
+- **Exit criteria:** `OPERATOR_MODE` absent from all 3 gate sites + all 8 test files; gated tools refuse in `autonomous`, run in `live`; open tools run in both; `isLiveSession` in exactly 4 non-test locations (def + 3 gates); no grant-checking code path exists; no duplicate ledger event.
+- **Deviation from original tracker scope:** Plan 1 (PR #38) removed the `meta-state-sweep-tool.js` OPERATOR_MODE gate and trimmed 3 stale-flag test files, so this plan is 3 gate sites / 8 test files, not 4 / 11. Original tracker scope preserved in git history; this row reflects the verified live surface.
+- **Note:** no file overlap with Plan 1's shipped changes; `meta-state-sweep-stale-transition.test.js` no longer shared (sweep reworked) → still serial after Plan 1 by dependency, not by file overlap.
 
 ### Plan 3 — Rec 12 L1 trigger statement + symmetry (P4, docs-only)
 

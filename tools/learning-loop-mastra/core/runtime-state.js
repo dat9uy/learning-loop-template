@@ -10,8 +10,8 @@
 // preflight. The preflight check (`hasPreflightMarker(root)`) stays at the
 // public-tool boundary of `runtime_state_record`. The dispatch tool
 // (meta_state_dispatch_finding) bypasses preflight by design and gates on
-// `OPERATOR_MODE` instead. Keep the helper gating-free so callers can apply
-// the appropriate gate upstream.
+// `LOOP_SESSION_MODE === "live"` instead. Keep the helper gating-free so
+// callers can apply the appropriate gate upstream.
 
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
 import { join } from "node:path";

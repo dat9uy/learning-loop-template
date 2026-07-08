@@ -18,7 +18,7 @@ import { metaStateLogChangeTool } from "../../tools/legacy/meta-state-log-change
 
 describe("stale status schema + behavior (TDD red)", () => {
   const originalEnv = process.env.GATE_ROOT;
-  const originalOperator = process.env.OPERATOR_MODE;
+  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
   const originalVerifyExec = process.env.META_STATE_VERIFY_EXEC;
 
   function setup() {
@@ -33,7 +33,7 @@ describe("stale status schema + behavior (TDD red)", () => {
     } else {
       process.env.GATE_ROOT = originalEnv;
     }
-    process.env.OPERATOR_MODE = originalOperator;
+    process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
     process.env.META_STATE_VERIFY_EXEC = originalVerifyExec;
   }
 
@@ -141,7 +141,7 @@ describe("stale status schema + behavior (TDD red)", () => {
 
   test("T8: meta_state_re_verify round-trip (Phase 3: stamps last_verified_at, finding stays open)", async () => {
     const tempDir = setup();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     process.env.META_STATE_VERIFY_EXEC = "1";
     try {
       // Create a finding. Plan 260707-0812 Phase 3: ack is gone; report writes
@@ -200,7 +200,7 @@ describe("stale status schema + behavior (TDD red)", () => {
 
   test("T9: meta_state_supersede end-to-end", async () => {
     const tempDir = setup();
-    process.env.OPERATOR_MODE = "1";
+    process.env.LOOP_SESSION_MODE = "live";
     try {
       // Create a finding
       const report = await metaStateReportTool.handler({
@@ -252,7 +252,7 @@ describe("stale status schema + behavior (TDD red)", () => {
       assert.strictEqual(resultB.reason, "consolidated_into_not_a_change_log");
 
       // Subtest C: operator gate
-      process.env.OPERATOR_MODE = "0";
+      process.env.LOOP_SESSION_MODE = "autonomous";
       const resultC = JSON.parse(
         (await metaStateSupersedeTool.handler({
           id: findingId,
@@ -260,10 +260,10 @@ describe("stale status schema + behavior (TDD red)", () => {
         })).content[0].text
       );
       assert.strictEqual(resultC.superseded, false);
-      assert.strictEqual(resultC.reason, "operator_role_required");
+      assert.strictEqual(resultC.reason, "live_session_required");
 
       // Subtest D: CAS mismatch
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       const resultD = JSON.parse(
         (await metaStateSupersedeTool.handler({
           id: findingId,

@@ -30,7 +30,7 @@ describe("globMatch brace expansion", () => {
 
 describe("gate scope predicate", () => {
   const originalEnv = process.env.GATE_ROOT;
-  const originalOperatorMode = process.env.OPERATOR_MODE;
+  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
   const warnings = [];
   const originalWarn = console.warn;
 
@@ -253,7 +253,7 @@ describe("gate scope predicate", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       const promoteResult = await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-scope-promote",
@@ -291,7 +291,7 @@ describe("gate scope predicate", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
       teardownTempDir(tempDir);
     }
   });
@@ -309,7 +309,7 @@ describe("gate scope predicate", () => {
       });
       const reportText = JSON.parse(report.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       const promoteResult = await metaStatePromoteRuleTool.handler({
         id: reportText.id,
         rule_id: "rule-test-whitelist",
@@ -332,7 +332,7 @@ describe("gate scope predicate", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
       teardownTempDir(tempDir);
     }
   });
@@ -350,7 +350,7 @@ describe("gate scope predicate", () => {
       });
       const report1Text = JSON.parse(report1.content[0].text);
 
-      process.env.OPERATOR_MODE = "1";
+      process.env.LOOP_SESSION_MODE = "live";
       await metaStatePromoteRuleTool.handler({
         id: report1Text.id,
         rule_id: "rule-test-duplicate",
@@ -389,7 +389,7 @@ describe("gate scope predicate", () => {
           process.env.GATE_ROOT = originalEnv;
         }
       }
-      process.env.OPERATOR_MODE = originalOperatorMode;
+      process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
       teardownTempDir(tempDir);
     }
   });
