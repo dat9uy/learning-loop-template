@@ -73,11 +73,11 @@ Update each row's status + dates as sessions progress. Status legend: `TODO` →
 ### Plan 4 — Rec 12 closed loop (b)+(c) merged
 
 - **Slug:** `…-rec12-closed-loop`
-- **Plan dir:** `plans/<timestamp>-rec12-closed-loop/` _(to cut)_
-- **Branch / PR:** TBD
-- **Status:** `TODO`
-- **Dates:** cut __ / cook-start __ / shipped __
-- **Depends on:** Plan 3 (needs (a) trigger definition to know what a change-log *should* be)
+- **Plan dir:** `plans/260708-1216-rec12-closed-loop/` _(cut 2026-07-08)_
+- **Branch / PR:** `rec12-closed-loop` (off main @ `a7da7fb`, post-PR-#40) / pending
+- **Status:** `COOKING → SHIPPED-LOCAL` (pending PR)
+- **Dates:** cut 2026-07-08 / cook-start 2026-07-08 / shipped-local 2026-07-08
+- **Depends on:** Plan 3 (needs (a) trigger definition to know what a change-log *should* be; Plan 3 shipped via PR #40 squash `e0294b2`)
 - **Scope:**
   - **(b) Change-log gap detection:** join of bound-artifact paths touched (git / `file-index.jsonl`) ∖ `meta_state_log_change` entries in the same session → gap finding. This is `loop-engine.md` open Q1's "missing half." Bound-artifact set sourced from `core/bound-artifacts.js` (shipped by the skill-layer prerequisite `260707-0114`) + `tools/**`/`core/**`/`docs/**` (Rec 12's detection surface, beyond the prerequisite's `<surface>/skills/**` gate).
   - **(c) Session-start gap injection:** surface the gap finding at session start via `core/loop-introspect.js` + `session-start-inject-discoverability.cjs` (parallels the existing stale-queue session-start surfacing, now settled by Plan 1's Rec 10 change).

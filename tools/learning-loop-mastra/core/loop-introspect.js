@@ -5,6 +5,11 @@ import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIn
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
 import { isOpen, isStaleView } from "./stale-view.js";
+import {
+  CHANGE_LOG_BOUND_PATHS,
+  canonicalizeChangeTarget,
+  isBoundPath,
+} from "./change-log-bound-paths.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -257,6 +262,106 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
       "3. Agent calls meta_state_dispatch_finding({id, stage:'commit', issue_number, issue_url, repo, delegated_to}) → writes ledger + patches ledger_ref.\n" +
       "Authority boundary: agent proposes; operator dispatches (commit is LOOP_SESSION_MODE=live-gated). Dispatch to a private issue tracker (not the public template repo).\n" +
       "If a finding appears in orphan_findings (dispatch row exists but ledger_ref is unset), re-invoke meta_state_dispatch_finding with stage:'commit' and the original coords to heal the back-pointer.",
+  };
+}
+
+/**
+ * Build the Rec 12 (plan 260708-1216-rec12-closed-loop, phase 3) change-log
+ * gap-hints: a bounded top-5 list of branch-touched bound-artifact paths
+ * that no `meta_state_log_change` entry covers (advisory session-start
+ * surfacing, NOT a gate).
+ *
+ * Read-only. Pure function over `entries` (a registry snapshot) + the
+ * caller-supplied `touchedPaths` Set. The caller (the SessionStart hook)
+ * reads `git diff` + the registry and passes both sets; this builder does
+ * no I/O so it stays unit-testable without git or the sidecar. Do NOT
+ * call `buildColdTierCache`/`writeColdTierCache` here — this builder is on
+ * the SessionStart hot path.
+ *
+ * Coverage rule (the load-bearing logic): a touched path `p` is covered
+ * if any `entry_kind === "change-log"` entry's `canonicalizeChangeTarget`
+ * set contains a path `c` such that `p === c` OR `p.startsWith(c)`
+ * (prefix-descendant; a directory marker like `"docs/"` covers all paths
+ * under `docs/`).
+ *
+ * Sort + cap (validation Q3): paths carry no `created_at`, so a path-string
+ * `localeCompare` + `slice(0, 5)` is the deterministic shape. The legacy
+ * `top5OldestFirst` helper does not transfer (it sorts entries, not paths).
+ *
+ * False-negative-safe is deliberate (plan decision 4): for an advisory
+ * signal, coarse over-coverage beats noisy false positives. The deferred
+ * SessionEnd hook tightens this if drift shows false negatives.
+ *
+ * @param {object[]} entries — registry entries (readRegistry output)
+ * @param {Set<string>} [touchedPaths] — repo-relative paths touched on the branch
+ * @returns {{ gap_candidates: string[], gap_protocol_prompt: string }}
+ */
+/**
+ * Add a single entry's change-log coverage to `covered`. Findings, rules,
+ * and loop-designs are NOT change-logs and must not contribute coverage
+ * (the registry's 4-kind union per meta-state-lifecycle).
+ */
+function addChangeLogCoverage(covered, entry) {
+  if (entry?.entry_kind !== "change-log") return;
+  for (const c of canonicalizeChangeTarget(entry)) covered.add(c);
+}
+
+/**
+ * Build the coverage set from change-log entries only.
+ */
+function buildChangeLogCoverage(entries) {
+  const covered = new Set();
+  for (const e of entries) addChangeLogCoverage(covered, e);
+  return covered;
+}
+
+/** True iff `p` is `===` or starts with some `c` in `covered`. */
+function pathStartsWithAny(p, covered) {
+  for (const c of covered) {
+    if (p === c || p.startsWith(c)) return true;
+  }
+  return false;
+}
+
+/**
+ * Bound filter (a): touched path must be under a Rec-12-bound prefix.
+ * Coverage filter (b): must NOT be covered by any change-log entry.
+ * Sort by path string for determinism; cap at 5.
+ */
+function findGapCandidates(touchedPaths, covered) {
+  return [...touchedPaths]
+    .filter((p) => isBoundPath(p))
+    .filter((p) => !pathStartsWithAny(p, covered))
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 5);
+}
+
+/**
+ * Reference (L1) the first gap path so the operator/agent has a concrete
+ * starting point. Note the doc-level guard ("verify change_target is
+ * repo-relative") for residual uncanonicalized caller free-text.
+ */
+function buildGapProtocolPrompt(gapCandidates) {
+  const firstGap = gapCandidates[0];
+  const gapLine = firstGap
+    ? ` ${gapCandidates.length} bound edits on this branch have no change-log; first gap: \`${firstGap}\`.`
+    : ` 0 bound edits on this branch have no change-log.`;
+  return (
+    `Rec 12 closed-loop backfill (plan 260708-1216-rec12-closed-loop):\n` +
+    gapLine + `\n` +
+    `1. For each gap path, call meta_state_log_change({ change_target: '<repo-relative-path>', change_diff: {added: [...], removed: [...], changed: [...]}, reason: '<≥20 chars>', applies_to: {surfaces: ['meta']} }).\n` +
+    `2. Verify the change_target is repo-relative (the detector matches repo-relative paths; #anchor/mcp→mastra/bare-schema tokens are normalized on read, but uncanonicalized caller free-text produces residual false positives — re-check the logged entry before declaring it a real gap).\n` +
+    `Threat-model boundary: this is an ADVISORY signal (advisory, not a gate). Coarse prefix-descendant matching over-covers by design (a single \`docs/\` log silences docs gaps). The deferred SessionEnd/pre-commit hook owns the promotion of recurring gaps into enforcement; this builder intentionally leaves no persisted state.\n` +
+    `Detection set: ${CHANGE_LOG_BOUND_PATHS.join(", ")}.`
+  );
+}
+
+export function buildChangeLogGapHints(entries, touchedPaths = new Set()) {
+  const covered = buildChangeLogCoverage(entries);
+  const gapCandidates = findGapCandidates(touchedPaths, covered);
+  return {
+    gap_candidates: gapCandidates,
+    gap_protocol_prompt: buildGapProtocolPrompt(gapCandidates),
   };
 }
 
