@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import * as introspect from "../../core/loop-introspect.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
@@ -10,7 +11,10 @@ export const loopDescribeTool = {
   schema: {
     tier: z.enum(["hot", "warm", "cold", "summary"]).optional()
       .describe("Read tier: hot=active rules only (~5KB), warm=active surface (default, 10-25KB), cold=full history (25-100KB), summary=counts only (<1KB)"),
-    categories: z.array(z.string()).optional()
+    // Wire-format envelope stripper — accepts both bare arrays and {item:[...]}-wrapped
+    // arrays so the MCP SDK's auto-coercion doesn't silently drop the category filter.
+    // See meta-260709T1316Z-recurring-mcp-wire-format-coercion-array-fields-silently-coe.
+    categories: z.preprocess(stripEnvelope, z.array(z.string())).optional()
       .describe("Optional filter: only return entries matching these meta-state categories"),
     description_mode: z.enum(["summary", "full"]).optional().default("full")
       .describe("Cold tier only: 'summary' returns 200-char description preview; 'full' returns full descriptions. Default: 'full' (no breaking change)"),

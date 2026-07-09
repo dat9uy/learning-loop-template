@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync, statSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { z } from "zod";
+import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 // TERMINAL_HASH_REGEX is the canonical stored-fingerprint format. Shared with
 // the index so a corrupt index value is dropped on read (H-2 defense preserved
@@ -130,7 +131,7 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
   auto_resolve: z.coerce.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
-  reopens: z.array(z.string()).optional()
+  reopens: z.preprocess(stripEnvelope, z.array(z.string())).optional()
     .describe("Finding ids whose `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve the stale parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})` in 1 step. The legacy 'expired' status was removed in plan 260611-1000; only `stale` parents are cascade-closeable. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
 });
 
@@ -230,9 +231,9 @@ export const metaStateLoopDesignSchema = z.object({
   title: z.string().min(10).describe("Short human-readable title"),
   status: z.enum(["active", "inactive"]).default("active")
     .describe("Binary. Flips to inactive when the proposed work ships."),
-  proposed_design_for: z.array(z.string()).min(1)
+  proposed_design_for: z.preprocess(stripEnvelope, z.array(z.string()).min(1))
     .describe("Forward: ids of rules/schemas/tools this design will create or modify"),
-  addresses: z.array(z.string()).default([])
+  addresses: z.preprocess(stripEnvelope, z.array(z.string()).default([]))
     .describe("Backward: ids of findings this design responds to (the motivation; the why-this-exists)"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system this design affects"),
