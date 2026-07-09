@@ -8,7 +8,7 @@
       "file": "./agents/intake-agent.js",
       "export": "intakeAgent",
       "model": "kimi-for-coding/k2p6",
-      "description": "Orient operator into current meta-state; produce ordered deterministic verification plan"
+      "description": "Produce ordered deterministic verification plan from current meta-state (plan-synthesis only; orient is loop_describe's job)"
     },
     "scout_agent": {
       "id": "scout_agent",
