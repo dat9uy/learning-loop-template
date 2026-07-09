@@ -47,11 +47,18 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     );
   }
 
-  // Phase 5: mechanism_check coverage on resolved findings (was 0% pre-refactor; >=70% post-backfill)
-  const resolvedWithCheck = current.all_findings.filter(
-    (f) => f.status === "resolved" && f.mechanism_check === true
-  ).length;
-  const resolvedTotal = current.all_findings.filter((f) => f.status === "resolved").length;
+  // Phase 5: mechanism_check coverage on resolved findings (was 0% pre-refactor; >=70% post-backfill).
+  // Denominator is scoped to resolved findings that HAVE an evidence_code_ref — i.e. findings that
+  // are groundable. A resolved finding with no evidence_code_ref (e.g. a dispatched debuggability
+  // observation such as meta-260704T0933Z) is not subject to grounding, so it is excluded from the
+  // coverage ratio; this keeps legitimate non-groundable resolves from dragging the ratio below 70%
+  // while still catching a groundable resolved finding that lacks mechanism_check (it counts in the
+  // denominator but not the numerator).
+  const resolvedGroundable = current.all_findings.filter(
+    (f) => f.status === "resolved" && f.evidence_code_ref
+  );
+  const resolvedWithCheck = resolvedGroundable.filter((f) => f.mechanism_check === true).length;
+  const resolvedTotal = resolvedGroundable.length;
   assert.ok(
     resolvedWithCheck >= Math.ceil(resolvedTotal * 0.7),
     `Phase 5 coverage dropped: ${resolvedWithCheck}/${resolvedTotal} < 70%`
