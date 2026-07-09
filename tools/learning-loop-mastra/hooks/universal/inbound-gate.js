@@ -14,9 +14,32 @@ import {
 } from "./lib/protocol-adapter.js";
 import { evaluateInboundGate } from "../../core/evaluate-inbound-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
-import { writeToAllSurfaces } from "../../core/surfaces.js";
+import { writeToAllSurfaces, readFromAllSurfaces } from "../../core/surfaces.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const SURFACE_TOKEN_SUBPATH = ".inbound-stale-surfaced";
+
+// Read the suppress token written on the previous emission. Returns
+// { signature, ts } or null. Best-effort: missing/malformed → null.
+function readSuppressToken(root) {
+  try {
+    const hit = readFromAllSurfaces(root, SURFACE_TOKEN_SUBPATH, { first: true });
+    const parsed = hit?.parsed;
+    if (parsed && typeof parsed.signature === "string") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSuppressToken(root, signature) {
+  try {
+    const payload = JSON.stringify({ signature, ts: new Date().toISOString() });
+    writeToAllSurfaces(root, SURFACE_TOKEN_SUBPATH, payload);
+  } catch {
+    // token write failure never blocks the gate
+  }
+}
 
 function writeOperatorMessageMarker(root, prompt) {
   try {
@@ -46,10 +69,17 @@ function main() {
   const prompt = extractPrompt(input);
 
   const root = findProjectRoot();
-  const decision = evaluateInboundGate({ prompt, root });
+  const prior = readSuppressToken(root);
+  const decision = evaluateInboundGate({
+    prompt,
+    root,
+    priorSignature: prior?.signature ?? null,
+    priorTs: prior?.ts ?? null,
+  });
 
   // Per red-team C5: evaluate BEFORE marker write
   if (decision.decision === "warn") {
+    writeSuppressToken(root, decision.stale_signature);
     writeOperatorMessageMarker(root, prompt);
     console.log(formatSoftWarning(decision.context_message));
   }

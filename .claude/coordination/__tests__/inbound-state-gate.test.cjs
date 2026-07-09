@@ -247,7 +247,8 @@ console.log('\n=== Category 3: Context Injection Format ===');
   let parsed;
   try { parsed = JSON.parse(t1.stdout); } catch { parsed = null; }
   assert(parsed && parsed.hookSpecificOutput?.hookEventName === 'UserPromptSubmit', 'output has hookEventName');
-  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('obs-fmt'), 'additionalContext mentions observation id');
+  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('surfaces:'), 'additionalContext uses surface-grouped pointer (not raw id dump)');
+  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('vnstock'), 'additionalContext names the affected surface');
   assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('INBOUND STATE GATE'), 'additionalContext has gate header');
   clearMarker(tmpDir);
 
@@ -449,28 +450,29 @@ console.log('\n=== Category 9: Observation Schema ===');
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const now = new Date();
 
-  // Observation with id → context mentions id
+  // Observation with id → context surfaces the affected system, not the raw id (pointer form)
   clearObservations(tmpDir);
   writeObservation(tmpDir, { id: 'obs-by-id', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t1 = runInboundHook('I cleared the device', env);
   assert(contextWasInjected(t1), 'observation with id → context injected');
-  assert(t1.stdout.includes('obs-by-id'), 'context mentions observation id');
+  assert(t1.stdout.includes('vnstock') && t1.stdout.includes('surfaces:'), 'context surfaces affected system via pointer (not raw id)');
+  assert(!t1.stdout.includes('obs-by-id'), 'context does not inline the raw observation id');
   clearMarker(tmpDir);
 
-  // Observation without id → context mentions mapped constraint (vendor-api/package-manager from vnstock)
+  // Observation without id → context still names the affected surface (vnstock)
   clearObservations(tmpDir);
   writeObservation(tmpDir, { constraint: 'docker-cleanup', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t2 = runInboundHook('I cleared the device', env);
   assert(contextWasInjected(t2), 'observation without id → context injected');
-  assert(t2.stdout.includes('vendor-api') || t2.stdout.includes('package-manager'), 'context mentions mapped constraint');
+  assert(t2.stdout.includes('vnstock'), 'context names the affected surface');
   clearMarker(tmpDir);
 
-  // Observation with neither id nor constraint → still gets mapped constraint from affected_system
+  // Observation with neither id nor constraint → still names the affected surface from affected_system
   clearObservations(tmpDir);
   writeObservation(tmpDir, { status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t3 = runInboundHook('I cleared the device', env);
   assert(contextWasInjected(t3), 'observation with neither → context injected');
-  assert(t3.stdout.includes('vendor-api') || t3.stdout.includes('package-manager'), 'context mentions mapped constraint');
+  assert(t3.stdout.includes('vnstock'), 'context names the affected surface');
   clearMarker(tmpDir);
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -487,7 +489,7 @@ console.log('\n=== Category 10: Meta-State-First Ordering ===');
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const now = new Date();
 
-  // Single stale obs → meta-state hint appears BEFORE the obs id
+  // Single stale obs → meta-state hint present; raw id NOT inlined (pointer form)
   clearObservations(tmpDir);
   writeObservation(tmpDir, { id: 'obs-meta-test', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   const t1 = runInboundHook('I cleared the device', env);
@@ -498,14 +500,14 @@ console.log('\n=== Category 10: Meta-State-First Ordering ===');
   const metaStateIdx1 = ctx1.indexOf('meta-state.jsonl');
   const obsIdIdx1 = ctx1.indexOf('obs-meta-test');
   assert(metaStateIdx1 > 0, 'context contains meta-state.jsonl hint');
-  assert(obsIdIdx1 > 0, 'context contains observation id');
-  assert(metaStateIdx1 < obsIdIdx1, 'meta-state hint appears BEFORE observation id (anchoring defense)');
+  assert(obsIdIdx1 === -1, 'context does not inline the raw observation id (pointer form)');
+  assert(ctx1.includes('surfaces:'), 'context uses surface-grouped pointer');
   assert(ctx1.includes('READ'), 'context includes READ directive (call to action)');
   assert(ctx1.includes('last 20 lines'), 'context specifies reading window (last 20 lines)');
   assert(ctx1.includes('change-log'), 'context mentions change-log entry kind (entry-type hint)');
   clearMarker(tmpDir);
 
-  // Multiple stale obs → meta-state hint still appears BEFORE the first obs id
+  // Multiple stale obs → meta-state hint present; ids NOT inlined; surface count reflects all
   clearObservations(tmpDir);
   writeObservation(tmpDir, { id: 'obs-multi-a', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
   writeObservation(tmpDir, { id: 'obs-multi-b', status: 'active', constraint_type: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
@@ -516,17 +518,82 @@ console.log('\n=== Category 10: Meta-State-First Ordering ===');
   const ctx2 = parsed2?.hookSpecificOutput?.additionalContext || '';
   const metaStateIdx2 = ctx2.indexOf('meta-state.jsonl');
   const firstObsIdx2 = ctx2.indexOf('obs-multi-a');
-  assert(metaStateIdx2 > 0 && firstObsIdx2 > 0, 'multi-obs: both hint and obs present');
-  assert(metaStateIdx2 < firstObsIdx2, 'multi-obs: meta-state hint BEFORE first observation id');
-  assert(ctx2.includes('obs-multi-a') && ctx2.includes('obs-multi-b') && ctx2.includes('obs-multi-c'), 'multi-obs: all observation ids present');
+  assert(metaStateIdx2 > 0 && firstObsIdx2 === -1, 'multi-obs: hint present, raw ids not inlined');
+  assert(ctx2.includes('surfaces:'), 'multi-obs: surface-grouped pointer used');
+  assert(ctx2.includes('vnstock (3)'), 'multi-obs: surface count reflects all 3 stale observations (deduped by id)');
   clearMarker(tmpDir);
 
   // Sanity: previous behavior (observations listed first) would FAIL the new test.
   // The substring "Active observations may be stale" is intentionally absent; replaced by
-  // "Affected (stale) observations:" which appears AFTER the meta-state hint. This is the
-  // structural fix — the new ordering cannot be regressed by reverting one line.
+  // the surface-grouped pointer headline. This is the structural fix — the new form
+  // cannot be regressed by reverting one line.
   assert(!ctx1.includes('Active observations may be stale'), 'legacy leading phrase removed (anchoring defense)');
-  assert(ctx1.includes('Affected (stale) observations'), 'new subordinate phrasing present');
+  assert(ctx1.includes('stale active observation'), 'new pointer phrasing present (surface-grouped)');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
+// --- Category 11: Emission Collapse (meta-260708T2338Z) ---
+// The gate must NOT re-fire the full dump every message. A repeat warning for
+// the same stale signature within the suppress window collapses to a one-line
+// "already surfaced" pointer; a changed stale set re-emits the full pointer.
+console.log('\n=== Category 11: Emission Collapse ===');
+{
+  const tmpDir = createTempProject();
+  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+  const now = new Date();
+  const staleTs = new Date(now - 2 * 60 * 60 * 1000).toISOString();
+  const tokenPath = path.join(tmpDir, '.claude', 'coordination', '.inbound-stale-surfaced');
+
+  function writeSuppressToken(signature, ts) {
+    fs.mkdirSync(path.dirname(tokenPath), { recursive: true });
+    fs.writeFileSync(tokenPath, JSON.stringify({ signature, ts }));
+  }
+  function clearSuppressToken() { try { fs.unlinkSync(tokenPath); } catch {} }
+  function ctxOf(result) {
+    try { return JSON.parse(result.stdout)?.hookSpecificOutput?.additionalContext || ''; } catch { return ''; }
+  }
+
+  // Dedup: a single vnstock row expands to 2 constraint-observations sharing one id;
+  // the pointer counts it once (deduped by id), surface grouping shows vnstock (1).
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+  clearSuppressToken();
+  const t1 = runInboundHook('I cleared the device', env);
+  assert(contextWasInjected(t1), 'dedup: gate fires');
+  const c1 = ctxOf(t1);
+  assert(c1.includes('1 stale active observation') && c1.includes('vnstock (1)'), 'dedup: single record counted once (vnstock (1)), not twice');
+  assert(!c1.includes('already surfaced'), 'dedup: first emission is the full pointer, not the suppress line');
+  clearMarker(tmpDir);
+
+  // Suppression: token present with the same signature + recent ts → one-line pointer.
+  clearSuppressToken();
+  writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
+  const t2 = runInboundHook('I cleared the device', env);
+  assert(contextWasInjected(t2), 'suppress: gate still fires (warn)');
+  const c2 = ctxOf(t2);
+  assert(c2.includes('already surfaced this session'), 'suppress: repeat same-signature within window → already-surfaced pointer');
+  assert(c2.includes('Inline list suppressed'), 'suppress: inline list suppressed message present');
+  clearMarker(tmpDir);
+
+  // Re-emit on changed signature: token present but stale set changed → full pointer.
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-changed', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+  clearSuppressToken();
+  writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
+  const t3 = runInboundHook('I cleared the device', env);
+  const c3 = ctxOf(t3);
+  assert(c3.includes('detected') && !c3.includes('already surfaced this session'), 're-emit: changed signature → full pointer (not suppressed)');
+  clearMarker(tmpDir);
+
+  // Expired window: same signature but token ts older than 30 min → full pointer.
+  clearObservations(tmpDir);
+  writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+  clearSuppressToken();
+  writeSuppressToken('obs-dedup', new Date(now - 45 * 60 * 1000).toISOString());
+  const t4 = runInboundHook('I cleared the device', env);
+  const c4 = ctxOf(t4);
+  assert(c4.includes('detected') && !c4.includes('already surfaced this session'), 'expired window: same signature after 30 min → full pointer re-emits');
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
