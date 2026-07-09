@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { buildDiscoverabilityHints, buildProcessHints } from "../../core/loop-introspect.js";
 
 export const HINT_KEY_MAP = {
@@ -86,10 +87,12 @@ export const loopGetInstructionTool = {
   name: "loop_get_instruction",
   description: "On-demand lookup for a single loop discoverability hint. Use when you need a hint that was surfaced at session start but has scrolled out of context, or when cross-referencing and you are unsure which canonical pattern applies. Pass `key` as a hint slug, a 0-based index, or an array of slugs/indices. Returns the hint text plus a one-line suggestion.",
   schema: {
+    // Wire-format envelope stripper wraps only the array branch so string/number
+    // paths stay byte-identical. See meta-260709T1316Z-recurring-mcp-wire-format-coercion-array-fields-silently-coe.
     key: z.union([
       z.string(),
       z.number().int().nonnegative(),
-      z.array(z.union([z.string(), z.number().int().nonnegative()])),
+      z.preprocess(stripEnvelope, z.array(z.union([z.string(), z.number().int().nonnegative()]))),
     ]).describe("Hint identifier: named slug, a 0-based index, or array of slugs/indices."),
   },
   handler: async ({ key }) => {

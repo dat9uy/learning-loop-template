@@ -278,4 +278,175 @@ describe("meta_state_batch", () => {
     assert.equal(parsed.reason, "immutable_field");
     assert.ok(parsed.denied_fields.includes("resolved_at"));
   });
+
+  // --- Coercion regression: MCP wire layer coerces arrays to {item: [...]} ---
+  // Recursive envelope-strip on `operations` unwraps both the top-level array
+  // AND nested arrays inside each entry (change_diff.added/removed/changed,
+  // loop-design.addresses, etc.). See plan 260709-1032.
+
+  it("accepts top-level operations coerced as {item: [...]} envelope", async () => {
+    // Wire-form: agents passing operations through MCP SDK get {item: ops} coercion.
+    const writeOp = {
+      op: "write",
+      entry: {
+        id: "batch-coerce-top",
+        entry_kind: "finding",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Top-level coerced operations envelope test (min 20 chars)",
+        status: "open",
+        created_at: new Date().toISOString(),
+      },
+    };
+    const result = await metaStateBatchTool.handler({
+      operations: { item: [writeOp] },
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "top-level envelope must unwrap and apply");
+    assert.equal(parsed.failed_at, null, "no failure expected");
+
+    const entries = readRegistry(root);
+    const written = entries.find((e) => e.id === "batch-coerce-top");
+    assert.ok(written, "entry must persist after envelope unwrap");
+  });
+
+  it("accepts nested change_diff.added/removed coerced as {item: [...]} envelope", async () => {
+    // Wire-form: arrays inside change_diff (and other array-typed fields)
+    // arrive as {item: [...]}. metaStateEntrySchema.safeParse would reject
+    // them, but deepStripEnvelope unwraps before validation.
+    const changeLogOp = {
+      op: "write",
+      entry: {
+        id: "batch-coerce-nested",
+        entry_kind: "change-log",
+        change_dimension: "semantic",
+        change_target: "tools/learning-loop-mastra/tools/handlers/meta-state-batch-tool.js",
+        change_diff: {
+          added: { item: ["core/envelope-stripper.js#deepStripEnvelope"] },
+          removed: { item: [] },
+          changed: { item: ["operations schema preprocess"] },
+        },
+        reason: "Nested envelope coercion test (min 20 chars): batch tool accepts wire-coerced arrays",
+        created_at: new Date().toISOString(),
+      },
+    };
+    const result = await metaStateBatchTool.handler({
+      operations: [changeLogOp],
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "nested envelope must unwrap and entry must validate");
+    assert.equal(parsed.failed_at, null, "no validation_failed expected");
+
+    const entries = readRegistry(root);
+    const written = entries.find((e) => e.id === "batch-coerce-nested");
+    assert.ok(written, "change-log must persist");
+    assert.deepEqual(
+      written.change_diff.added,
+      ["core/envelope-stripper.js#deepStripEnvelope"],
+      "added must be unwrapped to plain array"
+    );
+    assert.deepEqual(written.change_diff.removed, [], "empty {item:[]} must unwrap to []");
+    assert.deepEqual(
+      written.change_diff.changed,
+      ["operations schema preprocess"],
+      "changed must be unwrapped to plain array"
+    );
+  });
+
+  it("parity: same change-log body accepted by both meta_state_batch and meta_state_log_change", async () => {
+    // Repro from finding meta-260709T1017Z-…-batch: a body accepted by
+    // meta_state_log_change must also be accepted by meta_state_batch's
+    // write op after the deepStripEnvelope fix.
+    const entryBody = {
+      id: "batch-coerce-parity",
+      entry_kind: "change-log",
+      change_dimension: "semantic",
+      change_target: "tools/learning-loop-mastra/tools/handlers/meta-state-batch-tool.js",
+      change_diff: {
+        added: ["a"],
+        removed: [],
+        changed: ["b"],
+      },
+      reason: "Parity repro from finding: same body must validate via batch and log_change (min 20 chars)",
+      created_at: new Date().toISOString(),
+    };
+
+    // Direct schema validation (mirrors what log_change does internally).
+    const { metaStateChangeEntrySchema } = await import("../../core/meta-state.js");
+    const direct = metaStateChangeEntrySchema.safeParse(entryBody);
+    assert.ok(direct.success, `direct schema must accept the body, got: ${direct.success ? "" : JSON.stringify(direct.error.issues)}`);
+
+    // Wire-coerced variant (top-level + nested arrays wrapped): what an agent
+    // actually sends when MCP wire-layer coercion applies.
+    const wireForm = {
+      operations: {
+        item: [{
+          op: "write",
+          entry: {
+            ...entryBody,
+            change_diff: {
+              added: { item: ["a"] },
+              removed: { item: [] },
+              changed: { item: ["b"] },
+            },
+          },
+        }],
+      },
+    };
+    const result = await metaStateBatchTool.handler(wireForm);
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "wire-coerced body must apply");
+    assert.equal(parsed.failed_at, null, "no failure expected");
+  });
+
+  it("fail-closed: non-envelope nested objects pass through unchanged", async () => {
+    // An entry whose change_diff already has native arrays must validate
+    // identically — no spurious unwrap of legitimate single-item objects.
+    const entryOp = {
+      op: "write",
+      entry: {
+        id: "batch-coerce-failclosed",
+        entry_kind: "change-log",
+        change_dimension: "semantic",
+        change_target: "tools/learning-loop-mastra/tools/handlers/meta-state-batch-tool.js",
+        change_diff: {
+          added: ["only-this"],
+          removed: [],
+          changed: [],
+        },
+        reason: "Fail-closed repro: native array payload must not be mutated (min 20 chars)",
+        created_at: new Date().toISOString(),
+      },
+    };
+    const result = await metaStateBatchTool.handler({ operations: [entryOp] });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "native arrays must validate unchanged");
+    const entries = readRegistry(root);
+    const written = entries.find((e) => e.id === "batch-coerce-failclosed");
+    assert.deepEqual(written.change_diff.added, ["only-this"], "added must NOT be unwrapped");
+  });
+
+  it("deep envelope: operations:{item:{item:[op]}} double-nested also unwraps", async () => {
+    // Defensive: some agent paths wrap twice. deepStripEnvelope must
+    // recurse so that both envelope levels flatten.
+    const writeOp = {
+      op: "write",
+      entry: {
+        id: "batch-coerce-double",
+        entry_kind: "finding",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Double-envelope regression test (min 20 chars)",
+        status: "open",
+        created_at: new Date().toISOString(),
+      },
+    };
+    const result = await metaStateBatchTool.handler({
+      operations: { item: { item: [writeOp] } },
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "double envelope must unwrap recursively");
+  });
 });

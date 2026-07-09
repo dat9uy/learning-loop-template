@@ -38,6 +38,33 @@ export const stripEnvelope = (v) => {
 };
 
 /**
+ * Recursively strip MCP SDK {item: X} envelopes anywhere in the tree.
+ *
+ * Used for top-level array fields (e.g. meta_state_batch `operations`)
+ * and nested arrays (change_diff.added, loop-design.proposed_design_for)
+ * that the MCP wire layer coerces into {item: [...]} form. Single-level
+ * stripEnvelope covers one level; this covers every level.
+ *
+ * Fail-closed: only exact single-key `item` envelopes unwrap. All other
+ * shapes pass through unchanged. After unwrapping, the inner value is
+ * recursed into so {item: {item: X}} and {item: {a: {item: [...]}}}
+ * both fully flatten. Undefined-safe.
+ */
+export const deepStripEnvelope = (v) => {
+  if (v === undefined) return undefined;
+  if (Array.isArray(v)) return v.map(deepStripEnvelope);
+  if (v && typeof v === "object") {
+    if (isEnvelope(v)) return deepStripEnvelope(v.item);
+    const out = {};
+    for (const [k, val] of Object.entries(v)) {
+      out[k] = deepStripEnvelope(val);
+    }
+    return out;
+  }
+  return v;
+};
+
+/**
  * Strip MCP content envelope: { content: [{ type: "text", text: JSON.stringify(inner) }] }
  * Fail-closed: malformed JSON falls back to raw input.
  */
