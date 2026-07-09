@@ -46,12 +46,8 @@ test("9 meta-state entries have been repointed to mastra/ paths", () => {
   const content = readFileSync(META_STATE_PATH, "utf8");
   const lines = content.split("\n").filter(Boolean);
   const unrepointed = [];
-  for (const { id: entryId } of REPOINTED_ENTRIES) {
-    const proofLine = findRepointingProof(
-      lines,
-      entryId,
-      REPOINTED_ENTRIES.find((e) => e.id === entryId).postMovePath
-    );
+  for (const { id: entryId, postMovePath } of REPOINTED_ENTRIES) {
+    const proofLine = findRepointingProof(lines, entryId, postMovePath);
     assert.ok(proofLine, `entry ${entryId} not found in meta-state.jsonl (no change-log with the post-move path either)`);
     const hasPreMovePath =
       proofLine.includes("tools/learning-loop-mastra/server.js") ||
