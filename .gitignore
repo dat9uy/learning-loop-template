@@ -24,12 +24,15 @@ product/*/.vnstock/
 product/*/dist/
 .claude/coordination/gate-log.jsonl
 .claude/coordination/.last-operator-message
+.claude/coordination/.last-operator-message-*
 .claude/coordination/.inbound-stale-surfaced
 .claude/coordination/.loop-preflight-*
 .factory/coordination/.last-operator-message
+.factory/coordination/.last-operator-message-*
 .factory/coordination/.inbound-stale-surfaced
 .factory/coordination/.loop-preflight-*
 .mastracode/coordination/.last-operator-message
+.mastracode/coordination/.last-operator-message-*
 .mastracode/coordination/.inbound-stale-surfaced
 .mastracode/coordination/.loop-preflight-*
 # Cold-session freshness sentinel — local state, re-created by pnpm test:cold-session.
