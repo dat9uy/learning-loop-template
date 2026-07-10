@@ -25,7 +25,7 @@ describe("runtime_state_read tool", () => {
         { kind: "ledger-event", affected_system: "vnstock", id: "vnstock-2", source_ref: "local:meta-state:rule-test", timestamp: "2026-05-08T17:11:12Z", status: "active" },
       ]);
 
-      const result = await runtimeStateReadTool.handler({ affected_system: "vnstock" });
+      const result = await runtimeStateReadTool.handler({ affected_system: "vnstock", compact: false });
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.count, 2);
       assert.strictEqual(parsed.rows[0].id, "vnstock-1");
@@ -45,10 +45,105 @@ describe("runtime_state_read tool", () => {
         { kind: "budget-state", affected_system: "vnstock", id: "vnstock-budget-1", source_ref: "local:meta-state:rule-test", timestamp: "2026-05-08T10:17:23Z", status: "active" },
       ]);
 
-      const result = await runtimeStateReadTool.handler({ kind: "budget-state" });
+      const result = await runtimeStateReadTool.handler({ kind: "budget-state", compact: false });
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.count, 1);
       assert.strictEqual(parsed.rows[0].id, "vnstock-budget-1");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("default call (no compact arg) returns compact rows: drops metadata, retains fingerprint + total field", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "runtime-read-compact-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      setupSidecar(tempDir, [
+        {
+          kind: "ledger-event",
+          affected_system: "vnstock",
+          id: "vnstock-c1",
+          source_ref: "local:meta-state:rule-test",
+          timestamp: "2026-05-08T10:17:23Z",
+          status: "active",
+          metadata: { note: "compact mode should drop this" },
+          fingerprint: "sha256:abc",
+        },
+      ]);
+
+      const result = await runtimeStateReadTool.handler({});
+      const parsed = JSON.parse(result.content[0].text);
+      // total + count both reported so callers can detect truncation
+      assert.strictEqual(parsed.total, 1);
+      assert.strictEqual(parsed.count, 1);
+      const row = parsed.rows[0];
+      assert.strictEqual(row.id, "vnstock-c1");
+      assert.strictEqual(
+        row.metadata,
+        undefined,
+        "compact mode must drop metadata"
+      );
+      assert.strictEqual(
+        row.fingerprint,
+        "sha256:abc",
+        "compact mode must retain fingerprint (SHA-256 integrity hash)"
+      );
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("default limit is 20 (truncation visible via total > count)", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "runtime-read-limit-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const rows = [];
+      for (let i = 0; i < 25; i++) {
+        rows.push({
+          kind: "ledger-event",
+          affected_system: "vnstock",
+          id: `vnstock-L${i}`,
+          source_ref: "local:meta-state:rule-test",
+          timestamp: "2026-05-08T10:17:23Z",
+          status: "active",
+        });
+      }
+      setupSidecar(tempDir, rows);
+
+      const result = await runtimeStateReadTool.handler({ affected_system: "vnstock" });
+      const parsed = JSON.parse(result.content[0].text);
+      // Total reflects the filtered count BEFORE the limit slice; count
+      // reflects what was actually returned. Callers detect truncation
+      // via total > count.
+      assert.strictEqual(parsed.total, 25);
+      assert.strictEqual(parsed.count, 20);
+      assert.strictEqual(parsed.rows.length, 20);
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  });
+
+  test("explicit compact: false returns full rows including metadata", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "runtime-read-full-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      setupSidecar(tempDir, [
+        {
+          kind: "ledger-event",
+          affected_system: "vnstock",
+          id: "vnstock-f1",
+          source_ref: "local:meta-state:rule-test",
+          timestamp: "2026-05-08T10:17:23Z",
+          status: "active",
+          metadata: { note: "verbose mode should keep this" },
+        },
+      ]);
+      const result = await runtimeStateReadTool.handler({ compact: false });
+      const parsed = JSON.parse(result.content[0].text);
+      assert.strictEqual(parsed.rows[0].metadata.note, "verbose mode should keep this");
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

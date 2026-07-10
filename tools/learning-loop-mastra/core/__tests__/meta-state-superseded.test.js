@@ -113,7 +113,7 @@ describe("Phase 1: drift filter terminal status check", () => {
   });
 
   // Test 5: drift filter unchanged for active (regression guard)
-  test("status='active' unchanged: still returns drift (regression guard)", () => {
+  test("status='open' still returns drift (regression guard)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -122,8 +122,9 @@ describe("Phase 1: drift filter terminal status check", () => {
       evidence_test: "src.test.js",
     });
     const result = queryDrift([entry], ctx);
+    // No positive test_passed signal → code-only (active-uncertain) → investigate.
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 });
 

@@ -31,8 +31,9 @@ describe("meta_state_query_drift tool", () => {
 
       const result = await metaStateQueryDriftTool.handler({});
       assert.strictEqual(result.drift_count, 1);
-      assert.strictEqual(result.drift_events[0].derived_status, "resolved-by-mechanism");
-      assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+      // No positive test_passed signal → code-only / active-uncertain / investigate.
+      assert.strictEqual(result.drift_events[0].derived_status, "active-uncertain");
+      assert.strictEqual(result.drift_events[0].recommendation, "investigate");
     } finally {
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;

@@ -33,7 +33,7 @@ describe("deriveStatus pure function", () => {
     };
   }
 
-  test("returns kind: mechanism-shipped when both code_ref and test_file exist", () => {
+  test("ACCEPTS: returns kind: code-only when both files exist but test_passed is null (no positive test-pass signal)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -42,7 +42,10 @@ describe("deriveStatus pure function", () => {
       evidence_test: "src.test.js",
     });
     const result = deriveStatus(entry, ctx);
-    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    // Bare file existence is not enough — test_passed must be true for
+    // mechanism-shipped. With no test pass signal, we land on code-only
+    // (active-uncertain).
+    assert.strictEqual(result.derivation.kind, "code-only");
     assert.strictEqual(result.derivation.signals.code_ref_exists, true);
     assert.strictEqual(result.derivation.signals.test_file_exists, true);
   });
@@ -84,7 +87,7 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.derivation.signals.test_passed, null);
   });
 
-  test("returns derived_status: resolved-by-mechanism for kind: mechanism-shipped", () => {
+  test("ACCEPTS: returns derived_status: active-uncertain for code-only when both files exist without test_passed", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -93,7 +96,10 @@ describe("deriveStatus pure function", () => {
       evidence_test: "src.test.js",
     });
     const result = deriveStatus(entry, ctx);
-    assert.strictEqual(result.derived_status, "resolved-by-mechanism");
+    // Without test_passed:true we no longer claim "resolved-by-mechanism".
+    // active-uncertain is honest.
+    assert.strictEqual(result.derived_status, "active-uncertain");
+    assert.strictEqual(result.derivation.kind, "code-only");
   });
 
   test("returns derived_status: active-no-signal for kind: code-missing or no-signals", () => {
@@ -119,7 +125,7 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.derived_status, "active-uncertain");
   });
 
-  test("returns recommendation: resolve when mechanism shipped and raw_status is reported/active", () => {
+  test("ACCEPTS: returns recommendation: investigate for code-only findings (no positive test-pass signal)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -128,7 +134,9 @@ describe("deriveStatus pure function", () => {
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
-    assert.strictEqual(deriveStatus(entryReported, ctx).recommendation, "resolve");
+    // code-only → investigate. Operators must opt into run_tests:true or
+    // meta_state_re_verify to get the resolve recommendation.
+    assert.strictEqual(deriveStatus(entryReported, ctx).recommendation, "investigate");
 
     const ctx2 = baseContext();
     writeFileSync(join(ctx2.root, "src.js"), "// code");
@@ -138,7 +146,7 @@ describe("deriveStatus pure function", () => {
       evidence_code_ref: "src.js",
       evidence_test: "src.test.js",
     });
-    assert.strictEqual(deriveStatus(entryActive, ctx2).recommendation, "resolve");
+    assert.strictEqual(deriveStatus(entryActive, ctx2).recommendation, "investigate");
   });
 
   test("returns recommendation: investigate when code_ref is missing", () => {
@@ -155,7 +163,7 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.recommendation, "no_action");
   });
 
-  test("sets drift: true when mechanism shipped but raw_status is not terminal", () => {
+  test("ACCEPTS: drift: false when both files exist without test_passed (drift means resolved-by-mechanism only)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -165,10 +173,14 @@ describe("deriveStatus pure function", () => {
       evidence_test: "src.test.js",
     });
     const result = deriveStatus(entry, ctx);
-    assert.strictEqual(result.drift, true);
+    // derive_status `drift` means strictly `resolved-by-mechanism` vs
+    // raw_status; query-drift is the drift-detection source of truth (and
+    // still flags this as drift via active-uncertain).
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.derivation.kind, "code-only");
   });
 
-  test("reads evidence_code_ref from top-level field only", () => {
+  test("ACCEPTS: evidence_code_ref exists without test_passed → code-only (bare existence not enough)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "legacy.js"), "// code");
     const entry = baseEntry({
@@ -176,7 +188,8 @@ describe("deriveStatus pure function", () => {
     });
     const result = deriveStatus(entry, ctx);
     assert.strictEqual(result.derivation.signals.code_ref_exists, true);
-    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    // Bare existence + no test_passed → code-only.
+    assert.strictEqual(result.derivation.kind, "code-only");
   });
 
   test("populates checked_at as a valid ISO string", () => {
@@ -292,5 +305,84 @@ describe("deriveStatus pure function", () => {
     assert.deepStrictEqual(META_STATE_RECOMMENDATIONS, [
       "no_action", "resolve", "investigate", "log_drift", "re_verify",
     ]);
+  });
+
+  // deriveStatus fidelity: code-only → investigate, symptom-file, and suffixed-ref tests.
+  // These lock the contract: test_passed required for mechanism-shipped;
+  // bare file existence + no test_passed → code-only; code-only → investigate.
+  test("ACCEPTS: code-only (file exists, no evidence_test) recommends investigate (not no_action)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "code-only");
+    assert.strictEqual(result.derived_status, "active-uncertain");
+    assert.strictEqual(result.recommendation, "investigate");
+    assert.strictEqual(result.drift, false);
+  });
+
+  test("ACCEPTS: symptom-file evidence_code_ref (e.g. .gitignore exists) without evidence_test yields code-only + investigate", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, ".gitignore"), "node_modules/\n");
+    const entry = baseEntry({
+      evidence_code_ref: ".gitignore",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.signals.code_ref_exists, true);
+    assert.strictEqual(result.derivation.kind, "code-only");
+    assert.strictEqual(result.derived_status, "active-uncertain");
+    assert.strictEqual(result.recommendation, "investigate");
+  });
+
+  test("ACCEPTS: suffixed evidence_code_ref (e.g. src.js:102-113) resolves to the base file when file exists", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js:102-113",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.signals.code_ref_exists, true);
+    // No test_passed → code-only (NOT mechanism-shipped)
+    assert.strictEqual(result.derivation.kind, "code-only");
+  });
+
+  test("ACCEPTS: suffixed evidence_code_ref with #anchor still resolves to the base file when file exists", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js#methodName",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.signals.code_ref_exists, true);
+    assert.strictEqual(result.derivation.kind, "code-only");
+  });
+
+  test("ACCEPTS: explicit test_passed: true + both files existing → mechanism-shipped", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.derived_status, "resolved-by-mechanism");
+    assert.strictEqual(result.derivation.signals.test_passed, true);
+  });
+
+  test("ACCEPTS: explicit test_passed: false + both files existing → code-only (not mechanism-shipped)", () => {
+    const ctx = baseContext({ test_passed: false });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "code-only");
+    assert.strictEqual(result.derived_status, "active-uncertain");
   });
 });

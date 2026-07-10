@@ -95,6 +95,37 @@ describe("meta_state_list compact mode", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  test("default call (no compact arg) returns compact entries (compact is now the default)", async () => {
+    const result = await metaStateListTool.handler({});
+    const text = JSON.parse(result.content[0].text);
+    // Compact is now the default — bare call returns compact entries.
+    assert.strictEqual(text.compact, true);
+    for (const entry of text.entries) {
+      assert.strictEqual(
+        entry.description,
+        undefined,
+        "default-call entry must NOT have description (compact-by-default)"
+      );
+      assert.strictEqual(
+        entry.description_preview,
+        undefined,
+        "default-call entry must NOT have description_preview"
+      );
+    }
+  });
+
+  test("explicit compact: false returns full entries (verbose opt-in)", async () => {
+    const result = await metaStateListTool.handler({ compact: false });
+    const text = JSON.parse(result.content[0].text);
+    assert.strictEqual(text.compact, false);
+    // Verbose mode should include descriptions.
+    const withDescription = text.entries.filter((e) => typeof e.description === "string");
+    assert.ok(
+      withDescription.length > 0,
+      "explicit compact: false should include entries with descriptions"
+    );
+  });
+
   test("compact: true returns structural contract (id, entry_kind, status, no description)", async () => {
     const result = await metaStateListTool.handler({
       compact: true,
