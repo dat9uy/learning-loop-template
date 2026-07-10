@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { metaStateCheckGroundingTool } from "../../tools/handlers/meta-state-check-grounding-tool.js";
-import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateRefreshFileIndexTool, _clearRefreshHashCacheForTests } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 
 describe("SP2 check_grounding acceptance", () => {
@@ -62,7 +62,7 @@ describe("SP2 check_grounding acceptance", () => {
   test("acceptance: meta_state_refresh_file_index round-trips drifted state back to grounded", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "sp2-acceptance-roundtrip-"));
     process.env.GATE_ROOT = tempDir;
-    _clearIdempotencyCacheForTests();
+    _clearRefreshHashCacheForTests();
     try {
       const srcFile = join(tempDir, "src.js");
       writeFileSync(srcFile, "// original\n", "utf8");
@@ -106,7 +106,7 @@ describe("SP2 check_grounding acceptance", () => {
       assert.strictEqual(p4.drift_kind, null);
       assert.strictEqual(p4.grounding.hash_match, true);
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       rmSync(tempDir, { recursive: true, force: true });
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;

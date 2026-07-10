@@ -15,6 +15,10 @@ import {
 import { evaluateInboundGate } from "../../core/evaluate-inbound-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
 import { writeToAllSurfaces, readFromAllSurfaces } from "../../core/surfaces.js";
+// Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker filename
+// so two Claude Code sessions in different worktrees don't pollute each other's
+// outbound gate decisions (closes Multi-Session Isolation gap).
+import { getSessionId } from "../../core/worktree-session-id.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SURFACE_TOKEN_SUBPATH = ".inbound-stale-surfaced";
@@ -57,7 +61,11 @@ function writeOperatorMessageMarker(root, prompt) {
       return;
     }
 
-    writeToAllSurfaces(root, ".last-operator-message", JSON.stringify(marker, null, 2));
+    // Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker.
+    // Each surface gets the session-id-suffixed filename. Cross-surface
+    // pollution blocked (Finding 11).
+    const sessionId = getSessionId(root);
+    writeToAllSurfaces(root, `.last-operator-message-${sessionId}`, JSON.stringify(marker, null, 2));
   } catch {
     // marker write failure never blocks
   }

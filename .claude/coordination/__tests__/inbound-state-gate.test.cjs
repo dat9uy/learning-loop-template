@@ -93,12 +93,28 @@ function writeMarker(tmpDir, timestamp, snippet = 'test') {
 }
 
 function clearMarker(tmpDir) {
-  const markerPath = path.join(tmpDir, '.claude', 'coordination', '.last-operator-message');
-  try { fs.unlinkSync(markerPath); } catch {}
+  const legacyPath = path.join(tmpDir, '.claude', 'coordination', '.last-operator-message');
+  try { fs.unlinkSync(legacyPath); } catch {}
+  // Plan 260711-0030 Phase 5: also clear any session-scoped marker file
+  // (the inbound gate now writes `.last-operator-message-{sessionId}`).
+  const coordDir = path.join(tmpDir, '.claude', 'coordination');
+  if (fs.existsSync(coordDir)) {
+    for (const f of fs.readdirSync(coordDir)) {
+      if (f.startsWith('.last-operator-message-')) {
+        try { fs.unlinkSync(path.join(coordDir, f)); } catch {}
+      }
+    }
+  }
 }
 
 function markerExists(tmpDir) {
-  return fs.existsSync(path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'));
+  const coordDir = path.join(tmpDir, '.claude', 'coordination');
+  if (!fs.existsSync(coordDir)) return false;
+  // Plan 260711-0030 Phase 5: any session-scoped OR legacy un-suffixed marker counts.
+  for (const f of fs.readdirSync(coordDir)) {
+    if (f.startsWith('.last-operator-message')) return true;
+  }
+  return false;
 }
 
 function contextWasInjected(result) {
@@ -428,17 +444,20 @@ console.log('\n=== Category 8: Test Isolation ===');
   runInboundHook('I cleared the device', env);
   assert(fs.existsSync(customMarker), 'GATE_MARKER_PATH override → marker written to custom path');
 
-  const defaultMarkerPath = path.join(tmpDir, '.claude', 'coordination', '.last-operator-message');
-  assert(!fs.existsSync(defaultMarkerPath), 'GATE_MARKER_PATH override → default path NOT used');
+  const defaultCoordDir = path.join(tmpDir, '.claude', 'coordination');
+  const legacyMarkerPath = path.join(defaultCoordDir, '.last-operator-message');
+  assert(!fs.existsSync(legacyMarkerPath), 'GATE_MARKER_PATH override → default path NOT used');
 
-  // Default path test
+  // Default path test — Plan 260711-0030 Phase 5: the writer now writes
+  // .last-operator-message-{sessionId} per worktree. Both legacy and
+  // session-scoped markers count as "marker exists" via markerExists().
   clearMarker(tmpDir);
   try { fs.unlinkSync(customMarker); } catch {}
   clearObservations(tmpDir);
   writeObservation(tmpDir, staleObs);
   const env2 = { GATE_ROOT: tmpDir }; // no GATE_MARKER_PATH
   runInboundHook('I cleared the device', env2);
-  assert(fs.existsSync(defaultMarkerPath), 'default marker path → writes to .claude/coordination/.last-operator-message');
+  assert(markerExists(tmpDir), 'default path → some .last-operator-message* file written');
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

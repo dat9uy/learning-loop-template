@@ -4,6 +4,12 @@ import { join, isAbsolute } from "node:path";
 import { z } from "zod";
 import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
+import { withRegistryLock } from "./registry-lock.js";
+// Plan 260711-0030 Phase 4: schema-version-skew detection. isSchemaBranchSupported
+// reads the per-worktree .loop-version file and rejects writes whose entry_kind
+// is not in the worktree's schema_branches list. Future per-kind field-shape
+// drift detection lands in a follow-up plan.
+import { isSchemaBranchSupported, readLoopVersion } from "./worktree-version.js";
 // TERMINAL_HASH_REGEX is the canonical stored-fingerprint format. Shared with
 // the index so a corrupt index value is dropped on read (H-2 defense preserved
 // on the index path) instead of feeding a false baseline. check-grounding.js
@@ -351,6 +357,25 @@ export class InvalidEntryError extends Error {
   }
 }
 
+/**
+ * Plan 260711-0030 Phase 4: thrown when writeEntry's entry.entry_kind is not
+ * in the current worktree's schema_branches (declared in .loop-version).
+ * Closes the parallel-operation schema-version-skew gap.
+ */
+export class SchemaVersionSkewError extends Error {
+  constructor(root, branch, currentVersion) {
+    const branches = Array.isArray(currentVersion?.schema_branches) ? currentVersion.schema_branches.join(", ") : "<unparsed>";
+    super(
+      `schema_version_skew: entry_kind="${branch}" not in worktree's schema_branches=[${branches}]. Worktree: ${root}. The receiving worktree may run an older L2 version that does not recognize this entry_kind.`,
+    );
+    this.name = "SchemaVersionSkewError";
+    this.code = "SCHEMA_VERSION_SKEW";
+    this.branch = branch;
+    this.currentVersion = currentVersion;
+    this.root = root;
+  }
+}
+
 /** Per-root write queue to prevent read-modify-write races. */
 const writeQueues = new Map();
 
@@ -530,24 +555,35 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
 
 /**
  * Atomically append a single entry to the JSONL registry.
- * Queued per-root to prevent read-modify-write races under concurrent calls.
+ * Queued per-root to prevent read-modify-write races under concurrent calls
+ * within one process, AND locked at the filesystem level (proper-lockfile) to
+ * prevent read-modify-write races across processes. Plan 260711-0030 Phase 1.
  */
 export function writeEntry(root, entry) {
-  return enqueue(root, () => {
-    const validation = metaStateEntrySchema.safeParse(entry);
-    if (!validation.success) {
-      throw new InvalidEntryError(validation.error);
-    }
-    const path = getRegistryPath(root);
-    const lines = existsSync(path)
-      ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
-      : [];
-    lines.push(JSON.stringify(validation.data));
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
-  });
+  return enqueue(root, () =>
+    withRegistryLock(root, () => {
+      // Plan 260711-0030 Phase 4: schema-version-skew gate. Reject writes whose
+      // entry_kind is not in the current worktree's schema_branches BEFORE the
+      // validation pass (clearer error path) and BEFORE any registry mutation.
+      // Lazy .loop-version creation happens inside readLoopVersion.
+      if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
+        throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));
+      }
+      const validation = metaStateEntrySchema.safeParse(entry);
+      if (!validation.success) {
+        throw new InvalidEntryError(validation.error);
+      }
+      const path = getRegistryPath(root);
+      const lines = existsSync(path)
+        ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
+        : [];
+      lines.push(JSON.stringify(validation.data));
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
+    })
+  );
 }
 
 /**
@@ -558,66 +594,68 @@ export function writeEntry(root, entry) {
  * or "version_mismatch" if CAS check fails.
  */
 export function updateEntry(root, id, patch) {
-  return enqueue(root, () => {
-    const entries = readRegistry(root);
-    let found = false;
-    let currentVersion = 0;
+  return enqueue(root, () =>
+    withRegistryLock(root, () => {
+      const entries = readRegistry(root);
+      let found = false;
+      let currentVersion = 0;
 
-    // Check id exists before any mutation
-    for (const entry of entries) {
-      if (entry.id === id) {
-        found = true;
-        currentVersion = entry.version ?? 0;
-        break;
+      // Check id exists before any mutation
+      for (const entry of entries) {
+        if (entry.id === id) {
+          found = true;
+          currentVersion = entry.version ?? 0;
+          break;
+        }
       }
-    }
-    if (!found) return null;
+      if (!found) return null;
 
-    const patchValidation = metaStateEntryPatchSchema.safeParse(patch);
-    if (!patchValidation.success) {
-      return "validation_failed";
-    }
-
-    // CAS check
-    if ("_expected_version" in patch) {
-      if (currentVersion !== patch._expected_version) {
-        return "version_mismatch";
+      const patchValidation = metaStateEntryPatchSchema.safeParse(patch);
+      if (!patchValidation.success) {
+        return "validation_failed";
       }
-    }
 
-    const now = Date.now();
-
-    // Compaction invariant: change-log entries are never compacted.
-    // They are immutable audit log with status="active" (terminal statuses
-    // like "auto-resolved" don't apply). The explicit entry_kind guard below
-    // enforces this. If a future change-log subtype evolves to have a
-    // terminal status, this invariant must be re-verified.
-    const updated = entries.filter((entry) => {
-      const age = now - new Date(entry.created_at).getTime();
-      if (entry.entry_kind !== "change-log" && TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {
-        return false; // compact old terminal entries
+      // CAS check
+      if ("_expected_version" in patch) {
+        if (currentVersion !== patch._expected_version) {
+          return "version_mismatch";
+        }
       }
+
+      const now = Date.now();
+
+      // Compaction invariant: change-log entries are never compacted.
+      // They are immutable audit log with status="active" (terminal statuses
+      // like "auto-resolved" don't apply). The explicit entry_kind guard below
+      // enforces this. If a future change-log subtype evolves to have a
+      // terminal status, this invariant must be re-verified.
+      const updated = entries.filter((entry) => {
+        const age = now - new Date(entry.created_at).getTime();
+        if (entry.entry_kind !== "change-log" && TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {
+          return false; // compact old terminal entries
+        }
+        return true;
+      });
+
+      for (const entry of updated) {
+        if (entry.id === id) {
+          const cleanPatch = { ...patch };
+          delete cleanPatch._expected_version;
+          delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
+          delete cleanPatch.constructor;  // defense-in-depth
+          Object.assign(entry, cleanPatch);
+          entry.version = (entry.version ?? 0) + 1;
+        }
+      }
+
+      const path = getRegistryPath(root);
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, updated.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
       return true;
-    });
-
-    for (const entry of updated) {
-      if (entry.id === id) {
-        const cleanPatch = { ...patch };
-        delete cleanPatch._expected_version;
-        delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
-        delete cleanPatch.constructor;  // defense-in-depth
-        Object.assign(entry, cleanPatch);
-        entry.version = (entry.version ?? 0) + 1;
-      }
-    }
-
-    const path = getRegistryPath(root);
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, updated.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
-    return true;
-  });
+    })
+  );
 }
 
 /**
@@ -625,48 +663,57 @@ export function updateEntry(root, id, patch) {
  * archived_at, archived_by, archived_reason fields.
  */
 export function archiveEntry(root, id, reason, archivedBy) {
-  return enqueue(root, () => {
-    const entries = readRegistry(root);
-    const idx = entries.findIndex((e) => e.id === id);
-    if (idx === -1) return { archived: false, reason: "not_found", id };
-    if (entries[idx].status === "archived") {
-      return { archived: false, reason: "already_archived", id };
-    }
-    entries[idx] = {
-      ...entries[idx],
-      status: "archived",
-      archived_at: new Date().toISOString(),
-      archived_by: archivedBy,
-      archived_reason: reason,
-    };
-    const path = getRegistryPath(root);
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
-    return { archived: true, id, archived_at: entries[idx].archived_at };
-  });
+  return enqueue(root, () =>
+    withRegistryLock(root, () => {
+      const entries = readRegistry(root);
+      const idx = entries.findIndex((e) => e.id === id);
+      if (idx === -1) return { archived: false, reason: "not_found", id };
+      if (entries[idx].status === "archived") {
+        return { archived: false, reason: "already_archived", id };
+      }
+      entries[idx] = {
+        ...entries[idx],
+        status: "archived",
+        archived_at: new Date().toISOString(),
+        archived_by: archivedBy,
+        archived_reason: reason,
+      };
+      const path = getRegistryPath(root);
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
+      return { archived: true, id, archived_at: entries[idx].archived_at };
+    })
+  );
 }
 
 /**
  * Atomically delete an entry by id (soft CRUD enforcement).
  */
 export function deleteEntry(root, id) {
-  return enqueue(root, () => {
-    const entries = readRegistry(root);
-    const filtered = entries.filter((e) => e.id !== id);
-    if (filtered.length === entries.length) return { deleted: false, reason: "not_found", id };
-    const path = getRegistryPath(root);
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, filtered.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
-    return { deleted: true, id };
-  });
+  return enqueue(root, () =>
+    withRegistryLock(root, () => {
+      const entries = readRegistry(root);
+      const filtered = entries.filter((e) => e.id !== id);
+      if (filtered.length === entries.length) return { deleted: false, reason: "not_found", id };
+      const path = getRegistryPath(root);
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, filtered.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
+      return { deleted: true, id };
+    })
+  );
 }
 
 const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
-const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
+// Plan 260711-0030 Phase 1: BATCH_SIZE_LIMIT reduced from 500 → 100 so that
+// worst-case batch fits inside the registry-lock's `stale: 30000` window on
+// slow disks (Finding 12). Larger batches risk lock-stealing by concurrent
+// processes that observe a >30s-old lock. Operators can still override via
+// META_STATE_BATCH_LIMIT env var.
+const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 100;
 
 /**
  * Atomically apply a batch of meta-state operations.
@@ -679,95 +726,97 @@ export function metaStateBatch(root, operations) {
   if (operations.length > BATCH_SIZE_LIMIT) {
     return Promise.resolve({ applied: 0, failed_at: 0, reason: "batch_size_exceeded", limit: BATCH_SIZE_LIMIT });
   }
-  return enqueue(root, async () => {
-    const path = getRegistryPath(root);
-    const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
+  return enqueue(root, async () =>
+    withRegistryLock(root, async () => {
+      const path = getRegistryPath(root);
+      const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
 
-    let entries = readRegistry(root);
-    for (let i = 0; i < operations.length; i++) {
-      const op = operations[i];
-      if (!BATCH_OP_TYPES.has(op.op)) {
-        if (preBatchContent) {
-          writeFileSync(path, preBatchContent, "utf8");
-        } else if (existsSync(path)) {
-          unlinkSync(path);
-        }
-        invalidateCache(root);
-        return { applied: i, failed_at: i, reason: "unknown_op_type", op_type: op.op };
-      }
-      try {
-        switch (op.op) {
-          case "write": {
-            const validation = metaStateEntrySchema.safeParse(op.entry);
-            if (!validation.success) throw new Error("validation_failed");
-            entries.push(validation.data);
-            break;
+      let entries = readRegistry(root);
+      for (let i = 0; i < operations.length; i++) {
+        const op = operations[i];
+        if (!BATCH_OP_TYPES.has(op.op)) {
+          if (preBatchContent) {
+            writeFileSync(path, preBatchContent, "utf8");
+          } else if (existsSync(path)) {
+            unlinkSync(path);
           }
-          case "update": {
-            const idx = entries.findIndex((e) => e.id === op.id);
-            if (idx === -1) throw new Error("not_found");
-            if (op._expected_version !== undefined) {
-              const current = entries[idx].version ?? 0;
-              if (current !== op._expected_version) throw new Error("version_mismatch");
+          invalidateCache(root);
+          return { applied: i, failed_at: i, reason: "unknown_op_type", op_type: op.op };
+        }
+        try {
+          switch (op.op) {
+            case "write": {
+              const validation = metaStateEntrySchema.safeParse(op.entry);
+              if (!validation.success) throw new Error("validation_failed");
+              entries.push(validation.data);
+              break;
             }
-            // Strip op discriminator + lookup id + CAS version before checking
-            // the deny-list and applying. Without this, the lookup-key `id` and
-            // the op discriminator `op` would falsely trigger the deny-list.
-            const { op: _op, id: _id, _expected_version, ...patch } = op;
-            // Enforce the same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch
-            // so the batch tool cannot be used to bypass identity/audit-trail
-            // invariants (e.g. pinning a finding's code_fingerprint to a stale hash).
-            // Throws to roll back the entire batch (all-or-nothing semantics).
-            const denied = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
-            if (denied.length > 0) {
-              const err = new Error("immutable_field");
-              err.denied_fields = denied;
-              throw err;
+            case "update": {
+              const idx = entries.findIndex((e) => e.id === op.id);
+              if (idx === -1) throw new Error("not_found");
+              if (op._expected_version !== undefined) {
+                const current = entries[idx].version ?? 0;
+                if (current !== op._expected_version) throw new Error("version_mismatch");
+              }
+              // Strip op discriminator + lookup id + CAS version before checking
+              // the deny-list and applying. Without this, the lookup-key `id` and
+              // the op discriminator `op` would falsely trigger the deny-list.
+              const { op: _op, id: _id, _expected_version, ...patch } = op;
+              // Enforce the same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch
+              // so the batch tool cannot be used to bypass identity/audit-trail
+              // invariants (e.g. pinning a finding's code_fingerprint to a stale hash).
+              // Throws to roll back the entire batch (all-or-nothing semantics).
+              const denied = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+              if (denied.length > 0) {
+                const err = new Error("immutable_field");
+                err.denied_fields = denied;
+                throw err;
+              }
+              Object.assign(entries[idx], patch);
+              entries[idx].version = (entries[idx].version ?? 0) + 1;
+              break;
             }
-            Object.assign(entries[idx], patch);
-            entries[idx].version = (entries[idx].version ?? 0) + 1;
-            break;
+            case "delete": {
+              const idx = entries.findIndex((e) => e.id === op.id);
+              if (idx === -1) throw new Error("not_found");
+              entries.splice(idx, 1);
+              break;
+            }
+            case "archive": {
+              const idx = entries.findIndex((e) => e.id === op.id);
+              if (idx === -1) throw new Error("not_found");
+              entries[idx] = {
+                ...entries[idx],
+                status: "archived",
+                archived_at: new Date().toISOString(),
+                archived_by: op.archived_by ?? "operator",
+                archived_reason: op.reason ?? "batch_archive",
+              };
+              break;
+            }
           }
-          case "delete": {
-            const idx = entries.findIndex((e) => e.id === op.id);
-            if (idx === -1) throw new Error("not_found");
-            entries.splice(idx, 1);
-            break;
+        } catch (err) {
+          if (preBatchContent) {
+            writeFileSync(path, preBatchContent, "utf8");
+          } else if (existsSync(path)) {
+            unlinkSync(path);
           }
-          case "archive": {
-            const idx = entries.findIndex((e) => e.id === op.id);
-            if (idx === -1) throw new Error("not_found");
-            entries[idx] = {
-              ...entries[idx],
-              status: "archived",
-              archived_at: new Date().toISOString(),
-              archived_by: op.archived_by ?? "operator",
-              archived_reason: op.reason ?? "batch_archive",
-            };
-            break;
-          }
+          invalidateCache(root);
+          // Pass through extra context (e.g. denied_fields from immutable_field)
+          // so callers can diagnose which fields triggered the rollback.
+          const extra = {};
+          if (err.denied_fields) extra.denied_fields = err.denied_fields;
+          return { applied: 0, failed_at: i, reason: err.message, op, ...extra };
         }
-      } catch (err) {
-        if (preBatchContent) {
-          writeFileSync(path, preBatchContent, "utf8");
-        } else if (existsSync(path)) {
-          unlinkSync(path);
-        }
-        invalidateCache(root);
-        // Pass through extra context (e.g. denied_fields from immutable_field)
-        // so callers can diagnose which fields triggered the rollback.
-        const extra = {};
-        if (err.denied_fields) extra.denied_fields = err.denied_fields;
-        return { applied: 0, failed_at: i, reason: err.message, op, ...extra };
       }
-    }
 
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
-    return { applied: operations.length, failed_at: null };
-  });
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
+      return { applied: operations.length, failed_at: null };
+    })
+  );
 }
 
 /**

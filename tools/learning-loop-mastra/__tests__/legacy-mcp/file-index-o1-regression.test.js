@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
-import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateRefreshFileIndexTool, _clearRefreshHashCacheForTests } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
 import { readFileIndex, canonicalIndexKey, _resetFileIndexCacheForTests } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 
@@ -18,7 +18,7 @@ describe("O(1) regression: one refresh re-grounds all anchored findings (F9)", (
   test("seed -> edit fixture -> one refresh_file_index -> all K grounded with index, drifted without it", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "o1-regression-"));
     process.env.GATE_ROOT = tempDir;
-    _clearIdempotencyCacheForTests();
+    _clearRefreshHashCacheForTests();
     _resetFileIndexCacheForTests();
     try {
       // A fixture file cited by K=3 findings (one bare, one :line, one #anchor —
@@ -60,7 +60,7 @@ describe("O(1) regression: one refresh re-grounds all anchored findings (F9)", (
       }
 
       // ONE refresh_file_index call re-grounds all K (the O(1) win).
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       _resetFileIndexCacheForTests();
       const refreshResult = await metaStateRefreshFileIndexTool.handler({ path: "gate-logic.js" });
       assert.strictEqual(JSON.parse(refreshResult.content[0].text).status, "refreshed");
@@ -76,7 +76,7 @@ describe("O(1) regression: one refresh re-grounds all anchored findings (F9)", (
         assert.strictEqual(g.grounding.hash_match, true);
       }
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       _resetFileIndexCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;

@@ -375,12 +375,13 @@ The bash gate escalates on the same command pattern repeatedly when a promoted r
 **Impact:** Operator fatigue from repeated escalation on the same command prefix.
 **Resolution (2026-06-15):** Added `gate_check_recurrence` MCP tool and `recurrence-check-on-start` SessionStart hook. The tool reads `.gate-decision.log` across all surfaces, groups by `rule_id` + normalized command prefix, and auto-files a `finding` when a pattern recurs >= 3 times within 10 minutes. The SessionStart hook runs the check on every session start. Threshold and window are configurable.
 
-#### Multi-Session Isolation
+#### Multi-Session Isolation — RESOLVED
 
-The marker file has no session ID. Multiple Claude Code sessions sharing a project directory share the same marker file.
+The marker file had no session ID. Multiple Claude Code sessions sharing a project directory shared the same marker file.
 
-**Impact:** Session A's state-change message affects Session B's outbound gate.
-**Mitigation:** Add session ID to marker filename.
+**Impact:** Session A's state-change message affected Session B's outbound gate.
+
+**Resolution (2026-07-11):** Marker filename now embeds a per-worktree session ID (sha256(12) prefix derived from `.git/HEAD` content, or `${pid}-${timestamp}-${randomHex}` for non-git dirs — Plan 260711-0030 Phase 5). Two worktrees in the same repo get distinct marker filenames. Backed by `tools/learning-loop-mastra/core/worktree-session-id.js`; writer at `hooks/universal/inbound-gate.js:60`; reader at `core/inbound-state.js:50`. Closes the gap as part of plan 260711-0030.
 
 ## Meta-State Self-Learning Loop
 
