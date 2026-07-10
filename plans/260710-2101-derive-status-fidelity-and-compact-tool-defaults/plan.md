@@ -108,8 +108,8 @@ Two independent low-risk workstreams selected from the post-#48 triage refresh (
 
 4. **[Scope/Assumptions]** (OQ4) `runtime_state_read` defaults `limit:100`; the finding recommends `limit:20`. Lowering can silently truncate. Which?
    - Options: Lower to 20 + compact default | Keep limit:100, add compact only | Lower to 20 but keep verbose default
-   - **Answer:** Lower to 20 + compact default
-   - **Rationale:** Matches the finding + pointer-not-dump intent; `count` reports the full filtered total so truncation is visible; callers needing all rows pass `limit`.
+   - **Answer:** Lower to 20 + compact default (`metadata` drop only; `fingerprint` retained)
+   - **Rationale (Red-Team Findings 2 & 6 corrected):** the original answer's "count reports the full filtered total so truncation is visible" was **factually wrong** — `runtime-state-read-tool.js:60` slices `result`, then line 65 reports `count: result.length` from the **post-slice** array (not the filtered total). Truncation is invisible without a separate `total` field. The fix adds `total` (count BEFORE slice) so callers detect truncation via `total > count`. The `limit:20` choice is grounded as "one page of typical exploratory output" — the WS2 finding said "e.g., limit=20" as an example (Red-Team Finding 6), not a hard prescription; the rationale no longer claims "matches the finding." Compact mode drops `metadata` only — `fingerprint` is a SHA-256 integrity hash (`core/runtime-state.js:58-61`), not a blob, and is retained for default-mode integrity verification (Red-Team Finding 15).
 
 ### Confirmed Decisions
 - **OQ1 → Option B:** `mechanism-shipped` requires `test_passed === true`. Option A rejected (kept as documented alternative only).
@@ -151,3 +151,79 @@ Two independent low-risk workstreams selected from the post-#48 triage refresh (
 - **Reconciled stale references:** 4 — plan.md frontmatter "two PRs for per-finding revert"; plan.md Overview "separate PRs"; plan.md Dependencies "ship sequentially (PR-A merge first, rebase PR-B)"; plan.md Acceptance "PR-A … PR-B …"; plus phase-02/03 "→ PR-A"/"→ PR-B" headers and phase-04 full two-PR body
 - **Unresolved contradictions:** 0
 - Notes: every residual `PR-A`/`PR-B`/"two sequential PRs" mention is now in the historical Validation Log body or this Revision note, both framed as the prior→current transition, not as live instructions. All live instructions (frontmatter, Overview, Dependencies, Acceptance, phase headers/Overviews, phase-04 Steps 1-6) say single PR.
+
+## Red Team Review
+
+### Session — 2026-07-10
+**Findings:** 15 (3 Critical, 8 High, 4 Medium)
+**Reviewers:** 3 (Security Adversary + Fact Checker, Failure Mode Analyst + Flow Tracer, Assumption Destroyer + Scope Auditor)
+**Tier:** Standard (4 phases, Fact Checker + Contract Verifier)
+**Disposition:** 12 Accepted + 2 Partial-Accept + 1 Drop (Low-severity cosmetic)
+**All findings carried file:line evidence** — evidence filter passed for all.
+
+#### Severity breakdown
+- **3 Critical** (Test blast radius; `limit:20` truncation visibility; WS1 broader contract change)
+- **8 High** (call-site ambiguity; Probe 4 unverified; 20-limit weak justification; `node --test` cycle false; PR #47 precedent misapplied; `meta_state_resolve` gate; re-ground enumeration; drift gate-log cascade)
+- **4 Medium** (cache invalidation; `code-only → investigate` audit; `stripEvidenceAnchor` malformed anchors; fingerprint drop scope creep)
+
+### Findings Table
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Test blast radius under-enumerated | Critical | Accept | Phase 1 Probe 1, Phase 2 Step 5 |
+| 2 | `runtime_state_read.count` is the LIMIT count, not filtered total | Critical | Accept | Phase 1 Probe 4, Phase 3 Architecture, Phase 3 Risk, plan.md Q4 |
+| 3 | WS1 broadens `computeKind` semantics for evidence_test-less findings | Critical | Accept | Phase 2 Architecture (deliberate), Phase 2 Step 5.5 |
+| 4 | `computeKind` call-site instruction ambiguous | High | Accept | Phase 2 Step 3 |
+| 5 | Phase 1 Probe 4 lacks explicit grep + pass criterion | High | Accept | Phase 1 Probe 4 |
+| 6 | "20 matches finding" — finding said "e.g. 20" (example) | High | Accept | Phase 3 Risk, plan.md Q4 |
+| 7 | `node --test` does NOT detect ESM circular imports | High | Accept | Phase 2 Risk Assessment |
+| 8 | PR #47 precedent misapplied | High | Accept | Phase 1 Probe 1, Phase 2 Step 5, Phase 2 Risk |
+| 9 | `meta_state_resolve` no operator-only authorization gate | High | Partial Accept | Phase 4 Step 5 (documented as gap; follow-up plan added) |
+| 10 | `meta_state_refresh_file_index` re-grounds 3 anchored findings | High | Accept | Phase 4 Step 5 |
+| 11 | `drift` field flip cascades to gate-log audit trail | High | Accept | Phase 4 Step 5 (follow-up plan added) |
+| 12 | Cache invalidation order between resolve/refresh/query_drift unverified | Medium | Accept | Phase 4 Step 6 |
+| 13 | `code-only → investigate` change has no consumer audit | Medium | Accept | Phase 2 Step 4 |
+| 14 | `stripEvidenceAnchor` doesn't handle malformed `:foo` anchors | Medium | Partial Accept | Phase 2 Risk (noted as follow-up plan) |
+| 15 | `runtime_state_read` fingerprint drop is scope creep | Medium | Accept | Phase 3 Architecture |
+
+### Adjudication Notes
+
+- **Finding 1** is load-bearing: forces Phase 2 Step 5 to enumerate 5+ test files. The flip list is the test under `sp1-derive-status-acceptance.test.js:42-51` + the 4 unit-test files plus a new symptom-file test.
+- **Finding 2** contradicts a previously-verified Validation Log claim (Q4 rationale was fact-checked past the live code). The "count makes truncation visible" line is rewritten; a new `total` field is added.
+- **Finding 3** forces a deliberate, documented broader contract change in WS1. The change-log language reflects "contract change" (Finding 8 follow-up), not "broken behavior fix."
+- **Finding 9** and **Finding 11** are not closed by this plan; both generate follow-up plans (operator gate, gate-log annotation).
+- **Finding 14** is a pre-existing limitation in `stripEvidenceAnchor`; the plan reuses the helper as-is. Follow-up plan to tighten.
+
+### Whole-Plan Consistency Sweep
+
+After applying accepted findings, the plan was re-read end-to-end:
+
+- **Files reread:** plan.md, phase-01, phase-02, phase-03, phase-04
+- **Decision deltas checked:** 15 (one per applied finding)
+- **Reconciled stale references:**
+  - plan.md OQ4 rationale (was: "Matches the finding + pointer-not-dump intent; `count` reports the full filtered total so truncation is visible") → rewritten to correct the truncation-visibility claim + ground 20 as "one page of typical exploratory output"
+  - Phase 2 Architecture pseudo `computeKind` — added Finding 3 commentary explicitly
+  - Phase 2 Step 3 — exact replacement line (Finding 4)
+  - Phase 2 Step 4 — added grep pass criterion (Finding 13)
+  - Phase 2 Step 5 — test-flip enumeration (Finding 1) + PR #47 reframe (Finding 8)
+  - Phase 2 Step 5.5 — new sub-step for blast-radius diff (Finding 3)
+  - Phase 1 Probe 1 — test enumeration (Finding 1) + reframe (Finding 8)
+  - Phase 1 Probe 4 — explicit `rg` command + pass criterion (Finding 5)
+  - Phase 2 Risk Assessment — cycle-detection probe replaced (Finding 7); PR #47 reframe (Finding 8); malformed-anchor follow-up (Finding 14); blast-radius enumeration (Finding 3)
+  - Phase 2 Related Code Files — test-list updated to enumerate all 4+ affected files
+  - Phase 2 Success Criteria — 5+ flipped-test bullets; blast-radius diff captured
+  - Phase 3 Architecture — drop `metadata` only, retain `fingerprint` (Finding 15); add `total` field (Finding 2)
+  - Phase 3 Risk Assessment — silent truncation corrected (Finding 2); 20-limit framing (Finding 6)
+  - Phase 4 Step 5 — operator-mediated flag (Finding 9); enumeration of re-grounded findings (Finding 10); gate-log divergence follow-up (Finding 11)
+  - Phase 4 Step 6 — `run_grounding: true` (Finding 12)
+  - Phase 4 Risk Assessment — added operator-gap and gate-log-divergence notes (Findings 9, 11)
+  - Phase 4 Success Criteria — anchored-entry enumeration (Finding 10); follow-up plans listed (Findings 9, 11, 14)
+- **Unresolved contradictions:** 0
+
+### Follow-up Plans (Generated from This Review)
+
+1. **Operator-only authorization gate for `meta_state_resolve`** (Red-Team Finding 9) — `meta-state-resolve-tool.js:24` needs a caller-identity check (env-var gate, like `evaluate-write-gate.js`). Until added, all `meta_state_resolve` calls must be operator-mediated.
+2. **`stripEvidenceAnchor` tightening for non-canonical anchors** (Red-Team Finding 14) — extend the helper to strip `:non-slash-suffix`, OR add a fallback in `checkExists` to try the original ref if stripped doesn't exist.
+3. **Gate-log drift-annotation fix** (Red-Team Finding 11) — either drop `drift` from `meta-state-derive-status-tool.js:52` gate-log write, or annotate with `source_of_truth: "query_drift"`.
+
+These follow-ups are tracked here; they do not block ship.
