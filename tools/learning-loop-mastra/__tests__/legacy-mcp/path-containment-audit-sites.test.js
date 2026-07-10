@@ -303,7 +303,8 @@ describe("audit-site migrations — path containment rejection", () => {
       const cg = checkGrounding(entry, { root: tempDir, now: () => 1700000000000 });
       assert.strictEqual(cg.status, "grounded");
       const ds = deriveStatus(entry, { root: tempDir, now: () => 1700000000000 });
-      assert.strictEqual(ds.derivation.kind, "mechanism-shipped");
+      // No positive test_passed signal → code-only (active-uncertain).
+      assert.strictEqual(ds.derivation.kind, "code-only");
 
       // Site 7: verification-runner with legit cwd inside root
       mkdirSync(join(tempDir, "subdir"), { recursive: true });

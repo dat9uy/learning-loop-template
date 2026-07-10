@@ -89,10 +89,12 @@ describe("meta_state_derive_status tool", () => {
 
       const result = await metaStateDeriveStatusTool.handler({ id: entry.id });
       const parsed = JSON.parse(result.content[0].text);
-      assert.strictEqual(parsed.derived_status, "resolved-by-mechanism");
-      assert.strictEqual(parsed.derivation.kind, "mechanism-shipped");
-      assert.strictEqual(parsed.recommendation, "re_verify");
-      assert.strictEqual(parsed.drift, true);
+      // No positive test_passed signal (default run_tests:false) → code-only,
+      // active-uncertain, recommendation investigate, drift false.
+      assert.strictEqual(parsed.derived_status, "active-uncertain");
+      assert.strictEqual(parsed.derivation.kind, "code-only");
+      assert.strictEqual(parsed.recommendation, "investigate");
+      assert.strictEqual(parsed.drift, false);
       assert.strictEqual(parsed.derivation.signals.code_ref_exists, true);
       assert.strictEqual(parsed.derivation.signals.test_file_exists, true);
     } finally {

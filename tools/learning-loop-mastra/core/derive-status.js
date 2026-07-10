@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
 import { isOpen, isStaleView } from "./stale-view.js";
+import { stripEvidenceAnchor } from "./gate-logic.js";
 
 /**
  * Source-of-truth enums. Export so introspection layers (e.g. core/loop-introspect.js
@@ -66,8 +67,9 @@ export function deriveStatus(entry, codeContext) {
     test_passed: codeContext.test_passed ?? null,
   };
 
-  // Kind computation
-  const kind = computeKind(codeRefExists, testFileExists, codeRef, testPath);
+  // Kind computation — test_passed must be threaded into computeKind so that
+  // bare file existence no longer yields mechanism-shipped.
+  const kind = computeKind(codeRefExists, testFileExists, codeContext.test_passed ?? null, codeRef, testPath);
   const derived_status = computeDerivedStatus(kind);
   const recommendation = computeRecommendation(entry, derived_status, kind);
   const drift = computeDrift(derived_status, entry.status);
@@ -92,8 +94,13 @@ function checkExists(root, path) {
   // A missing file inside root (ENOENT, resolvedPath === null) is the
   // legitimate "code-missing"/"code-only" case and returns false; an actual
   // escape (resolvedPath set) re-throws. See core/path-containment.js.
+  //
+  // Strip the documented suffix forms (`:line`, `:start-end`, `#anchor`)
+  // before resolving. Without this, a ref like `src.js:102-113` is treated as
+  // a literal path → false `code-missing`. Same helper SP2 (`check-grounding.js:154`)
+  // and the gate logic (`gate-logic.js:681,699`) reuse — DRY single source of truth.
   try {
-    const fullPath = resolveSafePath(root, path);
+    const fullPath = resolveSafePath(root, stripEvidenceAnchor(path));
     return existsSync(fullPath);
   } catch (err) {
     if (err instanceof PathContainmentError && err.reason === "outside_root" && err.resolvedPath === null) {
@@ -104,11 +111,15 @@ function checkExists(root, path) {
 }
 
 // fallow-ignore-next-line complexity
-function computeKind(codeRefExists, testFileExists, codeRef, testPath) {
+function computeKind(codeRefExists, testFileExists, testPassed, codeRef, testPath) {
   if (codeRef === null && testPath === null) return "no-signals";
   if (codeRefExists === false) return "code-missing";
-  if (testPath !== null && testFileExists === false) return "code-only";
-  return "mechanism-shipped";
+  // Deliberate broader contract change: `mechanism-shipped` now requires
+  // `test_passed === true` (was: any `codeRefExists && testFileExists`).
+  // Findings with only `evidence_code_ref` (no `evidence_test`) now derive
+  // `code-only` too, matching the symptom-file false-positive fix intent.
+  if (testPassed === true) return "mechanism-shipped";
+  return "code-only";
 }
 
 function computeDerivedStatus(kind) {
@@ -137,6 +148,11 @@ function computeRecommendation(entry, derivedStatus, kind) {
     return "log_drift";
   }
   if (kind === "code-missing") return "investigate";
+  // code-only means "file exists but no positive test-pass signal" — honest
+  // recommendation is investigate (don't blanket-resolve on file existence;
+  // don't leave the operator blind either). Consistent with query-drift.js
+  // mapping active-uncertain → investigate.
+  if (kind === "code-only") return "investigate";
   return "no_action";
 }
 

@@ -55,7 +55,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. Pass `compact: true` for a token-efficient view (4KB vs 85KB for 53 entries). The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
+  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded) AND returns the compact projection (id, entry_kind, status, ref fields) — pass `compact: false` for the full entry shape (description, evidence, etc.). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -71,10 +71,10 @@ export const metaStateListTool = {
       .describe("Filter entries that reference this id in `ref_field`. Required with `ref_field`."),
     ref_field: z.enum(REF_FIELDS).optional()
       .describe("Field used by the `ref_by` filter. Required with `ref_by`."),
-    compact: z.coerce.boolean().optional().default(false).describe("Return only id, entry_kind, status, and ref fields (~4KB for 53 entries vs ~85KB full)"),
+    compact: z.coerce.boolean().optional().default(true).describe("Default: true — return only id, entry_kind, status, and ref fields (token-efficient). Pass `compact: false` for the full entry shape (~85KB for 53 entries)."),
     include_archived: z.coerce.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
   },
-  handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, id, ref_by, ref_field, compact, include_archived }) => {
+  handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, id, ref_by, ref_field, compact = true, include_archived }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const now = new Date().toISOString();
@@ -196,7 +196,7 @@ export const metaStateListTool = {
       id_filter: id !== undefined ? (Array.isArray(id) ? id : [id]) : null,
       ref_by_filter: ref_by || null,
       ref_field_filter: ref_field || null,
-      compact: compact || false,
+      compact: compact ?? true,
     };
 
     return {

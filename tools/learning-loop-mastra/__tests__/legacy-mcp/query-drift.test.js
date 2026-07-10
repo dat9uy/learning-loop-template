@@ -28,8 +28,10 @@ describe("queryDrift pure function", () => {
     };
   }
 
-  // T-1: SP1-only case 1 — mechanism-shipped + active → drift (resolve)
-  test("T-1: SP1-only mechanism-shipped + active returns drift with recommendation resolve", () => {
+  // T-1: SP1-only case — code-only (no positive test_passed) + active → drift (investigate)
+  // (Bare file existence no longer yields mechanism-shipped; bare-existence + active
+  // is now active-uncertain under the corrected contract.)
+  test("T-1: SP1-only code-only + active returns drift with recommendation investigate", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -43,9 +45,9 @@ describe("queryDrift pure function", () => {
     const ev = result.drift_events[0];
     assert.strictEqual(ev.id, entry.id);
     assert.strictEqual(ev.raw_status, "open");
-    assert.strictEqual(ev.derived_status, "resolved-by-mechanism");
+    assert.strictEqual(ev.derived_status, "active-uncertain");
     assert.strictEqual(ev.drift_kind, "assertion_lags_derivation");
-    assert.strictEqual(ev.recommendation, "resolve");
+    assert.strictEqual(ev.recommendation, "investigate");
   });
 
   // T-2: SP1-only case — active-no-signal → no drift
@@ -84,8 +86,9 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(ev.recommendation, "investigate");
   });
 
-  // T-5: SP1+SP2 join case 1 — resolved + grounded → resolve
-  test("T-5: SP1+SP2 case 1 (resolved + grounded) returns drift with recommendation resolve", async () => {
+  // T-5: SP1+SP2 join case — code-only + grounded → investigate
+  // (Without positive test_passed, SP1 derives active-uncertain regardless of SP2.)
+  test("T-5: SP1+SP2 case 1 (code-only + grounded) returns drift with recommendation investigate", async () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -99,11 +102,11 @@ describe("queryDrift pure function", () => {
     });
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
-  // T-6: SP1+SP2 join case 2 — resolved + drifted → resolve (SP1 dominates)
-  test("T-6: SP1+SP2 case 2 (resolved + drifted) returns drift with recommendation resolve (derivation primary)", () => {
+  // T-6: SP1+SP2 join case 2 — code-only + drifted → investigate
+  test("T-6: SP1+SP2 case 2 (code-only + drifted) returns drift with recommendation investigate", () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -115,7 +118,7 @@ describe("queryDrift pure function", () => {
     });
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
   // T-7: SP1+SP2 join case 3 — SP1 active-uncertain + SP2 drifted → investigate
@@ -147,8 +150,8 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_count, 0);
   });
 
-  // T-9: Recommendation — SP1 resolved + SP2 skipped → resolve
-  test("T-9: SP1 resolved + SP2 skipped returns drift with recommendation resolve", () => {
+  // T-9: Recommendation — SP1 code-only + SP2 skipped → investigate
+  test("T-9: SP1 code-only + SP2 skipped returns drift with recommendation investigate", () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -159,11 +162,11 @@ describe("queryDrift pure function", () => {
     });
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
-  // T-10: Recommendation — SP1 resolved + SP2 unknown → resolve
-  test("T-10: SP1 resolved + SP2 unknown returns drift with recommendation resolve (SP2 unknown is not drift)", () => {
+  // T-10: Recommendation — SP1 code-only + SP2 unknown → investigate
+  test("T-10: SP1 code-only + SP2 unknown returns drift with recommendation investigate (SP2 unknown is not drift)", () => {
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
     writeFileSync(join(ctx.root, "src.test.js"), "// test");
@@ -175,7 +178,7 @@ describe("queryDrift pure function", () => {
     });
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
   // T-11: Recommendation — SP1 active-uncertain + SP2 drifted → investigate
@@ -361,8 +364,8 @@ describe("queryDrift pure function", () => {
     assert.strictEqual(result.drift_count, 0);
   });
 
-  // T-24: Corrupted SP2 status (defensive default)
-  test("T-24: when SP1 is mechanism-shipped and SP2 returns grounded/skipped/unknown, recommendation is resolve", () => {
+  // T-24: SP1 code-only + SP2 drifted → investigate (active-uncertain case 5 dominates)
+  test("T-24: when SP1 is code-only and SP2 returns grounded/skipped/unknown/drifted, recommendation is investigate", () => {
     // Covered by T-9, T-10 — repeated to lock the default branch
     const ctx = baseContext({ run_grounding: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
@@ -373,15 +376,15 @@ describe("queryDrift pure function", () => {
       mechanism_check: true,
       code_fingerprint: "sha256:" + "a".repeat(64), // arbitrary, but hash_match will be false if file exists
     });
-    // Actually code_fingerprint won't match the actual file hash → SP2 returns drifted
-    // So this should be case 2 (resolved + drifted) → resolve
+    // code_fingerprint won't match the actual file hash → SP2 returns drifted;
+    // SP1 says code-only (no positive test_passed) → investigate.
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
   // T-25: Post-migration contract — finding entries with top-level evidence_code_ref
-  // get SP2 grounding called (locks in that the 30 previously-skipped entries
+  // get SP2 grounding called (locks in that previously-skipped entries
   // are now covered by the SP1+SP2 join, not just SP1).
   test("T-25: post-migration top-level evidence_code_ref on finding triggers full SP1+SP2 join (no nested form)", async () => {
     const ctx = baseContext({ run_grounding: true });
@@ -399,15 +402,13 @@ describe("queryDrift pure function", () => {
     });
     const result = queryDrift([entry], ctx);
     assert.strictEqual(result.drift_count, 1);
-    // SP1 says resolved-by-mechanism + SP2 says grounded (matching hash) → case 1 → resolve
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    // SP1 says code-only (no positive test_passed) + SP2 says grounded → case 5 → investigate.
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
   // T-26: Post-migration — change-log entries with top-level evidence_code_ref
   // are evaluated, not skipped by the entry_kind: "change-log" fast path.
-  // Locks in that the change-log fast path in deriveStatus (and any checkGrounding
-  // fast path) is no longer correct post-migration: change-logs now carry
-  // evidence_code_ref and must flow through the normal evaluation.
+  // With code+test present but no positive test_passed, SP1 derives code-only.
   test("T-26: change-log with evidence_code_ref is evaluated, not skipped by kind fast-path", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
@@ -418,12 +419,11 @@ describe("queryDrift pure function", () => {
       evidence_test: "src.test.js",
     });
     const result = queryDrift([entry], ctx);
-    // Post-migration: change-log is no longer special-cased.
-    // With code+test present, SP1 returns mechanism-shipped. An active entry whose
-    // mechanism is shipped is drift (recommendation: resolve).
+    // Post-migration: change-log is no longer special-cased. An active entry
+    // whose mechanism is uncertain is drift (case 5 → investigate).
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].derived_status, "resolved-by-mechanism");
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].derived_status, "active-uncertain");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 
   // T-27: Rule entries (entry_kind: "rule") with top-level evidence_code_ref
@@ -441,8 +441,8 @@ describe("queryDrift pure function", () => {
       // No code_fingerprint — SP2 should return "unknown" (not "drifted")
     });
     const result = queryDrift([entry], ctx);
-    // SP1 says mechanism-shipped + SP2 says unknown → case 1 → resolve
+    // SP1 says code-only (no positive test_passed) + SP2 says unknown → case 5 → investigate.
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].recommendation, "resolve");
+    assert.strictEqual(result.drift_events[0].recommendation, "investigate");
   });
 });

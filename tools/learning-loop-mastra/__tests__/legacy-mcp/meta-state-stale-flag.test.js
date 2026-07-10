@@ -106,11 +106,11 @@ describe("stale status schema + behavior (TDD red)", () => {
     assert.ok(META_STATE_RECOMMENDATIONS.includes("re_verify"), "re_verify should be in recommendations");
   });
 
-  test("T5: deriveStatus on stale-view (open + aged) + mechanism-shipped returns re_verify", () => {
-    // Plan 260707-0812 Phase 2: `stale` is no longer a status. The re_verify
-    // recommendation fires when the entry is open AND the underlying code is
-    // shipped (mechanism resolves cleanly). Model as an aged open finding
-    // (isStaleView=true) with a shipped mechanism.
+  test("T5: deriveStatus on stale-view (open + aged) + code-only returns investigate", () => {
+    // `stale` is no longer a status — it's a derived view from age + drift.
+    // With the corrected contract (no positive test_passed signal), this
+    // entry is code-only (active-uncertain) and recommends investigate
+    // rather than the old re_verify.
     const tempDir = mkdtempSync(join(tmpdir(), "derive-stale-"));
     writeFileSync(join(tempDir, "src.js"), "// code");
     const OLD = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
@@ -122,7 +122,7 @@ describe("stale status schema + behavior (TDD red)", () => {
       evidence_code_ref: "src.js",
     };
     const result = deriveStatus(entry, { root: tempDir, now: () => Date.now() });
-    assert.strictEqual(result.recommendation, "re_verify");
+    assert.strictEqual(result.recommendation, "investigate");
   });
 
   test("T6: TERMINAL_STATUSES does NOT include stale", () => {
