@@ -5,6 +5,11 @@ import { z } from "zod";
 import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 import { withRegistryLock } from "./registry-lock.js";
+// Plan 260711-0030 Phase 4: schema-version-skew detection. isSchemaBranchSupported
+// reads the per-worktree .loop-version file and rejects writes whose entry_kind
+// is not in the worktree's schema_branches list. Future per-kind field-shape
+// drift detection lands in a follow-up plan.
+import { isSchemaBranchSupported, readLoopVersion } from "./worktree-version.js";
 // TERMINAL_HASH_REGEX is the canonical stored-fingerprint format. Shared with
 // the index so a corrupt index value is dropped on read (H-2 defense preserved
 // on the index path) instead of feeding a false baseline. check-grounding.js
@@ -352,6 +357,25 @@ export class InvalidEntryError extends Error {
   }
 }
 
+/**
+ * Plan 260711-0030 Phase 4: thrown when writeEntry's entry.entry_kind is not
+ * in the current worktree's schema_branches (declared in .loop-version).
+ * Closes the parallel-operation schema-version-skew gap.
+ */
+export class SchemaVersionSkewError extends Error {
+  constructor(root, branch, currentVersion) {
+    const branches = Array.isArray(currentVersion?.schema_branches) ? currentVersion.schema_branches.join(", ") : "<unparsed>";
+    super(
+      `schema_version_skew: entry_kind="${branch}" not in worktree's schema_branches=[${branches}]. Worktree: ${root}. The receiving worktree may run an older L2 version that does not recognize this entry_kind.`,
+    );
+    this.name = "SchemaVersionSkewError";
+    this.code = "SCHEMA_VERSION_SKEW";
+    this.branch = branch;
+    this.currentVersion = currentVersion;
+    this.root = root;
+  }
+}
+
 /** Per-root write queue to prevent read-modify-write races. */
 const writeQueues = new Map();
 
@@ -538,6 +562,13 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
 export function writeEntry(root, entry) {
   return enqueue(root, () =>
     withRegistryLock(root, () => {
+      // Plan 260711-0030 Phase 4: schema-version-skew gate. Reject writes whose
+      // entry_kind is not in the current worktree's schema_branches BEFORE the
+      // validation pass (clearer error path) and BEFORE any registry mutation.
+      // Lazy .loop-version creation happens inside readLoopVersion.
+      if (entry && entry.entry_kind && !isSchemaBranchSupported(root, entry.entry_kind)) {
+        throw new SchemaVersionSkewError(root, entry.entry_kind, readLoopVersion(root));
+      }
       const validation = metaStateEntrySchema.safeParse(entry);
       if (!validation.success) {
         throw new InvalidEntryError(validation.error);
