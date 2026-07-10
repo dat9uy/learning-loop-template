@@ -23,6 +23,9 @@ files:
   - path: meta-state.js
     role: facade
     summary: Registry CRUD + Zod schemas for the 4-kind meta-state union.
+  - path: registry-lock.js
+    role: facade
+    summary: Cross-process file lock (proper-lockfile wrapper) for the meta-state registry. Plan 260711-0030 Phase 1.
   - path: runtime-state.js
     role: facade
     summary: Shared runtime-state.jsonl helpers (append + fingerprint). Extracted in plan 260704-0301-stale-findings-dispatch-handle Phase 2 for DRY between runtime_state_record and meta_state_dispatch_finding.
