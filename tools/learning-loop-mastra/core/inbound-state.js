@@ -1,6 +1,11 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { readFromAllSurfaces } from "./surfaces.js";
+// Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker file.
+// readLastOperatorMessage now takes a `sessionId` arg and looks for the
+// session-suffixed filename; without it, falls back to the legacy name for
+// migration compatibility.
+import { getSessionId } from "./worktree-session-id.js";
 
 const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const SIDECAR_FILENAME = "runtime-state.jsonl";
@@ -37,8 +42,13 @@ function isMarkerFresh(marker) {
  * Read the last operator message marker written by inbound-state-gate.cjs.
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
  * Markers older than MARKER_TTL_MS are treated as non-existent.
+ *
+ * Plan 260711-0030 Phase 5: scoped per-session via the session id argument
+ * (defaults to getSessionId(root) for the current worktree). Backward-compat:
+ * when `sessionId` is null/undefined the legacy un-suffixed filename is also
+ * read so existing markers aren't orphaned.
  */
-export function readLastOperatorMessage(root) {
+export function readLastOperatorMessage(root, surface, sessionId = getSessionId(root)) {
   try {
     // Priority 1: env var (operator override).
     if (process.env.GATE_MARKER_PATH) {
@@ -46,9 +56,21 @@ export function readLastOperatorMessage(root) {
       if (marker) return marker;
     }
 
-    // Priority 2 + 3: surface iteration via the helper.
-    const hits = readFromAllSurfaces(root, ".last-operator-message");
-    for (const hit of hits) {
+    // Priority 2 + 3: surface iteration via the helper. Read the session-scoped
+    // marker first; fall back to the legacy un-suffixed filename for migration.
+    const scopedNames = sessionId
+      ? [`.last-operator-message-${sessionId}`]
+      : [];
+    for (const name of scopedNames) {
+      const hits = readFromAllSurfaces(root, name);
+      for (const hit of hits) {
+        const marker = isMarkerFresh(hit.parsed);
+        if (marker) return marker;
+      }
+    }
+    // Legacy fallback (un-suffixed filename).
+    const legacyHits = readFromAllSurfaces(root, ".last-operator-message");
+    for (const hit of legacyHits) {
       const marker = isMarkerFresh(hit.parsed);
       if (marker) return marker;
     }
