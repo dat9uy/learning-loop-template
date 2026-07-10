@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   metaStateRefreshFileIndexTool,
-  _clearIdempotencyCacheForTests,
+  _clearRefreshHashCacheForTests,
 } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readFileIndex, getFileIndexPath } from "../../core/meta-state.js";
@@ -40,7 +40,7 @@ describe("meta_state_refresh_file_index tool", () => {
       const map = readFileIndex(tempDir);
       assert.strictEqual(map.get("src.js"), parsed.code_fingerprint);
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -59,7 +59,7 @@ describe("meta_state_refresh_file_index tool", () => {
       assert.strictEqual(map.get("src.js"), parsed.code_fingerprint);
       assert.strictEqual(map.has("src.js:42#fn"), false);
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -93,7 +93,7 @@ describe("meta_state_refresh_file_index tool", () => {
       const parsed = JSON.parse(result.content[0].text);
       assert.strictEqual(parsed.findings_regrounded, 2, "both src.js findings count; other.js does not");
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -109,15 +109,16 @@ describe("meta_state_refresh_file_index tool", () => {
       assert.strictEqual(parsed.path, "does-not-exist.js");
       assert.strictEqual(existsSync(getFileIndexPath(tempDir)), false, "no sidecar write on missing file");
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
   });
 
-  // Red-team F13: idempotency is re-keyed on the current index hash so a real
-  // file change is a cache miss (not a static key off the stale stored value).
-  test("idempotency: refresh, mutate file, refresh -> cache miss (F13 re-keyed)", async () => {
+  // Plan 260711-0030 Phase 2: in-process cache removed. With no cache, every call
+  // performs the work — there is no cache-hit short-circuit. The persisted
+  // fingerprint still distinguishes "same content" from "mutated content".
+  test("no cache: refresh, mutate file, refresh -> different fingerprint", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "refresh-fidx-idem-"));
     process.env.GATE_ROOT = tempDir;
     try {
@@ -127,19 +128,19 @@ describe("meta_state_refresh_file_index tool", () => {
       assert.strictEqual(p1.cache_hit, false);
       assert.strictEqual(p1.status, "refreshed");
 
-      // Second call with no file change -> cache hit.
       const r2 = await metaStateRefreshFileIndexTool.handler({ path: "src.js" });
       const p2 = JSON.parse(r2.content[0].text);
-      assert.strictEqual(p2.cache_hit, true, "unchanged file -> cache hit");
+      assert.strictEqual(p2.cache_hit, false, "no cache: every call is a miss now");
+      assert.strictEqual(p2.code_fingerprint, p1.code_fingerprint, "same file -> same fingerprint");
 
-      // Mutate the file (new content/hash) -> cache miss -> re-hash + re-upsert.
+      // Mutate the file (new content/hash) -> re-hash + re-upsert.
       writeFileSync(join(tempDir, "src.js"), "// second — different content");
       const r3 = await metaStateRefreshFileIndexTool.handler({ path: "src.js" });
       const p3 = JSON.parse(r3.content[0].text);
-      assert.strictEqual(p3.cache_hit, false, "mutated file -> cache miss (F13)");
+      assert.strictEqual(p3.cache_hit, false);
       assert.notStrictEqual(p3.code_fingerprint, p1.code_fingerprint);
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -160,7 +161,7 @@ describe("meta_state_refresh_file_index tool", () => {
       assert.ok(entry.code_fingerprint?.startsWith("sha256:"));
       assert.strictEqual(typeof entry.findings_regrounded, "number");
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -178,7 +179,7 @@ describe("meta_state_refresh_file_index tool", () => {
       const log = readGateLog(tempDir).filter((e) => e.tool === "meta_state_refresh_file_index");
       assert.strictEqual(log[log.length - 1].reason, reason, "reason recorded in the gate log");
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }
@@ -195,7 +196,7 @@ describe("meta_state_refresh_file_index tool", () => {
       const log = readGateLog(tempDir).filter((e) => e.tool === "meta_state_refresh_file_index");
       assert.strictEqual(log[log.length - 1].reason, undefined, "no reason field in the gate log when omitted");
     } finally {
-      _clearIdempotencyCacheForTests();
+      _clearRefreshHashCacheForTests();
       if (originalEnv === undefined) delete process.env.GATE_ROOT;
       else process.env.GATE_ROOT = originalEnv;
     }

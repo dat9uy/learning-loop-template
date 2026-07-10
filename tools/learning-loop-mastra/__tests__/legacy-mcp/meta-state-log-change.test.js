@@ -3,8 +3,6 @@ import assert from "node:assert";
 import { z } from "zod";
 import {
   metaStateLogChangeTool,
-  _clearIdempotencyCacheForTests,
-  _backdateIdempotencyCacheForTests,
 } from "../../tools/handlers/meta-state-log-change-tool.js";
 import { readRegistry } from "../../core/meta-state.js";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -260,174 +258,43 @@ describe("meta_state_log_change tool", () => {
     }
   });
 
-  // Idempotency cache tests
-  test("duplicate call within 60s returns cached result with cache_hit: true and does not write a second entry", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-cache-"));
+  // Plan 260711-0030 Phase 2: in-process 60s idempotency cache was removed.
+  // Replaced tests below assert that 2 identical calls produce 2 distinct entries
+  // (cache no longer dedupes; each call writes a fresh entry with a fresh id).
+
+  test("identical call within 60s writes a second entry (cache removed)", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-"));
     process.env.GATE_ROOT = tempDir;
     try {
       const params = {
         change_dimension: "surface",
         change_target: "tools/meta-state-log-change-tool.js",
-        change_diff: { added: ["idempotency cache"], removed: [], changed: [] },
-        reason: "Adding a 60s idempotency cache to prevent duplicate change-log entries from agent retry loops.",
-      };
-
-      const call1 = await metaStateLogChangeTool.handler(params);
-      const parsed1 = JSON.parse(call1.content[0].text);
-      assert.strictEqual(parsed1.cache_hit, false);
-      assert.strictEqual(parsed1.logged, true);
-
-      const call2 = await metaStateLogChangeTool.handler(params);
-      const parsed2 = JSON.parse(call2.content[0].text);
-      assert.strictEqual(parsed2.cache_hit, true);
-      assert.strictEqual(parsed2.logged, true);
-      assert.strictEqual(parsed2.id, parsed1.id);
-      assert.strictEqual(parsed2.created_at, parsed1.created_at);
-
-      // Only one entry should be written to the registry
-      const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 1, `expected 1 entry, got ${entries.length}`);
-      assert.strictEqual(entries[0].id, parsed1.id);
-    } finally {
-      _clearIdempotencyCacheForTests();
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        if (originalEnv === undefined) {
-          delete process.env.GATE_ROOT;
-        } else {
-          process.env.GATE_ROOT = originalEnv;
-        }
-      }
-    }
-  });
-
-  test("different reason is a cache miss and writes a new entry", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-cache-"));
-    process.env.GATE_ROOT = tempDir;
-    try {
-      const params1 = {
-        change_dimension: "surface",
-        change_target: "tools/meta-state-log-change-tool.js",
-        change_diff: { added: ["idempotency cache"], removed: [], changed: [] },
-        reason: "Adding a 60s idempotency cache to prevent duplicate change-log entries from agent retry loops.",
-      };
-      const params2 = {
-        change_dimension: "surface",
-        change_target: "tools/meta-state-log-change-tool.js",
-        change_diff: { added: ["idempotency cache"], removed: [], changed: [] },
-        reason: "A different reason for the same change target should produce a separate change-log entry.",
-      };
-
-      const call1 = await metaStateLogChangeTool.handler(params1);
-      const parsed1 = JSON.parse(call1.content[0].text);
-      assert.strictEqual(parsed1.cache_hit, false);
-
-      const call2 = await metaStateLogChangeTool.handler(params2);
-      const parsed2 = JSON.parse(call2.content[0].text);
-      assert.strictEqual(parsed2.cache_hit, false);
-
-      // Both calls should write because different reasons = different cache keys
-      const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 2);
-    } finally {
-      _clearIdempotencyCacheForTests();
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        if (originalEnv === undefined) {
-          delete process.env.GATE_ROOT;
-        } else {
-          process.env.GATE_ROOT = originalEnv;
-        }
-      }
-    }
-  });
-
-  test("TTL expiry re-runs the handler (cache miss after 60s)", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-cache-"));
-    process.env.GATE_ROOT = tempDir;
-    try {
-      const params = {
-        change_dimension: "mechanical",
-        change_target: "gate-logic.js",
-        change_diff: { added: [], removed: [], changed: ["applyPromotedRules"] },
-        reason: "Testing TTL expiry for the idempotency cache on meta_state_log_change.",
-      };
-
-      const call1 = await metaStateLogChangeTool.handler(params);
-      const parsed1 = JSON.parse(call1.content[0].text);
-      assert.strictEqual(parsed1.cache_hit, false);
-
-      // Backdate the cached entry past the 60s TTL
-      const cacheKey = `${tempDir}::${params.change_dimension}::${params.change_target}::${params.reason}`;
-      _backdateIdempotencyCacheForTests(cacheKey, 61_000);
-
-      const call2 = await metaStateLogChangeTool.handler(params);
-      const parsed2 = JSON.parse(call2.content[0].text);
-      assert.strictEqual(parsed2.cache_hit, false);
-
-      // After TTL expiry, a second write should occur
-      const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 2);
-    } finally {
-      _clearIdempotencyCacheForTests();
-      if (originalEnv === undefined) {
-        delete process.env.GATE_ROOT;
-      } else {
-        if (originalEnv === undefined) {
-          delete process.env.GATE_ROOT;
-        } else {
-          process.env.GATE_ROOT = originalEnv;
-        }
-      }
-    }
-  });
-
-  test("100 identical calls collapse to 1 miss + 99 hits", async () => {
-    tempDir = mkdtempSync(join(tmpdir(), "meta-state-log-change-cache-"));
-    process.env.GATE_ROOT = tempDir;
-    try {
-      const params = {
-        change_dimension: "semantic",
-        change_target: "core/meta-state.js",
         change_diff: { added: [], removed: [], changed: [] },
-        reason: "Stress test for idempotency cache: 100 identical calls should produce only 1 registry entry.",
+        reason: "Phase-2 cache-removed test: 2 identical calls must each persist a new entry",
       };
 
-      const results = [];
-      for (let i = 0; i < 100; i++) {
-        const r = await metaStateLogChangeTool.handler(params);
-        results.push(JSON.parse(r.content[0].text));
-      }
+      const call1 = await metaStateLogChangeTool.handler(params);
+      const parsed1 = JSON.parse(call1.content[0].text);
+      assert.strictEqual(parsed1.logged, true);
+      assert.strictEqual(parsed1.cache_hit, undefined, "cache_hit field is removed");
 
-      const misses = results.filter((r) => r.cache_hit === false);
-      const hits = results.filter((r) => r.cache_hit === true);
-
-      assert.strictEqual(misses.length, 1, `expected 1 miss, got ${misses.length}`);
-      assert.strictEqual(hits.length, 99, `expected 99 hits, got ${hits.length}`);
-
-      for (const r of results) {
-        assert.strictEqual(r.logged, true);
-      }
-
-      for (const r of hits) {
-        assert.strictEqual(r.id, misses[0].id);
-        assert.strictEqual(r.created_at, misses[0].created_at);
-      }
+      const call2 = await metaStateLogChangeTool.handler(params);
+      const parsed2 = JSON.parse(call2.content[0].text);
+      assert.strictEqual(parsed2.logged, true);
+      assert.strictEqual(parsed2.cache_hit, undefined);
 
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 1);
+      assert.strictEqual(entries.length, 2, `expected 2 entries, got ${entries.length}`);
+      assert.notStrictEqual(
+        entries[0].created_at,
+        entries[1].created_at,
+        "fresh created_at per call (cache would have skipped write)",
+      );
     } finally {
-      _clearIdempotencyCacheForTests();
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
       } else {
-        if (originalEnv === undefined) {
-          delete process.env.GATE_ROOT;
-        } else {
-          process.env.GATE_ROOT = originalEnv;
-        }
+        process.env.GATE_ROOT = originalEnv;
       }
     }
   });

@@ -1,9 +1,7 @@
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { z } from "zod";
-import {
-  readRegistry,
-  updateEntry,
-} from "../../core/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
+import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
@@ -158,7 +156,21 @@ export const metaStateResolveTool = {
       resolved_by,
       ...(resolution && { resolution }),
     };
-    await updateEntry(root, id, patch);
+    // Plan 260711-0030 Phase 3: closes C16 (resolve handler ignored
+    // updateEntry's null return). applyUpdateAndCheck re-reads the registry
+    // and surfaces updateEntry's actual outcome — null → not_found,
+    // version_mismatch → tagged failure, throw on unexpected returns.
+    const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_resolve");
+    if (!updateOutcome.ok) {
+      const result = {
+        resolved: false,
+        reason: updateOutcome.reason,
+        id,
+        ...(updateOutcome.current_version !== undefined ? { current_version: updateOutcome.current_version } : {}),
+      };
+      appendGateLog(root, { timestamp: now, tool: "meta_state_resolve", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
 
     const result = {
       resolved: true,

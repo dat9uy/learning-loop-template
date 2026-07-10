@@ -18,7 +18,7 @@ import { metaStateDispatchFindingTool } from "../../tools/handlers/meta-state-di
 import { metaStateSweepTool } from "../../tools/handlers/meta-state-sweep-tool.js";
 import { metaStateReVerifyTool } from "../../tools/handlers/meta-state-re-verify-tool.js";
 import { metaStateResolveTool } from "../../tools/handlers/meta-state-resolve-tool.js";
-import { metaStateRefreshFileIndexTool, _clearIdempotencyCacheForTests as clearRefreshCache } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
+import { metaStateRefreshFileIndexTool, _clearRefreshHashCacheForTests as clearRefreshCache } from "../../tools/handlers/meta-state-refresh-file-index-tool.js";
 import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";
 
 const PREV_GATE_ROOT = process.env.GATE_ROOT;
