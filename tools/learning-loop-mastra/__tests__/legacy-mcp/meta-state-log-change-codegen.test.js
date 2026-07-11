@@ -14,6 +14,7 @@ const MIGRATED_FIELDS = {
   consolidates: true,
   evidence_code_ref: true,
   evidence_journal: true,
+  operation_envelope: true,
 };
 
 describe("meta_state_log_change codegen parity", () => {

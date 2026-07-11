@@ -3,8 +3,13 @@ import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { metaStateBatch } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
-
-const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
+// Plan 260712-0300 Phase 2: single source of truth for BATCH_SIZE_LIMIT.
+// Both the handler and the core (meta-state.js) import from core/constants.js
+// so the 500-op cap is enforced uniformly — closes the 100-vs-500 reject window.
+import { BATCH_SIZE_LIMIT } from "../../core/constants.js";
+// Plan 260712-0300 Phase 2: import kind enum for the new optional `envelope`
+// field parallel to `operations` on the batch request shape.
+import { OPERATION_ENVELOPE_KINDS } from "../../core/operation-envelope.js";
 
 const opSchema = z.discriminatedUnion("op", [
   z.object({
@@ -39,14 +44,30 @@ export const metaStateBatchTool = {
       deepStripEnvelope,
       z.array(opSchema).min(1).max(BATCH_SIZE_LIMIT)
     ).describe(`Array of operations to apply (1-${BATCH_SIZE_LIMIT} ops; default limit 500, overridable via META_STATE_BATCH_LIMIT)`),
+    // Plan 260712-0300 Phase 2: optional magnitude envelope. When present, an
+    // envelope-annotated change-log is auto-emitted AFTER the batch lands with
+    // pre_count/post_count computed from the registry before/after the batch
+    // and content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
+    envelope: z.preprocess(
+      deepStripEnvelope,
+      z.object({
+        kind: z.enum(OPERATION_ENVELOPE_KINDS)
+          .describe("Magnitude kind; see loop-design-operation-envelope-on-change-log. Compat with ops is enforced at buildEnvelope (KIND_OP_COMPATIBILITY)."),
+        target: z.string().min(1).max(200)
+          .regex(/^[^\x00-\x1f\x7f]+$/, "target must not contain control chars")
+          .regex(/^(?!.*\.\.).*$/, "target must not contain '..' path segments")
+          .describe("Identifier for the batch's target (e.g., 'drift-closeout-2026-07-12'). Validated for path safety; not a filesystem path."),
+      }).optional()
+    ).describe("Optional magnitude envelope; when present, an envelope-annotated change-log is auto-emitted after the batch lands. pre_count/post_count are computed from the registry before/after the batch; content_hash is a SHA-256 of kind+target+canonical op-list+entry-id-set (NOT a replay protection). See loop-design-operation-envelope-on-change-log."),
   },
-  handler: async ({ operations }) => {
+  handler: async ({ operations, envelope }) => {
     const root = resolveRoot();
     // Defense-in-depth: the Zod schema above strips envelopes on the MCP wire
     // path, but direct handler callers (tests, agent bypasses) skip Zod, so
     // unwrap any {item: [...]} coercion here too. Idempotent on uncoerced input.
     const unwrapped = deepStripEnvelope(operations);
-    const result = await metaStateBatch(root, unwrapped);
+    const unwrappedEnvelope = envelope ? deepStripEnvelope(envelope) : undefined;
+    const result = await metaStateBatch(root, unwrapped, unwrappedEnvelope);
     appendGateLog(root, {
       timestamp: new Date().toISOString(),
       tool: "meta_state_batch",

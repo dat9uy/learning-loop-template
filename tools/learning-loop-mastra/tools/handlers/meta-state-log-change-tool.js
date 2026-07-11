@@ -23,12 +23,17 @@ const MIGRATED_FIELDS = {
   consolidates: true,
   evidence_code_ref: true,
   evidence_journal: true,
+  operation_envelope: true, // Plan 260712-0300 — accepts the magnitude envelope from auto-emit
 };
 
 export const metaStateLogChangeTool = {
   name: "meta_state_log_change",
   description: "Log a system change (schema, rule, tool, policy, surface, lifecycle, manifest) as a change-log entry in the meta-state registry. The entry is immutable, status=active, no TTL. Use supersedes to replace a prior change entry. Use when you ship a meaningful code or rule change that should appear in the durable audit log. Not for operator-observed issues (use `meta_state_report` instead) or for closing a finding (use `meta_state_resolve` instead). For verify-after-write, call `meta_state_list({id: ...})` to confirm the entry landed — there is no in-process cache that masks persistence failures.",
-  schema: metaStateChangeEntrySchema.pick(MIGRATED_FIELDS).shape,
+  // Plan 260712-0300 — `.strict()` rejects unknown fields (closes Zod strip-on-unknown
+  // typo/injection pollution). Pre-fix `.shape` silently stripped unknown keys; with
+  // `.strict()`, the MCP layer surfaces a validation error to the caller. The
+  // `operation_envelope` field is included via MIGRATED_FIELDS so it round-trips.
+  schema: metaStateChangeEntrySchema.pick(MIGRATED_FIELDS).strict().shape,
   handler: async ({
     change_dimension,
     change_target,
@@ -39,6 +44,7 @@ export const metaStateLogChangeTool = {
     consolidates,
     evidence_code_ref,
     evidence_journal,
+    operation_envelope,
   }) => {
     const root = resolveRoot();
 
@@ -57,6 +63,11 @@ export const metaStateLogChangeTool = {
       ...(consolidates && { consolidates }),
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
+      // Plan 260712-0300: optional magnitude envelope; the MIGRATED_FIELDS
+      // projection + .strict() gate ensures the field is only written when
+      // it round-trips Zod validation (no caller-supplied garbage on writes
+      // because the `meta_state_batch` envelope is auto-emit, not caller-set).
+      ...(operation_envelope && { operation_envelope }),
       status: "active",
       created_at: now.toISOString(),
       version: 0,
