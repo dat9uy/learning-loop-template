@@ -277,10 +277,20 @@ export const metaStateEntrySchema = z.preprocess(
  * enforce the same invariant.
  *
  * Notes:
- * - `entry_kind` is NOT here — the per-kind schemas use z.literal("finding")
- *   etc. which already prevents changing the kind. Adding it to the deny-list
- *   would reject every patch because Zod's .default() on the literal adds
- *   entry_kind to the parsed result even when the user didn't send it.
+ * - `entry_kind` is enforced OFF the patch path by Fix A in
+ *   buildPatchSchemaFor (omits `entry_kind` from every per-kind patch schema
+ *   BEFORE .partial().strict() so Zod's .default() on the literal cannot
+ *   inject identity on empty/non-kind-specific patches). `entry_kind` is
+ *   additionally stripped at the core layer by Fix B in updateEntry
+ *   (defense-in-depth for direct core callers that bypass the patch schema).
+ *   The deny-list entry below is the post-repair stopgap that closes the
+ *   batch update hole until the universal assertinvariant wrapper
+ *   (Implementation 3, loop-design-assertinvariant-universal-scope) replaces
+ *   the deny-list with a before/after comparison guard. Plan 260712-0109.
+ * - `status` (on rule + loop-design) is enforced OFF the patch path by
+ *   Fix A (omits `status` from the rule + loop-design patch schemas; the
+ *   finding schema does not .default() status so no injection there). The
+ *   deny-list entry below extends the guard to the batch path as a stopgap.
  * - `promoted_to_rule` removed from deny-list — the field is no longer written
  *   on findings after the Phase 2 migration to first-class rule entries.
  * - `id` and `op` and `_expected_version` are stripped before the patch is
@@ -297,6 +307,8 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "resolved_at",
   "resolved_by",
   "resolution",
+  "entry_kind",  // identity — stopgap until the universal assertinvariant wrapper (Impl 3)
+  "status",      // lifecycle identity — stopgap (rule/loop-design deactivation/ship is operator-decided)
 ]);
 
 /**
@@ -316,6 +328,18 @@ export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
  * unknown keys are rejected (.strict() closes typo/unknown-field
  * pollution via Object.assign at the updateEntry boundary).
  *
+ * Identity + lifecycle fields are OMITTED from the per-kind projection
+ * BEFORE .partial().strict() so Zod's .default() on the literal/enum
+ * cannot inject `entry_kind` or `status` on empty/non-kind-specific
+ * patches (Plan 260712-0109, finding meta-260712T0053Z):
+ * - `entry_kind` is identity; set by the tool's top-level branch-selector
+ *   param (the `entry_kind` argument), never by a field patch.
+ * - `status` (on rule + loop-design) is lifecycle identity; deactivation
+ *   / ship is an operator decision via meta_state_promote_rule /
+ *   propose_design + meta_state_patch is NOT the lifecycle-flip tool —
+ *   but with status in the patch schema + .default("active"), any patch
+ *   silently re-activates.
+ *
  * IMPORTANT: .strict() does NOT reject __proto__ via JSON.parse (JS
  * engine absorbs it into prototype chain before Zod sees it). The real
  * defense is the explicit `delete cleanPatch.__proto__` at
@@ -328,10 +352,10 @@ export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
  */
 export function buildPatchSchemaFor(kind) {
   switch (kind) {
-    case "finding":    return metaStateFindingEntrySchema.partial().strict();
-    case "change-log": return metaStateChangeEntrySchema.partial().strict();
-    case "rule":       return metaStateRuleEntrySchema.partial().strict();
-    case "loop-design": return metaStateLoopDesignSchema.partial().strict();
+    case "finding":    return metaStateFindingEntrySchema.omit({ entry_kind: true }).partial().strict();
+    case "change-log": return metaStateChangeEntrySchema.omit({ entry_kind: true }).partial().strict();
+    case "rule":       return metaStateRuleEntrySchema.omit({ entry_kind: true, status: true }).partial().strict();
+    case "loop-design": return metaStateLoopDesignSchema.omit({ entry_kind: true, status: true }).partial().strict();
     default:
       throw new Error(
         `buildPatchSchemaFor: unknown kind "${kind}". Expected one of: ${PATCH_KINDS.join(", ")}`
@@ -643,6 +667,7 @@ export function updateEntry(root, id, patch) {
           delete cleanPatch._expected_version;
           delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
           delete cleanPatch.constructor;  // defense-in-depth
+          delete cleanPatch.entry_kind;   // identity invariant — never patchable (Plan 260712-0109 Fix B; finding meta-260712T0053Z)
           Object.assign(entry, cleanPatch);
           entry.version = (entry.version ?? 0) + 1;
         }
