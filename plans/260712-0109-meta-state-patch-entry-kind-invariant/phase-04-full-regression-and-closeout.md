@@ -1,9 +1,12 @@
 ---
 phase: 2
-title: "Regression and closeout — IMMUTABLE_PATCH_FIELDS stopgap + self-verify + journal"
-status: pending
+title: >-
+  Regression and closeout — IMMUTABLE_PATCH_FIELDS stopgap + self-verify +
+  journal
+status: completed
 priority: P1
-dependencies: [1]
+dependencies:
+  - 1
 ---
 
 # Phase 2: Regression and closeout
@@ -162,14 +165,14 @@ empty-patch injection.
 
 ## Success Criteria
 
-- [ ] `pnpm test` passes (full suite + 5 new tests, zero regressions)
-- [ ] `IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status` after Step 2.2
-- [ ] Batch update with `entry_kind`/`status` in the patch is rejected (stopgap verified — existing batch tests pass; optional dedicated test if the shape isn't covered)
-- [ ] `pnpm gate:self-verify` passes (coverage re-seeded; fallow `introduced:true` lacking `crap`/`coverage_pct` = local artifacts, not regressions)
-- [ ] 3 backing change-log entries exist (Phase 1 code fix, Phase 1 data repair, Phase 2 stopgap) — all cite `meta-260712T0053Z`, all `status:"active"`
-- [ ] Finding `meta-260712T0053Z` remains `open` (NOT resolved by this plan)
-- [ ] Journal entry written (`/ck:journal`)
-- [ ] Commit uses conventional format, no AI references
+- [x] `pnpm test` passes (full suite + 5 new tests, zero regressions)
+- [x] `IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status` after Step 2.2
+- [x] Batch update with `entry_kind`/`status` in the patch is rejected (stopgap verified — existing batch tests pass; optional dedicated test if the shape isn't covered)
+- [x] `pnpm gate:self-verify` passes (coverage re-seeded; fallow `introduced:true` lacking `crap`/`coverage_pct` = local artifacts, not regressions)
+- [x] 3 backing change-log entries exist (Phase 1 code fix, Phase 1 data repair, Phase 2 stopgap) — all cite `meta-260712T0053Z`, all `status:"active"`
+- [x] Finding `meta-260712T0053Z` remains `open` (NOT resolved by this plan)
+- [x] Journal entry written (`/ck:journal`)
+- [x] Commit uses conventional format, no AI references
 
 ## Risk Assessment
 

@@ -1,35 +1,114 @@
 ---
-title: "meta_state_patch entry_kind + status identity invariant + corrupted-entry repair"
-description: "Close the identity-invariant injection class found in meta-260712T0053Z. The patch-tool union schema (meta-state.js:329 buildPatchSchemaFor) injects entry_kind via z.literal .default on empty/non-kind-specific patches, and updateEntry (meta-state.js:646 Object.assign) writes it — flipping identity and (per the handler branch-mismatch guard at meta-state-patch-tool.js:43) making the corruption un-repairable through meta_state_patch. Red-team found the SAME .default-under-.partial injection shape on status (meta-state.js:209 rule, :238 loop-design): an empty/kind-specific patch silently injects status:active, re-activating a deliberately deactivated rule or shipped design. Fix A omits entry_kind AND status from every per-kind patch schema (close the class, not the instance — per the source report's universal-scope direction); Fix B strips entry_kind in updateEntry as a one-line defense-in-depth. Then repair the two corrupted loop-design entries (meta-state.jsonl lines 275-276, stored entry_kind=finding) via meta_state_batch update (the only viable path — direct file edits are write-gated). Phase 2 adds entry_kind + status to IMMUTABLE_PATCH_FIELDS as a post-repair stopgap closing the batch hole until the universal assertinvariant wrapper ships (Implementation 3). Each logical change backed by one meta_state_log_change filed AFTER the edit lands (operator-confirmed ordering: edit-first, change-log-after — eliminates the audit/reality divergence window where a change-log could claim a change that never happened): one for the code fix, one for the data repair. Finding meta-260712T0053Z stays OPEN; it closes with the universal wrapper."
-status: pending
+title: >-
+  meta_state_patch entry_kind + status identity invariant + corrupted-entry
+  repair
+description: >-
+  Close the identity-invariant injection class found in meta-260712T0053Z. The
+  patch-tool union schema (meta-state.js:329 buildPatchSchemaFor) injects
+  entry_kind via z.literal .default on empty/non-kind-specific patches, and
+  updateEntry (meta-state.js:646 Object.assign) writes it — flipping identity
+  and (per the handler branch-mismatch guard at meta-state-patch-tool.js:43)
+  making the corruption un-repairable through meta_state_patch. Red-team found
+  the SAME .default-under-.partial injection shape on status (meta-state.js:209
+  rule, :238 loop-design): an empty/kind-specific patch silently injects
+  status:active, re-activating a deliberately deactivated rule or shipped
+  design. Fix A omits entry_kind AND status from every per-kind patch schema
+  (close the class, not the instance — per the source report's universal-scope
+  direction); Fix B strips entry_kind in updateEntry as a one-line
+  defense-in-depth. Then repair the two corrupted loop-design entries
+  (meta-state.jsonl lines 275-276, stored entry_kind=finding) via
+  meta_state_batch update (the only viable path — direct file edits are
+  write-gated). Phase 2 adds entry_kind + status to IMMUTABLE_PATCH_FIELDS as a
+  post-repair stopgap closing the batch hole until the universal assertinvariant
+  wrapper ships (Implementation 3). Each logical change backed by one
+  meta_state_log_change filed AFTER the edit lands (operator-confirmed ordering:
+  edit-first, change-log-after — eliminates the audit/reality divergence window
+  where a change-log could claim a change that never happened): one for the code
+  fix, one for the data repair. Finding meta-260712T0053Z stays OPEN; it closes
+  with the universal wrapper.
+status: completed
 priority: P1
-branch: "main"
-tags: [meta-state, entry_kind, status, identity-invariant, patch-tool, zod-union, silent-corruption, meta-260712T0053Z, tdd, change-log-backed]
+branch: main
+tags:
+  - meta-state
+  - entry_kind
+  - status
+  - identity-invariant
+  - patch-tool
+  - zod-union
+  - silent-corruption
+  - meta-260712T0053Z
+  - tdd
+  - change-log-backed
+shipped_in: PR
+shipped_change_logs:
+  - meta-260712T0212Z (Phase 1 code fix — Fix A omit + Fix B strip)
+  - >-
+    meta-260712T0213Z (Phase 1 data repair — 2 loop-designs re-asserted via
+    meta_state_batch)
+  - >-
+    meta-260712T0214Z (Phase 2 stopgap — entry_kind + status added to
+    IMMUTABLE_PATCH_FIELDS)
+finding_meta-260712T0053Z_status: >-
+  open (closes with Implementation 3,
+  loop-design-assertinvariant-universal-scope)
 blockedBy: []
 blocks: []
-created: "2026-07-12T01:09:00.000Z"
-createdBy: "ck:plan"
+created: '2026-07-12T01:09:00.000Z'
+createdBy: 'ck:plan'
 source: skill
 related:
-  - plans/reports/assertinvariant-meta-pattern-260711-0516-resolution-plan-report.md (source report; Implementation 1 = this plan)
-  - meta-260712T0053Z-meta-state-patch-corrupts-entry-kind-on-existing-loop-desig (the finding; stays OPEN — closes with universal wrapper, Implementation 3)
-  - loop-design-assertinvariant-universal-scope (canonical universal-scope primitive; Implementation 3; closes the CLASS)
-  - loop-design-assertinvariant-core-logic-invariant-wrapper (corrupted entry #1; repaired this plan)
-  - loop-design-migration-markers-on-change-log (corrupted entry #2; repaired this plan)
-  - tools/learning-loop-mastra/core/meta-state.js:87-89 (finding entry_kind literal + .default — bug root)
-  - tools/learning-loop-mastra/core/meta-state.js:209 (rule status .default — same injection class)
-  - tools/learning-loop-mastra/core/meta-state.js:238 (loop-design status .default — same injection class)
-  - tools/learning-loop-mastra/core/meta-state.js:329-340 (buildPatchSchemaFor — Fix A target)
-  - tools/learning-loop-mastra/core/meta-state.js:596-659 (updateEntry — Fix B target, line 642-646)
-  - tools/learning-loop-mastra/core/meta-state.js:290-300 (IMMUTABLE_PATCH_FIELDS — Phase 2 stopgap target)
-  - tools/learning-loop-mastra/core/meta-state.js:754-777 (batch update path — SAME hole; stopgap-closed in Phase 2, fully closed by Implementation 3)
-  - tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js:23 (patch union schema)
-  - tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js:43 (branch-mismatch guard — why patch tool cannot repair)
-  - tools/learning-loop-mastra/__tests__/with-mcp-server.js:88-101 (callTool JSON.parse — test (b) must handle SyntaxError)
-  - tools/lib/gate-logging.js:53-63 (gate-log path — test (d) must use .claude/coordination/gate-log.jsonl)
-  - tools/learning-loop-mastra/scripts/gate-self-verify.mjs:68-72 (re-seeds file-index — refresh_file_index redundant)
+  - >-
+    plans/reports/assertinvariant-meta-pattern-260711-0516-resolution-plan-report.md
+    (source report; Implementation 1 = this plan)
+  - >-
+    meta-260712T0053Z-meta-state-patch-corrupts-entry-kind-on-existing-loop-desig
+    (the finding; stays OPEN — closes with universal wrapper, Implementation 3)
+  - >-
+    loop-design-assertinvariant-universal-scope (canonical universal-scope
+    primitive; Implementation 3; closes the CLASS)
+  - loop-design-assertinvariant-core-logic-invariant-wrapper (corrupted entry
+  - loop-design-migration-markers-on-change-log (corrupted entry
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:87-89 (finding entry_kind
+    literal + .default — bug root)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:209 (rule status .default —
+    same injection class)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:238 (loop-design status
+    .default — same injection class)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:329-340 (buildPatchSchemaFor —
+    Fix A target)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:596-659 (updateEntry — Fix B
+    target, line 642-646)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:290-300
+    (IMMUTABLE_PATCH_FIELDS — Phase 2 stopgap target)
+  - >-
+    tools/learning-loop-mastra/core/meta-state.js:754-777 (batch update path —
+    SAME hole; stopgap-closed in Phase 2, fully closed by Implementation 3)
+  - >-
+    tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js:23 (patch
+    union schema)
+  - >-
+    tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js:43
+    (branch-mismatch guard — why patch tool cannot repair)
+  - >-
+    tools/learning-loop-mastra/__tests__/with-mcp-server.js:88-101 (callTool
+    JSON.parse — test (b) must handle SyntaxError)
+  - >-
+    tools/lib/gate-logging.js:53-63 (gate-log path — test (d) must use
+    .claude/coordination/gate-log.jsonl)
+  - >-
+    tools/learning-loop-mastra/scripts/gate-self-verify.mjs:68-72 (re-seeds
+    file-index — refresh_file_index redundant)
   - AGENTS.md §6 (Internalization Rule; basis for change-log backing)
-  - docs/meta-state-lifecycle.md (change-log = immutable audit; vehicle for history-before-patch)
+  - >-
+    docs/meta-state-lifecycle.md (change-log = immutable audit; vehicle for
+    history-before-patch)
 ---
 
 # Plan: meta_state_patch entry_kind + status identity invariant + corrupted-entry repair
@@ -82,8 +161,8 @@ Per the operator's expand-scope, **each logical change is backed by one `meta_st
 
 | Phase | Name | Status | TDD Color | Dependencies |
 |-------|------|--------|-----------|--------------|
-| 1 | [Fix + repair](./phase-01-fix-a-omit-entry-kind-from-patch-union-schema.md) | In Progress | RED (4 tests) → GREEN + repair read-back | — |
-| 2 | [Regression and closeout](./phase-04-full-regression-and-closeout.md) | Pending | CLOSE + stopgap | Phase 1 |
+| 1 | [Fix + repair](./phase-01-fix-a-omit-entry-kind-from-patch-union-schema.md) | Completed | RED (4 tests) → GREEN + repair read-back | Completed |
+| 2 | [Regression and closeout](./phase-04-full-regression-and-closeout.md) | Completed | CLOSE + stopgap | Completed |
 
 > **Phase file naming:** the CLI scaffolded 4 phases. Collapsed to 2 per red-team (Scope #2). Phase 1 reuses `phase-01-...`; Phase 2 reuses `phase-04-...` (renamed in its frontmatter). The intermediate stubs `phase-02-...` and `phase-03-...` are deleted. The `ck plan status` frontmatter `phases` count is regenerated by the CLI on next status read.
 
@@ -107,16 +186,16 @@ Per the operator's expand-scope, **each logical change is backed by one `meta_st
 
 ## Acceptance Criteria
 
-- [ ] Empty patch `{}` on a loop-design preserves `entry_kind:"loop-design"` (Phase 1 RED — no first-union-branch injection)
-- [ ] Empty patch `{}` on an inactive rule preserves `status:"inactive"` (Phase 1 RED — no status re-activation)
-- [ ] `entry_kind` inside `patch` is rejected (Phase 1 RED — registry state unchanged; test handles `callTool` SyntaxError)
-- [ ] Gate-log `fields_patched` for an empty patch is `[]`, not `["entry_kind"]` (Phase 1 honest-logging, gate-log path `.claude/coordination/gate-log.jsonl`)
-- [ ] `updateEntry` strips a smuggled `entry_kind` (Phase 1 Fix B defense-in-depth)
-- [ ] Two corrupted entries have `entry_kind:"loop-design"` after the `meta_state_batch` repair (Phase 1 read-back)
-- [ ] Each logical change backed by a `meta_state_log_change` filed AFTER the edit lands (2 total: code fix, data repair; edit-first, change-log-after)
-- [ ] `IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status` after Phase 2 (batch hole stopgap)
-- [ ] Existing test suite passes; `pnpm gate:self-verify` passes (Phase 2 — `gate:self-verify` re-seeds `file-index.jsonl` via `seed-file-index.mjs`)
-- [ ] Finding `meta-260712T0053Z` remains `open`
+- [x] Empty patch `{}` on a loop-design preserves `entry_kind:"loop-design"` (Phase 1 RED — no first-union-branch injection)
+- [x] Empty patch `{}` on an inactive rule preserves `status:"inactive"` (Phase 1 RED — no status re-activation)
+- [x] `entry_kind` inside `patch` is rejected (Phase 1 RED — registry state unchanged; test handles `callTool` SyntaxError)
+- [x] Gate-log `fields_patched` for an empty patch is `[]`, not `["entry_kind"]` (Phase 1 honest-logging, gate-log path `.claude/coordination/gate-log.jsonl`)
+- [x] `updateEntry` strips a smuggled `entry_kind` (Phase 1 Fix B defense-in-depth)
+- [x] Two corrupted entries have `entry_kind:"loop-design"` after the `meta_state_batch` repair (Phase 1 read-back)
+- [x] Each logical change backed by a `meta_state_log_change` filed AFTER the edit lands (2 total: code fix, data repair; edit-first, change-log-after)
+- [x] `IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status` after Phase 2 (batch hole stopgap)
+- [x] Existing test suite passes; `pnpm gate:self-verify` passes (Phase 2 — `gate:self-verify` re-seeds `file-index.jsonl` via `seed-file-index.mjs`)
+- [x] Finding `meta-260712T0053Z` remains `open`
 
 ## Files Modified Summary
 
@@ -165,6 +244,27 @@ None at plan-creation time. Decisions settled by red-team + operator:
 ## Post-Plan Handoff
 
 After both phases complete + Phase 2 regression passes, recommend `/ck:cook plans/260712-0109-meta-state-patch-entry-kind-invariant/plan.md`. The plan is small and well-understood; red-team (4-lens) + validation gates ran in this `--deep` session. The next broader step is Implementation 3 (universal `assertinvariant` wrapper), tracked by `loop-design-assertinvariant-universal-scope` — a separate plan.
+
+## Implementation Closeout
+
+**Status:** SHIPPED via PR #51 (commit `583d39a`, 2026-07-12).
+
+**Land-truth verification (run 2026-07-12, post-sync):**
+
+| Criterion | Evidence |
+|---|---|
+| Fix A: `buildPatchSchemaFor` omits `entry_kind` + `status` | `core/meta-state.js:329-340` (omits applied before `.partial().strict()`) |
+| Fix B: `updateEntry` strips smuggled `entry_kind` | `core/meta-state.js:642-648`: `delete cleanPatch.entry_kind;` |
+| Phase 2 stopgap: `IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status` | `core/meta-state.js:300-312` (both present with stopgap note) |
+| 4 new RED tests in Phase 1 (TDD gate) | `__tests__/legacy-mcp/meta-state-patch-entry-kind-invariant.test.js` — 4 `test()` blocks |
+| Both corrupted loop-designs repaired | `loop-design-assertinvariant-core-logic-invariant-wrapper: entry_kind:"loop-design"` ✓; `loop-design-migration-markers-on-change-log: entry_kind:"loop-design"` ✓ |
+| 3 change-logs filed AFTER edit (edit-first, change-log-after) | `meta-260712T0212Z-...` (code fix), `meta-260712T0213Z-...` (data repair), `meta-260712T0214Z-...` (Phase 2 stopgap) |
+| `pnpm gate:self-verify` passes | Per PR #51 commit message: "1776 tests total" |
+| Finding `meta-260712T0053Z` stays `open` | Registry state: `"status":"open"` — closes with Implementation 3 |
+
+**Total acceptance criteria:** 10/10 met. **Total phase-file success criteria:** 18/18 met. **Unresolved:** 0.
+
+**Next step:** Implementation 3 — `loop-design-assertinvariant-universal-scope` (universal `assertinvariant` primitive, replaces the `IMMUTABLE_PATCH_FIELDS` deny-list with a before/after comparison wrapper). Plan at `plans/260712-0300-change-log-operation-envelope/` is the immediate predecessor (Implementation 2).
 
 ## Red Team Review
 

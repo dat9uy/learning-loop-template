@@ -1,20 +1,25 @@
 # assertinvariant — meta-pattern + resolution plan
 
-**Status:** proposed, awaiting operator ack
-**Date:** 2026-07-11 05:16 (Bangkok)
+**Status:** Implementation 1 SHIPPED (PR #51, 2026-07-12); Implementation 2 (operation envelope) next; Implementation 3 (universal primitive) is the canonical work
+**Date:** 2026-07-11 05:16 (Bangkok, original report); 2026-07-12 (Implementation 1 closeout appended)
 **Author:** agent (dat9uy session)
 **Technique:** Meta-Pattern Recognition (3+ domain rule satisfied — 7 domains counted) + Simplification Cascade (1 primitive, 5+ call sites, 5+ findings close)
 
 ## TL;DR
 
-Findings `meta-260630T2110Z` and `meta-260711T0144Z` are two new instances of a recurring pattern already partially named in `meta-260629T2300Z`: **core-logic silently accepts inputs / silently fails writes / silently auto-corrects → agent pays debugging tax far from cause**. Pattern has 5+ instances; fix-points are 4 ad-hoc mechanisms (`assertWriteVisible`, `isSchemaBranchSupported`, `withRegistryLock`, inbound-gate markers). One missing primitive — **`assertinvariant(operation, {accept, returnOnFail, logTo})`** at the meta-state.js boundary — collapses all of them. **Universal scope**, per operator direction this session (narrow scopes are hand-wavy; this session proved it 3 times). Four loop-designs filed this session (two corrupted by a patch-tool bug — see § Operator action):
+Findings `meta-260630T2110Z` and `meta-260711T0144Z` are two new instances of a recurring pattern already partially named in `meta-260629T2300Z`: **core-logic silently accepts inputs / silently fails writes / silently auto-corrects → agent pays debugging tax far from cause**. Pattern has 5+ instances; fix-points are 4 ad-hoc mechanisms (`assertWriteVisible`, `isSchemaBranchSupported`, `withRegistryLock`, inbound-gate markers). One missing primitive — **`assertinvariant(operation, {accept, returnOnFail, logTo})`** at the meta-state.js boundary — collapses all of them. **Universal scope**, per operator direction this session (narrow scopes are hand-wavy; this session proved it 3 times). Four loop-designs filed (all now `entry_kind:"loop-design"` after Implementation 1 repair — see § Loop-designs filed this session):
 
-1. **`loop-design-assertinvariant-universal-scope`** — CANONICAL universal-scope primitive (every core-logic operation)
-2. `loop-design-assertinvariant-core-logic-invariant-wrapper` — original 5-call-site scope (CORRUPTED — patch-tool bug)
-3. `loop-design-migration-markers-on-change-log` — superseded narrow scope (CORRUPTED + inactive)
-4. `loop-design-operation-envelope-on-change-log` — replaces design 2 with broader scope (8 batch-mutation kinds)
+1. **`loop-design-assertinvariant-universal-scope`** — CANONICAL universal-scope primitive (every core-logic operation) — Implementation 3
+2. `loop-design-assertinvariant-core-logic-invariant-wrapper` — original 5-call-site scope — repaired, ACTIVE (canonical replacement)
+3. `loop-design-migration-markers-on-change-log` — superseded narrow scope — repaired, ACTIVE (sub-piece)
+4. `loop-design-operation-envelope-on-change-log` — replaces design 2 with broader scope (8 batch-mutation kinds) — Implementation 2
 
-Both target findings stay `open` (deferred) until their designs ship. No code change this session.
+**Implementation status:**
+
+- **Implementation 1 (PR #51, 2026-07-12) — SHIPPED.** Patch-tool fix (Fix A: `buildPatchSchemaFor` omits `entry_kind` + `status` on the appropriate branches; Fix B: `updateEntry` strips smuggled `entry_kind`) + repair of the two corrupted loop-design entries via `meta_state_batch` + Phase 2 stopgap (`IMMUTABLE_PATCH_FIELDS` includes `entry_kind` + `status`). Finding `meta-260712T0053Z` (the patch-tool corruption) stays `open` — its CLASS closes with Implementation 3's universal wrapper. 5 new RED→GREEN tests + 13 regression tests; `gate:self-verify` passes (1776 tests total). Three change-logs filed: code fix (`meta-260712T0212Z-...`), data repair (`meta-260712T0213Z-...`), Phase 2 stopgap (`meta-260712T0214Z-...`).
+- **Implementation 2 (NEXT) — `loop-design-operation-envelope-on-change-log`.** Schema field on change-log, top-level `operation_envelope` with kind/target/pre_count/post_count/idempotency. Auto-emitted by `meta_state_batch`. Closes finding `meta-260711T0144Z` in the same PR.
+- **Implementation 3 (CANONICAL) — `loop-design-assertinvariant-universal-scope`.** Universal `assertinvariant` primitive, wraps every core-logic operation that owns an invariant. Closes findings 6, 3, 5, 7, `meta-260712T0053Z`, and the remaining latent identity-injection class on the batch path. Replaces `loop-design-assertinvariant-core-logic-invariant-wrapper` (original 5-call-site design) via supersede.
+- Findings `meta-260630T2110Z` and `meta-260711T0144Z` stay `open` (deferred) until their designs ship.
 
 ## The principle: scope must be universal, not narrow
 
@@ -92,36 +97,36 @@ The last 3 rows are the proof from this session — they should not have been di
 
 | ID | Scope | Severity | Status |
 |---|---|---|---|
-| `loop-design-assertinvariant-universal-scope` | **CANONICAL** — universal scope, every core-logic operation | high | **OK** — created cleanly this session via `propose_design`. Captures operator direction: "if not universal, the agent will hand-wavy". |
-| `loop-design-assertinvariant-core-logic-invariant-wrapper` | Original 5-call-site scope | high | **CORRUPTED** — stored `entry_kind: "finding"`, should be `"loop-design"`. Blocked by patch-tool bug. Will be repaired by operator; when repaired, flips to inactive (superseded by the canonical universal-scope design). |
-| `loop-design-migration-markers-on-change-log` | Original narrow scope (migration-only) | medium | **CORRUPTED + SUPERSEDED** — stored `entry_kind: "finding"`, should be `"loop-design"`. Flipped to `status: inactive` (superseded by the broader design), but the underlying entry_kind corruption remains. |
-| `loop-design-operation-envelope-on-change-log` | Broader scope (8 batch-mutation kinds) — replaces design 2 | medium | **OK** — created cleanly via `propose_design` after the corruption was identified. |
+| `loop-design-assertinvariant-universal-scope` | **CANONICAL** — universal scope, every core-logic operation | high | **OK** — created cleanly this session via `propose_design`. Captures operator direction: "if not universal, the agent will hand-wavy". Implementation 3. |
+| `loop-design-assertinvariant-core-logic-invariant-wrapper` | Original 5-call-site scope | high | **REPAIRED (Implementation 1, PR #51)** — `entry_kind:"loop-design"` re-asserted via `meta_state_batch` (change-log `meta-260712T0213Z-...`). ACTIVE; canonical replacement (`loop-design-assertinvariant-universal-scope`) flips it to inactive via supersede when Implementation 3 ships. |
+| `loop-design-migration-markers-on-change-log` | Original narrow scope (migration-only) — superseded by design 4 | medium | **REPAIRED (Implementation 1, PR #51)** — `entry_kind:"loop-design"` re-asserted via `meta_state_batch`. ACTIVE — kept as the sub-piece (narrow migrations) for narrative continuity; design 4's broader scope is the shipping surface. |
+| `loop-design-operation-envelope-on-change-log` | Broader scope (8 batch-mutation kinds) — replaces design 2 | medium | **OK** — created cleanly via `propose_design` after the corruption was identified. Implementation 2. |
 
 **Why the universal-scope design supersedes the original 5-call-site design:** the original was scoped to "5 specific call sites" — but this session proved that's hand-wavy (the patch-tool bug hit a 6th domain not in the list). The canonical design's scope is universal: every core-logic operation that owns an invariant. The 5+ call sites are seed; the rule is universal.
 
 **Why design 2 (migration markers) was superseded:** user's scope-expansion request — pre/post counts are useful beyond migrations (drift-driven closeouts, consolidations, sweeps, backfills, archive waves, escalation batches). Field placement: top-level on change-log (recommendation A). Granularity: `{total, by_status, by_kind}` (recommendation C). Kind enum: `migration | sweep | closeout | consolidation | backfill | archive-wave | escalation-batch | manual-batch`.
 
-**Operator action needed:** the two corrupted entries are not findable via `entry_kind: "loop-design"` filters (loop_describe, meta_state_list, etc.) until the patch-tool bug is fixed and a repair script re-asserts `entry_kind: "loop-design"` on both designs. See `meta-260712T0053Z-...` (filed this session) for the bug analysis and recovery paths. The canonical universal-scope design is the one to reference going forward — the corrupted designs are historical artifacts of this session.
+**Implementation 1 closeout:** the two corrupted entries are now findable via `entry_kind:"loop-design"` filters. Repair was performed via `meta_state_batch` (the only MCP path; direct file edit is write-gated; `meta_state_patch` cannot repair due to the branch-mismatch guard at `meta-state-patch-tool.js:43`). See `meta-260712T0053Z-...` for the original bug analysis.
 
 ## Implementation order (universal scope)
 
-1. Land **patch-tool fix first** — prevent empty patches from overwriting `entry_kind` (see `meta-260712T0053Z-...` for analysis). Then re-assert `entry_kind: "loop-design"` on the two corrupted designs.
-2. Land design 3 (operation envelope) — narrower scope, one schema field, one batch path, one test-shape change. Closes finding `meta-260711T0144Z` in the same PR.
-3. Land `loop-design-assertinvariant-universal-scope` (CANONICAL primitive) — composes design 3's envelope field, wraps **every core-logic operation that owns an invariant**: file-readers, report-tool, pre-commit, batch-tool, updateEntry, archiveEntry, deleteEntry, plus future operations added under `meta-state.js` or any other core-logic surface. Closes findings 6, 3, 5 + `meta-260712T0053Z-...` in the same PR. When this lands, `loop-design-assertinvariant-core-logic-invariant-wrapper` (corrupted) gets repaired and flipped to inactive via supersede.
+1. ~~Land **patch-tool fix first** — prevent empty patches from overwriting `entry_kind` (see `meta-260712T0053Z-...` for analysis). Then re-assert `entry_kind: "loop-design"` on the two corrupted designs.~~ **DONE (PR #51, 2026-07-12, plan `260712-0109-meta-state-patch-entry-kind-invariant`).** Fix A omits `entry_kind` + `status` from the patch projection (`buildPatchSchemaFor`, lines 329-340); Fix B strips `entry_kind` in `updateEntry` (lines 642-648). Both loop-designs repaired via `meta_state_batch` (the only MCP path; direct file edit write-gated; `meta_state_patch` refused via branch-mismatch guard). Phase 2 stopgap added `entry_kind` + `status` to `IMMUTABLE_PATCH_FIELDS`. Three change-logs filed (code fix `meta-260712T0212Z-...`, data repair `meta-260712T0213Z-...`, stopgap `meta-260712T0214Z-...`). Finding `meta-260712T0053Z` stays `open` — its class closes with step 3.
+2. Land design 4 (operation envelope) — narrower scope, one schema field, one batch path, one test-shape change. Closes finding `meta-260711T0144Z` in the same PR. **NEXT.**
+3. Land `loop-design-assertinvariant-universal-scope` (CANONICAL primitive) — composes design 4's envelope field, wraps **every core-logic operation that owns an invariant**: file-readers, report-tool, pre-commit, batch-tool, updateEntry, archiveEntry, deleteEntry, plus future operations added under `meta-state.js` or any other core-logic surface. Closes findings 6, 3, 5 + `meta-260712T0053Z-...` + the latent batch identity-injection class (currently stopgap-closed by `IMMUTABLE_PATCH_FIELDS`). When this lands, `loop-design-assertinvariant-core-logic-invariant-wrapper` (original 5-call-site) flips to inactive via supersede.
 4. Promote `rule-assertinvariant-at-boundary` — agent-side consult that fires when a new core-logic operation is added, reminding the agent to wrap with `assertinvariant`.
-5. Resolve finding `meta-260711T0144Z` when design 3's PR merges.
+5. Resolve finding `meta-260711T0144Z` when design 4's PR merges.
 6. Resolve findings 6, 3, 5 as each call site migrates to the primitive (likely single PR).
 7. Finding 1 (`meta-260613T1615Z` import-chain) stays open until `tools rm` consult-gate lands — separate small PR.
 
-**Why step 3 is universal, not 5-call-site:** per operator direction this session. Curating the call site list is hand-wavy; the next session will hit a domain not on the list. Universal scope + the rule from step 4 means the wrapper is added by default, and exceptions are deliberate operator decisions, not accidents.
+**Why step 3 is universal, not 5-call-site:** per operator direction this session. Curating the call site list is hand-wavy; the next session will hit a domain not on the list. Universal scope + the rule from step 4 means the wrapper is added by default, and exceptions are deliberate operator decisions, not accidents. **Implementation 1 proved this empirically** — the patch-tool bug hit `updateEntry`/`archiveEntry`/`deleteEntry`, three call sites NOT in the original 5-call-site design; the universal wrapper would have caught them all.
 
 ## What this session does NOT do
 
-- No code change to `core/file-readers.js`.
-- No schema migration of `runtime-state.jsonl`.
-- No resolution of either target finding (`meta-260630T2110Z`, `meta-260711T0144Z`).
-- No rule promotion (rule entry is a future-step deliverable of design 1).
-- No repair of the two corrupted designs (operator-mediated file edit needed).
+- No code change to `core/file-readers.js`. (Implementation 3 wrap.)
+- No schema migration of `runtime-state.jsonl`. (Implementation 3 wrap.)
+- No resolution of either target finding (`meta-260630T2110Z`, `meta-260711T0144Z`). (Implementation 2 closes `meta-260711T0144Z`; Implementation 3 closes `meta-260630T2110Z`.)
+- No rule promotion (rule entry is a future-step deliverable of Implementation 3).
+- ~~No repair of the two corrupted designs (operator-mediated file edit needed).~~ **DONE in PR #51** — both loop-design entries now have `entry_kind:"loop-design"`; repair performed via `meta_state_batch`.
 
 ## Unresolved questions
 
@@ -130,5 +135,5 @@ The last 3 rows are the proof from this session — they should not have been di
 3. **Operation envelope field shape (decided):** top-level `operation_envelope` field on change-log, granularity `{total, by_status, by_kind}`, kind enum: `migration | sweep | closeout | consolidation | backfill | archive-wave | escalation-batch | manual-batch`.
 4. **Pre-commit stderr channel:** existing `console.warn` sufficient, or new protocol (e.g., JSON line on stderr that the agent pattern-matches)? Existing channel is fine; defer new protocol until needed.
 5. **Rule entry name (decided):** `rule-assertinvariant-at-boundary` — names the boundary check. Agent-side consult that fires when a new core-logic operation is added.
-6. **Patch-tool repair path:** the meta-finding `meta-260712T0053Z-...` describes the corruption; recovery options are (a) operator-mediated direct file edit, (b) new `meta_state_repair_entry_kind` tool, (c) fix patch-tool + repair script. Decision needed before the assertinvariant primitive ships. Recommend (c) — fix patch-tool as part of design 1's universal scope, then repair script.
+6. **Patch-tool repair path (RESOLVED via Implementation 1):** chose option (c) — fix patch-tool + repair script. `buildPatchSchemaFor` now omits `entry_kind` + `status` from the patch projection (Fix A); `updateEntry` strips `entry_kind` (Fix B); repair via `meta_state_batch` re-asserted `entry_kind:"loop-design"` on the two corrupted entries. Change-logs: `meta-260712T0212Z-...`, `meta-260712T0213Z-...`. No operator-mediated file edit; no new `meta_state_repair_entry_kind` tool needed.
 7. **Wrapper location:** should `assertinvariant` live in `core/meta-state.js` (close to the bug) or a new `core/operation-invariant.js` (separation of concerns)? Recommend new file — the universal scope means it touches many files; co-location with meta-state.js risks muddying the boundary.
