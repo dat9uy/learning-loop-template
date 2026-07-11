@@ -83,6 +83,23 @@ describe("meta-state registry core", () => {
     process.env.GATE_ROOT = originalEnv;
   });
 
+  // Plan 260712-0109 Phase 1 Fix B: defense-in-depth strip of smuggled entry_kind
+  // at the core layer. Direct updateEntry callers (promote-rule, dispatch,
+  // re-verify, resolve, supersede) bypass the patch schema; the strip at the
+  // Object.assign boundary ensures identity cannot flip even if a caller smuggles
+  // entry_kind into the patch.
+  test("updateEntry strips smuggled entry_kind from patch (defense-in-depth, Fix B)", async () => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-defense-"));
+    process.env.GATE_ROOT = tempDir;
+    const id = generateId("defense-test");
+    await writeEntry(tempDir, makeEntry({ id, description: "Finding for updateEntry defense-in-depth test (min 20 chars)" }));
+    await updateEntry(tempDir, id, { entry_kind: "rule", description: "patched" });
+    const entry = readRegistry(tempDir).find((e) => e.id === id);
+    assert.equal(entry.entry_kind, "finding", "entry_kind must NOT flip to 'rule'");
+    assert.equal(entry.description, "patched", "legitimate field must still apply");
+    process.env.GATE_ROOT = originalEnv;
+  });
+
   test("filterEntries by category", async () => {
     const entries = [
       makeEntry({ id: "a1", category: "gate-logic-bug" }),
