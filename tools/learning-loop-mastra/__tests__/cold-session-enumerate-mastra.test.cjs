@@ -11,6 +11,10 @@ const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
+const {
+  AGENT_MANIFEST_TOTAL_TOOLS,
+  AGENT_MANIFEST_GROUPS,
+} = require("./helpers/manifest-constants.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const AGENT_MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mastra/agent-manifest.json");
@@ -67,16 +71,16 @@ describe("cold-session enumerate mastra manifest", () => {
     }
   }
 
-  test("agent-manifest.json declares 44 tools across 6 groups (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)", () => {
-    assert.strictEqual(declaredTools.length, 44,
-      `expected 44 tools in agent-manifest.json, got ${declaredTools.length}`);
-    assert.strictEqual(Object.keys(agentManifest.groups).length, 6,
-      `expected 6 groups in agent-manifest.json, got ${Object.keys(agentManifest.groups).length}`);
+  test(`agent-manifest.json declares ${AGENT_MANIFEST_TOTAL_TOOLS} tools across ${AGENT_MANIFEST_GROUPS} groups (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)`, () => {
+    assert.strictEqual(declaredTools.length, AGENT_MANIFEST_TOTAL_TOOLS,
+      `expected ${AGENT_MANIFEST_TOTAL_TOOLS} tools in agent-manifest.json, got ${declaredTools.length}`);
+    assert.strictEqual(Object.keys(agentManifest.groups).length, AGENT_MANIFEST_GROUPS,
+      `expected ${AGENT_MANIFEST_GROUPS} groups in agent-manifest.json, got ${Object.keys(agentManifest.groups).length}`);
   });
 
-  test("server registers all 44 declared tools", () => {
-    assert.strictEqual(tools.length, 44,
-      `server should expose 44 tools, got ${tools.length}`);
+  test(`server registers all ${AGENT_MANIFEST_TOTAL_TOOLS} declared tools`, () => {
+    assert.strictEqual(tools.length, AGENT_MANIFEST_TOTAL_TOOLS,
+      `server should expose ${AGENT_MANIFEST_TOTAL_TOOLS} tools, got ${tools.length}`);
   });
 
   test("every declared tool is registered", () => {

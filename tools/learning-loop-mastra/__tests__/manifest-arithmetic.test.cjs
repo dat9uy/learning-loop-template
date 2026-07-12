@@ -1,14 +1,19 @@
 // Manifest arithmetic test — cross-walks the 4 manifest files in the mastra
-// package and asserts the 44-tool total + 6-group structure + 11 in workflow
-// group. Catches future drift between the source-of-truth files.
+// package and asserts the total-tools + group count + workflow-tools size.
+// Catches future drift between the source-of-truth files.
+//
+// Expected sizes are centralised in ./helpers/manifest-constants.cjs (single
+// source of truth shared with cold-session-enumerate-mastra and the
+// legacy-mcp/cold-session-discoverability + legacy-mcp/mastra-code-smoke
+// tests — all of which were previously drifting independently).
 //
 // Test inventory:
-//   1. tools/manifest.json has 32 entries (was 31; meta_state_ship_loop_design added in plan 260712-0724 Fix A)
+//   1. tools/manifest.json has TOOLS_MANIFEST_ENTRIES entries (was 31; meta_state_ship_loop_design added in plan 260712-0724 Fix A)
 //   2. workflows-manifest.json has 8 entries
 //   3. agents-manifest.json has 3 entries
-//   4. agent-manifest.json#groups totals 44
-//   5. agent-manifest.json#workflow.tools has 11 entries (6 run + 3 mastra + 2 storage)
-//   6. agent-manifest.json has 6 groups
+//   4. agent-manifest.json#groups totals AGENT_MANIFEST_TOTAL_TOOLS
+//   5. agent-manifest.json#workflow.tools has WORKFLOW_GROUP_TOOLS entries (6 run + 3 mastra + 2 storage)
+//   6. agent-manifest.json has AGENT_MANIFEST_GROUPS groups
 //   7. Cross-walk: every entry in tools/manifest.json is in agent-manifest.json#groups
 //   8. Cross-walk: every run_<id> from workflows-manifest.json is in agent-manifest.json#workflow
 //   9. Cross-walk: every ask_<id> from agents-manifest.json is in agent-manifest.json#agent
@@ -17,6 +22,12 @@ const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync, existsSync } = require("node:fs");
 const { join, resolve } = require("node:path");
+const {
+  AGENT_MANIFEST_TOTAL_TOOLS,
+  AGENT_MANIFEST_GROUPS,
+  TOOLS_MANIFEST_ENTRIES,
+  WORKFLOW_GROUP_TOOLS,
+} = require("./helpers/manifest-constants.cjs");
 
 const PKG = resolve(__dirname, "..");
 
@@ -31,8 +42,8 @@ const agents = JSON.parse(readFileSync(join(PKG, "mastra/agents-manifest.json"),
 const agentManifest = JSON.parse(readFileSync(join(PKG, "agent-manifest.json"), "utf8"));
 
 describe("manifest arithmetic", () => {
-  test("tools/manifest.json has 32 entries (was 31; meta_state_ship_loop_design added in plan 260712-0724 Fix A)", () => {
-    assert.strictEqual(tools.length, 32);
+  test(`tools/manifest.json has ${TOOLS_MANIFEST_ENTRIES} entries (was 31; meta_state_ship_loop_design added in plan 260712-0724 Fix A)`, () => {
+    assert.strictEqual(tools.length, TOOLS_MANIFEST_ENTRIES);
   });
 
   test("workflows-manifest.json has 8 entries", () => {
@@ -43,20 +54,21 @@ describe("manifest arithmetic", () => {
     assert.strictEqual(Object.keys(agents.agents).length, 3);
   });
 
-  test("agent-manifest.json#groups totals 44 (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)", () => {
+  test(`agent-manifest.json#groups totals ${AGENT_MANIFEST_TOTAL_TOOLS} (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)`, () => {
     const total = Object.values(agentManifest.groups).reduce(
       (sum, g) => sum + g.tools.length,
       0,
     );
-    assert.strictEqual(total, 44, `expected 44 total, got ${total}`);
+    assert.strictEqual(total, AGENT_MANIFEST_TOTAL_TOOLS,
+      `expected ${AGENT_MANIFEST_TOTAL_TOOLS} total, got ${total}`);
   });
 
-  test("agent-manifest.json#workflow.tools has 11 entries", () => {
-    assert.strictEqual(agentManifest.groups.workflow.tools.length, 11);
+  test(`agent-manifest.json#workflow.tools has ${WORKFLOW_GROUP_TOOLS} entries`, () => {
+    assert.strictEqual(agentManifest.groups.workflow.tools.length, WORKFLOW_GROUP_TOOLS);
   });
 
-  test("agent-manifest.json has 6 groups", () => {
-    assert.strictEqual(Object.keys(agentManifest.groups).length, 6);
+  test(`agent-manifest.json has ${AGENT_MANIFEST_GROUPS} groups`, () => {
+    assert.strictEqual(Object.keys(agentManifest.groups).length, AGENT_MANIFEST_GROUPS);
   });
 
   test("every tools/manifest.json file exists in mastra legacy package", () => {

@@ -22,6 +22,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const { spawnSync } = require("node:child_process");
 const { resolve, join } = require("node:path");
+const { AGENT_MANIFEST_TOTAL_TOOLS } = require("../helpers/manifest-constants.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..", "..");
 const PROBE_PATH = join(PROJECT_ROOT, "scripts", "probe-mastracode.cjs");
@@ -52,7 +53,7 @@ test("smoke:mastracode stdout is valid JSON", { timeout: 60000 }, () => {
   assert.ok("status" in parsed, "probe output must have `status` field");
 });
 
-test("smoke:mastracode live branch: MCP server connected + 43 tools", { timeout: 60000 }, () => {
+test(`smoke:mastracode live branch: MCP server connected + ${AGENT_MANIFEST_TOTAL_TOOLS} tools`, { timeout: 60000 }, () => {
   const result = spawnSync("node", [PROBE_PATH], {
     cwd: PROJECT_ROOT,
     encoding: "utf8",
@@ -68,7 +69,8 @@ test("smoke:mastracode live branch: MCP server connected + 43 tools", { timeout:
   assert.equal(parsed.mcp_servers[0].name, "learning-loop");
   assert.equal(parsed.mcp_servers[0].connected, true, "learning-loop server must be connected");
   assert.equal(parsed.mcp_servers[0].transport, "stdio", "transport must be stdio");
-  assert.equal(parsed.mcp_tool_names.length, 43, `expected 43 MCP tools, got ${parsed.mcp_tool_names.length}`);
+  assert.equal(parsed.mcp_tool_names.length, AGENT_MANIFEST_TOTAL_TOOLS,
+    `expected ${AGENT_MANIFEST_TOTAL_TOOLS} MCP tools, got ${parsed.mcp_tool_names.length}`);
 });
 
 test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow>", { timeout: 60000 }, () => {
