@@ -105,6 +105,9 @@ files:
   - path: operation-envelope.js
     role: helper
     summary: Plan 260712-0300 Phase 1 — operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
+  - path: operation-invariant.js
+    role: primitive
+    summary: Plan 260712-0724 (Implementation 3) — universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
 
   # === evaluator ===
   - path: evaluate-write-gate.js

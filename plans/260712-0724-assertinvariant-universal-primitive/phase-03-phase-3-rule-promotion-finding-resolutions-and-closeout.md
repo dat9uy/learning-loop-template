@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Phase 3: rule promotion (widened regex) + finding resolutions + loop-design supersede + closeout"
-status: pending
+status: done
 effort: ""
 ---
 

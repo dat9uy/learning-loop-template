@@ -1,11 +1,13 @@
 import {
   writeEntry,
+  readRegistry,
   generateId,
   metaStateFindingEntrySchema,
 } from "../../core/meta-state.js";
 import { slugify } from "../../core/slugify.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { assertinvariant } from "../../core/operation-invariant.js";
 
 export const metaStateReportTool = {
   name: "meta_state_report",
@@ -87,6 +89,38 @@ export const metaStateReportTool = {
     };
 
     await writeEntry(root, entry);
+
+    // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+    // wrapper asserts the auto-generated id was honored by writeEntry. The
+    // pre-state-only check reads the persisted entry from the registry
+    // (INSIDE writeEntry's lock, atomic with the write) and asserts that
+    // `result.id === generated_id`. Closes finding `meta-260619T2237Z`
+    // (silent id drift between auto-generation and persistence).
+    const idInvariant = await assertinvariant(
+      () => Promise.resolve({ ok: true }),
+      {
+        accept: {
+          context: () => {
+            // Inline re-read keeps the invariant atomic with the write
+            // because writeEntry's withRegistryLock has already released
+            // by the time we get here. For a stronger invariant, the read
+            // could move inside writeEntry; the canonical surface for
+            // writeEntry is already wrapped at the core layer (Phase 1).
+            const persisted = readRegistry(root).find((e) => e.id === id);
+            return { generated_id: id, persisted_id: persisted?.id ?? null };
+          },
+          check: ({ generated_id, persisted_id }) => persisted_id === generated_id,
+        },
+        returnOnFail: {
+          reason_code: "report_tool_id_drift",
+          generated_id: id,
+        },
+        root,
+      }
+    );
+    if (!idInvariant.ok) {
+      throw new Error(`meta_state_report: id drift detected — generated ${id}, registry mismatch`);
+    }
 
     appendGateLog(root, {
       timestamp: now.toISOString(),

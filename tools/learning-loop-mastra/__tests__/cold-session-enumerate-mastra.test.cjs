@@ -67,16 +67,16 @@ describe("cold-session enumerate mastra manifest", () => {
     }
   }
 
-  test("agent-manifest.json declares 43 tools across 6 groups", () => {
-    assert.strictEqual(declaredTools.length, 43,
-      `expected 43 tools in agent-manifest.json, got ${declaredTools.length}`);
+  test("agent-manifest.json declares 44 tools across 6 groups (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)", () => {
+    assert.strictEqual(declaredTools.length, 44,
+      `expected 44 tools in agent-manifest.json, got ${declaredTools.length}`);
     assert.strictEqual(Object.keys(agentManifest.groups).length, 6,
       `expected 6 groups in agent-manifest.json, got ${Object.keys(agentManifest.groups).length}`);
   });
 
-  test("server registers all 43 declared tools", () => {
-    assert.strictEqual(tools.length, 43,
-      `server should expose 43 tools, got ${tools.length}`);
+  test("server registers all 44 declared tools", () => {
+    assert.strictEqual(tools.length, 44,
+      `server should expose 44 tools, got ${tools.length}`);
   });
 
   test("every declared tool is registered", () => {

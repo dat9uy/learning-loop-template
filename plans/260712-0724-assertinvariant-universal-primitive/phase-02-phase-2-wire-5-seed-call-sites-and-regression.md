@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Phase 2: wire 3 surviving seed call-sites + golden regression"
-status: pending
+status: done
 effort: ""
 ---
 

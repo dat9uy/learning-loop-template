@@ -38,6 +38,11 @@ import { TERMINAL_HASH_REGEX } from "./check-grounding.js";
 // out of scope for this migration.
 // fallow-ignore-next-line circular-dependency
 import { stripEvidenceAnchor } from "./gate-logic.js";
+// Plan 260712-0724 (Implementation 3): universal `assertinvariant` primitive
+// applied to every mutation op that owns an invariant the agent depends on
+// (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
+// Pre-state-only — see core/operation-invariant.js for the architecture.
+import { assertinvariant } from "./operation-invariant.js";
 
 const REGISTRY_FILENAME = "meta-state.jsonl";
 // Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
@@ -261,6 +266,17 @@ export const metaStateRuleEntrySchema = z.object({
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
+  // Plan 260712-0724 follow-up (Fix B): parallel to change-log's applies_to
+  // (line 180-186). Scope-narrowing that complements scope_predicate — used
+  // by universal rules (e.g., rule-assertinvariant-at-boundary) to suppress
+  // test-mock false positives without relying solely on regex hand-curation.
+  applies_to: z.object({
+    tools: z.array(z.string()).optional().describe("Tool names this rule applies to (narrows firing scope)"),
+    surfaces: z.array(z.string()).optional().describe("Surface names this rule applies to"),
+    rules: z.array(z.string()).optional().describe("Rule ids this rule applies to (chain-of-rules scoping)"),
+    statuses: z.array(z.string()).optional().describe("Status values this rule applies to (e.g., narrow to active findings)"),
+    schemas: z.array(z.string()).optional().describe("Schema files this rule applies to"),
+  }).optional().describe("Wider impact scope; narrows the rule's firing surface without requiring regex hand-curation"),
   code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
   ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().optional().describe("ISO timestamp"),
@@ -625,7 +641,33 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
  */
 export function writeEntry(root, entry) {
   return enqueue(root, () =>
-    withRegistryLock(root, () => {
+    withRegistryLock(root, async () => {
+      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+      // pre-state-only wrapper at the writeEntry boundary. The wrapper
+      // enforces general identity pre-conditions (entry has an id; entry
+      // has a recognized entry_kind). The forge-vector guard for
+      // caller-supplied envelopes on `meta_state_batch` case "write" lives
+      // at metaStateBatch (the only caller that opens the forge surface;
+      // meta_state_log_change legitimately writes change-logs with
+      // operation_envelope via the auto-emit path).
+      const invariantResult = await assertinvariant(
+        () => Promise.resolve({ entry }),
+        {
+          accept: {
+            context: () => entry,
+            check: (e) =>
+              Boolean(e) && typeof e.id === "string" && typeof e.entry_kind === "string",
+          },
+          returnOnFail: {
+            reason_code: "write_entry_identity_precondition_failed",
+          },
+          root,
+        }
+      );
+      if (!invariantResult.ok) {
+        throw new Error("invalid_entry: write_entry_identity_precondition_failed");
+      }
+
       // Plan 260711-0030 Phase 4: schema-version-skew gate. Reject writes whose
       // entry_kind is not in the current worktree's schema_branches BEFORE the
       // validation pass (clearer error path) and BEFORE any registry mutation.
@@ -659,16 +701,18 @@ export function writeEntry(root, entry) {
  */
 export function updateEntry(root, id, patch) {
   return enqueue(root, () =>
-    withRegistryLock(root, () => {
+    withRegistryLock(root, async () => {
       const entries = readRegistry(root);
       let found = false;
       let currentVersion = 0;
+      let existingEntry = null;
 
       // Check id exists before any mutation
       for (const entry of entries) {
         if (entry.id === id) {
           found = true;
           currentVersion = entry.version ?? 0;
+          existingEntry = entry;
           break;
         }
       }
@@ -677,6 +721,43 @@ export function updateEntry(root, id, patch) {
       const patchValidation = metaStateEntryPatchSchema.safeParse(patch);
       if (!patchValidation.success) {
         return "validation_failed";
+      }
+
+      // Plan 260712-0724 (Implementation 3): Fix B's `delete cleanPatch.entry_kind`
+      // defense runs FIRST so the wrapper sees a patch that has already been
+      // sanitized. The wrapper pre-condition check then operates on the
+      // post-Fix-B state: any caller-supplied entry_kind was stripped by Fix B,
+      // so the wrapper's pre-condition (entry_kind either absent or matching
+      // existing) holds for the canonical "smuggled entry_kind + legitimate
+      // fields" case that Fix B is designed to allow. Defense-in-depth: Fix B
+      // strips; wrapper observes the cleaned patch; the patch's legitimate
+      // fields still apply via Object.assign below.
+      const preStripPatch = { ...patch };
+      delete preStripPatch.entry_kind;
+
+      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+      // pre-state-only wrapper on the post-Fix-B patch. Pre-condition: any
+      // remaining entry_kind in the cleaned patch must match the existing
+      // entry's entry_kind (which is now a tautology since Fix B stripped
+      // it, but the wrapper is the canonical guard for non-Fix-B callers).
+      const invariantResult = await assertinvariant(
+        () => Promise.resolve({ ok: true }),
+        {
+          accept: {
+            context: () => ({ existing: existingEntry, patch: preStripPatch }),
+            check: ({ existing, patch: p }) =>
+              !("entry_kind" in p) || p.entry_kind === existing.entry_kind,
+          },
+          returnOnFail: {
+            reason_code: "entry_kind_immutable_via_patch",
+            id,
+            from_kind: existingEntry.entry_kind,
+          },
+          root,
+        }
+      );
+      if (!invariantResult.ok) {
+        return "immutable_field";
       }
 
       // CAS check
@@ -729,11 +810,29 @@ export function updateEntry(root, id, patch) {
  */
 export function archiveEntry(root, id, reason, archivedBy) {
   return enqueue(root, () =>
-    withRegistryLock(root, () => {
+    withRegistryLock(root, async () => {
       const entries = readRegistry(root);
       const idx = entries.findIndex((e) => e.id === id);
       if (idx === -1) return { archived: false, reason: "not_found", id };
-      if (entries[idx].status === "archived") {
+      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+      // wrapper enforces the already-archived pre-condition (moved from the
+      // inline check that used to live here). The wrapper fires BEFORE
+      // mutation.
+      const invariantResult = await assertinvariant(
+        () => Promise.resolve({ ok: true }),
+        {
+          accept: {
+            context: () => entries[idx],
+            check: (e) => e.status !== "archived",
+          },
+          returnOnFail: {
+            reason_code: "already_archived",
+            id,
+          },
+          root,
+        }
+      );
+      if (!invariantResult.ok) {
         return { archived: false, reason: "already_archived", id };
       }
       entries[idx] = {
@@ -758,16 +857,113 @@ export function archiveEntry(root, id, reason, archivedBy) {
  */
 export function deleteEntry(root, id) {
   return enqueue(root, () =>
-    withRegistryLock(root, () => {
+    withRegistryLock(root, async () => {
       const entries = readRegistry(root);
+      const targetEntry = entries.find((e) => e.id === id);
+      if (!targetEntry) return { deleted: false, reason: "not_found", id };
+      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+      // wrapper enforces the change-log-immutability pre-condition. Change
+      // logs are immutable audit log; deletion is forbidden via mutation.
+      // Closes Red Team Finding 3's gap on `case "delete"` having no
+      // pre-state at the batch path.
+      const invariantResult = await assertinvariant(
+        () => Promise.resolve({ ok: true }),
+        {
+          accept: {
+            context: () => targetEntry,
+            check: (e) => e.entry_kind !== "change-log",
+          },
+          returnOnFail: {
+            reason_code: "change_log_immutable",
+            entry_kind: targetEntry.entry_kind,
+            id,
+          },
+          root,
+        }
+      );
+      if (!invariantResult.ok) {
+        return { deleted: false, reason: "change_log_immutable", id };
+      }
       const filtered = entries.filter((e) => e.id !== id);
-      if (filtered.length === entries.length) return { deleted: false, reason: "not_found", id };
       const path = getRegistryPath(root);
       const tmpPath = path + ".tmp";
       writeFileSync(tmpPath, filtered.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
       renameSync(tmpPath, path);
       invalidateCache(root);
       return { deleted: true, id };
+    })
+  );
+}
+
+/**
+ * Atomically mark a loop-design entry as shipped (status: active → inactive)
+ * and stamp the lifecycle signals. Closes Implementation 3 Gap #1: no MCP tool
+ * could previously flip loop-design status because meta_state_patch omits
+ * status from the loop-design patch projection (buildPatchSchemaFor) and
+ * IMMUTABLE_PATCH_FIELDS blocks status on the batch update path.
+ *
+ * This helper is the single source of truth for loop-design ship semantics:
+ * - Acquires the registry lock (cross-process race safe)
+ * - Validates entry_kind === "loop-design" (rejects findings, rules, change-logs)
+ * - Validates current status === "active" (idempotent — already-shipped is a no-op)
+ * - Stamps status + shipped_in_plan + shipped_at atomically
+ * - Bumps the version field (CAS-friendly for callers)
+ *
+ * @param {string} root
+ * @param {string} id
+ * @param {string} plan - plan id (e.g., "260712-0724-assertinvariant-universal-primitive")
+ * @param {number} [expectedVersion] - optional CAS version
+ * @returns {Promise<{shipped: true, id, status, shipped_in_plan, shipped_at} | {shipped: false, reason, ...}>}
+ */
+export function shipLoopDesign(root, id, plan, expectedVersion) {
+  return enqueue(root, () =>
+    withRegistryLock(root, () => {
+      const entries = readRegistry(root);
+      const idx = entries.findIndex((e) => e.id === id);
+      if (idx === -1) return { shipped: false, reason: "not_found", id };
+      const entry = entries[idx];
+      if (entry.entry_kind !== "loop-design") {
+        return { shipped: false, reason: "not_a_loop_design", id, entry_kind: entry.entry_kind };
+      }
+      const currentVersion = entry.version ?? 0;
+      if (expectedVersion !== undefined && currentVersion !== expectedVersion) {
+        return { shipped: false, reason: "version_mismatch", id, current_version: currentVersion };
+      }
+      // Idempotent: already-shipped loop-design returns shipped:false with
+      // reason:"already_shipped" so callers can distinguish from a no-op success.
+      if (entry.status === "inactive") {
+        return {
+          shipped: false,
+          reason: "already_shipped",
+          id,
+          shipped_in_plan: entry.shipped_in_plan,
+          shipped_at: entry.shipped_at,
+        };
+      }
+      if (entry.status !== "active") {
+        return { shipped: false, reason: "invalid_status", id, current_status: entry.status };
+      }
+      const shippedAt = new Date().toISOString();
+      entries[idx] = {
+        ...entry,
+        status: "inactive",
+        shipped_in_plan: plan,
+        shipped_at: shippedAt,
+        version: currentVersion + 1,
+      };
+      const path = getRegistryPath(root);
+      const tmpPath = path + ".tmp";
+      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+      renameSync(tmpPath, path);
+      invalidateCache(root);
+      return {
+        shipped: true,
+        id,
+        status: "inactive",
+        shipped_in_plan: plan,
+        shipped_at: shippedAt,
+        version: currentVersion + 1,
+      };
     })
   );
 }
@@ -829,19 +1025,34 @@ export function metaStateBatch(root, operations, envelope) {
         try {
           switch (op.op) {
             case "write": {
-              const validation = metaStateEntrySchema.safeParse(op.entry);
-              if (!validation.success) throw new Error("validation_failed");
-              // Plan 260712-0300 Phase 2 (red-team finding 6): reject caller-supplied
-              // envelopes on writes. `operation_envelope` is auto-emit ONLY (built
-              // and appended by `meta_state_batch` AFTER the batch lands). A direct
-              // write op with operation_envelope set is a forge vector — without
-              // this guard, an attacker writes a fake envelope directly, bypassing
-              // the IMMUTABLE_PATCH_FIELDS deny-list (which only fires on update).
-              if (op.entry.entry_kind === "change-log" && op.entry.operation_envelope !== undefined) {
+              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+              // wrapper at the batch write-op boundary catches caller-supplied
+              // envelopes on change-log writes (the forge-vector surface).
+              // The same pre-condition is enforced at writeEntry (canonical
+              // surface); this is the batch-path redundant defense.
+              const writeInvariant = await assertinvariant(
+                () => Promise.resolve({ ok: true }),
+                {
+                  accept: {
+                    context: () => op.entry,
+                    check: (e) =>
+                      !(e && e.entry_kind === "change-log" && e.operation_envelope !== undefined),
+                  },
+                  returnOnFail: {
+                    reason_code: "caller_supplied_envelope_on_change_log",
+                    entry_kind: "change-log",
+                  },
+                  root,
+                }
+              );
+              if (!writeInvariant.ok) {
                 const err = new Error("immutable_field");
                 err.denied_fields = ["operation_envelope"];
                 throw err;
               }
+
+              const validation = metaStateEntrySchema.safeParse(op.entry);
+              if (!validation.success) throw new Error("validation_failed");
               entries.push(validation.data);
               break;
             }
@@ -856,6 +1067,30 @@ export function metaStateBatch(root, operations, envelope) {
               // the deny-list and applying. Without this, the lookup-key `id` and
               // the op discriminator `op` would falsely trigger the deny-list.
               const { op: _op, id: _id, _expected_version, ...patch } = op;
+              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+              // wrapper enforces the entry_kind pre-condition via pre-state
+              // context. The deny-list below is the after-the-fact guard for
+              // other identity fields and stays unchanged.
+              const updateInvariant = await assertinvariant(
+                () => Promise.resolve({ ok: true }),
+                {
+                  accept: {
+                    context: () => ({ existing: entries[idx], patch }),
+                    check: ({ existing, patch: p }) =>
+                      !("entry_kind" in p) || p.entry_kind === existing.entry_kind,
+                  },
+                  returnOnFail: {
+                    reason_code: "entry_kind_immutable_via_patch",
+                    id: op.id,
+                  },
+                  root,
+                }
+              );
+              if (!updateInvariant.ok) {
+                const err = new Error("immutable_field");
+                err.denied_fields = ["entry_kind"];
+                throw err;
+              }
               // Enforce the same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch
               // so the batch tool cannot be used to bypass identity/audit-trail
               // invariants (e.g. pinning a finding's code_fingerprint to a stale hash).
@@ -873,12 +1108,53 @@ export function metaStateBatch(root, operations, envelope) {
             case "delete": {
               const idx = entries.findIndex((e) => e.id === op.id);
               if (idx === -1) throw new Error("not_found");
+              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+              // wrapper enforces the change-log immutability pre-condition.
+              const deleteInvariant = await assertinvariant(
+                () => Promise.resolve({ ok: true }),
+                {
+                  accept: {
+                    context: () => entries[idx],
+                    check: (e) => e.entry_kind !== "change-log",
+                  },
+                  returnOnFail: {
+                    reason_code: "change_log_immutable",
+                    entry_kind: entries[idx].entry_kind,
+                    id: op.id,
+                  },
+                  root,
+                }
+              );
+              if (!deleteInvariant.ok) {
+                const err = new Error("change_log_immutable");
+                throw err;
+              }
               entries.splice(idx, 1);
               break;
             }
             case "archive": {
               const idx = entries.findIndex((e) => e.id === op.id);
               if (idx === -1) throw new Error("not_found");
+              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+              // wrapper enforces the already-archived pre-condition.
+              const archiveInvariant = await assertinvariant(
+                () => Promise.resolve({ ok: true }),
+                {
+                  accept: {
+                    context: () => entries[idx],
+                    check: (e) => e.status !== "archived",
+                  },
+                  returnOnFail: {
+                    reason_code: "already_archived",
+                    id: op.id,
+                  },
+                  root,
+                }
+              );
+              if (!archiveInvariant.ok) {
+                const err = new Error("already_archived");
+                throw err;
+              }
               entries[idx] = {
                 ...entries[idx],
                 status: "archived",

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Phase 1: RED→GREEN wrapper primitive (pre-state-only accept) + keep IMMUTABLE_PATCH_FIELDS on patch-tool path"
-status: pending
+status: done
 effort: ""
 ---
 
