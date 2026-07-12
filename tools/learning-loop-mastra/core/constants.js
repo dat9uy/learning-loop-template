@@ -13,6 +13,16 @@
 export const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
 
 /**
+ * Plan 260712-0300 Phase 2: single source of truth for `BATCH_SIZE_LIMIT`.
+ * Previously the handler default was 500 and the core default was 100; calls
+ * with 101–500 ops got a misleading `applied:0` from one layer with no
+ * explanation. Centralized here so both layers read the same value.
+ *
+ * Overridable via `META_STATE_BATCH_LIMIT` env var for stress tests.
+ */
+export const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 500;
+
+/**
  * The terminal statuses `isOpen` excludes: `resolved`/`superseded` plus
  * `archived` (applied at runtime, outside the persisted enum). Mirrors the
  * terminal set in `core/meta-state.js` with `archived` added. Local to this

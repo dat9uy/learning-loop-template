@@ -5,6 +5,19 @@ import { z } from "zod";
 import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 import { withRegistryLock } from "./registry-lock.js";
+// Plan 260712-0300 Phase 1: operation_envelope field on change-log entries
+// (Implementation 2 of the assertinvariant resolution). The helper owns the
+// kind enum + content-hash construction; the schema imports the enum so there
+// is one source of truth.
+import {
+  OPERATION_ENVELOPE_KINDS,
+  CANONICAL_STATUS_KEYS,
+  CANONICAL_KIND_KEYS,
+  buildEnvelope,
+} from "./operation-envelope.js";
+// Plan 260712-0300 Phase 2: single source of truth for BATCH_SIZE_LIMIT
+// (closes the 500-vs-100 default divergence between handler and core).
+import { BATCH_SIZE_LIMIT } from "./constants.js";
 // Plan 260711-0030 Phase 4: schema-version-skew detection. isSchemaBranchSupported
 // reads the per-worktree .loop-version file and rejects writes whose entry_kind
 // is not in the worktree's schema_branches list. Future per-kind field-shape
@@ -186,6 +199,32 @@ export const metaStateChangeEntrySchema = z.object({
   version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
   expires_at: z.string().optional()
     .describe("Forward-compat: optional TTL for future change-log subtypes that may expire."),
+  // Plan 260712-0300 Phase 1: optional magnitude envelope for batch mutations.
+  // Auto-emitted by `meta_state_batch` when callers pass an `envelope` field;
+  // describes kind + target + pre/post registry snapshot + content-hash. The
+  // canonical enum keys (by_status / by_kind) are constrained so post-hoc
+  // tests can assert exact equality. Field is OPTIONAL — pre-existing change-log
+  // entries are valid without it (no backfill required).
+  operation_envelope: z.object({
+    kind: z.enum(OPERATION_ENVELOPE_KINDS)
+      .describe("Magnitude kind; see loop-design-operation-envelope-on-change-log"),
+    target: z.string().min(1).max(200)
+      .regex(/^[^\x00-\x1f\x7f]+$/, "target must not contain control chars")
+      .regex(/^(?!.*\.\.).*$/, "target must not contain '..' path segments")
+      .describe("Identifier for the batch's target (e.g., 'drift-closeout-2026-07-12'). Validated for path safety; not a filesystem path."),
+    pre_count: z.object({
+      total: z.number().int().nonnegative(),
+      by_status: z.record(z.enum(CANONICAL_STATUS_KEYS), z.number().int().nonnegative()),
+      by_kind: z.record(z.enum(CANONICAL_KIND_KEYS), z.number().int().nonnegative()),
+    }).describe("Registry snapshot before the batch"),
+    post_count: z.object({
+      total: z.number().int().nonnegative(),
+      by_status: z.record(z.enum(CANONICAL_STATUS_KEYS), z.number().int().nonnegative()),
+      by_kind: z.record(z.enum(CANONICAL_KIND_KEYS), z.number().int().nonnegative()),
+    }).describe("Registry snapshot after the batch"),
+    content_hash: z.string().regex(/^sha256:[a-f0-9]{64}$/)
+      .describe("Content-hash of kind + target + canonicalized op-list + entry-id-set; same input -> same hash. NOT a replay protection — replay detection belongs elsewhere."),
+  }).optional().describe("Optional magnitude envelope for batch mutations; see loop-design-operation-envelope-on-change-log"),
 });
 
 /**
@@ -309,6 +348,7 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "resolution",
   "entry_kind",  // identity — stopgap until the universal assertinvariant wrapper (Impl 3)
   "status",      // lifecycle identity — stopgap (rule/loop-design deactivation/ship is operator-decided)
+  "operation_envelope",  // Plan 260712-0300 Phase 2 — auto-emit ONLY (meta_state_batch); replace via patch is a forge vector. Stopgap until universal wrapper (Impl 3).
 ]);
 
 /**
@@ -738,13 +778,24 @@ const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
 // slow disks (Finding 12). Larger batches risk lock-stealing by concurrent
 // processes that observe a >30s-old lock. Operators can still override via
 // META_STATE_BATCH_LIMIT env var.
-const BATCH_SIZE_LIMIT = Number(process.env.META_STATE_BATCH_LIMIT) || 100;
+// Plan 260712-0300 Phase 2: removed local definition in favor of importing
+// from core/constants.js (single source of truth; 500-vs-100 default divergence fixed).
 
 /**
  * Atomically apply a batch of meta-state operations.
  * All-or-nothing rollback on any failure. Single cache invalidation.
+ *
+ * Plan 260712-0300 Phase 2: optional `envelope` argument. When present, after a
+ * successful batch, an envelope-annotated change-log entry is auto-emitted with
+ * pre_count/post_count computed from the registry before/after the batch and
+ * content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
+ * Auto-emit ordering (operator-confirmed, same as Plan 260712-0109):
+ *   1. build envelope in-memory AFTER the ops loop completes successfully
+ *   2. writeFileSync + renameSync + invalidateCache
+ *   3. assertWriteVisible — re-read registry; on silent-persistence-fail,
+ *      restore preBatchContent and return change_log_not_visible.
  */
-export function metaStateBatch(root, operations) {
+export function metaStateBatch(root, operations, envelope) {
   if (!Array.isArray(operations)) {
     return Promise.resolve({ applied: 0, failed_at: 0, reason: "operations_not_array" });
   }
@@ -757,6 +808,13 @@ export function metaStateBatch(root, operations) {
       const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
 
       let entries = readRegistry(root);
+      // Plan 260712-0300 Phase 2: snapshot the registry BEFORE the batch so
+      // the envelope's pre_count reflects actual pre-batch state. Only the
+      // fields needed for the count record (id, status, entry_kind) are
+      // carried forward to keep the helper's input compact.
+      const preRegistrySnapshot = envelope
+        ? entries.map((e) => ({ id: e.id, status: e.status, entry_kind: e.entry_kind }))
+        : null;
       for (let i = 0; i < operations.length; i++) {
         const op = operations[i];
         if (!BATCH_OP_TYPES.has(op.op)) {
@@ -773,6 +831,17 @@ export function metaStateBatch(root, operations) {
             case "write": {
               const validation = metaStateEntrySchema.safeParse(op.entry);
               if (!validation.success) throw new Error("validation_failed");
+              // Plan 260712-0300 Phase 2 (red-team finding 6): reject caller-supplied
+              // envelopes on writes. `operation_envelope` is auto-emit ONLY (built
+              // and appended by `meta_state_batch` AFTER the batch lands). A direct
+              // write op with operation_envelope set is a forge vector — without
+              // this guard, an attacker writes a fake envelope directly, bypassing
+              // the IMMUTABLE_PATCH_FIELDS deny-list (which only fires on update).
+              if (op.entry.entry_kind === "change-log" && op.entry.operation_envelope !== undefined) {
+                const err = new Error("immutable_field");
+                err.denied_fields = ["operation_envelope"];
+                throw err;
+              }
               entries.push(validation.data);
               break;
             }
@@ -835,10 +904,75 @@ export function metaStateBatch(root, operations) {
         }
       }
 
+      // Plan 260712-0300 Phase 2: build the envelope-annotated change-log entry
+      // BEFORE the file write so the rename + assertWriteVisible cycle sees
+      // both the batch mutations AND the auto-emit as one atomic write. This
+      // ordering (change-log-after-batch, operator-confirmed same as Plan
+      // 260712-0109) eliminates any audit/reality divergence window.
+      let autoEmitId = null;
+      if (envelope) {
+        // Generate auto-emit id (red-team finding 8): ISO timestamp + 6 random
+        // hex chars. Deterministic slug collides when two batches share a target;
+        // the random suffix gives sub-second sortability + collision resistance.
+        autoEmitId = `meta-${new Date().toISOString().replace(/[-:.]/g, "")}-${Math.random().toString(16).slice(2, 8)}`;
+        // Duplicate-id guard: if the random suffix collides with an existing
+        // entry id (astronomically rare at 6 hex but explicit is better),
+        // throw and roll back.
+        if (entries.some((e) => e.id === autoEmitId)) {
+          const err = new Error("auto_emit_id_collision");
+          err.id = autoEmitId;
+          throw err;
+        }
+        const postRegistrySnapshot = entries.map((e) => ({
+          id: e.id,
+          status: e.status,
+          entry_kind: e.entry_kind,
+        }));
+        // buildEnvelope throws `kind_op_incompatible` on kind × op-type mismatch
+        // (red-team finding 9); the throw rolls the batch back to preBatchContent.
+        const builtEnvelope = buildEnvelope({
+          kind: envelope.kind,
+          target: envelope.target,
+          ops: operations,
+          preRegistry: preRegistrySnapshot,
+          postRegistry: postRegistrySnapshot,
+        });
+        entries.push({
+          id: autoEmitId,
+          entry_kind: "change-log",
+          change_dimension: "mechanical",
+          change_target: envelope.target,
+          change_diff: { added: [], removed: [], changed: [] },
+          reason: "Auto-emitted by meta_state_batch envelope pass-through (plan 260712-0300; loop-design-operation-envelope-on-change-log).",
+          operation_envelope: builtEnvelope,
+          status: "active",
+          created_at: new Date().toISOString(),
+          version: 0,
+        });
+      }
+
       const tmpPath = path + ".tmp";
       writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
       renameSync(tmpPath, path);
       invalidateCache(root);
+
+      // Plan 260712-0300 Phase 2 (red-team finding 1): assertWriteVisible after
+      // rename. Re-read the registry; if the auto-emit change-log is not present
+      // (silent-persistence-fail class), restore preBatchContent and return a
+      // structured failure. Same pattern as meta_state_log_change PR #50.
+      if (envelope && autoEmitId) {
+        const fresh = readRegistry(root).find((e) => e.id === autoEmitId);
+        if (!fresh) {
+          if (preBatchContent) {
+            writeFileSync(path, preBatchContent, "utf8");
+          } else if (existsSync(path)) {
+            unlinkSync(path);
+          }
+          invalidateCache(root);
+          return { applied: 0, failed_at: null, reason: "change_log_not_visible" };
+        }
+      }
+
       return { applied: operations.length, failed_at: null };
     })
   );

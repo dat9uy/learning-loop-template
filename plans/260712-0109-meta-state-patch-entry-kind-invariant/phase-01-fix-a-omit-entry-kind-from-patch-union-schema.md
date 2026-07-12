@@ -1,7 +1,9 @@
 ---
 phase: 1
-title: "Fix + repair — omit entry_kind+status from patch schema, strip in updateEntry, repair corrupted entries"
-status: in-progress
+title: >-
+  Fix + repair — omit entry_kind+status from patch schema, strip in updateEntry,
+  repair corrupted entries
+status: completed
 priority: P1
 dependencies: []
 ---
@@ -363,16 +365,16 @@ pnpm exec node --test --test-timeout=30000 \
 
 ## Success Criteria
 
-- [ ] RED tests (a), (a-status), (d) fail BEFORE the fix (corruption reproduces; status re-activation reproduces)
-- [ ] Test (b) `assert.rejects` + registry-state assertion is robust to the `callTool` SyntaxError (red-team Failure #1)
-- [ ] Test (d) reads `join(tempRoot, ".claude", "coordination", "gate-log.jsonl")` (red-team Failure #2)
-- [ ] After Fix A + B: (a) empty `{}` preserves `entry_kind`; (a-status) empty `{}` preserves `status:"inactive"`; (b) `entry_kind` in patch rejected + registry unchanged; (d) `fields_patched:[]`; Fix B test strips smuggled `entry_kind`
-- [ ] `buildPatchSchemaFor` omits `entry_kind` on all 4 branches + `status` on rule + loop-design
-- [ ] `updateEntry` has the one-line `delete cleanPatch.entry_kind`
-- [ ] Two corrupted entries read back as `entry_kind:"loop-design"`, `version:2`, visible to `entry_kind:"loop-design"` filter
-- [ ] Each repaired entry's non-identity fields (title, description, proposed_design_for, addresses, created_at, created_by) unchanged
-- [ ] Existing patch-tool/derived-schema/script-caller-passthrough suites pass
-- [ ] 2 `meta_state_log_change` entries filed AFTER each logical change's edit lands (code fix at Step 1.5, data repair at Step 1.8) — edit-first, change-log-after (operator-confirmed ordering; no audit/reality divergence)
+- [x] RED tests (a), (a-status), (d) fail BEFORE the fix (corruption reproduces; status re-activation reproduces)
+- [x] Test (b) `assert.rejects` + registry-state assertion is robust to the `callTool` SyntaxError (red-team Failure #1)
+- [x] Test (d) reads `join(tempRoot, ".claude", "coordination", "gate-log.jsonl")` (red-team Failure #2)
+- [x] After Fix A + B: (a) empty `{}` preserves `entry_kind`; (a-status) empty `{}` preserves `status:"inactive"`; (b) `entry_kind` in patch rejected + registry unchanged; (d) `fields_patched:[]`; Fix B test strips smuggled `entry_kind`
+- [x] `buildPatchSchemaFor` omits `entry_kind` on all 4 branches + `status` on rule + loop-design
+- [x] `updateEntry` has the one-line `delete cleanPatch.entry_kind`
+- [x] Two corrupted entries read back as `entry_kind:"loop-design"`, `version:2`, visible to `entry_kind:"loop-design"` filter
+- [x] Each repaired entry's non-identity fields (title, description, proposed_design_for, addresses, created_at, created_by) unchanged
+- [x] Existing patch-tool/derived-schema/script-caller-passthrough suites pass
+- [x] 2 `meta_state_log_change` entries filed AFTER each logical change's edit lands (code fix at Step 1.5, data repair at Step 1.8) — edit-first, change-log-after (operator-confirmed ordering; no audit/reality divergence)
 
 ## Risk Assessment
 

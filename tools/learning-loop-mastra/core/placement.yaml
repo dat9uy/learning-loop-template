@@ -102,6 +102,9 @@ files:
   - path: update-entry-helpers.js
     role: helper
     summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede (Phase 4 extraction).
+  - path: operation-envelope.js
+    role: helper
+    summary: Plan 260712-0300 Phase 1 — operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
 
   # === evaluator ===
   - path: evaluate-write-gate.js
