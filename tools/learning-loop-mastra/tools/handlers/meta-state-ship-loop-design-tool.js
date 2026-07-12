@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { readRegistry } from "../../core/meta-state.js";
 import { shipLoopDesign } from "../../core/meta-state.js";
-import { logToolCall } from "#lib/gate-logging.js";
+import { replyWithLog, loadEntry } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
 
@@ -36,27 +35,19 @@ export const metaStateShipLoopDesignTool = {
   },
   handler: async ({ id, shipped_in_plan, _expected_version }) => {
     if (!isLiveSession()) {
-      const result = { shipped: false, reason: "live_session_required", id };
-      logToolCall(resolveRoot(), "meta_state_ship_loop_design", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(resolveRoot(), "meta_state_ship_loop_design", { shipped: false, reason: "live_session_required", id });
     }
     const root = resolveRoot();
-    const entries = readRegistry(root);
-    const entry = entries.find((e) => e.id === id);
+    const entry = loadEntry(root, id);
     if (!entry) {
-      const result = { shipped: false, reason: "not_found", id };
-      logToolCall(root, "meta_state_ship_loop_design", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_ship_loop_design", { shipped: false, reason: "not_found", id });
     }
     if (entry.entry_kind !== "loop-design") {
-      const result = { shipped: false, reason: "not_a_loop_design", id, entry_kind: entry.entry_kind };
-      logToolCall(root, "meta_state_ship_loop_design", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_ship_loop_design", { shipped: false, reason: "not_a_loop_design", id, entry_kind: entry.entry_kind });
     }
     const currentVersion = entry.version ?? 0;
     const expectedVersion = _expected_version !== undefined ? _expected_version : currentVersion;
     const outcome = await shipLoopDesign(root, id, shipped_in_plan, expectedVersion);
-    logToolCall(root, "meta_state_ship_loop_design", { id, shipped_in_plan, ...outcome });
-    return { content: [{ type: "text", text: JSON.stringify({ ...outcome, id, shipped_in_plan }) }] };
+    return replyWithLog(root, "meta_state_ship_loop_design", { ...outcome, id, shipped_in_plan });
   },
 };

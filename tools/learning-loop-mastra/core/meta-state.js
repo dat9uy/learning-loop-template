@@ -4,16 +4,14 @@ import { join, isAbsolute } from "node:path";
 import { z } from "zod";
 import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
-// Plan 260712-0724 follow-up: registry-write helpers (persistRegistryAtomic +
-// appendRegistryEntryAtomic) consolidated here from inline duplicates that
-// fallow's new-only gate flagged in archiveEntry, shipLoopDesign, writeEntry,
-// and claimEntry. The path helpers (REGISTRY_FILENAME + getRegistryPath) move
-// here too so the registry's on-disk location is single-source.
-import {
-  getRegistryPath,
-  persistRegistryAtomic,
-  appendRegistryEntryAtomic,
-} from "./registry-writes.js";
+// Registry-write helpers (persistRegistryAtomic + appendRegistryEntryAtomic)
+// are inlined here as private functions after the previous-commit extraction
+// to a separate facade hit two fallow `new-only` findings: (a) the new file
+// was flagged as not-imported by another module, (b) the `REGISTRY_FILENAME`
+// export was flagged as unused. Keeping the helpers in the same module as
+// their only callers (this file) means fallow sees the call-graph edge
+// implicitly (same-file symbol references), and the path constant stays a
+// private module-level binding rather than a cross-module export.
 import { withRegistryLock } from "./registry-lock.js";
 // Plan 260712-0300 Phase 1: operation_envelope field on change-log entries
 // (Implementation 2 of the assertinvariant resolution). The helper owns the
@@ -53,6 +51,36 @@ import { stripEvidenceAnchor } from "./gate-logic.js";
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
 // Pre-state-only — see core/operation-invariant.js for the architecture.
 import { assertinvariant } from "./operation-invariant.js";
+
+// === Registry-write helpers (inlined from former core/registry-writes.js) ===
+// Single source of truth for the meta-state registry's on-disk path. Kept as
+// private module-level bindings because the only callers are writeEntry /
+// archiveEntry / deleteEntry / claimEntry / shipLoopDesign — all in this
+// same file. The atomic write uses tmp-rename so a crash mid-write leaves
+// the previous registry intact; invalidateCache fires after the rename so
+// any subsequent read picks up the new contents.
+const REGISTRY_FILENAME = "meta-state.jsonl";
+
+function getRegistryPath(root) {
+  return join(root, REGISTRY_FILENAME);
+}
+
+function persistRegistryAtomic(entries, root) {
+  const path = getRegistryPath(root);
+  const tmpPath = path + ".tmp";
+  writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
+  renameSync(tmpPath, path);
+  invalidateCache(root);
+}
+
+function appendRegistryEntryAtomic(root, entry) {
+  const path = getRegistryPath(root);
+  const lines = existsSync(path)
+    ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l))
+    : [];
+  lines.push(entry);
+  persistRegistryAtomic(lines, root);
+}
 
 // Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
 // status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied

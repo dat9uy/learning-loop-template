@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readRegistry } from "../../core/meta-state.js";
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
-import { logToolCall } from "#lib/gate-logging.js";
+import { replyWithLog, loadEntry } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
 
@@ -17,28 +17,20 @@ export const metaStateSupersedeTool = {
   },
   handler: async ({ id, consolidated_into, resolution, _expected_version }) => {
     if (!isLiveSession()) {
-      const result = { superseded: false, reason: "live_session_required", id };
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(resolveRoot(), "meta_state_supersede", { superseded: false, reason: "live_session_required", id });
     }
     const root = resolveRoot();
-    const entries = readRegistry(root);
-    const entry = entries.find((e) => e.id === id);
+    const entry = loadEntry(root, id);
     if (!entry) {
-      const result = { superseded: false, reason: "not_found", id };
-      logToolCall(root, "meta_state_supersede", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_supersede", { superseded: false, reason: "not_found", id });
     }
     if (entry.entry_kind !== "finding") {
-      const result = { superseded: false, reason: "not_a_finding", id, entry_kind: entry.entry_kind };
-      logToolCall(root, "meta_state_supersede", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_supersede", { superseded: false, reason: "not_a_finding", id, entry_kind: entry.entry_kind });
     }
     // Validate consolidated_into is an existing change-log
-    const target = entries.find((e) => e.id === consolidated_into);
+    const target = readRegistry(root).find((e) => e.id === consolidated_into);
     if (!target || target.entry_kind !== "change-log") {
-      const result = { superseded: false, reason: "consolidated_into_not_a_change_log", id, consolidated_into };
-      logToolCall(root, "meta_state_supersede", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_supersede", { superseded: false, reason: "consolidated_into_not_a_change_log", id, consolidated_into });
     }
     const currentVersion = entry.version ?? 0;
     const expectedVersion = _expected_version !== undefined ? _expected_version : currentVersion;
@@ -53,11 +45,9 @@ export const metaStateSupersedeTool = {
     };
     const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_supersede");
     if (!updateOutcome.ok) {
-      const result = { superseded: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
-      logToolCall(root, "meta_state_supersede", result);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return replyWithLog(root, "meta_state_supersede", { superseded: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version });
     }
-    const result = {
+    return replyWithLog(root, "meta_state_supersede", {
       superseded: true,
       id,
       status: "superseded",
@@ -65,8 +55,6 @@ export const metaStateSupersedeTool = {
       superseded_at: now,
       superseded_by: "operator",
       ...(resolution && { resolution }),
-    };
-    logToolCall(root, "meta_state_supersede", result);
-    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    });
   },
 };

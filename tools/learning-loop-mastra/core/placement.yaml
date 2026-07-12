@@ -66,9 +66,6 @@ files:
   - path: file-readers.js
     role: primitive
     summary: Shared file-reading helpers (readJsonSafe, readLines).
-  - path: registry-writes.js
-    role: facade
-    summary: Atomic registry-write helpers (persistRegistryAtomic + appendRegistryEntryAtomic) extracted in plan 260712-0724 follow-up after fallow flagged inline tmp-rename-invalidate duplicates in archiveEntry, shipLoopDesign, writeEntry, claimEntry, updateEntry, deleteEntry. Also owns REGISTRY_FILENAME + getRegistryPath so the registry's on-disk location is single-source.
   - path: path-containment.js
     role: primitive
     summary: resolveSafePath — realpath containment + hardlink rejection for user-supplied paths.
