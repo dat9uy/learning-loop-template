@@ -5,7 +5,7 @@ import {
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { runVerification } from "../../core/verification-runner.js";
 import { isOpen } from "../../core/stale-view.js";
-import { appendGateLog } from "#lib/gate-logging.js";
+import { logToolCall } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 const HISTORY_CAP = 50;
@@ -28,7 +28,7 @@ export const metaStateReVerifyTool = {
     const entry = entries.find((e) => e.id === id);
     if (!entry) {
       const result = { re_verified: false, reason: "not_found", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_re_verify", ...result });
+      logToolCall(root, "meta_state_re_verify", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     // Plan 260707-0812 Phase 3: drop the `status: "stale"` hard-requirement.
@@ -36,12 +36,12 @@ export const metaStateReVerifyTool = {
     // trigger (typically when the derived stale view surfaces the entry).
     if (!isOpen(entry)) {
       const result = { re_verified: false, reason: "wrong_status", id, current_status: entry.status ?? null };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_re_verify", ...result });
+      logToolCall(root, "meta_state_re_verify", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     if (!entry.verification || !Array.isArray(entry.verification.steps) || entry.verification.steps.length === 0) {
       const result = { re_verified: false, reason: "no_verification_steps", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_re_verify", ...result });
+      logToolCall(root, "meta_state_re_verify", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     const currentVersion = entry.version ?? 0;
@@ -75,7 +75,7 @@ export const metaStateReVerifyTool = {
     const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_re_verify");
     if (!updateOutcome.ok) {
       const result = { re_verified: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
-      appendGateLog(root, { timestamp: now, tool: "meta_state_re_verify", ...result });
+      logToolCall(root, "meta_state_re_verify", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     const result = {
@@ -86,7 +86,7 @@ export const metaStateReVerifyTool = {
       step_results: stepResults,
       last_verified_at: allPassed ? now : (entry.last_verified_at || null),
     };
-    appendGateLog(root, { timestamp: now, tool: "meta_state_re_verify", ...result });
+    logToolCall(root, "meta_state_re_verify", result);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };

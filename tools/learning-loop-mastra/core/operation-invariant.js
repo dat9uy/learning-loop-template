@@ -42,6 +42,32 @@ import { appendGateLog } from "#lib/gate-logging.js";
  */
 
 /**
+ * Shared helper for both the async `assertinvariant` and the sync
+ * `assertinvariantSync` wrappers — the violation-emit body is structurally
+ * identical (validate logTo + write to gate-log or stderr). Extracted here
+ * after fallow flagged the 15-line duplication between the two wrappers.
+ */
+function emitViolation(root, returnOnFail, logTo) {
+  if (logTo === "stderr") {
+    console.warn(`assertinvariant: ${JSON.stringify(returnOnFail)}`);
+  } else {
+    appendGateLog(root, {
+      tool: "assertinvariant",
+      returnOnFail,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
+/**
+ * Shared missing-root failure shape. Both wrappers throw on bad root and
+ * surface this contract failure identically.
+ */
+function missingRootFailure() {
+  return { ok: false, reason: "missing_root", reason_code: "missing_root" };
+}
+
+/**
  * Universal pre-condition boundary helper.
  *
  * Captures pre-state via `accept.context()` (called at the call site, INSIDE
@@ -66,23 +92,11 @@ export async function assertinvariant(operation, { accept, returnOnFail, root, l
   // on bad root (the contract was hardened after a malformed-root artifact
   // root-cause in an earlier session). Validate upfront so a missing root
   // produces a stable failure shape instead of an uncaught TypeError mid-call.
-  if (!root || typeof root !== "string") {
-    return { ok: false, reason: "missing_root", reason_code: "missing_root" };
-  }
+  if (!root || typeof root !== "string") return missingRootFailure();
   const pre = await accept.context();
-  const ok = await accept.check(pre);
-  if (!ok) {
-    const failure = { ok: false, reason: JSON.stringify(returnOnFail), ...returnOnFail };
-    if (logTo === "stderr") {
-      console.warn(`assertinvariant: ${failure.reason}`);
-    } else {
-      appendGateLog(root, {
-        tool: "assertinvariant",
-        returnOnFail,
-        timestamp: new Date().toISOString(),
-      });
-    }
-    return failure;
+  if (!(await accept.check(pre))) {
+    emitViolation(root, returnOnFail, logTo);
+    return { ok: false, reason: JSON.stringify(returnOnFail), ...returnOnFail };
   }
   return { ok: true, ...(await operation()) };
 }
@@ -105,23 +119,11 @@ export async function assertinvariant(operation, { accept, returnOnFail, root, l
  * @returns {{ok: true} & T | {ok: false, reason: string} & Record<string, any>}
  */
 export function assertinvariantSync(operation, { accept, returnOnFail, root, logTo = "gate-log" }) {
-  if (!root || typeof root !== "string") {
-    return { ok: false, reason: "missing_root", reason_code: "missing_root" };
-  }
+  if (!root || typeof root !== "string") return missingRootFailure();
   const pre = accept.context();
-  const ok = accept.check(pre);
-  if (!ok) {
-    const failure = { ok: false, reason: JSON.stringify(returnOnFail), ...returnOnFail };
-    if (logTo === "stderr") {
-      console.warn(`assertinvariant: ${failure.reason}`);
-    } else {
-      appendGateLog(root, {
-        tool: "assertinvariant",
-        returnOnFail,
-        timestamp: new Date().toISOString(),
-      });
-    }
-    return failure;
+  if (!accept.check(pre)) {
+    emitViolation(root, returnOnFail, logTo);
+    return { ok: false, reason: JSON.stringify(returnOnFail), ...returnOnFail };
   }
   return { ok: true, ...operation() };
 }

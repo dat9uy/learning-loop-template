@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readRegistry } from "../../core/meta-state.js";
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
-import { appendGateLog } from "#lib/gate-logging.js";
+import { logToolCall } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
 
@@ -25,19 +25,19 @@ export const metaStateSupersedeTool = {
     const entry = entries.find((e) => e.id === id);
     if (!entry) {
       const result = { superseded: false, reason: "not_found", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_supersede", ...result });
+      logToolCall(root, "meta_state_supersede", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     if (entry.entry_kind !== "finding") {
       const result = { superseded: false, reason: "not_a_finding", id, entry_kind: entry.entry_kind };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_supersede", ...result });
+      logToolCall(root, "meta_state_supersede", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     // Validate consolidated_into is an existing change-log
     const target = entries.find((e) => e.id === consolidated_into);
     if (!target || target.entry_kind !== "change-log") {
       const result = { superseded: false, reason: "consolidated_into_not_a_change_log", id, consolidated_into };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_supersede", ...result });
+      logToolCall(root, "meta_state_supersede", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     const currentVersion = entry.version ?? 0;
@@ -54,7 +54,7 @@ export const metaStateSupersedeTool = {
     const updateOutcome = await applyUpdateAndCheck(root, id, patch, "meta_state_supersede");
     if (!updateOutcome.ok) {
       const result = { superseded: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version };
-      appendGateLog(root, { timestamp: now, tool: "meta_state_supersede", ...result });
+      logToolCall(root, "meta_state_supersede", result);
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
     const result = {
@@ -66,7 +66,7 @@ export const metaStateSupersedeTool = {
       superseded_by: "operator",
       ...(resolution && { resolution }),
     };
-    appendGateLog(root, { timestamp: now, tool: "meta_state_supersede", ...result });
+    logToolCall(root, "meta_state_supersede", result);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };

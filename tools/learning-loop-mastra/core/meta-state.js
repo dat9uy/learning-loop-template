@@ -4,6 +4,16 @@ import { join, isAbsolute } from "node:path";
 import { z } from "zod";
 import { stripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
+// Plan 260712-0724 follow-up: registry-write helpers (persistRegistryAtomic +
+// appendRegistryEntryAtomic) consolidated here from inline duplicates that
+// fallow's new-only gate flagged in archiveEntry, shipLoopDesign, writeEntry,
+// and claimEntry. The path helpers (REGISTRY_FILENAME + getRegistryPath) move
+// here too so the registry's on-disk location is single-source.
+import {
+  getRegistryPath,
+  persistRegistryAtomic,
+  appendRegistryEntryAtomic,
+} from "./registry-writes.js";
 import { withRegistryLock } from "./registry-lock.js";
 // Plan 260712-0300 Phase 1: operation_envelope field on change-log entries
 // (Implementation 2 of the assertinvariant resolution). The helper owns the
@@ -44,7 +54,6 @@ import { stripEvidenceAnchor } from "./gate-logic.js";
 // Pre-state-only — see core/operation-invariant.js for the architecture.
 import { assertinvariant } from "./operation-invariant.js";
 
-const REGISTRY_FILENAME = "meta-state.jsonl";
 // Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
 // status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied
 // at archive time, outside the enum). `reported`/`active`/`stale`/`auto-resolved`
@@ -470,10 +479,6 @@ function enqueue(root, fn) {
   return result;
 }
 
-function getRegistryPath(root) {
-  return join(root, REGISTRY_FILENAME);
-}
-
 function _readAndParseRegistry(root) {
   const path = getRegistryPath(root);
   if (!existsSync(path)) return [];
@@ -634,6 +639,38 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
 }
 
 /**
+ * Module-private helper: assert the entry at `entries[idx]` is NOT in the
+ * `archived` status. Used by `archiveEntry` (single-entry archive path) and by
+ * `metaStateBatch`'s `case "archive"` (batch archive path) — both paths were
+ * flagged by fallow for duplicating the same `assertinvariant` already-archived
+ * pre-condition inline. Returns true when the entry may be archived; returns
+ * false when the entry is already archived (and emits the structured
+ * `already_archived` failure to the gate log via the assertinvariant wrapper).
+ *
+ * Module-private (not exported): only this file owns the registry semantics,
+ * and `already_archived` is the only currently-shared pre-condition. If a
+ * second invariant emerges (e.g., `not_terminal` for re-archive attempts),
+ * promote this to a small family of helpers.
+ */
+async function assertNotArchived(entries, idx, root, id) {
+  const invariantResult = await assertinvariant(
+    () => Promise.resolve({ ok: true }),
+    {
+      accept: {
+        context: () => entries[idx],
+        check: (e) => e.status !== "archived",
+      },
+      returnOnFail: {
+        reason_code: "already_archived",
+        id,
+      },
+      root,
+    }
+  );
+  return invariantResult.ok;
+}
+
+/**
  * Atomically append a single entry to the JSONL registry.
  * Queued per-root to prevent read-modify-write races under concurrent calls
  * within one process, AND locked at the filesystem level (proper-lockfile) to
@@ -679,15 +716,7 @@ export function writeEntry(root, entry) {
       if (!validation.success) {
         throw new InvalidEntryError(validation.error);
       }
-      const path = getRegistryPath(root);
-      const lines = existsSync(path)
-        ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
-        : [];
-      lines.push(JSON.stringify(validation.data));
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      appendRegistryEntryAtomic(root, validation.data);
     })
   );
 }
@@ -794,11 +823,7 @@ export function updateEntry(root, id, patch) {
         }
       }
 
-      const path = getRegistryPath(root);
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, updated.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      persistRegistryAtomic(updated, root);
       return true;
     })
   );
@@ -818,21 +843,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
       // wrapper enforces the already-archived pre-condition (moved from the
       // inline check that used to live here). The wrapper fires BEFORE
       // mutation.
-      const invariantResult = await assertinvariant(
-        () => Promise.resolve({ ok: true }),
-        {
-          accept: {
-            context: () => entries[idx],
-            check: (e) => e.status !== "archived",
-          },
-          returnOnFail: {
-            reason_code: "already_archived",
-            id,
-          },
-          root,
-        }
-      );
-      if (!invariantResult.ok) {
+      if (!(await assertNotArchived(entries, idx, root, id))) {
         return { archived: false, reason: "already_archived", id };
       }
       entries[idx] = {
@@ -842,11 +853,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
         archived_by: archivedBy,
         archived_reason: reason,
       };
-      const path = getRegistryPath(root);
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      persistRegistryAtomic(entries, root);
       return { archived: true, id, archived_at: entries[idx].archived_at };
     })
   );
@@ -885,11 +892,7 @@ export function deleteEntry(root, id) {
         return { deleted: false, reason: "change_log_immutable", id };
       }
       const filtered = entries.filter((e) => e.id !== id);
-      const path = getRegistryPath(root);
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, filtered.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      persistRegistryAtomic(filtered, root);
       return { deleted: true, id };
     })
   );
@@ -951,11 +954,7 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
         shipped_at: shippedAt,
         version: currentVersion + 1,
       };
-      const path = getRegistryPath(root);
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      persistRegistryAtomic(entries, root);
       return {
         shipped: true,
         id,
@@ -1137,21 +1136,7 @@ export function metaStateBatch(root, operations, envelope) {
               if (idx === -1) throw new Error("not_found");
               // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
               // wrapper enforces the already-archived pre-condition.
-              const archiveInvariant = await assertinvariant(
-                () => Promise.resolve({ ok: true }),
-                {
-                  accept: {
-                    context: () => entries[idx],
-                    check: (e) => e.status !== "archived",
-                  },
-                  returnOnFail: {
-                    reason_code: "already_archived",
-                    id: op.id,
-                  },
-                  root,
-                }
-              );
-              if (!archiveInvariant.ok) {
+              if (!(await assertNotArchived(entries, idx, root, op.id))) {
                 const err = new Error("already_archived");
                 throw err;
               }
@@ -1326,15 +1311,7 @@ export function tryClaimSessionId(root, key, entryBuilder) {
       throw new InvalidEntryError(validation.error);
     }
 
-    const path = getRegistryPath(root);
-    const lines = existsSync(path)
-      ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "")
-      : [];
-    lines.push(JSON.stringify(validation.data));
-    const tmpPath = path + ".tmp";
-    writeFileSync(tmpPath, lines.join("\n") + "\n", "utf8");
-    renameSync(tmpPath, path);
-    invalidateCache(root);
+    appendRegistryEntryAtomic(root, validation.data);
     return { claimed: true, id: entry.id };
   });
 }
