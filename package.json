@@ -36,7 +36,6 @@
   },
   "devDependencies": {
     "@vitest/coverage-istanbul": "^4.1.10",
-    "@vitest/coverage-v8": "^4.1.10",
     "fallow": "3.3.0",
     "mastracode": "^0.26.0",
     "simple-git-hooks": "^2.13.1",
