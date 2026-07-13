@@ -1,6 +1,23 @@
 #!/usr/bin/env node
 'use strict';
 
+// inbound-state-gate script-style gate test — vitest migration.
+//
+// Original (pre-migration): top-level script-style test that walks 11
+// categories of state-change detection + observation staleness + context
+// injection + marker file flow + outbound gate + false-positive rate + MCP
+// server divergence + test isolation + observation schema + meta-state-first
+// ordering + emission collapse. Ends with `process.exit(failed > 0 ? 1 : 0)`.
+//
+// Migration: keep all require()s and helpers (CJS), wrap the entire
+// script body in a single `test()` call. The custom `assert()` helper
+// preserves the script's PASS/FAIL counter behavior; we collect failure
+// messages and throw at the end if any failed (the vitest-equivalent of
+// `process.exit(failed > 0 ? 1 : 0)`).
+//
+// R13 semantic preservation: every original assertion is preserved verbatim
+// across all 11 categories.
+
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +29,7 @@ const OUTBOUND_HOOK = path.join(__dirname, '..', 'hooks', 'bash-coordination-gat
 
 let passed = 0;
 let failed = 0;
+const failures = [];
 
 function assert(condition, msg) {
   if (condition) {
@@ -20,6 +38,7 @@ function assert(condition, msg) {
   } else {
     console.error(`  FAIL: ${msg}`);
     failed++;
+    failures.push(msg);
   }
 }
 
@@ -58,12 +77,11 @@ function createTempProject() {
 }
 
 function writeObservation(tmpDir, data) {
-  // Write to runtime-state.jsonl instead of records/observations YAML
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   const entry = {
     kind: 'ledger-event',
     affected_system: data.affected_system || 'vnstock',
-    id: data.id, // Allow undefined for fallback testing
+    id: data.id,
     value: 0,
     delta: 0,
     source_ref: 'local:meta-state:test',
@@ -71,7 +89,6 @@ function writeObservation(tmpDir, data) {
     status: data.status || 'active',
     metadata: data.metadata || { constraint_type: data.constraint_type, constraint: data.constraint },
   };
-  // Only set timestamp if updated_at is provided; otherwise leave undefined for "no updated_at" tests
   if (data.updated_at) {
     entry.timestamp = data.updated_at;
   }
@@ -95,8 +112,6 @@ function writeMarker(tmpDir, timestamp, snippet = 'test') {
 function clearMarker(tmpDir) {
   const legacyPath = path.join(tmpDir, '.claude', 'coordination', '.last-operator-message');
   try { fs.unlinkSync(legacyPath); } catch {}
-  // Plan 260711-0030 Phase 5: also clear any session-scoped marker file
-  // (the inbound gate now writes `.last-operator-message-{sessionId}`).
   const coordDir = path.join(tmpDir, '.claude', 'coordination');
   if (fs.existsSync(coordDir)) {
     for (const f of fs.readdirSync(coordDir)) {
@@ -110,7 +125,6 @@ function clearMarker(tmpDir) {
 function markerExists(tmpDir) {
   const coordDir = path.join(tmpDir, '.claude', 'coordination');
   if (!fs.existsSync(coordDir)) return false;
-  // Plan 260711-0030 Phase 5: any session-scoped OR legacy un-suffixed marker counts.
   for (const f of fs.readdirSync(coordDir)) {
     if (f.startsWith('.last-operator-message')) return true;
   }
@@ -139,484 +153,440 @@ function parseOutbound(result) {
   }
 }
 
-// --- Category 1: State-Change Detection ---
-console.log('\n=== Category 1: State-Change Detection ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
-
-  // Marker written = state-change detected (requires stale observation for marker to write post-F1)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(markerExists(tmpDir), 'device clearance → marker written');
-  clearMarker(tmpDir);
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t2 = runInboundHook('the container is running', env);
-  assert(markerExists(tmpDir), 'container state → marker written');
-  clearMarker(tmpDir);
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t3 = runInboundHook('I installed vnstock', env);
-  assert(markerExists(tmpDir), 'action report → marker written');
-  clearMarker(tmpDir);
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t4 = runInboundHook('the slot is free', env);
-  assert(markerExists(tmpDir), 'state assertion → marker written');
-  clearMarker(tmpDir);
-
-  clearObservations(tmpDir);
-  const t5 = runInboundHook("what should we do next?", env);
-  assert(!markerExists(tmpDir), 'normal message → no marker');
-
-  const t6 = runInboundHook('ok', env);
-  assert(!markerExists(tmpDir), 'short message → no marker');
-
-  const t7 = runInboundHook('', env);
-  assert(!markerExists(tmpDir), 'empty message → no marker');
-
-  const t8 = runInboundHook('is the device cleared?', env);
-  assert(!markerExists(tmpDir), 'question ending with ? → no marker (F11)');
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t9 = runInboundHook("I didn't clear the device", env);
-  assert(markerExists(tmpDir), 'negated state → marker written');
-  clearMarker(tmpDir);
-
-  clearObservations(tmpDir);
-  const t10 = runInboundHook('is the test suite done?', env);
-  assert(!markerExists(tmpDir), 'question filter (F11) → no marker');
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const t11 = runInboundHook('the build is broken', env);
-  assert(markerExists(tmpDir), 'broad pattern match → marker written (documented false positive)');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 2: Observation Staleness ---
-console.log('\n=== Category 2: Observation Staleness ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  // Fresh observation (< 30min) → no context injection
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-fresh', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(!contextWasInjected(t1), 'fresh observation → no context injection');
-  clearMarker(tmpDir);
-
-  // Stale observation (> 30min) → context injection
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t2 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t2), 'stale observation → context injected');
-  clearMarker(tmpDir);
-
-  // No updated_at → context injection
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-no-time', status: 'active', constraint_type: 'docker' });
-  const t3 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t3), 'missing updated_at → context injected');
-  clearMarker(tmpDir);
-
-  // Invalid timestamp → context injection
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-bad-time', status: 'active', constraint_type: 'docker', updated_at: 'not-a-date' });
-  const t4 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t4), 'invalid updated_at → context injected');
-  clearMarker(tmpDir);
-
-  // Divergence case (F2): obs 10min old → inbound says fresh, but marker newer than obs
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-diverge', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
-  const t5 = runInboundHook('I cleared the device', env);
-  assert(!contextWasInjected(t5), 'divergence case: 10min old → inbound NOT stale (<30min)');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 3: Context Injection Format ---
-console.log('\n=== Category 3: Context Injection Format ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-fmt', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t1), 'state-change + stale obs → context injected');
-
-  let parsed;
-  try { parsed = JSON.parse(t1.stdout); } catch { parsed = null; }
-  assert(parsed && parsed.hookSpecificOutput?.hookEventName === 'UserPromptSubmit', 'output has hookEventName');
-  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('surfaces:'), 'additionalContext uses surface-grouped pointer (not raw id dump)');
-  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('vnstock'), 'additionalContext names the affected surface');
-  assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('INBOUND STATE GATE'), 'additionalContext has gate header');
-  clearMarker(tmpDir);
-
-  // State-change + fresh obs → exit 0, no output
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-fresh2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
-  const t2 = runInboundHook('I cleared the device', env);
-  assert(t2.exitCode === 0 && !contextWasInjected(t2), 'state-change + fresh obs → no context');
-  clearMarker(tmpDir);
-
-  // No state-change → exit 0, no output
-  const t3 = runInboundHook('what should we do next?', env);
-  assert(t3.exitCode === 0 && !contextWasInjected(t3), 'no state-change → no context');
-
-  // State-change + no observations → exit 0, no output
-  clearObservations(tmpDir);
-  const t4 = runInboundHook('I cleared the device', env);
-  assert(t4.exitCode === 0 && !contextWasInjected(t4), 'state-change + no obs → no context');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 4: Marker File Flow ---
-console.log('\n=== Category 4: Marker File Flow ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  // Stale obs + state-change → marker written
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-m1', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  runInboundHook('I cleared the device', env);
-  assert(markerExists(tmpDir), 'stale + state-change → marker exists');
-  let marker = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'), 'utf8'));
-  assert(marker.timestamp != null, 'marker has timestamp');
-  assert(marker.prompt_snippet.includes('cleared'), 'marker contains prompt snippet');
-  clearMarker(tmpDir);
-
-  // Fresh obs + state-change → marker NOT written (F1 fix)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-m2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
-  runInboundHook('the container is running', env);
-  assert(!markerExists(tmpDir), 'fresh + state-change → marker NOT written (F1 fix)');
-  clearMarker(tmpDir);
-
-  // No observations + state-change → marker NOT written
-  clearObservations(tmpDir);
-  runInboundHook('I cleared the device', env);
-  assert(!markerExists(tmpDir), 'no obs + state-change → marker NOT written');
-  clearMarker(tmpDir);
-
-  // Normal message → no marker
-  runInboundHook('what should we do next?', env);
-  assert(!markerExists(tmpDir), 'normal message → no marker');
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 5: Outbound Gate Integration ---
-console.log('\n=== Category 5: Outbound Gate Integration ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  // Stale obs + marker + constrained cmd → escalate with inbound_gate: true
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out1', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  writeMarker(tmpDir, new Date(now - 1 * 60 * 1000).toISOString(), 'I cleared the device');
-  const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  const out1 = parseOutbound(t1);
-  // With runtime-state, vendor-api constraint is satisfied by vnstock entry, then staleness check escalates
-  assert(t1.exitCode === 2, 'stale obs + constrained → exit 2');
-  assert(out1 && out1.decision === 'escalate', 'decision is escalate');
-  assert(out1 && out1.inbound_gate === true, 'inbound_gate flag is true');
-  clearMarker(tmpDir);
-
-  // Fresh obs + marker + constrained cmd → ok (not stale by outbound algorithm)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out2', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 1 * 60 * 1000).toISOString() });
-  writeMarker(tmpDir, new Date(now - 2 * 60 * 60 * 1000).toISOString(), 'old message');
-  const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  // Exit 0 with empty stdout means allowed (no escalation)
-  assert(t2.exitCode === 0, 'fresh obs + old marker → exit 0 (no escalation)');
-  clearMarker(tmpDir);
-
-  // No marker + constrained cmd → ok (not stale)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out3', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  clearMarker(tmpDir);
-  const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  assert(t3.exitCode === 0, 'no marker → exit 0 (no escalation)');
-
-  // Phantom escalation (F1): fresh obs + state-change msg + constrained cmd
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out4', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
-  // Simulate inbound gate writing marker for fresh obs
-  writeMarker(tmpDir, new Date().toISOString(), 'the container is running');
-  const t4 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  const out4 = parseOutbound(t4);
-  assert(out4 && out4.inbound_gate === true, 'F1 phantom escalation: fresh obs + new marker → inbound_gate true');
-  clearMarker(tmpDir);
-
-  // Divergence case (F2): obs 10min old + state-change + constrained cmd
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-out5', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
-  writeMarker(tmpDir, new Date().toISOString(), 'I cleared the device');
-  const t5 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  const out5 = parseOutbound(t5);
-  assert(out5 && out5.inbound_gate === true, 'F2 divergence: 10min obs + new marker → outbound escalates');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 6: False Positive Rate ---
-console.log('\n=== Category 6: False Positive Rate ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-
-  const t1 = runInboundHook('I think we should clear the board', env);
-  assert(!markerExists(tmpDir), 'casual conversation → correctly not detected');
-
-  const t2 = runInboundHook('the docker container needs to be running', env);
-  assert(!markerExists(tmpDir), 'code discussion → correctly not detected');
-
-  const t3 = runInboundHook('what is the device limit?', env);
-  assert(!markerExists(tmpDir), 'pure question → not detected');
-
-  const t4 = runInboundHook("let's implement the auth system", env);
-  assert(!markerExists(tmpDir), 'unrelated topic → not detected');
-
-  const t5 = runInboundHook('is the device cleared?', env);
-  assert(!markerExists(tmpDir), 'question with state → not detected (F11)');
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-fp', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() });
-  const t6 = runInboundHook('the build is broken', env);
-  assert(markerExists(tmpDir), 'broad pattern → detected (documented false positive)');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 7: MCP Server Divergence (Code Inspection) ---
-console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
-{
-  const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'mastra', 'server.js');
-  const inboundStatePath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'inbound-state.js');
-  const serverCode = fs.readFileSync(serverPath, 'utf8');
-  const inboundStateCode = fs.readFileSync(inboundStatePath, 'utf8');
-  const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');
-  const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'tools', 'handlers', 'gate-tool.js');
-  const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
-  // After evaluator refactor: gate-tool.js delegates to evaluateBashGate, which
-  // internally calls checkObservationStaleness. Verify the delegation chain exists.
-  const evaluatorPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'evaluate-bash-gate.js');
-  const evaluatorCode = fs.readFileSync(evaluatorPath, 'utf8');
-  const checksRegardless = gateToolCode.includes('evaluateBashGate') && evaluatorCode.includes('checkObservationStaleness');
-  assert(hasStalenessCheck, 'MCP server has staleness check function');
-  assert(checksRegardless, 'MCP server delegates to evaluator which checks staleness regardless of decision (F3 fix)');
-}
-
-// --- Category 8: Test Isolation ---
-console.log('\n=== Category 8: Test Isolation ===');
-{
-  const tmpDir = createTempProject();
-  const customMarker = path.join(tmpDir, 'custom-marker.json');
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: customMarker };
-  const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
-
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  runInboundHook('I cleared the device', env);
-  assert(fs.existsSync(customMarker), 'GATE_MARKER_PATH override → marker written to custom path');
-
-  const defaultCoordDir = path.join(tmpDir, '.claude', 'coordination');
-  const legacyMarkerPath = path.join(defaultCoordDir, '.last-operator-message');
-  assert(!fs.existsSync(legacyMarkerPath), 'GATE_MARKER_PATH override → default path NOT used');
-
-  // Default path test — Plan 260711-0030 Phase 5: the writer now writes
-  // .last-operator-message-{sessionId} per worktree. Both legacy and
-  // session-scoped markers count as "marker exists" via markerExists().
-  clearMarker(tmpDir);
-  try { fs.unlinkSync(customMarker); } catch {}
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, staleObs);
-  const env2 = { GATE_ROOT: tmpDir }; // no GATE_MARKER_PATH
-  runInboundHook('I cleared the device', env2);
-  assert(markerExists(tmpDir), 'default path → some .last-operator-message* file written');
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 9: Observation Schema ---
-console.log('\n=== Category 9: Observation Schema ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  // Observation with id → context surfaces the affected system, not the raw id (pointer form)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-by-id', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t1), 'observation with id → context injected');
-  assert(t1.stdout.includes('vnstock') && t1.stdout.includes('surfaces:'), 'context surfaces affected system via pointer (not raw id)');
-  assert(!t1.stdout.includes('obs-by-id'), 'context does not inline the raw observation id');
-  clearMarker(tmpDir);
-
-  // Observation without id → context still names the affected surface (vnstock)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { constraint: 'docker-cleanup', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t2 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t2), 'observation without id → context injected');
-  assert(t2.stdout.includes('vnstock'), 'context names the affected surface');
-  clearMarker(tmpDir);
-
-  // Observation with neither id nor constraint → still names the affected surface from affected_system
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t3 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t3), 'observation with neither → context injected');
-  assert(t3.stdout.includes('vnstock'), 'context names the affected surface');
-  clearMarker(tmpDir);
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 10: Meta-State-First Ordering (260603 fix) ---
-// Defends against: agent in 260603-field-coverage-planning session anchored on the
-// listed observation IDs and missed that the gate was triggered by a state-change signal
-// requiring a meta-state.jsonl read first. Pattern documented in meta-state.jsonl lines 15-19
-// (5 G8 subcommand-class recurrences). Fix: buildContextMessage leads with the meta-state hint.
-console.log('\n=== Category 10: Meta-State-First Ordering ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-
-  // Single stale obs → meta-state hint present; raw id NOT inlined (pointer form)
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-meta-test', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t1), 'gate fires → context injected');
-  let parsed1;
-  try { parsed1 = JSON.parse(t1.stdout); } catch { parsed1 = null; }
-  const ctx1 = parsed1?.hookSpecificOutput?.additionalContext || '';
-  const metaStateIdx1 = ctx1.indexOf('meta-state.jsonl');
-  const obsIdIdx1 = ctx1.indexOf('obs-meta-test');
-  assert(metaStateIdx1 > 0, 'context contains meta-state.jsonl hint');
-  assert(obsIdIdx1 === -1, 'context does not inline the raw observation id (pointer form)');
-  assert(ctx1.includes('surfaces:'), 'context uses surface-grouped pointer');
-  assert(ctx1.includes('READ'), 'context includes READ directive (call to action)');
-  assert(ctx1.includes('last 20 lines'), 'context specifies reading window (last 20 lines)');
-  assert(ctx1.includes('change-log'), 'context mentions change-log entry kind (entry-type hint)');
-  clearMarker(tmpDir);
-
-  // Multiple stale obs → meta-state hint present; ids NOT inlined; surface count reflects all
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-multi-a', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  writeObservation(tmpDir, { id: 'obs-multi-b', status: 'active', constraint_type: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  writeObservation(tmpDir, { id: 'obs-multi-c', status: 'active', constraint_type: 'budget', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
-  const t2 = runInboundHook('the container is running', env);
-  let parsed2;
-  try { parsed2 = JSON.parse(t2.stdout); } catch { parsed2 = null; }
-  const ctx2 = parsed2?.hookSpecificOutput?.additionalContext || '';
-  const metaStateIdx2 = ctx2.indexOf('meta-state.jsonl');
-  const firstObsIdx2 = ctx2.indexOf('obs-multi-a');
-  assert(metaStateIdx2 > 0 && firstObsIdx2 === -1, 'multi-obs: hint present, raw ids not inlined');
-  assert(ctx2.includes('surfaces:'), 'multi-obs: surface-grouped pointer used');
-  assert(ctx2.includes('vnstock (3)'), 'multi-obs: surface count reflects all 3 stale observations (deduped by id)');
-  clearMarker(tmpDir);
-
-  // Sanity: previous behavior (observations listed first) would FAIL the new test.
-  // The substring "Active observations may be stale" is intentionally absent; replaced by
-  // the surface-grouped pointer headline. This is the structural fix — the new form
-  // cannot be regressed by reverting one line.
-  assert(!ctx1.includes('Active observations may be stale'), 'legacy leading phrase removed (anchoring defense)');
-  assert(ctx1.includes('stale active observation'), 'new pointer phrasing present (surface-grouped)');
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
-
-// --- Category 11: Emission Collapse (meta-260708T2338Z) ---
-// The gate must NOT re-fire the full dump every message. A repeat warning for
-// the same stale signature within the suppress window collapses to a one-line
-// "already surfaced" pointer; a changed stale set re-emits the full pointer.
-console.log('\n=== Category 11: Emission Collapse ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const now = new Date();
-  const staleTs = new Date(now - 2 * 60 * 60 * 1000).toISOString();
-  const tokenPath = path.join(tmpDir, '.claude', 'coordination', '.inbound-stale-surfaced');
-
-  function writeSuppressToken(signature, ts) {
-    fs.mkdirSync(path.dirname(tokenPath), { recursive: true });
-    fs.writeFileSync(tokenPath, JSON.stringify({ signature, ts }));
-  }
-  function clearSuppressToken() { try { fs.unlinkSync(tokenPath); } catch {} }
-  function ctxOf(result) {
-    try { return JSON.parse(result.stdout)?.hookSpecificOutput?.additionalContext || ''; } catch { return ''; }
+test('inbound-state-gate: 11 categories of state-change / staleness / context / marker / outbound / false-positive / MCP divergence / isolation / schema / ordering / emission-collapse assertions', () => {
+  // --- Category 1: State-Change Detection ---
+  console.log('\n=== Category 1: State-Change Detection ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(markerExists(tmpDir), 'device clearance → marker written');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t2 = runInboundHook('the container is running', env);
+    assert(markerExists(tmpDir), 'container state → marker written');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t3 = runInboundHook('I installed vnstock', env);
+    assert(markerExists(tmpDir), 'action report → marker written');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t4 = runInboundHook('the slot is free', env);
+    assert(markerExists(tmpDir), 'state assertion → marker written');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    const t5 = runInboundHook("what should we do next?", env);
+    assert(!markerExists(tmpDir), 'normal message → no marker');
+
+    const t6 = runInboundHook('ok', env);
+    assert(!markerExists(tmpDir), 'short message → no marker');
+
+    const t7 = runInboundHook('', env);
+    assert(!markerExists(tmpDir), 'empty message → no marker');
+
+    const t8 = runInboundHook('is the device cleared?', env);
+    assert(!markerExists(tmpDir), 'question ending with ? → no marker (F11)');
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t9 = runInboundHook("I didn't clear the device", env);
+    assert(markerExists(tmpDir), 'negated state → marker written');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    const t10 = runInboundHook('is the test suite done?', env);
+    assert(!markerExists(tmpDir), 'question filter (F11) → no marker');
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const t11 = runInboundHook('the build is broken', env);
+    assert(markerExists(tmpDir), 'broad pattern match → marker written (documented false positive)');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
-  // Dedup: a single vnstock row expands to 2 constraint-observations sharing one id;
-  // the pointer counts it once (deduped by id), surface grouping shows vnstock (1).
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
-  clearSuppressToken();
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t1), 'dedup: gate fires');
-  const c1 = ctxOf(t1);
-  assert(c1.includes('1 stale active observation') && c1.includes('vnstock (1)'), 'dedup: single record counted once (vnstock (1)), not twice');
-  assert(!c1.includes('already surfaced'), 'dedup: first emission is the full pointer, not the suppress line');
-  clearMarker(tmpDir);
+  // --- Category 2: Observation Staleness ---
+  console.log('\n=== Category 2: Observation Staleness ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
 
-  // Suppression: token present with the same signature + recent ts → one-line pointer.
-  clearSuppressToken();
-  writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
-  const t2 = runInboundHook('I cleared the device', env);
-  assert(contextWasInjected(t2), 'suppress: gate still fires (warn)');
-  const c2 = ctxOf(t2);
-  assert(c2.includes('already surfaced this session'), 'suppress: repeat same-signature within window → already-surfaced pointer');
-  assert(c2.includes('Inline list suppressed'), 'suppress: inline list suppressed message present');
-  clearMarker(tmpDir);
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-fresh', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(!contextWasInjected(t1), 'fresh observation → no context injection');
+    clearMarker(tmpDir);
 
-  // Re-emit on changed signature: token present but stale set changed → full pointer.
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-changed', status: 'active', constraint_type: 'docker', updated_at: staleTs });
-  clearSuppressToken();
-  writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
-  const t3 = runInboundHook('I cleared the device', env);
-  const c3 = ctxOf(t3);
-  assert(c3.includes('detected') && !c3.includes('already surfaced this session'), 're-emit: changed signature → full pointer (not suppressed)');
-  clearMarker(tmpDir);
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t2 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t2), 'stale observation → context injected');
+    clearMarker(tmpDir);
 
-  // Expired window: same signature but token ts older than 30 min → full pointer.
-  clearObservations(tmpDir);
-  writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
-  clearSuppressToken();
-  writeSuppressToken('obs-dedup', new Date(now - 45 * 60 * 1000).toISOString());
-  const t4 = runInboundHook('I cleared the device', env);
-  const c4 = ctxOf(t4);
-  assert(c4.includes('detected') && !c4.includes('already surfaced this session'), 'expired window: same signature after 30 min → full pointer re-emits');
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-no-time', status: 'active', constraint_type: 'docker' });
+    const t3 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t3), 'missing updated_at → context injected');
+    clearMarker(tmpDir);
 
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-bad-time', status: 'active', constraint_type: 'docker', updated_at: 'not-a-date' });
+    const t4 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t4), 'invalid updated_at → context injected');
+    clearMarker(tmpDir);
 
-// --- Summary ---
-console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
-process.exit(failed > 0 ? 1 : 0);
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-diverge', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
+    const t5 = runInboundHook('I cleared the device', env);
+    assert(!contextWasInjected(t5), 'divergence case: 10min old → inbound NOT stale (<30min)');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 3: Context Injection Format ---
+  console.log('\n=== Category 3: Context Injection Format ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-fmt', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t1), 'state-change + stale obs → context injected');
+
+    let parsed;
+    try { parsed = JSON.parse(t1.stdout); } catch { parsed = null; }
+    assert(parsed && parsed.hookSpecificOutput?.hookEventName === 'UserPromptSubmit', 'output has hookEventName');
+    assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('surfaces:'), 'additionalContext uses surface-grouped pointer (not raw id dump)');
+    assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('vnstock'), 'additionalContext names the affected surface');
+    assert(parsed && parsed.hookSpecificOutput?.additionalContext?.includes('INBOUND STATE GATE'), 'additionalContext has gate header');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-fresh2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
+    const t2 = runInboundHook('I cleared the device', env);
+    assert(t2.exitCode === 0 && !contextWasInjected(t2), 'state-change + fresh obs → no context');
+    clearMarker(tmpDir);
+
+    const t3 = runInboundHook('what should we do next?', env);
+    assert(t3.exitCode === 0 && !contextWasInjected(t3), 'no state-change → no context');
+
+    clearObservations(tmpDir);
+    const t4 = runInboundHook('I cleared the device', env);
+    assert(t4.exitCode === 0 && !contextWasInjected(t4), 'state-change + no obs → no context');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 4: Marker File Flow ---
+  console.log('\n=== Category 4: Marker File Flow ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-m1', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    runInboundHook('I cleared the device', env);
+    assert(markerExists(tmpDir), 'stale + state-change → marker exists');
+    let marker = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'), 'utf8'));
+    assert(marker.timestamp != null, 'marker has timestamp');
+    assert(marker.prompt_snippet.includes('cleared'), 'marker contains prompt snippet');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-m2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
+    runInboundHook('the container is running', env);
+    assert(!markerExists(tmpDir), 'fresh + state-change → marker NOT written (F1 fix)');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    runInboundHook('I cleared the device', env);
+    assert(!markerExists(tmpDir), 'no obs + state-change → marker NOT written');
+    clearMarker(tmpDir);
+
+    runInboundHook('what should we do next?', env);
+    assert(!markerExists(tmpDir), 'normal message → no marker');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 5: Outbound Gate Integration ---
+  console.log('\n=== Category 5: Outbound Gate Integration ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-out1', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    writeMarker(tmpDir, new Date(now - 1 * 60 * 1000).toISOString(), 'I cleared the device');
+    const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    const out1 = parseOutbound(t1);
+    assert(t1.exitCode === 2, 'stale obs + constrained → exit 2');
+    assert(out1 && out1.decision === 'escalate', 'decision is escalate');
+    assert(out1 && out1.inbound_gate === true, 'inbound_gate flag is true');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-out2', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 1 * 60 * 1000).toISOString() });
+    writeMarker(tmpDir, new Date(now - 2 * 60 * 60 * 1000).toISOString(), 'old message');
+    const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    assert(t2.exitCode === 0, 'fresh obs + old marker → exit 0 (no escalation)');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-out3', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    clearMarker(tmpDir);
+    const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    assert(t3.exitCode === 0, 'no marker → exit 0 (no escalation)');
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-out4', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
+    writeMarker(tmpDir, new Date().toISOString(), 'the container is running');
+    const t4 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    const out4 = parseOutbound(t4);
+    assert(out4 && out4.inbound_gate === true, 'F1 phantom escalation: fresh obs + new marker → inbound_gate true');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-out5', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
+    writeMarker(tmpDir, new Date().toISOString(), 'I cleared the device');
+    const t5 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    const out5 = parseOutbound(t5);
+    assert(out5 && out5.inbound_gate === true, 'F2 divergence: 10min obs + new marker → outbound escalates');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 6: False Positive Rate ---
+  console.log('\n=== Category 6: False Positive Rate ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+
+    const t1 = runInboundHook('I think we should clear the board', env);
+    assert(!markerExists(tmpDir), 'casual conversation → correctly not detected');
+
+    const t2 = runInboundHook('the docker container needs to be running', env);
+    assert(!markerExists(tmpDir), 'code discussion → correctly not detected');
+
+    const t3 = runInboundHook('what is the device limit?', env);
+    assert(!markerExists(tmpDir), 'pure question → not detected');
+
+    const t4 = runInboundHook("let's implement the auth system", env);
+    assert(!markerExists(tmpDir), 'unrelated topic → not detected');
+
+    const t5 = runInboundHook('is the device cleared?', env);
+    assert(!markerExists(tmpDir), 'question with state → not detected (F11)');
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-fp', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() });
+    const t6 = runInboundHook('the build is broken', env);
+    assert(markerExists(tmpDir), 'broad pattern → detected (documented false positive)');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 7: MCP Server Divergence (Code Inspection) ---
+  console.log('\n=== Category 7: MCP Server Divergence (Code Inspection) ===');
+  {
+    const serverPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'mastra', 'server.js');
+    const inboundStatePath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'inbound-state.js');
+    const serverCode = fs.readFileSync(serverPath, 'utf8');
+    const inboundStateCode = fs.readFileSync(inboundStatePath, 'utf8');
+    const hasStalenessCheck = serverCode.includes('checkObservationStaleness') || inboundStateCode.includes('checkObservationStaleness');
+    const gateToolPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'tools', 'handlers', 'gate-tool.js');
+    const gateToolCode = fs.readFileSync(gateToolPath, 'utf8');
+    const evaluatorPath = path.join(__dirname, '..', '..', '..', 'tools', 'learning-loop-mastra', 'core', 'evaluate-bash-gate.js');
+    const evaluatorCode = fs.readFileSync(evaluatorPath, 'utf8');
+    const checksRegardless = gateToolCode.includes('evaluateBashGate') && evaluatorCode.includes('checkObservationStaleness');
+    assert(hasStalenessCheck, 'MCP server has staleness check function');
+    assert(checksRegardless, 'MCP server delegates to evaluator which checks staleness regardless of decision (F3 fix)');
+  }
+
+  // --- Category 8: Test Isolation ---
+  console.log('\n=== Category 8: Test Isolation ===');
+  {
+    const tmpDir = createTempProject();
+    const customMarker = path.join(tmpDir, 'custom-marker.json');
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: customMarker };
+    const staleObs = { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    runInboundHook('I cleared the device', env);
+    assert(fs.existsSync(customMarker), 'GATE_MARKER_PATH override → marker written to custom path');
+
+    const defaultCoordDir = path.join(tmpDir, '.claude', 'coordination');
+    const legacyMarkerPath = path.join(defaultCoordDir, '.last-operator-message');
+    assert(!fs.existsSync(legacyMarkerPath), 'GATE_MARKER_PATH override → default path NOT used');
+
+    clearMarker(tmpDir);
+    try { fs.unlinkSync(customMarker); } catch {}
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, staleObs);
+    const env2 = { GATE_ROOT: tmpDir };
+    runInboundHook('I cleared the device', env2);
+    assert(markerExists(tmpDir), 'default path → some .last-operator-message* file written');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 9: Observation Schema ---
+  console.log('\n=== Category 9: Observation Schema ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-by-id', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t1), 'observation with id → context injected');
+    assert(t1.stdout.includes('vnstock') && t1.stdout.includes('surfaces:'), 'context surfaces affected system via pointer (not raw id)');
+    assert(!t1.stdout.includes('obs-by-id'), 'context does not inline the raw observation id');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { constraint: 'docker-cleanup', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t2 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t2), 'observation without id → context injected');
+    assert(t2.stdout.includes('vnstock'), 'context names the affected surface');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t3 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t3), 'observation with neither → context injected');
+    assert(t3.stdout.includes('vnstock'), 'context names the affected surface');
+    clearMarker(tmpDir);
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 10: Meta-State-First Ordering ---
+  console.log('\n=== Category 10: Meta-State-First Ordering ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-meta-test', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t1), 'gate fires → context injected');
+    let parsed1;
+    try { parsed1 = JSON.parse(t1.stdout); } catch { parsed1 = null; }
+    const ctx1 = parsed1?.hookSpecificOutput?.additionalContext || '';
+    const metaStateIdx1 = ctx1.indexOf('meta-state.jsonl');
+    const obsIdIdx1 = ctx1.indexOf('obs-meta-test');
+    assert(metaStateIdx1 > 0, 'context contains meta-state.jsonl hint');
+    assert(obsIdIdx1 === -1, 'context does not inline the raw observation id (pointer form)');
+    assert(ctx1.includes('surfaces:'), 'context uses surface-grouped pointer');
+    assert(ctx1.includes('READ'), 'context includes READ directive (call to action)');
+    assert(ctx1.includes('last 20 lines'), 'context specifies reading window (last 20 lines)');
+    assert(ctx1.includes('change-log'), 'context mentions change-log entry kind (entry-type hint)');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-multi-a', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    writeObservation(tmpDir, { id: 'obs-multi-b', status: 'active', constraint_type: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    writeObservation(tmpDir, { id: 'obs-multi-c', status: 'active', constraint_type: 'budget', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
+    const t2 = runInboundHook('the container is running', env);
+    let parsed2;
+    try { parsed2 = JSON.parse(t2.stdout); } catch { parsed2 = null; }
+    const ctx2 = parsed2?.hookSpecificOutput?.additionalContext || '';
+    const metaStateIdx2 = ctx2.indexOf('meta-state.jsonl');
+    const firstObsIdx2 = ctx2.indexOf('obs-multi-a');
+    assert(metaStateIdx2 > 0 && firstObsIdx2 === -1, 'multi-obs: hint present, raw ids not inlined');
+    assert(ctx2.includes('surfaces:'), 'multi-obs: surface-grouped pointer used');
+    assert(ctx2.includes('vnstock (3)'), 'multi-obs: surface count reflects all 3 stale observations (deduped by id)');
+    clearMarker(tmpDir);
+
+    assert(!ctx1.includes('Active observations may be stale'), 'legacy leading phrase removed (anchoring defense)');
+    assert(ctx1.includes('stale active observation'), 'new pointer phrasing present (surface-grouped)');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // --- Category 11: Emission Collapse ---
+  console.log('\n=== Category 11: Emission Collapse ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const now = new Date();
+    const staleTs = new Date(now - 2 * 60 * 60 * 1000).toISOString();
+    const tokenPath = path.join(tmpDir, '.claude', 'coordination', '.inbound-stale-surfaced');
+
+    function writeSuppressToken(signature, ts) {
+      fs.mkdirSync(path.dirname(tokenPath), { recursive: true });
+      fs.writeFileSync(tokenPath, JSON.stringify({ signature, ts }));
+    }
+    function clearSuppressToken() { try { fs.unlinkSync(tokenPath); } catch {} }
+    function ctxOf(result) {
+      try { return JSON.parse(result.stdout)?.hookSpecificOutput?.additionalContext || ''; } catch { return ''; }
+    }
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+    clearSuppressToken();
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t1), 'dedup: gate fires');
+    const c1 = ctxOf(t1);
+    assert(c1.includes('1 stale active observation') && c1.includes('vnstock (1)'), 'dedup: single record counted once (vnstock (1)), not twice');
+    assert(!c1.includes('already surfaced'), 'dedup: first emission is the full pointer, not the suppress line');
+    clearMarker(tmpDir);
+
+    clearSuppressToken();
+    writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
+    const t2 = runInboundHook('I cleared the device', env);
+    assert(contextWasInjected(t2), 'suppress: gate still fires (warn)');
+    const c2 = ctxOf(t2);
+    assert(c2.includes('already surfaced this session'), 'suppress: repeat same-signature within window → already-surfaced pointer');
+    assert(c2.includes('Inline list suppressed'), 'suppress: inline list suppressed message present');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-changed', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+    clearSuppressToken();
+    writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
+    const t3 = runInboundHook('I cleared the device', env);
+    const c3 = ctxOf(t3);
+    assert(c3.includes('detected') && !c3.includes('already surfaced this session'), 're-emit: changed signature → full pointer (not suppressed)');
+    clearMarker(tmpDir);
+
+    clearObservations(tmpDir);
+    writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
+    clearSuppressToken();
+    writeSuppressToken('obs-dedup', new Date(now - 45 * 60 * 1000).toISOString());
+    const t4 = runInboundHook('I cleared the device', env);
+    const c4 = ctxOf(t4);
+    assert(c4.includes('detected') && !c4.includes('already surfaced this session'), 'expired window: same signature after 30 min → full pointer re-emits');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
+  if (failed > 0) {
+    throw new Error(`inbound-state-gate: ${failed} assertion(s) failed:\n  - ${failures.join('\n  - ')}`);
+  }
+});

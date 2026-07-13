@@ -7,7 +7,6 @@
 // This test spawns the real MCP server via Node and asserts that the
 // loop_describe summary is returned within the 10-second probe window.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { join } = require("node:path");
 

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { getMastraStorage, getParityDb, getDataDir, storage } from "../storage.js";

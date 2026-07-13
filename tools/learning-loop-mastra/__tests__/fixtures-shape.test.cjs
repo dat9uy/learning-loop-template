@@ -7,7 +7,6 @@
 // Both files are read from disk on every run — no caching — so this test
 // always reflects the current state of the repo.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");

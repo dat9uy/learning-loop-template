@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { test } from "node:test";
+import { test } from "vitest";
 import { evaluateBudget, makeGateDecision } from "../../core/gate-logic.js";
 
 // ─── evaluateBudget tests (utility function, no longer called by gate) ───

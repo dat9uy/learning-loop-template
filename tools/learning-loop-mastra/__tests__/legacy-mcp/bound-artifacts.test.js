@@ -15,7 +15,7 @@
  *     for the 6 simple rules are gone).
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";

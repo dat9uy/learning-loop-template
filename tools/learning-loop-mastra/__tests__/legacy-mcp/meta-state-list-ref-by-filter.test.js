@@ -1,4 +1,4 @@
-import { describe, test, before, after } from "node:test";
+import { describe, test, beforeAll, afterAll } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -23,14 +23,14 @@ describe("meta_state_list ref_by/ref_field filter", () => {
   let root;
   let originalGateRoot;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
     originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
     writeFileSync(join(root, "meta-state.jsonl"), SEED_ENTRIES.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
   });
 
-  after(() => {
+  afterAll(() => {
     if (originalGateRoot === undefined) {
       delete process.env.GATE_ROOT;
     } else {

@@ -6,7 +6,7 @@
  * Note: Agent class uses getInstructions() and listTools() methods
  * (not direct .instructions / .tools properties).
  */
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 // ── Test 1: intakeAgent ──────────────────────────────────────────────────────

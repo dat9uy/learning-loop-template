@@ -1,4 +1,4 @@
-import { describe, test, before, after } from "node:test";
+import { describe, test, beforeAll, afterAll } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,7 +20,7 @@ describe("meta_state_list compact mode", () => {
   let root;
   let originalGateRoot;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
     originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
@@ -86,7 +86,7 @@ describe("meta_state_list compact mode", () => {
     ]);
   });
 
-  after(() => {
+  afterAll(() => {
     if (originalGateRoot === undefined) {
       delete process.env.GATE_ROOT;
     } else {
@@ -288,7 +288,7 @@ describe("meta_state_list compact mode session_id", () => {
   let root;
   let originalGateRoot;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
     originalGateRoot = process.env.GATE_ROOT;
     process.env.GATE_ROOT = root;
@@ -308,7 +308,7 @@ describe("meta_state_list compact mode session_id", () => {
     ]);
   });
 
-  after(() => {
+  afterAll(() => {
     if (originalGateRoot === undefined) {
       delete process.env.GATE_ROOT;
     } else {

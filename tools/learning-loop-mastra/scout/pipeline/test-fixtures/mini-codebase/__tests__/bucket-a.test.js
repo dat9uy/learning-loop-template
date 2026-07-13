@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 // Bucket A fixture: pure MCP-only test, no file I/O.

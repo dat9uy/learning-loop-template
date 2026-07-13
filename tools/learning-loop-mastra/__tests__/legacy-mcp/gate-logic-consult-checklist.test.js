@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { test } from "node:test";
+import { test } from "vitest";
 import { applyPromotedRules } from "../../core/gate-logic.js";
 import { metaStateRuleEntrySchema } from "../../core/meta-state.js";
 

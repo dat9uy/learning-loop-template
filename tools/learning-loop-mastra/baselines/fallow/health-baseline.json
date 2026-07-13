@@ -1,5 +1,148 @@
 {
   "finding_counts": {
+    "__tests__/cold-session-enumerate-mastra.test.cjs": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/fixtures-shape.test.cjs": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/budget-option-c-e2e.test.js": {
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "__tests__/legacy-mcp/build-change-log-gap-hints.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/build-inverse-indexes.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/build-stale-dispatch-hints.test.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/cold-tier-regression.test.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/gate-recurrence.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-derive-status-tool.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-dispatch-finding-tool.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-dispatch-ttl-and-close-flow.test.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-list-compact.test.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-relationship-validate-tool.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-reopen-e2e-cold-session.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-schema-extension.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/meta-state-sweep-stale-transition.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/probe-helpers.cjs": {
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "__tests__/legacy-mcp/runtime-agnostic.test.js": {
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/skills-mirror-parity.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/wire-format-array-guard.test.js": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/legacy-mcp/workflow-shape.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/phase-e-foundation/placement-manifest.test.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/r2/fallow-test-tree-clean.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/r2/precommit-hook.test.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "__tests__/storage-parity.test.cjs": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "__tests__/with-mcp-server.js": {
       "crap_moderate": {
         "count": 1
@@ -131,6 +274,11 @@
         "count": 4
       }
     },
+    "core/meta-state.test.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "core/path-containment.js": {
       "crap_critical": {
         "count": 1
@@ -202,6 +350,14 @@
       }
     },
     "hooks/universal/inbound-gate.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "interface/__tests__/contract.test.js": {
+      "crap_critical": {
+        "count": 2
+      },
       "crap_moderate": {
         "count": 2
       }
@@ -442,23 +598,19 @@
   },
   "runtime_coverage_findings": [],
   "target_keys": [
-    "core/entry/index.js:dead code",
-    "core/derive-status.js:dead code",
-    "core/recurrence-tracker.js:dead code",
-    "core/evaluate-inbound-gate.js:dead code",
-    "core/check-grounding.js:dead code",
+    "__tests__/legacy-mcp/cold-tier-regression.test.js:complexity",
+    "core/worktree-session-id.js:dead code",
     "core/meta-state.js:complexity",
     "core/gate-logic.js:complexity",
-    "core/worktree-session-id.js:dead code",
     "core/entry/finding.js:untested risk",
     "core/entry/rule.js:untested risk",
     "core/loop-introspect.js:complexity",
-    "core/entry/change-log.js:untested risk",
     "mastra/schema-parity.js:complexity",
-    "core/entry/loop-design.js:untested risk",
-    "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
     "tools/handlers/loop-describe-tool.js:complexity",
     "tools/handlers/meta-state-list-tool.js:complexity",
-    "tools/handlers/meta-state-promote-rule-tool.js:complexity"
+    "core/entry/change-log.js:untested risk",
+    "core/entry/loop-design.js:untested risk",
+    "tools/handlers/meta-state-promote-rule-tool.js:complexity",
+    "tools/handlers/workflow-generate-prompt-tool.js:untested risk"
   ]
 }

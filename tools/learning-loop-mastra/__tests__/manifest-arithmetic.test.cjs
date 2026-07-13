@@ -18,7 +18,6 @@
 //   8. Cross-walk: every run_<id> from workflows-manifest.json is in agent-manifest.json#workflow
 //   9. Cross-walk: every ask_<id> from agents-manifest.json is in agent-manifest.json#agent
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync, existsSync } = require("node:fs");
 const { join, resolve } = require("node:path");

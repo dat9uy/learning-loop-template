@@ -24,7 +24,6 @@
   ],
 
   "ignorePatterns": [
-    "__tests__/legacy-mcp/**",
     "__tests__/fixtures/**",
     "__tests__/phase-e-foundation/fixtures/**",
     "tools/handlers/evals/**",
@@ -33,11 +32,7 @@
     "tools/handlers/scripts/**",
     "scout/pipeline/**",
     "plans/**",
-    "docs/**",
-    "**/*.test.js",
-    "**/*.test.cjs",
-    "**/*.spec.js",
-    "**/*.spec.cjs"
+    "docs/**"
   ],
 
   "ignoreExports": [

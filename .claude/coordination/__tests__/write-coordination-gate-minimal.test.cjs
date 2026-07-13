@@ -2,7 +2,6 @@
 'use strict';
 
 const { spawn } = require('child_process');
-const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');

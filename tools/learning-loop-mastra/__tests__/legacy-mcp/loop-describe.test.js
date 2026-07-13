@@ -1,4 +1,4 @@
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-change-tool.js";

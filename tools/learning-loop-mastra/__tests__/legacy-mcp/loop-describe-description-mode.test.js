@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { summarize } from "../../core/loop-introspect.js";

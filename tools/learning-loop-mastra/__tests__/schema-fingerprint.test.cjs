@@ -4,7 +4,6 @@
 // per-table column counts as an inline snapshot. A future bump that changes
 // the schema fails the test, forcing a deliberate operator review.
 
-const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 

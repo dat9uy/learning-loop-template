@@ -1,4 +1,3 @@
-const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = require("node:fs");

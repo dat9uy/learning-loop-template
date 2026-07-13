@@ -1,4 +1,4 @@
-import { describe, test, before, after } from "node:test";
+import { describe, test, beforeAll, afterAll } from "vitest";
 import assert from "node:assert";
 import { readFileSync } from "node:fs";
 import { mkdtempSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
@@ -39,13 +39,13 @@ describe("connectMcpServer module-level mutex", () => {
   let a;
   let b;
 
-  before(async () => {
+  beforeAll(async () => {
     tempRoot = prepareTempRoot();
     a = await connectMcpServer(mastraEntry, tempRoot);
     b = await connectMcpServer(mastraEntry, tempRoot);
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (a) await a.cleanup();
     if (b) await b.cleanup();
   });

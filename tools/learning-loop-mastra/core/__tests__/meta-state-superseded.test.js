@@ -3,7 +3,7 @@
 // TDD: this file is created BEFORE the implementation. All 7 tests are initially RED
 // (failing) and turn GREEN after the schema + drift filter changes are applied.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";

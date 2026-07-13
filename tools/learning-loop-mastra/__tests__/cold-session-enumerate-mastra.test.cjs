@@ -7,7 +7,6 @@
 // discoverability.test.cjs tests the same property but reads the wrong
 // manifest; Phase 6 fixes it to read agent-manifest.json.
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
@@ -52,14 +51,14 @@ describe("cold-session enumerate mastra manifest", () => {
   let tools;
   let byName;
 
-  before(async () => {
+  beforeAll(async () => {
     server = await spawnServer();
     const result = await server.client.listTools();
     tools = Array.isArray(result) ? result : result.tools;
     byName = new Map(tools.map((t) => [t.name, t]));
-  }, { timeout: 15000 });
+  }, 15000);
 
-  after(async () => {
+  afterAll(async () => {
     if (server) await server.cleanup();
   });
 

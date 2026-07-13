@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, beforeAll, afterAll } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, statSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,11 +24,11 @@ function sleep(ms) {
 describe("readRegistry LRU cache", () => {
   let root;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
   });
 
-  after(() => {
+  afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   });
 

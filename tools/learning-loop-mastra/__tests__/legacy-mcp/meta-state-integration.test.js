@@ -5,7 +5,7 @@
 // `meta_state_ack` is removed in Phase 2; engagement signals flow through
 // resolve/promote/supersede/dispatch/re-verify.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

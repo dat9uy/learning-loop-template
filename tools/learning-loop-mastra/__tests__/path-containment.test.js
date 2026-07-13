@@ -1,4 +1,4 @@
-import { describe, test, before, after } from "node:test";
+import { describe, test, beforeAll, afterAll } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, symlinkSync, rmSync, linkSync, closeSync, openSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,11 +18,11 @@ describe("resolveSafePath", () => {
     return mkdtempSync(join(tmpdir(), prefix));
   }
 
-  before(() => {
+  beforeAll(() => {
     tempRoot = makeRoot();
   });
 
-  after(() => {
+  afterAll(() => {
     clearRealpathCache();
     try {
       rmSync(tempRoot, { recursive: true, force: true });

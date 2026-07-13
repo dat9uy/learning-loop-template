@@ -13,7 +13,6 @@
 //      assert response contains tools and discoverability_hints.
 //   4. tools/call meta_state_list with compact returns valid response.
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
@@ -53,12 +52,12 @@ describe("mcp protocol e2e", () => {
   let server;
   const TOOL_COUNT = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).length;
 
-  // Server init in before() — if this fails, all tests abort at suite level.
-  before(async () => {
+  // Server init in beforeAll() — if this fails, all tests abort at suite level.
+  beforeAll(async () => {
     server = await spawnServer();
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (server) await server.cleanup();
   });
 

@@ -3,7 +3,7 @@
  * fail-mode, and golden scenarios. Validates contract.js against both real runtimes
  * and synthetic fake roots built with fs.mkdtempSync.
  */
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";

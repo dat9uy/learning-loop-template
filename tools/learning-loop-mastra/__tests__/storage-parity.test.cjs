@@ -22,7 +22,6 @@
 // artifact. Per mastra-storage-memory-260619-1918-direction-clarification-report.md
 // §3, meta-state stays JSONL on disk.
 
-const { test, describe, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   mkdtempSync,
@@ -105,7 +104,7 @@ async function readJsonl(path, id) {
 let workflowRoundTrip;
 let workflowRead;
 
-before(async () => {
+beforeAll(async () => {
   await initStorage();
   ({ workflowStorageRoundTrip: workflowRoundTrip } = require(
     "../mastra/workflows/workflow-storage-round-trip.js"
@@ -159,7 +158,7 @@ describe("storage parity harness", () => {
 
   test("libsql: data persists across client close + reopen", { timeout: 10000 }, async (t) => {
     if (process.env.MASTRA_STORAGE_DRIVER === "memory") {
-      t.skip("MASTRA_STORAGE_DRIVER=memory; cross-restart persistence requires file-backed storage");
+      t.skip(true, "MASTRA_STORAGE_DRIVER=memory; cross-restart persistence requires file-backed storage");
       return;
     }
     const { createClient } = await import("@libsql/client");
@@ -225,13 +224,13 @@ describe("storage parity harness", () => {
     let handles;
     let tempRoot;
 
-    before(async () => {
+    beforeAll(async () => {
       tempRoot = mkdtempSync(join(tmpdir(), "storage-mcp-"));
       prepareGateRoot(tempRoot);
       handles = await connectMcpServer(SERVER_ENTRY, tempRoot, MCP_ENV);
-    }, { timeout: 15000 });
+    }, 15000);
 
-    after(async () => {
+    afterAll(async () => {
       if (handles) await handles.cleanup();
     });
 
@@ -272,7 +271,7 @@ describe("storage parity harness", () => {
 
   // ─── Workflow-direct unit (5 tests: 7-11) ───
 
-  after(async () => {
+  afterAll(async () => {
     const db = getParityDb();
     await db.execute(getParityDDL());
     await db.execute({

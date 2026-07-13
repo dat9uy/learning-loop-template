@@ -5,7 +5,6 @@
 // TDD order: 1 empirical probe (locks response format), then 3 per-agent tests,
 // then 1 schema-parity test, 1 tools/list enumeration test, 1 input-validation test.
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -29,14 +28,14 @@ function makeTempRoot() {
 describe("agent parity harness", () => {
   let handles;
 
-  before(async () => {
+  beforeAll(async () => {
     const tempRoot = makeTempRoot();
     handles = await connectMcpServer(SERVER_ENTRY, tempRoot, {
       MASTRA_AGENTS_MANIFEST: TEST_MANIFEST,
     });
-  }, { timeout: 30000 });
+  }, 30000);
 
-  after(async () => {
+  afterAll(async () => {
     if (handles) {
       await handles.cleanup();
       handles = null;

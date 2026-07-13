@@ -12,7 +12,7 @@
 // RED→GREEN invariant: tests assert correct shape FIRST (RED — wrapper does
 // not exist), then assert mutation guard AFTER wrapper is wired (GREEN).
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

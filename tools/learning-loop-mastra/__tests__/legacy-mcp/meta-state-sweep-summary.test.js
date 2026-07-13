@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { metaStateSweepTool } from "../../tools/handlers/meta-state-sweep-tool.js";
 import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";

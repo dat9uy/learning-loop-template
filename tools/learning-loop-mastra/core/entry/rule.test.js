@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { metaStateRuleEntrySchema } from "../meta-state.js";
 import { createRule } from "./rule.js";

@@ -14,7 +14,7 @@
 //   8. P2 F7 — concurrent-dispatch test (Promise.all) — CAS safety
 //   9. orphan self-heal: re-invoking commit with same coords patches missing ledger_ref
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";

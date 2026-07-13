@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { metaStatePromoteRuleTool } from "../../tools/handlers/meta-state-promote-rule-tool.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";

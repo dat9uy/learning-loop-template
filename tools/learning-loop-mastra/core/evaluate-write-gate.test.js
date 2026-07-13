@@ -8,7 +8,7 @@
  * Tests import from ./evaluate-write-gate.js (does not exist yet → ERR_MODULE_NOT_FOUND = intended TDD red).
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";

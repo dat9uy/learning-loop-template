@@ -1,4 +1,4 @@
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 
 import { validateR2AllowlistShape } from "../../core/r2/allowlist-shape.js";

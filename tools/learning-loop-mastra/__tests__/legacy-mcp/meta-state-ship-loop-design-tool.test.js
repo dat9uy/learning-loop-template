@@ -3,7 +3,7 @@
 // other MCP tool. The 4 fixtures cover success, not_a_loop_design rejection,
 // live_session_required gate, and CAS version_mismatch.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { metaStateShipLoopDesignTool } from "../../tools/handlers/meta-state-ship-loop-design-tool.js";
 import { metaStateProposeDesignTool } from "../../tools/handlers/meta-state-propose-design-tool.js";

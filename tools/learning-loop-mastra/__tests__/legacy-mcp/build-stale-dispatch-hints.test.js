@@ -4,7 +4,7 @@
 // cold-tier test; TTL regression-pins guard against the future
 // re-introduction of the auto-resolve path).
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { buildStaleDispatchHints } from "../../core/loop-introspect.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -149,7 +149,7 @@ test("meta_state_list with entry_kinds=['rule', 'loop-design'] returns both", as
   }
 });
 
-test("meta_state_list with entry_kind='finding' returns the same entries as before (regression)", async () => {
+test("meta_state_list with entry_kind='finding' returns the same entries as beforeAll(regression)", async () => {
   const root = setupFixture();
   try {
     await writeTestEntry(root, {
@@ -181,7 +181,7 @@ test("meta_state_list with entry_kind='finding' returns the same entries as befo
   }
 });
 
-test("meta_state_list with entry_kind='change-log' returns the same entries as before (regression)", async () => {
+test("meta_state_list with entry_kind='change-log' returns the same entries as beforeAll(regression)", async () => {
   const root = setupFixture();
   try {
     await writeTestEntry(root, {

@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { test } from "node:test";
+import { test } from "vitest";
 import { matchConstraintPattern, makeGateDecision } from "../../core/gate-logic.js";
 
 // ─── matchConstraintPattern: runtime_state_record detection ───

@@ -1,4 +1,4 @@
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { loopGetInstructionTool } from "../../tools/handlers/loop-get-instruction-tool.js";
 import { withMcpServer } from "../with-mcp-server.js";

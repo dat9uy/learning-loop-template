@@ -10,7 +10,7 @@
 // the id drifts, the call fails with a structured failure shape and the
 // invariant fires.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

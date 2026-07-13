@@ -7,7 +7,7 @@
  * placeholders, so an operator diagnosing a boot failure sees a consistent,
  * actionable message regardless of which runtime triggered it.
  */
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";

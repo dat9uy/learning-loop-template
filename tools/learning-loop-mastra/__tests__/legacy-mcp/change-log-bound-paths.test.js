@@ -17,7 +17,7 @@
  *   - non-path tokens (bare slugs without "/")
  */
 
-import { test, describe } from "node:test";
+import { test, describe } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
