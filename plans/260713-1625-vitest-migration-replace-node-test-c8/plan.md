@@ -1,7 +1,7 @@
 ---
 title: "Vitest migration — replace node:test + c8 with vitest (Path B)"
 description: "Migrate the 234-file node:test suite to vitest + @vitest/coverage-v8. Vitest's native --reporter=json gives the agent a trustworthy structured-failure document (numFailedTests + assertionResults) for free — dissolving the agent-context bleed that motivated the abandoned TAP-wrapper plan (260713-1503). Vitest's v8-provider json reporter emits Istanbul-format coverage-final.json (the shape fallow:gate requires), and fallow's vitest plugin registers *.test.* files as entry points, retiring the .fallowrc test-ignore workaround. Red-team corrected 3 critical defects (per-commit hook atomicity, 6 before(fn,{timeout}) call sites, 12 security-gate tests outside the include glob) and 2 high defects (gate should be fallow:gate not %-parity; 3 auxiliary node:test scripts)."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: ["vitest", "test-runner", "coverage", "fallow", "agent-context"]
