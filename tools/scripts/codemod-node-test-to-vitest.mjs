@@ -164,14 +164,31 @@ export function transform(src) {
   // Call-expression rewrite: `before(...)` and `after(...)` as standalone
   // calls (not method calls like `obj.before()`). Negative lookbehind on
   // `[\w$.]` rejects `something.before(...)`.
-  out = out.replace(/(?<![\w$.])before\s*\(/g, () => {
-    changes.hooks += 1;
-    return "beforeAll(";
-  });
-  out = out.replace(/(?<![\w$.])after\s*\(/g, () => {
-    changes.hooks += 1;
-    return "afterAll(";
-  });
+  //
+  // Comment-safety: applied per-line, skipping full-line `//` comments so the
+  // English words "before"/"after" in prose (including the call-shape
+  // `// call before(foo)`) aren't rewritten — the codemod's contract is "never
+  // the prose". Inline trailing comments (`x(); // before(y)`) are not
+  // handled by the per-line guard; they're rare and the lookbehind already
+  // rejects method calls, so the residual risk is a comment that happens to
+  // contain a bare `before(` shape — not a real hook call. A full JS parser
+  // would be needed to be airtight; the per-line guard covers the documented
+  // contract.
+  out = out
+    .split("\n")
+    .map((line) => {
+      if (line.trimStart().startsWith("//")) return line;
+      return line
+        .replace(/(?<![\w$.])before\s*\(/g, () => {
+          changes.hooks += 1;
+          return "beforeAll(";
+        })
+        .replace(/(?<![\w$.])after\s*\(/g, () => {
+          changes.hooks += 1;
+          return "afterAll(";
+        });
+    })
+    .join("\n");
 
   // 2. Hook call-site fix (red-team C2):
   //    before|beforeEach|afterEach ( fn , { timeout : N } )

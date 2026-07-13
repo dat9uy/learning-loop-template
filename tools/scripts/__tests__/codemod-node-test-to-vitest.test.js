@@ -76,8 +76,14 @@ describe("codemod-node-test-to-vitest: vitest 4 hook rename", () => {
     assert.strictEqual(out, src);
   });
 
-  test("prose 'before' in comments/strings is NOT rewritten", () => {
+  test("prose 'before'/'after' in comments/strings is NOT rewritten", () => {
     const src = `// call before this runs\nconst msg = "before the test";\n`;
+    const { out } = transform(src);
+    assert.strictEqual(out, src);
+  });
+
+  test("call-shape 'before('/'after(' inside a full-line comment is NOT rewritten", () => {
+    const src = `// run before(foo) to seed\n// then after(bar) to tear down\nbeforeAll(() => x());\n`;
     const { out } = transform(src);
     assert.strictEqual(out, src);
   });
