@@ -175,7 +175,16 @@ async function startMcpServer(root) {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverPath],
-    env: { ...process.env, GATE_ROOT: root },
+    // mastra/server.js calls pinRuntimeIdAtBoot() at the first executable
+    // statement; without LOOP_SURFACE the server throws MISSING_LOOP_SURFACE
+    // and the StdioClientTransport sees a closed connection. Pin to .claude
+    // for the gate-integration surface (this file lives under .claude/
+    // coordination; .factory/hooks/__tests__ pins to .factory).
+    env: {
+      ...process.env,
+      GATE_ROOT: root,
+      LOOP_SURFACE: process.env.LOOP_SURFACE || '.claude',
+    },
   });
   const client = new Client({ name: "integration-test-client", version: "0.0.1" });
   await client.connect(transport);

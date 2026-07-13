@@ -4,7 +4,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 
-const SCRIPT = path.resolve(__dirname, "..", "..", "scripts", "ci-registry-deltas.sh");
+// Script lives at tools/scripts/ci-registry-deltas.sh (3 `..` steps up from
+// this file's deep location at tools/learning-loop-mastra/__tests__/legacy-mcp/).
+const SCRIPT = path.resolve(__dirname, "..", "..", "..", "scripts", "ci-registry-deltas.sh");
 
 function runParser(diffContent) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-deltas-"));

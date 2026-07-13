@@ -17,7 +17,9 @@ const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
-const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
+// Test file lives 4 levels deep under tools/learning-loop-mastra/__tests__/legacy-mcp/,
+// so 4 `..` steps up from __dirname land at the repo root (matches ci-registry-deltas.test.cjs).
+const PROJECT_ROOT = resolve(__dirname, "..", "..", "..", "..");
 const SERVER_ENTRY = join(PROJECT_ROOT, "tools/learning-loop-mastra/mastra/server.js");
 const MANIFEST_PATH = join(PROJECT_ROOT, "tools/learning-loop-mastra/tools/manifest.json");
 
@@ -50,7 +52,12 @@ async function spawnServer() {
 describe("mcp protocol e2e", () => {
   // Shared server instance for all tests (avoids respawning per test).
   let server;
-  const TOOL_COUNT = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")).length;
+  // manifest.json is JSONC (line-start `//` comments per tools/manifest.json
+  // header). Strip them before JSON.parse so this test stays in sync with the
+  // 7 production consumers in core/loop-introspect.js, mastra/server.js, etc.
+  const TOOL_COUNT = JSON.parse(
+    readFileSync(MANIFEST_PATH, "utf8").replace(/^\s*\/\/.*$/gm, ""),
+  ).length;
 
   // Server init in beforeAll() — if this fails, all tests abort at suite level.
   beforeAll(async () => {
