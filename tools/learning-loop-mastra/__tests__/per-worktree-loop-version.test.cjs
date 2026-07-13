@@ -1,5 +1,4 @@
 "use strict";
-const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");

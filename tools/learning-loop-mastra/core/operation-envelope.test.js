@@ -4,7 +4,7 @@
  * compatibility rules, content-hash stability + sensitivity to input changes,
  * legacy-status normalization, and validateEnvelope shape-check.
  */
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {

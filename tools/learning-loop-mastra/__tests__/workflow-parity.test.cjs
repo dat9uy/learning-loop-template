@@ -5,7 +5,6 @@
 // TDD order: 1 empirical probe (locks response format), then 8 parity tests,
 // then 1 tools/list enumeration test.
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -42,12 +41,12 @@ function parseWorkflowResult(rawResult) {
 describe("workflow parity harness", () => {
   let handles;
 
-  before(async () => {
+  beforeAll(async () => {
     const tempRoot = makeTempRoot();
     handles = await connectMcpServer(SERVER_ENTRY, tempRoot);
-  }, { timeout: 15000 });
+  }, 15000);
 
-  after(async () => {
+  afterAll(async () => {
     if (handles) {
       await handles.cleanup();
       handles = null;

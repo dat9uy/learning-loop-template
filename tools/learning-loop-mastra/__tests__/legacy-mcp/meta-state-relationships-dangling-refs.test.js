@@ -9,7 +9,7 @@
 // graph: a finding's outbound refs that point at stale/missing/superseded
 // targets are tagged with the reason.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

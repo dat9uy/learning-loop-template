@@ -4,7 +4,7 @@
 // Mastra's `MCPServer.convertSchema` → `standardSchemaToJSONSchema` (one
 // server spawn, ~400ms, catches SDK regressions the unit test can't see).
 // Both layers are needed because they catch different classes of regressions.
-import { describe, test, before } from "node:test";
+import { describe, test, beforeAll } from "vitest";
 import assert from "node:assert/strict";
 import { withMcpServer } from "./with-mcp-server.js";
 
@@ -40,12 +40,12 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
   let tools;
   let byName;
 
-  before(async () => {
+  beforeAll(async () => {
     await withMcpServer(async (handles) => {
       tools = await handles.listTools();
       byName = new Map(tools.map((t) => [t.name, t]));
     });
-  }, { timeout: 15000 });
+  }, 15000);
 
   // Test 1 (universal contract): every tool's inputSchema is a real object
   // schema, not the bypass sentinel. Catches the Q3 bug class.

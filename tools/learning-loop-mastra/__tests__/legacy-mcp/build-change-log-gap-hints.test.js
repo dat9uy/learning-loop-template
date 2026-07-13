@@ -8,7 +8,7 @@
  * coverage (phase 1's canonicalizer) and returns the gap set.
  */
 
-import { test, describe } from "node:test";
+import { test, describe } from "vitest";
 import assert from "node:assert/strict";
 import { buildChangeLogGapHints } from "../../core/loop-introspect.js";
 

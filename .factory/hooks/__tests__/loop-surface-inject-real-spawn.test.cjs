@@ -7,7 +7,6 @@
 // This test spawns the real MCP server via Node and asserts that the
 // loop_describe summary is returned within the 10-second probe window.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { join } = require("node:path");
 
@@ -18,7 +17,16 @@ describe("loop-surface-inject real spawnAndCall (regression: chicken-and-egg)", 
     const projectRoot = process.cwd();
     const serverEntry = join(projectRoot, "tools/learning-loop-mastra/mastra/server.js");
 
-    const serverCfg = { command: "node", args: ["tools/learning-loop-mastra/mastra/server.js"] };
+    // Mirrors the production serverCfg shape (.mcp.json's learning-loop
+    // entry sets LOOP_SURFACE). spawnAndCall now honors serverCfg.env via
+    // the .factory/hooks/loop-surface-inject.cjs merge fix; before the fix
+    // the test hit MISSING_LOOP_SURFACE because the helper used
+    // process.env verbatim.
+    const serverCfg = {
+      command: "node",
+      args: ["tools/learning-loop-mastra/mastra/server.js"],
+      env: { LOOP_SURFACE: process.env.LOOP_SURFACE || ".factory" },
+    };
 
     // Race the probe against a wall clock so a deadlock (the old bug)
     // fails this test loudly instead of stalling for the full 10s.

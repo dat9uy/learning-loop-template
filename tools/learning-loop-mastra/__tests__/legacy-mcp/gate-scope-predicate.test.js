@@ -1,4 +1,4 @@
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { loadPromotedRules, applyPromotedRules, globMatch } from "../../core/gate-logic.js";
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";

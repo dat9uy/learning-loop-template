@@ -4,7 +4,7 @@
  * formats produce identical gate decisions via the same universal hooks.
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

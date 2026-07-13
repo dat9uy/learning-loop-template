@@ -7,7 +7,7 @@
  * what makes the code/migration order non-breaking).
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { isOpen, isStaleView, derivedStaleSet } from "../../core/stale-view.js";
 import { STALENESS_WINDOW_MS } from "../../core/constants.js";

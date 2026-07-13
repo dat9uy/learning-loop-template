@@ -17,7 +17,7 @@
  * + deny-list + write-path reject + target validation + kind × op compatibility
  * + fixture-based fresh-assertion.
  */
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readRegistry } from "../../core/meta-state.js";
 import { withMcpServer } from "../with-mcp-server.js";

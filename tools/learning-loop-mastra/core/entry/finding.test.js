@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { metaStateFindingEntrySchema } from "../meta-state.js";
 import { createFinding } from "./finding.js";

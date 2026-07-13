@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, beforeAll, afterAll } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,7 +20,7 @@ function sha256File(path) {
 describe("meta_state_batch", () => {
   let root;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
     // Seed with 3 baseline findings
     const lines = [
@@ -32,7 +32,7 @@ describe("meta_state_batch", () => {
     process.env.GATE_ROOT = root;
   });
 
-  after(() => {
+  afterAll(() => {
     rmSync(root, { recursive: true, force: true });
     delete process.env.GATE_ROOT;
   });

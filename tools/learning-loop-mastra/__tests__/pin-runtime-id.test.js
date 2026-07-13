@@ -1,4 +1,4 @@
-import { describe, test, before, after, beforeEach } from "node:test";
+import { describe, test, beforeAll, afterAll, beforeEach } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -26,7 +26,7 @@ describe("identity-pin", () => {
     delete process.env.LOOP_SURFACE;
   });
 
-  after(() => {
+  afterAll(() => {
     __resetForTests();
     delete process.env.LOOP_SURFACE;
   });

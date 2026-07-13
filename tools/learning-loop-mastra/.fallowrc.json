@@ -24,7 +24,6 @@
   ],
 
   "ignorePatterns": [
-    "__tests__/legacy-mcp/**",
     "__tests__/fixtures/**",
     "__tests__/phase-e-foundation/fixtures/**",
     "tools/handlers/evals/**",

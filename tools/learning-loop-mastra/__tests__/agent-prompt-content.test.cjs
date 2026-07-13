@@ -9,7 +9,6 @@
 // This proves the instructions string is the exact text that would reach the
 // LLM and contains the locked markers.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 
 const {

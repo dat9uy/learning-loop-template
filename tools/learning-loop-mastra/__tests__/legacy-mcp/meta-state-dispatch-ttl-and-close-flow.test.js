@@ -4,7 +4,7 @@
 // without refresh). These were called out as the Phase-3 Medium-risk
 // mitigation in phase-03.md and were absent from the original Phase-3 ship.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

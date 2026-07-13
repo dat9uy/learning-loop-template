@@ -9,7 +9,7 @@
 import assert from "node:assert";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { test } from "node:test";
+import { test } from "vitest";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 const SCRIPT_PATH = resolve(

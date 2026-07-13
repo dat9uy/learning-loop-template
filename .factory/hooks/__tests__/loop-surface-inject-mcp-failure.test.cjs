@@ -5,7 +5,6 @@
 // TDD: this file is created BEFORE the implementation. All 3 tests are
 // initially RED (failing) and turn GREEN after the hook is extended.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const {
   mkdtempSync,

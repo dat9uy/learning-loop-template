@@ -11,7 +11,7 @@
  *     protected files is denied with `bootstrap_deny` (audit_log_protected).
  *   - C5b: the regression cases from the phase file.
  */
-import { test, beforeEach, afterEach } from "node:test";
+import { test, beforeEach, afterEach } from "vitest";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from "node:fs";
 import { join, dirname } from "node:path";

@@ -9,7 +9,7 @@
 // `constraint_type: "unmapped-active-entry"` for the unmapped entry so
 // downstream consumers can flag the schema-vs-implementation drift.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

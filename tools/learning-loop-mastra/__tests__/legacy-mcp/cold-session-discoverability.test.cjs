@@ -21,7 +21,6 @@
 //   7. Hook mirror hint count matches canonical — reads both files, compares
 //      array lengths (not regex-based quote counting).
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -311,7 +310,7 @@ describe("cold-session discoverability", () => {
     let canonicalHints;
     let loopGetInstruction;
 
-    before(async () => {
+    beforeAll(async () => {
       const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
       assert.ok(existsSync(hookPath), "hook file must exist");
       hookSource = readFileSync(hookPath, "utf8");
@@ -324,7 +323,7 @@ describe("cold-session discoverability", () => {
       loopGetInstruction = await import(pathToFileURL(toolPath).href);
     });
 
-    after(() => {
+    afterAll(() => {
       hookSource = null;
       canonicalHints = null;
       loopGetInstruction = null;

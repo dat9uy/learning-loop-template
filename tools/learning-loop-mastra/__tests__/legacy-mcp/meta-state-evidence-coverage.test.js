@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { readRegistry } from "../../core/meta-state.js";
 import { isOpen } from "../../core/stale-view.js";

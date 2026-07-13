@@ -4,7 +4,7 @@
  * captured in gate-check-snapshot.json. Locks the wire shape across refactors.
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { readFileSync, mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";

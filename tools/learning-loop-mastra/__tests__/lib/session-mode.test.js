@@ -11,7 +11,7 @@
  * authorship record.
  */
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { isLiveSession } from "../../../lib/session-mode.js";
 

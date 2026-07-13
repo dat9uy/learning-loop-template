@@ -14,10 +14,10 @@
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
     "smoke:mastracode": "node scripts/probe-mastracode.cjs",
-    "test": "pnpm exec c8 --reporter=json --reports-directory=coverage --include \"tools/learning-loop-mastra/**/*.js\" --exclude \"**/*.test.js\" --exclude \"**/*.test.cjs\" --exclude \"**/fixtures/**\" --clean node tools/scripts/run-pnpm-test-namespaced.mjs && node tools/scripts/sanitize-coverage.mjs",
-    "test:debug": "node --test --test-timeout=120000 tools/learning-loop-mastra/__tests__/debug/*.test.cjs",
-    "test:cold-session": "node --test tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
-    "check:freshness": "node --test tools/learning-loop-mastra/__tests__/freshness/*.test.js",
+    "test": "vitest run && node tools/scripts/sanitize-coverage.mjs",
+    "test:debug": "vitest run tools/learning-loop-mastra/__tests__/debug/",
+    "test:cold-session": "vitest run tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
+    "check:freshness": "vitest run tools/learning-loop-mastra/__tests__/freshness/",
     "fallow:gate": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\" --dead-code-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dead-code-baseline.json\" --health-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/health-baseline.json\" --dupes-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json\"",
     "gate:self-verify": "node tools/learning-loop-mastra/scripts/gate-self-verify.mjs",
     "gate:server": "node tools/learning-loop-mastra/mastra/server.js"
@@ -35,10 +35,11 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "c8": "^11.0.0",
+    "@vitest/coverage-istanbul": "^4.1.10",
     "fallow": "3.3.0",
     "mastracode": "^0.26.0",
-    "simple-git-hooks": "^2.13.1"
+    "simple-git-hooks": "^2.13.1",
+    "vitest": "^4.1.10"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm test && pnpm fallow:gate"

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -80,7 +80,7 @@ test("classifier handles empty source", () => {
 
 test("classifier handles nested describe blocks", () => {
   const source = `
-import { test, describe } from "node:test";
+import { test, describe } from "vitest";
 describe("outer", () => {
   describe("inner", () => {
     test("nested test", () => {

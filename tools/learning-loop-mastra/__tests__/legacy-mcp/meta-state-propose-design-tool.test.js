@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { metaStateProposeDesignTool } from "../../tools/handlers/meta-state-propose-design-tool.js";
 import { readRegistry } from "../../core/meta-state.js";

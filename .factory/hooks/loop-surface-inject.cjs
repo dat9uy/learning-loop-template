@@ -328,7 +328,11 @@ async function spawnAndCall(serverCfg, cwd, tier = "summary") {
     command,
     args: [cmd, ...args],
     cwd,
-    env: process.env,
+    // Merge process.env with serverCfg.env so .mcp.json (which sets
+    // LOOP_SURFACE) is honored. Without this merge, mastra/server.js's
+    // pinRuntimeIdAtBoot() throws MISSING_LOOP_SURFACE and the probe
+    // child dies before the client can complete the handshake.
+    env: { ...process.env, ...(serverCfg.env || {}) },
     stderr: "pipe",
   });
 

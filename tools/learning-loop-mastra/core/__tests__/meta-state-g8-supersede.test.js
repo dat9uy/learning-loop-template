@@ -5,7 +5,7 @@
 // RED (failing) and turn GREEN after the housekeeping batched mutation is applied
 // to meta-state.jsonl (or to a fixture registry in the test).
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { z } from "zod";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";

@@ -3,7 +3,7 @@
 // the closed taxonomy, if paths are unsanitized, or if role-layering invariants
 // are broken.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { readFileSync, readdirSync, existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { join, relative, extname } from "node:path";

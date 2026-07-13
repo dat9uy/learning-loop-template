@@ -1,4 +1,4 @@
-import { describe, it, before, after } from "node:test";
+import { describe, it, beforeAll, afterAll } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -37,12 +37,12 @@ async function writeFixture(root, id, status) {
 describe("meta_state_relationship_validate", () => {
   let root;
 
-  before(() => {
+  beforeAll(() => {
     root = makeTempRoot();
     process.env.GATE_ROOT = root;
   });
 
-  after(() => {
+  afterAll(() => {
     rmSync(root, { recursive: true, force: true });
     delete process.env.GATE_ROOT;
   });

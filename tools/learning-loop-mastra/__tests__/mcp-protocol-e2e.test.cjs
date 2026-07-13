@@ -18,7 +18,6 @@
 // These relaxations are scope-locked to the protocol-level shape test. The
 // per-tool count and prefix invariants are checked by `workflow-parity.test.cjs`.
 
-const { describe, test, before, after } = require("node:test");
 const assert = require("node:assert");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
@@ -70,11 +69,11 @@ describe("mastra mcp protocol e2e", () => {
       .replace(/^\s*\/\/.*$/gm, ""),
   ).length;
 
-  before(async () => {
+  beforeAll(async () => {
     server = await spawnServer();
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (server) await server.cleanup();
   });
 

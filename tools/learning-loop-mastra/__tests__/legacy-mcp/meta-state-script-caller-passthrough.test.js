@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 import { metaStatePatchTool } from "../../tools/handlers/meta-state-patch-tool.js";
 import { buildPatchSchemaFor } from "../../core/meta-state.js";

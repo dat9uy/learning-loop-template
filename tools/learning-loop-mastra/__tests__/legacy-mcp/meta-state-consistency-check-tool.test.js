@@ -9,7 +9,7 @@
 // RED (failing — Cannot find module) and turn GREEN after the tool is
 // implemented in tools/handlers/meta-state-consistency-check-tool.js.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -1,5 +1,10 @@
 {
   "finding_counts": {
+    "__tests__/legacy-mcp/probe-helpers.cjs": {
+      "crap_moderate": {
+        "count": 4
+      }
+    },
     "__tests__/with-mcp-server.js": {
       "crap_moderate": {
         "count": 1
@@ -447,8 +452,8 @@
     "core/recurrence-tracker.js:dead code",
     "core/evaluate-inbound-gate.js:dead code",
     "core/check-grounding.js:dead code",
-    "core/meta-state.js:complexity",
     "core/gate-logic.js:complexity",
+    "core/meta-state.js:complexity",
     "core/worktree-session-id.js:dead code",
     "core/entry/finding.js:untested risk",
     "core/entry/rule.js:untested risk",

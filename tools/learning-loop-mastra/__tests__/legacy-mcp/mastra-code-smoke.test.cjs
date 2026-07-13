@@ -18,7 +18,6 @@
  * is acceptable behavior (the probe is designed to fail gracefully); the test
  * itself only fails if the probe script exits non-zero or its JSON is malformed.
  */
-const { test } = require("node:test");
 const assert = require("node:assert");
 const { spawnSync } = require("node:child_process");
 const { resolve, join } = require("node:path");

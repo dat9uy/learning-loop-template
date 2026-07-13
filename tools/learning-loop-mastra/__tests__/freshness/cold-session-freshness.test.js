@@ -11,7 +11,7 @@
 //   - "never been run"  — no sentinel file; run `pnpm test:cold-session`.
 //   - "stale (>3 days)" — sentinel exists but is old; run `pnpm test:cold-session`.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";

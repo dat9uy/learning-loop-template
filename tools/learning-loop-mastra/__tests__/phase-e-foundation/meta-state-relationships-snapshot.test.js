@@ -3,7 +3,7 @@
 // correct wire format. Includes a legacy finding fixture (no promoted_to_rule)
 // to exercise the dual-field migration logic.
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";

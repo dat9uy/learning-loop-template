@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { readRegistry } from "../../core/meta-state.js";

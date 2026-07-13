@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert/strict";
 
 // D5 fixture: hardcoded TOLERANCES array with no explanatory comment.

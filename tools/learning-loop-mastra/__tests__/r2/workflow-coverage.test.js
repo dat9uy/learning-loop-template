@@ -1,4 +1,4 @@
-import { describe, test, before, after, beforeEach } from "node:test";
+import { describe, test, beforeAll, afterAll, beforeEach } from "vitest";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,13 +25,13 @@ const SCHEMA_V1 = {
 describe("workflow + tool R2 coverage (F13/R4)", () => {
   let tempRoot;
 
-  before(() => {
+  beforeAll(() => {
     __resetForTests();
     process.env.LOOP_SURFACE = ".claude";
     pinRuntimeIdAtBoot();
   });
 
-  after(() => {
+  afterAll(() => {
     __resetForTests();
     __clearCache();
     delete process.env.LOOP_SURFACE;

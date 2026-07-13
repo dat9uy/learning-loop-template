@@ -1,5 +1,7 @@
 {
-  "unused_files": [],
+  "unused_files": [
+    "__tests__/legacy-mcp/probe-helpers.cjs"
+  ],
   "unused_exports": [
     "core/check-grounding.js:META_STATE_GROUNDING_STATUSES",
     "core/check-grounding.js:META_STATE_GROUNDING_DRIFT_KINDS",
@@ -28,7 +30,6 @@
     "core/meta-state.js:InvalidEntryError",
     "core/meta-state.js:SchemaVersionSkewError",
     "core/meta-state.js:deleteEntry",
-    "core/meta-state.js:tryClaimSessionId",
     "core/recurrence-tracker.js:normalizePrefix",
     "core/recurrence-tracker.js:findRecurrentGroups",
     "core/worktree-session-id.js:_clearSessionIdCacheForTests",

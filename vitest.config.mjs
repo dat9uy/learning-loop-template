@@ -1,0 +1,68 @@
+import { defineConfig } from "vitest/config";
+
+// Vitest migration — Phase 1 / 2 config.
+//
+// include covers the post-prune test tree:
+//   - tools/learning-loop-mastra/**/*.test.{js,cjs,mjs}
+//   - .claude/coordination/__tests__/*.test.cjs
+//   - .factory/hooks/__tests__/*.test.cjs
+//   - tools/scripts/__tests__/*.test.js (the codemod unit tests; see
+//     docs/reports/vitest-migration-260713-1810-phase-1-shadow-verification-report.md)
+//
+// testTimeout / hookTimeout: 120000 (red-team C2: the 6 before(fn,{timeout})
+// hooks bootstrap a Mastra MCP server; default 10s flakes).
+//
+// reporters: default + json — agent-context fix (vitest --reporter=json emits
+// `.test-logs/vitest-results.json` with numFailedTests + assertionResults[]).
+//
+// coverage provider: istanbul (chosen over v8 because fallow:gate's coverage
+// input requires Istanbul-format JSON; @vitest/coverage-istanbul produces it
+// natively without AST-remapping).
+//
+// Known noise: vitest's coverage instrumentation (the `?vitest-uncovered-coverage`
+// SSR transform) emits `vite:dynamic-import-vars` warnings for production files
+// that build import paths dynamically — `mastra/server.js` and
+// `agents/build-meta-state-tools.js` use `import(\`./${file}\`)` to load plugins
+// by config. These are intentional production patterns; the warnings are
+// cosmetic (no test or coverage impact). Suppressing them cleanly would require
+// either adding static extensions to those dynamic imports (a production change
+// that would defeat the plugin-loading pattern) or lowering the vite log level
+// globally (which would hide useful warnings). Neither is proportionate, so the
+// noise is accepted here.
+
+export default defineConfig({
+  test: {
+    include: [
+      "tools/learning-loop-mastra/**/*.test.{js,cjs,mjs}",
+      ".claude/coordination/__tests__/*.test.cjs",
+      ".factory/hooks/__tests__/*.test.cjs",
+      "tools/scripts/__tests__/*.test.js",
+    ],
+    exclude: [
+      "**/node_modules/**",
+      "**/coverage/**",
+      "**/dist/**",
+      // Scout test fixtures — intentionally failing test inputs that the scout
+      // pipeline runs as fixed corpora. They are not real tests and must not
+      // pollute vitest's pass/fail tally. The fallow ignore pattern keeps them
+      // out of dead-code analysis for the same reason.
+      "tools/learning-loop-mastra/scout/pipeline/test-fixtures/**",
+    ],
+    testTimeout: 120000,
+    hookTimeout: 120000,
+    globals: true, // The 12 .claude/coordination/ + .factory/hooks/ gate tests are CJS and cannot `require("vitest")` — vitest globals let those files run without an import.
+    reporters: ["default", "json"],
+    outputFile: {
+      json: ".test-logs/vitest-results.json",
+    },
+    coverage: {
+      provider: "istanbul",
+      reporter: ["json"],
+      reportsDirectory: "coverage",
+      include: ["tools/learning-loop-mastra/**/*.js"],
+      exclude: ["**/*.test.{js,cjs,mjs}", "**/fixtures/**", "**/__tests__/helpers/**"],
+      clean: false,
+      enabled: true,
+    },
+  },
+});

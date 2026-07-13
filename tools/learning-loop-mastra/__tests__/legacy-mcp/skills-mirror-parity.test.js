@@ -9,7 +9,7 @@
  * presence + tool-refs, not byte-identity (per red-team finding 11).
  */
 
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { readFileSync, existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";

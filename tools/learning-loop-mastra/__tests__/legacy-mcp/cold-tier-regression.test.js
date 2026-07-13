@@ -4,7 +4,7 @@ import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { derivedStaleSet, isOpen } from "../../core/stale-view.js";
-import { test } from "node:test";
+import { test } from "vitest";
 import assert from "node:assert";
 import { existsSync } from "node:fs";
 import { join, isAbsolute } from "node:path";

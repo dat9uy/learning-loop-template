@@ -1,4 +1,3 @@
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, writeFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");

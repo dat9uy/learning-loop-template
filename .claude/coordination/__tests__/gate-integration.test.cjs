@@ -1,6 +1,20 @@
 #!/usr/bin/env node
 'use strict';
 
+// gate-integration script-style gate test — vitest migration.
+//
+// Original (pre-migration): script-style with top-level setup + a sync section
+// of integration tests + an IIFE-wrapped async section that exercises the
+// real MCP server. Ends with `process.exit(failed > 0 ? 1 : 0)`.
+//
+// Migration: keep all require()s and helpers (CJS), wrap the sync section in
+// `test()` and convert the IIFE-wrapped async section to `test(..., async () => {...})`.
+// The custom `assert()` helper preserves the script's PASS/FAIL counter
+// behavior; we collect failures and throw at the end if any failed (the
+// vitest-equivalent of `process.exit(failed > 0 ? 1 : 0)`).
+//
+// R13 semantic preservation: every original assertion is preserved verbatim.
+
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +25,7 @@ const OUTBOUND_HOOK = path.join(__dirname, '..', 'hooks', 'bash-coordination-gat
 
 let passed = 0;
 let failed = 0;
+const failures = [];
 
 function assert(condition, msg) {
   if (condition) {
@@ -19,6 +34,7 @@ function assert(condition, msg) {
   } else {
     console.error(`  FAIL: ${msg}`);
     failed++;
+    failures.push(msg);
   }
 }
 
@@ -57,7 +73,6 @@ function createTempProject() {
 }
 
 function copyRealObservations(tmpDir) {
-  // Copy runtime-state.jsonl from real project as the observation source
   const realRuntimeState = path.join(__dirname, '..', '..', '..', 'runtime-state.jsonl');
   if (fs.existsSync(realRuntimeState)) {
     fs.copyFileSync(realRuntimeState, path.join(tmpDir, 'runtime-state.jsonl'));
@@ -67,7 +82,6 @@ function copyRealObservations(tmpDir) {
 }
 
 function removeBudgetFiles(tmpDir) {
-  // Budget entries are now in runtime-state.jsonl; filter out budget-state entries
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   if (!fs.existsSync(runtimeStatePath)) return;
   const lines = fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim());
@@ -81,7 +95,6 @@ function removeBudgetFiles(tmpDir) {
 }
 
 function updateTimestamp(tmpDir, filename, newTimestamp) {
-  // Update all runtime-state entries' timestamps
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   if (!fs.existsSync(runtimeStatePath)) return;
   const lines = fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim());
@@ -96,7 +109,6 @@ function updateTimestamp(tmpDir, filename, newTimestamp) {
 }
 
 function updateStatus(tmpDir, filename, newStatus) {
-  // Update all runtime-state entries' status
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   if (!fs.existsSync(runtimeStatePath)) return;
   const lines = fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim());
@@ -163,7 +175,16 @@ async function startMcpServer(root) {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverPath],
-    env: { ...process.env, GATE_ROOT: root },
+    // mastra/server.js calls pinRuntimeIdAtBoot() at the first executable
+    // statement; without LOOP_SURFACE the server throws MISSING_LOOP_SURFACE
+    // and the StdioClientTransport sees a closed connection. Pin to .claude
+    // for the gate-integration surface (this file lives under .claude/
+    // coordination; .factory/hooks/__tests__ pins to .factory).
+    env: {
+      ...process.env,
+      GATE_ROOT: root,
+      LOOP_SURFACE: process.env.LOOP_SURFACE || '.claude',
+    },
   });
   const client = new Client({ name: "integration-test-client", version: "0.0.1" });
   await client.connect(transport);
@@ -171,175 +192,163 @@ async function startMcpServer(root) {
 }
 
 // --- Integration: Inbound Gate with Real Observations ---
-console.log('\n=== Integration: Inbound Gate with Real Observations ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const files = copyRealObservations(tmpDir);
-  assert(files.length >= 1, 'copied real observation files to temp dir');
+test('gate-integration: inbound gate with real observations', () => {
+  console.log('\n=== Integration: Inbound Gate with Real Observations ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const files = copyRealObservations(tmpDir);
+    assert(files.length >= 1, 'copied real observation files to temp dir');
 
-  // Real observations are inactive/archived; activate them for this integration test
-  for (const f of files) {
-    updateStatus(tmpDir, f, 'active');
+    for (const f of files) {
+      updateStatus(tmpDir, f, 'active');
+    }
+
+    const t1 = runInboundHook('I cleared the device', env);
+    assert(markerExists(tmpDir), 'real stale obs + state-change → marker written');
+    assert(contextWasInjected(t1), 'real stale obs + state-change → context injected');
+    clearMarker(tmpDir);
+
+    for (const f of files) {
+      updateTimestamp(tmpDir, f, new Date(Date.now() - 5 * 60 * 1000).toISOString());
+    }
+    const t2 = runInboundHook('the container is running', env);
+    assert(!markerExists(tmpDir), 'real fresh obs + state-change → marker NOT written (F1)');
+    assert(!contextWasInjected(t2), 'real fresh obs + state-change → no context');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
-  // All real observations are stale (hours old) → marker written + context injected
-  const t1 = runInboundHook('I cleared the device', env);
-  assert(markerExists(tmpDir), 'real stale obs + state-change → marker written');
-  assert(contextWasInjected(t1), 'real stale obs + state-change → context injected');
-  clearMarker(tmpDir);
+  // --- Integration: Outbound Gate with Real Observations (no budget) ---
+  console.log('\n=== Integration: Outbound Gate with Real Observations ===');
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const files = copyRealObservations(tmpDir);
+    removeBudgetFiles(tmpDir);
+    const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
+    const vnstockEntry = {
+      kind: 'ledger-event',
+      affected_system: 'vnstock',
+      id: 'obs-vnstock',
+      value: 0,
+      delta: 0,
+      source_ref: 'local:meta-state:test',
+      fingerprint: 'sha256:test',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      status: 'active',
+      metadata: { notes: 'test' },
+    };
+    const existing = fs.existsSync(runtimeStatePath)
+      ? fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim())
+      : [];
+    existing.push(JSON.stringify(vnstockEntry));
+    fs.writeFileSync(runtimeStatePath, existing.join('\n') + '\n');
 
-  // Make all observations fresh (< 30 min) → no marker, no context
-  for (const f of files) {
-    updateTimestamp(tmpDir, f, new Date(Date.now() - 5 * 60 * 1000).toISOString());
+    const now = new Date();
+    fs.writeFileSync(
+      path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
+      JSON.stringify({ timestamp: now.toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
+    );
+    const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    const out1 = parseOutbound(t1);
+    assert(out1 && out1.decision === 'escalate', 'real stale obs + fresh marker → escalate');
+    assert(out1 && out1.inbound_gate === true, 'inbound_gate flag true with real obs');
+    clearMarker(tmpDir);
+
+    fs.writeFileSync(
+      path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
+      JSON.stringify({ timestamp: new Date(now - 31 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
+    );
+    const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    assert(t2.exitCode === 0, 'expired marker + real obs → exit 0 (F8 TTL)');
+    clearMarker(tmpDir);
+
+    const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
+    assert(t3.exitCode === 0, 'no marker + real obs → exit 0');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
-  const t2 = runInboundHook('the container is running', env);
-  assert(!markerExists(tmpDir), 'real fresh obs + state-change → marker NOT written (F1)');
-  assert(!contextWasInjected(t2), 'real fresh obs + state-change → no context');
 
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
+  // --- Integration: records/** always blocked, MCP tools for CRUD ---
+  {
+    console.log('\n=== Integration: records/** always blocked ===');
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
 
-// --- Integration: Outbound Gate with Real Observations (no budget) ---
-console.log('\n=== Integration: Outbound Gate with Real Observations ===');
-{
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const files = copyRealObservations(tmpDir);
-  removeBudgetFiles(tmpDir); // Remove budget files so budget escalation doesn't short-circuit
-  // Add a vnstock runtime-state entry so vendor-api/package-manager constraints pass
-  const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
-  const vnstockEntry = {
-    kind: 'ledger-event',
-    affected_system: 'vnstock',
-    id: 'obs-vnstock',
-    value: 0,
-    delta: 0,
-    source_ref: 'local:meta-state:test',
-    fingerprint: 'sha256:test',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    status: 'active',
-    metadata: { notes: 'test' },
-  };
-  const existing = fs.existsSync(runtimeStatePath)
-    ? fs.readFileSync(runtimeStatePath, 'utf8').split('\n').filter(l => l.trim())
-    : [];
-  existing.push(JSON.stringify(vnstockEntry));
-  fs.writeFileSync(runtimeStatePath, existing.join('\n') + '\n');
+    const w1 = runWriteGate('records/evidence/foo.md', env);
+    assert(w1.exitCode === 2, 'write gate blocks records/evidence unconditionally');
+    const outW1 = parseOutbound(w1);
+    assert(outW1 && outW1.decision === 'block', 'write gate → decision: block');
+    assert(outW1 && outW1.matched_rule === 'records/**', 'write gate → matched_rule: records/**');
 
-  // Fresh marker + stale real obs + constrained cmd → escalate with inbound_gate
-  const now = new Date();
-  fs.writeFileSync(
-    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-    JSON.stringify({ timestamp: now.toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
-  );
-  const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  const out1 = parseOutbound(t1);
-  assert(out1 && out1.decision === 'escalate', 'real stale obs + fresh marker → escalate');
-  assert(out1 && out1.inbound_gate === true, 'inbound_gate flag true with real obs');
-  clearMarker(tmpDir);
+    const w2 = runWriteGate('records/observations/obs-test.yaml', env);
+    assert(w2.exitCode === 2, 'write gate blocks records/observations unconditionally');
 
-  // Expired marker (TTL) + stale real obs → ok (marker treated as null, F8)
-  fs.writeFileSync(
-    path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
-    JSON.stringify({ timestamp: new Date(now - 31 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
-  );
-  const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  assert(t2.exitCode === 0, 'expired marker + real obs → exit 0 (F8 TTL)');
-  clearMarker(tmpDir);
+    const b1 = runOutboundGate("cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF", env);
+    assert(b1.exitCode === 2, 'bash gate blocks heredoc to records/evidence');
+    const outB1 = parseOutbound(b1);
+    assert(outB1 && outB1.hard_block === true, 'bash gate → hard_block');
 
-  // No marker + stale real obs → ok (not stale relative to marker)
-  const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
-  assert(t3.exitCode === 0, 'no marker + real obs → exit 0');
+    const b2 = runOutboundGate('echo x > records/decisions/test.yaml', env);
+    assert(b2.exitCode === 2, 'bash gate blocks redirect to records/decisions');
 
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 
-// --- Integration: records/** always blocked, MCP tools for CRUD ---
-{
-  console.log('\n=== Integration: records/** always blocked ===');
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+  // --- Integration: Preflight Gate ---
+  {
+    console.log('\n=== Integration: Preflight Gate ===');
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
+    const coordDir = path.join(tmpDir, '.claude', 'coordination');
 
-  // Write gate blocks records/evidence unconditionally
-  const w1 = runWriteGate('records/evidence/foo.md', env);
-  assert(w1.exitCode === 2, 'write gate blocks records/evidence unconditionally');
-  const outW1 = parseOutbound(w1);
-  assert(outW1 && outW1.decision === 'block', 'write gate → decision: block');
-  assert(outW1 && outW1.matched_rule === 'records/**', 'write gate → matched_rule: records/**');
+    const w1 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
+    assert(w1.exitCode === 2, 'product/** blocked without preflight marker');
+    const outW1 = parseOutbound(w1) || (() => { try { return JSON.parse(w1.stdout); } catch { return null; } })();
+    assert(outW1 && outW1.decision === 'block', 'preflight block → decision: block');
+    assert(outW1 && outW1.surface === 'product', 'preflight block → surface: product');
+    assert(outW1 && Array.isArray(outW1.preflight_checklist), 'preflight block → includes preflight_checklist');
 
-  // Write gate blocks records/observations unconditionally
-  const w2 = runWriteGate('records/observations/obs-test.yaml', env);
-  assert(w2.exitCode === 2, 'write gate blocks records/observations unconditionally');
+    fs.writeFileSync(
+      path.join(coordDir, '.loop-preflight-product'),
+      JSON.stringify({ surface: 'product', completed_at: new Date().toISOString() })
+    );
+    const w2 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
+    assert(w2.exitCode === 0, 'product/** allowed with valid preflight marker');
 
-  // Bash gate blocks heredoc to records/** unconditionally
-  const b1 = runOutboundGate("cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF", env);
-  assert(b1.exitCode === 2, 'bash gate blocks heredoc to records/evidence');
-  const outB1 = parseOutbound(b1);
-  assert(outB1 && outB1.hard_block === true, 'bash gate → hard_block');
+    fs.writeFileSync(
+      path.join(coordDir, '.loop-preflight-product'),
+      JSON.stringify({ surface: 'product', completed_at: new Date(Date.now() - 31 * 60 * 1000).toISOString() })
+    );
+    const w3 = runWriteGate(`${tmpDir}/product/web/src/app.tsx`, env);
+    assert(w3.exitCode === 2, 'product/** blocked with expired preflight marker');
 
-  // Bash gate blocks redirect to records/** unconditionally
-  const b2 = runOutboundGate('echo x > records/decisions/test.yaml', env);
-  assert(b2.exitCode === 2, 'bash gate blocks redirect to records/decisions');
+    const b1 = runOutboundGate(`echo '{}' > .claude/coordination/.loop-preflight-product`, env);
+    assert(b1.exitCode === 2, 'bash gate blocks redirect to .loop-preflight-*');
 
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
+    const w4 = runWriteGate(`${tmpDir}/.claude/coordination/.loop-preflight-product`, env);
+    assert(w4.exitCode === 2, 'write gate blocks direct write to .loop-preflight-*');
 
-// --- Integration: Preflight Gate ---
-{
-  console.log('\n=== Integration: Preflight Gate ===');
-  const tmpDir = createTempProject();
-  const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
-  const coordDir = path.join(tmpDir, '.claude', 'coordination');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 
-  // product/** blocked without preflight marker
-  const w1 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
-  assert(w1.exitCode === 2, 'product/** blocked without preflight marker');
-  const outW1 = parseOutbound(w1) || (() => { try { return JSON.parse(w1.stdout); } catch { return null; } })();
-  assert(outW1 && outW1.decision === 'block', 'preflight block → decision: block');
-  assert(outW1 && outW1.surface === 'product', 'preflight block → surface: product');
-  assert(outW1 && Array.isArray(outW1.preflight_checklist), 'preflight block → includes preflight_checklist');
-
-  // product/** allowed with valid preflight marker
-  fs.writeFileSync(
-    path.join(coordDir, '.loop-preflight-product'),
-    JSON.stringify({ surface: 'product', completed_at: new Date().toISOString() })
-  );
-  const w2 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
-  assert(w2.exitCode === 0, 'product/** allowed with valid preflight marker');
-
-  // product/** blocked with expired preflight marker (> 30 min)
-  fs.writeFileSync(
-    path.join(coordDir, '.loop-preflight-product'),
-    JSON.stringify({ surface: 'product', completed_at: new Date(Date.now() - 31 * 60 * 1000).toISOString() })
-  );
-  const w3 = runWriteGate(`${tmpDir}/product/web/src/app.tsx`, env);
-  assert(w3.exitCode === 2, 'product/** blocked with expired preflight marker');
-
-  // Bash gate blocks direct writes to preflight marker files
-  const b1 = runOutboundGate(`echo '{}' > .claude/coordination/.loop-preflight-product`, env);
-  assert(b1.exitCode === 2, 'bash gate blocks redirect to .loop-preflight-*');
-
-  // Write gate blocks direct writes to preflight marker files
-  const w4 = runWriteGate(`${tmpDir}/.claude/coordination/.loop-preflight-product`, env);
-  assert(w4.exitCode === 2, 'write gate blocks direct write to .loop-preflight-*');
-
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-}
+  if (failed > 0) {
+    throw new Error(`gate-integration: ${failed} assertion(s) failed:\n  - ${failures.join('\n  - ')}`);
+  }
+});
 
 // --- Integration: MCP Server with Real Budget + Observations ---
-(async () => {
+test('gate-integration: MCP server with real budget + observations', async () => {
   console.log('\n=== Integration: MCP Server with Real Budget + Observations ===');
   const tmpDir = createTempProject();
   const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
   const files = copyRealObservations(tmpDir);
 
-  // Real observations are in runtime-state.jsonl; ensure all entries are active
   updateStatus(tmpDir, 'runtime-state.jsonl', 'active');
 
   const { client, transport } = await startMcpServer(tmpDir);
   try {
-    // No docker runtime-state entry + stale marker → block (no observation for docker)
     fs.writeFileSync(
       path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
       JSON.stringify({ timestamp: new Date().toISOString(), prompt_snippet: 'I cleared the device' }, null, 2)
@@ -350,9 +359,7 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
     });
     const parsed1 = JSON.parse(r1.content[0].text);
     assert(parsed1.decision === 'block', 'MCP: no docker observation + stale marker → block');
-    // inbound_gate is not set because docker is hard-blocked (no observation check)
 
-    // No docker runtime-state entry + fresh marker → still block (docker always blocked)
     fs.writeFileSync(
       path.join(tmpDir, '.claude', 'coordination', '.last-operator-message'),
       JSON.stringify({ timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), prompt_snippet: 'old' }, null, 2)
@@ -363,7 +370,6 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
     });
     const parsed2 = JSON.parse(r2.content[0].text);
     assert(parsed2.decision === 'block', 'MCP: no docker observation + fresh marker → block');
-    // MCP gate tool sets inbound_gate=true when stale observations exist, even if decision is block
     assert(parsed2.inbound_gate === true, 'MCP: inbound_gate true with stale obs (gate-tool behavior)');
   } finally {
     await transport.close();
@@ -372,5 +378,8 @@ console.log('\n=== Integration: Outbound Gate with Real Observations ===');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 
   console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
-  process.exit(failed > 0 ? 1 : 0);
-})();
+
+  if (failed > 0) {
+    throw new Error(`gate-integration: ${failed} assertion(s) failed:\n  - ${failures.join('\n  - ')}`);
+  }
+});

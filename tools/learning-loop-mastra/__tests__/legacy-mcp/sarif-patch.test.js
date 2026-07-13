@@ -14,7 +14,7 @@ import assert from "node:assert";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { test } from "node:test";
+import { test } from "vitest";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 const WORKFLOW_PATH = resolve(PROJECT_ROOT, ".github/workflows/test.yml");

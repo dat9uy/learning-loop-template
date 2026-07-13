@@ -13,7 +13,6 @@
 //
 // All temp-root writes are isolated via GATE_ROOT.
 
-const { describe, test } = require("node:test");
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, readFileSync, existsSync, copyFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
