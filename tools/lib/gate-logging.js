@@ -89,3 +89,17 @@ export function appendGateLog(root, entry) {
     // I/O failure (disk full, permission denied, etc.) — never blocks gate.
   }
 }
+
+/**
+ * Append a structured tool-call record to the gate log. The canonical form
+ * used by every tool handler: `{ timestamp, tool, ...result }`. Centralised
+ * here so the timestamp format and tool-key field are single-source and fallow
+ * stops flagging the same 8-line pattern across handlers.
+ *
+ * @param {string} root - project root; absolute path.
+ * @param {string} tool - the MCP tool name (e.g., "meta_state_ship_loop_design").
+ * @param {object} result - the structured outcome to log alongside the tool name.
+ */
+export function logToolCall(root, tool, result) {
+  appendGateLog(root, { timestamp: new Date().toISOString(), tool, ...result });
+}

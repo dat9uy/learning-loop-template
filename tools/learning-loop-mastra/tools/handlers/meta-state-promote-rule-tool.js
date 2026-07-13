@@ -20,11 +20,22 @@ export const metaStatePromoteRuleTool = {
     pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for resolution-evidence-required)"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
+    // Plan 260712-0724 follow-up (Fix B): optional tool/surface scope that
+    // narrows the rule's firing surface without regex hand-curation. Parallel
+    // to change-log's applies_to. Used by universal rules (e.g.,
+    // rule-assertinvariant-at-boundary) to scope to 12 core-logic tools.
+    applies_to: z.object({
+      tools: z.array(z.string()).optional(),
+      surfaces: z.array(z.string()).optional(),
+      rules: z.array(z.string()).optional(),
+      statuses: z.array(z.string()).optional(),
+      schemas: z.array(z.string()).optional(),
+    }).optional().describe("Optional scope-narrowing block; persisted on the rule entry"),
     preview: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),
   },
-  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, preview, sample_commands, sample_paths }) => {
+  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -157,6 +168,7 @@ export const metaStatePromoteRuleTool = {
       pattern,
       ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
       ...(pattern_type === "resolution-evidence-required" && { applies_to_resolution: pattern }),
+      ...(applies_to && { applies_to }),
       description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",
       promoted_at: now,
@@ -165,9 +177,17 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-    // Update the source finding's status (rule entry's origin field is the
-    // canonical inverse reference; promoted_to_rule on findings is no longer used)
-    await updateEntry(root, id, { status: "active" });
+    // Update the source finding's status. Per the lifecycle migration (plan
+    // 260611-1000), the finding status enum was collapsed to
+    // {open, resolved, superseded}; legacy "active" is no longer a valid
+    // finding status. A promoted finding stays "open" (the issue isn't
+    // resolved — the rule now enforces). Rule entry's `origin` field is the
+    // canonical inverse reference; promoted_to_rule on findings is no longer
+    // used. Fix for Implementation 3 Gap #3 (pre-existing bug surfaced during
+    // the deferred closeout live session — line 182 was setting status to
+    // legacy "active", violating the lifecycle-migration invariant asserted
+    // by lifecycle-migration-finalize.test.js:54).
+    await updateEntry(root, id, { status: "open" });
 
     const result = {
       promoted: true,

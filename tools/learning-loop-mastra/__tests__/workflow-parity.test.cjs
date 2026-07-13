@@ -124,13 +124,13 @@ describe("workflow parity harness", () => {
     assert.ok(Array.isArray(result.expected_outputs));
   });
 
-  test("tools/list enumerates 32 mastra_* + 8 run_workflow_* = 40 mastra-and-workflow total", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 33 mastra_* + 8 run_workflow_* = 41 mastra-and-workflow total (was 32/40; meta_state_ship_loop_design added in plan 260712-0724 Fix A)", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
-    assert.equal(mastra.length, 32, `must have 32 mastra_* tools (meta_state_ack removed in plan 260707-0812 Phase 2, meta_state_dispatch_finding added), got ${mastra.length}`);
+    assert.equal(mastra.length, 33, `must have 33 mastra_* tools (meta_state_ack removed in plan 260707-0812 Phase 2, meta_state_dispatch_finding added in plan 260711-0030, meta_state_ship_loop_design added in plan 260712-0724 Fix A), got ${mastra.length}`);
     assert.equal(runWorkflows.length, 8, `must have 8 run_workflow_* tools (6 existing + 2 storage), got ${runWorkflows.length}`);
-    assert.equal(tools.length, 43, `total must be 43 (32 mastra_* + 8 run_workflow_* + 3 ask_*), got ${tools.length}`);
+    assert.equal(tools.length, 44, `total must be 44 (33 mastra_* + 8 run_workflow_* + 3 ask_*), got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

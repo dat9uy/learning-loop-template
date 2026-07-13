@@ -19,7 +19,8 @@
     "hooks/universal/**/*.js",
     "hooks/universal/**/*.cjs",
     "interface/**/*.js",
-    "__tests__/with-mcp-server.js"
+    "__tests__/with-mcp-server.js",
+    "__tests__/helpers/**/*.cjs"
   ],
 
   "ignorePatterns": [
@@ -46,6 +47,13 @@
         "FILE_INDEX_FILENAME",
         "getFileIndexPath",
         "_resetFileIndexCacheForTests"
+      ]
+    },
+    {
+      "file": "tools/lib/gate-logging.js",
+      "exports": [
+        "appendGateLog",
+        "logToolCall"
       ]
     }
   ],

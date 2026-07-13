@@ -1,14 +1,11 @@
 {
   "clone_groups": [
-    "core/inbound-state.js:17-21|tools/handlers/runtime-state-read-tool.js:17-21",
-    "core/meta-state.js:536-548|core/meta-state.js:839-852",
-    "core/meta-state.js:642-646|core/meta-state.js:764-768",
+    "core/inbound-state.js:22-26|tools/handlers/runtime-state-read-tool.js:17-21",
     "mastra/create-loop-tool.js:30-54|mastra/create-loop-workflow.js:20-31",
     "mastra/create-loop-workflow.js:50-62|mastra/handler-adapter.js:14-24",
     "tools/handlers/meta-state-check-grounding-tool.js:50-78|tools/handlers/meta-state-derive-status-tool.js:16-43",
     "tools/handlers/meta-state-consistency-check-tool.js:23-36|tools/handlers/meta-state-query-drift-tool.js:34-47",
-    "tools/handlers/meta-state-re-verify-tool.js:23-30|tools/handlers/meta-state-supersede-tool.js:20-27",
-    "tools/handlers/meta-state-resolve-tool.js:34-45|tools/handlers/meta-state-resolve-tool.js:46-57",
-    "tools/handlers/meta-state-resolve-tool.js:103-120|tools/handlers/meta-state-resolve-tool.js:92-99"
+    "tools/handlers/meta-state-resolve-tool.js:32-43|tools/handlers/meta-state-resolve-tool.js:44-55",
+    "tools/handlers/meta-state-resolve-tool.js:101-118|tools/handlers/meta-state-resolve-tool.js:90-97"
   ]
 }

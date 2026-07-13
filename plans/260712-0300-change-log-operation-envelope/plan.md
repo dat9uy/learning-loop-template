@@ -1,12 +1,12 @@
 ---
 title: "change-log operation envelope: kind + pre/post counts + content_hash for batch mutations"
 description: "Implementation 2 of the assertinvariant resolution (plans/reports/assertinvariant-meta-pattern-260711-0516-resolution-plan-report.md). Add a top-level operation_envelope field on change-log entries with kind, target, pre/post counts, and content_hash. Auto-emitted by meta_state_batch when callers pass the envelope. Close finding meta-260711T0144Z (test-fragility on legacy-mcp migration tests). Extend IMMUTABLE_PATCH_FIELDS to include operation_envelope so a stray meta_state_patch cannot silently overwrite the envelope — same defense principle as the Phase 2 stopgap just landed for entry_kind + status, replaced wholesale by the universal assertinvariant wrapper (Implementation 3)."
-status: pending
+status: done
 priority: P1
 branch: "main"
 tags: [meta-state, change-log, operation-envelope, batch-mutation, immutability, IMMUTABLE_PATCH_FIELDS-extension, test-fragility, meta-260711T0144Z, tdd, change-log-backed]
 blockedBy: []
-blocks: ["260712-NNNN-assertinvariant-universal-primitive"]
+blocks: ["260712-0724-assertinvariant-universal-primitive"]
 created: "2026-07-12T03:00:00.000Z"
 createdBy: "ck:plan"
 source: skill
@@ -93,8 +93,8 @@ related:
 
 | Phase | Name | Status | TDD Color | Dependencies |
 |-------|------|--------|-----------|--------------|
-| 1 | [RED tests + GREEN envelope helper](./phase-01-phase-01-red-tests-and-green-envelope-helper.md) | Pending | RED (4 tests) → GREEN + schema field | — |
-| 2 | [Batch integration + IMMUTABLE_PATCH_FIELDS extension + closeout](./phase-02-phase-02-batch-integration-and-stopgap-extension.md) | Pending | GREEN integration + stopgap + regression + change-logs | Phase 1 |
+| 1 | [RED tests + GREEN envelope helper](./phase-01-phase-01-red-tests-and-green-envelope-helper.md) | Completed | RED (4 tests) → GREEN + schema field | — |
+| 2 | [Batch integration + IMMUTABLE_PATCH_FIELDS extension + closeout](./phase-02-phase-02-batch-integration-and-stopgap-extension.md) | Completed | GREEN integration + stopgap + regression + change-logs | Phase 1 |
 
 **Total effort estimate:** ~2h (RED tests ~0.5h, GREEN envelope helper + schema ~0.25h, batch integration + stopgap ~0.5h, regression + change-logs + journal ~0.75h).
 

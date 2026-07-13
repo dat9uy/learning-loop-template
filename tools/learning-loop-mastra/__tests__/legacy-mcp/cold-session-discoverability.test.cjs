@@ -29,6 +29,10 @@ const { join, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const { probeL1, probeL2 } = require("./probe-helpers.cjs");
+const {
+  AGENT_MANIFEST_TOTAL_TOOLS,
+  AGENT_MANIFEST_GROUPS,
+} = require("../helpers/manifest-constants.cjs");
 
 describe("cold-session discoverability", () => {
   const projectRoot = resolve(__dirname, "..", "..", "..", "..");
@@ -71,8 +75,8 @@ describe("cold-session discoverability", () => {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     assert.ok(manifest.groups, "manifest must have groups");
     const totalTools = Object.values(manifest.groups).reduce((sum, g) => sum + g.tools.length, 0);
-    assert.strictEqual(totalTools, 43, `expected 43 tools in agent-manifest.json (meta_state_ack + run_workflow_intake_orient + run_workflow_intake_plan removed), got ${totalTools}`);
-    assert.strictEqual(Object.keys(manifest.groups).length, 6, "expected 6 groups");
+    assert.strictEqual(totalTools, AGENT_MANIFEST_TOTAL_TOOLS, `expected ${AGENT_MANIFEST_TOTAL_TOOLS} tools in agent-manifest.json (meta_state_ack + run_workflow_intake_orient + run_workflow_intake_plan removed; meta_state_ship_loop_design added in plan 260712-0724 Fix A), got ${totalTools}`);
+    assert.strictEqual(Object.keys(manifest.groups).length, AGENT_MANIFEST_GROUPS, `expected ${AGENT_MANIFEST_GROUPS} groups`);
 
     writeSentinel("manifest");
   });

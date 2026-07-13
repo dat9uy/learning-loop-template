@@ -43,10 +43,10 @@ const manifestRaw = readFileSync(manifestPath, "utf8")
 const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 31 entries (was 32 before plan 260707-0812; meta_state_ack
-// removed in Phase 2 lifecycle-status-stale-mechanism).
-await test("manifest has 31 entries", () => {
-  assert.strictEqual(manifest.length, 31, `Expected 31, got ${manifest.length}`);
+// 1. Manifest has 32 entries (was 31; meta_state_ship_loop_design added in
+// plan 260712-0724 Fix A to close Implementation 3 Gap #1).
+await test("manifest has 32 entries", () => {
+  assert.strictEqual(manifest.length, 32, `Expected 32, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest
