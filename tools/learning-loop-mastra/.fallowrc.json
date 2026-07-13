@@ -32,7 +32,11 @@
     "tools/handlers/scripts/**",
     "scout/pipeline/**",
     "plans/**",
-    "docs/**"
+    "docs/**",
+    "**/*.test.js",
+    "**/*.test.cjs",
+    "**/*.spec.js",
+    "**/*.spec.cjs"
   ],
 
   "ignoreExports": [

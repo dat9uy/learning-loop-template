@@ -2,12 +2,12 @@ import { defineConfig } from "vitest/config";
 
 // Vitest migration — Phase 1 / 2 config.
 //
-// include covers the 234-file test tree:
-//   - tools/learning-loop-mastra/**/*.test.{js,cjs,mjs} — 222 files (was the
-//     c8-included subset; widened so vitest also runs spec files).
-//   - .claude/coordination/__tests__/*.test.cjs — 8 files (gate tests run as
-//     script-style; vitest wrap transform converts to test() in Phase 2).
-//   - .factory/hooks/__tests__/*.test.cjs — 4 files.
+// include covers the post-prune test tree:
+//   - tools/learning-loop-mastra/**/*.test.{js,cjs,mjs}
+//   - .claude/coordination/__tests__/*.test.cjs
+//   - .factory/hooks/__tests__/*.test.cjs
+//   - tools/scripts/__tests__/*.test.js (the codemod unit tests; see
+//     docs/reports/vitest-migration-260713-1810-phase-1-shadow-verification-report.md)
 //
 // testTimeout / hookTimeout: 120000 (red-team C2: the 6 before(fn,{timeout})
 // hooks bootstrap a Mastra MCP server; default 10s flakes).
@@ -15,9 +15,9 @@ import { defineConfig } from "vitest/config";
 // reporters: default + json — agent-context fix (vitest --reporter=json emits
 // `.test-logs/vitest-results.json` with numFailedTests + assertionResults[]).
 //
-// coverage provider: v8 (native V8 coverage; vitest 3.2.0+ emits an
-// Istanbul-shaped coverage-final.json so fallow:gate accepts it without a
-// third-party adapter).
+// coverage provider: istanbul (chosen over v8 because fallow:gate's coverage
+// input requires Istanbul-format JSON; @vitest/coverage-istanbul produces it
+// natively without AST-remapping).
 
 export default defineConfig({
   test: {
@@ -25,6 +25,7 @@ export default defineConfig({
       "tools/learning-loop-mastra/**/*.test.{js,cjs,mjs}",
       ".claude/coordination/__tests__/*.test.cjs",
       ".factory/hooks/__tests__/*.test.cjs",
+      "tools/scripts/__tests__/*.test.js",
     ],
     exclude: [
       "**/node_modules/**",

@@ -3,7 +3,7 @@
 // Locks the three transforms (import swap, hook call-site fix, t.skip fix)
 // and their idempotency. Re-run after any codemod edit.
 
-import { describe, test } from "node:test";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import { transform } from "../codemod-node-test-to-vitest.mjs";
 

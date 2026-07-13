@@ -70,16 +70,16 @@ describe("Phase 0 hygiene gate — fallowrc ignore retirement", () => {
     );
   });
 
-  test("**/*.test.{js,cjs} ignore lines are GONE (Phase 2 atomic cutover deleted them; vitest plugin registers tests as entries)", () => {
+  test("**/*.test.{js,cjs} ignore lines REMAIN (fallow 3.3.0 lacks a vitest plugin, so test files must stay ignored to avoid 192 unused-file false positives — see r2/fallow-test-tree-clean for the regression guard)", () => {
     const fallowrc = JSON.parse(readFileSync(join(LL, ".fallowrc.json"), "utf8"));
     const ignore = Array.isArray(fallowrc.ignorePatterns) ? fallowrc.ignorePatterns : [];
     assert.strictEqual(
       ignore.includes("**/*.test.js"),
-      false,
-      "**/*.test.js should be removed (vitest plugin registers tests as fallow entries)",
+      true,
+      "**/*.test.js must remain in ignorePatterns while fallow lacks a vitest plugin",
     );
-    assert.strictEqual(ignore.includes("**/*.test.cjs"), false);
-    assert.strictEqual(ignore.includes("**/*.spec.js"), false);
-    assert.strictEqual(ignore.includes("**/*.spec.cjs"), false);
+    assert.strictEqual(ignore.includes("**/*.test.cjs"), true);
+    assert.strictEqual(ignore.includes("**/*.spec.js"), true);
+    assert.strictEqual(ignore.includes("**/*.spec.cjs"), true);
   });
 });
