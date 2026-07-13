@@ -61,9 +61,14 @@
     },
     "core/envelope-stripper.js": {
       "crap_high": {
-        "count": 1
+        "count": 2
       },
       "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/evaluate-inbound-gate.js": {
+      "crap_high": {
         "count": 1
       }
     },
@@ -106,10 +111,10 @@
         "count": 1
       },
       "crap_critical": {
-        "count": 1
+        "count": 2
       },
       "crap_moderate": {
-        "count": 2
+        "count": 1
       }
     },
     "core/loop-introspect.js": {
@@ -186,6 +191,19 @@
     "core/update-entry-helpers.js": {
       "crap_moderate": {
         "count": 1
+      }
+    },
+    "core/worktree-version.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "hooks/universal/inbound-gate.js": {
+      "crap_moderate": {
+        "count": 2
       }
     },
     "interface/contract.js": {
@@ -393,6 +411,11 @@
         "count": 2
       }
     },
+    "tools/handlers/meta-state-ship-loop-design-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "tools/handlers/meta-state-supersede-tool.js": {
       "crap_critical": {
         "count": 1
@@ -422,9 +445,11 @@
     "core/entry/index.js:dead code",
     "core/derive-status.js:dead code",
     "core/recurrence-tracker.js:dead code",
+    "core/evaluate-inbound-gate.js:dead code",
     "core/check-grounding.js:dead code",
-    "core/gate-logic.js:complexity",
     "core/meta-state.js:complexity",
+    "core/gate-logic.js:complexity",
+    "core/worktree-session-id.js:dead code",
     "core/entry/finding.js:untested risk",
     "core/entry/rule.js:untested risk",
     "core/loop-introspect.js:complexity",
@@ -432,8 +457,8 @@
     "mastra/schema-parity.js:complexity",
     "core/entry/loop-design.js:untested risk",
     "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
-    "tools/handlers/meta-state-list-tool.js:complexity",
     "tools/handlers/loop-describe-tool.js:complexity",
+    "tools/handlers/meta-state-list-tool.js:complexity",
     "tools/handlers/meta-state-promote-rule-tool.js:complexity"
   ]
 }
