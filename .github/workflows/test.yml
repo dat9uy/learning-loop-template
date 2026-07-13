@@ -44,6 +44,15 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 11
+          # standalone: true installs @pnpm/exe as a static binary instead of
+          # bootstrapping pnpm via npm then running `pnpm self-update`. That
+          # bootstrap path parses this repo's lockfileVersion 9.0 lockfile with
+          # the bootstrap binary's parser and crashes ("Cannot use 'in' operator
+          # to search for 'integrity' in undefined" in lockfileToDepGraph) before
+          # the requested version ever takes over. The static binary skips the
+          # lockfile read entirely during setup; the frozen-lockfile install
+          # below still runs the real pinned pnpm on the lockfile.
+          standalone: true
           run_install: false
 
       - uses: actions/setup-node@v6
