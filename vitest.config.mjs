@@ -18,6 +18,17 @@ import { defineConfig } from "vitest/config";
 // coverage provider: istanbul (chosen over v8 because fallow:gate's coverage
 // input requires Istanbul-format JSON; @vitest/coverage-istanbul produces it
 // natively without AST-remapping).
+//
+// Known noise: vitest's coverage instrumentation (the `?vitest-uncovered-coverage`
+// SSR transform) emits `vite:dynamic-import-vars` warnings for production files
+// that build import paths dynamically — `mastra/server.js` and
+// `agents/build-meta-state-tools.js` use `import(\`./${file}\`)` to load plugins
+// by config. These are intentional production patterns; the warnings are
+// cosmetic (no test or coverage impact). Suppressing them cleanly would require
+// either adding static extensions to those dynamic imports (a production change
+// that would defeat the plugin-loading pattern) or lowering the vite log level
+// globally (which would hide useful warnings). Neither is proportionate, so the
+// noise is accepted here.
 
 export default defineConfig({
   test: {

@@ -75,8 +75,9 @@ Follow-up `9b26d12` reverted the 4 ignore lines and regenerated baselines to the
 
 ## Follow-ups (Phase 3 verification +)
 
-1. Fix the 7 pre-existing env failures (5x ci-registry-deltas path drift, 2x MCP timing). Owned by Phase 3.
-2. Restore the pre-commit hook's `pnpm test && pnpm fallow:gate` discipline (currently using --no-verify).
+1. Fix the 7 pre-existing env failures (5x ci-registry-deltas path drift, 2x MCP timing). Owned by Phase 3. — **DONE in cb27eb4** (all 8 failures resolved; `pnpm test && pnpm fallow:gate` exits 0).
+2. Restore the pre-commit hook's `pnpm test && pnpm fallow:gate` discipline (currently using --no-verify). — **DONE in cb27eb4** (hook restored; subsequent commits run it normally).
 3. Optionally split the hand-migrated script-style tests into per-category `test()` calls for better parallelism + per-assertion reporting (deferred; the aggregation is a deliberate R13 choice that aligns with the agent-context fix).
 4. When fallow ships a vitest plugin (or the project upgrades fallow), retire the 4 test-ignore lines AND update the `r2/fallow-test-tree-clean` guard in lockstep.
 5. Decide on loop-design status flip — the `ship_loop_design` MCP tool isn't in this runtime's toolset; the change-log is the canonical ship record.
+6. **Do NOT re-save the fallow dead-code/dupes baselines despite the "matched 0 current issues" warning.** The baselines hold whole-tree accepted dead code (42 entries: 33 `unused_exports`, 7 `stale_suppressions`, 1 `unused_files`, 1 `duplicate_exports`; + 7 dupes `clone_groups`) at still-existing paths (`core/check-grounding.js`, `core/meta-state.js`, …). `fallow:gate` runs `--changed-since origin/main`, so it audits only changed files and never surfaces those whole-tree entries as "current issues" — hence the 0-match warning. Re-saving under the changed-since gate mode would write a changed-files-only baseline (0) and **silently drop the 42 valid accepted entries**; the next change to any of those files would then fail the gate on previously-accepted dead code. The warning is benign cosmetic noise from fallow's baseline-matching heuristic. Leave the baselines as-is.
