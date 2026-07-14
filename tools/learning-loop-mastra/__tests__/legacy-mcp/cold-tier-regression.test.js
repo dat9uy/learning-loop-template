@@ -1,6 +1,6 @@
 import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRegistry, readFileIndex } from "../../core/meta-state.js";
+import { readRegistry, readFileIndex, isValidEntryIdRef } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { derivedStaleSet, isOpen } from "../../core/stale-view.js";
@@ -29,10 +29,12 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
 
   assert.strictEqual(current.tier, "cold");
 
-  // Phase 1: zero broken proposed_design_for refs (code symbols stripped to entry ids)
+  // Phase 1: zero broken proposed_design_for refs (code symbols stripped to entry ids).
+  // Reuses the core isValidEntryIdRef predicate — the same rule the loop-design
+  // schema enforces at write/patch time — so the test and the schema cannot drift.
   const brokenRefs = current.loop_designs
     .flatMap((d) => d.proposed_design_for ?? [])
-    .filter((ref) => !ref.startsWith("meta-") && !ref.startsWith("rule-") && !ref.startsWith("loop-design-"));
+    .filter((ref) => !isValidEntryIdRef(ref));
   assert.strictEqual(
     brokenRefs.length, 0,
     `Phase 1 invariant broken: ${brokenRefs.length} broken proposed_design_for refs: ${brokenRefs.join(", ")}`

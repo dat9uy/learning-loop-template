@@ -9,7 +9,7 @@ const validDesign = {
   id: "loop-design-cross-reference-fields",
   title: "Cross-reference fields on rule and loop-design schemas",
   status: "active",
-  proposed_design_for: ["metaStateRuleEntrySchema", "metaStateLoopDesignSchema"],
+  proposed_design_for: ["rule-cross-reference-fields"],
   addresses: ["meta-260606T1543Z-meta-state-cross-reference-field-design"],
   description: "Adds typed cross-reference fields (proposed_design_for, addresses, origin) to the new rule and loop-design schemas. This eliminates the need for a generic related_to field on findings.",
   affected_system: "mcp-tools",
@@ -21,9 +21,20 @@ test("metaStateLoopDesignSchema accepts minimal valid loop-design entry", () => 
   assert.equal(metaStateLoopDesignSchema.safeParse(validDesign).success, true);
 });
 
-test("metaStateLoopDesignSchema rejects empty proposed_design_for", () => {
-  const bad = { ...validDesign, proposed_design_for: [] };
-  assert.equal(metaStateLoopDesignSchema.safeParse(bad).success, false);
+test("metaStateLoopDesignSchema accepts empty proposed_design_for", () => {
+  // A design with no forward refs uses [] and documents targets in the
+  // description; the schema enforces entry-id prefixes on any refs present,
+  // not presence. (14 persisted designs use this shape.)
+  const ok = { ...validDesign, proposed_design_for: [] };
+  assert.equal(metaStateLoopDesignSchema.safeParse(ok).success, true);
+});
+
+test("metaStateLoopDesignSchema rejects non-entry-id proposed_design_for refs", () => {
+  const bad = { ...validDesign, proposed_design_for: ["meta_state_refresh_file_index_batch"] };
+  const result = metaStateLoopDesignSchema.safeParse(bad);
+  assert.equal(result.success, false);
+  const issue = result.error.issues.find((i) => /entry-id ref/.test(i.message));
+  assert.ok(issue, "refine should reject non-entry-id refs with an actionable message");
 });
 
 test("metaStateLoopDesignSchema accepts inactive status with shipped_in_plan + shipped_at", () => {

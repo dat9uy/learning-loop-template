@@ -65,7 +65,7 @@ function makeValidLoopDesign(id) {
     id: "loop-design-test-write-validation",
     entry_kind: "loop-design",
     title: "Test design for write validation",
-    proposed_design_for: ["test"],
+    proposed_design_for: ["rule-test-write-validation"],
     addresses: [],
     description: "A valid loop-design for write validation test",
     affected_system: "mcp-tools",

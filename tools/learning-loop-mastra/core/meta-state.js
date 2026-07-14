@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, renameSync, appendFileSync, unlinkSync, statSync } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { z } from "zod";
-import { stripEnvelope } from "./envelope-stripper.js";
+import { deepStripEnvelope } from "./envelope-stripper.js";
 import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js";
 // Registry-write helpers (persistRegistryAtomic + appendRegistryEntryAtomic)
 // are inlined here as private functions after the previous-commit extraction
@@ -136,6 +136,50 @@ export const META_STATE_FINDING_CATEGORIES = [
 ];
 
 /**
+ * Entry-id reference prefixes. A value in a cross-reference array
+ * (proposed_design_for, addresses, reopens) must start with one of these.
+ * Single source of truth — shared by the schema refiners below and by the
+ * cold-tier regression test, so the test enforces the same rule the schema
+ * does instead of hand-rolling a copy. Tool names, file paths, and schema
+ * export names are NOT entry-id refs; a design that targets those documents
+ * them in its description and leaves the cross-ref array empty.
+ */
+export const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
+
+export function isValidEntryIdRef(ref) {
+  return typeof ref === "string" && ENTRY_ID_REF_PREFIXES.some((p) => ref.startsWith(p));
+}
+
+/**
+ * superRefine that rejects non-entry-id refs in a cross-reference array with
+ * an actionable, path-tagged message. This is the validator middleware: every
+ * write surface (meta_state_propose_design, meta_state_patch, meta_state_batch
+ * write) derives from the per-kind schemas below, so this is the single choke
+ * point that prevents invalid bodies from being persisted. Empty arrays pass
+ * (no elements to check). The message tells the caller exactly what to do —
+ * clear the field or use a real entry id — and to escalate rather than retry
+ * wire shapes, so the agent runtime does not loop against the gate.
+ */
+function entryIdRefsRefine(val, ctx) {
+  for (let i = 0; i < val.length; i++) {
+    if (!isValidEntryIdRef(val[i])) {
+      ctx.addIssue({
+        code: "custom",
+        path: [i],
+        message:
+          `must be a valid entry-id ref (start with ${ENTRY_ID_REF_PREFIXES.join(" / ")}); got ${JSON.stringify(val[i])}. ` +
+          `To target a non-entry-id (MCP tool name, file path, schema export), set this field to [] and document the target in the description. ` +
+          `If unsure, return to the operator instead of retrying.`,
+      });
+    }
+  }
+}
+
+/** Array of entry-id refs with wire-envelope stripping + prefix validation. */
+const entryIdRefArray = () =>
+  z.preprocess(deepStripEnvelope, z.array(z.string()).superRefine(entryIdRefsRefine));
+
+/**
  * Finding branch schema — used by the 5 existing meta-state finding tools.
  * Has .shape available for tool schema reuse.
  */
@@ -192,7 +236,7 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
   auto_resolve: z.coerce.boolean().nullable().optional()
     .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
-  reopens: z.preprocess(stripEnvelope, z.array(z.string())).optional()
+  reopens: entryIdRefArray().optional()
     .describe("Finding ids whose `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve the stale parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})` in 1 step. The legacy 'expired' status was removed in plan 260611-1000; only `stale` parents are cascade-closeable. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
 });
 
@@ -329,9 +373,9 @@ export const metaStateLoopDesignSchema = z.object({
   title: z.string().min(10).describe("Short human-readable title"),
   status: z.enum(["active", "inactive"]).default("active")
     .describe("Binary. Flips to inactive when the proposed work ships."),
-  proposed_design_for: z.preprocess(stripEnvelope, z.array(z.string()).min(1))
-    .describe("Forward: ids of rules/schemas/tools this design will create or modify"),
-  addresses: z.preprocess(stripEnvelope, z.array(z.string()).default([]))
+  proposed_design_for: entryIdRefArray()
+    .describe("Forward: ids of rules/schemas/tools (entry ids: meta-/rule-/loop-design- prefix) this design will create or modify. A design with no forward refs uses [] and documents targets in the description."),
+  addresses: z.preprocess(deepStripEnvelope, z.array(z.string()).superRefine(entryIdRefsRefine).default([]))
     .describe("Backward: ids of findings this design responds to (the motivation; the why-this-exists)"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system this design affects"),

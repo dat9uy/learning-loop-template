@@ -33,7 +33,7 @@ test("meta_state_propose_design writes a new loop-design entry with auto-generat
     const result = await call({
       title: "Cross-reference fields on rule and loop-design schemas",
       description: "Adds typed cross-reference fields (proposed_design_for, addresses, origin) to the new rule and loop-design schemas.",
-      proposed_design_for: ["metaStateRuleEntrySchema", "metaStateLoopDesignSchema"],
+      proposed_design_for: ["rule-cross-reference-fields"],
       addresses: ["meta-260606T1543Z-meta-state-cross-reference-field-design"],
       affected_system: "mcp-tools",
     });
@@ -110,13 +110,13 @@ test("meta_state_propose_design idempotency: explicit loop_design_id collision r
   }
 });
 
-test("meta_state_propose_design validates against metaStateLoopDesignSchema (rejects empty proposed_design_for)", async () => {
+test("meta_state_propose_design validates against metaStateLoopDesignSchema (rejects non-entry-id proposed_design_for refs)", async () => {
   const root = setup();
   try {
     const result = await call({
-      title: "Invalid design with empty proposed_design_for",
-      description: "This should be rejected because proposed_design_for is empty.",
-      proposed_design_for: [],
+      title: "Invalid design with non-entry-id proposed_design_for",
+      description: "This should be rejected because proposed_design_for refs must be entry ids.",
+      proposed_design_for: ["meta_state_refresh_file_index_batch"],
       addresses: [],
       affected_system: "mcp-tools",
     });

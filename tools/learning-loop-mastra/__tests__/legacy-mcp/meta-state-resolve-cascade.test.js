@@ -140,7 +140,7 @@ test("cascade_from with child not reopening parent returns cascade_child_not_reo
   const childId = core.generateId("child-other");
 
   await writeStaleParent(core, tempRoot, parentId);
-  await writeChild(core, tempRoot, childId, "some-other-parent");
+  await writeChild(core, tempRoot, childId, "meta-some-other-parent");
 
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = tempRoot;
@@ -157,7 +157,7 @@ test("cascade_from with child not reopening parent returns cascade_child_not_reo
     assert.ok(parsed.bad_children);
     assert.strictEqual(parsed.bad_children[0].child_id, childId);
     assert.strictEqual(parsed.bad_children[0].expected_reopens, parentId);
-    assert.deepStrictEqual(parsed.bad_children[0].actual_reopens, ["some-other-parent"]);
+    assert.deepStrictEqual(parsed.bad_children[0].actual_reopens, ["meta-some-other-parent"]);
   } finally {
     if (originalEnv === undefined) {
       delete process.env.GATE_ROOT;

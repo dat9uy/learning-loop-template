@@ -92,7 +92,7 @@ test("T-3: 3 of 4 union branches expose evidence_code_ref top-level", () => {
     entry_kind: "loop-design",
     id: "loop-design-test-evidence-coverage",
     title: "Test design for evidence coverage",
-    proposed_design_for: ["test"],
+    proposed_design_for: ["rule-test"],
     addresses: [],
     description: "A test loop-design for evidence coverage test",
     affected_system: "mcp-tools",
