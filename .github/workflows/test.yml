@@ -68,7 +68,7 @@ jobs:
         # to resolveRoot() when --root= is absent, and CI does not set GATE_ROOT —
         # relying on the default risks an empty index on first CI run.
         # env -u SKIP_PRESEED strips any inherited env var so the seed ALWAYS
-        # runs in CI (Validation Session 1, 2026-07-15).
+        # runs in CI, even if the workflow or repo env sets the escape hatch.
         run: env -u SKIP_PRESEED node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs --root=$GITHUB_WORKSPACE
 
       - name: Run cold-session probe tests

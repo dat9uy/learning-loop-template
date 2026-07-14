@@ -178,10 +178,10 @@ describe("file-index sidecar helpers", () => {
     assert.strictEqual(map.get("good.js"), VALID_HASH, "prior entries intact");
   });
 
-  // Plan 260715-0500 Phase 1: true no-op. Re-upserting an unchanged (key, hash)
-  // must touch NOTHING on disk — same byte Buffer, same mtime, same cached Map
-  // ref. The cold-tier cache key is sha256(contents) so a stable index keeps the
-  // cache warm; per-row updated_at churn on every reseed invalidates it.
+  // True no-op: re-upserting an unchanged (key, hash) must touch NOTHING on
+  // disk — same byte Buffer, same mtime, same cached Map ref. The cold-tier
+  // cache key is sha256(contents) so a stable index keeps the cache warm;
+  // per-row updated_at churn on every reseed invalidates it.
   test("re-upserting the same (key, hash) is a true no-op (no rewrite, cache preserved)", async () => {
     const root = makeRoot();
     const indexPath = getFileIndexPath(root);
