@@ -32,6 +32,14 @@ function computeFileHash(absPath) {
 const args = process.argv.slice(2);
 const rootArg = args.find((a) => a.startsWith("--root="));
 const root = rootArg ? rootArg.slice("--root=".length) : resolveRoot();
+
+// SKIP_PRESEED escape hatch: pre-commit drift-absorption is the default, but
+// operators who want the pre-commit drift signal back can opt out per run.
+if (process.env.SKIP_PRESEED === "1") {
+  console.log("[seed-file-index] SKIP_PRESEED=1 — skipping pretest seed.");
+  process.exit(0);
+}
+
 const entries = readRegistry(root);
 
 // Distinct canonical keys among ALL mechanism_check:true findings (incl. terminal).

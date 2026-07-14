@@ -71,5 +71,5 @@ await test("PROCESS_HINTS row #5 contains the literal rule-fallow-brief-on-gate-
   // Also verify row count == 8 (4 original + 1 fallow brief + 3 reclassified
   // advisory rule rows from plan 260714-1358-rule-vocabulary-realignment
   // Phase 1, Q3 validation reversal).
-  assert.strictEqual(processHints.length, 8, "PROCESS_HINTS should have exactly 8 rows (4 + fallow brief + 3 reclassified)");
+  assert.strictEqual(processHints.length, 9, "PROCESS_HINTS should have exactly 9 rows (8 prior + file-edit-drift-and-fingerprints appended)");
 });

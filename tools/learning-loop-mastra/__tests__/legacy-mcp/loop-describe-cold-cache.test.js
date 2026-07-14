@@ -158,3 +158,88 @@ describe("loop_describe cold tier sidecar cache", () => {
     assert.ok(existsSync(cachePath), "must write cache on miss");
   });
 });
+
+// Sibling test: isolated temp root + isolated fixtures for both meta-state.jsonl
+// AND file-index.jsonl so the file-index SHA invalidation behavior is exercised
+// independently of the existing 6 tests.
+describe("file-index SHA invalidates cold-tier cache", () => {
+  let root;
+
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), "cold-cache-file-index-test-"));
+    process.env.GATE_ROOT = root;
+  });
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+    delete process.env.GATE_ROOT;
+  });
+
+  it("cold-tier cache rebuilds when file-index.jsonl SHA changes (registry unchanged)", async () => {
+    // Seed a minimal registry + file-index so both files exist before the
+    // first cache build. Without both writes, fileIndexSha256 would be null
+    // and the SHA would never change.
+    const registryLines = [
+      JSON.stringify({
+        id: "file-index-shafind",
+        entry_kind: "finding",
+        status: "open",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "mcp-tools",
+        description: "Finding for file-index SHA invalidation test (min 20 chars)",
+        evidence_code_ref: "tools/learning-loop-mastra/__tests__/fixtures/a.js",
+        mechanism_check: true,
+        created_at: new Date().toISOString(),
+      }),
+    ].join("\n") + "\n";
+    writeFileSync(join(root, "meta-state.jsonl"), registryLines, "utf8");
+
+    const fileIndexLines = [
+      JSON.stringify({
+        path: "tools/learning-loop-mastra/__tests__/fixtures/a.js",
+        code_fingerprint: "sha256:aaa",
+        updated_at: "2026-07-14T00:00:00.000Z",
+      }),
+    ].join("\n") + "\n";
+    writeFileSync(join(root, "file-index.jsonl"), fileIndexLines, "utf8");
+
+    // First call: build the cache from a fresh tree.
+    await loopDescribeTool.handler({ tier: "cold" });
+
+    const cachePath = join(root, "records/meta/.cache/loop-describe-cold.json");
+    assert.ok(existsSync(cachePath), "cache file must be created on first call");
+
+    const firstBuiltAt = JSON.parse(readFileSync(cachePath, "utf8")).built_at;
+
+    // Mutate ONLY file-index.jsonl (registry untouched). Use a different byte
+    // length than the original to dodge mtime-granularity edge cases on
+    // coarse filesystems.
+    writeFileSync(
+      join(root, "file-index.jsonl"),
+      fileIndexLines + JSON.stringify({
+        path: "tools/learning-loop-mastra/__tests__/fixtures/b.js",
+        code_fingerprint: "sha256:bbb",
+        updated_at: "2026-07-14T00:00:00.000Z",
+      }) + "\n",
+      "utf8",
+    );
+
+    // Second call: must rebuild cache because file-index SHA changed.
+    await loopDescribeTool.handler({ tier: "cold" });
+
+    assert.ok(existsSync(cachePath), "cache file must remain present after rebuild");
+
+    const secondBuiltAt = JSON.parse(readFileSync(cachePath, "utf8")).built_at;
+    assert.notStrictEqual(
+      secondBuiltAt,
+      firstBuiltAt,
+      `cache must rebuild when file-index.jsonl SHA changes; firstBuiltAt=${firstBuiltAt}, secondBuiltAt=${secondBuiltAt}`,
+    );
+
+    // The new cache must carry both SHAs.
+    const updatedCache = JSON.parse(readFileSync(cachePath, "utf8"));
+    assert.ok(updatedCache.registry_sha256, "cache must include registry_sha256");
+    assert.ok(updatedCache.file_index_sha256, "cache must include file_index_sha256 after upgrade");
+  });
+});

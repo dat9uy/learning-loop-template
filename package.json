@@ -14,7 +14,7 @@
     "dev": "(trap 'kill 0' EXIT; pnpm dev:api & pnpm dev:web)",
     "smoke:vci": "cd product/api && VNSTOCK_SMOKE_TEST_ALLOW_LIVE=1 uv run pytest -m network -v tests/test_vci_smoke.py",
     "smoke:mastracode": "node scripts/probe-mastracode.cjs",
-    "test": "vitest run && node tools/scripts/sanitize-coverage.mjs",
+    "test": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run && node tools/scripts/sanitize-coverage.mjs",
     "test:debug": "vitest run tools/learning-loop-mastra/__tests__/debug/",
     "test:cold-session": "vitest run tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
     "check:freshness": "vitest run tools/learning-loop-mastra/__tests__/freshness/",

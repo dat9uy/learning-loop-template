@@ -398,6 +398,24 @@ describe("cold-session discoverability", () => {
       }
     });
 
+    test("HINT_KEY_MAP_PROCESS covers every PROCESS_HINTS index (closes silent-rot gap)", async () => {
+      assert.ok(loopGetInstruction.HINT_KEY_MAP_PROCESS, "HINT_KEY_MAP_PROCESS must be exported");
+      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
+      const { buildProcessHints } = await import(pathToFileURL(canonicalToolPath).href);
+      const processHints = buildProcessHints();
+
+      // Every mapped index MUST be within the live PROCESS_HINTS bounds. The
+      // pre-existing 3-entry HINT_KEY_MAP_PROCESS silently lagged the 8-entry
+      // PROCESS_HINTS; this test catches future drift by asserting on every
+      // key the lookup table exports.
+      for (const [slug, idx] of Object.entries(loopGetInstruction.HINT_KEY_MAP_PROCESS)) {
+        assert.ok(
+          Number.isInteger(idx) && idx >= 0 && idx < processHints.length,
+          `HINT_KEY_MAP_PROCESS["${slug}"] = ${idx} is out of bounds for PROCESS_HINTS length ${processHints.length}`,
+        );
+      }
+    });
+
     test("loop_get_instruction resolves pnpm-test-discipline from PROCESS_HINTS cross-array routing", async () => {
       const result = await loopGetInstruction.loopGetInstructionTool.handler({ key: "pnpm-test-discipline" });
       const parsed = JSON.parse(result.content[0].text);
