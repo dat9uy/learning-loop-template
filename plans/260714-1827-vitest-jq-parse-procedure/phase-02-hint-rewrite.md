@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Hint Rewrite"
-status: pending
+status: completed
 priority: P2
 dependencies: [1]
 ---
@@ -36,10 +36,10 @@ PROCESS_HINTS is the agent's at-startup operational surface (injected by Session
 
 ## Success Criteria
 
-- [ ] row #1 in both files is byte-for-byte identical (empty `diff`)
-- [ ] new row covers all three run flags + parse-via-script + jq fallback + the "do NOT hand-parse" clause
-- [ ] dead `.test-logs/<ns>.log` references gone
-- [ ] `pnpm test:cold-session` passes
+- [x] row #1 in both files is byte-for-byte identical (empty `diff`)
+- [x] new row covers all three run flags + parse-via-script + jq fallback + the "do NOT hand-parse" clause
+- [x] dead `.test-logs/<ns>.log` references gone
+- [x] `pnpm test:cold-session` passes (11/11)
 
 ## Risk Assessment
 

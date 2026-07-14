@@ -1,7 +1,7 @@
 ---
 title: "Deterministic jq parse of vitest results"
 description: "Ship a pure bash+jq parser for .test-logs/vitest-results.json and surface it via a rewritten PROCESS_HINTS row so the agent stops hand-parsing test output with adhoc python/node. Resolves meta-260714T1334Z."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [loop, test-infra, process-hints, runtime-agnostic]
@@ -10,6 +10,8 @@ blocks: []
 created: "2026-07-14T11:33:24.925Z"
 createdBy: "ck:plan"
 source: skill
+completedAt: "2026-07-14T12:02:56.000Z"
+shippedCommit: pending
 ---
 
 # Deterministic jq parse of vitest results
@@ -24,9 +26,9 @@ Brainstorm report: `plans/reports/brainstorm-260714-1827-vitest-jq-parse-procedu
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Script](./phase-01-script.md) | Pending |
-| 2 | [Hint Rewrite](./phase-02-hint-rewrite.md) | Pending |
-| 3 | [Verify Resolve](./phase-03-verify-resolve.md) | Pending |
+| 1 | [Script](./phase-01-script.md) | Complete |
+| 2 | [Hint Rewrite](./phase-02-hint-rewrite.md) | Complete |
+| 3 | [Verify Resolve](./phase-03-verify-resolve.md) | Complete |
 
 ## Dependencies
 

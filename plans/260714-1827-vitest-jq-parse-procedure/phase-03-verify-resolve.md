@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Verify Resolve"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2]
 ---
@@ -38,12 +38,12 @@ Verification order: narrow (cold-session parity + new script test) → broad (`p
 
 ## Success Criteria
 
-- [ ] `pnpm test:cold-session` green
-- [ ] `pnpm test` green
-- [ ] no new `python -c`/`node -e` parse of `vitest-results.json`
-- [ ] finding `meta-260714T1334Z…` resolved
-- [ ] PR body enumerates the resolved delta
-- [ ] journal entry written
+- [x] `pnpm test:cold-session` green (11/11)
+- [x] `pnpm test` green (1893 passed + 1 skipped, 0 failed across 212 test files)
+- [x] no new `python -c`/`node -e` parse of `vitest-results.json` (the only matches are inside the Do-NOT clause itself)
+- [x] finding `meta-260714T1334Z…` resolved via `meta_state_resolve`
+- [x] PR body enumerates the resolved delta per `rule-pr-body-registry-deltas`
+- [x] journal entry written
 
 ## Risk Assessment
 

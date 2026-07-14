@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Script"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---
@@ -40,11 +40,11 @@ Create `tools/scripts/vitest-failures.sh`: a pure `#!/usr/bin/env bash` + `jq` r
 
 ## Success Criteria
 
-- [ ] `bash tools/scripts/vitest-failures.sh` → `all green: 1197 tests / 225 suites passed`, exit 0
-- [ ] fixture path → failing assertion printed, exit non-zero
-- [ ] nonexistent path → exit 2 with guidance message
-- [ ] script test passes under `pnpm test`
-- [ ] script is `+x` and has `set -euo pipefail`
+- [x] `bash tools/scripts/vitest-failures.sh` → green summary line, exit 0 (live tree: `all green: 1894 tests / 381 suites passed` — exact counts shifted as the suite grew post-plan authoring; format matches)
+- [x] fixture path → failing assertion printed, exit 1
+- [x] nonexistent path → exit 2 with guidance message
+- [x] script test passes under `pnpm test` (7 hermetic tests in `tools/scripts/__tests__/vitest-failures.test.js`)
+- [x] script is `+x` and has `set -euo pipefail`
 
 ## Risk Assessment
 
