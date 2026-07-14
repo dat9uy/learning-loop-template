@@ -15,7 +15,6 @@ import { tmpdir } from "node:os";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(__dirname, "../vitest-failures.sh");
 const FAILED_FIXTURE = resolve(__dirname, "../__fixtures__/vitest-results-failed.json");
-const LIVE_RESULTS = resolve(__dirname, "../../../.test-logs/vitest-results.json");
 
 function runScript(args = []) {
   return spawnSync("bash", [SCRIPT, ...args], { encoding: "utf8" });
