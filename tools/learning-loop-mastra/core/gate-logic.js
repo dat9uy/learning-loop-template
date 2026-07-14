@@ -536,7 +536,12 @@ export function projectHasLearningLoopMcp(root) {
     const cfgPath = join(root, ".mcp.json");
     if (!existsSync(cfgPath)) return false;
     const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-    return !!(cfg.mcpServers && (cfg.mcpServers["learning-loop-mcp"] || cfg.mcpServers["learning-loop-mastra"]));
+    return !!(
+      cfg.mcpServers &&
+      (cfg.mcpServers["learning-loop"] ||
+        cfg.mcpServers["learning-loop-mcp"] ||
+        cfg.mcpServers["learning-loop-mastra"])
+    );
   } catch {
     return false;
   }
