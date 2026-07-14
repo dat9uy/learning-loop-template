@@ -98,9 +98,11 @@ describe("loop_describe warm tier discoverability_hints", () => {
     const result = await loopDescribeTool.handler({ tier: "warm" });
     const parsed = JSON.parse(result.content[0].text);
     const pnpmTestDiscipline = parsed.process_hints[0];
+    // parse-once-via-script + do-not-hand-parse clause + retained same-file-read rule.
     assert.ok(pnpmTestDiscipline.includes("pnpm test"));
     assert.ok(pnpmTestDiscipline.includes(".test-logs/"));
-    assert.ok(pnpmTestDiscipline.includes("silent-command"));
+    assert.ok(pnpmTestDiscipline.includes("vitest-failures.sh"));
+    assert.ok(pnpmTestDiscipline.includes("Do NOT"));
     assert.ok(pnpmTestDiscipline.includes("same-file-read"));
   });
 
