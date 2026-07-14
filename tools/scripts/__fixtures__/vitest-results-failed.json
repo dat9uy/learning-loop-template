@@ -1,0 +1,58 @@
+{
+  "numTotalTestSuites": 2,
+  "numPassedTestSuites": 1,
+  "numFailedTestSuites": 1,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 3,
+  "numPassedTests": 2,
+  "numFailedTests": 1,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": [],
+    "filesRemoved": [],
+    "filesUnmatched": 0,
+    "filesUpdated": [],
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 0,
+  "success": false,
+  "testResults": [
+    {
+      "name": "/path/to/failing.test.js",
+      "assertionResults": [
+        {
+          "ancestorTitles": ["failing suite"],
+          "fullName": "failing suite > should reject bad input",
+          "status": "failed",
+          "title": "should reject bad input",
+          "duration": 5,
+          "failureMessages": [
+            "AssertionError: expected 'foo' to equal 'bar'\n  at Object.<anonymous> (/path/to/failing.test.js:12:5)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "/path/to/passing.test.js",
+      "assertionResults": [
+        {
+          "ancestorTitles": ["passing suite"],
+          "fullName": "passing suite > works",
+          "status": "passed",
+          "title": "works",
+          "duration": 1,
+          "failureMessages": []
+        }
+      ]
+    }
+  ]
+}
