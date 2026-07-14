@@ -10,6 +10,7 @@ import {
   canonicalizeChangeTarget,
   isBoundPath,
 } from "./change-log-bound-paths.js";
+import { resolveToolImportUrl } from "./manifest-loader.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -51,7 +52,12 @@ export async function listAllTools(root) {
   let failures = 0;
 
   for (const mod of manifest) {
-    const filePath = join(MCP_ROOT, mod.file.replace(/^\.\//, ""));
+    // Manifest uses canonical "tools/<name>-tool.js"; the actual
+    // implementation lives under tools/handlers/. The rewrite is centralized
+    // in core/manifest-loader.js — every consumer of the manifest must go
+    // through it (drift here was the root cause of finding
+    // meta-260714T1630Z-after-the-mcp-server-restart-triggered-by-plan-260714-1358-r).
+    const filePath = resolveToolImportUrl(mod.file);
     try {
       const imported = await importWithTimeout(filePath, 1000);
       const toolConfig = imported[mod.export];

@@ -17,6 +17,7 @@ import { validateToolManifest } from "../core/r2/path-field-detector.js";
 import { invalidateAllowlist, loadAllowlist } from "../core/r2/allowlist-cache.js";
 import { validateR2AllowlistShape } from "../core/r2/allowlist-shape.js";
 import { findProjectRoot } from "../core/gate-logic.js";
+import { resolveToolImportUrl } from "../core/manifest-loader.js";
 
 // Pin runtime identity before any await; see core/identity-pin.js.
 // Synchronous, idempotent, freezes the runtime id for process lifetime (R2).
@@ -43,7 +44,10 @@ const tools = {};
 
 for (const entry of MANIFEST) {
   const { file, export: exportName } = entry;
-  const mod = await import(`../tools/handlers/${file.replace('tools/', '')}`);
+  // Manifest uses canonical "tools/<name>-tool.js"; the actual
+  // implementation lives under tools/handlers/. The rewrite is centralized
+  // in core/manifest-loader.js — see its header for the rationale.
+  const mod = await import(resolveToolImportUrl(file));
   const legacy = mod[exportName];
   if (!legacy) {
     console.error(`skipped ${file} (missing export "${exportName}")`);
