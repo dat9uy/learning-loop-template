@@ -25,6 +25,7 @@ export const HINT_KEY_MAP_PROCESS = {
   "pnpm-test-discipline": 0,
   "pr-body-registry-deltas": 1,
   "runtime-agnostic-audit": 2,
+  "file-edit-drift-and-fingerprints": 8,
 };
 
 export const HINT_SUGGESTIONS = [
@@ -50,6 +51,17 @@ export const HINT_SUGGESTIONS_PROCESS = [
   "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
   "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
   "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
+  // Indexes 3-7 are unmaintained legacy rows; suggestion backfill is a separate
+  // cleanup. Placeholder text keeps the array length aligned with PROCESS_HINTS
+  // so `HINT_KEY_MAP_PROCESS` lookups at those indexes return a defined string
+  // rather than undefined.
+  "Process hint at PROCESS_HINTS index 3: see `loop-introspect.js` `PROCESS_HINTS[3]` (legacy row, suggestion backfill is a separate cleanup).",
+  "Process hint at PROCESS_HINTS index 4: see `loop-introspect.js` `PROCESS_HINTS[4]` (legacy row, suggestion backfill is a separate cleanup).",
+  "Process hint at PROCESS_HINTS index 5: see `loop-introspect.js` `PROCESS_HINTS[5]` (legacy row, suggestion backfill is a separate cleanup).",
+  "Process hint at PROCESS_HINTS index 6: see `loop-introspect.js` `PROCESS_HINTS[6]` (legacy row, suggestion backfill is a separate cleanup).",
+  "Process hint at PROCESS_HINTS index 7: see `loop-introspect.js` `PROCESS_HINTS[7]` (legacy row, suggestion backfill is a separate cleanup).",
+  // Index 8 — pretest-seed convention + escape hatch (matches PROCESS_HINTS[8]).
+  "File-edit drift and fingerprints: pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
 ];
 
 /**
