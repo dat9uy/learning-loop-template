@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Cache-key Fix (TDD)"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "PROCESS_HINTS Row + Parity Mirror"
-status: pending
+status: completed
 priority: P2
 dependencies: [1, 2]
 ---

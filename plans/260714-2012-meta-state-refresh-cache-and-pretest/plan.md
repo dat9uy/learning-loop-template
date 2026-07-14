@@ -1,7 +1,7 @@
 ---
 title: "meta-state refresh: cache-key fix + pretest seed + hint"
 description: "Close the N-trial-and-error loop that the meta-state refresh workflow forces on every code-touching fix. Three additive changes — include file-index.jsonl SHA in cold-tier cache key; wire the existing seed-file-index.mjs into the pretest step; add a mirrored PROCESS_HINTS row about pretest seeding and the per-path refresh escape hatch. No new MCP tools, no new scripts. Resolves meta-260714T1704Z."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [loop, meta-state-refresh, pretest, cache, process-hints, runtime-agnostic]

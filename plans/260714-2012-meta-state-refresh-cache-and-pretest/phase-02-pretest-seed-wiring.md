@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Pretest Seed Wiring"
-status: pending
+status: completed
 priority: P2
 dependencies: [1]
 ---
