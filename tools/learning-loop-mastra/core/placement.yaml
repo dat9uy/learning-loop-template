@@ -20,6 +20,9 @@ files:
   - path: loop-introspect.js
     role: facade
     summary: Builds inverse indexes + query helpers over the meta-state registry.
+  - path: manifest-loader.js
+    role: facade
+    summary: Single source of truth for resolving canonical manifest entries to the actual handler files under tools/handlers/ (resolveToolFile + resolveToolImportUrl).
   - path: meta-state.js
     role: facade
     summary: Registry CRUD + Zod schemas for the 4-kind meta-state union.

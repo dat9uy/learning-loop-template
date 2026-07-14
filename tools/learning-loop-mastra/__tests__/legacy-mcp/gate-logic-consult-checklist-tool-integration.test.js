@@ -21,7 +21,7 @@ await test("rule-tool-integration-same-commit-dep loads through schema and is a 
     id: RULE_ID,
     origin: "meta-260628T1328Z-commit-6f9402e-wired-fallow-audit-gate-new-only-into-ci-but",
     enforcement: "agent",
-    pattern_type: "consult-checklist",
+    pattern_type: "agent-checklist",
     pattern: JSON.stringify({
       version: 1,
       items: [
@@ -40,7 +40,7 @@ await test("rule-tool-integration-same-commit-dep loads through schema and is a 
     "pnpm exec fallow audit --gate new-only",
     null,
     [rule],
-    "/tmp/consult-checklist-tool-integration-test-root",
+    "/tmp/agent-checklist-tool-integration-test-root",
   );
 
   assert.deepStrictEqual(result, { decision: "ok" });

@@ -56,18 +56,18 @@ test("meta_state_patch ACCEPTS wrapped {item: [...]} on addresses and stores fla
       title: "test-derived-schema-addresses-accept",
       description: "Test that wrapped addresses is unwrapped (min 20 chars)",
       proposed_design_for: ["rule-A"],
-      addresses: ["finding-A"],
+      addresses: ["meta-finding-A"],
       affected_system: "mcp-tools",
     });
     assert.equal(designResult.proposed, true, "Failed to create loop-design");
     const designId = designResult.id;
 
-    // 2. Patch with WRAPPED input — stripEnvelope unwraps before schema validates.
+    // 2. Patch with WRAPPED input — deepStripEnvelope unwraps before schema validates.
     const patchResult = await callTool("mastra_meta_state_patch", {
       id: designId,
       entry_kind: "loop-design",
       patch: {
-        addresses: { item: ["finding-B", "finding-C"] },
+        addresses: { item: ["meta-finding-B", "meta-finding-C"] },
       },
     });
     assert.equal(
@@ -81,7 +81,7 @@ test("meta_state_patch ACCEPTS wrapped {item: [...]} on addresses and stores fla
     assert(updated, "updated entry not found in registry");
     assert.deepEqual(
       updated.addresses,
-      ["finding-B", "finding-C"],
+      ["meta-finding-B", "meta-finding-C"],
       `Expected flat array after unwrap, got: ${JSON.stringify(updated.addresses)}`,
     );
   });

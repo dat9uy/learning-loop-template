@@ -65,7 +65,7 @@ When adding new code to `core/`:
 
 ## Tool integration checklist
 
-Consult this checklist when wiring a new tool into CI, package scripts, or repo automation. Encoded as the `rule-tool-integration-same-commit-dep` consult-checklist rule (see `meta-state.jsonl`) with a corresponding `PROCESS_HINTS` row in `core/loop-introspect.js`.
+Consult this checklist when wiring a new tool into CI, package scripts, or repo automation. Encoded as the `rule-tool-integration-same-commit-dep` agent-checklist rule (see `meta-state.jsonl`) with a corresponding `PROCESS_HINTS` row in `core/loop-introspect.js`.
 
 1. **Same-commit dependency.** If a workflow adds `pnpm exec <tool>` / `npx <tool>` / `npm run <script>`, the tool MUST be in `devDependencies` (or `dependencies`) in the SAME commit. Verify with `grep '<tool>' package.json` after any `.github/workflows/*.yml` edit. Symptom of skip: CI's `pnpm install --frozen-lockfile` fails with `command not found` on the first PR.
 2. **Baseline flag format.** When wiring `fallow audit`, generate baselines with `fallow <sub> --save-baseline <path>` (audit format: array of `path:export` strings). NEVER `--save-regression-baseline` (regression format: nested objects). The two flags produce INCOMPATIBLE JSON; `fallow audit --*-baseline` fails to parse the regression format.

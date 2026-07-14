@@ -17,7 +17,7 @@ The L1 doc (`docs/loop-engine.md`) names five exit roles for a finding. Each is 
 |---|---|---|
 | **promote** | `meta_state_promote_rule` | `finding` becomes the origin of a new `rule` entry; `promoted_to_rule` back-pointer set |
 | **resolve** | `meta_state_resolve` | `status` → `resolved`; `resolved_at`, `resolved_by`, `resolution` recorded |
-| **re-verify** | `meta_state_re_verify` | `stale` → `active` on passing verification; `last_verified_at` refreshed |
+| **re-verify** | `meta_state_re_verify` | `open` → `open` on passing verification (stamps `last_verified_at`, no transition); used to re-ground `stale`-view findings |
 | **supersede** | `meta_state_supersede` | `status` → `superseded`; `consolidated_into` points at the absorbing change-log |
 | **dispatch** | `meta_state_dispatch_finding` | Non-terminal routing action — ledger event + `ledger_ref` back-pointer; finding stays in its current status until resolve/promote |
 
@@ -45,7 +45,7 @@ The registry is a discriminated union on `entry_kind`. Each kind has its own sta
 
 | Entry Kind | Purpose | Status Model | Durability |
 |---|---|---|---|
-| `finding` | Bug reports, design gaps, observed anti-patterns | 6-state enumerated lifecycle | Ephemeral: TTL on `reported`; otherwise operator-managed |
+| `finding` | Bug reports, design gaps, observed anti-patterns | 3-status: `open \| resolved \| superseded` (+ `archived` runtime); `stale` is a derived view, not a status | No TTL (`expires_at` vestigial); operator/agent-managed; `stale`-view re-verifiable |
 | `change-log` | Immutable audit log of system changes | Always `active` | Permanent: no TTL, no auto-resolve |
 | `rule` | Promoted findings that enforce invariants | Binary `active / inactive` | Permanent: operator-managed |
 | `loop-design` | Deferred designs (not yet shipped) | Binary `active / inactive` | Permanent: operator-managed |
@@ -60,41 +60,38 @@ Findings are the only entry kind with a multi-state lifecycle. The canonical sta
 
 | Status | Meaning | How It Is Entered |
 |---|---|---|
-| `reported` | Fresh finding, unverified by operator | `meta_state_report` creates with 24h TTL (`expires_at`) |
-| `active` | Operator has acknowledged the finding | `meta_state_ack` transitions from `reported`; clears TTL |
-| `stale` | Past TTL or past staleness window (7d) | TTL sweep or `meta_state_sweep`; re-verifiable via `meta_state_re_verify` |
-| `resolved` | Closed by operator or agent with resolution note | `meta_state_resolve` |
-| `superseded` | Consolidated into a change-log entry | `meta_state_supersede` |
-| `auto-resolved` | Closed automatically by mechanism (test pass, file modified, etc.) | Auto-sweep or cold-session test on gap-close |
+| `open` | Unresolved (canonical post-migration status; replaces legacy `reported`/`active`/`stale`) | `meta_state_report` creates `open`; `meta_state_re_verify` re-grounds (stamps `last_verified_at`, no transition) |
+| `resolved` | Closed by operator/agent with resolution note | `meta_state_resolve` (consult-gate `rule-no-orphaned-evidence` may block on drift; cascade closes `stale`-view parents) |
+| `superseded` | Consolidated into a change-log | `meta_state_supersede` |
+| `archived` (runtime-only) | Registry-size trim; not in the persisted enum | `meta_state_archive` / `meta_state_batch` op:`archive` |
+
+Note: `stale` is **not** a status. It is the `isStaleView` derived view: an `open` finding past the 7-day staleness window (from `last_verified_at` or `created_at`) or with drifted evidence in `file-index.jsonl`. Surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only); re-grounded via `meta_state_re_verify`. The legacy `reported`/`active`/`auto-resolved` statuses were removed (plans 260611-1000 and 260707-0812); `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.
 
 ### Status Transitions
 
 ```
-reported --[meta_state_ack]--> active
-reported --[TTL elapsed]--> stale
-active   --[meta_state_resolve]--> resolved
-active   --[meta_state_supersede]--> superseded
-stale    --[meta_state_re_verify pass]--> active
-stale    --[meta_state_resolve]--> resolved
-resolved --[meta_state_archive]--> archived
-superseded --[meta_state_archive]--> archived
+open      --[meta_state_resolve]-->              resolved
+open      --[meta_state_supersede]-->            superseded
+open      --[meta_state_dispatch_finding]-->     open  (non-terminal routing; ledger_ref set)
+open      --[meta_state_re_verify pass]-->       open  (stamps last_verified_at; no transition)
+resolved  --[meta_state_archive]-->              archived
+superseded--[meta_state_archive]-->              archived
+stale-view parent --[meta_state_resolve(cascade_from=[child])]--> resolved  (1-step cascade)
 ```
 
-The `expired` status was removed in plan 260611-1000-remove-expired-status. The stale-flag redesign (plan 260609-stale-flag-redesign) had already replaced auto-resolve-by-clock with `stale` (non-terminal) plus explicit re-verification; the schema enum shrink completes that migration. The data layer is already stale-only (0 entries with `status: "expired"` in `meta-state.jsonl`).
+`stale` is not a node — it is a derived property of `open`. The legacy `reported --[ack]--> active` and `--TTL--> stale` edges are removed (`meta_state_ack` gone, no TTL).
+
+The `expired` status was removed in plan 260611-1000-remove-expired-status; the stale-flag redesign (plan 260609-stale-flag-redesign) replaced auto-resolve-by-clock with `isStaleView` (derived) plus explicit re-verification; the schema enum shrink to `{open, resolved, superseded}` completed the migration.
 
 ### Terminal vs Non-Terminal
 
-**Terminal statuses** (hard-coded in `core/meta-state.js` as `TERMINAL_STATUSES`):
-- `resolved`
-- `superseded`
-- `auto-resolved`
+**Terminal** (two sets exist; document both):
+- **Schema-enum terminal** (`core/meta-state.js:91`): `{resolved, superseded}`. The Zod enum on `status` has 3 values (`open | resolved | superseded`); `archived` is not in the enum.
+- **Predicate-effective terminal** (`core/constants.js:32`, consumed by `isOpen` at line 46): `{resolved, superseded, archived}`. An `archived` entry is treated as terminal by `isOpen` for filtering; it is not a status value but is a runtime annotation.
 
-**Non-terminal statuses**:
-- `reported` (has TTL pressure)
-- `active` (stable)
-- `stale` (has re-verification pressure; cascade-closeable to `resolved` in 1 step)
+**Non-terminal**: `open`. It has **staleness pressure** as a derived view (`isStaleView`), not a status: a stale-view `open` finding is re-verifiable via `meta_state_re_verify` and cascade-closeable to `resolved` in 1 step. There is no `auto-resolved` status (removed).
 
-`archived` is effectively terminal but is not in the `TERMINAL_STATUSES` set because it is applied outside the schema enum as a runtime-only status.
+`archived` is the only runtime-applied annotation; it is in the predicate terminal set but not in the schema enum.
 
 ---
 
@@ -112,11 +109,9 @@ The `expired` status was removed in plan 260611-1000-remove-expired-status. The 
 
 ### Archive Decision Rule
 
-The decision rule is **documented, not enforced** (soft rule). It lives in `tools/meta-state-archive-tool.js`:
+The decision rule is **documented, not enforced** (soft rule). It lives in `tools/learning-loop-mastra/tools/handlers/meta-state-archive-tool.js`:
 
-> Archive entries that are `(status=reported AND age > 30d AND not acked)` OR `(status=resolved AND resolved > 90d)`.
-
-Operators may bypass the rule with the `override` parameter.
+> **Note:** The Archive Decision Rule text was last updated for the pre-migration status model. The current implementation (`tools/learning-loop-mastra/tools/handlers/meta-state-archive-tool.js`) uses `isOpen(entry)` rather than `status="reported"`; see plan `<TBD: archive-rule-doc-alignment>` for the reconciliation phase.
 
 ---
 
@@ -130,6 +125,7 @@ These three kinds have simpler, binary or fixed status models.
 - Immutable audit log: no TTL, no auto-resolve, no archive
 - Created by `meta_state_log_change`
 - Change-logs may `consolidates` findings (inverse of `finding.consolidated_into`) or `supersedes` other change-logs
+- **`operation_envelope`** (optional, auto-emitted): annotates a batch mutation's magnitude for audit. Shape: `{ kind, target, pre_count, post_count, content_hash }`. `kind ∈ { migration, sweep, closeout, consolidation, backfill, archive-wave, escalation-batch, manual-batch }`. `pre_count` / `post_count`: `{ total, by_status:{open,resolved,superseded,archived}, by_kind:{finding,change-log,rule,loop-design} }`. `content_hash`: SHA-256 of kind+target+canonical op-list+entry-id-set (content-deduplication semantics, NOT replay protection). Auto-emitted by `meta_state_batch` after the ops loop; `case "write"` rejects caller-supplied envelopes (forge-vector guard) — envelopes are system-emitted, not caller-supplied.
 
 ### Rule (`entry_kind: "rule"`)
 
@@ -138,12 +134,14 @@ These three kinds have simpler, binary or fixed status models.
 - Inactive rules remain in the registry for lineage; `supersedes` points to the replacement rule
 - Loaded by the gate via `loadPromotedRules` and `applyPromotedRules`
 - **Guard:** `meta_state_resolve` and `meta_state_archive` reject rule entries. To deprecate a rule, use `meta_state_patch` to set `status: "inactive"` (or `supersedes` if replaced).
+- **Vocabulary axis (`pattern_type` ↔ consumption state).** `pattern_type` names the consumption axis: `agent-checklist` rules (7 total: 4 original plus 3 advisory rules reclassified from `regex`/`glob`) are state-2 — deterministic injection via a `PROCESS_HINTS` row in `core/loop-introspect.js`, enforced by the H6 ordering gate in `loop_describe`, plus agentic consumption (the model interprets the checklist). `determinism-checklist` rules (2 total) are state-3 — the `meta_state_resolve` consult-gate evaluates them deterministically and blocks on drift (`rule-no-orphaned-evidence`). **`regex` and `glob` survive only for the 2 gate-enforced rules** (`rule-no-new-artifact-types` regex, `rule-project-skill-boundary` glob) — match-language, state-3: `regex` matches bash commands, `glob` matches write paths. The 3 advisory rules previously typed `agent + regex/glob` were `agent`-skip-by-`applyPromotedRules` regardless of their pattern body (no command/path matching), so reclassifying them to `agent-checklist` with checklist bodies — see Phase 2 of `plans/260714-1358-rule-vocabulary-realignment` — eliminates dead match specs without changing gate behavior. `enforcement` mirrors consumption: `gate` = state-3 deterministic, `agent` = state-2 agentic. The concept term `consult-gate` (in `docs/loop-engine.md` and `docs/philosophy.md`) is preserved on the L1 concept surface; it is now lexically distinct from `agent-checklist`.
 
 ### Loop-Design (`entry_kind: "loop-design"`)
 
 - Status: `active | inactive`
 - Created by `meta_state_propose_design`
-- Flips to `inactive` when the design ships (`shipped_in_plan` and `shipped_at` are populated)
+- **Shipping:** flip `active → inactive` via **`meta_state_ship_loop_design`**, which atomically stamps `shipped_in_plan` + `shipped_at`. Idempotent (re-shipping returns `already_shipped`); gated on `LOOP_SESSION_MODE=live`.
+- **`meta_state_patch` cannot ship a design** — `status` is on the `IMMUTABLE_PATCH_FIELDS` deny-list, so patching `shipped_in_plan`/`shipped_at` leaves `status: active`. Use `meta_state_ship_loop_design`, not `meta_state_patch`.
 - `proposed_design_for` is forward references (what the design will create/modify)
 - `addresses` is backward references (what findings motivate the design)
 
@@ -153,18 +151,18 @@ These three kinds have simpler, binary or fixed status models.
 
 | Tool | Entry Kinds | Transition | Notes |
 |---|---|---|---|
-| `meta_state_report` | finding | -> `reported` | Creates finding with 24h TTL |
-| `meta_state_ack` | finding | `reported` -> `active` | Clears `expires_at` |
-| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected. Rejects rules, loop-designs, and change-logs. |
+| `meta_state_report` | finding | -> `open` | Creates finding `open`; no TTL (`expires_at` vestigial) |
+| `meta_state_resolve` | finding | -> `resolved` | Consult-gate `rule-no-orphaned-evidence` may block if drift detected. Rejects rules, loop-designs, and change-logs. Cascade closes a `stale`-view parent in 1 step via `cascade_from`. |
 | `meta_state_supersede` | finding | -> `superseded` | Sets `consolidated_into`, `superseded_at`, `superseded_by` |
-| `meta_state_re_verify` | finding | `stale` -> `active` | Runs `verification.steps`; updates `last_verified_at` on pass |
-| `meta_state_sweep` | finding | -> `stale` / `auto-resolved` | Batch lifecycle sweep; dry-run by default |
+| `meta_state_re_verify` | finding | `open` -> `open` (no transition) | Runs `verification.steps`; stamps `last_verified_at` on pass; no status transition |
+| `meta_state_sweep` | finding | read-only (derived stale-view report) | Dry-run report of the `isStaleView` set; no status writes (apply mode removed in plan 260707-0812 Phase 3) |
 | `meta_state_archive` | finding | -> `archived` | Decision rule + operator override; rejects rules, change-logs, and loop-designs |
 | `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
 | `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
 | `meta_state_propose_design` | loop-design | -> `active` | Idempotent by `addresses` + `proposed_design_for` set equality |
+| `meta_state_ship_loop_design` | loop-design | `active` -> `inactive` | Atomically stamps `shipped_in_plan` + `shipped_at`; idempotent on `already_shipped`; gated on `LOOP_SESSION_MODE=live` |
 | `meta_state_patch` | finding, rule, loop-design, change-log | Update existing fields | CAS via `_expected_version` |
-| `meta_state_batch` | any | write / update / delete / archive | Atomic; cap 500 ops; rollback on failure |
+| `meta_state_batch` | any | write / update / delete / archive | Atomic; cap 500 ops; rollback on failure; auto-emits an `operation_envelope`-annotated change-log after the ops loop (see §6.3 in Change-Log section) |
 
 ---
 
@@ -184,7 +182,7 @@ The consult-gate `rule-no-orphaned-evidence` blocks `meta_state_resolve` when an
 
 1. **Why `archived` is outside the schema enum**: It allows the archive tool to operate without a schema migration. The trade-off is that archived entries bypass Zod validation on read.
 
-2. **Why `stale` replaces `expired`**: The old TTL sweep auto-resolved findings on expiry, which silenced bugs without trace. `stale` is non-terminal and requires explicit re-verification via `meta_state_re_verify`. Plan 260611-1000-remove-expired-status completed the migration by dropping the `expired` enum value from the schema, deleting the legacy migrate tool, and retargeting the cascade to operate on `stale` parents in 1 step.
+2. **Why status collapsed to `{open, resolved, superseded}`** (plans 260611-1000 + 260707-0812): the old 6-state model auto-resolved findings on TTL expiry, silencing bugs without trace, and required an `ack` step (`meta_state_ack`, now removed) to promote `reported → active`. The collapse keeps three terminal/non-terminal statuses and moves freshness out of the status enum: `stale` is a **derived view** (`isStaleView` over `open` findings), surfaced read-only by `meta_state_query_drift`/`meta_state_sweep` and re-grounded by `meta_state_re_verify` (no status transition). `isOpen` tolerates legacy persisted values until the migration flips them, so the collapse is read-safe mid-migration.
 
 3. **Why change-logs have no TTL**: They are the immutable audit trail. A change-log entry records that a system change happened; time does not invalidate that fact.
 

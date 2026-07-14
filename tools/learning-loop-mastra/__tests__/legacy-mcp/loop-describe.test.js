@@ -155,12 +155,18 @@ describe("loop_describe new behavior", () => {
       const result = await loopDescribeTool.handler({ tier: "warm" });
       const text = JSON.parse(result.content[0].text);
       const names = text.tools.map((t) => t.name);
+      // Warm tier reports the handler's REGISTERED name (from
+      // toolConfig.name) — pre-fix this test asserted the export name
+      // (`metaStateCheckGroundingTool`), but that name only surfaced because
+      // the manifest fallback path bypassed the import. Regression guard for
+      // meta-260714T1630Z-... — handler imports now succeed, so we assert
+      // the registered name instead.
       assert.ok(
-        names.includes("metaStateCheckGroundingTool"),
+        names.includes("meta_state_check_grounding"),
         "SP2 check tool must appear in warm response"
       );
       assert.ok(
-        names.includes("metaStateRefreshFileIndexTool"),
+        names.includes("meta_state_refresh_file_index"),
         "SP2 refresh tool must appear in warm response"
       );
     } finally {
@@ -184,7 +190,7 @@ describe("loop_describe new behavior", () => {
       const text = JSON.parse(result.content[0].text);
       const names = text.tools.map((t) => t.name);
       assert.ok(
-        names.includes("metaStateQueryDriftTool"),
+        names.includes("meta_state_query_drift"),
         "SP3 query_drift tool must appear in warm response"
       );
     } finally {
@@ -308,14 +314,28 @@ describe("loop_describe new behavior", () => {
     );
   });
 
-  test("degraded flag on partial failure when module import fails", async () => {
+  test("warm tier is not degraded when handler imports resolve via manifest-loader", async () => {
     tempDir = mkdtempSync(join(tmpdir(), "loop-describe-deg-"));
     process.env.GATE_ROOT = tempDir;
     try {
       const result = await loopDescribeTool.handler({ tier: "warm" });
       const text = JSON.parse(result.content[0].text);
-      // degraded may be true or false depending on imports; just verify field exists
-      assert.ok(typeof text.degraded === "boolean");
+      // Regression guard for finding
+      // meta-260714T1630Z-after-the-mcp-server-restart-triggered-by-plan-260714-1358-r:
+      // listAllTools in core/loop-introspect.js historically constructed the
+      // handler import path with `join(MCP_ROOT, mod.file)` — without the
+      // canonical "tools/" → "tools/handlers/" rewrite that server.js and
+      // build-meta-state-tools.js both apply. The rewrite now lives in
+      // core/manifest-loader.js; every consumer must go through it.
+      assert.strictEqual(
+        text.degraded,
+        false,
+        `warm tier should not be degraded; warnings=${JSON.stringify(text.warnings)}`,
+      );
+      // Description must be populated (manifest fallback path leaves it
+      // undefined); this proves the import actually loaded the handler.
+      const withDescription = text.tools.find((t) => typeof t.description === "string" && t.description.length > 0);
+      assert.ok(withDescription, "at least one tool should carry a description (proves the handler import succeeded)");
     } finally {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;

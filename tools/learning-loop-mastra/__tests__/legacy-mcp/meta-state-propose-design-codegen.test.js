@@ -63,7 +63,7 @@ describe("meta_state_propose_design codegen parity", () => {
       title: "A test design title",
       description: "A test design description that is long enough.",
       proposed_design_for: ["rule-a", "rule-b"],
-      addresses: ["finding-1"],
+      addresses: ["meta-finding-1"],
       affected_system: "mcp-tools",
       severity_hint: "high",
       loop_design_id: "loop-design-explicit-id",
@@ -76,7 +76,9 @@ describe("meta_state_propose_design codegen parity", () => {
     assert.equal(derivedResult.success, true, `derived schema rejected valid payload: ${derivedResult.error?.message}`);
   });
 
-  test("tool schema rejects empty proposed_design_for like derived schema", () => {
+  test("tool schema accepts empty proposed_design_for like derived schema", () => {
+    // A design with no forward refs uses [] (14 persisted designs do). The
+    // schema enforces entry-id prefixes on refs present, not presence.
     const derivedSchema = metaStateLoopDesignSchema
       .pick(MIGRATED_FIELDS)
       .merge(z.object({
@@ -93,7 +95,7 @@ describe("meta_state_propose_design codegen parity", () => {
     const toolResult = z.object(metaStateProposeDesignTool.schema).safeParse(payload);
     const derivedResult = derivedSchema.safeParse(payload);
 
-    assert.equal(toolResult.success, false, "tool schema should reject empty proposed_design_for");
-    assert.equal(derivedResult.success, false, "derived schema should reject empty proposed_design_for");
+    assert.equal(toolResult.success, true, "tool schema should accept empty proposed_design_for");
+    assert.equal(derivedResult.success, true, "derived schema should accept empty proposed_design_for");
   });
 });

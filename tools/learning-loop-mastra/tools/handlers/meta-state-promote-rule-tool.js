@@ -17,8 +17,8 @@ export const metaStatePromoteRuleTool = {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
     enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
-    pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language (resolution-evidence-required is a consult gate, not a command-path match)"),
-    pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for resolution-evidence-required)"),
+    pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language (determinism-checklist is a resolve consult-gate, not a command-path match)"),
+    pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for determinism-checklist)"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
     // Plan 260712-0724 follow-up (Fix B): optional tool/surface scope that
     // narrows the rule's firing surface without regex hand-curation. Parallel
@@ -167,7 +167,7 @@ export const metaStatePromoteRuleTool = {
       pattern_type,
       pattern,
       ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
-      ...(pattern_type === "resolution-evidence-required" && { applies_to_resolution: pattern }),
+      ...(pattern_type === "determinism-checklist" && { applies_to_resolution: pattern }),
       ...(applies_to && { applies_to }),
       description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",

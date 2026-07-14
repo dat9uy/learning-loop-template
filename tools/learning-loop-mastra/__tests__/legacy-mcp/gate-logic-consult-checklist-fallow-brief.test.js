@@ -9,19 +9,19 @@ const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
 const RULE_ID = "rule-fallow-brief-on-gate-failure";
 
-await test("consult-checklist rule schema is valid for rule-fallow-brief-on-gate-failure (1-item checklist)", () => {
+await test("agent-checklist rule schema is valid for rule-fallow-brief-on-gate-failure (1-item checklist)", () => {
   // The description below is a custom value chosen for clarity in this test;
   // it does NOT match the auto-generated form that meta_state_promote_rule
   // would produce (which uses `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`).
   // This test exercises the schema independently of the tool, so any string
   // that satisfies metaStateRuleEntrySchema#description is acceptable here.
-  // Mirrors gate-logic-consult-checklist-tool-integration.test.js:19-37 pattern.
+  // Mirrors gate-logic-agent-checklist-tool-integration.test.js:19-37 pattern.
   const rule = metaStateRuleEntrySchema.parse({
     entry_kind: "rule",
     id: RULE_ID,
     origin: "meta-260712T0730Z-fallow-mcp-runtime-needs-format-json",
     enforcement: "agent",
-    pattern_type: "consult-checklist",
+    pattern_type: "agent-checklist",
     pattern: JSON.stringify({
       version: 1,
       items: [
@@ -38,13 +38,13 @@ await test("consult-checklist rule schema is valid for rule-fallow-brief-on-gate
   });
 
   // Round-trip through applyPromotedRules to confirm the rule shape is consumed
-  // (consult-checklist rules return decision: 'ok' — they only surface via
+  // (agent-checklist rules return decision: 'ok' — they only surface via
   // PROCESS_HINTS, not via gate enforcement; see gate-logic.js:750-755).
   const result = applyPromotedRules(
     "pnpm fallow:gate",
     null,
     [rule],
-    "/tmp/consult-checklist-fallow-brief-test-root",
+    "/tmp/agent-checklist-fallow-brief-test-root",
   );
 
   assert.deepStrictEqual(result, { decision: "ok" });
@@ -68,7 +68,8 @@ await test("PROCESS_HINTS row #5 contains the literal rule-fallow-brief-on-gate-
   const mentions = processHints.some((row) => row.includes(RULE_ID));
   assert.strictEqual(mentions, true, `PROCESS_HINTS must contain literal substring ${RULE_ID}`);
 
-  // Also verify row count == 5 (4 original + 1 new); catches accidental
-  // row deletion during refactors.
-  assert.strictEqual(processHints.length, 5, "PROCESS_HINTS should have exactly 5 rows (4 + new fallow brief row)");
+  // Also verify row count == 8 (4 original + 1 fallow brief + 3 reclassified
+  // advisory rule rows from plan 260714-1358-rule-vocabulary-realignment
+  // Phase 1, Q3 validation reversal).
+  assert.strictEqual(processHints.length, 8, "PROCESS_HINTS should have exactly 8 rows (4 + fallow brief + 3 reclassified)");
 });

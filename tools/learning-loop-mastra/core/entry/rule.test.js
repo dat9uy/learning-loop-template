@@ -35,13 +35,13 @@ test("createRule rejects invalid data", () => {
   assert.throws(() => createRule({ id: "bad-id", entry_kind: "rule" }), /pattern_type/);
 });
 
-test("createRule.isActive and isConsultChecklist", () => {
+test("createRule.isActive and isAgentChecklist", () => {
   const active = createRule(FIXTURE);
   assert.ok(active.isActive());
-  assert.ok(!active.isConsultChecklist());
+  assert.ok(!active.isAgentChecklist());
 
-  const consult = createRule({ ...FIXTURE, pattern_type: "consult-checklist", pattern: "session-123" });
-  assert.ok(consult.isConsultChecklist());
+  const consult = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: "session-123" });
+  assert.ok(consult.isAgentChecklist());
 });
 
 test("createRule.outboundRefs returns correct refs", () => {
@@ -78,8 +78,8 @@ test("createRule.matches regex pattern", () => {
   assert.ok(!r.matches("npm install", null));
 });
 
-test("createRule.matches consult-checklist returns false", () => {
-  const r = createRule({ ...FIXTURE, pattern_type: "consult-checklist", pattern: "session-123" });
+test("createRule.matches agent-checklist returns false", () => {
+  const r = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: "session-123" });
   assert.ok(!r.matches("anything", null));
 });
 
@@ -90,8 +90,8 @@ test("createRule.matches glob returns false (handled by gate-logic.globMatch)", 
   assert.strictEqual(r.matches("git push", "tools/foo.js"), false);
 });
 
-test("createRule.matches resolution-evidence-required returns false", () => {
-  const r = createRule({ ...FIXTURE, pattern_type: "resolution-evidence-required", pattern: "session-123" });
+test("createRule.matches determinism-checklist returns false", () => {
+  const r = createRule({ ...FIXTURE, pattern_type: "determinism-checklist", pattern: "session-123" });
   assert.ok(!r.matches("anything", null));
 });
 

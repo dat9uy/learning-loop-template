@@ -536,7 +536,12 @@ export function projectHasLearningLoopMcp(root) {
     const cfgPath = join(root, ".mcp.json");
     if (!existsSync(cfgPath)) return false;
     const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-    return !!(cfg.mcpServers && (cfg.mcpServers["learning-loop-mcp"] || cfg.mcpServers["learning-loop-mastra"]));
+    return !!(
+      cfg.mcpServers &&
+      (cfg.mcpServers["learning-loop"] ||
+        cfg.mcpServers["learning-loop-mcp"] ||
+        cfg.mcpServers["learning-loop-mastra"])
+    );
   } catch {
     return false;
   }
@@ -614,7 +619,7 @@ export function loadPromotedRules(root) {
  * Returns escalate with rule provenance on match, ok otherwise.
  */
 /**
- * Check if a resolution-evidence-required rule is satisfied.
+ * Check if a determinism-checklist rule is satisfied.
  * Reads the registry and asserts absence of any active/reported finding
  * with the matching subtype and session_id.
  * Returns { satisfied: true } or { satisfied: false, blocking_id, rule_id, applies_to_resolution }.
@@ -716,7 +721,7 @@ export function checkResolutionEvidence(rule, root) {
     return { satisfied: true, rule_id: "rule-no-orphaned-evidence" };
   }
 
-  // Branch 2: existing per-finding resolution-evidence-required rules
+  // Branch 2: existing per-finding determinism-checklist rules
   const { pattern, applies_to_resolution } = rule;
   const entries = readRegistry(root);
   const blocking = entries.find((e) =>
@@ -747,7 +752,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
     // but we double-check status here for safety.
     if (rule.status !== "active") continue;
 
-    if (rule.pattern_type === "consult-checklist") {
+    if (rule.pattern_type === "agent-checklist") {
       // Design-time rule; no command/path matching. The audit lives in the
       // check_runtime_agnostic MCP tool and the runtime-agnostic regression test.
       // The rule loads; the gate ignores it.
@@ -764,12 +769,12 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
     let matched = false;
 
     try {
-      if (pattern_type === "resolution-evidence-required") {
+      if (pattern_type === "determinism-checklist") {
         // This pattern type is not a command-path match. The check happens in
         // meta_state_resolve (the per-tool gate). Skip here silently — the
         // bash gate always has `command` set, so a defensive warning would
         // fire on every single Execute invocation (regression caught by
-        // gate-resolution-evidence.test.js#does NOT warn when...).
+        // gate-determinism-checklist.test.js#does NOT warn when...).
         continue;
       } else if (pattern_type === "regex" && command) {
         if (!isSafeRegexPattern(pattern)) {

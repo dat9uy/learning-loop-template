@@ -6,6 +6,7 @@ import {
   PATCH_KINDS,
   IMMUTABLE_PATCH_FIELDS,
 } from "../../core/meta-state.js";
+import { deepStripEnvelope } from "../../core/envelope-stripper.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -20,8 +21,8 @@ export const metaStatePatchTool = {
     id: z.string().describe("Exact entry id to patch"),
     entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
       .describe("Entry kind branch — used to validate patch shape. `change-log` is handler-level immutable; the schema allows it so the immutability branch is reachable."),
-    patch: z.union(PATCH_KINDS.map((k) => buildPatchSchemaFor(k)))
-      .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically."),
+    patch: z.preprocess(deepStripEnvelope, z.union(PATCH_KINDS.map((k) => buildPatchSchemaFor(k))))
+      .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically. Cross-reference arrays (proposed_design_for, addresses, reopens) are envelope-stripped and validated as entry-id refs — invalid refs are rejected with an actionable message at this layer so the caller fixes the body instead of retrying wire shapes."),
     _expected_version: z.number().optional()
       .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
     mechanism_check: z.coerce.boolean().optional()
@@ -31,6 +32,12 @@ export const metaStatePatchTool = {
   },
   handler: async ({ id, entry_kind, patch, _expected_version, mechanism_check, code_fingerprint }) => {
     const root = resolveRoot();
+    // Defense-in-depth mirroring meta_state_batch: the Zod schema above strips
+    // envelopes on the MCP wire path, but direct handler callers (tests, agent
+    // bypasses) skip Zod, so unwrap any {item: ...} coercion here too.
+    // Idempotent on already-clean input. Same logic as batch — single shared
+    // deepStripEnvelope utility, not a per-field reimplementation.
+    patch = deepStripEnvelope(patch);
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
 

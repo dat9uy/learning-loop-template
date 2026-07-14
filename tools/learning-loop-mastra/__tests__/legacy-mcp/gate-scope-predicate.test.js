@@ -114,6 +114,56 @@ describe("gate scope predicate", () => {
     }
   });
 
+  test("loadPromotedRules returns scoped rules when project has .mcp.json + canonical learning-loop entry", () => {
+    const tempDir = setupTempDir("scope-canonical-");
+    process.env.GATE_ROOT = tempDir;
+    try {
+      writeMcpJson(tempDir, { "learning-loop": { command: "node", args: ["server.js"] } });
+      const rule = writeRuleEntry({ id: "rule-test-canonical", scope_predicate: "project_has_learning_loop_mcp" });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+
+      const rules = loadPromotedRules(tempDir);
+      assert.strictEqual(rules.length, 1);
+      assert.strictEqual(rules[0].id, "rule-test-canonical");
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
+      teardownTempDir(tempDir);
+    }
+  });
+
+  test("loadPromotedRules returns scoped rules when project has .mcp.json + learning-loop-mastra entry", () => {
+    const tempDir = setupTempDir("scope-mastra-");
+    process.env.GATE_ROOT = tempDir;
+    try {
+      writeMcpJson(tempDir, { "learning-loop-mastra": { command: "node", args: ["server.js"] } });
+      const rule = writeRuleEntry({ id: "rule-test-mastra", scope_predicate: "project_has_learning_loop_mcp" });
+      writeFileSync(join(tempDir, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+
+      const rules = loadPromotedRules(tempDir);
+      assert.strictEqual(rules.length, 1);
+      assert.strictEqual(rules[0].id, "rule-test-mastra");
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
+      teardownTempDir(tempDir);
+    }
+  });
+
   test("loadPromotedRules filters out scoped rules when project has no .mcp.json", () => {
     const tempDir = setupTempDir("scope-no-mcp-");
     process.env.GATE_ROOT = tempDir;
