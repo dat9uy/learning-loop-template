@@ -1,0 +1,18 @@
+# Per-file git attributes. Merge drivers for true-append-only files.
+#
+# runtime-state.jsonl is a true append-only sidecar (record_create_decision
+# appends one line per ledger event; no in-place mutation, no status flips).
+# The union merge driver keeps BOTH sides' lines on a parallel-PR conflict at
+# EOF — safe because there are no line replacements, only adds. This is
+# defense in depth for the parallel-async-writer class of conflict the
+# `meta-260709T1017Z-parallel-prs-...` finding describes; the manual
+# `git merge-file --union` workaround remains the documented operating
+# compromise, but this attribute lets the merge succeed automatically when
+# the union strategy is sound.
+#
+# DO NOT add meta-state.jsonl here: it is NOT true append-only — entries
+# are mutated in place for status flips (resolve / patch / batch), and the
+# registry is full-rewritten on every write. merge=union on a full-rewrite
+# file would keep BOTH the stale base-version and the mutated version of
+# any mutated entry id, producing duplicate ids and corrupting the registry.
+runtime-state.jsonl merge=union

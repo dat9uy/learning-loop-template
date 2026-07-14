@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Resolve Findings + Optional Union"
-status: pending
+status: completed
 priority: P3
 effort: "low"
 dependencies: [1, 2]

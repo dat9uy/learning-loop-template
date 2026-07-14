@@ -1,7 +1,7 @@
 ---
 title: "git-workflow idempotency: true no-op + file-index commit/regen split"
 description: "Make the loop's git workflow idempotent under async code changes. (1) True no-op in upsertFileIndexEntry so re-seeding with zero code change produces zero git diff and keeps the cold-tier cache warm; (2) gitignore file-index.jsonl as a pure regen artifact + guarantee the seed precedes every consumer in CI. Finding 1 (meta-state.jsonl EOF conflict) is reframed — its description is patched to surface the two-target mismatch (human-in-the-loop cross-session handoff vs parallel-PR async flow) and kept OPEN, NOT accepted-as-fixed; the manual git merge-file --union workaround remains the operating compromise. Resolves meta-260715T0349Z; reframes (keeps open) meta-260709T1017Z. No new MCP tools, no new scripts."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [loop, git-workflow, idempotency, file-index, tdd, runtime-agnostic]
@@ -33,9 +33,9 @@ Related (out of scope): `meta-260708T0355Z-m2-single-writer-gate-...` (per-file 
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [True No-Op in upsertFileIndexEntry (TDD)](./phase-01-true-no-op-in-upsertfileindexentry-tdd.md) | Pending |
-| 2 | [File-Index Commit/Regen Split](./phase-02-file-index-commit-regen-split.md) | Pending |
-| 3 | [Resolve Findings + Optional Union](./phase-03-resolve-findings-optional-union.md) | Pending |
+| 1 | [True No-Op in upsertFileIndexEntry (TDD)](./phase-01-true-no-op-in-upsertfileindexentry-tdd.md) | Completed |
+| 2 | [File-Index Commit/Regen Split](./phase-02-file-index-commit-regen-split.md) | Completed |
+| 3 | [Resolve Findings + Optional Union](./phase-03-resolve-findings-optional-union.md) | Completed |
 
 ## Dependencies
 
@@ -157,3 +157,24 @@ Related (out of scope): `meta-260708T0355Z-m2-single-writer-gate-...` (per-file 
   - Phase 3 C1: dropped `cache_hit: true` change (kept contract `cache_hit: false`); audit no longer needed.
   - Phase 3 preflight added (`meta_state_query_drift` + `meta_state_refresh_file_index`) before `meta_state_resolve`.
 - Unresolved contradictions: 0
+
+### Session 2 — 2026-07-15 (cook execution)
+**Trigger:** `/ck:cook --auto plans/260715-0500-git-workflow-idempotency/plan.md` — plan executed end-to-end in single branch (plan/260715-0500-git-workflow-idempotency). All 3 phases landed with commit boundaries respected; 1896/1896 tests pass post-execution.
+
+#### Execution evidence
+- **Phase 1 (TDD):** new test added to `file-index.test.js` ("re-upserting the same (key, hash) is a true no-op"); fails before edit, passes after. `upsertFileIndexEntry` early-return added inside `enqueue` callback (preserves per-root queue serialization); JSDoc rewritten to document the no-op contract.
+- **Phase 2:** `.gitignore` entry added; `git rm --cached file-index.jsonl` (with `.gitignore` edit FIRST in the working tree per Red-team #11); `.github/workflows/test.yml` gets a new "Seed file-index" step (env -u SKIP_PRESEED, --root=$GITHUB_WORKSPACE) before "Run cold-session probe tests". Fresh-clone simulation: deleting local file + seed regenerates a 17-entry index (mechanism_check:true paths only, by design).
+- **Phase 3B:** PROCESS_HINTS row 8 PATCHED (NOT appended) at 3 storage sites — `core/loop-introspect.js:137` + `.factory/hooks/loop-surface-inject.cjs:44` (byte-identical mirror, `diff exit: 0`) + `loop-get-instruction-tool.js:64` `HINT_SUGGESTIONS_PROCESS[8]`. Length-assertion test at `gate-logic-consult-checklist-fallow-brief.test.js:74` (`=== 9`) untouched.
+- **Phase 3A:** `meta_state_refresh_file_index` for `core/meta-state.js` re-recorded (fingerprint re-grounded 2 findings anchored to that file). `meta_state_resolve` succeeded → `meta-260715T0349Z-pretest-seed-dirtying-a-tracked-regen-artifact-on-every-pnpm` resolved. `meta-260709T1017Z-parallel-prs-...` verified OPEN at v2 with reframe block (no resolution, no accepted-as-fixed). Two change-logs logged via `meta_state_log_change`: (i) `meta-260715T0503Z-...` for the file-index commit/regen split + no-op; (ii) `meta-260715T0504Z-...` for the `meta-260709T1017Z` two-target-mismatch reframe decision.
+- **Phase 3C1:** `meta-state-refresh-file-index-tool.js` no-op detection — initial bug (missing `readFileIndex` import) caught and fixed during verification; subsequent direct-tool test confirms `status: "no-op"` on second refresh with same content. `cache_hit: false` contract preserved.
+- **Phase 3C2:** `package.json` `test:cold-session` prepended with `node .../seed-file-index.mjs && ` (mirrors `test`).
+- **Phase 3C3:** `.gitattributes` created with `runtime-state.jsonl merge=union` + inline comment linking `meta-260709T1017Z` and explaining why `meta-state.jsonl` is excluded (full-rewrite + in-place mutation → unsafe for union).
+
+#### Verification
+- `pnpm test` (full suite): 1896 passed | 1 skipped (none failed); 25s wall-clock
+- `pnpm exec vitest run file-index.test.js`: 16/16 pass (1 new + 15 existing)
+- `pnpm exec vitest run meta-state-refresh-file-index-tool.test.js`: 8/8 pass (existing assertions on `status === "refreshed"` still hold because all are first-call refreshes; second-call path now correctly returns `"no-op"`)
+- `pnpm exec vitest run cold-tier-regression.test.js`: 1/1 pass
+- Fresh-clone simulation: `rm file-index.jsonl && pnpm test` regenerates 17-row index; running again produces zero byte delta (Phase 1 no-op verified at script level)
+- git status: `D file-index.jsonl` (staged deletion from index); local file preserved (3357 bytes, 17 entries)
+- PROCESS_HINTS row 8 mirror diff: `exit 0` (byte-identical between canonical and hook)

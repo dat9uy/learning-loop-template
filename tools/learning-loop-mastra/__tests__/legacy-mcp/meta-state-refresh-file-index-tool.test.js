@@ -132,6 +132,11 @@ describe("meta_state_refresh_file_index tool", () => {
       const p2 = JSON.parse(r2.content[0].text);
       assert.strictEqual(p2.cache_hit, false, "no cache: every call is a miss now");
       assert.strictEqual(p2.code_fingerprint, p1.code_fingerprint, "same file -> same fingerprint");
+      assert.strictEqual(
+        p2.status,
+        "no-op",
+        "same-content second call returns status:'no-op' (upsertFileIndexEntry true-no-op guard)",
+      );
 
       // Mutate the file (new content/hash) -> re-hash + re-upsert.
       writeFileSync(join(tempDir, "src.js"), "// second — different content");

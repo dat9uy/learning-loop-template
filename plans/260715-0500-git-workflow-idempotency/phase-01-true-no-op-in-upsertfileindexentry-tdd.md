@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "True No-Op in upsertFileIndexEntry (TDD)"
-status: pending
+status: completed
 priority: P2
 effort: "low"
 dependencies: []

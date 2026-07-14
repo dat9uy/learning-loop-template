@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "File-Index Commit/Regen Split"
-status: pending
+status: completed
 priority: P2
 effort: "low"
 dependencies: [1]
