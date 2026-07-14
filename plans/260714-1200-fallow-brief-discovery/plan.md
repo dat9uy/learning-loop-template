@@ -1,7 +1,7 @@
 ---
 title: "Wire pnpm fallow:brief into the agent runtime discovery surface"
 description: "Make sure the agent runtime knows to invoke `pnpm fallow:brief` (the compact-CSV orientation stream) when `pnpm fallow:gate` exits non-zero from the pre-commit hook. Encode the trigger→action as a consult-checklist rule with PROCESS_HINTS row, mirror in .factory/hooks, lock via cold-session parity test, and resolve the originating meta-state finding."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [fallow, agent-runtime, discoverability, meta-state]

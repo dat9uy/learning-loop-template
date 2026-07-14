@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "design-rule-shape"
-status: pending
+status: completed
 effort: ""
 ---
 

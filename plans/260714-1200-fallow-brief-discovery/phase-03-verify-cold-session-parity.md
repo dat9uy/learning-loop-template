@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "verify-cold-session-parity"
-status: pending
+status: completed
 effort: ""
 ---
 

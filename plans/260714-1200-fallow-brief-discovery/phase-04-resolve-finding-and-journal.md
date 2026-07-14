@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "resolve-finding-and-journal"
-status: pending
+status: completed
 effort: ""
 ---
 

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "add-process-hints-and-hook-mirror"
-status: pending
+status: completed
 effort: ""
 ---
 
