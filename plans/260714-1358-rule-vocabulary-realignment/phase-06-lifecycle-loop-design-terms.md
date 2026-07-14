@@ -1,3 +1,11 @@
+---
+phase: 6
+title: "lifecycle-loop-design-terms"
+status: pending
+effort: ""
+dependencies: [4]
+---
+
 # Phase 06 — docs/ lifecycle terms consistent with the assertinvariant report
 
 Driven by `plans/reports/assertinvariant-meta-pattern-260711-0516-resolution-plan-report.md`
@@ -6,9 +14,15 @@ still describes the pre-shipping loop-design + change-log lifecycle and is now i
 shipped tools/fields. This phase updates the L2 lifecycle doc only — no code, no registry.
 
 **Independent of the rename (phases 1–5)** in cause, but edits the same file as phase-04
-(`docs/meta-state-lifecycle.md`). Do both doc edits in one pass to avoid a stale intermediate.
-Can commit with the atomic rename commit or as a separate docs commit — operator choice at
-execution time (see plan.md Dependencies).
+(`docs/meta-state-lifecycle.md`). **Rides the atomic rename commit** per validation Q1 (operator
+chose atomic over separate docs PR for one-review-cycle simplicity). Phase 5's verification gate
+now runs after phases 1+2+3+4+6 (Phase 5 `dependencies` updated to `[1, 2, 3, 4, 6]`).
+
+**YAML dependency correction (red-team Finding 4):** `dependencies: [4]` only. The previous
+`[4, 7]` was a multi-reviewer finding (AD + SC + FMA) — phase 6's loop-design and change-log edits
+do not consume phase 7's finding-status rewrite. The "single doc-edit pass" is an execution-time
+convention, not a YAML dependency. Phase 6 is in the atomic commit group at the execution-time
+decision level (operator choice), not at the YAML dependency level.
 
 ## 6.1 Loop-Design section (`docs/meta-state-lifecycle.md` L142-149)
 

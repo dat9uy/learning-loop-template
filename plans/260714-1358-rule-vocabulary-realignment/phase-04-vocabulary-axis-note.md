@@ -1,3 +1,11 @@
+---
+phase: 4
+title: "vocabulary-axis-note"
+status: pending
+effort: ""
+dependencies: [1]
+---
+
 # Phase 04 — docs
 
 Minimal: make the renamed vocabulary self-documenting. The full L2 state-mapping matrix is explicitly
@@ -13,13 +21,18 @@ out of scope (deferred to a separate doc task).
 Add a short paragraph to the Rule section (after the existing rule bullets around L134-140). Keep it
 ≤ 6 lines. Proposed text:
 
-> **pattern_type names the consumption axis.** `agent-checklist` rules are state-2: deterministic
+> **pattern_type names the consumption axis.** `agent-checklist` rules (7 total: 4 original
+> `consult-checklist` + 3 reclassified advisory rules per validation Q3) are state-2: deterministic
 > injection (a PROCESS_HINTS row, enforced by the H6 ordering gate in `loop_describe`) + agentic
-> consumption (the model interprets the checklist). `determinism-checklist` rules are state-3: the
-> `meta_state_resolve` consult-gate evaluates them deterministically and blocks on drift
-> (`rule-no-orphaned-evidence`). `regex`/`glob` are match-language rules, gate-enforced (state-3):
-> `regex` matches bash commands, `glob` matches write paths. `enforcement` mirrors consumption:
-> `gate` = state-3 deterministic, `agent` = state-2 agentic.
+> consumption (the model interprets the checklist). `determinism-checklist` rules (2 total) are
+> state-3: the `meta_state_resolve` consult-gate evaluates them deterministically and blocks on drift
+> (`rule-no-orphaned-evidence`). **`regex` and `glob` survive only for the 2 gate-enforced rules**
+> (`rule-no-new-artifact-types` regex, `rule-project-skill-boundary` glob) — match-language,
+> state-3: `regex` matches bash commands, `glob` matches write paths. (The 3 `agent + regex/glob`
+> advisory rules were `agent`-skip-by-`applyPromotedRules`-at-`gate-logic.js:757`-regardless, so
+> renaming them to `agent-checklist` with checklist bodies — see Phase 2 — eliminates the dead
+> match specs without changing gate behavior.) `enforcement` mirrors consumption: `gate` = state-3
+> deterministic, `agent` = state-2 agentic.
 
 This is the minimum that makes the new names readable without the fuller matrix. It also indirectly
 states the consult-checklist↔PROCESS_HINTS↔H6 contract — the generalization whose absence caused

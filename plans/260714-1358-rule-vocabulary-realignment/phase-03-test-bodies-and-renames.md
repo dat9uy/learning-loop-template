@@ -1,3 +1,11 @@
+---
+phase: 3
+title: "test-bodies-and-renames"
+status: pending
+effort: ""
+dependencies: [1, 2]
+---
+
 # Phase 03 — tests
 
 Atomic with phases 1–2. Tests hardcode the old enum strings; they must move to the new strings in
@@ -25,27 +33,29 @@ Also: any test that constructs a rule record with `pattern_type:"consult-checkli
 
 ## File renames (committed — operator-approved 2026-07-14)
 
-Rename the 5 test files for vocabulary consistency. Before `git mv`, run a safety check and only
-fall back to keeping a name if a hard dependency is found (do the rest regardless).
+Rename 2 test files where the filename literal matches a renamed enum string (validation Q2 reversal of
+the 5-rename plan). The 3 role-naming test files
+(`consult-checklist-process-hints-coverage`, `gate-logic-consult-checklist-fallow-brief`,
+`gate-logic-consult-checklist-tool-integration`) keep their names — those describe the rule's
+domain role, not its pattern_type literal; vitest uses glob discovery so renames add zero test
+value.
 
 Safety check (do first):
 - Confirm the vitest config discovers tests by glob (`**/*.test.js`), not an explicit path list —
   `grep -n "test.*\\*\\|include\\|exclude" vitest.config.mjs` (or the active config). Glob discovery
   → renames are path-safe.
-- `grep -rn "gate-logic-consult-checklist\\|consult-checklist-process-hints\\|gate-resolution-evidence" tools/ .factory/ .claude/` — if any *non-test* file (CI workflow, package script, another test's `import`) references these by relative path, that one reference blocks its rename.
+- `grep -rn "gate-logic-consult-checklist\\|gate-resolution-evidence" tools/ .factory/ .claude/ .github/`
+  — if any *non-test* file (CI workflow, package script, another test's `import`) references these
+  by relative path, that one reference blocks its rename.
 
-Renames (paths under `tools/learning-loop-mastra/__tests__/legacy-mcp/` unless noted):
+Renames (paths under `tools/learning-loop-mastra/__tests__/legacy-mcp/`):
 - `gate-logic-consult-checklist.test.js` → `gate-logic-agent-checklist.test.js`
-- `consult-checklist-process-hints-coverage.test.js` → `agent-checklist-process-hints-coverage.test.js`
-- `gate-logic-consult-checklist-fallow-brief.test.js` → `gate-logic-agent-checklist-fallow-brief.test.js`
-- `gate-logic-consult-checklist-tool-integration.test.js` → `gate-logic-agent-checklist-tool-integration.test.js`
 - `gate-resolution-evidence.test.js` → `gate-determinism-checklist.test.js`
 
 Also `core/entry/rule.test.js` — no rename (name is already generic), only body updates.
 
 If the safety check finds a hard path dependency for one file, keep that one filename and update
-only its body; rename the other four. Record which (if any) was kept in the commit body. Do not let
-one stuck rename block the other four.
+only its body; rename the other. Record which (if any) was kept in the commit body.
 
 ## Constraints
 
