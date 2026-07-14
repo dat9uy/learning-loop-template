@@ -16,7 +16,7 @@
     "smoke:mastracode": "node scripts/probe-mastracode.cjs",
     "test": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run && node tools/scripts/sanitize-coverage.mjs",
     "test:debug": "vitest run tools/learning-loop-mastra/__tests__/debug/",
-    "test:cold-session": "vitest run tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
+    "test:cold-session": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
     "check:freshness": "vitest run tools/learning-loop-mastra/__tests__/freshness/",
     "fallow:gate": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\" --dead-code-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dead-code-baseline.json\" --health-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/health-baseline.json\" --dupes-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json\"",
     "fallow:brief": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\" --dead-code-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dead-code-baseline.json\" --health-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/health-baseline.json\" --dupes-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json\" --brief --format compact",

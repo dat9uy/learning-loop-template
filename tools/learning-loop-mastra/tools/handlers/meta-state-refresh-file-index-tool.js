@@ -11,6 +11,7 @@ import {
   readRegistry,
   upsertFileIndexEntry,
   canonicalIndexKey,
+  readFileIndex,
 } from "../../core/meta-state.js";
 import { resolveSafePath, PathContainmentError } from "../../core/path-containment.js";
 import { appendGateLog } from "#lib/gate-logging.js";
@@ -82,6 +83,17 @@ export const metaStateRefreshFileIndexTool = {
         && canonicalIndexKey(e.evidence_code_ref) === canonicalPath,
     ).length;
 
+    // Detect the no-op BEFORE upsert: compare the computed hash against the
+    // stored hash in file-index.jsonl. When they match, the upsert would be a
+    // no-op (per upsertFileIndexEntry's true-no-op guard) — return status:
+    // "no-op" so callers can distinguish a real refresh from a same-content
+    // call. cache_hit stays false (the documented contract — the in-process
+    // dedupe cache was removed in Phase 2; cache_hit semantics belong to the
+    // computeFileHashCached layer, not the persistence layer).
+    const existingIndex = readFileIndex(root);
+    const storedHash = existingIndex.get(canonicalPath);
+    const isNoOp = storedHash === hash;
+
     const ok = await upsertFileIndexEntry(root, canonicalPath, hash);
     if (!ok) {
       return { content: [{ type: "text", text: JSON.stringify({
@@ -94,7 +106,7 @@ export const metaStateRefreshFileIndexTool = {
       path: canonicalPath,
       code_fingerprint: hash,
       refreshed_at,
-      status: "refreshed",
+      status: isNoOp ? "no-op" : "refreshed",
       findings_regrounded: findingsRegrounded,
       cache_hit: false,
       ...(reason !== undefined ? { reason } : {}),

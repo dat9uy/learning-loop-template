@@ -40,6 +40,9 @@ product/*/dist/
 # state (it misleads agents into attributing failures as "pre-existing"). Enforced
 # by `pnpm check:freshness`, not by the regression suite.
 tools/learning-loop-mastra/__tests__/legacy-mcp/.cold-session-sentinel.json
+# Regenerated fingerprint sidecar (seed-file-index.mjs at test/pre-commit/CI).
+# Never edited by humans; recomputable from the tree.
+file-index.jsonl
 # Session-start injected discoverability hints + task-status cache (local runtime state)
 .claude/session-context.json
 .claude/task-status-cache.json

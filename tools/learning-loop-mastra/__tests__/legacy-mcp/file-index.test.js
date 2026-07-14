@@ -1,6 +1,6 @@
 import { describe, test, beforeEach } from "vitest";
 import assert from "node:assert";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, chmodSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, chmodSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, isAbsolute } from "node:path";
 import {
@@ -176,6 +176,57 @@ describe("file-index sidecar helpers", () => {
     const map = readFileIndex(root);
     assert.strictEqual(map.has("phantom.js"), false, "failed write must not poison the cache");
     assert.strictEqual(map.get("good.js"), VALID_HASH, "prior entries intact");
+  });
+
+  // True no-op: re-upserting an unchanged (key, hash) must touch NOTHING on
+  // disk — same byte Buffer, same mtime, same cached Map ref. The cold-tier
+  // cache key is sha256(contents) so a stable index keeps the cache warm;
+  // per-row updated_at churn on every reseed invalidates it.
+  test("re-upserting the same (key, hash) is a true no-op (no rewrite, cache preserved)", async () => {
+    const root = makeRoot();
+    const indexPath = getFileIndexPath(root);
+
+    // First write — establishes baseline.
+    await upsertFileIndexEntry(root, "a.js", VALID_HASH);
+    const bytes1 = readFileSync(indexPath);
+    const mtime1 = statSync(indexPath).mtimeMs;
+    const cachedBefore = readFileIndex(root); // populate the cache
+
+    // Second write with the SAME (key, hash) — must be a no-op.
+    await upsertFileIndexEntry(root, "a.js", VALID_HASH);
+    const bytes2 = readFileSync(indexPath);
+    const mtime2 = statSync(indexPath).mtimeMs;
+    const cachedAfter = readFileIndex(root);
+
+    assert.strictEqual(
+      Buffer.compare(bytes1, bytes2),
+      0,
+      "file bytes must be byte-identical on a no-op re-upsert",
+    );
+    assert.strictEqual(mtime2, mtime1, "mtimeMs must be unchanged on a no-op re-upsert");
+    assert.strictEqual(
+      cachedBefore,
+      cachedAfter,
+      "readFileIndex must return the same cached Map ref (no defensive invalidate)",
+    );
+
+    // Real writes still work — write a different key with a different hash.
+    await upsertFileIndexEntry(root, "b.js", VALID_HASH_2);
+    const map = readFileIndex(root);
+    assert.strictEqual(map.get("b.js"), VALID_HASH_2, "changed-hash writes still land");
+
+    // After an unrelated changed write, a no-op re-upsert of "a.js" stays a
+    // no-op (the "a.js" row in the Buffer reflects the post-Phase-1 contract:
+    // on a real write all rows get a fresh updated_at — the test does NOT assert
+    // preservation here, it asserts the no-op on re-upsert after the write).
+    const bytes3 = readFileSync(indexPath);
+    await upsertFileIndexEntry(root, "a.js", VALID_HASH);
+    const bytes4 = readFileSync(indexPath);
+    assert.strictEqual(
+      Buffer.compare(bytes3, bytes4),
+      0,
+      "no-op after an unrelated write must still leave bytes unchanged",
+    );
   });
 });
 

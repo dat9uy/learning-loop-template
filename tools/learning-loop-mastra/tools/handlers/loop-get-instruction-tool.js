@@ -61,7 +61,7 @@ export const HINT_SUGGESTIONS_PROCESS = [
   "Process hint at PROCESS_HINTS index 6: see `loop-introspect.js` `PROCESS_HINTS[6]` (legacy row, suggestion backfill is a separate cleanup).",
   "Process hint at PROCESS_HINTS index 7: see `loop-introspect.js` `PROCESS_HINTS[7]` (legacy row, suggestion backfill is a separate cleanup).",
   // Index 8 — pretest-seed convention + escape hatch (matches PROCESS_HINTS[8]).
-  "File-edit drift and fingerprints: pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
+  "File-edit drift and fingerprints: `file-index.jsonl` is an UNTRACKED regen artifact (gitignored) rebuilt by the seed step; pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. `upsertFileIndexEntry` is a true no-op on unchanged (key, hash) so re-seeding without code change keeps the cache warm. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
 ];
 
 /**
