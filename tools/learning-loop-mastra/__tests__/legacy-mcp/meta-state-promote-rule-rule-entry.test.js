@@ -105,7 +105,7 @@ test("meta_state_promote_rule rejects 'tool' enforcement enum", async () => {
   }
 });
 
-test("meta_state_promote_rule accepts pattern_type=resolution-evidence-required", async () => {
+test("meta_state_promote_rule accepts pattern_type=determinism-checklist", async () => {
   const tempDir = setup();
   try {
     const report = await metaStateReportTool.handler({
@@ -113,7 +113,7 @@ test("meta_state_promote_rule accepts pattern_type=resolution-evidence-required"
       subtype: "mcp-connection",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "MCP client loading gap: design note for a resolution-evidence-required rule.",
+      description: "MCP client loading gap: design note for a determinism-checklist rule.",
     });
     const reportText = JSON.parse(report.content[0].text);
 
@@ -122,7 +122,7 @@ test("meta_state_promote_rule accepts pattern_type=resolution-evidence-required"
       id: reportText.id,
       rule_id: "rule-test-resolution-evidence",
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-123",
     });
     const text = JSON.parse(result.content[0].text);
@@ -132,7 +132,7 @@ test("meta_state_promote_rule accepts pattern_type=resolution-evidence-required"
     const entries = readRegistry(tempDir);
     const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-resolution-evidence");
     assert.ok(ruleEntry, "rule entry should exist");
-    assert.equal(ruleEntry.pattern_type, "resolution-evidence-required");
+    assert.equal(ruleEntry.pattern_type, "determinism-checklist");
     assert.equal(ruleEntry.applies_to_resolution, "test-session-123");
   } finally {
     teardown();

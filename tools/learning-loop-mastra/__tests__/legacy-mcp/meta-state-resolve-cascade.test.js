@@ -288,7 +288,7 @@ test("cascade_from fails the operator gate before child validation (consult-gate
     entry_kind: "rule",
     origin: parentId,
     enforcement: "gate",
-    pattern_type: "resolution-evidence-required",
+    pattern_type: "determinism-checklist",
     pattern: "test-session-id",
     applies_to_resolution: parentId,
     description: "Rule entry for resolution evidence test.",

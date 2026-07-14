@@ -52,7 +52,7 @@ test("buildPatchSchemaFor for rule omits status (Fix A, no status re-injection)"
   // finding schema -> union matches rule branch. Status is NOT in the patch input;
   // pre-fix this is where status .default("active") would fire.
   const result = ruleSchema.safeParse({
-    pattern_type: "consult-checklist",
+    pattern_type: "agent-checklist",
     description: "patch the description only (min 20 chars for schema)",
   });
   assert.equal(result.success, true, `parse must succeed, got: ${JSON.stringify(result.error?.format())}`);

@@ -5,6 +5,5 @@
   "vendor-api": "\\bcurl\\b.*api|import\\s+vnstock(?!_data)\\b",
   "side-effect-import": "import\\s+vnstock_data\\b|.*runtime_state_record\\s*\\(",
   "message_flags": ["-m", "--message", "--title", "--description", "--body"],
-  "meta-state-verify-cmd-allowlist": ["node", "pnpm", "npm", "git", "cat", "ls", "grep", "rg", "test", "echo"],
-  "consult-checklist": "Design-time rule; no command/path matching. Audit via check_runtime_agnostic MCP tool or runtime-agnostic regression test."
+  "meta-state-verify-cmd-allowlist": ["node", "pnpm", "npm", "git", "cat", "ls", "grep", "rg", "test", "echo"]
 }

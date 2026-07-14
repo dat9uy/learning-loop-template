@@ -94,7 +94,7 @@ a finding is promoted via `meta_state_promote_rule`.
 | `entry_kind` | `"rule"` | default | Discriminator |
 | `origin` | string | yes | Finding id that originated this rule |
 | `enforcement` | enum | yes | `gate`, `agent` |
-| `pattern_type` | enum | yes | `regex`, `glob`, `resolution-evidence-required`, `consult-checklist` |
+| `pattern_type` | enum | yes | `regex`, `glob`, `determinism-checklist`, `agent-checklist` |
 | `pattern` | string | yes | The pattern (regex body, glob path, or session_id) |
 | `status` | enum | default | `active`, `inactive` |
 | `description` | string | yes | min 20 chars |

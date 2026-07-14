@@ -403,21 +403,21 @@ describe("checkResolutionEvidence", () => {
   });
 });
 
-describe("applyPromotedRules resolution-evidence-required", () => {
-  test("skips resolution-evidence-required pattern type (returns ok)", async () => {
+describe("applyPromotedRules determinism-checklist", () => {
+  test("skips determinism-checklist pattern type (returns ok)", async () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       id: "rule-test",
       status: "open",
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
     };
     const result = applyPromotedRules("mvn install -DskipTests", null, [rule]);
     assert.deepStrictEqual(result, { decision: "ok" });
   });
 
-  test("does NOT warn when resolution-evidence-required is called from the bash gate (command set)", async () => {
+  test("does NOT warn when determinism-checklist is called from the bash gate (command set)", async () => {
     // Regression: previously this branch emitted `console.warn` on every bash
     // command because the bash gate always has `command` set. The warning was
     // misleading — the rule is correctly skipped via `continue`; the warning
@@ -427,7 +427,7 @@ describe("applyPromotedRules resolution-evidence-required", () => {
       id: "rule-test",
       status: "open",
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
     };
 
@@ -445,20 +445,20 @@ describe("applyPromotedRules resolution-evidence-required", () => {
       console.warn = origWarn;
       console.error = origErr;
     }
-    // No log spam from the resolution-evidence-required branch in the bash gate.
+    // No log spam from the determinism-checklist branch in the bash gate.
     const noisy = captured.filter(([, msg]) =>
-      typeof msg === "string" && msg.includes("resolution-evidence-required should not have"),
+      typeof msg === "string" && msg.includes("determinism-checklist should not have"),
     );
     assert.deepStrictEqual(noisy, [], `unexpected warning: ${JSON.stringify(noisy)}`);
   });
 
-  test("legacy alias: skips resolution-evidence-required pattern (test name preserved for history)", async () => {
+  test("legacy alias: skips determinism-checklist pattern (test name preserved for history)", async () => {
     const { applyPromotedRules } = await importGateLogic();
     const rule = {
       id: "rule-test",
       status: "open",
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
     };
     const result = applyPromotedRules("test", null, [rule]);
@@ -502,7 +502,7 @@ describe("meta_state_resolve consultation", () => {
       entry_kind: "rule",
       origin: targetId,
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
       applies_to_resolution: targetId,
       description: "Rule entry for resolution evidence test.",
@@ -566,7 +566,7 @@ describe("meta_state_resolve consultation", () => {
       entry_kind: "rule",
       origin: targetId,
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
       applies_to_resolution: targetId,
       description: "Rule entry for resolution evidence test.",
@@ -623,7 +623,7 @@ describe("meta_state_resolve consultation", () => {
       entry_kind: "rule",
       origin: targetId,
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
       applies_to_resolution: targetId,
       description: "Rule entry for resolution evidence test.",
@@ -660,7 +660,7 @@ describe("meta_state_resolve consultation", () => {
 });
 
 describe("listPromotedRules filter", () => {
-  test("excludes resolution-evidence-required rules", async () => {
+  test("excludes determinism-checklist rules", async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), "res-ev-"));
     const regexRule = {
       id: "rule-regex",
@@ -679,7 +679,7 @@ describe("listPromotedRules filter", () => {
       entry_kind: "rule",
       origin: "meta-test-origin",
       enforcement: "gate",
-      pattern_type: "resolution-evidence-required",
+      pattern_type: "determinism-checklist",
       pattern: "test-session-id",
       description: "Test resolution rule for listPromotedRules filter regression coverage",
       status: "active",

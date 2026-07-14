@@ -81,12 +81,12 @@ export const metaStateResolveTool = {
       };
     }
 
-    // Consult resolution-evidence-required rules before resolving
+    // Consult determinism-checklist rules before resolving
     const rules = loadPromotedRules(root);
 
     // Consult global rules (applies_to_resolution === "*") for every resolution
     for (const rule of rules) {
-      if (rule.pattern_type !== "resolution-evidence-required") continue;
+      if (rule.pattern_type !== "determinism-checklist") continue;
       if (rule.applies_to_resolution !== "*") continue;
       const evidence = checkResolutionEvidence(rule, root);
       if (!evidence.satisfied) {
@@ -97,7 +97,7 @@ export const metaStateResolveTool = {
     }
 
     for (const rule of rules) {
-      if (rule.pattern_type !== "resolution-evidence-required") continue;
+      if (rule.pattern_type !== "determinism-checklist") continue;
       if (rule.applies_to_resolution !== id) continue;
       const evidence = checkResolutionEvidence(rule, root);
       if (!evidence.satisfied) {

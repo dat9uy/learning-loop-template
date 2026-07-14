@@ -11,10 +11,10 @@ export function createRule(data) {
     schema: metaStateRuleEntrySchema,
 
     isActive()           { return parsed.status === "active"; },
-    isConsultChecklist() { return parsed.pattern_type === "consult-checklist"; },
+    isAgentChecklist()   { return parsed.pattern_type === "agent-checklist"; },
 
     matches(command, filePath) {
-      if (parsed.pattern_type === "consult-checklist" || parsed.pattern_type === "resolution-evidence-required") {
+      if (parsed.pattern_type === "agent-checklist" || parsed.pattern_type === "determinism-checklist") {
         return false;
       }
       if (parsed.pattern_type === "regex" && command) {

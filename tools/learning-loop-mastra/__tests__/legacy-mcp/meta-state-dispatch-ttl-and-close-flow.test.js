@@ -231,14 +231,14 @@ describe("dispatch close flow (refresh_file_index → log_change → resolve)", 
       // Seed the global consult-gate rule so the resolve tool consults it.
       // The rule schema requires origin/promoted_at/promoted_by; use synthetic
       // values (this rule is normally promoted from a finding, but the resolve
-      // tool only cares that an active resolution-evidence-required rule with
+      // tool only cares that an active determinism-checklist rule with
       // applies_to_resolution="*" exists in the registry).
       await writeEntry(tempDir, {
         id: "rule-no-orphaned-evidence",
         entry_kind: "rule",
         status: "active",
         enforcement: "agent",
-        pattern_type: "resolution-evidence-required",
+        pattern_type: "determinism-checklist",
         pattern: "*",
         applies_to_resolution: "*",
         origin: "meta-260704T0900Z-close-flow-seed-origin",

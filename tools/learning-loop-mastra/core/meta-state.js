@@ -278,12 +278,12 @@ export const metaStateRuleEntrySchema = z.object({
   id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; not timestamp-based"),
   origin: z.string().describe("Finding id that originated this rule (preserves historical lineage)"),
   enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
-  pattern_type: z.enum(["regex", "glob", "resolution-evidence-required", "consult-checklist"]).describe("Pattern language"),
+  pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
   scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional()
     .describe("Optional scope filter: 'none' (default) or 'project_has_learning_loop_mcp'"),
   applies_to_resolution: z.string().optional()
-    .describe("For pattern_type=resolution-evidence-required: the target finding id this rule gates"),
+    .describe("For pattern_type=determinism-checklist: the target finding id this rule gates"),
   supersedes: z.string().optional()
     .describe("Prior rule id this rule refined (replaces finding.promoted_to_rule.refined_at metadata)"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
