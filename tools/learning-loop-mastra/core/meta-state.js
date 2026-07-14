@@ -674,7 +674,9 @@ export function readFileIndex(root) {
  * Upsert one path's current hash into the sidecar (atomic tmp+rename under the
  * per-root write queue). Returns true on success, false if the hash is invalid
  * or the path is absolute (rejected as a key — F3). `updated_at` is stamped
- * with the current time. Invalidates the read cache.
+ * with the current time when the entry is new or its hash changed; an
+ * unchanged-hash re-upsert is a no-op that touches nothing (no rewrite, no
+ * re-stamp, no cache invalidation). Invalidates the read cache on real writes.
  */
 export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
   // Reject absolute paths as keys (F3) and validate the hash before any write.
@@ -695,6 +697,13 @@ export function upsertFileIndexEntry(root, evidenceCodeRef, hash) {
     // phantom baseline and mask drift. Cloning + invalidating in `finally`
     // makes a failed write impossible to desync the cache from the file.
     const map = new Map(readFileIndex(root));
+    // No-op early return: the stored hash already matches. Skipping the rewrite
+    // keeps file-index.jsonl byte-stable on no-change re-seeds, which keeps the
+    // cold-tier cache (keyed on sha256(contents)) warm. The check runs inside
+    // the per-root enqueue so concurrent upserts of the same key stay serialized.
+    if (map.get(key) === hash) {
+      return true;
+    }
     map.set(key, hash);
     const lines = [...map.entries()].map(
       ([p, h]) => JSON.stringify({ path: p, code_fingerprint: h, updated_at: new Date().toISOString() }),
