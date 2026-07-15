@@ -77,6 +77,9 @@ function getChangeLogPath(root) {
 }
 
 function persistRegistryAtomic(entries, root) {
+  // Tier 1 red-team finding 2: reject any non-table-only persist once
+  // change-log.jsonl exists. See assertNoChangeLogLeak jsdoc.
+  assertNoChangeLogLeak(entries, root);
   const path = getRegistryPath(root);
   const tmpPath = path + ".tmp";
   writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
@@ -95,6 +98,35 @@ function persistRegistryAtomic(entries, root) {
  */
 function tableOnly(entries) {
   return entries.filter((e) => e.entry_kind !== "change-log");
+}
+
+/**
+ * Defensive assert: once `change-log.jsonl` exists, persist sites MUST pass
+ * a table-only set to `persistRegistryAtomic`. A non-table-only write here
+ * would copy change-logs from `change-log.jsonl` into `meta-state.jsonl`,
+ * and `merge=union` later would double them on the next parallel merge.
+ *
+ * Plan 260715-0801 Tier 1 red-team finding 2: before the write dispatch +
+ * tableOnly projections are re-enabled at all 5 persist sites
+ * (updateEntry, archiveEntry, deleteEntry, shipLoopDesign, metaStateBatch),
+ * a partial state where `change-log.jsonl` exists but a persist site still
+ * passes the union would silently corrupt the registry. This guard fails
+ * loud so the bug surfaces immediately instead of at merge time.
+ *
+ * Pre-split (no change-log.jsonl): no-op — change-logs in meta-state.jsonl
+ * are the expected state.
+ * Post-split (change-log.jsonl present): the guard fires on any leak.
+ */
+function assertNoChangeLogLeak(entries, root) {
+  if (!existsSync(getChangeLogPath(root))) return;
+  for (const entry of entries) {
+    if (entry.entry_kind === "change-log") {
+      throw new Error(
+        "change_log_leak: persistRegistryAtomic received a change-log entry while change-log.jsonl exists. " +
+        "Call tableOnly(entries) before persisting — see meta-state.js#tableOnly.",
+      );
+    }
+  }
 }
 
 function appendRegistryEntryAtomic(root, entry) {
@@ -1399,11 +1431,11 @@ export function metaStateBatch(root, operations, envelope) {
 
       // Plan 260715-0801 Tier 1 — see updateEntry for the tableOnly/rollback
       // decision; with the write dispatch deferred, the full set persists.
-      const persisted = entries;
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, persisted.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      // Routed through `persistRegistryAtomic` (instead of inline writeFileSync)
+      // so the change-log leak guard in `assertNoChangeLogLeak` fires from
+      // every persist site. Behavior-equivalent pre-split (no change-log.jsonl)
+      // because the guard's first check is `existsSync(changeLogPath)`.
+      persistRegistryAtomic(entries, root);
 
       // Plan 260715-0801 Tier 1 — metaStateBatch auto-emit routing (deferred).
       // The auto-emit is currently included in the table-rewrite via the
