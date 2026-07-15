@@ -1,10 +1,10 @@
 ---
 phase: 2
 title: "Read seam and change-log split"
-status: in-progress
+status: completed
 effort: "P1"
 dependencies: []
-notes: "Session 260715-1010 shipped: read seam (dual-source + cold-tier SHA + identity projection + post-concat created_at sort) and core-layer immutability guards in updateEntry + archiveEntry. Deferred: write dispatch (writeEntry + metaStateBatch), .gitattributes merge=union, migration script, consolidates schema change, 10 raw-reading test updates, advisory workflow path-filter update."
+notes: "Completed via PR #60 (merge f6766b3, 2026-07-15). Sessions 260715-1010 (read seam + 2/8 immutability sites), 260715-1100 (Findings 1+2 safety net), 260715-1118 (write dispatch re-enabled), 260715-1253 (schema change + migration + advisory). Shipped: dual-source read seam + cold-tier SHA, write dispatch (writeEntry + metaStateBatch), tableOnly at all 5 persist sites, 8-site core-layer immutability guards, consolidates z.array schema, migrate-change-log-stream.mjs (309→92 meta-state.jsonl, 217 change-log.jsonl, 0 dup ids), .gitattributes merge=union, advisory path-filter + diff-command."
 ---
 
 # Phase 2: Read seam and change-log split
@@ -68,16 +68,16 @@ The core Tier 1 change. (1) Make the read chokepoint a **swappable projection se
 - [x] `readRegistryWithCache` stat-caches both files; a change-log append invalidates the cache; next read sees the new change-log.
 - [x] **Cold-tier cache (Red Team F5):** `changeLogSha256` helper exists; `readColdTierCache`/`writeColdTierCache` keys include both SHAs; a write to `change-log.jsonl` only busts the cold cache; `loop_describe({tier: "cold"})` returns fresh `all_entries`.
 - [x] Projection is an injected function (seam unit test passes); code comment marks the Tier-2 swap point.
-- [ ] `meta_state_log_change` writes appear in `change-log.jsonl` (true append); a second `log_change` does not rewrite prior lines. **[DEFERRED — dispatch in writeEntry rolled back; helper `appendChangeLogEntryAtomic` implemented and ready; will be re-enabled in the migration PR.]**
-- [ ] `meta_state_batch` auto-emit change-log lands in `change-log.jsonl` (NOT in `meta-state.jsonl` via the full-rewrite path — Red Team F2). **[DEFERRED — same reason.]**
-- [ ] `meta-state.jsonl` contains zero `entry_kind=change-log` entries post-migration; `change-log.jsonl` contains all and only change-logs; **zero intra-file duplicate ids** (Red Team F3); order preserved within each. **[DEFERRED — migration script not yet run.]**
-- [ ] Migration wrapped in `withRegistryLock` (Red Team F8b). **[DEFERRED — no migration script yet.]**
-- [ ] `.gitattributes` has `change-log.jsonl merge=union`; `change-log.jsonl` is git-tracked (not gitignored). **[DEFERRED.]**
-- [ ] Immutability guard rejects any in-place mutation of a change-log via **core layer** (`writeEntry`, `updateEntry`, `archiveEntry`, `metaStateBatch` write/update/delete/archive) AND handler layer (resolve, patch) — tests cover each of the 8 sites (Red Team F2, F7). **[PARTIAL — 2/8 core sites done (updateEntry, archiveEntry); 1 test added; remaining 6 sites + 7 tests deferred with the dispatch.]**
-- [ ] `appendChangeLogEntryAtomic` runs INSIDE `writeEntry`'s existing `withRegistryLock` wrapper (Red Team F8a). **[DEFERRED — call site not yet active.]**
+- [x] `meta_state_log_change` writes appear in `change-log.jsonl` (true append); a second `log_change` does not rewrite prior lines. **[Shipped PR #60: writeEntry dispatch re-enabled session 260715-1118; change-logs route via `appendChangeLogEntryAtomic`.]**
+- [x] `meta_state_batch` auto-emit change-log lands in `change-log.jsonl` (NOT in `meta-state.jsonl` via the full-rewrite path — Red Team F2). **[Shipped PR #60: metaStateBatch auto-emit routed through `appendChangeLogEntryAtomic` after table write.]**
+- [x] `meta-state.jsonl` contains zero `entry_kind=change-log` entries post-migration; `change-log.jsonl` contains all and only change-logs; **zero intra-file duplicate ids** (Red Team F3); order preserved within each. **[Shipped PR #60: verified 0 change-logs in meta-state.jsonl, 218 in change-log.jsonl, 0 dup ids.]**
+- [x] Migration wrapped in `withRegistryLock` (Red Team F8b). **[Shipped PR #60: `migrate-change-log-stream.mjs` wraps in `withRegistryLock`, idempotent, `--dry-run` mode.]**
+- [x] `.gitattributes` has `change-log.jsonl merge=union`; `change-log.jsonl` is git-tracked (not gitignored). **[Shipped PR #60: `.gitattributes` line 25; change-log.jsonl tracked.]**
+- [x] Immutability guard rejects any in-place mutation of a change-log via **core layer** (`writeEntry`, `updateEntry`, `archiveEntry`, `metaStateBatch` write/update/delete/archive) AND handler layer (resolve, patch) — tests cover each of the 8 sites (Red Team F2, F7). **[Shipped PR #60: all 8 core+handler guard sites + `assertNoChangeLogLeak` at all 5 persist sites.]**
+- [x] `appendChangeLogEntryAtomic` runs INSIDE `writeEntry`'s existing `withRegistryLock` wrapper (Red Team F8a). **[Shipped PR #60: dispatch branch inside the lock wrapper.]**
 - [x] All existing tests pass after raw-reader updates; `pnpm test` green.
 - [x] `meta_state_relationships`/`dangling_refs` unchanged on the union (bidirectional invariants hold across files).
-- [ ] Advisory workflow path-filter + diff-command updated (Red Team F6); migration PR is advised on both files. **[DEFERRED.]**
+- [x] Advisory workflow path-filter + diff-command updated (Red Team F6); migration PR is advised on both files. **[Shipped PR #60: path filter covers change-log.jsonl; diff command emits deltas for both files.]**
 - [x] Post-concat sort by `created_at` ascending applied (Red Team F15a); `meta_state_list` returns chronological union.
 - [x] `registry-table.sh` multi-file `PATH_ARG` default works (Red Team F11a).
 

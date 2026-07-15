@@ -1,10 +1,10 @@
 ---
 phase: 3
 title: "CI validation gates"
-status: pending
+status: completed
 effort: "P2"
 dependencies: []
-notes: "Deferred to follow-up session. Lands after Phase 2 write dispatch + migration."
+notes: "Completed via PR #60 (merge f6766b3, 2026-07-15). Shipped: ci-registry-deltas.sh jq-based ref extraction + WARN-on-orphan (Red Team F12); meta-state-pr-body-advisory.yml path filter covers change-log.jsonl (moved from Phase 2 step 7); validate-registry-refs.js + meta-state-refs-check.yml post-merge BLOCK on push:main. Workflow ships in WARN-mode (continue-on-error: true) because 98 pre-existing orphans would otherwise BLOCK every push; operator flips to BLOCK once orphan cleanup lands."
 ---
 
 # Phase 3: CI validation gates
@@ -42,11 +42,11 @@ Add relationship-ref validation across the two-file union, split by where the fu
 
 ## Success Criteria
 
-- [ ] Pre-merge advisory emits ref WARNINGs on the PR's own diff and exits 0. **Cross-PR orphans self-heal on merge; not warned (Validation Session 1 Q3).**
-- [ ] Post-merge `meta-state-refs-check.yml` runs on push to main and BLOCKs on a real orphan fixture (exit 1), passes on a clean union. **Uses `meta_state_relationships` (plural) — Red Team F4.**
-- [ ] `validate-registry-refs.mjs` reuses core logic (no reimplementation); covered by a test.
-- [ ] Ref-field extraction uses `jq -c` or Node helper (Red Team F12a); `consolidates` semantics is `z.array(z.string())` (Validation Session 1 Q2 — schema change lands in Phase 2 step 1).
-- [ ] No existing CI workflow broken; `test.yml` still green.
+- [x] Pre-merge advisory emits ref WARNINGs on the PR's own diff and exits 0. **Cross-PR orphans self-heal on merge; not warned (Validation Session 1 Q3).** **[Shipped PR #60.]**
+- [x] Post-merge `meta-state-refs-check.yml` runs on push to main and BLOCKs on a real orphan fixture (exit 1), passes on a clean union. **Uses `meta_state_relationships` (plural) — Red Team F4.** **[Shipped PR #60 in WARN-mode (continue-on-error: true); BLOCK-mode deferred until 98 pre-existing orphans are cleaned up.]**
+- [x] `validate-registry-refs.mjs` reuses core logic (no reimplementation); covered by a test. **[Shipped PR #60: `tools/learning-loop-mastra/scripts/validate-registry-refs.js` + `validate-registry-refs.test.js`.]**
+- [x] Ref-field extraction uses `jq -c` or Node helper (Red Team F12a); `consolidates` semantics is `z.array(z.string())` (Validation Session 1 Q2 — schema change lands in Phase 2 step 1). **[Shipped PR #60.]**
+- [x] No existing CI workflow broken; `test.yml` still green. **[Shipped PR #60: 1922/1923 tests pass, 1 pre-existing skip.]**
 
 ## Risk Assessment
 

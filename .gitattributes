@@ -16,6 +16,17 @@
 # in-place mutation). merge=union resolves the parallel-PR EOF conflict class
 # without producing duplicate ids. Plan 260715-0801 Tier 1 Phase 2 step 3.
 #
+# NOTE: merge=union is a no-op until the union merge driver is configured in
+# the clone (git config is per-clone, not committable). Run once per clone:
+#   git config merge.union.driver "git merge-file --union %A %O %B"
+# Arg order matters: the result MUST land in %A (ours), with %O (ancestor) as
+# base and %B (theirs) as other. The widely-cited "git merge-file --union %O
+# %A %B" is WRONG — it writes the result to %O and leaves %A unchanged, so git
+# silently keeps only "ours" and drops the other side (the data-loss this
+# attribute exists to prevent). Verified by the plan's Phase 4 merge=union
+# dry-run (two branches from a shared base each appending a change-log at the
+# same EOF position). See AGENTS.md §8 for the one-time setup.
+#
 # DO NOT add meta-state.jsonl here: it is NOT true append-only — entries
 # are mutated in place for status flips (resolve / patch / batch), and the
 # registry is full-rewritten on every write. merge=union on a full-rewrite
