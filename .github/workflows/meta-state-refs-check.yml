@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       # Node 24 mirror the test workflow. No install required —
-      # `validate-registry-refs.mjs` is a pure-Node script with no deps.
+      # `validate-registry-refs.js` is a pure-Node script with no deps.
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
@@ -51,4 +51,4 @@ jobs:
         # orphans (98 missing refs) are cleaned up. Flip to BLOCK by removing
         # this line after the orphan-cleanup PR merges.
         continue-on-error: true
-        run: node tools/learning-loop-mastra/scripts/validate-registry-refs.mjs --root=$GITHUB_WORKSPACE
+        run: node tools/learning-loop-mastra/scripts/validate-registry-refs.js --root=$GITHUB_WORKSPACE

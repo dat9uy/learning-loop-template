@@ -175,6 +175,50 @@ function emitAdditionalContext(hints, source, label) {
   console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
 }
 
+/**
+ * Collect the set of loader names that degraded to "fallback". Pure over the
+ * core + registry loader results. Exported so the test suite can exercise the
+ * branchy logic in-process (the spawn-based integration test can't attribute
+ * coverage into a child process).
+ */
+function computeDegradedSources(core, registry) {
+  return [
+    core.discoverability_hints_source === "fallback" ? "discoverability_hints" : null,
+    core.process_hints_source === "fallback" ? "process_hints" : null,
+    registry.registry_source === "fallback" ? "registry" : null,
+  ].filter(Boolean);
+}
+
+/**
+ * Format the stderr success-summary line. Pure over the loader results + the
+ * sidecar path written by `main`. Exported for in-process testing.
+ */
+function formatSessionSummary(core, stale_dispatch_hints, change_log_gap_hints, contextPath) {
+  return `[session-start] wrote ${core.discoverability_hints.length} discoverability + ${core.process_hints.length} process + ${stale_dispatch_hints.fixable_candidates.length} stale-dispatch + ${change_log_gap_hints.gap_candidates.length} change-log-gap hints to ${contextPath}`;
+}
+
+/**
+ * Build the session-context.json payload from the loader results. Pure over
+ * its inputs (no I/O, no `new Date`). The `?? null` coalescing for per-loader
+ * error fields lives here rather than in `main` so `main`'s cyclomatic
+ * complexity stays low. Exported for in-process testing.
+ */
+function buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, injectedAt) {
+  return {
+    discoverability_hints: core.discoverability_hints,
+    discoverability_hints_source: core.discoverability_hints_source,
+    discoverability_hints_error: core.discoverability_hints_error ?? null,
+    process_hints: core.process_hints,
+    process_hints_source: core.process_hints_source,
+    process_hints_error: core.process_hints_error ?? null,
+    registry_source: registry.registry_source,
+    registry_error: registry.registry_error ?? null,
+    stale_dispatch_hints,
+    change_log_gap_hints,
+    injected_at: injectedAt,
+  };
+}
+
 async function main() {
   // Test hook: when SESSION_START_FORCE_FATAL=1, throw to exercise the
   // fatal-catch write path (the BOTH-write-sites invariant).
@@ -195,19 +239,7 @@ async function main() {
   const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds);
   const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
 
-  const contextPath = writeContext(projectRoot, {
-    discoverability_hints: core.discoverability_hints,
-    discoverability_hints_source: core.discoverability_hints_source,
-    discoverability_hints_error: core.discoverability_hints_error ?? null,
-    process_hints: core.process_hints,
-    process_hints_source: core.process_hints_source,
-    process_hints_error: core.process_hints_error ?? null,
-    registry_source: registry.registry_source,
-    registry_error: registry.registry_error ?? null,
-    stale_dispatch_hints,
-    change_log_gap_hints,
-    injected_at: new Date().toISOString(),
-  });
+  const contextPath = writeContext(projectRoot, buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, new Date().toISOString()));
 
   // Inline delivery leg: surface discoverability hints to the agent as a
   // SessionStart system-reminder. process hints are injected by the companion
@@ -217,23 +249,20 @@ async function main() {
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
   // (silent-degrade was the bug class fixed in plan 260715-1100).
-  const degradedSources = [
-    core.discoverability_hints_source === "fallback" ? "discoverability_hints" : null,
-    core.process_hints_source === "fallback" ? "process_hints" : null,
-    registry.registry_source === "fallback" ? "registry" : null,
-  ].filter(Boolean);
+  const degradedSources = computeDegradedSources(core, registry);
   if (degradedSources.length > 0) {
     console.error(
       `[session-start] DEGRADED loaders: ${degradedSources.join(", ")} — sidecar at ${contextPath} carries *_source=fallback flags`,
     );
   }
-  console.error(
-    `[session-start] wrote ${core.discoverability_hints.length} discoverability + ${core.process_hints.length} process + ${stale_dispatch_hints.fixable_candidates.length} stale-dispatch + ${change_log_gap_hints.gap_candidates.length} change-log-gap hints to ${contextPath}`,
-  );
+  console.error(formatSessionSummary(core, stale_dispatch_hints, change_log_gap_hints, contextPath));
   process.exit(0);
 }
 
-main().catch((err) => {
+module.exports = { computeDegradedSources, formatSessionSummary, buildContextPayload };
+
+if (require.main === module) {
+  main().catch((err) => {
   console.error(`[session-start] fatal: ${err.message}`);
   // BOTH-write-sites invariant: fatal-catch must carry the same keys as the
   // happy-path write (incl. `change_log_gap_hints`) so downstream readers
@@ -260,3 +289,4 @@ main().catch((err) => {
   emitAdditionalContext([], "fatal", "discoverability");
   process.exit(0);
 });
+}
