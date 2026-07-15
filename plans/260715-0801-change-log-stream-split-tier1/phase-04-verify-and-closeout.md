@@ -4,6 +4,7 @@ title: "Verify and closeout"
 status: pending
 effort: "P2"
 dependencies: []
+notes: "Deferred to follow-up session. Lands after Phases 2 (write dispatch + migration) and 3 (CI gates)."
 ---
 
 # Phase 4: Verify and closeout

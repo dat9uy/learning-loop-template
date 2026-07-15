@@ -4,6 +4,7 @@ title: "CI validation gates"
 status: pending
 effort: "P2"
 dependencies: []
+notes: "Deferred to follow-up session. Lands after Phase 2 write dispatch + migration."
 ---
 
 # Phase 3: CI validation gates

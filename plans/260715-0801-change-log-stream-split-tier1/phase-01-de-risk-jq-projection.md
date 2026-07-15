@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "De-risk jq projection"
-status: pending
+status: completed
 effort: "P2"
 dependencies: []
 ---
@@ -43,10 +43,10 @@ Ship `tools/scripts/registry-table.sh` — a `jq` projection that dedupes the re
 
 ## Success Criteria
 
-- [ ] `tools/scripts/registry-table.sh` exists, executable, read-only, mirrors vitest-failures.sh **contract** (header / `set -euo pipefail` / exit codes).
-- [ ] `tools/scripts/__tests__/registry-table.test.js` (`.test.js`) passes: identity on one-line-per-id; correct last-wins dedupe on versioned fixture; exit 2 on missing/invalid.
-- [ ] `pnpm test` green (no regression).
-- [ ] Manual check: `tools/scripts/registry-table.sh meta-state.jsonl | head` produces one line per **UNIQUE** id (live file has 4 historical dup-id groups collapsed to max-version survivors; Phase 2 dedupes those groups first so the script is identity on a true one-line-per-id file post-Phase-2). Red Team F9.
+- [x] `tools/scripts/registry-table.sh` exists, executable, read-only, mirrors vitest-failures.sh **contract** (header / `set -euo pipefail` / exit codes).
+- [x] `tools/scripts/__tests__/registry-table.test.js` (`.test.js`) passes: identity on one-line-per-id; correct last-wins dedupe on versioned fixture; exit 2 on missing/invalid.
+- [x] `pnpm test` green (no regression).
+- [x] Manual check: `tools/scripts/registry-table.sh meta-state.jsonl | head` produces one line per **UNIQUE** id (live file has 4 historical dup-id groups collapsed to max-version survivors; Phase 2 dedupes those groups first so the script is identity on a true one-line-per-id file post-Phase-2). Red Team F9.
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 title: "Tier 1: change-log stream split + Tier 2 de-risk (jq projection seam)"
 description: "Split the registry by mutability/lifecycle: move immutable change-logs to change-log.jsonl (true-append + merge=union); keep mutable findings/rules/loop-designs as table entries in meta-state.jsonl; extend the read chokepoint as a swappable projection seam (identity now, last-wins-by-max-version at Tier 2); ship a Tier-0-adoptable jq projection (registry-table.sh) that de-risks Tier 2 ergonomics; add pre-merge WARN + post-merge BLOCK ref-validation CI gates. Tier 2 (mutable stream → versioned append + jq projection + CI advisory for same-id concurrent mutations) is the committed next phase, tracked by the open finding-stream finding — NOT in this plan."
-status: pending
+status: in-progress
 priority: P1
 branch: "main"
 tags: [meta-surface, registry, change-log, merge-union, ci, tier1, jq-projection]
@@ -10,6 +10,13 @@ blocks: []
 created: "2026-07-15T01:03:20.298Z"
 createdBy: "ck:plan"
 source: skill
+progress:
+  phase-01a: completed
+  phase-1: completed
+  phase-2: in-progress (read seam + 2/8 immutability guard sites)
+  phase-3: pending
+  phase-4: pending
+last-session: "260715-1010"
 ---
 
 # Tier 1: change-log stream split + Tier 2 de-risk (jq projection seam)
@@ -26,9 +33,9 @@ Resolves the observed 2026-07-09 parallel-PR EOF conflict (PR #44/#45) by splitt
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 01a | [Pre-merge dedupe (4 historical dup-id groups)](./phase-01a-pre-merge-dedupe.md) | Pending |
-| 1 | [De-risk jq projection](./phase-01-de-risk-jq-projection.md) | Pending |
-| 2 | [Read seam and change-log split](./phase-02-read-seam-and-change-log-split.md) | Pending |
+| 01a | [Pre-merge dedupe (4 historical dup-id groups)](./phase-01a-pre-merge-dedupe.md) | Completed (260715-1010) |
+| 1 | [De-risk jq projection](./phase-01-de-risk-jq-projection.md) | Completed (260715-1010) |
+| 2 | [Read seam and change-log split](./phase-02-read-seam-and-change-log-split.md) | In progress (read seam + 2/8 immutability sites; dispatch + migration deferred) |
 | 3 | [CI validation gates](./phase-03-ci-validation-gates.md) | Pending |
 | 4 | [Verify and closeout](./phase-04-verify-and-closeout.md) | Pending |
 
@@ -42,21 +49,21 @@ Resolves the observed 2026-07-09 parallel-PR EOF conflict (PR #44/#45) by splitt
 
 ## Acceptance Criteria
 
-- [ ] `change-log.jsonl` exists at repo root, carries all and only `entry_kind=change-log` entries; `meta-state.jsonl` carries zero change-logs.
-- [ ] `change-log.jsonl` is **free of intra-file duplicate ids** (live file has 313 lines / 309 unique ids — Red Team F3; migration dedupes first).
-- [ ] `.gitattributes` has `change-log.jsonl merge=union` (mirroring `runtime-state.jsonl`).
-- [ ] `meta_state_log_change` and all other change-log producers write via a **true-append** path to `change-log.jsonl`; non-change-log writes keep the existing table read-all→rewrite. **`metaStateBatch` auto-emit** change-log also lands in `change-log.jsonl` (Red Team F2 — current batch path bypasses `writeEntry`).
-- [ ] Every registry read funnels through the extended chokepoint and sees the **union** of both files; relationship validation (`dangling_refs`, bidirectional invariants) is unchanged on the union.
-- [ ] **Cold-tier cache invalidates on `change-log.jsonl` append** (Red Team F5): `changeLogSha256` helper exists; both SHAs in `readColdTierCache`/`writeColdTierCache` keys; `loop_describe({tier:"cold"})` returns fresh `all_entries` after a change-log-only write.
-- [ ] **Immutability guard at CORE layer** rejects any in-place mutation of a change-log: `writeEntry` (L760-803), `updateEntry` (L812), `archiveEntry` (L917), `metaStateBatch` (write/update/delete/archive cases) — 8 sites, each with a test (Red Team F2, F7).
-- [ ] The read chokepoint's projection is a **pluggable function** (identity now); a code comment + a unit test pin the swap point for Tier 2's last-wins-by-max-version projection.
-- [ ] `tools/scripts/registry-table.sh` ships + passes a test mirroring `vitest-failures.test.js` (identity on one-line-per-id fixtures; dedupe on versioned fixtures; **multi-file `PATH_ARG` after Phase 2 ships — Red Team F11a**).
-- [ ] Pre-merge: `meta-state-pr-body-advisory.yml` emits ref-validation WARNINGs on the PR's own diff and exits 0. **Cross-PR orphans self-heal on merge; post-merge BLOCK is the only defense for cross-PR refs (Validation Session 1 Q3).** Post-merge: net-new workflow on `push: main` runs **`meta_state_relationships` (plural) / `validate-registry-refs.mjs`** over the union and BLOCKs on real orphans (Red Team F4).
-- [ ] All existing tests pass (2 confirmed broken tests updated to chokepoint or `change-log.jsonl`; 3 secondary touches verified; 5 unaffected — Red Team F13); `pnpm test` green.
-- [ ] One-time migration lands in the same PR as the code change (no parallel registry PRs that session); migration wrapped in `withRegistryLock`; advisory workflow path-filter + diff-command updated in this PR (Red Team F6).
-- [ ] Post-concat sort by `created_at` ascending on `_readAndParseRegistry` so `meta_state_list` returns chronological union (Red Team F15a).
-- [ ] Inbound gate verified post-split: **AGENTS.md "last 20 raw lines" instruction updated to `registry-table.sh | tail -20`; CLAUDE.md inherits per project structure; the false "reads through the chokepoint" claim is removed (Validation Session 1 Q1 — Red Team F11b).**
-- [ ] `meta-260715T0633Z-change-log-stream-…` resolved with PR + change-log refs; `meta-260715T0633Z-finding-stream-…` stays OPEN (Tier-2 ticket), description unchanged, with pre-resolve `meta_state_list` assertion (Red Team F15b).
+- [ ] `change-log.jsonl` exists at repo root, carries all and only `entry_kind=change-log` entries; `meta-state.jsonl` carries zero change-logs. **[DEFERRED — Phase 2 migration not run; `change-log.jsonl` does not exist yet.]**
+- [ ] `change-log.jsonl` is **free of intra-file duplicate ids** (live file has 313 lines / 309 unique ids — Red Team F3; migration dedupes first). **[DEFERRED — Phase 2 migration not run. Phase 01a dedupe DID resolve the 4 dup-id groups in `meta-state.jsonl` (309 lines / 309 unique ids), so the post-migration starting point is already clean.]**
+- [ ] `.gitattributes` has `change-log.jsonl merge=union` (mirroring `runtime-state.jsonl`). **[DEFERRED — Phase 2 step 3.]**
+- [ ] `meta_state_log_change` and all other change-log producers write via a **true-append** path to `change-log.jsonl`; non-change-log writes keep the existing table read-all→rewrite. **`metaStateBatch` auto-emit** change-log also lands in `change-log.jsonl` (Red Team F2 — current batch path bypasses `writeEntry`). **[DEFERRED — dispatch in `writeEntry` and `metaStateBatch` rolled back; helper `appendChangeLogEntryAtomic` implemented and ready. Reads are dual-source + identity projection, so change-logs from either file would surface via `meta_state_list` once the dispatch is re-enabled.]**
+- [x] Every registry read funnels through the extended chokepoint and sees the **union** of both files; relationship validation (`dangling_refs`, bidirectional invariants) is unchanged on the union. **[`readRegistry` / `readRegistryWithCache` extended to dual-source; missing second file treated as empty; no relationship-tool regression.]**
+- [x] **Cold-tier cache invalidates on `change-log.jsonl` append** (Red Team F5): `changeLogSha256` helper exists; both SHAs in `readColdTierCache`/`writeColdTierCache` keys; `loop_describe({tier:"cold"})` returns fresh `all_entries` after a change-log-only write. **[Implemented: `changeLogSha256` in `loop-introspect-cache.js`; both SHAs in cache keys; paired atomic-read pattern; cold-tier regression test green.]**
+- [ ] **Immutability guard at CORE layer** rejects any in-place mutation of a change-log: `writeEntry` (L760-803), `updateEntry` (L812), `archiveEntry` (L917), `metaStateBatch` (write/update/delete/archive cases) — 8 sites, each with a test (Red Team F2, F7). **[PARTIAL — 2/8 sites done (`updateEntry`, `archiveEntry`); 1 test added in `meta-state.test.js` (compaction test updated to assert `change_log_immutable` throw). The 6 remaining sites (`writeEntry` dispatch, `metaStateBatch` write/update/delete/archive) and 7 tests land with the write dispatch + migration in the next session. Handler-level guards (resolve, patch) are unchanged.]**
+- [x] The read chokepoint's projection is a **pluggable function** (identity now); a code comment + a unit test pin the swap point for Tier 2's last-wins-by-max-version projection. **[`readRegistryWithCache` accepts a `parseFn` projection; `_readAndParseRegistry` is the identity projection; comment marks the Tier-2 swap point. The `registry-table.sh` vitest covers the projection semantics on both one-line-per-id and versioned fixtures.]**
+- [x] `tools/scripts/registry-table.sh` ships + passes a test mirroring `vitest-failures.test.js` (identity on one-line-per-id fixtures; dedupe on versioned fixtures; **multi-file `PATH_ARG` after Phase 2 ships — Red Team F11a**). **[7 tests passing; multi-file union covered; default path works against `meta-state.jsonl`.]**
+- [ ] Pre-merge: `meta-state-pr-body-advisory.yml` emits ref-validation WARNINGs on the PR's own diff and exits 0. **Cross-PR orphans self-heal on merge; post-merge BLOCK is the only defense for cross-PR refs (Validation Session 1 Q3).** Post-merge: net-new workflow on `push: main` runs **`meta_state_relationships` (plural) / `validate-registry-refs.mjs`** over the union and BLOCKs on real orphans (Red Team F4). **[DEFERRED — Phase 3.]**
+- [x] All existing tests pass (2 confirmed broken tests updated to chokepoint or `change-log.jsonl`; 3 secondary touches verified; 5 unaffected — Red Team F13); `pnpm test` green. **[213/214 vitest files pass; 1 pre-existing skip. The 2 confirmed broken tests + 3 secondary touches + 5 unaffected were rolled forward into the deferred Phase 2 work — the read-seam change did NOT require any test updates because the new dual-source reader treats the missing `change-log.jsonl` as empty, so all tests that read only `meta-state.jsonl` are unaffected.]**
+- [ ] One-time migration lands in the same PR as the code change (no parallel registry PRs that session); migration wrapped in `withRegistryLock`; advisory workflow path-filter + diff-command updated in this PR (Red Team F6). **[DEFERRED — Phase 2 step 4-7.]**
+- [x] Post-concat sort by `created_at` ascending on `_readAndParseRegistry` so `meta_state_list` returns chronological union (Red Team F15a). **[Implemented: `parsed.sort((a, b) => ca < cb ? -1 : ca > cb ? 1 : 0)` in `_readAndParseRegistry` after the dual-source concat.]**
+- [ ] Inbound gate verified post-split: **AGENTS.md "last 20 raw lines" instruction updated to `registry-table.sh | tail -20`; CLAUDE.md inherits per project structure; the false "reads through the chokepoint" claim is removed (Validation Session 1 Q1 — Red Team F11b).** **[DEFERRED — Phase 4 step 5.]**
+- [ ] `meta-260715T0633Z-change-log-stream-…` resolved with PR + change-log refs; `meta-260715T0633Z-finding-stream-…` stays OPEN (Tier-2 ticket), description unchanged, with pre-resolve `meta_state_list` assertion (Red Team F15b). **[DEFERRED — Phase 4 step 6. `change-log-stream` will be resolved when the migration PR ships; `finding-stream` stays open per the plan.]**
 
 ## Risks
 
@@ -175,14 +182,14 @@ Resolves the observed 2026-07-09 parallel-PR EOF conflict (PR #44/#45) by splitt
 - Pre-merge concurrency check: defer; single-PR convention sufficient.
 
 #### Action Items
-- [ ] Create `phase-01a-pre-merge-dedupe.md` (small, one-time dedupe pass).
-- [ ] Update Phase 1's manual-check acceptance criterion (already done in F9 acceptance, but should reference `phase-01a`).
-- [ ] Phase 2 step 1 schema change: `metaStateChangeEntrySchema`'s `consolidates` field becomes `z.array(z.string())`.
-- [ ] Phase 2 step 4 migration script: convert existing single-string `consolidates` to one-element arrays.
-- [ ] Phase 3 step 2: simplify pre-merge WARN to diff-only (drop `gh pr list` step).
-- [ ] Phase 4 step 5: change "either rewires the gate OR docs-only update" to just "update `AGENTS.md`; CLAUDE.md inherits" — already aligned.
-- [ ] Drop the optional `gh pr list` check from Phase 2 step 7.
-- [ ] Update plan.md `## Phases` table to include `phase-01a`.
+- [x] Create `phase-01a-pre-merge-dedupe.md` (small, one-time dedupe pass).
+- [x] Update Phase 1's manual-check acceptance criterion (already done in F9 acceptance, but should reference `phase-01a`).
+- [ ] Phase 2 step 1 schema change: `metaStateChangeEntrySchema`'s `consolidates` field becomes `z.array(z.string())`. **[DEFERRED — schema change rolled back in session 260715-1010; lands with the migration in next session.]**
+- [ ] Phase 2 step 4 migration script: convert existing single-string `consolidates` to one-element arrays. **[DEFERRED — migration script not yet written.]**
+- [ ] Phase 3 step 2: simplify pre-merge WARN to diff-only (drop `gh pr list` step). **[DEFERRED — Phase 3 not started.]**
+- [x] Phase 4 step 5: change "either rewires the gate OR docs-only update" to just "update `AGENTS.md`; CLAUDE.md inherits" — already aligned.
+- [x] Drop the optional `gh pr list` check from Phase 2 step 7.
+- [x] Update plan.md `## Phases` table to include `phase-01a`.
 
 #### Impact on Phases
 - **Phase 1 (De-risk jq projection):** manual check acceptance now references `phase-01a` upstream — the script lands against a true one-line-per-id file.
@@ -225,6 +232,54 @@ Resolves the observed 2026-07-09 parallel-PR EOF conflict (PR #44/#45) by splitt
 - plan.md §"Out of Scope" reworded: Tier-1 docs-only fix is sufficient.
 - Phase 3 Overview + Requirements + Success Criteria aligned with Q3 down-tier + Q2 schema change.
 **Unresolved contradictions:** 0
+
+---
+
+## Session Progress
+
+### Session 260715-1010 (cook execution — Phase 1 + 2 read seam)
+
+**Scope (per user choice):** Phase 01a + Phase 1 + Phase 2 read seam only. Write dispatch + migration + CI gates + closeout deferred.
+
+**Shipped:**
+- **Phase 01a** completed: `meta-state.jsonl` 313 → 309 lines, 4 historical dup-id groups collapsed per the canonical rule. 5/5 success criteria green.
+- **Phase 1** completed: `tools/scripts/registry-table.sh` + vitest test + fixtures. 7/7 tests pass; identity + last-wins + multi-file union. 4/4 success criteria green.
+- **Phase 2 read seam** in progress: dual-source `readRegistryWithCache` (mtime+size on both files), `changeLogSha256` in cold-tier cache, identity projection seam with Tier-2 swap point, post-concat `created_at` sort in `_readAndParseRegistry`, core-layer `change_log_immutable` guards in `updateEntry` + `archiveEntry` (2/8 sites).
+- **File-index refresh** for the 3 changed core files; cold-tier regression test green.
+- Full suite: 213/214 vitest files pass; 1 pre-existing skip.
+
+**Rolled back:** `consolidates` schema change (z.string → z.array) and the `writeEntry` / `metaStateBatch` dispatch (would have leaked change-logs into `meta-state.jsonl` while tests still expect the single-file shape). The `appendChangeLogEntryAtomic` helper is implemented and ready; deferred-routing comments mark the exact sites.
+
+**Reports:**
+- `plans/reports/cook-260715-1010-GH-tier1-read-seam-and-registry-table-report.md`
+- `docs/journals/journal-260715-1010-tier1-read-seam-and-registry-table.md`
+
+**Files touched (uncommitted):**
+- `meta-state.jsonl` (data: 313 → 309 lines)
+- `tools/learning-loop-mastra/core/read-registry-cache.js` (dual-source cache)
+- `tools/learning-loop-mastra/core/loop-introspect-cache.js` (3-SHA cold-tier keys)
+- `tools/learning-loop-mastra/core/meta-state.js` (read seam + immutability guards + deferred dispatch comments)
+- `tools/learning-loop-mastra/core/meta-state.test.js` (1 test updated for new immutability invariant)
+- `file-index.jsonl` (3 fingerprints refreshed)
+- `tools/scripts/registry-table.sh` (new)
+- `tools/scripts/__tests__/registry-table.test.js` (new)
+- `tools/scripts/__fixtures__/registry-one-line-per-id.jsonl` (new)
+- `tools/scripts/__fixtures__/registry-versioned.jsonl` (new)
+
+**Resume for next session (in order):**
+1. **Phase 2 step 2 — re-enable write dispatch.** In `meta-state.js#writeEntry`, flip the dispatch back on: `if (validation.data.entry_kind === "change-log") { appendChangeLogEntryAtomic(...) } else { appendRegistryEntryAtomic(...) }`. The helper is already implemented and tested in this session. ALSO: in `metaStateBatch`, route the auto-emit through `appendChangeLogEntryAtomic` after the table write (comments mark the exact lines).
+2. **Phase 2 step 2 — re-enable `tableOnly` projections** at the 4 persist sites in `updateEntry`, `archiveEntry`, `deleteEntry`, `shipLoopDesign`, and the metaStateBatch persist. With the dispatch on, `tableOnly(entries)` is required to prevent change-log leakage.
+3. **Phase 2 step 2 — fix the 10 raw-reading tests** that will break: `__tests__/legacy-mcp/meta-state-archive-tool.test.js`, `meta-state-batch-tool.test.js`, `meta-state-check-grounding-tool.test.js`, `meta-state-derive-status-tool.test.js`, `meta-state-stale-flag.test.js`, `meta-state-g8-supersede.test.js`, `core/__tests__/meta-state-superseded.test.js`, `__tests__/cross-process-file-lock.test.cjs`, `__tests__/drop-idempotency-cache.test.cjs`, `__tests__/connect-mcp-server-mutex.test.js`, `__tests__/legacy-mcp/change-log-operation-envelope.test.js`. These are the "2 confirmed broken + 3 secondary + 5 unaffected" rolled forward — the plan's estimate of churn was too low.
+4. **Phase 2 step 1 — `consolidates` schema change** to `z.array(z.string())`. Keep the migration BEFORE the schema flip in the same PR (single PR on main, no parallel registry PRs).
+5. **Phase 2 step 4 — migration script** (`migrate-change-log-stream.mjs`): wrap in `withRegistryLock`; dedupe by id; partition by entry_kind; write `change-log.jsonl` + rewrite `meta-state.jsonl` without change-logs; convert single-string `consolidates` to one-element arrays.
+6. **Phase 2 step 3 — `.gitattributes` change-log.jsonl merge=union** + git-track `change-log.jsonl`.
+7. **Phase 2 step 6 — advisory workflow path-filter + diff-command update** in `.github/workflows/meta-state-pr-body-advisory.yml`.
+8. **Phase 3 — CI validation gates** (pre-merge WARN + post-merge BLOCK).
+9. **Phase 4 — verify + closeout** (merge=union dry-run with two branches from shared base, AGENTS.md docs fix, resolve `change-log-stream` finding, keep `finding-stream` open, journal).
+
+**Open questions for next session:**
+- Does the `consolidates` schema change need a Zod `preprocess` runtime conversion (wrap single string in array on read) for in-flight processes, or is a one-time migration + schema flip sufficient? Recommend the one-time migration; in-flight processes can re-read after restart.
+- Should the write dispatch + 10 test fixes ship in one PR, or split into 2? Recommend one PR — the test fixes are deterministic once the dispatch is on.
 
 ---
 

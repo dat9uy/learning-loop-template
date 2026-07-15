@@ -1,7 +1,7 @@
 ---
 phase: "01a"
 title: "Pre-merge dedupe (4 historical dup-id groups)"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---
@@ -52,11 +52,11 @@ Inline migration in the PR (no separate script). Read `meta-state.jsonl`, dedupe
 
 ## Success Criteria
 
-- [ ] `meta-state.jsonl` post-PR has 309 lines, 309 unique ids.
-- [ ] The 4 historical dup-id groups are collapsed; specific survivors match the documented rule.
-- [ ] `pnpm test` green (no code changes; pure data cleanup).
-- [ ] `jq -s 'group_by(.id) | map(max_by(.version)) | length' meta-state.jsonl` returns 309, not 313.
-- [ ] Manual: `head` of the file shows one line per id in the affected groups.
+- [x] `meta-state.jsonl` post-PR has 309 lines, 309 unique ids.
+- [x] The 4 historical dup-id groups are collapsed; specific survivors match the documented rule.
+- [x] `pnpm test` green (no code changes; pure data cleanup).
+- [x] `jq -s 'group_by(.id) | map(max_by(.version)) | length' meta-state.jsonl` returns 309, not 313.
+- [x] Manual: `head` of the file shows one line per id in the affected groups.
 
 ## Risk Assessment
 
