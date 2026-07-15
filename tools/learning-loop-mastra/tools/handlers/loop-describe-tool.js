@@ -5,12 +5,25 @@ import * as introspect from "../../core/loop-introspect.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
 
+/**
+ * Reduce a multi-sentence tool description to a one-line at-a-glance summary
+ * for the warm-tier index. Caps at ~120 chars so the warm tools list stays
+ * compact; the full description lives in tool-selection-guide.md. Returns the
+ * empty string unchanged so callers can distinguish "no description" from
+ * "truncated".
+ */
+function firstSentence(description) {
+  if (typeof description !== "string" || description.length === 0) return description ?? "";
+  const first = description.split(/(?<=\.)\s/)[0];
+  return first.length <= 120 ? first : `${first.slice(0, 117)}…`;
+}
+
 export const loopDescribeTool = {
   name: "loop_describe",
   description: "Return the loop's current operational surface. **Recommended: call at session start to discover what the loop offers.** Supports tiered reads (hot/warm/cold/summary) to control context bloat. Use when you need to know what the loop offers, what rules are enforced, or what findings are active. The warm tier's `discoverability_hints` block surfaces short reminders of the loop's rules. Not for mutating state (use the `meta_state_*` or `record_*` tools instead).",
   schema: {
     tier: z.enum(["hot", "warm", "cold", "summary"]).optional()
-      .describe("Read tier: hot=active rules only (~5KB), warm=active surface (default, 10-25KB), cold=full history (25-100KB), summary=counts only (<1KB)"),
+      .describe("Read tier: hot=active rules only (~5KB), warm=active surface index (default, ~25KB — id+classifier only; full text via meta_state_list({id}) / loop_get_instruction), cold=full history (25-100KB), summary=counts only (<1KB)"),
     // Wire-format envelope stripper — accepts both bare arrays and {item:[...]}-wrapped
     // arrays so the MCP SDK's auto-coercion doesn't silently drop the category filter.
     // See meta-260709T1316Z-recurring-mcp-wire-format-coercion-array-fields-silently-coe.
@@ -52,29 +65,32 @@ export const loopDescribeTool = {
         }));
         result.rule_count = promotedRules.length;
       } else if (tier === "warm") {
+        // Warm tier is an INDEX, not a full dump. Full prose lives behind
+        // per-id lookups so the active surface stays within its documented
+        // 10-25KB budget (before this compaction warm returned ~117KB,
+        // dominated by per-entry descriptions). See lookup_hint below.
         result.tools = tools.map((t) => ({
           name: t.name,
-          description: t.description,
+          description: firstSentence(t.description),
         }));
         result.record_types = recordTypes;
         result.gate_patterns = Object.keys(gatePatterns);
         result.rules = promotedRules.map((r) => ({
           rule_id: r.rule_id,
           pattern_type: r.pattern_type,
-          pattern: r.pattern,
         }));
         result.active_findings = activeFindings.map((f) => ({
           id: f.id,
           category: f.category,
           status: f.status,
-          description: f.description,
         }));
         result.anti_patterns = antiPatterns.map((f) => ({
           id: f.id,
           subtype: f.subtype,
           status: f.status,
-          description: f.description,
         }));
+        result.lookup_hint =
+          "Warm tier is an index. For a finding/anti-pattern/rule's full text, call meta_state_list({id:['<id>']}); for a hint's detail, loop_get_instruction({key}); for tool when/inputs, see tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md.";
         result.rule_count = promotedRules.length;
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.substrates = introspect.listSubstrates();
