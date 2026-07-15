@@ -5,6 +5,7 @@ import { join } from "node:path";
 const DEFAULT_CACHE_DIR = "records/meta/.cache";
 const CACHE_FILENAME = "loop-describe-cold.json";
 const REGISTRY_FILENAME = "meta-state.jsonl";
+const CHANGE_LOG_FILENAME = "change-log.jsonl";
 
 function getCachePath(root, cacheDir = DEFAULT_CACHE_DIR) {
   return join(root, cacheDir, CACHE_FILENAME);
@@ -12,6 +13,10 @@ function getCachePath(root, cacheDir = DEFAULT_CACHE_DIR) {
 
 function getRegistryPath(root) {
   return join(root, REGISTRY_FILENAME);
+}
+
+function getChangeLogPath(root) {
+  return join(root, CHANGE_LOG_FILENAME);
 }
 
 function getFileIndexPath(root) {
@@ -23,6 +28,19 @@ function getFileIndexPath(root) {
  */
 function registrySha256(root) {
   const path = getRegistryPath(root);
+  if (!existsSync(path)) return null;
+  const raw = readFileSync(path, "utf8");
+  return "sha256:" + createHash("sha256").update(raw).digest("hex");
+}
+
+/**
+ * Compute sha256 of the current change-log.jsonl. The change-log file is
+ * a true-append stream; on append, this SHA changes and the cold-tier
+ * cache is invalidated. Missing file → null (treated as a stable
+ * "absent" hash component; first write to it busts the cache).
+ */
+function changeLogSha256(root) {
+  const path = getChangeLogPath(root);
   if (!existsSync(path)) return null;
   const raw = readFileSync(path, "utf8");
   return "sha256:" + createHash("sha256").update(raw).digest("hex");
@@ -43,26 +61,31 @@ function fileIndexSha256(root) {
  * Read the sidecar cache if it exists and is fresh.
  * Returns { hit: true, payload, built_at } on hit; { hit: false, reason? } on miss.
  *
- * Atomic paired SHA: both files are read into memory FIRST, then both SHAs are
- * computed in-memory from those buffers before any comparison. This prevents
- * a concurrent writer that lands between two separate readFileSync calls from
- * producing a stale-cache hit.
+ * Atomic paired SHA: all three files are read into memory FIRST, then all
+ * SHAs are computed in-memory from those buffers before any comparison.
+ * This prevents a concurrent writer that lands between separate readFileSync
+ * calls from producing a stale-cache hit.
  */
 export function readColdTierCache(root, cacheDir) {
   const cachePath = getCachePath(root, cacheDir);
   if (!existsSync(cachePath)) return { hit: false };
 
-  // Read both files first — no SHA computation yet — so the comparison sees a
-  // consistent snapshot rather than the inconsistent sequence of two reads.
+  // Read all files first — no SHA computation yet — so the comparison sees a
+  // consistent snapshot rather than the inconsistent sequence of three reads.
   const registryPath = getRegistryPath(root);
+  const changeLogPath = getChangeLogPath(root);
   const fileIndexPath = getFileIndexPath(root);
   const registryRaw = existsSync(registryPath) ? readFileSync(registryPath, "utf8") : null;
+  const changeLogRaw = existsSync(changeLogPath) ? readFileSync(changeLogPath, "utf8") : null;
   const fileIndexRaw = existsSync(fileIndexPath) ? readFileSync(fileIndexPath, "utf8") : null;
 
-  // Compute both SHAs in-memory from the read buffers.
+  // Compute all three SHAs in-memory from the read buffers.
   const currentRegistrySha = registryRaw === null
     ? null
     : "sha256:" + createHash("sha256").update(registryRaw).digest("hex");
+  const currentChangeLogSha = changeLogRaw === null
+    ? null
+    : "sha256:" + createHash("sha256").update(changeLogRaw).digest("hex");
   const currentFileIndexSha = fileIndexRaw === null
     ? null
     : "sha256:" + createHash("sha256").update(fileIndexRaw).digest("hex");
@@ -74,10 +97,11 @@ export function readColdTierCache(root, cacheDir) {
     return { hit: false, reason: "cache_malformed" };
   }
   // Backward-compatible: cached files written before the upgrade lack
-  // file_index_sha256. Treat `undefined !== null` as a mismatch (the safe
-  // direction). On the first call after upgrade, the cache rebuilds and
-  // gains both SHAs.
+  // change_log_sha256 and/or file_index_sha256. Treat `undefined !== null`
+  // as a mismatch (the safe direction). On the first call after upgrade,
+  // the cache rebuilds and gains all three SHAs.
   if (cached.registry_sha256 !== currentRegistrySha
+      || cached.change_log_sha256 !== currentChangeLogSha
       || cached.file_index_sha256 !== currentFileIndexSha) {
     return { hit: false, reason: "sha_mismatch" };
   }
@@ -94,6 +118,7 @@ export function writeColdTierCache(root, payload, cacheDir) {
   const data = {
     built_at: new Date().toISOString(),
     registry_sha256: registrySha256(root),
+    change_log_sha256: changeLogSha256(root),
     file_index_sha256: fileIndexSha256(root),
     payload,
   };
