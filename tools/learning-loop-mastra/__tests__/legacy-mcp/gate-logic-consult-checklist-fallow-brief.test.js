@@ -68,8 +68,8 @@ await test("PROCESS_HINTS row #5 contains the literal rule-fallow-brief-on-gate-
   const mentions = processHints.some((row) => row.includes(RULE_ID));
   assert.strictEqual(mentions, true, `PROCESS_HINTS must contain literal substring ${RULE_ID}`);
 
-  // Also verify row count == 8 (4 original + 1 fallow brief + 3 reclassified
+  // Also verify row count == 9 (4 original + 1 fallow brief + 3 reclassified
   // advisory rule rows from plan 260714-1358-rule-vocabulary-realignment
-  // Phase 1, Q3 validation reversal).
-  assert.strictEqual(processHints.length, 9, "PROCESS_HINTS should have exactly 9 rows (8 prior + file-edit-drift-and-fingerprints appended)");
+  // Phase 1, Q3 validation reversal + 1 required-status-check row).
+  assert.strictEqual(processHints.length, 10, "PROCESS_HINTS should have exactly 10 rows (9 prior + required-status-check-verify-combined-status appended)");
 });

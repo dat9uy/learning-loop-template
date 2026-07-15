@@ -83,18 +83,26 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // cap below is the post-migration threshold; tightening it requires
   // resolving the underlying mechanism_check issues in a follow-up plan.
 
-  // Phase 7 (plan 260707-0812 Phase 1, finalized Phase 4): derived-stale view
-  // cap. Sourced from the new `derivedStaleSet` predicate (age >
-  // STALENESS_WINDOW_MS OR hash drift via file-index.jsonl) over the live
-  // registry, scoped to mechanism_check true|null. Threshold 16 = precompute
-  // 14 + 2 headroom (matches the original 12-vs-10 headroom convention).
+  // Phase 7: derived-stale view cap, scoped AGE-ONLY. `fileIndex` is passed
+  // as an empty Map so `hasDrifted` short-circuits false (stale-view.js) and
+  // only the age branch (reference time > STALENESS_WINDOW_MS) can fire.
+  //
+  // Why age-only: the pretest seed (seed-file-index.mjs) re-hashes every
+  // mc=true cited path to its CURRENT bytes, so in CI the index baseline
+  // always equals the file — the path-keyed `hasDrifted` would flag every
+  // grounded finding as stale (the opposite of grounded), and capping that
+  // count trips on every newly-filed finding. The cap's original intent was
+  // to catch sweep re-staling entries via old created_at — an age regression
+  // — so age-only restores that forcing function: deferred findings (recently
+  // filed or re-verified) don't count; abandoned ones (>7d) do. Threshold 16
+  // = precompute 14 + 2 headroom.
   const derivedStaleMc = derivedStaleSet(current.all_findings, {
     now: Date.now(),
-    fileIndex,
+    fileIndex: new Map(),
   }).filter((f) => f.mechanism_check === true || f.mechanism_check === null);
   assert.ok(
     derivedStaleMc.length <= 16,
-    `Phase 7: derived-stale cap broken — ${derivedStaleMc.length} derived stale mechanism_check findings exceed threshold 16 (14 + 2 headroom; precompute from plan 260707-0812 Phase 1): ${derivedStaleMc.map((f) => f.id).join(", ")}`
+    `Phase 7: age-stale cap broken — ${derivedStaleMc.length} age-stale mechanism_check findings exceed threshold 16 (14 + 2 headroom; age-only — drift unmeasurable post-seed): ${derivedStaleMc.map((f) => f.id).join(", ")}`
   );
 
   // Size sanity: cold tier should not collapse to a near-empty payload

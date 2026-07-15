@@ -1,12 +1,30 @@
 # Plan 260715-0801 Tier 1 Phase 3 step 4: post-merge registry-ref BLOCK.
 #
-# Runs on push to main. Loads the union of meta-state.jsonl + change-log.jsonl,
-# uses `validate-registry-refs.mjs` to scan for real dangling refs and BLOCKs
-# on any.
+# Runs on every PR targeting main AND on push to main. Loads the union of
+# meta-state.jsonl + change-log.jsonl, uses `validate-registry-refs.js` to
+# scan for real dangling refs and BLOCKs on any.
 #
-# Why post-merge: at push-to-main the full union is visible, so every dangling
-# ref is real. Cross-PR orphans either self-healed on merge or never existed.
+# Why dual-trigger: the post-merge `push` run is the authoritative gate,
+# because at push-to-main the full union is visible, so every dangling ref
+# is real. Cross-PR orphans either self-healed on merge or never existed.
 # Pre-merge cross-PR detection was down-tiered (Validation Session 1 Q3).
+# `pull_request:` is required so branch protection's required status check
+# fires on PRs at all (without it, the check is MISSING on PRs and merges
+# fall back to admin bypass, `enforce_admins: false`).
+#
+# Required-check context invariant: GitHub matches a required status check
+# against the check-run NAME, and Actions names a check run after the JOB id
+# (here `refs-check`) — NOT the workflow `name:` field (`meta-state refs
+# check`). Branch protection MUST list `refs-check` as the required context,
+# not the workflow display name, or the check stays PENDING forever. The
+# required context is bound to the parsed job id by
+# `tools/scripts/setup-branch-protection.mjs` (single source of truth —
+# re-run it after any job rename). Do NOT hand-edit the protection context.
+#
+# Why bare `pull_request:` (no `paths:` filter): a path filter would
+# re-introduce the bug for non-registry PRs — which is exactly when the
+# check is most useful (a PR can introduce a finding/rule/loop-design entry
+# id that an existing ref no longer points to). Matches `test.yml`.
 #
 # The validator reuses the relationships-handler dangling-refs logic
 # (Red Team F4: `meta_state_relationships` plural, NOT `meta_state_relationship_validate`
@@ -34,6 +52,7 @@ name: meta-state refs check
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
