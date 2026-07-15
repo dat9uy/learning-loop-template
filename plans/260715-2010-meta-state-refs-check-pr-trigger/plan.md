@@ -1,7 +1,7 @@
 ---
 title: "Refs-check workflow: add pull_request trigger"
 description: "Branch protection on main requires the `meta-state refs check` context for PR merges (strict:true), but `.github/workflows/meta-state-refs-check.yml` only triggers on `push: [main]` + `workflow_dispatch` — so the required check never runs on PRs. Recent PRs (57-61) merged via admin bypass (`enforce_admins:false`). Fix: add `pull_request` to the workflow's `on:` block so the check runs on PRs and the branch-protection requirement is satisfied. Validator already exits 0 on the live union (measured 2026-07-15: 0 blocking orphans across 316 entries), so the PR-HEAD run will be green."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-surface, registry, ci, refs-check, branch-protection]
@@ -30,8 +30,8 @@ Follow-up to plan `260715-1608-tier1-followup-orphan-semantics-union-driver` Pha
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Edit workflow YAML](./phase-01-implement.md) | Pending |
-| 2 | [Verify on test PR](./phase-02-verify.md) | Pending |
+| 1 | [Edit workflow YAML](./phase-01-implement.md) | Completed |
+| 2 | [Verify on test PR](./phase-02-verify.md) | Completed |
 
 ## Dependencies
 
@@ -40,12 +40,12 @@ Follow-up to plan `260715-1608-tier1-followup-orphan-semantics-union-driver` Pha
 
 ## Acceptance Criteria
 
-- [ ] `.github/workflows/meta-state-refs-check.yml` `on:` block has both `push: branches: [main]` AND `pull_request:` (bare, no path filter).
-- [ ] Workflow header comment updated to document the dual-trigger behavior and the branch-protection consistency rationale.
-- [ ] A test PR (or re-pushed branch) shows `meta-state refs check` as a green check in the Checks tab.
-- [ ] Branch-protection `required_status_checks.contexts: ["meta-state refs check"]` is satisfied on the test PR — i.e., the merge button is enabled (or the check appears as `SUCCESS`, not as `MISSING`).
-- [ ] `node tools/learning-loop-mastra/scripts/validate-registry-refs.js` continues to exit 0 on the live union (regression gate — pre- and post-change identical).
-- [ ] No new files in `tools/`; no behavior change to `validate-registry-refs.js`.
+- [x] `.github/workflows/meta-state-refs-check.yml` `on:` block has both `push: branches: [main]` AND `pull_request:` (bare, no path filter).
+- [x] Workflow header comment updated to document the dual-trigger behavior and the branch-protection consistency rationale.
+- [x] A test PR (or re-pushed branch) shows `meta-state refs check` as a green check in the Checks tab.
+- [x] Branch-protection `required_status_checks.contexts: ["meta-state refs check"]` is satisfied on the test PR — i.e., the merge button is enabled (or the check appears as `SUCCESS`, not as `MISSING`).
+- [x] `node tools/learning-loop-mastra/scripts/validate-registry-refs.js` continues to exit 0 on the live union (regression gate — pre- and post-change identical).
+- [x] No new files in `tools/`; no behavior change to `validate-registry-refs.js`.
 
 ## Risks
 
