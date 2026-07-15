@@ -1,12 +1,23 @@
 # Plan 260715-0801 Tier 1 Phase 3 step 4: post-merge registry-ref BLOCK.
 #
-# Runs on push to main. Loads the union of meta-state.jsonl + change-log.jsonl,
-# uses `validate-registry-refs.mjs` to scan for real dangling refs and BLOCKs
-# on any.
+# Runs on every PR targeting main AND on push to main. Loads the union of
+# meta-state.jsonl + change-log.jsonl, uses `validate-registry-refs.js` to
+# scan for real dangling refs and BLOCKs on any.
 #
-# Why post-merge: at push-to-main the full union is visible, so every dangling
-# ref is real. Cross-PR orphans either self-healed on merge or never existed.
+# Why dual-trigger: branch protection on main lists this check as a required
+# status check (`contexts: ["meta-state refs check"]`). Required checks only
+# fire when the workflow declares `pull_request`; without it, the required
+# context was MISSING on every PR and merges fell back to admin bypass
+# (`enforce_admins: false`). Adding `pull_request:` makes the check visible
+# on every PR — and the post-merge `push` run is the authoritative gate,
+# because at push-to-main the full union is visible, so every dangling ref
+# is real. Cross-PR orphans either self-healed on merge or never existed.
 # Pre-merge cross-PR detection was down-tiered (Validation Session 1 Q3).
+#
+# Why bare `pull_request:` (no `paths:` filter): a path filter would
+# re-introduce the bug for non-registry PRs — which is exactly when the
+# check is most useful (a PR can introduce a finding/rule/loop-design entry
+# id that an existing ref no longer points to). Matches `test.yml`.
 #
 # The validator reuses the relationships-handler dangling-refs logic
 # (Red Team F4: `meta_state_relationships` plural, NOT `meta_state_relationship_validate`
@@ -34,6 +45,7 @@ name: meta-state refs check
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
