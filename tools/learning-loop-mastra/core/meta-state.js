@@ -857,6 +857,29 @@ async function assertNotArchived(entries, idx, root, id) {
   return invariantResult.ok;
 }
 
+// Change-log immutability pre-condition for batch ops. Change-logs live in
+// `change-log.jsonl` (true-append); the table persist strips them before
+// writing `meta-state.jsonl`, so mutating one in `entries[]` is a silent
+// no-op. Shared by the `update` and `delete` ops so both reject explicitly.
+async function assertNotChangeLog(entries, idx, root, id) {
+  const invariantResult = await assertinvariant(
+    () => Promise.resolve({ ok: true }),
+    {
+      accept: {
+        context: () => entries[idx],
+        check: (e) => e.entry_kind !== "change-log",
+      },
+      returnOnFail: {
+        reason_code: "change_log_immutable",
+        entry_kind: entries[idx].entry_kind,
+        id,
+      },
+      root,
+    }
+  );
+  return invariantResult.ok;
+}
+
 /**
  * Atomically append a single entry to the JSONL registry.
  * Queued per-root to prevent read-modify-write races under concurrent calls
@@ -1294,31 +1317,13 @@ export function metaStateBatch(root, operations, envelope) {
                 const current = entries[idx].version ?? 0;
                 if (current !== op._expected_version) throw new Error("version_mismatch");
               }
-              // Plan 260715-1608 Phase 1 (red-team F14): change-log immutability
-              // guard. Mirrors the `delete` op's assertinvariant. Without this
-              // guard, `Object.assign(entries[idx], patch)` mutates the change-log
-              // entry, but `persistRegistryAtomic(tableOnly(entries, root), root)`
-              // (below) strips change-logs before writing `meta-state.jsonl`,
-              // so the mutation is silently discarded — `applied: N` returns
-              // success for a no-op. Make the rejection explicit.
-              const updateClInvariant = await assertinvariant(
-                () => Promise.resolve({ ok: true }),
-                {
-                  accept: {
-                    context: () => entries[idx],
-                    check: (e) => e.entry_kind !== "change-log",
-                  },
-                  returnOnFail: {
-                    reason_code: "change_log_immutable",
-                    entry_kind: entries[idx].entry_kind,
-                    id: op.id,
-                  },
-                  root,
-                }
-              );
-              if (!updateClInvariant.ok) {
-                const err = new Error("change_log_immutable");
-                throw err;
+              // Change-log immutability guard: `Object.assign` would mutate the
+              // change-log in `entries[]`, but the table persist below strips
+              // change-logs before writing `meta-state.jsonl`, so the mutation
+              // is silently discarded while `applied: N` reports success. Reject
+              // explicitly (shared helper, same contract as the `delete` op).
+              if (!(await assertNotChangeLog(entries, idx, root, op.id))) {
+                throw new Error("change_log_immutable");
               }
               // Strip op discriminator + lookup id + CAS version before checking
               // the deny-list and applying. Without this, the lookup-key `id` and
@@ -1365,26 +1370,9 @@ export function metaStateBatch(root, operations, envelope) {
             case "delete": {
               const idx = entries.findIndex((e) => e.id === op.id);
               if (idx === -1) throw new Error("not_found");
-              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-              // wrapper enforces the change-log immutability pre-condition.
-              const deleteInvariant = await assertinvariant(
-                () => Promise.resolve({ ok: true }),
-                {
-                  accept: {
-                    context: () => entries[idx],
-                    check: (e) => e.entry_kind !== "change-log",
-                  },
-                  returnOnFail: {
-                    reason_code: "change_log_immutable",
-                    entry_kind: entries[idx].entry_kind,
-                    id: op.id,
-                  },
-                  root,
-                }
-              );
-              if (!deleteInvariant.ok) {
-                const err = new Error("change_log_immutable");
-                throw err;
+              // Change-log immutability pre-condition (shared helper).
+              if (!(await assertNotChangeLog(entries, idx, root, op.id))) {
+                throw new Error("change_log_immutable");
               }
               entries.splice(idx, 1);
               break;

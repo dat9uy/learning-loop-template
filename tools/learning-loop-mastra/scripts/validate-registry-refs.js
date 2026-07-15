@@ -138,6 +138,34 @@ export function outboundRefsOf(entry) {
   return extract ? extract(entry) : [];
 }
 
+// Classify one outbound ref into a bucket. Returns `{ bucket, record }`, or
+// `null` when the target exists and is neither stale-view nor terminal (a
+// healthy ref — nothing to report). Extracted from `computeDanglingRefs` so
+// the per-ref 3-bucket + target-status decision chain lives in its own
+// function; the inline version pushed `computeDanglingRefs` to cyclomatic 19.
+function classifyRef(entry, sourceKind, ref, target) {
+  if (!target) {
+    // Immutable change-log sources and terminal-status sources cannot be
+    // patched, so their missing refs are history, not corruption. Any other
+    // (active/open mutable) source with a missing target is real corruption.
+    const bucket = sourceKind === "change-log" || isTerminalSource(entry) ? "historical" : "blocking";
+    return { bucket, record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" } };
+  }
+  // Target exists: only stale-view / superseded / resolved targets are
+  // surfaced, as informational. stale-view is a freshness signal handled by
+  // `meta_state_check_grounding`, not this ref-corruption gate.
+  if (isStaleViewLike(target)) {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "stale" } };
+  }
+  if (target.status === "superseded") {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "superseded" } };
+  }
+  if (target.status === "resolved") {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "resolved" } };
+  }
+  return null;
+}
+
 // 3-bucket classification. `blocking` drives the CLI exit; `historical` and
 // `informational` are counted but never block.
 //
@@ -150,6 +178,7 @@ export function computeDanglingRefs(entries) {
   const blocking = [];
   const historical = [];
   const informational = [];
+  const buckets = { blocking, historical, informational };
 
   // Duplicate-id guard: scan the union for ids appearing >1 time. Each
   // collision is appended to `blocking` (no source-kind discrimination —
@@ -177,32 +206,8 @@ export function computeDanglingRefs(entries) {
   for (const entry of entries) {
     const sourceKind = entry.entry_kind ?? "finding";
     for (const ref of outboundRefsOf(entry)) {
-      const target = entryById.get(ref.id);
-      if (!target) {
-        if (sourceKind === "change-log") {
-          // Immutable source: cannot be patched; ref is history.
-          historical.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" });
-        } else if (isTerminalSource(entry)) {
-          // Terminal source (superseded/resolved/archived/inactive-for-rule+loop-design):
-          // its refs are historical; refactoring it would require mutating it
-          // out of terminal state, which is its own governed lifecycle event.
-          historical.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" });
-        } else {
-          // Active/open mutable source + missing target = real corruption.
-          blocking.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" });
-        }
-        continue;
-      }
-      if (isStaleViewLike(target)) {
-        // Downgraded from blocking (Plan 260715-1608 Phase 1 — red-team F3):
-        // stale-view is a freshness signal handled by `meta_state_check_grounding`,
-        // not this validator's ref-corruption gate. Surfaced as a count only.
-        informational.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "stale" });
-      } else if (target.status === "superseded") {
-        informational.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "superseded" });
-      } else if (target.status === "resolved") {
-        informational.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "resolved" });
-      }
+      const classified = classifyRef(entry, sourceKind, ref, entryById.get(ref.id));
+      if (classified) buckets[classified.bucket].push(classified.record);
     }
   }
   return { blocking, historical, informational };
