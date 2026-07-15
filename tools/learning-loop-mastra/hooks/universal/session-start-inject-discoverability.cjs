@@ -27,30 +27,54 @@ const EMPTY_CHANGE_LOG_GAP = { gap_candidates: [], gap_protocol_prompt: "" };
 /**
  * Load discoverability + process hints (Rec 9).
  * Returns empty arrays on builder failure so the JSON shape stays stable.
+ *
+ * Each hint payload carries a `*_source` flag ("core" on success,
+ * "fallback" on degraded loader) plus an optional `*_error` string. The
+ * flag is what makes the silent-degrade failure mode visible: without it,
+ * a consumer reading the sidecar cannot distinguish "no hints configured"
+ * from "loaders failed and returned empty." Plan 260715-1100 fix for the
+ * PROCESS_HINTS row #1 silent-degrade path observed in sessions
+ * 260715-1010 and 260715-1100.
  */
 function loadCoreHints() {
   try {
+    if (process.env.SESSION_START_FORCE_HINTS_FAIL === "1") {
+      throw new Error("forced core-hints loader failure (SESSION_START_FORCE_HINTS_FAIL=1)");
+    }
     const { buildDiscoverabilityHints, buildProcessHints } = require("../../core/loop-introspect.js");
     return {
       discoverability_hints: buildDiscoverabilityHints(),
+      discoverability_hints_source: "core",
       process_hints: buildProcessHints(),
+      process_hints_source: "core",
     };
   } catch (err) {
     console.error(`[session-start] buildHints failed: ${err.message}`);
-    return { discoverability_hints: [], process_hints: [] };
+    return {
+      discoverability_hints: [],
+      discoverability_hints_source: "fallback",
+      discoverability_hints_error: err.message,
+      process_hints: [],
+      process_hints_source: "fallback",
+      process_hints_error: err.message,
+    };
   }
 }
 
 /**
  * Read the meta-state registry. Returns [] on read failure; never throws.
+ * Carries a `_source` flag mirroring the loadCoreHints contract.
  */
 function loadRegistry(root) {
   try {
+    if (process.env.SESSION_START_FORCE_REGISTRY_FAIL === "1") {
+      throw new Error("forced registry loader failure (SESSION_START_FORCE_REGISTRY_FAIL=1)");
+    }
     const { readRegistry } = require("../../core/meta-state.js");
-    return readRegistry(root);
+    return { entries: readRegistry(root), registry_source: "core" };
   } catch (err) {
     console.error(`[session-start] readRegistry failed: ${err.message}`);
-    return [];
+    return { entries: [], registry_source: "fallback", registry_error: err.message };
   }
 }
 
@@ -135,26 +159,45 @@ async function main() {
   const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
 
   // 1. Core hints (no registry dep).
-  const { discoverability_hints, process_hints } = loadCoreHints();
+  const core = loadCoreHints();
 
   // 2. Registry + dispatch ids (Rec 10 INC-10 orphan detection).
-  const entries = loadRegistry(projectRoot);
+  const registry = loadRegistry(projectRoot);
   const dispatchIds = loadDispatchIds(projectRoot);
 
   // 3. Stale dispatch hints (Rec 10) + change-log gap hints (Rec 12).
-  const stale_dispatch_hints = loadStaleDispatchHints(entries, dispatchIds);
-  const change_log_gap_hints = loadChangeLogGapHints(projectRoot, entries);
+  const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds);
+  const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
 
   const contextPath = writeContext(projectRoot, {
-    discoverability_hints,
-    process_hints,
+    discoverability_hints: core.discoverability_hints,
+    discoverability_hints_source: core.discoverability_hints_source,
+    discoverability_hints_error: core.discoverability_hints_error ?? null,
+    process_hints: core.process_hints,
+    process_hints_source: core.process_hints_source,
+    process_hints_error: core.process_hints_error ?? null,
+    registry_source: registry.registry_source,
+    registry_error: registry.registry_error ?? null,
     stale_dispatch_hints,
     change_log_gap_hints,
     injected_at: new Date().toISOString(),
   });
 
+  // Stderr summary line — the existing success signal. Includes source flags
+  // when any loader degraded so the harness surfaces the failure to the agent
+  // (silent-degrade was the bug class fixed in plan 260715-1100).
+  const degradedSources = [
+    core.discoverability_hints_source === "fallback" ? "discoverability_hints" : null,
+    core.process_hints_source === "fallback" ? "process_hints" : null,
+    registry.registry_source === "fallback" ? "registry" : null,
+  ].filter(Boolean);
+  if (degradedSources.length > 0) {
+    console.error(
+      `[session-start] DEGRADED loaders: ${degradedSources.join(", ")} — sidecar at ${contextPath} carries *_source=fallback flags`,
+    );
+  }
   console.error(
-    `[session-start] wrote ${discoverability_hints.length} discoverability + ${process_hints.length} process + ${stale_dispatch_hints.fixable_candidates.length} stale-dispatch + ${change_log_gap_hints.gap_candidates.length} change-log-gap hints to ${contextPath}`,
+    `[session-start] wrote ${core.discoverability_hints.length} discoverability + ${core.process_hints.length} process + ${stale_dispatch_hints.fixable_candidates.length} stale-dispatch + ${change_log_gap_hints.gap_candidates.length} change-log-gap hints to ${contextPath}`,
   );
   process.exit(0);
 }
@@ -163,11 +206,20 @@ main().catch((err) => {
   console.error(`[session-start] fatal: ${err.message}`);
   // BOTH-write-sites invariant: fatal-catch must carry the same keys as the
   // happy-path write (incl. `change_log_gap_hints`) so downstream readers
-  // never see a missing key on a failure path.
+  // never see a missing key on a failure path. The fatal path also sets
+  // every `*_source` to "fatal" so a downstream reader can distinguish a
+  // fatal from a per-loader fallback — both look like empty arrays on the
+  // surface but represent different failure modes.
   try {
     writeContext(path.resolve(__dirname, "..", "..", "..", ".."), {
       discoverability_hints: [],
+      discoverability_hints_source: "fatal",
+      discoverability_hints_error: err.message,
       process_hints: [],
+      process_hints_source: "fatal",
+      process_hints_error: err.message,
+      registry_source: "fatal",
+      registry_error: err.message,
       stale_dispatch_hints: EMPTY_STALE_DISPATCH,
       change_log_gap_hints: EMPTY_CHANGE_LOG_GAP,
       injected_at: new Date().toISOString(),
