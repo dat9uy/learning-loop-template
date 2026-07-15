@@ -93,20 +93,6 @@ extract_refs() {
 added_ids=()
 removed_ids=()
 added_refs=()
-# Plan 260715-1608 Phase 1: track ids of change-log entries added in this PR
-# so the backstop gate can distinguish change-log-only refs (consolidates,
-# supersedes) from refs on other source kinds (which stay advisory).
-added_change_log_ids=()
-
-detect_kind() {
-  local line="$1"
-  local body="${line#+}"
-  body="${body#-}"
-  if [[ -z "$body" ]]; then printf '%s' ""; return; fi
-  if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$body" | jq -r '.entry_kind // empty' 2>/dev/null || true
-  fi
-}
 
 while IFS= read -r line; do
   case "$line" in
@@ -116,10 +102,6 @@ while IFS= read -r line; do
       id=$(extract_id "$line")
       if [[ -n "$id" ]]; then
         added_ids+=("$id")
-        kind=$(detect_kind "$line")
-        if [[ "$kind" == "change-log" ]]; then
-          added_change_log_ids+=("$id")
-        fi
       fi
       # Capture refs from the added line for cross-reference validation
       while IFS= read -r ref; do
@@ -150,9 +132,9 @@ removed_count=${#removed_ids[@]}
 # defense.
 base_ids=$(jq -r '.id' meta-state.jsonl change-log.jsonl 2>/dev/null | sort -u || true)
 orphan_refs=()
-# Plan 260715-1608 Phase 1: separately track change-log-only orphan refs
-# (`consolidates`, `supersedes`) on ids added in this PR. These trigger the
-# backstop FAIL.
+# Separately track orphan refs on change-log-only fields (`consolidates`,
+# `supersedes`) — only change-logs carry these fields, so the field name is
+# a sufficient source-kind discriminator. These trigger the backstop FAIL.
 cl_orphan_refs=()
 for ref in "${added_refs[@]}"; do
   field="${ref%%:*}"

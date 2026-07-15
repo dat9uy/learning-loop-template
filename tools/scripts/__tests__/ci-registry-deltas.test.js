@@ -36,9 +36,12 @@ function runScript(args = [], opts = {}) {
 
 // Synthesize a JSONL containing the entries that simulate the BASE state.
 // The script consults the current CWD's meta-state.jsonl + change-log.jsonl
-// to resolve `target_in_base`, so we set those files in the temp cwd.
+// to resolve `target_in_base`, so we set both files in the temp cwd (an
+// absent change-log.jsonl would make the `jq ... change-log.jsonl` base
+// lookup error out under `2>/dev/null || true`, masking the real path).
 function writeBaseCwd(cwd, lines) {
   writeFileSync(join(cwd, "meta-state.jsonl"), lines.join("\n") + "\n", "utf8");
+  writeFileSync(join(cwd, "change-log.jsonl"), "", "utf8");
 }
 
 function entry(id, fields) {
