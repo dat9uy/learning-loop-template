@@ -41,7 +41,8 @@ test("2 identical log_change calls within 60s produce 2 distinct entries", async
     // no longer returns the cached response without writing). The id is
     // minute-resolution per generateId, so same-minute same-target calls share
     // the id but the registry distinguishes them by created_at + registry line.
-    const lines = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim().split("\n").filter(Boolean);
+    // Plan 260715-0801 Tier 1 Phase 2: log_change writes land in change-log.jsonl.
+    const lines = readFileSync(join(root, "change-log.jsonl"), "utf8").trim().split("\n").filter(Boolean);
     assert.equal(lines.length, 2, "expected 2 entries; got " + lines.length);
     const entries = lines.map((l) => JSON.parse(l));
     assert.notEqual(

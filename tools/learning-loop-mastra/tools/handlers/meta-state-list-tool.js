@@ -118,11 +118,21 @@ export const metaStateListTool = {
         const refs = inverseMap.get(ref_by) || [];
         matchingIds = new Set(refs);
       } else if (ref_field === "consolidated_into") {
-        // Scan: pick change-logs where consolidates === ref_by
+        // Scan: pick change-logs whose `consolidates` array includes ref_by.
+        // Plan 260715-0801 Validation Q2: schema is z.array(z.string()); the
+        // migration script normalizes any legacy single-string value to a
+        // one-element array, so the array membership check is the canonical
+        // post-migration path. Tolerate the legacy string form for in-flight
+        // processes that read pre-migration data.
         for (const e of entries) {
-          if (e.entry_kind === "change-log" && e.consolidates === ref_by) {
-            matchingIds.add(e.id);
-          }
+          if (e.entry_kind !== "change-log") continue;
+          const cl = e.consolidates;
+          const matches = Array.isArray(cl)
+            ? cl.includes(ref_by)
+            : typeof cl === "string"
+              ? cl.split(",").map((s) => s.trim()).includes(ref_by)
+              : false;
+          if (matches) matchingIds.add(e.id);
         }
       } else if (ref_field === "proposed_design_for") {
         // Scan: pick loop-designs where proposed_design_for includes ref_by.

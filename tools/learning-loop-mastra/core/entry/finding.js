@@ -12,8 +12,16 @@ function inboundFromRule(entry, parsed) {
 }
 
 function inboundFromChangeLog(entry, parsed) {
-  if (typeof entry.consolidates !== "string") return [];
-  const ids = entry.consolidates.split(",").map((s) => s.trim());
+  // Plan 260715-0801 Validation Q2: consolidates is z.array(z.string())
+  // post-migration. The migration script normalizes legacy CSV strings to
+  // one-element arrays. Tolerate the legacy string form for in-flight
+  // processes that read pre-migration data.
+  const cl = entry.consolidates;
+  const ids = Array.isArray(cl)
+    ? cl
+    : typeof cl === "string"
+      ? cl.split(",").map((s) => s.trim())
+      : [];
   if (!ids.includes(parsed.id)) return [];
   return [{ kind: "change-log", id: entry.id, field: "consolidated_into" }];
 }

@@ -143,4 +143,37 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.strictEqual(parsed.results[0].source, "process");
     assert.strictEqual(parsed.results[0].error, undefined);
   });
+
+  // Compact-index contract (warm is an index, not a full dump). Full prose
+  // lives behind per-id lookups; warm must NOT carry per-entry descriptions or
+  // rule patterns, and must surface a lookup_hint pointing at those lookups.
+  test("warm tier is a compact index: no per-entry descriptions/patterns, lookup_hint present", async () => {
+    const result = await loopDescribeTool.handler({ tier: "warm" });
+    const parsed = JSON.parse(result.content[0].text);
+
+    // findings + anti-patterns: id + classifier only, no description.
+    for (const f of parsed.active_findings) {
+      assert.ok(typeof f.id === "string" && f.id.length > 0, "finding must carry id");
+      assert.ok(typeof f.category === "string", "finding must carry category");
+      assert.strictEqual(f.description, undefined, "warm finding must NOT carry full description");
+    }
+    for (const a of parsed.anti_patterns) {
+      assert.ok(typeof a.id === "string" && a.id.length > 0, "anti-pattern must carry id");
+      assert.strictEqual(a.description, undefined, "warm anti-pattern must NOT carry full description");
+    }
+    // rules: id + pattern_type only, no raw pattern.
+    for (const r of parsed.rules) {
+      assert.ok(r.rule_id && r.pattern_type, "rule must carry rule_id/pattern_type");
+      assert.strictEqual(r.pattern, undefined, "warm rule must NOT carry full pattern");
+    }
+    // tools: name + a short one-line description (≤ 130 chars — one sentence, capped).
+    for (const t of parsed.tools) {
+      assert.ok(typeof t.name === "string" && t.name.length > 0, "tool must carry a name");
+      assert.ok(typeof t.description === "string", "tool must carry a one-line description");
+      assert.ok(t.description.length <= 130, `tool one-liner must be compact (≤130 chars); "${t.name}" was ${t.description.length}`);
+    }
+    // lookup_hint points the agent at the per-id lookups.
+    assert.ok(typeof parsed.lookup_hint === "string" && parsed.lookup_hint.length > 0, "must carry lookup_hint");
+    assert.ok(parsed.lookup_hint.includes("meta_state_list"), "lookup_hint must point at meta_state_list for detail");
+  });
 });

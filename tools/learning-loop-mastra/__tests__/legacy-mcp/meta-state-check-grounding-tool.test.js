@@ -240,7 +240,8 @@ describe("meta_state_check_grounding tool", () => {
         change_diff: { added: ["x"], removed: [], changed: [] },
         reason: "Test change-log entry for gate log coverage.",
       });
-      const idChangeLog = JSON.parse(readFileSync(join(tempDir, "meta-state.jsonl"), "utf8").trim().split("\n")[1]).id;
+      // Plan 260715-0801 Tier 1 Phase 2: change-log writes land in change-log.jsonl.
+      const idChangeLog = JSON.parse(readFileSync(join(tempDir, "change-log.jsonl"), "utf8").trim().split("\n")[0]).id;
 
       await metaStateCheckGroundingTool.handler({ id: idSuccess });
       await metaStateCheckGroundingTool.handler({ id: idChangeLog });

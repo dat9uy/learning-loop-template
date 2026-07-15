@@ -60,17 +60,80 @@ import { assertinvariant } from "./operation-invariant.js";
 // the previous registry intact; invalidateCache fires after the rename so
 // any subsequent read picks up the new contents.
 const REGISTRY_FILENAME = "meta-state.jsonl";
+// The change-log stream is a true-append log of immutable `entry_kind=change-log`
+// entries. Reads go through the same chokepoint (`readRegistry`) which unions both
+// files; writes branch on `entry_kind` and route change-logs to this file via
+// `appendChangeLogEntryAtomic`. merge=union on this file is safe because change-logs
+// are never mutated in place (enforced by the core-layer immutability guard in
+// updateEntry/archiveEntry and the `entry_kind=change-log` branch in writeEntry).
+const CHANGE_LOG_FILENAME = "change-log.jsonl";
 
 function getRegistryPath(root) {
   return join(root, REGISTRY_FILENAME);
 }
 
+function getChangeLogPath(root) {
+  return join(root, CHANGE_LOG_FILENAME);
+}
+
 function persistRegistryAtomic(entries, root) {
+  // Tier 1 red-team finding 2: reject any non-table-only persist once
+  // change-log.jsonl exists. See assertNoChangeLogLeak jsdoc.
+  assertNoChangeLogLeak(entries, root);
   const path = getRegistryPath(root);
   const tmpPath = path + ".tmp";
   writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
   renameSync(tmpPath, path);
   invalidateCache(root);
+}
+
+/**
+ * Strip change-log entries from a union array. The `persistRegistryAtomic`
+ * write path lands in `meta-state.jsonl` (the mutable table); the
+ * `change-log.jsonl` stream is true-append only and must NEVER be the
+ * destination of an in-place read-modify-write. Callers that operate on
+ * the union (`readRegistry` returns both files merged) MUST project back
+ * to the table-set before persisting — otherwise change-logs leak into
+ * `meta-state.jsonl` and break the post-split invariant.
+ */
+function tableOnly(entries, root) {
+  // Pre-split defense: if change-log.jsonl doesn't exist yet, the registry
+  // is still single-file and ALL entries (including change-logs) must
+  // persist to meta-state.jsonl. Returning entries unchanged preserves the
+  // pre-Tier-1 semantics and prevents data loss during the migration window.
+  // Post-split (change-log.jsonl exists), every persist site must project
+  // back to the table-set so change-logs don't leak between files.
+  if (!existsSync(getChangeLogPath(root))) return entries;
+  return entries.filter((e) => e.entry_kind !== "change-log");
+}
+
+/**
+ * Defensive assert: once `change-log.jsonl` exists, persist sites MUST pass
+ * a table-only set to `persistRegistryAtomic`. A non-table-only write here
+ * would copy change-logs from `change-log.jsonl` into `meta-state.jsonl`,
+ * and `merge=union` later would double them on the next parallel merge.
+ *
+ * Plan 260715-0801 Tier 1 red-team finding 2: before the write dispatch +
+ * tableOnly projections are re-enabled at all 5 persist sites
+ * (updateEntry, archiveEntry, deleteEntry, shipLoopDesign, metaStateBatch),
+ * a partial state where `change-log.jsonl` exists but a persist site still
+ * passes the union would silently corrupt the registry. This guard fails
+ * loud so the bug surfaces immediately instead of at merge time.
+ *
+ * Pre-split (no change-log.jsonl): no-op — change-logs in meta-state.jsonl
+ * are the expected state.
+ * Post-split (change-log.jsonl present): the guard fires on any leak.
+ */
+function assertNoChangeLogLeak(entries, root) {
+  if (!existsSync(getChangeLogPath(root))) return;
+  for (const entry of entries) {
+    if (entry.entry_kind === "change-log") {
+      throw new Error(
+        "change_log_leak: persistRegistryAtomic received a change-log entry while change-log.jsonl exists. " +
+        "Call tableOnly(entries) before persisting — see meta-state.js#tableOnly.",
+      );
+    }
+  }
 }
 
 function appendRegistryEntryAtomic(root, entry) {
@@ -80,6 +143,25 @@ function appendRegistryEntryAtomic(root, entry) {
     : [];
   lines.push(entry);
   persistRegistryAtomic(lines, root);
+}
+
+/**
+ * True-append a single change-log entry to `change-log.jsonl`.
+ *
+ * Callers MUST hold `withRegistryLock(root)` on the caller-provided root
+ * (typically the writeEntry wrapper at L760-803) — two concurrent MCP
+ * servers calling this outside the lock can interleave byte-for-byte.
+ *
+ * The cache invalidation here covers BOTH files (`read-registry-cache.js`
+ * keys on meta-state.jsonl mtime+size AND change-log.jsonl mtime+size); a
+ * write to change-log.jsonl must bust the cache so the next read sees the
+ * new entry. Without invalidation, a stale cached union could omit the
+ * new change-log.
+ */
+function appendChangeLogEntryAtomic(root, entry) {
+  const path = getChangeLogPath(root);
+  appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
+  invalidateCache(root);
 }
 
 // Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
@@ -267,8 +349,13 @@ export const metaStateChangeEntrySchema = z.object({
   }).optional().describe("Wider impact scope"),
   supersedes: z.string().optional()
     .describe("ID of a previous change-log entry this one replaces"),
-  consolidates: z.string().optional()
-    .describe("Comma-separated list of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
+  // Plan 260715-0801 Validation Session 1 Q2: consolidates is multi-valued
+  // (the relationships tool at meta-state-relationships-tool.js:21-25 has
+  // always grouped it as an array). Schema now enforces the array form;
+  // the migration script converts any legacy single-string value to a
+  // one-element array as part of the change-log.jsonl split (same PR).
+  consolidates: z.array(z.string()).optional()
+    .describe("Array of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
   evidence_code_ref: z.string().optional()
     .describe("Code reference, e.g. path/to/file.js:line"),
   evidence_journal: z.string().optional()
@@ -552,11 +639,22 @@ function enqueue(root, fn) {
 }
 
 function _readAndParseRegistry(root) {
-  const path = getRegistryPath(root);
-  if (!existsSync(path)) return [];
-  const raw = readFileSync(path, "utf8");
-  const lines = raw.split("\n").filter((line) => line.trim() !== "");
-  return lines.map((line) => {
+  // Dual-source reader: meta-state.jsonl (mutable table) + change-log.jsonl
+  // (true-append log of immutable change-logs). The projection is identity
+  // at Tier 1: concat both files, sort by created_at ascending so
+  // `meta_state_list` returns a chronological union. At Tier 2 the seam
+  // (in `read-registry-cache.js#readRegistryWithCache`) swaps to
+  // last-wins-by-max-version without touching this module.
+  const metaStatePath = getRegistryPath(root);
+  const changeLogPath = getChangeLogPath(root);
+  const metaStateLines = existsSync(metaStatePath)
+    ? readFileSync(metaStatePath, "utf8").split("\n").filter((line) => line.trim() !== "")
+    : [];
+  const changeLogLines = existsSync(changeLogPath)
+    ? readFileSync(changeLogPath, "utf8").split("\n").filter((line) => line.trim() !== "")
+    : [];
+  const allLines = [...metaStateLines, ...changeLogLines];
+  const parsed = allLines.map((line) => {
     const entry = JSON.parse(line);
     if (!entry.entry_kind) {
       entry.entry_kind = "finding"; // Backward-compat coerce
@@ -564,6 +662,14 @@ function _readAndParseRegistry(root) {
     withDefaults(entry); // Apply affected_system default for legacy entries
     return entry;
   });
+  // Post-concat sort by created_at ascending so callers see a chronological
+  // union (the two files are otherwise grouped by source, not by time).
+  parsed.sort((a, b) => {
+    const ca = a.created_at ?? "";
+    const cb = b.created_at ?? "";
+    return ca < cb ? -1 : ca > cb ? 1 : 0;
+  });
+  return parsed;
 }
 
 /**
@@ -797,7 +903,16 @@ export function writeEntry(root, entry) {
       if (!validation.success) {
         throw new InvalidEntryError(validation.error);
       }
-      appendRegistryEntryAtomic(root, validation.data);
+      // Plan 260715-0801 Tier 1 Phase 2: write dispatch by entry_kind.
+      // Change-logs true-append to change-log.jsonl (merge=union safe);
+      // everything else lands in meta-state.jsonl. Runs INSIDE the
+      // withRegistryLock wrapper so concurrent MCP servers cannot interleave
+      // byte-for-byte on the change-log file.
+      if (validation.data.entry_kind === "change-log") {
+        appendChangeLogEntryAtomic(root, validation.data);
+      } else {
+        appendRegistryEntryAtomic(root, validation.data);
+      }
     })
   );
 }
@@ -827,6 +942,14 @@ export function updateEntry(root, id, patch) {
         }
       }
       if (!found) return null;
+      // Core-layer immutability guard: change-log entries are NEVER mutated
+      // in place — that's what makes `merge=union` safe on change-log.jsonl.
+      // Reject the update BEFORE any other validation or mutation runs.
+      // Handler-level guards exist on resolve/patch tools; this guard catches
+      // direct core callers (e.g. fix-loop-design-refs.mjs) that bypass handlers.
+      if (existingEntry.entry_kind === "change-log") {
+        throw new Error("change_log_immutable: change-log entries cannot be updated in place");
+      }
 
       const patchValidation = metaStateEntryPatchSchema.safeParse(patch);
       if (!patchValidation.success) {
@@ -904,7 +1027,11 @@ export function updateEntry(root, id, patch) {
         }
       }
 
-      persistRegistryAtomic(updated, root);
+      // Plan 260715-0801 Tier 1 Phase 2: tableOnly projects the union back to
+      // the table-set so change-logs from change-log.jsonl don't leak into
+      // meta-state.jsonl on this write. assertNoChangeLogLeak enforces the
+      // invariant at every persist site.
+      persistRegistryAtomic(tableOnly(updated, root), root);
       return true;
     })
   );
@@ -920,6 +1047,13 @@ export function archiveEntry(root, id, reason, archivedBy) {
       const entries = readRegistry(root);
       const idx = entries.findIndex((e) => e.id === id);
       if (idx === -1) return { archived: false, reason: "not_found", id };
+      // Core-layer immutability guard: change-log entries are NEVER archived.
+      // They live forever in the change-log stream; that's what makes
+      // `merge=union` safe. Status flipping an entry from `active` → `archived`
+      // is exactly the kind of in-place mutation that would corrupt the union.
+      if (entries[idx].entry_kind === "change-log") {
+        throw new Error("change_log_immutable: change-log entries cannot be archived");
+      }
       // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
       // wrapper enforces the already-archived pre-condition (moved from the
       // inline check that used to live here). The wrapper fires BEFORE
@@ -934,7 +1068,8 @@ export function archiveEntry(root, id, reason, archivedBy) {
         archived_by: archivedBy,
         archived_reason: reason,
       };
-      persistRegistryAtomic(entries, root);
+      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
+      persistRegistryAtomic(tableOnly(entries, root), root);
       return { archived: true, id, archived_at: entries[idx].archived_at };
     })
   );
@@ -973,7 +1108,8 @@ export function deleteEntry(root, id) {
         return { deleted: false, reason: "change_log_immutable", id };
       }
       const filtered = entries.filter((e) => e.id !== id);
-      persistRegistryAtomic(filtered, root);
+      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
+      persistRegistryAtomic(tableOnly(filtered, root), root);
       return { deleted: true, id };
     })
   );
@@ -1035,7 +1171,8 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
         shipped_at: shippedAt,
         version: currentVersion + 1,
       };
-      persistRegistryAtomic(entries, root);
+      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
+      persistRegistryAtomic(tableOnly(entries, root), root);
       return {
         shipped: true,
         id,
@@ -1084,6 +1221,11 @@ export function metaStateBatch(root, operations, envelope) {
       const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
 
       let entries = readRegistry(root);
+      // Plan 260715-0801 Tier 1 Phase 2: change-log writes (op:"write" with
+      // entry_kind=change-log) are queued here and appended to change-log.jsonl
+      // AFTER the table persist. Queueing prevents a mid-batch op failure from
+      // leaving orphan change-logs behind (the queue is discarded on rollback).
+      const pendingChangeLogAppends = [];
       // Plan 260712-0300 Phase 2: snapshot the registry BEFORE the batch so
       // the envelope's pre_count reflects actual pre-batch state. Only the
       // fields needed for the count record (id, status, entry_kind) are
@@ -1133,7 +1275,16 @@ export function metaStateBatch(root, operations, envelope) {
 
               const validation = metaStateEntrySchema.safeParse(op.entry);
               if (!validation.success) throw new Error("validation_failed");
-              entries.push(validation.data);
+              // Plan 260715-0801 Tier 1 Phase 2: dispatch change-log writes
+              // to change-log.jsonl (true-append). Queue them here; append
+              // happens AFTER the table persist so a mid-batch failure
+              // doesn't leave orphan change-logs behind. Non-change-log
+              // entries continue through the entries[] push as before.
+              if (validation.data.entry_kind === "change-log") {
+                pendingChangeLogAppends.push(validation.data);
+              } else {
+                entries.push(validation.data);
+              }
               break;
             }
             case "update": {
@@ -1251,7 +1402,14 @@ export function metaStateBatch(root, operations, envelope) {
       // both the batch mutations AND the auto-emit as one atomic write. This
       // ordering (change-log-after-batch, operator-confirmed same as Plan
       // 260712-0109) eliminates any audit/reality divergence window.
+      //
+      // Plan 260715-0801 Tier 1 Phase 2: auto-emit lands in change-log.jsonl
+      // (true append) instead of being mixed into the table-write set. The
+      // table persist projects `tableOnly(entries)` so change-logs from
+      // change-log.jsonl can't leak back into meta-state.jsonl on this path
+      // (assertNoChangeLogLeak enforces the invariant).
       let autoEmitId = null;
+      let autoEmitEntry = null;
       if (envelope) {
         // Generate auto-emit id (red-team finding 8): ISO timestamp + 6 random
         // hex chars. Deterministic slug collides when two batches share a target;
@@ -1279,7 +1437,7 @@ export function metaStateBatch(root, operations, envelope) {
           preRegistry: preRegistrySnapshot,
           postRegistry: postRegistrySnapshot,
         });
-        entries.push({
+        autoEmitEntry = {
           id: autoEmitId,
           entry_kind: "change-log",
           change_dimension: "mechanical",
@@ -1290,28 +1448,53 @@ export function metaStateBatch(root, operations, envelope) {
           status: "active",
           created_at: new Date().toISOString(),
           version: 0,
-        });
+        };
       }
 
-      const tmpPath = path + ".tmp";
-      writeFileSync(tmpPath, entries.map((e) => JSON.stringify(e)).join("\n") + "\n", "utf8");
-      renameSync(tmpPath, path);
-      invalidateCache(root);
+      // Plan 260715-0801 Tier 1 Phase 2: tableOnly projection so change-logs
+      // (loaded by the read chokepoint from change-log.jsonl) cannot leak back
+      // into meta-state.jsonl. Persist routes through persistRegistryAtomic so
+      // assertNoChangeLogLeak enforces the invariant; behavior-equivalent
+      // pre-split because no change-log.jsonl exists yet (guard no-ops).
+      persistRegistryAtomic(tableOnly(entries, root), root);
+
+      // Plan 260715-0801 Tier 1 Phase 2: auto-emit routes through
+      // appendChangeLogEntryAtomic (true-append to change-log.jsonl). The
+      // helper invalidates the cache so the assertWriteVisible read sees it.
+      if (autoEmitEntry) {
+        appendChangeLogEntryAtomic(root, autoEmitEntry);
+      }
+
+      // Plan 260715-0801 Tier 1 Phase 2: append queued change-log writes
+      // from op:"write" ops (see case "write" branch above). These are
+      // routed to change-log.jsonl alongside any auto-emit. The pending
+      // list captured each change-log BEFORE the table persist; if any
+      // append throws we surface it as change_log_not_visible to fail loud.
+      for (const cl of pendingChangeLogAppends) {
+        appendChangeLogEntryAtomic(root, cl);
+      }
 
       // Plan 260712-0300 Phase 2 (red-team finding 1): assertWriteVisible after
-      // rename. Re-read the registry; if the auto-emit change-log is not present
-      // (silent-persistence-fail class), restore preBatchContent and return a
-      // structured failure. Same pattern as meta_state_log_change PR #50.
-      if (envelope && autoEmitId) {
-        const fresh = readRegistry(root).find((e) => e.id === autoEmitId);
-        if (!fresh) {
+      // the writes complete. Re-read the union (chokepoint now unions both
+      // files); if any expected change-log (auto-emit or queued op:"write")
+      // is not present (silent-persistence-fail class), restore preBatchContent
+      // and return a structured failure. Same pattern as meta_state_log_change
+      // PR #50.
+      const allExpectedChangeLogIds = (envelope && autoEmitId ? [autoEmitId] : [])
+        .concat(pendingChangeLogAppends.map((cl) => cl.id));
+      if (allExpectedChangeLogIds.length > 0) {
+        const freshEntries = readRegistry(root);
+        const missing = allExpectedChangeLogIds.find(
+          (id) => !freshEntries.find((e) => e.id === id),
+        );
+        if (missing) {
           if (preBatchContent) {
             writeFileSync(path, preBatchContent, "utf8");
           } else if (existsSync(path)) {
             unlinkSync(path);
           }
           invalidateCache(root);
-          return { applied: 0, failed_at: null, reason: "change_log_not_visible" };
+          return { applied: 0, failed_at: null, reason: "change_log_not_visible", missing_id: missing };
         }
       }
 

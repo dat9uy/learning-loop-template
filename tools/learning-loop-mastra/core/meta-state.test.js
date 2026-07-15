@@ -324,16 +324,22 @@ describe("meta-state change-log compaction guard", () => {
         change_dimension: "semantic",
         change_target: "core/test.js",
         change_diff: { added: [], removed: [], changed: [] },
-        reason: "Old change-log entry that must NOT be compacted even if terminal.",
+        reason: "Old change-log entry that must NOT be compacted even if old.",
         status: "active", // change-log immutable audit log: status="active" (literal)
         created_at: eightDaysAgo.toISOString(),
       };
       await writeEntry(tempDir, oldTerminal);
       await writeEntry(tempDir, oldChangeLog);
-      // Simulate a hypothetical future change-log subtype with terminal status
-      await updateEntry(tempDir, oldChangeLog.id, { status: "resolved", resolved_at: eightDaysAgo.toISOString() });
+      // Plan 260715-0801 Tier 1: change-logs are immutable. The previous test
+      // mutated `status` to "resolved" to simulate a terminal state, but the
+      // core-layer guard in `updateEntry` now rejects any in-place mutation
+      // of a change-log. The invariant the test was checking — change-logs
+      // skip compaction — is still enforced by the entry_kind branch in
+      // `updateEntry`'s compaction filter; we verify that branch directly by
+      // asserting `updateEntry` THROWS on a change-log (immutability) and
+      // then checking the change-log survives the compaction window.
 
-      // Trigger compaction via update on any entry
+      // Trigger compaction via update on a different entry
       const fresh = {
         id: "meta-260602T0000Z-fresh",
         entry_kind: "finding",
@@ -351,8 +357,16 @@ describe("meta-state change-log compaction guard", () => {
       assert.strictEqual(entries.length, 2);
       const ids = entries.map((e) => e.id);
       assert.ok(!ids.includes(oldTerminal.id), "Old terminal finding should be compacted");
-      assert.ok(ids.includes(oldChangeLog.id), "Old terminal change-log must NOT be compacted");
+      assert.ok(ids.includes(oldChangeLog.id), "Old change-log must NOT be compacted");
       assert.ok(ids.includes(fresh.id), "Fresh entry should remain");
+
+      // Confirm the core-layer immutability guard: any attempt to update
+      // a change-log entry throws `change_log_immutable`.
+      await assert.rejects(
+        () => updateEntry(tempDir, oldChangeLog.id, { status: "resolved" }),
+        /change_log_immutable/,
+        "updateEntry must reject in-place mutation of a change-log",
+      );
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }

@@ -781,12 +781,30 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
           console.warn(`Rule ${rule_id}: regex pattern rejected by safety check`);
           continue;
         }
+        const re = new RegExp(pattern);
+        // Per-segment: a forbidden token in any leg of a compound command
+        // (splitSegments splits on ; & |, honoring quotes). This remains the
+        // primary match surface so substring rules behave exactly as before.
         for (const segment of splitSegments(command)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
-          if (new RegExp(pattern).test(nodeStripped)) {
+          if (re.test(nodeStripped)) {
             matched = true;
             break;
+          }
+        }
+        // Full-command: patterns that span a delimiter splitSegments removes
+        // (e.g. a literal pipe: `vitest run ... | tail`) are unreachable
+        // per-segment, because no segment retains the delimiter. Test the
+        // full command as a second pass. This is a strict superset: a pattern
+        // that matches the full command either matches a segment already
+        // (substring/alternation rules — the matched text lives in some
+        // segment) or spans a removed delimiter (newly reachable). No active
+        // registry rule uses a literal `|`, so existing behavior is unchanged.
+        if (!matched) {
+          const fullStripped = stripNodeEvalBody(stripMessageFlags(command));
+          if (re.test(fullStripped)) {
+            matched = true;
           }
         }
       } else if (pattern_type === "glob" && filePath) {

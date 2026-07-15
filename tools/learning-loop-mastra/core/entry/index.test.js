@@ -31,7 +31,7 @@ const CHANGELOG = {
   change_diff: { added: ["x"], removed: [], changed: [] },
   reason: "Test change-log for index tests.",
   status: "active", created_at: "2026-06-27T00:00:00Z",
-  consolidates: "meta-test-finding",
+  consolidates: ["meta-test-finding"],
 };
 
 const LOOPDESIGN = {

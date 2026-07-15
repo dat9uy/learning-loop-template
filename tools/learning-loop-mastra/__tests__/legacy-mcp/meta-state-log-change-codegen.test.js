@@ -54,7 +54,7 @@ describe("meta_state_log_change codegen parity", () => {
       reason: "A reason that is at least twenty characters.",
       applies_to: { tools: ["meta_state_log_change"] },
       supersedes: "meta-260601T0000Z-old",
-      consolidates: "meta-260601T0000Z-finding",
+      consolidates: ["meta-260601T0000Z-finding"],
       evidence_code_ref: "file.js",
       evidence_journal: "journal.md",
     };

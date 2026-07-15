@@ -125,7 +125,9 @@ describe("meta_state_derive_status tool", () => {
         reason: "Test change-log entry for derive status (no evidence_code_ref → no-signals).",
       });
 
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      // Plan 260715-0801 Tier 1 Phase 2: change-log writes now land in
+      // change-log.jsonl (true-append). Read from there to get the id.
+      const raw = readFileSync(join(tempDir, "change-log.jsonl"), "utf8");
       const id = JSON.parse(raw.trim().split("\n")[0]).id;
 
       const result = await metaStateDeriveStatusTool.handler({ id });
@@ -381,7 +383,8 @@ describe("meta_state_derive_status tool", () => {
         reason: "Test change-log entry for gate log (no evidence_code_ref → no-signals).",
       });
 
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
+      // Plan 260715-0801 Tier 1 Phase 2: change-log writes land in change-log.jsonl.
+      const raw = readFileSync(join(tempDir, "change-log.jsonl"), "utf8");
       const id = JSON.parse(raw.trim().split("\n")[0]).id;
 
       await metaStateDeriveStatusTool.handler({ id });

@@ -1,5 +1,6 @@
 import { metaStateChangeEntrySchema } from "../meta-state.js";
 import { deepFreeze } from "./deep-freeze.js";
+import { parseConsolidates } from "./consolidates-refs.js";
 
 export function createChangeLog(data) {
   const parsed = metaStateChangeEntrySchema.parse(data);
@@ -13,11 +14,13 @@ export function createChangeLog(data) {
       if (parsed.supersedes) {
         refs.push({ kind: "change-log", id: parsed.supersedes, field: "supersedes" });
       }
-      if (typeof parsed.consolidates === "string" && parsed.consolidates.trim()) {
-        const ids = parsed.consolidates.split(",").map((s) => s.trim()).filter(Boolean);
-        for (const id of ids) {
-          refs.push({ kind: "finding", id, field: "consolidates" });
-        }
+      // Plan 260715-0801 Validation Q2: schema is z.array(z.string()).
+      // The migration script converts legacy CSV strings to one-element
+      // arrays, so the array form is canonical. Tolerate the legacy
+      // string form for in-flight processes that read pre-migration data.
+      // Parser shared with scripts/validate-registry-refs.js (DRY).
+      for (const id of parseConsolidates(parsed.consolidates)) {
+        refs.push({ kind: "finding", id, field: "consolidates" });
       }
       return refs;
     },
