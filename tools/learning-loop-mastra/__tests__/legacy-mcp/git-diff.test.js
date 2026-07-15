@@ -23,6 +23,22 @@ function writeFileEnsuringDir(filePath, content) {
   writeFileSync(filePath, content);
 }
 
+// Scrub inherited GIT_* env (GIT_INDEX_FILE, GIT_DIR, GIT_WORK_TREE,
+// GIT_OBJECT_DIRECTORY, …) so a temp repo's git uses its own .git. Under a
+// git pre-commit hook, git exports GIT_INDEX_FILE at the project's index;
+// without this, the temp repo's `git add -A`/`git commit` would stage fixtures
+// (e.g. README.md) into the PROJECT's index, whose blobs are absent from the
+// project's object store → the post-hook `git commit` fails with "invalid
+// object … for README.md" / "Error building trees". Identity vars are re-added
+// by each call site after the spread.
+function cleanGitEnv(base = process.env) {
+  const env = { ...base };
+  for (const k of Object.keys(env)) {
+    if (k.startsWith("GIT_")) delete env[k];
+  }
+  return env;
+}
+
 // M3: skip-when-git-absent guard — degrade cleanly on a git-less CI image.
 const GIT_AVAILABLE = spawnSync("git", ["--version"], { shell: false, encoding: "utf8" }).status === 0;
 const describeGit = GIT_AVAILABLE ? describe : describe.skip;
@@ -37,7 +53,7 @@ const MOD_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/core/git-diff.js");
  */
 function makeRepo(tmp, { initialBranch = "main" } = {}) {
   if (!GIT_AVAILABLE) throw new Error("git is not available — caller must check");
-  const env = { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "t@e" };
+  const env = { ...cleanGitEnv(process.env), GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "t@e" };
   const run = (args) => spawnSync("git", args, { cwd: tmp, shell: false, encoding: "utf8", env });
   run(["init", "--initial-branch", initialBranch]);
   // Commit baseline so HEAD exists.
@@ -76,17 +92,17 @@ describeGit("readBranchTouchedPaths — fixture-repo behavior", () => {
     writeFileEnsuringDir(join(tmp, "README.md"), "readme");
     writeFileEnsuringDir(join(tmp, "docs", "a.md"), "a");
     writeFileEnsuringDir(join(tmp, "tools", "learning-loop-mcp", "x.js"), "x");
-    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
-    spawnSync("git", ["commit", "-m", "baseline files"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
+    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
+    spawnSync("git", ["commit", "-m", "baseline files"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...cleanGitEnv(), GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
     // Create + switch to feature branch.
-    spawnSync("git", ["checkout", "-b", "feature"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
+    spawnSync("git", ["checkout", "-b", "feature"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
     // Edit a.md + add a new file + edit README.
     writeFileEnsuringDir(join(tmp, "docs", "a.md"), "a-modified");
     writeFileEnsuringDir(join(tmp, "tools", "learning-loop-mcp", "y.js"), "y");
     writeFileEnsuringDir(join(tmp, "README.md"), "readme-modified");
     // Stage + commit.
-    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
-    spawnSync("git", ["commit", "-m", "feature work"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
+    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
+    spawnSync("git", ["commit", "-m", "feature work"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...cleanGitEnv(), GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
 
     const touched = readBranchTouchedPaths(tmp, { baseBranch: "main" });
     assert.ok(touched instanceof Set, "readBranchTouchedPaths must return a Set");
@@ -105,8 +121,8 @@ describeGit("readBranchTouchedPaths — fixture-repo behavior", () => {
     makeRepo(tmp, { initialBranch: "main" });
     writeFileEnsuringDir(join(tmp, "docs", "a.md"), "a");
     writeFileEnsuringDir(join(tmp, "README.md"), "r");
-    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
-    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
+    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
+    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...cleanGitEnv(), GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
     // Uncommitted edit on main.
     writeFileEnsuringDir(join(tmp, "docs", "a.md"), "a-uncommitted");
 
@@ -120,8 +136,8 @@ describeGit("readBranchTouchedPaths — fixture-repo behavior", () => {
     const { readBranchTouchedPaths } = await import("../../core/git-diff.js");
     makeRepo(tmp, { initialBranch: "main" });
     writeFileEnsuringDir(join(tmp, "README.md"), "r");
-    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
-    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
+    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
+    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...cleanGitEnv(), GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
     const touched = readBranchTouchedPaths(tmp, { baseBranch: "main" });
     assert.deepStrictEqual(touched, new Set());
     cleanup();
@@ -140,7 +156,7 @@ describeGit("readBranchTouchedPaths — fixture-repo behavior", () => {
     fresh();
     const { readBranchTouchedPaths } = await import("../../core/git-diff.js");
     makeRepo(tmp, { initialBranch: "main" });
-    spawnSync("git", ["checkout", "-b", "feature"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
+    spawnSync("git", ["checkout", "-b", "feature"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
     // Request a base branch that does not exist.
     const touched = readBranchTouchedPaths(tmp, { baseBranch: "no-such-branch" });
     assert.deepStrictEqual(touched, new Set());
@@ -153,8 +169,8 @@ describeGit("readBranchTouchedPaths — fixture-repo behavior", () => {
     makeRepo(tmp, { initialBranch: "main" });
     // Commit a baseline so HEAD exists.
     writeFileEnsuringDir(join(tmp, "README.md"), "r");
-    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: process.env });
-    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
+    spawnSync("git", ["add", "-A"], { cwd: tmp, shell: false, encoding: "utf8", env: cleanGitEnv() });
+    spawnSync("git", ["commit", "-m", "baseline"], { cwd: tmp, shell: false, encoding: "utf8", env: { ...cleanGitEnv(), GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" } });
     // Add an untracked-but-not-ignored file (the "new module" case).
     writeFileEnsuringDir(join(tmp, "tools", "learning-loop-mastra", "core", "new-mod.js"), "// new module");
 

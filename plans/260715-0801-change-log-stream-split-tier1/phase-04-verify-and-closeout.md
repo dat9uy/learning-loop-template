@@ -1,10 +1,10 @@
 ---
 phase: 4
 title: "Verify and closeout"
-status: pending
+status: completed
 effort: "P2"
 dependencies: []
-notes: "Deferred to follow-up session. Lands after Phases 2 (write dispatch + migration) and 3 (CI gates)."
+notes: "Completed. Session 260715-1517 (post PR #60): F11b CLAUDE.md inbound-gate docs fix (registry-table.sh | tail -20); merge=union dry-run (Red Team F10) — SURFACED + FIXED a driver-config gap (canonical `git merge-file --union %O %A %B` silently drops the other side; corrected to `%A %O %B` and documented in .gitattributes + AGENTS.md §8); closeout journal. Session 260715-1547 (live): re-grounded .gitattributes via meta_state_refresh_file_index (the finding cites .gitattributes, not meta-state.js; baseline was stale 7c466a3f after the Phase-4 comment edit), then meta_state_resolve closed meta-260715T0633Z-change-log-stream (resolved_at 2026-07-15T08:47:43Z); ship change-log meta-260715T1536Z-change-log-jsonl recorded in change-log.jsonl; finding-stream verified still open (Tier-2 ticket, version 1, description intact)."
 ---
 
 # Phase 4: Verify and closeout
@@ -41,11 +41,11 @@ Verification is end-to-end: drive the affected flows, not just unit tests. The `
 
 ## Success Criteria
 
-- [ ] `pnpm test` green; no regressions in `loop_describe`, relationship tools, or inbound gate.
-- [ ] `merge=union` dry-run: two parallel change-log appends auto-merge, no conflict, no duplicate ids.
-- [ ] `meta-260715T0633Z-change-log-stream-…` resolved with PR + change-log refs.
-- [ ] `meta-260715T0633Z-finding-stream-…` confirmed OPEN, description intact (Tier-2 ticket).
-- [ ] Journal entry written; whole-plan consistency sweep clean.
+- [x] `pnpm test` green; no regressions in `loop_describe`, relationship tools, or inbound gate. **[PR #60: 1922/1923 pass, 1 pre-existing skip.]**
+- [x] `merge=union` dry-run: two parallel change-log appends auto-merge, no conflict, no duplicate ids. **[Session 260715-1517: dry-run verified the payoff AND surfaced a driver-config gap — the canonical `git merge-file --union %O %A %B` silently drops the other side; corrected to `%A %O %B` and documented in .gitattributes + AGENTS.md §8 (per-clone `git config merge.union.driver`). With the corrected driver: both appends present, 0 dup ids, no conflict.]**
+- [x] `meta-260715T0633Z-change-log-stream-…` resolved with PR + change-log refs. **Resolved via meta_state_resolve after re-grounding .gitattributes with meta_state_refresh_file_index (stale 06:23 seed baseline after the Phase 4 union-driver comment edit); ship change-log meta-260715T1536Z-change-log-jsonl recorded; finding-stream verified still open (Tier-2 ticket).**
+- [x] `meta-260715T0633Z-finding-stream-…` confirmed OPEN, description intact (Tier-2 ticket). **[Verified session 260715-1517: status=open.]**
+- [x] Journal entry written; whole-plan consistency sweep clean. **[journal-260715-1517-tier1-phase4-closeout.md; plan + all phase files reconciled.]**
 
 ## Risk Assessment
 

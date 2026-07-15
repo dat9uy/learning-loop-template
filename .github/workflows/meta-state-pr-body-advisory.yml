@@ -1,9 +1,20 @@
 # Meta-state registry delta advisory
 # Runs on PRs touching meta-state.jsonl OR change-log.jsonl; emits delta
-# summary to $GITHUB_STEP_SUMMARY. Advisory-only (never fails the check).
+# summary to $GITHUB_STEP_SUMMARY.
+#
 # Per finding meta-260622T1708Z; path filter + diff-command updated in
 # Plan 260715-0801 Tier 1 Phase 2 step 7 (Red Team F6) to include
 # change-log.jsonl in the migration PR's diff coverage.
+#
+# Plan 260715-1608 Phase 1 (red-team F6) backstop: the post-merge
+# `meta-state-refs-check.yml` BLOCK validator exempts `consolidates` /
+# `supersedes` refs from immutable change-logs as `historical` — by
+# construction, change-logs cannot be patched, so this exemption is
+# permanent. To catch typos / fabricated refs BEFORE the change-log is
+# rendered immutable, the "Emit delta summary" step now FAILS the check
+# when a NEW unresolved `consolidates` or `supersedes` ref is detected on
+# the PR's added change-log lines. Non-change-log diffs stay advisory
+# (cross-PR orphans self-heal on merge).
 name: Meta-state registry delta advisory
 
 on:

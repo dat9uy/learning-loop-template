@@ -110,6 +110,22 @@ The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnp
 
 ---
 
+## 8. Git Union Merge Driver (one-time per-clone setup)
+
+`.gitattributes` marks `runtime-state.jsonl` and `change-log.jsonl` as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
+
+```bash
+git config merge.union.driver "git merge-file --union %A %O %B"
+```
+
+**Arg order is load-bearing.** `git merge-file <current> <base> <other>` writes the union result into the first argument. The driver must write into `%A` (ours — the file git reads the result from), with `%O` (ancestor) as base and `%B` (theirs) as other: `%A %O %B`. The widely-cited `git merge-file --union %O %A %B` is **wrong** — it writes the result into `%O` and leaves `%A` unchanged, so git silently keeps only "ours" and drops the other side. That is the exact data-loss the union attribute exists to prevent. Verified by `plans/260715-0801-change-log-stream-split-tier1` Phase 4 dry-run (two branches from a shared base, each appending a change-log at the same EOF position: corrected driver keeps both lines, 0 duplicate ids; wrong driver keeps only one).
+
+**One-time per-clone setup script:** `bash tools/scripts/setup-git-merge-drivers.sh`. Idempotent; detects a wrong-order existing config and refuses to silently overwrite (pass `--force` to overwrite). After running, `git config --get merge.union.driver` returns the canonical value. Plan 260715-1608 Phase 4 hardened this surface with the script + a shell test under `tools/scripts/__tests__/setup-git-merge-drivers.test.js`. Ephemeral CI runners cannot run the per-clone script, so `.github/workflows/meta-state-refs-check.yml` configures the driver via `git config merge.union.driver` in its checkout step (Plan 260715-1608 Phase 4 F13 middle-ground).
+
+Without this config, `merge=union` is a silent no-op and parallel change-log PRs hit a normal content conflict (resolvable by the manual `git merge-file --union` recipe documented in the `meta-260709T1017Z` finding history).
+
+---
+
 ## 10. Where This Project Is Heading
 
 The long-term direction lives in `docs/trajectory.md` — read it before reasoning about loop design. The destination: *a self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior.* The Bridges table (the gate-truth gradient from human-driven to machine-driven) is canonical in `docs/trajectory.md` §4; the engine/instance inversion and the skill-migration track are there too. See `docs/loop-engine.md` for the engine invariant that underpins the trajectory.

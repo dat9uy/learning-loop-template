@@ -10,20 +10,38 @@
  * Why post-merge: at push-to-main the full union is visible, so every dangling
  * ref is real (cross-PR orphans either self-healed on merge or never existed).
  * Pre-merge cross-PR detection was down-tiered — the pre-merge
- * `meta-state-pr-body-advisory.yml` only WARNs on the PR's own diff. Cross-PR
- * refs self-heal on merge.
+ * `meta-state-pr-body-advisory.yml` only WARNS on the PR's own diff (and now
+ * FAILS on a new unresolved `consolidates`/`supersedes` ref as a backstop —
+ * plan 260715-1608 Phase 1). Cross-PR refs self-heal on merge.
  *
- * The pure functions (`isStaleViewLike`, `outboundRefsOf`, `computeDanglingRefs`)
- * are exported so the test suite can cover them in-process; the CLI block runs
- * only when invoked directly.
+ * Pure functions (`isTerminalSource`, `isStaleViewLike`, `outboundRefsOf`,
+ * `computeDanglingRefs`) are exported so the test suite can cover them in-process;
+ * the CLI block runs only when invoked directly.
  *
  * Usage:
  *   node tools/learning-loop-mastra/scripts/validate-registry-refs.js [--root=<path>]
  *
  * Exit codes:
- *   0 — no real orphans
- *   1 — at least one real dangling ref (offending ids printed to stderr)
+ *   0 — no blocking orphans (historical + informational counts are non-blocking)
+ *   1 — at least one blocking orphan (offending ids printed to stderr)
  *   2 — load/parse error
+ *
+ * Plan 260715-1608 Phase 1: 3-bucket classification.
+ *   - `blocking`     — REAL ref corruption (active/open mutable source with
+ *                      a missing target; OR any duplicate id across the union).
+ *                      Drives the CLI exit code.
+ *   - `historical`   — historical refs that cannot be cleaned (immutable
+ *                      change-log source; OR terminal-status source). The
+ *                      55 `consolidates` on immutable change-logs land here.
+ *   - `informational` — refs whose target exists but is stale-view, superseded,
+ *                      or resolved. Surfaced as a count, NOT blocking.
+ *
+ * Cross-tool divergence: the interactive `meta_state_relationships` tool's
+ * `dangling_refs` retains the legacy flat reasons (missing/stale/superseded/
+ * resolved) — its `computeDanglingRefs(refs, entries)` signature omits the
+ * source entry, so adding `historical` would require a signature refactor
+ * (YAGNI per Plan 260715-1608 Phase 1 red-team F2). The `historical` label
+ * lives only in this post-merge validator.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -45,10 +63,12 @@ export function readJsonl(filePath) {
   return out;
 }
 
-// Mirrors `core/stale-view.js#isStaleView` semantics: open AND created > 7 days
-// ago. Drift detection is skipped here — post-merge on main the registry is the
-// source of truth and drift is handled by `meta_state_check_grounding`, not by
-// this validator.
+// Deliberately uses a creation-age approximation instead of canonical
+// `core/stale-view.js#isStaleView` (which prefers `last_verified_at‖created_at`).
+// Post-merge on main the registry is the source of truth and runtime drift is
+// handled by `meta_state_check_grounding`, not by this validator — coupling the
+// validator to the canonical stale-view predicate would re-introduce drift
+// coupling. See Plan 260715-1608 Phase 1 (red-team F3).
 export function isStaleViewLike(entry) {
   if (!entry || typeof entry !== "object") return false;
   if (entry.status === "resolved" || entry.status === "superseded" || entry.status === "archived") return false;
@@ -56,6 +76,27 @@ export function isStaleViewLike(entry) {
   if (typeof created !== "string") return false;
   const ageMs = Date.now() - new Date(created).getTime();
   return ageMs > 7 * 24 * 60 * 60 * 1000;
+}
+
+// Terminal status for a SOURCE entry. Historical refs.
+// - `superseded` / `resolved` / `archived` apply to all kinds.
+// - `inactive` is a terminal status for `rule` and `loop-design` (their
+//   schemas use `status: z.enum(["active","inactive"]`); findings never
+//   carry `inactive`, so it does NOT classify findings as terminal.
+// - A legacy entry with no `entry_kind` AND no `status` is treated as
+//   active/open (mutable source) — historical exemption requires an
+//   explicit terminal status.
+// Mirrors `core/constants.js#isOpen`'s superset/tolerance intent only where
+// the legacy `active`/`reported`/`stale` enum-collapse tolerance does not
+// apply — this validator deliberately keeps terminal detection native to
+// avoid coupling to the open-equivalence surface.
+export function isTerminalSource(entry) {
+  if (!entry || typeof entry !== "object") return false;
+  const status = entry.status;
+  if (status === "superseded" || status === "resolved" || status === "archived") return true;
+  const kind = entry.entry_kind ?? "finding";
+  if ((kind === "rule" || kind === "loop-design") && status === "inactive") return true;
+  return false;
 }
 
 // Per-kind forward-ref extractors. Splitting the branch table into one small
@@ -97,32 +138,79 @@ export function outboundRefsOf(entry) {
   return extract ? extract(entry) : [];
 }
 
-// "missing" and "stale" are REAL orphans (typos, deleted targets, drift) and
-// BLOCK the push-to-main. "superseded" and "resolved" are TERMINAL-status
-// references — by design a change-log can consolidate a resolved finding, a
-// loop-design can address a superseded finding — so they are INFO only.
+// Classify one outbound ref into a bucket. Returns `{ bucket, record }`, or
+// `null` when the target exists and is neither stale-view nor terminal (a
+// healthy ref — nothing to report). Extracted from `computeDanglingRefs` so
+// the per-ref 3-bucket + target-status decision chain lives in its own
+// function; the inline version pushed `computeDanglingRefs` to cyclomatic 19.
+function classifyRef(entry, sourceKind, ref, target) {
+  if (!target) {
+    // Immutable change-log sources and terminal-status sources cannot be
+    // patched, so their missing refs are history, not corruption. Any other
+    // (active/open mutable) source with a missing target is real corruption.
+    const bucket = sourceKind === "change-log" || isTerminalSource(entry) ? "historical" : "blocking";
+    return { bucket, record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" } };
+  }
+  // Target exists: only stale-view / superseded / resolved targets are
+  // surfaced, as informational. stale-view is a freshness signal handled by
+  // `meta_state_check_grounding`, not this ref-corruption gate.
+  if (isStaleViewLike(target)) {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "stale" } };
+  }
+  if (target.status === "superseded") {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "superseded" } };
+  }
+  if (target.status === "resolved") {
+    return { bucket: "informational", record: { source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "resolved" } };
+  }
+  return null;
+}
+
+// 3-bucket classification. `blocking` drives the CLI exit; `historical` and
+// `informational` are counted but never block.
+//
+// Plan 260715-1608 Phase 1 (red-team F8): duplicate-id guard added FIRST.
+// An appended change-log line carrying an existing open finding's id +
+// `status:superseded` would otherwise overwrite the open entry in the
+// `entryById` Map via last-write-wins; surface the collision as blocking
+// so the masking vector is visible.
 export function computeDanglingRefs(entries) {
-  const entryById = new Map(entries.map((e) => [e.id, e]));
   const blocking = [];
+  const historical = [];
   const informational = [];
+  const buckets = { blocking, historical, informational };
+
+  // Duplicate-id guard: scan the union for ids appearing >1 time. Each
+  // collision is appended to `blocking` (no source-kind discrimination —
+  // any duplicate id is suspect, not just one direction).
+  const idCounts = new Map();
+  for (const e of entries) {
+    if (!e || typeof e.id !== "string") continue;
+    idCounts.set(e.id, (idCounts.get(e.id) ?? 0) + 1);
+  }
+  for (const [id, count] of idCounts) {
+    if (count > 1) {
+      blocking.push({
+        source_id: id,
+        source_kind: "any",
+        field: "(id)",
+        target_id: id,
+        target_kind: "any",
+        reason: "duplicate_id",
+        duplicate_count: count,
+      });
+    }
+  }
+
+  const entryById = new Map(entries.map((e) => [e.id, e]));
   for (const entry of entries) {
     const sourceKind = entry.entry_kind ?? "finding";
     for (const ref of outboundRefsOf(entry)) {
-      const target = entryById.get(ref.id);
-      if (!target) {
-        blocking.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "missing" });
-        continue;
-      }
-      if (isStaleViewLike(target)) {
-        blocking.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "stale" });
-      } else if (target.status === "superseded") {
-        informational.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "superseded" });
-      } else if (target.status === "resolved") {
-        informational.push({ source_id: entry.id, source_kind: sourceKind, field: ref.field, target_id: ref.id, target_kind: target.entry_kind ?? "finding", reason: "resolved" });
-      }
+      const classified = classifyRef(entry, sourceKind, ref, entryById.get(ref.id));
+      if (classified) buckets[classified.bucket].push(classified.record);
     }
   }
-  return { blocking, informational };
+  return { blocking, historical, informational };
 }
 
 // CLI entry — runs only when invoked directly, not when imported by tests.
@@ -141,12 +229,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       ...readJsonl(metaPath),
       ...readJsonl(changeLogPath),
     ];
-    const { blocking, informational } = computeDanglingRefs(entries);
+    const { blocking, historical, informational } = computeDanglingRefs(entries);
+    if (historical.length > 0) {
+      console.log(`validate-registry-refs: ${historical.length} ref(s) classified historical (immutable + terminal-source missing; no BLOCK).`);
+    }
     if (informational.length > 0) {
-      console.log(`validate-registry-refs: ${informational.length} ref(s) to terminal-status entries (resolved/superseded — informational, no BLOCK).`);
+      console.log(`validate-registry-refs: ${informational.length} ref(s) to terminal-status/stale entries (informational, no BLOCK).`);
     }
     if (blocking.length === 0) {
-      console.log(`validate-registry-refs: 0 real orphans across ${entries.length} entries (meta-state + change-log union).`);
+      console.log(`validate-registry-refs: 0 blocking orphan(s) across ${entries.length} entries (meta-state + change-log union).`);
       process.exit(0);
     }
     console.error(`validate-registry-refs: BLOCK — ${blocking.length} real orphan(s) on main:`);
