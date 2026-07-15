@@ -1,6 +1,6 @@
 ---
 title: "Refs-check workflow: add pull_request trigger"
-description: "Branch protection on main requires the `meta-state refs check` context for PR merges (strict:true), but `.github/workflows/meta-state-refs-check.yml` only triggers on `push: [main]` + `workflow_dispatch` — so the required check never runs on PRs. Recent PRs (57-61) merged via admin bypass (`enforce_admins:false`). Fix: add `pull_request` to the workflow's `on:` block so the check runs on PRs and the branch-protection requirement is satisfied. Validator already exits 0 on the live union (measured 2026-07-15: 0 blocking orphans across 316 entries), so the PR-HEAD run will be green."
+description: "Branch protection on main requires the `meta-state refs check` context for PR merges (strict:true), but `.github/workflows/meta-state-refs-check.yml` only triggers on `push: [main]` + `workflow_dispatch` — so the required check never runs on PRs. Recent PRs (57-61) merged via admin bypass (`enforce_admins:false`). Fix: add `pull_request` to the workflow's `on:` block so the check runs on PRs and the branch-protection requirement is satisfied. Validator already exits 0 on the live union (measured 2026-07-15: 0 blocking orphans across 316 entries), so the PR-HEAD run will be green. NOTE (Phase 3 correction): the Phase-1/2 assumption that adding `pull_request:` alone would satisfy protection was WRONG — GitHub matches the required context against the Actions JOB id (`refs-check`), not the workflow `name:` (`meta-state refs check`), so the check stayed PENDING. Phase 3 binds the required-check context to the parsed job id via `tools/scripts/setup-branch-protection.mjs` and migrates `contexts`→`checks`."
 status: completed
 priority: P2
 branch: "main"
@@ -32,6 +32,7 @@ Follow-up to plan `260715-1608-tier1-followup-orphan-semantics-union-driver` Pha
 |-------|------|--------|
 | 1 | [Edit workflow YAML](./phase-01-implement.md) | Completed |
 | 2 | [Verify on test PR](./phase-02-verify.md) | Completed |
+| 3 | [Fix context-name match (script-bound job id)](./phase-03-fix-context-name-match.md) | Completed |
 
 ## Dependencies
 
@@ -42,8 +43,8 @@ Follow-up to plan `260715-1608-tier1-followup-orphan-semantics-union-driver` Pha
 
 - [x] `.github/workflows/meta-state-refs-check.yml` `on:` block has both `push: branches: [main]` AND `pull_request:` (bare, no path filter).
 - [x] Workflow header comment updated to document the dual-trigger behavior and the branch-protection consistency rationale.
-- [x] A test PR (or re-pushed branch) shows `meta-state refs check` as a green check in the Checks tab.
-- [x] Branch-protection `required_status_checks.contexts: ["meta-state refs check"]` is satisfied on the test PR — i.e., the merge button is enabled (or the check appears as `SUCCESS`, not as `MISSING`).
+- [x] A test PR (or re-pushed branch) shows the refs-check job as a green check in the Checks tab.
+- [x] Branch-protection `required_status_checks` carries the Actions job id `refs-check` (not the workflow `name:` `meta-state refs check`) and is satisfied on the test PR — verified via `gh pr view 62 --json mergeStateStatus` → `CLEAN`, NOT via `gh pr view --json mergeable` (which honors `enforce_admins` bypass and gave a false positive in the Phase-2 cook report).
 - [x] `node tools/learning-loop-mastra/scripts/validate-registry-refs.js` continues to exit 0 on the live union (regression gate — pre- and post-change identical).
 - [x] No new files in `tools/`; no behavior change to `validate-registry-refs.js`.
 
@@ -55,8 +56,8 @@ Follow-up to plan `260715-1608-tier1-followup-orphan-semantics-union-driver` Pha
 
 ## Out of Scope
 
-- Renaming the workflow or job to align with branch-protection context expectations.
+- Renaming the workflow or job to align with branch-protection context expectations. ~~(superseded by Phase 3: the job id is NOT renamed; instead the required-check context is bound to the existing job id `refs-check` via `setup-branch-protection.mjs`.)~~
 - Changing `strict: true` semantics or `enforce_admins` (operator decision, not the bug).
 - Adding a `concurrency:` block to cancel superseded PR runs (YAGNI — validator is fast and deterministic).
-- Switching branch protection from `contexts` (legacy) to `checks` (app_id-based).
+- Switching branch protection from `contexts` (legacy) to `checks` (app_id-based). ~~(superseded by Phase 3: migrated to `checks` with `app_id: -1` as part of the context-binding fix.)~~
 - Adding a `pull_request.paths` filter.

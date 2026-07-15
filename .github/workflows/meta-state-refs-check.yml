@@ -4,15 +4,22 @@
 # meta-state.jsonl + change-log.jsonl, uses `validate-registry-refs.js` to
 # scan for real dangling refs and BLOCKs on any.
 #
-# Why dual-trigger: branch protection on main lists this check as a required
-# status check (`contexts: ["meta-state refs check"]`). Required checks only
-# fire when the workflow declares `pull_request`; without it, the required
-# context was MISSING on every PR and merges fell back to admin bypass
-# (`enforce_admins: false`). Adding `pull_request:` makes the check visible
-# on every PR — and the post-merge `push` run is the authoritative gate,
+# Why dual-trigger: the post-merge `push` run is the authoritative gate,
 # because at push-to-main the full union is visible, so every dangling ref
 # is real. Cross-PR orphans either self-healed on merge or never existed.
 # Pre-merge cross-PR detection was down-tiered (Validation Session 1 Q3).
+# `pull_request:` is required so branch protection's required status check
+# fires on PRs at all (without it, the check is MISSING on PRs and merges
+# fall back to admin bypass, `enforce_admins: false`).
+#
+# Required-check context invariant: GitHub matches a required status check
+# against the check-run NAME, and Actions names a check run after the JOB id
+# (here `refs-check`) — NOT the workflow `name:` field (`meta-state refs
+# check`). Branch protection MUST list `refs-check` as the required context,
+# not the workflow display name, or the check stays PENDING forever. The
+# required context is bound to the parsed job id by
+# `tools/scripts/setup-branch-protection.mjs` (single source of truth —
+# re-run it after any job rename). Do NOT hand-edit the protection context.
 #
 # Why bare `pull_request:` (no `paths:` filter): a path filter would
 # re-introduce the bug for non-registry PRs — which is exactly when the
