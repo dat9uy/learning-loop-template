@@ -83,7 +83,7 @@ For the gate system internals (inbound/outbound gate flows, MCP tool flow, stale
 2. In the record's `source_refs`, use `local:meta-state:<id>` where `<id>` is the finding's id.
 3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_check_grounding` can re-check it after refactors; refresh its path's hash in `file-index.jsonl` via `meta_state_refresh_file_index`.
 
-Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. The SessionStart hook surfaces this rule in its discoverability hints; to suppress hints for context-budgeted sessions, set `LL_LOOP_INJECT_TIER=summary` (default is `warm`).
+Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. The SessionStart hook surfaces this rule in its discoverability hints: `session-start-inject-discoverability.cjs` and `session-start-inject-process-hints.cjs` inject the full hint sets as system-reminders via `hookSpecificOutput.additionalContext` (each under the 10k-char cap; the sidecar `.claude/session-context.json` remains the audit artifact).
 
 ---
 

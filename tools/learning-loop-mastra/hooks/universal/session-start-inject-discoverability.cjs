@@ -149,6 +149,32 @@ function writeContext(root, payload) {
   return contextPath;
 }
 
+/**
+ * Emit hint content to the agent as a SessionStart system-reminder via
+ * hookSpecificOutput.additionalContext (stdout JSON). This is the
+ * deterministic delivery leg: without it, hint content lives only in the
+ * sidecar file (no in-process reader), so the agent never sees
+ * PROCESS_HINTS row #1 unless it voluntarily calls loop_describe — the
+ * observed regression in session 4760ee34 (4× `pnpm test | grep`).
+ *
+ * The additionalContext channel is capped at 10k chars by the harness; the
+ * two hint sets combined (~11.8k) exceed it, so discoverability hints are
+ * injected here and process hints by the companion
+ * session-start-inject-process-hints.cjs hook. Both stay under the cap and
+ * land as separate system-reminders before the first prompt.
+ *
+ * Fail-open: a degraded loader (empty hints) emits a marker string so the
+ * agent knows to consult the sidecar's *_source flags rather than silently
+ * receiving nothing.
+ */
+function emitAdditionalContext(hints, source, label) {
+  const body = Array.isArray(hints) && hints.length > 0
+    ? hints.map((h, i) => `${i + 1}. ${h}`).join("\n")
+    : `unavailable — ${label} loader degraded (source=${source}). Inspect .claude/session-context.json *_source flags.`;
+  const text = `Loop ${label} hints (injected at session start; full set also in .claude/session-context.json):\n${body}`;
+  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
+}
+
 async function main() {
   // Test hook: when SESSION_START_FORCE_FATAL=1, throw to exercise the
   // fatal-catch write path (the BOTH-write-sites invariant).
@@ -182,6 +208,11 @@ async function main() {
     change_log_gap_hints,
     injected_at: new Date().toISOString(),
   });
+
+  // Inline delivery leg: surface discoverability hints to the agent as a
+  // SessionStart system-reminder. process hints are injected by the companion
+  // hook (the 10k-char cap forces the split). See emitAdditionalContext.
+  emitAdditionalContext(core.discoverability_hints, core.discoverability_hints_source, "discoverability");
 
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
@@ -225,5 +256,7 @@ main().catch((err) => {
       injected_at: new Date().toISOString(),
     });
   } catch { /* ignore */ }
+  // Surface the fatal degrade to the agent so it isn't silent.
+  emitAdditionalContext([], "fatal", "discoverability");
   process.exit(0);
 });
