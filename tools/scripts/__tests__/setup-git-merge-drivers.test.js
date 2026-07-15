@@ -25,12 +25,30 @@ import { tmpdir } from "node:os";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(__dirname, "../setup-git-merge-drivers.sh");
 
+// Strip inherited GIT_* env vars (GIT_DIR, GIT_INDEX_FILE, GIT_WORK_TREE,
+// GIT_OBJECT_DIRECTORY, GIT_QUARANTINE_PATH, …) so the temp repo's git uses
+// its own .git. When the suite runs inside a git pre-commit hook, git exports
+// GIT_INDEX_FILE at the project's (temp) index; without this scrub the temp
+// repo's `git add`/`git commit` would write to the project's index, whose
+// entries reference blobs absent from the temp repo's object store →
+// "invalid object … for 'README.md'" / "Error building trees" → the baseline
+// commit fails and the merge then hits "Non-fast-forward … into an empty
+// head" (exit 128). Direct `pnpm test` and isolated runs set no GIT_* vars,
+// so only the hook environment exposes this.
+function cleanGitEnv(base = process.env) {
+  const env = { ...base };
+  for (const k of Object.keys(env)) {
+    if (k.startsWith("GIT_")) delete env[k];
+  }
+  return env;
+}
+
 function runScript(args = [], opts = {}) {
-  return spawnSync("bash", [SCRIPT, ...args], { encoding: "utf8", cwd: opts.cwd });
+  return spawnSync("bash", [SCRIPT, ...args], { encoding: "utf8", cwd: opts.cwd, env: cleanGitEnv(opts.env) });
 }
 
 function runGit(args, cwd) {
-  return spawnSync("git", args, { encoding: "utf8", cwd });
+  return spawnSync("git", args, { encoding: "utf8", cwd, env: cleanGitEnv() });
 }
 
 function makeTempRepo() {
