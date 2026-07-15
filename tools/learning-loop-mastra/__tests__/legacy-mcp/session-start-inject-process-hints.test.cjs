@@ -29,6 +29,10 @@ test("process-hints hook emits full PROCESS_HINTS via stdout additionalContext",
   assert.ok([...ac].length <= 10000, `additionalContext must stay under 10k chars; got ${[...ac].length}`);
   assert.ok(ac.includes("Loop process hints"), "must carry the process-hints header");
   // Row #1 is the test-parsing rule the regression (session 4760ee34) violated.
+  // State-3: the gate + wrapper enforce deterministic parse; the hint is the
+  // pointer. Lock the pointer (`pnpm test:iter`), the gate-forbidden phrase,
+  // and the canonical parser script reference.
+  assert.ok(ac.includes("pnpm test:iter"), "must inject the State-3 iterate wrapper pointer");
   assert.ok(ac.includes("Do NOT grep raw vitest stdout"), "must inject row #1 (the test-parsing rule)");
   assert.ok(ac.includes("vitest-failures.sh"), "must inject the canonical parser script reference");
   // Full set: 9 numbered hints (1..9) — proves delivery is complete, not partial.

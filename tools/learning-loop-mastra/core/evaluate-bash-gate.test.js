@@ -125,6 +125,98 @@ test("promoted regex rule matching command → escalate", () => {
   assert.strictEqual(result.rule_id, "rule-no-docker");
 });
 
+// ── promoted rule: no raw-stdout parsing of vitest (State-3 backstop) ──
+// The agent must iterate via `pnpm test:iter` (parsed JSON summary) or
+// `vitest-failures.sh`, not pipe `vitest run`/`pnpm test` to tail/grep. The
+// gate is the deterministic backstop; the wrapper is the positive path.
+
+const NO_RAW_STDOUT_PATTERN = "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b";
+
+function writeNoRawStdoutRule(root) {
+  const rule = JSON.stringify({
+    id: "rule-no-raw-stdout-vitest",
+    entry_kind: "rule",
+    origin: "meta-test-origin",
+    status: "active",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: NO_RAW_STDOUT_PATTERN,
+    description: "Block piping vitest/pnpm-test stdout to tail/grep; use pnpm test:iter or vitest-failures.sh",
+    promoted_at: new Date().toISOString(),
+    promoted_by: "test",
+  });
+  writeFileSync(join(root, "meta-state.jsonl"), rule + "\n");
+}
+
+test("vitest run piped to tail → escalate", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "vitest run --bail=1 foo.test.js 2>&1 | tail -10", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+});
+
+test("vitest run piped to grep → escalate", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "vitest run --bail=1 foo.test.js 2>&1 | grep -A 2 FAIL", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+});
+
+test("pnpm test piped to tail → escalate", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "pnpm test 2>&1 | tail -10", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+});
+
+test("pnpm exec vitest run piped to tail → escalate", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "pnpm exec vitest run --bail=1 foo.test.js 2>&1 | tail -10", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+});
+
+// False positives — the sanctioned paths must NOT match.
+
+test("pnpm test:iter (wrapper, no pipe) → ok", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "pnpm test:iter", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+test("bare vitest run --bail=1 (no pipe) → ok", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "vitest run --bail=1 foo.test.js", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+test("vitest-failures.sh (parser, not vitest run) → ok", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+test("vitest-failures.sh piped to head (display truncation of parsed output) → ok", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "bash tools/scripts/vitest-failures.sh 2>&1 | head -40", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+test("pnpm test full suite (no pipe) → ok", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "pnpm test", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
 // ── safe commands → ok ──
 
 test("safe command (ls) → ok", () => {

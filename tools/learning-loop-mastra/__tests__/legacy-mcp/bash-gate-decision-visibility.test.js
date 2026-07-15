@@ -98,3 +98,56 @@ await test("formatHookDecision wraps decision in hookSpecificOutput envelope whe
   assert.strictEqual(out.hookSpecificOutput.hookEventName, "PreToolUse");
   assert.deepStrictEqual(JSON.parse(out.hookSpecificOutput.additionalContext), decision);
 });
+
+// State-3 backstop: piping `vitest run`/`pnpm test` to tail/grep must surface to
+// the agent as an escalate denial via the PreToolUse hookSpecificOutput channel
+// (the exact envelope the harness turns into additionalContext on the denied
+// call). A promoted regex rule spans the pipe via the full-command pass in
+// applyPromotedRules — per-segment matching alone cannot reach it.
+await test("no-raw-stdout rule: vitest run piped to tail → escalate envelope agent can read", () => {
+  const rule = {
+    entry_kind: "rule",
+    id: "rule-no-raw-stdout-vitest",
+    origin: "meta-test",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b",
+    description: "Block piping vitest or pnpm test stdout to tail or grep use the parsed json",
+    status: "active",
+    promoted_at: new Date().toISOString(),
+    promoted_by: "operator",
+  };
+  writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+
+  const { exitCode: code, stdout } = runGate(
+    makeInput("vitest run --bail=1 foo.test.js 2>&1 | tail -10"),
+  );
+  assert.strictEqual(code, 2, "piped vitest run must be denied (exit 2)");
+  const parsed = JSON.parse(stdout);
+  assert.ok(parsed.hookSpecificOutput, "agent-visible envelope present on stdout");
+  assert.strictEqual(parsed.hookSpecificOutput.hookEventName, "PreToolUse");
+  const decision = JSON.parse(parsed.hookSpecificOutput.additionalContext);
+  assert.strictEqual(decision.decision, "escalate");
+  assert.strictEqual(decision.rule_id, "rule-no-raw-stdout-vitest");
+  assert.ok(typeof decision.reason === "string" && decision.reason.length > 0, "reason surfaced to agent");
+});
+
+await test("no-raw-stdout rule: pnpm test:iter (wrapper, no pipe) → allowed, exit 0", () => {
+  const rule = {
+    entry_kind: "rule",
+    id: "rule-no-raw-stdout-vitest",
+    origin: "meta-test",
+    enforcement: "gate",
+    pattern_type: "regex",
+    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b",
+    description: "Block piping vitest or pnpm test stdout to tail or grep use the parsed json",
+    status: "active",
+    promoted_at: new Date().toISOString(),
+    promoted_by: "operator",
+  };
+  writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+
+  const { exitCode: code, stdout } = runGate(makeInput("pnpm test:iter"));
+  assert.strictEqual(code, 0, "wrapper must be allowed");
+  assert.strictEqual(stdout.trim(), "", "no denial envelope on allowed command");
+});
