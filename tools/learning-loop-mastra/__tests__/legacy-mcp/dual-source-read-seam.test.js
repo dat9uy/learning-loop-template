@@ -255,47 +255,56 @@ describe("persist-site change-log leak guard (Tier 1 red-team F2)", () => {
   });
 
   it("guard rejects a non-table-only persist once change-log.jsonl exists", async () => {
-    // Post-split: change-log.jsonl exists. A persist path that includes a
-    // change-log entry in the in-memory entries array would corrupt the
-    // registry (change-log leaks into meta-state.jsonl, then merge=union
-    // doubles it on the next parallel merge). The guard at persistRegistryAtomic
-    // fires before the file write so the corruption never lands.
+    // Post-split: change-log.jsonl exists. The function-level guard at
+    // persistRegistryAtomic fires on any non-table-only persist so a leak
+    // can't corrupt the registry (change-log would otherwise be copied into
+    // meta-state.jsonl and merge=union would double it on parallel merge).
+    //
+    // Test plan 260715-0801 Tier 1 Phase 2: metaStateBatch's case "write"
+    // now correctly dispatches change-log entries to change-log.jsonl
+    // (instead of being filtered by tableOnly), so metaStateBatch no longer
+    // surfaces the leak-guard scenario. Verify the dispatch path instead:
+    //   - op:"write" with change-log entry → lands in change-log.jsonl
+    //   - meta-state.jsonl does NOT contain the change-log
+    // The function-level guard is still load-bearing for any future direct
+    // call to persistRegistryAtomic with a non-table-only set; coverage is
+    // implicit through the tableOnly-projection regression tests on the
+    // 5 persist sites.
     writeJsonl(root, CHANGE_LOG_FILENAME, [
       makeChangeLog({ id: "meta-guard-existing-cl", reason: "Pre-existing change-log that establishes post-split state (min 20 chars)" }),
     ]);
 
-    // Route a change-log through metaStateBatch's write op — with the dispatch
-    // rolled back, the in-memory entries array still contains the change-log at
-    // persist time. The guard must throw before the file write commits.
-    await assert.rejects(
-      () =>
-        metaStateBatch(root, [
-          {
-            op: "write",
-            entry: makeChangeLog({
-              id: "meta-guard-leaky-cl",
-              reason: "This change-log would leak into meta-state.jsonl if not guarded (min 20 chars)",
-            }),
-          },
-        ]),
-      /change_log_leak/,
-      "persistRegistryAtomic must reject non-table-only writes once change-log.jsonl exists",
-    );
+    const result = await metaStateBatch(root, [
+      {
+        op: "write",
+        entry: makeChangeLog({
+          id: "meta-guard-dispatched-cl",
+          reason: "This change-log must dispatch to change-log.jsonl, NOT leak into meta-state.jsonl (min 20 chars)",
+        }),
+      },
+    ]);
+    assert.equal(result.applied, 1, "change-log write op must succeed via dispatch");
+    assert.equal(result.failed_at, null);
 
-    // The pre-existing change-log.jsonl must remain untouched (no half-written
-    // meta-state.jsonl from the rolled-back attempt).
+    // The change-log must end up in change-log.jsonl, NOT in meta-state.jsonl.
     const changeLogLines = readJsonlLines(root, CHANGE_LOG_FILENAME);
-    assert.equal(changeLogLines.length, 1, "pre-existing change-log.jsonl must remain intact");
-    assert.equal(changeLogLines[0].id, "meta-guard-existing-cl");
-    // meta-state.jsonl may either be absent or remain in its pre-state — what
-    // matters is that the leaked entry did NOT land in it.
+    const changeLogIds = changeLogLines.map((e) => e.id);
+    assert.ok(changeLogIds.includes("meta-guard-dispatched-cl"), "change-log must land in change-log.jsonl via dispatch");
+    assert.ok(changeLogIds.includes("meta-guard-existing-cl"), "pre-existing change-log must remain intact");
+
     if (existsSync(join(root, REGISTRY_FILENAME))) {
       const tableIds = readJsonlLines(root, REGISTRY_FILENAME).map((e) => e.id);
       assert.ok(
-        !tableIds.includes("meta-guard-leaky-cl"),
-        "leaked change-log must NOT be in meta-state.jsonl after the rejected batch",
+        !tableIds.includes("meta-guard-dispatched-cl"),
+        "change-log must NOT be in meta-state.jsonl after dispatch",
       );
     }
+
+    // The union (chokepoint read) sees the change-log via either file.
+    const union = readRegistry(root);
+    const found = union.find((e) => e.id === "meta-guard-dispatched-cl");
+    assert.ok(found, "readRegistry must return the dispatched change-log via the union");
+    assert.equal(found.entry_kind, "change-log");
   });
 
   it("guard allows table-only persists once change-log.jsonl exists (post-split happy path)", async () => {

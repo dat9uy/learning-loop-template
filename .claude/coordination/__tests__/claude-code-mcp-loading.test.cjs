@@ -122,11 +122,19 @@ describe("Claude Code MCP client-side loading acceptance", () => {
             .filter((l) => l.trim() !== "")
             .map((l) => JSON.parse(l))
         : [];
+      // Plan 260715-0801 Tier 1 Phase 2: change-logs now land in change-log.jsonl.
+      const changeLogPath = join(tempRoot, "change-log.jsonl");
+      const changeLogEntries = existsSync(changeLogPath)
+        ? readFileSync(changeLogPath, "utf8")
+            .split("\n")
+            .filter((l) => l.trim() !== "")
+            .map((l) => JSON.parse(l))
+        : [];
       const findings = metaStateEntries.filter((e) => e.entry_kind === "finding");
       assert.ok(findings.some((e) => e.evidence_code_ref && e.evidence_code_ref.endsWith(".js")));
       assert.ok(findings.some((e) => e.mechanism_check === true));
 
-      const changeLogs = metaStateEntries.filter((e) => e.entry_kind === "change-log");
+      const changeLogs = changeLogEntries.filter((e) => e.entry_kind === "change-log");
       assert.ok(changeLogs.length >= 1, "at least one change-log entry should be written");
     });
   });

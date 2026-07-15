@@ -53,7 +53,9 @@ test("parallel writes from 2 independent processes: 0 entries lost (race window 
       });
     });
 
-    const content = readFileSync(join(root, "meta-state.jsonl"), "utf8").trim();
+    // Plan 260715-0801 Tier 1 Phase 2: child processes write change-logs
+    // via writeEntry which dispatches to change-log.jsonl. Read from there.
+    const content = readFileSync(join(root, "change-log.jsonl"), "utf8").trim();
     const lines = content.split("\n").filter(Boolean);
     assert.equal(lines.length, 20, "expected 20 entries; got " + lines.length);
 

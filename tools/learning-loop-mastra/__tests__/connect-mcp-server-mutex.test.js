@@ -30,7 +30,9 @@ function prepareTempRoot() {
 }
 
 function readRegistryLines(tempRoot) {
-  const raw = readFileSync(join(tempRoot, "meta-state.jsonl"), "utf8");
+  // Plan 260715-0801 Tier 1 Phase 2: this test only writes change-logs via
+  // log_change, which now lands in change-log.jsonl. Read from there.
+  const raw = readFileSync(join(tempRoot, "change-log.jsonl"), "utf8");
   return raw.split("\n").filter((line) => line.trim() !== "");
 }
 

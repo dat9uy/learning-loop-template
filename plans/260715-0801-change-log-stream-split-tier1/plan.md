@@ -16,7 +16,7 @@ progress:
   phase-2: in-progress (read seam + 2/8 immutability guard sites)
   phase-3: pending
   phase-4: pending
-last-session: "260715-1010"
+last-session: "260715-1100"
 ---
 
 # Tier 1: change-log stream split + Tier 2 de-risk (jq projection seam)
@@ -265,6 +265,52 @@ Resolves the observed 2026-07-09 parallel-PR EOF conflict (PR #44/#45) by splitt
 - `tools/scripts/__tests__/registry-table.test.js` (new)
 - `tools/scripts/__fixtures__/registry-one-line-per-id.jsonl` (new)
 - `tools/scripts/__fixtures__/registry-versioned.jsonl` (new)
+
+### Session 260715-1100 (cook continuation — Findings 1+2 safety net)
+
+**Scope (per user direction):** Land red-team Findings 1+2 from the previous session's review before re-enabling the write dispatch. These are the load-bearing regression tests + defensive guard required to safely ship the deferred Phase 2 work in a single PR.
+
+**Shipped:**
+- **Finding 1** (`dual-source-read-seam.test.js`, 11 tests passing): regression coverage for the dual-source read code. Tests (a) union semantics, chronological merge, missing-file is empty; (b) LRU busts on change-log.jsonl mtime change alone; (c) cold-tier `change_log_sha256` key invalidates post-append. Covers the load-bearing read code that was previously "correct by inspection only."
+- **Finding 2** (`assertNoChangeLogLeak` in `persistRegistryAtomic`): defensive guard that rejects any persist whose entries array contains a change-log entry once `change-log.jsonl` exists. Pre-split is a no-op guard (existing behavior preserved). Refactored `metaStateBatch`'s inline persist (L1402-1406 pre-edit) to route through `persistRegistryAtomic` so the guard fires from the batch path too. Now all 5 persist sites (update, delete, archive, shipLoopDesign, metaStateBatch) are covered.
+- **File-index refresh** for `tools/learning-loop-mastra/core/meta-state.js` (fingerprint re-hashed to current content); cold-tier regression test green.
+- Full suite: 214/215 vitest files pass, 1914/1915 tests pass, 1 pre-existing skip. Zero regressions vs. session 260715-1010 baseline.
+
+### Session 260715-1118 (cook continuation — write dispatch re-enabled)
+
+**Scope (per user direction):** Re-enable the write dispatch (`writeEntry` + `metaStateBatch` auto-emit) and `tableOnly` projections at all 5 persist sites. Phase 2 schema change, migration script, `.gitattributes`, advisory workflow, Phase 3 CI gates, and Phase 4 closeout deferred to a follow-up session (the migration must land in the SAME PR as the dispatch, per Red Team F8b — single-PR convention; deferring split keeps this session scoped to the dispatch flip).
+
+**Shipped:**
+- **Step 1 — `writeEntry` dispatch (high-risk prod flip).** `core/meta-state.js#writeEntry` now branches on `entry_kind`: change-logs true-append to `change-log.jsonl` via `appendChangeLogEntryAtomic`; everything else lands in `meta-state.jsonl` via `appendRegistryEntryAtomic`. Dispatch runs INSIDE the existing `enqueue+withRegistryLock` wrapper (Red Team F8a — never outside the lock).
+- **Step 2 — `metaStateBatch` auto-emit routing (high-risk prod flip).** The auto-emit entry is no longer mixed into the table-write set. Instead: queue `autoEmitEntry` → persist `tableOnly(entries)` → `appendChangeLogEntryAtomic(root, autoEmitEntry)`. `case "write"` for change-log entries now queues to `pendingChangeLogAppends` and routes through the same helper (parity with canonical `writeEntry` dispatch). `assertWriteVisible` expanded to verify both auto-emit and queued op:"write" change-log ids.
+- **Step 3 — `tableOnly` projections at all 5 persist sites (high-risk).** `updateEntry`, `archiveEntry`, `deleteEntry`, `shipLoopDesign`, `metaStateBatch` all call `persistRegistryAtomic(tableOnly(entries, root), root)`.
+- **`tableOnly(entries, root)` is conditional on `change-log.jsonl` existing.** Pre-split (no `change-log.jsonl`), `tableOnly` returns entries unchanged — preserves the pre-Tier-1 single-file semantics and prevents data loss during the migration window. Post-split, it filters change-logs from the in-memory set so they can't leak back into `meta-state.jsonl`. Same defensive shape as `assertNoChangeLogLeak`. **This fix was critical:** an unconditional `tableOnly` would have silently dropped the 217 change-log entries currently in the project's `meta-state.jsonl` on the next table persist.
+- **Step 4 — 6 raw-reading tests updated** to read `change-log.jsonl` directly or `readRegistry` (chokepoint) where appropriate, matching the new dispatch routing:
+  - `drop-idempotency-cache.test.cjs` (log_change dispatch)
+  - `connect-mcp-server-mutex.test.js` (log_change parallel dispatch)
+  - `cross-process-file-lock.test.cjs` (writeEntry change-log parallel dispatch)
+  - `meta-state-check-grounding-tool.test.js` (log_change id lookup)
+  - `meta-state-derive-status-tool.test.js` (2 log_change id lookups)
+  - `meta-state-archive-tool.test.js` (pre-migration fixture — passes now that tableOnly is conditional)
+  - `claude-code-mcp-loading.test.cjs` (change-log count in temp-root artifacts)
+  - `meta-state-batch-tool.test.js` (2 tests — op:"write" change-log now routes correctly through dispatch)
+- **`dual-source-read-seam.test.js`** test 9 (the regression test from session 260715-1100) updated: the `metaStateBatch` op:"write" change-log path now correctly DISPATCHES to `change-log.jsonl` instead of leaking into `meta-state.jsonl`. The test now verifies the dispatch semantics (change-log lands in change-log.jsonl + `readRegistry` returns it via the union).
+- **Manual smoke test** green: writeEntry (finding) + writeEntry (change-log) → `readRegistry` returns 2 entries (union), `meta-state.jsonl` has 1 finding, `change-log.jsonl` has 1 change-log.
+- **File-index refresh** via `meta_state_refresh_file_index` (re-grounds 3 findings anchored to `meta-state.js`); cold-tier regression test green.
+- **Full suite:** 214/215 vitest files pass, 1917/1918 tests pass, 1 pre-existing skip. No regressions vs. session 260715-1100 baseline.
+
+**Still deferred (next-session steps from `## Resume for next session`, ordered):**
+1. Re-enable write dispatch in `writeEntry` + auto-emit in `metaStateBatch`.
+2. Re-enable `tableOnly` projections at the 4 persist sites (now safe: guard + regression tests in place).
+3. Fix 10 raw-reading tests (`meta-state-archive-tool`, `meta-state-batch-tool`, `meta-state-check-grounding-tool`, `meta-state-derive-status-tool`, `meta-state-stale-flag`, `meta-state-g8-supersede`, `meta-state-superseded`, `cross-process-file-lock`, `drop-idempotency-cache`, `connect-mcp-server-mutex`, `change-log-operation-envelope`).
+4. `consolidates` schema change to `z.array(z.string())` (Phase 2 step 1).
+5. Migration script `migrate-change-log-stream.mjs` (Phase 2 step 4).
+6. `.gitattributes` `change-log.jsonl merge=union` + git-track (Phase 2 step 3).
+7. Advisory workflow path-filter + diff-command update (Phase 2 step 6).
+8. Phase 3 CI gates (pre-merge WARN + post-merge BLOCK).
+9. Phase 4 verify + closeout (merge=union dry-run with two branches from shared base, AGENTS.md docs fix, resolve `change-log-stream` finding, keep `finding-stream` open, journal).
+
+**Commit:** `2322901 feat(core): dual-source read seam regression tests + persist-site leak guard`
 
 **Resume for next session (in order):**
 1. **Phase 2 step 2 — re-enable write dispatch.** In `meta-state.js#writeEntry`, flip the dispatch back on: `if (validation.data.entry_kind === "change-log") { appendChangeLogEntryAtomic(...) } else { appendRegistryEntryAtomic(...) }`. The helper is already implemented and tested in this session. ALSO: in `metaStateBatch`, route the auto-emit through `appendChangeLogEntryAtomic` after the table write (comments mark the exact lines).
