@@ -349,8 +349,13 @@ export const metaStateChangeEntrySchema = z.object({
   }).optional().describe("Wider impact scope"),
   supersedes: z.string().optional()
     .describe("ID of a previous change-log entry this one replaces"),
-  consolidates: z.string().optional()
-    .describe("Comma-separated list of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
+  // Plan 260715-0801 Validation Session 1 Q2: consolidates is multi-valued
+  // (the relationships tool at meta-state-relationships-tool.js:21-25 has
+  // always grouped it as an array). Schema now enforces the array form;
+  // the migration script converts any legacy single-string value to a
+  // one-element array as part of the change-log.jsonl split (same PR).
+  consolidates: z.array(z.string()).optional()
+    .describe("Array of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
   evidence_code_ref: z.string().optional()
     .describe("Code reference, e.g. path/to/file.js:line"),
   evidence_journal: z.string().optional()

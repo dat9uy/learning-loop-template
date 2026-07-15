@@ -42,7 +42,7 @@ describe("meta_state_relationships consolidated_into traversal", () => {
         change_dimension: "semantic",
         change_target: "tools/test.js",
         change_diff: { added: [], removed: [], changed: [] },
-        consolidates: "consolidated-finding",
+        consolidates: ["consolidated-finding"],
         reason: "Change log consolidating the finding (min 20 chars)",
         created_at: new Date().toISOString(),
       },

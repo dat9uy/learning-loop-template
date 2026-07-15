@@ -64,7 +64,7 @@ export const CHANGELOG_FIXTURE = {
   reason: "Snapshot test change-log fixture.",
   status: "active",
   created_at: "2026-06-27T00:00:00Z",
-  consolidates: "meta-test-finding",
+  consolidates: ["meta-test-finding"],
 };
 
 export const LOOPDESIGN_FIXTURE = {

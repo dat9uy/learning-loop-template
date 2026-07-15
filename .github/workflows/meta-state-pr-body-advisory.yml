@@ -1,12 +1,16 @@
 # Meta-state registry delta advisory
-# Runs on PRs touching meta-state.jsonl; emits delta summary to $GITHUB_STEP_SUMMARY.
-# Advisory-only (never fails the check). Per finding meta-260622T1708Z.
+# Runs on PRs touching meta-state.jsonl OR change-log.jsonl; emits delta
+# summary to $GITHUB_STEP_SUMMARY. Advisory-only (never fails the check).
+# Per finding meta-260622T1708Z; path filter + diff-command updated in
+# Plan 260715-0801 Tier 1 Phase 2 step 7 (Red Team F6) to include
+# change-log.jsonl in the migration PR's diff coverage.
 name: Meta-state registry delta advisory
 
 on:
   pull_request:
     paths:
       - 'meta-state.jsonl'
+      - 'change-log.jsonl'
 
 permissions:
   contents: read
@@ -32,7 +36,13 @@ jobs:
       - name: Diff registry
         run: |
           set -euo pipefail
-          git diff --unified=0 "origin/$GITHUB_BASE_REF"...HEAD -- meta-state.jsonl > /tmp/registry.diff || true
+          # Diff both registry files. The script concatenates diffs of each
+          # file; the per-line id extraction tolerates either kind.
+          {
+            git diff --unified=0 "origin/$GITHUB_BASE_REF"...HEAD -- meta-state.jsonl || true
+            echo "--- change-log.jsonl ---"
+            git diff --unified=0 "origin/$GITHUB_BASE_REF"...HEAD -- change-log.jsonl || true
+          } > /tmp/registry.diff
 
       - name: Emit delta summary
         run: tools/scripts/ci-registry-deltas.sh /tmp/registry.diff

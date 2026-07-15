@@ -87,7 +87,7 @@ test("createFinding.inboundRefs scans registry for refs to this finding", () => 
   const changelogThatConsolidates = {
     id: "meta-test-changelog",
     entry_kind: "change-log",
-    consolidates: "meta-test-finding",
+    consolidates: ["meta-test-finding"],
   };
   const root = [FIXTURE, ruleThatOriginates, changelogThatConsolidates];
   const refs = f.inboundRefs(root);

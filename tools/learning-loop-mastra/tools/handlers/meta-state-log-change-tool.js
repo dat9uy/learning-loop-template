@@ -1,8 +1,10 @@
+import { z } from "zod";
 import { writeEntry, generateId, metaStateChangeEntrySchema } from "../../core/meta-state.js";
 import { slugify } from "../../core/slugify.js";
 import { assertWriteVisible, WriteNotVisibleError } from "../../core/update-entry-helpers.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { stripEnvelope } from "../../core/envelope-stripper.js";
 
 // Plan 260711-0030 Phase 2: in-process idempotency cache dropped.
 // The previous 60s Map at this module masked silent-persistence-fail by
@@ -13,27 +15,34 @@ import { resolveRoot } from "#lib/resolve-root.js";
 // advances within the millisecond). Replay protection, if needed, lives in
 // `meta_state_list({id: ...})`, not in a per-process Map.
 
-const MIGRATED_FIELDS = {
-  change_dimension: true,
-  change_target: true,
-  change_diff: true,
-  reason: true,
-  applies_to: true,
-  supersedes: true,
-  consolidates: true,
-  evidence_code_ref: true,
-  evidence_journal: true,
-  operation_envelope: true, // Plan 260712-0300 — accepts the magnitude envelope from auto-emit
-};
-
+// Plan 260715-0801 Validation Q2: consolidates is z.array(z.string()) per the
+// schema. The MCP wire-format array-guard requires every array field to be
+// wrapped with z.preprocess(stripEnvelope, ...) so the SDK's wire-format
+// coercion (which can drop arrays wrapped in {item: [...]} envelopes) doesn't
+// silently strip the field. See tools/learning-loop-mastra/__tests__/legacy-mcp/
+// wire-format-array-guard.test.js for the regression test.
+//
+// NOTE: do NOT use `metaStateChangeEntrySchema.pick({consolidates: preprocess-wrapped})`
+// — zod's `.pick()` collapses the preprocess wrap to just `optional` on a
+// ZodObject with optional fields. Build the schema as a plain z.object with
+// the preprocess-wrapped field passed directly. The pipe → transform →
+// optional → array chain is preserved this way.
 export const metaStateLogChangeTool = {
   name: "meta_state_log_change",
   description: "Log a system change (schema, rule, tool, policy, surface, lifecycle, manifest) as a change-log entry in the meta-state registry. The entry is immutable, status=active, no TTL. Use supersedes to replace a prior change entry. Use when you ship a meaningful code or rule change that should appear in the durable audit log. Not for operator-observed issues (use `meta_state_report` instead) or for closing a finding (use `meta_state_resolve` instead). For verify-after-write, call `meta_state_list({id: ...})` to confirm the entry landed — there is no in-process cache that masks persistence failures.",
-  // Plan 260712-0300 — `.strict()` rejects unknown fields (closes Zod strip-on-unknown
-  // typo/injection pollution). Pre-fix `.shape` silently stripped unknown keys; with
-  // `.strict()`, the MCP layer surfaces a validation error to the caller. The
-  // `operation_envelope` field is included via MIGRATED_FIELDS so it round-trips.
-  schema: metaStateChangeEntrySchema.pick(MIGRATED_FIELDS).strict().shape,
+  schema: z.object({
+    change_dimension: metaStateChangeEntrySchema.shape.change_dimension,
+    change_target: metaStateChangeEntrySchema.shape.change_target,
+    change_diff: metaStateChangeEntrySchema.shape.change_diff,
+    reason: metaStateChangeEntrySchema.shape.reason,
+    applies_to: metaStateChangeEntrySchema.shape.applies_to,
+    supersedes: metaStateChangeEntrySchema.shape.supersedes,
+    // Plan 260712-0300 — operation_envelope: accepts the magnitude envelope from auto-emit.
+    consolidates: z.preprocess(stripEnvelope, z.array(z.string()).optional()),
+    evidence_code_ref: metaStateChangeEntrySchema.shape.evidence_code_ref,
+    evidence_journal: metaStateChangeEntrySchema.shape.evidence_journal,
+    operation_envelope: metaStateChangeEntrySchema.shape.operation_envelope,
+  }).strict().shape,
   handler: async ({
     change_dimension,
     change_target,
@@ -51,6 +60,16 @@ export const metaStateLogChangeTool = {
     const id = generateId(slugify(change_target));
     const now = new Date();
 
+    // Plan 260715-0801 Validation Q2: schema is z.array(z.string()).
+    // Normalize a single string (or comma-separated string) into the array
+    // form the schema requires. Back-compat for callers still passing a
+    // single id; array form passes through unchanged.
+    const consolidatesNormalized = Array.isArray(consolidates)
+      ? consolidates
+      : (typeof consolidates === "string" && consolidates.trim())
+        ? consolidates.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined;
+
     const entry = {
       id,
       entry_kind: "change-log",
@@ -60,7 +79,7 @@ export const metaStateLogChangeTool = {
       reason,
       ...(applies_to && { applies_to }),
       ...(supersedes && { supersedes }),
-      ...(consolidates && { consolidates }),
+      ...(consolidatesNormalized && { consolidates: consolidatesNormalized }),
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
       // Plan 260712-0300: optional magnitude envelope; the MIGRATED_FIELDS

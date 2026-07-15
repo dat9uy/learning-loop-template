@@ -77,7 +77,7 @@ describe("Phase 1: superseded status enum", () => {
       change_diff: { added: [], removed: [], changed: ["4 G8 subcommand-class finding entries superseded"] },
       reason: "Consolidate 4 G8 subcommand-class false-positive finding entries (recurrences 1, 3, 4, 5) into a single change-log entry.",
       applies_to: { tools: ["meta_state_query_drift"], rules: ["rule-no-new-artifact-types"], statuses: ["superseded"] },
-      consolidates: "meta-260602T1112Z-live-g8-subcommand-class-false-positive-rule-no-new-artifact,meta-260602T1635Z-third-documented-g8-subcommand-class-recurrence-rule-no-new,meta-260602T1635Z-fourth-documented-g8-recurrence-and-a-partial-regression-of,meta-260603T1435Z-g8-subcommand-class-false-positive-5th-recurrence-hit-ck-pla",
+      consolidates: ["meta-260602T1112Z-live-g8-subcommand-class-false-positive-rule-no-new-artifact", "meta-260602T1635Z-third-documented-g8-subcommand-class-recurrence-rule-no-new", "meta-260602T1635Z-fourth-documented-g8-recurrence-and-a-partial-regression-of", "meta-260603T1435Z-g8-subcommand-class-false-positive-5th-recurrence-hit-ck-pla"],
       evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
       evidence_journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md",
       status: "active",

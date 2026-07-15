@@ -10,9 +10,16 @@
 # compromise, but this attribute lets the merge succeed automatically when
 # the union strategy is sound.
 #
+# change-log.jsonl is the meta-state change-log stream (Tier 1 split). It is
+# true-append-only (writeEntry branches on entry_kind=change-log; the
+# core-layer immutability guard in updateEntry/archiveEntry rejects any
+# in-place mutation). merge=union resolves the parallel-PR EOF conflict class
+# without producing duplicate ids. Plan 260715-0801 Tier 1 Phase 2 step 3.
+#
 # DO NOT add meta-state.jsonl here: it is NOT true append-only — entries
 # are mutated in place for status flips (resolve / patch / batch), and the
 # registry is full-rewritten on every write. merge=union on a full-rewrite
 # file would keep BOTH the stale base-version and the mutated version of
 # any mutated entry id, producing duplicate ids and corrupting the registry.
 runtime-state.jsonl merge=union
+change-log.jsonl merge=union

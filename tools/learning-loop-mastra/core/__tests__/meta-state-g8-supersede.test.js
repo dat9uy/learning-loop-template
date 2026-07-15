@@ -38,7 +38,7 @@ async function applyG8Supersede(root, changeLogId) {
       rules: ["rule-no-new-artifact-types"],
       statuses: ["superseded"],
     },
-    consolidates: G8_IDS.join(","),
+    consolidates: G8_IDS,
     evidence_code_ref: "tools/learning-loop-mcp/core/gate-logic.js#applyPromotedRules",
     evidence_journal: "plans/260605-superseded-status-and-discoverability/phase-2-apply-g8-supersede.md",
     status: "active",
@@ -109,7 +109,7 @@ describe("Phase 2: G8 housekeeping end-to-end", () => {
     const changeLog = after.find((e) => e.id === changeLogId);
     assert.ok(changeLog, "Change-log entry should exist");
     assert.strictEqual(changeLog.entry_kind, "change-log");
-    const consolidatesIds = changeLog.consolidates.split(",");
+    const consolidatesIds = changeLog.consolidates;
     assert.deepStrictEqual(consolidatesIds.sort(), [...G8_IDS].sort());
 
     // Verify queryDrift returns 0 for the G8 entries (terminal)
@@ -133,7 +133,7 @@ describe("Phase 2: G8 housekeeping end-to-end", () => {
     const after = readRegistry(root);
     const changeLog = after.find((e) => e.id === changeLogId);
     assert.ok(changeLog, "Change-log entry should exist");
-    const consolidatesIds = changeLog.consolidates.split(",");
+    const consolidatesIds = changeLog.consolidates;
 
     for (const id of G8_IDS) {
       const finding = after.find((e) => e.id === id);

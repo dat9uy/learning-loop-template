@@ -16,7 +16,7 @@ const SEED_ENTRIES = [
   { id: "design-A", entry_kind: "loop-design", status: "open", title: "design A addresses target", description: "design A for ref_by test (min 20 chars)", affected_system: "mcp-tools", proposed_design_for: ["rule-test"], addresses: ["target-finding"], created_at: NOW, created_by: "test" },
   { id: "design-B", entry_kind: "loop-design", status: "open", title: "design B addresses other", description: "design B for ref_by test (min 20 chars)", affected_system: "mcp-tools", proposed_design_for: ["rule-test"], addresses: ["other-finding"], created_at: NOW, created_by: "test" },
   { id: "reopener", entry_kind: "finding", status: "open", category: "loop-anti-pattern", severity: "warning", affected_system: "mcp-tools", description: "reopener for target-finding (min 20 chars)", created_at: NOW, reopens: ["target-finding"] },
-  { id: "consolidating-change", entry_kind: "change-log", status: "open", change_dimension: "semantic", change_target: "test.js", change_diff: { added: [], removed: [], changed: [] }, reason: "consolidates target-finding (min 20 chars)", created_at: NOW, consolidates: "target-finding" },
+  { id: "consolidating-change", entry_kind: "change-log", status: "open", change_dimension: "semantic", change_target: "test.js", change_diff: { added: [], removed: [], changed: [] }, reason: "consolidates target-finding (min 20 chars)", created_at: NOW, consolidates: ["target-finding"] },
 ];
 
 describe("meta_state_list ref_by/ref_field filter", () => {

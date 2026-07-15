@@ -13,11 +13,18 @@ export function createChangeLog(data) {
       if (parsed.supersedes) {
         refs.push({ kind: "change-log", id: parsed.supersedes, field: "supersedes" });
       }
-      if (typeof parsed.consolidates === "string" && parsed.consolidates.trim()) {
-        const ids = parsed.consolidates.split(",").map((s) => s.trim()).filter(Boolean);
-        for (const id of ids) {
-          refs.push({ kind: "finding", id, field: "consolidates" });
-        }
+      // Plan 260715-0801 Validation Q2: schema is z.array(z.string()).
+      // The migration script converts legacy CSV strings to one-element
+      // arrays, so the array form is canonical. Tolerate the legacy
+      // string form for in-flight processes that read pre-migration data.
+      const cl = parsed.consolidates;
+      const ids = Array.isArray(cl)
+        ? cl
+        : typeof cl === "string" && cl.trim()
+          ? cl.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
+      for (const id of ids) {
+        refs.push({ kind: "finding", id, field: "consolidates" });
       }
       return refs;
     },

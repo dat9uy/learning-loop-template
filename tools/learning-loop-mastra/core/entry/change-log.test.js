@@ -13,7 +13,7 @@ const FIXTURE = {
   status: "active",
   created_at: "2026-06-27T00:00:00Z",
   supersedes: "meta-old-changelog",
-  consolidates: "meta-finding-a,meta-finding-b",
+  consolidates: ["meta-finding-a", "meta-finding-b"],
 };
 
 test("createChangeLog returns frozen object", () => {
