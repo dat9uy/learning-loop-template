@@ -63,6 +63,18 @@ function groupInbound(refs) {
  * used to produce — the information is now a derived view over the
  * relationship graph instead of a recorded finding kind.
  *
+ * CROSS-TOOL DIVERGENCE (Plan 260715-1608 Phase 1, red-team F2):
+ * This function does NOT have access to a source entry (it receives only
+ * outbound `refs` + the entry list), so it cannot distinguish immutable +
+ * terminal-source `missing` refs (`historical` in the post-merge validator).
+ * The post-merge `tools/learning-loop-mastra/scripts/validate-registry-refs.js`
+ * classifies `historical` as informational, but this tool's `dangling_refs`
+ * retains the flat `missing`/`stale`/`superseded`/`resolved` reasons. Per
+ * YAGNI, agents using `meta_state_relationships` see `dangling_refs` as
+ * today (no `historical` label); the `historical` label lives only in the
+ * post-merge validator's `computeDanglingRefs` (different function, different
+ * signature, different surface).
+ *
  * Read-only / pure function over `entries` (the registry snapshot the caller
  * has already loaded). `refs` is the outbound-ref array produced by the
  * factory — `{ kind, id, field }` per ref.

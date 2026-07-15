@@ -1294,6 +1294,32 @@ export function metaStateBatch(root, operations, envelope) {
                 const current = entries[idx].version ?? 0;
                 if (current !== op._expected_version) throw new Error("version_mismatch");
               }
+              // Plan 260715-1608 Phase 1 (red-team F14): change-log immutability
+              // guard. Mirrors the `delete` op's assertinvariant. Without this
+              // guard, `Object.assign(entries[idx], patch)` mutates the change-log
+              // entry, but `persistRegistryAtomic(tableOnly(entries, root), root)`
+              // (below) strips change-logs before writing `meta-state.jsonl`,
+              // so the mutation is silently discarded — `applied: N` returns
+              // success for a no-op. Make the rejection explicit.
+              const updateClInvariant = await assertinvariant(
+                () => Promise.resolve({ ok: true }),
+                {
+                  accept: {
+                    context: () => entries[idx],
+                    check: (e) => e.entry_kind !== "change-log",
+                  },
+                  returnOnFail: {
+                    reason_code: "change_log_immutable",
+                    entry_kind: entries[idx].entry_kind,
+                    id: op.id,
+                  },
+                  root,
+                }
+              );
+              if (!updateClInvariant.ok) {
+                const err = new Error("change_log_immutable");
+                throw err;
+              }
               // Strip op discriminator + lookup id + CAS version before checking
               // the deny-list and applying. Without this, the lookup-key `id` and
               // the op discriminator `op` would falsely trigger the deny-list.

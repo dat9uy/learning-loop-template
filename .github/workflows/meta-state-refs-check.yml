@@ -1,9 +1,8 @@
 # Plan 260715-0801 Tier 1 Phase 3 step 4: post-merge registry-ref BLOCK.
 #
 # Runs on push to main. Loads the union of meta-state.jsonl + change-log.jsonl,
-# uses `validate-registry-refs.mjs` to scan for real dangling refs (target id
-# missing, kind-mismatch, stale-view, superseded, resolved), and BLOCKs on
-# any.
+# uses `validate-registry-refs.mjs` to scan for real dangling refs and BLOCKs
+# on any.
 #
 # Why post-merge: at push-to-main the full union is visible, so every dangling
 # ref is real. Cross-PR orphans either self-healed on merge or never existed.
@@ -13,12 +12,22 @@
 # (Red Team F4: `meta_state_relationships` plural, NOT `meta_state_relationship_validate`
 # singular — the latter is a description-string linter, no-op here).
 #
-# Mode toggle: the validator exits 1 on real orphans. The workflow uses
-# `continue-on-error: true` so the FIRST push after migration does NOT BLOCK
-# — pre-existing orphans in the registry (98 entries reference deleted or
-# truncated targets) need operator cleanup first. Once cleanup lands, the
-# operator flips the workflow to BLOCK by removing `continue-on-error: true`
-# from the `Validate registry refs` step.
+# Plan 260715-1608 Phase 3 (flip to BLOCK): after Phase 2 cleanup, the
+# validator's `blocking` set is 0 on the live union. The workflow runs in
+# BLOCK-mode (no `continue-on-error: true`) — exit 1 fails the job. Phase 1's
+# 3-bucket classification exempts retired refs:
+#   - `historical` (immutable change-log source + terminal-status source) — never blocks
+#   - `informational` (stale-view, superseded, resolved targets) — never blocks
+#   - `blocking` (active/open mutable source + missing target; duplicate ids) — fails the job
+# The pre-merge `meta-state-pr-body-advisory.yml` is a backstop: a NEW
+# unresolved `consolidates`/`supersedes` ref on a PR's added change-log
+# fails that advisory's check BEFORE the change-log becomes immutable.
+#
+# Plan 260715-1608 Phase 4 (F13 middle-ground): ephemeral CI runners never run
+# the per-clone setup-git-merge-drivers.sh, so `.gitattributes`'s `merge=union`
+# is a no-op on CI. This step configures `merge.union.driver` so the runner
+# clone carries the corrected driver. Residual limitation: a separate
+# merge-queue workflow (if introduced later) would need the same step.
 
 name: meta-state refs check
 
@@ -46,9 +55,24 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Validate registry refs (post-merge BLOCK; WARN-mode pre-cleanup)
-        # `continue-on-error: true` keeps the workflow green while pre-existing
-        # orphans (98 missing refs) are cleaned up. Flip to BLOCK by removing
-        # this line after the orphan-cleanup PR merges.
-        continue-on-error: true
+      # Configure the git union-merge driver on the ephemeral CI runner
+      # (Plan 260715-1608 Phase 4 red-team F13 middle-ground). Per-clone
+      # git config is not committable, so the runner needs this step before
+      # any merge step could use it. See tools/scripts/setup-git-merge-drivers.sh
+      # for the canonical setup script and the corrected-arg-order explanation.
+      - name: Configure git union-merge driver (Phase 4 F13)
+        run: |
+          git config merge.union.driver "git merge-file --union %A %O %B"
+          git config --get merge.union.driver
+
+      - name: Validate registry refs (BLOCK-mode after Phase 2 cleanup)
+        # Phase 3 of plan 260715-1608: post-merge BLOCK. The validator's
+        # exit 1 (real orphans in `blocking`) fails this job and BLOCKs the
+        # push. Phase 1's 3-bucket classification exempts retired refs as
+        # `historical` (immutable change-log source + terminal-source) and
+        # `informational` (stale-view, superseded, resolved targets); only
+        # `blocking` refs (active/open mutable source + missing target, OR
+        # duplicate id) fail the check. Pre-merge, `meta-state-pr-body-advisory.yml`
+        # backstops NEW unresolved `consolidates`/`supersedes` refs before
+        # the change-log becomes immutable.
         run: node tools/learning-loop-mastra/scripts/validate-registry-refs.js --root=$GITHUB_WORKSPACE

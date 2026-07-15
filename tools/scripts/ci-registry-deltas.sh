@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ci-registry-deltas.sh — Parse a meta-state.jsonl + change-log.jsonl diff and
 # emit a delta summary + ref-validation WARNINGs to $GITHUB_STEP_SUMMARY.
-# Advisory-only; always exits 0.
 #
 # Usage: ci-registry-deltas.sh <diff-file>
 #
@@ -19,12 +18,30 @@
 # only warns on refs whose target is absent from the PR's own added set OR
 # the base union. Cross-PR refs are NOT warned here.
 #
+# Plan 260715-1608 Phase 1 (red-team F6) backstop: change-log refs
+# (`consolidates`, `supersedes`) on a NEW change-log added in this PR are
+# immune to post-merge cleanup (change-logs are immutable), and the post-merge
+# validator's source-keyed exemption (Phase 1 `historical` bucket) means they
+# never block. To close the typo / fabrication hole, this script FAILS the
+# check (exits non-zero) when a new unresolved `consolidates` or `supersedes`
+# ref is detected. Non-change-log diffs stay advisory (exit 0).
+#
 # Red Team M1: escape_md() on all interpolated strings.
+#
+# Exit codes:
+#   0 — no change-log ref violations (advisory warnings may still be reported)
+#   1 — at least one new unresolved `consolidates`/`supersedes` ref from a
+#       change-log added in the PR
+#   2 — usage / parse error (e.g. missing diff file)
 
 set -euo pipefail
 
 DIFF_FILE="${1:?Usage: ci-registry-deltas.sh <diff-file>}"
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+# Plan 260715-1608 Phase 1: opt-out via CHANGE_LOG_REF_GATE=0 (do NOT fail the
+# change-log backstop gate — useful for non-change-log PRs that do not need
+# this). Default: enabled.
+CHANGE_LOG_REF_GATE="${CHANGE_LOG_REF_GATE:-1}"
 
 # Markdown escape: replace & < > with HTML entities
 escape_md() {
@@ -76,6 +93,20 @@ extract_refs() {
 added_ids=()
 removed_ids=()
 added_refs=()
+# Plan 260715-1608 Phase 1: track ids of change-log entries added in this PR
+# so the backstop gate can distinguish change-log-only refs (consolidates,
+# supersedes) from refs on other source kinds (which stay advisory).
+added_change_log_ids=()
+
+detect_kind() {
+  local line="$1"
+  local body="${line#+}"
+  body="${body#-}"
+  if [[ -z "$body" ]]; then printf '%s' ""; return; fi
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$body" | jq -r '.entry_kind // empty' 2>/dev/null || true
+  fi
+}
 
 while IFS= read -r line; do
   case "$line" in
@@ -85,6 +116,10 @@ while IFS= read -r line; do
       id=$(extract_id "$line")
       if [[ -n "$id" ]]; then
         added_ids+=("$id")
+        kind=$(detect_kind "$line")
+        if [[ "$kind" == "change-log" ]]; then
+          added_change_log_ids+=("$id")
+        fi
       fi
       # Capture refs from the added line for cross-reference validation
       while IFS= read -r ref; do
@@ -115,8 +150,13 @@ removed_count=${#removed_ids[@]}
 # defense.
 base_ids=$(jq -r '.id' meta-state.jsonl change-log.jsonl 2>/dev/null | sort -u || true)
 orphan_refs=()
+# Plan 260715-1608 Phase 1: separately track change-log-only orphan refs
+# (`consolidates`, `supersedes`) on ids added in this PR. These trigger the
+# backstop FAIL.
+cl_orphan_refs=()
 for ref in "${added_refs[@]}"; do
-  target=${ref#*:}
+  field="${ref%%:*}"
+  target="${ref#*:}"
   target_in_added=0
   for id in "${added_ids[@]}"; do
     if [[ "$id" == "$target" ]]; then target_in_added=1; break; fi
@@ -125,6 +165,10 @@ for ref in "${added_refs[@]}"; do
   if printf '%s\n' "$base_ids" | grep -qxF "$target"; then target_in_base=1; fi
   if [[ "$target_in_added" -eq 0 && "$target_in_base" -eq 0 ]]; then
     orphan_refs+=("$ref")
+    # Change-log-only fields. Other ref fields stay advisory.
+    if [[ "$field" == "consolidates" || "$field" == "supersedes" ]]; then
+      cl_orphan_refs+=("$ref")
+    fi
   fi
 done
 
@@ -170,6 +214,32 @@ done
       echo "- \`${escaped_ref}\`"
     done
   fi
+
+  # Plan 260715-1608 Phase 1 (red-team F6) backstop: the post-merge BLOCK
+  # validator exempts change-log sources as `historical` (immutable; cannot be
+  # patched). To catch typos / fabricated refs BEFORE the change-log is
+  # rendered immutable by merge, surface new unresolved `consolidates` /
+  # `supersedes` refs as a BLOCK.
+  cl_orphan_count=${#cl_orphan_refs[@]}
+  if [[ $cl_orphan_count -gt 0 ]]; then
+    echo ""
+    echo "## Change-log ref-resolution FAIL (${cl_orphan_count})"
+    echo ""
+    echo "New change-log entries in this PR reference ids absent from the PR's added set AND the base registry union. Because change-logs are immutable post-merge, the post-merge BLOCK validator exempts these as \`historical\` — typos/fabrications are caught HERE only. Resolve by adding the referenced ids in this PR or correcting the refs."
+    echo ""
+    for ref in "${cl_orphan_refs[@]}"; do
+      escaped_ref=$(escape_md "$ref")
+      echo "- \`${escaped_ref}\`"
+    done
+  fi
 } >> "$SUMMARY"
+
+# Plan 260715-1608 Phase 1: fail the step when a new change-log-only orphan
+# ref was detected. The workflow's "Emit delta summary" step then surfaces
+# as red on the PR's Checks tab. Opt-out via CHANGE_LOG_REF_GATE=0 for
+# pre-existing-condition exempts / safe WIP branches.
+if [[ "$CHANGE_LOG_REF_GATE" == "1" && ${#cl_orphan_refs[@]} -gt 0 ]]; then
+  exit 1
+fi
 
 exit 0

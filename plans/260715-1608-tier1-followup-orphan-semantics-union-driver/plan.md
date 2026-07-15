@@ -1,7 +1,7 @@
 ---
 title: "Tier 1 closeout follow-ups: registry orphan semantics + union-driver hardening"
 description: "Two Tier-1-closeout follow-ups. (A) Registry orphan semantics: the post-merge BLOCK validator (validate-registry-refs.js) flags 124 dangling refs (98 missing + 26 stale), but 54 are `consolidates` on IMMUTABLE change-logs (can't be patched) and 26 are stale-view targets (not corruption) — so a literal 'clean all then flip to BLOCK' is impossible. Fix = refine the validator's blocking policy (historical refs from immutable/terminal sources + stale-view → informational; only active-mutable-source missing → BLOCK), then triage + patch the residual mutable dangling refs (loop-design addresses/proposed_design_for, rule origin, finding reopens), then flip meta-state-refs-check.yml from WARN-mode to BLOCK-mode. (B) Union-driver hardening: the canonical `git merge-file --union %O %A %B` is wrong (silently drops the other side); corrected `%A %O %B` was documented this session in .gitattributes + AGENTS.md §8 but the per-clone `git config` is not committable — add a setup script + test so the merge=union payoff is real on fresh clones, and record the wrong-arg-order defect as a meta-state finding. Phase 4 is independent of 1-3."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-surface, registry, orphan-refs, validate-registry-refs, ci, merge-union, union-driver, tier1-followup]
@@ -51,20 +51,20 @@ The validator already exempts `superseded`/`resolved` **targets** as information
 
 ## Acceptance Criteria
 
-- [ ] `validate-registry-refs.js#computeDanglingRefs` classifies `missing` refs from immutable change-log sources as `historical` (informational, not blocking); `missing` from terminal-status sources as `historical` (`inactive` counts as terminal for `rule` + `loop-design`, NOT findings); `stale` targets as informational; only `missing` from active/open mutable sources blocks. A `duplicate_id` guard blocks on any id appearing >1 time across the union. Covered by unit tests (TDD).
-- [ ] `isStaleViewLike` kept (creation-age), NOT switched to canonical `isStaleView`; divergence documented in-code.
-- [ ] Relationships-tool `dangling_refs` divergence from the validator's `historical` bucket is documented (no refactor; flat reasons retained).
-- [ ] A pre-merge BLOCK gate validates new `consolidates`/`supersedes` refs on the PR's own change-log diff resolve (backstop for the post-merge source-keyed exemption).
-- [ ] `metaStateBatch` `update` op rejects change-log entries with `change_log_immutable` (no silent no-op).
-- [ ] The residual blocking set (measured ~27 per Phase 1 step 6 hard gate) is triaged and resolved: each dangling ref patched (`origin` → `""`, arrays via read→filter→verify-len→patch→re-query) or justified/exempted. Target residual: 0 blocking on the real union.
-- [ ] Phase 2 provenance written INCREMENTALLY per batch (`meta_state_log_change` + triage report appended as decided); a bury-by-supersede audit lists every blocking→historical reclassification with justification; recovery procedure documented.
-- [ ] `node tools/learning-loop-mastra/scripts/validate-registry-refs.js` exits 0 on the live `meta-state.jsonl` + `change-log.jsonl` union.
-- [ ] `meta-state-refs-check.yml` flipped from WARN-mode to BLOCK-mode (`continue-on-error: true` removed), gated on a pre-flip `workflow_dispatch` whose checkout SHA matches the merged Phase 2 cleanup PR; post-flip run green.
-- [ ] `tools/scripts/setup-git-merge-drivers.sh` exists, sets `merge.union.driver` to the corrected `git merge-file --union %A %O %B`, idempotent, warns+exit 1 on a wrong-order existing config (no silent overwrite).
-- [ ] A shell test asserts: with the corrected driver, two branches from a shared base each appending a change-log line at the same EOF position merge with no conflict and BOTH lines present (driver correctness); the two fixture ids are distinct by construction (asserted at fixture-gen, not merge time); (regression) the wrong `%O %A %B` order keeps only one side.
-- [ ] `meta-state-refs-check.yml` has a `git config merge.union.driver` step (red-team F13 middle-ground) so ephemeral CI runners carry the corrected driver.
-- [ ] A meta-state finding records the canonical-wrong-arg-order defect (evidence_code_ref = `.gitattributes` or `AGENTS.md`).
-- [ ] `pnpm test` green; no regressions in `meta_state_relationships`, the cold-tier, or the read seam.
+- [x] `validate-registry-refs.js#computeDanglingRefs` classifies `missing` refs from immutable change-log sources as `historical` (informational, not blocking); `missing` from terminal-status sources as `historical` (`inactive` counts as terminal for `rule` + `loop-design`, NOT findings); `stale` targets as informational; only `missing` from active/open mutable sources blocks. A `duplicate_id` guard blocks on any id appearing >1 time across the union. Covered by unit tests (TDD).
+- [x] `isStaleViewLike` kept (creation-age), NOT switched to canonical `isStaleView`; divergence documented in-code.
+- [x] Relationships-tool `dangling_refs` divergence from the validator's `historical` bucket is documented (no refactor; flat reasons retained).
+- [x] A pre-merge BLOCK gate validates new `consolidates`/`supersedes` refs on the PR's own change-log diff resolve (backstop for the post-merge source-keyed exemption).
+- [x] `metaStateBatch` `update` op rejects change-log entries with `change_log_immutable` (no silent no-op).
+- [x] The residual blocking set (measured ~27 per Phase 1 step 6 hard gate) is triaged and resolved: each dangling ref patched (`origin` → `""`, arrays via read→filter→verify-len→patch→re-query) or justified/exempted. Target residual: 0 blocking on the real union.
+- [x] Phase 2 provenance written INCREMENTALLY per batch (`meta_state_log_change` + triage report appended as decided); a bury-by-supersede audit lists every blocking→historical reclassification with justification; recovery procedure documented.
+- [x] `node tools/learning-loop-mastra/scripts/validate-registry-refs.js` exits 0 on the live `meta-state.jsonl` + `change-log.jsonl` union.
+- [x] `meta-state-refs-check.yml` flipped from WARN-mode to BLOCK-mode (`continue-on-error: true` removed), gated on a pre-flip `workflow_dispatch` whose checkout SHA matches the merged Phase 2 cleanup PR; post-flip run green.
+- [x] `tools/scripts/setup-git-merge-drivers.sh` exists, sets `merge.union.driver` to the corrected `git merge-file --union %A %O %B`, idempotent, warns+exit 1 on a wrong-order existing config (no silent overwrite).
+- [x] A shell test asserts: with the corrected driver, two branches from a shared base each appending a change-log line at the same EOF position merge with no conflict and BOTH lines present (driver correctness); the two fixture ids are distinct by construction (asserted at fixture-gen, not merge time); (regression) the wrong `%O %A %B` order keeps only one side.
+- [x] `meta-state-refs-check.yml` has a `git config merge.union.driver` step (red-team F13 middle-ground) so ephemeral CI runners carry the corrected driver.
+- [x] A meta-state finding records the canonical-wrong-arg-order defect (evidence_code_ref = `.gitattributes` or `AGENTS.md`).
+- [x] `pnpm test` green; no regressions in `meta_state_relationships`, the cold-tier, or the read seam.
 
 ## Risks
 

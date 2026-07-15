@@ -279,6 +279,63 @@ describe("meta_state_batch", () => {
     assert.ok(parsed.denied_fields.includes("resolved_at"));
   });
 
+  it("update op on a change-log id is rejected (change_log_immutable)", async () => {
+    // Plan 260715-1608 Phase 1 step 4 (red-team F14): metaStateBatch's update
+    // op used to silently no-op on change-log entries — the table persist
+    // strips change-logs before writing, so the mutation was discarded while
+    // `applied: N` reported success. The new guard mirrors the delete op's
+    // assertinvariant and surfaces the rejection explicitly.
+    //
+    // Seed a change-log entry in the registry first.
+    const seedOp = [
+      {
+        op: "write",
+        entry: {
+          id: "batch-cl-immutable",
+          entry_kind: "change-log",
+          change_dimension: "semantic",
+          change_target: "tools/learning-loop-mastra/core/meta-state.js",
+          change_diff: { added: [], removed: [], changed: [] },
+          reason: "Seeded change-log for change_log_immutable guard test (min 20 chars)",
+          created_at: new Date().toISOString(),
+        },
+      },
+    ];
+    const seedResult = await metaStateBatchTool.handler({ operations: seedOp });
+    const seedParsed = JSON.parse(seedResult.content[0].text);
+    assert.equal(seedParsed.applied, 1, "seed must succeed");
+
+    // Now try to update the change-log — must fail loud.
+    const registryPath = join(root, "meta-state.jsonl");
+    const beforeHash = sha256File(registryPath);
+
+    const ops = [
+      {
+        op: "update",
+        id: "batch-cl-immutable",
+        reason: "Attempt to mutate a change-log (must be rejected)",
+      },
+    ];
+
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0, "must not apply the change-log update");
+    assert.equal(parsed.failed_at, 0, "must fail at op index 0");
+    assert.equal(parsed.reason, "change_log_immutable", `must surface change_log_immutable, got: ${parsed.reason}`);
+
+    const afterHash = sha256File(registryPath);
+    assert.equal(afterHash, beforeHash, "file must be byte-identical after rejected batch");
+
+    const entries = readRegistry(root);
+    const target = entries.find((e) => e.id === "batch-cl-immutable");
+    assert.ok(target, "entry must still exist (registry unchanged)");
+    assert.equal(
+      target.reason,
+      "Seeded change-log for change_log_immutable guard test (min 20 chars)",
+      "change-log reason must NOT be overwritten"
+    );
+  });
+
   // --- Coercion regression: MCP wire layer coerces arrays to {item: [...]} ---
   // Recursive envelope-strip on `operations` unwraps both the top-level array
   // AND nested arrays inside each entry (change_diff.added/removed/changed,

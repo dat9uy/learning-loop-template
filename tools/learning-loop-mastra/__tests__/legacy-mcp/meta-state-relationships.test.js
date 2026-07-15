@@ -9,41 +9,64 @@ import { resolveRoot } from "#lib/resolve-root.js";
 const root = resolveRoot();
 
 test("meta_state_relationships: inbound for rule origin", async () => {
+  // Plan 260715-1608 Phase 2: 9 rules had their origin patched to "" (the
+  // dangling origin ids no longer existed in the registry). Use a rule that
+  // still has a valid origin (rule-runtime-agnostic-features) to verify the
+  // inbound.promoted_from inverse index path.
   const result = await metaStateRelationshipsTool.handler({
-    id: "rule-project-skill-boundary",
+    id: "rule-runtime-agnostic-features",
     direction: "inbound",
   });
   const text = JSON.parse(result.content[0].text);
-  assert.strictEqual(text.id, "rule-project-skill-boundary");
+  assert.strictEqual(text.id, "rule-runtime-agnostic-features");
   assert.strictEqual(text.direction, "inbound");
   assert.ok(text.inbound, "inbound should be present");
   assert.ok(text.inbound.promoted_from, "inbound should have promoted_from");
   assert.ok(
-    text.inbound.promoted_from.includes("meta-260602T1116Z-agent-inside-a-project-that-has-its-own-mcp-json-called-ck-u"),
+    text.inbound.promoted_from.includes("meta-260615T1148Z-the-runtime-agnostic-pattern-is-real-in-this-codebase-shim-n"),
     "promoted_from should include the originating finding"
   );
 });
 
 test("meta_state_relationships: outbound for rule entry", async () => {
+  // Plan 260715-1608 Phase 2: 9 rules had their origin patched to "" (the
+  // dangling origin ids no longer existed in the registry). Use a rule that
+  // still has a valid origin (rule-runtime-agnostic-features) to verify the
+  // outbound.origin path.
   const result = await metaStateRelationshipsTool.handler({
-    id: "rule-cold-session-test-must-pass-before-resolution",
+    id: "rule-runtime-agnostic-features",
     direction: "outbound",
   });
   const text = JSON.parse(result.content[0].text);
   assert.strictEqual(text.direction, "outbound");
   assert.ok(text.outbound, "outbound should be present");
-  assert.strictEqual(text.outbound.origin, "meta-260606T1656Z-cold-session-test-must-pass-before-resolution");
+  assert.strictEqual(text.outbound.origin, "meta-260615T1148Z-the-runtime-agnostic-pattern-is-real-in-this-codebase-shim-n");
 });
 
 test("meta_state_relationships: both directions for rule entry with refs", async () => {
+  // Plan 260715-1608 Phase 2: use a rule with intact origin + inbound refs.
   const result = await metaStateRelationshipsTool.handler({
-    id: "rule-cold-session-test-must-pass-before-resolution",
+    id: "rule-runtime-agnostic-features",
     direction: "both",
   });
   const text = JSON.parse(result.content[0].text);
   assert.strictEqual(text.direction, "both");
   assert.ok(text.outbound, "both should have outbound");
   assert.ok(text.inbound, "both should have inbound");
+});
+
+test("meta_state_relationships: rule with origin='' has no origin outbound", async () => {
+  // Plan 260715-1608 Phase 2: rules with origin patched to "" have no
+  // outbound `origin` ref (outboundRefsOf rule: `entry.origin ? [...] : []`).
+  // The rule may still have other outbound refs (e.g., applies_to_resolution);
+  // verify only the origin key is absent.
+  const result = await metaStateRelationshipsTool.handler({
+    id: "rule-cold-session-test-must-pass-before-resolution",
+    direction: "outbound",
+  });
+  const text = JSON.parse(result.content[0].text);
+  assert.strictEqual(text.id, "rule-cold-session-test-must-pass-before-resolution");
+  assert.strictEqual(text.outbound.origin, undefined, "outbound.origin must be undefined when origin is empty");
 });
 
 test("meta_state_relationships: inbound reopened_by for finding with reopens", async () => {
