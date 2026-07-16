@@ -25,14 +25,14 @@ describe("O(1) regression: one refresh re-grounds all anchored findings (F9)", (
       // all canonicalize to the same path key).
       writeFileSync(join(tempDir, "gate-logic.js"), "// original\n");
 
-      const report = (ref) => metaStateReportTool.handler({
+      const report = (ref, label) => metaStateReportTool.handler({
         category: "loop-anti-pattern", severity: "warning", affected_system: "gate-logic",
-        description: "O(1) regression anchored finding (min 20 chars).",
+        description: `O(1) regression anchored finding (${label}, min 20 chars).`,
         evidence_code_ref: ref, mechanism_check: true,
       });
-      await report("gate-logic.js");
-      await report("gate-logic.js:638");
-      await report("gate-logic.js#checkResolutionEvidence");
+      await report("gate-logic.js", "bare");
+      await report("gate-logic.js:638", "with-line");
+      await report("gate-logic.js#checkResolutionEvidence", "with-anchor");
 
       const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8");
       const ids = raw.trim().split("\n").map((l) => JSON.parse(l).id);

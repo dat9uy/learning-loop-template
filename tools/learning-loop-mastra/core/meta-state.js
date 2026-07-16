@@ -640,11 +640,24 @@ function enqueue(root, fn) {
 
 function _readAndParseRegistry(root) {
   // Dual-source reader: meta-state.jsonl (mutable table) + change-log.jsonl
-  // (true-append log of immutable change-logs). The projection is identity
-  // at Tier 1: concat both files, sort by created_at ascending so
-  // `meta_state_list` returns a chronological union. At Tier 2 the seam
-  // (in `read-registry-cache.js#readRegistryWithCache`) swaps to
-  // last-wins-by-max-version without touching this module.
+  // (true-append log of immutable change-logs).
+  //
+  // Tier 2 Phase A projection (last-wins-by-max-version):
+  //   1. Concat both files
+  //   2. Group by id
+  //   3. Pick max_by(version) per id (tie-break: later created_at wins)
+  //   4. Re-sort by created_at ascending for chronological output
+  //
+  // Pure-JS (Array.prototype.sort is V8-stable). Tier 1 used sort-only
+  // projection (identity for singleton-per-id); same output today since
+  // every id in the live registry is a singleton. Phase B write-path will
+  // produce multi-line-per-id (versioned append) where this projection
+  // becomes load-bearing.
+  //
+  // Pre-condition: every id has ≥1 non-null integer `version` (backfilled
+  // by tools/learning-loop-mastra/tools/handlers/scripts/backfill-versions.mjs
+  // before this projection goes live). Without the backfill, `max_by` would
+  // mispick on all-null-version groups (returns arbitrary group member).
   const metaStatePath = getRegistryPath(root);
   const changeLogPath = getChangeLogPath(root);
   const metaStateLines = existsSync(metaStatePath)
@@ -662,14 +675,39 @@ function _readAndParseRegistry(root) {
     withDefaults(entry); // Apply affected_system default for legacy entries
     return entry;
   });
-  // Post-concat sort by created_at ascending so callers see a chronological
-  // union (the two files are otherwise grouped by source, not by time).
-  parsed.sort((a, b) => {
+  // Last-wins-by-max-version dedupe (Phase A projection).
+  // Tie-break on equal version: later created_at wins (matches the tie-break
+  // in migrate-change-log-stream.mjs#dedupeById so script → reader is
+  // consistent). For null/missing version, treat as 0 — backfill guarantees
+  // no group is all-null-version post-Phase-A.
+  const byId = new Map();
+  for (const entry of parsed) {
+    const prior = byId.get(entry.id);
+    if (!prior) {
+      byId.set(entry.id, entry);
+      continue;
+    }
+    const priorV = prior.version ?? 0;
+    const nextV = entry.version ?? 0;
+    if (nextV > priorV) {
+      byId.set(entry.id, entry);
+      continue;
+    }
+    if (nextV === priorV) {
+      const priorT = prior.created_at ?? "";
+      const nextT = entry.created_at ?? "";
+      if (nextT > priorT) byId.set(entry.id, entry);
+    }
+    // else: keep prior
+  }
+  const projected = [...byId.values()];
+  // Re-sort by created_at ascending so callers see a chronological union.
+  projected.sort((a, b) => {
     const ca = a.created_at ?? "";
     const cb = b.created_at ?? "";
     return ca < cb ? -1 : ca > cb ? 1 : 0;
   });
-  return parsed;
+  return projected;
 }
 
 /**

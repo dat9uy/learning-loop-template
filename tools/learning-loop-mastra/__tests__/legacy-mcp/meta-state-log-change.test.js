@@ -284,10 +284,25 @@ describe("meta_state_log_change tool", () => {
       assert.strictEqual(parsed2.cache_hit, undefined);
 
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 2, `expected 2 entries, got ${entries.length}`);
+      // Phase A (Tier 2): the read projection now dedupes by id (last-wins-by-max-version).
+      // Two log-change calls within the same minute generate the same id (minute-resolution
+      // timestamp in `generateId`), so the projection surfaces 1 entry while the underlying
+      // change-log.jsonl file has 2 lines. Verify the file (not the projection) has both
+      // persisted entries — that's the actual cache-skip invariant.
+      const changeLogPath = join(tempDir, "change-log.jsonl");
+      const changeLogRaw = readFileSync(changeLogPath, "utf8");
+      const changeLogLines = changeLogRaw.split("\n").filter((l) => l.trim() !== "");
+      assert.strictEqual(
+        changeLogLines.length,
+        2,
+        `expected 2 lines persisted to change-log.jsonl, got ${changeLogLines.length}`,
+      );
+      assert.strictEqual(entries.length, 1, `projection dedupes same-id lines: got ${entries.length} entry`);
+      const parsed1FromFile = JSON.parse(changeLogLines[0]);
+      const parsed2FromFile = JSON.parse(changeLogLines[1]);
       assert.notStrictEqual(
-        entries[0].created_at,
-        entries[1].created_at,
+        parsed1FromFile.created_at,
+        parsed2FromFile.created_at,
         "fresh created_at per call (cache would have skipped write)",
       );
     } finally {
