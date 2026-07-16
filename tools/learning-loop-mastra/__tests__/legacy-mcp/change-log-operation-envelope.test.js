@@ -150,10 +150,16 @@ test("(e) meta_state_batch accepts envelope; auto-emits envelope-annotated chang
     // pre_count.total includes the 2 seeded findings + any earlier artifacts
     // already in the registry (per-test tempRoot starts empty, so total = 2).
     assert.equal(envelopeLog.operation_envelope.pre_count.total, 2);
-    // post_count.total = pre - 1 deleted = 1
-    assert.equal(envelopeLog.operation_envelope.post_count.total, 1);
+    // Plan 260716-1101 Tier 2 Phase B: hard-delete is GONE — the delete op
+    // appends an archived tombstone (tombstone_kind: "delete") with the same
+    // entry_kind as the target. The in-memory entries[] projection view
+    // counts the tombstone as a `finding` entry; total stays at 2.
+    // The semantic delta surfaces via by_status: open drops 2 → 1, archived
+    // rises 0 → 1.
+    assert.equal(envelopeLog.operation_envelope.post_count.total, 2, "tombstone keeps total at 2 (hard-delete gone)");
     assert.equal(envelopeLog.operation_envelope.pre_count.by_kind.finding, 2);
-    assert.equal(envelopeLog.operation_envelope.post_count.by_kind.finding, 1);
+    assert.equal(envelopeLog.operation_envelope.post_count.by_kind.finding, 2, "tombstone has same entry_kind as target");
+    assert.equal(envelopeLog.operation_envelope.post_count.by_status.archived, 1, "tombstone flips status to archived");
   });
 });
 

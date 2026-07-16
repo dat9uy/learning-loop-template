@@ -51,6 +51,12 @@ import { stripEvidenceAnchor } from "./gate-logic.js";
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
 // Pre-state-only — see core/operation-invariant.js for the architecture.
 import { assertinvariant } from "./operation-invariant.js";
+// Plan 260716-1101 Tier 2 Phase B: true-append write helper + canonical
+// comparator. `trueAppendAtomic` replaces the read-all → full-rewrite pattern
+// with O_APPEND + fsync'd writes (H1, RT). `canonicalize` powers the no-op
+// short-circuit that resolves meta-260715T2311Z-gratuitous-mutations (C2, RT).
+import { trueAppendAtomic as trueAppendAtomicRaw } from "./registry-append-atomic.js";
+import { entriesEqual } from "./canonical-compare.js";
 
 // === Registry-write helpers (inlined from former core/registry-writes.js) ===
 // Single source of truth for the meta-state registry's on-disk path. Kept as
@@ -137,12 +143,18 @@ function assertNoChangeLogLeak(entries, root) {
 }
 
 function appendRegistryEntryAtomic(root, entry) {
+  // Plan 260716-1101 Tier 2 Phase B: true-append (no read-all → full rewrite).
+  // The previous implementation read the whole file, pushed, and full-rewrote;
+  // that's unsafe for parallel-branch merges and is replaced by O_APPEND +
+  // fsync via trueAppendAtomic. New entries start at version 0; later patches
+  // bump to version N+1 (last-wins-by-max-version per Phase A projection).
+  //
+  // Pre-condition: caller MUST hold `withRegistryLock(root)`. writeEntry
+  // acquires it via the enqueue queue.
   const path = getRegistryPath(root);
-  const lines = existsSync(path)
-    ? readFileSync(path, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l))
-    : [];
-  lines.push(entry);
-  persistRegistryAtomic(lines, root);
+  const versionedEntry = { ...entry, version: entry.version ?? 0 };
+  trueAppendAtomicRaw(root, path, versionedEntry);
+  invalidateCache(root);
 }
 
 /**
@@ -157,10 +169,17 @@ function appendRegistryEntryAtomic(root, entry) {
  * write to change-log.jsonl must bust the cache so the next read sees the
  * new entry. Without invalidation, a stale cached union could omit the
  * new change-log.
+ *
+ * Plan 260716-1101 Tier 2 Phase B: also uses `trueAppendAtomic` so the
+ * change-log stream benefits from explicit fsync. Process kill mid-write
+ * was previously the partial-last-line crash class (RT H1); fsync closes it.
  */
 function appendChangeLogEntryAtomic(root, entry) {
   const path = getChangeLogPath(root);
-  appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
+  // trueAppendAtomic enforces the change-log-leak guard; here we pass the
+  // change-log file path so the guard no-ops (path doesn't end with
+  // meta-state.jsonl — see registry-append-atomic.js#assertNoChangeLogLeak).
+  trueAppendAtomicRaw(root, path, entry);
   invalidateCache(root);
 }
 
@@ -980,10 +999,23 @@ export function writeEntry(root, entry) {
 
 /**
  * Atomically update an entry by id, applying a patch object.
- * Also compacts terminal entries older than 7 days.
- * Supports optional compare-and-swap via _expected_version in patch.
- * Returns true if entry found and updated, null if not found,
- * or "version_mismatch" if CAS check fails.
+ * Plan 260716-1101 Tier 2 Phase B: true-append (no full rewrite). The patch
+ * is applied to a COPY of the existing entry; if the patched copy is
+ * canonically equal to the existing entry (canonical-comparator short-circuit,
+ * resolves meta-260715T2311Z-gratuitous-mutations), no line is appended. If a
+ * real change is detected, a new highest-version line is appended to
+ * `meta-state.jsonl` via `trueAppendAtomic`; the original line is never
+ * modified. Inline compaction (terminal entries older than 7 days) is removed
+ * — Phase C ships `compact-registry.sh --full` as the canonical compaction
+ * path. CAS via `_expected_version` is unchanged.
+ *
+ * Returns:
+ *   - `true` if the patch produced a real change and a line was appended
+ *   - `true` if the patch was a no-op (canonical-equal) — semantic no-op success
+ *   - `null` if the entry id was not found
+ *   - `"version_mismatch"` if CAS check fails
+ *   - `"validation_failed"` if the patch fails schema validation
+ *   - `"immutable_field"` if the wrapper rejects the patch
  */
 export function updateEntry(root, id, patch) {
   return enqueue(root, () =>
@@ -993,7 +1025,9 @@ export function updateEntry(root, id, patch) {
       let currentVersion = 0;
       let existingEntry = null;
 
-      // Check id exists before any mutation
+      // Check id exists before any mutation. readRegistry returns the
+      // max-version line per id (Phase A projection); this is the canonical
+      // "existing" entry for the short-circuit compare.
       for (const entry of entries) {
         if (entry.id === id) {
           found = true;
@@ -1019,21 +1053,12 @@ export function updateEntry(root, id, patch) {
 
       // Plan 260712-0724 (Implementation 3): Fix B's `delete cleanPatch.entry_kind`
       // defense runs FIRST so the wrapper sees a patch that has already been
-      // sanitized. The wrapper pre-condition check then operates on the
-      // post-Fix-B state: any caller-supplied entry_kind was stripped by Fix B,
-      // so the wrapper's pre-condition (entry_kind either absent or matching
-      // existing) holds for the canonical "smuggled entry_kind + legitimate
-      // fields" case that Fix B is designed to allow. Defense-in-depth: Fix B
-      // strips; wrapper observes the cleaned patch; the patch's legitimate
-      // fields still apply via Object.assign below.
+      // sanitized.
       const preStripPatch = { ...patch };
       delete preStripPatch.entry_kind;
 
       // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-      // pre-state-only wrapper on the post-Fix-B patch. Pre-condition: any
-      // remaining entry_kind in the cleaned patch must match the existing
-      // entry's entry_kind (which is now a tautology since Fix B stripped
-      // it, but the wrapper is the canonical guard for non-Fix-B callers).
+      // pre-state-only wrapper on the post-Fix-B patch.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
         {
@@ -1061,46 +1086,54 @@ export function updateEntry(root, id, patch) {
         }
       }
 
-      const now = Date.now();
+      // Compute patched entry on a copy so the existing entry (the projection's
+      // canonical "current" line) stays unmodified. Strip the CAS + identity
+      // fields from the patch before applying.
+      const cleanPatch = { ...patch };
+      delete cleanPatch._expected_version;
+      delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
+      delete cleanPatch.constructor;  // defense-in-depth
+      delete cleanPatch.entry_kind;   // identity invariant — never patchable
 
-      // Compaction invariant: change-log entries are never compacted.
-      // They are immutable audit log with status="active" (terminal statuses
-      // like "auto-resolved" don't apply). The explicit entry_kind guard below
-      // enforces this. If a future change-log subtype evolves to have a
-      // terminal status, this invariant must be re-verified.
-      const updated = entries.filter((entry) => {
-        const age = now - new Date(entry.created_at).getTime();
-        if (entry.entry_kind !== "change-log" && TERMINAL_STATUSES.has(entry.status) && age > COMPACTION_AGE_MS) {
-          return false; // compact old terminal entries
-        }
-        return true;
-      });
+      // Phase B H9 precondition: applyDefaults before canonicalize so legacy
+      // entries lacking schema-defaulted fields canonicalize identically to
+      // post-default reads.
+      const patched = withDefaults({ ...existingEntry, ...cleanPatch });
 
-      for (const entry of updated) {
-        if (entry.id === id) {
-          const cleanPatch = { ...patch };
-          delete cleanPatch._expected_version;
-          delete cleanPatch.__proto__;    // .strict() does NOT reject __proto__ via JSON.parse
-          delete cleanPatch.constructor;  // defense-in-depth
-          delete cleanPatch.entry_kind;   // identity invariant — never patchable (Plan 260712-0109 Fix B; finding meta-260712T0053Z)
-          Object.assign(entry, cleanPatch);
-          entry.version = (entry.version ?? 0) + 1;
-        }
+      // Plan 260716-1101 Tier 2 Phase B: NO-OP SHORT-CIRCUIT. Resolves
+      // meta-260715T2311Z-gratuitous-mutations (a no-op update previously
+      // bumped the version and forced a full rewrite). The canonical
+      // comparator is sorted-keys + set-semantics on arrays so reordering a
+      // multi-element array doesn't falsely trigger a bump.
+      if (entriesEqual(patched, existingEntry)) {
+        return true; // no append, no version bump, no file change
       }
 
-      // Plan 260715-0801 Tier 1 Phase 2: tableOnly projects the union back to
-      // the table-set so change-logs from change-log.jsonl don't leak into
-      // meta-state.jsonl on this write. assertNoChangeLogLeak enforces the
-      // invariant at every persist site.
-      persistRegistryAtomic(tableOnly(updated, root), root);
+      // Real change detected: append a new highest-version line.
+      const newVersion = currentVersion + 1;
+      const newEntry = { ...patched, version: newVersion };
+      trueAppendAtomicRaw(root, getRegistryPath(root), newEntry);
+      invalidateCache(root);
       return true;
     })
   );
 }
 
 /**
- * Atomically archive an entry by id. Sets status=archived and adds
- * archived_at, archived_by, archived_reason fields.
+ * Atomically archive an entry by id. Plan 260716-1101 Tier 2 Phase B:
+ * true-append an archived tombstone line with `tombstone_kind: "archive"`.
+ * The original line is never modified. The projection's
+ * last-wins-by-max-version picks the tombstone line for the id; the
+ * `meta_state_list` tool layer filters `status: "archived"` from the
+ * default response (the projection alone returns the max-version entry;
+ * the list-tool layer applies the filter — see
+ * tools/learning-loop-mastra/tools/handlers/meta-state-list-tool.js).
+ *
+ * Tombstone fields: status, archived_at, archived_by, archived_reason,
+ * tombstone_kind (the discriminator — see RT H6). The
+ * `archived_reason` is the user-supplied free-form string; the
+ * `tombstone_kind` discriminator is the canonical enum used by all
+ * post-Phase-B reads.
  */
 export function archiveEntry(root, id, reason, archivedBy) {
   return enqueue(root, () =>
@@ -1109,47 +1142,57 @@ export function archiveEntry(root, id, reason, archivedBy) {
       const idx = entries.findIndex((e) => e.id === id);
       if (idx === -1) return { archived: false, reason: "not_found", id };
       // Core-layer immutability guard: change-log entries are NEVER archived.
-      // They live forever in the change-log stream; that's what makes
-      // `merge=union` safe. Status flipping an entry from `active` → `archived`
-      // is exactly the kind of in-place mutation that would corrupt the union.
       if (entries[idx].entry_kind === "change-log") {
         throw new Error("change_log_immutable: change-log entries cannot be archived");
       }
       // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-      // wrapper enforces the already-archived pre-condition (moved from the
-      // inline check that used to live here). The wrapper fires BEFORE
-      // mutation.
+      // wrapper enforces the already-archived pre-condition.
       if (!(await assertNotArchived(entries, idx, root, id))) {
         return { archived: false, reason: "already_archived", id };
       }
-      entries[idx] = {
-        ...entries[idx],
+      const archivedAt = new Date().toISOString();
+      const existingEntry = entries[idx];
+      const currentVersion = existingEntry.version ?? 0;
+      const tombstone = {
+        ...existingEntry,
         status: "archived",
-        archived_at: new Date().toISOString(),
+        archived_at: archivedAt,
         archived_by: archivedBy,
         archived_reason: reason,
+        tombstone_kind: "archive",
+        version: currentVersion + 1,
       };
-      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
-      persistRegistryAtomic(tableOnly(entries, root), root);
-      return { archived: true, id, archived_at: entries[idx].archived_at };
+      trueAppendAtomicRaw(root, getRegistryPath(root), tombstone);
+      invalidateCache(root);
+      return { archived: true, id, archived_at: archivedAt };
     })
   );
 }
 
 /**
  * Atomically delete an entry by id (soft CRUD enforcement).
+ *
+ * Plan 260716-1101 Tier 2 Phase B: hard-delete is GONE (union-safety forbids
+ * line removal — `merge=union` keeps every line from both sides; removing a
+ * line on one side and not the other is a conflict, not a delete). The
+ * delete operation now appends a tombstone with `tombstone_kind: "delete"`
+ * (the discriminator that distinguishes "user requested delete" from
+ * "operator archived"). The projection's last-wins-by-max-version picks the
+ * tombstone; the list-tool layer hides it.
+ *
+ * Backward-compat: pre-Phase-B callers expecting `entries.splice(idx, 1)`
+ * behavior see the projection hide the tombstone. The pre-batch byte-snapshot
+ * rollback discipline still works (we capture file bytes pre-batch, not
+ * registry shape).
  */
-export function deleteEntry(root, id) {
+export function deleteEntry(root, id, reason) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
       const entries = readRegistry(root);
       const targetEntry = entries.find((e) => e.id === id);
       if (!targetEntry) return { deleted: false, reason: "not_found", id };
       // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-      // wrapper enforces the change-log-immutability pre-condition. Change
-      // logs are immutable audit log; deletion is forbidden via mutation.
-      // Closes Red Team Finding 3's gap on `case "delete"` having no
-      // pre-state at the batch path.
+      // wrapper enforces the change-log-immutability pre-condition.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
         {
@@ -1168,9 +1211,21 @@ export function deleteEntry(root, id) {
       if (!invariantResult.ok) {
         return { deleted: false, reason: "change_log_immutable", id };
       }
-      const filtered = entries.filter((e) => e.id !== id);
-      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
-      persistRegistryAtomic(tableOnly(filtered, root), root);
+      const archivedAt = new Date().toISOString();
+      const currentVersion = targetEntry.version ?? 0;
+      // RT H6 discriminator: tombstone_kind:"delete" distinguishes from
+      // tombstone_kind:"archive" emitted by archiveEntry.
+      const tombstone = {
+        ...targetEntry,
+        status: "archived",
+        archived_at: archivedAt,
+        archived_by: "operator",
+        archived_reason: `deleted: ${reason || "no reason given"}`,
+        tombstone_kind: "delete",
+        version: currentVersion + 1,
+      };
+      trueAppendAtomicRaw(root, getRegistryPath(root), tombstone);
+      invalidateCache(root);
       return { deleted: true, id };
     })
   );
@@ -1225,15 +1280,17 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
         return { shipped: false, reason: "invalid_status", id, current_status: entry.status };
       }
       const shippedAt = new Date().toISOString();
-      entries[idx] = {
+      // Plan 260716-1101 Tier 2 Phase B: true-append (no full rewrite).
+      // The shipped line becomes the new max-version per Phase A projection.
+      const tombstone = {
         ...entry,
         status: "inactive",
         shipped_in_plan: plan,
         shipped_at: shippedAt,
         version: currentVersion + 1,
       };
-      // Plan 260715-0801 Tier 1 Phase 2: see updateEntry for the tableOnly rationale.
-      persistRegistryAtomic(tableOnly(entries, root), root);
+      trueAppendAtomicRaw(root, getRegistryPath(root), tombstone);
+      invalidateCache(root);
       return {
         shipped: true,
         id,
@@ -1259,15 +1316,24 @@ const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
  * Atomically apply a batch of meta-state operations.
  * All-or-nothing rollback on any failure. Single cache invalidation.
  *
+ * Plan 260716-1101 Tier 2 Phase B: true-append per op. Each mutation op
+ * (`update`/`archive`/`delete`) appends a new highest-version line to
+ * `meta-state.jsonl` instead of mutating-in-place + full-rewrite. The
+ * no-op short-circuit (canonical comparator) drops updates that produce
+ * no field change. `case "delete"` now routes through `deleteEntry` —
+ * the splice is replaced by an `archived` tombstone append with
+ * `tombstone_kind: "delete"`. Change-log writes still true-append to
+ * `change-log.jsonl`.
+ *
+ * The all-or-nothing rollback discipline is preserved: ops are validated
+ * one-by-one, building `pendingMetaStateAppends` and `pendingChangeLogAppends`
+ *; if any op throws we restore `preBatchContent` byte-for-byte and return
+ * failure. Applies happen AFTER all validations succeed.
+ *
  * Plan 260712-0300 Phase 2: optional `envelope` argument. When present, after a
  * successful batch, an envelope-annotated change-log entry is auto-emitted with
  * pre_count/post_count computed from the registry before/after the batch and
  * content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
- * Auto-emit ordering (operator-confirmed, same as Plan 260712-0109):
- *   1. build envelope in-memory AFTER the ops loop completes successfully
- *   2. writeFileSync + renameSync + invalidateCache
- *   3. assertWriteVisible — re-read registry; on silent-persistence-fail,
- *      restore preBatchContent and return change_log_not_visible.
  */
 export function metaStateBatch(root, operations, envelope) {
   if (!Array.isArray(operations)) {
@@ -1281,16 +1347,24 @@ export function metaStateBatch(root, operations, envelope) {
       const path = getRegistryPath(root);
       const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
 
-      let entries = readRegistry(root);
-      // Plan 260715-0801 Tier 1 Phase 2: change-log writes (op:"write" with
-      // entry_kind=change-log) are queued here and appended to change-log.jsonl
-      // AFTER the table persist. Queueing prevents a mid-batch op failure from
-      // leaving orphan change-logs behind (the queue is discarded on rollback).
+      const entries = readRegistry(root);
+      // Phase B: pendingMetaStateAppends collects one new versioned line per
+      // mutation op (no in-place mutation, no full rewrite). Applies happen
+      // AFTER all ops validate; on failure the byte-snapshot rollback restores
+      // the pre-batch file.
+      //
+      // IMPORTANT: each queued append is ALSO reflected into `entries[]` so
+      // subsequent ops in the same batch see the post-mutation state (the
+      // projection view, not the disk file). Without this, an op that
+      // creates-then-patches an entry in the same batch would fail at the
+      // lookup step.
+      const pendingMetaStateAppends = [];
+      // change-log writes (op:"write" with entry_kind=change-log) — true-append
+      // to change-log.jsonl after all validations succeed. Queueing prevents
+      // orphan change-logs on mid-batch failure.
       const pendingChangeLogAppends = [];
       // Plan 260712-0300 Phase 2: snapshot the registry BEFORE the batch so
-      // the envelope's pre_count reflects actual pre-batch state. Only the
-      // fields needed for the count record (id, status, entry_kind) are
-      // carried forward to keep the helper's input compact.
+      // the envelope's pre_count reflects actual pre-batch state.
       const preRegistrySnapshot = envelope
         ? entries.map((e) => ({ id: e.id, status: e.status, entry_kind: e.entry_kind }))
         : null;
@@ -1309,10 +1383,7 @@ export function metaStateBatch(root, operations, envelope) {
           switch (op.op) {
             case "write": {
               // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-              // wrapper at the batch write-op boundary catches caller-supplied
-              // envelopes on change-log writes (the forge-vector surface).
-              // The same pre-condition is enforced at writeEntry (canonical
-              // surface); this is the batch-path redundant defense.
+              // wrapper at the batch write-op boundary.
               const writeInvariant = await assertinvariant(
                 () => Promise.resolve({ ok: true }),
                 {
@@ -1339,12 +1410,16 @@ export function metaStateBatch(root, operations, envelope) {
               // Plan 260715-0801 Tier 1 Phase 2: dispatch change-log writes
               // to change-log.jsonl (true-append). Queue them here; append
               // happens AFTER the table persist so a mid-batch failure
-              // doesn't leave orphan change-logs behind. Non-change-log
-              // entries continue through the entries[] push as before.
+              // doesn't leave orphan change-logs behind.
               if (validation.data.entry_kind === "change-log") {
                 pendingChangeLogAppends.push(validation.data);
               } else {
-                entries.push(validation.data);
+                // Phase B: new entries start at version 0; the projection
+                // dedupes to max-version per id. Also reflect into entries[]
+                // so subsequent ops in the same batch see the new state.
+                const versionedEntry = { ...validation.data, version: validation.data.version ?? 0 };
+                pendingMetaStateAppends.push(versionedEntry);
+                entries.push(versionedEntry);
               }
               break;
             }
@@ -1355,22 +1430,13 @@ export function metaStateBatch(root, operations, envelope) {
                 const current = entries[idx].version ?? 0;
                 if (current !== op._expected_version) throw new Error("version_mismatch");
               }
-              // Change-log immutability guard: `Object.assign` would mutate the
-              // change-log in `entries[]`, but the table persist below strips
-              // change-logs before writing `meta-state.jsonl`, so the mutation
-              // is silently discarded while `applied: N` reports success. Reject
-              // explicitly (shared helper, same contract as the `delete` op).
+              // Change-log immutability guard.
               if (!(await assertNotChangeLog(entries, idx, root, op.id))) {
                 throw new Error("change_log_immutable");
               }
               // Strip op discriminator + lookup id + CAS version before checking
-              // the deny-list and applying. Without this, the lookup-key `id` and
-              // the op discriminator `op` would falsely trigger the deny-list.
+              // the deny-list and applying.
               const { op: _op, id: _id, _expected_version, ...patch } = op;
-              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-              // wrapper enforces the entry_kind pre-condition via pre-state
-              // context. The deny-list below is the after-the-fact guard for
-              // other identity fields and stays unchanged.
               const updateInvariant = await assertinvariant(
                 () => Promise.resolve({ ok: true }),
                 {
@@ -1391,58 +1457,97 @@ export function metaStateBatch(root, operations, envelope) {
                 err.denied_fields = ["entry_kind"];
                 throw err;
               }
-              // Enforce the same IMMUTABLE_PATCH_FIELDS deny-list as meta_state_patch
-              // so the batch tool cannot be used to bypass identity/audit-trail
-              // invariants (e.g. pinning a finding's code_fingerprint to a stale hash).
-              // Throws to roll back the entire batch (all-or-nothing semantics).
+              // Enforce IMMUTABLE_PATCH_FIELDS deny-list.
               const denied = Object.keys(patch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
               if (denied.length > 0) {
                 const err = new Error("immutable_field");
                 err.denied_fields = denied;
                 throw err;
               }
-              Object.assign(entries[idx], patch);
-              entries[idx].version = (entries[idx].version ?? 0) + 1;
+              // Phase B: compute patched entry on a copy; canonical-comparator
+              // short-circuit drops no-op updates; otherwise queue the new
+              // highest-version line for true-append AND reflect into entries[]
+              // so subsequent ops in the same batch see the new state.
+              const existingEntry = entries[idx];
+              const cleanPatch = { ...patch };
+              delete cleanPatch.__proto__;
+              delete cleanPatch.constructor;
+              delete cleanPatch.entry_kind;
+              const patched = withDefaults({ ...existingEntry, ...cleanPatch });
+              if (!entriesEqual(patched, existingEntry)) {
+                const newEntry = {
+                  ...patched,
+                  version: (existingEntry.version ?? 0) + 1,
+                };
+                pendingMetaStateAppends.push(newEntry);
+                // Replace the in-memory entries[] entry so subsequent ops
+                // see the new max-version (the projection picks the
+                // max-version line per id).
+                entries[idx] = newEntry;
+              }
               break;
             }
             case "delete": {
+              // Phase B (RT H3): case "delete" now routes through deleteEntry —
+              // appends an archived tombstone with tombstone_kind: "delete".
+              // The function splice is gone; the tombstone is the audit-visible
+              // record. Pre-batch byte-snapshot rollback still works (we
+              // capture file bytes, not registry shape).
               const idx = entries.findIndex((e) => e.id === op.id);
               if (idx === -1) throw new Error("not_found");
-              // Change-log immutability pre-condition (shared helper).
               if (!(await assertNotChangeLog(entries, idx, root, op.id))) {
                 throw new Error("change_log_immutable");
               }
-              entries.splice(idx, 1);
+              const targetEntry = entries[idx];
+              const archivedAt = new Date().toISOString();
+              const deleteTombstone = {
+                ...targetEntry,
+                status: "archived",
+                archived_at: archivedAt,
+                archived_by: op.archived_by ?? "operator",
+                archived_reason: `deleted: ${op.reason ?? "no reason given"}`,
+                tombstone_kind: "delete",
+                version: (targetEntry.version ?? 0) + 1,
+              };
+              pendingMetaStateAppends.push(deleteTombstone);
+              // Reflect into entries[] for subsequent ops (the tombstone
+              // becomes the max-version line per id).
+              entries[idx] = deleteTombstone;
               break;
             }
             case "archive": {
               const idx = entries.findIndex((e) => e.id === op.id);
               if (idx === -1) throw new Error("not_found");
-              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
-              // wrapper enforces the already-archived pre-condition.
               if (!(await assertNotArchived(entries, idx, root, op.id))) {
                 const err = new Error("already_archived");
                 throw err;
               }
-              entries[idx] = {
-                ...entries[idx],
+              const existingEntry = entries[idx];
+              const archiveTombstone = {
+                ...existingEntry,
                 status: "archived",
                 archived_at: new Date().toISOString(),
                 archived_by: op.archived_by ?? "operator",
                 archived_reason: op.reason ?? "batch_archive",
+                tombstone_kind: "archive",
+                version: (existingEntry.version ?? 0) + 1,
               };
+              pendingMetaStateAppends.push(archiveTombstone);
+              entries[idx] = archiveTombstone;
               break;
             }
           }
         } catch (err) {
+          // Rollback: restore pre-batch byte content. We haven't appended
+          // anything yet (the apply happens AFTER the loop), so this is a
+          // no-op restore (the file is unchanged) — but it clears any stale
+          // cache state.
           if (preBatchContent) {
             writeFileSync(path, preBatchContent, "utf8");
           } else if (existsSync(path)) {
             unlinkSync(path);
           }
           invalidateCache(root);
-          // Pass through extra context (e.g. denied_fields from immutable_field)
-          // so callers can diagnose which fields triggered the rollback.
           const extra = {};
           if (err.denied_fields) extra.denied_fields = err.denied_fields;
           return { applied: 0, failed_at: i, reason: err.message, op, ...extra };
@@ -1450,38 +1555,18 @@ export function metaStateBatch(root, operations, envelope) {
       }
 
       // Plan 260712-0300 Phase 2: build the envelope-annotated change-log entry
-      // BEFORE the file write so the rename + assertWriteVisible cycle sees
-      // both the batch mutations AND the auto-emit as one atomic write. This
-      // ordering (change-log-after-batch, operator-confirmed same as Plan
-      // 260712-0109) eliminates any audit/reality divergence window.
-      //
-      // Plan 260715-0801 Tier 1 Phase 2: auto-emit lands in change-log.jsonl
-      // (true append) instead of being mixed into the table-write set. The
-      // table persist projects `tableOnly(entries)` so change-logs from
-      // change-log.jsonl can't leak back into meta-state.jsonl on this path
-      // (assertNoChangeLogLeak enforces the invariant).
+      // AFTER all ops validate (so a mid-batch throw doesn't leak an auto-emit).
       let autoEmitId = null;
       let autoEmitEntry = null;
       if (envelope) {
-        // Generate auto-emit id (red-team finding 8): ISO timestamp + 6 random
-        // hex chars. Deterministic slug collides when two batches share a target;
-        // the random suffix gives sub-second sortability + collision resistance.
-        autoEmitId = `meta-${new Date().toISOString().replace(/[-:.]/g, "")}-${Math.random().toString(16).slice(2, 8)}`;
-        // Duplicate-id guard: if the random suffix collides with an existing
-        // entry id (astronomically rare at 6 hex but explicit is better),
-        // throw and roll back.
-        if (entries.some((e) => e.id === autoEmitId)) {
-          const err = new Error("auto_emit_id_collision");
-          err.id = autoEmitId;
-          throw err;
-        }
+        // Compute postRegistrySnapshot from in-memory entries (mutated
+        // in-place for the in-memory view). For Phase B true-append the
+        // post-state is still derivable from entries[].
         const postRegistrySnapshot = entries.map((e) => ({
           id: e.id,
           status: e.status,
           entry_kind: e.entry_kind,
         }));
-        // buildEnvelope throws `kind_op_incompatible` on kind × op-type mismatch
-        // (red-team finding 9); the throw rolls the batch back to preBatchContent.
         const builtEnvelope = buildEnvelope({
           kind: envelope.kind,
           target: envelope.target,
@@ -1489,6 +1574,12 @@ export function metaStateBatch(root, operations, envelope) {
           preRegistry: preRegistrySnapshot,
           postRegistry: postRegistrySnapshot,
         });
+        autoEmitId = `meta-${new Date().toISOString().replace(/[-:.]/g, "")}-${Math.random().toString(16).slice(2, 8)}`;
+        if (entries.some((e) => e.id === autoEmitId)) {
+          const err = new Error("auto_emit_id_collision");
+          err.id = autoEmitId;
+          throw err;
+        }
         autoEmitEntry = {
           id: autoEmitId,
           entry_kind: "change-log",
@@ -1503,35 +1594,41 @@ export function metaStateBatch(root, operations, envelope) {
         };
       }
 
-      // Plan 260715-0801 Tier 1 Phase 2: tableOnly projection so change-logs
-      // (loaded by the read chokepoint from change-log.jsonl) cannot leak back
-      // into meta-state.jsonl. Persist routes through persistRegistryAtomic so
-      // assertNoChangeLogLeak enforces the invariant; behavior-equivalent
-      // pre-split because no change-log.jsonl exists yet (guard no-ops).
-      persistRegistryAtomic(tableOnly(entries, root), root);
-
-      // Plan 260715-0801 Tier 1 Phase 2: auto-emit routes through
-      // appendChangeLogEntryAtomic (true-append to change-log.jsonl). The
-      // helper invalidates the cache so the assertWriteVisible read sees it.
-      if (autoEmitEntry) {
-        appendChangeLogEntryAtomic(root, autoEmitEntry);
+      // Phase B: APPLY the queued appends. If any throw (e.g. fsync failure
+      // mid-append), rollback to preBatchContent. Since we fsync'd each append
+      // individually, the partial state is `preBatchContent + some appends`;
+      // we truncate to preBatchContent on failure.
+      try {
+        for (const entry of pendingMetaStateAppends) {
+          trueAppendAtomicRaw(root, path, entry);
+        }
+      } catch (err) {
+        // Rollback the partial appends.
+        if (preBatchContent) {
+          writeFileSync(path, preBatchContent, "utf8");
+        } else if (existsSync(path)) {
+          unlinkSync(path);
+        }
+        invalidateCache(root);
+        return { applied: 0, failed_at: null, reason: "append_failed", error: err.message };
       }
 
-      // Plan 260715-0801 Tier 1 Phase 2: append queued change-log writes
-      // from op:"write" ops (see case "write" branch above). These are
-      // routed to change-log.jsonl alongside any auto-emit. The pending
-      // list captured each change-log BEFORE the table persist; if any
-      // append throws we surface it as change_log_not_visible to fail loud.
+      // Phase B: true-append change-log writes (op:"write") AFTER the table
+      // appends so the failure rollback can truncate cleanly.
       for (const cl of pendingChangeLogAppends) {
         appendChangeLogEntryAtomic(root, cl);
       }
 
+      // Plan 260712-0300 Phase 2: auto-emit routes through
+      // appendChangeLogEntryAtomic (true-append to change-log.jsonl).
+      if (autoEmitEntry) {
+        appendChangeLogEntryAtomic(root, autoEmitEntry);
+      }
+
+      invalidateCache(root);
+
       // Plan 260712-0300 Phase 2 (red-team finding 1): assertWriteVisible after
-      // the writes complete. Re-read the union (chokepoint now unions both
-      // files); if any expected change-log (auto-emit or queued op:"write")
-      // is not present (silent-persistence-fail class), restore preBatchContent
-      // and return a structured failure. Same pattern as meta_state_log_change
-      // PR #50.
+      // the writes complete.
       const allExpectedChangeLogIds = (envelope && autoEmitId ? [autoEmitId] : [])
         .concat(pendingChangeLogAppends.map((cl) => cl.id));
       if (allExpectedChangeLogIds.length > 0) {

@@ -180,13 +180,18 @@ describe("Phase 1: terminal compaction invariant", () => {
     };
     await writeEntry(root, thirdEntry);
 
-    // Update the third entry — this triggers the compaction filter.
-    await updateEntry(root, thirdEntry.id, { status: "open" });
+    // Plan 260716-1101 Tier 2 Phase B: updateEntry no longer compacts inline
+    // (true-append only). Compaction is now Phase C's `compact-registry.sh
+    // --full` responsibility. We verify the new Phase B invariant: the old
+    // superseded entry is NOT compacted by updateEntry (still in registry),
+    // and the projection returns it as-is (no in-place filtering).
+    await updateEntry(root, thirdEntry.id, { description: "Touch to invoke Phase B write path" });
 
-    // After updateEntry, the old superseded entry should be compacted away
+    // Phase B: superseded entry stays in the file; compaction is Phase C.
     const after = readRegistry(root);
     const stillThere = after.find((e) => e.id === oldId);
-    assert.strictEqual(stillThere, undefined, "superseded entry older than 7 days should be compacted");
+    assert.ok(stillThere, "Phase B: superseded entry stays in registry (compaction is Phase C)");
+    assert.equal(stillThere.status, "superseded", "status preserved across updateEntry on a different entry");
   });
 });
 
