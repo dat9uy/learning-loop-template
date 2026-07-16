@@ -21,10 +21,15 @@ short-circuit + tombstone delete — without yet flipping `.gitattributes`
 
 2. **`core/registry-append-atomic.js`** — `trueAppendAtomic(root, path, entry)`.
    `openSync(O_APPEND | O_CREAT)` → `writeSync(JSON.stringify(entry)+"\n")`
-   → `fsyncSync` → `closeSync`. Closes RT H1 (partial-last-line crash on
-   process kill). `assertNoChangeLogLeak` moved into this helper (RT H4).
-   Shared by `appendRegistryEntryAtomic` (meta-state.jsonl) and
-   `appendChangeLogEntryAtomic` (change-log.jsonl — also benefits from fsync).
+   → `fsyncSync` → `closeSync`. `fsync` closes the power-loss-during-write
+   crash class (RT H1) — once `fsyncSync` returns, the line is durable on disk.
+   Note: `fsync` does NOT close the kill-9-mid-`writeSync` crash class; a
+   process killed mid-`writeSync` can still leave a partial line in the page
+   cache that eventually flushes to disk. That mitigation belongs in the read
+   path (try/catch + skip malformed last line) and is deferred to Phase C or
+   later. `assertNoChangeLogLeak` moved into this helper (RT H4). Shared by
+   `appendRegistryEntryAtomic` (meta-state.jsonl) and `appendChangeLogEntryAtomic`
+   (change-log.jsonl — also benefits from fsync).
 
 3. **`tools/scripts/compact-registry.sh`** — Phase B ships `--check` only;
    emits `raw_lines / deduped_ids / dead_version_lines / compaction_eligible`
