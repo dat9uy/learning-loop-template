@@ -176,6 +176,40 @@ Findings with `mechanism_check: true` participate in the grounding system (SP2):
 
 The consult-gate `rule-no-orphaned-evidence` blocks `meta_state_resolve` when any active `mechanism_check=true` finding has drifted (`hash_mismatch`). This prevents resolving findings against stale evidence.
 
+### Stale-view (derived evidence-freshness view)
+
+The `isStaleView` predicate defines a finding as stale-view when:
+
+```
+isStaleView(entry) = isOpen(entry) && (ageStale || hashDrifted)
+```
+
+where:
+
+- `ageStale`: reference time (`last_verified_at || created_at`) > `STALENESS_WINDOW_MS` (default 7d).
+- `hashDrifted`: `currentHash !== storedHash`.
+  - `currentHash` = `codeHashes.get(canonical)` — caller-injected map of path → on-disk SHA-256.
+  - `storedHash` = `indexBaseline ?? entry.code_fingerprint` (both regex-validated via `TERMINAL_HASH_REGEX`).
+
+**Caller injection contract**: `isStaleView` is pure — it does NOT read the filesystem. Callers wanting the drift signal build `codeHashes` via `computeCurrentHashes(entries, root)`:
+
+```js
+const fileIndex = readFileIndex(root);
+const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
+// Log non-"missing" skipped paths as gate-log breadcrumbs (RT: M20).
+const staleSet = derivedStaleSet(entries, { fileIndex, codeHashes });
+```
+
+`computeCurrentHashes` returns `{ ok: Map<canonicalKey, currentHash>, skipped: Array<{canonical, reason}> }`:
+- `ok` — successful hashes.
+- `skipped` — `reason: "missing"` (ENOENT, no log breadcrumb — high-frequency), `reason: "containment_violation:<r>"` (traversal/symlink/hardlink rejected by `resolveSafePath`), or `reason: "fs_error:<code>"` (permission/I/O).
+
+**Backward compat**: When `codeHashes` is omitted, the drift branch returns `false` (age-only). Pre-fix consumers like `meta_state_derive_status` continue to work without the caller building the map.
+
+**Clearing drift**: `meta_state_re_verify` clears the drift signal ONLY when called with `refresh: true` AND verification passes AND CAS update succeeds. Default behavior (no `refresh`) preserves the `rule-no-orphaned-evidence` consult-gate — operators wanting explicit operator-mediated refresh should use `meta_state_refresh_file_index` instead.
+
+**Plan reference**: Plan 260716-0624 (stale-view hash-drift fix) replaced the path-presence predicate with the SP2-consistent hash comparison. The pre-fix `hasDrifted` returned `true` whenever a path was present in the file-index (the opposite of drift, because `seed-file-index.mjs` re-hashes every cited path to its current bytes before each test run).
+
 ---
 
 ## Key Design Decisions
