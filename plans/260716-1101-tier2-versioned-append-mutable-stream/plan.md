@@ -31,7 +31,7 @@ Three staged sub-PRs, each independently green. The `.gitattributes` flip (Phase
 
 | Phase | Name | Status | PR |
 |-------|------|--------|----|
-| 1 | [Phase A: Projection Swap + Version Backfill](./phase-01-phase-a-projection-swap-version-backfill.md) | Pending | standalone, no-op behavior change |
+| 1 | [Phase A: Projection Swap + Version Backfill](./phase-01-phase-a-projection-swap-version-backfill.md) | **Completed** (2026-07-16) | standalone, no-op behavior change |
 | 2 | [Phase B: Write-Path Rewrite to Versioned-Append](./phase-02-phase-b-write-path-rewrite-to-versioned-append.md) | Pending | standalone, internal correctness |
 | 3 | [Phase C: gitattributes Flip + CI Advisory + Compaction Signal](./phase-03-phase-c-gitattributes-flip-ci-advisory-compaction-signal.md) | Pending | standalone, removes speed limiter |
 
@@ -126,6 +126,24 @@ All open questions from the prior revision are settled by Validation Session 1. 
 - Phase 1: Implementation step 5h added (script header documentation).
 - Phase 2: no changes (decisions were already plan defaults).
 - Phase 3: Compaction action hook line updated; Whole-Plan Consistency Sweep summary updated; Risk Assessment updated.
+
+## Progress
+
+| Phase | Status | Shipped | Notes |
+|-------|--------|---------|-------|
+| A — Projection Swap + Version Backfill | **Completed** | 2026-07-16 | 12 new tests; 1624 total green. See journal `reports/phase-a-implementation-journal.md`. |
+| B — Write-Path Rewrite to Versioned-Append | Pending | — | Hard-blocked on A green. A green ✅ — unblock. |
+| C — gitattributes Flip + CI Advisory + Compaction Signal | Pending | — | Hard-blocked on B on main + green. |
+
+### Phase A Verification (2026-07-16)
+
+- `_readAndParseRegistry` swapped to `group_by(id) → max_by(version) → re-sort by created_at`; pure JS, V8 stable sort.
+- `backfill-versions.mjs` ships with `proper-lockfile` cross-process lock + unique `pid`-suffixed tmp + gate-log entry + dry-run mode. Default `version: 0` documented in script header per Validation Session 1 Q1.
+- `registry-table.sh` default reads both `meta-state.jsonl` + `change-log.jsonl` (RT-M2).
+- Live registry backfilled: 14 entries missing `version` set to `0`; 100 lines preserved; 0 null/non-integer versions remaining; 0 all-null-version groups.
+- Test coverage added: `projection-last-wins-by-max-version.test.js` (6 tests) + `backfill-versions.test.cjs` (6 tests) = 12 new tests.
+- Pre-existing tests adapted: `meta-state-log-change.test.js` + `file-index-o1-regression.test.js` used identical descriptions → same-id entries → previously undeduplicated. Updated to use unique descriptions so each generates a distinct id.
+- Acceptance criteria 1–3, 7, 8 of the whole plan are now load-bearing-safe (projection writes present + verified). Critically, Phase B acceptance criteria 1 + 4–8 are now safe to implement against — the projection backstops the versioned-append semantics at the read layer.
 
 ### Whole-Plan Consistency Sweep (post-validation)
 

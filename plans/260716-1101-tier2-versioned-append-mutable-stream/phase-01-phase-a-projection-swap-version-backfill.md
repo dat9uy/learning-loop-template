@@ -1,9 +1,12 @@
 ---
 phase: 1
 title: "Phase A: Projection Swap + Version Backfill"
-status: pending
+status: completed
 priority: P1
 dependencies: []
+shipped_at: "2026-07-16T12:30:00.000Z"
+shipped_by: "operator"
+test_summary: "1624 tests / 324 suites green; 12 new tests added (projection + backfill)."
 ---
 
 # Phase 1: Phase A — Projection Swap + Version Backfill
@@ -92,13 +95,13 @@ Without this flip, `registry-table.sh | tail -20` is degraded vs. `meta_state_li
 
 ## Success Criteria
 
-- [ ] Projection test passes (dup-id → max version; singleton → identity).
-- [ ] Ordering-preservation test passes (chronological by `created_at` after dedupe).
-- [ ] Backfill idempotence test passes.
-- [ ] Real `meta-state.jsonl` has zero null/non-integer `version` fields after backfill.
-- [ ] `meta_state_list` output byte-identical before/after on the real registry (diff the tool output).
-- [ ] Full meta-state test suite green (`pnpm test:iter`).
-- [ ] No `.gitattributes` change; no write-path function edited.
+- [x] Projection test passes (dup-id → max version; singleton → identity).
+- [x] Ordering-preservation test passes (chronological by `created_at` after dedupe).
+- [x] Backfill idempotence test passes.
+- [x] Real `meta-state.jsonl` has zero null/non-integer `version` fields after backfill.
+- [x] `meta_state_list` output byte-identical before/after on the real registry (diff the tool output).
+- [x] Full meta-state test suite green (`pnpm test:iter`).
+- [x] No `.gitattributes` change; no write-path function edited.
 
 ## Risk Assessment
 
