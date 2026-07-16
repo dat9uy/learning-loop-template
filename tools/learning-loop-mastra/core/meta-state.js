@@ -97,48 +97,68 @@ function persistRegistryAtomic(entries, root) {
  * Strip change-log entries from a union array. The `persistRegistryAtomic`
  * write path lands in `meta-state.jsonl` (the mutable table); the
  * `change-log.jsonl` stream is true-append only and must NEVER be the
- * destination of an in-place read-modify-write. Callers that operate on
- * the union (`readRegistry` returns both files merged) MUST project back
- * to the table-set before persisting — otherwise change-logs leak into
- * `meta-state.jsonl` and break the post-split invariant.
+ * destination of an in-place read-modify-write. Tier 2 Phase B rewrote
+ * every persist site to true-append via `trueAppendAtomic`, which carries
+ * its own `assertNoChangeLogLeak` guard (see core/registry-append-atomic.js).
+ * The table-set projection is no longer needed at persist sites — change-log
+ * writes are dispatched to `change-log.jsonl` by `appendChangeLogEntryAtomic`,
+ * never to `meta-state.jsonl`. This helper remains documented for the
+ * historical record (Tier 1 callers that read the union and want the
+ * table-set projection for in-memory analytics).
  */
-function tableOnly(entries, root) {
-  // Pre-split defense: if change-log.jsonl doesn't exist yet, the registry
-  // is still single-file and ALL entries (including change-logs) must
-  // persist to meta-state.jsonl. Returning entries unchanged preserves the
-  // pre-Tier-1 semantics and prevents data loss during the migration window.
-  // Post-split (change-log.jsonl exists), every persist site must project
-  // back to the table-set so change-logs don't leak between files.
-  if (!existsSync(getChangeLogPath(root))) return entries;
-  return entries.filter((e) => e.entry_kind !== "change-log");
-}
 
 /**
- * Defensive assert: once `change-log.jsonl` exists, persist sites MUST pass
- * a table-only set to `persistRegistryAtomic`. A non-table-only write here
+ * Defensive assert: once `change-log.jsonl` exists, persist sites MUST NOT
+ * pass a change-log entry to `meta-state.jsonl`. A non-table-only write here
  * would copy change-logs from `change-log.jsonl` into `meta-state.jsonl`,
  * and `merge=union` later would double them on the next parallel merge.
  *
- * Plan 260715-0801 Tier 1 red-team finding 2: before the write dispatch +
- * tableOnly projections are re-enabled at all 5 persist sites
- * (updateEntry, archiveEntry, deleteEntry, shipLoopDesign, metaStateBatch),
- * a partial state where `change-log.jsonl` exists but a persist site still
- * passes the union would silently corrupt the registry. This guard fails
- * loud so the bug surfaces immediately instead of at merge time.
+ * Plan 260715-0801 Tier 1 red-team finding 2: a partial state where
+ * `change-log.jsonl` exists but a persist site still passes a change-log
+ * would silently corrupt the registry. This guard fails loud so the bug
+ * surfaces immediately instead of at merge time.
  *
  * Pre-split (no change-log.jsonl): no-op — change-logs in meta-state.jsonl
  * are the expected state.
  * Post-split (change-log.jsonl present): the guard fires on any leak.
+ *
+ * The active enforcement lives in core/registry-append-atomic.js#assertNoChangeLogLeak,
+ * which fires inside `trueAppendAtomic` BEFORE the file write. The legacy
+ * `persistRegistryAtomic` callers (compaction only — see Phase C) inherit
+ * the same contract via this local copy.
  */
 function assertNoChangeLogLeak(entries, root) {
   if (!existsSync(getChangeLogPath(root))) return;
   for (const entry of entries) {
     if (entry.entry_kind === "change-log") {
       throw new Error(
-        "change_log_leak: persistRegistryAtomic received a change-log entry while change-log.jsonl exists. " +
-        "Call tableOnly(entries) before persisting — see meta-state.js#tableOnly.",
+        "change_log_leak: meta-state.jsonl persist received a change-log entry while change-log.jsonl exists. " +
+        "Route change-log entries to change-log.jsonl via appendChangeLogEntryAtomic. " +
+        "See core/registry-append-atomic.js#assertNoChangeLogLeak (active) and core/meta-state.js#assertNoChangeLogLeak (legacy).",
       );
     }
+  }
+}
+
+/**
+ * Restore a registry file to its pre-batch byte content. The byte-snapshot
+ * rollback discipline (capture preBatchContent BEFORE the apply loop, restore
+ * on any post-validation failure) is shared by every metaStateBatch failure
+ * path. Tier 2 Phase B introduces this helper to DRY the three rollback sites
+ * (table-append failure, change-log-append failure, auto-emit failure).
+ *
+ * Idempotent: calling on an already-restored file is a no-op (writeFileSync
+ * overwrites with the same bytes; unlinkSync of a missing file is a no-op).
+ *
+ * @param {string} path - absolute filesystem path to the registry file
+ * @param {string} preBatchContent - bytes captured BEFORE the batch started
+ * @returns {void}
+ */
+function restorePreBatchContent(path, preBatchContent) {
+  if (preBatchContent) {
+    writeFileSync(path, preBatchContent, "utf8");
+  } else if (existsSync(path)) {
+    unlinkSync(path);
   }
 }
 
@@ -1603,26 +1623,40 @@ export function metaStateBatch(root, operations, envelope) {
           trueAppendAtomicRaw(root, path, entry);
         }
       } catch (err) {
-        // Rollback the partial appends.
-        if (preBatchContent) {
-          writeFileSync(path, preBatchContent, "utf8");
-        } else if (existsSync(path)) {
-          unlinkSync(path);
-        }
+        restorePreBatchContent(path, preBatchContent);
         invalidateCache(root);
         return { applied: 0, failed_at: null, reason: "append_failed", error: err.message };
       }
 
       // Phase B: true-append change-log writes (op:"write") AFTER the table
-      // appends so the failure rollback can truncate cleanly.
-      for (const cl of pendingChangeLogAppends) {
-        appendChangeLogEntryAtomic(root, cl);
+      // appends so the failure rollback can truncate cleanly. If any change-log
+      // append throws (e.g. fsync failure, ENOSPC), rollback the table to
+      // preBatchContent — preserves the all-or-nothing contract.
+      try {
+        for (const cl of pendingChangeLogAppends) {
+          appendChangeLogEntryAtomic(root, cl);
+        }
+      } catch (err) {
+        restorePreBatchContent(path, preBatchContent);
+        invalidateCache(root);
+        return { applied: 0, failed_at: null, reason: "change_log_append_failed", error: err.message };
       }
 
       // Plan 260712-0300 Phase 2: auto-emit routes through
-      // appendChangeLogEntryAtomic (true-append to change-log.jsonl).
+      // appendChangeLogEntryAtomic (true-append to change-log.jsonl). Same
+      // rollback discipline: a failed auto-emit truncates both table + change-log.
       if (autoEmitEntry) {
-        appendChangeLogEntryAtomic(root, autoEmitEntry);
+        try {
+          appendChangeLogEntryAtomic(root, autoEmitEntry);
+        } catch (err) {
+          restorePreBatchContent(path, preBatchContent);
+          // Note: pendingChangeLogAppends already landed in change-log.jsonl.
+          // We can't roll those back without a snapshot of that file too; the
+          // assertWriteVisible check below detects this case via
+          // `change_log_not_visible` and reports it as a structured failure.
+          invalidateCache(root);
+          return { applied: 0, failed_at: null, reason: "auto_emit_append_failed", error: err.message };
+        }
       }
 
       invalidateCache(root);

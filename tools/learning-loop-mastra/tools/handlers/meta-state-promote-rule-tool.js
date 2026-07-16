@@ -186,6 +186,12 @@ export const metaStatePromoteRuleTool = {
     // defense-in-depth pre-call guard skips the update path entirely on
     // already-open findings (lower cost, clearer operator intent).
     //
+    // Note: this read happens OUTSIDE the registry lock, so it is best-effort:
+    // a concurrent writer could flip status between this read and the
+    // `updateEntry` call below. The canonical-comparator short-circuit inside
+    // `updateEntry` is the load-bearing safety (it drops the no-op even if the
+    // guard races). This guard is operator-intent signaling, not correctness.
+    //
     // Lifecycle migration note (plan 260611-1000): the finding status enum
     // was collapsed to {open, resolved, superseded}; legacy "active" is no
     // longer a valid finding status. A promoted finding stays "open" (the

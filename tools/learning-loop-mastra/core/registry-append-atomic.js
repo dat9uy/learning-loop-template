@@ -92,4 +92,3 @@ function assertNoChangeLogLeak(root, entries, path) {
 }
 
 export { trueAppendAtomic, assertNoChangeLogLeak };
-export default { trueAppendAtomic, assertNoChangeLogLeak };

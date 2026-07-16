@@ -76,4 +76,3 @@ function entriesEqual(a, b) {
 }
 
 export { canonicalize, entriesEqual };
-export default { canonicalize, entriesEqual };
