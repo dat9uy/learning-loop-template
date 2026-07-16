@@ -90,72 +90,111 @@ const MESSAGE_FLAGS = new Set(PATTERNS_RAW.message_flags || []);
  * Each resulting segment is trimmed; empty segments are dropped (same
  * as the prior behavior).
  */
-// fallow-ignore-next-line complexity
+/**
+ * Quote-aware character walker. Drives a POSIX-style state machine over a
+ * command string and dispatches per-character events to `hooks`. Used to
+ * share the same tokenizer across `splitSegments`, `splitKeepingDelims`,
+ * and `blankAllQuoted`'s internal step machine, eliminating the 60-line
+ * duplication that fallow flagged.
+ *
+ * Hooks (both required; use no-ops if a hook is irrelevant for the caller):
+ *   onChar(ch, i)        — fires for every character except command delimiters
+ *                           `;`, `&`, `|` outside quotes. Includes the quote
+ *                           chars (`'`, `"`) and the escape char (`\\`) so
+ *                           callers that buffer raw output stay lossless.
+ *   onDelimiter(ch, i)   — fires for `;`, `&`, `|` outside quotes. Never fires
+ *                           inside a quoted region.
+ *
+ * State semantics (POSIX-like):
+ *   - Outside quotes: `\\` opens an escape (next char is literal), `'` enters
+ *     single quotes, `"` enters double quotes.
+ *   - Inside single quotes: literal until next `'`. Backslash is literal too.
+ *   - Inside double quotes: `\\` opens an escape (next char is literal), `"`
+ *     exits.
+ *
+ * Implementation note: each state is handled by its own small function. The
+ * dispatch is `O(1)` per char and the per-state functions stay under the
+ * fallow cognitive-complexity threshold on their own.
+ *
+ * @param {string} command
+ * @param {{
+ *   onChar: (ch: string, i: number) => void,
+ *   onDelimiter: (ch: ";" | "&" | "|", i: number) => void,
+ * }} hooks
+ */
+function walkQuoteState(command, hooks) {
+  let state = QUOTE_NORMAL;
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+    state = advanceQuoteState(state, ch, i, hooks);
+  }
+}
+
+// State constants — kept private to the walker. Five states capture the full
+// POSIX-like behavior (outside, single-quoted, double-quoted, after-backslash
+// outside, after-backslash inside-double-quotes).
+const QUOTE_NORMAL = 0;
+const QUOTE_SQUOTE = 1;
+const QUOTE_DQUOTE = 2;
+const QUOTE_AFTER_BS = 3;
+const QUOTE_DQUOTE_BS = 4;
+
+function advanceQuoteState(state, ch, i, hooks) {
+  switch (state) {
+    case QUOTE_NORMAL:   return stepNormal(ch, i, hooks);
+    case QUOTE_SQUOTE:   return stepSquote(ch, i, hooks);
+    case QUOTE_DQUOTE:   return stepDquote(ch, i, hooks);
+    case QUOTE_AFTER_BS: return stepAfterBs(ch, i, hooks);
+    case QUOTE_DQUOTE_BS: return stepDquoteBs(ch, i, hooks);
+    default: return state;
+  }
+}
+
+function stepNormal(ch, i, hooks) {
+  if (ch === "\\") { hooks.onChar(ch, i); return QUOTE_AFTER_BS; }
+  if (ch === "'")  { hooks.onChar(ch, i); return QUOTE_SQUOTE; }
+  if (ch === '"')  { hooks.onChar(ch, i); return QUOTE_DQUOTE; }
+  if (ch === ";" || ch === "&" || ch === "|") {
+    hooks.onDelimiter(ch, i);
+    return QUOTE_NORMAL;
+  }
+  hooks.onChar(ch, i);
+  return QUOTE_NORMAL;
+}
+
+function stepSquote(ch, i, hooks) {
+  hooks.onChar(ch, i);
+  return ch === "'" ? QUOTE_NORMAL : QUOTE_SQUOTE;
+}
+
+function stepDquote(ch, i, hooks) {
+  hooks.onChar(ch, i);
+  if (ch === "\\") return QUOTE_DQUOTE_BS;
+  return ch === '"' ? QUOTE_NORMAL : QUOTE_DQUOTE;
+}
+
+function stepAfterBs(ch, i, hooks) {
+  hooks.onChar(ch, i);
+  return QUOTE_NORMAL;
+}
+
+function stepDquoteBs(ch, i, hooks) {
+  hooks.onChar(ch, i);
+  return QUOTE_DQUOTE;
+}
+
 export function splitSegments(command) {
   if (!command || typeof command !== "string") return [];
   const segments = [];
   let buf = "";
-  let inSingle = false;
-  let inDouble = false;
-  let escaped = false;
-
-  for (let i = 0; i < command.length; i++) {
-    const ch = command[i];
-
-    if (escaped) {
-      // Backslash escape: consume this char literally, regardless of quote state.
-      // (POSIX: inside single quotes, backslash is literal — but our tokenizer
-      // never enters single-quote via a backslash; it enters via `'`. So this
-      // branch only fires outside single quotes, matching shell semantics.)
-      buf += ch;
-      escaped = false;
-      continue;
-    }
-
-    if (inSingle) {
-      buf += ch;
-      if (ch === "'") inSingle = false;
-      continue;
-    }
-
-    if (inDouble) {
-      buf += ch;
-      if (ch === "\\") {
-        // Inside double quotes, backslash escapes the next char (POSIX).
-        // We don't actually need to look at the next char to tokenize; we
-        // just need to NOT treat the next char as a quote-close or escape.
-        escaped = true;
-        continue;
-      }
-      if (ch === '"') inDouble = false;
-      continue;
-    }
-
-    // Not in any quote.
-    if (ch === "\\") {
-      buf += ch;
-      escaped = true;
-      continue;
-    }
-    if (ch === "'") {
-      buf += ch;
-      inSingle = true;
-      continue;
-    }
-    if (ch === '"') {
-      buf += ch;
-      inDouble = true;
-      continue;
-    }
-    if (ch === ";" || ch === "&" || ch === "|") {
+  walkQuoteState(command, {
+    onChar: (ch) => { buf += ch; },
+    onDelimiter: () => {
       const trimmed = buf.trim();
       if (trimmed) segments.push(trimmed);
       buf = "";
-      continue;
-    }
-    buf += ch;
-  }
-
+    },
+  });
   const trimmed = buf.trim();
   if (trimmed) segments.push(trimmed);
   return segments;
@@ -274,6 +313,44 @@ function segmentVerb(segment) {
   return tokens[i] || null;
 }
 
+// State machine for `blankAllQuoted` — quote-aware content blanking. Differs
+// from `walkQuoteState` because the blanking transformation has different
+// escape semantics: `\\` is preserved in the output (so the resulting string
+// stays shell-parseable), but the char it escapes is dropped (since it's the
+// "invisible" payload). See `blankAllQuoted` for the policy.
+//
+// Five states capture the full behavior. Returning the next-state from
+// `blankAllQuotedStep` lets the main loop stay flat (one for-loop, one helper
+// call), keeping cognitive complexity under the fallow threshold.
+const BLANK_NORMAL = 0;
+const BLANK_SQUOTE = 1;
+const BLANK_DQUOTE = 2;
+const BLANK_AFTER_BS = 3;       // outside-quotes backslash; next char is dropped
+const BLANK_DQUOTE_BS = 4;      // inside-double-quotes backslash; next char is dropped
+
+function blankStep(state, ch) {
+  switch (state) {
+    case BLANK_NORMAL:
+      if (ch === "\\") return { next: BLANK_AFTER_BS, emit: "\\" };
+      if (ch === "'") return { next: BLANK_SQUOTE, emit: "" };
+      if (ch === '"') return { next: BLANK_DQUOTE, emit: "" };
+      return { next: state, emit: ch };
+    case BLANK_SQUOTE:
+      if (ch === "'") return { next: BLANK_NORMAL, emit: "''" };
+      return { next: state, emit: "" };
+    case BLANK_DQUOTE:
+      if (ch === "\\") return { next: BLANK_DQUOTE_BS, emit: "" };
+      if (ch === '"') return { next: BLANK_NORMAL, emit: '""' };
+      return { next: state, emit: "" };
+    case BLANK_AFTER_BS:
+      return { next: BLANK_NORMAL, emit: "" };
+    case BLANK_DQUOTE_BS:
+      return { next: BLANK_DQUOTE, emit: "" };
+    default:
+      return { next: state, emit: ch };
+  }
+}
+
 // Blank every quoted region (single or double, quote-aware — a quote inside
 // the other quote kind is a literal body char, not a terminator). Used on a
 // segment whose verb is a pure-data command, where every quoted region is
@@ -281,117 +358,34 @@ function segmentVerb(segment) {
 // and creates no bypass (data commands cannot exec).
 function blankAllQuoted(segment) {
   let out = "";
-  let inSingle = false;
-  let inDouble = false;
-  let escaped = false;
+  let state = BLANK_NORMAL;
   for (let i = 0; i < segment.length; i++) {
-    const ch = segment[i];
-    if (inSingle) {
-      if (ch === "'") {
-        inSingle = false;
-        out += "''";
-      }
-      continue;
-    }
-    if (inDouble) {
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-      if (ch === "\\") {
-        escaped = true;
-        continue;
-      }
-      if (ch === '"') {
-        inDouble = false;
-        out += '""';
-      }
-      continue;
-    }
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escaped = true;
-      out += ch;
-      continue;
-    }
-    if (ch === "'") {
-      inSingle = true;
-      continue;
-    }
-    if (ch === '"') {
-      inDouble = true;
-      continue;
-    }
-    out += ch;
+    const step = blankStep(state, segment[i]);
+    state = step.next;
+    out += step.emit;
   }
   return out;
 }
 
 // Quote-aware split on ; & | PRESERVING delimiters as elements (so the
 // full-command pass can rejoin losslessly and spanning patterns like
-// `(vitest run|pnpm test).*\| *(tail|head|grep)` still match). Mirrors
-// splitSegments' tokenizer but keeps raw (untrimmed) segment spans and the
-// delimiter tokens; a `|` inside a quoted region is NOT a delimiter here, so a
-// data command whose pattern contains `|` (e.g. `grep -E "a|b"`) stays one
-// segment and gets its quotes blanked as a unit.
+// `(vitest run|pnpm test).*\| *(tail|head|grep)` still match). Uses the same
+// `walkQuoteState` tokenizer as `splitSegments`; the only difference is the
+// delimiter handler — `splitSegments` flushes a trimmed segment, while this
+// function pushes both the raw span and the delimiter as separate elements so
+// the downstream regex pass can rejoin losslessly.
 function splitKeepingDelims(command) {
   const out = [];
   let buf = "";
-  let inSingle = false;
-  let inDouble = false;
-  let escaped = false;
-  for (let i = 0; i < command.length; i++) {
-    const ch = command[i];
-    if (escaped) {
-      buf += ch;
-      escaped = false;
-      continue;
-    }
-    if (inSingle) {
-      buf += ch;
-      if (ch === "'") inSingle = false;
-      continue;
-    }
-    if (inDouble) {
-      buf += ch;
-      if (ch === "\\") {
-        escaped = true;
-        continue;
-      }
-      if (ch === '"') inDouble = false;
-      continue;
-    }
-    if (ch === "\\") {
-      buf += ch;
-      escaped = true;
-      continue;
-    }
-    if (ch === "'") {
-      buf += ch;
-      inSingle = true;
-      continue;
-    }
-    if (ch === '"') {
-      buf += ch;
-      inDouble = true;
-      continue;
-    }
-    if (ch === ";" || ch === "&" || ch === "|") {
-      // Keep the raw span (incl. surrounding whitespace) for lossless rejoin;
-      // segmentVerb trims internally for the verb check.
-      out.push(buf, ch);
-      buf = "";
-      continue;
-    }
-    buf += ch;
-  }
+  walkQuoteState(command, {
+    onChar: (ch) => { buf += ch; },
+    onDelimiter: (ch) => { out.push(buf, ch); buf = ""; },
+  });
   out.push(buf);
   return out;
 }
 
+// fallow-ignore-next-line unused-export -- public API consumed by gate-logic-data-command-quotes.test.js; also used internally by matchConstraintPattern
 export function stripDataCommandQuotes(command) {
   if (typeof command !== "string" || !command) return command;
   const parts = splitKeepingDelims(command);

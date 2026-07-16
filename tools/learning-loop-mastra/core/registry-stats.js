@@ -98,6 +98,7 @@ export function computeRegistryStats(root) {
  * @param {Array<{id?: string, version?: number}>} entries
  * @returns {Array<{id: string, count: number}>}
  */
+// fallow-ignore-next-line unused-export -- public API consumed by core/__tests__/registry-stats.test.js for the ci-registry-deltas advisory
 export function findDuplicateVersionPerId(entries) {
   const counts = new Map();
   for (const e of entries) {
