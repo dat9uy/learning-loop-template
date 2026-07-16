@@ -579,9 +579,29 @@ export function loadPromotedRules(root) {
   // Only first-class entry_kind="rule" entries are accepted.
   // Legacy finding entries with promoted_to_rule were removed after the
   // Phase 2 migration (all promoted rules are now standalone rule entries).
-  let rules = entries.filter((e) => {
-    return e.entry_kind === "rule" && e.status === "active";
-  });
+  //
+  // Plan 260716-1101 Tier 2 Phase B: dedupe to max-version per id BEFORE
+  // filtering by status. Without this dedupe, a rule that has been
+  // deactivated (status: inactive on the new max-version line) would ALSO
+  // show its prior active v0 line in the filter result, falsely reporting
+  // the rule as active. The projection in core/read-registry-cache.js is
+  // the canonical dedupe path; loadPromotedRules reads the raw file and
+  // must mirror the projection locally (same algorithm, no full-rewrite).
+  const seen = new Map();
+  for (const entry of entries) {
+    if (entry.entry_kind !== "rule") continue;
+    const prior = seen.get(entry.id);
+    if (!prior) { seen.set(entry.id, entry); continue; }
+    const priorV = prior.version ?? 0;
+    const nextV = entry.version ?? 0;
+    if (nextV > priorV) { seen.set(entry.id, entry); continue; }
+    if (nextV === priorV) {
+      const priorT = prior.created_at ?? "";
+      const nextT = entry.created_at ?? "";
+      if (nextT > priorT) seen.set(entry.id, entry);
+    }
+  }
+  let rules = Array.from(seen.values()).filter((e) => e.status === "active");
 
   // Schema validation: a malformed rule entry (typo, missing field,
   // invalid pattern_type) would crash applyPromotedRules. Validate

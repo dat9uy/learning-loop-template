@@ -66,6 +66,12 @@ files:
   - path: envelope-stripper.js
     role: primitive
     summary: Strips MCP hookSpecificOutput envelopes from raw text.
+  - path: canonical-compare.js
+    role: primitive
+    summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (Tier 2 Phase B; resolves meta-260715T2311Z-gratuitous-mutations).
+  - path: registry-append-atomic.js
+    role: primitive
+    summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (Tier 2 Phase B; RT H1 + H4).
   - path: file-readers.js
     role: primitive
     summary: Shared file-reading helpers (readJsonSafe, readLines).

@@ -44,17 +44,23 @@ await test("ok decision: stdout receives nothing; exit code 0", () => {
   assert.strictEqual(stdout.trim(), "");
 });
 
-await test("block decision: stdout receives hookSpecificOutput envelope; exit code 2", () => {
+await test("block decision: exit 0 + permissionDecision deny envelope agent can read", () => {
   const { exitCode: code, stdout } = runGate(makeInput("> records/foo.json"));
-  assert.strictEqual(code, 2);
+  assert.strictEqual(code, 0, "exit 0 so harness processes the hookSpecificOutput JSON");
   const parsed = JSON.parse(stdout);
   assert.ok(parsed.hookSpecificOutput, "stdout has hookSpecificOutput envelope");
   assert.strictEqual(parsed.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.strictEqual(parsed.hookSpecificOutput.permissionDecision, "deny", "deny blocks the call");
+  assert.ok(
+    typeof parsed.hookSpecificOutput.permissionDecisionReason === "string" &&
+      parsed.hookSpecificOutput.permissionDecisionReason.length > 0,
+    "reason surfaced to model as denial reason",
+  );
   const decision = JSON.parse(parsed.hookSpecificOutput.additionalContext);
   assert.strictEqual(decision.decision, "block");
 });
 
-await test("escalate decision: stdout receives hookSpecificOutput envelope; exit code 2", () => {
+await test("escalate decision: exit 0 + permissionDecision deny envelope agent can read", () => {
   const rule = {
     entry_kind: "rule",
     id: "rule-test-escalate",
@@ -70,10 +76,16 @@ await test("escalate decision: stdout receives hookSpecificOutput envelope; exit
   writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
 
   const { exitCode: code, stdout } = runGate(makeInput("echo test-escalate-token"));
-  assert.strictEqual(code, 2);
+  assert.strictEqual(code, 0, "exit 0 so harness processes the hookSpecificOutput JSON");
   const parsed = JSON.parse(stdout);
   assert.ok(parsed.hookSpecificOutput);
   assert.strictEqual(parsed.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.strictEqual(parsed.hookSpecificOutput.permissionDecision, "deny", "deny blocks the call");
+  assert.ok(
+    typeof parsed.hookSpecificOutput.permissionDecisionReason === "string" &&
+      parsed.hookSpecificOutput.permissionDecisionReason.length > 0,
+    "reason surfaced to model as denial reason",
+  );
   const decision = JSON.parse(parsed.hookSpecificOutput.additionalContext);
   assert.strictEqual(decision.decision, "escalate");
   assert.strictEqual(decision.rule_id, "rule-test-escalate");
@@ -96,56 +108,80 @@ await test("formatHookDecision wraps decision in hookSpecificOutput envelope whe
   const decision = { decision: "block", reason: "test" };
   const out = JSON.parse(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
   assert.strictEqual(out.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.strictEqual(out.hookSpecificOutput.permissionDecision, "deny");
+  assert.strictEqual(out.hookSpecificOutput.permissionDecisionReason, "test");
   assert.deepStrictEqual(JSON.parse(out.hookSpecificOutput.additionalContext), decision);
 });
 
-// State-3 backstop: piping `vitest run`/`pnpm test` to tail/grep must surface to
+await test("formatHookDecision omits permissionDecision for ok decisions", () => {
+  const out = JSON.parse(formatHookDecision({ decision: "ok" }, { channel: "hookSpecificOutput" }));
+  assert.strictEqual(out.hookSpecificOutput.permissionDecision, undefined);
+  assert.strictEqual(out.hookSpecificOutput.permissionDecisionReason, undefined);
+});
+
+// State-3 backstop: piping `vitest run`/`pnpm test` to tail/head/grep must surface to
 // the agent as an escalate denial via the PreToolUse hookSpecificOutput channel
 // (the exact envelope the harness turns into additionalContext on the denied
 // call). A promoted regex rule spans the pipe via the full-command pass in
-// applyPromotedRules — per-segment matching alone cannot reach it.
-await test("no-raw-stdout rule: vitest run piped to tail → escalate envelope agent can read", () => {
+// applyPromotedRules — per-segment matching alone cannot reach it. `head` is
+// covered because agents dodge the tail/grep block by piping to head, which
+// reads raw stdout just the same.
+const NO_RAW_STDOUT_PATTERN = "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b";
+
+function writeNoRawStdoutRule(root) {
   const rule = {
     entry_kind: "rule",
     id: "rule-no-raw-stdout-vitest",
     origin: "meta-test",
     enforcement: "gate",
     pattern_type: "regex",
-    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b",
-    description: "Block piping vitest or pnpm test stdout to tail or grep use the parsed json",
+    pattern: NO_RAW_STDOUT_PATTERN,
+    description: "Block piping vitest or pnpm test stdout to tail/head/grep use the parsed json",
     status: "active",
     promoted_at: new Date().toISOString(),
     promoted_by: "operator",
   };
   writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+}
+
+await test("no-raw-stdout rule: vitest run piped to tail → deny envelope agent can read", () => {
+  writeNoRawStdoutRule(root);
 
   const { exitCode: code, stdout } = runGate(
     makeInput("vitest run --bail=1 foo.test.js 2>&1 | tail -10"),
   );
-  assert.strictEqual(code, 2, "piped vitest run must be denied (exit 2)");
+  assert.strictEqual(code, 0, "exit 0 so harness processes the denial JSON");
   const parsed = JSON.parse(stdout);
   assert.ok(parsed.hookSpecificOutput, "agent-visible envelope present on stdout");
   assert.strictEqual(parsed.hookSpecificOutput.hookEventName, "PreToolUse");
+  assert.strictEqual(parsed.hookSpecificOutput.permissionDecision, "deny", "deny blocks the call");
+  assert.ok(
+    typeof parsed.hookSpecificOutput.permissionDecisionReason === "string" &&
+      parsed.hookSpecificOutput.permissionDecisionReason.length > 0,
+    "reason surfaced to model as denial reason",
+  );
   const decision = JSON.parse(parsed.hookSpecificOutput.additionalContext);
   assert.strictEqual(decision.decision, "escalate");
   assert.strictEqual(decision.rule_id, "rule-no-raw-stdout-vitest");
   assert.ok(typeof decision.reason === "string" && decision.reason.length > 0, "reason surfaced to agent");
 });
 
+await test("no-raw-stdout rule: vitest run piped to head → deny (closes head loophole)", () => {
+  writeNoRawStdoutRule(root);
+
+  const { exitCode: code, stdout } = runGate(
+    makeInput("pnpm exec vitest run --bail=1 foo.test.js 2>&1 | head -50"),
+  );
+  assert.strictEqual(code, 0, "exit 0 so harness processes the denial JSON");
+  const parsed = JSON.parse(stdout);
+  assert.strictEqual(parsed.hookSpecificOutput.permissionDecision, "deny", "head pipe is denied too");
+  const decision = JSON.parse(parsed.hookSpecificOutput.additionalContext);
+  assert.strictEqual(decision.decision, "escalate");
+  assert.strictEqual(decision.rule_id, "rule-no-raw-stdout-vitest");
+});
+
 await test("no-raw-stdout rule: pnpm test:iter (wrapper, no pipe) → allowed, exit 0", () => {
-  const rule = {
-    entry_kind: "rule",
-    id: "rule-no-raw-stdout-vitest",
-    origin: "meta-test",
-    enforcement: "gate",
-    pattern_type: "regex",
-    pattern: "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b",
-    description: "Block piping vitest or pnpm test stdout to tail or grep use the parsed json",
-    status: "active",
-    promoted_at: new Date().toISOString(),
-    promoted_by: "operator",
-  };
-  writeFileSync(join(root, "meta-state.jsonl"), JSON.stringify(rule) + "\n");
+  writeNoRawStdoutRule(root);
 
   const { exitCode: code, stdout } = runGate(makeInput("pnpm test:iter"));
   assert.strictEqual(code, 0, "wrapper must be allowed");

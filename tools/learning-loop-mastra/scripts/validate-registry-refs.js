@@ -169,27 +169,39 @@ function classifyRef(entry, sourceKind, ref, target) {
 // 3-bucket classification. `blocking` drives the CLI exit; `historical` and
 // `informational` are counted but never block.
 //
-// Plan 260715-1608 Phase 1 (red-team F8): duplicate-id guard added FIRST.
-// An appended change-log line carrying an existing open finding's id +
-// `status:superseded` would otherwise overwrite the open entry in the
-// `entryById` Map via last-write-wins; surface the collision as blocking
-// so the masking vector is visible.
-export function computeDanglingRefs(entries) {
+// Duplicate-id guard: block only CROSS-KIND id collisions. The masking
+// vector (Plan 260715-1608 Phase 1 red-team F8) is a line that reuses an
+// existing id but carries a DIFFERENT entry_kind — e.g. a change-log
+// reusing a finding's id — which the `entryById` last-write-wins Map in
+// computeDanglingRefs would silently resolve to one branch, masking the
+// other. That is corruption and stays blocking.
+//
+// A SAME-KIND multi-row id is NOT corruption. Under the versioned-append
+// write-path (Tier 2 Phase B), every patch/refinement appends a new line
+// with the same id + same entry_kind, and the read projection
+// (core/meta-state.js#_readAndParseRegistry) dedupes by max-version (tie-
+// break on created_at). A same-version same-kind pair is a parallel-merge
+// collision the projection resolves the same way — "no data loss, just
+// audit ambiguity" (WARNING-only, never BLOCK). Block only when an id is
+// shared across more than one entry_kind.
+//
+// Extracted from computeDanglingRefs (mirrors the classifyRef extraction
+// above) so the per-id grouping + cross-kind decision lives in its own
+// function and computeDanglingRefs' cyclomatic/cognitive complexity stays
+// under the health threshold.
+function collectCrossKindDuplicates(entries) {
   const blocking = [];
-  const historical = [];
-  const informational = [];
-  const buckets = { blocking, historical, informational };
-
-  // Duplicate-id guard: scan the union for ids appearing >1 time. Each
-  // collision is appended to `blocking` (no source-kind discrimination —
-  // any duplicate id is suspect, not just one direction).
-  const idCounts = new Map();
+  const rowsById = new Map();
   for (const e of entries) {
     if (!e || typeof e.id !== "string") continue;
-    idCounts.set(e.id, (idCounts.get(e.id) ?? 0) + 1);
+    const arr = rowsById.get(e.id);
+    if (arr) arr.push(e);
+    else rowsById.set(e.id, [e]);
   }
-  for (const [id, count] of idCounts) {
-    if (count > 1) {
+  for (const [id, rows] of rowsById) {
+    if (rows.length < 2) continue;
+    const kinds = new Set(rows.map((r) => r.entry_kind ?? "finding"));
+    if (kinds.size > 1) {
       blocking.push({
         source_id: id,
         source_kind: "any",
@@ -197,10 +209,21 @@ export function computeDanglingRefs(entries) {
         target_id: id,
         target_kind: "any",
         reason: "duplicate_id",
-        duplicate_count: count,
+        duplicate_count: rows.length,
       });
     }
   }
+  return blocking;
+}
+
+export function computeDanglingRefs(entries) {
+  // Duplicate-id guard: cross-kind masking only (see
+  // collectCrossKindDuplicates). Same-kind multi-row ids are the intended
+  // versioned-append state, not corruption.
+  const blocking = collectCrossKindDuplicates(entries);
+  const historical = [];
+  const informational = [];
+  const buckets = { blocking, historical, informational };
 
   const entryById = new Map(entries.map((e) => [e.id, e]));
   for (const entry of entries) {

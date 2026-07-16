@@ -45,6 +45,9 @@ function getBashDecision(output) {
   }
 }
 
+// Both PreToolUse gates emit the decision inside hookSpecificOutput.additionalContext.
+const getWriteDecision = getBashDecision;
+
 // ─── Bash/Execute Gate Cross-Surface Tests ───
 
 const bashTestCases = [
@@ -129,8 +132,8 @@ for (const tc of writeTestCases) {
     );
 
     if (tc.expectedDecision) {
-      assert.strictEqual(claudeResult.output?.decision, tc.expectedDecision);
-      assert.strictEqual(droidResult.output?.decision, tc.expectedDecision);
+      assert.strictEqual(getWriteDecision(claudeResult.output)?.decision, tc.expectedDecision);
+      assert.strictEqual(getWriteDecision(droidResult.output)?.decision, tc.expectedDecision);
     }
   });
 }

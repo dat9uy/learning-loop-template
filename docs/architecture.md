@@ -117,7 +117,7 @@ Always exits with code 0 (soft gate).
 - `.factory/coordination/hooks/bash-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/bash-gate.js`)
 - `.factory/coordination/hooks/write-coordination-gate.cjs` (wrapper → `tools/learning-loop-mastra/hooks/universal/write-gate.js`)
 **Hook Type:** `PreToolUse`
-**Behavior:** Hard-blocking (exits 2 on escalation/block)
+**Behavior:** Hard-blocking. A block/escalation denies the call via `hookSpecificOutput.permissionDecision: "deny"` + `permissionDecisionReason` in the stdout JSON and exits 0 — the modern PreToolUse protocol, where exit 0 is required for the harness to process the JSON and surface the reason to the model. (Exit 2 would discard the stdout JSON and fall back to stderr, surfacing a generic "No stderr output" error instead of the reason.) The rich decision (matched_rule, surface, preflight_checklist, hard_block) rides in `hookSpecificOutput.additionalContext`.
 
 Outbound gates intercept agent tool usage before execution. Claude Code and Droid CLI use shim files that delegate to the same universal hook scripts in `tools/learning-loop-mastra/hooks/universal/`; Mastra Code uses declarative `hooks.json` entries pointing at the same universal scripts. The bash gate checks commands against constraint patterns, budgets, observation staleness, and file writes to `records/**`. The write gate enforces hard blocks on protected paths and delegates `product/**` to the preflight check.
 

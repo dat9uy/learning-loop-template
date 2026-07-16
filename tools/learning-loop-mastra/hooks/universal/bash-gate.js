@@ -12,7 +12,6 @@ import {
   normalizeToolName,
   extractCommand,
   formatHookDecision,
-  exitCode,
 } from "./lib/protocol-adapter.js";
 import { evaluateBashGate } from "../../core/evaluate-bash-gate.js";
 import { appendDecisionLog } from "../../core/gate-decision-log.js";
@@ -31,7 +30,11 @@ function main() {
   const root = resolveRoot();
   const decision = evaluateBashGate({ command, root });
   emitIfBlocked(decision, command, root);
-  process.exit(exitCode(decision));
+  // Exit 0 so the harness processes the hookSpecificOutput JSON. A denied
+  // call is blocked by `permissionDecision: "deny"` in that JSON; an allowed
+  // call prints nothing and continues through normal permission flow.
+  // Exit 2 would discard the stdout JSON and report "No stderr output".
+  process.exit(0);
 }
 
 function emitIfBlocked(decision, command, root) {

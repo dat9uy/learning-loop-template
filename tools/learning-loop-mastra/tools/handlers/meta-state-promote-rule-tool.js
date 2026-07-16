@@ -177,17 +177,31 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-    // Update the source finding's status. Per the lifecycle migration (plan
-    // 260611-1000), the finding status enum was collapsed to
-    // {open, resolved, superseded}; legacy "active" is no longer a valid
-    // finding status. A promoted finding stays "open" (the issue isn't
-    // resolved — the rule now enforces). Rule entry's `origin` field is the
-    // canonical inverse reference; promoted_to_rule on findings is no longer
-    // used. Fix for Implementation 3 Gap #3 (pre-existing bug surfaced during
-    // the deferred closeout live session — line 182 was setting status to
-    // legacy "active", violating the lifecycle-migration invariant asserted
-    // by lifecycle-migration-finalize.test.js:54).
-    await updateEntry(root, id, { status: "open" });
+    // Plan 260716-1101 Tier 2 Phase B: the no-op short-circuit makes this
+    // pre-call guard valuable. Previously this code unconditionally called
+    // `updateEntry(root, id, { status: "open" })`, which on an already-open
+    // finding produced a gratuitous version bump + full rewrite (resolved by
+    // meta-260715T2311Z-gratuitous-mutations). With Phase B, the canonical
+    // comparator short-circuits the bump when status is unchanged — but a
+    // defense-in-depth pre-call guard skips the update path entirely on
+    // already-open findings (lower cost, clearer operator intent).
+    //
+    // Note: this read happens OUTSIDE the registry lock, so it is best-effort:
+    // a concurrent writer could flip status between this read and the
+    // `updateEntry` call below. The canonical-comparator short-circuit inside
+    // `updateEntry` is the load-bearing safety (it drops the no-op even if the
+    // guard races). This guard is operator-intent signaling, not correctness.
+    //
+    // Lifecycle migration note (plan 260611-1000): the finding status enum
+    // was collapsed to {open, resolved, superseded}; legacy "active" is no
+    // longer a valid finding status. A promoted finding stays "open" (the
+    // issue isn't resolved — the rule now enforces). Rule entry's `origin`
+    // field is the canonical inverse reference; promoted_to_rule on findings
+    // is no longer used.
+    const refreshedEntry = readRegistry(root).find((e) => e.id === id);
+    if (refreshedEntry && refreshedEntry.status !== "open") {
+      await updateEntry(root, id, { status: "open" });
+    }
 
     const result = {
       promoted: true,

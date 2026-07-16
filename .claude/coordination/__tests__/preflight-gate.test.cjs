@@ -52,7 +52,33 @@ function runHook(input, envOverrides = {}) {
 }
 
 function parseOutput(stdout) {
-  try { return JSON.parse(stdout); } catch { return null; }
+  try {
+    const p = JSON.parse(stdout);
+    if (p?.hookSpecificOutput?.additionalContext) return JSON.parse(p.hookSpecificOutput.additionalContext);
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+// The write gate denies via exit 0 + `permissionDecision: "deny"` (modern
+// PreToolUse block protocol). Allow is also exit 0 but prints nothing, so exit
+// code alone no longer distinguishes allow from deny.
+function denied(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout)?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+function allowed(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout || 'null')?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return r.stdout.trim() === '';
+  }
 }
 
 async function withTempProject(fn) {
@@ -70,7 +96,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -81,7 +107,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/web/routes.ts' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -93,7 +119,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -104,7 +130,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Write', tool_input: { file_path: 'product/readme.md', content: '# Readme' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -115,7 +141,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Write', tool_input: { file_path: 'product/unknown/stack.py', content: 'print(1)' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
   });
@@ -127,7 +153,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out, 'should emit JSON block');
         assert.strictEqual(out.decision, 'block');
@@ -140,7 +166,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/web/routes.ts' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out);
         assert.strictEqual(out.decision, 'block');
@@ -153,7 +179,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(Array.isArray(out.preflight_checklist), 'should have preflight_checklist array');
         assert.strictEqual(out.preflight_checklist.length, 6, 'checklist should have 6 steps');
@@ -168,7 +194,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.strictEqual(out.surface, 'product', 'surface should be product for all product/** paths');
       });
@@ -181,7 +207,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out);
         assert.strictEqual(out.decision, 'block');
@@ -194,21 +220,21 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out.reason.toLowerCase().includes('preflight'), 'reason should mention preflight');
         assert.ok(!out.reason.toLowerCase().includes('decision record'), 'reason should NOT mention decision records');
       });
     });
 
-    it('Preflight block always exits 2 — no GATE_RESPONSE_MODE check in code path', async () => {
+    it('Preflight block always denied — no GATE_RESPONSE_MODE check in code path', async () => {
       await withTempProject(async (tmpDir) => {
-        // Even with GATE_RESPONSE_MODE=warn, preflight blocks should always exit 2
+        // Even with GATE_RESPONSE_MODE=warn, preflight blocks should always be denied
         const r = await runHook(
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/src/main.py' } },
           { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
       });
     });
   });
@@ -220,7 +246,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Edit', tool_input: { file_path: '.claude/coordination/.loop-preflight-product' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out);
         assert.strictEqual(out.decision, 'block');
@@ -233,7 +259,7 @@ describe('preflight gate for product/**', () => {
           { tool_name: 'Write', tool_input: { file_path: '.claude/coordination/.loop-preflight-product', content: 'test' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout) || parseOutput(r.stderr);
         assert.ok(out);
         assert.strictEqual(out.decision, 'block');

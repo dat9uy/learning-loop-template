@@ -301,6 +301,36 @@ describe("computeDanglingRefs — 3-bucket classification (Phase 1)", () => {
     assert.equal(informational.length, 0);
   });
 
+  test("same-kind duplicate id, different version (versioned append) -> NOT blocking", () => {
+    // Tier 2 Phase B: a patch/refinement appends a new versioned line with
+    // the same id + same entry_kind; the read projection dedupes by
+    // max-version. The validator must NOT block this — it is the intended
+    // representation of a mutated entry, not corruption. Only cross-kind
+    // masking blocks.
+    const entries = [
+      { id: "rule-va", entry_kind: "rule", status: "active", version: 0, created_at: iso(2 * DAY) },
+      { id: "rule-va", entry_kind: "rule", status: "active", version: 1, created_at: iso(1 * DAY) },
+    ];
+    const { blocking, historical, informational } = computeDanglingRefs(entries);
+    assert.equal(blocking.some((d) => d.source_id === "rule-va"), false);
+    assert.equal(historical.length, 0);
+    assert.equal(informational.length, 0);
+  });
+
+  test("same-kind duplicate id, same version (merge collision) -> NOT blocking", () => {
+    // A parallel-merge same-version same-kind collision is resolved by the
+    // projection's created_at tie-break ("no data loss, just audit
+    // ambiguity" — WARNING-only, never BLOCK).
+    const entries = [
+      { id: "rule-mc", entry_kind: "rule", status: "active", version: 1, created_at: iso(2 * DAY) },
+      { id: "rule-mc", entry_kind: "rule", status: "active", version: 1, created_at: iso(1 * DAY) },
+    ];
+    const { blocking, historical, informational } = computeDanglingRefs(entries);
+    assert.equal(blocking.some((d) => d.source_id === "rule-mc"), false);
+    assert.equal(historical.length, 0);
+    assert.equal(informational.length, 0);
+  });
+
   test("composite: historical + informational only -> 0 blocking", () => {
     // Mixed registry: only historical + informational orphans, no active
     // mutable missing — must yield 0 blocking (so BLOCK-mode is viable).

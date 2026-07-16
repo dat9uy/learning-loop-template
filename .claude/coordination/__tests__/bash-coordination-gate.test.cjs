@@ -74,66 +74,90 @@ function parseDecision(stdout) {
   }
 }
 
+// The bash gate blocks via the modern PreToolUse protocol: exit 0 with
+// `hookSpecificOutput.permissionDecision: "deny"`. Allowed calls are also
+// exit 0 but print nothing (no permissionDecision). Exit code alone no longer
+// distinguishes allow from deny, so assertions check the decision field.
+function denied(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    const p = JSON.parse(r.stdout);
+    return p?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+
+function allowed(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    const p = JSON.parse(r.stdout || 'null');
+    return p?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return r.stdout.trim() === '';
+  }
+}
+
 test('bash-coordination-gate: 20 end-to-end hook invocations assert identical gate outcomes to the script version', () => {
   console.log('\n--- bash-coordination-gate.cjs ---');
 
   // Test 1: Non-Bash tool → exit 0
   {
     const r = runHook({ tool_name: 'Edit', tool_input: { file_path: 'test.py' } });
-    assert(r.exitCode === 0, 'non-Bash tool → exit 0 (allow)');
+    assert(allowed(r), 'non-Bash tool → exit 0 (allow)');
   }
 
   // Test 2: ls -la → exit 0 (not constrained)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'ls -la' } });
-    assert(r.exitCode === 0, 'ls -la → exit 0 (not constrained)');
+    assert(allowed(r), 'ls -la → exit 0 (not constrained)');
   }
 
   // Test 3: git status → exit 0 (not constrained)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'git status' } });
-    assert(r.exitCode === 0, 'git status → exit 0 (not constrained)');
+    assert(allowed(r), 'git status → exit 0 (not constrained)');
   }
 
-  // Test 4: docker run → exit 2 (constrained, no docker observation → block)
+  // Test 4: docker run → denied (constrained, no docker observation → block)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu' } });
-    assert(r.exitCode === 2, 'docker run → exit 2 (constrained)');
+    assert(denied(r), 'docker run → denied (constrained)');
     const output = parseDecision(r.stdout);
     assert(output && output.decision === 'block', 'docker run output has decision: block (no docker obs, budget mismatch: vendor-api vs docker)');
   }
 
-  // Test 5: sudo → exit 2 (constrained)
+  // Test 5: sudo → denied (constrained)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'sudo chown root file' } });
-    assert(r.exitCode === 2, 'sudo → exit 2 (constrained)');
+    assert(denied(r), 'sudo → denied (constrained)');
   }
 
-  // Test 6: pip install in temp project without runtime-state → exit 2 (constrained)
+  // Test 6: pip install in temp project without runtime-state → denied (constrained)
   {
     const tmpDir = createTempProject();
     const env = { GATE_ROOT: tmpDir };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } }, env);
-    assert(r.exitCode === 2, 'pip install → exit 2 (constrained, no runtime-state)');
+    assert(denied(r), 'pip install → denied (constrained, no runtime-state)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
   // Test 7: cat docker-compose.yml → exit 0 (word boundary: no match)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'cat docker-compose.yml' } });
-    assert(r.exitCode === 0, 'cat docker-compose.yml → exit 0 (word boundary)');
+    assert(allowed(r), 'cat docker-compose.yml → exit 0 (word boundary)');
   }
 
   // Test 8: echo "undocumented" → exit 0 (word boundary: no match)
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo "see undocumented feature"' } });
-    assert(r.exitCode === 0, 'echo undocumented → exit 0 (word boundary)');
+    assert(allowed(r), 'echo undocumented → exit 0 (word boundary)');
   }
 
   // Test 9: Split on semicolon — both constrained
   {
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'docker run ubuntu ; sudo apt install' } });
-    assert(r.exitCode === 2, 'docker ; sudo → exit 2 (both constrained)');
+    assert(denied(r), 'docker ; sudo → denied (both constrained)');
   }
 
   // Test 10: Performance < 100ms (threshold 500ms for WSL2 load variability)
@@ -183,7 +207,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     const tmpDir = createTempProject();
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-    assert(r.exitCode === 2, 'heredoc to records/evidence → exit 2 (unconditional block)');
+    assert(denied(r), 'heredoc to records/evidence → denied (unconditional block)');
     const output = parseDecision(r.stdout);
     assert(output && output.hard_block === true, 'records/evidence → hard_block');
   }
@@ -194,7 +218,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-    assert(r.exitCode === 2, 'heredoc to records/evidence with observation → still exit 2 (MCP only)');
+    assert(denied(r), 'heredoc to records/evidence with observation → still exit 2 (MCP only)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
@@ -205,7 +229,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     setMarker(tmpDir, new Date().toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF" } }, env);
-    assert(r.exitCode === 2, 'heredoc to records/evidence stale obs → exit 2 (unconditional)');
+    assert(denied(r), 'heredoc to records/evidence stale obs → denied (unconditional)');
     const output = parseDecision(r.stdout);
     assert(output && output.hard_block === true, 'stale obs → hard_block (not escalate)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -217,7 +241,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x | tee records/evidence/foo.md' } }, env);
-    assert(r.exitCode === 2, 'tee to records/evidence → exit 2 (MCP only)');
+    assert(denied(r), 'tee to records/evidence → denied (MCP only)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
@@ -227,7 +251,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > "./records/evidence/foo.md"' } }, env);
-    assert(r.exitCode === 2, 'redirect with quotes to records/evidence → exit 2 (MCP only)');
+    assert(denied(r), 'redirect with quotes to records/evidence → denied (MCP only)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
@@ -237,7 +261,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date().toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/observations/foo.yaml' } }, env);
-    assert(r.exitCode === 2, 'redirect to records/observations → exit 2 (unconditional)');
+    assert(denied(r), 'redirect to records/observations → denied (unconditional)');
     const output = parseDecision(r.stdout);
     assert(output && output.hard_block === true, 'observations → hard_block');
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -248,7 +272,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     const tmpDir = createTempProject();
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > docs/foo.md\ncontent\nEOF" } }, env);
-    assert(r.exitCode === 0, 'heredoc to docs/foo.md → exit 0');
+    assert(allowed(r), 'heredoc to docs/foo.md → exit 0');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
@@ -257,7 +281,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     const tmpDir = createTempProject();
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: "cat <<'EOF' > records/claims/foo.yaml\ncontent\nEOF" } }, env);
-    assert(r.exitCode === 2, 'heredoc to records/claims/foo.yaml → exit 2 (MCP only)');
+    assert(denied(r), 'heredoc to records/claims/foo.yaml → denied (MCP only)');
     const output = parseDecision(r.stdout);
     assert(output && output.hard_block === true, 'records/claims → hard_block');
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -269,7 +293,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date(Date.now() - 5 * 60 * 1000).toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x | tee -a records/evidence/foo.md' } }, env);
-    assert(r.exitCode === 2, 'tee -a to records/evidence → exit 2 (MCP only)');
+    assert(denied(r), 'tee -a to records/evidence → denied (MCP only)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 
@@ -279,7 +303,7 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     writeObservation(tmpDir, 'obs-evidence-001', 'records-evidence', new Date().toISOString());
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'echo x > records/evidence/../observations/foo.yaml' } }, env);
-    assert(r.exitCode === 2, 'path traversal to records/** → exit 2');
+    assert(denied(r), 'path traversal to records/** → denied');
     const output = parseDecision(r.stdout);
     assert(output && output.hard_block === true, 'traversal → hard_block');
     fs.rmSync(tmpDir, { recursive: true, force: true });

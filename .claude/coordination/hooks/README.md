@@ -37,7 +37,7 @@ Detects state-change signals in operator messages. Injects context when observat
 
 **Type:** `PreToolUse`
 **Matcher:** `Bash`
-**Exit behavior:** 0 (allow) or 2 (block/escalate)
+**Exit behavior:** always 0. A blocked/escalated call is denied via `hookSpecificOutput.permissionDecision: "deny"` in the stdout JSON, which the harness processes on exit 0 and surfaces to the model as the denial reason. Exiting 2 would discard the stdout JSON and fall back to stderr ("No stderr output"), hiding the reason from the agent.
 
 Gates Bash commands against constraint patterns, resource budgets, and observation staleness.
 
@@ -45,10 +45,12 @@ Gates Bash commands against constraint patterns, resource budgets, and observati
 **Output (when blocked):**
 ```json
 {
-  "decision": "block|escalate",
-  "reason": "...",
-  "constraint_type": "...",
-  "inbound_gate": true
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "...",
+    "additionalContext": "{ \"decision\": \"block|escalate\", \"reason\": \"...\", \"rule_id\": \"...\" }"
+  }
 }
 ```
 
@@ -56,7 +58,7 @@ Gates Bash commands against constraint patterns, resource budgets, and observati
 
 **Type:** `PreToolUse`
 **Matcher:** `Edit|Write`
-**Exit behavior:** 0 (allow) or 2 (block)
+**Exit behavior:** always 0. A blocked write is denied via `hookSpecificOutput.permissionDecision: "deny"` in the stdout JSON, which the harness processes on exit 0 and surfaces to the model as the denial reason. Exiting 2 would discard the stdout JSON and fall back to stderr ("No stderr output"), hiding the reason from the agent. Rich fields (matched_rule, surface, preflight_checklist) ride in `hookSpecificOutput.additionalContext`.
 
 Enforces domain rules for file writes. Rules are evaluated in order; first match wins.
 

@@ -86,9 +86,31 @@ function runHook(input, envOverrides = {}) {
 
 function parseOutput(stdout) {
   try {
-    return JSON.parse(stdout);
+    const p = JSON.parse(stdout);
+    if (p?.hookSpecificOutput?.additionalContext) return JSON.parse(p.hookSpecificOutput.additionalContext);
+    return p;
   } catch {
     return null;
+  }
+}
+
+// The write gate denies via exit 0 + `permissionDecision: "deny"` (modern
+// PreToolUse block protocol). Allow is also exit 0 but prints nothing, so exit
+// code alone no longer distinguishes allow from deny.
+function denied(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout)?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+function allowed(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout || 'null')?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return r.stdout.trim() === '';
   }
 }
 
@@ -109,7 +131,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Bash', tool_input: { command: 'ls' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -119,7 +141,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'docs/journals/foo.md' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -129,7 +151,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Write', tool_input: { file_path: 'plans/260520/bar.md' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -139,7 +161,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: '.claude/settings.json' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -150,7 +172,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'product/api/main.py' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -160,7 +182,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'tools/mcp/server.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
   });
@@ -172,7 +194,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'records/observations/foo.yaml' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON on stderr/stdout');
         assert.strictEqual(out.decision, 'block');
@@ -186,7 +208,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'records/evidence/foo.md' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON');
         assert.strictEqual(out.matched_rule, 'records/**');
@@ -199,7 +221,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'schemas/observation.schema.json' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON');
         assert.strictEqual(out.decision, 'block');
@@ -213,7 +235,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'node_modules/foo/bar.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
       });
     });
 
@@ -223,7 +245,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'dist/bundle.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
       });
     });
 
@@ -233,7 +255,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'build/out.js' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
       });
     });
 
@@ -243,7 +265,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'tmp/.steal' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -253,7 +275,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'vendor-secrets.env' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 0);
+        assert.ok(allowed(r), "allowed (exit 0, no deny)");
       });
     });
 
@@ -263,7 +285,7 @@ describe('write-coordination-gate minimal behavior', () => {
           { tool_name: 'Edit', tool_input: { file_path: 'records/evidence/../observations/foo.yaml' } },
           { GATE_ROOT: tmpDir }
         );
-        assert.strictEqual(r.exitCode, 2);
+        assert.ok(denied(r), "denied via permissionDecision");
         const out = parseOutput(r.stdout);
         assert.ok(out, 'hook should emit JSON');
         assert.strictEqual(out.matched_rule, 'records/**');

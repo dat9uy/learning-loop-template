@@ -143,7 +143,14 @@ describe("meta-state registry core", () => {
     assert.deepStrictEqual(result.map((e) => e.id).sort(), ["d1", "d2"]);
   });
 
-  test("compaction removes old terminal entries on updateEntry", async () => {
+  test("updateEntry on Phase B appends a new line (inline compaction removed)", async () => {
+    // Plan 260716-1101 Tier 2 Phase B: inline compaction is REMOVED. Phase B
+    // is true-append only — no full rewrite means no piggyback compaction.
+    // Compaction becomes Phase C's `compact-registry.sh --full` responsibility.
+    // This test pins the new behavior: updateEntry appends a new line for the
+    // patched entry while the old terminal entry stays in the file (the
+    // projection picks the max-version per id; the list-tool layer filters
+    // terminal entries from the default response).
     tempDir = mkdtempSync(join(tmpdir(), "meta-state-test-"));
     process.env.GATE_ROOT = tempDir;
     const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
@@ -159,11 +166,16 @@ describe("meta-state registry core", () => {
     });
     await writeEntry(tempDir, oldTerminal);
     await writeEntry(tempDir, freshReported);
-    // Trigger compaction via update on the fresh entry
-    await updateEntry(tempDir, freshReported.id, { description: "Updated description for compaction test." });
+    // Phase B: updateEntry appends a new line for the patched entry; the
+    // old terminal entry remains in the file (compaction is Phase C only).
+    await updateEntry(tempDir, freshReported.id, { description: "Updated description for Phase B test." });
     const entries = readRegistry(tempDir);
-    assert.strictEqual(entries.length, 1);
-    assert.strictEqual(entries[0].id, freshReported.id);
+    // The file has 3 lines now: oldTerminal v0, freshReported v0, freshReported v1.
+    // Projection (last-wins-by-max-version) dedupes per id → 2 entries returned.
+    assert.strictEqual(entries.length, 2);
+    const freshFromRegistry = entries.find((e) => e.id === freshReported.id);
+    assert.strictEqual(freshFromRegistry.description, "Updated description for Phase B test.");
+    assert.strictEqual(freshFromRegistry.version, 1);
     process.env.GATE_ROOT = originalEnv;
   });
 
@@ -351,13 +363,20 @@ describe("meta-state change-log compaction guard", () => {
         created_at: new Date().toISOString(),
       };
       await writeEntry(tempDir, fresh);
-      await updateEntry(tempDir, fresh.id, { description: "Updated to trigger compaction" });
+      // Phase B (Plan 260716-1101): updateEntry true-appends; no inline
+      // compaction. Compaction is Phase C's `compact-registry.sh --full`
+      // responsibility. The Phase B invariants we still pin:
+      //   - change-logs are immutable (writeEntry can't change their status)
+      //   - updateEntry on a change-log id throws change_log_immutable
+      await updateEntry(tempDir, fresh.id, { description: "Updated Phase B append" });
 
       const entries = readRegistry(tempDir);
-      assert.strictEqual(entries.length, 2);
+      // Phase B: no compaction → 3 entries (oldTerminal v0, oldChangeLog v0,
+      // fresh v1). Projection dedupes to one entry per id (max-version).
+      assert.strictEqual(entries.length, 3);
       const ids = entries.map((e) => e.id);
-      assert.ok(!ids.includes(oldTerminal.id), "Old terminal finding should be compacted");
-      assert.ok(ids.includes(oldChangeLog.id), "Old change-log must NOT be compacted");
+      assert.ok(ids.includes(oldTerminal.id), "Old terminal finding stays in registry (Phase B has no inline compaction)");
+      assert.ok(ids.includes(oldChangeLog.id), "Old change-log must still be present (immutability invariant)");
       assert.ok(ids.includes(fresh.id), "Fresh entry should remain");
 
       // Confirm the core-layer immutability guard: any attempt to update

@@ -153,6 +153,27 @@ function parseOutbound(result) {
   }
 }
 
+// Both PreToolUse gates (bash + write) deny via the modern protocol: exit 0
+// with `hookSpecificOutput.permissionDecision: "deny"` (exit 2 would discard
+// the stdout JSON). Allow is also exit 0 but prints nothing, so exit code alone
+// no longer distinguishes allow from deny.
+function denied(result) {
+  if (result.exitCode !== 0) return false;
+  try {
+    return JSON.parse(result.stdout)?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+function allowed(result) {
+  if (result.exitCode !== 0) return false;
+  try {
+    return JSON.parse(result.stdout || 'null')?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return result.stdout.trim() === '';
+  }
+}
+
 function runWriteGate(filePath, envOverrides = {}) {
   const WRITE_HOOK = path.join(__dirname, '..', 'hooks', 'write-coordination-gate.cjs');
   const result = spawnSync('node', [WRITE_HOOK], {
@@ -277,21 +298,21 @@ test('gate-integration: inbound gate with real observations', () => {
     const env = { GATE_ROOT: tmpDir, GATE_MARKER_PATH: path.join(tmpDir, '.claude', 'coordination', '.last-operator-message') };
 
     const w1 = runWriteGate('records/evidence/foo.md', env);
-    assert(w1.exitCode === 2, 'write gate blocks records/evidence unconditionally');
+    assert(denied(w1), "write gate blocks records/evidence unconditionally");
     const outW1 = parseOutbound(w1);
     assert(outW1 && outW1.decision === 'block', 'write gate → decision: block');
     assert(outW1 && outW1.matched_rule === 'records/**', 'write gate → matched_rule: records/**');
 
     const w2 = runWriteGate('records/observations/obs-test.yaml', env);
-    assert(w2.exitCode === 2, 'write gate blocks records/observations unconditionally');
+    assert(denied(w2), "write gate blocks records/observations unconditionally");
 
     const b1 = runOutboundGate("cat <<'EOF' > records/evidence/foo.md\ncontent\nEOF", env);
-    assert(b1.exitCode === 2, 'bash gate blocks heredoc to records/evidence');
+    assert(denied(b1), 'bash gate blocks heredoc to records/evidence');
     const outB1 = parseOutbound(b1);
     assert(outB1 && outB1.hard_block === true, 'bash gate → hard_block');
 
     const b2 = runOutboundGate('echo x > records/decisions/test.yaml', env);
-    assert(b2.exitCode === 2, 'bash gate blocks redirect to records/decisions');
+    assert(denied(b2), 'bash gate blocks redirect to records/decisions');
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -304,7 +325,7 @@ test('gate-integration: inbound gate with real observations', () => {
     const coordDir = path.join(tmpDir, '.claude', 'coordination');
 
     const w1 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
-    assert(w1.exitCode === 2, 'product/** blocked without preflight marker');
+    assert(denied(w1), "product/** blocked without preflight marker");
     const outW1 = parseOutbound(w1) || (() => { try { return JSON.parse(w1.stdout); } catch { return null; } })();
     assert(outW1 && outW1.decision === 'block', 'preflight block → decision: block');
     assert(outW1 && outW1.surface === 'product', 'preflight block → surface: product');
@@ -315,20 +336,20 @@ test('gate-integration: inbound gate with real observations', () => {
       JSON.stringify({ surface: 'product', completed_at: new Date().toISOString() })
     );
     const w2 = runWriteGate(`${tmpDir}/product/api/src/index.ts`, env);
-    assert(w2.exitCode === 0, 'product/** allowed with valid preflight marker');
+    assert(allowed(w2), "product/** allowed with valid preflight marker");
 
     fs.writeFileSync(
       path.join(coordDir, '.loop-preflight-product'),
       JSON.stringify({ surface: 'product', completed_at: new Date(Date.now() - 31 * 60 * 1000).toISOString() })
     );
     const w3 = runWriteGate(`${tmpDir}/product/web/src/app.tsx`, env);
-    assert(w3.exitCode === 2, 'product/** blocked with expired preflight marker');
+    assert(denied(w3), "product/** blocked with expired preflight marker");
 
     const b1 = runOutboundGate(`echo '{}' > .claude/coordination/.loop-preflight-product`, env);
-    assert(b1.exitCode === 2, 'bash gate blocks redirect to .loop-preflight-*');
+    assert(denied(b1), 'bash gate blocks redirect to .loop-preflight-*');
 
     const w4 = runWriteGate(`${tmpDir}/.claude/coordination/.loop-preflight-product`, env);
-    assert(w4.exitCode === 2, 'write gate blocks direct write to .loop-preflight-*');
+    assert(denied(w4), "write gate blocks direct write to .loop-preflight-*");
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

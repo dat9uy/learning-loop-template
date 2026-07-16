@@ -60,6 +60,7 @@ describe("meta_state_batch", () => {
       {
         op: "delete",
         id: "batch-base-3",
+        reason: "batch delete test",
       },
     ];
 
@@ -68,11 +69,26 @@ describe("meta_state_batch", () => {
     assert.equal(parsed.applied, 3, "all 3 ops must be applied");
     assert.equal(parsed.failed_at, null, "no failure expected");
 
+    // Plan 260716-1101 Tier 2 Phase B: readRegistry returns the projection
+    // (last-wins-by-max-version per id). The delete op produced an
+    // `archived` tombstone line — that line is the max-version for
+    // batch-base-3 and is what the projection returns. Hard-delete is gone
+    // (union-safety forbids line removal); the tombstone is the audit record.
+    // meta_state_list (the public surface) hides it via status filter.
     const entries = readRegistry(root);
-    assert.equal(entries.length, 3, "3 baseline + 1 new - 1 deleted = 3");
-    assert.ok(entries.find((e) => e.id === "batch-new-1"), "new entry must exist");
-    assert.ok(entries.find((e) => e.id === "batch-new-1").description.includes("Updated"), "new entry must be updated");
-    assert.ok(!entries.find((e) => e.id === "batch-base-3"), "deleted entry must not exist");
+    assert.equal(entries.length, 4, "3 baseline + 1 new (batch-base-3 = tombstone line, projected as 1 entry)");
+
+    const newEntry = entries.find((e) => e.id === "batch-new-1");
+    assert.ok(newEntry, "new entry must exist");
+    assert.ok(newEntry.description.includes("Updated"), "new entry must be updated");
+    assert.equal(newEntry.version, 1, "update bumped version to 1");
+
+    const tombstoned = entries.find((e) => e.id === "batch-base-3");
+    assert.ok(tombstoned, "deleted entry's tombstone line must still be present in registry");
+    assert.equal(tombstoned.status, "archived", "delete produced an archived tombstone");
+    assert.equal(tombstoned.tombstone_kind, "delete", "tombstone_kind discriminator = delete");
+    assert.equal(tombstoned.version, 1, "tombstone is the new max-version");
+    assert.match(tombstoned.archived_reason, /^deleted:/);
   });
 
   it("archive op supported", async () => {
