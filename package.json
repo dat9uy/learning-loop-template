@@ -16,6 +16,7 @@
     "smoke:mastracode": "node scripts/probe-mastracode.cjs",
     "test": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run && node tools/scripts/sanitize-coverage.mjs",
     "test:iter": "vitest run --bail=1 1>/dev/null; bash tools/scripts/vitest-failures.sh",
+    "test:one": "bash tools/scripts/test-one.sh",
     "test:debug": "vitest run tools/learning-loop-mastra/__tests__/debug/",
     "test:cold-session": "node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs && vitest run tools/learning-loop-mastra/__tests__/legacy-mcp/cold-session-discoverability.test.cjs",
     "check:freshness": "vitest run tools/learning-loop-mastra/__tests__/freshness/",

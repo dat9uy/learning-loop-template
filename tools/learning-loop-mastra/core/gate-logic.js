@@ -242,10 +242,177 @@ export function stripNodeEvalBody(segment) {
 }
 
 /**
+ * Pure-data commands: grep/egrep/fgrep, rg, jq. Their quoted pattern args are
+ * DATA, not commands — they cannot execute subcommands from a pattern string
+ * — so banned tokens appearing only inside a search pattern (e.g.
+ * `grep -E "pnpm test|grep" file`, `jq '.x | test("t")'`) are not real
+ * violations. Blank those quoted args so rule regexes don't false-positive on
+ * them. Same false-positive class `stripMessageFlags`/`stripNodeEvalBody` close
+ * for `git -m` / `node -e`; this closes it for the pure-data command family.
+ *
+ * Asymmetric by design (cf. stripNodeEvalBody + the locked tests in
+ * gate-logic-quoted-strings.test.js): we do NOT strip for echo/sed/awk/bash-c/
+ * sh-c/python-c/ssh-t — their quoted bodies are either executed (bypass risk:
+ * `awk 'system("…")'`, `bash -c "…"` runs) or a locked accepted limitation
+ * (echo/heredoc). A data verb is recognized only when it STARTS a segment or
+ * follows a command prefix (sudo/time/nice/nohup/command), so `echo grep "…"`
+ * (grep is an echo argument) is NOT treated as a data command and keeps the
+ * echo-limitation behavior. Env-assignment prefixes (`FOO=bar grep`) are not
+ * recognized — rare; extend segmentVerb if observed.
+ */
+const DATA_COMMANDS = new Set(["grep", "egrep", "fgrep", "rg", "jq"]);
+const COMMAND_PREFIXES = new Set(["sudo", "time", "nice", "nohup", "command"]);
+
+// First executable token of a segment, skipping leading env-assignments
+// (FOO=bar) and one command prefix (sudo/time/nice/nohup/command).
+function segmentVerb(segment) {
+  const tokens = segment.trim().split(/\s+/);
+  let i = 0;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  if (i < tokens.length && COMMAND_PREFIXES.has(tokens[i])) i++;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i++;
+  return tokens[i] || null;
+}
+
+// Blank every quoted region (single or double, quote-aware — a quote inside
+// the other quote kind is a literal body char, not a terminator). Used on a
+// segment whose verb is a pure-data command, where every quoted region is
+// data (pattern + any quoted filenames), so dropping their content is safe
+// and creates no bypass (data commands cannot exec).
+function blankAllQuoted(segment) {
+  let out = "";
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+  for (let i = 0; i < segment.length; i++) {
+    const ch = segment[i];
+    if (inSingle) {
+      if (ch === "'") {
+        inSingle = false;
+        out += "''";
+      }
+      continue;
+    }
+    if (inDouble) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inDouble = false;
+        out += '""';
+      }
+      continue;
+    }
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      out += ch;
+      continue;
+    }
+    if (ch === "'") {
+      inSingle = true;
+      continue;
+    }
+    if (ch === '"') {
+      inDouble = true;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+// Quote-aware split on ; & | PRESERVING delimiters as elements (so the
+// full-command pass can rejoin losslessly and spanning patterns like
+// `(vitest run|pnpm test).*\| *(tail|head|grep)` still match). Mirrors
+// splitSegments' tokenizer but keeps raw (untrimmed) segment spans and the
+// delimiter tokens; a `|` inside a quoted region is NOT a delimiter here, so a
+// data command whose pattern contains `|` (e.g. `grep -E "a|b"`) stays one
+// segment and gets its quotes blanked as a unit.
+function splitKeepingDelims(command) {
+  const out = [];
+  let buf = "";
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+    if (escaped) {
+      buf += ch;
+      escaped = false;
+      continue;
+    }
+    if (inSingle) {
+      buf += ch;
+      if (ch === "'") inSingle = false;
+      continue;
+    }
+    if (inDouble) {
+      buf += ch;
+      if (ch === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (ch === '"') inDouble = false;
+      continue;
+    }
+    if (ch === "\\") {
+      buf += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === "'") {
+      buf += ch;
+      inSingle = true;
+      continue;
+    }
+    if (ch === '"') {
+      buf += ch;
+      inDouble = true;
+      continue;
+    }
+    if (ch === ";" || ch === "&" || ch === "|") {
+      // Keep the raw span (incl. surrounding whitespace) for lossless rejoin;
+      // segmentVerb trims internally for the verb check.
+      out.push(buf, ch);
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+  out.push(buf);
+  return out;
+}
+
+export function stripDataCommandQuotes(command) {
+  if (typeof command !== "string" || !command) return command;
+  const parts = splitKeepingDelims(command);
+  let changed = false;
+  for (let i = 0; i < parts.length; i++) {
+    // Delimiter tokens are single chars ; & | — never data commands.
+    if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
+    if (DATA_COMMANDS.has(segmentVerb(parts[i]))) {
+      parts[i] = blankAllQuoted(parts[i]);
+      changed = true;
+    }
+  }
+  return changed ? parts.join("") : command;
+}
+
+/**
  * Match a command against constraint patterns.
  * Splits on ;, &, | and checks each segment independently.
- * Strips message flags before matching to avoid false positives.
- * Returns the first matching constraint type, or null.
+ * Strips message flags, node-eval bodies, and pure-data-command pattern args
+ * before matching to avoid false positives. Returns the first matching
+ * constraint type, or null.
  */
 export function matchConstraintPattern(command) {
   if (!command || typeof command !== "string") return null;
@@ -253,8 +420,9 @@ export function matchConstraintPattern(command) {
   for (const segment of splitSegments(command)) {
     const stripped = stripMessageFlags(segment);
     const nodeStripped = stripNodeEvalBody(stripped);
+    const dataStripped = stripDataCommandQuotes(nodeStripped);
     for (const [type, pattern] of Object.entries(CONSTRAINT_PATTERNS)) {
-      if (pattern.test(nodeStripped)) return type;
+      if (pattern.test(dataStripped)) return type;
     }
   }
   return null;
@@ -808,7 +976,8 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         for (const segment of splitSegments(command)) {
           const stripped = stripMessageFlags(segment);
           const nodeStripped = stripNodeEvalBody(stripped);
-          if (re.test(nodeStripped)) {
+          const dataStripped = stripDataCommandQuotes(nodeStripped);
+          if (re.test(dataStripped)) {
             matched = true;
             break;
           }
@@ -819,10 +988,13 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // full command as a second pass. This is a strict superset: a pattern
         // that matches the full command either matches a segment already
         // (substring/alternation rules — the matched text lives in some
-        // segment) or spans a removed delimiter (newly reachable). No active
-        // registry rule uses a literal `|`, so existing behavior is unchanged.
+        // segment) or spans a removed delimiter (newly reachable). The data-
+        // command strip is applied here too so a banned token living only in a
+        // grep/jq pattern on one side of a real pipe cannot pair with the pipe
+        // to false-positive. stripDataCommandQuotes preserves ; & | (quote-
+        // aware split) so spanning patterns still match real violations.
         if (!matched) {
-          const fullStripped = stripNodeEvalBody(stripMessageFlags(command));
+          const fullStripped = stripDataCommandQuotes(stripNodeEvalBody(stripMessageFlags(command)));
           if (re.test(fullStripped)) {
             matched = true;
           }
