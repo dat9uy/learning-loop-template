@@ -172,9 +172,9 @@ function classifyRef(entry, sourceKind, ref, target) {
 // Duplicate-id guard: block only CROSS-KIND id collisions. The masking
 // vector (Plan 260715-1608 Phase 1 red-team F8) is a line that reuses an
 // existing id but carries a DIFFERENT entry_kind — e.g. a change-log
-// reusing a finding's id — which the `entryById` last-write-wins Map
-// below would silently resolve to one branch, masking the other. That
-// is corruption and stays blocking.
+// reusing a finding's id — which the `entryById` last-write-wins Map in
+// computeDanglingRefs would silently resolve to one branch, masking the
+// other. That is corruption and stays blocking.
 //
 // A SAME-KIND multi-row id is NOT corruption. Under the versioned-append
 // write-path (Tier 2 Phase B), every patch/refinement appends a new line
@@ -184,16 +184,13 @@ function classifyRef(entry, sourceKind, ref, target) {
 // collision the projection resolves the same way — "no data loss, just
 // audit ambiguity" (WARNING-only, never BLOCK). Block only when an id is
 // shared across more than one entry_kind.
-export function computeDanglingRefs(entries) {
+//
+// Extracted from computeDanglingRefs (mirrors the classifyRef extraction
+// above) so the per-id grouping + cross-kind decision lives in its own
+// function and computeDanglingRefs' cyclomatic/cognitive complexity stays
+// under the health threshold.
+function collectCrossKindDuplicates(entries) {
   const blocking = [];
-  const historical = [];
-  const informational = [];
-  const buckets = { blocking, historical, informational };
-
-  // Group rows by id; block only when an id is shared across >1 entry_kind
-  // (cross-kind masking). Same-kind multi-row ids — versioned append or a
-  // same-version merge collision — are legitimate; the projection resolves
-  // them at read time.
   const rowsById = new Map();
   for (const e of entries) {
     if (!e || typeof e.id !== "string") continue;
@@ -216,6 +213,17 @@ export function computeDanglingRefs(entries) {
       });
     }
   }
+  return blocking;
+}
+
+export function computeDanglingRefs(entries) {
+  // Duplicate-id guard: cross-kind masking only (see
+  // collectCrossKindDuplicates). Same-kind multi-row ids are the intended
+  // versioned-append state, not corruption.
+  const blocking = collectCrossKindDuplicates(entries);
+  const historical = [];
+  const informational = [];
+  const buckets = { blocking, historical, informational };
 
   const entryById = new Map(entries.map((e) => [e.id, e]));
   for (const entry of entries) {
