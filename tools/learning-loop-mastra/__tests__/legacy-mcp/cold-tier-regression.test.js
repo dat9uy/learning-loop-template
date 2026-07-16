@@ -100,7 +100,7 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // the cap. Exclude via --exclude when iterating on other tests.
   //
   // Pre-state both expected values to avoid a false-alarm "investigate"
-  // branch. Cap precompute: age-stale ~5 (Phase 7 threshold after the
+  // branch. Cap precompute: age-stale 9 (Phase 7a observed after the
   // structural fix); drift-stale = 0 (post-seed normalization).
   const now = Date.now();
   const { ok: codeHashes } = computeCurrentHashes(current.all_findings, root);

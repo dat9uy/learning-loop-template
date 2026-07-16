@@ -11,7 +11,7 @@
 
 import { describe, test, beforeAll, afterAll } from "vitest";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { metaStateReVerifyTool } from "../../tools/handlers/meta-state-re-verify-tool.js";
@@ -134,6 +134,18 @@ describe("meta_state_re_verify — opt-in refresh (plan 260716-0624 Phase 03)", 
     const parsed = JSON.parse(r.content[0].text);
     assert.strictEqual(parsed.re_verified, true);
     assert.strictEqual(parsed.index_refreshed, false);
+
+    // Plan 260716-0624 Finding 2: a missing evidence file surfaces as
+    // PathContainmentError("outside_root", resolvedPath:null) — the refresh
+    // skip reason must be "missing", NOT "containment_violation:outside_root"
+    // (which would mislabel a benign absent file as a traversal/escape attempt).
+    const gateLogPath = join(root, ".claude", "coordination", "gate-log.jsonl");
+    assert.ok(existsSync(gateLogPath), "gate-log must be written for the refresh skip");
+    const skipEntry = readFileSync(gateLogPath, "utf8")
+      .split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l))
+      .find((e) => e.tool === "meta_state_re_verify" && e.action === "index_refresh_skipped" && e.id === "meta-test-refresh-missing");
+    assert.ok(skipEntry, "an index_refresh_skipped breadcrumb must exist for the missing file");
+    assert.strictEqual(skipEntry.reason, "missing", `missing file must log reason "missing", not a containment_violation; got: ${skipEntry.reason}`);
   });
 
   test("CAS conflict → re_verified:false; index never mutates (no orphan baseline)", async () => {

@@ -111,14 +111,21 @@ export const metaStateReVerifyTool = {
         }
       } catch (err) {
         // Best-effort skip; re_verify already returned re_verified:true above.
+        // Mirror computeCurrentHashes' classification: a realpath ENOENT inside
+        // root surfaces as PathContainmentError("outside_root", resolvedPath:null)
+        // — that is a missing file, NOT a containment violation. An actual
+        // escape carries a non-null resolvedPath (or a different reason).
+        const reason = err instanceof PathContainmentError
+          ? (err.reason === "outside_root" && err.resolvedPath === null
+              ? "missing"
+              : `containment_violation:${err.reason}`)
+          : (err?.code === "ENOENT" ? "missing" : (err?.code ?? err?.message ?? "unknown"));
         appendGateLog(root, {
           timestamp: gateLogTimestamp,
           tool: "meta_state_re_verify",
           action: "index_refresh_skipped",
           id,
-          reason: err instanceof PathContainmentError
-            ? `containment_violation:${err.reason}`
-            : (err?.code ?? err?.message ?? "unknown"),
+          reason,
         });
       }
     }
