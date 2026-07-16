@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { readRegistry, readFileIndex } from "../../core/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { buildRegistrySummary } from "../../core/loop-introspect.js";
-import { derivedStaleSet, computeCurrentHashes } from "../../core/stale-view.js";
+import { derivedStaleSet, buildDriftSignals } from "../../core/stale-view.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -12,23 +12,12 @@ export const metaStateSweepTool = {
   handler: async () => {
     const root = resolveRoot();
     const entries = readRegistry(root);
-    const fileIndex = readFileIndex(root);
     // Plan 260716-0624 Phase 02 (RT: M20): inject codeHashes so drift-aware
     // stale-view fires only when on-disk bytes actually differ from index
     // baseline. Log non-"missing" skipped paths as gate-log breadcrumbs.
-    const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
-    const gateLogTimestamp = new Date().toISOString();
-    for (const s of skipped) {
-      if (s.reason !== "missing") {
-        appendGateLog(root, {
-          timestamp: gateLogTimestamp,
-          tool: "meta_state_sweep",
-          action: "compute_current_hash_skipped",
-          canonical: s.canonical,
-          reason: s.reason,
-        });
-      }
-    }
+    const { fileIndex, codeHashes } = buildDriftSignals(entries, root, {
+      toolName: "meta_state_sweep",
+    });
     const now = Date.now();
 
     // Derived stale set: age > STALENESS_WINDOW_MS from

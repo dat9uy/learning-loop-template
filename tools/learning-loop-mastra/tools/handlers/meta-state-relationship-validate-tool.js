@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { readRegistry, readFileIndex } from "../../core/meta-state.js";
+import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isStaleView, computeCurrentHashes } from "../../core/stale-view.js";
-import { appendGateLog } from "#lib/gate-logging.js";
+import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
 
 const FINDING_ID_REGEX = /meta-\d{6}T\d{4}Z-[a-z0-9-]+/g;
 // Plan 260707-0812 Phase 2 (red-team H2): ORPHAN_STATUSES was a literal Set
@@ -36,7 +35,9 @@ export const metaStateRelationshipValidateTool = {
     // Plan 260716-0624 Phase 02: build drift signals (fileIndex + codeHashes)
     // so the orphan predicate can fire on drift, not just age. RT: M20 — log
     // non-"missing" skipped paths as a gate-log breadcrumb.
-    const signals = buildStaleSignals(entries, root);
+    const signals = buildDriftSignals(entries, root, {
+      toolName: "meta_state_relationship_validate",
+    });
 
     const entryById = new Map(entries.map((e) => [e.id, e]));
     const referenced = Array.from(new Set(description.match(FINDING_ID_REGEX) ?? []));
@@ -47,24 +48,6 @@ export const metaStateRelationshipValidateTool = {
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };
-
-function buildStaleSignals(entries, root) {
-  const fileIndex = readFileIndex(root);
-  const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
-  const gateLogTimestamp = new Date().toISOString();
-  for (const s of skipped) {
-    if (s.reason !== "missing") {
-      appendGateLog(root, {
-        timestamp: gateLogTimestamp,
-        tool: "meta_state_relationship_validate",
-        action: "compute_current_hash_skipped",
-        canonical: s.canonical,
-        reason: s.reason,
-      });
-    }
-  }
-  return { fileIndex, codeHashes };
-}
 
 // Resolve the `reopens` set on the optional `entry_id`. The new finding
 // declares it via `reopens: [...]` so those ids are not orphans.

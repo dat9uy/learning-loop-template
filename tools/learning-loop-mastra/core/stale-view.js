@@ -32,10 +32,11 @@
  * age-only behavior — same as today's `derive-status.js:141` call site.
  */
 
-import { canonicalIndexKey } from "./meta-state.js";
+import { canonicalIndexKey, readFileIndex } from "./meta-state.js";
 import { STALENESS_WINDOW_MS, isOpen } from "./constants.js";
 import { computeFileHash, TERMINAL_HASH_REGEX } from "./check-grounding.js";
 import { resolveSafePath, PathContainmentError } from "./path-containment.js";
+import { appendGateLog } from "../tools/lib/gate-logging.js";
 
 export { isOpen };
 
@@ -171,6 +172,30 @@ export function derivedStaleSet(entries, opts = {}) {
  * Performance: dedupes by canonical key (one `readFileSync` per unique path).
  * With ~80 distinct paths and ~268 findings, ~80 reads per call.
  */
+
+/**
+ * Classify an fs error into a stable `reason` string. Pure / branchless at the
+ * boundary so `computeCurrentHashes` stays a thin loop. The order matters:
+ * the `outside_root + resolvedPath:null` branch is the ENOENT-inside-root case
+ * that `resolveSafePath` propagates — treat as `missing`, not as a containment
+ * violation. Anything else with a `PathContainmentError` is a real escape.
+ */
+function classifyHashError(err) {
+  if (
+    err instanceof PathContainmentError &&
+    err.reason === "outside_root" &&
+    err.resolvedPath === null
+  ) {
+    return "missing"; // ENOENT inside root — high-frequency, no log breadcrumb
+  }
+  if (err instanceof PathContainmentError) {
+    return `containment_violation:${err.reason}`;
+  }
+  if (err?.code === "ENOENT") return "missing";
+  if (err instanceof Error && err.name === "FileNotFoundError") return "missing";
+  return `fs_error:${err?.code ?? "unknown"}`;
+}
+
 export function computeCurrentHashes(entries, root) {
   const ok = new Map();
   const skipped = [];
@@ -186,29 +211,42 @@ export function computeCurrentHashes(entries, root) {
       const absPath = resolveSafePath(root, canonical);
       ok.set(canonical, computeFileHash(absPath));
     } catch (err) {
-      // resolveSafePath throws PathContainmentError("outside_root", {resolvedPath: null})
-      // when the underlying realpathSync fails with ENOENT — that's a missing
-      // file (legitimate "code_missing" case per SP2), NOT a containment
-      // violation. An actual escape has resolvedPath set.
-      let reason;
-      if (
-        err instanceof PathContainmentError &&
-        err.reason === "outside_root" &&
-        err.resolvedPath === null
-      ) {
-        reason = "missing"; // ENOENT inside root — high-frequency, no log breadcrumb
-      } else if (err instanceof PathContainmentError) {
-        reason = `containment_violation:${err.reason}`;
-      } else if (err?.code === "ENOENT") {
-        reason = "missing";
-      } else if (err instanceof Error && err.name === "FileNotFoundError") {
-        reason = "missing";
-      } else {
-        reason = `fs_error:${err?.code ?? "unknown"}`;
-      }
-      skipped.push({ canonical, reason });
+      skipped.push({ canonical, reason: classifyHashError(err) });
       // No entry → no drift signal. Predicate treats missing currentHash as no-drift.
     }
   }
   return { ok, skipped };
+}
+
+/**
+ * Build the drift signals bundle (`fileIndex` + `codeHashes`) that the
+ * `isStaleView` predicate consumes, AND emit gate-log breadcrumbs for
+ * non-`missing` skipped paths. Centralizes the 11-line pattern that was
+ * previously inlined in 4 handlers.
+ *
+ * Plan 260716-0624 Phase 02 (RT: M20): one source of truth for the
+ * `(readFileIndex + computeCurrentHashes + skipped-logging)` trio so the
+ * gate attribution (`tool`) and the timestamp stay consistent.
+ *
+ * @param {Array} entries — registry entries to inspect
+ * @param {string} root — repo root (resolved via the caller's surface)
+ * @param {object} opts
+ * @param {string} opts.toolName — tool/caller name for gate-log attribution
+ * @returns {{ fileIndex: object, codeHashes: Map<string, string> }}
+ */
+export function buildDriftSignals(entries, root, { toolName } = {}) {
+  const fileIndex = readFileIndex(root);
+  const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
+  const timestamp = new Date().toISOString();
+  for (const s of skipped) {
+    if (s.reason === "missing") continue;
+    appendGateLog(root, {
+      timestamp,
+      tool: toolName ?? "unknown",
+      action: "compute_current_hash_skipped",
+      canonical: s.canonical,
+      reason: s.reason,
+    });
+  }
+  return { fileIndex, codeHashes };
 }

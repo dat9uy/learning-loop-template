@@ -121,6 +121,7 @@ function loadDispatchIds(root) {
  * via stderr (the hook's observability channel — universal hooks do not use
  * the MCP gate-log).
  */
+// fallow-ignore-next-line complexity
 function loadStaleDispatchHints(entries, dispatchIds, root) {
   let fileIndex;
   let codeHashes;

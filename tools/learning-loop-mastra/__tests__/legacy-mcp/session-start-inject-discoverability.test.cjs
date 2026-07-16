@@ -325,3 +325,94 @@ test("loadStaleDispatchHints drift-aware — hash-match age-fresh finding does N
     try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 });
+
+// Cover the first try/catch's catch branch: when the sidecar is absent
+// (readFileIndex throws inside the first try), the function must degrade
+// to age-only — NOT empty — so a missing-sidecar failure never silently
+// drops age-stale candidates. Plan 260716-0624 (fallow CRAP-30 regression):
+// exercises the catch branch so CRAP drops below the 30.0 gate threshold.
+test("loadStaleDispatchHints — hash build fails, degrades to age-only", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-sidecar-miss-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    // No file-index sidecar at all → readFileIndex throws → first try fails.
+    // The catch branch sets fileIndex/codeHashes to undefined and continues.
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+
+    const { loadStaleDispatchHints } = require(HOOK_PATH);
+    const ageStaleDate = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const entries = [{
+      id: "meta-test-sidecar-miss-age-stale",
+      entry_kind: "finding",
+      status: "open",
+      severity: "warning",
+      evidence_code_ref: "src/foo.js",
+      created_at: ageStaleDate,
+      last_verified_at: ageStaleDate, // age-stale (>7d) → must surface even with no signals
+      mechanism_check: true,
+    }];
+
+    const result = loadStaleDispatchHints(entries, [], root);
+    const ids = (result.fixable_candidates ?? []).map((c) => c.id);
+    assert.ok(
+      ids.includes("meta-test-sidecar-miss-age-stale"),
+      `sidecar-miss must degrade to age-only, not empty; got: ${JSON.stringify(ids)}`,
+    );
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+});
+
+// Cover the second try/catch's catch branch: when buildStaleDispatchHints
+// itself throws, the function must return EMPTY_STALE_DISPATCH rather than
+// propagate. Guards against a regression where the hook surfaces an
+// exception to the SessionStart caller. Sabotage via Module.prototype.require
+// monkey-patch scoped to this test only.
+test("loadStaleDispatchHints — builder throws, returns EMPTY_STALE_DISPATCH", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-builder-throw-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+    // Write a valid sidecar so the first try succeeds.
+    writeFileSync(
+      path.join(root, "file-index.jsonl"),
+      JSON.stringify({ path: "src/foo.js", code_fingerprint: "sha256:" + "a".repeat(64) }) + "\n",
+    );
+
+    const Module = require("node:module");
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function patched(id) {
+      // Force the builder call to throw by returning a module whose export
+      // throws when invoked. Mirrors the hook's relative-require path.
+      if (typeof id === "string" && id.endsWith("loop-introspect.js")) {
+        return { buildStaleDispatchHints: () => { throw new Error("builder boom"); } };
+      }
+      return realRequire.call(this, id);
+    };
+
+    try {
+      const { loadStaleDispatchHints } = require(HOOK_PATH);
+      const entries = [{
+        id: "meta-test-builder-throw",
+        entry_kind: "finding",
+        status: "open",
+        severity: "warning",
+        evidence_code_ref: "src/foo.js",
+        created_at: new Date().toISOString(),
+        last_verified_at: new Date().toISOString(),
+        mechanism_check: true,
+      }];
+      // Must not throw.
+      const result = loadStaleDispatchHints(entries, [], root);
+      assert.deepStrictEqual(
+        result,
+        { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" },
+        `builder throw must return EMPTY_STALE_DISPATCH, got: ${JSON.stringify(result)}`,
+      );
+    } finally {
+      Module.prototype.require = realRequire;
+    }
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+});

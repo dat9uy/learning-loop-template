@@ -5,9 +5,7 @@ import { buildInverseIndexes } from "../../core/loop-introspect.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { findEntryOrNotFound } from "#lib/find-entry.js";
-import { isStaleView } from "../../core/stale-view.js";
-import { computeCurrentHashes } from "../../core/stale-view.js";
-import { readFileIndex } from "../../core/meta-state.js";
+import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
@@ -165,21 +163,9 @@ export const metaStateRelationshipsTool = {
     if (direction === "outbound" || direction === "both") {
       // Plan 260716-0624 Phase 02: build drift signals so the dangling-refs
       // predicate surfaces drift-stale targets, not just age-stale ones.
-      const fileIndex = readFileIndex(root);
-      const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
-      const gateLogTimestamp = new Date().toISOString();
-      for (const s of skipped) {
-        if (s.reason !== "missing") {
-          appendGateLog(root, {
-            timestamp: gateLogTimestamp,
-            tool: "meta_state_relationships",
-            action: "compute_current_hash_skipped",
-            canonical: s.canonical,
-            reason: s.reason,
-          });
-        }
-      }
-      const signals = { fileIndex, codeHashes };
+      const signals = buildDriftSignals(entries, root, {
+        toolName: "meta_state_relationships",
+      });
       result.outbound = resolveOutboundRefs(factory, entry, id, entries);
       result.dangling_refs = resolveDanglingRefs(factory, entries, signals);
     }
