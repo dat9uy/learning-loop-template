@@ -4,6 +4,7 @@ import { stripEnvelope } from "../../core/envelope-stripper.js";
 import * as introspect from "../../core/loop-introspect.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
+import { computeRegistryStats } from "../../core/registry-stats.js";
 
 /**
  * Reduce a multi-sentence tool description to a one-line at-a-glance summary
@@ -102,6 +103,16 @@ export const loopDescribeTool = {
         const lineageStart = Date.now();
         const lineageMs = Date.now() - lineageStart;
         result.registry_summary = introspect.buildRegistrySummary(allEntries, readFileIndex(root));
+        // Plan 260716-1101 Tier 2 Phase C: surface compaction stats from the
+        // shared core helper (NOT a shell subprocess from the MCP server).
+        const registryStats = computeRegistryStats(root);
+        result.registry_stats = registryStats;
+        // Compaction action hook (H7 mitigation): when eligible, surface a
+        // single-shot hint pointing at the shell script. Kept separate from
+        // DISCOVERABILITY_HINTS so the 16-string invariant stays intact.
+        if (registryStats.compaction_eligible) {
+          result.compaction_action_hook = `Registry compaction eligible at ${registryStats.raw_lines} raw lines — run \`pnpm exec compact-registry.sh --full\` to drop superseded versions (keep-latest-tombstone-per-id).`;
+        }
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
         result.discoverability_hints = introspect.buildDiscoverabilityHints();

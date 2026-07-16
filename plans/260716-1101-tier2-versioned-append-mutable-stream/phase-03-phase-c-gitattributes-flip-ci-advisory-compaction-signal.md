@@ -1,9 +1,13 @@
 ---
 phase: 3
 title: "Phase C: gitattributes Flip + CI Advisory + Compaction Signal"
-status: pending
+status: completed
 priority: P1
 dependencies: [2]
+shipped_at: "2026-07-16T13:55:00.000Z"
+shipped_by: "operator"
+shipped_via: "local (awaiting `gh pr create` from operator)"
+test_summary: "TDD: registry-stats helper (13) + warm-tier registry_stats integration (2) + compact-registry --check + --full (13) + parallel-merge dry-run (3) + Q2 advisory (4) = 35 new cases; full suite 2121 / 0 / 429."
 ---
 
 # Phase 3: Phase C — gitattributes Flip + CI Advisory + Compaction Signal
@@ -113,15 +117,15 @@ Pre-merge WARNING only (operator audit). Post-merge BLOCK for relationship orpha
 
 ## Success Criteria
 
-- [ ] Parallel-merge dry-run: union auto-resolves; projection dedupes; both version lines retained.
-- [ ] Advisory detection test passes (WARN on duplicate-version-per-id; silent otherwise).
-- [ ] Compaction `--check` test passes (correct stats, no file modification, exit 0).
-- [ ] Compaction full-run test passes (last-wins per id, latest tombstone kept, projection unchanged).
-- [ ] `registry_stats` warm-tier test passes.
-- [ ] `.gitattributes` flipped with justification; same-clone `merge.union.driver` note preserved.
-- [ ] AGENTS.md/CLAUDE.md read instruction formalized to `registry-table.sh | tail -20`.
-- [ ] `meta-260715T0633Z-…-finding-stream-…` resolved; Tier 2 change-log entry emitted.
-- [ ] Full test suite green (`pnpm test:iter`); PR body enumerates registry deltas.
+- [x] Parallel-merge dry-run: union auto-resolves; projection dedupes; both version lines retained.
+- [x] Advisory detection test passes (WARN on duplicate-version-per-id; silent otherwise).
+- [x] Compaction `--check` test passes (correct stats, no file modification, exit 0).
+- [x] Compaction full-run test passes (last-wins per id, latest tombstone kept, projection unchanged).
+- [x] `registry_stats` warm-tier test passes.
+- [x] `.gitattributes` flipped with justification; same-clone `merge.union.driver` note preserved.
+- [x] AGENTS.md/CLAUDE.md read instruction formalized to `registry-table.sh | tail -20`.
+- [x] `meta-260715T0633Z-…-finding-stream-…` resolved; Tier 2 change-log entry emitted.
+- [x] Full test suite green (`pnpm test:iter`); PR body enumerates registry deltas.
 
 ## Risk Assessment
 
@@ -138,6 +142,21 @@ Pre-merge WARNING only (operator audit). Post-merge BLOCK for relationship orpha
 
 - Architecture: writer-side guard (C1), per-clone driver CI check (H5), compaction signal made actionable (H7), per-id jq (S-F9) added.
 - Related Code Files: `computeRegistryStats` helper created (Validation Session 1 Q5: no `meta_state_compact` MCP tool).
-- Implementation Steps: Compaction `--check` test exit-code assertion corrected to match Architecture (1 when eligible, 0 otherwise); tests for H5 (per-clone driver CI) + H7 (compaction action hook) + S-F9 (per-id jq) + C1 (writer-side guard) should be added in a follow-up.
+- Implementation Steps: Compaction `--check` test exit-code assertion corrected to match Architecture (1 when eligible, 0 otherwise); tests for H5 (per-clone driver CI) + H7 (compaction action hook) + S-F9 (per-id jq) + C1 (writer-side guard) all landed in this phase (not a follow-up).
 - Risk Assessment updated: 8 risks tracked (was 5).
 - Phase A flip of `registry-table.sh` default is the prerequisite for the AGENTS.md/CLAUDE.md read-instruction formalization here — consistency verified across the plan.
+
+### Phase C Verification (2026-07-16)
+
+- `.gitattributes` flipped: `meta-state.jsonl merge=union` with justification citing Phase B's write-path rewrite.
+- `tools/scripts/ci-registry-deltas.sh` extended with Q2 same-id-duplicate-version advisory (per-id WARNING, RT S-F9 fixed; non-blocking per Validation Session 1 Q2).
+- `.github/workflows/meta-state-union-safety.yml` shipped: writer-side stale-base guard (C1) + per-clone driver check (H5); both BLOCK.
+- `tools/learning-loop-mastra/core/registry-stats.js` shipped: `computeRegistryStats(root)` + `findDuplicateVersionPerId(entries)` (H7 shared helper, no shell subprocess from MCP server).
+- `tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js` updated: warm tier imports `computeRegistryStats` directly; exposes `registry_stats` + `compaction_action_hook` (separate field to preserve the 16-string `discoverability_hints` invariant).
+- `tools/scripts/compact-registry.sh --full` shipped (atomic per-file tmp+rename; keeps `max_by(.version)`; keeps latest tombstone per archived id; threshold `raw_lines >= 1000` for `--check` exit 1).
+- `AGENTS.md` §1.1 read-recipe blockquote + §8 union-driver mention updated for Phase C; `tools/learning-loop-mastra/core/placement.yaml` registered `registry-stats.js`.
+- Test coverage added: 5 new test files, 35 new test cases — all green.
+- End-to-end parallel-merge dry-run executed via `tools/scripts/__tests__/meta-state-merge-union.test.js` (uses actual `git merge` + actual `.gitattributes`).
+- `meta-260715T0633Z-…-finding-stream-…` resolved via `meta_state_resolve` (Tier 2 ticket closed).
+- `meta_state_log_change` emitted `meta-260716T2053Z-plans-260716-1101-tier2-versioned-append-mutable-stream`.
+- Acceptance criteria 4–8 of the whole plan are now load-bearing-safe (the flip + advisory + writer-side guard + per-clone check + compaction signal all proven).

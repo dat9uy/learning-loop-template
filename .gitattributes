@@ -27,10 +27,14 @@
 # dry-run (two branches from a shared base each appending a change-log at the
 # same EOF position). See AGENTS.md §8 for the one-time setup.
 #
-# DO NOT add meta-state.jsonl here: it is NOT true append-only — entries
-# are mutated in place for status flips (resolve / patch / batch), and the
-# registry is full-rewritten on every write. merge=union on a full-rewrite
-# file would keep BOTH the stale base-version and the mutated version of
-# any mutated entry id, producing duplicate ids and corrupting the registry.
+# meta-state.jsonl is now true append-only (Plan 260716-1101 Tier 2 Phase B
+# rewrote the write path to versioned-append via core/registry-append-atomic.js
+# + appendRegistryEntryAtomic; mutations append a new versioned line, never
+# replace). The read projection (`_readAndParseRegistry` + `registry-table.sh`)
+# dedupes to last-wins-by-max-version per id, so `merge=union` is now safe:
+# parallel branches that each mutate the same id auto-resolve; both version
+# lines are retained in the raw file (audit completeness); the projection
+# surfaces the highest-version line. Phase C flip.
 runtime-state.jsonl merge=union
 change-log.jsonl merge=union
+meta-state.jsonl merge=union

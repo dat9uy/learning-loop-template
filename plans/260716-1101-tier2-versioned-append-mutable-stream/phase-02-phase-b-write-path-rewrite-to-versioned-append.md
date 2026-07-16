@@ -1,9 +1,13 @@
 ---
 phase: 2
 title: "Phase B: Write-Path Rewrite to Versioned-Append"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
+shipped_at: "2026-07-16T12:55:00.000Z"
+shipped_by: "operator"
+shipped_via: "PR #65 (merge e9e02a6, 2026-07-16)"
+test_summary: "TDD: trueAppendAtomic crash-safety + canonical-compare + write-path append/no-op + archived-tombstone + batch-delete routing. Full suite green post-Phase B."
 ---
 
 # Phase 2: Phase B — Write-Path Rewrite to Versioned-Append
@@ -142,15 +146,15 @@ holds on a legacy entry lacking schema-defaulted fields". -->
 
 ## Success Criteria
 
-- [ ] Append-behavior test passes (mutations append; old lines untouched).
-- [ ] No-op short-circuit test passes (`meta-260715T2311Z` repro = zero file change).
-- [ ] Archived-tombstone delete test passes; `meta_state_list` hides tombstones.
-- [ ] CAS test passes; change-log immutability test passes; batch append test passes.
-- [ ] `meta-260715T2311Z-gratuitous-mutations` resolved + change-log entry emitted.
-- [ ] Stale split-patch guidance pruned from AGENTS.md/CLAUDE.md.
-- [ ] `meta-260715T0633Z-…-finding-stream-…` still OPEN (Tier 2 ticket).
-- [ ] Full meta-state test suite green (`pnpm test:iter`).
-- [ ] No `.gitattributes` change this phase.
+- [x] Append-behavior test passes (mutations append; old lines untouched).
+- [x] No-op short-circuit test passes (`meta-260715T2311Z` repro = zero file change).
+- [x] Archived-tombstone delete test passes; `meta_state_list` hides tombstones.
+- [x] CAS test passes; change-log immutability test passes; batch append test passes.
+- [x] `meta-260715T2311Z-gratuitous-mutations` resolved + change-log entry emitted.
+- [x] Stale split-patch guidance pruned from AGENTS.md/CLAUDE.md.
+- [x] `meta-260715T0633Z-…-finding-stream-…` still OPEN (Tier 2 ticket) — closed at Phase C.
+- [x] Full meta-state test suite green (`pnpm test:iter`).
+- [x] No `.gitattributes` change this phase.
 
 ## Risk Assessment
 
