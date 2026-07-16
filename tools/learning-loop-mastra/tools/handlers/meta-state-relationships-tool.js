@@ -6,6 +6,8 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { findEntryOrNotFound } from "#lib/find-entry.js";
 import { isStaleView } from "../../core/stale-view.js";
+import { computeCurrentHashes } from "../../core/stale-view.js";
+import { readFileIndex } from "../../core/meta-state.js";
 
 /**
  * Group an array of {kind, id, field} refs by field name, collapsing
@@ -98,7 +100,10 @@ function groupInbound(refs) {
  * Returns the dangling list. Refs whose target is open but not stale-view
  * are NOT dangling — those are healthy ongoing references.
  */
-function computeDanglingRefs(refs, entries) {
+function computeDanglingRefs(refs, entries, signals = {}) {
+  // Plan 260716-0624 Phase 02 (RT: M23): signals threaded through so the
+  // stale-branch fires on drift, not just age. RT: M20 — caller (resolveDanglingRefs)
+  // is responsible for gate-logging non-"missing" skipped paths.
   const entryById = new Map(entries.map((e) => [e.id, e]));
   const dangling = [];
   for (const ref of refs) {
@@ -113,7 +118,7 @@ function computeDanglingRefs(refs, entries) {
       continue;
     }
     const status = target.status;
-    if (isStaleView(target)) {
+    if (isStaleView(target, signals)) {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "stale" });
     } else if (status === "superseded") {
       dangling.push({ field: ref.field, target_id: ref.id, target_kind: ref.kind, reason: "superseded" });
@@ -158,8 +163,25 @@ export const metaStateRelationshipsTool = {
     };
 
     if (direction === "outbound" || direction === "both") {
+      // Plan 260716-0624 Phase 02: build drift signals so the dangling-refs
+      // predicate surfaces drift-stale targets, not just age-stale ones.
+      const fileIndex = readFileIndex(root);
+      const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
+      const gateLogTimestamp = new Date().toISOString();
+      for (const s of skipped) {
+        if (s.reason !== "missing") {
+          appendGateLog(root, {
+            timestamp: gateLogTimestamp,
+            tool: "meta_state_relationships",
+            action: "compute_current_hash_skipped",
+            canonical: s.canonical,
+            reason: s.reason,
+          });
+        }
+      }
+      const signals = { fileIndex, codeHashes };
       result.outbound = resolveOutboundRefs(factory, entry, id, entries);
-      result.dangling_refs = resolveDanglingRefs(factory, entries);
+      result.dangling_refs = resolveDanglingRefs(factory, entries, signals);
     }
 
     if (direction === "inbound" || direction === "both") {
@@ -203,9 +225,9 @@ function resolveOutboundRefs(factory, entry, id, entries) {
 // Dangling outbound refs: refs whose target is stale-view, missing, superseded,
 // or resolved. Refs whose target is open-but-not-stale are healthy. Returns
 // the dangling list (or null when empty).
-function resolveDanglingRefs(factory, entries) {
+function resolveDanglingRefs(factory, entries, signals) {
   const refs = factory.outboundRefs(entries);
-  const dangling = computeDanglingRefs(refs, entries);
+  const dangling = computeDanglingRefs(refs, entries, signals);
   return dangling.length > 0 ? dangling : null;
 }
 

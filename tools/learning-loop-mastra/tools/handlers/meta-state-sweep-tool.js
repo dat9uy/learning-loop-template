@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { buildRegistrySummary } from "../../core/loop-introspect.js";
-import { derivedStaleSet } from "../../core/stale-view.js";
+import { derivedStaleSet, computeCurrentHashes } from "../../core/stale-view.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
@@ -13,13 +13,29 @@ export const metaStateSweepTool = {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const fileIndex = readFileIndex(root);
+    // Plan 260716-0624 Phase 02 (RT: M20): inject codeHashes so drift-aware
+    // stale-view fires only when on-disk bytes actually differ from index
+    // baseline. Log non-"missing" skipped paths as gate-log breadcrumbs.
+    const { ok: codeHashes, skipped } = computeCurrentHashes(entries, root);
+    const gateLogTimestamp = new Date().toISOString();
+    for (const s of skipped) {
+      if (s.reason !== "missing") {
+        appendGateLog(root, {
+          timestamp: gateLogTimestamp,
+          tool: "meta_state_sweep",
+          action: "compute_current_hash_skipped",
+          canonical: s.canonical,
+          reason: s.reason,
+        });
+      }
+    }
     const now = Date.now();
 
     // Derived stale set: age > STALENESS_WINDOW_MS from
     // `last_verified_at`/`created_at` OR hash drift via file-index.jsonl.
     // This is the same set `meta_state_query_drift` + the age filter
     // surface — sweep just packages it as a dedicated read-only report.
-    const staleSet = derivedStaleSet(entries, { now, fileIndex });
+    const staleSet = derivedStaleSet(entries, { now, fileIndex, codeHashes });
 
     // Build the per-finding view the operator would have acted on under the
     // legacy apply:true mode. Now read-only — same shape, no writes.
