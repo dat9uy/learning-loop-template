@@ -64,7 +64,33 @@ function runHook(input, envOverrides = {}) {
 }
 
 function parseOutput(stdout) {
-  try { return JSON.parse(stdout); } catch { return null; }
+  try {
+    const p = JSON.parse(stdout);
+    if (p?.hookSpecificOutput?.additionalContext) return JSON.parse(p.hookSpecificOutput.additionalContext);
+    return p;
+  } catch {
+    return null;
+  }
+}
+
+// The write gate denies via exit 0 + `permissionDecision: "deny"` (modern
+// PreToolUse block protocol). Allow is also exit 0 but prints nothing, so exit
+// code alone no longer distinguishes allow from deny.
+function denied(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout)?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+function allowed(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout || 'null')?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return r.stdout.trim() === '';
+  }
 }
 
 async function withTempProject(fn) {
@@ -83,7 +109,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -95,7 +121,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -106,7 +132,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -117,7 +143,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -133,7 +159,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Edit', tool_input: { file_path: 'plans/2026/test/plan.md', new_string: newContent } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -143,7 +169,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/notes.md', content: '# Notes' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -154,7 +180,7 @@ describe('artifact-aware gate — plan content scanning (phase 1)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'plans/2026/test/plan.md', content } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 });
@@ -169,7 +195,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/api/src/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -179,7 +205,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/web/src/routes.ts', content: 'const x = 1;' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
@@ -193,7 +219,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
@@ -207,7 +233,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'records/vnstock/index/foo.yaml', content: 'id: test' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
@@ -221,7 +247,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'docs/journals/session-2026-05-22.md', content: '# Journal' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'escalate' }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -231,7 +257,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/unknown/stack.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
@@ -246,7 +272,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');
@@ -260,7 +286,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/api/main.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir }
       );
-      assert.strictEqual(r.exitCode, 0);
+      assert.ok(allowed(r), "allowed (exit 0, no deny)");
     });
   });
 
@@ -270,7 +296,7 @@ describe('artifact-aware gate — surface inference (phase 2)', () => {
         { tool_name: 'Write', tool_input: { file_path: 'product/api/capabilities/vnstock-data/capability.py', content: 'print(1)' } },
         { GATE_ROOT: tmpDir, GATE_RESPONSE_MODE: 'warn' }
       );
-      assert.strictEqual(r.exitCode, 2);
+      assert.ok(denied(r), "denied via permissionDecision");
       const out = parseOutput(r.stdout) || parseOutput(r.stderr);
       assert.ok(out, 'should emit JSON block');
       assert.strictEqual(out.decision, 'block');

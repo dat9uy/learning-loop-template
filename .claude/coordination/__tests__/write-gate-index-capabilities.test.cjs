@@ -19,6 +19,27 @@ function runGate(input, env) {
   };
 }
 
+// The write gate denies via exit 0 + `permissionDecision: "deny"` (the modern
+// PreToolUse block protocol). Rich fields (decision, matched_rule, reason) live
+// in hookSpecificOutput.additionalContext.
+function parseDecision(stdout) {
+  try {
+    const p = JSON.parse(stdout);
+    if (p?.hookSpecificOutput?.additionalContext) return JSON.parse(p.hookSpecificOutput.additionalContext);
+    return p;
+  } catch {
+    return null;
+  }
+}
+function denied(r) {
+  if (r.exitCode !== 0) return false;
+  try {
+    return JSON.parse(r.stdout)?.hookSpecificOutput?.permissionDecision === "deny";
+  } catch {
+    return false;
+  }
+}
+
 function createTmpProject() {
   const tmp = mkdtempSync(join(tmpdir(), "write-gate-records-test-"));
   mkdirSync(join(tmp, "records", "observations"), { recursive: true });
@@ -34,8 +55,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Write", tool_input: { file_path: join(tmp, "records", "index", "foo.yaml") } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "records/**");
     rmSync(tmp, { recursive: true, force: true });
@@ -47,8 +68,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Write", tool_input: { file_path: join(tmp, "records", "capabilities", "api-rest.yaml") } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "records/**");
     rmSync(tmp, { recursive: true, force: true });
@@ -60,8 +81,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Write", tool_input: { file_path: join(tmp, "records", "evidence", "foo.md") } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "records/**");
     rmSync(tmp, { recursive: true, force: true });
@@ -73,8 +94,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Write", tool_input: { file_path: join(tmp, "records", "observations", "foo.yaml") } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "records/**");
     rmSync(tmp, { recursive: true, force: true });
@@ -86,8 +107,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Edit", tool_input: { file_path: join(tmp, "records", "index", "foo.yaml"), old_string: "x", new_string: "y" } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     rmSync(tmp, { recursive: true, force: true });
   });
@@ -98,8 +119,8 @@ describe("write gate records/** always blocked", () => {
       { tool_name: "Write", tool_input: { file_path: join(tmp, "records", "capabilities", "test.yaml") } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.ok(parsed.reason.includes("MCP tools"), "reason should mention MCP tools");
     rmSync(tmp, { recursive: true, force: true });
   });
@@ -124,8 +145,8 @@ describe("write gate meta-state.jsonl always blocked (audit-log gap closure)", (
       { tool_name: "Write", tool_input: { file_path: join(tmp, "meta-state.jsonl"), content: "{}" } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "meta-state.jsonl");
     rmSync(tmp, { recursive: true, force: true });
@@ -137,8 +158,8 @@ describe("write gate meta-state.jsonl always blocked (audit-log gap closure)", (
       { tool_name: "Edit", tool_input: { file_path: join(tmp, "meta-state.jsonl"), old_string: "x", new_string: "y" } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.equal(parsed.decision, "block");
     assert.equal(parsed.matched_rule, "meta-state.jsonl");
     rmSync(tmp, { recursive: true, force: true });
@@ -150,8 +171,8 @@ describe("write gate meta-state.jsonl always blocked (audit-log gap closure)", (
       { tool_name: "Write", tool_input: { file_path: join(tmp, "meta-state.jsonl"), content: "{}" } },
       { GATE_ROOT: tmp }
     );
-    assert.equal(result.exitCode, 2);
-    const parsed = JSON.parse(result.stdout);
+    assert.ok(denied(result), "denied via permissionDecision");
+    const parsed = parseDecision(result.stdout);
     assert.ok(parsed.reason.includes("MCP"), "reason should mention MCP tools");
     rmSync(tmp, { recursive: true, force: true });
   });

@@ -96,12 +96,23 @@ export function formatSoftWarning(message) {
  */
 export function formatHookDecision(decision, { channel } = {}) {
   if (channel === "hookSpecificOutput") {
-    return JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        additionalContext: JSON.stringify(decision),
-      },
-    });
+    const isOk = !decision || decision.decision === "ok";
+    const hookSpecificOutput = {
+      hookEventName: "PreToolUse",
+      additionalContext: JSON.stringify(decision),
+    };
+    if (!isOk) {
+      // Modern Claude Code PreToolUse protocol: the harness only processes
+      // stdout JSON on exit 0, and `permissionDecision: "deny"` is the field
+      // that blocks the call and surfaces `permissionDecisionReason` to the
+      // model. On exit 2 the stdout JSON is discarded and the harness falls
+      // back to stderr — which is empty here — producing a generic
+      // "No stderr output" error that hides the reason from the agent.
+      hookSpecificOutput.permissionDecision = "deny";
+      hookSpecificOutput.permissionDecisionReason =
+        decision.reason ?? "Blocked by learning-loop gate";
+    }
+    return JSON.stringify({ hookSpecificOutput });
   }
   return formatOutput(decision);
 }

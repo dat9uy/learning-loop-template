@@ -153,6 +153,26 @@ function parseOutbound(result) {
   }
 }
 
+// The bash (outbound) gate denies via exit 0 + `permissionDecision: "deny"`
+// (exit 2 would discard the stdout JSON). Allowed calls are exit 0 with no
+// permissionDecision, so exit code alone no longer distinguishes them.
+function bashDenied(result) {
+  if (result.exitCode !== 0) return false;
+  try {
+    return JSON.parse(result.stdout)?.hookSpecificOutput?.permissionDecision === 'deny';
+  } catch {
+    return false;
+  }
+}
+function bashAllowed(result) {
+  if (result.exitCode !== 0) return false;
+  try {
+    return JSON.parse(result.stdout || 'null')?.hookSpecificOutput?.permissionDecision !== 'deny';
+  } catch {
+    return result.stdout.trim() === '';
+  }
+}
+
 test('inbound-state-gate: 11 categories of state-change / staleness / context / marker / outbound / false-positive / MCP divergence / isolation / schema / ordering / emission-collapse assertions', () => {
   // --- Category 1: State-Change Detection ---
   console.log('\n=== Category 1: State-Change Detection ===');
@@ -339,7 +359,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     writeMarker(tmpDir, new Date(now - 1 * 60 * 1000).toISOString(), 'I cleared the device');
     const t1 = runOutboundGate('curl https://api.vnstock.com/data', env);
     const out1 = parseOutbound(t1);
-    assert(t1.exitCode === 2, 'stale obs + constrained → exit 2');
+    assert(bashDenied(t1), 'stale obs + constrained → denied (escalate)');
     assert(out1 && out1.decision === 'escalate', 'decision is escalate');
     assert(out1 && out1.inbound_gate === true, 'inbound_gate flag is true');
     clearMarker(tmpDir);
@@ -348,14 +368,14 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     writeObservation(tmpDir, { id: 'obs-out2', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 1 * 60 * 1000).toISOString() });
     writeMarker(tmpDir, new Date(now - 2 * 60 * 60 * 1000).toISOString(), 'old message');
     const t2 = runOutboundGate('curl https://api.vnstock.com/data', env);
-    assert(t2.exitCode === 0, 'fresh obs + old marker → exit 0 (no escalation)');
+    assert(bashAllowed(t2), 'fresh obs + old marker → allowed (no escalation)');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-out3', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     clearMarker(tmpDir);
     const t3 = runOutboundGate('curl https://api.vnstock.com/data', env);
-    assert(t3.exitCode === 0, 'no marker → exit 0 (no escalation)');
+    assert(bashAllowed(t3), 'no marker → allowed (no escalation)');
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-out4', status: 'active', constraint_type: 'vendor-api', affected_system: 'vnstock', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });

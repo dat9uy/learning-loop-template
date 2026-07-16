@@ -127,10 +127,12 @@ test("promoted regex rule matching command → escalate", () => {
 
 // ── promoted rule: no raw-stdout parsing of vitest (State-3 backstop) ──
 // The agent must iterate via `pnpm test:iter` (parsed JSON summary) or
-// `vitest-failures.sh`, not pipe `vitest run`/`pnpm test` to tail/grep. The
-// gate is the deterministic backstop; the wrapper is the positive path.
+// `vitest-failures.sh`, not pipe `vitest run`/`pnpm test` to tail/head/grep. The
+// gate is the deterministic backstop; the wrapper is the positive path. `head`
+// is covered because agents dodge the tail/grep block by piping to head, which
+// reads raw stdout just the same.
 
-const NO_RAW_STDOUT_PATTERN = "(vitest run|pnpm test\\b).*\\| *(tail|grep)\\b";
+const NO_RAW_STDOUT_PATTERN = "(vitest run|pnpm test\\b).*\\| *(tail|head|grep)\\b";
 
 function writeNoRawStdoutRule(root) {
   const rule = JSON.stringify({
@@ -141,7 +143,7 @@ function writeNoRawStdoutRule(root) {
     enforcement: "gate",
     pattern_type: "regex",
     pattern: NO_RAW_STDOUT_PATTERN,
-    description: "Block piping vitest/pnpm-test stdout to tail/grep; use pnpm test:iter or vitest-failures.sh",
+    description: "Block piping vitest/pnpm-test stdout to tail/head/grep; use pnpm test:iter or vitest-failures.sh",
     promoted_at: new Date().toISOString(),
     promoted_by: "test",
   });
@@ -160,6 +162,14 @@ test("vitest run piped to grep → escalate", () => {
   const root = makeRoot();
   writeNoRawStdoutRule(root);
   const result = evaluateBashGate({ command: "vitest run --bail=1 foo.test.js 2>&1 | grep -A 2 FAIL", root });
+  assert.strictEqual(result.decision, "escalate");
+  assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
+});
+
+test("vitest run piped to head → escalate (closes head loophole)", () => {
+  const root = makeRoot();
+  writeNoRawStdoutRule(root);
+  const result = evaluateBashGate({ command: "pnpm exec vitest run --bail=1 foo.test.js 2>&1 | head -50", root });
   assert.strictEqual(result.decision, "escalate");
   assert.strictEqual(result.rule_id, "rule-no-raw-stdout-vitest");
 });

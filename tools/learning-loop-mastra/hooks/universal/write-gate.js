@@ -11,8 +11,7 @@ import {
   parseInput,
   normalizeToolName,
   extractFilePath,
-  formatOutput,
-  exitCode,
+  formatHookDecision,
 } from "./lib/protocol-adapter.js";
 import { evaluateWriteGate } from "../../core/evaluate-write-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
@@ -33,9 +32,13 @@ function main() {
   const decision = evaluateWriteGate({ filePath, root });
 
   if (decision.decision !== "ok") {
-    console.log(formatOutput(decision));
+    // Exit 0 + `permissionDecision: "deny"` (in the hookSpecificOutput envelope)
+    // is the modern PreToolUse block protocol — the harness processes stdout JSON
+    // only on exit 0 and surfaces `permissionDecisionReason` to the model. Exit 2
+    // would discard the JSON and report "No stderr output", hiding the reason.
+    console.log(formatHookDecision(decision, { channel: "hookSpecificOutput" }));
   }
-  process.exit(exitCode(decision));
+  process.exit(0);
 }
 
 main();

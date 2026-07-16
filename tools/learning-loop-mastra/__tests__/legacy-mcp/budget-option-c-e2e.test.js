@@ -122,7 +122,8 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     });
 
     try {
-      assert.strictEqual(result.exitCode, 2, "Expected exit 2 (block)");
+      assert.strictEqual(result.exitCode, 0, "Expected exit 0 (deny via permissionDecision)");
+      assert.strictEqual(result.output?.hookSpecificOutput?.permissionDecision, "deny", "denied via permissionDecision");
       assert.strictEqual(result.decision?.decision, "block");
       assert.strictEqual(result.decision?.observation_required, true);
     } finally {
@@ -149,7 +150,8 @@ describe("Option C: Agent-Managed Budget end-to-end", () => {
     });
 
     try {
-      assert.strictEqual(result.exitCode, 2, "Expected exit 2 (hard block)");
+      assert.strictEqual(result.exitCode, 0, "Expected exit 0 (deny via permissionDecision)");
+      assert.strictEqual(result.output?.hookSpecificOutput?.permissionDecision, "deny", "denied via permissionDecision");
       assert.strictEqual(result.decision?.decision, "block");
       assert.strictEqual(result.decision?.hard_block, true);
       assert.ok(result.decision?.reason?.includes("importlib.util.find_spec"));
