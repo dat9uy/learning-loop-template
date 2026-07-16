@@ -189,4 +189,32 @@ describe("backfill-versions.mjs (Phase A backfill script)", () => {
     const result = spawnSync(process.execPath, [SCRIPT, `--root=${root}`], { encoding: "utf8" });
     assert.equal(result.status, 2, "missing-file must exit 2");
   });
+
+  it("does NOT leak .meta-state.lock when an error fires inside the lock body", () => {
+    // Regression test for I-1: pre-fix the script called `process.exit(1)`
+    // from inside `withRegistryLock`, skipping the `finally` block and
+    // leaving `.meta-state.lock` on disk. proper-lockfile's `stale: 30000`
+    // would eventually recover, but the next invocation would hang ~30s
+    // retrying first. Post-fix the script throws, the finally releases the
+    // lock, and a follow-up run succeeds promptly.
+    //
+    // Trigger a parse failure inside the lock body (corrupted JSONL) and
+    // verify the lock directory is gone afterwards. The outer catch maps
+    // the error to exit 2 (parse error → I/O-class exit code).
+    writeFileSync(join(root, "meta-state.jsonl"), "not valid json\n", "utf8");
+    const result = spawnSync(process.execPath, [SCRIPT, `--root=${root}`], { encoding: "utf8" });
+    assert.notEqual(result.status, 0, "corrupt JSONL must cause a non-zero exit");
+    assert.equal(
+      existsSync(join(root, ".meta-state.lock")),
+      false,
+      "lock directory must be released on error (regression: process.exit skipped finally)",
+    );
+
+    // Sanity: a follow-up clean run completes quickly (no stale-lock retry).
+    writeJsonl(root, "meta-state.jsonl", [
+      makeFinding({ id: "meta-bf-recover-1", description: "Recovery after lock-leak fix (min 20)" }),
+    ]);
+    const recover = spawnSync(process.execPath, [SCRIPT, `--root=${root}`], { encoding: "utf8" });
+    assert.equal(recover.status, 0, `recovery run failed: ${recover.stderr}`);
+  });
 });

@@ -29,10 +29,6 @@ function appendJsonl(root, filename, entry) {
   appendFileSync(path, JSON.stringify(entry) + "\n", "utf8");
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function makeFinding(overrides = {}) {
   return {
     id: overrides.id ?? "meta-proj-f-" + Math.random().toString(36).slice(2, 8),
@@ -219,7 +215,8 @@ describe("projection swap (Tier 2 Phase A) — last-wins-by-max-version", () => 
     assert.equal(before.length, 1);
     assert.equal(before[0].version, 0);
 
-    await sleep(1100); // bypass 1s mtime granularity
+    // Cache layer busts on mtimeMs+size change (core/read-registry-cache.js:73);
+    // appending a line increases file size, so no sleep is needed.
     appendJsonl(root, REGISTRY_FILENAME, {
       ...v0,
       version: 1,
@@ -228,7 +225,7 @@ describe("projection swap (Tier 2 Phase A) — last-wins-by-max-version", () => 
     });
 
     const after = readRegistry(root);
-    assert.notEqual(after, before, "cache must bust on meta-state.jsonl mtime change");
+    assert.notEqual(after, before, "cache must bust on meta-state.jsonl size change");
     assert.equal(after.length, 1);
     assert.equal(after[0].version, 1, "projection must pick v1 after append");
     assert.equal(after[0].description, "Version 1 — must win after projection");

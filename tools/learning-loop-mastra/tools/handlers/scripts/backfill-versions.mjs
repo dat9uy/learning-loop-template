@@ -90,19 +90,26 @@ async function run() {
 
       // Idempotence precondition: raw_lines must equal normalized count
       // (no entries added or dropped, only mutated-in-place copies).
+      // Throw instead of process.exit so the registry-lock's `finally` block
+      // releases <root>/.meta-state.lock; process.exit skips finally, leaking
+      // the lock directory until proper-lockfile's `stale: 30000` recovers.
       if (normalized.length !== rawLineCount) {
-        console.error(
+        const err = new Error(
           `backfill-versions: line count drift raw=${rawLineCount} normalized=${normalized.length}`,
         );
-        process.exit(1);
+        err.exitCode = 1;
+        throw err;
       }
 
       // Idempotence assertion: re-running on a fully-backfilled file should
       // produce zero changes. Verify by re-checking the normalized set.
       const stillMissing = normalized.filter(isMissingVersion).length;
       if (stillMissing !== 0) {
-        console.error(`backfill-versions: post-backfill still missing ${stillMissing} versions`);
-        process.exit(1);
+        const err = new Error(
+          `backfill-versions: post-backfill still missing ${stillMissing} versions`,
+        );
+        err.exitCode = 1;
+        throw err;
       }
 
       console.log(
@@ -143,7 +150,7 @@ async function run() {
     });
   } catch (err) {
     console.error(`backfill-versions: ${err.message}`);
-    process.exit(2);
+    process.exit(err.exitCode ?? 2);
   }
 }
 
