@@ -58,10 +58,24 @@ describe("registry-table.sh: contract", () => {
   });
 
   test("missing path → exit 2 + guidance", () => {
+    // Phase A: dual-file default + tolerate-partial-missing means a fully-absent
+    // path list emits "no registry files found" + exit 2. Partial-missing emits
+    // a notice and continues with present files (covered by the next test).
     const proc = runScript(["/tmp/this-registry-must-not-exist-98765.jsonl"]);
     assert.strictEqual(proc.status, 2, `expected exit 2, got ${proc.status}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`);
-    assert.match(proc.stderr, /file\(s\) not found/);
+    assert.match(proc.stderr, /no registry files found/);
     assert.match(proc.stderr, /hint:/);
+  });
+
+  test("partial-missing — present files processed; absent emits notice (Phase A)", () => {
+    // Phase A: when only one of the default pair exists (pre-split state),
+    // the script continues with the present file and emits a stderr notice
+    // about the absent one. Pre-Phase-A this was a hard error.
+    const proc = runScript([ONE_LINE_FIXTURE, "/tmp/this-registry-must-not-exist-98765.jsonl"]);
+    assert.strictEqual(proc.status, 0, `expected exit 0 (present file processed), got ${proc.status}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`);
+    assert.match(proc.stderr, /absent file/);
+    const outLines = proc.stdout.split("\n").filter((l) => l.length > 0);
+    assert.strictEqual(outLines.length, 3, `present file must dedupe to 3 ids, got ${outLines.length}`);
   });
 
   test("invalid JSON → exit 2 + guidance", () => {

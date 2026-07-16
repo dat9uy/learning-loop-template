@@ -7,9 +7,9 @@
 #
 # Usage:
 #   registry-table.sh [paths...]
-#     - default path: meta-state.jsonl
-#     - one or more positional args accepted (post-split defaults become
-#       "meta-state.jsonl change-log.jsonl" — Red Team F11a)
+#     - default path: meta-state.jsonl change-log.jsonl (post-Tier-1-split,
+#       Red Team M2 / Plan 260716-1101 Phase A step 7)
+#     - one or more positional args accepted (override the default)
 #     - file set is concatenated in argument order; each file is deduped
 #       independently before the cross-file union
 #
@@ -26,30 +26,40 @@
 
 set -euo pipefail
 
-# Default path: meta-state.jsonl at CWD. When the change-log stream split
-# lands (Phase 2), this default becomes "meta-state.jsonl change-log.jsonl"
-# — see Red Team F11a.
+# Default path: both files at CWD. Post-Tier-1-split the registry is two
+# files; the JS union chokepoint reads both, and the shell-side helper
+# now matches so `registry-table.sh | tail -20` is parity-equivalent to
+# `meta_state_list`'s output (Phase A step 7 / Red Team M2). Either file
+# may be absent — jq's slurp tolerates the empty array.
 if [[ $# -eq 0 ]]; then
-  set -- meta-state.jsonl
+  set -- meta-state.jsonl change-log.jsonl
 fi
 
 # Validate every input exists and is readable; bail with exit 2 + hint.
+# Tolerate an absent default-file pair (one may be missing on pre-split or
+# post-split trees): emit a notice on stderr but continue with the
+# present files. This preserves the pre-Tier-1 behavior where
+# `meta-state.jsonl` alone was the only file.
 missing=()
+present=()
 for p in "$@"; do
-  if [[ ! -f "$p" ]]; then
+  if [[ -f "$p" ]]; then
+    present+=("$p")
+  else
     missing+=("$p")
   fi
 done
-if [[ ${#missing[@]} -gt 0 ]]; then
-  echo "registry-table.sh: file(s) not found:" >&2
-  for p in "${missing[@]}"; do
-    echo "  - $p" >&2
-  done
+if [[ ${#present[@]} -eq 0 ]]; then
+  echo "registry-table.sh: no registry files found at CWD (looked for: $*)" >&2
   echo "  hint: pass JSONL registry paths as positional args, e.g. \\" >&2
   echo "        tools/scripts/registry-table.sh meta-state.jsonl" >&2
-  echo "  Tier 2: tools/scripts/registry-table.sh meta-state.jsonl change-log.jsonl" >&2
+  echo "        tools/scripts/registry-table.sh meta-state.jsonl change-log.jsonl" >&2
   exit 2
 fi
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo "registry-table.sh: notice — absent file(s), skipping: ${missing[*]}" >&2
+fi
+set -- "${present[@]}"
 
 # Validate each file is valid JSON (jq -e . per file); on failure, exit 2.
 for p in "$@"; do
