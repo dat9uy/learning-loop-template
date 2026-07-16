@@ -3,7 +3,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { readRegistry, readFileIndex, isValidEntryIdRef } from "../../core/meta-state.js";
 import { checkGrounding } from "../../core/check-grounding.js";
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
-import { derivedStaleSet, isOpen } from "../../core/stale-view.js";
+import { derivedStaleSet, isOpen, isStaleView, computeCurrentHashes } from "../../core/stale-view.js";
 import { test } from "vitest";
 import assert from "node:assert";
 import { existsSync } from "node:fs";
@@ -83,26 +83,64 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // cap below is the post-migration threshold; tightening it requires
   // resolving the underlying mechanism_check issues in a follow-up plan.
 
-  // Phase 7: derived-stale view cap, scoped AGE-ONLY. `fileIndex` is passed
-  // as an empty Map so `hasDrifted` short-circuits false (stale-view.js) and
-  // only the age branch (reference time > STALENESS_WINDOW_MS) can fire.
+  // Phase 7: derived-stale view cap, TWO assertions (RT: M4).
   //
-  // Why age-only: the pretest seed (seed-file-index.mjs) re-hashes every
-  // mc=true cited path to its CURRENT bytes, so in CI the index baseline
-  // always equals the file — the path-keyed `hasDrifted` would flag every
-  // grounded finding as stale (the opposite of grounded), and capping that
-  // count trips on every newly-filed finding. The cap's original intent was
-  // to catch sweep re-staling entries via old created_at — an age regression
-  // — so age-only restores that forcing function: deferred findings (recently
-  // filed or re-verified) don't count; abandoned ones (>7d) do. Threshold 16
-  // = precompute 14 + 2 headroom.
-  const derivedStaleMc = derivedStaleSet(current.all_findings, {
-    now: Date.now(),
-    fileIndex: new Map(),
+  // The age-stale cap preserves the regression-detection forcing function
+  // for sweep re-staling via old created_at — an age regression.
+  //
+  // The drift-stale cap (tight) is a separate forcing function for the
+  // regression class this plan fixes: post-seed normalizes the index baseline
+  // to current bytes, so drift-stale count is 0 by construction. Any drift
+  // > 0 indicates the predicate has regressed to path-presence-style detection.
+  //
+  // Both assertions run on real { fileIndex, codeHashes } — no new Map()
+  // workaround. RT: M13: this test only runs cleanly under `pnpm test` (which
+  // prepends seed-file-index.mjs). `pnpm test:iter` skips the seed step —
+  // computeCurrentHashes would read fresh bytes vs stale baseline and blow
+  // the cap. Exclude via --exclude when iterating on other tests.
+  //
+  // Pre-state both expected values to avoid a false-alarm "investigate"
+  // branch. Cap precompute: age-stale 9 (Phase 7a observed after the
+  // structural fix); drift-stale = 0 (post-seed normalization).
+  const now = Date.now();
+  const { ok: codeHashes } = computeCurrentHashes(current.all_findings, root);
+
+  // Phase 7a: age-stale cap. Counts findings where the reference time is
+  // older than the window AND drift is silent (no drift signal in CI).
+  const derivedStaleAge = derivedStaleSet(current.all_findings, {
+    now,
+    fileIndex,
+    codeHashes,
   }).filter((f) => f.mechanism_check === true || f.mechanism_check === null);
+  // Precompute observed: 9 (Phase 7a + 7b combined age-stale findings).
+  // Threshold 11 = precompute 9 + 2 headroom. Bump when the registry grows.
   assert.ok(
-    derivedStaleMc.length <= 16,
-    `Phase 7: age-stale cap broken — ${derivedStaleMc.length} age-stale mechanism_check findings exceed threshold 16 (14 + 2 headroom; age-only — drift unmeasurable post-seed): ${derivedStaleMc.map((f) => f.id).join(", ")}`
+    derivedStaleAge.length <= 11,
+    `Phase 7a: age-stale cap broken — ${derivedStaleAge.length} age-stale mechanism_check findings exceed threshold 11 (9 + 2 headroom): ${derivedStaleAge.map((f) => f.id).join(", ")}`
+  );
+
+  // Phase 7b: drift-stale cap. Tight (zero in CI post-seed). Any drift > 0
+  // is a path-presence-style regression or hash-compare-against-wrong-baseline
+  // regression. (RT: M4 — the pre-fix predicate flagged every grounded finding
+  // as stale-by-drift because the index baseline == current bytes was the
+  // OPPOSITE signal.) We assert strictly == 0 here so a future regression
+  // is loud.
+  const derivedStaleDrift = current.all_findings
+    .filter((f) => f.mechanism_check === true || f.mechanism_check === null)
+    .filter((f) => {
+      // Skip age-stale findings (already counted in Phase 7a).
+      const refMs = (f.last_verified_at || f.created_at) ? new Date(f.last_verified_at || f.created_at).getTime() : null;
+      if (refMs === null) return false;
+      const ageMs = now - refMs;
+      const isAgeStale = ageMs > (7 * 24 * 60 * 60 * 1000);
+      if (isAgeStale) return false;
+      // Drift-only: re-evaluate with the same signals.
+      return isStaleView(f, { now, fileIndex, codeHashes });
+    });
+  assert.strictEqual(
+    derivedStaleDrift.length,
+    0,
+    `Phase 7b: drift-stale count ${derivedStaleDrift.length} > 0 (post-seed expected; path-presence-style regression suspected): ${derivedStaleDrift.map((f) => f.id).join(", ")}`
   );
 
   // Size sanity: cold tier should not collapse to a near-empty payload

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { readRegistry, META_STATE_FINDING_CATEGORIES, readFileIndex, canonicalIndexKey } from "./meta-state.js";
 import { loadPromotedRules } from "./gate-logic.js";
 import { readColdTierCache, writeColdTierCache } from "./loop-introspect-cache.js";
-import { isOpen, isStaleView } from "./stale-view.js";
+import { isOpen, isStaleView, computeCurrentHashes } from "./stale-view.js";
 import {
   CHANGE_LOG_BOUND_PATHS,
   canonicalizeChangeTarget,
@@ -209,11 +209,19 @@ function top5OldestFirst(filtered, mapFn) {
     .map(mapFn);
 }
 
-export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
-  // Fixable candidates: stale findings, non-empty evidence_code_ref,
+export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIndex, codeHashes, opts = {}) {
+  // Plan 260716-0624 Phase 02 (RT: M7): thread fileIndex + codeHashes through
+  // to isStaleView so the fixable-candidates filter can fire on drift, not
+  // just age. Backward compat: callers that don't pass them get age-only.
+  // Top-5 candidates: stale findings, non-empty evidence_code_ref,
   // severity !== "escalate", no ledger_ref, non-terminal.
   // Sort oldest-first: the operator is more likely to recognize and triage
   // long-queued stale entries before newly-staled ones (validation P3-W4).
+  const isStaleOpts = {
+    now: opts.now,
+    fileIndex,
+    codeHashes,
+  };
   const candidates = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
@@ -221,7 +229,7 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set()) {
       // (`isStaleView`) rather than literal `status === "stale"`. Tolerates
       // legacy `stale` entries pre-migration and stays correct after the
       // migration flips them to `open`.
-      .filter((e) => isStaleView(e))
+      .filter((e) => isStaleView(e, isStaleOpts))
       .filter((e) => typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
       .filter((e) => e.severity !== "escalate")
       .filter((e) => !e.ledger_ref)

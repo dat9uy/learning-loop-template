@@ -71,7 +71,20 @@ export function deriveStatus(entry, codeContext) {
   // bare file existence no longer yields mechanism-shipped.
   const kind = computeKind(codeRefExists, testFileExists, codeContext.test_passed ?? null, codeRef, testPath);
   const derived_status = computeDerivedStatus(kind);
-  const recommendation = computeRecommendation(entry, derived_status, kind);
+  // Plan 260716-0624 Phase 01 (Validation Q4): thread drift signals through
+  // isStaleView so the recommendation distinguishes age-stale from drift-stale.
+  // Backward compat: when fileIndex/codeHashes are absent, isStaleView falls
+  // back to age-only (matches the pre-fix contract).
+  // `now` is materialized to a number — isStaleView checks `typeof opts.now === "number"`.
+  // Tests inject `now: () => fixedMs` for deterministic timing; we call it once.
+  let nowMs = null;
+  try { nowMs = typeof codeContext.now === "function" ? codeContext.now() : null; } catch { nowMs = null; }
+  const isStaleOpts = {
+    ...(nowMs !== null ? { now: nowMs } : {}),
+    fileIndex: codeContext.fileIndex,
+    codeHashes: codeContext.codeHashes,
+  };
+  const recommendation = computeRecommendation(entry, derived_status, kind, isStaleOpts);
   const drift = computeDrift(derived_status, entry.status);
 
   return {
@@ -129,7 +142,7 @@ function computeDerivedStatus(kind) {
 }
 
 // fallow-ignore-next-line complexity
-function computeRecommendation(entry, derivedStatus, kind) {
+function computeRecommendation(entry, derivedStatus, kind, isStaleOpts = {}) {
   // Plan 260707-0812 Phase 2: drive the "open vs. terminal" branch from
   // isOpen / TERMINAL_RAW_STATUSES — the literal status equality sites were
   // removed because the persisted enum no longer carries "reported"/"active".
@@ -138,7 +151,11 @@ function computeRecommendation(entry, derivedStatus, kind) {
   // recommendation wins for aged/open findings (otherwise "resolve" wins
   // for any open finding, masking the stale-view signal). The full `entry`
   // is passed so isStaleView can read `last_verified_at`/`created_at`.
-  if (kind === "mechanism-shipped" && isStaleView(entry)) {
+  //
+  // Plan 260716-0624 Phase 01 (Validation Q4): `isStaleOpts` threads
+  // fileIndex + codeHashes through to isStaleView. When the caller does not
+  // inject them, isStaleView falls back to age-only (backward compat).
+  if (kind === "mechanism-shipped" && isStaleView(entry, isStaleOpts)) {
     return "re_verify";
   }
   if (kind === "mechanism-shipped" && isOpen(entry)) {

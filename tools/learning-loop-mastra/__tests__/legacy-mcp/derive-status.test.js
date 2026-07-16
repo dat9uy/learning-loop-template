@@ -385,4 +385,57 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.derivation.kind, "code-only");
     assert.strictEqual(result.derived_status, "active-uncertain");
   });
+
+  // Plan 260716-0624 Phase 01 (Validation Q4): drift-aware recommendations.
+  // When the caller injects fileIndex + codeHashes, mechanism-shipped
+  // findings whose file has drifted return "re_verify" (not "resolve"),
+  // even though their age is fresh.
+  test("drift-aware: mechanism-shipped + drift → re_verify (age-only would say resolve)", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      created_at: new Date(ctx.now() - 1000).toISOString(), // fresh
+    });
+    // fileIndex baseline ≠ codeHashes current → drift
+    ctx.fileIndex = new Map([["src.js", "sha256:" + "a".repeat(64)]]);
+    ctx.codeHashes = new Map([["src.js", "sha256:" + "b".repeat(64)]]);
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.recommendation, "re_verify");
+  });
+
+  test("drift-aware: mechanism-shipped + no drift (hashes match) → resolve", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      created_at: new Date(ctx.now() - 1000).toISOString(), // fresh
+    });
+    const same = "sha256:" + "a".repeat(64);
+    ctx.fileIndex = new Map([["src.js", same]]);
+    ctx.codeHashes = new Map([["src.js", same]]);
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.recommendation, "resolve");
+  });
+
+  test("drift-aware: backward compat — no fileIndex/codeHashes → age-only", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      created_at: new Date(ctx.now() - 1000).toISOString(),
+    });
+    // No fileIndex/codeHashes injected — same as pre-Phase-01 behavior.
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.recommendation, "resolve");
+  });
 });

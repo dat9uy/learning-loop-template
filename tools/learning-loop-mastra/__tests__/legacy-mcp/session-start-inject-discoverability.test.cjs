@@ -2,6 +2,9 @@ const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
+const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 
 const HOOK_PATH = path.resolve(__dirname, "..", "..", "hooks", "universal", "session-start-inject-discoverability.cjs");
 const CONTEXT_PATH = path.resolve(__dirname, "..", "..", "..", "..", ".claude", "session-context.json");
@@ -236,4 +239,180 @@ test("SessionStart hook emits degraded additionalContext marker when loader fail
   const ac = out.hookSpecificOutput.additionalContext;
   assert.ok(ac.includes("degraded"), `degraded additionalContext must say 'degraded'; got: ${ac}`);
   assert.ok(ac.includes("fallback"), `degraded additionalContext must cite source=fallback; got: ${ac}`);
+});
+
+// Plan 260716-0624 (stale-view hash-drift fix): the session-start hook must
+// thread drift signals (fileIndex + codeHashes) into buildStaleDispatchHints
+// so the fixable-candidates filter fires on drift, not just age. Before the
+// fix, loadStaleDispatchHints called buildStaleDispatchHints with no signals
+// → age-only → a drift-stale-but-age-fresh finding never surfaced. This test
+// builds a fixture where the cited file's current bytes differ from the
+// file-index baseline (drift) while the finding is <7d old (age-fresh): the
+// finding MUST appear in fixable_candidates. Without the wiring fix, the
+// age-only predicate would drop it and this assertion would fail.
+test("loadStaleDispatchHints threads drift signals — drift-stale age-fresh finding surfaces", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-drift-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    // Actual on-disk content. currentHash = sha256("current\n").
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+    // Index baseline = sha256 of DIFFERENT content → storedHash != currentHash → drift.
+    const baselineHash = `sha256:${crypto.createHash("sha256").update("different\n").digest("hex")}`;
+    writeFileSync(
+      path.join(root, "file-index.jsonl"),
+      JSON.stringify({ path: "src/foo.js", code_fingerprint: baselineHash }) + "\n",
+    );
+
+    const { loadStaleDispatchHints } = require(HOOK_PATH);
+    const nowIso = new Date().toISOString();
+    const entries = [{
+      id: "meta-test-drift-stale-finding",
+      entry_kind: "finding",
+      status: "open",
+      severity: "warning",
+      evidence_code_ref: "src/foo.js",
+      created_at: nowIso,
+      last_verified_at: nowIso, // age-fresh (<7d) → age-only would NOT flag it
+      mechanism_check: true,
+      // no ledger_ref → passes the dispatch filter
+    }];
+
+    const result = loadStaleDispatchHints(entries, [], root);
+    const ids = (result.fixable_candidates ?? []).map((c) => c.id);
+    assert.ok(
+      ids.includes("meta-test-drift-stale-finding"),
+      `drift-stale age-fresh finding must surface in fixable_candidates (drift-aware wiring); got: ${JSON.stringify(ids)}`,
+    );
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+});
+
+// Same fixture, but the file-index baseline MATCHES the current bytes → no
+// drift, and the finding is age-fresh → must NOT surface. Guards against a
+// wiring that always flags (path-presence-style regression).
+test("loadStaleDispatchHints drift-aware — hash-match age-fresh finding does NOT surface", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-nodrift-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+    const matchHash = `sha256:${crypto.createHash("sha256").update("current\n").digest("hex")}`;
+    writeFileSync(
+      path.join(root, "file-index.jsonl"),
+      JSON.stringify({ path: "src/foo.js", code_fingerprint: matchHash }) + "\n",
+    );
+
+    const { loadStaleDispatchHints } = require(HOOK_PATH);
+    const nowIso = new Date().toISOString();
+    const entries = [{
+      id: "meta-test-nodrift-finding",
+      entry_kind: "finding",
+      status: "open",
+      severity: "warning",
+      evidence_code_ref: "src/foo.js",
+      created_at: nowIso,
+      last_verified_at: nowIso,
+      mechanism_check: true,
+    }];
+
+    const result = loadStaleDispatchHints(entries, [], root);
+    const ids = (result.fixable_candidates ?? []).map((c) => c.id);
+    assert.ok(
+      !ids.includes("meta-test-nodrift-finding"),
+      `hash-match age-fresh finding must NOT surface (no drift, no age); got: ${JSON.stringify(ids)}`,
+    );
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+});
+
+// Cover the first try/catch's catch branch: when the sidecar is absent
+// (readFileIndex throws inside the first try), the function must degrade
+// to age-only — NOT empty — so a missing-sidecar failure never silently
+// drops age-stale candidates. Plan 260716-0624 (fallow CRAP-30 regression):
+// exercises the catch branch so CRAP drops below the 30.0 gate threshold.
+test("loadStaleDispatchHints — hash build fails, degrades to age-only", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-sidecar-miss-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    // No file-index sidecar at all → readFileIndex throws → first try fails.
+    // The catch branch sets fileIndex/codeHashes to undefined and continues.
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+
+    const { loadStaleDispatchHints } = require(HOOK_PATH);
+    const ageStaleDate = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const entries = [{
+      id: "meta-test-sidecar-miss-age-stale",
+      entry_kind: "finding",
+      status: "open",
+      severity: "warning",
+      evidence_code_ref: "src/foo.js",
+      created_at: ageStaleDate,
+      last_verified_at: ageStaleDate, // age-stale (>7d) → must surface even with no signals
+      mechanism_check: true,
+    }];
+
+    const result = loadStaleDispatchHints(entries, [], root);
+    const ids = (result.fixable_candidates ?? []).map((c) => c.id);
+    assert.ok(
+      ids.includes("meta-test-sidecar-miss-age-stale"),
+      `sidecar-miss must degrade to age-only, not empty; got: ${JSON.stringify(ids)}`,
+    );
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+});
+
+// Cover the second try/catch's catch branch: when buildStaleDispatchHints
+// itself throws, the function must return EMPTY_STALE_DISPATCH rather than
+// propagate. Guards against a regression where the hook surfaces an
+// exception to the SessionStart caller. Sabotage via Module.prototype.require
+// monkey-patch scoped to this test only.
+test("loadStaleDispatchHints — builder throws, returns EMPTY_STALE_DISPATCH", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "session-start-builder-throw-"));
+  try {
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    writeFileSync(path.join(root, "src", "foo.js"), "current\n");
+    // Write a valid sidecar so the first try succeeds.
+    writeFileSync(
+      path.join(root, "file-index.jsonl"),
+      JSON.stringify({ path: "src/foo.js", code_fingerprint: "sha256:" + "a".repeat(64) }) + "\n",
+    );
+
+    const Module = require("node:module");
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function patched(id) {
+      // Force the builder call to throw by returning a module whose export
+      // throws when invoked. Mirrors the hook's relative-require path.
+      if (typeof id === "string" && id.endsWith("loop-introspect.js")) {
+        return { buildStaleDispatchHints: () => { throw new Error("builder boom"); } };
+      }
+      return realRequire.call(this, id);
+    };
+
+    try {
+      const { loadStaleDispatchHints } = require(HOOK_PATH);
+      const entries = [{
+        id: "meta-test-builder-throw",
+        entry_kind: "finding",
+        status: "open",
+        severity: "warning",
+        evidence_code_ref: "src/foo.js",
+        created_at: new Date().toISOString(),
+        last_verified_at: new Date().toISOString(),
+        mechanism_check: true,
+      }];
+      // Must not throw.
+      const result = loadStaleDispatchHints(entries, [], root);
+      assert.deepStrictEqual(
+        result,
+        { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" },
+        `builder throw must return EMPTY_STALE_DISPATCH, got: ${JSON.stringify(result)}`,
+      );
+    } finally {
+      Module.prototype.require = realRequire;
+    }
+  } finally {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
 });

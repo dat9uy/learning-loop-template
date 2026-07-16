@@ -2,6 +2,7 @@ import { z } from "zod";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { isAbsolute, join } from "node:path";
 import { deriveStatus } from "../../core/derive-status.js";
+import { buildDriftSignals } from "../../core/stale-view.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { runTest } from "#lib/run-test.js";
@@ -40,7 +41,11 @@ export const metaStateDeriveStatusTool = {
       test_passed = runTest(root, testPath);
     }
 
-    const codeContext = { root, run_tests, test_passed };
+    const { fileIndex, codeHashes } = buildDriftSignals([entry], root, {
+      toolName: "meta_state_derive_status",
+    });
+
+    const codeContext = { root, run_tests, test_passed, fileIndex, codeHashes };
     const result = deriveStatus(entry, codeContext);
 
     appendGateLog(root, {

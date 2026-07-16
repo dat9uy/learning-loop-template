@@ -108,12 +108,44 @@ function loadDispatchIds(root) {
 
 /**
  * Rec 10 surfacing (plan 260704-0301-stale-findings-dispatch-handle Phase 3).
- * Pure builder over `entries` + dispatch ids. Returns empty shape on failure.
+ * Builder over `entries` + dispatch ids. Returns empty shape on builder failure.
+ *
+ * Plan 260716-0624 (stale-view hash-drift fix): thread drift signals
+ * (`fileIndex` + `codeHashes`) into `buildStaleDispatchHints` so the
+ * fixable-candidates filter fires on drift, not just age. This is the
+ * session-start user-facing stale-dispatch surface — the most visible place
+ * the plan's hash-aware semantics must reach. Signal building is best-effort:
+ * if the file-index sidecar is absent or hashing fails, degrade to age-only
+ * (the pre-fix behavior) rather than empty, so a missing sidecar never
+ * silently drops age-stale candidates. Non-"missing" skipped paths surface
+ * via stderr (the hook's observability channel — universal hooks do not use
+ * the MCP gate-log).
  */
-function loadStaleDispatchHints(entries, dispatchIds) {
+// fallow-ignore-next-line complexity
+function loadStaleDispatchHints(entries, dispatchIds, root) {
+  let fileIndex;
+  let codeHashes;
+  try {
+    const { readFileIndex } = require("../../core/meta-state.js");
+    const { computeCurrentHashes } = require("../../core/stale-view.js");
+    fileIndex = readFileIndex(root);
+    const { ok, skipped } = computeCurrentHashes(entries, root);
+    codeHashes = ok;
+    for (const s of skipped) {
+      if (s.reason !== "missing") {
+        console.error(`[session-start] computeCurrentHashes skipped ${s.canonical}: ${s.reason}`);
+      }
+    }
+  } catch (err) {
+    // Sidecar absent or hash build failed — degrade to age-only (pre-fix
+    // behavior). isStaleView treats missing codeHashes as no-drift signal.
+    console.error(`[session-start] drift signals unavailable, age-only stale-dispatch: ${err.message}`);
+    fileIndex = undefined;
+    codeHashes = undefined;
+  }
   try {
     const { buildStaleDispatchHints } = require("../../core/loop-introspect.js");
-    return buildStaleDispatchHints(entries, new Set(dispatchIds));
+    return buildStaleDispatchHints(entries, new Set(dispatchIds), fileIndex, codeHashes);
   } catch (err) {
     console.error(`[session-start] buildStaleDispatchHints failed: ${err.message}`);
     return EMPTY_STALE_DISPATCH;
@@ -236,7 +268,7 @@ async function main() {
   const dispatchIds = loadDispatchIds(projectRoot);
 
   // 3. Stale dispatch hints (Rec 10) + change-log gap hints (Rec 12).
-  const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds);
+  const stale_dispatch_hints = loadStaleDispatchHints(registry.entries, dispatchIds, projectRoot);
   const change_log_gap_hints = loadChangeLogGapHints(projectRoot, registry.entries);
 
   const contextPath = writeContext(projectRoot, buildContextPayload(core, registry, stale_dispatch_hints, change_log_gap_hints, new Date().toISOString()));
@@ -259,7 +291,7 @@ async function main() {
   process.exit(0);
 }
 
-module.exports = { computeDegradedSources, formatSessionSummary, buildContextPayload };
+module.exports = { computeDegradedSources, formatSessionSummary, buildContextPayload, loadStaleDispatchHints };
 
 if (require.main === module) {
   main().catch((err) => {

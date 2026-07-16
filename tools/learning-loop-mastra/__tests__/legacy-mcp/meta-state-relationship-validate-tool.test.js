@@ -115,4 +115,28 @@ describe("meta_state_relationship_validate", () => {
     assert.equal(parsed.warned, true);
     assert.deepEqual(parsed.orphans, ["meta-260608T1522Z-stale-orphan"]);
   });
+
+  // Plan 260716-0624 Phase 02 (RT: M10): a fixture WITH evidence_code_ref
+  // exercises the drift branch (the relationship-validate tool now injects
+  // fileIndex + codeHashes into isStaleView). Without the fixture, the drift
+  // branch is unreachable and behavior is unchanged.
+  it("flags drift-stale ids (with evidence_code_ref) as orphans", async () => {
+    await writeEntry(root, {
+      id: "meta-260608T1522Z-drift-orphan",
+      entry_kind: "finding",
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Drift-stale fixture with evidence_code_ref for relationship-validate (min 20 chars)",
+      evidence_code_ref: "tools/legacy-drift-fixture.js:1",
+      status: "open",
+      created_at: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(), // age-stale
+      version: 0,
+    });
+    const description = "References meta-260608T1522Z-drift-orphan (min 20 chars).";
+    const result = await metaStateRelationshipValidateTool.handler({ description });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.warned, true);
+    assert.deepEqual(parsed.orphans, ["meta-260608T1522Z-drift-orphan"]);
+  });
 });

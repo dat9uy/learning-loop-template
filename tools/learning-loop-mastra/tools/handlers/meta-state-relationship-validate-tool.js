@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readRegistry } from "../../core/meta-state.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isStaleView } from "../../core/stale-view.js";
+import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
 
 const FINDING_ID_REGEX = /meta-\d{6}T\d{4}Z-[a-z0-9-]+/g;
 // Plan 260707-0812 Phase 2 (red-team H2): ORPHAN_STATUSES was a literal Set
@@ -11,8 +11,8 @@ const FINDING_ID_REGEX = /meta-\d{6}T\d{4}Z-[a-z0-9-]+/g;
 // Legacy `stale` entries are tolerated by `isStaleView` pre-migration; this
 // stays correct after the migration flips them to `open` (age + drift still
 // surface stale-view).
-function isOrphanStatus(entry) {
-  return isStaleView(entry);
+function isOrphanStatus(entry, signals) {
+  return isStaleView(entry, signals);
 }
 
 export const metaStateRelationshipValidateTool = {
@@ -32,10 +32,17 @@ export const metaStateRelationshipValidateTool = {
     const root = resolveRoot();
     const entries = readRegistry(root);
 
+    // Plan 260716-0624 Phase 02: build drift signals (fileIndex + codeHashes)
+    // so the orphan predicate can fire on drift, not just age. RT: M20 — log
+    // non-"missing" skipped paths as a gate-log breadcrumb.
+    const signals = buildDriftSignals(entries, root, {
+      toolName: "meta_state_relationship_validate",
+    });
+
     const entryById = new Map(entries.map((e) => [e.id, e]));
     const referenced = Array.from(new Set(description.match(FINDING_ID_REGEX) ?? []));
     const claimed = collectClaimed(entryById.get(entry_id));
-    const { orphans, unknown_refs } = classifyReferences(referenced, entryById, claimed);
+    const { orphans, unknown_refs } = classifyReferences(referenced, entryById, claimed, signals);
 
     const result = buildResult(orphans, unknown_refs, referenced);
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -53,7 +60,7 @@ function collectClaimed(entry) {
 
 // Walk the referenced ids and bucket them: unknown (not in registry) vs orphan
 // (stale-view AND not in the claimed set).
-function classifyReferences(referenced, entryById, claimed) {
+function classifyReferences(referenced, entryById, claimed, signals) {
   const orphans = [];
   const unknown_refs = [];
   for (const id of referenced) {
@@ -62,7 +69,7 @@ function classifyReferences(referenced, entryById, claimed) {
       unknown_refs.push(id);
       continue;
     }
-    if (isOrphanStatus(target) && !claimed.has(id)) {
+    if (isOrphanStatus(target, signals) && !claimed.has(id)) {
       orphans.push(id);
     }
   }
