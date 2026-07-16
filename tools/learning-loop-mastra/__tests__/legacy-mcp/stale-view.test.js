@@ -5,17 +5,30 @@
  * Phase 1 invariant: `isOpen` tolerates legacy `active`/`reported`/`stale`
  * statuses (the migration flips them to `open` in phase 4 — this tolerance is
  * what makes the code/migration order non-breaking).
+ *
+ * Plan 260716-0624 Phase 01: hash-aware `hasDrifted` matching SP2 semantics.
+ * Drift = currentHash !== storedHash (with TERMINAL_HASH_REGEX chain on both
+ * sides). The caller injects `codeHashes` via `computeCurrentHashes(entries, root)`
+ * so `isStaleView` itself stays pure. Backward compat: missing `codeHashes`
+ * → no drift signal (age-only).
  */
 
 import { test } from "vitest";
 import assert from "node:assert";
-import { isOpen, isStaleView, derivedStaleSet } from "../../core/stale-view.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { isOpen, isStaleView, derivedStaleSet, computeCurrentHashes } from "../../core/stale-view.js";
 import { STALENESS_WINDOW_MS } from "../../core/constants.js";
 
 const now = new Date("2026-07-07T12:00:00Z").getTime();
 const RECENT = new Date(now - 1000).toISOString();        // 1s ago
 const OLD    = new Date(now - STALENESS_WINDOW_MS - 1000).toISOString(); // 7d + 1s
 const NEWLY  = new Date(now - 1000).toISOString();        // recency for "freshly verified"
+
+function makeTempRoot() {
+  return mkdtempSync(join(tmpdir(), "stale-view-"));
+}
 
 test("STALENESS_WINDOW_MS is a positive number (default 7d)", () => {
   assert.ok(typeof STALENESS_WINDOW_MS === "number");
@@ -74,28 +87,174 @@ test("isStaleView: false for terminal findings (even if old)", () => {
   assert.strictEqual(isStaleView(oldSuperseded, { now }), false);
 });
 
-test("isStaleView: true when evidence_code_ref hash drifted in the file index", () => {
-  // fileIndex is a Map<canonicalKey, hash>; if a finding's evidence_code_ref
-  // resolves to a key present in the index, the on-disk file has changed and
-  // the finding is stale by construction — even if its created_at is fresh.
+test("isStaleView: true when current bytes differ from stored hash (the bug fix)", () => {
+  // Plan 260716-0624 Phase 01: drift = currentHash !== storedHash.
+  // The pre-fix predicate was path-presence-only (any entry in the index
+  // marked the finding stale). Post-fix: an entry is only stale-by-drift
+  // when the on-disk file has actually changed since the baseline.
   const freshDrifted = {
+    status: "open",
+    created_at: RECENT, // fresh — age branch silent
+    evidence_code_ref: "tools/foo.js:12",
+  };
+  const fileIndex = new Map([["tools/foo.js", "sha256:" + "a".repeat(64)]]);
+  const codeHashes = new Map([["tools/foo.js", "sha256:" + "b".repeat(64)]]); // differs
+  assert.strictEqual(isStaleView(freshDrifted, { now, fileIndex, codeHashes }), true);
+});
+
+test("isStaleView: false when current bytes equal stored hash (the fix)", () => {
+  // Post-seed condition: index baseline equals current bytes (re-hashed).
+  const entry = {
     status: "open",
     created_at: RECENT,
     evidence_code_ref: "tools/foo.js:12",
   };
-  const fileIndex = new Map(); // index is keyed by canonical (stripped) path
-  // We can't compute the live hash here; the predicate only needs the index
-  // entry's existence + a stale reference time. A drifted finding has BOTH
-  // an older created_at and a present index entry — surface either way.
-  fileIndex.set("tools/foo.js", "sha256:drifted");
-  const aged = { status: "open", created_at: OLD, evidence_code_ref: "tools/foo.js:12" };
-  assert.strictEqual(isStaleView(aged, { now, fileIndex }), true);
+  const same = "sha256:" + "a".repeat(64);
+  const fileIndex = new Map([["tools/foo.js", same]]);
+  const codeHashes = new Map([["tools/foo.js", same]]);
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), false);
+});
+
+test("isStaleView: false when currentHash missing (no signal)", () => {
+  // File doesn't exist or is unreadable — no current hash → no drift signal.
+  const entry = {
+    status: "open",
+    created_at: RECENT,
+    evidence_code_ref: "tools/missing.js:12",
+  };
+  const fileIndex = new Map([["tools/missing.js", "sha256:" + "a".repeat(64)]]);
+  const codeHashes = new Map(); // empty — simulates missing file
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), false);
+});
+
+test("isStaleView: backward compat — missing codeHashes → no drift (age-only)", () => {
+  // derive-status.js calls isStaleView(entry) without opts. The drift branch
+  // must short-circuit when codeHashes is undefined (age-only legacy behavior).
+  const entry = {
+    status: "open",
+    created_at: RECENT,
+    evidence_code_ref: "tools/foo.js:12",
+  };
+  const fileIndex = new Map([["tools/foo.js", "sha256:" + "a".repeat(64)]]);
+  assert.strictEqual(isStaleView(entry, { now, fileIndex }), false);
+});
+
+test("isStaleView: missing evidence_code_ref → never drifted", () => {
+  const entry = { status: "open", created_at: RECENT };
+  const fileIndex = new Map();
+  const codeHashes = new Map();
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), false);
+});
+
+test("isStaleView: per-record code_fingerprint fallback when index entry absent", () => {
+  // Pre-sidecar entries: storedHash comes from entry.code_fingerprint.
+  const baseline = "sha256:" + "a".repeat(64);
+  const entry = {
+    status: "open",
+    created_at: RECENT,
+    evidence_code_ref: "tools/legacy.js:12",
+    code_fingerprint: baseline,
+  };
+  const fileIndex = new Map(); // no index entry
+  const codeHashes = new Map([["tools/legacy.js", baseline]]); // matches
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), false);
+  // and when current differs:
+  const codeHashes2 = new Map([["tools/legacy.js", "sha256:" + "b".repeat(64)]]);
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes: codeHashes2 }), true);
+});
+
+test("isStaleView: malformed per-record code_fingerprint → no signal (SP2 H-2 defense)", () => {
+  // Replicate SP2's TERMINAL_HASH_REGEX chain. A malformed code_fingerprint
+  // (legacy/corrupt) must NOT trigger drift — falls through to null.
+  const entry = {
+    status: "open",
+    created_at: RECENT,
+    evidence_code_ref: "tools/legacy.js:12",
+    code_fingerprint: "sha256:not-a-valid-hash",
+  };
+  const fileIndex = new Map();
+  const codeHashes = new Map([["tools/legacy.js", "sha256:" + "a".repeat(64)]]);
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), false);
+});
+
+test("isStaleView: malformed index entry → fall through to per-record baseline", () => {
+  // Malformed index entry drops out; per-record field validates and becomes
+  // the baseline. current differs from per-record → drift.
+  const entry = {
+    status: "open",
+    created_at: RECENT,
+    evidence_code_ref: "tools/foo.js:12",
+    code_fingerprint: "sha256:" + "a".repeat(64), // valid per-record
+  };
+  const fileIndex = new Map([["tools/foo.js", "garbage-not-sha256"]]); // malformed
+  const codeHashes = new Map([["tools/foo.js", "sha256:" + "b".repeat(64)]]);
+  assert.strictEqual(isStaleView(entry, { now, fileIndex, codeHashes }), true);
 });
 
 test("isStaleView: false when fresh and no drift (the steady state)", () => {
   const fresh = { status: "open", created_at: RECENT, last_verified_at: NEWLY };
   const fileIndex = new Map();
   assert.strictEqual(isStaleView(fresh, { now, fileIndex }), false);
+});
+
+test("computeCurrentHashes: dedupes by canonical key, skips missing", () => {
+  const root = makeTempRoot();
+  writeFileSync(join(root, "src.js"), "// code");
+  const entries = [
+    { evidence_code_ref: "src.js:1" },
+    { evidence_code_ref: "src.js:55" },
+    { evidence_code_ref: "src.js#methodName" }, // same canonical key
+    { evidence_code_ref: "nonexistent.js:1" },
+  ];
+  const result = computeCurrentHashes(entries, root);
+  // Three entries resolve to one canonical key "src.js"; one is missing.
+  assert.strictEqual(result.ok.size, 1);
+  assert.match(result.ok.get("src.js"), /^sha256:[a-f0-9]{64}$/);
+  // The missing file is reported as skipped (but the helper does not log
+  // high-frequency "missing" — callers gate-log non-"missing" only).
+  assert.strictEqual(result.skipped.length, 1);
+  assert.strictEqual(result.skipped[0].canonical, "nonexistent.js");
+  assert.strictEqual(result.skipped[0].reason, "missing");
+});
+
+test("computeCurrentHashes: rejects traversal/symlink escape via resolveSafePath", () => {
+  // RT: M2 — verify the helper uses resolveSafePath, not isAbsolute+join.
+  // Craft a finding with a traversal ref; the helper must skip (no entry)
+  // rather than resolve outside the project root.
+  const root = makeTempRoot();
+  const entries = [
+    { evidence_code_ref: "../../etc/passwd" },
+    { evidence_code_ref: "/etc/shadow" },
+    { evidence_code_ref: "tools/../../../etc/hosts" },
+  ];
+  const result = computeCurrentHashes(entries, root);
+  assert.strictEqual(result.ok.size, 0);
+  // All three should be reported as skipped with containment_violation reason.
+  assert.strictEqual(result.skipped.length, 3);
+  for (const s of result.skipped) {
+    assert.ok(s.reason.startsWith("containment_violation") || s.reason.startsWith("fs_error") || s.reason === "missing",
+      `unexpected reason: ${s.reason}`);
+  }
+});
+
+test("computeCurrentHashes: returns empty map for non-array input", () => {
+  const result = computeCurrentHashes(null, "/tmp");
+  assert.deepStrictEqual([...result.ok.entries()], []);
+  assert.deepStrictEqual(result.skipped, []);
+});
+
+test("computeCurrentHashes: skips entries without evidence_code_ref", () => {
+  const root = makeTempRoot();
+  const entries = [
+    { id: "no-ref" },
+    { evidence_code_ref: 42 }, // not a string
+    { evidence_code_ref: null },
+    { evidence_code_ref: "valid.js:1" },
+  ];
+  writeFileSync(join(root, "valid.js"), "//");
+  const result = computeCurrentHashes(entries, root);
+  assert.strictEqual(result.ok.size, 1);
+  assert.ok(result.ok.has("valid.js"));
 });
 
 test("derivedStaleSet: returns the stale-view subset of entries", () => {

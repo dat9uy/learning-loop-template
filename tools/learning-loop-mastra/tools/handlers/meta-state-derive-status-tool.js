@@ -2,6 +2,8 @@ import { z } from "zod";
 import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
 import { isAbsolute, join } from "node:path";
 import { deriveStatus } from "../../core/derive-status.js";
+import { computeCurrentHashes } from "../../core/stale-view.js";
+import { readFileIndex } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { runTest } from "#lib/run-test.js";
@@ -40,11 +42,32 @@ export const metaStateDeriveStatusTool = {
       test_passed = runTest(root, testPath);
     }
 
-    const codeContext = { root, run_tests, test_passed };
+    // Plan 260716-0624 Phase 01 (Validation Q4): build drift signals so the
+    // recommendation can distinguish age-stale from drift-stale. fileIndex
+    // comes from the path-keyed sidecar; codeHashes from a single-pass hash
+    // of the cited file. Without these, isStaleView falls back to age-only
+    // (backward compat). RT: M20 — log non-"missing" skipped paths as a
+    // gate-log breadcrumb for observability.
+    const fileIndex = readFileIndex(root);
+    const { ok: codeHashes, skipped } = computeCurrentHashes([entry], root);
+    const gateLogTimestamp = new Date().toISOString();
+    for (const s of skipped) {
+      if (s.reason !== "missing") {
+        appendGateLog(root, {
+          timestamp: gateLogTimestamp,
+          tool: "meta_state_derive_status",
+          action: "compute_current_hash_skipped",
+          canonical: s.canonical,
+          reason: s.reason,
+        });
+      }
+    }
+
+    const codeContext = { root, run_tests, test_passed, fileIndex, codeHashes };
     const result = deriveStatus(entry, codeContext);
 
     appendGateLog(root, {
-      timestamp: new Date().toISOString(),
+      timestamp: gateLogTimestamp,
       tool: "meta_state_derive_status",
       id,
       run_tests,
