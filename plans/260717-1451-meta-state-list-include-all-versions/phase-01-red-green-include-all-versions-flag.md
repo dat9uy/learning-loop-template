@@ -1,12 +1,12 @@
 ---
 phase: 1
 title: "TDD — include_all_versions flag on meta_state_list"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
-shipped_at: null
-shipped_by: null
+shipped_at: "2026-07-17"
+shipped_by: "ak:cook --auto"
 ---
 
 # Phase 1: TDD — include_all_versions flag on meta_state_list
@@ -66,11 +66,11 @@ After:
 
 ## Success Criteria
 
-- [ ] All 6 new RED tests in `meta-state-list-include-all-versions.test.js` GREEN.
-- [ ] `compact` regression test GREEN.
-- [ ] Full meta-state test suite GREEN (no regressions).
-- [ ] `pnpm exec vitest --changed` clean.
-- [ ] Cache layer test: `readRegistry(root)` and `readRegistryAllVersions(root)` return distinct shapes (one-entry-per-id vs N-entries-per-id) on a multi-version fixture, with a SINGLE cold-cache miss (not two).
+- [x] All 6 new RED tests in `meta-state-list-include-all-versions.test.js` GREEN.
+- [x] `compact` regression test GREEN.
+- [x] Full meta-state test suite GREEN (no regressions).
+- [x] `pnpm exec vitest --changed` clean.
+- [x] Cache layer test: `readRegistry(root)` and `readRegistryAllVersions(root)` return distinct shapes (one-entry-per-id vs N-entries-per-id) on a multi-version fixture, with a SINGLE cold-cache miss (not two).
 
 ## Risk Assessment
 

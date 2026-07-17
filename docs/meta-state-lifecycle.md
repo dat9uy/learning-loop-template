@@ -106,6 +106,7 @@ The `expired` status was removed in plan 260611-1000-remove-expired-status; the 
 - Sets `status: "archived"` plus `archived_at`, `archived_by`, `archived_reason`
 - Re-archiving is a no-op (`already_archived`)
 - `meta_state_list` excludes archived entries by default; pass `include_archived: true` to query them
+- Versioned-append history per id (v0 + v1 + … lines on disk) is a separate, orthogonal affordance: `meta_state_list({ id, include_all_versions: true })` bypasses the `max_by(version)` collapse; terminal-status version lines still need `include_archived: true` (see `AGENTS.md` §6.1)
 
 ### Archive Decision Rule
 

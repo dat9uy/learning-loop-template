@@ -1,7 +1,7 @@
 ---
 title: "Tier 2 Phase B Audit-Trail Affordance — meta_state_list include_all_versions"
 description: "Add `include_all_versions: boolean = false` to `meta_state_list` so operators can inspect the versioned-append history per id (v0 open + v1 resolved + …) instead of collapsing via `group_by(.id) | max_by(.version)`. Resolves meta-260717T0943Z-the-tier-2-versioned-append-write-path-pr-64-phase-b-made-me."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta-state, tier2, versioned-append, audit-trail, meta-state-tools]
@@ -83,10 +83,10 @@ None — operator confirmed scope via AskUserQuestion 2026-07-17:
 
 | Phase | Status | Shipped | Notes |
 |-------|--------|---------|-------|
-| 1 — TDD red-green | Pending | — | Schema flag + read path bypass + 5 new tests |
-| 2 — Discoverability | Pending | — | Tool description + AGENTS.md §6.x |
-| 3 — Parity verification | Pending | — | Closeout plan + shell-script `--all-versions` (optional) |
-| 4 — Closeout | Pending | — | Resolve finding + change-log + journal |
+| 1 — TDD red-green | Completed | 2026-07-17 | Schema flag + read path bypass + 10 new tests + compact regression; cache shape {projected, allVersions} |
+| 2 — Discoverability | Completed | 2026-07-17 | Tool description + AGENTS.md §6.1 + CLAUDE.md quick-ref + lifecycle doc bullet |
+| 3 — Parity verification | Completed | 2026-07-17 | Closeout plans verified (no change); `registry-table.sh --all-versions` + 4 shell tests |
+| 4 — Closeout | Completed | 2026-07-17 | Finding resolved (v1), change-log meta-260717T1720Z emitted, [closeout journal](./reports/closeout-journal.md) |
 
 ## Validation Log
 

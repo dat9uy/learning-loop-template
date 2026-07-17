@@ -12,3 +12,4 @@ Quick reference:
 - **Gate response mode:** `warn` (default) or `escalate` via `GATE_RESPONSE_MODE` env var
 - **Inbound gate:** when triggered, run `tools/scripts/registry-table.sh | tail -20` BEFORE any bash command (post-Tier-1-split the registry is two files; `registry-table.sh` reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, and emits one-line-per-id). Named observations are a subset; the full escalation context is in the registry. See `docs/architecture.md` § Inbound State Gate for the gate flow and staleness algorithm.
 - **Budget check:** before vendor-api commands, call `budget_check`, then `meta_state_report(category="budget-check")` to record reasoning. See `AGENTS.md` §6 (Internalization Rule) for the citation flow.
+- **Audit trail (versioned-append history per id):** `meta_state_list({ id, include_all_versions: true, include_archived: true })` — bypasses the `max_by(version)` projection. See `AGENTS.md` §6.1.

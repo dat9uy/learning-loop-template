@@ -1,12 +1,12 @@
 ---
 phase: 2
 title: "Discoverability — tool description + AGENTS.md audit recipe"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [1]
-shipped_at: null
-shipped_by: null
+shipped_at: "2026-07-17"
+shipped_by: "ak:cook --auto"
 ---
 
 # Phase 2: Discoverability — tool description + AGENTS.md audit recipe
@@ -53,11 +53,11 @@ The two surfaces that operators consult when looking up "how do I inspect the re
 
 ## Success Criteria
 
-- [ ] Tool description mentions `include_all_versions` with the "versioned-append history" framing.
-- [ ] AGENTS.md §6.x subsection exists with the recipe + when-to-use / when-NOT-to-use guidance.
-- [ ] CLAUDE.md quick-reference line for the new affordance.
-- [ ] No new public contracts (schema unchanged).
-- [ ] No stale prose suggesting "use `grep meta-state.jsonl`" without the MCP alternative.
+- [x] Tool description mentions `include_all_versions` with the "versioned-append history" framing.
+- [x] AGENTS.md §6.x subsection exists with the recipe + when-to-use / when-NOT-to-use guidance.
+- [x] CLAUDE.md quick-reference line for the new affordance.
+- [x] No new public contracts (schema unchanged).
+- [x] No stale prose suggesting "use `grep meta-state.jsonl`" without the MCP alternative.
 
 ## Risk Assessment
 

@@ -1,12 +1,12 @@
 ---
 phase: 4
 title: "Resolve source finding + change-log + journal"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [1, 2, 3]
-shipped_at: null
-shipped_by: null
+shipped_at: "2026-07-17"
+shipped_by: "ak:cook --auto"
 ---
 
 # Phase 4: Resolve source finding + change-log + journal
@@ -51,11 +51,11 @@ The closeout sequence is standard but load-bearing:
 
 ## Success Criteria
 
-- [ ] Cold-session discoverability check passes (Phase 2 description surfaces).
-- [ ] Source finding `meta-260717T0943Z-...` resolved; status flipped; resolved_by/resolved_at recorded.
-- [ ] Change-log entry emitted with full diff block.
-- [ ] Closeout journal written with summary + decisions + risks + follow-ups.
-- [ ] `ak plan status` reports the plan as completed.
+- [x] Cold-session discoverability check passes (Phase 2 description surfaces).
+- [x] Source finding `meta-260717T0943Z-...` resolved; status flipped; resolved_by/resolved_at recorded.
+- [x] Change-log entry emitted with full diff block.
+- [x] Closeout journal written with summary + decisions + risks + follow-ups.
+- [x] `ak plan status` reports the plan as completed.
 
 ## Risk Assessment
 

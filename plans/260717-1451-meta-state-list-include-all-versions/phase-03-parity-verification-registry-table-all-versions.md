@@ -1,12 +1,12 @@
 ---
 phase: 3
 title: "Closeout-plan parity verification + symmetric shell-script affordance"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1, 2]
-shipped_at: null
-shipped_by: null
+shipped_at: "2026-07-17"
+shipped_by: "ak:cook --auto"
 ---
 
 # Phase 3: Closeout-plan parity verification + symmetric shell-script affordance
@@ -53,11 +53,11 @@ The MCP tool + shell script now share a symmetric flag pair (`include_all_versio
 
 ## Success Criteria
 
-- [ ] All existing closeout plans using `include_archived: true` verified (no code/doc changes needed).
-- [ ] `tools/scripts/registry-table.sh --all-versions` returns multi-line per id on a versioned-append fixture.
-- [ ] Default `tools/scripts/registry-table.sh` (no flag) preserves the existing collapse behavior (zero breakage).
-- [ ] AGENTS.md §1.1 read-recipe blockquote extended.
-- [ ] Shell-side tests GREEN.
+- [x] All existing closeout plans using `include_archived: true` verified (no code/doc changes needed).
+- [x] `tools/scripts/registry-table.sh --all-versions` returns multi-line per id on a versioned-append fixture.
+- [x] Default `tools/scripts/registry-table.sh` (no flag) preserves the existing collapse behavior (zero breakage).
+- [x] AGENTS.md §1.1 read-recipe blockquote extended.
+- [x] Shell-side tests GREEN.
 
 ## Risk Assessment
 
