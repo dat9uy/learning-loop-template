@@ -17,6 +17,14 @@ export { IMMUTABLE_PATCH_FIELDS };
 export const metaStatePatchTool = {
   name: "meta_state_patch",
   description: "Patch an existing meta-state entry. Unifies update_finding / update_design / update_change_log / backfill_fingerprint into one tool. CAS via _expected_version (auto-captured if omitted). Idempotency by CAS (existing pattern in updateEntry). Wire-format safe: nest complex-typed fields inside the `patch` object to avoid top-level array/boolean coercion by the MCP wire layer. Closes the CRUD gap and the parent escape-hatch abuse. Identity and audit-trail fields are deny-listed and cannot be patched. Use when you need to mutate an existing entry (status flip, cross-reference backfill, fingerprint refresh). Not for creating a new entry (use `meta_state_report` or `meta_state_log_change` instead).",
+  // Plan 260717-1145 Phase 2: model-visible JSON-schema hint — declare
+  // minProperties: 1 on `patch` so the empty-{} safe emission (verified root
+  // cause: union of 4 .partial().strict() branches all accept {}) is rejected
+  // pre-invocation, steering constrained decoding toward a real field. The
+  // runtime `empty_patch` check below stays as the safety net.
+  parityJsonSchemaHints: {
+    patch: { minProperties: 1 },
+  },
   schema: {
     id: z.string().describe("Exact entry id to patch"),
     entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
@@ -113,7 +121,35 @@ export const metaStatePatchTool = {
         reason: "empty_patch",
         id,
         entry_kind,
-        hint: "patch must contain at least one mutable field. Identity (id/version/entry_kind/status/consolidated_into/resolved_at/resolved_by/resolution/code_fingerprint/operation_envelope) and CAS (_expected_version) fields are stripped before the patch is applied — including only those leaves an empty effective patch. Use meta_state_supersede to flip status+consolidated_into atomically; use meta_state_resolve to set status=resolved with a resolution note; use meta_state_log_change to record schema/rule/tool/policy/surface changes.",
+        hint: buildEmptyPatchHint(entry_kind),
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
+    // Plan 260717-1145 Phase 3: per-branch validation. The model-visible
+    // patch schema is the union of all 4 per-kind shapes (permissive on
+    // purpose — every field every kind accepts), so a real-but-invalid
+    // field returns the opaque `z.union` "Invalid input" with path:[],
+    // which makes the model retreat to {}. Validate against the SINGLE
+    // branch selected by entry_kind; on failure, surface the offending
+    // field + constraint message so the model can self-correct. The
+    // invalid_field rejection never reaches the registry (no updateEntry
+    // call) and never collapses with the empty_patch check (this runs
+    // AFTER the empty check so empty patches still get the
+    // content-aware hint).
+    const branchSchema = buildPatchSchemaFor(entry_kind);
+    const branchParse = branchSchema.safeParse(effectivePatch);
+    if (!branchParse.success) {
+      const result = {
+        patched: false,
+        reason: "invalid_field",
+        id,
+        entry_kind,
+        field_errors: branchParse.error.issues.map((i) => ({
+          field: Array.isArray(i.path) && i.path.length > 0 ? i.path.join(".") : "(root)",
+          message: i.message,
+        })),
       };
       appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
@@ -175,3 +211,32 @@ export const metaStatePatchTool = {
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };
+
+// Plan 260717-1145 Phase 4: schema-derived empty_patch hint. The prior
+// static hint only named lifecycle tools (supersede / resolve / log_change)
+// — none of which update description or evidence_code_ref, the actual goal
+// in session e10944c4. Build the field list from
+// buildPatchSchemaFor(entry_kind)'s shape so each kind names its own mutable
+// fields (no finding-only recurrence_key leaking into a rule hint, etc.)
+// and the hint never drifts when the schema changes. description + evidence_code_ref
+// are listed first because they are the common refresh case.
+function buildEmptyPatchHint(entryKind) {
+  let mutableFields = [];
+  try {
+    const schema = buildPatchSchemaFor(entryKind);
+    const shape = schema?._zod?.def?.shape ?? {};
+    mutableFields = Object.keys(shape);
+  } catch {
+    // unknown entry_kind (shouldn't happen — branch_mismatch runs first) —
+    // fall back to a generic hint.
+  }
+  const priority = ["description", "evidence_code_ref"];
+  const ordered = [
+    ...priority.filter((f) => mutableFields.includes(f)),
+    ...mutableFields.filter((f) => !priority.includes(f)),
+  ];
+  const fieldList = ordered.length > 0
+    ? ordered.slice(0, 12).join(", ")
+    : "see the per-kind patch schema for the full field list";
+  return `patch must contain at least one mutable field for entry_kind=${entryKind}. Mutable content fields: ${fieldList}. For status / consolidated_into use meta_state_supersede; for resolved use meta_state_resolve; for schema / rule / tool / policy / surface changes use meta_state_log_change.`;
+}

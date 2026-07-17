@@ -60,6 +60,10 @@ for (const entry of MANIFEST) {
     inputSchema: legacy.schema,
     execute: adaptLegacyHandler(legacy),
     pathFields: entry.pathFields ?? [],
+    // Plan 260717-1145 Phase 2: model-visible JSON-schema hints (e.g.
+    // minProperties on `patch` to steer the model away from the empty-{}
+    // safe emission). Generation-only — never affects runtime .parse().
+    parityHints: legacy.parityJsonSchemaHints ?? {},
   });
 }
 
