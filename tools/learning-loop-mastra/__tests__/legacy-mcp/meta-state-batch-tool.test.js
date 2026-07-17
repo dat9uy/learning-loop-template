@@ -522,4 +522,73 @@ describe("meta_state_batch", () => {
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.applied, 1, "double envelope must unwrap recursively");
   });
+
+  // --- Plan 260717-1145 Phase 3: batch update-op runtime floor ---
+  // The batch update op merges content inline via .passthrough(). A
+  // zero-content update ({op:"update", id} with no other fields) silently
+  // no-ops via entriesEqual — same exposure surface as meta_state_patch's
+  // empty-{} (different shape, same silent-success class). Reject
+  // explicitly so the model learns. Inline bad fields get field_errors
+  // validated against the existing entry's kind.
+
+  it("batch update op with zero content fields is rejected as no_content (plan 260717-1145)", async () => {
+    const ops = [
+      { op: "update", id: "batch-base-1" },
+    ];
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0, "no_content update must not apply");
+    assert.equal(parsed.failed_at, 0, "must fail at op index 0");
+    assert.equal(parsed.reason, "no_content", `reason must be no_content, got: ${parsed.reason}`);
+    assert.ok(Array.isArray(parsed.hint) || typeof parsed.hint === "string",
+      "no_content rejection must carry a hint naming the kind's mutable fields");
+  });
+
+  it("batch update op with bad inline field returns invalid_field + field_errors (plan 260717-1145)", async () => {
+    const ops = [
+      {
+        op: "update",
+        id: "batch-base-1",
+        category: "definitely-not-an-enum-value",
+      },
+    ];
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0, "invalid inline field must fail the batch");
+    assert.equal(parsed.failed_at, 0);
+    assert.equal(parsed.reason, "invalid_field", `reason must be invalid_field, got: ${parsed.reason}`);
+    assert.ok(Array.isArray(parsed.field_errors), "field_errors must be an array");
+    assert.ok(
+      parsed.field_errors.some((e) => e.field === "category"),
+      `field_errors must name category (got: ${JSON.stringify(parsed.field_errors)})`,
+    );
+  });
+
+  it("batch update op on missing id still returns not_found (not no_content) (plan 260717-1145)", async () => {
+    // The kind-resolution depends on the existing entry — a not-found id
+    // can't be type-validated, so the existing not_found path is preserved.
+    const ops = [{ op: "update", id: "definitely-does-not-exist-xyz" }];
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 0);
+    assert.equal(parsed.reason, "not_found", `missing-id update must surface not_found, got: ${parsed.reason}`);
+  });
+
+  it("batch update op with valid inline content still succeeds (no regression) (plan 260717-1145)", async () => {
+    const ops = [
+      {
+        op: "update",
+        id: "batch-base-2",
+        description: "Replaced description via valid batch update (min 20 chars)",
+      },
+    ];
+    const result = await metaStateBatchTool.handler({ operations: ops });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.equal(parsed.applied, 1, "valid inline update must apply");
+    assert.equal(parsed.failed_at, null);
+
+    const entries = readRegistry(root);
+    const updated = entries.find((e) => e.id === "batch-base-2");
+    assert.equal(updated.description, "Replaced description via valid batch update (min 20 chars)");
+  });
 });

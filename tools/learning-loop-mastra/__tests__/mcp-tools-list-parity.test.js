@@ -26,6 +26,10 @@ const MIGRATED_TOOL_NAMES = [
   "mastra_meta_state_query_drift",
   "mastra_meta_state_derive_status",
   "mastra_meta_state_list",
+  // Plan 260717-1145 Phase 2: meta_state_patch uses z.preprocess(deepStripEnvelope, z.union(...))
+  // so its parity view is rebuilt by buildParitySchema; the new parityJsonSchemaHints seam
+  // injects model-visible minProperties on `patch` to steer the model away from `{}`.
+  "mastra_meta_state_patch",
   "run_workflow_self_improvement",
   "mastra_workflow_generate_prompt",
   // "mastra_trigger_workflow" intentionally omitted: server logs
@@ -98,5 +102,50 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
     assert.ok(cascade, "cascade_from property must exist");
     assert.strictEqual(cascade.type, "array", "cascade_from.type must be array");
     assert.strictEqual(cascade.items?.type, "string", "cascade_from.items.type must be string");
+  });
+
+  // Test 5 (per-tool — Plan 260717-1145 Phase 2): meta_state_patch.patch must
+  // declare minProperties >= 1 on the model-visible JSON schema so the empty-{}
+  // safe emission (verified root cause: union of four .partial().strict() branches)
+  // is rejected pre-invocation. Generation-only: .parse({}) still succeeds at the
+  // Zod layer (the runtime empty_patch check is the safety net). Other tools
+  // must be unaffected — confirms the hints seam is scoped, not global.
+  test("meta_state_patch.patch declares minProperties:1 (steering layer, plan 260717-1145)", { timeout: 5000 }, () => {
+    const t = byName.get("mastra_meta_state_patch");
+    assert.ok(t, "mastra_meta_state_patch must be registered");
+    const patchProp = t.inputSchema.properties?.patch;
+    assert.ok(patchProp, "patch property must exist");
+    assert.ok(
+      typeof patchProp.minProperties === "number" && patchProp.minProperties >= 1,
+      `patch.minProperties must be >= 1 (got ${JSON.stringify(patchProp.minProperties)})`,
+    );
+  });
+
+  // Test 6 (counter-assert): the parity hints seam must not bleed into other
+  // tools' schemas. meta_state_list takes a filter object — its properties
+  // must NOT carry an injected minProperties (no hint is declared for it).
+  test("meta_state_list unaffected by parity hints seam (no minProperties injection)", { timeout: 5000 }, () => {
+    const t = byName.get("mastra_meta_state_list");
+    assert.ok(t, "mastra_meta_state_list must be registered");
+    for (const [key, prop] of Object.entries(t.inputSchema.properties ?? {})) {
+      assert.strictEqual(
+        prop.minProperties, undefined,
+        `meta_state_list.${key} must NOT carry minProperties (hints seam must be scoped)`,
+      );
+    }
+  });
+
+  // Test 7 (separation invariant, plan 260717-1145 Phase 2 step 3): the
+  // generation-only override is on the parity JSON-schema side. The runtime
+  // Zod schema must still parse({}) successfully — the empty_patch runtime
+  // check is the safety net, not the schema. This pins steering (schema)
+  // vs safety-net (runtime) so a future refactor cannot collapse them.
+  test("meta_state_patch runtime Zod schema still parses {} (generation-only steering)", { timeout: 5000 }, async () => {
+    const { metaStatePatchTool } = await import("../tools/handlers/meta-state-patch-tool.js");
+    const parsed = metaStatePatchTool.schema.patch.safeParse({});
+    assert.ok(
+      parsed.success,
+      `Zod .parse({}) must succeed (runtime empty_patch check is the safety net, not the schema). Got: ${JSON.stringify(parsed.error?.issues)}`,
+    );
   });
 });

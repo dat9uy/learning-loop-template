@@ -27,12 +27,28 @@ function normalizeInputSchema(inputSchema) {
   return z.object(inputSchema);
 }
 
-function attachParityJSONSchema(schema) {
+function attachParityJSONSchema(schema, parityHints) {
   const paritySchema = buildParitySchema(schema);
   const parityJSONSchema = z.toJSONSchema(paritySchema, {
     target: "draft-7",
     io: "input",
   });
+  // Plan 260717-1145 Phase 2: inject model-visible JSON-schema hints (draft-7
+  // constraints like minProperties) on top of the parity view. Zod v4's
+  // z.object() has no .min(1) that renders as minProperties, and .refine is
+  // dropped by toJSONSchema, so the steering layer must be applied here.
+  // Generation-only: this never affects .parse() — the override is on the
+  // converted JSON schema object, while runtime validation uses the real Zod
+  // schema. Deep-merges per-field so existing property constraints are
+  // preserved (e.g. a `minLength: 20` already declared on `description` is
+  // not clobbered by injecting `patch: { minProperties: 1 }`).
+  if (parityHints && typeof parityHints === "object") {
+    for (const [field, hint] of Object.entries(parityHints)) {
+      const propSchema = parityJSONSchema?.properties?.[field];
+      if (!propSchema || !hint || typeof hint !== "object") continue;
+      Object.assign(propSchema, hint);
+    }
+  }
   // Override zod's per-schema JSON Schema generator so the schema exposed to
   // MCP clients via `tools/list` is the parity view (z.preprocess wrappers and
   // guarded-boolean unions unwrapped). zod's `process` function in
@@ -54,8 +70,8 @@ function attachParityJSONSchema(schema) {
   return schema;
 }
 
-export function createLoopTool({ id, description, inputSchema, execute, pathFields = [] }) {
-  const normalized = attachParityJSONSchema(normalizeInputSchema(inputSchema));
+export function createLoopTool({ id, description, inputSchema, execute, pathFields = [], parityHints }) {
+  const normalized = attachParityJSONSchema(normalizeInputSchema(inputSchema), parityHints);
   // R2 write-gate is the single write-authorization point for every loop tool.
   // Tools with pathFields: [] (no write-path args) short-circuit to allow;
   // tools that declare write-path args are ownership-checked per runtime.
