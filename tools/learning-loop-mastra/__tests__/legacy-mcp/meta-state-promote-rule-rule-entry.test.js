@@ -269,3 +269,65 @@ test("meta_state_promote_rule keeps origin finding status as 'open' (RED→GREEN
     teardown();
   }
 });
+
+test("preview:true on agent-checklist without hint_text reaches the preview branch (I5 regression)", async () => {
+  // Code-review I5 (plans/260717-1826): the hint_text-required gate used to run
+  // BEFORE the preview branch, so `preview:true` on an agent-checklist rule
+  // without hint_text was rejected — contradicting the documented preview
+  // contract ("test pattern matches without activating"). Preview creates no
+  // rule, so no injection prose is required.
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Preview-mode agent-checklist promotion must not require hint_text.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-preview-no-hint",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
+      preview: true,
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.preview, true, "preview must reach the preview branch");
+    assert.notEqual(text.reason, "hint_text_required_for_agent_checklist",
+      "preview must not be rejected for missing hint_text");
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist without hint_text is still rejected (gate intact)", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must require hint_text.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-activation-needs-hint",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }),
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "hint_text_required_for_agent_checklist");
+  } finally {
+    teardown();
+  }
+});

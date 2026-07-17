@@ -90,7 +90,10 @@ export const metaStatePromoteRuleTool = {
     // rules MUST carry hint_text — the rule owns the SessionStart-injected
     // prose. Reject with an actionable reason so the operator knows what to
     // pass (parallel to the empty-patch lesson in core/meta-state.js).
-    if (pattern_type === "agent-checklist" && (typeof hint_text !== "string" || hint_text.length < 20)) {
+    // Code-review I5: skipped in preview mode — preview tests pattern matches
+    // without creating a rule, so no injection prose is needed yet (parallel
+    // to the preview-aware session-mode gate above).
+    if (!preview && pattern_type === "agent-checklist" && (typeof hint_text !== "string" || hint_text.length < 20)) {
       const result = {
         promoted: false,
         reason: "hint_text_required_for_agent_checklist",
