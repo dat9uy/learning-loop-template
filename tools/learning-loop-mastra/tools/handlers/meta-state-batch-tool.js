@@ -1,6 +1,7 @@
 import { deepStripEnvelope } from "../../core/envelope-stripper.js";
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { listMutableFieldsCsv } from "#lib/patch-hints.js";
 import {
   metaStateBatch,
   readRegistry,
@@ -79,85 +80,17 @@ export const metaStateBatchTool = {
     const unwrapped = deepStripEnvelope(operations);
     const unwrappedEnvelope = envelope ? deepStripEnvelope(envelope) : undefined;
 
-    // Plan 260717-1145 Phase 3: per-op no-content + invalid-field pre-walk
-    // for update ops. The model-visible union schema cannot steer here — the
-    // discriminator `op:"update"` already prevents bare `{}`, and the inline
-    // content fields merge via .passthrough(), not via a nested `patch:{}`.
-    // The exposure is therefore (a) zero-content update (silent no-op via
-    // entriesEqual — same class as meta_state_patch's empty-{} emission) and
-    // (b) a real-but-invalid inline field (opaque z.union "Invalid input"
-    // path:[]). Pre-walk catches both BEFORE metaStateBatch — a rejected
-    // op fails the whole batch atomically (matches core's rollback shape:
-    // {applied:0, failed_at:i, reason, op, ...extra}). The hint is
-    // schema-derived from buildPatchSchemaFor(existingEntry.entry_kind) so it
-    // never drifts when fields change.
+    // Plan 260717-1145 Phase 3: per-op preflight for update ops. Pre-walk
+    // runs BEFORE metaStateBatch so a rejected op fails the whole batch
+    // atomically (matches core's rollback shape: {applied:0, failed_at:i,
+    // reason, op, ...extra}). The preflight logic lives in preflightUpdateOp
+    // — pulled out of this handler to keep cognitive complexity under the
+    // fallow threshold (was 22 / threshold 15 in PR #67).
     if (Array.isArray(unwrapped)) {
       const existingById = new Map(readRegistry(root).map((e) => [e.id, e]));
       for (let i = 0; i < unwrapped.length; i++) {
-        const op = unwrapped[i];
-        if (!op || op.op !== "update") continue;
-        const existing = existingById.get(op.id);
-        // Plan 260717-1145 Phase 3 EDGE: not_found must fire BEFORE
-        // no_content/invalid_field so a missing id does not get a
-        // misclassified rejection — preserves the existing core behavior.
-        if (!existing) continue;
-        const inlineKeys = Object.keys(op).filter((k) => !BATCH_UPDATE_IDENTITY_KEYS.has(k));
-        // IMMUTABLE_PATCH_FIELDS deny-list takes precedence over the new
-        // no_content / invalid_field paths (mirrors the patch tool order:
-        // deny-list → empty_patch → per-branch validation). This preserves
-        // the existing core/meta-state.js immutable_field semantics for
-        // identity / audit-trail fields (operation_envelope, code_fingerprint,
-        // resolved_at, etc.). Let core's deny-list fire on its own — these
-        // keys are stripped from per-branch validation so they don't trigger
-        // a misleading "unknown field" invalid_field.
-        const denied = inlineKeys.filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
-        if (denied.length > 0) continue;
-        if (inlineKeys.length === 0) {
-          const result = {
-            applied: 0,
-            failed_at: i,
-            reason: "no_content",
-            op,
-            id: op.id,
-            entry_kind: existing.entry_kind,
-            hint: buildNoContentHint(existing.entry_kind),
-          };
-          appendGateLog(root, {
-            timestamp: new Date().toISOString(),
-            tool: "meta_state_batch",
-            op_count: unwrapped.length,
-            applied: 0,
-            failed_at: i,
-            reason: "no_content",
-          });
-          return { content: [{ type: "text", text: JSON.stringify(result) }] };
-        }
-        const branchSchema = buildPatchSchemaFor(existing.entry_kind);
-        const inlinePatch = Object.fromEntries(inlineKeys.map((k) => [k, op[k]]));
-        const parsed = branchSchema.safeParse(inlinePatch);
-        if (!parsed.success) {
-          const result = {
-            applied: 0,
-            failed_at: i,
-            reason: "invalid_field",
-            op,
-            id: op.id,
-            entry_kind: existing.entry_kind,
-            field_errors: parsed.error.issues.map((iss) => ({
-              field: Array.isArray(iss.path) && iss.path.length > 0 ? iss.path.join(".") : "(root)",
-              message: iss.message,
-            })),
-          };
-          appendGateLog(root, {
-            timestamp: new Date().toISOString(),
-            tool: "meta_state_batch",
-            op_count: unwrapped.length,
-            applied: 0,
-            failed_at: i,
-            reason: "invalid_field",
-          });
-          return { content: [{ type: "text", text: JSON.stringify(result) }] };
-        }
+        const result = preflightUpdateOp(root, unwrapped, i, existingById);
+        if (result) return { content: [{ type: "text", text: JSON.stringify(result) }] };
       }
     }
 
@@ -174,33 +107,109 @@ export const metaStateBatchTool = {
   },
 };
 
-// Plan 260717-1145 Phase 3: schema-derived no-content hint for batch update
-// ops. Mirrors Phase 4's per-kind hint on the patch tool — same source
-// (buildPatchSchemaFor's shape), different delivery surface (batch op vs
-// patch tool call). The hint names the kind's mutable content fields and
-// notes the inline placement (no nested patch:{} on the op).
-function buildNoContentHint(kind) {
-  // Schema is optional here — unknown kinds (entry not yet loaded or
-  // missing) get a generic hint that names the most-common fields and
-  // the inline placement rule.
-  let mutableFields;
-  try {
-    const schema = buildPatchSchemaFor(kind);
-    // buildPatchSchemaFor returns a ZodObject; access the shape via _zod.def.
-    const shape = schema?._zod?.def?.shape ?? {};
-    mutableFields = Object.keys(shape);
-  } catch {
-    mutableFields = [];
+// Plan 260717-1145 Phase 3: per-op preflight for update ops. Returns a
+// rejection-result object {reason, ...} if the op should fail-fast; null if
+// the op passes preflight and should fall through to metaStateBatch.
+//
+// Order matters (mirrors the patch tool's order so the same op shape behaves
+// identically on both surfaces):
+//   1. not_found          — core handles it (return null, let core fire)
+//   2. immutable_field    — core handles it (return null, let core fire)
+//   3. no_content         — pre-walk: zero-content update is a silent-success
+//                           bug (same class as patch's empty-{}, via core's
+//                           entriesEqual short-circuit on the inline fields)
+//   4. invalid_field      — pre-walk: real-but-invalid inline field otherwise
+//                           returns opaque z.union "Invalid input" path:[]
+//
+// (1) and (2) intentionally pass-through to core so the existing core
+// behavior (with its deny-list precedence) is preserved; (3) and (4) are
+// the new pre-walk rejections introduced by plan 260717-1145 Phase 3.
+function preflightUpdateOp(root, ops, i, existingById) {
+  const op = ops[i];
+  if (!op || op.op !== "update") return null;
+  const existing = existingById.get(op.id);
+  if (!existing) return null; // not_found — let core fire
+  const inlineKeys = Object.keys(op).filter((k) => !BATCH_UPDATE_IDENTITY_KEYS.has(k));
+  // IMMUTABLE_PATCH_FIELDS deny-list takes precedence over the new
+  // no_content / invalid_field paths — strip those keys from per-branch
+  // validation so they don't trigger a misleading "unknown field"
+  // invalid_field rejection. Let core's deny-list fire on its own.
+  const denied = inlineKeys.filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
+  if (denied.length > 0) return null; // immutable_field — let core fire
+  if (inlineKeys.length === 0) {
+    return buildNoContentResult(root, ops, i, op, existing);
   }
-  // Per-kind ordering: describe + evidence_code_ref first for the common
-  // refresh case (matches the patch tool's empty_patch hint).
-  const priority = ["description", "evidence_code_ref"];
-  const ordered = [
-    ...priority.filter((f) => mutableFields.includes(f)),
-    ...mutableFields.filter((f) => !priority.includes(f)),
-  ];
-  const fieldList = ordered.length > 0
-    ? ordered.slice(0, 12).join(", ")
-    : "see the patch schema for the full field list";
+  const branchSchema = buildPatchSchemaFor(existing.entry_kind);
+  const inlinePatch = Object.fromEntries(inlineKeys.map((k) => [k, op[k]]));
+  const parsed = branchSchema.safeParse(inlinePatch);
+  if (!parsed.success) {
+    return buildInvalidFieldResult(root, ops, i, op, existing, parsed.error);
+  }
+  return null;
+}
+
+// Build the no_content rejection result + gate-log entry. Pulled out of
+// preflightUpdateOp to keep the preflight function under the fallow
+// cognitive threshold (was 22 / threshold 15 in PR #67).
+function buildNoContentResult(root, ops, i, op, existing) {
+  const result = {
+    applied: 0,
+    failed_at: i,
+    reason: "no_content",
+    op,
+    id: op.id,
+    entry_kind: existing.entry_kind,
+    hint: buildNoContentHint(existing.entry_kind),
+  };
+  appendGateLog(root, {
+    timestamp: new Date().toISOString(),
+    tool: "meta_state_batch",
+    op_count: ops.length,
+    applied: 0,
+    failed_at: i,
+    reason: "no_content",
+  });
+  return result;
+}
+
+// Build the invalid_field rejection result + gate-log entry. Pulled out
+// alongside buildNoContentResult for the same fallow-cognitive reason.
+function buildInvalidFieldResult(root, ops, i, op, existing, error) {
+  const result = {
+    applied: 0,
+    failed_at: i,
+    reason: "invalid_field",
+    op,
+    id: op.id,
+    entry_kind: existing.entry_kind,
+    field_errors: error.issues.map(formatFieldIssue),
+  };
+  appendGateLog(root, {
+    timestamp: new Date().toISOString(),
+    tool: "meta_state_batch",
+    op_count: ops.length,
+    applied: 0,
+    failed_at: i,
+    reason: "invalid_field",
+  });
+  return result;
+}
+
+// Pulled out of the previous inline map callback to flatten cognitive
+// complexity (Array.isArray && ternary) out of the handler scope.
+function formatFieldIssue(issue) {
+  return {
+    field: Array.isArray(issue.path) && issue.path.length > 0 ? issue.path.join(".") : "(root)",
+    message: issue.message,
+  };
+}
+
+// Plan 260717-1145 Phase 3: schema-derived no_content hint for batch update
+// ops. Mirrors Phase 4's per-kind hint on the patch tool — same source
+// (buildPatchSchemaFor's shape via listMutableFieldsCsv), different delivery
+// surface (batch op vs patch tool call). The hint names the kind's mutable
+// content fields and notes the inline placement (no nested patch:{} on the op).
+function buildNoContentHint(kind) {
+  const fieldList = listMutableFieldsCsv(kind, "see the patch schema for the full field list");
   return `update op must contain at least one mutable field for entry_kind=${kind} (content goes inline on the op, not in a nested patch:{}). Mutable fields: ${fieldList}. For status/consolidated_into use meta_state_supersede; for resolved use meta_state_resolve; for schema/rule/tool/policy/surface changes use meta_state_log_change.`;
 }

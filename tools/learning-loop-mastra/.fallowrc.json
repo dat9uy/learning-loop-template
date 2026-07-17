@@ -20,7 +20,8 @@
     "hooks/universal/**/*.cjs",
     "interface/**/*.js",
     "__tests__/with-mcp-server.js",
-    "__tests__/helpers/**/*.cjs"
+    "__tests__/helpers/**/*.cjs",
+    "tools/lib/patch-hints.js"
   ],
 
   "ignorePatterns": [
@@ -53,6 +54,12 @@
       "exports": [
         "appendGateLog",
         "logToolCall"
+      ]
+    },
+    {
+      "file": "tools/lib/patch-hints.js",
+      "exports": [
+        "listMutableFieldsCsv"
       ]
     }
   ],

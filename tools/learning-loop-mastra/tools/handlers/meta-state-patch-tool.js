@@ -9,6 +9,7 @@ import {
 import { deepStripEnvelope } from "../../core/envelope-stripper.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { listMutableFieldsCsv } from "#lib/patch-hints.js";
 
 // Re-exported for backward compat with existing test imports
 // (meta-state-patch-immutable-fields.test.js).
@@ -220,23 +221,14 @@ export const metaStatePatchTool = {
 // fields (no finding-only recurrence_key leaking into a rule hint, etc.)
 // and the hint never drifts when the schema changes. description + evidence_code_ref
 // are listed first because they are the common refresh case.
+//
+// Schema derivation + priority ordering delegated to listMutableFieldsCsv
+// (tools/lib/patch-hints.js) — shared with meta-state-batch-tool.js's
+// buildNoContentHint. Centralization closes fallow dup:7bcb1118 from PR #67.
 function buildEmptyPatchHint(entryKind) {
-  let mutableFields = [];
-  try {
-    const schema = buildPatchSchemaFor(entryKind);
-    const shape = schema?._zod?.def?.shape ?? {};
-    mutableFields = Object.keys(shape);
-  } catch {
-    // unknown entry_kind (shouldn't happen — branch_mismatch runs first) —
-    // fall back to a generic hint.
-  }
-  const priority = ["description", "evidence_code_ref"];
-  const ordered = [
-    ...priority.filter((f) => mutableFields.includes(f)),
-    ...mutableFields.filter((f) => !priority.includes(f)),
-  ];
-  const fieldList = ordered.length > 0
-    ? ordered.slice(0, 12).join(", ")
-    : "see the per-kind patch schema for the full field list";
+  const fieldList = listMutableFieldsCsv(
+    entryKind,
+    "see the per-kind patch schema for the full field list",
+  );
   return `patch must contain at least one mutable field for entry_kind=${entryKind}. Mutable content fields: ${fieldList}. For status / consolidated_into use meta_state_supersede; for resolved use meta_state_resolve; for schema / rule / tool / policy / surface changes use meta_state_log_change.`;
 }
