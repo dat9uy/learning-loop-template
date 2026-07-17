@@ -491,21 +491,24 @@ The constraint gate (`core/gate-logic.js`) and the meta-state registry are **sep
 
 ## Context-Injection Division of Labor
 
-Phase 4 of `plans/260717-1826-unify-context-injection` collapses 5 overlapping context-injection surfaces into one hint registry + one budget-aware renderer + thin per-runtime adapters. The trust objection that justified the pre-Phase-1 LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly, and the factory hook itself already `await import`s core/meta-state.js in its failure path. Direct core import removes the wire, the spawn, and the mirror.
+Plan `260717-1826-unify-context-injection` collapsed 5 overlapping context-injection surfaces into **one hint registry** consumed by two paths: production injection (builders) and inspection (renderer + CLI). The trust objection that justified the pre-Phase-1 LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly, and the factory hook itself already `await import`s core/meta-state.js in its failure path. Direct core import removed the wire, the spawn, and the mirror.
 
-Four surfaces, one renderer:
+- **Source of truth:** `core/hint-registry.js` — slug-keyed entries `{ slug, kind, text, suggestion, derived_from_rule }`. Rule-derived process entries carry empty inline text and resolve from `rule.hint_text` at render time via the shared `resolveHintText` path.
+- **Production injection:** `core/loop-introspect.js` builders (`buildDiscoverabilityHints` / `buildProcessHints`) project the registry into the legacy array-of-strings shape. All injection surfaces consume the builders — the hint renderer is NOT on the injection path (operator decision 2026-07-17: the builders already deliver single-source content; wiring hooks through the renderer would churn three hot paths for no behavioral gain).
+
+Four surfaces, one registry:
 
 | Surface | Trigger | Role |
 |---|---|---|
-| **push (SessionStart hooks)** | runtime startup | Fixed cold-start context: the static hint sets, budget-partitioned, rendered by `core/hint-renderer.js`. Bounded and cache-stable. |
-| **pull-warm (`loop_describe`)** | agent mid-session | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same render as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
-| **pull-single (`loop_get_instruction`)** | agent on demand | Re-fetch one hint by slug (or numeric index, for back-compat) that scrolled out of context. |
+| **push (SessionStart hooks)** | runtime startup | Fixed cold-start context: the static hint sets from the builders, hand-partitioned by the two `.claude` universal hooks under the 10k `additionalContext` cap (`.factory` emits one block). Bounded and cache-stable. |
+| **pull-warm (`loop_describe`)** | agent mid-session | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same builder output as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
+| **pull-single (`loop_get_instruction`)** | agent on demand | Re-fetch one hint by slug (or numeric index = registry position, for back-compat) that scrolled out of context. Resolves against the fixed registry order — never the shrinkable builder array. |
 | **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | always | Steering layer + prompt-author docs; never a hint-content source. |
 
-**`.mastracode` is pull-only by decision (plan 260717-1826 Validation 1, 2026-07-17):** no SessionStart hint injection. The renderer's channel table leaves room for a future `mastracode-session-start` channel without redesign. Documented so future operators don't read the absence as a bug.
+**`.mastracode` is pull-only by decision (plan 260717-1826 Validation 1, 2026-07-17):** no SessionStart hint injection. Documented so future operators don't read the absence as a bug.
 
-State-2 rationale (`docs/philosophy.md` § Skills Are the Same Kind of Escape Hatch): deterministic injection (renderer fires at the right moment per runtime), agentic consumption (model reads prose, decides). The *mechanism* is state-2 by design. The rule-derived hint content (Phase 3) is promotable to state-3: rule→hint derivation moves from hand-mirror + nag to deterministic projection at promotion time, while hint consumption stays agentic.
+State-2 rationale (`docs/philosophy.md` § Skills Are the Same Kind of Escape Hatch): deterministic injection (hooks fire at the right moment per runtime), agentic consumption (model reads prose, decides). The *mechanism* is state-2 by design. The rule-derived hint content (Phase 3) is promotable to state-3: rule→hint derivation moves from hand-mirror + nag to deterministic projection at promotion time, while hint consumption stays agentic.
 
-Trust boundary: hooks read core directly via `require()` / dynamic `import()`; no server-rendered strings cross a trust boundary. The hint registry (`core/hint-registry.js`) is the single source of truth for hint content; the renderer (`core/hint-renderer.js`) projects it per channel.
+Trust boundary: hooks read core directly via `require()` / dynamic `import()`; no server-rendered strings cross a trust boundary.
 
-Inspection: `node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]` prints the byte-exact render the runtime would inject, plus per-hint provenance (slug + kind + source) when `--provenance` is set. Use to verify what each session-start will see without starting one.
+Inspection (debug tooling, not the injection path): `core/hint-renderer.js` + `node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]` render the same registry per channel (2-partition `.claude` budget shape, `.factory` single block, `mcp-warm`, `sidecar`) with real rule `hint_text` loaded from the live registry, plus per-hint provenance (slug + kind + source) and skip/oversize warnings. Use to verify hint content and budget sizes without starting a session; per-runtime output envelopes (numbered lists, counts headers) belong to the hooks, not the renderer.
