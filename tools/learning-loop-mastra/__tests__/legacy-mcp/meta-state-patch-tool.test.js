@@ -270,3 +270,89 @@ test("meta_state_patch blocks code_fingerprint with a deprecation note pointing 
     teardown();
   }
 });
+
+// meta-260717T1026Z-...empty-patch: empty patches must NOT return patched:true.
+// Two flavors cover the exposure surface: literal empty object, and
+// immutable-fields-only (where every field is in the deny-list, leaving
+// the effective patch empty after stripping).
+test("meta_state_patch rejects empty patch object with reason empty_patch (meta-260717T1026Z)", async () => {
+  const root = setup();
+  try {
+    const reportResult = await reportCall({
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for empty-patch rejection (min 20 chars)",
+    });
+    const id = reportResult.id;
+
+    const result = await patchCall({
+      id,
+      entry_kind: "finding",
+      patch: {},
+      _expected_version: 0,
+    });
+
+    assert.equal(result.patched, false, "empty patch must NOT report patched:true");
+    assert.equal(result.reason, "empty_patch");
+    assert.equal(result.id, id);
+    assert.equal(result.entry_kind, "finding");
+    assert.ok(
+      typeof result.hint === "string" && result.hint.includes("meta_state_supersede") && result.hint.includes("meta_state_resolve"),
+      "empty_patch rejection must point the caller at the right alternative tools",
+    );
+
+    // Registry unchanged: no version bump, no new line.
+    const entries = readRegistry(root);
+    const matching = entries.filter((e) => e.id === id);
+    assert.equal(matching.length, 1, "empty patch must not append a new line");
+    assert.equal(matching[0].version, 0, "version must not bump on empty patch");
+  } finally {
+    teardown();
+  }
+});
+
+test("meta_state_patch never mutates when patch contains only immutable fields (meta-260717T1026Z)", async () => {
+  const root = setup();
+  try {
+    const reportResult = await reportCall({
+      category: "loop-anti-pattern",
+      severity: "warning",
+      affected_system: "mcp-tools",
+      description: "Test finding for immutable-only patch rejection (min 20 chars)",
+    });
+    const id = reportResult.id;
+
+    // All four fields are immutable / identity — every field is stripped,
+    // so the effective patch would be empty.
+    const result = await patchCall({
+      id,
+      entry_kind: "finding",
+      patch: {
+        id: "meta-999999T9999Z-attempted-identity-override",
+        version: 99,
+        status: "resolved",
+        resolved_at: "2099-01-01T00:00:00.000Z",
+      },
+      _expected_version: 0,
+    });
+
+    // The fields trigger immutable_field (deny-list catches them first).
+    // The point of this test is that no mutation lands regardless of path.
+    assert.equal(result.patched, false);
+    assert.ok(
+      result.reason === "immutable_field" || result.reason === "empty_patch",
+      `expected immutable_field or empty_patch, got ${result.reason}`,
+    );
+
+    // Registry unchanged: no version bump.
+    const entries = readRegistry(root);
+    const matching = entries.filter((e) => e.id === id);
+    assert.equal(matching.length, 1, "no mutation line may be appended");
+    assert.equal(matching[0].version, 0, "version must not bump on this path");
+    assert.equal(matching[0].id, id, "id must not be replaced via the patch path");
+    assert.equal(matching[0].status, "open", "status must not be flipped via the patch path");
+  } finally {
+    teardown();
+  }
+});

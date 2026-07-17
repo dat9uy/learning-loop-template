@@ -629,8 +629,19 @@ export function buildPatchSchemaFor(kind) {
 /**
  * Patch validator — accepts any top-level key because patches are partial
  * by definition and may contain any subset of the union fields.
+ *
+ * Defense-in-depth: rejects empty objects at the schema boundary so
+ * direct core callers (e.g. updateEntry, fix-loop-design-refs.mjs) cannot
+ * silently no-op via the entriesEqual short-circuit. The patch-tool
+ * handler has a parallel empty-patch check that fires BEFORE the CAS
+ * field is added (so the user-facing case is caught even when the only
+ * user-supplied fields are stripped identity/CAS fields).
+ * Resolves meta-260717T1026Z-...empty-patch.
  */
-export const metaStateEntryPatchSchema = z.object({}).passthrough();
+export const metaStateEntryPatchSchema = z.object({}).passthrough()
+  .refine((p) => Object.keys(p).length > 0, {
+    message: "patch must contain at least one field; empty patches are rejected at the schema boundary (see meta-260717T1026Z)",
+  });
 
 /**
  * Thrown when writeEntry receives an entry that fails validation against

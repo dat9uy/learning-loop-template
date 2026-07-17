@@ -97,6 +97,28 @@ export const metaStatePatchTool = {
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }
 
+    // Defense-in-depth (resolves meta-260717T1026Z-...empty-patch): after
+    // stripping CAS + identity fields, the effective patch must still
+    // contain at least one mutable field. An empty effective patch would
+    // otherwise silently no-op via updateEntry's entriesEqual short-circuit
+    // (line 1128 in core/meta-state.js) and return patched:true, masking
+    // caller bugs (typo'd field, wrong tool choice). The schema refine
+    // on metaStateEntryPatchSchema catches direct core callers; this
+    // handler-level check catches the MCP-wire path BEFORE the CAS field
+    // is added, so the user sees the rejection for the patch they actually
+    // sent (not a schema error after CAS injection).
+    if (Object.keys(effectivePatch).length === 0) {
+      const result = {
+        patched: false,
+        reason: "empty_patch",
+        id,
+        entry_kind,
+        hint: "patch must contain at least one mutable field. Identity (id/version/entry_kind/status/consolidated_into/resolved_at/resolved_by/resolution/code_fingerprint/operation_envelope) and CAS (_expected_version) fields are stripped before the patch is applied — including only those leaves an empty effective patch. Use meta_state_supersede to flip status+consolidated_into atomically; use meta_state_resolve to set status=resolved with a resolution note; use meta_state_log_change to record schema/rule/tool/policy/surface changes.",
+      };
+      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    }
+
     const currentVersion = entry.version ?? 0;
     const effectiveExpectedVersion = _expected_version !== undefined
       ? _expected_version

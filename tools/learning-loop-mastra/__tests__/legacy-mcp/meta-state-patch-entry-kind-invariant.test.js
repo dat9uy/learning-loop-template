@@ -18,7 +18,10 @@ import { withMcpServer } from "../with-mcp-server.js";
 // STATE as the primary check, not the callTool return value.
 
 // (a) Empty patch {} on a loop-design preserves entry_kind (no first-union-branch injection).
-test("meta_state_patch empty patch {} on loop-design preserves entry_kind", async () => {
+// Updated for meta-260717T1026Z-...empty-patch: empty patches are now rejected with
+// reason "empty_patch" instead of silently no-op'ing. The registry-state invariant
+// (entry_kind must not flip) is still the load-bearing check.
+test("meta_state_patch empty patch {} on loop-design is rejected with reason empty_patch; entry_kind unchanged", async () => {
   await withMcpServer(async ({ callTool, tempRoot }) => {
     const design = await callTool("mastra_meta_state_propose_design", {
       title: "test-empty-patch-kind-preservation",
@@ -32,10 +35,13 @@ test("meta_state_patch empty patch {} on loop-design preserves entry_kind", asyn
       entry_kind: "loop-design",
       patch: {},
     });
-    assert.equal(result.patched, true);
-    assert.equal(result.entry_kind, "loop-design");
+    // Post-fix (meta-260717T1026Z): empty patches are rejected outright.
+    assert.equal(result.patched, false);
+    assert.equal(result.reason, "empty_patch");
     const entry = readRegistry(tempRoot).find((e) => e.id === design.id);
     assert.equal(entry.entry_kind, "loop-design", "entry_kind must not flip to 'finding'");
+    // No version bump from an empty patch.
+    assert.equal(entry.version, 0, "empty patch must not bump version");
   });
 });
 
@@ -91,29 +97,35 @@ test("meta_state_patch rejects entry_kind inside patch (Fix A); registry state u
   });
 });
 
-// (d) Gate-log fields_patched for an empty patch is [] (honest logging). The handler
-//     logs Object.keys(effectivePatch) at patch-tool.js:142. Pre-fix: .default() injects
-//     entry_kind -> fields_patched:["entry_kind"]. Post-fix: no injection -> [].
+// (d) Gate-log for an empty patch records reason empty_patch (honest logging).
+//     Pre-fix (meta-260712T0053Z, Fix A): empty patches silently succeeded and
+//     logged fields_patched:[] — the test was locking in the silent-success bug.
+//     Post-fix (meta-260717T1026Z): empty patches are rejected with reason
+//     empty_patch and logged as such (no fields_patched field).
 //     Gate-log path (verified gate-logging.js:53-63 + gate-logging.test.js:79):
 //     <tempRoot>/.claude/coordination/gate-log.jsonl
-test("meta_state_patch empty patch logs fields_patched:[] not ['entry_kind']", async () => {
+test("meta_state_patch empty patch logs reason=empty_patch, no fields_patched", async () => {
   await withMcpServer(async ({ callTool, tempRoot }) => {
     const report = await callTool("mastra_meta_state_report", {
       category: "loop-anti-pattern",
       severity: "warning",
       affected_system: "mcp-tools",
-      description: "Finding for honest gate-log fields_patched test (min 20 chars)",
+      description: "Finding for honest gate-log empty_patch test (min 20 chars)",
     });
-    await callTool("mastra_meta_state_patch", {
+    const result = await callTool("mastra_meta_state_patch", {
       id: report.id,
       entry_kind: "finding",
       patch: {},
     });
+    assert.equal(result.patched, false);
+    assert.equal(result.reason, "empty_patch");
     const gateLogPath = join(tempRoot, ".claude", "coordination", "gate-log.jsonl");
     const gateLog = readFileSync(gateLogPath, "utf8").trim().split("\n").map(JSON.parse);
     const patchEntry = gateLog.filter((e) => e.tool === "meta_state_patch" && e.id === report.id).pop();
     assert.ok(patchEntry, "gate log must contain the patch entry");
-    assert.deepEqual(patchEntry.fields_patched, [],
-      `fields_patched must be [] for empty patch, got ${JSON.stringify(patchEntry.fields_patched)}`);
+    assert.equal(patchEntry.patched, false);
+    assert.equal(patchEntry.reason, "empty_patch");
+    assert.equal(patchEntry.fields_patched, undefined,
+      `fields_patched must NOT be set for a rejected patch, got ${JSON.stringify(patchEntry.fields_patched)}`);
   });
 });
