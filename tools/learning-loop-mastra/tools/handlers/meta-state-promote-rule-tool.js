@@ -31,11 +31,18 @@ export const metaStatePromoteRuleTool = {
       statuses: z.array(z.string()).optional(),
       schemas: z.array(z.string()).optional(),
     }).optional().describe("Optional scope-narrowing block; persisted on the rule entry"),
+    // Phase 3 (plans/260717-1826-unify-context-injection): rule-derived
+    // process hints. Required when pattern_type === "agent-checklist" (the
+    // rule owns the SessionStart-injected prose). Optional otherwise —
+    // gate-enforced rules don't need injection prose. The hint-renderer
+    // treats missing hint_text on an agent-checklist rule as skip+warn.
+    hint_text: z.string().min(20).optional()
+      .describe("Long-form SessionStart-injected hint prose (min 20 chars). REQUIRED when pattern_type === 'agent-checklist'."),
     preview: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),
   },
-  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, preview, sample_commands, sample_paths }) => {
+  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, hint_text, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -69,6 +76,29 @@ export const metaStatePromoteRuleTool = {
     // Category guard: only loop-anti-pattern entries may be promoted
     if (entry.category !== "loop-anti-pattern") {
       const result = { promoted: false, reason: "category_must_be_loop_anti_pattern", id, current_category: entry.category };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_promote_rule",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
+    // Phase 3 (plans/260717-1826-unify-context-injection): agent-checklist
+    // rules MUST carry hint_text — the rule owns the SessionStart-injected
+    // prose. Reject with an actionable reason so the operator knows what to
+    // pass (parallel to the empty-patch lesson in core/meta-state.js).
+    if (pattern_type === "agent-checklist" && (typeof hint_text !== "string" || hint_text.length < 20)) {
+      const result = {
+        promoted: false,
+        reason: "hint_text_required_for_agent_checklist",
+        id,
+        rule_id,
+        message:
+          "Agent-checklist rules MUST carry a `hint_text` field (>=20 chars). The rule owns the SessionStart-injected prose — the registry entry references the rule by `derived_from_rule` and renders `rule.hint_text` at inject time. Re-call with `hint_text: '<your prose>'`.",
+      };
       appendGateLog(root, {
         timestamp: new Date().toISOString(),
         tool: "meta_state_promote_rule",
@@ -169,6 +199,7 @@ export const metaStatePromoteRuleTool = {
       ...(scope_predicate && scope_predicate !== "none" && { scope_predicate }),
       ...(pattern_type === "determinism-checklist" && { applies_to_resolution: pattern }),
       ...(applies_to && { applies_to }),
+      ...(hint_text && { hint_text }),
       description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",
       promoted_at: now,

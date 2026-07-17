@@ -118,20 +118,6 @@ export const loopDescribeTool = {
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
         result.process_hints = introspect.buildProcessHints();
 
-        // H6 ordering gate: every agent-checklist rule must have a PROCESS_HINTS row.
-        const processHints = result.process_hints;
-        for (const rule of promotedRules) {
-          if (rule.pattern_type === "agent-checklist") {
-            const hasHint = processHints.some((h) => h.includes(rule.id));
-            if (!hasHint) {
-              warnings.push(
-                `H6 ordering gate: agent-checklist rule "${rule.id}" has no corresponding PROCESS_HINTS row. ` +
-                `Add a hint referencing this rule to core/loop-introspect.js PROCESS_HINTS.`,
-              );
-            }
-          }
-        }
-
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
         result.tools = tools.map((t) => ({
