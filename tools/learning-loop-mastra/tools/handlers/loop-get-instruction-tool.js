@@ -1,68 +1,33 @@
 import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import { buildDiscoverabilityHints, buildProcessHints } from "../../core/loop-introspect.js";
+import { HINT_REGISTRY, findHintBySlug } from "../../core/hint-registry.js";
 
-export const HINT_KEY_MAP = {
-  "internalization-rule": 0,
-  "mechanism-check": 1,
-  "source-refs": 2,
-  "derive-refresh": 3,
-  "designs-no-code": 4,
-  "status-lifecycle": 5,
-  reopens: 6,
-  "rule-lifecycle": 7,
-  "canonical-tool": 8,
-  "surface-split": 9,
-  "reopens-script": 10,
-  "loop-get-instruction": 11,
-  "narrow-query": 12,
-  "phase-a-reframe": 13,
-  "session-id-query": 14,
-  "runtime-agnostic-features": 15,
-};
+/**
+ * Phase 2 (plans/260717-1826-unify-context-injection): HINT_KEY_MAP* and
+ * HINT_SUGGESTIONS* are no longer hand-maintained parallel arrays. The slug
+ * → entry resolution is derived from the registry at module-load time, and
+ * the numeric-index back-compat is preserved by mapping numeric keys to the
+ * position-in-kind-filtered order (Validation 4).
+ *
+ * The derived maps are exported for test inspection; consumers should not
+ * depend on the exact shape.
+ */
+function buildSlugMaps() {
+  const discoverability = HINT_REGISTRY.filter((e) => e.kind === "discoverability");
+  const process = HINT_REGISTRY.filter((e) => e.kind === "process");
+  const HINT_KEY_MAP = {};
+  const HINT_KEY_MAP_PROCESS = {};
+  const HINT_SUGGESTIONS = [];
+  const HINT_SUGGESTIONS_PROCESS = [];
+  discoverability.forEach((e, i) => { HINT_KEY_MAP[e.slug] = i; });
+  process.forEach((e, i) => { HINT_KEY_MAP_PROCESS[e.slug] = i; });
+  HINT_SUGGESTIONS.push(...discoverability.map((e) => e.suggestion));
+  HINT_SUGGESTIONS_PROCESS.push(...process.map((e) => e.suggestion));
+  return { HINT_KEY_MAP, HINT_KEY_MAP_PROCESS, HINT_SUGGESTIONS, HINT_SUGGESTIONS_PROCESS };
+}
 
-export const HINT_KEY_MAP_PROCESS = {
-  "pnpm-test-discipline": 0,
-  "pr-body-registry-deltas": 1,
-  "runtime-agnostic-audit": 2,
-  "file-edit-drift-and-fingerprints": 8,
-};
-
-export const HINT_SUGGESTIONS = [
-  "Prefer `local:meta-state:<id>` source_refs and set `evidence_code_ref` to a code path so the loop can re-check it.",
-  "When you provide `evidence_code_ref`, `mechanism_check` defaults to true; pass `false` only if you intentionally want to opt out.",
-  "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch.",
-  "Call `meta_state_derive_status` before resolving; call `meta_state_refresh_file_index({ path })` after refactoring cited code to re-ground the path's hash in the shared fingerprint index.",
-  "For design-only choices, log a change-log entry and cite its id in `source_refs`.",
-  "Use `stale` for past-TTL findings and `meta_state_re_verify` to re-validate; do not use the legacy `expired` status.",
-  "Set `reopens: ['<stale_id>']` on the new finding, then cascade-resolve the stale parent.",
-  "Query loop-design/rule lifecycle via `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` or `loop_describe({ tier: 'cold' })`.",
-  "Use the tool manifest + the tool-selection guide to pick tools; avoid `node -e` and direct file I/O to `meta-state.jsonl`.",
-  "AGENTS.md is the steering prompt; the tool manifest is deterministic; warm hints are at-start; the skill is prompt-author docs.",
-  "For cross-references, run `meta_state_relationship_validate`, report with `reopens`, then `meta_state_resolve({ cascade_from: [child] })`.",
-  "Use `loop_get_instruction` for on-demand lookup. Keep `meta-state.jsonl` (self-model), `product/**` (substrate), and template code separate when citing evidence.",
-  "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only.",
-  "Phase A reframe: the meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
-  "Hook-emitted batches: query by `session_id` via `meta_state_list`; do not client-side filter compact output.",
-  "Runtime-agnostic features: use shim-not-fork + cross-surface-iteration; audit with `check_runtime_agnostic` before shipping.",
-];
-
-export const HINT_SUGGESTIONS_PROCESS = [
-  "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
-  "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
-  "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
-  // Indexes 3-7 are unmaintained legacy rows; suggestion backfill is a separate
-  // cleanup. Placeholder text keeps the array length aligned with PROCESS_HINTS
-  // so `HINT_KEY_MAP_PROCESS` lookups at those indexes return a defined string
-  // rather than undefined.
-  "Process hint at PROCESS_HINTS index 3: see `loop-introspect.js` `PROCESS_HINTS[3]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 4: see `loop-introspect.js` `PROCESS_HINTS[4]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 5: see `loop-introspect.js` `PROCESS_HINTS[5]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 6: see `loop-introspect.js` `PROCESS_HINTS[6]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 7: see `loop-introspect.js` `PROCESS_HINTS[7]` (legacy row, suggestion backfill is a separate cleanup).",
-  // Index 8 — pretest-seed convention + escape hatch (matches PROCESS_HINTS[8]).
-  "File-edit drift and fingerprints: `file-index.jsonl` is an UNTRACKED regen artifact (gitignored) rebuilt by the seed step; pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. `upsertFileIndexEntry` is a true no-op on unchanged (key, hash) so re-seeding without code change keeps the cache warm. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
-];
+const DERIVED = buildSlugMaps();
 
 /**
  * Resolve a hint key by searching both discoverability and process hint maps.
@@ -72,24 +37,44 @@ function resolveHint(key) {
   const hints = buildDiscoverabilityHints();
   const processHints = buildProcessHints();
 
-  // Check discoverability map first
-  const discIndex = typeof key === "number" ? key : HINT_KEY_MAP[key];
-  if (discIndex !== undefined && discIndex >= 0 && discIndex < hints.length) {
+  // String key (slug): look up directly in the registry by slug.
+  if (typeof key === "string") {
+    const entry = findHintBySlug(key);
+    if (!entry) return null;
+    // Use the canonical builder to get the inline text (Phase 2 back-compat
+    // for standalone rows; Phase 3 will route rule-derived rows through
+    // `rule.hint_text`).
+    const list = entry.kind === "discoverability" ? hints : processHints;
+    const idx = entry.kind === "discoverability"
+      ? DERIVED.HINT_KEY_MAP[entry.slug]
+      : DERIVED.HINT_KEY_MAP_PROCESS[entry.slug];
     return {
-      hint: hints[discIndex],
-      suggestion: HINT_SUGGESTIONS[discIndex],
-      source: "discoverability",
+      hint: list[idx],
+      suggestion: entry.kind === "discoverability"
+        ? DERIVED.HINT_SUGGESTIONS[idx]
+        : DERIVED.HINT_SUGGESTIONS_PROCESS[idx],
+      source: entry.kind,
     };
   }
 
-  // Check process map
-  const procIndex = typeof key === "number" ? (key - hints.length) : HINT_KEY_MAP_PROCESS[key];
-  if (procIndex !== undefined && procIndex >= 0 && procIndex < processHints.length) {
-    return {
-      hint: processHints[procIndex],
-      suggestion: HINT_SUGGESTIONS_PROCESS[procIndex],
-      source: "process",
-    };
+  // Numeric key: back-compat — index = position in kind-filtered registry order.
+  if (typeof key === "number") {
+    if (key >= 0 && key < hints.length) {
+      return {
+        hint: hints[key],
+        suggestion: DERIVED.HINT_SUGGESTIONS[key],
+        source: "discoverability",
+      };
+    }
+    const procIdx = key - hints.length;
+    if (procIdx >= 0 && procIdx < processHints.length) {
+      return {
+        hint: processHints[procIdx],
+        suggestion: DERIVED.HINT_SUGGESTIONS_PROCESS[procIdx],
+        source: "process",
+      };
+    }
+    return null;
   }
 
   return null;
@@ -116,9 +101,11 @@ export const loopGetInstructionTool = {
       if (resolved) {
         results.push({
           key: k,
-          index: resolved.source === "discoverability"
-            ? (typeof k === "number" ? k : HINT_KEY_MAP[k])
-            : undefined,
+          index: typeof k === "number"
+            ? k
+            : (resolved.source === "discoverability"
+              ? DERIVED.HINT_KEY_MAP[k]
+              : DERIVED.HINT_KEY_MAP_PROCESS[k]),
           hint: resolved.hint,
           suggestion: resolved.suggestion,
           source: resolved.source,
@@ -133,3 +120,10 @@ export const loopGetInstructionTool = {
     };
   },
 };
+
+// Re-export the derived maps for test introspection. Production code should
+// not depend on these — use the slug via `findHintBySlug` from the registry.
+export const HINT_KEY_MAP = DERIVED.HINT_KEY_MAP;
+export const HINT_KEY_MAP_PROCESS = DERIVED.HINT_KEY_MAP_PROCESS;
+export const HINT_SUGGESTIONS = DERIVED.HINT_SUGGESTIONS;
+export const HINT_SUGGESTIONS_PROCESS = DERIVED.HINT_SUGGESTIONS_PROCESS;

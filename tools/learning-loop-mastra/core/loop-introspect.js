@@ -11,6 +11,13 @@ import {
   isBoundPath,
 } from "./change-log-bound-paths.js";
 import { resolveToolImportUrl } from "./manifest-loader.js";
+// Phase 2 (plans/260717-1826-unify-context-injection): the canonical hint
+// source is now core/hint-registry.js. The frozen DISCOVERABILITY_HINTS /
+// PROCESS_HINTS consts lived here from 2026-06-12 to 2026-07-17 and were
+// deleted in Phase 1 + Phase 2. The two builders below are thin projections
+// over the registry — same return shape, same order, no call-site changes for
+// loop_describe consumers.
+import { listHints } from "./hint-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -104,24 +111,14 @@ function listAllMetaCategories() {
   return [...META_STATE_FINDING_CATEGORIES];
 }
 
-const DISCOVERABILITY_HINTS = Object.freeze([
-  "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
-  "When you pass `evidence_code_ref` to `meta_state_report`, `mechanism_check` is auto-defaulted to `true` (so the loop will hash and re-check the code). Pass `mechanism_check: false` explicitly to opt out — the response will include a `warnings` array explaining the tradeoff.",
-  "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
-  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_file_index({ path })` to re-hash a cited path's code in the shared fingerprint index after a refactor — one call re-grounds every finding anchored to that path.",
-  "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
-  "Findings have 3 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log). `archived` is applied at runtime by `meta_state_archive` (not in the persisted enum). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed in plans 260611-1000 and 260707-0812; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
-  "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
-  "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
-  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md` for the intent to tool mapping.",
-  "AGENTS.md is the priority-1 prompt (the steering layer: shape of the loop, rules, canonical paths). The tool manifest is the deterministic tool-selection surface. `loop_describe` warm tier `discoverability_hints` is the at-start-up injection. The `learning-loop` skill is the prompt-author docs. Each surface has a distinct role; do not duplicate content across them.",
-  "For 'X is related to Y' prompts: (1) meta_state_relationship_validate to lint; (2) meta_state_report({..., reopens: ['<orphan_id>']}); (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step.",
-  "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mastra/{tools/handlers,hooks/universal}/**` and `schemas/**` are the template rules. Cite the correct surface.",
-  "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
-  "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
-  "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
-  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js.",
-]);
+// Phase 2 of plans/260717-1826-unify-context-injection: discoverability hints
+// now live in core/hint-registry.js as slug-keyed entries; this const is kept
+// only for back-compat tests that reference the variable. The canonical source
+// is the registry; the buildDiscoverabilityHints() function below projects it
+// into the legacy array-of-strings return shape (used by loop_describe warm
+// tier and any MCP caller that hasn't migrated).
+const DISCOVERABILITY_HINTS = listHints({ kind: "discoverability" }).map((e) => e.text);
+
 
 // Process-specific rules: agent behavior under operational conditions.
 // Separated from DISCOVERABILITY_HINTS (meta-surface contracts) per finding meta-260622T1713Z.
@@ -140,19 +137,64 @@ const PROCESS_HINTS = Object.freeze([
 
 /**
  * Return the operator-curated discoverability hints used by loop_describe
- * warm tier and the SessionStart hook. Pure function — no I/O.
+ * warm tier and the SessionStart hook. Back-compat projection over the
+ * canonical registry (Phase 2 of plan 260717-1826-unify-context-injection).
+ *
+ * Returns a frozen array — preserved from the pre-Phase-2 contract.
+ * Pure function — no I/O.
  */
 export function buildDiscoverabilityHints() {
-  return DISCOVERABILITY_HINTS;
+  return Object.freeze(listHints({ kind: "discoverability" }).map((e) => e.text));
 }
 
 /**
  * Return operator-curated process rules (agent behavior under operational
- * conditions). Separated from discoverability hints per finding meta-260622T1713Z.
- * Pure function — no I/O.
+ * conditions). Phase 3 (plans/260717-1826-unify-context-injection): the
+ * 8 rule-derived process entries resolve `text` from `rule.hint_text` at
+ * call time. The 2 standalone rows (pnpm-test-discipline + file-edit-drift-
+ * and-fingerprints) keep inline text.
+ *
+ * Same return shape + order as the pre-Phase-3 PROCESS_HINTS const. The
+ * PROCESS_HINTS const is preserved below as the byte-identity oracle for
+ * the regression test in __tests__/rule-derived-process-hints.test.cjs.
+ *
+ * NOT pure — reads the registry to look up `rule.hint_text`. Callers that
+ * already have a `rulesById` map should prefer core/hint-renderer.js's
+ * `renderHints({ rulesById })` directly to avoid the I/O.
+ *
+ * @param {object} [opts]
+ * @param {Map<string, {hint_text: string}>} [opts.rulesById] — precomputed
+ *   rule map; when omitted, the function reads the registry from the project
+ *   root resolved from `process.cwd()`.
  */
-export function buildProcessHints() {
-  return PROCESS_HINTS;
+export function buildProcessHints({ rulesById } = {}) {
+  let ruleMap = rulesById;
+  if (!ruleMap) {
+    // Lazy-read the registry from the project root.
+    const projectRoot = process.cwd();
+    const rules = loadPromotedRules(projectRoot);
+    ruleMap = new Map();
+    for (const r of rules) ruleMap.set(r.id, r);
+  }
+  const out = [];
+  for (const entry of listHints({ kind: "process" })) {
+    if (entry.derived_from_rule === null || entry.derived_from_rule === undefined) {
+      out.push(entry.text);
+    } else {
+      const rule = ruleMap.get(entry.derived_from_rule);
+      if (rule && rule.hint_text) {
+        out.push(rule.hint_text);
+      } else {
+        // Skip-with-warning behavior: rule missing or has no hint_text.
+        // For back-compat with the legacy PROCESS_HINTS const, fall back
+        // to the inline text if present (and not the empty placeholder);
+        // otherwise skip silently (callers downstream will surface the
+        // shorter-than-expected list).
+        if (entry.text) out.push(entry.text);
+      }
+    }
+  }
+  return out;
 }
 
 /**

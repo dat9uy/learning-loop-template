@@ -14,6 +14,12 @@ files:
   - path: gate-override.js
     role: facade
     summary: Reads/validates .gate-override markers with TTL expiry.
+  - path: hint-registry.js
+    role: facade
+    summary: Single source of truth for context-injection hints (slug-keyed entries). Phase 2 of plans/260717-1826-unify-context-injection.
+  - path: hint-renderer.js
+    role: facade
+    summary: Budget-aware channel-based projection of the hint registry. Phase 2 of plans/260717-1826-unify-context-injection.
   - path: inbound-state.js
     role: facade
     summary: Reads runtime-state.jsonl sidecar for inbound gate context.
