@@ -129,7 +129,16 @@ for (const [key, entry] of Object.entries(AGENTS_MANIFEST.agents)) {
   agents[key] = agent;
 }
 
-console.error(`learning-loop: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, ${Object.keys(agents).length} agents, storage.id=${storage.id}`);
+// Boot-confirmation line is production-only. Suppress it under vitest: tests
+// import this module in-process AND spawn it as a child (with-mcp-server.js
+// spreads process.env, so the child inherits VITEST=true). Counts are asserted
+// via the tool/workflow/agent manifests, not this stderr line, so suppressing
+// it removes pure noise from test:iter output without losing any signal.
+// Validation warnings (e.g. Mastra's "Invalid tool arguments" from negative-path
+// tests) are intentionally left flowing through stderr so real errors stay visible.
+if (process.env.VITEST !== "true") {
+  console.error(`learning-loop: registered ${Object.keys(tools).length} tools, ${Object.keys(workflows).length} workflows, ${Object.keys(agents).length} agents, storage.id=${storage.id}`);
+}
 
 // Custom MCPServer subclass that extracts only the step result from workflow
 // execution output, ensuring parity with legacy createTool handlers.
