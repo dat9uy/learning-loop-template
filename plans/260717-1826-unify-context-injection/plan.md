@@ -1,7 +1,7 @@
 ---
 title: "Unify runtime context-injection — hint registry, budget renderer, rule-derived process hints"
 description: "Resolve meta-260715T2300Z: collapse the 5 overlapping context-injection surfaces into one hint registry + one budget-aware renderer + thin per-runtime adapters, aligned with philosophy state-2 (deterministic injection, agentic consumption) and promotable to state-3 (rule-derived hints)."
-status: pending
+status: completed
 priority: P1
 effort: "3d"
 tags: [meta, context-injection, hooks, tdd, state-2]

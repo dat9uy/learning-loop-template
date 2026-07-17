@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Single-source SessionStart content (kill mirror + probe)"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: []

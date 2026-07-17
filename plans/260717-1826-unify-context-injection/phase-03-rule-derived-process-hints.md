@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Rule-derived process hints (hint_text + projection)"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [2]

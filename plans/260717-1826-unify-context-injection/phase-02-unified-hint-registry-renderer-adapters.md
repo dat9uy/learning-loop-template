@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Unified hint registry + budget renderer + per-runtime adapters"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [1]

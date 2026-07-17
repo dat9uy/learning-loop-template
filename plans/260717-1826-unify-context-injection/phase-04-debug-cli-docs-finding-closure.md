@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Debug CLI + architecture docs + finding closure"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [2, 3]
