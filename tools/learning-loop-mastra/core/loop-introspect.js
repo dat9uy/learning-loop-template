@@ -790,6 +790,11 @@ export function summarize(entry) {
     status: entry.status,
   };
 
+  // Identity field (Tier 2 versioned-append): retained so the compact
+  // projection stays usable with include_all_versions — without it the
+  // per-id version sequence is invisible under compact: true.
+  if (entry.version !== undefined && entry.version !== null) compact.version = entry.version;
+
   // Relationship fields
   if (entry.origin) compact.origin = entry.origin;
   if (entry.addresses) compact.addresses = entry.addresses;
