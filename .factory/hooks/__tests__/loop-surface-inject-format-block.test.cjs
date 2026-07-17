@@ -1,85 +1,69 @@
+// Phase 1 (plans/260717-1826-unify-context-injection): formatBlock now takes
+// (counts, hints, tier) — explicit hint arrays, no hidden mirror reads. The
+// factory hook renders hints via direct core import; this test locks the
+// deterministic render from a known input.
+
 const assert = require("node:assert");
-const { mkdtempSync, writeFileSync, readFileSync, rmSync } = require("node:fs");
-const { tmpdir } = require("node:os");
-const { join } = require("node:path");
 
 const hook = require("../loop-surface-inject.cjs");
 
 describe("loop-surface-inject formatBlock", () => {
-  function setupTempDir(prefix) {
-    return mkdtempSync(join(tmpdir(), prefix));
-  }
-
-  function teardownTempDir(dir) {
-    try { rmSync(dir, { recursive: true }); } catch { /* ignore */ }
-  }
-
-  test("formatBlock prints local discoverability hints section", async () => {
-    const result = hook.formatBlock({
-      tool_count: 36,
-      record_type_count: 8,
-      rule_count: 1,
-      active_finding_count: 12,
-    });
+  test("renders counts header in warm tier", () => {
+    const result = hook.formatBlock(
+      {
+        tool_count: 36,
+        record_type_count: 8,
+        rule_count: 1,
+        active_finding_count: 12,
+      },
+      { discoverability_hints: [], process_hints: [] },
+    );
 
     assert.ok(result.includes("=== loop surface (auto-injected at session start) ==="));
     assert.ok(result.includes("tools: 36"));
-    assert.ok(result.includes("To cite a thing, point at the code"));
-    assert.ok(result.includes("local:meta-state:<id>"));
-    assert.ok(result.includes("meta_state_derive_status"));
-    assert.ok(result.includes("meta_state_log_change"));
-    assert.ok(result.includes("reported"));
+    assert.ok(result.includes("record types: 8"));
+    assert.ok(result.includes("active rules: 1"));
+    assert.ok(result.includes("active findings: 12"));
+    assert.ok(result.includes("Do not invoke ck:use-mcp"));
   });
 
-  test("formatBlock ignores server-supplied discoverability_hints and uses local copy", async () => {
-    const result = hook.formatBlock({
-      tool_count: 36,
-      record_type_count: 8,
-      rule_count: 1,
-      active_finding_count: 12,
-      discoverability_hints: [
-        "SERVER-INJECTED HINT: this should not appear",
-        "Another server hint",
-      ],
-    });
+  test("renders discoverability + process hint sections when tier=warm", () => {
+    const result = hook.formatBlock(
+      { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 },
+      {
+        discoverability_hints: [
+          "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
+          "When you pass `evidence_code_ref` to `meta_state_report`, `mechanism_check` is auto-defaulted to `true`.",
+        ],
+        process_hints: [
+          "Test discipline (deterministic parse). Iterate via `pnpm test:iter`.",
+          "PR-body registry deltas. Every PR that touches `meta-state.jsonl` must enumerate its deltas.",
+        ],
+      },
+      "warm",
+    );
 
-    assert.ok(!result.includes("SERVER-INJECTED HINT"));
+    assert.ok(result.includes("--- discoverability_hints ---"));
     assert.ok(result.includes("To cite a thing, point at the code"));
+    assert.ok(result.includes("When you pass `evidence_code_ref`"));
+    assert.ok(result.includes("--- process_hints ---"));
+    assert.ok(result.includes("Test discipline (deterministic parse)"));
+    assert.ok(result.includes("PR-body registry deltas"));
   });
 
-  test("main with LL_LOOP_INJECT_TIER=summary requests summary tier and logs hint-downgrade", async () => {
-    const tempDir = setupTempDir("hook-summary-tier-");
-    try {
-      writeFileSync(
-        join(tempDir, ".mcp.json"),
-        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
-      );
-      // Seed a minimal meta-state.jsonl so the downgrade log has a registry to write to.
-      writeFileSync(join(tempDir, "meta-state.jsonl"), "", "utf8");
+  test("suppresses hint sections when tier=summary", () => {
+    const result = hook.formatBlock(
+      { tool_count: 36, record_type_count: 8, rule_count: 1, active_finding_count: 12 },
+      {
+        discoverability_hints: ["SHOULD-NOT-APPEAR-disc-hint"],
+        process_hints: ["SHOULD-NOT-APPEAR-proc-hint"],
+      },
+      "summary",
+    );
 
-      const input = { hook_event_name: "SessionStart", source: "startup", cwd: tempDir, session_id: "test-session-abc" };
-      const capturedCalls = [];
-      const mockSpawn = async (serverCfg, cwd, tier) => {
-        capturedCalls.push({ tier });
-        return { tool_count: 5, record_type_count: 3, rule_count: 1, active_finding_count: 0 };
-      };
-
-      const result = await hook.main(input, { LL_LOOP_INJECT_TIER: "summary" }, mockSpawn);
-
-      assert.strictEqual(capturedCalls.length, 1);
-      assert.strictEqual(capturedCalls[0].tier, "summary");
-      assert.ok(result.includes("tools: 5"));
-      // Hints should NOT appear when tier=summary
-      assert.ok(!result.includes("To cite a thing, point at the code"));
-
-      const raw = readFileSync(join(tempDir, "meta-state.jsonl"), "utf8").trim();
-      assert.ok(raw.length > 0, "hint-downgrade finding should be written");
-      const entry = JSON.parse(raw);
-      assert.strictEqual(entry.entry_kind, "finding");
-      assert.strictEqual(entry.subtype, "hint-downgrade");
-      assert.strictEqual(entry.session_id, "test-session-abc");
-    } finally {
-      teardownTempDir(tempDir);
-    }
+    assert.ok(result.includes("tools: 36"));
+    assert.ok(!result.includes("--- discoverability_hints ---"), "summary tier must omit hints section");
+    assert.ok(!result.includes("--- process_hints ---"), "summary tier must omit process hints section");
+    assert.ok(!result.includes("SHOULD-NOT-APPEAR"));
   });
 });
