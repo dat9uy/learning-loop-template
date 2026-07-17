@@ -487,3 +487,25 @@ The constraint gate (`core/gate-logic.js`) and the meta-state registry are **sep
 - `plans/reports/brainstorm-260602-meta-state-agent-affordances.md` — parent doc, the 4-sub-project decomposition
 - `plans/reports/brainstorm-260603-sp3-drift.md` — SP3 design (status: locked 2026-06-05)
 - `plans/260603-sp3-drift/plan.md` — SP3 plan (status: completed, 4-phase TDD + Phase 4 docs update)
+- `plans/260717-1826-unify-context-injection/plan.md` — unified hint registry + budget renderer (status: completed 2026-07-17, 4-phase)
+
+## Context-Injection Division of Labor
+
+Phase 4 of `plans/260717-1826-unify-context-injection` collapses 5 overlapping context-injection surfaces into one hint registry + one budget-aware renderer + thin per-runtime adapters. The trust objection that justified the pre-Phase-1 LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly, and the factory hook itself already `await import`s core/meta-state.js in its failure path. Direct core import removes the wire, the spawn, and the mirror.
+
+Four surfaces, one renderer:
+
+| Surface | Trigger | Role |
+|---|---|---|
+| **push (SessionStart hooks)** | runtime startup | Fixed cold-start context: the static hint sets, budget-partitioned, rendered by `core/hint-renderer.js`. Bounded and cache-stable. |
+| **pull-warm (`loop_describe`)** | agent mid-session | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same render as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
+| **pull-single (`loop_get_instruction`)** | agent on demand | Re-fetch one hint by slug (or numeric index, for back-compat) that scrolled out of context. |
+| **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | always | Steering layer + prompt-author docs; never a hint-content source. |
+
+**`.mastracode` is pull-only by decision (plan 260717-1826 Validation 1, 2026-07-17):** no SessionStart hint injection. The renderer's channel table leaves room for a future `mastracode-session-start` channel without redesign. Documented so future operators don't read the absence as a bug.
+
+State-2 rationale (`docs/philosophy.md` § Skills Are the Same Kind of Escape Hatch): deterministic injection (renderer fires at the right moment per runtime), agentic consumption (model reads prose, decides). The *mechanism* is state-2 by design. The rule-derived hint content (Phase 3) is promotable to state-3: rule→hint derivation moves from hand-mirror + nag to deterministic projection at promotion time, while hint consumption stays agentic.
+
+Trust boundary: hooks read core directly via `require()` / dynamic `import()`; no server-rendered strings cross a trust boundary. The hint registry (`core/hint-registry.js`) is the single source of truth for hint content; the renderer (`core/hint-renderer.js`) projects it per channel.
+
+Inspection: `node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]` prints the byte-exact render the runtime would inject, plus per-hint provenance (slug + kind + source) when `--provenance` is set. Use to verify what each session-start will see without starting one.
