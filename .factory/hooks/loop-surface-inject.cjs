@@ -10,8 +10,9 @@
  *     hot-path tax with no consumer; genuine MCP failure now surfaces when
  *     the agent calls tools.
  *
- * To update hints: edit core/loop-introspect.js (Phase 2 migrates them into
- * core/hint-registry.js; until then, that is the single source of truth).
+ * To update hint content: edit core/hint-registry.js (standalone entries) or
+ * the rule's `hint_text` in meta-state.jsonl (rule-derived process entries).
+ * The builders in core/loop-introspect.js only project — never edit text there.
  */
 
 const { readFileSync, existsSync, readdirSync } = require("node:fs");
@@ -131,9 +132,15 @@ async function main(inputArg, envArg, _spawnImpl) {
     const core = await loadCore(projectRoot);
     const { introspect, metaState, gateLogic, isOpen } = core;
     discoverability = introspect.buildDiscoverabilityHints();
-    processHints = introspect.buildProcessHints();
     const entries = metaState.readRegistry(projectRoot);
-    ruleCount = gateLogic.loadPromotedRules(projectRoot).length;
+    const rules = gateLogic.loadPromotedRules(projectRoot);
+    ruleCount = rules.length;
+    // Code-review I4 (plans/260717-1826): pass the projectRoot-loaded rules
+    // into the builder. Without this, buildProcessHints() re-loads rules from
+    // process.cwd() — under a divergent spawn cwd the 8 rule-derived hints
+    // would silently vanish while rule_count still reports them.
+    const rulesById = new Map(rules.map((r) => [r.id, r]));
+    processHints = introspect.buildProcessHints({ rulesById });
     activeFindingCount = entries.filter(
       (e) => e.entry_kind === "finding" && isOpen(e),
     ).length;

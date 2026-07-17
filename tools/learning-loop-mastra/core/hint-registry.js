@@ -4,8 +4,13 @@
  * Phase 2 of plans/260717-1826-unify-context-injection: collapses the legacy
  * DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts in
  * core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
- * surface-inject.cjs) into one slug-keyed registry. core/hint-renderer.js
- * projects it into per-channel partitions.
+ * surface-inject.cjs) into one slug-keyed registry.
+ *
+ * Consumers: production injection projects through core/loop-introspect.js
+ * builders (hooks + loop_describe); inspection projects through
+ * core/hint-renderer.js + tools/scripts/hint-render.mjs (operator decision
+ * 2026-07-17 — the renderer is debug tooling, not the injection path).
+ * loop_get_instruction resolves directly against this registry's fixed order.
  *
  * Schema:
  *   { slug, kind: "discoverability" | "process", text, suggestion,
@@ -178,8 +183,8 @@ export const HINT_REGISTRY = Object.freeze([
 
   // ============================================================================
   // PROCESS (10 rows) — agent behavior under operational conditions.
-  // Rows 2-10 are rule-derived in Phase 3 (derived_from_rule set); rows 1 +
-  // 9 stay standalone (test discipline + file-index drift).
+  // Rows 2-8 + 10 are rule-derived (derived_from_rule set); rows 1 + 9 stay
+  // standalone (test discipline + file-index drift).
   // ============================================================================
   {
     slug: "pnpm-test-discipline",
@@ -283,4 +288,29 @@ export function listHints({ kind } = {}) {
  */
 export function findHintBySlug(slug) {
   return HINT_REGISTRY.find((e) => e.slug === slug);
+}
+
+/**
+ * Resolve the renderable text for one registry entry.
+ *
+ * Standalone entries (`derived_from_rule: null`) → the inline `text`.
+ * Rule-derived entries → `rule.hint_text` from the supplied `rulesById` map;
+ * `null` when the rule is not in the map (missing, inactive, or
+ * scope-filtered) or carries no `hint_text`.
+ *
+ * This is the single resolution path shared by core/hint-renderer.js,
+ * the loop_get_instruction tool, and loop-introspect's buildProcessHints —
+ * divergent skip semantics across consumers previously caused a positional
+ * misalignment in loop_get_instruction (code-review C2 of
+ * plans/260717-1826-unify-context-injection).
+ *
+ * Pure — `rulesById` is a precomputed map supplied by the caller.
+ */
+export function resolveHintText(entry, rulesById) {
+  if (entry.derived_from_rule === null || entry.derived_from_rule === undefined) {
+    return entry.text;
+  }
+  const rule = rulesById?.get(entry.derived_from_rule);
+  if (!rule || !rule.hint_text) return null;
+  return rule.hint_text;
 }

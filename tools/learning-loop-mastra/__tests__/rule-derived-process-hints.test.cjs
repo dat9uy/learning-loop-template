@@ -95,14 +95,19 @@ describe("rule-derived process hints (Phase 3)", () => {
     }
   });
 
-  test("byte-identity: registry + rulesById projection equals pre-Phase-3 PROCESS_HINTS order/content", () => {
-    // Build the rulesById from the live registry.
+  test("renderer ≡ builder consistency: sidecar channel with rulesById equals buildProcessHints()", () => {
+    // Code-review I3 (plans/260717-1826): this test previously claimed
+    // "byte-identity vs the pre-Phase-3 PROCESS_HINTS const" but never
+    // referenced that const — it compared two projections of the same live
+    // registry (circular). The const is now deleted. What remains worth
+    // locking: the renderer and the builder resolve rule-derived text
+    // through ONE shared path (resolveHintText), so both projections agree
+    // given the same rules.
     const rules = metaState.readRegistry(PROJECT_ROOT).filter(
       (e) => e.entry_kind === "rule" && e.status === "active",
     );
     const rulesById = new Map(rules.map((r) => [r.id, r]));
 
-    // Render the sidecar channel to get a discoverability + process array.
     const { partitions } = renderer.renderHints({
       channel: "sidecar",
       charBudget: 999999,
@@ -110,16 +115,13 @@ describe("rule-derived process hints (Phase 3)", () => {
     });
     const payload = JSON.parse(partitions[0]);
 
-    // The 10 process hints, in registry order, must match the pre-Phase-3
-    // PROCESS_HINTS const in core/loop-introspect.js. The const is preserved
-    // through Phase 3 (Phase 4 removes it); cross-check via introspection.
     const { buildProcessHints } = require(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/loop-introspect.js"));
-    const legacyProcess = buildProcessHints();
-    assert.strictEqual(payload.process_hints.length, legacyProcess.length,
-      `process hint count must match legacy PROCESS_HINTS (${legacyProcess.length}); got ${payload.process_hints.length}`);
-    for (let i = 0; i < legacyProcess.length; i++) {
-      assert.strictEqual(payload.process_hints[i], legacyProcess[i],
-        `process hint index ${i} must match legacy PROCESS_HINTS byte-for-byte`);
+    const builderProcess = buildProcessHints({ rulesById });
+    assert.strictEqual(payload.process_hints.length, builderProcess.length,
+      `renderer process hint count must match builder (${builderProcess.length}); got ${payload.process_hints.length}`);
+    for (let i = 0; i < builderProcess.length; i++) {
+      assert.strictEqual(payload.process_hints[i], builderProcess[i],
+        `process hint index ${i}: renderer and builder must agree byte-for-byte`);
     }
   });
 

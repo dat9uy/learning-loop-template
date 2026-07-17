@@ -167,4 +167,58 @@ describe("loop-surface-inject SessionStart hook", () => {
       teardownTempDir(tempDir);
     }
   });
+
+  test("subprocess with divergent cwd still injects all 8 rule-derived process hints", { timeout: 20000 }, () => {
+    // Code-review I4 regression (plans/260717-1826): buildProcessHints() used
+    // to resolve rules from process.cwd(). When the runtime spawns the hook
+    // with a cwd that is NOT the project root, the 8 rule-derived hints
+    // silently vanished (rule_count still reported them). The hook now passes
+    // its projectRoot-loaded rules into the builder.
+    //
+    // Real subprocess, real stdin payload, cwd = a temp dir with .mcp.json but
+    // NO meta-state.jsonl — the divergent-cwd failure shape.
+    const { execFileSync } = require("node:child_process");
+    const { resolve } = require("node:path");
+    const tempDir = setupTempDir("hook-divergent-cwd-");
+    try {
+      writeFileSync(
+        join(tempDir, ".mcp.json"),
+        JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: ["server.js"] } } }, null, 2)
+      );
+      const hookPath = resolve(__dirname, "..", "loop-surface-inject.cjs");
+      const payload = JSON.stringify({
+        hook_event_name: "SessionStart",
+        source: "startup",
+        cwd: tempDir,
+        session_id: "test-divergent-cwd",
+      });
+      const out = execFileSync(process.execPath, [hookPath], {
+        cwd: tempDir,
+        input: payload,
+        encoding: "utf8",
+        timeout: 15000,
+      });
+
+      // Markers that exist ONLY in rule hint_text (not in any standalone row).
+      const ruleDerivedMarkers = [
+        "mergeStateStatus",        // rule-required-status-checks-verify-combined-status
+        "pnpm fallow:brief",       // rule-fallow-brief-on-gate-failure
+        "assertinvariant",         // rule-assertinvariant-at-boundary
+        "records/**/risks/",       // rule-short-slug-for-risk-records
+        "import-chain",            // rule-import-chain-analysis-after-tool-deletion
+        "save-regression-baseline",// rule-tool-integration-same-commit-dep
+        "sweep entries by id+reason", // rule-pr-body-registry-deltas
+        "shims-in-sync",           // rule-runtime-agnostic-features
+      ];
+      for (const marker of ruleDerivedMarkers) {
+        assert.ok(
+          out.includes(marker),
+          `divergent-cwd spawn must still inject rule-derived hint containing "${marker}"`,
+        );
+      }
+      assert.match(out, /^active rules: \d+/m, "counts header still rendered");
+    } finally {
+      teardownTempDir(tempDir);
+    }
+  });
 });

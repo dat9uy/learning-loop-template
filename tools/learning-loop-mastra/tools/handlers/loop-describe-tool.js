@@ -109,14 +109,19 @@ export const loopDescribeTool = {
         result.registry_stats = registryStats;
         // Compaction action hook (H7 mitigation): when eligible, surface a
         // single-shot hint pointing at the shell script. Kept separate from
-        // DISCOVERABILITY_HINTS so the 16-string invariant stays intact.
+        // the discoverability hints so the 16-string invariant stays intact.
         if (registryStats.compaction_eligible) {
           result.compaction_action_hook = `Registry compaction eligible at ${registryStats.raw_lines} raw lines — run \`pnpm exec compact-registry.sh --full\` to drop superseded versions (keep-latest-tombstone-per-id).`;
         }
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        result.process_hints = introspect.buildProcessHints();
+        // Code-review I4 (plans/260717-1826): pass the already-loaded rules so
+        // rule-derived hint text resolves from THIS root — not from a second
+        // loadPromotedRules(process.cwd()) inside the builder.
+        result.process_hints = introspect.buildProcessHints({
+          rulesById: new Map(promotedRules.map((r) => [r.id, r])),
+        });
 
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
@@ -240,7 +245,12 @@ export const loopDescribeTool = {
         result.description_mode = description_mode;
 
         result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        result.process_hints = introspect.buildProcessHints();
+        // Code-review I4 (plans/260717-1826): pass the already-loaded rules so
+        // rule-derived hint text resolves from THIS root — not from a second
+        // loadPromotedRules(process.cwd()) inside the builder.
+        result.process_hints = introspect.buildProcessHints({
+          rulesById: new Map(promotedRules.map((r) => [r.id, r])),
+        });
         result.cache_hit = cacheHit;
         result.built_at = builtAt;
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
