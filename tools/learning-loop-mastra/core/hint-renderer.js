@@ -2,70 +2,76 @@
  * hint-renderer.js — budget-aware channel-based projection of the hint
  * registry. Phase 2 of plans/260717-1826-unify-context-injection.
  *
+ * Positioning (operator decision 2026-07-17, code-review I1): this module is
+ * the INSPECTION surface, not the injection path. Production injection runs
+ * through core/loop-introspect.js builders (the .claude/.factory hooks and
+ * loop_describe consume those directly — they were never converted to
+ * renderer clients). The renderer + tools/scripts/hint-render.mjs exist so
+ * operators can preview registry content per channel and verify partition
+ * budgets without starting a session.
+ *
  * The registry (core/hint-registry.js) is the single source of truth. The
  * renderer projects it into per-channel delivery shapes:
  *
  *   - claude-session-start : 2 partitions (discoverability + process),
  *                            each under the 10k-char additionalContext cap.
- *                            The two .cjs hooks that hand-partitioned the
- *                            10k cap are reduced to renderer clients.
  *   - factory-session-start: single block matching the legacy
  *                            .factory/hooks/loop-surface-inject.cjs shape.
- *   - mcp-warm             : structured JSON array of all 26 hints (used by
- *                            loop_describe warm tier's discoverability_hints).
+ *   - mcp-warm             : structured JSON array of all 26 hints.
  *   - sidecar              : session-context.json payload (preserves the
  *                            buildContextPayload shape from the discoverability
  *                            hook).
  *
  * All channels share the greedy partitioning algorithm — no hint is split
- * across partitions, and every partition fits under the requested `charBudget`.
+ * across partitions, and every partition fits under the requested `charBudget`
+ * unless a single hint exceeds it (then: own over-budget partition + warning).
  *
  * `.mastracode` is intentionally NOT a channel here (Validation 1: pull-only).
  */
 
-import { HINT_REGISTRY, listHints } from "./hint-registry.js";
+import { HINT_REGISTRY, listHints, resolveHintText } from "./hint-registry.js";
 
 /**
  * Resolve the renderable text for a registry entry.
  *
- * For standalone entries (`derived_from_rule === null`): use the inline text.
- * For rule-derived entries (Phase 3): look up the rule in the supplied
- * `rulesById` map. If the rule exists with `hint_text`, use that. Otherwise
- * skip the entry (return null) AND emit a provenance warning tagged with the
- * missing-rule id, so the operator can see which rule needs backfilling.
+ * Delegates the standalone/rule-derived decision to the shared
+ * `resolveHintText` (core/hint-registry.js). On a rule-derived miss (rule
+ * not in the supplied map — missing, inactive, or scope-filtered — or no
+ * `hint_text`), returns null AND emits a provenance warning tagged with the
+ * rule id, so the operator can see which rule needs attention.
  *
  * Pure — `rulesById` is a precomputed map supplied by the caller (avoids I/O
- * on the SessionStart hot path). When the rule resolution is exhaustive and the
- * rule is healthy, `rulesById` is a no-op for standalone entries.
+ * on the SessionStart hot path).
  */
 function resolveEntryText(entry, rulesById, warnings) {
-  const slug = entry.slug;
-  if (entry.derived_from_rule === null || entry.derived_from_rule === undefined) {
-    return { slug: entry.slug, kind: entry.kind, source: "core", text: entry.text };
-  }
-  const rule = rulesById?.get(entry.derived_from_rule);
-  if (!rule || !rule.hint_text) {
+  const text = resolveHintText(entry, rulesById);
+  if (text === null) {
     if (warnings) {
-      warnings.push(`rule-derived hint "${entry.slug}" skipped: rule "${entry.derived_from_rule}" missing or has no hint_text`);
+      warnings.push(`rule-derived hint "${entry.slug}" skipped: rule "${entry.derived_from_rule}" not in supplied rulesById (missing, inactive, or scope-filtered) or has no hint_text`);
     }
     return null;
   }
-  return {
-    slug: entry.slug,
-    kind: entry.kind,
-    source: `rule:${entry.derived_from_rule}`,
-    text: rule.hint_text,
-  };
+  const source = (entry.derived_from_rule === null || entry.derived_from_rule === undefined)
+    ? "core"
+    : `rule:${entry.derived_from_rule}`;
+  return { slug: entry.slug, kind: entry.kind, source, text };
 }
 
 /**
  * Greedy partition: walk entries, push each into the current partition; when
  * adding the next entry would exceed `charBudget`, close the partition and
- * start a new one. Never splits an entry. Returns `{partitions, provenance}`.
+ * start a new one. Never splits an entry. Returns `{partitions, provenance, warnings}`.
+ *
+ * Budget contract: every partition fits under `charBudget` UNLESS a single
+ * hint exceeds it — an oversized hint is emitted as its own over-budget
+ * partition (never dropped, never split) AND recorded in `warnings` so the
+ * breach is visible (code-review I6: previously silent). `hint_text` has a
+ * zod min(20) but no max, so this path is reachable via a verbose promoted
+ * rule.
  *
  * Pure — no I/O.
  */
-function greedyPartition(entriesWithSource, charBudget) {
+function greedyPartition(entriesWithSource, charBudget, warnings) {
   const partitions = [];
   const provenance = [];
   let current = "";
@@ -79,7 +85,17 @@ function greedyPartition(entriesWithSource, charBudget) {
     // undercounts — acceptable for the budget assertion (we stay under the
     // harness cap with margin to spare).
     const line = `— ${e.text}\n`;
-    if (current.length + line.length > charBudget && current.length > 0) {
+    if (line.length > charBudget) {
+      // Oversized single hint: own partition, visible warning (never silent).
+      if (current.length > 0) {
+        partitions.push(current);
+        current = "";
+      }
+      partitions.push(line);
+      if (warnings) {
+        warnings.push(`hint "${e.slug}" exceeds charBudget (${line.length} > ${charBudget} chars) — emitted as its own over-budget partition`);
+      }
+    } else if (current.length + line.length > charBudget && current.length > 0) {
       partitions.push(current);
       current = line;
     } else {
@@ -88,7 +104,7 @@ function greedyPartition(entriesWithSource, charBudget) {
     provenance.push({ slug: e.slug, kind: e.kind, source: e.source });
   }
   if (current.length > 0) partitions.push(current);
-  return { partitions, provenance };
+  return { partitions, provenance, warnings };
 }
 
 /**
@@ -103,8 +119,8 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
   const process = listHints({ kind: "process" })
     .map((e) => resolveEntryText(e, rulesById, warnings));
 
-  const disc = greedyPartition(discoverability, charBudget);
-  const proc = greedyPartition(process, charBudget);
+  const disc = greedyPartition(discoverability, charBudget, warnings);
+  const proc = greedyPartition(process, charBudget, warnings);
 
   return {
     partitions: [...disc.partitions, ...proc.partitions],
@@ -123,7 +139,7 @@ function renderFactorySessionStart(entries, _charBudget, rulesById) {
   const warnings = [];
   const all = HINT_REGISTRY
     .map((e) => resolveEntryText(e, rulesById, warnings));
-  const { partitions, provenance } = greedyPartition(all, 999999);
+  const { partitions, provenance } = greedyPartition(all, 999999, warnings);
   return { partitions, provenance, warnings };
 }
 
@@ -156,10 +172,10 @@ function renderSidecar(entries, _charBudget, rulesById) {
 }
 
 /**
- * Channel: mcp-warm — structured JSON array of all hints. Consumed by
- * loop_describe warm tier's `discoverability_hints` and `process_hints`
- * blocks. The renderer flattens to one combined array here for the
- * delivery-shape unit test (loop_describe itself fans this out).
+ * Channel: mcp-warm — structured JSON array of all hints. An inspection
+ * shape for previewing what loop_describe warm tier's hint blocks carry
+ * (loop_describe itself reads the builders, not this channel — see the
+ * module header: this renderer is not on the injection path).
  */
 function renderMcpWarm(entries, _charBudget, rulesById) {
   const warnings = [];
@@ -201,7 +217,7 @@ const CHANNELS = {
 export function renderHints({ channel, charBudget = 9500, rulesById } = {}) {
   const fn = CHANNELS[channel];
   if (!fn) {
-    return { partitions: [], provenance: [] };
+    return { partitions: [], provenance: [], warnings: [`unknown channel: ${channel}`] };
   }
   return fn(HINT_REGISTRY, charBudget, rulesById);
 }

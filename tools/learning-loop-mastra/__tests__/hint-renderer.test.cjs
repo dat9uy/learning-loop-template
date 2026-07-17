@@ -12,38 +12,67 @@ const RENDERER_PATH = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hin
 
 let renderer;
 let registry;
+let metaState;
 
 beforeAll(async () => {
   renderer = await import(pathToFileURL(RENDERER_PATH).href);
   registry = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hint-registry.js")).href);
+  metaState = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/meta-state.js")).href);
 });
 
 const STD_CHAR_BUDGET = 9500;
+
+/**
+ * Real rules from the live registry — the production resolution source.
+ * Code-review I8 (plans/260717-1826): earlier revisions of this file mocked
+ * rulesById (or omitted it), so the "renders all hints" tests passed with
+ * 8 of 26 hints absent. Tests that assert full coverage MUST use this map.
+ */
+function realRulesById() {
+  return new Map(
+    metaState.readRegistry(PROJECT_ROOT)
+      .filter((e) => e.entry_kind === "rule" && e.status === "active")
+      .map((r) => [r.id, r]),
+  );
+}
+
+/** First-80-chars marker for the text a registry entry renders with the given rules. */
+function renderedMarker(entry, rulesById) {
+  const text = entry.derived_from_rule
+    ? rulesById.get(entry.derived_from_rule)?.hint_text ?? ""
+    : entry.text;
+  return text.slice(0, 80);
+}
 
 describe("hint renderer", () => {
   test("exports renderHints()", () => {
     assert.strictEqual(typeof renderer.renderHints, "function");
   });
 
-  test("claude-session-start channel renders 2 partitions (discoverability + process)", () => {
-    const { partitions, provenance } = renderer.renderHints({
+  test("claude-session-start channel with real rules: 2 partitions, each under budget, all 26 hints", () => {
+    const rulesById = realRulesById();
+    const { partitions, provenance, warnings } = renderer.renderHints({
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
+      rulesById,
     });
     assert.ok(Array.isArray(partitions), "partitions must be array");
-    // Two partitions: discoverability first, process second (the
-    // SessionStart splitter that previously existed as two separate .cjs
-    // hooks now lives as a single deterministic render).
-    assert.strictEqual(partitions.length, 2, "claude-session-start must emit exactly 2 partitions");
-    // Each partition must stay under the 10k-char harness cap.
+    // Current content sizes render as exactly 2 partitions (disc ≈ 5.0k,
+    // proc ≈ 7.8k at review time). The durable invariant is the per-partition
+    // budget below; the count locks the current shape so silent growth past
+    // the budget is a visible test change, not a silent harness truncation.
+    assert.strictEqual(partitions.length, 2, "claude-session-start must emit exactly 2 partitions at current content sizes");
     for (const [i, p] of partitions.entries()) {
       assert.ok([...p].length <= STD_CHAR_BUDGET,
         `partition ${i} length ${[...p].length} must stay under ${STD_CHAR_BUDGET}`);
     }
     assert.ok(partitions[0].includes("meta_state_report"), "partition 0 contains discoverability content");
     assert.ok(partitions[1].includes("pnpm test"), "partition 1 contains process content");
-    assert.ok(Array.isArray(provenance) && provenance.length > 0, "provenance must be non-empty");
-    // Every rendered hint appears in provenance.
+    // Rule-derived content must be present (not silently skipped).
+    assert.ok(partitions[1].includes("mergeStateStatus"),
+      "partition 1 must carry rule-derived hint_text (required-status-checks row)");
+    assert.deepStrictEqual(warnings, [], "no skips expected with the live registry");
+    assert.strictEqual(provenance.length, 26, "provenance covers all 26 hints");
     for (const p of provenance) {
       assert.ok(typeof p.slug === "string");
       assert.ok(["discoverability", "process"].includes(p.kind));
@@ -51,21 +80,36 @@ describe("hint renderer", () => {
     }
   });
 
-  test("factory-session-start channel renders one block with all hints", () => {
-    const { partitions } = renderer.renderHints({
+  test("claude-session-start without rulesById: rule-derived rows skip with warnings (degraded mode)", () => {
+    const { partitions, provenance, warnings } = renderer.renderHints({
+      channel: "claude-session-start",
+      charBudget: STD_CHAR_BUDGET,
+    });
+    // 8 rule-derived entries skip → 18 rendered (16 disc + 2 standalone process).
+    assert.strictEqual(provenance.length, 18, "degraded render covers standalone hints only");
+    assert.strictEqual(warnings.length, 8, "one warning per skipped rule-derived entry");
+    assert.ok(warnings.every((w) => w.includes("skipped")), "warnings name the skip");
+    assert.ok(partitions[1].includes("pnpm test"), "standalone process rows still render");
+  });
+
+  test("factory-session-start channel renders one block carrying every hint", () => {
+    const rulesById = realRulesById();
+    const { partitions, warnings } = renderer.renderHints({
       channel: "factory-session-start",
       charBudget: 999999,
+      rulesById,
     });
     assert.strictEqual(partitions.length, 1, "factory channel emits a single partition");
-    // The block must mention each of the 26 registry slugs (each hint has a
-    // unique opening sentence so a substring check would also work, but a
-    // count-bounded uniqueness check is more robust against prose edits).
     const text = partitions[0];
-    for (const e of registry.HINT_REGISTRY.slice(0, 5)) {
-      // at least 5 slugs surface somewhere — full coverage is asserted in
-      // the sidecar-channel test below where the channel is structured.
-      assert.ok(text.length > 500, "factory block must be substantial");
+    // Every registry entry's rendered text (standalone inline text or the
+    // rule's hint_text) must appear — a real per-hint coverage assertion,
+    // replacing the previous loop that asserted the same length check 5 times.
+    for (const e of registry.HINT_REGISTRY) {
+      const marker = renderedMarker(e, rulesById);
+      assert.ok(marker.length > 0, `no rendered text for ${e.slug}`);
+      assert.ok(text.includes(marker), `factory block must carry hint ${e.slug}`);
     }
+    assert.deepStrictEqual(warnings, [], "no skips expected with the live registry");
   });
 
   test("sidecar channel preserves session-context.json shape", () => {
@@ -175,18 +219,41 @@ describe("hint renderer", () => {
   });
 
   test("byte-identity: claude-session-start partition 0 ≠ factory-session-start body shape, but both carry same hints", () => {
-    const claude = renderer.renderHints({ channel: "claude-session-start", charBudget: STD_CHAR_BUDGET });
-    const factory = renderer.renderHints({ channel: "factory-session-start", charBudget: 999999 });
+    const rulesById = realRulesById();
+    const claude = renderer.renderHints({ channel: "claude-session-start", charBudget: STD_CHAR_BUDGET, rulesById });
+    const factory = renderer.renderHints({ channel: "factory-session-start", charBudget: 999999, rulesById });
     // Different partitioning: claude is 2 partitions, factory is 1.
     assert.notStrictEqual(claude.partitions.length, factory.partitions.length);
-    // Concatenation parity: same total hint content.
+    // Concatenation parity: EVERY hint (all 26) appears in both renders.
     const claudeJoined = claude.partitions.join("\n");
     const factoryJoined = factory.partitions.join("\n");
-    for (const e of registry.HINT_REGISTRY.slice(0, 3)) {
-      assert.ok(claudeJoined.includes(e.text.slice(0, 80)),
+    for (const e of registry.HINT_REGISTRY) {
+      const marker = renderedMarker(e, rulesById);
+      assert.ok(claudeJoined.includes(marker),
         `claude concatenation must carry hint ${e.slug}`);
-      assert.ok(factoryJoined.includes(e.text.slice(0, 80)),
+      assert.ok(factoryJoined.includes(marker),
         `factory concatenation must carry hint ${e.slug}`);
+    }
+  });
+
+  test("oversized single hint gets its own over-budget partition plus a warning (I6)", () => {
+    // A single hint larger than charBudget must never be dropped or split —
+    // it is emitted as its own partition and the breach is surfaced.
+    const rulesById = realRulesById();
+    const { partitions, warnings } = renderer.renderHints({
+      channel: "claude-session-start",
+      charBudget: 200, // far below the smallest hint line
+      rulesById,
+    });
+    assert.ok(
+      warnings.some((w) => w.includes("exceeds charBudget")),
+      `oversize breach must be warned; got: ${JSON.stringify(warnings.slice(0, 3))}`,
+    );
+    // No hint content is lost: every hint still appears in some partition.
+    const joined = partitions.join("\n");
+    for (const e of registry.HINT_REGISTRY) {
+      assert.ok(joined.includes(renderedMarker(e, rulesById)),
+        `hint ${e.slug} must survive oversize partitioning`);
     }
   });
 });

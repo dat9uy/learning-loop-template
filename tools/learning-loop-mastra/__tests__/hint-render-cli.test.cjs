@@ -1,12 +1,13 @@
 /**
  * Phase 4 (plans/260717-1826-unify-context-injection): CLI test for
- * tools/scripts/hint-render.mjs — exercise every channel via spawn and
- * assert byte-equality with the in-process renderer for the same channel.
+ * tools/scripts/hint-render.mjs — smoke coverage for every channel via
+ * spawn (exit codes, non-empty stdout, provenance listing, arg-validation
+ * contract). The CLI loads the real project registry, so rule-derived
+ * hints render their actual hint_text.
  */
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { resolve } = require("node:path");
-const { pathToFileURL } = require("node:url");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const CLI_PATH = resolve(PROJECT_ROOT, "tools/scripts/hint-render.mjs");
@@ -71,6 +72,38 @@ describe("hint-render.mjs CLI (Phase 4)", () => {
       timeout: 10000,
     });
     assert.strictEqual(result.status, 2, "out-of-range partition must exit 2");
+  });
+
+  test("cli --partition with non-numeric value exits 2 (I7 regression)", () => {
+    // Previously: parseInt coercion produced NaN, the range check passed
+    // (NaN comparisons are false), and partitions[NaN] crashed with a
+    // TypeError — exit 1 with a stack instead of the documented exit 2.
+    for (const bad of ["abc", "1.5", "--provenance"]) {
+      const result = spawnSync("node", [CLI_PATH, "--channel", "claude-session-start", "--partition", bad], {
+        encoding: "utf8",
+        timeout: 10000,
+      });
+      assert.strictEqual(result.status, 2, `--partition ${bad}: must exit 2, not crash; stderr: ${result.stderr}`);
+      assert.ok(result.stderr.includes("requires an integer"), `--partition ${bad}: message must explain the contract`);
+    }
+    // Missing value entirely.
+    const noValue = spawnSync("node", [CLI_PATH, "--channel", "claude-session-start", "--partition"], {
+      encoding: "utf8",
+      timeout: 10000,
+    });
+    assert.strictEqual(noValue.status, 2, "bare --partition must exit 2");
+  });
+
+  test("cli renders real rule hint_text (no mock placeholders)", () => {
+    // The CLI loads the live registry — rule-derived rows must show actual
+    // prose, and the removed mock format must never appear.
+    const result = spawnSync("node", [CLI_PATH, "--channel", "claude-session-start", "--partition", "1"], {
+      encoding: "utf8",
+      timeout: 10000,
+    });
+    assert.strictEqual(result.status, 0);
+    assert.ok(result.stdout.includes("mergeStateStatus"), "partition 1 carries real rule hint_text");
+    assert.ok(!result.stdout.includes("[mocked hint_text"), "no mock placeholder text");
   });
 
   test("cli runs in <1s on claude-session-start", () => {

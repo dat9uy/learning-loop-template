@@ -23,14 +23,23 @@
  * No MCP spawn, no registry writes. Read-only.
  */
 import { renderHints, listChannels } from "../learning-loop-mastra/core/hint-renderer.js";
-import { HINT_REGISTRY } from "../learning-loop-mastra/core/hint-registry.js";
 
 function parseArgs(argv) {
   const out = { channel: null, partition: null, provenance: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--channel") out.channel = argv[++i];
-    else if (a === "--partition") out.partition = parseInt(argv[++i], 10);
+    else if (a === "--partition") {
+      // Code-review I7: a missing or non-numeric value must exit 2 (documented
+      // arg-error contract), not crash on partitions[NaN] with a TypeError.
+      const raw = argv[++i];
+      const n = Number(raw);
+      if (raw === undefined || !Number.isInteger(n) || String(n) !== raw.trim()) {
+        console.error(`error: --partition requires an integer value (got '${raw}')`);
+        process.exit(2);
+      }
+      out.partition = n;
+    }
     else if (a === "--provenance") out.provenance = true;
     else if (a === "--help" || a === "-h") {
       console.log("Usage: node tools/scripts/hint-render.mjs --channel <name> [--partition N] [--provenance]");
@@ -45,7 +54,7 @@ function parseArgs(argv) {
   return out;
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv);
   if (!args.channel) {
     console.error("error: --channel <name> is required");
@@ -58,21 +67,25 @@ function main() {
     process.exit(2);
   }
 
-  // Mock rulesById with hint_text for each rule-derived entry so the projection
-  // resolves cleanly without a registry read. Real production renderers thread
-  // the precomputed `loadPromotedRules(root)` map; the CLI is for inspection,
-  // not production injection.
+  // Code-review I2 (plans/260717-1826): load the REAL rules from the project
+  // registry so rule-derived hints render their actual hint_text — the mock
+  // map this replaces made the "byte-exact render" claim false for 8/10
+  // process hints and under-reported partition sizes by ~2.6k chars.
+  // Falls back to empty map (skip+warn behavior) when the registry is absent.
+  const { loadPromotedRules } = await import("../learning-loop-mastra/core/gate-logic.js");
   const rulesById = new Map(
-    HINT_REGISTRY
-      .filter((e) => e.derived_from_rule)
-      .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
+    loadPromotedRules(process.cwd()).map((r) => [r.id, r]),
   );
 
-  const { partitions, provenance } = renderHints({
+  const { partitions, provenance, warnings } = renderHints({
     channel: args.channel,
     charBudget: 9500,
     rulesById,
   });
+
+  if (warnings && warnings.length > 0) {
+    for (const w of warnings) console.error(`warning: ${w}`);
+  }
 
   if (args.partition !== null) {
     if (args.partition < 0 || args.partition >= partitions.length) {
@@ -104,4 +117,4 @@ function main() {
   }
 }
 
-main();
+await main();
