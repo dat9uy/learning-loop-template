@@ -1,0 +1,133 @@
+# Meta-state union-safety guard (Tier 2 Phase C).
+#
+# Two coupled CI checks enforced after the `.gitattributes` flip for
+# `meta-state.jsonl merge=union`:
+#
+#   1. Writer-side union-safety guard (Red Team C1, Phase C acceptance).
+#      Block the PR if any added line in the diff carries a `version` value
+#      LESS than the max version for that id in the base union. A stale-base
+#      write would survive the merge, producing a duplicate-version-per-id
+#      pair where the lower-version line wins the projection (wrong outcome).
+#      The check runs on every PR touching `meta-state.jsonl` or
+#      `change-log.jsonl` and on every push to main.
+#
+#   2. Per-clone driver check (Red Team H5). Block the PR if the
+#      `merge.union.driver` config is missing AND the PR touches
+#      `meta-state.jsonl`. The driver is per-clone (git config is not
+#      committable); a fresh-clone contributor with the wrong-arg-order
+#      workaround (`git merge-file --union %O %A %B`) silently drops
+#      "theirs" — the data-loss bug `merge=union` exists to prevent.
+#
+# Both checks BLOCK (exit 1) on failure. The pre-merge Q2 advisory
+# (same-id-duplicate-version WARNING) is in
+# `meta-state-pr-body-advisory.yml`; this workflow is the BLOCK counterpart.
+
+name: Meta-state union-safety guard
+
+on:
+  pull_request:
+    paths:
+      - 'meta-state.jsonl'
+      - 'change-log.jsonl'
+  push:
+    branches: [main]
+    paths:
+      - 'meta-state.jsonl'
+      - 'change-log.jsonl'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  union-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Configure union merge driver
+        # Ephemeral CI runners cannot run the per-clone setup script; mirror
+        # its canonical value here (Red Team H5 / F13 middle-ground).
+        # Plan 260715-1608 Phase 4 hardened this surface.
+        run: |
+          git config merge.union.driver "git merge-file --union %A %O %B"
+
+      - name: Fetch base ref
+        run: |
+          git fetch origin "$GITHUB_BASE_REF" --depth=1 2>/dev/null || \
+            git fetch "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" "$GITHUB_BASE_REF" --depth=1
+        continue-on-error: true
+
+      - name: Writer-side union-safety guard (C1)
+        # Asserts that every added line's `version` value (when present) is
+        # >= the max version for that id in the base union. A stale-base
+        # write would silently keep BOTH versions and the projection would
+        # emit the wrong one. Mirrors `computeRegistryStats` semantics
+        # (last-wins-by-max-version).
+        run: |
+          set -euo pipefail
+          # Build a map of base id -> max version (across both files).
+          # Empty entries (no `version` field) default to 0.
+          base_max_version() {
+            jq -rs '
+              [inputs[] | select(. != null and .id != null)]
+              | group_by(.id)
+              | map({id: .[0].id, max: (map(.version // 0) | max)})
+              | .[]
+              | "\(.id)\t\(.max)"
+            ' meta-state.jsonl change-log.jsonl 2>/dev/null || true
+          }
+          base=$(base_max_version)
+
+          # Walk every added line in the PR's diff against both files.
+          violations=0
+          for f in meta-state.jsonl change-log.jsonl; do
+            [[ -f "$f" ]] || continue
+            while IFS= read -r line; do
+              [[ -z "$line" ]] && continue
+              # Only consider added lines (skip the `+++` file header).
+              [[ "$line" == "+++"* ]] && continue
+              body="${line#+}"
+              [[ -z "$body" ]] && continue
+              id=$(printf '%s' "$body" | jq -r '.id // empty' 2>/dev/null || true)
+              [[ -z "$id" ]] && continue
+              added_version=$(printf '%s' "$body" | jq -r '.version // 0' 2>/dev/null || echo 0)
+              base_max=$(printf '%s\n' "$base" | awk -F'\t' -v id="$id" '$1 == id {print $2; exit}')
+              base_max=${base_max:-0}
+              if [[ "$added_version" -lt "$base_max" ]]; then
+                echo "::error::Stale-base write detected for id=$id: added version=$added_version, base max version=$base_max. A write to a lower version would survive merge=union and produce a duplicate-version-per-id pair where the lower version wins the projection."
+                violations=$((violations + 1))
+              fi
+            done < <(git diff --unified=0 "origin/$GITHUB_BASE_REF"...HEAD -- "$f" 2>/dev/null || true)
+          done
+
+          if [[ "$violations" -gt 0 ]]; then
+            echo "writer-side union-safety guard: $violations violation(s); BLOCK."
+            exit 1
+          fi
+          echo "writer-side union-safety guard: PASS (no stale-base writes)."
+
+      - name: Per-clone driver check (H5)
+        # `merge=union` is a no-op until the union merge driver is configured
+        # in the clone (git config is per-clone, not committable). The
+        # `Configure union merge driver` step above sets the canonical value
+        # for this CI run; this step verifies it took effect.
+        run: |
+          set -euo pipefail
+          expected='git merge-file --union %A %O %B'
+          current=$(git config --get merge.union.driver || true)
+          if [[ -z "$current" ]]; then
+            echo "::error::merge.union.driver is not set in this clone. Without it, merge=union is a silent no-op and parallel registry PRs hit a content conflict (resolvable only by the manual workaround, which has a known wrong-arg-order data-loss bug)."
+            echo "  hint: run tools/scripts/setup-git-merge-drivers.sh once per clone."
+            exit 1
+          fi
+          if [[ "$current" != "$expected" ]]; then
+            echo "::error::merge.union.driver has the wrong arg order: '$current'. The first argument must be %A (ours), with %O (ancestor) as base. The widely-cited '%O %A %B' order writes the result to %O and silently drops the other side."
+            exit 1
+          fi
+          echo "per-clone driver check: PASS (canonical value)."

@@ -37,7 +37,17 @@ fi
 # Green branch failed — either JSON is invalid or tests failed. Validate first.
 if ! jq -e . "$PATH_ARG" >/dev/null 2>&1; then
   echo "vitest-failures.sh: invalid JSON in $PATH_ARG" >&2
-  echo "  hint: regenerate via \`pnpm test\` (vitest json reporter writes this file)" >&2
+  # Sniff human vitest stdout (the raw reporter, not JSON). The common cause:
+  # the caller redirected `vitest run > X` then passed X here, instead of using
+  # the canonical runners which read the JSON vitest writes alongside stdout.
+  # Match vitest's human format (Test Files / Tests / "RUN v" banner / ⎯⎯⎯).
+  if grep -Eq 'Test Files|RUN v|⎯⎯⎯' "$PATH_ARG" 2>/dev/null; then
+    echo "  this looks like vitest human stdout, not JSON results." >&2
+    echo "  hint: run \`pnpm test:iter\` (full) or \`pnpm test:one <path>\` (one file)" >&2
+    echo "        — both read .test-logs/vitest-results.json; do not redirect raw stdout." >&2
+  else
+    echo "  hint: regenerate via \`pnpm test\` (vitest json reporter writes this file)" >&2
+  fi
   exit 2
 fi
 

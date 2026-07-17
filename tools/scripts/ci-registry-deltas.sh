@@ -122,6 +122,19 @@ done < "$DIFF_FILE"
 added_count=${#added_ids[@]}
 removed_count=${#removed_ids[@]}
 
+# Plan 260716-1101 Tier 2 Phase C (Q2 advisory, RT S-F9 fix): emit one
+# WARNING per id that appears more than once in the PR's added set. The
+# per-id jq replacement produces one line per duplicate id (id\tcount),
+# suitable for escape_md WARNING blocks. This is the post-merge Q2
+# surface — the BLOCK guard lives in `meta-state-refs-check.yml` per the
+# writer-side union-safety discipline.
+duplicate_id_refs=()
+if [[ "$added_count" -gt 0 ]]; then
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && duplicate_id_refs+=("$line")
+  done < <(printf '%s\n' "${added_ids[@]}" | sort | uniq -c | awk '$1 > 1 {printf "%s\t%s\n", $2, $1}')
+fi
+
 # Resolve the base registry union (meta-state + change-log) for the PR's base
 # ref. We can't easily fetch the base file from the workflow context here
 # (the script runs on /tmp/registry.diff only), so the WARN list is computed
@@ -202,6 +215,23 @@ done
   # patched). To catch typos / fabricated refs BEFORE the change-log is
   # rendered immutable by merge, surface new unresolved `consolidates` /
   # `supersedes` refs as a BLOCK.
+
+  # Plan 260716-1101 Tier 2 Phase C: Q2 same-id-duplicate-version advisory.
+  # Emits one WARNING per affected id with the per-id count (RT S-F9: the
+  # previous collapsed-to-boolean expression lost per-id detail).
+  dup_count=${#duplicate_id_refs[@]}
+  if [[ "$dup_count" -gt 0 ]]; then
+    echo ""
+    echo "## Duplicate version-per-id warnings (${dup_count})"
+    echo ""
+    echo "Same id appearing on more than one added line in this PR. After \`merge=union\` both lines are retained in the raw file; the projection dedupes to last-wins-by-max-version. Informational only — pre-merge WARNING."
+    echo ""
+    for entry in "${duplicate_id_refs[@]}"; do
+      IFS=$'\t' read -r id count <<< "$entry"
+      escaped_id=$(escape_md "$id")
+      echo "- \`${escaped_id}\` (${count} lines)"
+    done
+  fi
   cl_orphan_count=${#cl_orphan_refs[@]}
   if [[ $cl_orphan_count -gt 0 ]]; then
     echo ""

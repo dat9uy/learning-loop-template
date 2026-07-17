@@ -58,6 +58,8 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 **The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is implemented across the 3 layers (see §1.1): Core owns the data model, Mastra shell owns the tool surface, Runtime interface owns the agent runtime. It is a 4-kind discriminated union:
 
+> **Read recipe (Plan 260716-1101 Tier 2 Phase C):** the raw file is no longer table-readable post-Tier-2 (one entry can span N versioned lines per id; the change-log lives in a separate `change-log.jsonl`). To inspect the registry, run `tools/scripts/registry-table.sh | tail -20` (reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, emits one-line-per-id). Never `cat meta-state.jsonl | tail -20` — the output is not deduplicated and the last 20 raw lines may show only one id.
+
 | Kind | Role | Lifespan |
 |---|---|---|
 | `finding` | A loop-self-diagnostic observation. Ephemeral; 24h TTL until acked. | 24h → ack → active → resolve |
@@ -112,7 +114,7 @@ The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnp
 
 ## 8. Git Union Merge Driver (one-time per-clone setup)
 
-`.gitattributes` marks `runtime-state.jsonl` and `change-log.jsonl` as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
+`.gitattributes` marks `runtime-state.jsonl`, `change-log.jsonl`, **and (since Plan 260716-1101 Tier 2 Phase C) `meta-state.jsonl`** as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
 
 ```bash
 git config merge.union.driver "git merge-file --union %A %O %B"

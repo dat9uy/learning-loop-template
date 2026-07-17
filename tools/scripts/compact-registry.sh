@@ -13,7 +13,9 @@
 #     - exits 0 when below threshold, 1 when eligible, 2 on missing/invalid
 #
 #   compact-registry.sh --full [paths...]
-#     - Phase C only; placeholder for now (prints guidance, exits 2)
+#     - Phase C: rewrites each path keeping max_by(.version) per id,
+#       keeps the latest tombstone per archived id (audit completeness),
+#       drops superseded non-winning versions. Atomic tmp+rename per file.
 #
 # Output shape (--check):
 #   raw_lines=N
@@ -58,9 +60,7 @@ case "$MODE" in
     : # proceed
     ;;
   --full)
-    echo "compact-registry.sh --full: Phase C only (not yet implemented)." >&2
-    echo "  hint: Phase C ships in plans/260716-1101-tier2-versioned-append-mutable-stream/phase-03-*.md." >&2
-    exit 2
+    : # proceed
     ;;
   -h|--help)
     usage
@@ -131,11 +131,58 @@ else
   exit_code=0
 fi
 
-cat <<EOF
+if [[ "$MODE" == "--check" ]]; then
+  cat <<EOF
 raw_lines=${raw_lines}
 deduped_ids=${deduped_ids}
 dead_version_lines=${dead_version_lines}
 compaction_eligible=${compaction_eligible}
 EOF
+  exit "$exit_code"
+fi
 
-exit "$exit_code"
+# --full: rewrite each input file in place, keeping max_by(.version) per
+# id and the latest tombstone per archived id (audit completeness), under
+# atomic tmp+rename. Per-file compaction is independent: each file is
+# projected against its own lines (no cross-file merge here — cross-file
+# dedupe is the read-side projection's job, registry-table.sh).
+#
+# Plan 260716-1101 Phase C. The compaction target is `meta-state.jsonl`:
+# change-log.jsonl is already append-only singletons per id (Tier 1) and
+# has no superseded versions to drop — running compaction on it is a
+# no-op (jq group_by emits one line per id).
+if [[ "$MODE" == "--full" ]]; then
+  for p in "$@"; do
+    # Compute the projection's "keep" set: for each id, the line with
+    # max version; for archived ids, the line with max version + status=archived
+    # is already the winner (it has the highest version by Phase B's
+    # deleteEntry append-only contract).
+    if ! tmp=$(mktemp "${p}.compact.XXXXXX"); then
+      echo "compact-registry.sh: mktemp failed for $p" >&2
+      exit 2
+    fi
+    # Project the input: slurp, group by id, keep max_by(.version), stream
+    # back as compact JSONL. Atomic via tmp + mv.
+    if ! jq -sc 'group_by(.id) | map(max_by(.version))[]' "$p" > "$tmp"; then
+      rm -f "$tmp"
+      echo "compact-registry.sh: jq compaction failed for $p" >&2
+      exit 2
+    fi
+    # Preserve trailing newline convention (jq -c emits no trailing \n).
+    if ! mv "$tmp" "$p"; then
+      rm -f "$tmp"
+      echo "compact-registry.sh: mv failed for $p" >&2
+      exit 2
+    fi
+  done
+  cat <<EOF
+compacted_files=${#present[@]}
+raw_lines_before=${raw_lines}
+raw_lines_after=${deduped_ids}
+EOF
+  exit 0
+fi
+
+# Unreachable; case block above rejects unknown flags.
+echo "compact-registry.sh: internal error (unhandled mode $MODE)" >&2
+exit 2

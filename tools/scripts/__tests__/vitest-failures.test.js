@@ -79,6 +79,33 @@ describe("vitest-failures.sh: contract", () => {
       assert.strictEqual(proc.status, 2, `expected exit 2, got ${proc.status}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`);
       assert.match(proc.stderr, /invalid JSON/);
       assert.match(proc.stderr, /hint:/);
+      // Non-human garbage should NOT trip the human-stdout pointer.
+      assert.doesNotMatch(proc.stderr, /human stdout/);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("human vitest stdout (not JSON) → exit 2 + canonical-runner pointer", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "vitest-fail-human-"));
+    const humanPath = join(tmp, "human.log");
+    // Raw vitest default-reporter stdout — what an agent gets by redirecting
+    // `vitest run > X` and (wrongly) passing X to this script.
+    writeFileSync(
+      humanPath,
+      [
+        " RUN  v1.2.3 .../foo.test.js",
+        "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯",
+        " Test Files  1 passed (1)",
+        "      Tests  3 passed (3)",
+      ].join("\n") + "\n",
+    );
+    try {
+      const proc = runScript([humanPath]);
+      assert.strictEqual(proc.status, 2, `expected exit 2, got ${proc.status}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`);
+      assert.match(proc.stderr, /invalid JSON/);
+      assert.match(proc.stderr, /human stdout/);
+      assert.match(proc.stderr, /pnpm test:one/);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

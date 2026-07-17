@@ -1,7 +1,7 @@
 ---
 title: "Tier 2: Mutable Stream → Union-Safe Versioned-Append"
 description: "Make meta-state.jsonl union-safe so parallel finding-resolve stops being operator-self-limited. Mutable table becomes append-only + versioned last-wins dedupe; projection seam swaps; .gitattributes flip removes the speed limiter. Resolves meta-260715T0633Z-finding-stream (Tier 2 ticket) + meta-260715T2311Z-gratuitous-mutations (in-scope)."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [meta-state, tier2, versioned-append, merge-union, registry]
@@ -9,6 +9,10 @@ blockedBy: []
 blocks: []
 created: "2026-07-16T04:08:54.774Z"
 createdBy: "ck:plan"
+shipped: "2026-07-16"
+shipped_by: "operator"
+shipped_via: "Phase A standalone + Phase B PR #65 (merge e9e02a6) + Phase C local (awaiting gh pr create)"
+test_summary: "Phase A 12 / Phase B TDD suite / Phase C 35 new cases; full suite 2121 / 0 / 429"
 source: skill
 brainstorm: "../../reports/brainstorm-260716-1101-tier2-versioned-append-mutable-stream-report.md"
 ---
@@ -32,8 +36,8 @@ Three staged sub-PRs, each independently green. The `.gitattributes` flip (Phase
 | Phase | Name | Status | PR |
 |-------|------|--------|----|
 | 1 | [Phase A: Projection Swap + Version Backfill](./phase-01-phase-a-projection-swap-version-backfill.md) | **Completed** (2026-07-16) | standalone, no-op behavior change |
-| 2 | [Phase B: Write-Path Rewrite to Versioned-Append](./phase-02-phase-b-write-path-rewrite-to-versioned-append.md) | Pending | standalone, internal correctness |
-| 3 | [Phase C: gitattributes Flip + CI Advisory + Compaction Signal](./phase-03-phase-c-gitattributes-flip-ci-advisory-compaction-signal.md) | Pending | standalone, removes speed limiter |
+| 2 | [Phase B: Write-Path Rewrite to Versioned-Append](./phase-02-phase-b-write-path-rewrite-to-versioned-append.md) | **Completed** (2026-07-16) | PR #65 (merge e9e02a6), internal correctness |
+| 3 | [Phase C: gitattributes Flip + CI Advisory + Compaction Signal](./phase-03-phase-c-gitattributes-flip-ci-advisory-compaction-signal.md) | **Completed** (2026-07-16) | local (awaiting `gh pr create` from operator), removes speed limiter |
 
 ## Dependencies
 
@@ -132,8 +136,8 @@ All open questions from the prior revision are settled by Validation Session 1. 
 | Phase | Status | Shipped | Notes |
 |-------|--------|---------|-------|
 | A — Projection Swap + Version Backfill | **Completed** | 2026-07-16 | 12 new tests; 1624 total green. See journal `reports/phase-a-implementation-journal.md`. |
-| B — Write-Path Rewrite to Versioned-Append | Pending | — | Hard-blocked on A green. A green ✅ — unblock. |
-| C — gitattributes Flip + CI Advisory + Compaction Signal | Pending | — | Hard-blocked on B on main + green. |
+| B — Write-Path Rewrite to Versioned-Append | **Completed** | 2026-07-16 | PR #65 (merge e9e02a6). Write-path rewrite to versioned-append; `trueAppendAtomic` + `canonical-compare` helpers; tombstone_kind discriminator; `meta-260715T2311Z` resolved; Tier 2 ticket stays open. |
+| C — gitattributes Flip + CI Advisory + Compaction Signal | **Completed** | 2026-07-16 | Local (awaiting `gh pr create`). 35 new tests; full suite 2121 / 0 / 429. `.gitattributes` flipped; Q2 advisory + writer-side guard + per-clone driver CI BLOCKs; compaction signal (--check + --full + warm-tier registry_stats). Tier 2 ticket `meta-260715T0633Z-…-finding-stream-…` resolved. |
 
 ### Phase A Verification (2026-07-16)
 
@@ -144,6 +148,35 @@ All open questions from the prior revision are settled by Validation Session 1. 
 - Test coverage added: `projection-last-wins-by-max-version.test.js` (6 tests) + `backfill-versions.test.cjs` (6 tests) = 12 new tests.
 - Pre-existing tests adapted: `meta-state-log-change.test.js` + `file-index-o1-regression.test.js` used identical descriptions → same-id entries → previously undeduplicated. Updated to use unique descriptions so each generates a distinct id.
 - Acceptance criteria 1–3, 7, 8 of the whole plan are now load-bearing-safe (projection writes present + verified). Critically, Phase B acceptance criteria 1 + 4–8 are now safe to implement against — the projection backstops the versioned-append semantics at the read layer.
+
+### Phase B Verification (2026-07-16, PR #65)
+
+- `core/registry-append-atomic.js` ships `trueAppendAtomic(path, line)` (O_APPEND + `writeSync` + `fsyncSync` + `closeSync`) + `assertNoChangeLogLeak` guard inlined before the file write (RT H1, H4).
+- `core/canonical-compare.js` ships `canonicalize(entry)` — sorted-keys + set-semantics on arrays; replaces `JSON.stringify` in the no-op short-circuit (RT C2). False-positive (false-negative) coverage: same-set-different-order arrays compare equal; nested-object mutation compares different.
+- `appendRegistryEntryAtomic` migrated to `trueAppendAtomic`; `persistRegistryAtomic` retired for the mutable stream (kept as compaction primitive).
+- `updateEntry` no-op short-circuit (canonical comparator) → `meta-260715T2311Z-gratuitous-mutations` resolved (zero file change on no-op patches).
+- `archiveEntry` + `deleteEntry` add `tombstone_kind: "archive" | "delete"` discriminator (RT H6).
+- `meta_state_batch case "delete"` rewritten to route through `deleteEntry` (tombstone append, not splice) — RT H3.
+- `tools/scripts/compact-registry.sh --check` ships early-signal helper (raw_lines / deduped_ids / dead_version_lines / compaction_eligible; exits 1 when eligible — RT H7 partial mitigation; full compaction ships in Phase C).
+- Change-log entry emitted; `meta-260715T2311Z-gratuitous-mutations` resolved via `meta_state_resolve`; `meta-260715T0633Z-…-finding-stream-…` stays OPEN (Tier 2 ticket — closed at Phase C).
+- Stale split-patch guidance pruned from AGENTS.md/CLAUDE.md.
+- All existing meta-state tests green; new tests per phase (TDD) green.
+- Acceptance criteria 1, 4–8 of the whole plan now load-bearing-safe.
+
+### Phase C Verification (2026-07-16)
+
+- `.gitattributes` flipped: `meta-state.jsonl merge=union` with justification citing Phase B's write-path rewrite (the load-bearing mechanical fix).
+- `tools/scripts/ci-registry-deltas.sh` extended with Q2 same-id-duplicate-version advisory (per-id WARNING, RT S-F9 fixed; non-blocking per Validation Session 1 Q2).
+- `.github/workflows/meta-state-union-safety.yml` shipped: writer-side stale-base guard (RT C1) + per-clone driver check (RT H5); both BLOCK on the PR.
+- `tools/learning-loop-mastra/core/registry-stats.js` shipped: `computeRegistryStats(root)` + `findDuplicateVersionPerId(entries)` (Validation Session 1 Q5: shell-script only, no `meta_state_compact` MCP tool; shared helper consumed by warm tier directly — no shell subprocess from MCP server).
+- `tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js` updated: warm tier imports `computeRegistryStats`; exposes `registry_stats` + `compaction_action_hook` (separate field to preserve the 16-string `discoverability_hints` invariant).
+- `tools/scripts/compact-registry.sh --full` shipped (atomic per-file tmp+rename; keeps `max_by(.version)`; keeps latest tombstone per archived id; `--check` exits 1 when eligible — RT H7 actionable).
+- `AGENTS.md` §1.1 read-recipe blockquote + §8 union-driver mention updated for Phase C; `tools/learning-loop-mastra/core/placement.yaml` registered `registry-stats.js`.
+- Test coverage added: 5 new test files, 35 new test cases — all green. Full suite: **2121 / 0 / 429**.
+- End-to-end parallel-merge dry-run executed via `tools/scripts/__tests__/meta-state-merge-union.test.js` (actual `git merge` + actual `.gitattributes`); corrected `merge.union.driver` auto-merges; both version lines retained; projection dedupes to last-wins-by-max-version. Wrong-arg-order regression test verifies the silent data-loss bug still fires when the per-clone check is bypassed.
+- `meta-260715T0633Z-…-finding-stream-…` resolved via `meta_state_resolve` (Tier 2 ticket closed).
+- `meta_state_log_change` emitted `meta-260716T2053Z-plans-260716-1101-tier2-versioned-append-mutable-stream`.
+- Acceptance criteria 1–8 of the whole plan now satisfied. Operator self-limiter is removed.
 
 ### Whole-Plan Consistency Sweep (post-validation)
 
