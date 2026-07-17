@@ -39,15 +39,30 @@ const CHANGE_LOG_FILENAME = "change-log.jsonl";
  * @returns {{ raw_lines: number, deduped_ids: number, dead_version_lines: number, compaction_eligible: boolean }}
  */
 export function computeRegistryStats(root) {
-  const files = [];
+  const files = collectRegistryFiles(root);
+  const { entries, rawLines } = parseEntriesFromFiles(files);
+  return deriveStats(entries, rawLines);
+}
+
+// Discover which registry files exist at `root`. Tolerates an absent
+// change-log.jsonl (post-Tier-1-split trees may omit it).
+function collectRegistryFiles(root) {
   const metaStatePath = join(root, META_STATE_FILENAME);
   const changeLogPath = join(root, CHANGE_LOG_FILENAME);
+  const files = [];
   if (existsSync(metaStatePath)) files.push(metaStatePath);
   if (existsSync(changeLogPath)) files.push(changeLogPath);
+  return files;
+}
 
-  // raw_lines: sum of non-blank lines across files.
-  let rawLines = 0;
+// Read each registry file, split into non-blank lines, and parse each line
+// as JSON. Returns the parsed entries alongside a raw-line count (the count
+// of non-blank lines, regardless of parse success — mirrors registry-table.sh).
+// Malformed lines are skipped silently; compact-registry.sh --check surfaces
+// this through under-counted `deduped_ids` but never crashes the reader.
+function parseEntriesFromFiles(files) {
   const entries = [];
+  let rawLines = 0;
   for (const f of files) {
     const text = readFileSync(f, "utf8");
     for (const line of text.split("\n")) {
@@ -56,17 +71,19 @@ export function computeRegistryStats(root) {
       try {
         entries.push(JSON.parse(line));
       } catch {
-        // Skip malformed lines; mirrors registry-table.sh's invalid-JSON
-        // bail behavior at the read level. compact-registry.sh --check
-        // will surface this through `dead_version_lines` (under-counted
-        // deduped) but never crash.
+        // Skip malformed line; see comment above.
       }
     }
   }
+  return { entries, rawLines };
+}
 
-  // deduped_ids: last-wins-by-max-version projection count. Mirrors
-  // registry-table.sh's jq expression:
-  //   group_by(.id) | map(max_by(.version)) | length
+// Project `entries` onto the 4-key stats shape. deduped_ids is the
+// last-wins-by-max-version projection, mirroring registry-table.sh's
+//   group_by(.id) | map(max_by(.version)) | length
+// compaction_eligible honors the COMPACTION_THRESHOLD env override
+// (default 1000) for tier-2 compaction signal triggers.
+function deriveStats(entries, rawLines) {
   const byId = new Map();
   for (const e of entries) {
     if (typeof e.id !== "string" || e.id.length === 0) continue;
@@ -75,15 +92,12 @@ export function computeRegistryStats(root) {
     if (prev === undefined || version > prev) byId.set(e.id, version);
   }
   const dedupedIds = byId.size;
-  const deadVersionLines = rawLines - dedupedIds;
   const threshold = Number(process.env.COMPACTION_THRESHOLD) || DEFAULT_THRESHOLD;
-  const compactionEligible = rawLines >= threshold;
-
   return {
     raw_lines: rawLines,
     deduped_ids: dedupedIds,
-    dead_version_lines: deadVersionLines,
-    compaction_eligible: compactionEligible,
+    dead_version_lines: rawLines - dedupedIds,
+    compaction_eligible: rawLines >= threshold,
   };
 }
 
