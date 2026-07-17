@@ -6,7 +6,11 @@
 #   - missing/invalid: print guidance to stderr, exit 2.
 #
 # Usage:
-#   registry-table.sh [paths...]
+#   registry-table.sh [--all-versions] [paths...]
+#     - --all-versions: bypass the max_by(.version) collapse and emit every
+#       line per id, sorted by (id, version) ascending (created_at tie-break).
+#       Symmetric to meta_state_list's include_all_versions MCP flag. Must
+#       precede any positional path (fails closed with usage otherwise).
 #     - default path: meta-state.jsonl change-log.jsonl (post-Tier-1-split,
 #       Red Team M2 / Plan 260716-1101 Phase A step 7)
 #     - one or more positional args accepted (override the default)
@@ -17,6 +21,8 @@
 #   - slurp to array, group by id, pick max version per id, stream back.
 #   - On a one-line-per-id file: identity.
 #   - On a versioned multi-line-per-id file: last-wins-by-max-version.
+#   - --all-versions swaps it for 'sort_by(.id, .version, .created_at)[]'
+#     (identity on a one-line-per-id file).
 #   - Tier 2 swap: replace this jq expression with the same `lastWinsByMaxVersion`
 #     projection when the chokepoint gains it (see core/read-registry-cache.js).
 #
@@ -25,6 +31,23 @@
 # missing/invalid file, 1 on jq failure (unexpected).
 
 set -euo pipefail
+
+# Flag sweep: --all-versions must precede positional paths (fail closed).
+all_versions=false
+positional=()
+for a in "$@"; do
+  if [[ "$a" == "--all-versions" ]]; then
+    if [[ ${#positional[@]} -gt 0 ]]; then
+      echo "registry-table.sh: --all-versions must precede positional paths" >&2
+      echo "  usage: registry-table.sh [--all-versions] [paths...]" >&2
+      exit 2
+    fi
+    all_versions=true
+  else
+    positional+=("$a")
+  fi
+done
+set -- ${positional[@]+"${positional[@]}"}
 
 # Default path: both files at CWD. Post-Tier-1-split the registry is two
 # files; the JS union chokepoint reads both, and the shell-side helper
@@ -80,4 +103,11 @@ done
 # -c: compact output (one line per element). The `fx` workflow assumes
 # one-line-per-id JSONL; without -c jq pretty-prints and the projection
 # output is multi-line per entry.
-jq -sc 'group_by(.id) | map(max_by(.version))[]' "$@"
+if [[ "$all_versions" == true ]]; then
+  # All-versions: no collapse — every line per id, sorted by (id, version)
+  # with created_at tie-break. Null/missing version reads as 0 (same
+  # null-as-0 invariant as the JS reader) so legacy lines parse cleanly.
+  jq -sc 'sort_by(.id, (.version // 0), (.created_at // ""))[]' "$@"
+else
+  jq -sc 'group_by(.id) | map(max_by(.version))[]' "$@"
+fi

@@ -31,6 +31,7 @@ describe("meta_state_list compact mode", () => {
         id: "compact-finding-active",
         entry_kind: "finding",
         status: "open",
+        version: 0,
         category: "loop-anti-pattern",
         severity: "warning",
         affected_system: "mcp-tools",
@@ -199,6 +200,20 @@ describe("meta_state_list compact mode", () => {
     assert.ok(
       fullEntries.length > 0,
       "Non-compact mode should include entries with descriptions"
+    );
+  });
+
+  test("compact: true retains the version field (include_all_versions consumer guard)", async () => {
+    const result = await metaStateListTool.handler({
+      compact: true,
+    });
+    const text = JSON.parse(result.content[0].text);
+    const entry = text.entries.find((e) => e.id === "compact-finding-active");
+    assert.ok(entry, "entry should be in compact output");
+    assert.strictEqual(
+      entry.version,
+      0,
+      "compact output must retain version — without it the include_all_versions flag is invisible under the default compact projection"
     );
   });
 

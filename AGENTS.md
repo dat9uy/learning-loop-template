@@ -58,7 +58,7 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 **The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is implemented across the 3 layers (see §1.1): Core owns the data model, Mastra shell owns the tool surface, Runtime interface owns the agent runtime. It is a 4-kind discriminated union:
 
-> **Read recipe (Plan 260716-1101 Tier 2 Phase C):** the raw file is no longer table-readable post-Tier-2 (one entry can span N versioned lines per id; the change-log lives in a separate `change-log.jsonl`). To inspect the registry, run `tools/scripts/registry-table.sh | tail -20` (reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, emits one-line-per-id). Never `cat meta-state.jsonl | tail -20` — the output is not deduplicated and the last 20 raw lines may show only one id.
+> **Read recipe (Plan 260716-1101 Tier 2 Phase C):** the raw file is no longer table-readable post-Tier-2 (one entry can span N versioned lines per id; the change-log lives in a separate `change-log.jsonl`). To inspect the registry, run `tools/scripts/registry-table.sh | tail -20` (reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, emits one-line-per-id). Never `cat meta-state.jsonl | tail -20` — the output is not deduplicated and the last 20 raw lines may show only one id. Pass `--all-versions` to see the full versioned-append history per id (multi-line for ids with multiple versions; shell-side equivalent of `meta_state_list`'s `include_all_versions` — see §6.1).
 
 | Kind | Role | Lifespan |
 |---|---|---|
@@ -86,6 +86,16 @@ For the gate system internals (inbound/outbound gate flows, MCP tool flow, stale
 3. Optional but recommended: set `mechanism_check: true` on the finding so `meta_state_derive_status` and `meta_state_check_grounding` can re-check it after refactors; refresh its path's hash in `file-index.jsonl` via `meta_state_refresh_file_index`.
 
 Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. The SessionStart hook surfaces this rule in its discoverability hints: `session-start-inject-discoverability.cjs` and `session-start-inject-process-hints.cjs` inject the full hint sets as system-reminders via `hookSpecificOutput.additionalContext` (each under the 10k-char cap; the sidecar `.claude/session-context.json` remains the audit artifact).
+
+### 6.1 Audit-trail recipe (versioned-append history)
+
+Post-Tier-2, `meta-state.jsonl` is multi-record-per-id (v0 open + v1 resolved + … coexist on disk) and the default read collapses to one entry per id (`max_by(version)`). To inspect the full history:
+
+```
+meta_state_list({ id: "<id>", include_all_versions: true, include_archived: true })
+```
+
+`include_all_versions: true` bypasses the collapse and returns every version line, sorted by `(id, version)`; it is orthogonal to `include_archived` (a status filter), so terminal-status lines (resolved/superseded/archived) still need `include_archived: true`. Use it after `meta_state_resolve` when you need the full v1 entry, or for forensic/drift questions about what an entry looked like at version N. Do NOT use it for "show me all resolved findings" — that's `meta_state_list({ status: "resolved" })` or `include_archived: true` alone. Shell-side equivalent: `tools/scripts/registry-table.sh --all-versions`. Source: `meta-260717T0943Z` (plan `260717-1451-meta-state-list-include-all-versions`).
 
 ---
 

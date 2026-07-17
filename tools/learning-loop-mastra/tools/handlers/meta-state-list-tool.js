@@ -2,6 +2,7 @@ import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 import {
   readRegistry,
+  readRegistryAllVersions,
   filterEntries,
 } from "../../core/meta-state.js";
 import { buildInverseIndexes, summarize } from "../../core/loop-introspect.js";
@@ -55,7 +56,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded) AND returns the compact projection (id, entry_kind, status, ref fields) — pass `compact: false` for the full entry shape (description, evidence, etc.). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
+  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded) AND returns the compact projection (id, entry_kind, status, ref fields) — pass `compact: false` for the full entry shape (description, evidence, etc.). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Pass `include_all_versions: true` to inspect the versioned-append history per id (the v0 open + v1 resolved + … sequence on disk); without it, the projection collapses to one entry per id (max_by(version)). `include_all_versions` is orthogonal to `include_archived` (status filter) and `compact` (projection shape); the three compose — terminal-status version lines still need `include_archived: true`, and under `ref_by`/`ref_field` a matching id appears once per version line. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),
@@ -73,10 +74,11 @@ export const metaStateListTool = {
       .describe("Field used by the `ref_by` filter. Required with `ref_by`."),
     compact: z.coerce.boolean().optional().default(true).describe("Default: true — return only id, entry_kind, status, and ref fields (token-efficient). Pass `compact: false` for the full entry shape (~85KB for 53 entries)."),
     include_archived: z.coerce.boolean().optional().default(false).describe("Include archived entries in results (default false)"),
+    include_all_versions: z.coerce.boolean().optional().default(false).describe("Default: false — the read collapses to one entry per id (max_by(version)). Pass true to return every version line per id (the v0 open + v1 resolved + … sequence on disk), sorted by (id, version). Orthogonal to include_archived (status filter) and compact (projection shape); the three compose. Under ref_by/ref_field, a matching id appears once per version line."),
   },
-  handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, id, ref_by, ref_field, compact = true, include_archived }) => {
+  handler: async ({ category, status, affected_system, session_id, entry_kind, entry_kinds, id, ref_by, ref_field, compact = true, include_archived, include_all_versions }) => {
     const root = resolveRoot();
-    const entries = readRegistry(root);
+    const entries = include_all_versions ? readRegistryAllVersions(root) : readRegistry(root);
     const now = new Date().toISOString();
 
     // Validate ref_by/ref_field pair
@@ -166,6 +168,7 @@ export const metaStateListTool = {
       ...(id !== undefined && { id: Array.isArray(id) ? id : [id] }),
       ...(ref_by && { ref_by }),
       ...(ref_field && { ref_field }),
+      ...(include_all_versions && { include_all_versions: true }),
     };
 
     if (entry_kinds) {
@@ -201,6 +204,7 @@ export const metaStateListTool = {
       count: result.length,
       filters_applied: activeFilters,
       include_archived: include_archived || false,
+      include_all_versions: include_all_versions || false,
       entry_kind_filter: entry_kind || null,
       entry_kinds_filter: entry_kinds || null,
       id_filter: id !== undefined ? (Array.isArray(id) ? id : [id]) : null,

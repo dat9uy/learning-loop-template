@@ -688,10 +688,37 @@ function enqueue(root, fn) {
   return result;
 }
 
+/**
+ * Shared dual-source read: meta-state.jsonl (mutable table) +
+ * change-log.jsonl (true-append log of immutable change-logs).
+ *
+ * Returns the parsed entry list with backward-compat coercions applied and
+ * NO projection / NO sort — the two callers (`_readAndParseRegistry` and
+ * `parseFnAllVersions`) differ ONLY in what they do after this step. Keep
+ * it that way: if a coercion is needed, add it here, not in one caller —
+ * the projected and all-versions reads MUST NOT diverge on parse semantics.
+ */
+function readRawLines(root) {
+  const metaStatePath = getRegistryPath(root);
+  const changeLogPath = getChangeLogPath(root);
+  const metaStateLines = existsSync(metaStatePath)
+    ? readFileSync(metaStatePath, "utf8").split("\n").filter((line) => line.trim() !== "")
+    : [];
+  const changeLogLines = existsSync(changeLogPath)
+    ? readFileSync(changeLogPath, "utf8").split("\n").filter((line) => line.trim() !== "")
+    : [];
+  const allLines = [...metaStateLines, ...changeLogLines];
+  return allLines.map((line) => {
+    const entry = JSON.parse(line);
+    if (!entry.entry_kind) {
+      entry.entry_kind = "finding"; // Backward-compat coerce
+    }
+    withDefaults(entry); // Apply affected_system default for legacy entries
+    return entry;
+  });
+}
+
 function _readAndParseRegistry(root) {
-  // Dual-source reader: meta-state.jsonl (mutable table) + change-log.jsonl
-  // (true-append log of immutable change-logs).
-  //
   // Tier 2 Phase A projection (last-wins-by-max-version):
   //   1. Concat both files
   //   2. Group by id
@@ -708,23 +735,7 @@ function _readAndParseRegistry(root) {
   // by tools/learning-loop-mastra/tools/handlers/scripts/backfill-versions.mjs
   // before this projection goes live). Without the backfill, `max_by` would
   // mispick on all-null-version groups (returns arbitrary group member).
-  const metaStatePath = getRegistryPath(root);
-  const changeLogPath = getChangeLogPath(root);
-  const metaStateLines = existsSync(metaStatePath)
-    ? readFileSync(metaStatePath, "utf8").split("\n").filter((line) => line.trim() !== "")
-    : [];
-  const changeLogLines = existsSync(changeLogPath)
-    ? readFileSync(changeLogPath, "utf8").split("\n").filter((line) => line.trim() !== "")
-    : [];
-  const allLines = [...metaStateLines, ...changeLogLines];
-  const parsed = allLines.map((line) => {
-    const entry = JSON.parse(line);
-    if (!entry.entry_kind) {
-      entry.entry_kind = "finding"; // Backward-compat coerce
-    }
-    withDefaults(entry); // Apply affected_system default for legacy entries
-    return entry;
-  });
+  const parsed = readRawLines(root);
   // Last-wins-by-max-version dedupe (Phase A projection).
   // Tie-break on equal version: later created_at wins (matches the tie-break
   // in migrate-change-log-stream.mjs#dedupeById so script → reader is
@@ -761,12 +772,55 @@ function _readAndParseRegistry(root) {
 }
 
 /**
+ * All-versions parse: same dual-source read as `_readAndParseRegistry` but
+ * SKIPS the `group_by(.id) | max_by(.version)` collapse. Every line per id
+ * is returned, sorted by (id ascending, version ascending) with created_at
+ * as the tie-break (matches the projection's tie-break for parity).
+ *
+ * Null/missing version is treated as 0 (same null-as-0 invariant as the
+ * projection) so legacy pre-Phase-A entries parse cleanly. Deliberately
+ * NOT sorted by created_at: multi-line-per-id means a created_at sort
+ * would shuffle versions arbitrarily within an id group.
+ */
+export function parseFnAllVersions(root) {
+  const parsed = readRawLines(root);
+  parsed.sort((a, b) => {
+    if (a.id !== b.id) return a.id < b.id ? -1 : 1;
+    const va = a.version ?? 0;
+    const vb = b.version ?? 0;
+    if (va !== vb) return va - vb;
+    const ca = a.created_at ?? "";
+    const cb = b.created_at ?? "";
+    return ca < cb ? -1 : ca > cb ? 1 : 0;
+  });
+  return parsed;
+}
+
+// Both projections share one cache slot per (root + mtime + size) — a single
+// cold miss computes both, so projected callers and all-versions callers
+// never see two separate parses of the same file state.
+const REGISTRY_PARSE_FNS = {
+  projected: _readAndParseRegistry,
+  allVersions: parseFnAllVersions,
+};
+
+/**
  * Read the JSONL registry and return an array of parsed entries.
  * Returns empty array if the file does not exist.
  * Uses process-lifetime LRU cache keyed on mtimeMs + size.
  */
 export function readRegistry(root) {
-  return readRegistryWithCache(root, _readAndParseRegistry);
+  return readRegistryWithCache(root, REGISTRY_PARSE_FNS).projected;
+}
+
+/**
+ * Read the JSONL registry WITHOUT the max_by(version) collapse: every line
+ * per id, sorted by (id, version) ascending. Shares the cache slot with
+ * `readRegistry` (same file-state key). Used by meta_state_list's
+ * `include_all_versions` affordance.
+ */
+export function readRegistryAllVersions(root) {
+  return readRegistryWithCache(root, REGISTRY_PARSE_FNS).allVersions;
 }
 
 // ─── File-index sidecar (path-keyed shared fingerprint index) ──────────────
