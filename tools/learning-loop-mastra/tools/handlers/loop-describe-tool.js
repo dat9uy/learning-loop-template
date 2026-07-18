@@ -19,6 +19,22 @@ function firstSentence(description) {
   return first.length <= 120 ? first : `${first.slice(0, 117)}…`;
 }
 
+/**
+ * Render both hint blocks for a describe result. The rules map comes from the
+ * caller's already-loaded `promotedRules` so rule-derived hint text resolves
+ * from the same root as the rest of the response — never from a second
+ * `loadPromotedRules(process.cwd())` inside the builder (code-review I4,
+ * plans/260717-1826).
+ */
+function buildHintBlocks(promotedRules) {
+  return {
+    discoverability_hints: introspect.buildDiscoverabilityHints(),
+    process_hints: introspect.buildProcessHints({
+      rulesById: new Map(promotedRules.map((r) => [r.id, r])),
+    }),
+  };
+}
+
 export const loopDescribeTool = {
   name: "loop_describe",
   description: "Return the loop's current operational surface. **Recommended: call at session start to discover what the loop offers.** Supports tiered reads (hot/warm/cold/summary) to control context bloat. Use when you need to know what the loop offers, what rules are enforced, or what findings are active. The warm tier's `discoverability_hints` block surfaces short reminders of the loop's rules. Not for mutating state (use the `meta_state_*` or `record_*` tools instead).",
@@ -115,13 +131,7 @@ export const loopDescribeTool = {
         }
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        // Code-review I4 (plans/260717-1826): pass the already-loaded rules so
-        // rule-derived hint text resolves from THIS root — not from a second
-        // loadPromotedRules(process.cwd()) inside the builder.
-        result.process_hints = introspect.buildProcessHints({
-          rulesById: new Map(promotedRules.map((r) => [r.id, r])),
-        });
+        Object.assign(result, buildHintBlocks(promotedRules));
 
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
@@ -244,13 +254,7 @@ export const loopDescribeTool = {
         }
         result.description_mode = description_mode;
 
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        // Code-review I4 (plans/260717-1826): pass the already-loaded rules so
-        // rule-derived hint text resolves from THIS root — not from a second
-        // loadPromotedRules(process.cwd()) inside the builder.
-        result.process_hints = introspect.buildProcessHints({
-          rulesById: new Map(promotedRules.map((r) => [r.id, r])),
-        });
+        Object.assign(result, buildHintBlocks(promotedRules));
         result.cache_hit = cacheHit;
         result.built_at = builtAt;
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
