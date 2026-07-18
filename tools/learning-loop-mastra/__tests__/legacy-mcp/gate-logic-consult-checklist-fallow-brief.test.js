@@ -1,9 +1,8 @@
 import assert from "node:assert";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { test } from "vitest";
 import { applyPromotedRules } from "../../core/gate-logic.js";
-import { metaStateRuleEntrySchema } from "../../core/meta-state.js";
-import { buildProcessHints } from "../../core/loop-introspect.js";
+import { metaStateRuleEntrySchema, readRegistry } from "../../core/meta-state.js";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
@@ -57,19 +56,21 @@ await test("agent-checklist rule schema is valid for rule-fallow-brief-on-gate-f
   assert.strictEqual(parsed.items[0].id, "fallow-gate-failure-routes-to-brief");
 });
 
-await test("PROCESS_HINTS row #5 contains the literal rule-fallow-brief-on-gate-failure id (H6 ordering-gate drift guard)", () => {
-  const processHints = buildProcessHints();
-  // H6 ordering gate at loop-describe-tool.js:94-106 uses substring match:
-  //   processHints.some((h) => h.includes(rule.id))
-  // A future contributor who paraphrases the row ("the fallow brief hint")
-  // would silently break the gate. This test catches that drift by reading
-  // the source-of-truth file state directly (bypasses the running MCP
-  // server's module cache, which loads PROCESS_HINTS once at startup).
-  const mentions = processHints.some((row) => row.includes(RULE_ID));
-  assert.strictEqual(mentions, true, `PROCESS_HINTS must contain literal substring ${RULE_ID}`);
-
-  // Also verify row count == 9 (4 original + 1 fallow brief + 3 reclassified
-  // advisory rule rows from plan 260714-1358-rule-vocabulary-realignment
-  // Phase 1, Q3 validation reversal + 1 required-status-check row).
-  assert.strictEqual(processHints.length, 10, "PROCESS_HINTS should have exactly 10 rows (9 prior + required-status-check-verify-combined-status appended)");
+await test("rule entry carries hint_text with literal rule id (Phase 3 invariant)", () => {
+  // Phase 3 (plans/260717-1826-unify-context-injection): the rule-derived
+  // process hint prose lives on the rule entry as `hint_text`. The H6
+  // substring check is replaced by: rule entry MUST carry hint_text and
+  // a registry entry MUST carry derived_from_rule === rule.id. The id-
+  // substring assertion is moved here to lock the rule's prose to its
+  // canonical identifier (a future contributor who paraphrases loses the
+  // canonical reference).
+  const entries = readRegistry(PROJECT_ROOT);
+  const rule = entries.find((e) => e.id === RULE_ID);
+  assert.ok(rule, `rule ${RULE_ID} must exist in registry`);
+  assert.ok(typeof rule.hint_text === "string" && rule.hint_text.length >= 20,
+    `rule ${RULE_ID} must carry hint_text (>=20 chars); Phase 3 invariant`);
+  assert.ok(
+    rule.hint_text.includes(RULE_ID),
+    `rule ${RULE_ID} hint_text must contain literal substring ${RULE_ID} (canonical reference)`,
+  );
 });

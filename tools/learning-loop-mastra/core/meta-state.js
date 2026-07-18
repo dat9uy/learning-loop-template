@@ -472,6 +472,15 @@ export const metaStateRuleEntrySchema = z.object({
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
+  // Phase 3 (plans/260717-1826-unify-context-injection): rule-derived
+  // process hint prose. Persisted on agent-checklist rule entries; the
+  // meta_state_promote_rule tool REQUIRES this on creation (actionable
+  // rejection), and the hint-renderer resolves `text` from `rule.hint_text`
+  // at SessionStart render time. Optional on the schema because non-
+  // agent-checklist rules (gate-enforced) don't need injection prose;
+  // the hint-renderer treats a missing rule hint as a skip-with-warning.
+  hint_text: z.string().min(20).optional()
+    .describe("Long-form hint prose (min 20 chars); required for agent-checklist rules promoted via meta_state_promote_rule. Resolved by core/hint-renderer.js at SessionStart render time."),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
   // Plan 260712-0724 follow-up (Fix B): parallel to change-log's applies_to
   // (line 180-186). Scope-narrowing that complements scope_predicate — used

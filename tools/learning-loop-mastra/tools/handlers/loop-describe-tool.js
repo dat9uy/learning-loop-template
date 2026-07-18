@@ -19,6 +19,22 @@ function firstSentence(description) {
   return first.length <= 120 ? first : `${first.slice(0, 117)}…`;
 }
 
+/**
+ * Render both hint blocks for a describe result. The rules map comes from the
+ * caller's already-loaded `promotedRules` so rule-derived hint text resolves
+ * from the same root as the rest of the response — never from a second
+ * `loadPromotedRules(process.cwd())` inside the builder (code-review I4,
+ * plans/260717-1826).
+ */
+function buildHintBlocks(promotedRules) {
+  return {
+    discoverability_hints: introspect.buildDiscoverabilityHints(),
+    process_hints: introspect.buildProcessHints({
+      rulesById: new Map(promotedRules.map((r) => [r.id, r])),
+    }),
+  };
+}
+
 export const loopDescribeTool = {
   name: "loop_describe",
   description: "Return the loop's current operational surface. **Recommended: call at session start to discover what the loop offers.** Supports tiered reads (hot/warm/cold/summary) to control context bloat. Use when you need to know what the loop offers, what rules are enforced, or what findings are active. The warm tier's `discoverability_hints` block surfaces short reminders of the loop's rules. Not for mutating state (use the `meta_state_*` or `record_*` tools instead).",
@@ -109,28 +125,13 @@ export const loopDescribeTool = {
         result.registry_stats = registryStats;
         // Compaction action hook (H7 mitigation): when eligible, surface a
         // single-shot hint pointing at the shell script. Kept separate from
-        // DISCOVERABILITY_HINTS so the 16-string invariant stays intact.
+        // the discoverability hints so the 16-string invariant stays intact.
         if (registryStats.compaction_eligible) {
           result.compaction_action_hook = `Registry compaction eligible at ${registryStats.raw_lines} raw lines — run \`pnpm exec compact-registry.sh --full\` to drop superseded versions (keep-latest-tombstone-per-id).`;
         }
         // M5: surface readAllEntriesForLineage cost so operators can monitor
         // warm-tier latency growth as the registry grows.
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        result.process_hints = introspect.buildProcessHints();
-
-        // H6 ordering gate: every agent-checklist rule must have a PROCESS_HINTS row.
-        const processHints = result.process_hints;
-        for (const rule of promotedRules) {
-          if (rule.pattern_type === "agent-checklist") {
-            const hasHint = processHints.some((h) => h.includes(rule.id));
-            if (!hasHint) {
-              warnings.push(
-                `H6 ordering gate: agent-checklist rule "${rule.id}" has no corresponding PROCESS_HINTS row. ` +
-                `Add a hint referencing this rule to core/loop-introspect.js PROCESS_HINTS.`,
-              );
-            }
-          }
-        }
+        Object.assign(result, buildHintBlocks(promotedRules));
 
         result.timing = { readAllEntriesForLineage_ms: lineageMs };
       } else if (tier === "cold") {
@@ -253,8 +254,7 @@ export const loopDescribeTool = {
         }
         result.description_mode = description_mode;
 
-        result.discoverability_hints = introspect.buildDiscoverabilityHints();
-        result.process_hints = introspect.buildProcessHints();
+        Object.assign(result, buildHintBlocks(promotedRules));
         result.cache_hit = cacheHit;
         result.built_at = builtAt;
         result.timing = { readAllEntriesForLineage_ms: lineageMs };

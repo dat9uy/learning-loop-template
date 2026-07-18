@@ -1,98 +1,74 @@
 import { z } from "zod";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
-import { buildDiscoverabilityHints, buildProcessHints } from "../../core/loop-introspect.js";
-
-export const HINT_KEY_MAP = {
-  "internalization-rule": 0,
-  "mechanism-check": 1,
-  "source-refs": 2,
-  "derive-refresh": 3,
-  "designs-no-code": 4,
-  "status-lifecycle": 5,
-  reopens: 6,
-  "rule-lifecycle": 7,
-  "canonical-tool": 8,
-  "surface-split": 9,
-  "reopens-script": 10,
-  "loop-get-instruction": 11,
-  "narrow-query": 12,
-  "phase-a-reframe": 13,
-  "session-id-query": 14,
-  "runtime-agnostic-features": 15,
-};
-
-export const HINT_KEY_MAP_PROCESS = {
-  "pnpm-test-discipline": 0,
-  "pr-body-registry-deltas": 1,
-  "runtime-agnostic-audit": 2,
-  "file-edit-drift-and-fingerprints": 8,
-};
-
-export const HINT_SUGGESTIONS = [
-  "Prefer `local:meta-state:<id>` source_refs and set `evidence_code_ref` to a code path so the loop can re-check it.",
-  "When you provide `evidence_code_ref`, `mechanism_check` defaults to true; pass `false` only if you intentionally want to opt out.",
-  "Use `local:meta-state:<id>` for citations; reserve `local:plans/...` markdown refs for the escape hatch.",
-  "Call `meta_state_derive_status` before resolving; call `meta_state_refresh_file_index({ path })` after refactoring cited code to re-ground the path's hash in the shared fingerprint index.",
-  "For design-only choices, log a change-log entry and cite its id in `source_refs`.",
-  "Use `stale` for past-TTL findings and `meta_state_re_verify` to re-validate; do not use the legacy `expired` status.",
-  "Set `reopens: ['<stale_id>']` on the new finding, then cascade-resolve the stale parent.",
-  "Query loop-design/rule lifecycle via `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` or `loop_describe({ tier: 'cold' })`.",
-  "Use the tool manifest + the tool-selection guide to pick tools; avoid `node -e` and direct file I/O to `meta-state.jsonl`.",
-  "AGENTS.md is the steering prompt; the tool manifest is deterministic; warm hints are at-start; the skill is prompt-author docs.",
-  "For cross-references, run `meta_state_relationship_validate`, report with `reopens`, then `meta_state_resolve({ cascade_from: [child] })`.",
-  "Use `loop_get_instruction` for on-demand lookup. Keep `meta-state.jsonl` (self-model), `product/**` (substrate), and template code separate when citing evidence.",
-  "Use `meta_state_list({ id: [...] })` for one-call resolution of cross-reference ids; use `{ ref_by, ref_field }` for 1-hop neighborhood queries. Reserve the unfiltered list for batch audit only.",
-  "Phase A reframe: the meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
-  "Hook-emitted batches: query by `session_id` via `meta_state_list`; do not client-side filter compact output.",
-  "Runtime-agnostic features: use shim-not-fork + cross-surface-iteration; audit with `check_runtime_agnostic` before shipping.",
-];
-
-export const HINT_SUGGESTIONS_PROCESS = [
-  "Long-running pnpm test discipline: per-namespace log files, read-loop stop conditions.",
-  "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
-  "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
-  // Indexes 3-7 are unmaintained legacy rows; suggestion backfill is a separate
-  // cleanup. Placeholder text keeps the array length aligned with PROCESS_HINTS
-  // so `HINT_KEY_MAP_PROCESS` lookups at those indexes return a defined string
-  // rather than undefined.
-  "Process hint at PROCESS_HINTS index 3: see `loop-introspect.js` `PROCESS_HINTS[3]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 4: see `loop-introspect.js` `PROCESS_HINTS[4]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 5: see `loop-introspect.js` `PROCESS_HINTS[5]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 6: see `loop-introspect.js` `PROCESS_HINTS[6]` (legacy row, suggestion backfill is a separate cleanup).",
-  "Process hint at PROCESS_HINTS index 7: see `loop-introspect.js` `PROCESS_HINTS[7]` (legacy row, suggestion backfill is a separate cleanup).",
-  // Index 8 — pretest-seed convention + escape hatch (matches PROCESS_HINTS[8]).
-  "File-edit drift and fingerprints: `file-index.jsonl` is an UNTRACKED regen artifact (gitignored) rebuilt by the seed step; pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. `upsertFileIndexEntry` is a true no-op on unchanged (key, hash) so re-seeding without code change keeps the cache warm. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
-];
+import { listHints, findHintBySlug, resolveHintText } from "../../core/hint-registry.js";
+import { loadPromotedRules } from "../../core/gate-logic.js";
+import { resolveRoot } from "#lib/resolve-root.js";
 
 /**
- * Resolve a hint key by searching both discoverability and process hint maps.
- * Returns { hint, suggestion, source } or null if not found.
+ * Phase 2 (plans/260717-1826-unify-context-injection): HINT_KEY_MAP* and
+ * HINT_SUGGESTIONS* are no longer hand-maintained parallel arrays. The slug
+ * → entry resolution is derived from the registry at module-load time, and
+ * the numeric-index back-compat is preserved by mapping numeric keys to the
+ * position-in-kind-filtered order (Validation 4).
+ *
+ * Code-review C2 fix (plans/260717-1826): resolution is anchored to the
+ * FIXED registry order, never to the shrinkable buildProcessHints() output.
+ * When a rule-derived entry's rule is missing/inactive, the old code indexed
+ * the shrunk array with fixed registry positions — every lookup after the
+ * skipped position returned the next entry's hint with this entry's
+ * suggestion. Now: numeric index = registry position (stable), slug =
+ * registry lookup, text = resolveHintText (same shared path as the
+ * renderer), suggestion = the same registry entry's suggestion. A key whose
+ * rule is unavailable returns an explicit error instead of wrong content.
+ *
+ * The derived maps are exported for test inspection; consumers should not
+ * depend on the exact shape.
  */
-function resolveHint(key) {
-  const hints = buildDiscoverabilityHints();
-  const processHints = buildProcessHints();
+function buildSlugMaps() {
+  const discoverability = listHints({ kind: "discoverability" });
+  const process = listHints({ kind: "process" });
+  const HINT_KEY_MAP = {};
+  const HINT_KEY_MAP_PROCESS = {};
+  discoverability.forEach((e, i) => { HINT_KEY_MAP[e.slug] = i; });
+  process.forEach((e, i) => { HINT_KEY_MAP_PROCESS[e.slug] = i; });
+  return { HINT_KEY_MAP, HINT_KEY_MAP_PROCESS };
+}
 
-  // Check discoverability map first
-  const discIndex = typeof key === "number" ? key : HINT_KEY_MAP[key];
-  if (discIndex !== undefined && discIndex >= 0 && discIndex < hints.length) {
+const DERIVED = buildSlugMaps();
+
+const DISCOVERABILITY_ENTRIES = listHints({ kind: "discoverability" });
+const PROCESS_ENTRIES = listHints({ kind: "process" });
+
+/**
+ * Resolve a hint key against the fixed registry order.
+ * Returns { hint, suggestion, source } on success, { unavailable, entry }
+ * when the entry exists but its rule cannot supply text, or null when the
+ * key is unknown.
+ */
+function resolveHint(key, rulesById) {
+  let entry = null;
+  if (typeof key === "string") {
+    entry = findHintBySlug(key);
+  } else if (typeof key === "number" && Number.isInteger(key) && key >= 0) {
+    if (key < DISCOVERABILITY_ENTRIES.length) {
+      entry = DISCOVERABILITY_ENTRIES[key];
+    } else {
+      const procIdx = key - DISCOVERABILITY_ENTRIES.length;
+      if (procIdx < PROCESS_ENTRIES.length) entry = PROCESS_ENTRIES[procIdx];
+    }
+  }
+  if (!entry) return null;
+
+  const text = resolveHintText(entry, rulesById);
+  if (text === null) {
     return {
-      hint: hints[discIndex],
-      suggestion: HINT_SUGGESTIONS[discIndex],
-      source: "discoverability",
+      unavailable:
+        `rule "${entry.derived_from_rule}" missing, inactive, scope-filtered, ` +
+        `or has no hint_text — the hint is not renderable in this session`,
+      entry,
     };
   }
-
-  // Check process map
-  const procIndex = typeof key === "number" ? (key - hints.length) : HINT_KEY_MAP_PROCESS[key];
-  if (procIndex !== undefined && procIndex >= 0 && procIndex < processHints.length) {
-    return {
-      hint: processHints[procIndex],
-      suggestion: HINT_SUGGESTIONS_PROCESS[procIndex],
-      source: "process",
-    };
-  }
-
-  return null;
+  return { hint: text, suggestion: entry.suggestion, source: entry.kind };
 }
 
 export const loopGetInstructionTool = {
@@ -109,20 +85,27 @@ export const loopGetInstructionTool = {
   },
   handler: async ({ key }) => {
     const keys = Array.isArray(key) ? key : [key];
+    // One rule load per call, resolved through the canonical root (GATE_ROOT
+    // override in tests) — never from process.cwd().
+    const rulesById = new Map(loadPromotedRules(resolveRoot()).map((r) => [r.id, r]));
     const results = [];
 
     for (const k of keys) {
-      const resolved = resolveHint(k);
-      if (resolved) {
+      const resolved = resolveHint(k, rulesById);
+      if (resolved && !resolved.unavailable) {
         results.push({
           key: k,
-          index: resolved.source === "discoverability"
-            ? (typeof k === "number" ? k : HINT_KEY_MAP[k])
-            : undefined,
+          index: typeof k === "number"
+            ? k
+            : (resolved.source === "discoverability"
+              ? DERIVED.HINT_KEY_MAP[k]
+              : DERIVED.HINT_KEY_MAP_PROCESS[k]),
           hint: resolved.hint,
           suggestion: resolved.suggestion,
           source: resolved.source,
         });
+      } else if (resolved && resolved.unavailable) {
+        results.push({ key: k, error: `Hint unavailable for key "${k}": ${resolved.unavailable}` });
       } else {
         results.push({ key: k, error: `Unknown hint key: ${k}` });
       }
@@ -133,3 +116,8 @@ export const loopGetInstructionTool = {
     };
   },
 };
+
+// Re-export the derived maps for test introspection. Production code should
+// not depend on these — use the slug via `findHintBySlug` from the registry.
+export const HINT_KEY_MAP = DERIVED.HINT_KEY_MAP;
+export const HINT_KEY_MAP_PROCESS = DERIVED.HINT_KEY_MAP_PROCESS;

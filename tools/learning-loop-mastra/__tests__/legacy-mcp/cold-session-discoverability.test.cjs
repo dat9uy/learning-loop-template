@@ -18,8 +18,15 @@
 //      a fresh registry must write nothing.
 //   6. Stale entries do not trigger session-id churn — regression for TTL
 //      recursion.
-//   7. Hook mirror hint count matches canonical — reads both files, compares
-//      array lengths (not regex-based quote counting).
+//   7. REMOVED in plans/260717-1826-unify-context-injection Phase 1 — the
+//      factory hook's LOCAL_* mirror is gone; rendering is single-source via
+//      core/loop-introspect.js. Replaced by
+//      __tests__/factory-hook-single-source.test.cjs which exercises the hook
+//      directly via its exported main() and asserts byte-equality against the
+//      canonical builders.
+//
+// (The HINT_SUGGESTIONS / HINT_KEY_MAP alignment-count assertions previously
+// inside test #7 moved into __tests__/hint-registry.test.cjs in Phase 2.)
 
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, readFileSync, readdirSync, existsSync, writeFileSync } = require("node:fs");
@@ -302,127 +309,6 @@ describe("cold-session discoverability", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Test 7: Hook mirror hint parity (exact string equality + suggestion/key map)
+  // Test 7: REMOVED (Phase 1) — see header note above.
   // ---------------------------------------------------------------------------
-
-  describe("hook mirror hint parity", () => {
-    let hookSource;
-    let canonicalHints;
-    let loopGetInstruction;
-
-    beforeAll(async () => {
-      const hookPath = join(projectRoot, ".factory/hooks/loop-surface-inject.cjs");
-      assert.ok(existsSync(hookPath), "hook file must exist");
-      hookSource = readFileSync(hookPath, "utf8");
-
-      const canonicalPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
-      const { buildDiscoverabilityHints } = await import(pathToFileURL(canonicalPath).href);
-      canonicalHints = buildDiscoverabilityHints();
-
-      const toolPath = join(projectRoot, "tools/learning-loop-mastra/tools/handlers/loop-get-instruction-tool.js");
-      loopGetInstruction = await import(pathToFileURL(toolPath).href);
-    });
-
-    afterAll(() => {
-      hookSource = null;
-      canonicalHints = null;
-      loopGetInstruction = null;
-    });
-
-    function parseFrozenStringArray(source, varName) {
-      const regex = new RegExp(`${varName}\\s*=\\s*Object\\.freeze\\(\\[([\\s\\S]*?)\\]\\)`);
-      const match = source.match(regex);
-      assert.ok(match, `${varName} array not found in source`);
-      let body = match[1].trim();
-      if (body.endsWith(",")) body = body.slice(0, -1);
-      return JSON.parse(`[${body}]`);
-    }
-
-    test("canonical and hook LOCAL_DISCOVERABILITY_HINTS arrays match exactly (drift prevention)", () => {
-      const hookHints = parseFrozenStringArray(hookSource, "LOCAL_DISCOVERABILITY_HINTS");
-
-      assert.strictEqual(
-        hookHints.length,
-        canonicalHints.length,
-        `Hook LOCAL_DISCOVERABILITY_HINTS length (${hookHints.length}) must match canonical (${canonicalHints.length}).`,
-      );
-
-      for (let i = 0; i < canonicalHints.length; i++) {
-        assert.strictEqual(
-          hookHints[i],
-          canonicalHints[i],
-          `Hint[${i}] differs between hook mirror and canonical source.`,
-        );
-      }
-    });
-
-    test("canonical PROCESS_HINTS and hook LOCAL_PROCESS_HINTS arrays match exactly (drift prevention)", async () => {
-      const hookProcessHints = parseFrozenStringArray(hookSource, "LOCAL_PROCESS_HINTS");
-
-      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
-      const { buildProcessHints } = await import(pathToFileURL(canonicalToolPath).href);
-      const canonicalProcessHints = buildProcessHints();
-
-      assert.strictEqual(
-        hookProcessHints.length,
-        canonicalProcessHints.length,
-        `Hook LOCAL_PROCESS_HINTS length (${hookProcessHints.length}) must match canonical (${canonicalProcessHints.length}).`,
-      );
-
-      for (let i = 0; i < canonicalProcessHints.length; i++) {
-        assert.strictEqual(
-          hookProcessHints[i],
-          canonicalProcessHints[i],
-          `PROCESS_HINTS[${i}] differs between hook mirror and canonical source.`,
-        );
-      }
-    });
-
-    test("HINT_SUGGESTIONS has one entry per discoverability hint", () => {
-      assert.ok(loopGetInstruction.HINT_SUGGESTIONS, "HINT_SUGGESTIONS must be exported");
-      assert.strictEqual(
-        loopGetInstruction.HINT_SUGGESTIONS.length,
-        canonicalHints.length,
-        "HINT_SUGGESTIONS length must match discoverability hint count.",
-      );
-    });
-
-    test("HINT_KEY_MAP covers every discoverability hint index", () => {
-      assert.ok(loopGetInstruction.HINT_KEY_MAP, "HINT_KEY_MAP must be exported");
-      const mappedIndices = new Set(Object.values(loopGetInstruction.HINT_KEY_MAP));
-      for (let i = 0; i < canonicalHints.length; i++) {
-        assert.ok(
-          mappedIndices.has(i),
-          `HINT_KEY_MAP is missing an entry for hint index ${i}.`,
-        );
-      }
-    });
-
-    test("HINT_KEY_MAP_PROCESS covers every PROCESS_HINTS index (closes silent-rot gap)", async () => {
-      assert.ok(loopGetInstruction.HINT_KEY_MAP_PROCESS, "HINT_KEY_MAP_PROCESS must be exported");
-      const canonicalToolPath = join(projectRoot, "tools/learning-loop-mastra/core/loop-introspect.js");
-      const { buildProcessHints } = await import(pathToFileURL(canonicalToolPath).href);
-      const processHints = buildProcessHints();
-
-      // Every mapped index MUST be within the live PROCESS_HINTS bounds. The
-      // pre-existing 3-entry HINT_KEY_MAP_PROCESS silently lagged the 8-entry
-      // PROCESS_HINTS; this test catches future drift by asserting on every
-      // key the lookup table exports.
-      for (const [slug, idx] of Object.entries(loopGetInstruction.HINT_KEY_MAP_PROCESS)) {
-        assert.ok(
-          Number.isInteger(idx) && idx >= 0 && idx < processHints.length,
-          `HINT_KEY_MAP_PROCESS["${slug}"] = ${idx} is out of bounds for PROCESS_HINTS length ${processHints.length}`,
-        );
-      }
-    });
-
-    test("loop_get_instruction resolves pnpm-test-discipline from PROCESS_HINTS cross-array routing", async () => {
-      const result = await loopGetInstruction.loopGetInstructionTool.handler({ key: "pnpm-test-discipline" });
-      const parsed = JSON.parse(result.content[0].text);
-      assert.strictEqual(parsed.results.length, 1);
-      assert.ok(parsed.results[0].hint.includes("pnpm test"), "must resolve the process hint");
-      assert.strictEqual(parsed.results[0].source, "process");
-      assert.strictEqual(parsed.results[0].error, undefined);
-    });
-  });
 });

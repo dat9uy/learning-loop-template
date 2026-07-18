@@ -11,6 +11,12 @@ import {
   isBoundPath,
 } from "./change-log-bound-paths.js";
 import { resolveToolImportUrl } from "./manifest-loader.js";
+// Phase 2 (plans/260717-1826-unify-context-injection): the canonical hint
+// source is core/hint-registry.js. The frozen DISCOVERABILITY_HINTS /
+// PROCESS_HINTS consts that lived here (2026-06-12 → 2026-07-17) are deleted;
+// the builders below are thin projections over the registry — same return
+// shape, same order, no call-site changes for loop_describe consumers.
+import { listHints, resolveHintText } from "./hint-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -104,55 +110,62 @@ function listAllMetaCategories() {
   return [...META_STATE_FINDING_CATEGORIES];
 }
 
-const DISCOVERABILITY_HINTS = Object.freeze([
-  "To cite a thing, point at the code: `meta_state_report({ evidence_code_ref: 'path/to/file.js:line' })`. The loop will hash and re-check it.",
-  "When you pass `evidence_code_ref` to `meta_state_report`, `mechanism_check` is auto-defaulted to `true` (so the loop will hash and re-check the code). Pass `mechanism_check: false` explicitly to opt out — the response will include a `warnings` array explaining the tradeoff.",
-  "For `source_refs`, prefer `local:meta-state:<id>` (cite a finding). Markdown refs (`local:plans/...`) are accepted for the escape hatch but discouraged.",
-  "Run `meta_state_derive_status({ id })` to re-check if a finding is still true. Run `meta_state_refresh_file_index({ path })` to re-hash a cited path's code in the shared fingerprint index after a refactor — one call re-grounds every finding anchored to that path.",
-  "For designs without code, cite the change-log that records the design (`meta_state_log_change` with `change_target: '<plan-path>'`).",
-  "Findings have 3 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log). `archived` is applied at runtime by `meta_state_archive` (not in the persisted enum). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed in plans 260611-1000 and 260707-0812; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
-  "For reopens: set reopens: ['<old_stale_id>'] on the new finding at report time, then cascade-resolve the parent via meta_state_resolve({id: old_id, cascade_from: [child_id]}). The cascade closes the stale parent in 1 step.",
-  "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
-  "To pick a tool, prefer the canonical MCP tool over `node -e` escape hatches or direct file I/O. The 4-question framework: what (what does it do), when (when to use vs alternatives), inputs (what it accepts), returns (what shape comes back). See `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md` for the intent to tool mapping.",
-  "AGENTS.md is the priority-1 prompt (the steering layer: shape of the loop, rules, canonical paths). The tool manifest is the deterministic tool-selection surface. `loop_describe` warm tier `discoverability_hints` is the at-start-up injection. The `learning-loop` skill is the prompt-author docs. Each surface has a distinct role; do not duplicate content across them.",
-  "For 'X is related to Y' prompts: (1) meta_state_relationship_validate to lint; (2) meta_state_report({..., reopens: ['<orphan_id>']}); (3) meta_state_resolve({id: parent, cascade_from: [new_finding_id]}) to close the stale parent in 1 step.",
-  "On-demand hint lookup: use `loop_get_instruction({ key: '<slug>' | <index> })` when a hint has scrolled out of context or you need a cross-reference pattern. The meta-state registry (`meta-state.jsonl`) is the loop's self-model; `product/**` is the replaceable substrate that provokes learning; `tools/learning-loop-mastra/{tools/handlers,hooks/universal}/**` and `schemas/**` are the template rules. Cite the correct surface.",
-  "Narrow query: prefer `meta_state_list({ id: [...] })` or `meta_state_list({ ref_by, ref_field })` over the unfiltered dump. The unfiltered list is for batch audit / sweep only; the narrow query is the default.",
-  "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
-  "For hook-emitted batches, query by `session_id` directly: `meta_state_list({ session_id: '...' })`. Do not filter `compact: true` output client-side — compact is for display, not for client-side filtering.",
-  "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js.",
-]);
-
-// Process-specific rules: agent behavior under operational conditions.
-// Separated from DISCOVERABILITY_HINTS (meta-surface contracts) per finding meta-260622T1713Z.
-const PROCESS_HINTS = Object.freeze([
-  "Test discipline (deterministic parse). Iterate via `pnpm test:iter` — runs `vitest run --bail=1`, suppresses raw stdout, and prints only the parsed summary from `.test-logs/vitest-results.json` (shape numTotalTests/numFailedTests/numTotalTestSuites + testResults[].assertionResults[]; status passed/failed). One file: `pnpm test:one <path>` — a single command that runs vitest and prints the parsed summary via `bash tools/scripts/vitest-failures.sh` (vitest's json reporter writes `.test-logs/vitest-results.json` on every run regardless of stdout, so no redirect is needed; exit 0 green / 1 failed / 2 missing-or-invalid). Post-edit: `pnpm exec vitest --changed`. The bash gate blocks `vitest run`/`pnpm test` piped to `tail`/`grep` — the JSON is the source of truth, not raw stdout. Do NOT redirect vitest stdout to a /tmp log and grep it (a two-command split that evades the gate). Do NOT grep raw vitest stdout, re-read passing tests, or hand-write `python -c`/`node -e` to parse the JSON. Rule 2 (same-file-read): if you read the same file >5 times in 60s with no Edit/Write/Bash, STOP — write a one-line journal to `plans/reports/` and ask the operator.",
-  "PR-body registry deltas. Every PR that touches `meta-state.jsonl` must enumerate its deltas in the PR body: (a) sweep entries by id+reason, (b) resolved entries by id+resolution note, (c) new entries by id+initial status, (d) promoted rules by finding_id+rule_id, (e) superseded/archived entries by id+target. See `rule-pr-body-registry-deltas` in `meta-state.jsonl` for the canonical rule body and enforcement shape. The CI workflow `meta-state-pr-body-advisory.yml` surfaces the deltas in the PR's Checks tab.",
-  "Runtime-agnostic audit. Before shipping a new feature, audit it against the 6-item checklist in `rule-runtime-agnostic-features` (process rule: core-in-universal-location, shims-in-sync, protocol-adapter-i/o, manifest-registered, cross-surface-iteration, parameterized-for-new-surfaces). Use the `check_runtime_agnostic` MCP tool to verify. The regression test is at `tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js`.",
-  "Tool integration checklist. Before wiring a new tool into CI or repo automation, consult the 4-item checklist in `rule-tool-integration-same-commit-dep`: (1) same-commit dependency — if the workflow adds `pnpm exec <tool>` / `npx <tool>` / `npm run <script>`, the tool MUST be in `devDependencies` in the SAME commit; (2) baseline flag format — `fallow <sub> --save-baseline` (audit) and `--save-regression-baseline` (regression) produce INCOMPATIBLE JSON; (3) baseline storage — `fallow` auto-creates `.fallow/.gitignore: *`; use `<root>/baselines/fallow/` (NOT `plans/<slug>/reports/fallow/`, which couples CI to a plans directory); (4) third-party Action SHA pin — when swapping `pnpm exec <tool>` for `uses: <vendor>/<tool>@<commit-sha>`, pin to commit SHA (not tag) and verify the Action provides cryptographic signature verification (e.g., fallow-rs/fallow v2: Ed25519 + SHA-256 + sentinel at `npm/fallow/scripts/{verify-binary,lazy-verify,run-binary}.js`); `fallow-rs/fallow@<commit-sha>` is the canonical example. See `tools/learning-loop-mastra/core/README.md` §Tool integration checklist.",
-  "Fallow gate triage. When `pnpm fallow:gate` (or any local `fallow audit --gate new-only`) exits non-zero from pre-commit, do NOT re-parse the human-readable prose. Run `pnpm fallow:brief` next: it emits a compact-CSV stream (one finding per line: `high-complexity:<path>:<line>:<symbol>:cyclomatic=N,severity=<level>,crap=N,...`). The brief stream is much smaller than the gate's decorated human report and is machine-actionable when at least one finding exists — grep for `severity=` (filter by the finding's actual severity per its meta-state entry, which may be `warning` not `high`); ignore baseline-inherited lines. On a clean tree the brief is ~50 B with no action needed. See `rule-fallow-brief-on-gate-failure` in `meta-state.jsonl` for the full contract.",
-  "Short slug for risk records. Before creating a YAML record under `records/**/risks/`, use a short kebab-case slug (≤40 chars). Slug generators should match `rule-short-slug-for-risk-records` in `meta-state.jsonl`: `sanitizeSlug` in `tools/learning-loop-mcp/record-writer.js` is the canonical generator. Use `check_record_slug` MCP tool to verify compliance before writing.",
-  "Import-chain analysis after tool deletion. When deleting a tool file or any .js file under `tools/learning-loop-mcp/`, do NOT rely on keyword matching (`grep` for the deleted file's basename). Instead, run import-chain analysis: walk all .js files, extract `import`/`require` statements, build a reverse map, and find files with zero live importers. This is the canonical dead-code detection method (replaces the keyword-based cleanup process). See `rule-import-chain-analysis-after-tool-deletion` in `meta-state.jsonl`.",
-  "Assertinvariant at boundary. Every mutation operation in `core/` that owns an invariant the agent depends on (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch) MUST be wrapped with `assertinvariant(operation, {accept: {context, check}, returnOnFail, root, logTo})` from `core/operation-invariant.js`. The wrapper is pre-state-only; `accept.context()` is called INSIDE the lock at the call site. Use `check_assertinvariant_coverage` MCP tool to audit. See `rule-assertinvariant-at-boundary` in `meta-state.jsonl`.",
-  "File-edit drift and fingerprints. Fingerprints in `file-index.jsonl` are load-bearing for loop grounding; `file-index.jsonl` is an UNTRACKED regen artifact (gitignored — see `.gitignore`) rebuilt by the seed step at test/pre-commit/CI time. `pnpm test` auto-seeds via the prepended `tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs` step before `vitest run`, so a legitimate Edit/Write during a fix is absorbed at test time without operator action. For deliberate per-path drift acceptance with operator audit (a gate-log entry recording who/when/why), use `meta_state_refresh_file_index({path, reason})` instead — `seed-file-index.mjs` is a mechanical bulk re-seed that intentionally omits per-path gate-log entries (git history is its audit). If you edit files DURING a debug/test loop and hit a `file-index.jsonl` drift error before re-running the suite, run `node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs` once (or set `SKIP_PRESEED=1` for a single pre-commit bypass) before re-running tests. The cold-tier cache is keyed on both `meta-state.jsonl` AND `file-index.jsonl` SHAs — either change invalidates. `upsertFileIndexEntry` is a true no-op on an unchanged (key, hash) so re-seeding without code change keeps the cache warm. Do NOT call refresh per Edit/Write when the next `pnpm test` will do it; targeted scripts (`pnpm test:cold-session`, `pnpm test:debug`, `pnpm check:freshness`) do NOT run the seed step by default, so cold-session runs against a stale file-index can still surface drift at vitest time.",
-  "Required-status-check satisfaction verification. Before claiming a GitHub branch-protection required status check is satisfied, verify via `gh pr view <n> --json mergeStateStatus` == CLEAN (or `commits/<sha>/check-runs[].name` equals a required `context` with `conclusion: success`), NOT via `gh pr view --json mergeable` — `mergeable` reports the merge-button state and honors `enforce_admins:false` admin bypass, so it returns MERGEABLE regardless of required-check state (a false-positive completion claim). GitHub matches a required context against the check-run NAME, which for Actions is the JOB id, NOT the workflow `name:` field; if they differ, bind the context to the job id via `tools/scripts/setup-branch-protection.mjs` before claiming done. See `rule-required-status-checks-verify-combined-status` in `meta-state.jsonl` for the full contract.",
-]);
-
 /**
  * Return the operator-curated discoverability hints used by loop_describe
- * warm tier and the SessionStart hook. Pure function — no I/O.
+ * warm tier and the SessionStart hook. Back-compat projection over the
+ * canonical registry (Phase 2 of plan 260717-1826-unify-context-injection).
+ *
+ * Returns a frozen array — preserved from the pre-Phase-2 contract.
+ * Pure function — no I/O.
  */
 export function buildDiscoverabilityHints() {
-  return DISCOVERABILITY_HINTS;
+  return Object.freeze(listHints({ kind: "discoverability" }).map((e) => e.text));
 }
 
 /**
  * Return operator-curated process rules (agent behavior under operational
- * conditions). Separated from discoverability hints per finding meta-260622T1713Z.
- * Pure function — no I/O.
+ * conditions). Phase 3 (plans/260717-1826-unify-context-injection): the
+ * 8 rule-derived process entries resolve `text` from `rule.hint_text` at
+ * call time. The 2 standalone rows (pnpm-test-discipline + file-edit-drift-
+ * and-fingerprints) keep inline text.
+ *
+ * Skip semantics: a rule-derived entry whose rule is missing/inactive/
+ * scope-filtered is DROPPED from the returned array (correct for injection).
+ * Consumers doing positional lookups must not index this array with registry
+ * positions — loop_get_instruction resolves against the fixed registry order
+ * instead (code-review C2).
+ *
+ * NOT pure — without a `rulesById` argument it reads the registry from
+ * `process.cwd()` (kept for the .claude hooks, whose runtime guarantees
+ * cwd = project root). Callers that already have rules loaded from a known
+ * root MUST pass them via `rulesById` (code-review I4).
+ *
+ * @param {object} [opts]
+ * @param {Map<string, {hint_text: string}>} [opts.rulesById] — precomputed
+ *   rule map; when omitted, the function reads the registry from the project
+ *   root resolved from `process.cwd()`.
  */
-export function buildProcessHints() {
-  return PROCESS_HINTS;
+export function buildProcessHints({ rulesById } = {}) {
+  let ruleMap = rulesById;
+  if (!ruleMap) {
+    // Lazy-read the registry from the project root.
+    const projectRoot = process.cwd();
+    const rules = loadPromotedRules(projectRoot);
+    ruleMap = new Map();
+    for (const r of rules) ruleMap.set(r.id, r);
+  }
+  const out = [];
+  for (const entry of listHints({ kind: "process" })) {
+    // Shared resolution path (resolveHintText): standalone → inline text;
+    // rule-derived → rule.hint_text, skipped (dropped from the array) when
+    // the rule is missing/inactive/scope-filtered. Skipping is correct for
+    // injection — but consumers doing POSITIONAL lookups must never index
+    // this array with registry positions (code-review C2); loop_get_instruction
+    // resolves against the fixed registry order instead.
+    const text = resolveHintText(entry, ruleMap);
+    if (text) out.push(text);
+  }
+  return out;
 }
 
 /**

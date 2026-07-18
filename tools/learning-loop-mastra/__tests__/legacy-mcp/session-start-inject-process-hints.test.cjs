@@ -35,8 +35,11 @@ test("process-hints hook emits full PROCESS_HINTS via stdout additionalContext",
   assert.ok(ac.includes("pnpm test:iter"), "must inject the State-3 iterate wrapper pointer");
   assert.ok(ac.includes("Do NOT grep raw vitest stdout"), "must inject row #1 (the test-parsing rule)");
   assert.ok(ac.includes("vitest-failures.sh"), "must inject the canonical parser script reference");
-  // Full set: 9 numbered hints (1..9) — proves delivery is complete, not partial.
-  assert.ok(/^1\. /m.test(ac) && /^9\. /m.test(ac), "must number process hints 1 through 9 (full set)");
+  // Full set: 10 numbered hints (1..10) — proves delivery is complete, not partial.
+  // Phase 3 (plans/260717-1826-unify-context-injection): the post-backfill
+  // count is 8 rule-derived + 2 standalone = 10. The required-status-check row
+  // appended in plan 260714-1358 makes 10 (was 9 pre-append, pre-Phase-3).
+  assert.ok(/^1\. /m.test(ac) && /^10\. /m.test(ac), "must number process hints 1 through 10 (full set)");
 });
 
 // Fail-open: a build error must emit a degraded marker string (not crash with

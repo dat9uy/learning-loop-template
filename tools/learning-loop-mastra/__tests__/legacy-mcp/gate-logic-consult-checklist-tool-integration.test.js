@@ -1,10 +1,8 @@
 import assert from "node:assert";
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { test } from "vitest";
 import { applyPromotedRules } from "../../core/gate-logic.js";
 import { metaStateRuleEntrySchema, readRegistry } from "../../core/meta-state.js";
-import { buildProcessHints } from "../../core/loop-introspect.js";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
@@ -46,34 +44,55 @@ await test("rule-tool-integration-same-commit-dep loads through schema and is a 
   assert.deepStrictEqual(result, { decision: "ok" });
 });
 
-await test("PROCESS_HINTS has a row containing the literal rule-tool-integration-same-commit-dep id (R-HIGH-7 drift guard)", () => {
-  const processHints = buildProcessHints();
-  // H6 ordering gate at loop-describe-tool.js:90-102 uses substring match:
-  //   processHints.some((h) => h.includes(rule.id))
-  // A future contributor who paraphrases the row ("the tool-integration checklist")
-  // would silently break the gate. This test catches that drift.
-  const mentions = processHints.some((row) => row.includes(RULE_ID));
-  assert.strictEqual(mentions, true, `PROCESS_HINTS must contain literal substring ${RULE_ID}`);
+await test("rule entry carries hint_text mentioning SHA pin (Phase 3 invariant)", () => {
+  // Phase 3 (plans/260717-1826-unify-context-injection): the rule-derived
+  // process hint prose lives on the rule entry as `hint_text`. The legacy
+  // PROCESS_HINTS-substring check is replaced by this invariant: the rule
+  // entry's hint_text MUST reference SHA pinning (the 4th checklist item).
+  const entries = readRegistry(PROJECT_ROOT);
+  const rule = entries.find((e) => e.id === RULE_ID);
+  assert.ok(rule, `rule ${RULE_ID} must exist in registry`);
+  assert.strictEqual(rule.entry_kind, "rule");
+  assert.ok(typeof rule.hint_text === "string" && rule.hint_text.length >= 20,
+    `rule ${RULE_ID} must carry hint_text (>=20 chars); Phase 3 invariant`);
+  assert.match(
+    rule.hint_text,
+    /commit SHA/,
+    `rule ${RULE_ID} hint_text must mention "commit SHA" pinning`,
+  );
+  assert.match(
+    rule.hint_text,
+    /third-party Action SHA pin/i,
+    `rule ${RULE_ID} hint_text must mention 3rd-party Action SHA pin`,
+  );
 });
 
-await test("hook mirror LOCAL_PROCESS_HINTS contains the same rule id (cold-session parity guard)", () => {
-  // cold-session-discoverability.test.cjs:366-386 enforces strictEqual, but that
-  // test runs in isolation. This test asserts the literal id is present in the
-  // hook mirror array, giving a faster signal if the mirror is forgotten.
-  // PROJECT_ROOT is resolved via import.meta.dirname + 4 levels up so the path
-  // is stable across runner cwd variations (namespaced runner sets cwd to
-  // tools/learning-loop-mastra/, so a relative ".factory/..." would break).
-  const hookSource = readFileSync(join(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"), "utf8");
+await test("factory hook renders the rule id verbatim (Phase 1 single-source guard)", () => {
+  // plans/260717-1826-unify-context-injection Phase 1: the factory hook no
+  // longer carries a LOCAL_PROCESS_HINTS mirror — it imports the canonical
+  // builders from core/loop-introspect.js. The drift-prevention guard here
+  // therefore moves down to "the canonical builder must carry the rule id"
+  // (already asserted by the prior PROCESS_HINTS test) AND the factory hook
+  // source must not contain the rule id literal (otherwise a stale mirror
+  // would silently drift). The hook renders the canonical text by reference,
+  // so this is a stronger invariant than the old parity check.
+  const { readFileSync } = require("node:fs");
+  const hookSource = readFileSync(require("node:path").join(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs"), "utf8");
   assert.ok(
-    hookSource.includes(RULE_ID),
-    `LOCAL_PROCESS_HINTS in .factory/hooks/loop-surface-inject.cjs must contain literal substring ${RULE_ID}`,
+    !hookSource.includes("LOCAL_PROCESS_HINTS"),
+    "factory hook must not carry a LOCAL_PROCESS_HINTS mirror (Phase 1 invariant)",
+  );
+  assert.ok(
+    !hookSource.includes(RULE_ID),
+    `factory hook must not embed the rule id literal ${RULE_ID} (single-source renders it from core)`,
   );
 });
 
 // Phase 3 of plans/260629-2011-fallow-tools-v2-action-swap/: extend the rule
 // with a 4th item covering third-party GitHub Action SHA pinning. TDD guard:
-// the live registry rule MUST carry the 4th item; PROCESS_HINTS MUST mention
-// SHA pinning. If a future contributor reverts either, these tests fail.
+// the live registry rule MUST carry the 4th item AND the hint_text (Phase 3
+// invariant) must mention SHA pinning. If a future contributor reverts either,
+// these tests fail.
 await test("registry rule has 4th item covering 3rd-party Action SHA pin", () => {
   const entries = readRegistry(PROJECT_ROOT);
   const rule = entries.find((e) => e.id === RULE_ID);
@@ -94,13 +113,13 @@ await test("registry rule has 4th item covering 3rd-party Action SHA pin", () =>
   );
 });
 
-await test("PROCESS_HINTS mentions 3rd-party Action SHA pin", () => {
-  const hints = buildProcessHints();
-  const matched = hints.find(
-    (h) => /fallow-rs\/fallow@<commit-sha>/.test(h) || /third-party Action.*SHA/i.test(h) || /SHA.{0,40}pin/i.test(h),
-  );
-  assert.ok(
-    matched,
-    "PROCESS_HINTS row must reference SHA pinning for third-party Actions (e.g., `fallow-rs/fallow@<commit-sha>` or 'third-party Action SHA pin')",
+await test("rule hint_text mentions 3rd-party Action SHA pin (Phase 3 invariant)", () => {
+  const entries = readRegistry(PROJECT_ROOT);
+  const rule = entries.find((e) => e.id === RULE_ID);
+  assert.ok(rule, `rule ${RULE_ID} must exist in registry`);
+  assert.match(
+    rule.hint_text,
+    /fallow-rs\/fallow@<commit-sha>|third-party Action SHA pin|SHA.{0,40}pin/i,
+    "rule hint_text must reference SHA pinning for third-party Actions",
   );
 });

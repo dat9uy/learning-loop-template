@@ -1,7 +1,12 @@
-import { describe, test } from "vitest";
+import { describe, test, beforeEach, afterEach } from "vitest";
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { loopGetInstructionTool } from "../../tools/handlers/loop-get-instruction-tool.js";
 import { withMcpServer } from "../with-mcp-server.js";
+
+const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
 
 describe("loop_get_instruction", () => {
   test("returns hint by named slug 'reopens-script'", async () => {
@@ -52,6 +57,92 @@ describe("loop_get_instruction", () => {
   test("schema advertises key as string | number | array", () => {
     const keySchema = loopGetInstructionTool.schema.key;
     assert.ok(keySchema, "schema.key should be defined");
+  });
+});
+
+describe("loop_get_instruction (rule-skip stability)", () => {
+  // Regression guard for the positional-misalignment defect found in review:
+  // when a rule-derived entry's rule is missing/inactive, buildProcessHints()
+  // shrinks its output array. Resolution must stay anchored to the fixed
+  // registry order — slug/numeric lookups after the skipped position must
+  // still return their OWN hint, and the skipped slug must error explicitly
+  // instead of returning the next entry's text.
+  //
+  // Fixture: copy the live registry minus one rule
+  // (rule-fallow-brief-on-gate-failure, process registry position 4), plus a
+  // .mcp.json so scope_predicate=project_has_learning_loop_mcp rules stay
+  // visible under the temp root.
+  let tempRoot;
+  let prevGateRoot;
+
+  beforeEach(() => {
+    tempRoot = mkdtempSync(join(tmpdir(), "lgi-rule-skip-"));
+    const live = readFileSync(join(PROJECT_ROOT, "meta-state.jsonl"), "utf8");
+    const kept = live
+      .trim()
+      .split("\n")
+      .map(JSON.parse)
+      .filter((e) => e.id !== "rule-fallow-brief-on-gate-failure");
+    writeFileSync(
+      join(tempRoot, "meta-state.jsonl"),
+      kept.map((e) => JSON.stringify(e)).join("\n") + "\n",
+    );
+    writeFileSync(
+      join(tempRoot, ".mcp.json"),
+      JSON.stringify({ mcpServers: { "learning-loop": { command: "node", args: [] } } }),
+    );
+    prevGateRoot = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempRoot;
+  });
+
+  afterEach(() => {
+    if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
+    else process.env.GATE_ROOT = prevGateRoot;
+    rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  test("slug lookup after the skipped position returns its own hint (no shift)", async () => {
+    const result = await loopGetInstructionTool.handler({ key: "short-slug-for-risk-records" });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.ok(!parsed.results[0].error, `must resolve, not error: ${parsed.results[0].error}`);
+    assert.ok(
+      parsed.results[0].hint.includes("records/**/risks/"),
+      "hint must be the short-slug rule prose, not the next entry's",
+    );
+    assert.ok(
+      parsed.results[0].suggestion.includes("sanitizeSlug"),
+      "suggestion must come from the same registry entry",
+    );
+  });
+
+  test("numeric lookup maps to registry position, not shifted array position", async () => {
+    // short-slug-for-risk-records = process registry position 5 → numeric 16 + 5 = 21
+    const result = await loopGetInstructionTool.handler({ key: 21 });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.ok(!parsed.results[0].error, `must resolve, not error: ${parsed.results[0].error}`);
+    assert.ok(parsed.results[0].hint.includes("records/**/risks/"));
+    assert.strictEqual(parsed.results[0].index, 21);
+  });
+
+  test("slug whose rule is skipped returns an explicit unavailable error, not wrong content", async () => {
+    const result = await loopGetInstructionTool.handler({ key: "fallow-gate-triage" });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.ok(parsed.results[0].error, "must error");
+    assert.ok(parsed.results[0].error.includes("unavailable"), "error must say unavailable");
+    assert.ok(!parsed.results[0].hint, "no hint payload on unavailable");
+  });
+
+  test("numeric key for the skipped position returns unavailable, tail key still resolves", async () => {
+    // fallow-gate-triage = process position 4 → numeric 20; required-status-checks
+    // = process position 9 → numeric 25 (tail; previously degraded to unknown).
+    const skipped = await loopGetInstructionTool.handler({ key: 20 });
+    const skippedParsed = JSON.parse(skipped.content[0].text);
+    assert.ok(skippedParsed.results[0].error?.includes("unavailable"));
+
+    const tail = await loopGetInstructionTool.handler({ key: 25 });
+    const tailParsed = JSON.parse(tail.content[0].text);
+    assert.ok(!tailParsed.results[0].error, `tail key must resolve: ${tailParsed.results[0].error}`);
+    assert.ok(tailParsed.results[0].hint.includes("mergeStateStatus"));
   });
 });
 

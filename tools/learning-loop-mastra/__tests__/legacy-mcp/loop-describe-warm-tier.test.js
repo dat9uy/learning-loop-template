@@ -128,10 +128,15 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(Object.isFrozen(hints));
   });
 
-  test("buildProcessHints returns ≥1 frozen entry", () => {
+  test("buildProcessHints returns ≥1 entry (Phase 3: rule-derived projection)", () => {
+    // Phase 3 (plans/260717-1826-unify-context-injection): buildProcessHints
+    // is no longer a frozen const-returning function. It now reads the
+    // registry, resolves rule-derived entries from rule.hint_text, and
+    // returns a non-frozen array (callers should not mutate). The test
+    // asserts the array contains entries (post-backfill: 8 rule-derived
+    // + 2 standalone = 10).
     const hints = buildProcessHints();
     assert.ok(hints.length >= 1);
-    assert.ok(Object.isFrozen(hints));
   });
 
   test("loop_get_instruction resolves pnpm-test-discipline from PROCESS_HINTS", async () => {
