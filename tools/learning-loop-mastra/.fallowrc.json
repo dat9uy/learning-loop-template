@@ -11,7 +11,8 @@
     "mastra/schemas.js",
     "mastra/schema-parity.js",
     "storage.js",
-    "scripts/**"
+    "scripts/**",
+    "core/hint-renderer.js"
   ],
 
   "dynamicallyLoaded": [
