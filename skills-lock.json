@@ -1,11 +1,35 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
+    "learning-loop": {
+      "source": "local",
+      "sourceType": "local",
+      "delivery": "fanout",
+      "canonicalSource": "tools/learning-loop-mastra/skills/learning-loop/SKILL.md",
+      "targets": [".claude", ".factory", ".mastracode"],
+      "maturity": "state-2",
+      "external": false,
+      "hash": "3cb6075b6743a82b7e26876f6d4089a668ea930d57eecbb779368fe0dcd37a97"
+    },
+    "coordination-gate": {
+      "source": "local",
+      "sourceType": "local",
+      "delivery": "fanout",
+      "canonicalSource": "tools/learning-loop-mastra/skills/coordination-gate/SKILL.md",
+      "targets": [".claude", ".factory", ".mastracode"],
+      "maturity": "state-2",
+      "external": false,
+      "hash": "ce87a74bec4e0d5dd041a3c4ed4239ece7b4b41d323e4e1309ff96fe928ea3e2"
+    },
     "mastra": {
       "source": "mastra-ai/skills",
-      "sourceType": "github",
+      "sourceType": "npx-skills-cli",
+      "delivery": "npx-per-runtime+fanout-undetected",
       "skillPath": "skills/mastra/SKILL.md",
-      "computedHash": "f0ca76d36d67a345064f471a9577e752beb2b20ab46acdf154ed223905e1d3a4"
+      "targets": [".claude", ".factory", ".mastracode"],
+      "maturity": null,
+      "external": true,
+      "hash": "f9a906bd4717b716098be29bd5dfbbe3cc366f9b82362a1e6af1bece9c9d1501"
     }
   }
 }
