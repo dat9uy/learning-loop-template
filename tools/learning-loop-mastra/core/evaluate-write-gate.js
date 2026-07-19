@@ -83,14 +83,25 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // `product/**` is a special case — it delegates to `evaluatePreflight` (matchedRule: null).
 //
 // The first 6 entries are derived from BOUND_ARTIFACTS (the shared
-// simple-glob rule constant in core/bound-artifacts.js). The remaining 3 are
+// simple-glob rule constant in core/bound-artifacts.js). The remaining 5 are
 // special-cased here: preflight-marker (delegates to findPreflightMarker via
 // PREFLIGHT_MARKER_PATHS), skills (preflight-delegating with explicit
-// surface="skills" — the dedicated `.loop-preflight-skills` marker), and
-// product/** (delegates to evaluatePreflight).
+// surface="skills" — the dedicated `.loop-preflight-skills` marker),
+// skills-canonical (preflight-delegating, matches the internal canonical
+// source dir at tools/learning-loop-mastra/skills/** — added by Phase 2 of
+// plans/260719-1428-central-skills-management; the materializer is the only
+// write path to canonical SKILL.md, gated via the existing
+// `.loop-preflight-skills` marker), skills-manifest (preflight-delegating,
+// matches skills-lock.json at the repo root — added by Phase 3 of
+// plans/260719-1428-central-skills-management; the manifest is the trust
+// anchor for the contract's external exclusion, so direct writes are
+// blocked), and product/** (delegates to evaluatePreflight).
 // Rule order is load-bearing (first-match-wins) — see
 // legacy-mcp/bound-artifacts.test.js for the pinned-order assertion.
 // fallow-ignore-next-line complexity
+const SKILL_CANONICAL_GLOB = "tools/learning-loop-mastra/skills/**";
+const SKILL_MANIFEST_GLOB = "skills-lock.json";
+
 const WRITE_GATE_RULES = [
   ...BOUND_ARTIFACTS,
   {
@@ -105,6 +116,20 @@ const WRITE_GATE_RULES = [
     match: (relPath) => SKILL_PATHS.some((g) => globMatch(g, relPath)),
     reason:
       "Direct writes to <surface>/skills/** are blocked. Loop-maintained skills are gated artifacts mirrored across runtimes. Use the gated authoring path: gate_mark_preflight(surface:'skills') → write → meta_state_log_change. External symlinked content under .agents/skills/** is out of scope (not loop-maintained).",
+  },
+  {
+    name: "skills-canonical",
+    matchedRule: SKILL_CANONICAL_GLOB,
+    match: (relPath) => globMatch(SKILL_CANONICAL_GLOB, relPath),
+    reason:
+      "Direct writes to tools/learning-loop-mastra/skills/** (the canonical authoring source) are blocked. The materializer (pnpm skills:sync) is the only write path. Use the gated authoring path: gate_mark_preflight(surface:'skills') → edit canonical → pnpm skills:sync → meta_state_log_change.",
+  },
+  {
+    name: "skills-manifest",
+    matchedRule: SKILL_MANIFEST_GLOB,
+    match: (relPath) => globMatch(SKILL_MANIFEST_GLOB, relPath),
+    reason:
+      "Direct writes to skills-lock.json are blocked. The manifest is the trust anchor for the contract's external-exclusion (read by listLoopMaintainedSkills). Use the gated authoring path: gate_mark_preflight(surface:'skills') → edit manifest → meta_state_log_change.",
   },
   {
     name: "product",
@@ -132,6 +157,17 @@ export function evaluateWriteGate({ filePath, root }) {
   if (matched.name === "skills") {
     // Skills rule: preflight-delegating with EXPLICIT surface="skills".
     // Do NOT call inferSurface (it returns null for surface-prefix paths).
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+  }
+  if (matched.name === "skills-canonical") {
+    // Phase 2: canonical authoring source under tools/learning-loop-mastra/skills/.
+    // Delegates to the SAME .loop-preflight-skills marker as the mirror rule
+    // (one unlock authorises both canonical + mirror edits within the 30-min TTL).
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+  }
+  if (matched.name === "skills-manifest") {
+    // Phase 3: skills-lock.json is the trust anchor for the contract's
+    // external exclusion. Same preflight marker as the other skills rules.
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
   }
   return blockResult(matched, filePath);

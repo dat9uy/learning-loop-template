@@ -47,6 +47,14 @@ export function getAllCoordinationPaths(subpath) {
  * Returns a per-surface result array (red-team fix: surface errors are no
  * longer swallowed silently — callers can detect partial-mirror failure).
  *
+ * Per red-team F15 (plan 260719-1428-central-skills-management Phase 2):
+ * the temp path is pid-suffixed (`${realPath}.<pid>.tmp`) so concurrent
+ * `sync-skills` CLI invocations cannot collide on the same `.tmp` path;
+ * the per-surface loop is sequential within a process so no intra-process
+ * collision exists. A `finally` block unlinkSync's the tmp on failure
+ * (rename failure or interruption) so the dir does not accumulate `.tmp`
+ * debris.
+ *
  * @param {string} root — project root directory
  * @param {string} section — section name (e.g. "coordination", "skills")
  * @param {string} subpath — relative path under the section
@@ -63,7 +71,7 @@ export function writeToAllSurfacesSection(root, section, subpath, content) {
   for (const surface of SURFACES) {
     const dir = join(root, surface, section, dirname(subpath));
     const realPath = join(root, surface, section, subpath);
-    const tmpPath = `${realPath}.tmp`;
+    const tmpPath = `${realPath}.${process.pid}.tmp`;
     try {
       mkdirSync(dir, { recursive: true });
       writeFileSync(tmpPath, content, "utf8");
@@ -71,6 +79,8 @@ export function writeToAllSurfacesSection(root, section, subpath, content) {
       results.push({ surface, action: "wrote" });
     } catch (err) {
       results.push({ surface, action: "failed", error: err?.message ?? String(err) });
+    } finally {
+      try { if (existsSync(tmpPath)) unlinkSync(tmpPath); } catch {}
     }
   }
   return results;
@@ -94,15 +104,15 @@ export function writeToAllSurfaces(root, subpath, content) {
  * detect partial-mirror failure (the `learning-loop` mirror fan-out is a
  * critical path; the validator's parity test is the byte-identity backstop).
  *
+ * First real consumer: tools/scripts/sync-skills.mjs (plan 260719-1428
+ * central-skills-management Phase 2 — internal canonical source + fan-out
+ * materializer).
+ *
  * @param {string} root
  * @param {string} subpath — relative path under <surface>/skills/
  * @param {string} content
  * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
  */
-// Reserved as the skills-mirror fan-out per plan 260707-0114 acceptance. No
-// consumer today: skill edits go through gated-Edit-per-mirror (red-team #6).
-// Consumers land with the next skill materialization that uses the fan-out.
-// fallow-ignore-next-line unused-export
 export function writeToAllSkills(root, subpath, content) {
   return writeToAllSurfacesSection(root, "skills", subpath, content);
 }

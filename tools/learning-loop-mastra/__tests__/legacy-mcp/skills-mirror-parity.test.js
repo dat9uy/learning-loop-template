@@ -87,43 +87,36 @@ function firstDivergence(a, b) {
   return a.length === b.length ? -1 : len;
 }
 
-test("external `mastra` symlink is excluded from parity check (threat-model boundary)", () => {
-  // .claude/skills/mastra is a symlink to an external dir; the contract
-  // excludes it from enumeration. The parity test must NOT require
-  // .factory/skills/mastra or .mastracode/skills/mastra to exist.
-  for (const surface of SURFACES) {
-    const linkPath = join(MCP_ROOT, surface, "skills", "mastra");
-    if (!existsSync(linkPath)) continue;
-    if (isExternalSymlink(surface, "mastra")) {
-      // External symlink — fine to skip.
-      continue;
-    }
-    // Not a symlink in this surface (e.g. real dir on a non-default clone).
-    // Must still be excluded from parity; the test asserts the structural
-    // exclusion rather than the file's contents.
-  }
-  // Pass condition: we made it here without asserting any must-be-present
-  // invariant on the mastra path. The exclusion is enforced by the
-  // contract validator (phase 2) + the isExternalSymlink helper above.
-  assert.ok(true, "mastra exclusion logic ran without asserting mastra contents");
+test("manifest-driven exclusion: mastra is external:true in skills-lock.json", () => {
+  // Phase 3 (F10) — load-bearing replacement for the original vacuous
+  // "update" block (L108 assert.ok(true), L120 dead post-Phase-3).
+  // The manifest is the trust anchor for mastra's exclusion.
+  const manifestPath = join(MCP_ROOT, "skills-lock.json");
+  assert.ok(existsSync(manifestPath), "skills-lock.json must exist");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  assert.ok(manifest.skills, "manifest.skills must be defined");
+  assert.ok(manifest.skills.mastra, "manifest.skills.mastra must be defined");
+  assert.strictEqual(
+    manifest.skills.mastra.external,
+    true,
+    "mastramust be declared external:true in the manifest (Phase 3 trust anchor)",
+  );
 });
 
-test("enumeration of <surface>/skills/ does NOT include symlinks (external boundary)", () => {
-  // Read the actual skill directories across all 3 surfaces and confirm
-  // symlinks are not in the loop-maintained set. This is a structural
-  // test of the contract validator's enumeration filter.
-  for (const surface of SURFACES) {
-    const skillsDir = join(MCP_ROOT, surface, "skills");
-    if (!existsSync(skillsDir)) continue;
-    const entries = readdirSync(skillsDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isSymbolicLink()) continue;
-      // The only expected symlink in the real repo is `mastra`; if
-      // anything else is symlinked, the contract must still exclude it.
-      assert.ok(
-        entry.name === "mastra" || entry.name === "loop-prompt-authoring" /* historical */,
-        `${surface}/skills/${entry.name} is a symlink; the contract must exclude it via isSymbolicLink() filter`,
-      );
-    }
-  }
+test("manifest-driven exclusion: listLoopMaintainedSkills excludes mastra regardless of shape", () => {
+  // Phase 3 — exercise the contract's exclusion via the manifest. The
+  // manifest is the source of truth; filesystem shape (symlink vs real
+  // dir) is irrelevant after Phase 3 ships.
+  // We import the contract validator and call it against the real repo
+  // root, then assert mastra is NOT in the enumerated skills list.
+  return import("../../interface/contract.js").then((mod) => {
+    const result = mod.validate("claude-code", MCP_ROOT);
+    const req3 = result.path_map["skill-spec"];
+    assert.ok(req3, "skill-spec must be present in path_map");
+    const names = req3.skills.map((s) => s.name);
+    assert.ok(!names.includes("mastra"), `mastra must be excluded by manifest (not isSymbolicLink): ${JSON.stringify(names)}`);
+    // learning-loop + coordination-gate must be present.
+    assert.ok(names.includes("learning-loop"), "learning-loop must be enumerated");
+    assert.ok(names.includes("coordination-gate"), "coordination-gate must be enumerated");
+  });
 });
