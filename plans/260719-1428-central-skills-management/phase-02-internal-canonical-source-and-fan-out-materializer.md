@@ -1,6 +1,6 @@
 ---
 title: "Phase 2: Internal canonical source and fan-out materializer"
-status: todo
+status: completed
 ---
 
 # Phase 2: Internal canonical source and fan-out materializer

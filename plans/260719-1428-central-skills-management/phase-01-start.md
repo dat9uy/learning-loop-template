@@ -1,6 +1,6 @@
 ---
 title: "Phase 1: Unified manifest schema"
-status: todo
+status: completed
 ---
 
 # Phase 1: Unified manifest schema

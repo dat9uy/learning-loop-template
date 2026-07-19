@@ -1,7 +1,9 @@
 ---
 title: "Phase 3: Mastra npx provider switch and manifest-driven exclusion"
-status: todo
+status: in-progress
 ---
+
+> **Status note (2026-07-19):** Contract-side shipped (c2fa24e + review fixes): manifest-driven exclusion with F8/F9 failure modes, `skills-lock.json` gated, load-bearing parity tests. **Deferred remainder (operator Q4):** npx round-trip, `.agents` retirement, `.mastracode` gap closure, recursive fan-out — gated on ledger-event `npx-skills-mastra-roundtrip-2026-07-19` in `runtime-state.jsonl` (corrected row appended 2026-07-19T11:55Z; activates F11/F12 when a permitted sandbox appends per-runtime `metadata.hashes`).
 
 # Phase 3: Mastra npx provider switch and manifest-driven exclusion
 

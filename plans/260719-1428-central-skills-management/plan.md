@@ -1,7 +1,7 @@
 ---
 title: "Central Skills Management"
 description: "Unify external (mastra) + internal (learning-loop, coordination-gate) skill management across .claude/.factory/.mastracode behind one manifest, a canonical authoring source + fan-out materializer for internal skills (Decision 3 preserved), and a switch to the npx skills provider flow for mastra (Branch B). TDD-structured to preserve the contract + parity-test invariants."
-status: pending
+status: in-progress
 priority: P2
 effort: "2-3d"
 tags: [skills, manifest, materializer, write-gate, contract, runtime-agnostic, mastra, npx-skills]
@@ -46,9 +46,9 @@ This plan manages both classes from **one central place** via a unified manifest
 
 | # | Phase | Status | Risk |
 |---|-------|--------|------|
-| 1 | [Unified manifest schema](./phase-01-start.md) | Pending | Low (indexing only; `skills-lock.json` has zero code consumers) |
-| 2 | [Internal canonical source and fan-out materializer](./phase-02-internal-canonical-source-and-fan-out-materializer.md) | Pending | Medium (first consumer of `writeToAllSkills`; narrow gate; canonical dir) |
-| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | Pending | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
+| 1 | [Unified manifest schema](./phase-01-start.md) | Completed (9216b2a) | Low (indexing only; `skills-lock.json` has zero code consumers) |
+| 2 | [Internal canonical source and fan-out materializer](./phase-02-internal-canonical-source-and-fan-out-materializer.md) | Completed (c2fa24e + review fixes) | Medium (first consumer of `writeToAllSkills`; narrow gate; canonical dir) |
+| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | In progress — contract side shipped (c2fa24e + review fixes); npx round-trip remainder gated on ledger-event `npx-skills-mastra-roundtrip-2026-07-19` (Q4) | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
 
 ## Dependencies
 
