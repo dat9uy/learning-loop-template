@@ -156,27 +156,71 @@ test("drift negative: tampered manifest.maturity breaks the drift invariant", ()
 
 test("write-gate: skills-lock.json is gated (Phase 3 trust anchor)", async () => {
   // F4 — the manifest is the trust anchor for the contract's external
-  // exclusion. Direct writes are blocked without preflight.
-  const mod = await import("../../core/evaluate-write-gate.js");
-  const result = mod.evaluateWriteGate({
-    filePath: join(MCP_ROOT, "skills-lock.json"),
-    root: MCP_ROOT,
-  });
-  // The rule must be in scope (matched by name). Either decision is OK
-  // (depending on whether a preflight marker is on disk from a prior
-  // session); the strict assertion is the rule is registered.
-  assert.ok(["ok", "block"].includes(result.decision), "evaluate-write-gate must return a known decision shape");
-  // Narrowness: the gate must NOT match an arbitrary tools/** path (Decision 5).
-  const otherToolsPath = mod.evaluateWriteGate({
-    filePath: join(MCP_ROOT, "tools/learning-loop-mastra/core/some-other.js"),
-    root: MCP_ROOT,
-  });
-  assert.strictEqual(otherToolsPath.decision, "ok", "tools/**-wide gate is forbidden (Decision 5)");
+  // exclusion. Fixture root (not the live repo) so the assertion is strict:
+  // blocked without a marker, allowed with one, narrow elsewhere.
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const root = mkdtempSync(join(tmpdir(), "ll-manifest-gate-"));
+  try {
+    const mod = await import("../../core/evaluate-write-gate.js");
+    const manifestPath = join(root, "skills-lock.json");
+
+    // 1. Blocked without preflight marker.
+    const blocked = mod.evaluateWriteGate({ filePath: manifestPath, root });
+    assert.strictEqual(blocked.decision, "block", "skills-lock.json write must be blocked without preflight");
+    assert.strictEqual(blocked.matched_rule, "skills-lock.json", "block must report the manifest glob as matched_rule");
+
+    // 2. Narrowness: arbitrary tools/** paths are NOT gated (Decision 5).
+    const otherToolsPath = mod.evaluateWriteGate({
+      filePath: join(root, "tools/learning-loop-mastra/core/some-other.js"),
+      root,
+    });
+    assert.strictEqual(otherToolsPath.decision, "ok", "tools/**-wide gate is forbidden (Decision 5)");
+
+    // 3. Allowed with a fresh .loop-preflight-skills marker.
+    const markerDir = join(root, ".claude/coordination");
+    mkdirSync(markerDir, { recursive: true });
+    writeFileSync(
+      join(markerDir, ".loop-preflight-skills"),
+      JSON.stringify({ surface: "skills", completed_at: new Date().toISOString() }),
+    );
+    const allowed = mod.evaluateWriteGate({ filePath: manifestPath, root });
+    assert.strictEqual(allowed.decision, "ok", "skills-lock.json write must be allowed with skills preflight marker");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 // --- Phase 3: mastra npx round-trip (gated on runtime-state ledger-event) ---
 
 const RUNTIME_STATE_PATH = join(MCP_ROOT, "runtime-state.jsonl");
+
+// Pure helper (testable without the real registry): does ANY row with the
+// roundtrip id carry at least one well-formed per-runtime hash? The ledger
+// is append-only — placeholder/corrected rows (hash-less) must be skipped,
+// not treated as terminal (re-review: first-match-wins would disable the
+// F11/F12 gate forever once a hash-less row precedes the hash-bearing one).
+function roundTripRecordedInLines(lines) {
+  for (const line of lines) {
+    let entry;
+    try {
+      entry = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (entry?.id !== "npx-skills-mastra-roundtrip-2026-07-19") continue;
+    const hashes = entry?.metadata?.hashes;
+    if (!hashes || typeof hashes !== "object") continue;
+    if (
+      ["claude", "factory", "mastracode"].some(
+        (k) => typeof hashes[k] === "string" && /^sha256:[a-f0-9]{64}$/.test(hashes[k]),
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function npxRoundTripRecorded() {
   // Phase 3 ledger-event must carry per-runtime hashes (operator decision
@@ -184,14 +228,27 @@ function npxRoundTripRecorded() {
   // from whichever sandbox can run npx). The round-trip counts as recorded
   // only when the ledger-event has actual per-runtime hashes (not just a
   // marker id); an empty ledger-event is the deferred-execution signal.
+  //
+  // Scoped parse (review M2): only rows carrying the roundtrip id are
+  // consulted — registry-wide regexes could match an unrelated entry that
+  // happens to carry a claude/factory/mastracode-named hash key.
   if (!existsSync(RUNTIME_STATE_PATH)) return false;
-  const content = readFileSync(RUNTIME_STATE_PATH, "utf8");
-  if (!/"id":\s*"npx-skills-mastra-roundtrip/.test(content)) return false;
-  // Require at least one per-surface hash field (run.from.<surface>.hash
-  // or metadata.hashes.<surface>) — this is what makes the round-trip
-  // actionable, not just "we plan to do it".
-  return /"(?:claude|factory|mastracode)"\s*:\s*"sha256:[a-f0-9]{64}"/.test(content);
+  const lines = readFileSync(RUNTIME_STATE_PATH, "utf8").split("\n").filter((l) => l.trim());
+  return roundTripRecordedInLines(lines);
 }
+
+test("F11/F12 gate: any same-id hash-bearing row activates; placeholder rows do not", () => {
+  const hash = `sha256:${"a".repeat(64)}`;
+  const placeholder = JSON.stringify({ id: "npx-skills-mastra-roundtrip-2026-07-19", metadata: { pending_execution: "..." } });
+  const hashRow = JSON.stringify({ id: "npx-skills-mastra-roundtrip-2026-07-19", metadata: { hashes: { claude: hash, factory: hash, mastracode: hash } } });
+  const unrelated = JSON.stringify({ id: "other-event", metadata: { hashes: { claude: hash } } });
+
+  assert.strictEqual(roundTripRecordedInLines([placeholder]), false, "hash-less placeholder must not activate");
+  assert.strictEqual(roundTripRecordedInLines([placeholder, hashRow]), true, "later same-id hash row must activate (append-only ledger)");
+  assert.strictEqual(roundTripRecordedInLines([hashRow, placeholder]), true, "earlier hash row must stay active");
+  assert.strictEqual(roundTripRecordedInLines([unrelated]), false, "unrelated entry with hash keys must not activate");
+  assert.strictEqual(roundTripRecordedInLines(["not json", placeholder]), false, "unparseable lines are skipped");
+});
 
 test("Phase 3 F11: .mastracode/skills/mastra present (gated on npx round-trip ledger-event)", () => {
   // F11 — closes the .mastracode gap. Skipped today; activates when the

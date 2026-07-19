@@ -21,7 +21,7 @@
  */
 
 import { readFileSync, existsSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { writeToAllSkills, SURFACES } from "../learning-loop-mastra/core/surfaces.js";
@@ -29,8 +29,14 @@ import { writeToAllSkills, SURFACES } from "../learning-loop-mastra/core/surface
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Resolve repo root: <repo>/tools/scripts/sync-skills.mjs → <repo>
-const repoRoot = join(__dirname, "..", "..");
+// Data root: default = repo root (derived from the script location). An
+// optional positional argv[2] overrides it — REQUIRED by the test fixtures
+// (a tmp root with its own manifest + canonical + surfaces) so tests never
+// fan out into the live working tree (review C1/C2: cwd is NOT honored —
+// repoRoot must never come from process.cwd()).
+const repoRoot = process.argv[2]
+  ? resolve(process.argv[2])
+  : join(__dirname, "..", "..");
 
 const manifestPath = join(repoRoot, "skills-lock.json");
 
@@ -45,6 +51,23 @@ function readManifest() {
   } catch (err) {
     console.error(`[sync-skills] FATAL: skills-lock.json parse failed: ${err.message}`);
     process.exit(2);
+  }
+  // Fail closed on malformed shape (review M1): a string/array/null
+  // manifest.skills would otherwise iterate into index-keyed garbage and
+  // exit 0 having materialized nothing. The contract validator fails
+  // closed on the same input; the materializer must too.
+  if (!parsed || typeof parsed !== "object" || !parsed.skills || typeof parsed.skills !== "object" || Array.isArray(parsed.skills)) {
+    console.error(`[sync-skills] FATAL: skills-lock.json malformed: .skills must be a plain object`);
+    process.exit(2);
+  }
+  // Per-entry shape guard (re-review): a null/non-object entry would crash
+  // the entry.external read with a TypeError and a stack trace. Name the
+  // offending key and exit 2, matching the contract's fail-closed posture.
+  for (const [name, entry] of Object.entries(parsed.skills)) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      console.error(`[sync-skills] FATAL: skills-lock.json malformed: .skills["${name}"] must be an object`);
+      process.exit(2);
+    }
   }
   return parsed;
 }
@@ -102,13 +125,14 @@ function postFanOutParityCheck(name, entry) {
 
 function main() {
   const manifest = readManifest();
-  const entries = Object.entries(manifest.skills ?? {});
+  const entries = Object.entries(manifest.skills);
   if (entries.length === 0) {
     console.error(`[sync-skills] FATAL: manifest.skills is empty`);
     process.exit(2);
   }
 
   let totalWrote = 0;
+  let totalUnchanged = 0;
   let totalFailed = 0;
   const divergent = [];
 
@@ -125,7 +149,8 @@ function main() {
       continue;
     }
     if (result.skipped) continue;
-    totalWrote += result.results?.length ?? 0;
+    totalWrote += (result.results ?? []).filter((r) => r.action === "wrote").length;
+    totalUnchanged += (result.results ?? []).filter((r) => r.action === "unchanged").length;
     const parity = postFanOutParityCheck(name, entry);
     if (!parity.ok) {
       totalFailed += 1;
@@ -144,7 +169,7 @@ function main() {
     }
     process.exit(1);
   }
-  console.log(`[sync-skills] done: ${totalWrote} mirror(s) in sync.`);
+  console.log(`[sync-skills] done: ${totalWrote} wrote, ${totalUnchanged} unchanged.`);
 }
 
 main();

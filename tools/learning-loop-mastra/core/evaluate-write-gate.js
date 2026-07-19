@@ -122,7 +122,7 @@ const WRITE_GATE_RULES = [
     matchedRule: SKILL_CANONICAL_GLOB,
     match: (relPath) => globMatch(SKILL_CANONICAL_GLOB, relPath),
     reason:
-      "Direct writes to tools/learning-loop-mastra/skills/** (the canonical authoring source) are blocked. The materializer (pnpm skills:sync) is the only write path. Use the gated authoring path: gate_mark_preflight(surface:'skills') → edit canonical → pnpm skills:sync → meta_state_log_change.",
+      "Direct writes to tools/learning-loop-mastra/skills/** (the canonical authoring source) require the skills preflight. Authoring path: gate_mark_preflight(surface:'skills') → edit canonical → pnpm skills:sync → meta_state_log_change. Enforcement is detection-based by design: drift between canonical and mirrors is caught by the canonical-vs-mirror parity invariant test.",
   },
   {
     name: "skills-manifest",
@@ -157,18 +157,18 @@ export function evaluateWriteGate({ filePath, root }) {
   if (matched.name === "skills") {
     // Skills rule: preflight-delegating with EXPLICIT surface="skills".
     // Do NOT call inferSurface (it returns null for surface-prefix paths).
-    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-canonical") {
     // Phase 2: canonical authoring source under tools/learning-loop-mastra/skills/.
     // Delegates to the SAME .loop-preflight-skills marker as the mirror rule
     // (one unlock authorises both canonical + mirror edits within the 30-min TTL).
-    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-manifest") {
     // Phase 3: skills-lock.json is the trust anchor for the contract's
     // external exclusion. Same preflight marker as the other skills rules.
-    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot });
+    return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   return blockResult(matched, filePath);
 }
@@ -179,10 +179,14 @@ export function evaluateWriteGate({ filePath, root }) {
  * `.loop-preflight-skills` marker; otherwise { decision: "block", reason,
  * surface: "skills", preflight_checklist }.
  *
+ * `matchedRule` is the glob label of the WRITE_GATE_RULES entry that fired
+ * (mirror paths, canonical dir, or the manifest) so the block decision
+ * reports the rule that actually matched, not always the mirror glob.
+ *
  * Phase 5 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.
  */
 // fallow-ignore-next-line unused-export
-export function evaluateSkillsPreflight({ filePath, root }) {
+export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
   const resolvedRoot = root || findProjectRoot();
   const marker = findPreflightMarker("skills", resolvedRoot);
   if (marker) return { decision: "ok" };
@@ -200,7 +204,7 @@ export function evaluateSkillsPreflight({ filePath, root }) {
       "5. Stage a meta_state_log_change entry describing the system change (this is the change-log half of self-maintenance)",
       "6. Call gate_mark_preflight MCP tool with surface:\"skills\" to unlock the gated write (30-minute TTL)",
     ],
-    matched_rule: SKILL_PATHS.join(" | "),
+    matched_rule: matchedRule ?? SKILL_PATHS.join(" | "),
   };
 }
 
