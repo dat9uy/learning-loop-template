@@ -1,7 +1,7 @@
 ---
 title: "Meta-Process Skill Template Fix"
 description: "Fix four gaps discovered during meta-workflow testing of the fundamental capability plan: prohibit CLAUDE memory in favor of records/index, split domain-specific content from operator-guide, enforce decision-record encoding in product-build prompts, and capture the discovery as meta-evidence."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [meta-process, skill-template, learning-loop, operator-guide, memory]
