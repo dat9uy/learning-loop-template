@@ -20,6 +20,12 @@ const SIDECAR_FILENAME = "runtime-state.jsonl";
 const YAML_PATH = "records/observations/observation-vnstock-device-slot-ledger.yaml";
 const ARCHIVE_DIR = "records/_unbound/observation";
 
+// Legacy v1 fingerprint formula — retained for historical reproducibility
+// of observation-yaml → runtime-state.jsonl conversions. The current
+// runtime-state rows use the v2 8-field row-integrity hash exported from
+// core/runtime-state.js (finding meta-260719T2144Z). Do NOT change this
+// formula: rewriting the historical ledger rows' fingerprints would break
+// observation-yaml repro runs that compare against the v1 output.
 function computeFingerprint(row) {
   const data = `${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}`;
   return "sha256:" + createHash("sha256").update(data).digest("hex");

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "D: Metadata nested-array rejection + finding resolution"
-status: pending
+status: completed
 priority: P1
 effort: "2-3h"
 dependencies: ["2"]

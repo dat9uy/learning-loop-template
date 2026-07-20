@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "B: Read-path consolidation + dead-code removal"
-status: pending
+status: completed
 priority: P1
 effort: "2-3h"
 dependencies: []

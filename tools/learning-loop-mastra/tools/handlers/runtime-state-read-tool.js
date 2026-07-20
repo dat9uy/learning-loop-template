@@ -1,29 +1,13 @@
 import { z } from "zod";
-import { readFileSync, existsSync, appendFileSync } from "node:fs";
-import { join } from "node:path";
-import { createHash } from "node:crypto";
 import { resolveRoot } from "#lib/resolve-root.js";
-
-const SIDECAR_FILENAME = "runtime-state.jsonl";
-
-function computeFingerprint(row) {
-  const data = `${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}`;
-  return "sha256:" + createHash("sha256").update(data).digest("hex");
-}
-
-function readSidecar(root) {
-  const path = join(root, SIDECAR_FILENAME);
-  if (!existsSync(path)) return [];
-  const raw = readFileSync(path, "utf8");
-  return raw
-    .split("\n")
-    .filter((line) => line.trim() !== "")
-    .map((line) => JSON.parse(line));
-}
+import { readRuntimeStateRows, verifyRow } from "../../core/runtime-state.js";
 
 // Compact projection drops `metadata` only. `fingerprint` is a SHA-256 row-integrity
 // hash returned by the record tool, not a metadata blob — it is retained in compact
-// mode so callers can verify row integrity by default.
+// mode so callers can verify row integrity by default. `fingerprint_valid` is the
+// v2 verifyRow result: true means the stored fingerprint matches a recomputation
+// over the row's fields (the row is intact); false means the row has been
+// mutated post-write or the sidecar was not yet migrated to v2.
 function toCompactRow(row) {
   const { metadata: _metadata, ...rest } = row;
   return rest;
@@ -31,7 +15,7 @@ function toCompactRow(row) {
 
 export const runtimeStateReadTool = {
   name: "runtime_state_read",
-  description: "Read runtime state sidecar entries. Queries runtime-state.jsonl for ledger events and budget states. Read-only; does not mutate state. Use to inspect mutable runtime state (device slots, budgets, counters) that is not derivable from code. Default: `limit: 20` and `compact: true` (drops `metadata`; retains `fingerprint`). Pass `limit: 1000` for completeness; pass `compact: false` for full rows. Truncation is visible via `total > count` (total reports the filtered count before the limit slice).",
+  description: "Read runtime state sidecar entries. Queries runtime-state.jsonl for ledger events and budget states. Read-only; does not mutate state. Use to inspect mutable runtime state (device slots, budgets, counters) that is not derivable from code. Default: `limit: 20` and `compact: true` (drops `metadata`; retains `fingerprint`). Pass `limit: 1000` for completeness; pass `compact: false` for full rows. Every returned row carries `fingerprint_valid` (v2 verifyRow result: true = row intact; false = tampered or pre-migration). Truncation is visible via `total > count` (total reports the filtered count before the limit slice).",
   schema: {
     affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]).optional()
       .describe("Filter by affected system"),
@@ -48,7 +32,7 @@ export const runtimeStateReadTool = {
   },
   handler: async ({ affected_system, kind, since, until, limit = 20, compact = true }) => {
     const root = resolveRoot();
-    const rows = readSidecar(root);
+    const rows = readRuntimeStateRows(root);
 
     let result = rows;
 
@@ -72,7 +56,15 @@ export const runtimeStateReadTool = {
     // it reads from the post-slice array.
     const total = result.length;
     result = result.slice(0, limit);
-    const rows_out = compact ? result.map(toCompactRow) : result;
+    // Every returned row carries `fingerprint_valid` so callers can detect
+    // tampering or pre-v2-migration state without a separate verify call.
+    // `verifyRow` runs against the FULL row (before the compact projection
+    // drops `metadata`); otherwise compact mode would always verify false
+    // because `verifyRow` hashes canonicalized metadata.
+    const rows_out = result.map((r) => ({
+      ...(compact ? toCompactRow(r) : r),
+      fingerprint_valid: verifyRow(r),
+    }));
 
     return {
       content: [{

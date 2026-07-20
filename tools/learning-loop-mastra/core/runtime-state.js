@@ -47,17 +47,54 @@ export function readRuntimeStateRows(root) {
 const RUNTIME_STATE_FILENAME = "runtime-state.jsonl";
 
 /**
- * Compute the SHA-256 fingerprint of a runtime-state row.
- * Format matches the in-file `fingerprint` field convention used since the
- * earliest runtime-state rows; mirrors the fingerprint regex used by the
- * index sidecar (file-index.jsonl) — different data shape, same prefix.
- * Module-private: only `appendLedgerEvent` calls this; kept non-exported so
- * the public surface stays minimal.
+ * Canonicalize a JSON value for stable hashing: object keys are sorted
+ * recursively (so insertion order does not change the hash); arrays keep
+ * their order (so ["a","b"] and ["b","a"] differ — a metadata list is a
+ * list, not a set). Used by `computeFingerprint` so that two writers
+ * stringifying in different key orders produce the same fingerprint.
  */
-// fallow-ignore-next-line code-duplication
-function computeRuntimeStateFingerprint(row) {
-  const data = `${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}`;
+function canonicalize(value) {
+  if (value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(canonicalize);
+  const out = {};
+  for (const k of Object.keys(value).sort()) out[k] = canonicalize(value[k]);
+  return out;
+}
+
+/**
+ * Compute the SHA-256 fingerprint of a runtime-state row.
+ * v2 — true row-integrity hash covering
+ *   affected_system | kind | id | source_ref | value | delta | timestamp | metadata
+ * with metadata canonicalized via `canonicalize` (recursive sorted keys;
+ * arrays preserve order). v2 supersedes the v1 5-field formula (id|
+ * source_ref|value|delta|timestamp) which omitted metadata and collided
+ * in prod on rows 9/10 (shared sha256:93725b69…) and 8/11 (shared
+ * sha256:79249677…) — see finding meta-260719T2144Z.
+ *
+ * v2-only (no `fingerprint_version` field): the migration script in
+ * `scripts/migrate-runtime-state-fingerprints.mjs` re-fingerprints every
+ * stored row in place; `verifyRow` returns false for any v1 row that
+ * survived the migration.
+ */
+export function computeFingerprint(row) {
+  const meta = JSON.stringify(canonicalize(row.metadata ?? {}));
+  const data = `${row.affected_system}|${row.kind}|${row.id}|${row.source_ref}|${row.value}|${row.delta}|${row.timestamp}|${meta}`;
   return "sha256:" + createHash("sha256").update(data).digest("hex");
+}
+
+/**
+ * Verify that a row's stored `fingerprint` matches the v2 fingerprint
+ * recomputed from its own fields. Returns false for null/undefined/
+ * non-string fingerprint and for any row whose fields have been mutated
+ * post-write. v2-only — call `scripts/migrate-runtime-state-fingerprints.mjs`
+ * to bring a v1 sidecar onto v2.
+ *
+ * @param {object|null|undefined} row
+ * @returns {boolean}
+ */
+export function verifyRow(row) {
+  if (!row || typeof row.fingerprint !== "string") return false;
+  return computeFingerprint(row) === row.fingerprint;
 }
 
 /**
@@ -73,7 +110,7 @@ function computeRuntimeStateFingerprint(row) {
 export function appendLedgerEvent(root, row) {
   const withFingerprint = {
     ...row,
-    fingerprint: computeRuntimeStateFingerprint(row),
+    fingerprint: computeFingerprint(row),
   };
   const sidecarPath = join(root, RUNTIME_STATE_FILENAME);
   appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");

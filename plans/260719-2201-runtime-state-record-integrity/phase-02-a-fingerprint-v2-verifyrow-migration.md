@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "A: Fingerprint v2 + verifyRow + migration"
-status: pending
+status: completed
 priority: P1
 effort: "4-6h"
 dependencies: ["1"]

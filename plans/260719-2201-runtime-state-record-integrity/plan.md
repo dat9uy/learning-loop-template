@@ -1,7 +1,7 @@
 ---
 title: "Runtime-State Record Integrity"
 description: "Fix three runtime-state record bugs (A+B+D) from the problem-solving report: (A) widen the row fingerprint to a true row-integrity hash + add read-side verifyRow + migrate the existing sidecar to v2 fingerprints; (B) consolidate the read tool's divergent readSidecar onto the shared readRuntimeStateRows + delete dead code; (D) reject nested-array metadata at the record handler + doc-only schema tightening, then resolve the open finding. TDD-structured; C (the sandbox hand-off plan-edit) is out of scope. Adjacent DRY-debt (inbound-state.js + file-readers.js own-parse copies) deferred to a separate pass (tracked in finding meta-260719T2201Z-...)."
-status: pending
+status: completed
 priority: P1
 effort: "1-1.5d"
 tags: [runtime-state, fingerprint, integrity, read-path, dry, metadata, validation, tdd]

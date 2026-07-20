@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
-import { appendLedgerEvent, readRuntimeStateRows } from "../../core/runtime-state.js";
+import { appendLedgerEvent, readRuntimeStateRows, verifyRow } from "../../core/runtime-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
@@ -113,6 +113,18 @@ function handlePrepareStage(root, finding, id) {
   const rows = readRuntimeStateRows(root);
   const existing = findDispatchRow(rows, id);
   if (existing) {
+    // Fail-closed guard: a tampered or pre-v2 dispatch row must NOT bind
+    // to ghost issue coords (finding meta-260719T2144Z). verifyRow rejects
+    // the row before any metadata is read out, so no spurious already-
+    // dispatched response is returned for a corrupt row.
+    if (!verifyRow(existing)) {
+      return finish(root, new Date().toISOString(), {
+        dispatched: false,
+        reason: "corrupt_dispatch_row",
+        id,
+        stage: "prepare",
+      });
+    }
     return finish(root, new Date().toISOString(), {
       dispatched: false,
       reason: "already_dispatched",
@@ -184,6 +196,18 @@ async function handleCommitStage(root, finding, id, coords) {
   const rows = readRuntimeStateRows(root);
   const existing = findDispatchRow(rows, id);
   if (existing) {
+    // Fail-closed guard: a tampered or pre-v2 dispatch row must NOT be
+    // treated as the binding dispatch record (finding meta-260719T2144Z).
+    // Refuse with corrupt_dispatch_row so the operator can repair the row
+    // instead of accidentally creating a duplicate GitHub issue.
+    if (!verifyRow(existing)) {
+      return finish(root, new Date().toISOString(), {
+        dispatched: false,
+        reason: "corrupt_dispatch_row",
+        id,
+        stage: "commit",
+      });
+    }
     const exNum = existing.metadata?.issue_number;
     const exUrl = existing.metadata?.issue_url;
     if (exNum === issue_number && exUrl === issue_url) {
