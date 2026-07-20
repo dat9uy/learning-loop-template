@@ -24,7 +24,8 @@
     "fallow:brief": "fallow audit --root tools/learning-loop-mastra --gate new-only --changed-since origin/main --coverage \"$PWD/coverage/coverage-final.json\" --coverage-root \"$PWD/tools/learning-loop-mastra\" --dead-code-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dead-code-baseline.json\" --health-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/health-baseline.json\" --dupes-baseline \"$PWD/tools/learning-loop-mastra/baselines/fallow/dupes-baseline.json\" --brief --format compact",
     "gate:self-verify": "node tools/learning-loop-mastra/scripts/gate-self-verify.mjs",
     "gate:server": "node tools/learning-loop-mastra/mastra/server.js",
-    "skills:sync": "node tools/scripts/sync-skills.mjs"
+    "skills:sync": "node tools/scripts/sync-skills.mjs",
+    "skills:normalize": "node tools/scripts/normalize-skills.mjs"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

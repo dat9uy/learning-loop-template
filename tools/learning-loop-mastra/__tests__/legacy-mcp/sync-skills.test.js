@@ -462,14 +462,19 @@ test("F13: detected copy is read-only (materializer never writes back to the sou
   const { root, skillContent } = buildExternalFixture();
   try {
     // Seed .factory + .mastracode with a STALE mastra tree so the materializer
-    // has a pending write on every surface except the source — if it wrote back
-    // to the source, the source mtime would bump.
+    // has a pending write on every surface except the source.
     for (const surface of [".factory", ".mastracode"]) {
       const dir = join(root, surface, "skills", "mastra");
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, "SKILL.md"), "# stale\n");
     }
     const sourceSkillMd = join(root, ".claude", "skills", "mastra", "SKILL.md");
+    // Post-Phase-2 self-heal: normalize re-derives hash from the highest-mtime
+    // SKILL.md (mtime = "most-recently-written"). In real npx flows the detected
+    // runtime IS the freshly-written surface. To keep .claude as the source for
+    // this test we re-touch it LAST (mimics npx's write order: detected runtimes
+    // get content after the undetected ones).
+    writeFileSync(sourceSkillMd, readFileSync(sourceSkillMd, "utf8"));
     const sourceMtime = statSync(sourceSkillMd).mtimeMs;
     const r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
@@ -489,26 +494,47 @@ test("F13: detected copy is read-only (materializer never writes back to the sou
 });
 
 test("F13: missing detected copy → explicit failure (not a silent skip)", () => {
-  // No surface has a real-dir mastra with a SKILL.md hash matching the manifest.
+  // Post-Phase-2 (self-healing normalize): the manifest hash alone is no
+  // longer a hard barrier — normalize re-derives it from the detected
+  // surface's SKILL.md. To exercise "truly nothing to fan out from",
+  // we build the fixture AND delete the source surface so normalize
+  // also has no real-dir SKILL.md to read → exits 2 with the same
+  // "no-detected-copy" / "no real-dir SKILL.md" failure mode.
   const { root } = buildExternalFixture({ hashOverride: "0".repeat(64) });
+  // Wipe ALL surfaces' mastra trees so neither normalize nor fan-out
+  // can find any real-dir source.
+  for (const s of [".claude", ".factory", ".mastracode"]) {
+    rmSync(join(root, s, "skills", "mastra"), { recursive: true, force: true });
+  }
   try {
     const r = runSyncSkills(root);
-    assert.strictEqual(r.code, 1, `missing detected copy must exit 1: ${JSON.stringify(r)}`);
-    assert.match(r.err, /no-detected-copy/, `error must name the failure: ${r.err}`);
+    assert.strictEqual(r.code, 2, `missing detected copy must exit 2 (normalize fails closed): ${JSON.stringify(r)}`);
+    assert.match(r.err, /no real-dir SKILL\.md|normalize mastra/, `error must name the failure: ${r.err}`);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("F13/F6: detected copy whose SKILL.md hash does NOT match manifest → failure (no fan-out from untrusted source)", () => {
-  // Detected dir exists but its SKILL.md hash differs from the manifest hash.
+test("F13/F6: detected copy whose SKILL.md hash does NOT match manifest → normalize re-derives + fan-out succeeds", () => {
+  // Phase-2 self-heal: a stale manifest hash (e.g. from before an upstream
+  // skill update) is no longer a hard failure — normalize reads the
+  // detected surface's actual SKILL.md and re-derives the manifest hash
+  // before fan-out. Fan-out then succeeds against the freshly-hashed source.
+  // F6 (defense-in-depth against a tampered detected copy) shifts from
+  // "manifest hash gates fan-out" to "normalize checks the source tree
+  // exists" — the mtime-tiebreaker picks the freshly-installed .claude
+  // surface and writes its real hash into the manifest.
   const { root } = buildExternalFixture({ hashOverride: "1".repeat(64) });
   try {
     const r = runSyncSkills(root);
-    assert.strictEqual(r.code, 1, `hash-mismatch detected copy must exit 1: ${JSON.stringify(r)}`);
-    assert.match(r.err, /no-detected-copy/, `F6 hash mismatch must surface as no-trusted-source: ${r.err}`);
-    // Undetected surfaces must NOT have received files from the untrusted source.
-    assert.ok(!existsSync(join(root, ".mastracode", "skills", "mastra", "SKILL.md")), "untrusted source must not fan out");
+    assert.strictEqual(r.code, 0, `normalize-then-fan-out must exit 0: ${JSON.stringify(r)}`);
+    assert.match(r.out, /normalized skills-lock\.json/, `sync must auto-normalize before fan-out: ${r.out}`);
+    // Manifest's mastra.hash is now the real sha256 of the detected SKILL.md,
+    // not the original "1".repeat(64) override.
+    const m = JSON.parse(readFileSync(join(root, "skills-lock.json"), "utf8"));
+    assert.notStrictEqual(m.skills.mastra.hash, "1".repeat(64), "manifest hash must be re-derived, not the stale override");
+    assert.strictEqual(m.skills.mastra.external, true, "manifest hash fix preserves external:true (loop policy)");
+    assert.strictEqual(m.skills.mastra.delivery, "npx-per-runtime+fanout-undetected", "loop-policy delivery must be restored");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

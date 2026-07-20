@@ -2,7 +2,16 @@
 /**
  * tools/scripts/sync-skills.mjs — internal-skills fan-out materializer.
  *
- * Phase 2 of plans/260719-1428-central-skills-management.
+ * Phase 2 of plans/260719-1428-central-skills-management. Phase 3 added
+ * external-skill fan-out (npx-detected + fanout-undetected delivery).
+ * Phase 1 of plans/260720-1825-skills-manifest-self-healing-normalize-step-
+ * npx-clobber-recovery added self-healing `normalizeManifest` integration:
+ * after readManifest(), the manifest is normalized in-place (loop-owned
+ * extended fields restored for policy-known externals; hash re-derived from
+ * the detected surface) and written back when changed, so the same `pnpm
+ * skills:sync` command the operator already runs after every `npx skills
+ * add/update` now also restores the v2 extended schema. The normalize step
+ * lives in skills-lib.mjs (DRY with normalize-skills.mjs).
  *
  * Reads the canonical source at tools/learning-loop-mastra/skills/<name>/SKILL.md
  * and fans out (byte-identical) to .claude, .factory, .mastracode via
@@ -10,7 +19,10 @@
  * already match canonical).
  *
  * Manifest: skills-lock.json (Phase 1 schema). Only entries with `external:false`
- * (internal) are materialized. External entries (e.g. mastra) are skipped.
+ * (internal) are materialized. External entries with delivery `npx-per-runtime+
+ * fanout-undetected` (e.g. mastra) are fanned out from the detected runtime's
+ * real-dir copy to the undetected runtimes via `findDetectedSurface` (F6
+ * hash-verify).
  *
  * Post-fan-out runtime parity check (red-team F5): re-read all 3 mirrors +
  * canonical; fail loudly if any pair differs. This closes the partial-fan-out
@@ -20,12 +32,12 @@
  * Authoring path: edit canonical → `pnpm skills:sync` → meta_state_log_change.
  */
 
-import { readFileSync, existsSync, lstatSync, readdirSync, unlinkSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { readFileSync, existsSync, lstatSync, readdirSync, unlinkSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { writeToAllSkills, SURFACES } from "../learning-loop-mastra/core/surfaces.js";
+import { sha256, findDetectedSurface, normalizeManifest } from "./skills-lib.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -73,42 +85,21 @@ function readManifest() {
   return parsed;
 }
 
-function sha256(content) {
-  return createHash("sha256").update(content, "utf8").digest("hex");
-}
-
-// Phase 3 external fan-out (delivery: "npx-per-runtime+fanout-undetected").
-// The detected runtime gets real files from `npx skills add --copy`; the
-// undetected runtimes get a byte-identical tree fanned out from the detected
-// copy. This closes the `.mastracode` (and `.factory` if undetected) gap
-// without re-bypassing the provider flow.
-//
-// F6 hash-verify (load-bearing): the source surface is the one whose
-// `<surface>/skills/<name>/SKILL.md` sha256 matches `entry.hash`. A real-dir
-// skill whose hash does NOT match the manifest is not a trusted source —
-// refuse to fan out from it (defense-in-depth against a tampered detected
-// copy or a stale manifest). Missing detected copy → explicit failure
-// (not a silent skip), so an empty install is visible.
-
-function findDetectedSurface(name, entry, repoRoot) {
-  if (!entry || typeof entry.hash !== "string" || entry.hash.length !== 64) return null;
-  for (const surface of SURFACES) {
-    const dir = join(repoRoot, surface, "skills", name);
-    if (!existsSync(dir)) continue;
-    let st;
+// Atomic write-temp + rename for the normalized manifest (mirrors
+// normalize-skills.mjs's discipline — pid-suffixed `.tmp`).
+function atomicWriteManifest(filePath, content) {
+  mkdirSync(dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmpPath, content, "utf8");
+    renameSync(tmpPath, filePath);
+  } finally {
     try {
-      st = lstatSync(dir);
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
     } catch {
-      continue;
+      // best-effort cleanup
     }
-    // A symlink is not a detected copy (it's the legacy .agents mechanism or
-    // a yet-undetected surface). Only a real dir qualifies as the npx source.
-    if (!st.isDirectory() || st.isSymbolicLink()) continue;
-    const skillMd = join(dir, "SKILL.md");
-    if (!existsSync(skillMd)) continue;
-    if (sha256(readFileSync(skillMd, "utf8")) === entry.hash) return surface;
   }
-  return null;
 }
 
 // Recursively collect real-file relative paths under dir (symlinks skipped —
@@ -241,8 +232,62 @@ function postFanOutParityCheck(name, entry) {
   return { ok: true };
 }
 
+// Post-fan-out 3-way byte-identity for external skills. Mirrors the internal
+// postFanOutParityCheck, but externals have no canonical source (the detected
+// surface IS the content), so all 3 surfaces are compared to each other.
+// Closes the asymmetry where external fan-out relied only on writeToAllSkills
+// per-file failure reporting and skipped the post-fan-out re-read.
+function postExternalFanOutParityCheck(name) {
+  let ref = null;
+  const divergent = [];
+  for (const surface of SURFACES) {
+    const mirrorPath = join(repoRoot, surface, "skills", name, "SKILL.md");
+    if (!existsSync(mirrorPath)) {
+      divergent.push(`${surface}: mirror missing`);
+      continue;
+    }
+    const bytes = readFileSync(mirrorPath, "utf8");
+    if (ref === null) ref = bytes;
+    else if (bytes !== ref) divergent.push(`${surface}: byte-divergence`);
+  }
+  if (divergent.length > 0) {
+    return { ok: false, divergent };
+  }
+  return { ok: true };
+}
+
 function main() {
-  const manifest = readManifest();
+  const parsed = readManifest();
+  // Self-heal step (Phase 1 of plans/260720-1825-...): normalize in-process
+  // so the existing `pnpm skills:sync` post-npx workflow auto-restores the
+  // v2 extended schema. Write back only if normalizeManifest reports a change
+  // (idempotent re-runs leave the manifest untouched).
+  //
+  // Trust-model note (F6 shift, recorded in change-log meta-260720T1909Z):
+  // pre-self-heal, manifest.skills.mastra.hash was an independent trust anchor
+  // that GATED fan-out (a detected surface whose SKILL.md sha256 != manifest.hash
+  // was rejected). Post-self-heal, normalize re-derives the hash from the
+  // highest-mtime detected surface and writes it into the manifest, so the
+  // hash is now a CONTENT FINGERPRINT, not an independent gate. This is the
+  // operator's documented trade-off: npx is the trusted install channel in
+  // this single-operator template, so trusting the freshly-installed surface
+  // is aligned with the goal. If tamper-resistance against a hostile detected
+  // copy is ever needed, restore the cluster/content-gated rejection (the
+  // original F13/F6 test, pre-rewrite) rather than re-deriving.
+  const norm = normalizeManifest(parsed, repoRoot);
+  if (norm.error) {
+    console.error(`[sync-skills] FATAL: ${norm.error}`);
+    process.exit(2);
+  }
+  if (norm.changed) {
+    atomicWriteManifest(manifestPath, JSON.stringify(norm.manifest, null, 2));
+    const restored = norm.restoredExternals ?? [];
+    console.log(
+      `[sync-skills] normalized skills-lock.json (restored ${restored.length} external entr${restored.length === 1 ? "y" : "ies"}: ${restored.join(", ")})`,
+    );
+  }
+  const manifest = norm.changed ? norm.manifest : parsed;
+
   const entries = Object.entries(manifest.skills);
   if (entries.length === 0) {
     console.error(`[sync-skills] FATAL: manifest.skills is empty`);
@@ -265,6 +310,13 @@ function main() {
           totalFailed += 1;
           divergent.push({ name, surfaces: result.divergent, reason: result.reason });
           console.error(`[sync-skills] FAIL ${name}: ${result.reason}`);
+          continue;
+        }
+        const parity = postExternalFanOutParityCheck(name);
+        if (!parity.ok) {
+          totalFailed += 1;
+          divergent.push({ name, surfaces: parity.divergent, reason: "post-fan-out parity" });
+          console.error(`[sync-skills] PARITY FAIL ${name}: ${parity.divergent.join(", ")}`);
           continue;
         }
         console.log(`[sync-skills] ok ${name} (external fan-out from ${result.source}) → ${SURFACES.join(", ")}`);
