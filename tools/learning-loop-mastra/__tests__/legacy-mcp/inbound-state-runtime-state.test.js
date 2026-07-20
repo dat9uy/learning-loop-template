@@ -225,3 +225,88 @@ await test("fastapi observation checks sidecar for affected_system=fastapi", () 
   assert.strictEqual(result.stale, true);
   assert.ok(result.reason.includes("fastapi"));
 });
+
+// ── Phase 1 B-widening: malformed line + valid row survives (RED→GREEN for meta-260719T2201Z) ──
+// Pre-consolidation: readSidecar wraps the whole read in a single try/catch and fail-opens to []
+// on a single malformed line. After consolidation onto readRuntimeStateRows, malformed lines are
+// skipped (parsed to null then .filter(Boolean)) and valid rows survive.
+
+await test("malformed line + valid fresh row → not stale (Phase 1 behavior change: skip-not-wipe)", () => {
+  writeMarker(ts(10));
+  // Sidecar with one malformed line followed by one valid fresh row for vnstock.
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  writeFileSync(
+    sidecarPath,
+    "{ this is not valid JSON\n" +
+      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 }) +
+      "\n",
+    "utf8"
+  );
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  assert.deepStrictEqual(result, { stale: false });
+});
+
+await test("malformed line alone → still stale (no valid rows)", () => {
+  writeMarker(ts(5));
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  writeFileSync(sidecarPath, "{ this is not valid JSON\n", "utf8");
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  assert.strictEqual(result.stale, true);
+  assert.ok(result.reason.includes("No runtime-state entry"));
+  assert.ok(result.reason.includes("vnstock"));
+});
+
+// ── Phase 1 corruption-masking (RED→GREEN for red-team S7): corrupted latest row + older valid row
+// The accepted trade-off (per plan validation decision 1): accept silent skip. Older valid row
+// may satisfy freshness and mask corruption. No API change; just pin the observed behavior.
+
+await test("corrupted latest row + older valid row → older valid row masks corruption (silent skip accepted)", () => {
+  writeMarker(ts(10));
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  // Corrupted (malformed) line first, then older valid row.
+  // Marker is at ts(10), valid row at ts(5) — valid row is NEWER than marker → freshness passes.
+  writeFileSync(
+    sidecarPath,
+    "{ this is not valid JSON\n" +
+      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-old", timestamp: ts(5), value: 1, delta: 0 }) +
+      "\n",
+    "utf8"
+  );
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  // Corruption-masking: the corrupted row is silently skipped; the older valid row satisfies
+  // freshness (sidecarTime > markerTime, so the staleness check does not trigger).
+  assert.deepStrictEqual(result, { stale: false });
+});
+
+// ── Phase 1 timestamp-missing (RED→GREEN for red-team F5): malformed line + valid row with no
+// timestamp changes the staleness reason string. Pin the new reason text.
+
+await test("malformed line + valid row missing timestamp → stale with 'Sidecar may be stale' reason", () => {
+  writeMarker(ts(5));
+  const sidecarPath = join(root, "runtime-state.jsonl");
+  writeFileSync(
+    sidecarPath,
+    "{ this is not valid JSON\n" +
+      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-no-ts", value: 1, delta: 0 }) +
+      "\n",
+    "utf8"
+  );
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  assert.strictEqual(result.stale, true);
+  assert.ok(
+    result.reason.includes("Sidecar may be stale"),
+    `expected "Sidecar may be stale" in reason; got: ${result.reason}`
+  );
+});

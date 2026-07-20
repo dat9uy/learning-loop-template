@@ -3,10 +3,16 @@
  * All readers are fail-open: return empty defaults on error.
  */
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertinvariantSync } from "./operation-invariant.js";
+// Plan 260720-1112 Phase 1: consume the shared runtime-state read path so the
+// sidecar parse is no longer forked (B-widening of plan 260719-2201). A
+// "null" line (JSON.parse("null") → null) used to trip the outer try/catch
+// and wipe the projection to []; now it's skipped at the parse layer
+// (parsed → null, then .filter(Boolean)) and the projection only sees valid
+// row objects.
+import { readRuntimeStateRows } from "./runtime-state.js";
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
@@ -14,7 +20,7 @@ const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
 
 /**
  * Resolve project root from this file's location.
- * tools/learning-loop-mcp/core/file-readers.js → ../../
+ * tools/learning-loop-mastra/core/file-readers.js → ../../../
  */
 function resolveRoot() {
   return dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
@@ -28,7 +34,7 @@ function resolveRoot() {
  *   vnstock → ["vendor-api", "package-manager"]
  *
  * Each active entry yields one observation-shaped object per mapped constraint.
- * Fail-open: returns [] on error or malformed lines.
+ * Fail-open: returns [] on error.
  *
  * Plan 260712-0724 (Implementation 3): active entries whose affected_system
  * is NOT in AFFECTED_SYSTEM_TO_CONSTRAINTS no longer silently drop. The
@@ -36,22 +42,22 @@ function resolveRoot() {
  * failure via gate-log AND pushes an observation with
  * `constraint_type: "unmapped-active-entry"` so downstream consumers see the
  * drift. Closes finding `meta-260630T2110Z`.
+ *
+ * Plan 260720-1112 Phase 1: parse moved to readRuntimeStateRows. The outer
+ * try/catch is retained as defensive (verified that `assertinvariantSync`
+ * cannot throw — it validates `root` upfront and returns {ok:false} on bad
+ * root; the operation lambda only does property access on primitives which
+ * returns undefined rather than throws). A future projection-body throw on a
+ * row shape that passed .filter(Boolean) but is missing fields would
+ * otherwise propagate uncaught into the bash + inbound gates.
  */
 // fallow-ignore-next-line complexity
 export function readRuntimeObservations(root) {
   const resolvedRoot = root || resolveRoot();
-  const sidecarPath = join(resolvedRoot, "runtime-state.jsonl");
   try {
-    const raw = readFileSync(sidecarPath, "utf8");
-    const lines = raw.split("\n").filter((line) => line.trim() !== "");
+    const rows = readRuntimeStateRows(resolvedRoot);
     const observations = [];
-    for (const line of lines) {
-      let entry;
-      try {
-        entry = JSON.parse(line);
-      } catch {
-        continue; // skip malformed lines
-      }
+    for (const entry of rows) {
       if (entry.status !== "active") continue;
       // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:

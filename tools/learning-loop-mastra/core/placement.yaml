@@ -82,8 +82,8 @@ files:
     role: helper
     summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal (Plan 260716-1101 Tier 2 Phase C).
   - path: file-readers.js
-    role: primitive
-    summary: Shared file-reading helpers (readJsonSafe, readLines).
+    role: facade
+    summary: Composes runtime-state read + observation projection + assertinvariant wrapper for the bash-gate constraint consumer.
   - path: path-containment.js
     role: primitive
     summary: resolveSafePath — realpath containment + hardlink rejection for user-supplied paths.

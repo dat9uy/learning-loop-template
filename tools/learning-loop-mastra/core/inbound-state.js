@@ -1,33 +1,19 @@
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { readFromAllSurfaces } from "./surfaces.js";
 // Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker file.
 // readLastOperatorMessage now takes a `sessionId` arg and looks for the
 // session-suffixed filename; without it, falls back to the legacy name for
 // migration compatibility.
 import { getSessionId } from "./worktree-session-id.js";
+// Plan 260720-1112 Phase 1: consume the shared runtime-state read path so the
+// sidecar parse is no longer forked (B-widening of plan 260719-2201). One
+// malformed line used to wipe the entire read to [] via the local readSidecar
+// try/catch; now it's skipped (parsed → null, then .filter(Boolean)) and
+// valid rows survive.
+import { readRuntimeStateRows } from "./runtime-state.js";
 
 const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const SIDECAR_FILENAME = "runtime-state.jsonl";
 const META_AFFECTED_SYSTEMS = new Set(["meta", undefined, null]);
-
-/**
- * Read the runtime-state.jsonl sidecar. Returns array of parsed row objects.
- * Fail-open: returns [] on error.
- */
-function readSidecar(root) {
-  const path = join(root, SIDECAR_FILENAME);
-  if (!existsSync(path)) return [];
-  try {
-    const raw = readFileSync(path, "utf8");
-    return raw
-      .split("\n")
-      .filter((line) => line.trim() !== "")
-      .map((line) => JSON.parse(line));
-  } catch {
-    return [];
-  }
-}
 
 /** Apply TTL filter to a parsed marker; returns the marker if valid, else null. */
 function isMarkerFresh(marker) {
@@ -100,7 +86,7 @@ export function checkObservationStaleness(observations, root) {
   // Lazy-read sidecar once for all non-meta observations.
   let sidecarCache = null;
   function getSidecar() {
-    if (sidecarCache === null) sidecarCache = readSidecar(root);
+    if (sidecarCache === null) sidecarCache = readRuntimeStateRows(root);
     return sidecarCache;
   }
 

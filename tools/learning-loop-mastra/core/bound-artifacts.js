@@ -72,14 +72,6 @@ const fileIndex = {
     "Direct writes to file-index.jsonl are blocked. Use the meta_state_refresh_file_index MCP tool (or upsertFileIndexEntry internally) to mutate the path-keyed fingerprint sidecar. Direct writes bypass hash validation and the single-writer queue — poisoning the index would mask drift with no audit trail.",
 };
 
-const schemas = {
-  name: "schemas",
-  matchedRule: "schemas/**",
-  glob: "schemas/**",
-  match: (relPath) => globMatch("schemas/**", relPath),
-  reason: "Schema changes require validation. Run pnpm validate:records first, then approve.",
-};
-
 const buildArtifacts = {
   name: "build-artifacts",
   matchedRule: "**/node_modules/**",
@@ -94,12 +86,17 @@ const buildArtifacts = {
 /**
  * The bound-artifacts ruleset. FROZEN to prevent accidental mutation;
  * order is pinned by `legacy-mcp/bound-artifacts.test.js`.
+ *
+ * 5 simple-glob rules (records, runtime-state, meta-state, file-index,
+ * build-artifacts). The `schemas/**` rule was migrated to a
+ * preflight-delegating rule in evaluate-write-gate.js (mirrors the
+ * `skills` pattern) in Phase 2 of plans/260720-1112. The dead-end simple-glob
+ * block + stale `pnpm validate:records` reason were both retired.
  */
 export const BOUND_ARTIFACTS = Object.freeze([
   records,
   runtimeState,
   metaState,
   fileIndex,
-  schemas,
   buildArtifacts,
 ]);

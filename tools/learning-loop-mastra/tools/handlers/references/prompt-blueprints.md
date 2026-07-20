@@ -60,8 +60,7 @@ Expected artifact changes:
 - [files to update or create]
 
 Validation:
-- Run `pnpm validate:records`.
-- Run `pnpm check`.
+- Run `pnpm test`.
 
 Report:
 - What changed.
@@ -111,7 +110,7 @@ After running:
 - Capture envelope fields: `run_id`, `temp_root_class`, `approval_gate`, `command_class`, `allowed_outputs`, `blocked_outputs`, `cleanup_status`, `temp_root_deleted`, `validation_status`.
 - Cleanup is part of proof success; failed cleanup blocks promotion.
 - If cleanup fails or deletion cannot be confirmed, mark the proof blocked/failed and do not verify the dimension.
-- Run `pnpm validate:records` and `pnpm check`.
+- Run `pnpm test`.
 - Report verified items, failed items, blocked items, and deletion confirmation.
 
 Stop and ask before reading/copying any private config file, exposing secrets, capturing raw data, retaining logs/caches/private artifacts, or continuing after cleanup failure.
@@ -183,8 +182,7 @@ Forbidden:
 - Do not edit records other than the new experiment YAMLs (and only with operator approval).
 
 Validation:
-- Run pnpm validate:records.
-- Run pnpm check.
+- Run `pnpm test`.
 
 Report:
 - For each evidence MD: classified mode, proposed YAML path, key fields, any unresolved questions.

@@ -28,8 +28,7 @@ Constraints:
 - Do not proceed to implementation until decision records exist for every Key Decision.
 
 Validation:
-- Run pnpm validate:records.
-- Run pnpm check.
+- Run `pnpm test` (canonical record-hygiene step).
 ```
 
 ## Skill-Phase Constraint Prompt
@@ -89,7 +88,6 @@ Constraints:
 - Do not update `validation_status` to `passed` without operator confirmation.
 
 Validation:
-- Run pnpm validate:records.
-- Run pnpm check.
+- Run `pnpm test` (canonical record-hygiene step).
 - Report unresolved questions last.
 ```

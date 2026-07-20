@@ -34,8 +34,7 @@ Use this checklist before asking the user a question or making an assumption abo
 
 ## 6. Validation Gate
 
-- [ ] I ran `pnpm validate:records` after any record change.
-- [ ] I ran `pnpm check` before declaring a phase complete.
+- [ ] I ran `pnpm test` after any record change (canonical record-hygiene step).
 - [ ] I stopped immediately if validation failed.
 
 ## Reference
