@@ -48,7 +48,7 @@ This plan manages both classes from **one central place** via a unified manifest
 |---|-------|--------|------|
 | 1 | [Unified manifest schema](./phase-01-start.md) | Completed (9216b2a) | Low (indexing only; `skills-lock.json` has zero code consumers) |
 | 2 | [Internal canonical source and fan-out materializer](./phase-02-internal-canonical-source-and-fan-out-materializer.md) | Completed (c2fa24e + review fixes) | Medium (first consumer of `writeToAllSkills`; narrow gate; canonical dir) |
-| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | In progress — contract side shipped (c2fa24e + review fixes); npx round-trip remainder gated on ledger-event `npx-skills-mastra-roundtrip-2026-07-19` (Q4) | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
+| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | In progress — contract side shipped (c2fa24e + review fixes); npx round-trip remainder gated on the F6 hash test (step 17); Q4 ledger-event hand-off superseded 2026-07-20 (plan 260720-1404) | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
 
 ## Dependencies
 
@@ -143,24 +143,26 @@ This plan manages both classes from **one central place** via a unified manifest
 4. **[Risks]** Phase 3 needs to run `npx skills add/update` in the sandbox (operator-gated preflight). If npx is fully unavailable or blocked in this sandbox, what's the Phase 3 fallback?
    - Options: Defer Phase 3 | Manual round-trip | Keep .agents symlink
    - **Answer:** (custom) Use the runtime-state mechanism — run the sandbox, record the npx round-trip as a `ledger-event` in `runtime-state.jsonl` via `runtime_state_record`, report back to it; no deferral.
+   - **Superseded 2026-07-20 (plan 260720-1404):** the runtime-state ledger-event hand-off is unwired — no sandbox selector, no report-back test, and same-id appends cannot supersede at id-keyed `find` sites (`meta-state-dispatch-finding-tool.js:45-50` returns the first match). Fallback is now the **F6 hash test (step 17)** — recompute + compare, not a ledger-event. See plan 260720-1404.
    - **Custom input:** "We have the mechanism to ship Phase 3, which is runtime-state, you could run the sandbox, then report back to it, no need to defer"
    - **Rationale:** `runtime_state_record` (tools/learning-loop-mastra/tools/runtime-state-record-tool.js) + `runtime-state.jsonl` (repo root) + the `ledger-event` kind are an established mechanism (verified in-session). Phase 3 does NOT defer if npx is blocked in the current sandbox; instead the npx round-trip is recorded as a ledger-event when a sandbox that can run npx executes it, and the plan reads runtime-state back to confirm. Keeps Phase 3 shippable without re-bypassing the provider flow. **Changes Phase 3** — see Action Items.
+   - **Superseded 2026-07-20 (plan 260720-1404):** the rationale's premise — that the plan can "read runtime-state back to confirm" — is incorrect. A static plan cannot observe runtime state; only a test can. The same-id "correction" append at `runtime-state.jsonl:24` is invisible to id-keyed readers (first-match-wins). The decision is preserved above for audit; the new disposition is the F6 hash test (step 17).
 
 #### Confirmed Decisions
 - Parity enforcement: detection-only (canonical-vs-mirror invariant test + gate). No distinct marker / no new MCP tool.
 - Manifest failure: hard-fail `manifest-unreadable`, no silent `isSymbolicLink()` fallback.
 - npx structure mismatch: fail + document; `.agents` not retired.
-- npx sandbox fallback: runtime-state `ledger-event` (NOT defer / NOT old-symlink).
+- npx sandbox fallback: F6 hash test — recompute + compare (NOT defer / NOT ledger-event / NOT old-symlink) [Q4 superseded 2026-07-20, plan 260720-1404].
 
 #### Action Items
-- [ ] Phase 3: replace the "If npx is fully unavailable in the sandbox, **defer this phase**" fallback with "record the npx round-trip as a `ledger-event` in `runtime-state.jsonl` via `runtime_state_record`; report back from whichever sandbox can run npx."
+- [x] Phase 3: npx-unavailable fallback = F6 hash test (step 17), not a ledger-event. (Q4 ledger-event hand-off dropped — plan 260720-1404.)
 
 #### Impact on Phases
-- Phase 3: the npx-unavailable fallback (Risk Assessment) becomes a runtime-state ledger-event flow, not a deferral. One targeted edit.
+- Phase 3: the npx-unavailable fallback (Risk Assessment) is the F6 hash test (step 17), not a ledger-event flow. One targeted edit (supersedes the prior Q4 runtime-state edit).
 
 ### Validation Whole-Plan Consistency Sweep
 - **Files reread:** plan.md, phase-01, phase-02, phase-03 (after the Phase 3 validation edit below).
-- **Decision deltas checked:** (a) Phase 3 npx-unavailable fallback: "defer" → "runtime-state ledger-event" — swept phase-03 Risk Assessment + Steps; plan.md Success Criteria (the npx round-trip criterion now reads from runtime-state, not a sandbox-bound run). (b) Q1-Q3 confirmed-existing — no deltas (detection-only / hard-fail / fail+document already in the plan); verified no stale "defer"/"fallback"/"distinct marker" claims contradict the confirmations.
+- **Decision deltas checked:** (a) Phase 3 npx-unavailable fallback: "defer" → "runtime-state ledger-event" → "F6 hash test (step 17)" — swept phase-03 Risk Assessment + Steps + status note; plan.md Success Criteria (the npx round-trip criterion now reads from the manifest hash, not a ledger-event or sandbox-bound run). (b) Q1-Q3 confirmed-existing — no deltas (detection-only / hard-fail / fail+document already in the plan); verified no stale "defer"/"fallback"/"distinct marker"/"runtime-state"/"ledger-event" claims contradict the confirmations.
 - **Reconciled stale references:** 1 (the phase-03 "defer this phase" fallback).
 - **Unresolved contradictions:** 0.
 
