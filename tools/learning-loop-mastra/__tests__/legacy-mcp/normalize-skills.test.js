@@ -62,8 +62,9 @@ const INTERNAL_SKILLS = {
 function buildClobberedFixture({
   // Realistic npx shape: 2 surfaces detected, 1 stale. .claude + .factory
   // are the runtimes npx auto-detects in the parent Phase 3 probe; .mastracode
-  // stays undetected. cluster heuristic must pick the 2-member new-content
-  // cluster over a 1-member stale singleton.
+  // stays undetected. The mtime heuristic (detectExternalHash) picks one of
+  // the freshly-written detected surfaces; both share the same new content,
+  // so the derived hash is sha256(newContent) regardless of which wins.
   detectedSurfaces = [".claude", ".factory"],
   newMastraContent = "# mastra\nNEW: npx-installed content for detection\n",
   staleContent = "# mastra\nSTALE: pre-clobber content\n",
@@ -179,9 +180,11 @@ test("idempotence: normalize on an already-normalized manifest is a no-op (chang
   }
 });
 
-test("hash derivation: 2 detected surfaces + 1 stale → hash matches the detected cluster (Q1 scan+derive)", () => {
-  // Realistic npx install: writes to .claude + .factory, leaves .mastracode stale.
-  const newContent = "# mastra\nNEW cluster content\n";
+test("hash derivation: 2 detected surfaces + 1 stale → hash matches the detected content (mtime heuristic)", () => {
+  // Realistic npx install: writes to .claude + .factory (both fresh mtime, same
+  // new content), leaves .mastracode stale. mtime-max picks a detected surface;
+  // derived hash = sha256(newContent).
+  const newContent = "# mastra\nNEW detected content\n";
   const staleContent = "# mastra\nSTALE: .mastracode is the undetected surface\n";
   const { root } = buildClobberedFixture({
     detectedSurfaces: [".claude", ".factory"],
@@ -196,7 +199,7 @@ test("hash derivation: 2 detected surfaces + 1 stale → hash matches the detect
     assert.strictEqual(
       post.skills.mastra.hash,
       expectedHash,
-      `2-detected-cluster hash must match sha256(new SKILL.md): got ${post.skills.mastra.hash}`,
+      `2-detected hash must match sha256(new SKILL.md): got ${post.skills.mastra.hash}`,
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -254,6 +257,27 @@ test("version: preserved/restored — manifest.version === 2 after normalize", (
     assert.strictEqual(r.code, 0, `normalize must exit 0: ${r.err}`);
     const post = readManifest(root);
     assert.strictEqual(post.version, 2, "manifest.version must remain 2");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("unknown top-level keys (e.g. $schema) preserved through normalize (not stripped)", () => {
+  const { root } = buildClobberedFixture();
+  try {
+    // Inject a non-{version,skills} top-level field the v2 schema may grow later.
+    const manifestPath = join(root, "skills-lock.json");
+    const before = JSON.parse(readFileSync(manifestPath, "utf8"));
+    before.$schema = "https://example.com/skills-lock.v2.json";
+    before.meta = { generatedBy: "npx-skills-cli" };
+    writeFileSync(manifestPath, JSON.stringify(before, null, 2));
+    const r = runNormalize(root);
+    assert.strictEqual(r.code, 0, `normalize must exit 0: ${r.err}`);
+    const post = readManifest(root);
+    assert.strictEqual(post.$schema, "https://example.com/skills-lock.v2.json", "$schema must survive normalize");
+    assert.deepStrictEqual(post.meta, { generatedBy: "npx-skills-cli" }, "meta must survive normalize");
+    assert.strictEqual(post.version, 2, "version still forced to 2");
+    assert.strictEqual(post.skills.mastra.external, true, "mastra still healed");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

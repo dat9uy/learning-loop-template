@@ -232,12 +232,48 @@ function postFanOutParityCheck(name, entry) {
   return { ok: true };
 }
 
+// Post-fan-out 3-way byte-identity for external skills. Mirrors the internal
+// postFanOutParityCheck, but externals have no canonical source (the detected
+// surface IS the content), so all 3 surfaces are compared to each other.
+// Closes the asymmetry where external fan-out relied only on writeToAllSkills
+// per-file failure reporting and skipped the post-fan-out re-read.
+function postExternalFanOutParityCheck(name) {
+  let ref = null;
+  const divergent = [];
+  for (const surface of SURFACES) {
+    const mirrorPath = join(repoRoot, surface, "skills", name, "SKILL.md");
+    if (!existsSync(mirrorPath)) {
+      divergent.push(`${surface}: mirror missing`);
+      continue;
+    }
+    const bytes = readFileSync(mirrorPath, "utf8");
+    if (ref === null) ref = bytes;
+    else if (bytes !== ref) divergent.push(`${surface}: byte-divergence`);
+  }
+  if (divergent.length > 0) {
+    return { ok: false, divergent };
+  }
+  return { ok: true };
+}
+
 function main() {
   const parsed = readManifest();
   // Self-heal step (Phase 1 of plans/260720-1825-...): normalize in-process
   // so the existing `pnpm skills:sync` post-npx workflow auto-restores the
   // v2 extended schema. Write back only if normalizeManifest reports a change
   // (idempotent re-runs leave the manifest untouched).
+  //
+  // Trust-model note (F6 shift, recorded in change-log meta-260720T1909Z):
+  // pre-self-heal, manifest.skills.mastra.hash was an independent trust anchor
+  // that GATED fan-out (a detected surface whose SKILL.md sha256 != manifest.hash
+  // was rejected). Post-self-heal, normalize re-derives the hash from the
+  // highest-mtime detected surface and writes it into the manifest, so the
+  // hash is now a CONTENT FINGERPRINT, not an independent gate. This is the
+  // operator's documented trade-off: npx is the trusted install channel in
+  // this single-operator template, so trusting the freshly-installed surface
+  // is aligned with the goal. If tamper-resistance against a hostile detected
+  // copy is ever needed, restore the cluster/content-gated rejection (the
+  // original F13/F6 test, pre-rewrite) rather than re-deriving.
   const norm = normalizeManifest(parsed, repoRoot);
   if (norm.error) {
     console.error(`[sync-skills] FATAL: ${norm.error}`);
@@ -274,6 +310,13 @@ function main() {
           totalFailed += 1;
           divergent.push({ name, surfaces: result.divergent, reason: result.reason });
           console.error(`[sync-skills] FAIL ${name}: ${result.reason}`);
+          continue;
+        }
+        const parity = postExternalFanOutParityCheck(name);
+        if (!parity.ok) {
+          totalFailed += 1;
+          divergent.push({ name, surfaces: parity.divergent, reason: "post-fan-out parity" });
+          console.error(`[sync-skills] PARITY FAIL ${name}: ${parity.divergent.join(", ")}`);
           continue;
         }
         console.log(`[sync-skills] ok ${name} (external fan-out from ${result.source}) → ${SURFACES.join(", ")}`);

@@ -7,15 +7,17 @@
  * Restores the v2 extended schema on the `mastra` entry after `npx skills add/update`
  * clobbers it (drops `external:true`/`delivery`/`targets`/`maturity`/`hash`,
  * changes `sourceType:"npx-skills-cli"` → `"github"`, adds opaque
- * `computedHash`). The trust-anchor `hash = sha256(SKILL.md)` is re-derived from
- * the installed files on disk (largest byte-equal SKILL.md cluster across the
- * 3 surfaces — the empirical npx install shape is 2 detected + 1 stale).
+ * `computedHash`). The trust-anchor `hash = sha256(SKILL.md)` is re-derived
+ * from the installed files on disk -- the surface with the highest mtime
+ * across the 3 surfaces (npx writes detected runtimes with wall-clock mtime;
+ * see `detectExternalHash` in `skills-lib.mjs`).
  *
  * Idempotent: re-running on an already-normalized manifest is a no-op (the
  * `changed` flag from `normalizeManifest` drives write-back).
  *
- * Pure-fail-closed: malformed manifest, missing fields, ambiguous hash
- * clusters → exit 2 (matches sync-skills.mjs posture).
+ * Pure-fail-closed: malformed manifest, missing fields, or no real-dir
+ * SKILL.md on any surface (cannot derive hash) → exit 2 (matches
+ * sync-skills.mjs posture).
  *
  * Usage:
  *   node tools/scripts/normalize-skills.mjs                # repo-root manifest

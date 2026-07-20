@@ -101,6 +101,13 @@ export const EXTERNAL_POLICY = Object.freeze({
  * operator edit to SKILL.md would also be picked up; that's the safer default
  * (operator edits ARE the canonical content).
  *
+ * Assumption: npx writes installed files with wall-clock mtime (empirically
+ * verified in the 2026-07-20 probe -- detected surfaces carry the probe-run
+ * timestamp, NOT an preserved upstream timestamp). If npx ever switches to
+ * preserving upstream mtimes, the freshest-mtime surface would be a stale
+ * one and this heuristic would pick wrong; a content-cluster approach (largest
+ * byte-equal SKILL.md group) would be the robust fallback.
+ *
  * @param {string} name
  * @param {string} repoRoot
  * @returns {{ hash: string|null, reason: string|null }}
@@ -192,10 +199,11 @@ export function normalizeManifest(parsed, repoRoot) {
     }
   }
 
-  const next = {
-    version: 2,
-    skills: {},
-  };
+  // Preserve unknown top-level keys (e.g. a future `$schema` or `meta` field)
+  // by spreading the parsed manifest first, then forcing version:2 and
+  // rebuilding skills. Without this, normalize would silently drop any
+  // top-level field outside {version, skills} on every heal.
+  const next = { ...parsed, version: 2, skills: {} };
   const restoredExternals = [];
   let changed = parsed.version !== 2;
 
