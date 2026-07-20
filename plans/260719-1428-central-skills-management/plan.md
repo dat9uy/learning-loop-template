@@ -1,7 +1,7 @@
 ---
 title: "Central Skills Management"
 description: "Unify external (mastra) + internal (learning-loop, coordination-gate) skill management across .claude/.factory/.mastracode behind one manifest, a canonical authoring source + fan-out materializer for internal skills (Decision 3 preserved), and a switch to the npx skills provider flow for mastra (Branch B). TDD-structured to preserve the contract + parity-test invariants."
-status: in-progress
+status: completed
 priority: P2
 effort: "2-3d"
 tags: [skills, manifest, materializer, write-gate, contract, runtime-agnostic, mastra, npx-skills]
@@ -48,7 +48,7 @@ This plan manages both classes from **one central place** via a unified manifest
 |---|-------|--------|------|
 | 1 | [Unified manifest schema](./phase-01-start.md) | Completed (9216b2a) | Low (indexing only; `skills-lock.json` has zero code consumers) |
 | 2 | [Internal canonical source and fan-out materializer](./phase-02-internal-canonical-source-and-fan-out-materializer.md) | Completed (c2fa24e + review fixes) | Medium (first consumer of `writeToAllSkills`; narrow gate; canonical dir) |
-| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | In progress — contract side shipped (c2fa24e + review fixes); npx round-trip remainder gated on the F6 hash test (step 17); Q4 ledger-event hand-off superseded 2026-07-20 (plan 260720-1404) | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
+| 3 | [Mastra npx provider switch and manifest-driven exclusion](./phase-03-mastra-npx-provider-switch-and-manifest-driven-exclusion.md) | Completed — delivery landed 2026-07-20: real npx round-trip (npx was NOT blocked in the sandbox — Finding-C premise inverted), `sync-skills.mjs` recursive external fan-out + F6 hash-verify, `.agents` retired, `.mastracode` gap closed, F11/F12/F6 tests green, 2318 tests green. Operational hazard: npx clobbers `skills-lock.json` on add/update (tracked finding + post-npx restore workflow) | High (load-bearing contract + parity edits; npx behavior probes; `.agents` retirement; trust-anchor gating) |
 
 ## Dependencies
 
@@ -58,17 +58,17 @@ This plan manages both classes from **one central place** via a unified manifest
 
 ## Success Criteria
 
-- [ ] `skills-lock.json` extended to the unified manifest shape; entries for `learning-loop`, `coordination-gate`, `mastra` backfilled; schema + manifest↔frontmatter drift tests green; **`hash` load-bearing** (manifest.hash === sha256(canonical), F6).
-- [ ] `tools/learning-loop-mastra/skills/{learning-loop,coordination-gate}/SKILL.md` exist as the canonical authoring source.
-- [ ] `tools/scripts/sync-skills.mjs` (+ `pnpm skills:sync`) reuses `writeToAllSkills`; idempotent (re-run = no diff); **post-fan-out runtime parity check** fails loudly on partial-fan-out (F5); **canonical-vs-mirror parity invariant** detects direct canonical tamper (F3).
-- [ ] One edit in canonical → after `pnpm skills:sync`, all 3 mirrors byte-identical AND == canonical; `skills-mirror-parity.test.js` green.
-- [ ] Narrow write-gate rule blocks direct writes to `tools/learning-loop-mastra/skills/**` without `.loop-preflight-skills`; `BOUND_ARTIFACTS` unchanged. **`skills-lock.json` gated** (F4) — it becomes a trust anchor in Phase 3.
-- [ ] `node tools/learning-loop-mastra/interface/contract.js claude-code|droid|mastra-code` all exit 0 (every phase).
-- [ ] Mastra: `npx skills add mastra-ai/skills --copy` round-trip (add→update) keeps all 3 surfaces + parity/contract green; **`.mastracode/skills/mastra` present (test-enforced, F11)**; `.agents/skills/mastra` retired as source.
-- [ ] `listLoopMaintainedSkills` excludes by manifest `external:true` (not `isSymbolicLink()`); **no module-level cache (F7)**; `manifest-unreadable` (F8) + `skill-not-in-manifest` (F9) explicit failure modes + tests; `contract.test.js:962` fixture updated (F2); parity test L90-128 replaced with a load-bearing manifest-external assertion (F10).
-- [ ] **Mastra cross-surface byte-identity parity test (F12)** green (separate from `LOOP_MAINTAINED_SKILLS`).
-- [ ] Manifest query `maturity: state-1` returns the escape-hatch inventory in one grep.
-- [ ] No new MCP tool (Decision 4 honored); no Decision-3 reversal; no `tools/**`-wide gating (Decision 5 honored).
+- [x] `skills-lock.json` extended to the unified manifest shape; entries for `learning-loop`, `coordination-gate`, `mastra` backfilled; schema + manifest↔frontmatter drift tests green; **`hash` load-bearing** (manifest.hash === sha256(canonical), F6).
+- [x] `tools/learning-loop-mastra/skills/{learning-loop,coordination-gate}/SKILL.md` exist as the canonical authoring source.
+- [x] `tools/scripts/sync-skills.mjs` (+ `pnpm skills:sync`) reuses `writeToAllSkills`; idempotent (re-run = no diff); **post-fan-out runtime parity check** fails loudly on partial-fan-out (F5); **canonical-vs-mirror parity invariant** detects direct canonical tamper (F3).
+- [x] One edit in canonical → after `pnpm skills:sync`, all 3 mirrors byte-identical AND == canonical; `skills-mirror-parity.test.js` green.
+- [x] Narrow write-gate rule blocks direct writes to `tools/learning-loop-mastra/skills/**` without `.loop-preflight-skills`; `BOUND_ARTIFACTS` unchanged. **`skills-lock.json` gated** (F4) — it becomes a trust anchor in Phase 3.
+- [x] `node tools/learning-loop-mastra/interface/contract.js claude-code|droid|mastra-code` all exit 0 (every phase).
+- [x] Mastra: `npx skills add mastra-ai/skills --copy` round-trip (add→update) keeps all 3 surfaces + parity/contract green; **`.mastracode/skills/mastra` present (test-enforced, F11)**; `.agents/skills/mastra` retired as source.
+- [x] `listLoopMaintainedSkills` excludes by manifest `external:true` (not `isSymbolicLink()`); **no module-level cache (F7)**; `manifest-unreadable` (F8) + `skill-not-in-manifest` (F9) explicit failure modes + tests; `contract.test.js:962` fixture updated (F2); parity test L90-128 replaced with a load-bearing manifest-external assertion (F10).
+- [x] **Mastra cross-surface byte-identity parity test (F12)** green (separate from `LOOP_MAINTAINED_SKILLS`).
+- [x] Manifest query `maturity: state-1` returns the escape-hatch inventory in one grep.
+- [x] No new MCP tool (Decision 4 honored); no Decision-3 reversal; no `tools/**`-wide gating (Decision 5 honored).
 
 ## Out of scope (deferred)
 

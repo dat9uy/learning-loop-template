@@ -18,7 +18,8 @@
 
 import { test } from "vitest";
 import assert from "node:assert";
-import { readFileSync, existsSync, writeFileSync, mkdtempSync, mkdirSync, rmSync, chmodSync, statSync, readdirSync, unlinkSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync, mkdtempSync, mkdirSync, rmSync, chmodSync, statSync, readdirSync, lstatSync, symlinkSync, unlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
@@ -339,6 +340,199 @@ test("write-gate: canonical dir blocked without preflight, allowed with marker",
     );
     const allowed = mod.evaluateWriteGate({ filePath: canonicalPath, root });
     assert.strictEqual(allowed.decision, "ok", "canonical write must be allowed with skills preflight marker");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Phase 3 external fan-out tests (red-team F13): the materializer fans out an
+// external skill (delivery: "npx-per-runtime+fanout-undetected") from the
+// detected npx copy to undetected runtimes. Detected copy is read-only; F6
+// hash-verify gates the source; missing detected copy → explicit failure;
+// legacy .agents symlinks at undetected surfaces are cleared before writes.
+// ---------------------------------------------------------------------------
+
+function sha256hex(content) {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+// Build a fixture with a detected mastra tree on `detectedSurface` (real
+// files: SKILL.md + references/foo.md + scripts/bar.mjs) + a manifest entry
+// whose hash matches the detected SKILL.md. Other surfaces are undetected
+// (empty, or carrying a legacy symlink to a `.agents` source if requested).
+function buildExternalFixture({ detectedSurface = ".claude", legacySymlinkOn = [], hashOverride } = {}) {
+  const root = mkdtempSync(join(tmpdir(), "ll-ext-"));
+  const skillContent = "# mastra\nexternal skill fixture\n";
+  const refContent = "# remote-docs\nfixture reference\n";
+  const scriptContent = "// provider-registry fixture\nexport default {};\n";
+  const detectedDir = join(root, detectedSurface, "skills", "mastra");
+  mkdirSync(join(detectedDir, "references"), { recursive: true });
+  mkdirSync(join(detectedDir, "scripts"), { recursive: true });
+  writeFileSync(join(detectedDir, "SKILL.md"), skillContent);
+  writeFileSync(join(detectedDir, "references", "remote-docs.md"), refContent);
+  writeFileSync(join(detectedDir, "scripts", "provider-registry.mjs"), scriptContent);
+  const hash = hashOverride ?? sha256hex(skillContent);
+  const manifest = {
+    version: 2,
+    skills: {
+      mastra: {
+        source: "mastra-ai/skills",
+        sourceType: "npx-skills-cli",
+        delivery: "npx-per-runtime+fanout-undetected",
+        skillPath: "skills/mastra/SKILL.md",
+        targets: [".claude", ".factory", ".mastracode"],
+        maturity: null,
+        external: true,
+        hash,
+      },
+    },
+  };
+  writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest));
+  // Optional legacy symlink at undetected surfaces (mimics pre-Phase-3
+  // .agents mechanism: <surface>/skills/mastra → ../../.agents/skills/mastra).
+  for (const surface of legacySymlinkOn) {
+    if (surface === detectedSurface) continue;
+    const agentsSource = join(root, ".agents", "skills", "mastra");
+    mkdirSync(join(agentsSource, "references"), { recursive: true });
+    writeFileSync(join(agentsSource, "SKILL.md"), "# stale .agents source\n");
+    writeFileSync(join(agentsSource, "references", "stale.md"), "stale\n");
+    const linkDir = join(root, surface, "skills");
+    mkdirSync(linkDir, { recursive: true });
+    symlinkSync(join("..", "..", ".agents", "skills", "mastra"), join(linkDir, "mastra"));
+  }
+  return { root, skillContent, refContent, scriptContent };
+}
+
+function readTree(dir) {
+  const out = {};
+  (function walk(d, rel) {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const rp = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory() && !e.isSymbolicLink()) walk(join(d, e.name), rp);
+      else if (e.isFile() && !e.isSymbolicLink()) out[rp] = readFileSync(join(d, e.name), "utf8");
+    }
+  })(dir, "");
+  return out;
+}
+
+test("F13: external fan-out propagates the detected tree byte-identically to undetected surfaces", () => {
+  const { root, skillContent, refContent, scriptContent } = buildExternalFixture();
+  try {
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
+    assert.match(r.out, /external fan-out from \.claude/, `log must name the detected source: ${r.out}`);
+    for (const surface of [".factory", ".mastracode"]) {
+      const tree = readTree(join(root, surface, "skills", "mastra"));
+      assert.deepStrictEqual(
+        Object.keys(tree).sort(),
+        ["SKILL.md", "references/remote-docs.md", "scripts/provider-registry.mjs"],
+        `${surface}: fanned-out tree must match the detected file set`,
+      );
+      assert.strictEqual(tree["SKILL.md"], skillContent, `${surface}: SKILL.md must match`);
+      assert.strictEqual(tree["references/remote-docs.md"], refContent, `${surface}: references must match`);
+      assert.strictEqual(tree["scripts/provider-registry.mjs"], scriptContent, `${surface}: scripts must match`);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("F13: external fan-out is idempotent (second run writes nothing, source untouched)", () => {
+  const { root } = buildExternalFixture();
+  try {
+    const r1 = runSyncSkills(root);
+    assert.strictEqual(r1.code, 0, `first run must exit 0: ${r1.err}`);
+    const sourceSkillMd = join(root, ".claude", "skills", "mastra", "SKILL.md");
+    const sourceMtime = statSync(sourceSkillMd).mtimeMs;
+    const factorySkillMd = join(root, ".factory", "skills", "mastra", "SKILL.md");
+    const factoryMtime = statSync(factorySkillMd).mtimeMs;
+    const r2 = runSyncSkills(root);
+    assert.strictEqual(r2.code, 0, `second run must exit 0: ${r2.err}`);
+    // Source is read-only (never rewritten): mtime unchanged.
+    assert.strictEqual(statSync(sourceSkillMd).mtimeMs, sourceMtime, "detected copy must be read-only (no mtime bump on re-run)");
+    // Fanned-out surfaces are skipUnchanged on re-run: mtime unchanged.
+    assert.strictEqual(statSync(factorySkillMd).mtimeMs, factoryMtime, ".factory mirror must not be touched on idempotent re-run");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("F13: detected copy is read-only (materializer never writes back to the source surface)", () => {
+  const { root, skillContent } = buildExternalFixture();
+  try {
+    // Seed .factory + .mastracode with a STALE mastra tree so the materializer
+    // has a pending write on every surface except the source — if it wrote back
+    // to the source, the source mtime would bump.
+    for (const surface of [".factory", ".mastracode"]) {
+      const dir = join(root, surface, "skills", "mastra");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "SKILL.md"), "# stale\n");
+    }
+    const sourceSkillMd = join(root, ".claude", "skills", "mastra", "SKILL.md");
+    const sourceMtime = statSync(sourceSkillMd).mtimeMs;
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
+    assert.strictEqual(statSync(sourceSkillMd).mtimeMs, sourceMtime, "source surface must be untouched (read-only)");
+    assert.strictEqual(readFileSync(join(root, ".claude", "skills", "mastra", "SKILL.md"), "utf8"), skillContent, "source content must be unchanged");
+    // Stale surfaces were overwritten with the source tree.
+    for (const surface of [".factory", ".mastracode"]) {
+      assert.strictEqual(
+        readFileSync(join(root, surface, "skills", "mastra", "SKILL.md"), "utf8"),
+        skillContent,
+        `${surface}: stale content must be replaced with the detected tree`,
+      );
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("F13: missing detected copy → explicit failure (not a silent skip)", () => {
+  // No surface has a real-dir mastra with a SKILL.md hash matching the manifest.
+  const { root } = buildExternalFixture({ hashOverride: "0".repeat(64) });
+  try {
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 1, `missing detected copy must exit 1: ${JSON.stringify(r)}`);
+    assert.match(r.err, /no-detected-copy/, `error must name the failure: ${r.err}`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("F13/F6: detected copy whose SKILL.md hash does NOT match manifest → failure (no fan-out from untrusted source)", () => {
+  // Detected dir exists but its SKILL.md hash differs from the manifest hash.
+  const { root } = buildExternalFixture({ hashOverride: "1".repeat(64) });
+  try {
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 1, `hash-mismatch detected copy must exit 1: ${JSON.stringify(r)}`);
+    assert.match(r.err, /no-detected-copy/, `F6 hash mismatch must surface as no-trusted-source: ${r.err}`);
+    // Undetected surfaces must NOT have received files from the untrusted source.
+    assert.ok(!existsSync(join(root, ".mastracode", "skills", "mastra", "SKILL.md")), "untrusted source must not fan out");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("F13: legacy .agents symlink at an undetected surface is replaced with real files (no write-through)", () => {
+  const { root, skillContent } = buildExternalFixture({ legacySymlinkOn: [".factory"] });
+  try {
+    // Pre-condition: .factory/skills/mastra is a symlink to .agents/skills/mastra.
+    const factoryLink = join(root, ".factory", "skills", "mastra");
+    assert.ok(lstatSync(factoryLink).isSymbolicLink(), "precondition: .factory mastra is a legacy symlink");
+    const agentsSourceSkillMd = join(root, ".agents", "skills", "mastra", "SKILL.md");
+    const agentsContentBefore = readFileSync(agentsSourceSkillMd, "utf8");
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 0, `fan-out must exit 0: ${r.err}`);
+    // The symlink was replaced with a real dir.
+    assert.ok(!lstatSync(factoryLink).isSymbolicLink(), ".factory mastra must now be a real dir, not a symlink");
+    assert.strictEqual(
+      readFileSync(join(factoryLink, "SKILL.md"), "utf8"),
+      skillContent,
+      ".factory must hold the fanned-out real files",
+    );
+    // No write-through to .agents (the retired source is untouched).
+    assert.strictEqual(readFileSync(agentsSourceSkillMd, "utf8"), agentsContentBefore, ".agents source must not be modified via write-through");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

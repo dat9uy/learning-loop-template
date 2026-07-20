@@ -20,7 +20,8 @@
  * Authoring path: edit canonical → `pnpm skills:sync` → meta_state_log_change.
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, lstatSync, readdirSync, unlinkSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -70,6 +71,123 @@ function readManifest() {
     }
   }
   return parsed;
+}
+
+function sha256(content) {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+// Phase 3 external fan-out (delivery: "npx-per-runtime+fanout-undetected").
+// The detected runtime gets real files from `npx skills add --copy`; the
+// undetected runtimes get a byte-identical tree fanned out from the detected
+// copy. This closes the `.mastracode` (and `.factory` if undetected) gap
+// without re-bypassing the provider flow.
+//
+// F6 hash-verify (load-bearing): the source surface is the one whose
+// `<surface>/skills/<name>/SKILL.md` sha256 matches `entry.hash`. A real-dir
+// skill whose hash does NOT match the manifest is not a trusted source —
+// refuse to fan out from it (defense-in-depth against a tampered detected
+// copy or a stale manifest). Missing detected copy → explicit failure
+// (not a silent skip), so an empty install is visible.
+
+function findDetectedSurface(name, entry, repoRoot) {
+  if (!entry || typeof entry.hash !== "string" || entry.hash.length !== 64) return null;
+  for (const surface of SURFACES) {
+    const dir = join(repoRoot, surface, "skills", name);
+    if (!existsSync(dir)) continue;
+    let st;
+    try {
+      st = lstatSync(dir);
+    } catch {
+      continue;
+    }
+    // A symlink is not a detected copy (it's the legacy .agents mechanism or
+    // a yet-undetected surface). Only a real dir qualifies as the npx source.
+    if (!st.isDirectory() || st.isSymbolicLink()) continue;
+    const skillMd = join(dir, "SKILL.md");
+    if (!existsSync(skillMd)) continue;
+    if (sha256(readFileSync(skillMd, "utf8")) === entry.hash) return surface;
+  }
+  return null;
+}
+
+// Recursively collect real-file relative paths under dir (symlinks skipped —
+// external fan-out materializes real files only).
+function collectTreeFiles(dir) {
+  const out = [];
+  (function walk(d, rel) {
+    let entries;
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const rp = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory() && !e.isSymbolicLink()) walk(join(d, e.name), rp);
+      else if (e.isFile() && !e.isSymbolicLink()) out.push(rp);
+    }
+  })(dir, "");
+  return out;
+}
+
+function fanOutExternal(name, entry, repoRoot) {
+  const source = findDetectedSurface(name, entry, repoRoot);
+  if (!source) {
+    return {
+      ok: false,
+      divergent: [name],
+      reason: "no-detected-copy (F6: no surface has a real-dir SKILL.md sha256 matching manifest.hash)",
+    };
+  }
+  const sourceDir = join(repoRoot, source, "skills", name);
+
+  // Remove legacy symlinks at undetected surfaces BEFORE any write. The old
+  // `.agents` mechanism left `<surface>/skills/<name>` as a symlink to
+  // `.agents/skills/<name>`; writing through it would mutate the soon-to-be-
+  // retired source. Probe 2 (2026-07-20) confirmed `npx skills add --copy`
+  // atomically replaces the symlink at the detected surface, but the
+  // undetected surfaces still carry the legacy symlink until we clear it.
+  for (const surface of SURFACES) {
+    if (surface === source) continue;
+    const dest = join(repoRoot, surface, "skills", name);
+    try {
+      if (existsSync(dest) && lstatSync(dest).isSymbolicLink()) unlinkSync(dest);
+    } catch (err) {
+      return { ok: false, divergent: [surface], reason: `unlink legacy symlink: ${err.message}` };
+    }
+  }
+
+  // Walk the detected tree; fan out each file via writeToAllSkills (atomic
+  // write-temp+rename + skipUnchanged idempotence + pid-suffixed tmp). The
+  // source surface is a true no-op (skipUnchanged sees byte-equal content);
+  // undetected surfaces receive real files. Reusing the engine keeps the
+  // cross-surface write contract identical to the internal fan-out.
+  const relFiles = collectTreeFiles(sourceDir);
+  if (relFiles.length === 0) {
+    return { ok: false, divergent: [source], reason: "detected copy has no real files" };
+  }
+  let wrote = 0;
+  let unchanged = 0;
+  const failed = {};
+  for (const rel of relFiles) {
+    const content = readFileSync(join(sourceDir, rel), "utf8");
+    const results = writeToAllSkills(repoRoot, `${name}/${rel}`, content);
+    for (const r of results) {
+      if (r.action === "wrote") wrote += 1;
+      else if (r.action === "unchanged") unchanged += 1;
+      else if (r.action === "failed") (failed[r.surface] ??= []).push(`${rel}: ${r.error}`);
+    }
+  }
+  const failedSurfaces = Object.keys(failed);
+  if (failedSurfaces.length > 0) {
+    return {
+      ok: false,
+      divergent: failedSurfaces,
+      reason: failedSurfaces.map((s) => `${s}: ${failed[s].join("; ")}`).join(" | "),
+    };
+  }
+  return { ok: true, source, wrote, unchanged };
 }
 
 function materializeOne(name, entry) {
@@ -138,7 +256,21 @@ function main() {
 
   for (const [name, entry] of entries) {
     if (entry.external === true) {
-      console.log(`[sync-skills] skip ${name} (external)`);
+      // Phase 3: external skills with `fanout-undetected` delivery are fanned
+      // out from the detected npx copy to undetected runtimes. External skills
+      // without that delivery (e.g. a future global-only install) are skipped.
+      if (typeof entry.delivery === "string" && entry.delivery.includes("fanout-undetected")) {
+        const result = fanOutExternal(name, entry, repoRoot);
+        if (!result.ok) {
+          totalFailed += 1;
+          divergent.push({ name, surfaces: result.divergent, reason: result.reason });
+          console.error(`[sync-skills] FAIL ${name}: ${result.reason}`);
+          continue;
+        }
+        console.log(`[sync-skills] ok ${name} (external fan-out from ${result.source}) → ${SURFACES.join(", ")}`);
+      } else {
+        console.log(`[sync-skills] skip ${name} (external, no fan-out)`);
+      }
       continue;
     }
     const result = materializeOne(name, entry);
