@@ -19,8 +19,7 @@ For each declared surface, confirm decision records exist:
 
 ### Pre-Flight Validation
 ```bash
-pnpm validate:records
-pnpm check
+pnpm test
 ```
 
 ### Gate Mode

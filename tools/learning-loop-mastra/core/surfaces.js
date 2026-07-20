@@ -47,33 +47,57 @@ export function getAllCoordinationPaths(subpath) {
  * Returns a per-surface result array (red-team fix: surface errors are no
  * longer swallowed silently — callers can detect partial-mirror failure).
  *
+ * Per red-team F15 (plan 260719-1428-central-skills-management Phase 2):
+ * the temp path is pid-suffixed (`${realPath}.<pid>.tmp`) so concurrent
+ * `sync-skills` CLI invocations cannot collide on the same `.tmp` path;
+ * the per-surface loop is sequential within a process so no intra-process
+ * collision exists. A `finally` block unlinkSync's the tmp on failure
+ * (rename failure or interruption) so the dir does not accumulate `.tmp`
+ * debris.
+ *
  * @param {string} root — project root directory
  * @param {string} section — section name (e.g. "coordination", "skills")
  * @param {string} subpath — relative path under the section
  * @param {string} content — file content (string)
- * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
+ * @param {{ skipUnchanged?: boolean }} [opts] — when skipUnchanged is true, a
+ *   surface whose existing file is already byte-equal to `content` is left
+ *   untouched (action "unchanged", no mtime bump). Opt-in: callers with
+ *   mtime-sensitive semantics (e.g. TTL-bearing token writes) keep the
+ *   default always-rewrite behavior.
+ * @returns {Array<{ surface: string, action: "wrote" | "unchanged" | "failed", error?: string }>}
  */
 // Reserved as the canonical section-aware mirror fan-out per plan 260707-0114
 // acceptance. Consumed internally by writeToAllSurfaces (back-compat, has
 // external callers) and writeToAllSkills; current skill edits use gated-Edit-
 // per-mirror (red-team #6), so no external import exists yet.
 // fallow-ignore-next-line unused-export
-export function writeToAllSurfacesSection(root, section, subpath, content) {
+export function writeToAllSurfacesSection(root, section, subpath, content, opts = {}) {
   const results = [];
   for (const surface of SURFACES) {
-    const dir = join(root, surface, section, dirname(subpath));
-    const realPath = join(root, surface, section, subpath);
-    const tmpPath = `${realPath}.tmp`;
-    try {
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(tmpPath, content, "utf8");
-      renameSync(tmpPath, realPath);
-      results.push({ surface, action: "wrote" });
-    } catch (err) {
-      results.push({ surface, action: "failed", error: err?.message ?? String(err) });
-    }
+    results.push(writeOneSurface(root, surface, section, subpath, content, opts));
   }
   return results;
+}
+
+// Per-surface atomic write (extracted from writeToAllSurfacesSection to keep
+// the loop's cyclomatic complexity flat after the skipUnchanged branch).
+function writeOneSurface(root, surface, section, subpath, content, opts) {
+  const dir = join(root, surface, section, dirname(subpath));
+  const realPath = join(root, surface, section, subpath);
+  const tmpPath = `${realPath}.${process.pid}.tmp`;
+  try {
+    if (opts.skipUnchanged && existsSync(realPath) && readFileSync(realPath, "utf8") === content) {
+      return { surface, action: "unchanged" };
+    }
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(tmpPath, content, "utf8");
+    renameSync(tmpPath, realPath);
+    return { surface, action: "wrote" };
+  } catch (err) {
+    return { surface, action: "failed", error: err?.message ?? String(err) };
+  } finally {
+    try { if (existsSync(tmpPath)) unlinkSync(tmpPath); } catch {}
+  }
 }
 
 /**
@@ -94,17 +118,26 @@ export function writeToAllSurfaces(root, subpath, content) {
  * detect partial-mirror failure (the `learning-loop` mirror fan-out is a
  * critical path; the validator's parity test is the byte-identity backstop).
  *
+ * Skills content carries no mtime-sensitive semantics (mirrors are validated
+ * by byte-identity, not freshness), so skipUnchanged is always on: re-running
+ * the materializer is a true no-op (0 bytes written, no mtime bump) when
+ * mirrors already match canonical.
+ *
+ * First real consumer: tools/scripts/sync-skills.mjs (plan 260719-1428
+ * central-skills-management Phase 2 — internal canonical source + fan-out
+ * materializer).
+ *
  * @param {string} root
  * @param {string} subpath — relative path under <surface>/skills/
  * @param {string} content
- * @returns {Array<{ surface: string, action: "wrote" | "failed", error?: string }>}
+ * @returns {Array<{ surface: string, action: "wrote" | "unchanged" | "failed", error?: string }>}
  */
-// Reserved as the skills-mirror fan-out per plan 260707-0114 acceptance. No
-// consumer today: skill edits go through gated-Edit-per-mirror (red-team #6).
-// Consumers land with the next skill materialization that uses the fan-out.
+// Consumed by tools/scripts/sync-skills.mjs — outside fallow's --root
+// (tools/learning-loop-mastra), so the import is invisible to the audit and
+// the export would otherwise be flagged unused. Not stale.
 // fallow-ignore-next-line unused-export
 export function writeToAllSkills(root, subpath, content) {
-  return writeToAllSurfacesSection(root, "skills", subpath, content);
+  return writeToAllSurfacesSection(root, "skills", subpath, content, { skipUnchanged: true });
 }
 
 /**

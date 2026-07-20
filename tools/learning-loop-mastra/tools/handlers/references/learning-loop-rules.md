@@ -104,8 +104,7 @@ After operator approval, create the file via `Bash` with a heredoc. The `Write` 
 Default validation after records and evidence changes:
 
 ```bash
-pnpm validate:records
-pnpm check
+pnpm test
 ```
 
 Verification helper work should default to dry-run unless the user explicitly approves mutation.

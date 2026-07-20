@@ -212,12 +212,42 @@ function readSkillSafe(skillPath) {
   return { ok: true, content };
 }
 
-function listLoopMaintainedSkills(skillsDir) {
-  // Enumerate <surface>/skills/<name>/SKILL.md entries. Symlinks (e.g.
-  // .claude/skills/mastra → ../../.agents/skills/mastra) are external and
-  // out of the contract's scope — the threat-model boundary is documented
-  // in phase 5 + CONTRACT.md. The lstatSync call distinguishes a symlink
-  // (entry.isSymbolicLink() is true) from a regular directory.
+function lookupManifestSkill(skillsObj, name) {
+  // Trust-anchor read (Phase 3 F9 hardening): own-property + object-shaped
+  // entries only. A bare `skillsObj?.[name]` walks the prototype chain — a
+  // planted dir named "constructor"/"toString" would resolve to inherited
+  // Object members and be treated as manifest-declared internal. A null (or
+  // otherwise non-object) entry would crash the .external read with a
+  // TypeError. Both shapes are treated as NOT-declared → skill-not-in-manifest
+  // (fail closed, no crash).
+  if (!skillsObj || typeof skillsObj !== "object") return undefined;
+  if (!Object.prototype.hasOwnProperty.call(skillsObj, name)) return undefined;
+  const entry = skillsObj[name];
+  if (entry === null || typeof entry !== "object") return undefined;
+  return entry;
+}
+
+function listLoopMaintainedSkills(skillsDir, manifest) {
+  // Phase 3 of plans/260719-1428-central-skills-management — manifest-driven
+  // exclusion. The manifest is the trust anchor for "is this skill external?"
+  // (Phase 1 schema; Phase 3 reads it). Explicit failure modes (red-team
+  // F8, F9): if the manifest fails to load/parse, the skill enumeration
+  // is poisoned — fail each enumerated entry with `manifest-unreadable`
+  // (NOT a misleading `maturity-not-declared` on an external skill). If a
+  // real-dir skill is NOT in the manifest, fail with `skill-not-in-manifest`
+  // (defense-in-depth: a planted real-dir skill the manifest doesn't know
+  // about is a contract violation, not silently enumerated).
+  //
+  // Shape boundary (documented, review I2): Dirent.isDirectory() is false
+  // for a symlink-to-dir, so symlink-shaped entries are excluded by shape
+  // BEFORE the manifest lookup — the same external boundary as the pre-
+  // Phase-3 isSymbolicLink() filter. F9's defense covers real-dir skills;
+  // an unlisted symlink is out of scope by design (post-npx, no legitimate
+  // symlink skills remain — mastra becomes real files via fan-out).
+  //
+  // No module-level cache (red-team F7): `contract.js` has zero mutable
+  // module state today; the manifest is re-read on every call via
+  // readJsonSafe to match the existing per-call pattern.
   const out = [];
   if (!existsSync(skillsDir)) return out;
   let entries;
@@ -227,13 +257,38 @@ function listLoopMaintainedSkills(skillsDir) {
     return out;
   }
   for (const entry of entries) {
-    if (entry.isSymbolicLink()) continue; // external skill — out of scope
     if (!entry.isDirectory()) continue;
     const skillMd = join(skillsDir, entry.name, "SKILL.md");
     if (!existsSync(skillMd)) continue;
-    out.push({ name: entry.name, skillMd });
+    // Manifest-driven exclusion — read at this point. `manifest === null`
+    // is the explicit "manifest-unreadable" sentinel.
+    if (manifest === null) {
+      out.push({ name: entry.name, skillMd, manifestUnreadable: true });
+      continue;
+    }
+    const manifestEntry = lookupManifestSkill(manifest.skills, entry.name);
+    if (manifestEntry === undefined) {
+      // Real-dir skill not in the manifest — explicit failure (F9).
+      out.push({ name: entry.name, skillMd, notInManifest: true });
+      continue;
+    }
+    if (manifestEntry.external === true) {
+      // External skill — out of scope (manifest-driven, not symlink-based).
+      continue;
+    }
+    out.push({ name: entry.name, skillMd, notInManifest: false });
   }
   return out;
+}
+
+function readManifestSafe(rootPath) {
+  // Returns the parsed manifest object, or null if missing/corrupt
+  // (caller treats null as the manifest-unreadable signal).
+  const manifestPath = join(rootPath, "skills-lock.json");
+  const parsed = readJsonSafe(manifestPath);
+  if (!parsed.ok) return null;
+  if (!parsed.data || typeof parsed.data !== "object" || !parsed.data.skills) return null;
+  return parsed.data;
 }
 
 function checkMirrorPresence(name, rootPath) {
@@ -270,27 +325,51 @@ function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
   const skillsDir = join(rootPath, surface, "skills");
-  const skills = listLoopMaintainedSkills(skillsDir);
+  // Phase 3: manifest-driven exclusion. Read fresh on every call (no cache).
+  const manifest = readManifestSafe(rootPath);
+  const skills = listLoopMaintainedSkills(skillsDir, manifest);
 
   // Fallback: if the surface's enumeration is empty AND the runtime has a
   // skill_discovery_paths list (mastra-code's Claude-compat discovery), walk
   // the fallback paths to find skills. The fallback is read-only — it
   // only narrows the surface's apparent skill set when the surface itself
-  // is empty.
+  // is empty. The fallback entries are checked against the manifest the
+  // same way as primary entries (Phase 3 composition check).
   if (skills.length === 0 && Array.isArray(runtime.skill_discovery_paths)) {
     for (const candidate of runtime.skill_discovery_paths) {
       const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
       if (!existsSync(absolute)) continue;
       // The candidate is a SKILL.md path; derive the name from the parent.
       const name = absolute.split("/").slice(-2, -1)[0];
+      if (manifest === null) {
+        skills.push({ name, skillMd: absolute, manifestUnreadable: true });
+        continue;
+      }
+      const manifestEntry = lookupManifestSkill(manifest.skills, name);
+      if (manifestEntry === undefined) {
+        skills.push({ name, skillMd: absolute, notInManifest: true });
+        continue;
+      }
+      if (manifestEntry.external === true) continue;
       skills.push({ name, skillMd: absolute });
     }
   }
 
   // Pre-maturity filter: drop skills with no frontmatter / no maturity:
-  // (the external `mastra` symlink lands here, by design).
+  // (external `mastra` is excluded upstream by manifest, not here).
   const evaluated = [];
-  for (const { name, skillMd } of skills) {
+  for (const skill of skills) {
+    const { name, skillMd, manifestUnreadable: manifestBad, notInManifest } = skill;
+    if (manifestBad) {
+      // Phase 3 F8: explicit failure mode for missing/corrupt manifest.
+      evaluated.push({ name, ok: false, reason: "manifest-unreadable", skill_path: skillMd });
+      continue;
+    }
+    if (notInManifest) {
+      // Phase 3 F9: explicit failure mode for unlisted real-dir skill.
+      evaluated.push({ name, ok: false, reason: "skill-not-in-manifest", skill_path: skillMd });
+      continue;
+    }
     const read = readSkillSafe(skillMd);
     if (!read.ok) {
       evaluated.push({ name, ok: false, reason: read.reason, skill_path: skillMd });

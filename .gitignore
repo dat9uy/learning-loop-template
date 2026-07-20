@@ -57,6 +57,12 @@ tools/learning-loop-mastra/data/
 # Phase E Plan 4 — Mastra Code runtime DB (generated from .mastracode/database.json)
 .mastracode/data/
 
+# Central skills plan (260719-1428) Phase 3 — npx `skills` CLI central store.
+# `npx skills add/update` regenerates `.agents/skills/<pkg>/` as its internal
+# central copy; it is not our source-of-truth (the detected `<surface>/skills/`
+# copy + skills-lock.json manifest are). Untracked, not absent.
+.agents/skills/
+
 
 # Plan 2 PR — `records/meta/.cache/` → `records/meta/` expansion (consistent with 2026-06-12 meta-surface reframe; see AGENTS.md §1 and the comment at line 12 above).
 

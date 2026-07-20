@@ -513,4 +513,52 @@ describe("meta_state_dispatch_finding", () => {
       }
     }
   });
+
+  test("corrupt_dispatch_row: tamper ledger row's metadata → commit refuses with reason:corrupt_dispatch_row", async () => {
+    // plan 260719-2201 Phase 2 (A): the dispatch tool fail-closed refuses on
+    // a verifyRow failure so a corrupt dispatch row never silently binds to
+    // ghost issue coords AND never silently creates a duplicate issue.
+    const tempDir = setupTempRegistry();
+    const clearOp = withOperator();
+    try {
+      const id = await seedFinding(tempDir);
+      // Commit once so a real v2 dispatch ledger row exists.
+      await metaStateDispatchFindingTool.handler({
+        id, stage: "commit",
+        issue_number: 5,
+        issue_url: "https://x/y/issues/5",
+        repo: "x/y",
+      });
+
+      // Tamper the row on disk so verifyRow fails.
+      const sidecarPath = join(tempDir, "runtime-state.jsonl");
+      const lines = readFileSync(sidecarPath, "utf8").split("\n").filter(Boolean);
+      const dispatchRow = JSON.parse(lines[lines.length - 1]);
+      const tampered = { ...dispatchRow, metadata: { ...dispatchRow.metadata, issue_number: 999 } };
+      writeFileSync(sidecarPath, JSON.stringify(tampered) + "\n", "utf8");
+
+      const r = await metaStateDispatchFindingTool.handler({
+        id, stage: "commit",
+        issue_number: 6,
+        issue_url: "https://x/y/issues/6",
+        repo: "x/y",
+      });
+      const body = JSON.parse(r.content[0].text);
+      assert.strictEqual(body.dispatched, false);
+      assert.strictEqual(body.reason, "corrupt_dispatch_row");
+      assert.strictEqual(body.id, id);
+      assert.strictEqual(body.stage, "commit");
+
+      // ledger_ref must remain unset — corruption prevented a phantom dispatch.
+      const after = readRegistry(tempDir).find((e) => e.id === id);
+      assert.strictEqual(after.ledger_ref, "dispatch-" + id, "ledger_ref from the original (pre-tamper) commit must persist");
+    } finally {
+      clearOp();
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        process.env.GATE_ROOT = originalEnv;
+      }
+    }
+  });
 });

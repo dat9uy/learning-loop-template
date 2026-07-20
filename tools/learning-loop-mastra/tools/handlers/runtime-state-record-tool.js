@@ -15,6 +15,32 @@ function hasPreflightMarker(root) {
   );
 }
 
+// Walk a JSON value and return true if any Array has an Array child.
+// Used by the metadata refine to reject the corruption class observed in
+// the npx-roundtrip row 23 (7-deep nested arrays + stray closing-tag
+// artifact). Flat arrays of scalars (`["a","b"]`) are allowed; only
+// array-valued array elements are rejected.
+//
+// NOTE: this is structural validation, not content sanitization — a flat
+// array of arbitrary strings (e.g. `["</item>..."]`) still passes. String
+// content is the caller's responsibility (out of scope for finding D).
+// Local helper (1 consumer); promote to a shared util if a second caller
+// appears — YAGNI.
+function hasNestedArray(value) {
+  if (value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) {
+    for (const child of value) {
+      if (Array.isArray(child)) return true;
+      if (child !== null && typeof child === "object" && hasNestedArray(child)) return true;
+    }
+    return false;
+  }
+  for (const v of Object.values(value)) {
+    if (hasNestedArray(v)) return true;
+  }
+  return false;
+}
+
 export const runtimeStateRecordTool = {
   name: "runtime_state_record",
   description: "Record a runtime state entry to the sidecar. Operator-preflighted: requires an active preflight marker before writing. Appends a single row to runtime-state.jsonl with computed fingerprint. Use for operator-mediated updates to mutable runtime state (budgets, counters, ledger events).",
@@ -34,7 +60,15 @@ export const runtimeStateRecordTool = {
     timestamp: z.string().datetime()
       .describe("ISO timestamp"),
     metadata: z.record(z.unknown()).optional()
-      .describe("Optional metadata object"),
+      // Reject nested-array metadata at the handler (the only enforcement
+      // point — the JSON schema has no code consumer, see
+      // schemas/runtime-state.schema.json). Targets the corruption class
+      // observed in the npx-roundtrip row 23 (7-deep nested arrays); all
+      // 24 currently-stored rows have flat scalar/array metadata and pass.
+      .refine((m) => m == null || !hasNestedArray(m), {
+        message: "metadata must not contain nested arrays (array-valued array elements); flatten or use scalar/string values",
+      })
+      .describe("Optional metadata object (no nested arrays; flat scalars or flat arrays of scalars)"),
   },
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();

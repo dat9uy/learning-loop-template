@@ -50,7 +50,7 @@ Phase 4 — Claim-evidence alignment review (delegated to Claim-Evidence Alignme
 Phase 5 — Claim update (delegated to Post-Experiment Claim Update Prompt):
 - Map experiment result to claim dimension status per promotion rules.
 - Run pnpm verify:claim with correct arguments.
-- Run pnpm validate:records && pnpm check.
+- Run `pnpm test` (canonical record-hygiene step).
 
 STOP and request explicit human approval before:
 - Any install/runtime execution.
@@ -101,7 +101,7 @@ Steps:
      --apply
 5. Run dry-run first (without --apply). Inspect output.
 6. If dry-run passes, re-run with --apply.
-7. Run pnpm validate:records && pnpm check.
+7. Run `pnpm test` (canonical record-hygiene step).
 
 Forbidden:
 - Do not update product dimension from an experiment.

@@ -9,7 +9,7 @@
       "requires cleanup fail-closed and run envelope fields",
       "requires work context, reports path, and plans path",
       "stops or marks proof blocked/failed when cleanup cannot be confirmed",
-      "mentions pnpm validate:records and pnpm check"
+      "runs pnpm test as the canonical record-hygiene step"
     ]
   },
   {
@@ -22,7 +22,7 @@
       "captures results into experiment record",
       "uses claim-evidence alignment review before update",
       "constructs pnpm verify:claim command",
-      "runs pnpm validate:records and pnpm check"
+      "runs pnpm test as the canonical record-hygiene step"
     ]
   },
   {

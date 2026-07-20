@@ -76,6 +76,47 @@ function fakeRoot(opts = {}) {
     const entries = opts.manifest ?? [{ file: "tools/sample-tool.js", export: "sampleTool", pathFields: [] }];
     writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify(entries));
   }
+  // Skills manifest (Phase 3 — manifest-driven external exclusion).
+  // Default: write a minimal manifest with internal entries for the
+  // skills fakeRoot wrote (skillSpec / extraSkills). Set opts.skillsManifest
+  // to override the JSON; opts.skillsManifest === null skips the write
+  // (so manifest-unreadable failure mode fires).
+  if (opts.skillsManifest !== null) {
+    const skills = {};
+    const seen = new Set();
+    if (opts.skillSpec !== undefined) seen.add("learning-loop");
+    if (opts.extraSkills) {
+      for (const name of Object.keys(opts.extraSkills)) seen.add(name);
+    }
+    if (opts.skillsManifest !== undefined) {
+      // Caller provided an explicit manifest object — use as-is.
+      writeFileSync(join(root, "skills-lock.json"), JSON.stringify(opts.skillsManifest));
+    } else {
+      for (const name of seen) {
+        skills[name] = {
+          source: "local",
+          sourceType: "local",
+          delivery: "fanout",
+          canonicalSource: `${surface}/skills/${name}/SKILL.md`,
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2",
+          external: false,
+          hash: "0".repeat(64),
+        };
+      }
+      // Always include mastra as external so symlink/real-dir tests don't trip.
+      skills.mastra = {
+        source: "mastra-ai/skills",
+        sourceType: "npx-skills-cli",
+        delivery: "npx-per-runtime+fanout-undetected",
+        targets: [".claude", ".factory", ".mastracode"],
+        maturity: null,
+        external: true,
+        hash: "1".repeat(64),
+      };
+      writeFileSync(join(root, "skills-lock.json"), JSON.stringify({ version: 2, skills }));
+    }
+  }
   return root;
 }
 
@@ -447,6 +488,32 @@ Reference: loop_describe and meta_state_list.
     mkdirSync(manifestDir, { recursive: true });
     const entries = opts.manifest ?? [{ file: "tools/sample-tool.js", export: "sampleTool", pathFields: [] }];
     writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify(entries));
+  }
+  // Skills manifest (Phase 3 — manifest-driven exclusion). Default: write a
+  // minimal manifest declaring learning-loop as internal so the auto-
+  // discovered .claude mirror satisfies Req #3. Set opts.skillsManifest
+  // === null to skip (then contract fails with manifest-unreadable).
+  if (opts.skillsManifest !== null) {
+    const manifest = opts.skillsManifest ?? {
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "npx-skills-cli",
+          delivery: "npx-per-runtime+fanout-undetected",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1".repeat(64),
+        },
+      },
+    };
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest));
   }
   return root;
 }
@@ -903,6 +970,34 @@ test("req 3 enumerates multi-skill surface, passes when both have maturity (mirr
       mkdirSync(cgDir, { recursive: true });
       writeFileSync(join(cgDir, "SKILL.md"), CG_MATURITY_CONTENT);
     }
+    // Phase 3: write a manifest with internal entries so the
+    // manifest-driven exclusion does not fire.
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        "coordination-gate": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/coordination-gate/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "npx-skills-cli",
+          delivery: "npx-per-runtime+fanout-undetected",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1".repeat(64),
+        },
+      },
+    }));
     const result = validate("claude-code", root);
     const req3 = result.path_map["skill-spec"];
     assert.equal(req3.ok, true, `multi-skill enumeration must pass: ${JSON.stringify(req3)}`);
@@ -941,43 +1036,312 @@ test("req 3 hard-fails per-skill when maturity: is not a valid state-N value", (
   });
 });
 
-test("req 3 excludes the external `mastra` symlink (no maturity: frontmatter)", () => {
-  // Simulate the real-repo state: .claude/skills/mastra/ is a symlinked
-  // external skill with no maturity: frontmatter. The validator must NOT
-  // enumerate it (otherwise the cross-surface bypass would fail the contract).
-  // Create a real symlink to mirror the real-repo shape.
-  const root = mkdtempSync(join(tmpdir(), "ll-mastra-symlink-"));
+test("req 3 excludes the external `mastra` via manifest (external:true)", () => {
+  // Phase 3 — the exclusion is manifest-driven, NOT isSymbolicLink()-based.
+  // Build a manifest at <root>/skills-lock.json with mastra.external:true.
+  // Create a real-dir mastra (no symlink — proves the exclusion works
+  // regardless of filesystem shape) on .claude + an external dir.
+  const root = mkdtempSync(join(tmpdir(), "ll-mastra-external-"));
   try {
     const claudeSkills = join(root, ".claude", "skills");
     mkdirSync(claudeSkills, { recursive: true });
     const llDir = join(claudeSkills, "learning-loop");
     mkdirSync(llDir, { recursive: true });
     writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
-    // Mirror in .factory (≥ 2 surfaces for mirror check).
     const factorySkills = join(root, ".factory", "skills");
     mkdirSync(factorySkills, { recursive: true });
     const factoryLlDir = join(factorySkills, "learning-loop");
     mkdirSync(factoryLlDir, { recursive: true });
     writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
-    // External skill directory + symlink (real-repo shape: .agents/skills/mastra).
-    const externalDir = join(root, ".agents", "skills", "mastra");
-    mkdirSync(externalDir, { recursive: true });
-    writeFileSync(join(externalDir, "SKILL.md"), NO_MATURITY_CONTENT);
-    // Create the symlink at .claude/skills/mastra → externalDir. Symlinks
-    // are first-class on Linux/macOS; this test is skipped on filesystems
-    // that reject them (rare in dev environments).
-    try {
-      symlinkSync(externalDir, join(claudeSkills, "mastra"));
-    } catch {
-      // Filesystem doesn't allow symlinks — skip the symlink dimension.
-      // The validator's symlink-detection relies on lstatSync; if symlinks
-      // can't be created, this dimension can't be exercised.
-      return;
-    }
+
+    // Real-dir mastra (not a symlink) — proves the manifest-driven exclusion
+    // works regardless of filesystem shape. No maturity: frontmatter so it
+    // would fail the maturity check; manifest must exclude it first.
+    const mastraDir = join(root, ".claude", "skills", "mastra");
+    mkdirSync(mastraDir, { recursive: true });
+    writeFileSync(join(mastraDir, "SKILL.md"), NO_MATURITY_CONTENT);
+
+    // Write the manifest with mastra.external:true.
+    const manifest = {
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "npx-skills-cli",
+          delivery: "npx-per-runtime+fanout-undetected",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1111111111111111111111111111111111111111111111111111111111111111",
+        },
+      },
+    };
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest));
+
     const result = validate("claude-code", root);
     const req3 = result.path_map["skill-spec"];
     const names = req3.skills.map((s) => s.name);
-    assert.ok(!names.includes("mastra"), `mastra must be excluded (symlink): ${JSON.stringify(names)}`);
+    assert.ok(!names.includes("mastra"), `mastra must be excluded (manifest external:true): ${JSON.stringify(names)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 fails with reason 'manifest-unreadable' when skills-lock.json is missing", () => {
+  // F8: hard fail, NOT a misleading maturity-not-declared on the manifest.
+  const root = mkdtempSync(join(tmpdir(), "ll-mastra-missing-manifest-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factorySkills = join(root, ".factory", "skills");
+    mkdirSync(factorySkills, { recursive: true });
+    const factoryLlDir = join(factorySkills, "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Write the tools/manifest.json so Req #11 doesn't fail (we want to
+    // isolate the manifest-unreadable failure to the skill-spec).
+    const manifestDir = join(root, "tools/learning-loop-mastra/tools");
+    mkdirSync(manifestDir, { recursive: true });
+    writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify([{ file: "tools/x.js", export: "x", pathFields: [] }]));
+    // NOTE: NO skills-lock.json is written.
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    assert.equal(req3.ok, false, "missing manifest must fail skill-spec");
+    const llEntry = req3.skills.find((s) => s.name === "learning-loop");
+    assert.ok(llEntry, "learning-loop must still be enumerated");
+    assert.equal(
+      llEntry.reason,
+      "manifest-unreadable",
+      `expected reason 'manifest-unreadable' on the manifest-driven failure; got '${llEntry.reason}'`,
+    );
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 fails with reason 'skill-not-in-manifest' for an unlisted real-dir skill", () => {
+  // F9: a real-dir skill that the manifest doesn't know about is a contract
+  // violation — fail explicitly (not silently enumerated).
+  const root = mkdtempSync(join(tmpdir(), "ll-mastra-unlisted-skill-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factorySkills = join(root, ".factory", "skills");
+    mkdirSync(factorySkills, { recursive: true });
+    const factoryLlDir = join(factorySkills, "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Plant an unlisted real-dir skill on .claude only.
+    const unlisted = join(root, ".claude", "skills", "rogue-skill");
+    mkdirSync(unlisted, { recursive: true });
+    writeFileSync(join(unlisted, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Manifest does NOT mention rogue-skill.
+    const manifest = {
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+      },
+    };
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest));
+    const manifestDir = join(root, "tools/learning-loop-mastra/tools");
+    mkdirSync(manifestDir, { recursive: true });
+    writeFileSync(join(manifestDir, "manifest.json"), JSON.stringify([{ file: "tools/x.js", export: "x", pathFields: [] }]));
+
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    const rogueEntry = req3.skills.find((s) => s.name === "rogue-skill");
+    assert.ok(rogueEntry, "rogue-skill must be enumerated");
+    assert.equal(
+      rogueEntry.reason,
+      "skill-not-in-manifest",
+      `expected reason 'skill-not-in-manifest'; got '${rogueEntry.reason}'`,
+    );
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 fails with reason 'skill-not-in-manifest' for a prototype-named real-dir skill", () => {
+  // Review I1: manifest.skills?.["constructor"] resolves via Object.prototype
+  // (a function, not undefined) — without an own-property check the planted
+  // dir is treated as manifest-declared internal and F9 is defeated.
+  const root = mkdtempSync(join(tmpdir(), "ll-proto-skill-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factoryLlDir = join(root, ".factory", "skills", "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Planted real-dir skill whose name hits Object.prototype.
+    const protoDir = join(claudeSkills, "constructor");
+    mkdirSync(protoDir, { recursive: true });
+    writeFileSync(join(protoDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Manifest knows learning-loop only — NOT constructor.
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+      },
+    }));
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    const protoEntry = req3.skills.find((s) => s.name === "constructor");
+    assert.ok(protoEntry, "constructor must be enumerated (as a failure entry)");
+    assert.equal(
+      protoEntry.reason,
+      "skill-not-in-manifest",
+      `prototype-named skill must fail 'skill-not-in-manifest'; got '${protoEntry.reason}'`,
+    );
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 fails with reason 'skill-not-in-manifest' for a null manifest entry (no TypeError)", () => {
+  // Review I1: manifest.skills = {"rogue": null} passes the === undefined
+  // check, then null.external throws TypeError — the validator crashes
+  // instead of failing closed.
+  const root = mkdtempSync(join(tmpdir(), "ll-null-entry-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factoryLlDir = join(root, ".factory", "skills", "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const rogueDir = join(claudeSkills, "rogue-skill");
+    mkdirSync(rogueDir, { recursive: true });
+    writeFileSync(join(rogueDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        "rogue-skill": null,
+      },
+    }));
+    let result;
+    assert.doesNotThrow(() => { result = validate("claude-code", root); }, "null manifest entry must not crash the validator");
+    const req3 = result.path_map["skill-spec"];
+    const rogueEntry = req3.skills.find((s) => s.name === "rogue-skill");
+    assert.ok(rogueEntry, "rogue-skill must be enumerated (as a failure entry)");
+    assert.equal(
+      rogueEntry.reason,
+      "skill-not-in-manifest",
+      `null manifest entry must fail 'skill-not-in-manifest'; got '${rogueEntry.reason}'`,
+    );
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 excludes symlink-shaped skills by shape, manifest not consulted (external boundary)", () => {
+  // Review I2: Dirent.isDirectory() is false for symlink-to-dir, so symlink
+  // entries are skipped before the manifest lookup. F9 (skill-not-in-manifest)
+  // covers real-dir skills only; the symlink shape stays the external
+  // boundary it was pre-Phase-3. This pins that documented behavior.
+  const root = mkdtempSync(join(tmpdir(), "ll-ghost-symlink-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factoryLlDir = join(root, ".factory", "skills", "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    // Symlinked skill NOT in the manifest.
+    const externalDir = join(root, ".agents", "skills", "ghost-skill");
+    mkdirSync(externalDir, { recursive: true });
+    writeFileSync(join(externalDir, "SKILL.md"), NO_MATURITY_CONTENT);
+    try { symlinkSync(externalDir, join(claudeSkills, "ghost-skill")); } catch { return; }
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+      },
+    }));
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    const names = req3.skills.map((s) => s.name);
+    assert.ok(!names.includes("ghost-skill"), `symlink-shaped unlisted skill must be excluded by shape: ${JSON.stringify(names)}`);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("req 3 manifest exclusion is independent of symlink shape (mastra real-dir + manifest external:true = excluded)", () => {
+  // F2 negative-complement: with manifest, even a symlink-shaped mastra is excluded.
+  const root = mkdtempSync(join(tmpdir(), "ll-mastra-symlink-excluded-"));
+  try {
+    const claudeSkills = join(root, ".claude", "skills");
+    mkdirSync(claudeSkills, { recursive: true });
+    const llDir = join(claudeSkills, "learning-loop");
+    mkdirSync(llDir, { recursive: true });
+    writeFileSync(join(llDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+    const factorySkills = join(root, ".factory", "skills");
+    mkdirSync(factorySkills, { recursive: true });
+    const factoryLlDir = join(factorySkills, "learning-loop");
+    mkdirSync(factoryLlDir, { recursive: true });
+    writeFileSync(join(factoryLlDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
+
+    // External dir + symlink (real-repo legacy shape).
+    const externalDir = join(root, ".agents", "skills", "mastra");
+    mkdirSync(externalDir, { recursive: true });
+    writeFileSync(join(externalDir, "SKILL.md"), NO_MATURITY_CONTENT);
+    try { symlinkSync(externalDir, join(claudeSkills, "mastra")); } catch { return; }
+
+    const manifest = {
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "github",
+          delivery: "symlink", targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1111111111111111111111111111111111111111111111111111111111111111",
+        },
+      },
+    };
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest));
+
+    const result = validate("claude-code", root);
+    const req3 = result.path_map["skill-spec"];
+    const names = req3.skills.map((s) => s.name);
+    assert.ok(!names.includes("mastra"), `mastra (symlink) must be excluded by manifest: ${JSON.stringify(names)}`);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -995,6 +1359,33 @@ test("req 3 tool-ref check is scoped to learning-loop (coordination-gate without
       mkdirSync(cgDir, { recursive: true });
       writeFileSync(join(cgDir, "SKILL.md"), CG_MATURITY_CONTENT);
     }
+    // Phase 3: write a manifest so manifest-driven exclusion does not fire.
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        "coordination-gate": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/coordination-gate/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "npx-skills-cli",
+          delivery: "npx-per-runtime+fanout-undetected",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1".repeat(64),
+        },
+      },
+    }));
     const result = validate("claude-code", root);
     const req3 = result.path_map["skill-spec"];
     assert.equal(req3.ok, true, `coordination-gate should not be checked for tool refs: ${JSON.stringify(req3)}`);
@@ -1054,6 +1445,27 @@ test("req 3 fails when a loop-maintained skill is missing its mirror in another 
     mkdirSync(claudeDir, { recursive: true });
     writeFileSync(join(claudeDir, "SKILL.md"), LOOP_MATURITY_CONTENT);
     // .factory + .mastracode deliberately absent
+    // Phase 3: write a manifest so manifest-driven exclusion does not fire
+    // (we want the failure to be the mirror gap, not manifest-unreadable).
+    writeFileSync(join(root, "skills-lock.json"), JSON.stringify({
+      version: 2,
+      skills: {
+        "learning-loop": {
+          source: "local", sourceType: "local", delivery: "fanout",
+          canonicalSource: ".claude/skills/learning-loop/SKILL.md",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: "state-2", external: false,
+          hash: "0".repeat(64),
+        },
+        mastra: {
+          source: "mastra-ai/skills", sourceType: "npx-skills-cli",
+          delivery: "npx-per-runtime+fanout-undetected",
+          targets: [".claude", ".factory", ".mastracode"],
+          maturity: null, external: true,
+          hash: "1".repeat(64),
+        },
+      },
+    }));
     const result = validate("claude-code", root);
     const req3 = result.path_map["skill-spec"];
     assert.equal(req3.ok, false, "missing .factory mirror must fail");

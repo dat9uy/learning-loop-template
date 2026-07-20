@@ -79,8 +79,7 @@ Evidence policy:
 - Do not create risk/decision records for minor wording tweaks with no persistent exposure or policy choice.
 
 Validation:
-- Run `pnpm validate:records`.
-- Run `pnpm check`.
+- Run `pnpm test` (canonical record-hygiene step).
 
 Report:
 - Gap analyzed.
