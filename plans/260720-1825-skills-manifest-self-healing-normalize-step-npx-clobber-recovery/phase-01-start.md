@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Probe clobber shape + write failing normalize tests"
-status: pending
+status: completed
 priority: P1
 effort: "3-4h"
 dependencies: []
@@ -53,10 +53,10 @@ Resolve the unknowns (Q1/Q3) by probing what `npx skills` actually writes to `sk
 
 ## Success Criteria
 
-- [ ] Probe report exists with the clobbered shape, dropped fields, `computedHash` semantics, and the Q1 decision.
-- [ ] `normalize-skills.test.js` exists with all failing tests above.
-- [ ] `pnpm test:one normalize-skills.test.js` is RED for the right reason (no `normalize-skills.mjs` yet), not a syntax/fixture error.
-- [ ] No writes to the live `skills-lock.json` (probe was tmp-root only — verify `git status` clean for `skills-lock.json`).
+- [x] Probe report exists with the clobbered shape, dropped fields, `computedHash` semantics, and the Q1 decision.
+- [x] `normalize-skills.test.js` exists with all failing tests above.
+- [x] `pnpm test:one normalize-skills.test.js` is RED for the right reason (no `normalize-skills.mjs` yet), not a syntax/fixture error.
+- [x] No writes to the live `skills-lock.json` (probe was tmp-root only — verify `git status` clean for `skills-lock.json`).
 
 ## Risk Assessment
 

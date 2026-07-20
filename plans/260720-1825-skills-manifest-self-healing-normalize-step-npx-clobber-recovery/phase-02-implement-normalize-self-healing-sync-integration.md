@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement normalize + self-healing sync integration"
-status: pending
+status: completed
 priority: P1
 effort: "4-6h"
 dependencies: [1]
@@ -73,15 +73,15 @@ Make Phase 1's red tests green. Add a shared `skills-lib.mjs` (policy table + pu
 
 ## Success Criteria
 
-- [ ] `skills-lib.mjs` exports `normalizeManifest` (pure, no manifest file I/O) + the shared helpers; `EXTERNAL_POLICY` covers `mastra`.
-- [ ] `normalize-skills.mjs` CLI is idempotent (no-op on already-normalized) and fail-closed on malformed manifests (exit 2).
-- [ ] `sync-skills.mjs` calls `normalizeManifest` after `readManifest()`, writes back on `changed`, then fans out (self-heal).
-- [ ] `package.json` has `skills:normalize`.
-- [ ] Phase 1's `normalize-skills.test.js` is GREEN; `sync-skills.test.js` is GREEN after the DRY refactor.
-- [ ] Fixture-level self-heal test passes (clobbered manifest → `sync-skills` → restored manifest + 3-surface fan-out).
-- [ ] `pnpm test:iter` GREEN.
-- [ ] Gate-check decision recorded (normalize/sync not blocked, or preflight delegation added).
-- [ ] `check_runtime_agnostic` verdict recorded.
+- [x] `skills-lib.mjs` exports `normalizeManifest` (pure, no manifest file I/O) + the shared helpers; `EXTERNAL_POLICY` covers `mastra`.
+- [x] `normalize-skills.mjs` CLI is idempotent (no-op on already-normalized) and fail-closed on malformed manifests (exit 2).
+- [x] `sync-skills.mjs` calls `normalizeManifest` after `readManifest()`, writes back on `changed`, then fans out (self-heal).
+- [x] `package.json` has `skills:normalize`.
+- [x] Phase 1's `normalize-skills.test.js` is GREEN; `sync-skills.test.js` is GREEN after the DRY refactor.
+- [x] Fixture-level self-heal test passes (clobbered manifest → `sync-skills` → restored manifest + 3-surface fan-out).
+- [x] `pnpm test:iter` GREEN.
+- [x] Gate-check decision recorded (normalize/sync not blocked, or preflight delegation added).
+- [x] `check_runtime_agnostic` verdict recorded.
 
 ## Risk Assessment
 

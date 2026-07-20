@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Resolve finding + change-log + workflow docs"
-status: pending
+status: completed
 priority: P2
 effort: "1-2h"
 dependencies: [2]
@@ -43,10 +43,10 @@ Close the loop on the meta-state finding, record the new `skills:normalize` capa
 
 ## Success Criteria
 
-- [ ] Finding `meta-260720T1451Z-…` is `resolved` (verified via `meta_state_list`).
-- [ ] A change-log entry records the `skills:normalize` capability + sync self-heal, with `evidence_code_ref` pointing at the script.
-- [ ] The post-`npx` recovery workflow is documented in the appropriate user-facing doc; no hand-edit guidance remains.
-- [ ] Parent plan's Phase 3 status note was NOT edited (Q4 honored).
+- [x] Finding `meta-260720T1451Z-…` is `resolved` (verified via `meta_state_list`).
+- [x] A change-log entry records the `skills:normalize` capability + sync self-heal, with `evidence_code_ref` pointing at the script.
+- [x] The post-`npx` recovery workflow is documented in the appropriate user-facing doc; no hand-edit guidance remains.
+- [x] Parent plan's Phase 3 status note was NOT edited (Q4 honored).
 - [ ] PR body (when shipped) enumerates the meta-state deltas per `rule-pr-body-registry-deltas`: the resolved finding by id + resolution note, and the new change-log by id + initial status.
 
 ## Risk Assessment

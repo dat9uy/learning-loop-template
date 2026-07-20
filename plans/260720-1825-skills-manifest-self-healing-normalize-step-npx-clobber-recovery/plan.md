@@ -1,7 +1,7 @@
 ---
 title: "Skills manifest self-healing normalize step (npx clobber recovery)"
 description: "Resolve meta-260720T1451Z — the npx skills CLI clobbers skills-lock.json on every add/update, dropping mastra's trust-anchor fields (external, delivery, targets, maturity, hash) and breaking the contract's manifest-driven exclusion (F10) + hash trust anchor (F6). Ship a self-healing `pnpm skills:normalize` step that restores the extended external entry from a fixed policy table + re-derives hash from the installed SKILL.md, and fold it into `pnpm skills:sync` so the existing post-npx workflow auto-heals. TDD-structured; builds on the completed Phase 3 of plans/260719-1428-central-skills-management (which tracks this as a follow-up)."
-status: pending
+status: completed
 priority: P2
 effort: "1-1.5d"
 tags: [skills, manifest, npx-skills, normalize, self-healing, trust-anchor, contract, tdd, meta-state]
@@ -35,6 +35,13 @@ The operator workaround (documented in the shipped Phase 3 status note of `plans
 | Q3 | Does npx preserve internal entries (`learning-loop`, `coordination-gate`) and the `version` field when it clobbers? | **Phase 1 probe confirms.** The finding says npx "rewrites the mastra entry" (per-entry, not wholesale), but this must be verified against the real clobbered file. If npx drops internal entries or `version`, normalize must restore them too (policy table covers `version:2`; internal entries are preserved from the pre-clobber manifest if available, else fail loudly). | Finding description ("rewriting the mastra entry"). |
 | Q4 | Should normalize edit the parent plan's Phase 3 status note to mark the follow-up shipped? | **No — record via change-log only.** `plans/260720-1404-…` is a pending plan-edit to that same status note; editing it here creates a doc-conflict. The meta-state change-log is the durable record. | `plans/260720-1404-…` (pending plan-edit to phase-03-…md). |
 
+### Implementation outcome (post-probe, supersedes Q1/Q2's decision-tree)
+
+The Phase 1 probe (`plans/reports/probe-260720-npx-skills-clobber-shape.md`) resolved both open questions empirically:
+
+- **Q1 → scan+derive (the copy branch was never used).** `computedHash` is opaque — NOT `sha256(SKILL.md)` (it is likely a GitHub blob SHA or npx internal tree digest). Phase 2 therefore re-derives `hash = sha256(<detected surface>/skills/mastra/SKILL.md)`.
+- **Q2 → mtime-max, NOT a `computedHash`-match signal and NOT majority-rule.** The Q2 resolution above hypothesized using `computedHash` matching a surface's `SKILL.md` sha256 as the detection signal; that signal is unavailable because `computedHash` is opaque. The implemented heuristic picks the surface with the highest `mtimeMs` across the 3 real-dir copies (`detectExternalHash` in `tools/scripts/skills-lib.mjs`). This holds empirically because npx writes detected runtimes with wall-clock mtime (probe-verified), and it handles both flows without the majority-rule failure mode: `npx update` writes `.claude` + `.factory` (~same mtime, same new content — either wins); `npx add -a claude-code` writes only `.claude` (fresh mtime beats the stale `.factory` + `.mastracode`). The originally-spec'd "largest byte-equal cluster" was replaced by this simpler mtime-max; the change-log (`meta-260720T1909Z`) records the switch. If npx ever preserves upstream timestamps, mtime-max would pick a stale surface — a content-cluster approach is the documented robust fallback.
+
 ## Goals
 
 | # | Goal | Priority |
@@ -48,18 +55,18 @@ The operator workaround (documented in the shipped Phase 3 status note of `plans
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Probe clobber shape + write failing normalize tests](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Implement normalize + self-healing sync integration](./phase-02-implement-normalize-self-healing-sync-integration.md) | Pending |
-| 3 | [Phase 3: Resolve finding + change-log + workflow docs](./phase-03-resolve-finding-change-log-workflow-docs.md) | Pending |
+| 1 | [Phase 1: Probe clobber shape + write failing normalize tests](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Implement normalize + self-healing sync integration](./phase-02-implement-normalize-self-healing-sync-integration.md) | Completed |
+| 3 | [Phase 3: Resolve finding + change-log + workflow docs](./phase-03-resolve-finding-change-log-workflow-docs.md) | Completed |
 
 ## Success Criteria
 
-- [ ] `pnpm skills:normalize` exists, is idempotent, and turns a fixture clobbered manifest back into the v2 extended schema (tests green in `normalize-skills.test.js`).
-- [ ] `pnpm skills:sync` calls `normalizeManifest` in-process before fan-out (self-heal); existing `sync-skills.test.js` stays green after the DRY refactor of `sha256`/`SURFACES` into `skills-lib.mjs`.
-- [ ] End-to-end recovery verified (fixture or real): clobbered manifest → `pnpm skills:sync` → F10 (`external:true`) + F6 (`hash` matches all 3 surfaces) pass.
-- [ ] `pnpm test:iter` green (no regressions in contract, parity, manifest, or sync suites).
-- [ ] Meta-state finding `meta-260720T1451Z-…` resolved; change-log records the `skills:normalize` capability.
-- [ ] Workflow documented: post-`npx skills add/update` sequence is `pnpm skills:sync` (auto-normalizes + fans out).
+- [x] `pnpm skills:normalize` exists, is idempotent, and turns a fixture clobbered manifest back into the v2 extended schema (tests green in `normalize-skills.test.js`).
+- [x] `pnpm skills:sync` calls `normalizeManifest` in-process before fan-out (self-heal); existing `sync-skills.test.js` stays green after the DRY refactor of `sha256`/`SURFACES` into `skills-lib.mjs`.
+- [x] End-to-end recovery verified (fixture or real): clobbered manifest → `pnpm skills:sync` → F10 (`external:true`) + F6 (`hash` matches all 3 surfaces) pass.
+- [x] `pnpm test:iter` green (no regressions in contract, parity, manifest, or sync suites).
+- [x] Meta-state finding `meta-260720T1451Z-…` resolved; change-log records the `skills:normalize` capability.
+- [x] Workflow documented: post-`npx skills add/update` sequence is `pnpm skills:sync` (auto-normalizes + fans out).
 
 ## Risk Assessment
 
