@@ -2,13 +2,13 @@
 // metadata nested-array rejection.
 //
 // Coverage:
-//   1. Nested-array metadata (the corrupt row 23 shape) is rejected at
-//      the Zod refine.
+//   1. Nested-array metadata (the corrupt row shape that was struck from
+//      runtime-state.jsonl on 2026-07-20 per plan 260720-1404) is rejected
+//      at the Zod refine.
 //   2. Flat scalar metadata is accepted (the dispatch tool's shape).
 //   3. Flat arrays of scalars are accepted (legitimate shape).
-//   4. All 24 stored rows' metadata still validates under the refine
-//      (backward-compat guard) — row 23's corrupt pending_execution was
-//      already replaced by row 24's corrected shape, so 24/24 pass.
+//   4. All stored rows' metadata still validates under the refine — the
+//      backward-compat guard now applies to every remaining row.
 
 import { describe, test } from "vitest";
 import assert from "node:assert/strict";
@@ -93,27 +93,23 @@ describe("runtime_state_record metadata nested-array rejection", () => {
     assert.strictEqual(result.success, false, "depth-3 array-in-array must be rejected");
   });
 
-  test("all 24 stored rows' metadata validates under the refine (backward-compat; row 23 corrupt row excluded)", () => {
+  test("all stored rows' metadata validates under the refine (backward-compat)", () => {
     // Skip when no tracked sidecar exists (fresh CI sandbox). The test
-    // asserts the existing 24-row dataset remains compatible with the
-    // tightened schema — except row 23, the original corrupt npx-roundtrip
-    // row whose `pending_execution` was a 7-deep nested array. The refine
-    // is WRITE-time only; already-stored corrupt data is not retroactively
-    // rejected. Row 24 (the correction row) carries the corrected shape
-    // and must pass.
+    // asserts every stored row remains compatible with the tightened
+    // schema. Plan 260720-1404 struck the two npx-skills-mastra-roundtrip
+    // rows (corrupt + correction) on 2026-07-20, so the dataset no longer
+    // carries a known-bad fixture; the backward-compat invariant now
+    // applies to every remaining row.
     if (!existsSync(join(process.cwd(), "runtime-state.jsonl"))) {
       return;
     }
     const rows = readRuntimeStateRows(process.cwd());
-    assert.strictEqual(rows.length, 24, `expected 24 stored rows; got ${rows.length}`);
-    // Exclude the original corrupt row — already stored, write-time refine
-    // does not retroactively reject.
-    const nonCorrupt = rows.filter((r) => r.id !== "npx-skills-mastra-roundtrip-2026-07-19" || r.timestamp !== "2026-07-19T08:13:00.000Z");
+    assert.ok(rows.length > 0, "expected stored rows when sidecar exists");
     let rejected = 0;
-    for (const row of nonCorrupt) {
+    for (const row of rows) {
       const result = runtimeStateRecordTool.schema.metadata.safeParse(row.metadata ?? {});
       if (!result.success) rejected += 1;
     }
-    assert.strictEqual(rejected, 0, `legacy rows must remain compatible; ${rejected} rejected`);
+    assert.strictEqual(rejected, 0, `all stored rows must remain compatible; ${rejected} rejected`);
   });
 });
