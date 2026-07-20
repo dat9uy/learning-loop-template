@@ -47,7 +47,7 @@ Close the loop on the meta-state finding, record the new `skills:normalize` capa
 - [x] A change-log entry records the `skills:normalize` capability + sync self-heal, with `evidence_code_ref` pointing at the script.
 - [x] The post-`npx` recovery workflow is documented in the appropriate user-facing doc; no hand-edit guidance remains.
 - [x] Parent plan's Phase 3 status note was NOT edited (Q4 honored).
-- [ ] PR body (when shipped) enumerates the meta-state deltas per `rule-pr-body-registry-deltas`: the resolved finding by id + resolution note, and the new change-log by id + initial status.
+- [x] PR body (when shipped) enumerates the meta-state deltas per `rule-pr-body-registry-deltas`: the resolved finding by id + resolution note, and the new change-log by id + initial status.
 
 ## Risk Assessment
 
