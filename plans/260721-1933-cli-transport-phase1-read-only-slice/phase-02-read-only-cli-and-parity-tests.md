@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Read-only CLI and parity tests"
-status: pending
+status: complete
 priority: P1
 effort: "1d"
 dependencies: [1]
@@ -93,12 +93,12 @@ loop.mjs <tool> '<json>'
 
 ## Success Criteria
 
-- [ ] `__tests__/cli-read-parity.test.js` green: all 7 tools pass **normalized** deep-equal (non-deterministic fields stripped from both sides) + field-set guard, with independent freshly-seeded tmpdirs per side.
-- [ ] Exit-code contract tests green: `0` success, `1` handler error, `2` for no/unknown tool / bad JSON / ZodError / **unset `LOOP_SURFACE`** (identity-pin precondition).
-- [ ] `loop.mjs list` prints the 7 bare tool names, no `mastra_` prefix.
-- [ ] `grep -rn "@mastra" tools/learning-loop-mastra/bin/loop.mjs` returns nothing (and the closure through `core/` is Mastra-free — Phase 1's boundary test already locks `core/schema-normalize.js`).
-- [ ] `pnpm test` full suite green.
-- [ ] `bin/loop.mjs` is ≤ ~90 LOC; no arg-parse / normalize logic beyond the slice (a phase-2 smell if it grows).
+- [x] `__tests__/cli-read-parity.test.js` green: all 7 tools pass **normalized** deep-equal (non-deterministic fields stripped from both sides) + field-set guard, with independent freshly-seeded tmpdirs per side.
+- [x] Exit-code contract tests green: `0` success, `1` handler error, `2` for no/unknown tool / bad JSON / ZodError / **unset `LOOP_SURFACE`** (identity-pin precondition).
+- [x] `loop.mjs list` prints the 7 bare tool names, no `mastra_` prefix.
+- [x] `grep -rn "@mastra" tools/learning-loop-mastra/bin/loop.mjs` returns nothing (and the closure through `core/` is Mastra-free — Phase 1's boundary test already locks `core/schema-normalize.js`).
+- [x] `pnpm test` full suite green.
+- [x] `bin/loop.mjs` is ≤ ~90 LOC; no arg-parse / normalize logic beyond the slice (a phase-2 smell if it grows).
 
 ## Risk Assessment
 

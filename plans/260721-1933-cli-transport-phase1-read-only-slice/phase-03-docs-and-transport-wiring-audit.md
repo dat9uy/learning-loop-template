@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Docs and transport-wiring audit"
-status: pending
+status: complete
 priority: P2
 effort: "2h"
 dependencies: [2]
@@ -64,11 +64,11 @@ This gives the contract an explicit slot for the thing being wired, rather than 
 
 ## Success Criteria
 
-- [ ] `__tests__/cli-bash-gate-guard.test.js` green: read-only CLI command → default-allow; write-redirect variant → blocked.
-- [ ] `check_runtime_agnostic` audit passes for `bin/loop.mjs` (shim-not-fork); result recorded.
-- [ ] `docs/runtime-contract.md` has a new "Read-only CLI transport" bullet in Transport mapping, L27 pluralized, "Current transports" updated; L25's write-capable-CLI clause UNCHANGED. `CLAUDE.md` quick reference names the CLI; `docs/architecture.md` has the cross-reference line.
-- [ ] No promoted gate rule was created for the CLI (verify `meta-state.jsonl` has no new `rule-` entry introduced by this plan). The guard test is the protection, not a registry rule.
-- [ ] `pnpm test` full suite green.
+- [x] `__tests__/cli-bash-gate-guard.test.js` green: read-only CLI command → default-allow; write-redirect variant → blocked.
+- [x] `check_runtime_agnostic` audit passes for `bin/loop.mjs` (shim-not-fork); result recorded.
+- [x] `docs/runtime-contract.md` has a new "Read-only CLI transport" bullet in Transport mapping, L27 pluralized, "Current transports" updated; L25's write-capable-CLI clause UNCHANGED. `CLAUDE.md` quick reference names the CLI; `docs/architecture.md` has the cross-reference line.
+- [x] No promoted gate rule was created for the CLI (verify `meta-state.jsonl` has no new `rule-` entry introduced by this plan). The guard test is the protection, not a registry rule.
+- [x] `pnpm test` full suite green.
 
 ## Risk Assessment
 

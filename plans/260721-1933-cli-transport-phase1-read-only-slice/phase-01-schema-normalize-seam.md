@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Schema-normalize seam"
-status: pending
+status: complete
 priority: P2
 effort: "2h"
 dependencies: []
@@ -47,10 +47,10 @@ No data flow change. The function is called in exactly one place (`createLoopToo
 
 ## Success Criteria
 
-- [ ] `__tests__/schema-normalize.test.js` green (behavior + Mastra-free boundary).
-- [ ] `pnpm test` (full suite) green — MCP server boot and existing tool/parity tests unaffected.
-- [ ] `grep -n "@mastra" tools/learning-loop-mastra/core/schema-normalize.js` returns nothing.
-- [ ] `node tools/learning-loop-mastra/mastra/server.js` boots (smoke: `pnpm gate:server` starts and prints the registered-tools stderr line, then kill) — or assert via an existing boot test.
+- [x] `__tests__/schema-normalize.test.js` green (behavior + Mastra-free boundary).
+- [x] `pnpm test` (full suite) green — MCP server boot and existing tool/parity tests unaffected.
+- [x] `grep -n "@mastra" tools/learning-loop-mastra/core/schema-normalize.js` returns nothing.
+- [x] `node tools/learning-loop-mastra/mastra/server.js` boots (smoke: `pnpm gate:server` starts and prints the registered-tools stderr line, then kill) — or assert via an existing boot test.
 
 ## Risk Assessment
 
