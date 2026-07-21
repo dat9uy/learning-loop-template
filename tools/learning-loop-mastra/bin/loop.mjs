@@ -84,16 +84,27 @@ async function runList() {
   process.stdout.write(lines.join("\n") + "\n");
 }
 
+function parseJsonArg(jsonArgs) {
+  try {
+    return JSON.parse(jsonArgs);
+  } catch (err) {
+    throw new UsageError(`invalid JSON: ${err.message}`);
+  }
+}
+
+function parseSchemaArgs(schema, raw) {
+  try {
+    return schema.parse(raw ?? {});
+  } catch (err) {
+    throw new UsageError(`arg validation failed: ${err.message}`);
+  }
+}
+
 async function runTool(toolName, jsonArgs) {
   if (!READ_ONLY_TOOLS.has(toolName)) {
     throw new UsageError(`unknown read-only tool: ${toolName}`);
   }
-  let raw;
-  try {
-    raw = JSON.parse(jsonArgs);
-  } catch (err) {
-    throw new UsageError(`invalid JSON: ${err.message}`);
-  }
+  const raw = parseJsonArg(jsonArgs);
   const manifest = loadManifest();
   validateToolManifest(manifest);
   const legacy = await resolveToolByBareName(manifest, toolName);
@@ -101,12 +112,7 @@ async function runTool(toolName, jsonArgs) {
     throw new UsageError(`tool not found in manifest: ${toolName}`);
   }
   const schema = normalizeInputSchema(legacy.schema);
-  let args;
-  try {
-    args = schema.parse(raw ?? {});
-  } catch (err) {
-    throw new UsageError(`arg validation failed: ${err.message}`);
-  }
+  const args = parseSchemaArgs(schema, raw);
   const execute = withR2Gate({
     id: toolName,
     execute: adaptLegacyHandler(legacy),
