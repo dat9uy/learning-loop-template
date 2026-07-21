@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const SCRIPT = new URL("../../../scripts/delivery-classify.mjs", import.meta.url).pathname;
+const SCRIPT = new URL("../../../tools/scripts/delivery-classify.mjs", import.meta.url).pathname;
 
 function buildTranscript(sessionId) {
   const lines = [];
@@ -28,9 +28,9 @@ function buildTranscript(sessionId) {
   return lines.join("\n");
 }
 
-function runClassify(env) {
+function runClassify(env, extraArgs = []) {
   return new Promise((resolve) => {
-    const child = spawn("node", [SCRIPT, "--limit=10"], {
+    const child = spawn("node", [SCRIPT, "--limit=10", ...extraArgs], {
       env: { ...process.env, ...env, DELIVERY_CLASSIFY_SKIP: "0" },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -52,7 +52,13 @@ describe("delivery-classify", () => {
     const originalCwd = process.cwd();
     process.chdir(tempRoot);
     try {
-      const result = await runClassify({});
+      // Point the classifier at the temp transcript dir (--projects-dir) and
+      // route runtime-state writes to the temp root (GATE_ROOT) so the real
+      // repo runtime-state.jsonl is untouched.
+      const result = await runClassify(
+        { GATE_ROOT: tempRoot },
+        [`--projects-dir=${projectsDir}`],
+      );
       assert.strictEqual(result.code, 0, `classifier exited non-zero: ${result.stderr}`);
       const summary = JSON.parse(result.stdout);
       assert.ok(summary.result.appended >= 1, "must append at least one row on first run");

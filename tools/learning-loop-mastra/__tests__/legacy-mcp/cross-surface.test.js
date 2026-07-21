@@ -8,9 +8,31 @@ import { test } from "vitest";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { mkdtempSync, rmSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import assert from "node:assert";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// The inbound gate emits a once-per-session steering pointer (Plan 260720-1955
+// Phase 4, Validation V2), gated by a `.inbound-pointer-surfaced` token in the
+// surface coordination dir. Two hook calls sharing a GATE_ROOT collapse to a
+// single emission (second call suppresses); to assert cross-surface parity
+// (Claude vs Droid identical) each call needs its own clean root so both read
+// as "first prompt of an independent session".
+function createTempGateRoot() {
+  const root = mkdtempSync(join(tmpdir(), "cross-surface-inbound-"));
+  mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  mkdirSync(join(root, ".mastracode", "coordination"), { recursive: true });
+  return root;
+}
+
+function runHookWithRoot(hookPath, input, root) {
+  const result = runHook(hookPath, input, { GATE_ROOT: root });
+  rmSync(root, { recursive: true, force: true });
+  return result;
+}
 
 const BASH_HOOK = join(__dirname, "..", "..", "hooks", "universal", "bash-gate.js");
 const WRITE_HOOK = join(__dirname, "..", "..", "hooks", "universal", "write-gate.js");
@@ -156,8 +178,12 @@ const inboundTestCases = [
 
 for (const tc of inboundTestCases) {
   await test(`inbound-gate: ${tc.name} — Claude vs Droid identical`, () => {
-    const claudeResult = runHook(INBOUND_HOOK, tc.claude);
-    const droidResult = runHook(INBOUND_HOOK, tc.droid);
+    // Once-per-session pointer (V2): isolate each surface in its own clean
+    // GATE_ROOT so both the Claude and Droid calls read as the first prompt
+    // of an independent session and both emit the pointer — preserving the
+    // cross-surface parity assertion (Claude vs Droid identical).
+    const claudeResult = runHookWithRoot(INBOUND_HOOK, tc.claude, createTempGateRoot());
+    const droidResult = runHookWithRoot(INBOUND_HOOK, tc.droid, createTempGateRoot());
 
     assert.strictEqual(
       claudeResult.exitCode,
