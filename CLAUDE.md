@@ -4,6 +4,7 @@ See `AGENTS.md` for the agent coordination reference (layer definitions, 4-kind 
 
 Quick reference:
 - **MCP server:** `tools/learning-loop-mastra/mastra/server.js` — see `tools/learning-loop-mastra/tools/manifest.json` for current tool list
+- **Read-only CLI:** `tools/learning-loop-mastra/bin/loop.mjs <tool> '<json>'` — stateless one-shot for 7 read tools (`loop_describe`, `loop_get_instruction`, `meta_state_list`, `meta_state_relationships`, `meta_state_derive_status`, `meta_state_check_grounding`, `runtime_state_read`). Requires `LOOP_SURFACE`; set `GATE_ROOT` for non-loop repos (default reads loop's own repo silently — wrong-root is not an error).
 - **Hooks:** `tools/learning-loop-mastra/hooks/universal/{bash,write,inbound}-gate.js`
 - **Core logic:** `tools/learning-loop-mastra/core/` — single source of truth
 - **Discovery:** call `loop_describe({tier: "warm"})` at session start to discover the loop's surface and active rules
