@@ -72,6 +72,9 @@ files:
   - path: envelope-stripper.js
     role: primitive
     summary: Strips MCP hookSpecificOutput envelopes from raw text.
+  - path: field-glossary.js
+    role: primitive
+    summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads. Phase 2 of plans/260720-1955.
   - path: canonical-compare.js
     role: primitive
     summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (Tier 2 Phase B; resolves meta-260715T2311Z-gratuitous-mutations).
