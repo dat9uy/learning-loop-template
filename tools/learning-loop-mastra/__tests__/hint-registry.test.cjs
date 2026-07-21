@@ -1,7 +1,7 @@
 /**
  * Phase 2 (plans/260717-1826-unify-context-injection): hint-registry.js is the
- * single source of truth for the 26 canonical hint rows (16 discoverability +
- * 10 process). locks invariants on shape, slugs, and ordering.
+ * single source of truth for the 27 canonical hint rows (16 discoverability +
+ * 11 process). locks invariants on shape, slugs, and ordering.
  *
  * Imports run inside `beforeAll` so the failure messages cite the real path.
  */
@@ -68,7 +68,7 @@ describe("hint registry invariants", () => {
     assert.deepStrictEqual(slugs, expected, "discoverability slugs (in registry order) must match the locked set");
   });
 
-  test("process entries cover the 10 expected slugs (8 rule-derived + 2 standalone)", () => {
+  test("process entries cover the 11 expected slugs (9 rule-derived + 2 standalone)", () => {
     const slugs = registry.HINT_REGISTRY
       .filter((e) => e.kind === "process")
       .map((e) => e.slug);
@@ -83,6 +83,7 @@ describe("hint registry invariants", () => {
       "assertinvariant-at-boundary",
       "file-edit-drift-and-fingerprints",
       "required-status-checks-verify-combined-status",
+      "no-plan-ids-in-stable-code-artifacts",
     ];
     assert.deepStrictEqual(slugs, expected, "process slugs (in registry order) must match the locked set");
   });
@@ -119,10 +120,10 @@ describe("hint registry invariants", () => {
     }
     assert.strictEqual(disc.length, 16, "buildDiscoverabilityHints must return exactly 16 entries");
 
-    // Phase-3 invariant: buildProcessHints with rulesById returns 10 entries
-    // (8 rule-derived + 2 standalone). Without rulesById, it falls back to
+    // Phase-3 invariant: buildProcessHints with rulesById returns 11 entries
+    // (9 rule-derived + 2 standalone). Without rulesById, it falls back to
     // the registry read — that path is exercised in the live registry test.
-    assert.strictEqual(proc.length, 10, "buildProcessHints with rulesById must return exactly 10 entries");
+    assert.strictEqual(proc.length, 11, "buildProcessHints with rulesById must return exactly 11 entries");
     // Standalone rows 1 + 9 must carry inline text (Phase 3 invariant).
     const standalone = registry.HINT_REGISTRY.filter((x) => x.kind === "process" && !x.derived_from_rule);
     assert.strictEqual(standalone.length, 2, "exactly 2 standalone process entries (test discipline + file-index drift)");
@@ -133,8 +134,8 @@ describe("hint registry invariants", () => {
     const disc = registry.listHints({ kind: "discoverability" });
     assert.ok(Array.isArray(disc) && disc.length === 16, "listHints({kind:'discoverability'}) returns 16 entries");
     const proc = registry.listHints({ kind: "process" });
-    assert.ok(Array.isArray(proc) && proc.length === 10, "listHints({kind:'process'}) returns 10 entries");
-    assert.strictEqual(registry.listHints({ kind: undefined }).length, 26, "listHints() with no filter returns all 26");
+    assert.ok(Array.isArray(proc) && proc.length === 11, "listHints({kind:'process'}) returns 11 entries");
+    assert.strictEqual(registry.listHints({ kind: undefined }).length, 27, "listHints() with no filter returns all 27");
   });
 
   test("exports findHintBySlug helper", () => {
