@@ -106,6 +106,8 @@ The maintainer standard for any loop-maintained skill (a skill mirrored across `
    - `state-1` — escape-hatch: session-scoped markdown, no deterministic injection.
    - `state-2` — wired: deterministic injection (SessionStart discovery / contract) + agenticly consumed. The current target for `learning-loop` and `coordination-gate`.
    - `state-3` — encoded: deterministic injection + deterministic consumption, realized by the `deterministic-step` role.
+
+   The injection axis rides a declared **channel** (named in `core/hint-renderer.js#CHANNELS`); channel delivery fidelity varies per provider profile and is attested by the classifier, not assumed. See `docs/architecture.md` § Context-Injection Division of Labor for the channel table + delivery-attestation mechanism.
 2. **Mirror requirement** — skills mirror across `.claude`/`.factory`/`.mastracode` via `writeToAllSkills` (phase 4 fan-out in `core/surfaces.js`). The byte-identity invariant is asserted by `legacy-mcp/skills-mirror-parity.test.js`; a single-surface placement fails the contract with `skill-mirror-gap`.
 3. **Frontmatter discipline** — `maturity:` (state-1/2/3) is hard-required by `CONTRACT.md` Req #3. Per-skill frontmatter parse is error-isolated (one bad skill yields a per-skill fail, does not abort the validator); size cap is 64KB (billion-laughs guard).
 4. **Gated authoring path** — direct writes to `<surface>/skills/**` are blocked by the phase-5 write-gate (`evaluateWriteGate` skills rule). To edit a skill:

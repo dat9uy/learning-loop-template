@@ -496,16 +496,28 @@ Plan `260717-1826-unify-context-injection` collapsed 5 overlapping context-injec
 - **Source of truth:** `core/hint-registry.js` — slug-keyed entries `{ slug, kind, text, suggestion, derived_from_rule }`. Rule-derived process entries carry empty inline text and resolve from `rule.hint_text` at render time via the shared `resolveHintText` path.
 - **Production injection:** `core/loop-introspect.js` builders (`buildDiscoverabilityHints` / `buildProcessHints`) project the registry into the legacy array-of-strings shape. All injection surfaces consume the builders — the hint renderer is NOT on the injection path (operator decision 2026-07-17: the builders already deliver single-source content; wiring hooks through the renderer would churn three hot paths for no behavioral gain).
 
-Four surfaces, one registry:
+Four surfaces, one registry. Every injected surface rides a declared **channel** (named in `core/hint-renderer.js#CHANNELS`); delivery fidelity is **attested** by the offline classifier, not assumed:
 
-| Surface | Trigger | Role |
-|---|---|---|
-| **push (SessionStart hooks)** | runtime startup | Fixed cold-start context: the static hint sets from the builders, hand-partitioned by the two `.claude` universal hooks under the 10k `additionalContext` cap (`.factory` emits one block). Bounded and cache-stable. |
-| **pull-warm (`loop_describe`)** | agent mid-session | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same builder output as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
-| **pull-single (`loop_get_instruction`)** | agent on demand | Re-fetch one hint by slug (or numeric index = registry position, for back-compat) that scrolled out of context. Resolves against the fixed registry order — never the shrinkable builder array. |
-| **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | always | Steering layer + prompt-author docs; never a hint-content source. |
+| Surface | Channel | Trigger | Delivery fidelity | Role |
+|---|---|---|---|---|
+| **push (SessionStart `.claude` hooks)** | `claude-session-start` | runtime startup | `full`/`lean`/`unknown` (attested) | Fixed cold-start context projected to `slug — suggestion` pointers, hand-partitioned by the two `.claude` universal hooks under the 10k `additionalContext` cap. Bounded and cache-stable. |
+| **push (SessionStart `.factory` hook)** | `factory-session-start` | runtime startup | attested (deferred) | `.factory` still emits one full-text block — **pointer projection deferred (D3.1, separate cross-surface alignment plan)**; the channel exists but has not been flipped to pointer form. |
+| **pull-warm (`loop_describe`)** | `mcp-warm` | agent mid-session | n/a (agent-initiated) | Current dynamic state: rules/findings/loop-designs/registry summary. Its hint block is the same builder output as push (convenience, not authority); the value-add of a warm call is the dynamic fields. |
+| **pull-single (`loop_get_instruction`)** | _(registry-direct)_ | agent on demand | n/a (agent-initiated) | Re-fetch one hint by slug (or numeric index = registry position, for back-compat) that scrolled out of context. Resolves against the fixed registry order — never the shrinkable builder array. |
+| **static (AGENTS.md / CLAUDE.md / learning-loop skill)** | _(steering layer)_ | always | n/a | Steering layer + prompt-author docs; never a hint-content source. |
+| **sidecar (`.claude/session-context.json`)** | `sidecar` | runtime startup | full-text (not classified) | The full-text payload the push hook writes alongside its pointer projection; `*_source` flags intact. The pointer is the on-wire form; the sidecar is the full-text fallback. |
 
-**`.mastracode` is pull-only by decision (plan 260717-1826 Validation 1, 2026-07-17):** no SessionStart hint injection. Documented so future operators don't read the absence as a bug.
+**`.mastracode` is pull-only by decision (plan 260717-1826 Validation 1, 2026-07-17):** no SessionStart hint injection, so no push channel. Documented so future operators don't read the absence as a bug.
+
+### Channels → state axes
+
+The channel term names what was already de-facto at L3: each injected surface has a declared channel, and the channel's delivery fidelity varies per provider profile. State-2 (deterministic injection) guarantees the hook fires on the right channel at the right moment; it does **not** guarantee the channel's content reaches the model — that is measured at the endpoint. The finding `meta-260719T2120Z-sessionstart-steering-injection-is-push-dependent-and-silent` is the lesson: a lean provider profile can silently drop a push channel's content (transcript ≠ wire), so delivery must be **attested**, not assumed.
+
+**Delivery attestation (`tools/scripts/delivery-classify.mjs`, plan 260720-1955 Phase 4):** an offline classifier reads session transcripts, recomputes the manifest + hint-payload floors at run time, and classifies each session's first API call as `full` (delivered tokens ≥ 0.8× floor), `lean`, or `unknown` (no `usage` fields). It appends `delivery-<sessionId>-<runTs>` ledger-event rows to repo-root `runtime-state.jsonl` (idempotent by `transcript_content_hash` — re-classifies when the transcript grows), readable via `runtime_state_read`. The loop *knows* delivery through its own queryable substrate (pull, not push). The delivered-token metric is `input_tokens + cache_read_input_tokens + cache_creation_input_tokens` (not `input_tokens` alone, which excludes cache reads and would falsely flag cached sessions `lean`).
+
+**Once-per-session pull pointer (Validation V2):** the inbound gate (`hooks/universal/inbound-gate.js`) emits one steering pull-pointer line on the **first** `UserPromptSubmit` of a session (gated by the `.inbound-pointer-surfaced` token store, 30-min window), advertising `loop_describe({tier:'warm'})` + `.claude/session-context.json` + `loop_get_instruction({key})`. Subsequent prompts emit nothing — no per-prompt tax, no classifier self-inflation. The warn payload still fires only on a stale-observation trigger; a try/catch degrades to a pointer-only line on any throw (always exit 0).
+
+**`syn`-profile honesty flag:** project-level pointer visibility on the `syn` (lean) profile is unverified in this checkout — the `syn` transcript directory is not present. The classifier's `unknown` row is the honest record; no corrective loop is run on an inconclusive forensic (per debug-report rec 4). Documented-degradation, not a silent gap.
 
 State-2 rationale (`docs/philosophy.md` § Skills Are the Same Kind of Escape Hatch): deterministic injection (hooks fire at the right moment per runtime), agentic consumption (model reads prose, decides). The *mechanism* is state-2 by design. The rule-derived hint content (Phase 3) is promotable to state-3: rule→hint derivation moves from hand-mirror + nag to deterministic projection at promotion time, while hint consumption stays agentic.
 

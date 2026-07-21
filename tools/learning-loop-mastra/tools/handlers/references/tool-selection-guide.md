@@ -12,6 +12,13 @@ The 4-question framework for picking a tool:
 3. **INPUTS** — what shape it accepts (the `inputSchema`)
 4. **RETURNS** — what shape comes back (the JSON-RPC `result.content[0].text`)
 
+For per-field semantics (role, mutability, allowed values), the shared field
+glossary is the single source of truth: `core/field-glossary.js`, served via
+`loop_describe({tier:"cold"})` and embedded in `meta_state_patch` /
+`meta_state_batch` `invalid_field` / `empty_patch` error payloads. A tool's
+`.describe()` points at `field_glossary.<field>` rather than restating the
+definition (DRY).
+
 ## Meta-state lifecycle
 
 | Intent | Tool |
