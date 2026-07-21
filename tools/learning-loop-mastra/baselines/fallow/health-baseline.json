@@ -10,16 +10,16 @@
         "count": 1
       }
     },
+    "core/canonical-compare.js": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
     "core/consistency-check.js": {
       "complexity_critical": {
         "count": 1
       },
       "crap_critical": {
-        "count": 1
-      }
-    },
-    "core/constants.js": {
-      "crap_moderate": {
         "count": 1
       }
     },
@@ -30,7 +30,7 @@
     },
     "core/entry/change-log.js": {
       "crap_moderate": {
-        "count": 2
+        "count": 1
       }
     },
     "core/entry/finding.js": {
@@ -78,7 +78,7 @@
       }
     },
     "core/evaluate-write-gate.js": {
-      "crap_moderate": {
+      "crap_high": {
         "count": 1
       }
     },
@@ -91,17 +91,28 @@
       "complexity_high": {
         "count": 1
       },
-      "crap_critical": {
+      "complexity_moderate": {
         "count": 1
       },
-      "crap_high": {
+      "crap_critical": {
         "count": 3
       },
-      "crap_moderate": {
+      "crap_high": {
         "count": 5
+      },
+      "crap_moderate": {
+        "count": 4
       }
     },
     "core/gate-override.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/hint-renderer.js": {
+      "crap_high": {
+        "count": 1
+      },
       "crap_moderate": {
         "count": 1
       }
@@ -130,14 +141,6 @@
         "count": 1
       },
       "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
-        "count": 4
-      }
-    },
-    "core/path-containment.js": {
-      "crap_critical": {
         "count": 1
       }
     },
@@ -169,6 +172,19 @@
         "count": 1
       }
     },
+    "core/registry-append-atomic.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/registry-stats.js": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "core/runtime-agnostic-checklist.js": {
       "crap_critical": {
         "count": 1
@@ -180,17 +196,19 @@
         "count": 2
       }
     },
-    "core/stale-view.js": {
+    "core/runtime-state.js": {
       "crap_moderate": {
-        "count": 2
+        "count": 1
+      }
+    },
+    "core/stale-view.js": {
+      "crap_high": {
+        "count": 1
       }
     },
     "core/surfaces.js": {
       "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
-        "count": 1
+        "count": 2
       }
     },
     "core/update-entry-helpers.js": {
@@ -208,7 +226,12 @@
     },
     "hooks/universal/inbound-gate.js": {
       "crap_moderate": {
-        "count": 2
+        "count": 3
+      }
+    },
+    "hooks/universal/lib/protocol-adapter.js": {
+      "crap_moderate": {
+        "count": 1
       }
     },
     "interface/contract.js": {
@@ -217,6 +240,9 @@
       },
       "crap_high": {
         "count": 4
+      },
+      "crap_moderate": {
+        "count": 2
       }
     },
     "mastra/agents/load-agents-manifest.js": {
@@ -230,6 +256,9 @@
       }
     },
     "mastra/create-loop-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
       "crap_moderate": {
         "count": 1
       }
@@ -291,6 +320,17 @@
         "count": 1
       }
     },
+    "scripts/validate-registry-refs.js": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
     "tools/handlers/check-runtime-agnostic-tool.js": {
       "crap_high": {
         "count": 1
@@ -302,19 +342,19 @@
       }
     },
     "tools/handlers/loop-describe-tool.js": {
-      "complexity_critical": {
+      "complexity_high": {
         "count": 1
       },
-      "crap_critical": {
-        "count": 1
-      }
-    },
-    "tools/handlers/loop-get-instruction-tool.js": {
       "crap_high": {
         "count": 1
       },
       "crap_moderate": {
         "count": 1
+      }
+    },
+    "tools/handlers/loop-get-instruction-tool.js": {
+      "crap_high": {
+        "count": 2
       }
     },
     "tools/handlers/meta-state-archive-tool.js": {
@@ -322,6 +362,11 @@
         "count": 2
       },
       "crap_moderate": {
+        "count": 2
+      }
+    },
+    "tools/handlers/meta-state-batch-tool.js": {
+      "crap_high": {
         "count": 2
       }
     },
@@ -336,7 +381,7 @@
       }
     },
     "tools/handlers/meta-state-dispatch-finding-tool.js": {
-      "crap_moderate": {
+      "crap_high": {
         "count": 1
       }
     },
@@ -349,7 +394,7 @@
       }
     },
     "tools/handlers/meta-state-log-change-tool.js": {
-      "crap_high": {
+      "crap_critical": {
         "count": 1
       }
     },
@@ -432,6 +477,9 @@
       }
     },
     "tools/handlers/runtime-state-record-tool.js": {
+      "crap_critical": {
+        "count": 1
+      },
       "crap_moderate": {
         "count": 1
       }
@@ -449,21 +497,21 @@
   "target_keys": [
     "core/entry/index.js:dead code",
     "core/derive-status.js:dead code",
-    "core/recurrence-tracker.js:dead code",
-    "core/evaluate-inbound-gate.js:dead code",
     "core/check-grounding.js:dead code",
+    "core/recurrence-tracker.js:dead code",
+    "core/worktree-session-id.js:dead code",
     "core/gate-logic.js:complexity",
     "core/meta-state.js:complexity",
-    "core/worktree-session-id.js:dead code",
+    "core/canonical-compare.js:untested risk",
+    "core/loop-introspect.js:complexity",
+    "tools/handlers/meta-state-re-verify-tool.js:complexity",
     "core/entry/finding.js:untested risk",
     "core/entry/rule.js:untested risk",
-    "core/loop-introspect.js:complexity",
-    "core/entry/change-log.js:untested risk",
     "mastra/schema-parity.js:complexity",
     "core/entry/loop-design.js:untested risk",
     "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
-    "tools/handlers/loop-describe-tool.js:complexity",
     "tools/handlers/meta-state-list-tool.js:complexity",
-    "tools/handlers/meta-state-promote-rule-tool.js:complexity"
+    "tools/handlers/meta-state-promote-rule-tool.js:complexity",
+    "interface/contract.js:complexity"
   ]
 }
