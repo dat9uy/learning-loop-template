@@ -146,15 +146,29 @@ describe("meta-state schema new behavior", () => {
     assert.strictEqual(result.data.reopens, undefined);
   });
 
-  test("tool schema matches shared metaStateFindingEntrySchema shape", () => {
+  test("tool schema is a subset of shared metaStateFindingEntrySchema shape", () => {
+    // Plan 260720-1955 Phase 2 narrowed meta_state_report's input schema to the
+    // user-settable REPORT_FIELDS subset (immutable/server-set fields like id,
+    // created_at, status, entry_kind are no longer accepted inputs — the handler
+    // never read them). Each field points at the shared field glossary. The
+    // load-bearing invariant is that every accepted input is a real finding
+    // field (subset), not that the tool re-declares the full finding shape.
     const toolKeys = Object.keys(metaStateReportTool.schema).sort();
     const sharedKeys = Object.keys(metaStateFindingEntrySchema.shape).sort();
-    assert.deepStrictEqual(toolKeys, sharedKeys, "Tool schema keys must match shared schema keys");
     for (const key of toolKeys) {
+      assert.ok(
+        sharedKeys.includes(key),
+        `Report tool key ${key} is not a shared finding-schema field`
+      );
       assert.ok(
         metaStateFindingEntrySchema.shape[key],
         `Shared schema missing key: ${key}`
       );
+    }
+    // REPORT_FIELDS are the user-settable inputs; confirm the subset is non-empty
+    // and contains the required report fields.
+    for (const required of ["category", "severity", "affected_system", "description"]) {
+      assert.ok(toolKeys.includes(required), `Report schema missing required field: ${required}`);
     }
   });
 

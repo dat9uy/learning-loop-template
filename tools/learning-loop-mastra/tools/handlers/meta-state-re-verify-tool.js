@@ -13,7 +13,7 @@ const HISTORY_CAP = 50;
 
 export const metaStateReVerifyTool = {
   name: "meta_state_re_verify",
-  description: "Re-verify a meta-state entry by running its verification.steps. Each step is executed via core/verification-runner.js with cmd-allowlist + shell:false + 10s timeout. Plan 260707-0812 Phase 3: the trigger predicate is `isOpen` (covers open/active/reported/stale) — there is no `status: 'stale'` hard-requirement. On a full pass, stamps `last_verified_at` and leaves the entry `open` (no status transition). On any failure, appends to `verification.history` (FIFO cap 50) and leaves the entry `open`. The trigger for re-verify is the derived stale view (the operator/caller decides); the tool just re-grounds. Gated on META_STATE_VERIFY_EXEC=1 (default off).\n\nPlan 260716-0624 Phase 03: opt-in `refresh: true` clears the drift signal on a passing run. Default (no refresh) preserves `rule-no-orphaned-evidence` consult-gate integrity — operators wanting to clear drift use the explicit arg or audited `meta_state_refresh_file_index` path. Index refresh is CAS-ordered AFTER the entry patch lands (no orphan baseline on conflict); gate-log breadcrumb on every refresh attempt.",
+  description: "Re-verify an open meta-state entry by running its verification.steps with the allowlisted verification runner. A pass stamps last_verified_at; a failure records verification.history. Set refresh:true to update the evidence file-index baseline after a pass. Gated on META_STATE_VERIFY_EXEC=1.",
   schema: {
     id: z.string().describe("Entry id to re-verify"),
     // RT: M3 — opt-in refresh; default false. The consult-gate must remain

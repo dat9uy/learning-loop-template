@@ -27,19 +27,17 @@ test("process-hints hook emits full PROCESS_HINTS via stdout additionalContext",
   const ac = out.hookSpecificOutput.additionalContext;
   assert.ok(typeof ac === "string" && ac.length > 0, "additionalContext must be a non-empty string");
   assert.ok([...ac].length <= 10000, `additionalContext must stay under 10k chars; got ${[...ac].length}`);
-  assert.ok(ac.includes("Loop process hints"), "must carry the process-hints header");
-  // Row #1 is the test-parsing rule the regression (session 4760ee34) violated.
-  // State-3: the gate + wrapper enforce deterministic parse; the hint is the
-  // pointer. Lock the pointer (`pnpm test:iter`), the gate-forbidden phrase,
-  // and the canonical parser script reference.
-  assert.ok(ac.includes("pnpm test:iter"), "must inject the State-3 iterate wrapper pointer");
-  assert.ok(ac.includes("Do NOT grep raw vitest stdout"), "must inject row #1 (the test-parsing rule)");
-  assert.ok(ac.includes("vitest-failures.sh"), "must inject the canonical parser script reference");
-  // Full set: 10 numbered hints (1..10) — proves delivery is complete, not partial.
-  // Phase 3 (plans/260717-1826-unify-context-injection): the post-backfill
-  // count is 8 rule-derived + 2 standalone = 10. The required-status-check row
-  // appended in plan 260714-1358 makes 10 (was 9 pre-append, pre-Phase-3).
-  assert.ok(/^1\. /m.test(ac) && /^10\. /m.test(ac), "must number process hints 1 through 10 (full set)");
+  // Phase 3 pointer projection: header names the pull path; hint slugs + suggestions replace the inline paragraphs.
+  assert.ok(ac.includes("loop_describe({tier:'warm'})"), "must advertise the pull path for full process hints");
+  // pnpm-test-discipline is row 1; lock the slug + the suggestion to prove the pointer projection
+  // carries the test-parsing rule (Phase 3 pointer contract).
+  assert.ok(ac.includes("pnpm-test-discipline"), "must include the pnpm-test-discipline pointer slug");
+  assert.ok(
+    ac.includes("read-loop stop conditions") || ac.includes("Long-running pnpm test discipline"),
+    "must carry the pnpm-test-discipline suggestion text",
+  );
+  // Full set: 10 numbered hint pointers (1..10) — proves delivery is complete, not partial.
+  assert.ok(/^1\. /m.test(ac) && /^10\. /m.test(ac), "must number hint pointers 1 through 10");
 });
 
 // Fail-open: a build error must emit a degraded marker string (not crash with

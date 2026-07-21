@@ -43,20 +43,20 @@ function hasNestedArray(value) {
 
 export const runtimeStateRecordTool = {
   name: "runtime_state_record",
-  description: "Record a runtime state entry to the sidecar. Operator-preflighted: requires an active preflight marker before writing. Appends a single row to runtime-state.jsonl with computed fingerprint. Use for operator-mediated updates to mutable runtime state (budgets, counters, ledger events).",
+  description: "Record one preflight-gated runtime-state row with a computed fingerprint. Use for budgets, counters, or ledger events.",
   schema: {
     affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"])
-      .describe("Which system this entry affects"),
+      .describe("Affected system"),
     kind: z.enum(["ledger-event", "budget-state"])
-      .describe("Entry kind"),
+      .describe("Row kind"),
     id: z.string()
-      .describe("Stable entry id"),
+      .describe("Stable row id"),
     value: z.coerce.number().nullable().optional()
-      .describe("Current value (nullable)"),
+      .describe("Current value"),
     delta: z.coerce.number().nullable().optional()
-      .describe("Delta since last entry (nullable)"),
+      .describe("Change since previous row"),
     source_ref: z.string().regex(/^local:meta-state:.+$/)
-      .describe("Pointer to meta-state entry that governs this state"),
+      .describe("Governing meta-state reference; see field_glossary.source_ref"),
     timestamp: z.string().datetime()
       .describe("ISO timestamp"),
     metadata: z.record(z.unknown()).optional()
@@ -68,7 +68,7 @@ export const runtimeStateRecordTool = {
       .refine((m) => m == null || !hasNestedArray(m), {
         message: "metadata must not contain nested arrays (array-valued array elements); flatten or use scalar/string values",
       })
-      .describe("Optional metadata object (no nested arrays; flat scalars or flat arrays of scalars)"),
+      .describe("Optional flat metadata object"),
   },
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();

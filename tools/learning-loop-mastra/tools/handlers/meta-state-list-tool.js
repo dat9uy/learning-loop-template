@@ -56,7 +56,7 @@ function toCompact(entry) {
 
 export const metaStateListTool = {
   name: "meta_state_list",
-  description: "List meta-state registry entries. By default excludes terminal statuses (resolved, superseded) AND returns the compact projection (id, entry_kind, status, ref fields) — pass `compact: false` for the full entry shape (description, evidence, etc.). Read-only — does not mutate the registry. Use when you need to inspect, filter, or audit the registry. The narrow-query filters `id` (string|string[]), `session_id`, and `ref_by`+`ref_field` are the preferred way to fetch a specific entry or its 1-hop neighborhood without dumping the full registry. Pass `include_all_versions: true` to inspect the versioned-append history per id (the v0 open + v1 resolved + … sequence on disk); without it, the projection collapses to one entry per id (max_by(version)). `include_all_versions` is orthogonal to `include_archived` (status filter) and `compact` (projection shape); the three compose — terminal-status version lines still need `include_archived: true`, and under `ref_by`/`ref_field` a matching id appears once per version line. Not for mutating entries (use `meta_state_patch` or `meta_state_log_change` instead). The legacy `include_expired` parameter was removed in plan 260611-1000-remove-expired-status phase 3; terminal statuses are always excluded by default.",
+  description: "Read the meta-state registry. Defaults to a compact projection excluding resolved/superseded entries; use id/session_id/ref_by+ref_field for narrow queries and include_all_versions:true for history. Read-only.",
   schema: {
     category: z.string().optional().describe("Filter by category"),
     status: z.string().optional().describe("Filter by status"),

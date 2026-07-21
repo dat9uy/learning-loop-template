@@ -123,6 +123,27 @@ export function buildDiscoverabilityHints() {
 }
 
 /**
+ * Project a list of hint entries to pointer form. Each surviving entry is
+ * represented as `${slug} — ${suggestion}` so the SessionStart hook can
+ * advertise the pull path without pushing the full paragraph.
+ *
+ * The slug + suggestion pair already lives on every registry entry (the
+ * test-enforced `length > 20` on `suggestion` keeps the projection useful).
+ * Pure function over its input; no I/O, no randomness.
+ */
+function projectToPointers(entries) {
+  return entries.map((entry, index) => {
+    const slug = entry?.slug ?? `hint-${index}`;
+    const suggestion = entry?.suggestion ?? entry?.text ?? "";
+    return `${slug} — ${suggestion}`;
+  });
+}
+
+export function buildDiscoverabilityPointers() {
+  return Object.freeze(projectToPointers(listHints({ kind: "discoverability" })));
+}
+
+/**
  * Return operator-curated process rules (agent behavior under operational
  * conditions). Phase 3 (plans/260717-1826-unify-context-injection): the
  * 8 rule-derived process entries resolve `text` from `rule.hint_text` at
@@ -166,6 +187,24 @@ export function buildProcessHints({ rulesById } = {}) {
     if (text) out.push(text);
   }
   return out;
+}
+
+/**
+ * Pointer projection for the process hint set. Mirrors `buildProcessHints`
+ * skip semantics (rule-derived entries with missing/inactive/scope-filtered
+ * rules are dropped) and emits `${slug} — ${suggestion}` lines.
+ */
+export function buildProcessPointers({ rulesById } = {} = {}) {
+  let ruleMap = rulesById;
+  if (!ruleMap) {
+    const projectRoot = process.cwd();
+    const rules = loadPromotedRules(projectRoot);
+    ruleMap = new Map();
+    for (const r of rules) ruleMap.set(r.id, r);
+  }
+  const surviving = listHints({ kind: "process" })
+    .filter((entry) => Boolean(resolveHintText(entry, ruleMap)));
+  return Object.freeze(projectToPointers(surviving));
 }
 
 /**

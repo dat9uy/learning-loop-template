@@ -10,34 +10,37 @@ import { deepStripEnvelope } from "../../core/envelope-stripper.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { listMutableFieldsCsv } from "#lib/patch-hints.js";
+import { getFieldGlossaryEntry } from "../../core/field-glossary.js";
 
 // Re-exported for backward compat with existing test imports
 // (meta-state-patch-immutable-fields.test.js).
 export { IMMUTABLE_PATCH_FIELDS };
 
+const patchFieldHints = PATCH_KINDS
+  .map((kind) => `${kind}: ${listMutableFieldsCsv(kind, "see branch schema")}`)
+  .join("; ");
+
 export const metaStatePatchTool = {
   name: "meta_state_patch",
-  description: "Patch an existing meta-state entry. Unifies update_finding / update_design / update_change_log / backfill_fingerprint into one tool. CAS via _expected_version (auto-captured if omitted). Idempotency by CAS (existing pattern in updateEntry). Wire-format safe: nest complex-typed fields inside the `patch` object to avoid top-level array/boolean coercion by the MCP wire layer. Closes the CRUD gap and the parent escape-hatch abuse. Identity and audit-trail fields are deny-listed and cannot be patched. Use when you need to mutate an existing entry (status flip, cross-reference backfill, fingerprint refresh). Not for creating a new entry (use `meta_state_report` or `meta_state_log_change` instead).",
-  // Plan 260717-1145 Phase 2: model-visible JSON-schema hint — declare
-  // minProperties: 1 on `patch` so the empty-{} safe emission (verified root
-  // cause: union of 4 .partial().strict() branches all accept {}) is rejected
-  // pre-invocation, steering constrained decoding toward a real field. The
-  // runtime `empty_patch` check below stays as the safety net.
+  description: `Patch one existing meta-state entry with a CAS-safe mutable-field update. Select entry_kind, send at least one field in patch, and use the dedicated lifecycle tools for status changes. Branch schemas are returned in invalid_field/empty_patch payloads; the cold loop_describe tier carries the shared field glossary. Mutable fields by kind: ${patchFieldHints}.`,
+  // Model-visible steering only; runtime parsing intentionally remains permissive
+  // so the handler can return localized branch errors instead of an opaque union
+  // failure. The branch schema moves to the invocation response below.
   parityJsonSchemaHints: {
     patch: { minProperties: 1 },
   },
   schema: {
     id: z.string().describe("Exact entry id to patch"),
     entry_kind: z.enum(["finding", "rule", "loop-design", "change-log"])
-      .describe("Entry kind branch — used to validate patch shape. `change-log` is handler-level immutable; the schema allows it so the immutability branch is reachable."),
-    patch: z.preprocess(deepStripEnvelope, z.union(PATCH_KINDS.map((k) => buildPatchSchemaFor(k))))
-      .describe("Partial fields to update. Per-kind fields are strictly typed (.partial().strict(): all fields optional, no unknown keys). Identity and audit-trail fields (id, version, created_at, code_fingerprint, etc.) are denied at the handler. The 4 per-kind shapes derive from core/meta-state.js#metaStateEntrySchema's 4 branches via buildPatchSchemaFor; any schema drift in those branches is reflected here automatically. Cross-reference arrays (proposed_design_for, addresses, reopens) are envelope-stripped and validated as entry-id refs — invalid refs are rejected with an actionable message at this layer so the caller fixes the body instead of retrying wire shapes."),
+      .describe("Entry kind branch used to select the invocation-time patch schema."),
+    patch: z.preprocess(deepStripEnvelope, z.record(z.string(), z.unknown()))
+      .describe("Free-form mutable patch object. Send one or more fields; branch validation and the full patch_schema arrive in an error payload when needed."),
     _expected_version: z.number().optional()
-      .describe("Optional CAS: patch succeeds only if current entry.version === _expected_version. If omitted, the handler auto-captures the version from the pre-read for race safety. On mismatch, returns { patched: false, reason: 'version_mismatch', current_version }."),
+      .describe("Optional CAS version; omitted means the handler captures the current version."),
     mechanism_check: z.coerce.boolean().optional()
-      .describe("Script-caller passthrough: opt-in flag for fingerprint tracking on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; ignored for other kinds."),
+      .describe("Finding-only passthrough for mechanism_check; ignored for other kinds."),
     code_fingerprint: z.string().optional()
-      .describe("Script-caller passthrough: SHA-256 fingerprint on finding entries. Forwarded into `patch` for `entry_kind: 'finding'`; will be rejected by the immutable-field deny-list — use `meta_state_refresh_file_index` to refresh the path-keyed fingerprint index instead. Ignored for other kinds."),
+      .describe("Finding-only passthrough; immutable. Use meta_state_refresh_file_index to refresh the baseline."),
   },
   handler: async ({ id, entry_kind, patch, _expected_version, mechanism_check, code_fingerprint }) => {
     const root = resolveRoot();
@@ -51,27 +54,21 @@ export const metaStatePatchTool = {
     const entry = entries.find((e) => e.id === id);
 
     if (!entry) {
-      const result = { patched: false, reason: "not_found", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "not_found", id });
     }
 
     if (entry.entry_kind !== entry_kind) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "branch_mismatch",
         id,
         expected: entry_kind,
         actual: entry.entry_kind,
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     if (entry.entry_kind === "change-log") {
-      const result = { patched: false, reason: "change_log_immutable", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "change_log_immutable", id });
     }
 
     // Script-caller passthrough: allow tool-level mechanism_check and
@@ -89,7 +86,7 @@ export const metaStatePatchTool = {
 
     const deniedFields = Object.keys(effectivePatch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
     if (deniedFields.length > 0) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "immutable_field",
         id,
@@ -101,9 +98,7 @@ export const metaStatePatchTool = {
         ...(deniedFields.includes("code_fingerprint")
           ? { deprecation_note: "code_fingerprint is deprecated; the baseline lives in file-index.jsonl. Use meta_state_refresh_file_index({ path }) to refresh a cited path's hash." }
           : {}),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     // Defense-in-depth (resolves meta-260717T1026Z-...empty-patch): after
@@ -117,15 +112,14 @@ export const metaStatePatchTool = {
     // is added, so the user sees the rejection for the patch they actually
     // sent (not a schema error after CAS injection).
     if (Object.keys(effectivePatch).length === 0) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "empty_patch",
         id,
         entry_kind,
         hint: buildEmptyPatchHint(entry_kind),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+        patch_schema: buildPatchSchemaPayload(entry_kind),
+      });
     }
 
     // Plan 260717-1145 Phase 3: per-branch validation. The model-visible
@@ -142,18 +136,22 @@ export const metaStatePatchTool = {
     const branchSchema = buildPatchSchemaFor(entry_kind);
     const branchParse = branchSchema.safeParse(effectivePatch);
     if (!branchParse.success) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "invalid_field",
         id,
         entry_kind,
-        field_errors: branchParse.error.issues.map((i) => ({
-          field: Array.isArray(i.path) && i.path.length > 0 ? i.path.join(".") : "(root)",
-          message: i.message,
-        })),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+        field_errors: branchParse.error.issues.map((i) => {
+          const field = Array.isArray(i.path) && i.path.length > 0 ? i.path.join(".") : "(root)";
+          const glossary = getFieldGlossaryEntry(field);
+          return {
+            field,
+            message: i.message,
+            ...(glossary ? { glossary } : {}),
+          };
+        }),
+        patch_schema: buildPatchSchemaPayload(entry_kind),
+      });
     }
 
     const currentVersion = entry.version ?? 0;
@@ -167,20 +165,16 @@ export const metaStatePatchTool = {
     if (updateResult === "version_mismatch") {
       const freshEntries = readRegistry(root);
       const fresh = freshEntries.find((e) => e.id === id);
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "version_mismatch",
         id,
         current_version: fresh?.version ?? 0,
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     if (updateResult === "validation_failed") {
-      const result = { patched: false, reason: "validation_failed", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "validation_failed", id });
     }
 
     if (updateResult !== true) {
@@ -212,6 +206,23 @@ export const metaStatePatchTool = {
     return { content: [{ type: "text", text: JSON.stringify(result) }] };
   },
 };
+
+/**
+ * Serialize only the selected branch for invocation-time diagnostics.
+ * Never call z.toJSONSchema on the root tool schema: createLoopTool uses a
+ * root-to-$ref override. Branch schemas have no override and are safe to emit.
+ */
+function buildPatchSchemaPayload(entryKind) {
+  return z.toJSONSchema(buildPatchSchemaFor(entryKind), { target: "draft-7", io: "input" });
+}
+
+// Shared rejection path: log the result to the gate log and return it as the
+// tool's text content. Every non-success branch in the handler uses this so
+// the log+return shape stays identical (closes the fallow patch-tool clone).
+function reject(root, result) {
+  appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+  return { content: [{ type: "text", text: JSON.stringify(result) }] };
+}
 
 // Plan 260717-1145 Phase 4: schema-derived empty_patch hint. The prior
 // static hint only named lifecycle tools (supersede / resolve / log_change)

@@ -5,17 +5,17 @@ import { join } from "node:path";
 import { readRegistry } from "../../core/meta-state.js";
 import { withMcpServer } from "../with-mcp-server.js";
 
-// All tests go through withMcpServer/callTool so the MCP-layer Zod union
-// validation fires. Direct handler calls bypass the schema and cannot
-// reproduce the .default() injection (finding meta-260712T0053Z).
+// All tests go through withMcpServer/callTool so the MCP-layer Zod validation
+// fires. Direct handler calls bypass the schema and cannot reproduce the
+// .default() injection (finding meta-260712T0053Z).
 //
-// Harness behavior (verified with-mcp-server.js:88-101): callTool does
-// JSON.parse(result.content[0].text) with no isError check. When the MCP
-// SDK rejects invalid args (Fix A's .strict() rejects entry_kind as unknown),
-// it returns {isError:true, content:[{text:"Tool validation failed..."}]}
-// (non-JSON) -> callTool throws SyntaxError from JSON.parse. Tests that
-// expect rejection MUST wrap callTool in try/catch and assert the REGISTRY
-// STATE as the primary check, not the callTool return value.
+// Plan 260720-1955 Phase 2 relocated the branch-union patch schemas off-wire:
+// the MCP-layer `patch` field is now a free-form z.record (H10), so an unknown
+// or identity key no longer throws at the MCP boundary. Identity fields
+// (entry_kind, status, ...) are denied at the handler as a normal result
+// {patched:false, reason:"immutable_field"|"empty_patch", ...} — callTool
+// returns it, it does not throw. Tests assert the result fields AND the
+// registry state (entry_kind must not flip) as the load-bearing invariant.
 
 // (a) Empty patch {} on a loop-design preserves entry_kind (no first-union-branch injection).
 // Updated for meta-260717T1026Z-...empty-patch: empty patches are now rejected with
@@ -69,8 +69,14 @@ test("buildPatchSchemaFor for rule omits status (Fix A, no status re-injection)"
   );
 });
 
-// (b) entry_kind inside patch is rejected (Fix A). callTool THROWS SyntaxError on the
-//     non-JSON MCP validation error — assert registry state as the primary check.
+// (b) entry_kind inside patch is rejected. Plan 260720-1955 Phase 2 relocated the
+//     branch-union patch schemas from always-on-wire (Zod .strict() throw) to
+//     at-invocation error payloads: the MCP-layer `patch` field is now a free-form
+//     z.record (H10), so an unknown/identity key no longer throws at the MCP
+//     boundary. The identity invariant is enforced deeper — the handler strips
+//     entry_kind and returns {patched:false, reason:"immutable_field",
+//     denied_fields:["entry_kind"]} instead of throwing. The registry-state
+//     assertion (entry_kind must not flip) remains the load-bearing check.
 test("meta_state_patch rejects entry_kind inside patch (Fix A); registry state unchanged", async () => {
   await withMcpServer(async ({ callTool, tempRoot }) => {
     const report = await callTool("mastra_meta_state_report", {
@@ -79,18 +85,20 @@ test("meta_state_patch rejects entry_kind inside patch (Fix A); registry state u
       affected_system: "mcp-tools",
       description: "Finding for entry_kind-in-patch rejection test (min 20 chars)",
     });
-    // After Fix A: patch:{entry_kind:"rule"} -> .strict() rejects as unknown key ->
-    // MCP SDK returns isError text -> callTool throws SyntaxError from JSON.parse.
-    // (Pre-fix RED: the patch SUCCEEDS — entry_kind matches the rule branch, flips to "rule".
-    //  See red-team Failure #3: the RED-state corruption is to "rule", not "finding".)
-    await assert.rejects(
-      callTool("mastra_meta_state_patch", {
-        id: report.id,
-        entry_kind: "finding",
-        patch: { entry_kind: "rule" },
-      }),
-      // Accept any rejection (SyntaxError from JSON.parse, or a thrown Zod error).
-      // The registry-state assertion below is the load-bearing check.
+    // Post-Phase-2: entry_kind in patch is denied as an immutable_field (handler
+    // return), not a Zod throw. (Pre-fix RED: the patch SUCCEEDS — entry_kind
+    // matches the rule branch, flips to "rule". See red-team Failure #3: the
+    // RED-state corruption is to "rule", not "finding".)
+    const result = await callTool("mastra_meta_state_patch", {
+      id: report.id,
+      entry_kind: "finding",
+      patch: { entry_kind: "rule" },
+    });
+    assert.equal(result.patched, false, "patch with identity field must not apply");
+    assert.equal(result.reason, "immutable_field");
+    assert.ok(
+      Array.isArray(result.denied_fields) && result.denied_fields.includes("entry_kind"),
+      `entry_kind must be listed as denied, got: ${JSON.stringify(result.denied_fields)}`,
     );
     const entry = readRegistry(tempRoot).find((e) => e.id === report.id);
     assert.equal(entry.entry_kind, "finding", "entry_kind must be unchanged after rejected patch");

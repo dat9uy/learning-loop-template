@@ -22,18 +22,20 @@
  */
 "use strict";
 
-const { buildProcessHints } = require("../../core/loop-introspect.js");
+const { buildProcessPointers } = require("../../core/loop-introspect.js");
+
+const PULL_PATH = "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})";
 
 let text;
 try {
   if (process.env.SESSION_START_FORCE_PROCESS_HINTS_FAIL === "1") {
     throw new Error("forced process-hints loader failure (SESSION_START_FORCE_PROCESS_HINTS_FAIL=1)");
   }
-  const hints = buildProcessHints();
-  text = `Loop process hints (injected at session start; full set also in .claude/session-context.json):\n${hints.map((h, i) => `${i + 1}. ${h}`).join("\n")}`;
+  const pointers = buildProcessPointers();
+  text = `${PULL_PATH}\n${pointers.map((h, i) => `${i + 1}. ${h}`).join("\n")}`;
 } catch (err) {
   console.error(`[session-start][process-hints] build failed: ${err.message}`);
-  text = `Loop process hints unavailable: ${err.message}. Inspect .claude/session-context.json process_hints_source.`;
+  text = `${PULL_PATH}\nunavailable — process-hints loader degraded (${err.message}); full set in .claude/session-context.json process_hints.`;
 }
 
 console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));

@@ -406,3 +406,26 @@ The shim handles: `pipe`, `optional`, `default`, `nullable`, `array`, `object`, 
 | 5 | Pin zod to 4.4.x — ALREADY DONE in `package.json:48` | n/a | n/a |
 | 6 | Restore or remove missing `research-260618-0031-zod-impact-analysis.md` reference in `plans/260618-0029-coerce-layer-zod-native-migration/plan.md:11` | any agent | none (handled in phase-02 step 2.7) |
 | 7 | Fix plan's `.optional()` overstatement at `phase-01-schema-migration.md:123-126` | any agent | none (out of scope; doc nit) |
+
+## 9. JIT branch contracts + shared field glossary (plan 260720-1955)
+
+Plan 260720-1955 Phase 2 slimmed the `tools/list` manifest-tool wire by moving the **branch-union tool schemas** off the wire and onto **at-invocation error payloads** (JIT). Per-tool invocation contracts are never trimmed (constraint finding `meta-260704T0959Z`); only the *location* of the branch schema moves.
+
+### 9.1 What moved off-wire
+
+- **`meta_state_patch`** — the `patch` argument is now a free-form `z.preprocess(deepStripEnvelope, z.record(z.string(), z.unknown()))` with a parity `minProperties: 1` constraint, NOT the per-kind `buildPatchSchemaFor(kind).strict()` union. The four per-kind branch schemas (`finding`/`change-log`/`rule`/`loop-design`) are no longer serialized into `tools/list`; they ride `invalid_field` / `empty_patch` error payloads instead. Call sites: `meta-state-patch-tool.js` (`invalid_field` payload built from `buildPatchSchemaPayload(entry_kind)`; `empty_patch` payload when the effective patch has no mutable field after stripping identity/CAS fields).
+- **`meta_state_batch`** — same pattern via `buildInvalidFieldResult` in `meta-state-batch-tool.js`.
+- **`meta_state_report`** — input schema narrowed to the user-settable `REPORT_FIELDS` subset (immutable/server-set fields like `id`, `created_at`, `status`, `entry_kind` are no longer accepted inputs; the handler never read them). Each field's `.describe()` points at the glossary: `See field_glossary.<field>`.
+
+### 9.2 The identity invariant is preserved
+
+Relocating the branch schema does NOT relax the identity invariant. `entry_kind` inside a patch is denied at the handler as `{patched:false, reason:"immutable_field", denied_fields:["entry_kind"]}` (deep strip in `core/meta-state.js` + the `IMMUTABLE_PATCH_FIELDS` set) — the registry's `entry_kind` cannot flip via a patch. The rejection *mechanism* moved from a Zod `.strict()` throw at the MCP boundary to a handler-level `immutable_field` return; the registry-state invariant is unchanged.
+
+### 9.3 Shared field glossary
+
+`core/field-glossary.js` is the single source of truth for meta-state field definitions (role: `primitive` — no imports, pure data + lookup). It is served two ways:
+
+- **`loop_describe` cold tier** — the glossary is appended post-cache-read (a static glossary does not change the cold-tier cache's 3-SHA key, so a stale hit still returns the glossary; see Phase 2 Red Team H1).
+- **JIT error payloads** — `invalid_field` / `empty_patch` payloads embed `patch_schema` (the branch schema) so a caller can correct and retry without a separate lookup.
+
+A reader can derive the error-payload contract from this section: send a free-form patch → on a wrong-branch field, receive `invalid_field` + `patch_schema` for the declared `entry_kind`; on an empty effective patch, receive `empty_patch` + `patch_schema`. The `_zod.toJSONSchema` root-sentinel warning from §3 still applies to whatever branch schema is serialized into the payload.

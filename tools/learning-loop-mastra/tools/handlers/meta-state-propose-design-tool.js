@@ -27,16 +27,21 @@ const MIGRATED_FIELDS = {
   severity_hint: true,
 };
 
+const DESIGN_FIELDS = metaStateLoopDesignSchema
+  .pick(MIGRATED_FIELDS)
+  .merge(z.object({
+    loop_design_id: z.string().optional()
+      .describe("Optional explicit design id; omitted means generated from title."),
+  }))
+  .shape;
+const designSchema = Object.fromEntries(
+  Object.entries(DESIGN_FIELDS).map(([field, schema]) => [field, schema.describe(`See field_glossary.${field}`)]),
+);
+
 export const metaStateProposeDesignTool = {
   name: "meta_state_propose_design",
-  description: "Propose a new loop-design entry. Loop-designs are deferred designs with their own lifecycle (active -> inactive when shipped). Use this for designs that will create or modify rules, schemas, or tools. Mirrors meta_state_log_change's append-only semantics with the addition of proposed_design_for (forward: what the design ships) and addresses (backward: what findings the design responds to). Idempotent: same addresses + proposed_design_for set returns the existing entry id.",
-  schema: metaStateLoopDesignSchema
-    .pick(MIGRATED_FIELDS)
-    .merge(z.object({
-      loop_design_id: z.string().optional()
-        .describe("Optional explicit id (loop-design-<slug>). If omitted, the id is auto-generated from the title."),
-    }))
-    .shape,
+  description: "Propose an idempotent deferred loop-design for rules, schemas, or tools. Designs move active -> inactive when shipped; addresses and proposed_design_for carry the motivation and targets.",
+  schema: designSchema,
   handler: async ({
     title,
     description,

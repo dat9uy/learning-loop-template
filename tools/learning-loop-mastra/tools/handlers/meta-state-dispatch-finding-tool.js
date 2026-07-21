@@ -309,27 +309,19 @@ async function handleCommitStage(root, finding, id, coords) {
 export const metaStateDispatchFindingTool = {
   name: "meta_state_dispatch_finding",
   description:
-    "Dispatch a fixable finding to a GitHub Issue via an external coordination " +
-    "repo. Two-surfaces split: this tool does NOT call gh — the agent runs " +
-    "`gh issue create` between the prepare and commit stages. " +
-    "prepare({id}) builds the issue title/body + coord-repo hint (read-only, " +
-    "ungated, idempotent). commit({id, issue_number, issue_url, repo, " +
-    "delegated_to}) writes the dispatch-<id> ledger event + patches " +
-    "ledger_ref (LOOP_SESSION_MODE=live-gated, idempotent on re-commit). " +
-    "Citation: the issue body cites `local:meta-state:<id>` (loop-citable); " +
-    "the registry-side `ledger_ref` is human-citable. They are NOT symmetric.",
+    "Dispatch a fixable finding via prepare (issue body) and commit (ledger row) under LOOP_SESSION_MODE=live.",
   schema: {
     id: z.string().describe("Finding id to dispatch"),
     stage: z.enum(["prepare", "commit"]).default("prepare")
-      .describe("Workflow stage. prepare=build body (read-only); commit=record ledger (operator-gated)."),
+      .describe("prepare=read-only issue body; commit=record ledger"),
     issue_number: z.coerce.number().optional()
-      .describe("[commit only] The GitHub issue number returned by `gh issue create`."),
+      .describe("Commit-only issue number"),
     issue_url: z.string().optional()
-      .describe("[commit only] The GitHub issue URL returned by `gh issue create`."),
+      .describe("Commit-only issue URL"),
     repo: z.string().optional()
-      .describe("[commit only] The repo the agent passed to `gh --repo` (or empty if the agent used gh's default = current git remote). The tool does not validate this value — coord-repo policy is procedural, not tool-level."),
+      .describe("Commit-only GitHub repo override"),
     delegated_to: z.string().optional()
-      .describe("[commit only] Optional agent id recording who took ownership of the fix (for cross-worktree accounting)."),
+      .describe("Optional owner agent id"),
   },
   handler: async ({ id, stage = "prepare", issue_number, issue_url, repo, delegated_to }) => {
     const root = resolveRoot();

@@ -26,14 +26,17 @@ product/*/dist/
 .claude/coordination/.last-operator-message
 .claude/coordination/.last-operator-message-*
 .claude/coordination/.inbound-stale-surfaced
+.claude/coordination/.inbound-pointer-surfaced
 .claude/coordination/.loop-preflight-*
 .factory/coordination/.last-operator-message
 .factory/coordination/.last-operator-message-*
 .factory/coordination/.inbound-stale-surfaced
+.factory/coordination/.inbound-pointer-surfaced
 .factory/coordination/.loop-preflight-*
 .mastracode/coordination/.last-operator-message
 .mastracode/coordination/.last-operator-message-*
 .mastracode/coordination/.inbound-stale-surfaced
+.mastracode/coordination/.inbound-pointer-surfaced
 .mastracode/coordination/.loop-preflight-*
 # Cold-session freshness sentinel — local state, re-created by pnpm test:cold-session.
 # Intentionally untracked: a time-based freshness gate must not live as committed

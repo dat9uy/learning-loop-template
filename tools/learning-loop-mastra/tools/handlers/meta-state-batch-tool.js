@@ -16,6 +16,7 @@ import { BATCH_SIZE_LIMIT } from "../../core/constants.js";
 // Plan 260712-0300 Phase 2: import kind enum for the new optional `envelope`
 // field parallel to `operations` on the batch request shape.
 import { OPERATION_ENVELOPE_KINDS } from "../../core/operation-envelope.js";
+import { getFieldGlossaryEntry } from "../../core/field-glossary.js";
 
 // Plan 260717-1145 Phase 3: identity + CAS keys whose presence does NOT
 // constitute an inline content field on an update op. Centralized here so
@@ -26,13 +27,13 @@ const BATCH_UPDATE_IDENTITY_KEYS = new Set(["op", "id", "_expected_version", "en
 const opSchema = z.discriminatedUnion("op", [
   z.object({
     op: z.literal("write"),
-    entry: z.record(z.string(), z.unknown()).describe("Entry to write; validated against metaStateEntrySchema"),
+    entry: z.record(z.string(), z.unknown()).describe("Entry to write; validated against the selected meta-state branch at apply time"),
   }),
   z.object({
     op: z.literal("update"),
     id: z.string().describe("Entry id to update"),
     _expected_version: z.number().optional().describe("Optional CAS version"),
-  }).passthrough().describe("Update op; additional fields are merged into the entry"),
+  }).passthrough().describe("Update op; mutable fields are inline. The selected branch schema is returned with invalid_field diagnostics."),
   z.object({
     op: z.literal("delete"),
     id: z.string().describe("Entry id to delete"),
@@ -47,7 +48,7 @@ const opSchema = z.discriminatedUnion("op", [
 
 export const metaStateBatchTool = {
   name: "meta_state_batch",
-  description: "Apply a batch of meta-state operations atomically. Single tool, single lock, single cache invalidation. Operations: write | update | delete | archive. Cap: 500 ops per call (covers the documented 268-finding scout closeout with 1.87x headroom; overridable via META_STATE_BATCH_LIMIT env var). On any failure, all prior ops are rolled back and the registry is unchanged. Use this for high-volume closeouts to keep cache invalidations at 1 instead of N.",
+  description: "Apply up to 500 write, update, delete, or archive operations atomically. Invalid updates return the selected branch schema.",
   schema: {
     // Recursive envelope strip handles top-level `operations: {item:[...]}` coercion
     // AND nested arrays inside each entry (e.g. change_diff.added, loop-design.addresses)
@@ -182,7 +183,8 @@ function buildInvalidFieldResult(root, ops, i, op, existing, error) {
     op,
     id: op.id,
     entry_kind: existing.entry_kind,
-    field_errors: error.issues.map(formatFieldIssue),
+    field_errors: error.issues.map((issue) => formatFieldIssue(issue)),
+    patch_schema: buildPatchSchemaPayload(existing.entry_kind),
   };
   appendGateLog(root, {
     timestamp: new Date().toISOString(),
@@ -198,10 +200,22 @@ function buildInvalidFieldResult(root, ops, i, op, existing, error) {
 // Pulled out of the previous inline map callback to flatten cognitive
 // complexity (Array.isArray && ternary) out of the handler scope.
 function formatFieldIssue(issue) {
+  const field = Array.isArray(issue.path) && issue.path.length > 0 ? issue.path.join(".") : "(root)";
+  const glossary = getFieldGlossaryEntry(field);
   return {
-    field: Array.isArray(issue.path) && issue.path.length > 0 ? issue.path.join(".") : "(root)",
+    field,
     message: issue.message,
+    ...(glossary ? { glossary } : {}),
   };
+}
+
+/**
+ * Serialize only the selected branch for invocation-time diagnostics. The root
+ * tool schema is not serialized here because createLoopTool owns its root
+ * $ref override; branch schemas have no override and are safe to emit.
+ */
+function buildPatchSchemaPayload(entryKind) {
+  return z.toJSONSchema(buildPatchSchemaFor(entryKind), { target: "draft-7", io: "input" });
 }
 
 // Plan 260717-1145 Phase 3: schema-derived no_content hint for batch update

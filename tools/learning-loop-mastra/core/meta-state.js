@@ -265,8 +265,9 @@ export const META_STATE_FINDING_CATEGORIES = [
  * export names are NOT entry-id refs; a design that targets those documents
  * them in its description and leaves the cross-ref array empty.
  */
-export const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
+const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
 
+// fallow-ignore-next-line unused-export -- public predicate consumed by cold-tier-regression.test.js; also used internally by entryIdRefsRefine
 export function isValidEntryIdRef(ref) {
   return typeof ref === "string" && ENTRY_ID_REF_PREFIXES.some((p) => ref.startsWith(p));
 }
@@ -305,7 +306,7 @@ const entryIdRefArray = () =>
  * Has .shape available for tool schema reuse.
  */
 export const metaStateFindingEntrySchema = z.object({
-  id: z.string().optional().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug or rule-<slug>)"),
+  id: z.string().optional().describe("Entry id; see field_glossary.id"),
   entry_kind: z.literal("finding").default("finding"),
   created_at: z.string().optional().describe("ISO timestamp"),
   category: z.enum([
@@ -314,39 +315,39 @@ export const metaStateFindingEntrySchema = z.object({
     "loop-anti-pattern",
   ]).describe("Category of the finding"),
   severity: z.enum(["warning", "escalate"]).describe("Severity level"),
-  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system is affected by this finding"),
+  affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Affected system"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   subtype: z.string().optional()
-    .describe("Subtype for loop-anti-pattern findings (e.g., escape-hatch-abuse, new-artifact-type, schema-bloat)"),
+    .describe("Subtype for loop-anti-pattern findings; see field_glossary"),
   recurrence_key: z.string().optional()
-    .describe("Dedup key for recurring-false-positive findings (`rule_id::command_prefix_normalized`). Set by recurrence-tracker; read by checkAndEmit to suppress duplicate findings for the same recurrent group. Required to survive writeEntry's schema validation now that recurrence routes through writeEntry (plan 260707-0812 Phase 2 C2)."),
+    .describe("Recurring-false-positive dedup key; see field_glossary"),
   evidence_journal: z.string().optional().describe("Path to related journal file"),
-  evidence_code_ref: z.string().optional().describe("Code reference, e.g. path/to/file.js:line"),
+  evidence_code_ref: z.string().optional().describe("Code location; see field_glossary.evidence_code_ref"),
   evidence_test: z.string().optional().describe("Test file reference"),
   status: z.enum(["open", "resolved", "superseded"]).optional()
-    .describe("Status — 'open' (newly reported or unresolved; replaces the legacy 'reported'/'active'/'stale' trio), 'resolved' (closed), 'superseded' (consolidated into a change-log). 'archived' is applied at runtime by archiveEntry and is not in the enum. Read sites should use the isOpen/isStaleView predicates from core/stale-view.js instead of literal status equality."),
+    .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
   consolidated_into: z.string().optional()
-    .describe("For status='superseded' entries: the id of the change-log entry that is the canonical source. Inverse of the change-log's 'consolidates' field."),
+    .describe("Canonical change-log id for a superseded finding; see field_glossary.id"),
   last_verified_at: z.string().optional()
-    .describe("ISO timestamp of the most recent successful verification step. Set by meta_state_re_verify on a passing run."),
+    .describe("Timestamp of the last successful verification; see field_glossary"),
   verification: z.object({}).passthrough().optional()
-    .describe("Self-contained reproduction spec. Inner shape is JSDoc-typed (loose outer / object-form inner / cmd allowlist). See plans/260609-stale-flag-redesign/plan.md Resolved Q3."),
+    .describe("Verification reproduction object; see field_glossary.verification"),
   superseded_at: z.string().optional()
     .describe("ISO timestamp set by meta_state_supersede."),
   superseded_by: z.string().optional()
     .describe("Operator id set by meta_state_supersede. Default 'operator'."),
   session_id: z.string().optional()
-    .describe("Idempotency key for hook-emitted findings. When set, the entry is unique per session. The MCP connection hook (Phase 4) uses this to avoid emitting the same finding twice in one session."),
+    .describe("Session idempotency key for hook-emitted findings; see field_glossary.session_id"),
   mechanism_check: z.coerce.boolean().optional()
-    .describe("Opt-in flag (SP2): include this finding in grounding checks. Defaults to true when evidence_code_ref is set; false otherwise. The meta_state_report tool applies this default automatically; the field is omitted from the entry if the caller provides neither mechanism_check nor evidence_code_ref. Pass mechanism_check: false to explicitly opt out (the response includes a warning). When true, checkGrounding computes and stores a SHA-256 fingerprint of evidence_code_ref."),
+    .describe("Whether evidence_code_ref participates in grounding checks; see field_glossary.mechanism_check"),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
-    .describe("@deprecated — baseline now lives in file-index.jsonl; this per-record field is a vestigial fallback, no longer written. SHA-256 of the file at evidence_code_ref at the time of last successful check. Set by SP2 on first check; refresh via meta_state_refresh_file_index. The regex is unchanged so legacy entries still validate."),
+    .describe("Deprecated per-record fingerprint; refresh file-index.jsonl instead."),
   code_ref: z.string().optional()
-    .describe("Optional code reference with SHA-256 fingerprint for validation."),
+    .describe("Optional code reference with fingerprint."),
   ledger_ref: z.string().optional()
-    .describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
+    .describe("Optional runtime-state ledger pointer; see field_glossary.ledger_ref"),
   expires_at: z.string().nullable().optional()
-    .describe("Vestigial — no longer written by any tool. Legacy entries may still carry the field for read-compat. See plan 260707-0812 Phase 2."),
+    .describe("Legacy nullable timestamp; no longer written."),
   resolved_at: z.string().nullable().optional()
     .describe("ISO timestamp when the entry was resolved. Set by meta_state_resolve."),
   resolved_by: z.string().nullable().optional()
@@ -354,11 +355,11 @@ export const metaStateFindingEntrySchema = z.object({
   resolution: z.string().nullable().optional()
     .describe("Human-readable resolution note. Set by meta_state_resolve."),
   promoted_to_rule: z.string().nullable().optional()
-    .describe("Rule id this finding was promoted to. Set by meta_state_promote_rule. Inverse of the rule's origin field."),
+    .describe("Operator or rule id that promoted this finding."),
   auto_resolve: z.coerce.boolean().nullable().optional()
-    .describe("If true, the entry is eligible for auto-resolution when TTL expires. Default false."),
+    .describe("Whether TTL auto-resolution is allowed."),
   reopens: entryIdRefArray().optional()
-    .describe("Finding ids whose `stale` lifecycle this entry re-surfaces. Use when a new finding re-flags an issue whose verification drifted (stale). Lint orphan ids first with `meta_state_relationship_validate({description})`. Cascade-resolve the stale parent via `meta_state_resolve({id: parent, cascade_from: [this_id]})` in 1 step. The legacy 'expired' status was removed in plan 260611-1000; only `stale` parents are cascade-closeable. See `tools/learning-loop-mcp/__tests__/meta-state-relationship-validate-tool.test.js` L5 for stale orphan coverage."),
+    .describe("Stale finding ids re-surfaced by this entry; see field_glossary.reopens"),
 });
 
 /**
@@ -366,8 +367,8 @@ export const metaStateFindingEntrySchema = z.object({
  * Has .shape available for tool schema reuse.
  */
 export const metaStateChangeEntrySchema = z.object({
-  id: z.string().optional().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug)"),
-  entry_kind: z.literal("change-log").describe("Discriminator — always 'change-log' for this schema"),
+  id: z.string().optional().describe("Entry id; see field_glossary.id"),
+  entry_kind: z.literal("change-log").describe("Discriminator: change-log"),
   change_dimension: z.enum(["semantic", "mechanical", "surface"])
     .describe("What kind of change"),
   change_target: z.string().min(1)
@@ -394,17 +395,17 @@ export const metaStateChangeEntrySchema = z.object({
   // the migration script converts any legacy single-string value to a
   // one-element array as part of the change-log.jsonl split (same PR).
   consolidates: z.array(z.string()).optional()
-    .describe("Array of finding entry ids that this change-log entry consolidates. Inverse of each finding's 'consolidated_into' field. Use this for multi-finding consolidation (e.g., 4 G8 recurrences collapsed into 1 change-log). The existing 'supersedes' field stays reserved for change-log-to-change-log lineage."),
+    .describe("Finding ids consolidated by this change-log; see field_glossary.id"),
   evidence_code_ref: z.string().optional()
     .describe("Code reference, e.g. path/to/file.js:line"),
   evidence_journal: z.string().optional()
-    .describe("Path to related journal file"),
+    .describe("Journal path; see field_glossary.evidence_journal"),
   evidence_test: z.string().optional()
-    .describe("Test file reference"),
+    .describe("Test path; see field_glossary.evidence_test"),
   evidence: z.never().optional()
     .describe("Nested evidence block is no longer supported; use top-level evidence_code_ref, evidence_journal, evidence_test"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this change affects"),
-  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  code_ref: z.string().optional().describe("Optional code reference with fingerprint."),
   ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   status: z.literal("active").default("active").describe("Status — change-log entries are always 'active' (immutable audit log)"),
   created_at: z.string().describe("ISO timestamp"),
@@ -445,30 +446,30 @@ export const metaStateChangeEntrySchema = z.object({
  */
 export const metaStateRuleEntrySchema = z.object({
   entry_kind: z.literal("rule").default("rule"),
-  id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; not timestamp-based"),
-  origin: z.string().describe("Finding id that originated this rule (preserves historical lineage)"),
+  id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; see field_glossary.id"),
+  origin: z.string().describe("Finding id that originated this rule"),
   enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced"),
   pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language"),
   pattern: z.string().describe("The pattern (regex body, glob path, or session_id)"),
   scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional()
-    .describe("Optional scope filter: 'none' (default) or 'project_has_learning_loop_mcp'"),
+    .describe("Optional project scope predicate"),
   applies_to_resolution: z.string().optional()
-    .describe("For pattern_type=determinism-checklist: the target finding id this rule gates"),
+    .describe("Finding id gated by a determinism checklist"),
   supersedes: z.string().optional()
-    .describe("Prior rule id this rule refined (replaces finding.promoted_to_rule.refined_at metadata)"),
+    .describe("Prior rule id refined by this rule"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   status: z.enum(["active", "inactive"]).default("active")
-    .describe("Binary per operator decision 2026-06-06. Refined/deprecated rules become inactive and use 'supersedes' to point to the new rule."),
+    .describe("Rule lifecycle; inactive rules are not enforced"),
   promoted_at: z.string().describe("ISO timestamp"),
   promoted_by: z.string().describe("Operator id"),
   evidence_code_ref: z.string().optional()
     .describe("Code reference; SP2 grounding still applies"),
   evidence_journal: z.string().optional()
-    .describe("Path to related journal file"),
+    .describe("Journal path; see field_glossary.evidence_journal"),
   evidence_test: z.string().optional()
-    .describe("Test file reference"),
+    .describe("Test path; see field_glossary.evidence_test"),
   code_fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional()
-    .describe("@deprecated — baseline now lives in file-index.jsonl; this per-record field is a vestigial fallback, no longer written. SHA-256 of evidence_code_ref; populated by SP2 check_grounding. The regex is unchanged so legacy entries still validate."),
+    .describe("Deprecated per-record fingerprint; refresh file-index.jsonl instead."),
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
@@ -480,7 +481,7 @@ export const metaStateRuleEntrySchema = z.object({
   // agent-checklist rules (gate-enforced) don't need injection prose;
   // the hint-renderer treats a missing rule hint as a skip-with-warning.
   hint_text: z.string().min(20).optional()
-    .describe("Long-form hint prose (min 20 chars); required for agent-checklist rules promoted via meta_state_promote_rule. Resolved by core/hint-renderer.js at SessionStart render time."),
+    .describe("Agent-checklist process hint text; required when promoted as agent-checklist"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
   // Plan 260712-0724 follow-up (Fix B): parallel to change-log's applies_to
   // (line 180-186). Scope-narrowing that complements scope_predicate — used
@@ -492,8 +493,8 @@ export const metaStateRuleEntrySchema = z.object({
     rules: z.array(z.string()).optional().describe("Rule ids this rule applies to (chain-of-rules scoping)"),
     statuses: z.array(z.string()).optional().describe("Status values this rule applies to (e.g., narrow to active findings)"),
     schemas: z.array(z.string()).optional().describe("Schema files this rule applies to"),
-  }).optional().describe("Wider impact scope; narrows the rule's firing surface without requiring regex hand-curation"),
-  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  }).optional().describe("Optional scope selectors; see field_glossary.applies_to"),
+  code_ref: z.string().optional().describe("Optional code reference with fingerprint."),
   ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().optional().describe("ISO timestamp"),
 });
@@ -504,19 +505,19 @@ export const metaStateRuleEntrySchema = z.object({
  */
 export const metaStateLoopDesignSchema = z.object({
   entry_kind: z.literal("loop-design").default("loop-design"),
-  id: z.string().describe("Standard meta-state id (meta-YYMMDDTHHmmZ-slug or loop-design-<slug>)"),
+  id: z.string().describe("Design id; see field_glossary.id"),
   title: z.string().min(10).describe("Short human-readable title"),
   status: z.enum(["active", "inactive"]).default("active")
     .describe("Binary. Flips to inactive when the proposed work ships."),
   proposed_design_for: entryIdRefArray()
-    .describe("Forward: ids of rules/schemas/tools (entry ids: meta-/rule-/loop-design- prefix) this design will create or modify. A design with no forward refs uses [] and documents targets in the description."),
+    .describe("Forward entry-id refs for rules/schemas/tools; see field_glossary.proposed_design_for"),
   addresses: z.preprocess(deepStripEnvelope, z.array(z.string()).superRefine(entryIdRefsRefine).default([]))
-    .describe("Backward: ids of findings this design responds to (the motivation; the why-this-exists)"),
+    .describe("Motivating finding ids; see field_glossary.addresses"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Which system this design affects"),
   severity_hint: z.enum(["low", "medium", "high"]).optional()
     .describe("Operator's read on the urgency of shipping this design"),
-  code_ref: z.string().optional().describe("Optional code reference with SHA-256 fingerprint for validation."),
+  code_ref: z.string().optional().describe("Optional code reference with fingerprint."),
   ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().describe("ISO timestamp"),
   created_by: z.string().describe("Operator id"),
@@ -791,7 +792,7 @@ function _readAndParseRegistry(root) {
  * NOT sorted by created_at: multi-line-per-id means a created_at sort
  * would shuffle versions arbitrarily within an id group.
  */
-export function parseFnAllVersions(root) {
+function parseFnAllVersions(root) {
   const parsed = readRawLines(root);
   parsed.sort((a, b) => {
     if (a.id !== b.id) return a.id < b.id ? -1 : 1;
