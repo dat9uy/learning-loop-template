@@ -9,10 +9,22 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { assertinvariant } from "../../core/operation-invariant.js";
 
+const REPORT_FIELDS = [
+  "category", "subtype", "severity", "affected_system", "description",
+  "evidence_journal", "evidence_code_ref", "evidence_test", "mechanism_check",
+  "session_id", "reopens",
+];
+const reportSchema = Object.fromEntries(
+  REPORT_FIELDS.map((field) => [
+    field,
+    metaStateFindingEntrySchema.shape[field].describe(`See field_glossary.${field}`),
+  ]),
+);
+
 export const metaStateReportTool = {
   name: "meta_state_report",
-  description: "Report a new meta-state finding to the agent-maintained registry. New entries are written with status:`open` (the canonical post-collapse status; replaces `reported`). Use this to internalize external references for `source_refs`. Optional but recommended: pass `evidence_code_ref` (code location) so the loop can hash and re-check it on demand via `meta_state_derive_status`. Markdown paths in `source_refs` are deprecated and will be rejected by `record_create_decision`. Use when you observe a loop issue (gate bug, missing tool, anti-pattern) that needs operator review. Not for system changes (use `meta_state_log_change` instead) or for closing a finding (use `meta_state_resolve` instead). When `evidence_code_ref` is provided, `mechanism_check` defaults to `true`; pass `mechanism_check: false` explicitly to opt out (a warning is returned). To re-surface a stale finding from the same finding (the cross-reference affordance), pass `reopens: ['<old_stale_id>']`. `meta_state_ack` was removed in plan 260707-0812; lifecycle state changes go through resolve/promote/supersede/dispatch/re-verify. Run `meta_state_relationship_validate({ description, entry_id? })` first to lint orphan ids.",
-  schema: metaStateFindingEntrySchema.shape,
+  description: "Report a new meta-state finding for operator review. Use evidence_code_ref for grounding and meta_state_derive_status for freshness checks. Markdown paths in `source_refs` are deprecated and rejected by record validation. Use meta_state_log_change for system changes and meta_state_resolve for closure. Pass reopens for a stale-parent cross-reference.",
+  schema: reportSchema,
   handler: async ({
     category,
     subtype,

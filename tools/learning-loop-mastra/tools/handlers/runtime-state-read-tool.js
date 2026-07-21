@@ -15,20 +15,20 @@ function toCompactRow(row) {
 
 export const runtimeStateReadTool = {
   name: "runtime_state_read",
-  description: "Read runtime state sidecar entries. Queries runtime-state.jsonl for ledger events and budget states. Read-only; does not mutate state. Use to inspect mutable runtime state (device slots, budgets, counters) that is not derivable from code. Default: `limit: 20` and `compact: true` (drops `metadata`; retains `fingerprint`). Pass `limit: 1000` for completeness; pass `compact: false` for full rows. Every returned row carries `fingerprint_valid` (v2 verifyRow result: true = row intact; false = tampered or pre-migration). Truncation is visible via `total > count` (total reports the filtered count before the limit slice).",
+  description: "Read runtime-state rows with filters and fingerprint flags.",
   schema: {
     affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]).optional()
-      .describe("Filter by affected system"),
+      .describe("Affected system filter"),
     kind: z.enum(["ledger-event", "budget-state"]).optional()
-      .describe("Filter by kind"),
+      .describe("Row kind filter"),
     since: z.string().datetime().optional()
-      .describe("Filter entries with timestamp >= since"),
+      .describe("Timestamp lower bound"),
     until: z.string().datetime().optional()
-      .describe("Filter entries with timestamp <= until"),
+      .describe("Timestamp upper bound"),
     limit: z.coerce.number().int().min(1).max(1000).default(20)
-      .describe("Maximum number of entries to return (default 20; pass 1000 for completeness)"),
+      .describe("Maximum rows (default 20; max 1000)"),
     compact: z.coerce.boolean().optional().default(true)
-      .describe("Default: true — drops `metadata`; retains `fingerprint`. Pass `compact: false` for full rows."),
+      .describe("Drop metadata but retain fingerprint (default true)"),
   },
   handler: async ({ affected_system, kind, since, until, limit = 20, compact = true }) => {
     const root = resolveRoot();

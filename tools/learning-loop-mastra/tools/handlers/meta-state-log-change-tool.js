@@ -27,21 +27,25 @@ import { stripEnvelope } from "../../core/envelope-stripper.js";
 // ZodObject with optional fields. Build the schema as a plain z.object with
 // the preprocess-wrapped field passed directly. The pipe → transform →
 // optional → array chain is preserved this way.
+// The field glossary is the pull surface for repeated semantics; keep
+// always-on descriptions to compact pointers while preserving constraints.
+const describeChangeField = (field, schema) => schema.describe(`See field_glossary.${field}`);
+
 export const metaStateLogChangeTool = {
   name: "meta_state_log_change",
-  description: "Log a system change (schema, rule, tool, policy, surface, lifecycle, manifest) as a change-log entry in the meta-state registry. The entry is immutable, status=active, no TTL. Use supersedes to replace a prior change entry. Use when you ship a meaningful code or rule change that should appear in the durable audit log. Not for operator-observed issues (use `meta_state_report` instead) or for closing a finding (use `meta_state_resolve` instead). For verify-after-write, call `meta_state_list({id: ...})` to confirm the entry landed — there is no in-process cache that masks persistence failures.",
+  description: "Append an immutable system change-log entry.",
   schema: z.object({
-    change_dimension: metaStateChangeEntrySchema.shape.change_dimension,
-    change_target: metaStateChangeEntrySchema.shape.change_target,
-    change_diff: metaStateChangeEntrySchema.shape.change_diff,
-    reason: metaStateChangeEntrySchema.shape.reason,
-    applies_to: metaStateChangeEntrySchema.shape.applies_to,
-    supersedes: metaStateChangeEntrySchema.shape.supersedes,
+    change_dimension: describeChangeField("change_dimension", metaStateChangeEntrySchema.shape.change_dimension),
+    change_target: describeChangeField("change_target", metaStateChangeEntrySchema.shape.change_target),
+    change_diff: describeChangeField("change_diff", metaStateChangeEntrySchema.shape.change_diff),
+    reason: describeChangeField("reason", metaStateChangeEntrySchema.shape.reason),
+    applies_to: describeChangeField("applies_to", metaStateChangeEntrySchema.shape.applies_to),
+    supersedes: describeChangeField("supersedes", metaStateChangeEntrySchema.shape.supersedes),
     // Plan 260712-0300 — operation_envelope: accepts the magnitude envelope from auto-emit.
-    consolidates: z.preprocess(stripEnvelope, z.array(z.string()).optional()),
-    evidence_code_ref: metaStateChangeEntrySchema.shape.evidence_code_ref,
-    evidence_journal: metaStateChangeEntrySchema.shape.evidence_journal,
-    operation_envelope: metaStateChangeEntrySchema.shape.operation_envelope,
+    consolidates: describeChangeField("consolidates", z.preprocess(stripEnvelope, z.array(z.string()).optional())),
+    evidence_code_ref: describeChangeField("evidence_code_ref", metaStateChangeEntrySchema.shape.evidence_code_ref),
+    evidence_journal: describeChangeField("evidence_journal", metaStateChangeEntrySchema.shape.evidence_journal),
+    operation_envelope: describeChangeField("operation_envelope", metaStateChangeEntrySchema.shape.operation_envelope),
   }).strict().shape,
   handler: async ({
     change_dimension,

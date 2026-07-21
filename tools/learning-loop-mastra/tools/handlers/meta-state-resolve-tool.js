@@ -15,13 +15,13 @@ const TERMINAL_STATUSES = new Set(["resolved", "superseded"]);
 
 export const metaStateResolveTool = {
   name: "meta_state_resolve",
-  description: "Mark a meta-state finding as resolved (terminal). Entry will be compacted after 7 days. Use when the operator (or auto-resolve) decides a finding is closed and the underlying issue is gone. Only entry_kind=finding can be resolved; rules, loop-designs, and change-logs are rejected. Consult-gate may block resolution when promoted rules require resolution evidence (e.g., cold-session discoverability test must pass). Not for recording a new issue (use `meta_state_report` instead) or logging a system change (use `meta_state_log_change` instead). Cascade path: when `cascade_from` is provided, the parent is closed in 1 call after validating that each child reopens it. The parent must be isOpen (status ∈ {open, active, reported, stale}); terminal parents are rejected by the already_terminal guard above. `meta_state_ack` was removed in plan 260707-0812; engagement signals flow through resolve/promote/supersede/dispatch/re-verify.",
+  description: "Mark a meta-state finding resolved. Only finding entries can be resolved; rules, designs, and change-logs are rejected. Resolution evidence and cascade_from are gate-checked.",
   schema: {
     id: z.string().describe("Exact entry id to resolve"),
     resolution: z.string().optional().describe("How it was resolved"),
     resolved_by: z.enum(["operator", "auto-resolve"]).optional().default("operator").describe("Who resolved it"),
     cascade_from: z.preprocess(stripEnvelope, z.array(z.string())).optional()
-      .describe("Optional list of finding ids whose `reopens` field must include this entry's id. When provided, each child must exist, have `reopens` containing this entry's id, and be isOpen or resolved. The parent must also be isOpen (open/active/reported/stale); terminal parents are rejected by the already_terminal guard. The legacy `reported -> active -> resolved` ack flow was removed in plan 260707-0812."),
+      .describe("Optional child finding ids; each must reopen this parent and be open or resolved."),
   },
   handler: async ({ id, resolution, resolved_by, cascade_from }) => {
     const root = resolveRoot();

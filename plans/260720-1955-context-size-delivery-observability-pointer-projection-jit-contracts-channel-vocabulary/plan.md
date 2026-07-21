@@ -1,7 +1,7 @@
 ---
 title: "Context size + delivery observability (pointer projection, JIT contracts, channel vocabulary)"
 description: "Slim the loop's push surfaces (MCP manifest-tool wire 67.3kB → ≤40kB this plan [total ≤45kB deferred to a follow-on phase], SessionStart hints ~11.8k → ≤6k chars) and make steering delivery observable (classifier → runtime-state.jsonl + once-per-session pull pointer); merge the 'channel' term into the existing architecture.md table."
-status: pending
+status: in-progress
 priority: P1
 effort: 22h
 branch: meta-260719T2120Z-sessionstart-steering-injection-is-push-dependent-and-silent

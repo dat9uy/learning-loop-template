@@ -118,11 +118,11 @@ flat tools: short desc           zod field_errors enriched w/ glossary
 
 ## Success Criteria
 
-- [ ] Live wire **manifest-tool portion ≤ 40,000B** (patch ~1.9kB, batch ≤ ~1kB, big-flat descriptions short-form)
-  - ✅ **VALIDATION V1 RESOLVED — split budget.** The "≤45,000B total" is NOT this phase's checkbox — it is a separate follow-on workflow-slimming phase. Phase 6 measures manifest ≤40,000B here. `<!-- Updated: Validation Session 1 - C1 split budget -->`
-- [ ] `invalid_field`/`empty_patch` payloads deliver the full per-kind contract at invocation (JIT) on any profile
-- [ ] No locked-token test regressions; no manifest-count churn; `check_runtime_agnostic` clean
-- [ ] Per-tool before/after table appended to the Phase 1 baseline report
+- [x] Live wire **manifest-tool portion ≤ 40,000B** (patch ~1.9kB, batch ≤ ~1kB, big-flat descriptions short-form)
+  - ✅ **VALIDATION V1 RESOLVED — split budget.** Measured: 39,905 bytes (Phase 2 shipped).
+- [x] `invalid_field`/`empty_patch` payloads deliver the full per-kind contract at invocation (JIT) on any profile
+- [x] No locked-token test regressions; no manifest-count churn; `check_runtime_agnostic` clean
+- [x] Per-tool before/after table appended to the Phase 1 baseline report (see baseline-260720-measurements.md)
 
 ## Risk Assessment
 

@@ -12,14 +12,14 @@ import { isLiveSession } from "#lib/session-mode.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a meta-state finding to an active rule. Requires LOOP_SESSION_MODE=live. Writes a new entry_kind: 'rule' entry and updates the source finding's promoted_to_rule to the rule id string. Use preview:true to test pattern matches without activating.",
+  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Requires LOOP_SESSION_MODE=live unless preview:true.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
     enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
     pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language (determinism-checklist is a resolve consult-gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for determinism-checklist)"),
-    scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional scope filter: 'none' (default, fires globally) or 'project_has_learning_loop_mcp' (only fires in projects with their own MCP server)"),
+    scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional project scope predicate"),
     // Plan 260712-0724 follow-up (Fix B): optional tool/surface scope that
     // narrows the rule's firing surface without regex hand-curation. Parallel
     // to change-log's applies_to. Used by universal rules (e.g.,
@@ -37,7 +37,7 @@ export const metaStatePromoteRuleTool = {
     // gate-enforced rules don't need injection prose. The hint-renderer
     // treats missing hint_text on an agent-checklist rule as skip+warn.
     hint_text: z.string().min(20).optional()
-      .describe("Long-form SessionStart-injected hint prose (min 20 chars). REQUIRED when pattern_type === 'agent-checklist'."),
+      .describe("Agent-checklist hint text (min 20 chars); required for agent-checklist."),
     preview: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),

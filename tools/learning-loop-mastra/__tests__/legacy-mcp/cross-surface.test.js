@@ -139,13 +139,18 @@ for (const tc of writeTestCases) {
 }
 
 // ─── Inbound Gate Cross-Surface Tests ───
-
+// Plan 260720-1955 Phase 4: the inbound gate now emits a steering pull pointer
+// on the FIRST prompt of a session (per surface, mirroring SessionStart). The
+// "normal message no context" expectation below was the pre-pointer contract —
+// refresh to expect the pointer on the first run; the suppress-token store
+// collapses subsequent emissions so behavior matches the pre-Phase-4 contract
+// for a no-state-change follow-up.
 const inboundTestCases = [
   {
-    name: "normal message no context",
+    name: "normal message emits pointer once per session",
     claude: { prompt: "what should we do next?" },
     droid: { prompt: "what should we do next?" },
-    expectContext: false,
+    expectContext: true,
   },
 ];
 

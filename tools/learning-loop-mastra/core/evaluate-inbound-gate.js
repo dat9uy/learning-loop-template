@@ -80,6 +80,15 @@ function staleSignature(staleObservations) {
   return [...new Set(staleObservations.map(obsKey))].sort().join(",");
 }
 
+/**
+ * Steering pull pointer advertised by the inbound gate on the FIRST prompt
+ * of a session. The pointer (not the full payload) is what the agent sees;
+ * the actual hints live in `.claude/session-context.json` and `loop_describe`.
+ */
+export function buildSteeringPointer() {
+  return "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})";
+}
+
 function buildContextMessage(staleObservations, { alreadySurfaced } = {}) {
   const deduped = dedupStale(staleObservations);
   const surfaces = groupStaleBySurface(deduped);

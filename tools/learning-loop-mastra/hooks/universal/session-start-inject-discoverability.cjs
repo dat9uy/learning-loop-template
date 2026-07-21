@@ -23,6 +23,7 @@ const path = require("node:path");
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
 const EMPTY_CHANGE_LOG_GAP = { gap_candidates: [], gap_protocol_prompt: "" };
+const PULL_PATH = "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})";
 
 /**
  * Load discoverability + process hints (Rec 9).
@@ -41,11 +42,11 @@ function loadCoreHints() {
     if (process.env.SESSION_START_FORCE_HINTS_FAIL === "1") {
       throw new Error("forced core-hints loader failure (SESSION_START_FORCE_HINTS_FAIL=1)");
     }
-    const { buildDiscoverabilityHints, buildProcessHints } = require("../../core/loop-introspect.js");
+    const { buildDiscoverabilityPointers, buildProcessPointers } = require("../../core/loop-introspect.js");
     return {
-      discoverability_hints: buildDiscoverabilityHints(),
+      discoverability_hints: buildDiscoverabilityPointers(),
       discoverability_hints_source: "core",
-      process_hints: buildProcessHints(),
+      process_hints: buildProcessPointers(),
       process_hints_source: "core",
     };
   } catch (err) {
@@ -203,7 +204,7 @@ function emitAdditionalContext(hints, source, label) {
   const body = Array.isArray(hints) && hints.length > 0
     ? hints.map((h, i) => `${i + 1}. ${h}`).join("\n")
     : `unavailable — ${label} loader degraded (source=${source}). Inspect .claude/session-context.json *_source flags.`;
-  const text = `Loop ${label} hints (injected at session start; full set also in .claude/session-context.json):\n${body}`;
+  const text = `${PULL_PATH}\n${body}`;
   console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
 }
 
@@ -318,7 +319,7 @@ if (require.main === module) {
     });
   } catch { /* ignore */ }
   // Surface the fatal degrade to the agent so it isn't silent.
-  emitAdditionalContext([], "fatal", "discoverability");
+  emitAdditionalContext([], "fatal", "pointer-discoverability");
   process.exit(0);
 });
 }

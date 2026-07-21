@@ -51,14 +51,14 @@ Reuse the debug report's method: spawn the MCP server (`tools/learning-loop-mast
 
 ## Todo List
 
-- [ ] Guard suites green at HEAD
-- [ ] `measure-context-surfaces.mjs` written and committed
-- [ ] Baseline numbers recorded (wire bytes, hook chars, sidecar shape, gate-log invalid_field count)
+- [x] Guard suites green at HEAD
+- [x] `measure-context-surfaces.mjs` written and committed
+- [x] Baseline numbers recorded (wire bytes, hook chars, sidecar shape, gate-log invalid_field count)
 
 ## Success Criteria
 
-- [ ] Baseline report contains: total + per-tool wire bytes, both hook stdout char counts, sidecar shape hash + `*_source` values, gate-log baseline count
-- [ ] Script re-runs cleanly twice with identical structural output (modulo timestamps)
+- [x] Baseline report contains: total + per-tool wire bytes, both hook stdout char counts, sidecar shape hash + `*_source` values, gate-log baseline count
+- [x] Script re-runs cleanly twice with identical structural output (modulo timestamps)
 
 ## Risk Assessment
 

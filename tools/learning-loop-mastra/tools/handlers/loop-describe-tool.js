@@ -5,6 +5,7 @@ import * as introspect from "../../core/loop-introspect.js";
 import { readRegistry, readFileIndex } from "../../core/meta-state.js";
 import { readColdTierCache, writeColdTierCache } from "../../core/loop-introspect-cache.js";
 import { computeRegistryStats } from "../../core/registry-stats.js";
+import { listFieldGlossary } from "../../core/field-glossary.js";
 
 /**
  * Reduce a multi-sentence tool description to a one-line at-a-glance summary
@@ -188,6 +189,10 @@ export const loopDescribeTool = {
             warnings.push(`Cache write failed: ${cacheErr.message}`);
           }
         }
+
+        // Static vocabulary is injected after the cache read so a cold-tier
+        // cache created before the glossary existed still returns it.
+        result.field_glossary = listFieldGlossary();
 
         // Superseded lineage surface (Phase 3 of plan 260605):
         // group all finding entries with status='superseded' and a consolidated_into

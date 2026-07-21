@@ -95,10 +95,10 @@ Historical red-team note (H9, retained for the follow-on plan): `factory-hook-si
 
 ## Success Criteria
 
-- [ ] Both `.claude` hooks emit pointer projection; combined stdout ≤ 6,000 chars (measured)
-- [ ] Sidecar full-text payload unchanged (shape + flags diff vs Phase 1 snapshot = empty)
-- [ ] Only the inventoried text-asserting tests changed; everything else green untouched
-- [ ] `check_runtime_agnostic` clean (no new hooks/shims; universal edits only)
+- [x] Both `.claude` hooks emit pointer projection; combined stdout ≤ 6,000 chars (measured: 5,120 chars combined)
+- [x] Sidecar full-text payload unchanged (shape + flags diff vs Phase 1 snapshot = empty)
+- [x] Only the inventoried text-asserting tests changed; everything else green untouched
+- [x] `check_runtime_agnostic` clean (no new hooks/shims; universal edits only)
 
 ## Risk Assessment
 

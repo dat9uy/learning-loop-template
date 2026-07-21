@@ -141,6 +141,22 @@ function contextWasInjected(result) {
   }
 }
 
+// Phase 3 (plans/260720-1955): the steering pointer is a one-line pull
+// pointer that the gate emits on the FIRST prompt of a session. The original
+// helper detected any additionalContext; the gate now advertises a pull path
+// even on non-trigger paths, so the helper distinguishes the warn context
+// (the actual stale-observation message) from the pointer-only emission.
+function warnContextInjected(result) {
+  if (!result.stdout) return false;
+  try {
+    const parsed = JSON.parse(result.stdout);
+    const ac = parsed.hookSpecificOutput?.additionalContext;
+    return typeof ac === "string" && ac.includes("INBOUND STATE GATE");
+  } catch {
+    return false;
+  }
+}
+
 function parseOutbound(result) {
   try {
     const parsed = JSON.parse(result.stdout);
@@ -247,31 +263,31 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-fresh', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
     const t1 = runInboundHook('I cleared the device', env);
-    assert(!contextWasInjected(t1), 'fresh observation → no context injection');
+    assert(!warnContextInjected(t1), 'fresh observation → no context injection');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-stale', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t2 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t2), 'stale observation → context injected');
+    assert(warnContextInjected(t2), 'stale observation → context injected');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-no-time', status: 'active', constraint_type: 'docker' });
     const t3 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t3), 'missing updated_at → context injected');
+    assert(warnContextInjected(t3), 'missing updated_at → context injected');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-bad-time', status: 'active', constraint_type: 'docker', updated_at: 'not-a-date' });
     const t4 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t4), 'invalid updated_at → context injected');
+    assert(warnContextInjected(t4), 'invalid updated_at → context injected');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-diverge', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 10 * 60 * 1000).toISOString() });
     const t5 = runInboundHook('I cleared the device', env);
-    assert(!contextWasInjected(t5), 'divergence case: 10min old → inbound NOT stale (<30min)');
+    assert(!warnContextInjected(t5), 'divergence case: 10min old → inbound NOT stale (<30min)');
     clearMarker(tmpDir);
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -287,7 +303,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-fmt', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t1 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t1), 'state-change + stale obs → context injected');
+    assert(warnContextInjected(t1), 'state-change + stale obs → context injected');
 
     let parsed;
     try { parsed = JSON.parse(t1.stdout); } catch { parsed = null; }
@@ -300,15 +316,15 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-fresh2', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 5 * 60 * 1000).toISOString() });
     const t2 = runInboundHook('I cleared the device', env);
-    assert(t2.exitCode === 0 && !contextWasInjected(t2), 'state-change + fresh obs → no context');
+    assert(t2.exitCode === 0 && !warnContextInjected(t2), 'state-change + fresh obs → no context');
     clearMarker(tmpDir);
 
     const t3 = runInboundHook('what should we do next?', env);
-    assert(t3.exitCode === 0 && !contextWasInjected(t3), 'no state-change → no context');
+    assert(t3.exitCode === 0 && !warnContextInjected(t3), 'no state-change → no context');
 
     clearObservations(tmpDir);
     const t4 = runInboundHook('I cleared the device', env);
-    assert(t4.exitCode === 0 && !contextWasInjected(t4), 'state-change + no obs → no context');
+    assert(t4.exitCode === 0 && !warnContextInjected(t4), 'state-change + no obs → no context');
     clearMarker(tmpDir);
 
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -481,7 +497,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-by-id', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t1 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t1), 'observation with id → context injected');
+    assert(warnContextInjected(t1), 'observation with id → context injected');
     assert(t1.stdout.includes('vnstock') && t1.stdout.includes('surfaces:'), 'context surfaces affected system via pointer (not raw id)');
     assert(!t1.stdout.includes('obs-by-id'), 'context does not inline the raw observation id');
     clearMarker(tmpDir);
@@ -489,14 +505,14 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { constraint: 'docker-cleanup', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t2 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t2), 'observation without id → context injected');
+    assert(warnContextInjected(t2), 'observation without id → context injected');
     assert(t2.stdout.includes('vnstock'), 'context names the affected surface');
     clearMarker(tmpDir);
 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t3 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t3), 'observation with neither → context injected');
+    assert(warnContextInjected(t3), 'observation with neither → context injected');
     assert(t3.stdout.includes('vnstock'), 'context names the affected surface');
     clearMarker(tmpDir);
 
@@ -513,7 +529,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearObservations(tmpDir);
     writeObservation(tmpDir, { id: 'obs-meta-test', status: 'active', constraint_type: 'docker', updated_at: new Date(now - 2 * 60 * 60 * 1000).toISOString() });
     const t1 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t1), 'gate fires → context injected');
+    assert(warnContextInjected(t1), 'gate fires → context injected');
     let parsed1;
     try { parsed1 = JSON.parse(t1.stdout); } catch { parsed1 = null; }
     const ctx1 = parsed1?.hookSpecificOutput?.additionalContext || '';
@@ -570,7 +586,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     writeObservation(tmpDir, { id: 'obs-dedup', status: 'active', constraint_type: 'docker', updated_at: staleTs });
     clearSuppressToken();
     const t1 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t1), 'dedup: gate fires');
+    assert(warnContextInjected(t1), 'dedup: gate fires');
     const c1 = ctxOf(t1);
     assert(c1.includes('1 stale active observation') && c1.includes('vnstock (1)'), 'dedup: single record counted once (vnstock (1)), not twice');
     assert(!c1.includes('already surfaced'), 'dedup: first emission is the full pointer, not the suppress line');
@@ -579,7 +595,7 @@ test('inbound-state-gate: 11 categories of state-change / staleness / context / 
     clearSuppressToken();
     writeSuppressToken('obs-dedup', new Date(now - 1 * 60 * 1000).toISOString());
     const t2 = runInboundHook('I cleared the device', env);
-    assert(contextWasInjected(t2), 'suppress: gate still fires (warn)');
+    assert(warnContextInjected(t2), 'suppress: gate still fires (warn)');
     const c2 = ctxOf(t2);
     assert(c2.includes('already surfaced this session'), 'suppress: repeat same-signature within window → already-surfaced pointer');
     assert(c2.includes('Inline list suppressed'), 'suppress: inline list suppressed message present');

@@ -208,11 +208,12 @@ test("SessionStart hook emits discoverability hints via stdout additionalContext
   assert.ok(typeof ac === "string" && ac.length > 0, "additionalContext must be a non-empty string");
   // 10k-char cap: the injected payload must fit inline (not be persisted/truncated).
   assert.ok([...ac].length <= 10000, `additionalContext must stay under 10k chars; got ${[...ac].length}`);
-  assert.ok(ac.includes("Loop discoverability hints"), "must carry the discoverability header");
-  // A known discoverability-hint marker (citation pattern) proves real content.
-  assert.ok(ac.includes("meta_state_report"), "must include a known discoverability hint (meta_state_report)");
-  // Must include all 16 hints (numbered 1..16) so delivery is full, not partial.
-  assert.ok(/^1\. /m.test(ac) && /^16\. /m.test(ac), "must number hints 1 through 16 (full set)");
+  // Phase 3 pointer projection: header names the pull path; hint slugs + suggestions replace the inline paragraphs.
+  assert.ok(ac.includes("loop_describe({tier:'warm'})"), "must advertise the pull path for full discoverability hints");
+  assert.ok(ac.includes("internalization-rule"), "must include the internalization-rule pointer slug");
+  assert.ok(ac.includes("runtime-agnostic-features"), "must include the runtime-agnostic-features pointer slug");
+  // All 16 hints project; numbering 1..16 is preserved so callers retain position-based diagnostics.
+  assert.ok(/^1\. /m.test(ac) && /^16\. /m.test(ac), "must number hint pointers 1 through 16");
 });
 
 // Degraded inline leg: when the core-hints loader fails, the hook must still
