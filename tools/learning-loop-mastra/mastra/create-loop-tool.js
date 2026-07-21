@@ -1,5 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { normalizeInputSchema } from "../core/schema-normalize.js";
 import { buildParitySchema } from "./schema-parity.js";
 import { withR2Gate } from "./with-r2-gate.js";
 
@@ -14,18 +15,11 @@ import { withR2Gate } from "./with-r2-gate.js";
  * root schema's JSON Schema generator with a parity view that strips the
  * migration wrappers (preprocess / guarded-boolean unions) while leaving parse
  * behavior strict.
+ *
+ * `normalizeInputSchema` lives in core/schema-normalize.js (Phase 1 of plan
+ * 260721-1933) so transport-agnostic consumers (the read-only CLI) can reuse
+ * it without importing @mastra/core.
  */
-function normalizeInputSchema(inputSchema) {
-  if (
-    inputSchema &&
-    typeof inputSchema === "object" &&
-    (inputSchema._def || inputSchema.def) &&
-    typeof inputSchema.parse === "function"
-  ) {
-    return inputSchema;
-  }
-  return z.object(inputSchema);
-}
 
 function attachParityJSONSchema(schema, parityHints) {
   const paritySchema = buildParitySchema(schema);

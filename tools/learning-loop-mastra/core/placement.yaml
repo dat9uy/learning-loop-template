@@ -81,6 +81,9 @@ files:
   - path: registry-append-atomic.js
     role: primitive
     summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (Tier 2 Phase B; RT H1 + H4).
+  - path: schema-normalize.js
+    role: primitive
+    summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.
   - path: registry-stats.js
     role: helper
     summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal (Plan 260716-1101 Tier 2 Phase C).
