@@ -27,6 +27,8 @@ Establish the numbers every later phase is judged against and pin current behavi
 
 Reuse the debug report's method: spawn the MCP server (`tools/learning-loop-mastra/mastra/server.js` with `LOOP_SURFACE=.claude`), call `tools/list`, byte-size the JSON. Hook stdout captured by invoking the two universal hooks with a minimal SessionStart stdin payload. Baselines are written to `plans/260720-1955-context-size-delivery-observability-pointer-projection-jit-contracts-channel-vocabulary/reports/baseline-260720-measurements.md` (numbers + commands, no prose padding).
 
+> **🔴 Red Team (H6 — spawn env):** the proven spawn pattern (`__tests__/with-mcp-server.js:64-77`) sets THREE env vars: `MASTRA_STORAGE_DRIVER=memory`, a temp `GATE_ROOT`, AND `LOOP_SURFACE`. The script MUST replicate all three (or import `withMcpServer`/`connectMcpServer` directly) — without `MASTRA_STORAGE_DRIVER=memory` the server may hit a real storage backend; without a temp `GATE_ROOT` it reads/writes the real repo `meta-state.jsonl` during measurement. Add a retry-with-backoff around the spawn (the parity test doesn't need this because vitest isolates; a standalone script does). This is the same script Phase 6 re-runs as the budget gate — flakiness here blocks the whole ship.
+
 ## Related Code Files
 
 - Create: `tools/scripts/measure-context-surfaces.mjs` (repeatable capture: tools/list bytes, hook stdout chars, sidecar shape hash) — small, plain `node`, no deps
@@ -60,5 +62,5 @@ Reuse the debug report's method: spawn the MCP server (`tools/learning-loop-mast
 
 ## Risk Assessment
 
-- Risk: server spawn in script is flaky in sandboxes → mitigate by reusing the exact spawn pattern from `__tests__/mcp-tools-list-parity.test.js` (already proven in CI).
-- Risk: baseline drifted from the debug report's 82,516B → expected (tools changed since); record actuals, budgets in Phase 6 are absolute (≤45,000B / ≤6,000 chars), not relative.
+- Risk: server spawn in script is flaky in sandboxes → mitigate by reusing the exact spawn pattern from `__tests__/mcp-tools-list-parity.test.js` (already proven in CI). 🔴 Red Team (H6): that pattern sets `MASTRA_STORAGE_DRIVER=memory` + temp `GATE_ROOT` + `LOOP_SURFACE` — replicate ALL THREE in the script (or import `withMcpServer`), plus retry-with-backoff; missing env vars compound the flakiness and risk touching the real repo state.
+- Risk: baseline drifted from the debug report's 82,516B → expected (tools changed since); record actuals, budgets in Phase 6 are absolute (manifest ≤40,000B / ≤6,000 chars — Validation V1; total ≤45,000B is a separate follow-on phase), not relative.

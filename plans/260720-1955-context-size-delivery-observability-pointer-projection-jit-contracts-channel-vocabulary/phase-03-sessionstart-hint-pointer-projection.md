@@ -31,24 +31,27 @@ Replace the two SessionStart hooks' long-paragraph hint emission (~11.8k chars c
 ## Requirements
 
 - Functional:
+  - > **🔴 Red Team (H12 — DRY):** do NOT add two parallel builders that mirror `buildDiscoverabilityHints`/`buildProcessHints` iteration + `resolveHintText` + drop-on-null skip (lock-step duplication). Add ONE pure formatter `projectToPointers(hints)` that consumes the existing `buildDiscoverabilityHints()` / `buildProcessHints()` output and pairs each surviving entry with its `slug` (already on every registry entry). The pointer builders are then `buildDiscoverabilityPointers = () => projectToPointers(buildDiscoverabilityHints())` and `buildProcessPointers = ({rulesById}={}) => projectToPointers(buildProcessHints({rulesById}))` — skip semantics stay in ONE place (the existing builders).
   - New `buildDiscoverabilityPointers()` + `buildProcessPointers({ rulesById } = {})` in `core/loop-introspect.js`: output = header line (names pull path: full text in `.claude/session-context.json`, single hint via `loop_get_instruction({key})`) + one `${slug} — ${suggestion}` line per surviving entry (16 discoverability + up to 10 process).
   - Discoverability hook flip: `session-start-inject-discoverability.cjs:279` — `emitAdditionalContext(buildDiscoverabilityPointers(), …)`; sidecar path (line 274) and degraded/fatal marker paths unchanged.
   - Process hook flip: `session-start-inject-process-hints.cjs:32-33` — use `buildProcessPointers()` (inherits lazy rule read via cwd, same as `buildProcessHints`); degraded marker (34-37) unchanged.
-  - **Factory hook flip (included — see Decision D3.1):** `.factory/hooks/loop-surface-inject.cjs:134/143` switches to pointer builders; `formatBlock` sections keep headers, body becomes pointer lines.
+  - ~~Factory hook flip — DEFERRED (Validation V4).~~ See Decision D3.1.
 - Non-functional: combined `.claude` hook stdout ≤ 6,000 chars (budget); no change to sidecar payload shape or `*_source` flags; no new hooks/shims (shims-in-sync untouched).
 
-## Decision D3.1 — factory hook in scope
+## Decision D3.1 — factory hook DEFERRED (Validation V4)
 
-The droid hook pushes the same full paragraphs at SessionStart (the same anti-pattern this plan fixes). Included for cross-surface doctrine consistency (R5; runtime-agnostic checklist item 5). Cost: 3 text-asserting tests in `.factory/hooks/__tests__/loop-surface-inject-format-block.test.cjs` + alignment check in `tools/learning-loop-mastra/__tests__/factory-hook-single-source.test.cjs`. If validation rejects, scope drops back to the two `.claude` hooks and the factory hook becomes an explicitly documented deferral in Phase 5 docs.
+✅ **VALIDATION V4 RESOLVED — defer.** Phase 3 ships the two `.claude` hooks ONLY. The `.factory/hooks/loop-surface-inject.cjs` pointer flip is a separate cross-surface alignment plan (the size budget is `.claude`-only; the doctrine-consistency argument doesn't earn its test-rewrite cost here). Phase 5 must record this deferral: mark the factory-hook channel as "pointer projection deferred (D3.1 — separate plan)" in the `docs/architecture.md` channel table and add a deferral entry to the Phase 5 report. `<!-- Updated: Validation Session 1 - D3.1 factory hook deferred -->`
+
+Historical red-team note (H9, retained for the follow-on plan): `factory-hook-single-source.test.cjs:118,127` are full-text content assertions (`assert.ok(block.includes(h))` against canonical hint text of `h.length` chars), NOT "alignment checks" — the follow-on plan must rewrite them to pointer-form slug coverage, not full-text containment.
 
 ## Related Code Files
 
 | File | Action | Rough size | Test impact |
 |---|---|---|---|
-| `tools/learning-loop-mastra/core/loop-introspect.js` | Modify: add 2 builders after line 169 | +~40 lines | new unit tests |
+| `tools/learning-loop-mastra/core/loop-introspect.js` | Modify: add `projectToPointers(hints)` formatter + 2 thin wrappers (`buildDiscoverabilityPointers`/`buildProcessPointers`) after line 169 (🔴 H12: DRY — do not duplicate iteration/skip) | +~25 lines | new unit tests |
 | `tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs` | Modify: line 279 emit call only | 1-line logic change | rewrite test :189 |
 | `tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs` | Modify: lines 32-33 | 2-line change | rewrite test :12 |
-| `.factory/hooks/loop-surface-inject.cjs` | Modify: lines 134/143 builder calls | 2-line change | rewrite format-block test; single-source test |
+| ~~`.factory/hooks/loop-surface-inject.cjs`~~ | ~~Modify~~ — **DEFERRED (Validation V4)** to a separate cross-surface plan | — | — |
 | `tools/learning-loop-mastra/__tests__/hint-pointer-builders.test.cjs` (new) | Create | — | — |
 | `tools/learning-loop-mastra/__tests__/legacy-mcp/session-start-inject-discoverability.test.cjs` | Modify: :189 test → pointer-format assertions (slug presence, header kept, ≤10k, numbering 1..16) | — | — |
 | `tools/learning-loop-mastra/__tests__/legacy-mcp/session-start-inject-process-hints.test.cjs` | Modify: :12 test → pointer assertions (1..10) | — | — |
@@ -66,13 +69,13 @@ The droid hook pushes the same full paragraphs at SessionStart (the same anti-pa
 2. Rewrite the two hook tests to pointer expectations (RED against current full-text output).
 
 ### Step B — Refactor
-3. Add the two builders in `core/loop-introspect.js` (mirror existing builder patterns; JSDoc noting pointer contract + skip semantics).
+3. Add the `projectToPointers` formatter + 2 thin wrappers in `core/loop-introspect.js` (mirror existing builder patterns; JSDoc noting pointer contract + skip semantics).
 4. Flip discoverability hook line 279; flip process hook lines 32-33.
-5. Flip factory hook builder calls (D3.1).
+~~5. Flip factory hook builder calls (D3.1).~~ — **DEFERRED (Validation V4).**
 
 ### Step C — Tests After
-6. A-tests GREEN; run adjacent suites: `hint-registry.test.cjs`, `rule-derived-process-hints.test.cjs`, `hint-renderer.test.cjs`, `session-start-inject-degraded-sources.test.cjs`, `loop-describe-warm-tier.test.js`, `loop-get-instruction.test.js`, `cold-session-discoverability.test.cjs`, `factory-hook-single-source.test.cjs`, `.factory/hooks/__tests__/`.
-7. Re-run `measure-context-surfaces.mjs`; record hook stdout char counts; diff sidecar shape vs Phase 1 snapshot (must be identical incl. `*_source`).
+5. A-tests GREEN; run adjacent suites: `hint-registry.test.cjs`, `rule-derived-process-hints.test.cjs`, `hint-renderer.test.cjs`, `session-start-inject-degraded-sources.test.cjs`, `loop-describe-warm-tier.test.js`, `loop-get-instruction.test.js`, `cold-session-discoverability.test.cjs`. (Factory-hook suites are out of scope — V4 deferred.)
+6. Re-run `measure-context-surfaces.mjs`; record hook stdout char counts; diff sidecar shape vs Phase 1 snapshot (must be identical incl. `*_source`).
 
 ### Step D — Regression gate
 - `pnpm test:iter` green; combined hook stdout ≤ 6,000 chars measured; sidecar diff empty.
@@ -88,7 +91,7 @@ The droid hook pushes the same full paragraphs at SessionStart (the same anti-pa
 | Degraded/fatal marker paths unchanged | high | existing degraded tests |
 | `loop_get_instruction` resolves every emitted slug | high | A1 (cross-check against `findHintBySlug`) |
 | Warm/cold tiers still full text | medium | existing warm-tier test |
-| Factory hook emits pointers (if D3.1 confirmed) | high | format-block test rewrite |
+| ~~Factory hook emits pointers (if D3.1 confirmed)~~ | ~~high~~ — **DEFERRED (Validation V4)** | — |
 
 ## Success Criteria
 

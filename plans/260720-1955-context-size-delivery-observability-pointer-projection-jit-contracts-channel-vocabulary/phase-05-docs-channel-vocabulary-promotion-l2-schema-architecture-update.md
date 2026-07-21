@@ -11,7 +11,7 @@ dependencies: [2, 3, 4]
 
 ## Overview
 
-Anchor the surfaces this plan changed in the doc layer. Promote **channel** to an L2 contract term (a named projection of canonical content onto a runtime surface, with declared shape, char budget, provenance, and delivery-fidelity class `full`/`lean`/`unknown`), map channels to mechanisms at L3, and update the zod→wire doc for the JIT off-wiring + glossary. L1 gets one cross-ref line only.
+Anchor the surfaces this plan changed in the doc layer. **Merge the `channel` term into the EXISTING architecture.md push/pull table** (channel name + delivery-fidelity class `full`/`lean`/`unknown` column) — NO new L2 `runtime-contract.md` section (Validation V3: the concept is already named/exported at `hint-renderer.js:198` and referenced at `architecture.md:514`; a parallel L2 section would duplicate it). Update the zod→wire doc for the JIT off-wiring + glossary. L1 gets one cross-ref line only. `<!-- Updated: Validation Session 1 - V3 merge into existing table -->`
 
 ## Context Links
 
@@ -30,31 +30,32 @@ Anchor the surfaces this plan changed in the doc layer. Promote **channel** to a
 ## Requirements
 
 - Functional:
-  1. `docs/runtime-contract.md`: new **Channels** section — term definition; the 4 current channels (SessionStart additionalContext ×2 [discoverability/process hooks], UserPromptSubmit [inbound gate], MCP `tools/list`, `.claude/session-context.json` sidecar pull); delivery-fidelity classes + attestation path (`delivery-<sessionId>` classifier rows in `runtime-state.jsonl`).
-  2. `docs/architecture.md`: extend § Context-Injection Division of Labor — merge the channel term into the existing push/pull table (add channel name + fidelity class column); new subsection mapping channels → state axes; pointer + classifier mechanism paragraph (delivery-classify.mjs, always-emit pointer, honesty flag re: `syn`-profile unverified project-level UPS).
+  1. ~~`docs/runtime-contract.md`: new Channels section~~ — **REMOVED (Validation V3).** The channel term is defined once by merging into the existing architecture.md table (item 2); no parallel L2 section.
+  2. `docs/architecture.md`: extend § Context-Injection Division of Labor — merge the channel term into the EXISTING push/pull table (add channel name + fidelity class column); new subsection mapping channels → state axes; pointer + classifier mechanism paragraph (delivery-classify.mjs, once-per-session pointer [Validation V2], honesty flag re: `syn`-profile unverified project-level UPS). **Mandatory (Validation V4):** mark the factory-hook channel as "pointer projection deferred (D3.1 — separate plan)" since Phase 3 deferred the factory hook flip.
   3. `docs/mcp-tool-schema-architecture.md`: update zod→wire flow for JIT off-wiring (branch schemas now ride `invalid_field`/`empty_patch` error payloads; wire patch is free-form + parity `minProperties`) and the field glossary (`core/field-glossary.js` single source, served via `loop_describe` cold tier, loop-owned error points enriched).
-  4. `docs/loop-engine.md`: one cross-ref line (state axes → L2 channel term). L1 otherwise untouched.
-  5. `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md`: add glossary pointer (file already stale re: removed `meta_state_ack` — fix that line while nearby).
-- Non-functional: docs stay under `docs.maxLoc` 800 per file (architecture.md 513 → keep additions tight); no vocabulary duplication across L1/L2/L3.
+  4. `docs/loop-engine.md`: one cross-ref line (state axes → channel term in architecture.md). L1 otherwise untouched.
+  5. `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md`: add glossary pointer only. ~~Fix stale `meta_state_ack` line~~ — **DROPPED (Validation V6); ship as a standalone one-line docs commit.**
+- Non-functional: docs stay under `docs.maxLoc` 800 per file (architecture.md 513 → keep additions tight); no vocabulary duplication (one channel definition, in the merged table).
 
 ## Related Code Files
 
-- Modify: `docs/runtime-contract.md`, `docs/architecture.md`, `docs/mcp-tool-schema-architecture.md`, `docs/loop-engine.md` (1 line), `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md`
+- Modify: `docs/architecture.md`, `docs/mcp-tool-schema-architecture.md`, `docs/loop-engine.md` (1 line), `tools/learning-loop-mastra/tools/handlers/references/tool-selection-guide.md`
+- ~~`docs/runtime-contract.md`~~ — **NOT modified (Validation V3: no new L2 Channels section).**
 - Create: none. Delete: none.
 
 ## Implementation Steps
 
-1. Write the L2 Channels section (term def → 4 channels table → fidelity classes → attestation path). Cross-ref the finding id once.
-2. architecture.md: extend the existing table + new channels/state-axes subsection; document the pointer line + classifier + the `syn`-profile honesty flag and documented-degradation fallback.
+1. ~~Write the L2 Channels section (term def → 4 channels table → fidelity classes → attestation path).~~ — **REMOVED (Validation V3).** The channel term is defined by merging into the architecture.md table in step 2.
+2. architecture.md: extend the EXISTING push/pull table (add channel name + fidelity-class column) + new channels/state-axes subsection; document the once-per-session pointer line (V2) + classifier + the `syn`-profile honesty flag and documented-degradation fallback. **Mark the factory-hook channel "pointer projection deferred (D3.1 — separate plan)" (Validation V4 — mandatory).** Cross-ref the finding id once.
 3. mcp-tool-schema-architecture.md: revise the wire-flow section for JIT + glossary (branch-schema serialization call sites, the `_zod.toJSONSchema` root-sentinel warning stays).
-4. loop-engine.md: single cross-ref line in the state-axis area.
-5. tool-selection-guide.md: glossary pointer + stale `meta_state_ack` line fix.
-6. Verify every claim against shipped code (phases 2-4); verify internal links/anchors resolve.
+4. loop-engine.md: single cross-ref line in the state-axis area (state axes → channel term in architecture.md).
+5. tool-selection-guide.md: glossary pointer only. ~~Stale `meta_state_ack` line fix~~ — **DROPPED (Validation V6); standalone commit.**
+6. Verify every claim against shipped code (phases 2-4); verify internal links/anchors resolve. `<!-- Updated: Validation Session 1 - V3/V4/V6 -->`
 
 ## Success Criteria
 
-- [ ] "Channel" defined once at L2, used consistently at L3; zero duplicate definitions
-- [ ] architecture.md table is the single push/pull/channel table (merged, not paralleled)
+- [ ] "Channel" defined once in the merged architecture.md push/pull/channel table (no parallel L2 `runtime-contract.md` section — Validation V3); zero duplicate definitions
+- [ ] architecture.md table is the single push/pull/channel table (merged, not paralleled); factory-hook channel marked "deferred (D3.1)"
 - [ ] mcp-tool-schema-architecture.md matches the shipped JIT behavior (a reader can derive the error-payload contract from the doc)
 - [ ] All edited files ≤ 800 LOC; claims verified against code
 
