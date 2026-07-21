@@ -22,14 +22,15 @@
 // from cwd). A runtime embedding the CLI for a DIFFERENT repo MUST set
 // GATE_ROOT, otherwise it silently reads the loop's meta-state with no error.
 //
-// IMPORTANT: set LOOP_SURFACE before invoking. The CLI inherits the MCP
-// server's runtime-pin contract — there is no default.
+// IMPORTANT: set LOOP_SURFACE before invoking a tool. The CLI inherits the
+// MCP server's runtime-pin contract — there is no default. `list` is exempt:
+// it reads no runtime records and may run before LOOP_SURFACE is configured.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { pinRuntimeIdAtBoot } from "../core/identity-pin.js";
+import { pinRuntimeIdAtBoot, isIdentityPinError } from "../core/identity-pin.js";
 import { normalizeInputSchema } from "../core/schema-normalize.js";
 import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { withR2Gate } from "../mastra/with-r2-gate.js";
@@ -121,30 +122,22 @@ class UsageError extends Error {
   }
 }
 
-function isIdentityPinError(err) {
-  // Match against the canonical messages from mastra/identity-errors.json
-  // (the same set the MCP server catches). Pattern: starts with one of the
-  // canonical prefixes.
-  if (!err || typeof err.message !== "string") return false;
-  return (
-    err.message.startsWith("LOOP_SURFACE environment variable is not set") ||
-    err.message.startsWith("LOOP_SURFACE='") ||
-    err.message.startsWith("No runtime mapping for surface")
-  );
-}
-
 async function main() {
-  // Pin runtime identity first — same LOOP_SURFACE contract as mastra/server.js.
-  // Throws synchronously on missing/invalid surface, surfacing as exit 2 in
-  // the catch below (per repo convention validate-registry-refs.js:240-274).
-  pinRuntimeIdAtBoot();
-
   const [, , subcommand, jsonArgs] = process.argv;
 
+  // `list` is a discovery/help command that reads no runtime records, so it
+  // is exempt from the runtime-pin contract — an operator can list the
+  // surface before configuring LOOP_SURFACE.
   if (subcommand === "list") {
     await runList();
     return;
   }
+
+  // Pin runtime identity before any tool execution — same LOOP_SURFACE
+  // contract as mastra/server.js (no default). Throws synchronously on
+  // missing/invalid surface, surfacing as exit 2 in the catch below (per
+  // repo convention validate-registry-refs.js:240-274).
+  pinRuntimeIdAtBoot();
 
   if (!subcommand) {
     throw new UsageError(`usage: loop.mjs <list|tool> '<json-args>'`);

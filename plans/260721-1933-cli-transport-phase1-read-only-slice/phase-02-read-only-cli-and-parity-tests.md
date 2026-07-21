@@ -98,7 +98,7 @@ loop.mjs <tool> '<json>'
 - [x] `loop.mjs list` prints the 7 bare tool names, no `mastra_` prefix.
 - [x] `grep -rn "@mastra" tools/learning-loop-mastra/bin/loop.mjs` returns nothing (and the closure through `core/` is Mastra-free — Phase 1's boundary test already locks `core/schema-normalize.js`).
 - [x] `pnpm test` full suite green.
-- [x] `bin/loop.mjs` is ≤ ~90 LOC; no arg-parse / normalize logic beyond the slice (a phase-2 smell if it grows).
+- [x] `bin/loop.mjs` stays a thin dispatch — no per-tool arg-parse or schema logic beyond calling `normalizeInputSchema`; identity-pin errors classified via the shared `isIdentityPinError` export from `core/identity-pin.js` (not hardcoded prefixes — the plan's step-3 "or import the error strings" option). Shipped at 160 LOC total / 105 code-only; the pre-impl `~90`-LOC proxy was sized against code-only and optimistic, but the guarding invariant (no scope creep beyond the slice) holds. The `list` subcommand is exempt from the runtime pin (discovery command, reads no records).
 
 ## Risk Assessment
 

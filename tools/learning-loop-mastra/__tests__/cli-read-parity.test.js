@@ -13,13 +13,29 @@
 //       the other's gate-log writes.
 //
 // Parity comparison is STRUCTURAL: a known set of non-deterministic fields
-// (checked_at / duration_ms / built_at / timing.*) is stripped from both
-// sides before deepStrictEqual. `fingerprint_was_recorded` is also stripped
-// from the comparison: the fixture's evidence_code_ref points at
-// bin/loop.mjs which doesn't exist inside either tmpdir, so the auto-record
-// branch in meta-state-check-grounding-tool.js is skipped on both sides
-// and the field is false on both — but the strip keeps the test robust to
-// fixture edits that flip the record branch on.
+// (checked_at / duration_ms / built_at / fingerprint_was_recorded / timing.*)
+// is stripped from both sides before deepStrictEqual.
+//
+// `evidence_code_ref` is NOT stripped — it is NORMALIZED: the handler
+// resolves it to an absolute path under the per-side tmpdir, so with
+// independent roots the raw value differs by tmpdir name even though the
+// finding id is the same. Replacing the per-side root prefix with `<root>`
+// keeps the field in the comparison AND under the field-set guard, so a
+// future rename/drop of evidence_code_ref is caught (a plain strip would
+// hide it).
+//
+// `fingerprint_was_recorded` is stripped: the fixture's evidence_code_ref
+// points at bin/loop.mjs which doesn't exist inside either tmpdir, so the
+// auto-record branch in meta-state-check-grounding-tool.js is skipped on
+// both sides and the field is false on both — the strip keeps the test
+// robust to fixture edits that flip the record branch on.
+//
+// SCOPE: this test compares CLI stdout vs a DIRECT handler call with NO
+// Mastra context — it does NOT spawn the MCP server. It proves CLI ==
+// direct-no-context, not CLI == MCP. The 7 read handlers get runtime
+// identity via getPinnedRuntimeId() (pinned at boot in both processes), not
+// via Mastra context, so the scope is tight today; if a read handler ever
+// reads Mastra context, MCP/CLI divergence would NOT be caught here.
 //
 // Exit-code contract tests lock 0/1/2 (success/handler-error/usage).
 
@@ -56,22 +72,29 @@ const STRIP_KEYS = new Set([
   "duration_ms",
   "built_at",
   "fingerprint_was_recorded",
-  // `evidence_code_ref` is the resolved absolute path under the per-side
-  // tmpdir; with independent roots it differs by tmpdir name even though the
-  // finding id is the same. Strip from the comparison so the test is robust
-  // to tempdir naming (the field is identical-shape on both sides — both are
-  // absolute paths under their respective roots).
-  "evidence_code_ref",
 ]);
 
-function stripNonDeterministic(value) {
-  if (Array.isArray(value)) return value.map(stripNonDeterministic);
+// Replace a per-side tmpdir root prefix with `<root>` so path-valued fields
+// (evidence_code_ref resolved to an absolute path under the tmpdir) compare
+// equal across independent roots without dropping the field.
+function normalizeRootPath(value, root) {
+  if (typeof value !== "string" || !root) return value;
+  if (value.startsWith(root)) return "<root>" + value.slice(root.length);
+  return value;
+}
+
+function stripNonDeterministic(value, root) {
+  if (Array.isArray(value)) return value.map((v) => stripNonDeterministic(v, root));
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
       if (STRIP_KEYS.has(k)) continue;
       if (k === "timing" && v && typeof v === "object") continue;
-      out[k] = stripNonDeterministic(v);
+      if (k === "evidence_code_ref") {
+        out[k] = stripNonDeterministic(normalizeRootPath(v, root), root);
+        continue;
+      }
+      out[k] = stripNonDeterministic(v, root);
     }
     return out;
   }
@@ -221,7 +244,7 @@ describe("cli-read parity (Phase 2)", () => {
         process.env.LOOP_SURFACE = ".claude";
         process.env.MASTRA_STORAGE_DRIVER = "memory";
         const want = await directExecute({ ...args });
-        const wantStripped = stripNonDeterministic(want);
+        const wantStripped = stripNonDeterministic(want, tmpdirA);
 
         // ---- CLI side: tmpdirB ----
         const cliEnv = { ...process.env };
@@ -239,7 +262,7 @@ describe("cli-read parity (Phase 2)", () => {
         assert.strictEqual(proc.status, 0, `cli must exit 0; stderr=${proc.stderr}`);
         const stdoutTrim = (proc.stdout ?? "").trim();
         const gotRaw = JSON.parse(stdoutTrim);
-        const gotStripped = stripNonDeterministic(gotRaw);
+        const gotStripped = stripNonDeterministic(gotRaw, tmpdirB);
 
         assert.deepStrictEqual(
           gotStripped,
@@ -340,12 +363,30 @@ describe("cli-read exit-code contract (Phase 2)", () => {
     assert.ok(!out.includes("mastra_"), `list output must not contain mastra_ prefix; got: ${out.slice(0, 500)}`);
   });
 
+  test("loop.mjs list works WITHOUT LOOP_SURFACE (discovery command is pin-exempt)", () => {
+    // `list` reads no runtime records, so it is exempt from the runtime-pin
+    // contract — an operator can list the surface before configuring
+    // LOOP_SURFACE. Locks the LOW-2 fix against a regression that re-pins
+    // before the list early-return.
+    const env = { ...process.env };
+    delete env.LOOP_SURFACE;
+    const proc = spawnSync("node", [LOOP_BIN, "list"], {
+      env,
+      encoding: "utf8",
+      timeout: 30000,
+    });
+    assert.strictEqual(proc.status, 0, `list must exit 0 without LOOP_SURFACE; stderr=${proc.stderr}`);
+    const out = proc.stdout ?? "";
+    for (const tool of READ_ONLY_TOOLS) {
+      assert.ok(out.includes(tool), `list output must contain ${tool} without LOOP_SURFACE; got: ${out.slice(0, 500)}`);
+    }
+  });
+
   test("handler-error path: missing id returns not-found payload (exit 0)", () => {
     // meta_state_check_grounding returns a not-found object (via findEntryOrNotFound)
     // for an unknown id — it does NOT throw. The CLI surfaces this as exit 0
-    // with a JSON result carrying the not-found shape the MCP path returns.
-    // The plan's contract: "pin whichever the handler actually does (throws
-    // → status === 1; returns a not-found object → status === 0)".
+    // with a JSON result carrying the canonical not-found shape
+    // { error: "entry_not_found", id } the MCP path returns.
     const tmpRoot = makeTempRoot();
     copySchemas(PROJECT_ROOT, tmpRoot);
     const env = { ...process.env };
@@ -360,14 +401,53 @@ describe("cli-read exit-code contract (Phase 2)", () => {
     assert.strictEqual(proc.status, 0, `not-found must exit 0; stderr=${proc.stderr}`);
     const stdoutTrim = (proc.stdout ?? "").trim();
     const out = JSON.parse(stdoutTrim);
-    // findEntryOrNotFound returns a content-shaped envelope with an entry_not_found
-    // error; CLI goes through adaptLegacyHandler which unwraps it to the inner
-    // object — but if the CLI does not unwrap, the envelope stays. Accept both:
-    // either a top-level error string, or an entry_not_found code on the result.
-    const flat = JSON.stringify(out);
-    assert.ok(
-      flat.includes("entry_not_found") || flat.includes("not_found") || flat.includes("error"),
-      `not-found result must carry an error signal; got: ${flat}`,
+    assert.strictEqual(out.error, "entry_not_found", `not-found payload must carry error: "entry_not_found"; got: ${stdoutTrim}`);
+    assert.strictEqual(out.id, "missing-id-fixture", `not-found payload must echo the requested id; got: ${stdoutTrim}`);
+  });
+
+  test("handler-throws path: out-of-root evidence_code_ref → exit 1 (PathContainmentError)", () => {
+    // Locks the exit-1 contract branch. checkGrounding re-throws
+    // PathContainmentError when evidence_code_ref resolves to a REAL path
+    // outside root — core/check-grounding.js:165-173 only swallows the
+    // missing-inside-root case (resolvedPath === null); an existing
+    // outside-root file throws with resolvedPath set (core/path-containment.js
+    // :120-121). Seed a finding whose evidence_code_ref is an absolute path
+    // to a file that exists outside the tmpdir GATE_ROOT (the project's own
+    // package.json). The handler throws post-validation → main().catch
+    // fallthrough → exit 1.
+    const outsideFile = join(PROJECT_ROOT, "package.json");
+    const tmpRoot = mkdtempSync(join(tmpdir(), "cli-exit1-"));
+    mkdirSync(join(tmpRoot, "records", "meta", "index"), { recursive: true });
+    mkdirSync(join(tmpRoot, "records", "meta", "capabilities"), { recursive: true });
+    mkdirSync(join(tmpRoot, "records", "meta", "evidence"), { recursive: true });
+    mkdirSync(join(tmpRoot, "records", "meta", "decisions"), { recursive: true });
+    writeFileSync(join(tmpRoot, "runtime-state.jsonl"), "\n", { flag: "a" });
+    writeFileSync(
+      join(tmpRoot, "meta-state.jsonl"),
+      JSON.stringify({
+        id: "fixture-throw-cli-exit1",
+        entry_kind: "finding",
+        category: "loop-anti-pattern",
+        severity: "warning",
+        affected_system: "meta",
+        status: "open",
+        description: "Exit-1 fixture: evidence_code_ref points outside root.",
+        evidence_code_ref: outsideFile,
+        mechanism_check: true,
+        created_at: "2026-07-21T00:00:00.000Z",
+      }) + "\n",
     );
+    copySchemas(PROJECT_ROOT, tmpRoot);
+    const env = { ...process.env };
+    env.LOOP_SURFACE = ".claude";
+    env.GATE_ROOT = tmpRoot;
+    env.MASTRA_STORAGE_DRIVER = "memory";
+    const proc = spawnSync(
+      "node",
+      [LOOP_BIN, "meta_state_check_grounding", '{"id":"fixture-throw-cli-exit1"}'],
+      { env, encoding: "utf8", timeout: 15000 },
+    );
+    assert.strictEqual(proc.status, 1, `handler-throw must exit 1; stderr=${proc.stderr}`);
+    assert.ok((proc.stderr ?? "").length > 0, "stderr must be non-empty on handler error");
   });
 });
