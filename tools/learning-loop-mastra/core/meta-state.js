@@ -265,8 +265,9 @@ export const META_STATE_FINDING_CATEGORIES = [
  * export names are NOT entry-id refs; a design that targets those documents
  * them in its description and leaves the cross-ref array empty.
  */
-export const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
+const ENTRY_ID_REF_PREFIXES = ["meta-", "rule-", "loop-design-"];
 
+// fallow-ignore-next-line unused-export -- public predicate consumed by cold-tier-regression.test.js; also used internally by entryIdRefsRefine
 export function isValidEntryIdRef(ref) {
   return typeof ref === "string" && ENTRY_ID_REF_PREFIXES.some((p) => ref.startsWith(p));
 }
@@ -791,7 +792,7 @@ function _readAndParseRegistry(root) {
  * NOT sorted by created_at: multi-line-per-id means a created_at sort
  * would shuffle versions arbitrarily within an id group.
  */
-export function parseFnAllVersions(root) {
+function parseFnAllVersions(root) {
   const parsed = readRawLines(root);
   parsed.sort((a, b) => {
     if (a.id !== b.id) return a.id < b.id ? -1 : 1;

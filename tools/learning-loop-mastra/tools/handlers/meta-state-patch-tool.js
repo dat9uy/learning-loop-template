@@ -54,27 +54,21 @@ export const metaStatePatchTool = {
     const entry = entries.find((e) => e.id === id);
 
     if (!entry) {
-      const result = { patched: false, reason: "not_found", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "not_found", id });
     }
 
     if (entry.entry_kind !== entry_kind) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "branch_mismatch",
         id,
         expected: entry_kind,
         actual: entry.entry_kind,
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     if (entry.entry_kind === "change-log") {
-      const result = { patched: false, reason: "change_log_immutable", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "change_log_immutable", id });
     }
 
     // Script-caller passthrough: allow tool-level mechanism_check and
@@ -92,7 +86,7 @@ export const metaStatePatchTool = {
 
     const deniedFields = Object.keys(effectivePatch).filter((k) => IMMUTABLE_PATCH_FIELDS.has(k));
     if (deniedFields.length > 0) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "immutable_field",
         id,
@@ -104,9 +98,7 @@ export const metaStatePatchTool = {
         ...(deniedFields.includes("code_fingerprint")
           ? { deprecation_note: "code_fingerprint is deprecated; the baseline lives in file-index.jsonl. Use meta_state_refresh_file_index({ path }) to refresh a cited path's hash." }
           : {}),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     // Defense-in-depth (resolves meta-260717T1026Z-...empty-patch): after
@@ -120,16 +112,14 @@ export const metaStatePatchTool = {
     // is added, so the user sees the rejection for the patch they actually
     // sent (not a schema error after CAS injection).
     if (Object.keys(effectivePatch).length === 0) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "empty_patch",
         id,
         entry_kind,
         hint: buildEmptyPatchHint(entry_kind),
         patch_schema: buildPatchSchemaPayload(entry_kind),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     // Plan 260717-1145 Phase 3: per-branch validation. The model-visible
@@ -146,7 +136,7 @@ export const metaStatePatchTool = {
     const branchSchema = buildPatchSchemaFor(entry_kind);
     const branchParse = branchSchema.safeParse(effectivePatch);
     if (!branchParse.success) {
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "invalid_field",
         id,
@@ -161,9 +151,7 @@ export const metaStatePatchTool = {
           };
         }),
         patch_schema: buildPatchSchemaPayload(entry_kind),
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     const currentVersion = entry.version ?? 0;
@@ -177,20 +165,16 @@ export const metaStatePatchTool = {
     if (updateResult === "version_mismatch") {
       const freshEntries = readRegistry(root);
       const fresh = freshEntries.find((e) => e.id === id);
-      const result = {
+      return reject(root, {
         patched: false,
         reason: "version_mismatch",
         id,
         current_version: fresh?.version ?? 0,
-      };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      });
     }
 
     if (updateResult === "validation_failed") {
-      const result = { patched: false, reason: "validation_failed", id };
-      appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return reject(root, { patched: false, reason: "validation_failed", id });
     }
 
     if (updateResult !== true) {
@@ -230,6 +214,14 @@ export const metaStatePatchTool = {
  */
 function buildPatchSchemaPayload(entryKind) {
   return z.toJSONSchema(buildPatchSchemaFor(entryKind), { target: "draft-7", io: "input" });
+}
+
+// Shared rejection path: log the result to the gate log and return it as the
+// tool's text content. Every non-success branch in the handler uses this so
+// the log+return shape stays identical (closes the fallow patch-tool clone).
+function reject(root, result) {
+  appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_patch", ...result });
+  return { content: [{ type: "text", text: JSON.stringify(result) }] };
 }
 
 // Plan 260717-1145 Phase 4: schema-derived empty_patch hint. The prior

@@ -125,11 +125,13 @@ function runMain() {
   const root = findProjectRoot();
   const now = Date.now();
   const prior = readSuppressToken(root);
+  // priorSignature/priorTs default to null inside evaluateInboundGate, so
+  // passing undefined (when no prior token exists) is equivalent to null.
   const decision = evaluateInboundGate({
     prompt,
     root,
-    priorSignature: prior?.signature ?? null,
-    priorTs: prior?.ts ?? null,
+    priorSignature: prior?.signature,
+    priorTs: prior?.ts,
     now,
   });
 
@@ -143,18 +145,28 @@ function runMain() {
   if (decision.decision === "warn") {
     writeSuppressToken(root, decision.stale_signature);
     writeOperatorMessageMarker(root, prompt);
-    if (emitPointer) {
-      writePointerToken(root);
-      console.log(formatSoftWarning(`${pointer}\n\n${decision.context_message}`));
-    } else {
-      console.log(formatSoftWarning(decision.context_message));
-    }
-  } else if (emitPointer) {
-    writePointerToken(root);
-    console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: pointer } }));
   }
+  // The pointer token is written exactly when a pointer is emitted, in either
+  // the warn or the non-warn branch; hoist it so the output formatting below
+  // stays a single linear pass.
+  if (emitPointer) writePointerToken(root);
+  const out = formatGateOutput(decision, pointer, emitPointer);
+  if (out !== null) console.log(out);
   // Inbound gate always exits 0 (soft warning, never blocks)
   process.exit(0);
+}
+
+// Build the stdout payload for the gate decision. Returns the exact string to
+// console.log, or null when nothing should be emitted (non-warn + no pointer).
+function formatGateOutput(decision, pointer, emitPointer) {
+  if (decision.decision === "warn") {
+    const body = emitPointer ? `${pointer}\n\n${decision.context_message}` : decision.context_message;
+    return formatSoftWarning(body);
+  }
+  if (emitPointer) {
+    return JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: pointer } });
+  }
+  return null;
 }
 
 main();
