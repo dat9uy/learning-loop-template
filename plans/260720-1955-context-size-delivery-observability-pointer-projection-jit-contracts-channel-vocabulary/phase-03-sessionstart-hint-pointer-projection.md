@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "SessionStart hint pointer projection"
-status: pending
+status: complete
 priority: P1
 effort: "3h"
 dependencies: [1]

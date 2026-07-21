@@ -1,7 +1,7 @@
 ---
 title: "Context size + delivery observability (pointer projection, JIT contracts, channel vocabulary)"
 description: "Slim the loop's push surfaces (MCP manifest-tool wire 67.3kB → ≤40kB this plan [total ≤45kB deferred to a follow-on phase], SessionStart hints ~11.8k → ≤6k chars) and make steering delivery observable (classifier → runtime-state.jsonl + once-per-session pull pointer); merge the 'channel' term into the existing architecture.md table."
-status: in-progress
+status: completed
 priority: P1
 effort: 22h
 branch: meta-260719T2120Z-sessionstart-steering-injection-is-push-dependent-and-silent
@@ -42,12 +42,12 @@ The loop's steering surfaces are push-sized and push-blind: ~27k loop-owned toke
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Baseline measurement + Tests-Before scaffolding](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: MCP wire slimming — JIT branch contracts + shared field glossary](./phase-02-mcp-wire-slimming-jit-branch-contracts-shared-field-glossary.md) | Pending |
-| 3 | [Phase 3: SessionStart hint pointer projection](./phase-03-sessionstart-hint-pointer-projection.md) | Pending |
-| 4 | [Phase 4: Delivery classifier + inbound-gate pull pointer](./phase-04-delivery-classifier-inbound-gate-pull-pointer.md) | Pending |
-| 5 | [Phase 5: Docs — channel vocabulary promotion (L2) + schema-architecture update](./phase-05-docs-channel-vocabulary-promotion-l2-schema-architecture-update.md) | Pending |
-| 6 | [Phase 6: Verification — measurement harness re-run + hard budgets](./phase-06-verification-measurement-harness-re-run-hard-budgets.md) | Pending |
+| 1 | [Phase 1: Baseline measurement + Tests-Before scaffolding](./phase-01-start.md) | Complete |
+| 2 | [Phase 2: MCP wire slimming — JIT branch contracts + shared field glossary](./phase-02-mcp-wire-slimming-jit-branch-contracts-shared-field-glossary.md) | Complete |
+| 3 | [Phase 3: SessionStart hint pointer projection](./phase-03-sessionstart-hint-pointer-projection.md) | Complete |
+| 4 | [Phase 4: Delivery classifier + inbound-gate pull pointer](./phase-04-delivery-classifier-inbound-gate-pull-pointer.md) | Complete |
+| 5 | [Phase 5: Docs — channel vocabulary promotion (L2) + schema-architecture update](./phase-05-docs-channel-vocabulary-promotion-l2-schema-architecture-update.md) | Complete |
+| 6 | [Phase 6: Verification — measurement harness re-run + hard budgets](./phase-06-verification-measurement-harness-re-run-hard-budgets.md) | Complete |
 
 ## Cross-Plan Dependencies
 
@@ -67,14 +67,14 @@ The loop's steering surfaces are push-sized and push-blind: ~27k loop-owned toke
 
 ## Success Criteria
 
-- [ ] Live `tools/list` **manifest-tool portion ≤ 40,000B** (measured per debug-report method against `tools/learning-loop-mastra/mastra/server.js`, `LOOP_SURFACE=.claude`). Total ≤45,000B is a separate follow-on phase (Validation C1 split).
-- [ ] Combined SessionStart hook stdout (both `.claude` hooks) ≤ 6,000 chars; `.claude/session-context.json` full-text payload + `*_source` flags unchanged
-- [ ] `delivery-<sessionId>` rows present for recent sessions; classifier re-run appends 0 duplicates for unchanged transcripts AND re-classifies when transcript_content_hash changes (Validation H3); all rows pass `verifyRow` + `runtime-state-metadata-validation.test.js`
-- [ ] Inbound gate emits pointer line **once per session** (first prompt, via suppress-token store); warn payload still only on trigger; shim parity green (Validation H13)
-- [ ] Pointer visibility on a `syn`-profile session confirmed via transcript forensics, or documented-degradation fallback recorded
-- [ ] `pnpm test:iter` green incl. new tests (pointer builders, JIT error payloads, classifier idempotency + content-hash re-classify, inbound-gate once-per-session)
-- [ ] `check_runtime_agnostic` clean for all touched universal surfaces
-- [ ] Ship-time loop bookkeeping: resolve `meta-260719T2120Z`, log change-log (contract relocation), relationship note on `meta-260704T0959Z`
+- [x] Live `tools/list` **manifest-tool portion ≤ 40,000B** (measured per debug-report method against `tools/learning-loop-mastra/mastra/server.js`, `LOOP_SURFACE=.claude`). Total ≤45,000B is a separate follow-on phase (Validation C1 split).
+- [x] Combined SessionStart hook stdout (both `.claude` hooks) ≤ 6,000 chars; `.claude/session-context.json` full-text payload + `*_source` flags unchanged
+- [x] `delivery-<sessionId>` rows present for recent sessions; classifier re-run appends 0 duplicates for unchanged transcripts AND re-classifies when transcript_content_hash changes (Validation H3); all rows pass `verifyRow` + `runtime-state-metadata-validation.test.js`
+- [x] Inbound gate emits pointer line **once per session** (first prompt, via suppress-token store); warn payload still only on trigger; shim parity green (Validation H13)
+- [x] Pointer visibility on a `syn`-profile session confirmed via transcript forensics, or documented-degradation fallback recorded
+- [x] `pnpm test:iter` green incl. new tests (pointer builders, JIT error payloads, classifier idempotency + content-hash re-classify, inbound-gate once-per-session)
+- [x] `check_runtime_agnostic` clean for all touched universal surfaces
+- [x] Ship-time loop bookkeeping: resolve `meta-260719T2120Z`, log change-log (contract relocation), relationship note on `meta-260704T0959Z`
 
 ## Open Questions
 

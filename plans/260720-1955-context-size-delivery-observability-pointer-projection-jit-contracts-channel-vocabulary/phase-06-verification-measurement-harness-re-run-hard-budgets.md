@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Verification — measurement harness re-run + hard budgets"
-status: pending
+status: complete
 priority: P1
 effort: "3h"
 dependencies: [2, 3, 4, 5]
@@ -42,14 +42,14 @@ Re-run the debug report's measurement harness against the shipped changes, check
 
 ## Success Criteria
 
-- [ ] `tools/list` **manifest-tool portion ≤ 40,000B** (measured; Validation V1 split). Total ≤45,000B is a separate follow-on phase.
-- [ ] Hook stdout ≤ 6,000 chars combined (measured)
-- [ ] Sidecar payload intact (diff empty)
-- [ ] Classifier rows present + idempotent (content-hash re-classify — V5) + `verifyRow`-clean
-- [ ] gate-log `invalid_field`: no sustained regression (documented judgment)
-- [ ] `syn` forensics: pointer visibility confirmed OR documented-degradation recorded
-- [ ] `check_runtime_agnostic` clean; `pnpm test:iter` green
-- [ ] Finding resolved; change-log logged; constraint-finding relationship note recorded
+- [x] `tools/list` **manifest-tool portion ≤ 40,000B** (measured 39,905B; Validation V1 split). Total ≤45,000B is a separate follow-on phase.
+- [x] Hook stdout ≤ 6,000 chars combined (measured 5,120 chars)
+- [x] Sidecar payload intact (diff empty — shape hash + `*_source` flags identical to Phase 1 baseline)
+- [x] Classifier rows present + idempotent (content-hash re-classify — V5) + `verifyRow`-clean
+- [x] gate-log `invalid_field`: no sustained regression (0 → 0)
+- [x] `syn` forensics: documented-degradation recorded (transcript absent)
+- [x] `check_runtime_agnostic` clean (inbound-gate, loop-introspect, field-glossary); `pnpm test:iter` green (2336/2336)
+- [x] Finding resolved; change-log logged; constraint-finding relationship note recorded
 
 ## Risk Assessment
 

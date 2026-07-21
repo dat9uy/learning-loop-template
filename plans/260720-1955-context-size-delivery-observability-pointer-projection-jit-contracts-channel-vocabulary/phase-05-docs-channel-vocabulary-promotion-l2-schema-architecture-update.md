@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Docs — channel vocabulary promotion (L2) + schema-architecture update"
-status: pending
+status: complete
 priority: P2
 effort: "2h"
 dependencies: [2, 3, 4]
@@ -54,10 +54,10 @@ Anchor the surfaces this plan changed in the doc layer. **Merge the `channel` te
 
 ## Success Criteria
 
-- [ ] "Channel" defined once in the merged architecture.md push/pull/channel table (no parallel L2 `runtime-contract.md` section — Validation V3); zero duplicate definitions
-- [ ] architecture.md table is the single push/pull/channel table (merged, not paralleled); factory-hook channel marked "deferred (D3.1)"
-- [ ] mcp-tool-schema-architecture.md matches the shipped JIT behavior (a reader can derive the error-payload contract from the doc)
-- [ ] All edited files ≤ 800 LOC; claims verified against code
+- [x] "Channel" defined once in the merged architecture.md push/pull/channel table (no parallel L2 `runtime-contract.md` section — Validation V3); zero duplicate definitions
+- [x] architecture.md table is the single push/pull/channel table (merged, not paralleled); factory-hook channel marked "deferred (D3.1)"
+- [x] mcp-tool-schema-architecture.md matches the shipped JIT behavior (a reader can derive the error-payload contract from the doc)
+- [x] All edited files ≤ 800 LOC; claims verified against code
 
 ## Risk Assessment
 

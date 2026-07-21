@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "MCP wire slimming — JIT branch contracts + shared field glossary"
-status: pending
+status: complete
 priority: P1
 effort: "7h"
 dependencies: [1]

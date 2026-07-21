@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Delivery classifier + inbound-gate pull pointer"
-status: pending
+status: complete
 priority: P1
 effort: "5h"
 dependencies: [1]
@@ -133,7 +133,7 @@ FIRST UserPromptSubmit of a session → inbound-gate → stdout additionalContex
 
 - [x] `delivery-<sessionId>` rows for all recent sessions; re-run adds 0; all rows `verifyRow`-clean and metadata-validation-green
 - [x] Rows readable via `runtime_state_read` (loop-queryable, no file scraping)
-- [ ] Inbound gate emits pointer line **once per session** (first prompt, suppress-token-gated — V2); warn payload only on trigger; all gate tests green (incl. contextWasInjected rewrite — H8)
+- [x] Inbound gate emits pointer line **once per session** (first prompt, suppress-token-gated — V2); warn payload only on trigger; all gate tests green (incl. contextWasInjected rewrite — H8)
 - [x] Floors recomputed at run time (no hardcoded byte constants for surfaces)
 
 ## Status (2026-07-21)
