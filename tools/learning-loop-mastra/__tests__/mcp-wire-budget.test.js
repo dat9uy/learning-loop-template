@@ -13,6 +13,9 @@ test("manifest tools stay within the context budget", async () => {
   await withMcpServer(async ({ listTools }) => {
     const tools = (await listTools()).filter(isManifestTool);
     const bytes = Buffer.byteLength(JSON.stringify(tools));
-    assert.ok(bytes <= 40_000, `manifest tool wire is ${bytes} bytes`);
+    // Budget tracks the manifest size with modest headroom for near-term tool
+    // additions; raise deliberately, not by round number. Current wire is
+    // ~41.9 KB after the runtime-state tracking tools (+1.9 KB).
+    assert.ok(bytes <= 45_000, `manifest tool wire is ${bytes} bytes`);
   });
 });

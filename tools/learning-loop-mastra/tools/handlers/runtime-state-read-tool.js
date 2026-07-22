@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRuntimeStateRows, verifyRow } from "../../core/runtime-state.js";
+import { readRuntimeStateRowsLatest, verifyRow, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
 
 // Compact projection drops `metadata` only. `fingerprint` is a SHA-256 row-integrity
 // hash returned by the record tool, not a metadata blob — it is retained in compact
@@ -17,7 +17,7 @@ export const runtimeStateReadTool = {
   name: "runtime_state_read",
   description: "Read runtime-state rows with filters and fingerprint flags.",
   schema: {
-    affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"]).optional()
+    affected_system: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME).optional()
       .describe("Affected system filter"),
     kind: z.enum(["ledger-event", "budget-state"]).optional()
       .describe("Row kind filter"),
@@ -32,7 +32,10 @@ export const runtimeStateReadTool = {
   },
   handler: async ({ affected_system, kind, since, until, limit = 20, compact = true }) => {
     const root = resolveRoot();
-    const rows = readRuntimeStateRows(root);
+    // Dedup to one row per id (max_by(version), newest timestamp, last-in-file).
+    // `readRuntimeStateRows` (raw) stays the shared reader for history + the
+    // inbound gate, which never wants the deduped view.
+    const rows = readRuntimeStateRowsLatest(root);
 
     let result = rows;
 

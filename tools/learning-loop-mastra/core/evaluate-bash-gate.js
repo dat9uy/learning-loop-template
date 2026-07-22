@@ -49,6 +49,8 @@ export const PATH_WRITE_PATTERNS = [
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
+  />{1,2}\s*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
+  /\btee\b.*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
 ];
 
 function commandWritesToRecords(command) {

@@ -11,6 +11,11 @@ import { getSessionId } from "./worktree-session-id.js";
 // try/catch; now it's skipped (parsed → null, then .filter(Boolean)) and
 // valid rows survive.
 import { readRuntimeStateRows } from "./runtime-state.js";
+// Per-surface tracking toggle: a paused surface's stale observations are
+// skipped by the inbound gate's stale-observation scan so the gate and the
+// writers agree on what gets surfaced. Mirrors the writer-side pause check
+// added to runtime_state_record and meta_state_dispatch_finding.
+import { isSurfacePaused } from "./runtime-tracking.js";
 
 const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const META_AFFECTED_SYSTEMS = new Set(["meta", undefined, null]);
@@ -112,6 +117,19 @@ export function checkObservationStaleness(observations, root) {
       }
     } else {
       // Non-meta observation (vnstock, fastapi, etc.): check runtime-state sidecar.
+      // Paused surfaces are skipped — a surface the operator explicitly paused
+      // should not surface stale-observation warnings. The skip is gated on
+      // `isSurfacePaused` (operator's explicit choice); unpausing restores the
+      // warnings. This is a READ gate: writers fail closed on a malformed
+      // tracking sidecar, but here a load failure must degrade to "not paused"
+      // — otherwise a corrupt sidecar would block every gated command.
+      let paused = false;
+      try {
+        paused = isSurfacePaused(root, obs.affected_system);
+      } catch {
+        paused = false;
+      }
+      if (paused) continue;
       const sidecar = getSidecar();
       const matching = sidecar.filter((r) => r.affected_system === obs.affected_system);
       if (matching.length === 0) {

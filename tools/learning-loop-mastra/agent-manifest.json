@@ -4,7 +4,7 @@
   "groups": {
     "gate": {
       "description": "Safety checks — call BEFORE any write operation",
-      "tools": ["mastra_gate_check", "mastra_gate_check_recurrence", "mastra_gate_mark_preflight", "mastra_gate_override", "mastra_runtime_state_record", "mastra_update_r2_allowlist"],
+      "tools": ["mastra_gate_check", "mastra_gate_check_recurrence", "mastra_gate_mark_preflight", "mastra_gate_override", "mastra_runtime_state_record", "mastra_runtime_state_pause", "mastra_runtime_state_resume", "mastra_runtime_state_prune_surface", "mastra_update_r2_allowlist"],
       "ordering": "mandatory-first",
       "cache_ttl": 0
     },

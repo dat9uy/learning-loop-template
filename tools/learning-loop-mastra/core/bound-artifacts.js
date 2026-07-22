@@ -54,6 +54,17 @@ const runtimeState = {
   reason: "Direct writes to runtime-state.jsonl are blocked. Use runtime_state_record MCP tool to create entries.",
 };
 
+const runtimeTracking = {
+  name: "runtime-tracking",
+  matchedRule: ".loop/runtime-tracking.json",
+  glob: [".loop/runtime-tracking.json", "**/.loop/runtime-tracking.json"],
+  match: (relPath) =>
+    globMatch(".loop/runtime-tracking.json", relPath) ||
+    globMatch("**/.loop/runtime-tracking.json", relPath),
+  reason:
+    "Direct writes to .loop/runtime-tracking.json are blocked. Use the runtime_state_pause and runtime_state_resume MCP tools; pause/resume are operator-preflight-gated.",
+};
+
 const metaState = {
   name: "meta-state",
   matchedRule: "meta-state.jsonl",
@@ -87,8 +98,8 @@ const buildArtifacts = {
  * The bound-artifacts ruleset. FROZEN to prevent accidental mutation;
  * order is pinned by `legacy-mcp/bound-artifacts.test.js`.
  *
- * 5 simple-glob rules (records, runtime-state, meta-state, file-index,
- * build-artifacts). The `schemas/**` rule was migrated to a
+ * 6 simple-glob rules (records, runtime-state, runtime-tracking, meta-state,
+ * file-index, build-artifacts). The `schemas/**` rule was migrated to a
  * preflight-delegating rule in evaluate-write-gate.js (mirrors the
  * `skills` pattern) in Phase 2 of plans/260720-1112. The dead-end simple-glob
  * block + stale `pnpm validate:records` reason were both retired.
@@ -96,6 +107,7 @@ const buildArtifacts = {
 export const BOUND_ARTIFACTS = Object.freeze([
   records,
   runtimeState,
+  runtimeTracking,
   metaState,
   fileIndex,
   buildArtifacts,

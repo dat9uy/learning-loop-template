@@ -385,6 +385,59 @@ The marker file had no session ID. Multiple Claude Code sessions sharing a proje
 
 **Resolution (2026-07-11):** Marker filename now embeds a per-worktree session ID (sha256(12) prefix derived from `.git/HEAD` content, or `${pid}-${timestamp}-${randomHex}` for non-git dirs — Plan 260711-0030 Phase 5). Two worktrees in the same repo get distinct marker filenames. Backed by `tools/learning-loop-mastra/core/worktree-session-id.js`; writer at `hooks/universal/inbound-gate.js:60`; reader at `core/inbound-state.js:50`. Closes the gap as part of plan 260711-0030.
 
+## Runtime-State Sidecar
+
+The runtime-state sidecar (`runtime-state.jsonl`) is the loop's short-term
+memory: budgets, counters, dispatch ledger events, and delivery attestations.
+Two maintenance contracts keep the sidecar tractable at operator scale.
+
+### Versioned dedup (`max_by(version)` per id)
+
+Every row carries a `version` integer. The public reader
+(`runtime_state_read`) collapses to one row per id via `max_by(version)`,
+ties broken by newest timestamp with `timestamp ?? ""` fallback then
+last-in-file order (mirrors meta-state's `created_at ?? ""` precedent at
+`core/meta-state.js:768-769`). The raw sidecar still stores every row
+(history preserved; the inbound gate reads raw for its per-`affected_system`
+latest-row scan). Append is wrapped in `withRegistryLock` so two
+concurrent writers (e.g. CLI one-shot + a sibling runtime sharing
+`GATE_ROOT`) cannot both read `max=N` and both write `version=N+1` —
+without the lock, dedup silently loses writes.
+
+`version` is a dedup bookkeeping field and is NOT part of the v2
+fingerprint. Re-records already differ by `timestamp`, so fingerprints
+already differ. No row migration: existing unversioned rows default to
+`0` at read time.
+
+### Per-surface tracking toggle + prune
+
+Operators can pause per-surface tracking for non-actionable surfaces
+(e.g. vendored `vnstock` whose ledger events crowd out the loop's own
+records). Pause writes an entry to `.loop/runtime-tracking.json` via
+`runtime_state_pause`; resume removes it via `runtime_state_resume`.
+Both writers (`runtime_state_record`, `meta_state_dispatch_finding` —
+the latter at the top of the handler so `prepare` and `commit` both
+refuse) consult `isSurfacePaused` before producing any row. The inbound
+gate's stale-observation scan short-circuits paused surfaces so the gate
+and the writers agree on what gets surfaced.
+
+The sidecar itself is operator-controlled: direct writes to
+`.loop/runtime-tracking.json` are blocked at three layers
+(`core/r2/ownership.js` `BOOTSTRAP_DENY_PATTERNS`,
+`core/evaluate-bash-gate.js` `PATH_WRITE_PATTERNS` echo/tee redirect,
+`core/bound-artifacts.js` `BOUND_ARTIFACTS` for the Write-tool path).
+The per-surface preflight marker
+(`SURFACES/coordination/.loop-preflight-runtime-tracking`) authorizes
+pause/resume — same per-surface convention as `runtime_state_record`'s
+`.loop-preflight-runtime-state`.
+
+`runtime_state_prune_surface({surface, confirm: true})` is the
+destructive one-time op that rewrites the sidecar minus a paused
+surface's existing rows; runs under the same `withRegistryLock` so it
+cannot interleave with a concurrent append. History is NOT preserved
+for pruned rows (the operator is deleting noise); idempotent on no
+match.
+
 ## Meta-State Self-Learning Loop
 
 The loop is self-referential: the loop's own state machine (`meta-state.jsonl`) controls the loop's own audit trail. The agent can record its own modifications, derive the effective status of any finding, ground findings against the live filesystem, and query drift between asserted and derived state across the entire registry. The concept (engine invariant, 4-kind union, lifecycle) lives in `docs/loop-engine.md` (L1) and `docs/meta-state-lifecycle.md` (L1); this section names the mechanism.

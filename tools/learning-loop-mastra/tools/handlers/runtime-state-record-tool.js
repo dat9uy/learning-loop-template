@@ -1,19 +1,13 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { SURFACES } from "../../core/surfaces.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { appendLedgerEvent } from "../../core/runtime-state.js";
+import { appendLedgerEvent, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
+import { isSurfacePaused, hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
 // which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
 // tool has exactly ONE gate; the helper appendLedgerEvent enforces neither.
 // stay-at-the-tool-boundary invariant.
-function hasPreflightMarker(root) {
-  return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-state"))
-  );
-}
+const PREFLIGHT_MARKER = ".loop-preflight-runtime-state";
 
 // Walk a JSON value and return true if any Array has an Array child.
 // Used by the metadata refine to reject the corruption class observed in
@@ -45,7 +39,7 @@ export const runtimeStateRecordTool = {
   name: "runtime_state_record",
   description: "Record one preflight-gated runtime-state row with a computed fingerprint. Use for budgets, counters, or ledger events.",
   schema: {
-    affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"])
+    affected_system: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME)
       .describe("Affected system"),
     kind: z.enum(["ledger-event", "budget-state"])
       .describe("Row kind"),
@@ -73,11 +67,24 @@ export const runtimeStateRecordTool = {
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();
 
-    if (!hasPreflightMarker(root)) {
+    if (!hasSurfacePreflightMarker(root, PREFLIGHT_MARKER)) {
       return {
         content: [{
           type: "text",
           text: JSON.stringify({ error: "preflight_required", message: "runtime_state_record requires an active preflight marker. Use gate_mark_preflight first." }),
+        }],
+      };
+    }
+
+    // Per-surface tracking toggle: a paused surface's writer must refuse
+    // BEFORE building the row (no fingerprint, no version assignment, no
+    // atomic-append op). The check propagates a malformed sidecar as a
+    // fail-closed error so writers refuse rather than silently unpause.
+    if (isSurfacePaused(root, affected_system)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ ok: false, paused: true, affected_system }),
         }],
       };
     }
@@ -95,7 +102,7 @@ export const runtimeStateRecordTool = {
       metadata: metadata ?? {},
     };
 
-    const written = appendLedgerEvent(root, row);
+    const written = await appendLedgerEvent(root, row);
 
     return {
       content: [{

@@ -310,3 +310,21 @@ await test("malformed line + valid row missing timestamp → stale with 'Sidecar
     `expected "Sidecar may be stale" in reason; got: ${result.reason}`
   );
 });
+
+await test("corrupt runtime-tracking sidecar degrades to not-paused on the read gate", () => {
+  // Writers fail closed on a malformed tracking sidecar, but the staleness
+  // read gate must not: a corrupt `.loop/runtime-tracking.json` should not
+  // throw out of checkObservationStaleness (which would break the bash gate
+  // on every command). Degrade to "not paused" and evaluate normally.
+  mkdirSync(join(root, ".loop"), { recursive: true });
+  writeFileSync(join(root, ".loop", "runtime-tracking.json"), "{ this is not json", "utf8");
+  writeMarker(ts(10));
+  writeSidecar([
+    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
+  ]);
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  assert.deepStrictEqual(result, { stale: false });
+});

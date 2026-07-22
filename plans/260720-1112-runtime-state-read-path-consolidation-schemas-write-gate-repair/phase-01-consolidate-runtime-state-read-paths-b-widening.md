@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Consolidate runtime-state read paths (B-widening)"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: []
@@ -129,14 +129,14 @@ The third v1-fingerprint copy at `scripts/convert-ledger-to-sidecar.mjs:24` is l
 
 ## Success Criteria
 
-- [ ] `readSidecar` absent from `core/inbound-state.js`; `readRuntimeStateRows` imported by both
+- [x] `readSidecar` absent from `core/inbound-state.js`; `readRuntimeStateRows` imported by both
   `core/inbound-state.js` and `core/file-readers.js` (targeted grep, not bare `JSON.parse`).
-- [ ] Inbound-state malformed-line test: valid row survives (not total-loss).
-- [ ] File-readers `null`-line test: projection survives (not wiped to `[]`).
-- [ ] Bash-gate constraint-match test pins the block→non-block flip on a malformed+valid sidecar.
-- [ ] Corruption-masking test (S7) + timestamp-missing test (F5) pin the chosen/observed behavior.
-- [ ] Happy-path unchanged: all-valid sidecar produces identical results in both consumers.
-- [ ] `pnpm test` green.
+- [x] Inbound-state malformed-line test: valid row survives (not total-loss).
+- [x] File-readers `null`-line test: projection survives (not wiped to `[]`).
+- [x] Bash-gate constraint-match test pins the block→non-block flip on a malformed+valid sidecar.
+- [x] Corruption-masking test (S7) + timestamp-missing test (F5) pin the chosen/observed behavior.
+- [x] Happy-path unchanged: all-valid sidecar produces identical results in both consumers.
+- [x] `pnpm test` green.
 
 ## Risk Assessment
 

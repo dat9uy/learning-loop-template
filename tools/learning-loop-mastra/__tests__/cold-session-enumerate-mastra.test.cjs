@@ -70,7 +70,7 @@ describe("cold-session enumerate mastra manifest", () => {
     }
   }
 
-  test(`agent-manifest.json declares ${AGENT_MANIFEST_TOTAL_TOOLS} tools across ${AGENT_MANIFEST_GROUPS} groups (was 43; meta_state_ship_loop_design added in plan 260712-0724 Fix A)`, () => {
+  test(`agent-manifest.json declares ${AGENT_MANIFEST_TOTAL_TOOLS} tools across ${AGENT_MANIFEST_GROUPS} groups (was 44; runtime_state_pause/resume/prune_surface added for per-surface tracking toggle + inbound-gate skip residual)`, () => {
     assert.strictEqual(declaredTools.length, AGENT_MANIFEST_TOTAL_TOOLS,
       `expected ${AGENT_MANIFEST_TOTAL_TOOLS} tools in agent-manifest.json, got ${declaredTools.length}`);
     assert.strictEqual(Object.keys(agentManifest.groups).length, AGENT_MANIFEST_GROUPS,

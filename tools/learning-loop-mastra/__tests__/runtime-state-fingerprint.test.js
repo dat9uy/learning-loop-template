@@ -69,12 +69,12 @@ describe("computeFingerprint v2", () => {
 });
 
 describe("verifyRow v2", () => {
-  test("round-trip via appendLedgerEvent verifies true", () => {
+  test("round-trip via appendLedgerEvent verifies true", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "verify-roundtrip-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      const written = appendLedgerEvent(tempDir, {
+      const written = await appendLedgerEvent(tempDir, {
         ...SAMPLE_BASE,
         metadata: { hello: "world", n: 42 },
       });
@@ -84,12 +84,12 @@ describe("verifyRow v2", () => {
     }
   });
 
-  test("tampered metadata → false", () => {
+  test("tampered metadata → false", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "verify-tamper-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      const written = appendLedgerEvent(tempDir, { ...SAMPLE_BASE, metadata: { x: 1 } });
+      const written = await appendLedgerEvent(tempDir, { ...SAMPLE_BASE, metadata: { x: 1 } });
       const tampered = { ...written, metadata: { x: 2 } };
       assert.strictEqual(verifyRow(tampered), false, "tampered metadata must not verify");
     } finally {

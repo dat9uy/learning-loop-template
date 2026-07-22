@@ -207,7 +207,7 @@ describe("runtime_state_read tool", () => {
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      appendLedgerEvent(tempDir, {
+      await appendLedgerEvent(tempDir, {
         kind: "ledger-event",
         affected_system: "vnstock",
         id: "vnstock-fpvalid-1",
@@ -234,7 +234,7 @@ describe("runtime_state_read tool", () => {
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      appendLedgerEvent(tempDir, {
+      await appendLedgerEvent(tempDir, {
         kind: "ledger-event",
         affected_system: "vnstock",
         id: "vnstock-fpvalid-2",
@@ -261,7 +261,7 @@ describe("runtime_state_read tool", () => {
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
-      appendLedgerEvent(tempDir, {
+      await appendLedgerEvent(tempDir, {
         kind: "ledger-event",
         affected_system: "vnstock",
         id: "vnstock-fpvalid-3",

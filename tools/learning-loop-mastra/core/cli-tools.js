@@ -48,6 +48,9 @@ export const CLI_WRITE_TOOLS = new Set([
   "meta_state_re_verify",
   "meta_state_refresh_file_index",
   "runtime_state_record",
+  "runtime_state_pause",
+  "runtime_state_resume",
+  "runtime_state_prune_surface",
   "gate_mark_preflight",
   "gate_override",
 ]);

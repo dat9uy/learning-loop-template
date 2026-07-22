@@ -44,6 +44,9 @@ files:
   - path: runtime-state.js
     role: facade
     summary: Shared runtime-state.jsonl helpers (append + fingerprint). Extracted in plan 260704-0301-stale-findings-dispatch-handle Phase 2 for DRY between runtime_state_record and meta_state_dispatch_finding.
+  - path: runtime-tracking.js
+    role: facade
+    summary: Operator per-surface tracking toggle (load/isSurfacePaused/set) against the `.loop/runtime-tracking.json` sidecar. Fail-closed on malformed sidecars; read-from-disk per call (no in-process cache).
 
   # === verification ===
   - path: check-grounding.js

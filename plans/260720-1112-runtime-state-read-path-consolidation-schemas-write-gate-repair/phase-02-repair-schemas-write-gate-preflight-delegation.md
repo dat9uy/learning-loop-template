@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Repair schemas write gate (preflight delegation)"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: []
@@ -144,18 +144,18 @@ surfaces' coordination dirs for the named marker.
 
 ## Success Criteria
 
-- [ ] `schemas/**` write-gate blocks without marker (surface `"schemas"`, no `validate:records` in
+- [x] `schemas/**` write-gate blocks without marker (surface `"schemas"`, no `validate:records` in
   reason) and returns `ok` after `gate_mark_preflight({surface:"schemas"})`.
-- [ ] `BOUND_ARTIFACTS` has 5 simple-glob rules; `bound-artifacts.test.js` pinned-order + header +
+- [x] `BOUND_ARTIFACTS` has 5 simple-glob rules; `bound-artifacts.test.js` pinned-order + header +
   title updated to "5 + 1 special-cased preflight rule"; the "no longer inlines" test stays green.
-- [ ] `schemas/dist/foo.json` matches the `schemas` rule, NOT `build-artifacts` (cascade F4 test).
-- [ ] `gate_mark_preflight` tool description lists `"schemas"`; validator is
+- [x] `schemas/dist/foo.json` matches the `schemas` rule, NOT `build-artifacts` (cascade F4 test).
+- [x] `gate_mark_preflight` tool description lists `"schemas"`; validator is
   `z.enum(["product","skills","schemas"])`.
-- [ ] `grep -rn "validate:records\|pnpm check" tools/learning-loop-mastra/tools/handlers/` → 0 matches
+- [x] `grep -rn "validate:records\|pnpm check" tools/learning-loop-mastra/tools/handlers/` → 0 matches
   (covers `references/` + `evals/evals.json`).
-- [ ] `evals/evals.json` updated to the record-hygiene canonical step (NOT the schemas unlock).
-- [ ] `change-log-bound-paths.js` + `loop-introspect.js` audited — `schemas/**` unaffected / real consumer.
-- [ ] `pnpm test` + `pnpm gate:self-verify` green.
+- [x] `evals/evals.json` updated to the record-hygiene canonical step (NOT the schemas unlock).
+- [x] `change-log-bound-paths.js` + `loop-introspect.js` audited — `schemas/**` unaffected / real consumer.
+- [x] `pnpm test` + `pnpm gate:self-verify` green.
 
 ## Risk Assessment
 

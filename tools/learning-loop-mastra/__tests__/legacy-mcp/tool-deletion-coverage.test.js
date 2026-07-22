@@ -43,10 +43,10 @@ const manifestRaw = readFileSync(manifestPath, "utf8")
 const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 32 entries (was 31; meta_state_ship_loop_design added in
-// plan 260712-0724 Fix A to close Implementation 3 Gap #1).
-await test("manifest has 32 entries", () => {
-  assert.strictEqual(manifest.length, 32, `Expected 32, got ${manifest.length}`);
+// 1. Manifest has 35 entries (was 32; runtime_state_pause/resume/prune_surface
+// added for per-surface tracking toggle + inbound-gate skip residual clear).
+await test("manifest has 35 entries", () => {
+  assert.strictEqual(manifest.length, 35, `Expected 35, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest
