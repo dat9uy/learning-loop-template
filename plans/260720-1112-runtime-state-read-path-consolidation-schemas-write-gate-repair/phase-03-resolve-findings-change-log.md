@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Resolve findings + change-log"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [1, 2]
@@ -74,11 +74,11 @@ ungated by session mode; resolve runs in any session:
 
 ## Success Criteria
 
-- [ ] Both findings show `status: "resolved"` via `meta_state_list`.
-- [ ] Two `meta_state_log_change` entries recorded (one mechanical, one surface).
-- [ ] PR body registry-deltas section lists both resolved findings + both change-logs.
-- [ ] No new findings opened; no rules promoted or superseded by this plan.
-- [ ] No `LOOP_SESSION_MODE` precondition in the plan (corrected); Phase 3 runs after the full PR is
+- [x] Both findings show `status: "resolved"` via `meta_state_list`.
+- [x] Two `meta_state_log_change` entries recorded (one mechanical, one surface).
+- [x] PR body registry-deltas section lists both resolved findings + both change-logs.
+- [x] No new findings opened; no rules promoted or superseded by this plan.
+- [x] No `LOOP_SESSION_MODE` precondition in the plan (corrected); Phase 3 runs after the full PR is
   final (revert-safe).
 
 ## Risk Assessment

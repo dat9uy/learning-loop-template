@@ -1,7 +1,7 @@
 ---
 title: "Runtime-state read-path consolidation + schemas write-gate repair"
 description: "Resolve two open meta-state findings in one plan. (1) meta-260719T2201Z — B-widening: consolidate the remaining two own-parse copies of the runtime-state.jsonl read path (core/inbound-state.js readSidecar + core/file-readers.js readRuntimeObservations) onto the shared readRuntimeStateRows (core/runtime-state.js:27-38) introduced by plan 260719-2201. (2) meta-260720T1104Z — schemas/** write-gate drift: the gate reason references a non-existent `pnpm validate:records` script and the implied override path is broken for glob rules; repair via preflight-delegation (option 1, mirroring the skills rule) + reason text + doc sweep. TDD-structured; the two fixes are independent (distinct code + test surfaces) and ship as separate commits."
-status: pending
+status: completed
 priority: P2
 effort: "1-1.5d"
 tags: [runtime-state, dry, read-path, write-gate, schemas, preflight, gate-logic, tdd]
