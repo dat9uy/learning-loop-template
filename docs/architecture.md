@@ -201,7 +201,7 @@ For the full gating chain, allowlist schema, and operator runbook, see `docs/sec
 
 The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol. All policy logic lives in `tools/learning-loop-mastra/core/` — single source of truth for all runtimes.
 
-A second wired transport, the read-only CLI (`tools/learning-loop-mastra/bin/loop.mjs`), exposes the 7 read tools as stateless commands; see `docs/runtime-contract.md` for the contract (Capabilities 1+4 only; additive to MCP).
+A second wired transport, the read-only CLI (`tools/learning-loop-mastra/bin/loop.mjs`), exposes the 7 read tools as stateless commands; see `docs/runtime-contract.md` for the contract (Capabilities 1+4 only; additive to MCP). A runtime that sets `LOOP_READS_VIA_CLI=1` in its `mcp.json` environment drops those seven read schemas from its own MCP `tools/list` (subset registration in `server.js`) and routes reads through the CLI while keeping MCP for writes; other runtimes keep the full surface.
 
 #### check_gate
 

@@ -1,7 +1,7 @@
 ---
 title: "MCP Read Opt-Out to CLI (R) + Write-Capable CLI (W) Prep"
 description: "Per-runtime MCP read-opt-out: a runtime routes the 7 read-only loop tools through bin/loop.mjs (Bash) instead of mastra_* MCP tools, so those 7 tool schemas leave the model context. MCP stays wired for writes. Plus de-risking prep for the follow-on write-capable CLI (W)."
-status: pending
+status: completed
 priority: P1
 effort: "2-3d"
 tags: [cli-transport, mcp, context-size, runtime-contract]
@@ -16,12 +16,16 @@ blocks: []
 
 # Plan: MCP Read Opt-Out to CLI (R) + Write-Capable CLI (W) Prep
 
-**Status:** pending
+**Status:** completed
 **Date:** 2026-07-22
 **Finding:** `meta-260721T0809Z-transport-diversification-to-a-cli-is-a-deferred-decision-no` (open, warning; gate satisfied via T3)
 **Analysis:**
 - onramp report — `plans/reports/ak-problem-solving-260721-1859-mcp-cli-migration-onramp-report.md` (§"Next step": per-runtime MCP read-opt-out → CLI = "R")
 - W approach — `plans/reports/ak-problem-solving-260722-1040-write-capable-cli-w-approach.md` (W = write-capable CLI follow-on)
+
+**Implementation reports:**
+- `plans/reports/implementation-260722-1119-mcp-read-optout.md`
+- `plans/reports/w-design-decisions-260722-1119-write-cli-prep.md`
 
 ## What this plan is
 
@@ -51,22 +55,22 @@ The read-only CLI slice (plan `260721-1933`) shipped complete: `bin/loop.mjs` (7
 
 | # | Phase | Status | File |
 |---|-------|--------|------|
-| 1 | MCP subset registration + shared CLI tool set | pending | `phase-01-mcp-subset-registration-shared-cli-tool-set.md` |
-| 2 | SessionStart transport banner for opted-in runtimes | pending | `phase-02-sessionstart-transport-banner-for-opted-in-runtimes.md` |
-| 3 | Wire dogfood runtime + docs + contract + T2 protocol | pending | `phase-03-wire-dogfood-runtime-docs-contract-t2-protocol.md` |
-| 4 | W preparation — self-footgun guard + design decisions | pending | `phase-04-w-preparation-self-footgun-guard-design-decisions.md` |
+| 1 | MCP subset registration + shared CLI tool set | completed | `phase-01-mcp-subset-registration-shared-cli-tool-set.md` |
+| 2 | SessionStart transport banner for opted-in runtimes | completed | `phase-02-sessionstart-transport-banner-for-opted-in-runtimes.md` |
+| 3 | Wire dogfood runtime + docs + contract + T2 protocol | completed | `phase-03-wire-dogfood-runtime-docs-contract-t2-protocol.md` |
+| 4 | W preparation — self-footgun guard + design decisions | completed | `phase-04-w-preparation-self-footgun-guard-design-decisions.md` |
 
 **Dependencies:** 1 → 2 → 3 (linear; the banner needs the exclude mechanism, the dogfood needs both). 4 is **independent** — the self-footgun investigation is pure-read and can land in parallel with 1-3 (it gates W's tool-set boundary, not R's).
 
 ## Acceptance criteria
 
-- [ ] A runtime with `LOOP_READS_VIA_CLI=1` has the 7 read tools absent from its MCP `tools/list`; the other runtimes are unchanged (all 33).
-- [ ] `bin/loop.mjs` and `mastra/server.js` share one `CLI_READ_TOOLS` constant (no drift).
-- [ ] CLI-vs-MCP response parity holds for the 7 read tools (normalized deep-equal, mirroring `cli-read-parity.test.js`).
-- [ ] An opted-in runtime's SessionStart context carries a transport banner naming the CLI read channel; a non-opted runtime is unchanged.
-- [ ] The `.claude` runtime is wired to opt out (`LOOP_READS_VIA_CLI=1` in `.mcp.json`); `docs/runtime-contract.md` and `CLAUDE.md` name `LOOP_READS_VIA_CLI` and the read-channel opt-out; L27's "a runtime picks one transport" reflects that the pick is now configurable per runtime.
-- [ ] Self-footgun guard test lands (Phase 4); W's open design questions (W report §7) are resolved or explicitly deferred with a recommendation.
-- [ ] `pnpm test` full suite green; `check_runtime_agnostic` audit passes for the new/changed files.
+- [x] A runtime with `LOOP_READS_VIA_CLI=1` has the 7 read tools absent from its MCP `tools/list`; the other runtimes are unchanged (all 33).
+- [x] `bin/loop.mjs` and `mastra/server.js` share one `CLI_READ_TOOLS` constant (no drift).
+- [x] CLI-vs-MCP response parity holds for the 7 read tools (normalized deep-equal, mirroring `cli-read-parity.test.js`).
+- [x] An opted-in runtime's SessionStart context carries a transport banner naming the CLI read channel; a non-opted runtime is unchanged.
+- [x] The `.claude` runtime is wired to opt out (`LOOP_READS_VIA_CLI=1` in `.mcp.json`); `docs/runtime-contract.md` and `CLAUDE.md` name `LOOP_READS_VIA_CLI` and the read-channel opt-out; L27's "a runtime picks one transport" reflects that the pick is now configurable per runtime.
+- [x] Self-footgun guard test lands (Phase 4); W's open design questions (W report §7) are resolved or explicitly deferred with a recommendation.
+- [x] `pnpm test` full suite green; `check_runtime_agnostic` audit passes for the new/changed files.
 
 ## Open questions (resolved in Validation Session 1)
 

@@ -3,7 +3,10 @@
     "learning-loop": {
       "command": "node",
       "args": ["tools/learning-loop-mastra/mastra/server.js"],
-      "env": { "LOOP_SURFACE": ".claude" }
+      "env": {
+        "LOOP_SURFACE": ".claude",
+        "LOOP_READS_VIA_CLI": "1"
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "W preparation — self-footgun guard + design decisions"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: []   # independent of 1-3; pure-read investigation + additive test
@@ -64,9 +64,9 @@ The investigation reads `core/gate-logic.js` (rule promotion) + `core/evaluate-b
 
 ## Success Criteria
 
-- [ ] Self-footgun investigation recorded with file:line evidence; `cli-self-footgun-guard.test.js` locks the behavior (promotion rejected, OR documented gap + W guard noted).
-- [ ] W design-decisions record resolves/defers W report §7 Q1-Q7 with recommendations; Q1/Q5 reflect the self-footgun result; Q6 records the `--schema` deferral.
-- [ ] `pnpm test` full suite green; no CLI read-path or MCP behavior change.
+- [x] Self-footgun investigation recorded with file:line evidence; `cli-self-footgun-guard.test.js` locks the behavior (promotion rejected, OR documented gap + W guard noted).
+- [x] W design-decisions record resolves/defers W report §7 Q1-Q7 with recommendations; Q1/Q5 reflect the self-footgun result; Q6 records the `--schema` deferral.
+- [x] `pnpm test` full suite green; no CLI read-path or MCP behavior change.
 
 ## Risk Assessment
 

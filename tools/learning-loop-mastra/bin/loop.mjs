@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// bin/loop.mjs — read-only CLI transport for the learning loop (Phase 2 of
-// plan 260721-1933-cli-transport-phase1-read-only-slice).
+// Stateless read-only CLI transport for the learning loop.
 //
-// Stateless one-shot wrapper over tools/manifest.json + handler modules. Reuses
+// Wraps tools/manifest.json + handler modules and reuses
 // `pinRuntimeIdAtBoot()` + `normalizeInputSchema()` + `adaptLegacyHandler()`
 // + `withR2Gate()` so the CLI executes the SAME code path as the MCP server
 // for the 7 read-only tools (pathFields: [] → R2 passthrough).
@@ -36,21 +35,10 @@ import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { withR2Gate } from "../mastra/with-r2-gate.js";
 import { validateToolManifest } from "../core/r2/path-field-detector.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
+import { CLI_READ_TOOLS } from "../core/cli-tools.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST_PATH = join(__dirname, "..", "tools", "manifest.json");
-
-// Bare names of the tools the CLI exposes. Mirrors the 7 entries the plan
-// named; the prefix is an MCP-transport concern (mastra/server.js:42,56).
-const READ_ONLY_TOOLS = new Set([
-  "loop_describe",
-  "loop_get_instruction",
-  "meta_state_list",
-  "meta_state_relationships",
-  "meta_state_derive_status",
-  "meta_state_check_grounding",
-  "runtime_state_read",
-]);
 
 function loadManifest() {
   // JSONC strip (full-line // comments only). See tools/manifest.json header
@@ -77,7 +65,7 @@ async function runList() {
   const { tools } = await listAllTools();
   const lines = [];
   for (const tool of tools) {
-    if (!READ_ONLY_TOOLS.has(tool.name)) continue;
+    if (!CLI_READ_TOOLS.has(tool.name)) continue;
     const desc = (tool.description ?? "").split("\n")[0];
     lines.push(`${tool.name}  ${desc}`.trimEnd());
   }
@@ -101,7 +89,7 @@ function parseSchemaArgs(schema, raw) {
 }
 
 async function runTool(toolName, jsonArgs) {
-  if (!READ_ONLY_TOOLS.has(toolName)) {
+  if (!CLI_READ_TOOLS.has(toolName)) {
     throw new UsageError(`unknown read-only tool: ${toolName}`);
   }
   const raw = parseJsonArg(jsonArgs);

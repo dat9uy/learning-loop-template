@@ -1,8 +1,9 @@
-// cli-read-parity.test.js — Phase 2 of plans/260721-1933-cli-transport-phase1-read-only-slice.
+// Parity tests for the read-only CLI transport.
 //
-// Parity test for bin/loop.mjs. For each of the 7 read-only tools:
+// For each of the 7 read-only tools:
 //   - direct side: import the handler module, adaptLegacyHandler, run against tmpdirA.
 //   - CLI side: spawnSync node bin/loop.mjs <tool> '<json>' against tmpdirB.
+//   - MCP side: call the production MCP server against an independent tmpdir.
 //
 // The two tmpdirs are INDEPENDENT (each freshly seeded from the same fixture
 // bytes). Two reasons a shared tmpdir breaks parity:
@@ -30,12 +31,9 @@
 // both sides and the field is false on both — the strip keeps the test
 // robust to fixture edits that flip the record branch on.
 //
-// SCOPE: this test compares CLI stdout vs a DIRECT handler call with NO
-// Mastra context — it does NOT spawn the MCP server. It proves CLI ==
-// direct-no-context, not CLI == MCP. The 7 read handlers get runtime
-// identity via getPinnedRuntimeId() (pinned at boot in both processes), not
-// via Mastra context, so the scope is tight today; if a read handler ever
-// reads Mastra context, MCP/CLI divergence would NOT be caught here.
+// The first comparison checks CLI stdout against a DIRECT handler call with NO
+// Mastra context. The second comparison calls the production MCP server, so a
+// future read handler that consumes Mastra context cannot drift silently.
 //
 // Exit-code contract tests lock 0/1/2 (success/handler-error/usage).
 
@@ -49,11 +47,13 @@ import { fileURLToPath } from "node:url";
 
 import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
+import { connectMcpServer } from "./with-mcp-server.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 const PROJECT_ROOT = resolve(PKG_ROOT, "..", "..");
 const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
+const SERVER_ENTRY = join(PKG_ROOT, "mastra", "server.js");
 
 const READ_ONLY_TOOLS = [
   "loop_describe",
@@ -225,7 +225,7 @@ const TOOL_CASES = [
   },
 ];
 
-describe("cli-read parity (Phase 2)", () => {
+describe("cli-read parity", () => {
   for (const { tool, args } of TOOL_CASES) {
     test(`${tool}: CLI stdout matches direct handler (normalized deep-equal)`, async () => {
       const tmpdirA = makeTempRoot();
@@ -291,7 +291,54 @@ describe("cli-read parity (Phase 2)", () => {
   }
 });
 
-describe("cli-read exit-code contract (Phase 2)", () => {
+describe("cli-to-mcp read parity", () => {
+  for (const { tool, args } of TOOL_CASES) {
+    test(`${tool}: CLI stdout matches MCP response (normalized deep-equal)`, async () => {
+      const mcpRoot = makeTempRoot();
+      const cliRoot = makeTempRoot();
+      copySchemas(PROJECT_ROOT, mcpRoot);
+      copySchemas(PROJECT_ROOT, cliRoot);
+
+      const mcp = await connectMcpServer(SERVER_ENTRY, mcpRoot, {
+        LOOP_READS_VIA_CLI: "0",
+      });
+      try {
+        const mcpRaw = await mcp.callTool(`mastra_${tool}`, { ...args });
+        const mcpNormalized = stripNonDeterministic(mcpRaw, mcpRoot);
+
+        const cliEnv = {
+          ...process.env,
+          LOOP_SURFACE: ".claude",
+          GATE_ROOT: cliRoot,
+          MASTRA_STORAGE_DRIVER: "memory",
+        };
+        const proc = spawnSync("node", [LOOP_BIN, tool, JSON.stringify(args)], {
+          env: cliEnv,
+          encoding: "utf8",
+          timeout: 30000,
+        });
+        assert.strictEqual(proc.status, 0, `cli must exit 0; stderr=${proc.stderr}`);
+        const cliRaw = JSON.parse((proc.stdout ?? "").trim());
+        const cliNormalized = stripNonDeterministic(cliRaw, cliRoot);
+
+        assert.deepStrictEqual(
+          cliNormalized,
+          mcpNormalized,
+          `MCP parity mismatch for ${tool}\nCLI: ${JSON.stringify(cliNormalized)}\nMCP: ${JSON.stringify(mcpNormalized)}`,
+        );
+        assert.deepStrictEqual(
+          [...collectKeySet(cliNormalized)].sort(),
+          [...collectKeySet(mcpNormalized)].sort(),
+          `MCP field-set mismatch for ${tool}`,
+        );
+      } finally {
+        await mcp.cleanup();
+      }
+    }, 60000);
+  }
+});
+
+describe("cli-read exit-code contract", () => {
   test("loop.mjs with no args exits 2 with stderr diagnostic", () => {
     const proc = spawnSync("node", [LOOP_BIN], { encoding: "utf8", timeout: 10000 });
     assert.strictEqual(proc.status, 2, `must exit 2; stderr=${proc.stderr}`);

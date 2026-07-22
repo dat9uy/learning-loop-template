@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Wire dogfood runtime + docs + contract + T2 protocol"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [1, 2]
@@ -59,11 +59,11 @@ Flip the switch on the `.claude` runtime: set `LOOP_READS_VIA_CLI=1` in `.mcp.js
 
 ## Success Criteria
 
-- [ ] `.mcp.json` carries `LOOP_READS_VIA_CLI=1`; `.factory/mcp.json` and `.mastracode/mcp.json` do not. Wiring test green.
-- [ ] Live smoke confirms: dogfood MCP `tools/list` excludes the 7 read tools; SessionStart banner present; CLI read returns a real result.
-- [ ] `docs/runtime-contract.md` names `LOOP_READS_VIA_CLI` (read-only-CLI bullet + L27 clause); `CLAUDE.md` quick reference documents it.
-- [ ] `check_runtime_agnostic` audit passes for the changed files; `pnpm test` full suite green.
-- [ ] T2 read-path evidence protocol recorded (Collect / Record / Closure-gate-for-W).
+- [x] `.mcp.json` carries `LOOP_READS_VIA_CLI=1`; `.factory/mcp.json` and `.mastracode/mcp.json` do not. Wiring test green.
+- [x] Live smoke confirms: dogfood MCP `tools/list` excludes the 7 read tools; SessionStart banner present; CLI read returns a real result.
+- [x] `docs/runtime-contract.md` names `LOOP_READS_VIA_CLI` (read-only-CLI bullet + L27 clause); `CLAUDE.md` quick reference documents it.
+- [x] `check_runtime_agnostic` audit passes for the changed files; `pnpm test` full suite green.
+- [x] T2 read-path evidence protocol recorded (Collect / Record / Closure-gate-for-W).
 
 ## Risk Assessment
 

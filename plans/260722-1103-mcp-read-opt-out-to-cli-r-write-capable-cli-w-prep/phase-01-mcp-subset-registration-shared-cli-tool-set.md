@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "MCP subset registration + shared CLI tool set"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: []
@@ -81,10 +81,10 @@ The env var is set per-runtime in the opted-in runtime's `mcp.json` env block (P
 
 ## Success Criteria
 
-- [ ] `core/cli-tools.js` exports `CLI_READ_TOOLS` (Set of the 7 bare names); `bin/loop.mjs` imports it; no local duplicate.
-- [ ] `server.js` with `LOOP_READS_VIA_CLI` unset registers 33 tools; with it set, registers 26 and excludes exactly `CLI_READ_TOOLS`. `mastra_update_r2_allowlist` stays registered in both cases.
-- [ ] CLI-vs-MCP response parity green for the 7 read tools (normalized deep-equal + field-set guard).
-- [ ] `pnpm test` full suite green; no MCP regression for the two non-opted runtimes.
+- [x] `core/cli-tools.js` exports `CLI_READ_TOOLS` (Set of the 7 bare names); `bin/loop.mjs` imports it; no local duplicate.
+- [x] `server.js` with `LOOP_READS_VIA_CLI` unset registers 33 tools; with it set, registers 26 and excludes exactly `CLI_READ_TOOLS`. `mastra_update_r2_allowlist` stays registered in both cases.
+- [x] CLI-vs-MCP response parity green for the 7 read tools (normalized deep-equal + field-set guard).
+- [x] `pnpm test` full suite green; no MCP regression for the two non-opted runtimes.
 
 ## Risk Assessment
 

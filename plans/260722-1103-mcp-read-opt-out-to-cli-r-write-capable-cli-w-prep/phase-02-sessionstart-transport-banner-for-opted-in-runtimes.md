@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "SessionStart transport banner for opted-in runtimes"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: [1]
@@ -65,10 +65,10 @@ The agent maps the bare names in the existing hints to CLI invocations using thi
 
 ## Success Criteria
 
-- [ ] `readSurfaceMcpJson(<dir>)` returns the `mcp.json` env block (or `{}` when absent); `buildTransportBanner({ readsViaCli: true })` returns a banner naming the CLI path, the 7 read tools, the MCP-not-registered clause, and the writes-still-MCP clause; `readsViaCli: false` returns `""`.
-- [ ] The opted-in runtime's SessionStart `additionalContext` includes the banner; a non-opted runtime's is unchanged.
-- [ ] No `hint-registry.js` inline call-form is rewritten; `hint-renderer.js` stays off the injection path.
-- [ ] `pnpm test` full suite green.
+- [x] `readSurfaceMcpJson(<dir>)` returns the `mcp.json` env block (or `{}` when absent); `buildTransportBanner({ readsViaCli: true })` returns a banner naming the CLI path, the 7 read tools, the MCP-not-registered clause, and the writes-still-MCP clause; `readsViaCli: false` returns `""`.
+- [x] The opted-in runtime's SessionStart `additionalContext` includes the banner; a non-opted runtime's is unchanged.
+- [x] No `hint-registry.js` inline call-form is rewritten; `hint-renderer.js` stays off the injection path.
+- [x] `pnpm test` full suite green.
 
 ## Risk Assessment
 
