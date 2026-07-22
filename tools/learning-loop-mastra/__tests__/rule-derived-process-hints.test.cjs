@@ -1,6 +1,6 @@
 /**
  * Phase 3 (plans/260717-1826-unify-context-injection): rule-derived process hints.
- * The 8 hand-mirrored PROCESS_HINTS rows move onto agent-checklist rule entries
+ * The 9 hand-mirrored PROCESS_HINTS rows move onto agent-checklist rule entries
  * as `hint_text`, and `buildProcessHints()` projects the registry through rule
  * lookup. Locks: schema accepts hint_text, promote-tool requires it for agent-
  * checklist, projection resolves via rulesById, byte-identity preserved.
@@ -143,12 +143,12 @@ describe("rule-derived process hints (Phase 3)", () => {
       `warnings must mention the skip reason; got: ${JSON.stringify(warnings)}`);
   });
 
-  test("registry order preserved (8 rule-derived process rows stay at positions 2-10 in registry order)", () => {
+  test("registry order preserved (9 rule-derived process rows stay at positions 2-11 in registry order)", () => {
     const processEntries = registry.HINT_REGISTRY.filter((e) => e.kind === "process");
     const standalone = processEntries.filter((e) => !e.derived_from_rule);
     const derived = processEntries.filter((e) => e.derived_from_rule);
     assert.strictEqual(standalone.length, 2, "exactly 2 standalone process rows");
-    assert.strictEqual(derived.length, 8, "exactly 8 rule-derived process rows");
+    assert.strictEqual(derived.length, 9, "exactly 9 rule-derived process rows");
     // Standalone rows must be at registry positions 0 (pnpm-test-discipline) and 8 (file-edit-drift).
     assert.strictEqual(processEntries[0].slug, "pnpm-test-discipline");
     assert.strictEqual(processEntries[0].derived_from_rule, null);

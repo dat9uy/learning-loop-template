@@ -26,7 +26,7 @@ const STD_CHAR_BUDGET = 9500;
  * Real rules from the live registry — the production resolution source.
  * Code-review I8 (plans/260717-1826): earlier revisions of this file mocked
  * rulesById (or omitted it), so the "renders all hints" tests passed with
- * 8 of 26 hints absent. Tests that assert full coverage MUST use this map.
+ * 9 of 27 hints absent. Tests that assert full coverage MUST use this map.
  */
 function realRulesById() {
   return new Map(
@@ -49,7 +49,7 @@ describe("hint renderer", () => {
     assert.strictEqual(typeof renderer.renderHints, "function");
   });
 
-  test("claude-session-start channel with real rules: 2 partitions, each under budget, all 26 hints", () => {
+  test("claude-session-start channel with real rules: 2 partitions, each under budget, all 27 hints", () => {
     const rulesById = realRulesById();
     const { partitions, provenance, warnings } = renderer.renderHints({
       channel: "claude-session-start",
@@ -72,7 +72,7 @@ describe("hint renderer", () => {
     assert.ok(partitions[1].includes("mergeStateStatus"),
       "partition 1 must carry rule-derived hint_text (required-status-checks row)");
     assert.deepStrictEqual(warnings, [], "no skips expected with the live registry");
-    assert.strictEqual(provenance.length, 26, "provenance covers all 26 hints");
+    assert.strictEqual(provenance.length, 27, "provenance covers all 27 hints");
     for (const p of provenance) {
       assert.ok(typeof p.slug === "string");
       assert.ok(["discoverability", "process"].includes(p.kind));
@@ -85,9 +85,9 @@ describe("hint renderer", () => {
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
     });
-    // 8 rule-derived entries skip → 18 rendered (16 disc + 2 standalone process).
+    // 9 rule-derived entries skip → 18 rendered (16 disc + 2 standalone process).
     assert.strictEqual(provenance.length, 18, "degraded render covers standalone hints only");
-    assert.strictEqual(warnings.length, 8, "one warning per skipped rule-derived entry");
+    assert.strictEqual(warnings.length, 9, "one warning per skipped rule-derived entry");
     assert.ok(warnings.every((w) => w.includes("skipped")), "warnings name the skip");
     assert.ok(partitions[1].includes("pnpm test"), "standalone process rows still render");
   });
@@ -139,8 +139,8 @@ describe("hint renderer", () => {
       assert.ok(key in parsed, `sidecar payload must include ${key}`);
     }
     assert.ok(Array.isArray(parsed.discoverability_hints) && parsed.discoverability_hints.length === 16);
-    assert.ok(Array.isArray(parsed.process_hints) && parsed.process_hints.length === 10,
-      `process_hints must include 10 entries (resolved via rulesById); got ${parsed.process_hints.length}`);
+    assert.ok(Array.isArray(parsed.process_hints) && parsed.process_hints.length === 11,
+      `process_hints must include 11 entries (resolved via rulesById); got ${parsed.process_hints.length}`);
     assert.strictEqual(parsed.discoverability_hints_source, "core");
     assert.strictEqual(parsed.process_hints_source, "core");
   });
@@ -158,7 +158,7 @@ describe("hint renderer", () => {
     });
     assert.strictEqual(partitions.length, 1, "mcp-warm emits a single partition");
     const arr = JSON.parse(partitions[0]);
-    assert.ok(Array.isArray(arr) && arr.length === 26, "mcp-warm channel returns 26-hint structured array");
+    assert.ok(Array.isArray(arr) && arr.length === 27, "mcp-warm channel returns 27-hint structured array");
   });
 
   test("greedy partitioning: no hint is split across partitions", () => {
@@ -212,10 +212,10 @@ describe("hint renderer", () => {
       charBudget: STD_CHAR_BUDGET,
       rulesById,
     });
-    // 16 discoverability + 10 process = 26 source rows
-    assert.strictEqual(provenance.length, 26, "provenance must include one row per hint");
+    // 16 discoverability + 11 process = 27 source rows
+    assert.strictEqual(provenance.length, 27, "provenance must include one row per hint");
     const slugs = new Set(provenance.map((p) => p.slug));
-    assert.strictEqual(slugs.size, 26, "provenance slug count must equal registry size");
+    assert.strictEqual(slugs.size, 27, "provenance slug count must equal registry size");
   });
 
   test("byte-identity: claude-session-start partition 0 ≠ factory-session-start body shape, but both carry same hints", () => {
@@ -224,7 +224,7 @@ describe("hint renderer", () => {
     const factory = renderer.renderHints({ channel: "factory-session-start", charBudget: 999999, rulesById });
     // Different partitioning: claude is 2 partitions, factory is 1.
     assert.notStrictEqual(claude.partitions.length, factory.partitions.length);
-    // Concatenation parity: EVERY hint (all 26) appears in both renders.
+    // Concatenation parity: EVERY hint (all 27) appears in both renders.
     const claudeJoined = claude.partitions.join("\n");
     const factoryJoined = factory.partitions.join("\n");
     for (const e of registry.HINT_REGISTRY) {

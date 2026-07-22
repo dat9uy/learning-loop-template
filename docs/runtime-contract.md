@@ -12,19 +12,20 @@ A runtime is whatever hosts an agent that consumes the loop — a CLI, an IDE ha
 
 2. **Gate enforcement.** The runtime routes lifecycle events — pre-tool, pre-write, pre-prompt, session-start — into the loop's gate evaluation. The gate is meta-only (see `docs/meta-state-lifecycle.md` § Layer Separation): it checks constraint existence, not domain resource limits. The runtime's job is to make every relevant lifecycle event visible to the gate, not to enforce the gate's decisions itself.
 
-3. **Record routing.** The runtime never writes `records/**`, `meta-state.jsonl`, or `runtime-state.jsonl` directly. All writes go through the loop's tools, so the registry's invariants (4-kind union, status lifecycle, grounding fingerprints) hold regardless of which runtime produced the record. Direct writes bypass the self-model and are a contract violation.
+3. **Record routing.** A runtime that produces records never writes `records/**`, `meta-state.jsonl`, or `runtime-state.jsonl` directly. All writes go through the loop's tools via a write-capable tool channel, so the registry's invariants (4-kind union, status lifecycle, grounding fingerprints) hold regardless of which runtime produced the record. Direct writes bypass the self-model and are a contract violation. This capability is conditional on a write-capable transport: a read-only transport (see *Transport mapping*) produces no records and so does not exercise it — unsatisfiable there by design, not in violation.
 
 4. **Identity + discoverability.** The runtime identifies its surface at boot and surfaces loop-discoverability to its operator/agent. Identity lets the loop attribute records and gate decisions to the runtime that produced them; discoverability lets the agent learn the loop's active rules and findings without reading docs mid-task.
 
 ## Transport mapping (many-to-many)
 
-A transport is the mechanism a runtime uses to provide the 4 capabilities. The contract is transport-agnostic; multiple transports can realize it, and one transport can serve multiple runtimes.
+A transport is the mechanism a runtime uses to provide the 4 capabilities (a read-only transport provides a subset — see below). The contract is transport-agnostic; multiple transports can realize it, and one transport can serve multiple runtimes.
 
 - **MCP + hooks transport** — the loop's tools are exposed as MCP tools; lifecycle events are routed via hook shims or declarative hook configs into the gate scripts. The runtime hosts an MCP client and a hook dispatch layer.
+- **Read-only CLI transport** — the loop's read tools are exposed as commands over a stateless CLI (`bin/loop.mjs`). The CLI has a tool surface (unlike shell-hook-only), no write path (so Capability 3 does not apply), and satisfies Capabilities 1+4 only. Wired for the 7-tool slice (`loop_describe`, `loop_get_instruction`, `meta_state_list`, `meta_state_relationships`, `meta_state_derive_status`, `meta_state_check_grounding`, `runtime_state_read`); additive to MCP — a runtime opts in when its trigger fires.
 - **Library-import transport** — the loop's tools are imported as functions; lifecycle events are routed via in-process callbacks. The runtime embeds the loop directly. (Forward-looking; not wired today.)
-- **Shell-hook-only transport** — only the gate hooks are wired (no MCP tool surface); the runtime relies on the loop's file-based records without a tool channel. The minimal participation path.
+- **Shell-hook-only transport** — only the gate hooks are wired (no MCP tool surface, no write-capable tool channel). This is **read-only participation**: the runtime may read the loop's file-based records and route gate events, but it produces no records, so Capability 3 does not apply. The minimal participation path. A write-capable non-MCP channel — a CLI exposing the loop's tools as commands — would be the smallest transport that *does* exercise Capability 3; named here as a future option, not wired today.
 
-A runtime picks one transport. The 4 capabilities are the same in every transport; only the wiring differs. A future runtime that has no surface directory (e.g. a library transport) may require a non-dir surface concept — noted here as a forward question, not solved.
+A runtime picks one transport. The capabilities are the same in every transport; only the wiring differs — except that a read-only transport (shell-hook-only OR read-only CLI) carries no write path and so does not exercise Capability 3. A future runtime that has no surface directory (e.g. a library transport) may require a non-dir surface concept — noted here as a forward question, not solved.
 
 ## Three concerns previously conflated as "the interface"
 
@@ -38,7 +39,7 @@ The contract says *what a runtime must be*; the storage fan-out says *which dire
 
 ## Current transports
 
-The MCP+hooks transport is wired today for three runtimes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
+The MCP+hooks transport is wired today for three runtimes. Their identities, surface directories, and hook wiring are L3 mechanism detail — see `docs/architecture.md` for the gate-event flow and the per-runtime wiring. The read-only CLI transport is wired as a 7-tool additive slice over `tools/learning-loop-mastra/bin/loop.mjs` (plan 260721-1933); a runtime opts in when its trigger fires. The library-import and shell-hook-only transports are forward options, not wired in this codebase.
 
 ## Relationship to the engine
 

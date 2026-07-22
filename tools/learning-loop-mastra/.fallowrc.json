@@ -12,6 +12,7 @@
     "mastra/schema-parity.js",
     "storage.js",
     "scripts/**",
+    "bin/loop.mjs",
     "core/hint-renderer.js"
   ],
 

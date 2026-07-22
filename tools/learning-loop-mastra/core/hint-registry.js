@@ -271,6 +271,16 @@ export const HINT_REGISTRY = Object.freeze([
       "Required-status-check satisfaction: verify `gh pr view <n> --json mergeStateStatus` == CLEAN; GitHub matches a required context against the JOB id, not workflow `name:`. Bind context to job id via tools/scripts/setup-branch-protection.mjs.",
     derived_from_rule: "rule-required-status-checks-verify-combined-status",
   },
+  {
+    // Phase 3: rule-derived. text is the registry-order placeholder; the
+    // renderer resolves the actual prose from rule.hint_text.
+    slug: "no-plan-ids-in-stable-code-artifacts",
+    kind: "process",
+    text: "",
+    suggestion:
+      "Stable code artifacts: no plan IDs, phase numbers, or finding codes in code comments, test names, migrations, or commit messages — describe the invariant directly; cross-reference by concept (docs/ section), not plan ID.",
+    derived_from_rule: "rule-no-plan-ids-in-stable-code-artifacts",
+  },
 ]);
 
 /**

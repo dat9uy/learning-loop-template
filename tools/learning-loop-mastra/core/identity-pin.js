@@ -29,6 +29,9 @@
  *     so tests can assert `Object.isFrozen` and strict-mode assignment throws.
  *   - __resetForTests(): test-only; clears the pin so each test can re-pin
  *     with a fresh surface. NOT a setter — it does not set the runtime value.
+ *   - isIdentityPinError(err): classifies an error as one of the boot-time
+ *     pin-precondition failures pinRuntimeIdAtBoot() throws. Single source
+ *     of truth for exit-code mapping in non-MCP transports (the read-only CLI).
  *
  * No runtime-id setter is exported anywhere. The pin is immutable for
  * process lifetime.
@@ -96,6 +99,37 @@ export function getPinnedRuntimeId() {
     throw new Error(ERRORS.PIN_NOT_INITIALIZED);
   }
   return pinState.runtime;
+}
+
+// Stable prefixes of the three boot-time pin errors — the substring of each
+// canonical message up to the first `{placeholder}` (the full message when
+// there is no placeholder). Derived from mastra/identity-errors.json so a
+// rephrase stays in sync with what pinRuntimeIdAtBoot() actually throws.
+// PIN_NOT_INITIALIZED is deliberately excluded: it is a handler-time
+// getPinnedRuntimeId() failure, not a boot precondition, so transports that
+// map boot errors to a distinct exit code (the read-only CLI maps them to 2)
+// do not classify it here.
+const IDENTITY_PIN_BOOT_PREFIXES = [
+  ERRORS.MISSING_LOOP_SURFACE,
+  ERRORS.INVALID_LOOP_SURFACE,
+  ERRORS.MISSING_RUNTIME_MAPPING,
+].map((msg) => {
+  const i = msg.indexOf("{");
+  return i === -1 ? msg : msg.slice(0, i);
+});
+
+/**
+ * Classify an error as a boot-time identity-pin precondition failure — the
+ * same errors `pinRuntimeIdAtBoot()` throws. Non-MCP transports (the
+ * read-only CLI) use this to map pin failures to a caller-configuration exit
+ * code rather than a handler-error exit code.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isIdentityPinError(err) {
+  if (!err || typeof err.message !== "string") return false;
+  return IDENTITY_PIN_BOOT_PREFIXES.some((p) => p.length > 0 && err.message.startsWith(p));
 }
 
 /**

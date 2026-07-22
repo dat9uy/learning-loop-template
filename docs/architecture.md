@@ -201,6 +201,8 @@ For the full gating chain, allowlist schema, and operator runbook, see `docs/sec
 
 The MCP server provides the same gating logic as the outbound hooks but via the MCP protocol. All policy logic lives in `tools/learning-loop-mastra/core/` — single source of truth for all runtimes.
 
+A second wired transport, the read-only CLI (`tools/learning-loop-mastra/bin/loop.mjs`), exposes the 7 read tools as stateless commands; see `docs/runtime-contract.md` for the contract (Capabilities 1+4 only; additive to MCP).
+
 #### check_gate
 
 Returns `ok`, `block`, or `escalate` for a given command. Splits on `;`, `&`, `|` (quote-aware), strips message flags and `node -e|--eval` bodies before regex matching, then checks against constraint patterns and promoted rules. Includes `inbound_gate: true` when observations are stale relative to the last operator message.
