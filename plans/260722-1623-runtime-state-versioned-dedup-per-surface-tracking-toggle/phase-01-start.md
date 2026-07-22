@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "GAP 1 — Versioned dedup for runtime-state rows"
-status: pending
+status: completed
 priority: P1
 effort: "0.5-1d"
 dependencies: []
