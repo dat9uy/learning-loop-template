@@ -26,12 +26,12 @@ const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], disp
 const EMPTY_CHANGE_LOG_GAP = { gap_candidates: [], gap_protocol_prompt: "" };
 const PULL_PATH = "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})";
 
-function readSurfaceMcpJson(projectRoot, surface = ".claude") {
-  const configPath = surface === ".claude"
-    ? path.join(projectRoot, ".mcp.json")
-    : path.join(projectRoot, surface, "mcp.json");
+// Read the .claude runtime's mcp.json env block. This hook is wired only for
+// .claude (see .claude/settings.json), so the config path is fixed. Returns {}
+// when the file is absent or malformed (fail-open: no banner, no crash).
+function readSurfaceMcpJson(projectRoot) {
   try {
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    const config = JSON.parse(fs.readFileSync(path.join(projectRoot, ".mcp.json"), "utf8"));
     return config.mcpServers?.["learning-loop"]?.env ?? {};
   } catch {
     return {};
@@ -51,8 +51,8 @@ function buildTransportBanner({ readsViaCli = false } = {}) {
   ].join("\n");
 }
 
-function buildConfiguredTransportBanner(projectRoot, surface = ".claude") {
-  const mcpEnv = readSurfaceMcpJson(projectRoot, surface);
+function buildConfiguredTransportBanner(projectRoot) {
+  const mcpEnv = readSurfaceMcpJson(projectRoot);
   return buildTransportBanner({
     readsViaCli: /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? "")),
   });
@@ -298,7 +298,7 @@ async function main() {
   }
 
   const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
-  const transportBanner = buildConfiguredTransportBanner(projectRoot, ".claude");
+  const transportBanner = buildConfiguredTransportBanner(projectRoot);
 
   // 1. Core hints (no registry dep).
   const core = loadCoreHints();
@@ -367,7 +367,7 @@ if (require.main === module) {
     });
   } catch { /* ignore */ }
   // Surface the fatal degrade to the agent so it isn't silent.
-  const transportBanner = buildConfiguredTransportBanner(projectRoot, ".claude");
+  const transportBanner = buildConfiguredTransportBanner(projectRoot);
   emitAdditionalContext([], "fatal", "pointer-discoverability", transportBanner);
   process.exit(0);
 });

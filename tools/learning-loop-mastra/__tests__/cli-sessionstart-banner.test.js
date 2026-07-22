@@ -40,11 +40,11 @@ test("readSurfaceMcpJson returns a runtime env block and fails open", () => {
     }),
   );
 
-  assert.deepStrictEqual(readSurfaceMcpJson(root, ".claude"), {
+  assert.deepStrictEqual(readSurfaceMcpJson(root), {
     LOOP_SURFACE: ".claude",
     LOOP_READS_VIA_CLI: "1",
   });
-  assert.deepStrictEqual(readSurfaceMcpJson(join(root, "missing"), ".claude"), {});
+  assert.deepStrictEqual(readSurfaceMcpJson(join(root, "missing")), {});
 });
 
 test("transport banner names the CLI contract only for opted runtimes", () => {
