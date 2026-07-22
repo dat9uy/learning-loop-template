@@ -238,7 +238,21 @@ describe("concurrent-append race test (exercises withRegistryLock)", () => {
       assert.deepStrictEqual(versions, [0, 1], "concurrent writers must produce DISTINCT versions — lock serializes scan-then-append");
       const latest = readRuntimeStateRowsLatest(tempDir);
       assert.strictEqual(latest.length, 1, "latest projection must collapse to a single row per id");
-      assert.strictEqual(latest[0].timestamp, "2026-05-08T11:00:00Z");
+      // Order-independent: latest is the row with max(version). Whichever
+      // writer arrives at the lock first wins version=0, the other
+      // version=1. The "latest" row's timestamp must equal the winner's
+      // timestamp, but which input won is non-deterministic under
+      // Promise.all (CI/Loki runner flips vs. local), so we look up the
+      // winner's timestamp from the race rows rather than hard-coding.
+      const versionToTimestamp = new Map(
+        raceRows.map((r) => [r.version, r.timestamp])
+      );
+      const maxVersion = Math.max(...raceRows.map((r) => r.version));
+      assert.strictEqual(
+        latest[0].timestamp,
+        versionToTimestamp.get(maxVersion),
+        "latest projection must equal the row with the highest version — its timestamp, not a hard-coded value",
+      );
     } finally {
       process.env.GATE_ROOT = originalEnv;
     }
