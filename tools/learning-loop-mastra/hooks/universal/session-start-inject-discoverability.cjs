@@ -20,10 +20,43 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { CLI_READ_TOOLS } = require("../../core/cli-tools.js");
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
 const EMPTY_CHANGE_LOG_GAP = { gap_candidates: [], gap_protocol_prompt: "" };
 const PULL_PATH = "Loop steering (pull): loop_describe({tier:'warm'}) | hints: .claude/session-context.json | one: loop_get_instruction({key})";
+
+// Read the .claude runtime's mcp.json env block. This hook is wired only for
+// .claude (see .claude/settings.json), so the config path is fixed. Returns {}
+// when the file is absent or malformed (fail-open: no banner, no crash).
+function readSurfaceMcpJson(projectRoot) {
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(projectRoot, ".mcp.json"), "utf8"));
+    return config.mcpServers?.["learning-loop"]?.env ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function buildTransportBanner({ readsViaCli = false } = {}) {
+  if (!readsViaCli) return "";
+  const toolNames = [...CLI_READ_TOOLS].join(", ");
+  return [
+    "Loop read transport: this runtime reads the loop's 7 read tools via CLI, not MCP.",
+    "  Read: node tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'",
+    `  Tools: ${toolNames} (loop.mjs list prints them).`,
+    "  The mastra_<read> MCP tools are NOT registered for this runtime.",
+    "  Writes still use mastra_<write> MCP tools.",
+    "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
+  ].join("\n");
+}
+
+function buildConfiguredTransportBanner(projectRoot) {
+  const mcpEnv = readSurfaceMcpJson(projectRoot);
+  return buildTransportBanner({
+    readsViaCli: /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? "")),
+  });
+}
 
 /**
  * Load discoverability + process hints (Rec 9).
@@ -200,11 +233,16 @@ function writeContext(root, payload) {
  * agent knows to consult the sidecar's *_source flags rather than silently
  * receiving nothing.
  */
-function emitAdditionalContext(hints, source, label) {
+function buildAdditionalContext(hints, source, label, transportBanner = "") {
   const body = Array.isArray(hints) && hints.length > 0
     ? hints.map((h, i) => `${i + 1}. ${h}`).join("\n")
     : `unavailable — ${label} loader degraded (source=${source}). Inspect .claude/session-context.json *_source flags.`;
-  const text = `${PULL_PATH}\n${body}`;
+  const base = `${PULL_PATH}\n${body}`;
+  return transportBanner ? `${transportBanner}\n${base}` : base;
+}
+
+function emitAdditionalContext(hints, source, label, transportBanner = "") {
+  const text = buildAdditionalContext(hints, source, label, transportBanner);
   console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: text } }));
 }
 
@@ -260,6 +298,7 @@ async function main() {
   }
 
   const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
+  const transportBanner = buildConfiguredTransportBanner(projectRoot);
 
   // 1. Core hints (no registry dep).
   const core = loadCoreHints();
@@ -277,7 +316,7 @@ async function main() {
   // Inline delivery leg: surface discoverability hints to the agent as a
   // SessionStart system-reminder. process hints are injected by the companion
   // hook (the 10k-char cap forces the split). See emitAdditionalContext.
-  emitAdditionalContext(core.discoverability_hints, core.discoverability_hints_source, "discoverability");
+  emitAdditionalContext(core.discoverability_hints, core.discoverability_hints_source, "discoverability", transportBanner);
 
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
@@ -292,7 +331,15 @@ async function main() {
   process.exit(0);
 }
 
-module.exports = { computeDegradedSources, formatSessionSummary, buildContextPayload, loadStaleDispatchHints };
+module.exports = {
+  computeDegradedSources,
+  formatSessionSummary,
+  buildContextPayload,
+  loadStaleDispatchHints,
+  readSurfaceMcpJson,
+  buildTransportBanner,
+  buildAdditionalContext,
+};
 
 if (require.main === module) {
   main().catch((err) => {
@@ -303,8 +350,9 @@ if (require.main === module) {
   // every `*_source` to "fatal" so a downstream reader can distinguish a
   // fatal from a per-loader fallback — both look like empty arrays on the
   // surface but represent different failure modes.
+  const projectRoot = path.resolve(__dirname, "..", "..", "..", "..");
   try {
-    writeContext(path.resolve(__dirname, "..", "..", "..", ".."), {
+    writeContext(projectRoot, {
       discoverability_hints: [],
       discoverability_hints_source: "fatal",
       discoverability_hints_error: err.message,
@@ -319,7 +367,8 @@ if (require.main === module) {
     });
   } catch { /* ignore */ }
   // Surface the fatal degrade to the agent so it isn't silent.
-  emitAdditionalContext([], "fatal", "pointer-discoverability");
+  const transportBanner = buildConfiguredTransportBanner(projectRoot);
+  emitAdditionalContext([], "fatal", "pointer-discoverability", transportBanner);
   process.exit(0);
 });
 }
