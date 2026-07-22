@@ -117,11 +117,19 @@ export function checkObservationStaleness(observations, root) {
       }
     } else {
       // Non-meta observation (vnstock, fastapi, etc.): check runtime-state sidecar.
-      // Phase 4 of plan 260722-1623: paused surfaces are skipped — a surface the
-      // operator explicitly paused should not surface stale-observation warnings.
-      // The skip is gated on `isSurfacePaused` (operator's explicit choice);
-      // unpausing restores the warnings.
-      if (isSurfacePaused(root, obs.affected_system)) continue;
+      // Paused surfaces are skipped — a surface the operator explicitly paused
+      // should not surface stale-observation warnings. The skip is gated on
+      // `isSurfacePaused` (operator's explicit choice); unpausing restores the
+      // warnings. This is a READ gate: writers fail closed on a malformed
+      // tracking sidecar, but here a load failure must degrade to "not paused"
+      // — otherwise a corrupt sidecar would block every gated command.
+      let paused = false;
+      try {
+        paused = isSurfacePaused(root, obs.affected_system);
+      } catch {
+        paused = false;
+      }
+      if (paused) continue;
       const sidecar = getSidecar();
       const matching = sidecar.filter((r) => r.affected_system === obs.affected_system);
       if (matching.length === 0) {

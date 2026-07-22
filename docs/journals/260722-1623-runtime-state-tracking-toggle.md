@@ -7,16 +7,16 @@
 
 ## Summary
 
-Closed the two coupled maintenance gaps in `records/runtime-state.jsonl`:
+Closed the two coupled maintenance gaps in `runtime-state.jsonl` (repo root):
 
 - **GAP 1 — stale accumulation**: every `runtime_state_record` call appended a new row, even when the same id was re-recorded with identical payload. Reader projected the latest by id, so the file grew monotonically with duplicates.
 - **GAP 2 — surface pollution**: `runtime_state_record` recorded every observed surface (including probes run on behalf of OTHER PRs / sub-agents), drowning out the per-runtime audit signal.
 
 Fix shape:
 
-- Added `version` field to `schemas/runtime-state.schema.json` and made the append path version-bump on content delta, dedupe on identical content.
-- Added `core/runtime-tracking.js` with `isRuntimeTrackingEnabled(surface)` / `setRuntimeTrackingEnabled(surface, on)`; the runtime-state record tool short-circuits when the calling surface's tracking is paused.
-- Added `runtime_state_pause_surface` / `runtime_state_resume_surface` / `runtime_state_prune_surface` tools (the prune one needed by the red-team "open a new ledger event before re-landing on dedup" gap — see decisions).
+- Added `version` field to `schemas/runtime-state.schema.json`; appends always assign `max(version)+1` per id and reads collapse by `max_by(version)` (read-time dedup, mirroring the meta-state projection — no content comparison on the write path).
+- Added `core/runtime-tracking.js` with `loadPausedSurfaces` / `isSurfacePaused` / `setPausedSurfaces` over a `.loop/runtime-tracking.json` sidecar; the runtime-state record tool short-circuits when the calling surface's tracking is paused.
+- Added `runtime_state_pause` / `runtime_state_resume` / `runtime_state_prune_surface` tools (the prune one needed by the red-team "open a new ledger event before re-landing on dedup" gap — see decisions).
 - Added lock-aware dispatch helper so concurrent commits for the same id still serialize correctly (lesson below).
 - Extended 3-layer write protection: `BOOTSTRAP_DENY_PATTERNS` alone was insufficient — added `PATH_WRITE_PATTERNS` echo/tee in `evaluate-bash-gate.js` and a new `BOUND_ARTIFACTS` rule for the runtime-tracking marker file.
 
@@ -26,7 +26,7 @@ Fix shape:
 
 2. **Per-surface preflight marker, NOT loop-wide.** Matches the existing `runtime_state_record` per-runtime pattern and inherits `PREFLIGHT_MARKER_PATHS` + bash protection + per-runtime audit log for free. The loop-wide effect (every inbound that routes through this surface is filtered) is documented as a trade-off in tool descriptions rather than implemented as a separate gate.
 
-3. **3-layer write protection, not just one.** The original draft cited only `BOOTSTRAP_DENY_PATTERNS` (R2 ownership layer). Red-team Finding C1 caught that this layer only blocks `withR2Gate` calls with non-empty `pathFields` — it short-circuits on empty arrays, so direct writes to the marker file via `runtime_state_resume_surface` slipped past it. Fixed by extending all three layers: `BOOTSTRAP_DENY_PATTERNS` (R2), `PATH_WRITE_PATTERNS` echo/tee (bash), `BOUND_ARTIFACTS` rule (Write-tool).
+3. **3-layer write protection, not just one.** The original draft cited only `BOOTSTRAP_DENY_PATTERNS` (R2 ownership layer). Red-team Finding C1 caught that this layer only blocks `withR2Gate` calls with non-empty `pathFields` — it short-circuits on empty arrays, so direct writes to the tracking sidecar slipped past it. Fixed by extending all three layers: `BOOTSTRAP_DENY_PATTERNS` (R2), `PATH_WRITE_PATTERNS` echo/tee (bash), `BOUND_ARTIFACTS` rule (Write-tool).
 
 4. **Validation commit consistent with plan, not tool.** Plan anchors verified exactly: `inbound-state.js:116` stale-scan line ✓, `core/runtime-state.js:27-38` for `readRuntimeStateRows` ✓, `core/registry-lock.js:34` for `withRegistryLock` ✓. All held. Where the plan and the running tool disagreed, the plan won (it was the more recent design intent).
 

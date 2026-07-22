@@ -11,35 +11,30 @@
 
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { SURFACES } from "../../core/surfaces.js";
+import { strictBooleanGuard } from "../../core/strict-boolean-guard.js";
+import { hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 import {
   pruneSurfaceRows,
   AFFECTED_SYSTEM_ENUM_RUNTIME,
 } from "../../core/runtime-state.js";
 
-function hasRuntimeTrackingPreflightMarker(root) {
-  return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-tracking")),
-  );
-}
+const PREFLIGHT_MARKER = ".loop-preflight-runtime-tracking";
 
 export const runtimeStatePruneSurfaceTool = {
   name: "runtime_state_prune_surface",
   description:
-    "One-time destructive rewrite of runtime-state.jsonl removing a paused surface's rows. Requires gate_mark_preflight({surface:'runtime-tracking'}) AND confirm:true. Returns {ok, pruned, remaining, surface}.",
+    "One-time destructive rewrite of runtime-state.jsonl removing a surface's rows (typically a paused one). Requires gate_mark_preflight({surface:'runtime-tracking'}) AND confirm:true. Returns {ok, pruned, remaining, surface}.",
   schema: {
     surface: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME).describe(
       "Surface whose rows should be removed from runtime-state.jsonl.",
     ),
-    confirm: z.coerce.boolean().optional().default(false).describe(
+    confirm: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe(
       "Must be true to authorize the rewrite. Without true, the tool returns confirm_required and writes nothing.",
     ),
   },
   handler: async ({ surface, confirm = false }) => {
     const root = resolveRoot();
-    if (!hasRuntimeTrackingPreflightMarker(root)) {
+    if (!hasSurfacePreflightMarker(root, PREFLIGHT_MARKER)) {
       return {
         content: [{
           type: "text",

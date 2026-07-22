@@ -293,7 +293,21 @@ async function handleCommitStage(root, finding, id, coords) {
     }
     const exNum = appendResult.existing.metadata?.issue_number;
     const exUrl = appendResult.existing.metadata?.issue_url;
-    if (exNum === issue_number && exUrl === issue_url && !finding.ledger_ref) {
+    // Different coords — refuse, same as the pre-scan path: the dispatch is
+    // already bound to another issue (the racing winner's), and reporting
+    // success here would bind the finding's ledger to the wrong issue.
+    if (exNum !== issue_number || exUrl !== issue_url) {
+      return finish(root, now, {
+        dispatched: false,
+        reason: "already_dispatched",
+        existing_issue_number: exNum,
+        existing_issue_url: exUrl,
+        id,
+        stage: "commit",
+      });
+    }
+    // Same coords — idempotent success; patch ledger_ref if still missing.
+    if (!finding.ledger_ref) {
       await updateEntry(root, id, { ledger_ref: ledgerId });
     }
     return finish(root, now, {

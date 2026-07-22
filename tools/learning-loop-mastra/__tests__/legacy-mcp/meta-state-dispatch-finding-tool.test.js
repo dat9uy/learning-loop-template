@@ -385,6 +385,52 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
+  test("concurrent dispatch with DIFFERENT coords: loser is refused, not told success", async () => {
+    // Regression: in the lock path (a racing commit finds the winner's row
+    // inside withRegistryLock), the different-coords refusal was missing —
+    // the loser was told dispatched:true with ITS coords while the ledger
+    // bound the winner's issue. Whichever path (pre-scan or lock) catches
+    // it, the contract is: one winner, one already_dispatched refusal.
+    const tempDir = setupTempRegistry();
+    const clearOp = withOperator();
+    try {
+      const id = await seedFinding(tempDir);
+
+      const [a, b] = await Promise.all([
+        metaStateDispatchFindingTool.handler({
+          id, stage: "commit", issue_number: 101, issue_url: "https://x/y/issues/101", repo: "x/y",
+        }),
+        metaStateDispatchFindingTool.handler({
+          id, stage: "commit", issue_number: 102, issue_url: "https://x/y/issues/102", repo: "x/y",
+        }),
+      ]);
+      const bodies = [JSON.parse(a.content[0].text), JSON.parse(b.content[0].text)];
+
+      const winners = bodies.filter((b) => b.dispatched === true);
+      const refused = bodies.filter((b) => b.dispatched === false && b.reason === "already_dispatched");
+      assert.strictEqual(winners.length, 1, `expected 1 winner, got ${JSON.stringify(bodies)}`);
+      assert.strictEqual(refused.length, 1, `expected 1 refusal, got ${JSON.stringify(bodies)}`);
+      // The refusal must report the EXISTING (winner's) coords.
+      assert.ok(refused[0].existing_issue_number === 101 || refused[0].existing_issue_number === 102);
+      assert.strictEqual(refused[0].existing_issue_number, winners[0].issue_number);
+
+      const sidecar = readFileSync(join(tempDir, "runtime-state.jsonl"), "utf8")
+        .split("\n").filter(Boolean);
+      assert.strictEqual(sidecar.length, 1, `expected 1 ledger row, got ${sidecar.length}`);
+    } finally {
+      clearOp();
+      if (originalEnv === undefined) {
+        delete process.env.GATE_ROOT;
+      } else {
+        if (originalEnv === undefined) {
+          delete process.env.GATE_ROOT;
+        } else {
+          process.env.GATE_ROOT = originalEnv;
+        }
+      }
+    }
+  });
+
   test("orphan self-heal: re-invoking commit with same coords patches missing ledger_ref", async () => {
     // Simulate the orphan: write the dispatch ledger row but do NOT patch
     // ledger_ref (e.g. due to a CAS version_mismatch on the original commit).

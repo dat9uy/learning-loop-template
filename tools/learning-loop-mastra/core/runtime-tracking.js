@@ -12,6 +12,8 @@
 
 import { readFileSync, existsSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { SURFACES } from "./surfaces.js";
+import { withRegistryLock } from "./registry-lock.js";
 
 const RUNTIME_TRACKING_PATH = ".loop/runtime-tracking.json";
 
@@ -93,4 +95,38 @@ export function setPausedSurfaces(root, arr) {
     try { unlinkSync(tmp); } catch { /* best-effort cleanup */ }
     throw err;
   }
+}
+
+/**
+ * Lock-serialized read-modify-write of the paused-surfaces set. `mutate`
+ * receives the current sorted set and returns the next full set (NOT a
+ * delta); the result is persisted atomically and the reloaded set is
+ * returned. Runs under the same cross-process lock as the runtime-state
+ * writers so a pause in one process cannot lose a concurrent resume in
+ * another.
+ *
+ * @param {string} root
+ * @param {(current: string[]) => string[]} mutate
+ * @returns {Promise<string[]>} — the persisted paused-surfaces set
+ */
+export async function mutatePausedSurfaces(root, mutate) {
+  return await withRegistryLock(root, async () => {
+    setPausedSurfaces(root, mutate(loadPausedSurfaces(root)));
+    return loadPausedSurfaces(root);
+  });
+}
+
+/**
+ * True when any surface carries the named preflight marker file
+ * (`<surface>/coordination/<markerFile>`). Shared by the runtime-state
+ * tools that gate on operator preflight.
+ *
+ * @param {string} root
+ * @param {string} markerFile — e.g. ".loop-preflight-runtime-tracking"
+ * @returns {boolean}
+ */
+export function hasSurfacePreflightMarker(root, markerFile) {
+  return SURFACES.some((surface) =>
+    existsSync(join(root, surface, "coordination", markerFile)),
+  );
 }

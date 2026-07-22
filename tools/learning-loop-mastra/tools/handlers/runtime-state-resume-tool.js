@@ -5,17 +5,10 @@
 
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { SURFACES } from "../../core/surfaces.js";
-import { setPausedSurfaces, loadPausedSurfaces } from "../../core/runtime-tracking.js";
+import { mutatePausedSurfaces, hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 import { AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
 
-function hasRuntimeTrackingPreflightMarker(root) {
-  return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-tracking")),
-  );
-}
+const PREFLIGHT_MARKER = ".loop-preflight-runtime-tracking";
 
 export const runtimeStateResumeTool = {
   name: "runtime_state_resume",
@@ -28,7 +21,7 @@ export const runtimeStateResumeTool = {
   },
   handler: async ({ surface }) => {
     const root = resolveRoot();
-    if (!hasRuntimeTrackingPreflightMarker(root)) {
+    if (!hasSurfacePreflightMarker(root, PREFLIGHT_MARKER)) {
       return {
         content: [{
           type: "text",
@@ -39,13 +32,11 @@ export const runtimeStateResumeTool = {
         }],
       };
     }
-    const current = loadPausedSurfaces(root);
-    const next = current.filter((s) => s !== surface);
-    setPausedSurfaces(root, next);
+    const paused = await mutatePausedSurfaces(root, (current) => current.filter((s) => s !== surface));
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ ok: true, paused_surfaces: loadPausedSurfaces(root), surface }),
+        text: JSON.stringify({ ok: true, paused_surfaces: paused, surface }),
       }],
     };
   },

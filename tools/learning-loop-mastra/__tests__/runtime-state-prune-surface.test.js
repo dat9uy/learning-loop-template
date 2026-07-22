@@ -35,6 +35,7 @@ import {
 } from "../core/runtime-state.js";
 import { setPausedSurfaces } from "../core/runtime-tracking.js";
 import { runtimeStatePruneSurfaceTool } from "../tools/handlers/runtime-state-prune-surface-tool.js";
+import { z } from "zod";
 import {
   checkObservationStaleness,
 } from "../core/inbound-state.js";
@@ -154,6 +155,34 @@ describe("runtime_state_prune_surface — operator tool", () => {
 
       const after = readRuntimeStateRows(tempDir);
       assert.strictEqual(after.length, 3, "no rewrite when confirm is missing");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('confirm:"false" (string) → confirm_required (strict boolean guard)', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "prune-strfalse-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      seedSidecar(tempDir, [V1, V2, M1]);
+
+      // The CLI transport can deliver confirm as the STRING "false";
+      // z.coerce.boolean() would widen it to true. The strict guard must
+      // treat anything but true / "true" as unauthorized. Exercise the
+      // tool's own schema (the transport's parse step), not just the
+      // handler's `!== true` fallback.
+      const parsed_args = z.object(runtimeStatePruneSurfaceTool.schema).parse({ surface: "vnstock", confirm: "false" });
+      assert.strictEqual(parsed_args.confirm, false, 'schema maps "false" to false');
+      const res = await runtimeStatePruneSurfaceTool.handler(parsed_args);
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, false);
+      assert.strictEqual(parsed.reason, "confirm_required");
+
+      const after = readRuntimeStateRows(tempDir);
+      assert.strictEqual(after.length, 3, 'no rewrite when confirm is "false"');
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });

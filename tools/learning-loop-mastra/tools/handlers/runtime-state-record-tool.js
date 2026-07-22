@@ -1,20 +1,13 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { SURFACES } from "../../core/surfaces.js";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { appendLedgerEvent, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
-import { isSurfacePaused } from "../../core/runtime-tracking.js";
+import { isSurfacePaused, hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
 // which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
 // tool has exactly ONE gate; the helper appendLedgerEvent enforces neither.
 // stay-at-the-tool-boundary invariant.
-function hasPreflightMarker(root) {
-  return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", ".loop-preflight-runtime-state"))
-  );
-}
+const PREFLIGHT_MARKER = ".loop-preflight-runtime-state";
 
 // Walk a JSON value and return true if any Array has an Array child.
 // Used by the metadata refine to reject the corruption class observed in
@@ -74,7 +67,7 @@ export const runtimeStateRecordTool = {
   handler: async ({ affected_system, kind, id, value, delta, source_ref, timestamp, metadata }) => {
     const root = resolveRoot();
 
-    if (!hasPreflightMarker(root)) {
+    if (!hasSurfacePreflightMarker(root, PREFLIGHT_MARKER)) {
       return {
         content: [{
           type: "text",

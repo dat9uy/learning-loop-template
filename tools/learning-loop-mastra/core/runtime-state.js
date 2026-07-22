@@ -100,13 +100,14 @@ export function readRuntimeStateRowsLatest(root) {
  */
 export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
   return await withRegistryLock(root, async () => {
-    const existing = readRuntimeStateRows(root).find(
+    const rows = readRuntimeStateRows(root);
+    const existing = rows.find(
       (r) => r && r.id === ledgerId && r.kind === "ledger-event",
     );
     if (existing) {
       return { appended: false, existing };
     }
-    const maxV = readRuntimeStateRows(root).reduce((acc, r) => {
+    const maxV = rows.reduce((acc, r) => {
       if (r?.id !== row.id) return acc;
       const v = Number.isFinite(parseInt(r?.version, 10)) ? parseInt(r.version, 10) : 0;
       return v > acc ? v : acc;
@@ -120,16 +121,11 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
 }
 
 /**
- * Atomic temp+rename rewrite of the sidecar (used by the prune op in
- * core/runtime-state.js). Public so call sites can guarantee the same
- * rename semantics whether they're inside `withRegistryLock` or a
- * non-locked context — both go through here.
+ * Module-private helper for pruneSurfaceRows. Atomic temp+rename rewrite
+ * of the sidecar with a pid-suffixed temp path so concurrent writers
+ * can't collide on the temp name.
  */
 function atomicRewriteSidecar(root, rows) {
-  // Module-private helper for pruneSurfaceRows. Atomic temp+rename rewrite
-  // of the sidecar with a pid-suffixed temp path so concurrent writers (or
-  // a future caller outside this file) can't collide on the temp name.
-
   const path = join(root, RUNTIME_STATE_FILENAME);
   const tempPath = `${path}.tmp-${process.pid}-${Date.now()}`;
   const body = rows.map((r) => JSON.stringify(r)).join("\n") + (rows.length ? "\n" : "");
