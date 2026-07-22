@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { readRegistry, updateEntry } from "../../core/meta-state.js";
-import { appendLedgerEvent, readRuntimeStateRows, verifyRow } from "../../core/runtime-state.js";
+import {
+  appendOrFindDispatchLedgerEvent,
+  readRuntimeStateRows,
+  verifyRow,
+} from "../../core/runtime-state.js";
+import { isSurfacePaused } from "../../core/runtime-tracking.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
@@ -240,6 +245,11 @@ async function handleCommitStage(root, finding, id, coords) {
   }
 
   // First write path: append the ledger event + patch the finding.
+  // appendOrFindDispatchLedgerEvent serializes with concurrent commits via
+  // withRegistryLock — a second commit for the SAME `ledgerId` finds the
+  // prior row inside the lock and returns `appended: false, existing`,
+  // so this caller can take the same-coords no-op path without a second
+  // `readRuntimeStateRows`/`appendLedgerEvent` window.
   const now = new Date().toISOString();
   const row = {
     affected_system: "meta-state-tools",
@@ -262,10 +272,40 @@ async function handleCommitStage(root, finding, id, coords) {
     },
   };
 
+  let appendResult;
   try {
-    appendLedgerEvent(root, row);
+    appendResult = await appendOrFindDispatchLedgerEvent(root, row, ledgerId);
   } catch (err) {
     return finish(root, now, { dispatched: false, reason: "ledger_append_failed", error: err.message || String(err), id, stage: "commit" });
+  }
+
+  if (!appendResult.appended) {
+    // Concurrent commit found a row inside the lock; treat as idempotent
+    // re-run via the same-coords no-op path (which also patches ledger_ref
+    // if still missing — orphan self-heal).
+    if (!verifyRow(appendResult.existing)) {
+      return finish(root, now, {
+        dispatched: false,
+        reason: "corrupt_dispatch_row",
+        id,
+        stage: "commit",
+      });
+    }
+    const exNum = appendResult.existing.metadata?.issue_number;
+    const exUrl = appendResult.existing.metadata?.issue_url;
+    if (exNum === issue_number && exUrl === issue_url && !finding.ledger_ref) {
+      await updateEntry(root, id, { ledger_ref: ledgerId });
+    }
+    return finish(root, now, {
+      dispatched: true,
+      idempotent: true,
+      id,
+      stage: "commit",
+      issue_number,
+      issue_url,
+      repo: repo ?? "",
+      ledger_id: ledgerId,
+    });
   }
 
   // CAS patch — read current version first.
@@ -325,6 +365,23 @@ export const metaStateDispatchFindingTool = {
   },
   handler: async ({ id, stage = "prepare", issue_number, issue_url, repo, delegated_to }) => {
     const root = resolveRoot();
+
+    // Per-surface tracking toggle: dispatch ledger events write under the
+    // `meta-state-tools` affected_system. A paused `meta-state-tools` makes
+    // BOTH prepare and commit refuse (no issue body drafted, no ledger row,
+    // no finding patch). Checking only `commit` would let `prepare`
+    // produce an issue body the agent then `gh issue create`s, then hit
+    // `surface_paused` at `commit` — orphaning an issue with no ledger row.
+    if (isSurfacePaused(root, "meta-state-tools")) {
+      return finish(root, new Date().toISOString(), {
+        dispatched: false,
+        reason: "surface_paused",
+        affected_system: "meta-state-tools",
+        id,
+        stage,
+      });
+    }
+
     const entries = readRegistry(root);
     const finding = entries.find((e) => e.id === id);
 

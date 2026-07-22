@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "GAP 2 — Per-surface tracking toggle (pause/resume)"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: []

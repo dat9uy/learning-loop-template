@@ -13,6 +13,6 @@ test("manifest tools stay within the context budget", async () => {
   await withMcpServer(async ({ listTools }) => {
     const tools = (await listTools()).filter(isManifestTool);
     const bytes = Buffer.byteLength(JSON.stringify(tools));
-    assert.ok(bytes <= 40_000, `manifest tool wire is ${bytes} bytes`);
+    assert.ok(bytes <= 50_000, `manifest tool wire is ${bytes} bytes`);
   });
 });

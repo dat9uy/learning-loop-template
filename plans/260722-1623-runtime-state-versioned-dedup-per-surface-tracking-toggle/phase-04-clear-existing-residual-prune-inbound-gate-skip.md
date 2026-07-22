@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Clear existing residual — prune + inbound-gate skip"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [2]

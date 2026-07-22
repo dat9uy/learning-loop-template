@@ -38,12 +38,14 @@ export const BOOTSTRAP_DENY_PATTERNS = Object.freeze([
   "**/.loop/r2-allowlist.json",
   "runtime-state.jsonl",
   "**/runtime-state.jsonl",
+  ".loop/runtime-tracking.json",
+  "**/.loop/runtime-tracking.json",
   ".gate-override",
   "**/.gate-override",
 ]);
 
 const BOOTSTRAP_HINT =
-  "Use the update_r2_allowlist MCP tool to edit .loop/r2-allowlist.json; runtime-state.jsonl and .gate-override are operator-controlled.";
+  "Use the update_r2_allowlist MCP tool to edit .loop/r2-allowlist.json and runtime_state_pause/resume for .loop/runtime-tracking.json; runtime-state.jsonl and .gate-override are operator-controlled.";
 
 /**
  * Decide whether `runtime` may write to `path`.

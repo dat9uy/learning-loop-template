@@ -3,7 +3,8 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { SURFACES } from "../../core/surfaces.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { appendLedgerEvent } from "../../core/runtime-state.js";
+import { appendLedgerEvent, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
+import { isSurfacePaused } from "../../core/runtime-tracking.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
 // which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
@@ -45,7 +46,7 @@ export const runtimeStateRecordTool = {
   name: "runtime_state_record",
   description: "Record one preflight-gated runtime-state row with a computed fingerprint. Use for budgets, counters, or ledger events.",
   schema: {
-    affected_system: z.enum(["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"])
+    affected_system: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME)
       .describe("Affected system"),
     kind: z.enum(["ledger-event", "budget-state"])
       .describe("Row kind"),
@@ -82,6 +83,19 @@ export const runtimeStateRecordTool = {
       };
     }
 
+    // Per-surface tracking toggle: a paused surface's writer must refuse
+    // BEFORE building the row (no fingerprint, no version assignment, no
+    // atomic-append op). The check propagates a malformed sidecar as a
+    // fail-closed error so writers refuse rather than silently unpause.
+    if (isSurfacePaused(root, affected_system)) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({ ok: false, paused: true, affected_system }),
+        }],
+      };
+    }
+
     const row = {
       affected_system,
       kind,
@@ -95,7 +109,7 @@ export const runtimeStateRecordTool = {
       metadata: metadata ?? {},
     };
 
-    const written = appendLedgerEvent(root, row);
+    const written = await appendLedgerEvent(root, row);
 
     return {
       content: [{

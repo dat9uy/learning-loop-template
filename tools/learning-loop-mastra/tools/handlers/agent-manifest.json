@@ -4,7 +4,7 @@
   "groups": {
     "gate": {
       "description": "Safety checks — call BEFORE any write operation",
-      "tools": ["gate_check", "gate_check_recurrence", "gate_mark_preflight", "gate_override", "runtime_state_record"],
+      "tools": ["gate_check", "gate_check_recurrence", "gate_mark_preflight", "gate_override", "runtime_state_record", "runtime_state_pause", "runtime_state_resume", "runtime_state_prune_surface"],
       "ordering": "mandatory-first",
       "cache_ttl": 0
     },

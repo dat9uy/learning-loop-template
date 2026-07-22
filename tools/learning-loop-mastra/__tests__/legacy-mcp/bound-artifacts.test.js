@@ -53,7 +53,7 @@ test("BOUND_ARTIFACTS is a frozen array covering the 5 simple-glob rules", async
 
 test("BOUND_ARTIFACTS rule order is pinned (first-match-wins)", async () => {
   const mod = await import("../../core/bound-artifacts.js");
-  const expected = ["records", "runtime-state", "meta-state", "file-index", "build-artifacts"];
+  const expected = ["records", "runtime-state", "runtime-tracking", "meta-state", "file-index", "build-artifacts"];
   assert.deepStrictEqual(
     mod.BOUND_ARTIFACTS.map((r) => r.name),
     expected,

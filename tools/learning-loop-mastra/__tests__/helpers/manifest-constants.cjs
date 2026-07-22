@@ -17,8 +17,8 @@
  * constant here AND verify the comments in each consumer file remain accurate.
  */
 module.exports = {
-  AGENT_MANIFEST_TOTAL_TOOLS: 44,
+  AGENT_MANIFEST_TOTAL_TOOLS: 47,
   AGENT_MANIFEST_GROUPS: 6,
-  TOOLS_MANIFEST_ENTRIES: 32,
+  TOOLS_MANIFEST_ENTRIES: 35,
   WORKFLOW_GROUP_TOOLS: 11,
 };

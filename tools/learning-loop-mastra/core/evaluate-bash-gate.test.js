@@ -249,9 +249,9 @@ test("null command → ok", () => {
 
 // ── PATH_WRITE_PATTERNS array ──
 
-test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 4 state files)", () => {
+test("PATH_WRITE_PATTERNS count scales with SURFACES (3 records + 2/surface preflight + 6 state files)", () => {
   assert.ok(Array.isArray(PATH_WRITE_PATTERNS));
-  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 4);
+  assert.strictEqual(PATH_WRITE_PATTERNS.length, 3 + 2 * SURFACES.length + 6);
   // Every entry should be a RegExp
   for (const p of PATH_WRITE_PATTERNS) {
     assert.ok(p instanceof RegExp);
