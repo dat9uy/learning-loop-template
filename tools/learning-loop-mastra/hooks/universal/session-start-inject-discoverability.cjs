@@ -23,14 +23,17 @@ const path = require("node:path");
 const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
 
 // Plan 260722-1343 Phase 3: write-tool one-line arg sketches for the
-// SessionStart banner. Each entry lists the top-level required keys only
-// — the agent can compose the JSON string from this sketch, and the full
-// shape (enums, nested objects) is pulled on demand via
-// `loop.mjs <tool> --schema`. Keep this table aligned with the actual
-// schema's required top-level keys; the cli-hint-sketch-drift test will
-// fail if a sketch names a key the schema doesn't require (cheap guard
-// against drift). The fallback (no schema access) is the harness failing
-// closed — empty sketches.
+// SessionStart banner. Each entry lists the top-level required keys (no `?`)
+// plus a curated subset of optional ones (trailing `?`); the agent composes
+// the JSON string from a sketch and pulls the full shape (enums, nested
+// objects) on demand via `loop.mjs <tool> --schema`. Keep this table aligned
+// with the actual schema: `cli-write-hint-sketch-drift.test.cjs` imports this
+// table and asserts, per write tool, that the sketch's required (no-`?`)
+// keys exactly equal the schema's `required` top-level keys and that every
+// `?` key is a real optional schema property — so a schema change that adds
+// or renames a required key breaks the test, not the agent's first write.
+// The fallback (no schema access) is the harness failing closed — empty
+// sketches.
 const WRITE_TOOL_SKETCHES = {
   meta_state_report: "{category,severity,affected_system,description}",
   meta_state_resolve: "{id,resolution}",
@@ -38,7 +41,7 @@ const WRITE_TOOL_SKETCHES = {
   meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",
   meta_state_patch: "{id,entry_kind,patch}",
   meta_state_batch: "{operations:[{op,...}]}",
-  meta_state_archive: "{id,reason,archived_by}",
+  meta_state_archive: "{override:[id],reason,confirm?}",
   meta_state_supersede: "{id,consolidated_into,resolution}",
   meta_state_propose_design: "{title,description,proposed_design_for,affected_system}",
   meta_state_ship_loop_design: "{id,shipped_in_plan}",
@@ -387,6 +390,10 @@ module.exports = {
   readSurfaceMcpJson,
   buildTransportBanner,
   buildAdditionalContext,
+  // Exported so cli-write-hint-sketch-drift.test.cjs can cross-check the
+  // one-line arg sketches against each write tool's actual schema required
+  // keys — the drift guard the table comment above promises.
+  WRITE_TOOL_SKETCHES,
 };
 
 if (require.main === module) {

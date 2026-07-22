@@ -1,24 +1,38 @@
 // cli-write-parity.test.js — Phase 2 of plans/260722-1343-write-capable-cli-w.
 //
 // Byte-structural parity: CLI writes produce the same persisted registry
-// state as the direct handler call AND the MCP server.
+// state as the direct handler call AND the MCP server, for every tool in
+// CLI_WRITE_TOOLS.
 //
 // Strategy (mirrors cli-read-parity.test.js):
-//   - For each write tool, run direct-handler vs CLI vs MCP against
-//     INDEPENDENT seeded tmpdirs (appendGateLog + fingerprint auto-record
-//     leak across a shared root, so each side must be fresh).
-//   - Compare the persisted files the handler touches: meta-state.jsonl,
-//     change-log.jsonl, gate-log.jsonl, runtime-state.jsonl (where
-//     relevant). Strip non-deterministic fields (timestamps, fingerprints,
-//     `version` auto-increment, `_expected_version` write-arg leakage)
-//     before deepStrictEqual.
+//   - For each write tool, run a step sequence (seed writes that build
+//     prerequisite state, then the target write) against INDEPENDENT
+//     seeded tmpdirs for direct / CLI / MCP (appendGateLog + fingerprint
+//     auto-record leak across a shared root, so each side must be fresh).
+//   - Compare the persisted files the sequence touches: meta-state.jsonl,
+//     change-log.jsonl, gate-log.jsonl, runtime-state.jsonl. Strip
+//     non-deterministic fields (timestamps, fingerprints, version) before
+//     deepStrictEqual.
 //
-// Why start with meta_state_report: the simplest write tool — single
-// finding append, single gate-log row, no batch shape. Extending to
-// meta_state_resolve / meta_state_log_change / meta_state_batch /
-// meta_state_patch / meta_state_dispatch_finding follows the same
-// pattern (add a case to TOOL_CASES). The strip set below may need
-// extension as new tools surface new non-deterministic fields.
+// Seed chaining: most write tools act on an existing entry (resolve, patch,
+// supersede, archive, dispatch). Finding/change-log ids are minute-granular
+// (`generateId(slug) = meta-<YYMMDDTHHMMZ>-<slug>`), so the same seed write on
+// every side produces the SAME id within the same minute, and the target
+// step references that id captured from the seed's result. Each side runs
+// its own seed sequence, so ids match across sides without hardcoding a
+// timestamp.
+//
+// Tool-specific notes:
+//   - meta_state_supersede + meta_state_dispatch_finding(commit) are gated
+//     on LOOP_SESSION_MODE=live; those cases set it on all three sides.
+//   - runtime_state_record requires a `.loop-preflight-runtime-state` marker
+//     that gate_mark_preflight cannot create (its surface enum is
+//     product/skills/schemas only). The case writes that marker directly as
+//     a test fixture via `setup(root)` before the target step.
+//   - The strip set strips any key ending in `_at` (wall-clock stamps:
+//     created_at, updated_at, resolved_at, superseded_at, archived_at,
+//     promoted_at, dispatched_at, shipped_at, last_verified_at, …) plus
+//     timestamp, version, and fingerprint noise.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
@@ -48,18 +62,15 @@ const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
 const SERVER_ENTRY = join(PKG_ROOT, "mastra", "server.js");
 
 // Strip non-deterministic fields the parity comparison must ignore.
-// Write-side strip set differs from reads:
-//   - created_at / updated_at / promoted_at / dispatched_at / timestamp
-//     (all wall-clock fields the handler stamps on write)
-//   - fingerprint / fingerprint_was_recorded (file-index sidecar noise)
-//   - version (auto-incrementing per-id counter — non-deterministic
-//     across run orders unless both sides seed identical rows, which
-//     they do here, but is fragile to extend)
+//   - any `*_at` key: wall-clock stamps the handler stamps on write
+//     (created_at / updated_at / resolved_at / superseded_at / archived_at /
+//     promoted_at / dispatched_at / shipped_at / last_verified_at / …)
+//   - timestamp: gate-log + ledger row wall-clock
+//   - fingerprint / fingerprint_was_recorded: file-index + ledger noise
+//     (the ledger fingerprint is content-derived and would match, but
+//     stripping is harmless and matches the read-parity strip policy)
+//   - version: auto-incrementing per-id counter
 const STRIP_KEYS = new Set([
-  "created_at",
-  "updated_at",
-  "promoted_at",
-  "dispatched_at",
   "timestamp",
   "fingerprint",
   "fingerprint_was_recorded",
@@ -68,10 +79,20 @@ const STRIP_KEYS = new Set([
 
 function stripNonDeterministic(value) {
   if (Array.isArray(value)) return value.map(stripNonDeterministic);
+  if (typeof value === "string") {
+    // Finding/change-log ids are minute-granular (`meta-<YYMMDDTHHMMZ>-<slug>`).
+    // When direct/CLI/MCP seed runs straddle a minute boundary the generated
+    // ids differ only by the timestamp token; the slug is deterministic. Strip
+    // the `<YYMMDDTHHMMZ>-` token so id-bearing fields (and the id-reference
+    // fields that point at them — consolidated_into, ledger_ref, supersedes,
+    // applies_to, consolidates) compare equal across sides. The slug half is
+    // unique per case, so this never falsely merges two different entries.
+    return value.replace(/\d{6}T\d{4}Z-/g, "");
+  }
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
-      if (STRIP_KEYS.has(k)) continue;
+      if (STRIP_KEYS.has(k) || k.endsWith("_at")) continue;
       out[k] = stripNonDeterministic(v);
     }
     return out;
@@ -91,7 +112,7 @@ function makeTempRoot() {
   return root;
 }
 
-function copySchemas(srcRoot, dstRoot) {
+function copySchemas(_, dstRoot) {
   const schemasSrc = join(PROJECT_ROOT, "schemas");
   const schemasDst = join(dstRoot, "schemas");
   mkdirSync(schemasDst, { recursive: true });
@@ -103,11 +124,8 @@ function copySchemas(srcRoot, dstRoot) {
 }
 
 // Read the persisted side of one tmpdir's state. Concatenate the per-file
-// JSONL rows into one array, strip non-deterministic fields, and return
-// the structural snapshot. Files touched by `meta_state_report`:
-// meta-state.jsonl (the new finding), change-log.jsonl (none for a fresh
-// report — the first write creates a finding, no change-log follows),
-// gate-log.jsonl (the gate-log row appended by the handler).
+// JSONL rows into one array, strip non-deterministic fields, and return the
+// structural snapshot across every file a write tool can touch.
 function readSnapshot(root) {
   const out = {};
   for (const file of ["meta-state.jsonl", "change-log.jsonl", "gate-log.jsonl", "runtime-state.jsonl"]) {
@@ -142,13 +160,16 @@ function existsSync(path) {
   }
 }
 
-const REPORT_ARGS = {
-  category: "loop-anti-pattern",
-  subtype: "cli-write-parity-fixture",
-  severity: "warning",
-  affected_system: "meta",
-  description: "Parity fixture finding for cli-write-parity tests.",
-};
+// Write the `.loop-preflight-runtime-state` marker directly as a test
+// fixture. `gate_mark_preflight` cannot create this marker (its surface
+// enum is product/skills/schemas only); runtime_state_record reads it via
+// `hasPreflightMarker`. Mirrors the fixture pattern in
+// legacy-mcp/meta-state-dispatch-finding-tool.test.js:42.
+function writeRuntimeStatePreflightMarker(root) {
+  const dir = join(root, ".claude", "coordination");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, ".loop-preflight-runtime-state"), "");
+}
 
 async function importHandler(toolName) {
   const manifest = JSON.parse(
@@ -165,94 +186,257 @@ async function importHandler(toolName) {
   throw new Error(`tool ${toolName} not found in manifest`);
 }
 
-async function runDirect(toolName, args, tmpRoot) {
-  const { legacy } = await importHandler(toolName);
-  const origRoot = process.env.GATE_ROOT;
-  const origLoopSurface = process.env.LOOP_SURFACE;
-  const origStorage = process.env.MASTRA_STORAGE_DRIVER;
+// Unwrap the {content:[{type:"text",text:<json>}]} envelope into the parsed
+// result object so seed-step ids can feed the next step's args.
+function unwrap(envelope) {
+  const text = envelope?.content?.[0]?.text;
+  if (typeof text !== "string") return envelope;
   try {
-    process.env.GATE_ROOT = tmpRoot;
-    process.env.LOOP_SURFACE = ".claude";
-    process.env.MASTRA_STORAGE_DRIVER = "memory";
-    const execute = withR2Gate({
-      id: toolName,
-      execute: adaptLegacyHandler(legacy),
-      pathFields: [],
-    });
-    return await execute({ ...args });
-  } finally {
-    if (origRoot === undefined) delete process.env.GATE_ROOT;
-    else process.env.GATE_ROOT = origRoot;
-    if (origLoopSurface === undefined) delete process.env.LOOP_SURFACE;
-    else process.env.LOOP_SURFACE = origLoopSurface;
-    if (origStorage === undefined) delete process.env.MASTRA_STORAGE_DRIVER;
-    else process.env.MASTRA_STORAGE_DRIVER = origStorage;
+    return JSON.parse(text);
+  } catch {
+    return envelope;
   }
 }
 
-function runCli(toolName, args, tmpRoot) {
-  const env = {
-    ...process.env,
-    LOOP_SURFACE: ".claude",
-    GATE_ROOT: tmpRoot,
-    MASTRA_STORAGE_DRIVER: "memory",
-  };
-  const proc = spawnSync("node", [LOOP_BIN, toolName, JSON.stringify(args)], {
-    env,
-    encoding: "utf8",
-    timeout: 30000,
-  });
-  return { status: proc.status, stdout: proc.stdout, stderr: proc.stderr };
+function resolveArgs(step, results) {
+  return typeof step.args === "function" ? step.args(results) : step.args;
 }
 
-describe("cli-write parity: meta_state_report", () => {
-  test("direct vs CLI produce byte-structural parity (meta-state.jsonl + change-log.jsonl + gate-log.jsonl)", async () => {
-    const directRoot = makeTempRoot();
-    const cliRoot = makeTempRoot();
-    copySchemas(PROJECT_ROOT, directRoot);
-    copySchemas(PROJECT_ROOT, cliRoot);
-
-    // Direct handler — unwraps content[0].text into a plain result.
-    await runDirect("meta_state_report", REPORT_ARGS, directRoot);
-    // CLI — stdout is JSON.parse-able.
-    const cliResult = runCli("meta_state_report", REPORT_ARGS, cliRoot);
-    assert.strictEqual(cliResult.status, 0, `cli must exit 0; stderr=${cliResult.stderr}`);
-
-    const directSnapshot = readSnapshot(directRoot);
-    const cliSnapshot = readSnapshot(cliRoot);
-
-    assert.deepStrictEqual(
-      cliSnapshot,
-      directSnapshot,
-      `CLI vs direct persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nDirect: ${JSON.stringify(directSnapshot)}`,
-    );
-  }, 60000);
-
-  test("CLI vs MCP produce byte-structural parity", async () => {
-    const cliRoot = makeTempRoot();
-    const mcpRoot = makeTempRoot();
-    copySchemas(PROJECT_ROOT, cliRoot);
-    copySchemas(PROJECT_ROOT, mcpRoot);
-
-    const cliResult = runCli("meta_state_report", REPORT_ARGS, cliRoot);
-    assert.strictEqual(cliResult.status, 0, `cli must exit 0; stderr=${cliResult.stderr}`);
-
-    const mcp = await connectMcpServer(SERVER_ENTRY, mcpRoot, {
-      LOOP_RECORDS_VIA_CLI: "0",
-    });
+async function runDirectSeq(steps, tmpRoot, live) {
+  const results = [];
+  for (const step of steps) {
+    const args = resolveArgs(step, results);
+    const { legacy } = await importHandler(step.tool);
+    const origRoot = process.env.GATE_ROOT;
+    const origLoopSurface = process.env.LOOP_SURFACE;
+    const origStorage = process.env.MASTRA_STORAGE_DRIVER;
+    const origSessionMode = process.env.LOOP_SESSION_MODE;
     try {
-      await mcp.callTool("mastra_meta_state_report", REPORT_ARGS);
+      process.env.GATE_ROOT = tmpRoot;
+      process.env.LOOP_SURFACE = ".claude";
+      process.env.MASTRA_STORAGE_DRIVER = "memory";
+      if (live) process.env.LOOP_SESSION_MODE = "live";
+      const execute = withR2Gate({
+        id: step.tool,
+        execute: adaptLegacyHandler(legacy),
+        pathFields: [],
+      });
+      // Parse args through the same zod schema the CLI (`parseSchemaArgs`)
+      // and MCP (`createLoopTool`) paths use, so zod defaults (e.g. resolve's
+      // `resolved_by: .default("operator")`) apply on the direct side too.
+      // Without this, the raw `execute({...args})` call skips schema
+      // normalization and diverges from the two real transports.
+      const parsed = normalizeInputSchema(legacy.schema).parse(args);
+      const envelope = await execute(parsed);
+      results.push(unwrap(envelope));
     } finally {
-      await mcp.cleanup();
+      if (origRoot === undefined) delete process.env.GATE_ROOT;
+      else process.env.GATE_ROOT = origRoot;
+      if (origLoopSurface === undefined) delete process.env.LOOP_SURFACE;
+      else process.env.LOOP_SURFACE = origLoopSurface;
+      if (origStorage === undefined) delete process.env.MASTRA_STORAGE_DRIVER;
+      else process.env.MASTRA_STORAGE_DRIVER = origStorage;
+      if (origSessionMode === undefined) delete process.env.LOOP_SESSION_MODE;
+      else process.env.LOOP_SESSION_MODE = origSessionMode;
     }
+  }
+  return results;
+}
 
-    const cliSnapshot = readSnapshot(cliRoot);
-    const mcpSnapshot = readSnapshot(mcpRoot);
-
-    assert.deepStrictEqual(
-      cliSnapshot,
-      mcpSnapshot,
-      `CLI vs MCP persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nMCP: ${JSON.stringify(mcpSnapshot)}`,
+function runCliSeq(steps, tmpRoot, live) {
+  const results = [];
+  for (const step of steps) {
+    const args = resolveArgs(step, results);
+    const env = {
+      ...process.env,
+      LOOP_SURFACE: ".claude",
+      GATE_ROOT: tmpRoot,
+      MASTRA_STORAGE_DRIVER: "memory",
+      ...(live ? { LOOP_SESSION_MODE: "live" } : {}),
+    };
+    const proc = spawnSync("node", [LOOP_BIN, step.tool, JSON.stringify(args)], {
+      env,
+      encoding: "utf8",
+      timeout: 30000,
+    });
+    assert.strictEqual(
+      proc.status,
+      0,
+      `cli ${step.tool} must exit 0; stderr=${proc.stderr}`,
     );
-  }, 60000);
+    results.push(unwrap(JSON.parse(proc.stdout)));
+  }
+  return results;
+}
+
+async function runMcpSeq(steps, tmpRoot, live) {
+  const mcp = await connectMcpServer(SERVER_ENTRY, tmpRoot, {
+    LOOP_RECORDS_VIA_CLI: "0",
+    ...(live ? { LOOP_SESSION_MODE: "live" } : {}),
+  });
+  const results = [];
+  try {
+    for (const step of steps) {
+      const args = resolveArgs(step, results);
+      const envelope = await mcp.callTool("mastra_" + step.tool, args);
+      results.push(unwrap(envelope));
+    }
+  } finally {
+    await mcp.cleanup();
+  }
+  return results;
+}
+
+// Shared arg builders. Descriptions are unique per case so the slug-derived
+// ids never collide within a sequence.
+const report = (description) => ({
+  category: "loop-anti-pattern",
+  subtype: "cli-write-parity-fixture",
+  severity: "warning",
+  affected_system: "meta",
+  description,
+});
+const logChange = (change_target) => ({
+  change_dimension: "mechanical",
+  change_target,
+  change_diff: { added: [], removed: [], changed: [] },
+  reason: "parity fixture reason",
+});
+
+// The parity matrix. Each case = a step sequence (seed writes that build
+// prerequisite state, then the target write). `setup(root)` does direct
+// test-fixture writes (e.g. the runtime-state preflight marker) that are
+// NOT part of the compared snapshot. `live` sets LOOP_SESSION_MODE=live on
+// all three sides for live-gated tools.
+const CASES = [
+  {
+    name: "meta_state_report",
+    steps: [{ tool: "meta_state_report", args: () => report("parity target report") }],
+  },
+  {
+    name: "meta_state_log_change",
+    steps: [{ tool: "meta_state_log_change", args: () => logChange("parity-target-change") }],
+  },
+  {
+    name: "runtime_state_record",
+    setup: writeRuntimeStatePreflightMarker,
+    steps: [
+      {
+        tool: "runtime_state_record",
+        args: () => ({
+          affected_system: "meta-state-tools",
+          kind: "ledger-event",
+          id: "parity-ledger-1",
+          value: 1,
+          source_ref: "local:meta-state:parity-seed",
+          timestamp: "2026-07-22T00:00:00.000Z",
+        }),
+      },
+    ],
+  },
+  {
+    name: "meta_state_resolve",
+    steps: [
+      { tool: "meta_state_report", args: () => report("resolve target finding") },
+      { tool: "meta_state_resolve", args: (r) => ({ id: r[0].id, resolution: "fixed in parity test" }) },
+    ],
+  },
+  {
+    name: "meta_state_patch",
+    steps: [
+      { tool: "meta_state_report", args: () => report("patch target finding") },
+      {
+        tool: "meta_state_patch",
+        args: (r) => ({ id: r[0].id, entry_kind: "finding", patch: { severity: "escalate" } }),
+      },
+    ],
+  },
+  {
+    name: "meta_state_archive",
+    steps: [
+      { tool: "meta_state_report", args: () => report("archive target finding") },
+      {
+        tool: "meta_state_archive",
+        args: (r) => ({ override: [r[0].id], reason: "parity archive" }),
+      },
+    ],
+  },
+  {
+    name: "meta_state_batch",
+    steps: [
+      { tool: "meta_state_report", args: () => report("batch target finding") },
+      {
+        tool: "meta_state_batch",
+        // update op: inline mutable fields are the patch (op schema is
+        // passthrough). `severity` is not in IMMUTABLE_PATCH_FIELDS.
+        args: (r) => ({ operations: [{ op: "update", id: r[0].id, severity: "escalate" }] }),
+      },
+    ],
+  },
+  {
+    name: "meta_state_supersede",
+    live: true,
+    steps: [
+      // consolidated_into must reference an existing change-log entry.
+      { tool: "meta_state_log_change", args: () => logChange("supersede canonical change") },
+      { tool: "meta_state_report", args: () => report("supersede target finding") },
+      {
+        tool: "meta_state_supersede",
+        args: (r) => ({
+          id: r[1].id,
+          consolidated_into: r[0].id,
+          resolution: "superseded in parity test",
+        }),
+      },
+    ],
+  },
+  {
+    name: "meta_state_dispatch_finding",
+    live: true,
+    steps: [
+      { tool: "meta_state_report", args: () => report("dispatch target finding") },
+      { tool: "meta_state_dispatch_finding", args: (r) => ({ id: r[0].id, stage: "prepare" }) },
+      {
+        tool: "meta_state_dispatch_finding",
+        args: (r) => ({
+          id: r[0].id,
+          stage: "commit",
+          issue_number: 42,
+          issue_url: "https://example.com/i/42",
+          repo: "dat9uy/loop",
+        }),
+      },
+    ],
+  },
+];
+
+describe("cli-write parity: every CLI_WRITE_TOOLS entry (direct vs CLI vs MCP)", () => {
+  for (const c of CASES) {
+    test(`${c.name}: direct / CLI / MCP produce byte-structural parity`, async () => {
+      const directRoot = makeTempRoot();
+      const cliRoot = makeTempRoot();
+      const mcpRoot = makeTempRoot();
+      for (const root of [directRoot, cliRoot, mcpRoot]) copySchemas(null, root);
+      if (c.setup) for (const root of [directRoot, cliRoot, mcpRoot]) c.setup(root);
+
+      await runDirectSeq(c.steps, directRoot, c.live);
+      runCliSeq(c.steps, cliRoot, c.live);
+      await runMcpSeq(c.steps, mcpRoot, c.live);
+
+      const directSnapshot = readSnapshot(directRoot);
+      const cliSnapshot = readSnapshot(cliRoot);
+      const mcpSnapshot = readSnapshot(mcpRoot);
+
+      assert.deepStrictEqual(
+        cliSnapshot,
+        directSnapshot,
+        `CLI vs direct persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nDirect: ${JSON.stringify(directSnapshot)}`,
+      );
+      assert.deepStrictEqual(
+        cliSnapshot,
+        mcpSnapshot,
+        `CLI vs MCP persisted-state mismatch\nCLI: ${JSON.stringify(cliSnapshot)}\nMCP: ${JSON.stringify(mcpSnapshot)}`,
+      );
+    }, 60000);
+  }
 });

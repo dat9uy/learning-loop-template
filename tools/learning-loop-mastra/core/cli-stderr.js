@@ -157,7 +157,11 @@ function serializeRecognizedRejection(err, codeFromMessage) {
 }
 
 function stripCodePrefix(message, code) {
-  if (typeof message !== "string") return String(err ?? "");
+  // `message` may arrive as a non-string only if an Error carried a non-string
+  // truthy `.message`; fall back to an empty reason rather than referencing an
+  // out-of-scope `err` (which would throw a ReferenceError and bypass the
+  // structured-stderr contract this module enforces).
+  if (typeof message !== "string") return String(message ?? "");
   // Strip a leading "<code>: " so the `reason` field carries the human
   // detail without the duplicate code prefix.
   const prefix = `${code}:`;
