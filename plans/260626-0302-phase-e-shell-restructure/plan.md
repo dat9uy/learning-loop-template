@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 6: Mastra shell restructure (move shell files to mastra/ subdir)"
 description: "Ships E.6 (NEW Rev 5): move shell files (server.js, create-loop-*.js, legacy-handler-adapter.js, schema-parity.js, schemas.js, workflows/, agents/, +2 manifests) from top-level of tools/learning-loop-mastra/ into a new mastra/ subdirectory. Updates ~31 external path references, the interface contract's mcp-client-config check, AGENTS.md §1.1, 4 test files' relative imports, and meta-state fingerprints. Makes Layer 2 (Mastra shell) physically first-class, matching the conceptual layering codified by Plan 1."
-status: pending
+status: completed
 priority: P2
 branch: "phase-e/plan-6-shell-restructure"
 tags: [phase-e, shell-restructure, mastra-shell, structure-promotion, e6]

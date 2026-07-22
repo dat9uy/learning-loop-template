@@ -1,3 +1,8 @@
+---
+title: "Macro Layer Implementation Plan"
+status: completed
+---
+
 # Macro Layer Implementation Plan
 
 Implements the Macro data layer (Layer 5) from `records/vnstock/evidence/unified-ui-snapshot/05-macro-layer.md` into the product.

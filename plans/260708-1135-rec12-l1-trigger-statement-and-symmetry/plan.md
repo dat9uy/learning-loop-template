@@ -1,7 +1,7 @@
 ---
 title: "Rec 12 L1 change-log trigger statement + Q11 symmetry (docs-only)"
 description: "Plan 3 of the 4-plan lifecycle + Rec 12 split (tracker: plans/reports/from-problem-solving-to-plan-split-260707-0812-rec12-lifecycle-pr-tracker-report.md). Ships component (a) of the broadened Rec 12: the L1 change-log trigger statement + Q11 operator/agent symmetry in docs/loop-engine.md (docs-only, no code/tests/schema). Promotes the existing skills-specific recursion-bound statement into the general change-log trigger (skills become the named instance), adds the symmetry statement (no operator exemption; authority vs trigger are orthogonal), and repoints the gap-detector honest-framing at Plan 4 (detection). The loop-engine.md edit is itself a bound-artifact edit and is recorded via meta_state_log_change. Enforcement (consult-gate/skill + detection mechanism) is NOT in this plan — lands in Plan 4 (rec12-closed-loop: (b) gap detection + (c) session-start gap injection)."
-status: pending
+status: completed
 priority: P2
 branch: "rec12-l1-trigger-statement-and-symmetry"
 tags: [rec12, change-log, trigger, symmetry, q11, loop-engine, l1-concept, docs-only]

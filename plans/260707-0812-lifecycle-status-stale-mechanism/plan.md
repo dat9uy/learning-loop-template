@@ -1,7 +1,7 @@
 ---
 title: "Lifecycle status + stale mechanism (enum collapse + derived view + re_verify/sweep rework + migration)"
 description: "Plan 1 of the 4-plan lifecycle + Rec 12 split (tracker: plans/reports/from-problem-solving-to-plan-split-260707-0812-rec12-lifecycle-pr-tracker-report.md). Ships the merged P1+P2 of the 0958 redesign: collapse the finding status enum to open/resolved/superseded (+archived runtime-applied), rework stale as a derived evidence-freshness view, drop the ack ceremony, rework re_verify (stamp last_verified_at, no transition) + sweep (read-only reporting view, no status writes), migrate 10 finding active + 12 finding stale entries (22 finding flips, scoped by entry_kind:finding — NOT 190; non-finding actives have their own enums) to open on main, re-baseline the cap test, and re-source Rec 10 session-start surfacing from the derived view. isOpen predicate tolerates legacy statuses so the migration is non-breaking hygiene. Authority dissolution (OPERATOR_MODE -> LOOP_SESSION_MODE) is Plan 2; Rec 12 L1 trigger + symmetry is Plan 3; Rec 12 closed loop (b)+(c) is Plan 4."
-status: pending
+status: completed
 priority: P2
 branch: "lifecycle-status-stale-mechanism"
 tags: [lifecycle, status-enum, stale-derived-view, ack-deprecation, re-verify, sweep, migration, cap-test, rec-10-surfacing]

@@ -1,7 +1,7 @@
 ---
 title: "Phase C Plan 3 — Post-Merge Follow-ups (4 findings)"
 description: "Address 4 non-blocking findings raised by code review of PR #4 (Plan 3 cut-over): (1) delete broken meta_state_refresh_tools — Mastra MCPServer SDK incompatibility, (2) patch F4 evidence_code_ref drift (line 38 → 13), (3) fix master tracker C7 group names, (4) strengthen mutex test timestamp assertion."
-status: pending
+status: completed
 priority: P3
 branch: "260617-2352-GH-1607-plan-3-post-merge-followups"
 tags: [phase-c, post-merge, hygiene, follow-up]

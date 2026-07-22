@@ -9,7 +9,7 @@ description: >-
   mode + lower default limit (cascade of PR #45's pointer-not-dump). Ships as a
   single PR bundling both workstreams; multi-PR-per-finding revert deferred until
   meta-260709T1017Z-…-parallel-prs is fixed (no cross-PR EOF conflict).
-status: in-progress
+status: completed
 priority: P2
 branch: main
 tags:

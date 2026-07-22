@@ -1,7 +1,7 @@
 ---
 title: "Strip Message Flags to Fix Quoted-String False Positives in Bash Gate"
 description: "Fix the bash gate's pattern matching so it does not match constraint keywords inside quoted message flags (e.g., git commit -m 'fix pnpm add issue'). Use --tdd: add tests first, then implement."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [gate, pattern-matching, false-positive, tdd]

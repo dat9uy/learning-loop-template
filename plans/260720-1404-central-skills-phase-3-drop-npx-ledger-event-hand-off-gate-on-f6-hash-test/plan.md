@@ -1,7 +1,7 @@
 ---
 title: "Central-skills Phase 3: drop npx ledger-event hand-off, gate on F6 hash test"
 description: "Plan-edit to plans/260719-1428-central-skills-management Phase 3 (Finding C of problem-solving-260719-2029). Drop the unwired Q4 runtime-state ledger-event hand-off; make the F6 hash test the sole npx-round-trip gate (real npx when available, hash-recompute-and-compare when not); decouple F11/F12 from the ledger row (plain presence + byte-identity tests). Open + resolve the C meta-state finding (loop-anti-pattern / escape-hatch-abuse). Operator manually strikes the two corrupt same-id rows in runtime-state.jsonl (gate blocks agent direct edit; no delete tool). No new code."
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 tags: [central-skills, phase-3, runtime-state, ledger-event, f6-hash-gate, plan-edit, meta-state]

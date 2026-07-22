@@ -1,7 +1,7 @@
 ---
 title: "Migration Execution — Machine-Extracted Index Prototype Seeds"
 description: "Execute two prototype seed migrations (runtime-403 and install-sandbox claims) into machine-extracted index entries. Validates extraction pipeline on real claims with N counting and supersession."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: ["machine-extracted-index", "migration", "records", "claims"]

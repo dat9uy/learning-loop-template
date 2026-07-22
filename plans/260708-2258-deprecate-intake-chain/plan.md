@@ -1,3 +1,8 @@
+---
+title: "Deprecate the intake chain (orient + plan) — confirm loop_describe as the bound-surface orient"
+status: completed
+---
+
 # Plan: Deprecate the intake chain (orient + plan) — confirm `loop_describe` as the bound-surface orient
 
 **Status:** PLAN_CUT (validation + cook pending)

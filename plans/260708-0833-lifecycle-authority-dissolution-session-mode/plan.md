@@ -1,7 +1,7 @@
 ---
 title: "Lifecycle authority dissolution (OPERATOR_MODE -> LOOP_SESSION_MODE)"
 description: "Plan 2 of the 4-plan lifecycle + Rec 12 split (tracker: plans/reports/from-problem-solving-to-plan-split-260707-0812-rec12-lifecycle-pr-tracker-report.md). Ships the merged P3 of the 0958 redesign: dissolve the OPERATOR_MODE env-var authority gate into a once-per-session declaration LOOP_SESSION_MODE=live|autonomous, default autonomous (fail-closed). 3 gated tools (promote_rule / supersede / dispatch_finding commit stage) refuse in autonomous and run in live; open tools (resolve / re_verify / archive / report / log_change / propose_design / patch) run in both. No grant machinery; tools' existing *_by/*_at fields remain the authorship record. Rec 12 L1 trigger + symmetry is Plan 3; Rec 12 closed loop (b)+(c) is Plan 4. NOTE: scope verified post-PR-#38 — sweep no longer has an OPERATOR_MODE gate (Plan 1 reworked it to read-only), so this plan touches 3 gate sites, not 4; and 8 test files, not 11."
-status: in_progress
+status: completed
 priority: P2
 branch: "lifecycle-authority-dissolution-session-mode"
 tags: [lifecycle, authority-dissolution, session-mode, operator-mode, fail-closed, gate]

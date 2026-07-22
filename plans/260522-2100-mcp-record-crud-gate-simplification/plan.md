@@ -1,3 +1,8 @@
+---
+title: "MCP Record CRUD + Gate Simplification"
+status: completed
+---
+
 # MCP Record CRUD + Gate Simplification
 
 ## Problem

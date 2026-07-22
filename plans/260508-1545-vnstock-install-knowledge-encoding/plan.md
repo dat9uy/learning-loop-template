@@ -1,7 +1,7 @@
 ---
 title: "vnstock Install Knowledge Encoding"
 description: "Capture the blocked vnstock install experiment outcome in the learning loop via claim, experiment, and draft knowledge-pack records. Preserve meta-observations for future loop improvement."
-status: blocked
+status: completed
 priority: P1
 branch: "main"
 tags: [vnstock, install, knowledge-pack, experiment]

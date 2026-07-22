@@ -1,3 +1,8 @@
+---
+title: "intake_agent slim (Rec 4 UQ1)"
+status: completed
+---
+
 # Plan: intake_agent slim (Rec 4 UQ1)
 
 **Status:** ready

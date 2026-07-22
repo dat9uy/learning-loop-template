@@ -1,7 +1,7 @@
 ---
 title: "Drift-Driven Registry Closeout"
 date: 2026-07-10
-status: not-started
+status: completed
 mode: deep
 trigger: "post #47 (84b2426); meta_state_query_drift returned 132 events; board not drift-checked since #38->#47"
 blockedBy: []

@@ -1,7 +1,7 @@
 ---
 title: "Migrate fallow audit gate from hand-rolled pnpm exec to fallow-rs/fallow@v2 Action"
 description: "Replace the 176 LoC of hand-rolled fallow audit + Python SARIF-split heredoc in `.github/workflows/test.yml:62-237` with the official composite Action pinned to commit SHA + CLI version 2.102.0. Preserve the topology invariants encoded in `core/placement.yaml`, `placement-manifest.test.js`, and `.fallowrc.json`. Extend the `rule-tool-integration-same-commit-dep` consult-checklist rule with a 4th item covering third-party Action pinning. Closes the audit-gate divergence class flagged in plan 260629-1538-fallow-ci-env-drift-diagnostic and the deferred swap called out in plan 260629-1605-pr-21-fallow-audit-real-fix."
-status: pending
+status: completed
 priority: P2
 branch: "main"
 tags: [ci, fallow, action-swap, audit-gate, consult-checklist]

@@ -1,7 +1,7 @@
 ---
 title: "Rec 12 closed loop: change-log gap detection + session-start gap surfacing"
 description: "Ship Rec 12 components (b)+(c): a derived change-log gap query (bound-artifact paths touched on the branch ∖ paths covered by meta_state_log_change entries) and its session-start surfacing via a new buildChangeLogGapHints builder wired into the existing SessionStart hook. Mirrors the buildStaleDispatchHints precedent (pure function over entries + caller-supplied set; read-only hook; additive session-context key). Does NOT ship the deferred SessionEnd/pre-commit hook or the consult-gate enforcement — those are downstream (the hook is the promotion of a recurring gap once (b)+(c) show a drift rate above threshold). Un-blocks UQ5 by landing the named un-block condition itself."
-status: pending
+status: completed
 priority: P2
 branch: "rec12-closed-loop"
 tags: [rec12, change-log, gap-detection, session-start, bound-artifacts, derived-view]

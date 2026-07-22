@@ -1,3 +1,8 @@
+---
+title: "wire-format coercion coverage: close remaining holes + guardrail"
+status: completed
+---
+
 # Plan — wire-format coercion coverage: close remaining holes + guardrail
 
 **Date:** 2026-07-09

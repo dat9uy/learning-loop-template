@@ -1,3 +1,8 @@
+---
+title: "inbound-gate emission collapse"
+status: completed
+---
+
 # Plan: inbound-gate emission collapse
 
 **Status:** ready

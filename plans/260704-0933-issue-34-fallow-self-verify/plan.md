@@ -7,7 +7,7 @@ description: >-
   local-verification caveat in the fallow:gate script output. Document the
   contract in a new AGENTS.md sub-section so the fix-loop ritual is
   reproducible.
-status: in-progress
+status: completed
 priority: P2
 branch: fix/issue-34-local-fallow-self-verify
 tags:
