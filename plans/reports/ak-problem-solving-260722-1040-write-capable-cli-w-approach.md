@@ -6,21 +6,45 @@
 
 ---
 
-## 1. Current status (2026-07-22)
+## 0. Resume state (updated 2026-07-22, post-R)
+
+**R shipped.** Plan `260722-1103` (MCP read opt-out + W-prep) is complete; commit `9544084`. The `.claude` runtime now reads the 7 loop tools via `bin/loop.mjs` and keeps MCP for writes. W-prep landed the self-footgun investigation + design decisions.
+
+**Where W stands:** still **evidence-blocked, not code-blocked**. R's completion does not greenlight W. The gate is read-path T2 evidence from `.claude` dogfood sessions (no chronic routing/arg friction) **plus** operator confirmation of the tool-set boundary and dogfood choice.
+
+**Next-session entry point — do these in order:**
+1. Read `plans/reports/w-design-decisions-260722-1119-write-cli-prep.md` (resolves §7 Q1–Q7 with recommendations; Q5 is now a firm answer, not a question).
+2. Read `plans/reports/implementation-260722-1119-mcp-read-optout.md` § "T2 read-path evidence protocol" (Collect / Record / Closure-gate-for-W) — this is the evidence bar W waits on.
+3. Check current read-path T2: has `.claude` accrued clean CLI-read sessions, or recurring ergonomics failures? If failures recur, file the `loop-anti-pattern` finding per the protocol before drafting W.
+4. Only then: confirm the W tool-set boundary + dogfood with the operator, then draft `plans/<ts>-write-capable-cli-w/plan.md` using §3–§4 below as the mechanical basis and the 1119 recommendations as the decided defaults.
+
+**What changed since this report was written:**
+- §1 status table: CLI is no longer dormant; read-path T2 is accruing (see updated rows).
+- §7 Q5 (self-footgun): **answered** — the promotion path does **not** block a self-matching regex; locked by `cli-self-footgun-guard.test.js`. W must add a promotion-path self-match guard **or** keep `meta_state_promote_rule` MCP-only.
+- §7 Q1–Q4, Q6, Q7: recommendations recorded in the 1119 report; operator confirms at W-plan time. Q7 dogfood = reuse `.claude` (R's dogfood).
+
+---
+
+## 1. Current status (2026-07-22, updated post-R)
 
 | Item | State | Evidence |
 |------|-------|----------|
 | Plan `260721-1933` (read-only slice, 3 phases) | **complete** | `plan.md` status:complete; commits `541d08a`→`c0d5760`→`193c981`→`6a52182`; 2356 tests pass, 1 skipped |
-| `bin/loop.mjs` (read-only, 7 tools) | shipped | 166 LOC; reuses `pinRuntimeIdAtBoot`+`normalizeInputSchema`+`adaptLegacyHandler`+`withR2Gate({pathFields:[]})` |
-| Runtime-agnostic audit | 6/6 pass | `check_runtime_agnostic` on `bin/loop.mjs` |
+| Plan `260722-1103` (R: MCP read opt-out + W-prep) | **complete** | `plan.md` status:complete; commit `9544084`; 2374 pass, 1 pending, 0 failed; 4/4 phases |
+| `bin/loop.mjs` (read-only, 7 tools) | shipped | reuses `pinRuntimeIdAtBoot`+`normalizeInputSchema`+`adaptLegacyHandler`+`withR2Gate({pathFields:[]})`; tool set now shared via `core/cli-tools.js` (`CLI_READ_TOOLS`) |
+| Shared CLI tool set | shipped (R) | `core/cli-tools.js` is the single source of truth for the CLI allowlist + opted-in MCP exclusion |
+| MCP subset registration | shipped (R) | `server.js` reads `LOOP_READS_VIA_CLI` at boot; opted → 26 tools (excludes the 7), default → 33 |
+| SessionStart transport banner | shipped (R) | `session-start-inject-discoverability.cjs` emits the CLI read-channel banner for `.claude` (normal + fatal paths); non-opted byte-identical |
+| Runtime-agnostic audit | 6/6 pass | `check_runtime_agnostic` on `bin/loop.mjs` and `core/cli-tools.js`; `server.js` + hook failures are pre-existing adapter-level (unchanged from HEAD) |
 | Bash-gate guard test | shipped | `__tests__/cli-bash-gate-guard.test.js` locks read-shape `ok`, write-redirect `block` |
-| Contract wiring | shipped | `docs/runtime-contract.md` new read-only-CLI bullet, L27 pluralized; L25 (write-capable CLI) left unchanged |
-| **Real `loop.mjs` usage** | **none — dormant** | no runtime points at `bin/loop.mjs`; no per-runtime transport config exists |
-| **T2 evidence (read path)** | **none** | no runtime has read via CLI yet |
-| **T2 evidence (write path)** | **none, and ungeneratable** | Phase 1 is read-only by construction; nothing shipped produces write-path evidence |
+| Self-footgun guard test | shipped (R Phase 4) | `__tests__/cli-self-footgun-guard.test.js` locks that a promoted regex **can** intercept `node …/bin/loop.mjs` today (the footgun is real, unguarded) |
+| Contract wiring | shipped | `docs/runtime-contract.md` read-only-CLI bullet + L27 ("configurable per runtime"); L25 (write-capable CLI) still unchanged — **W's** contract-side closure |
+| **Real `loop.mjs` usage** | **active on `.claude`** | `.mcp.json` carries `LOOP_READS_VIA_CLI=1`; `.claude` reads via CLI, writes via MCP. `.factory`/`.mastracode` untouched (full MCP surface) |
+| **T2 evidence (read path)** | **accruing** | `.claude` dogfood in progress; one clean session observed during R's review (no absent-tool calls, no parse friction). Bar: multiple clean sessions, no recurring ergonomics failure |
+| **T2 evidence (write path)** | **none, and ungeneratable until W ships** | R is read-only by construction; write-path evidence requires W to exist and be dogfooded (self-gated, §5) |
 | Finding `meta-260721T0809Z` | open, v1 | gate satisfied via T3; "write surface stays on MCP until T2 evidenced" |
 
-**Operator decision (this session, 2026-07-22):** R (per-runtime MCP read-opt-out) first. W (write-capable CLI) is the follow-on documented here.
+**Operator decisions to date:** R first (done). W is the follow-on documented here, gated on read-path T2 + operator confirmation of the §7/1119 tool-set boundary.
 
 ## 2. The reframe — why read-only is half a transport
 
@@ -49,7 +73,7 @@ So W's *mechanical* delta over the shipped read-only CLI is small:
 1. **Expand the CLI tool set.** `READ_ONLY_TOOLS` → `CLI_TOOLS` (add the CLI-portable mutation tools; see §4 scope). One set, or a read-set + write-set if the operator wants a runtime to opt into writes separately.
 2. **Exit-code semantics for write rejections.** Today: exit 1 = handler error, exit 2 = usage/identity-pin. A write denial (`cross_runtime_write_denied`) or record-writer validation failure is a handler-layer rejection → exit 1 with the structured error JSON on stderr. Decide whether to surface denial as exit 2 (caller-config: runtime not permitted) vs exit 1 (real rejection). Recommend **exit 1** — it is a genuine rejection, not a usage error, and exit 2 is reserved for caller-configuration preconditions (missing/invalid `LOOP_SURFACE`, bad JSON, ZodError).
 3. **Bash-gate guard test extension.** Add `node bin/loop.mjs meta_state_report '{…}'` passes as `ok` (proves the write shape matches no blocking rule); keep the write-redirect `block` test. Locks the same assumption the read guard locks.
-4. **Self-footgun guard.** `meta_state_promote_rule` can promote a bash-gate regex that blocks `node bin/loop.mjs` itself. A CLI runtime promoting such a rule would brick its own transport. Guard: either block `promote_rule` via CLI, or (preferred) the existing rule-promotion path already blocks self-referential gate rules — verify and lock with a test. Open question §7.
+4. **Self-footgun guard.** `meta_state_promote_rule` can promote a bash-gate regex that blocks `node bin/loop.mjs` itself. A CLI runtime promoting such a rule would brick its own transport. **R Phase 4 proved the existing promotion path does NOT block self-matching regex** (locked by `cli-self-footgun-guard.test.js`; see §7 Q5 for the mechanism). So W must add the guard explicitly — a promotion-path self-match check against canonical CLI invocation shapes — **or** exclude `meta_state_promote_rule` from the CLI tool set. This is no longer an open question; it is a decided W work item with the test that already locks the current (unguarded) behavior.
 5. **Contract activation.** `docs/runtime-contract.md:25` currently names a write-capable CLI as "would be the smallest Capability-3 transport." W flips it from "would be" to "is," and the opt-out bullet (added in `260721-1933` Phase 3) gains a sentence: a runtime may route writes via CLI too. L25 is the contract basis the finding cites as `evidence_code_ref`; activating it is the contract-side closure.
 
 ## 4. W scope — all CLI-portable mutation tools, not the onramp's 6
@@ -74,25 +98,27 @@ The onramp §5 Phase 2 named 6 write tools: `meta_state_report`, `meta_state_res
 ## 6. Sequencing
 
 ```
-R (read-opt-out, one non-syn runtime dogfood)
-   └─ accrues read-path T2 evidence
+R (read-opt-out, .claude dogfood)  ✅ shipped (commit 9544084)
+   └─ accrues read-path T2 evidence   ← IN PROGRESS (this is the current gate)
         └─ re-evaluate: is read-only opt-out enough? (operator call)
-              └─ NO → W (this plan)
-                    └─ Phase A: expand CLI to all portable mutation tools + write parity tests + exit-code/guard tests
-                    └─ Phase B: write-hint renderer variant + `--schema` flag
+              └─ NO → W (this plan)   ← next session lands here
+                    └─ Phase A: expand CLI to all portable mutation tools + write parity tests + exit-code/guard tests + self-footgun guard (Q5)
+                    └─ Phase B: write-hint renderer variant + `--schema` flag (Q6)
                     └─ Phase C: contract L25 activation + opt-out bullet sentence
-                    └─ dogfood W on the same runtime → write-path T2 evidence
+                    └─ dogfood W on .claude → write-path T2 evidence
                          └─ generalize: runtime drops MCP record surface (reads+writes via CLI); MCP kept for workflow/storage/allowlist only
 ```
 
 W does **not** unblock on R's completion — it unblocks on R's *evidence* (read-path T2), and then adds its own evidence requirement (write-path T2). The two evidence streams are independent; R's read evidence does not license W. This is why W is a separate plan with its own dogfood, not a phase appended to R.
 
-## 7. Open questions
+## 7. Open questions (status updated post-R)
 
-1. **W tool-set boundary:** carry *all* handler-module mutation tools (recommended) or only the onramp's 6? Carrying all closes the split-brain; carrying 6 leaves it.
-2. **`meta_state_dispatch_finding` commit stage:** include (accept `gh` subprocess dependency) or exclude (prepare-only via CLI, commit via MCP)?
-3. **`update_r2_allowlist`:** extract from `server.js:70-107` into a handler module so the CLI can carry it, or leave MCP-only (operator-only surface)?
-4. **Write-denial exit code:** exit 1 (rejection, recommended) vs exit 2 (caller-config)? Decides the agent's retry-vs-reconfigure branch.
-5. **Self-footgun:** does the existing rule-promotion path block a regex that would match `node bin/loop.mjs`? If not, W must add a guard or exclude `meta_state_promote_rule` from the CLI.
-6. **`--schema` flag:** pull-on-demand schema print (recommended) vs embedding arg sketches in hints (re-injects schema, partial undo of the win)?
-7. **Dogfood runtime:** same non-syn runtime as R (the profile class the `b96b96c3` incident exploited), or a different one to widen T2 coverage?
+Recommendations for all seven are recorded in `plans/reports/w-design-decisions-260722-1119-write-cli-prep.md`; the operator confirms at W-plan time. **Q5 is now answered by evidence, not a recommendation.**
+
+1. **W tool-set boundary:** carry *all* handler-module mutation tools (recommended) or only the onramp's 6? Carrying all closes the split-brain; carrying 6 leaves it. → **Recommendation: all portable handlers, after the self-footgun guard is added; if the guard is not added, keep `meta_state_promote_rule` MCP-only.**
+2. **`meta_state_dispatch_finding` commit stage:** include (accept `gh` subprocess dependency) or exclude (prepare-only via CLI, commit via MCP)? → **Recommendation: `prepare` via CLI, `commit` stays MCP** (avoid `gh`/network in the CLI).
+3. **`update_r2_allowlist`:** extract from `server.js:70-107` into a handler module so the CLI can carry it, or leave MCP-only (operator-only surface)? → **Recommendation: keep MCP-only** (operator-only, not a handler module; extract only if a concrete CLI need appears).
+4. **Write-denial exit code:** exit 1 (rejection, recommended) vs exit 2 (caller-config)? Decides the agent's retry-vs-reconfigure branch. → **Recommendation: exit 1** (handler-layer rejection); exit 2 stays for usage/caller-config errors.
+5. **Self-footgun:** does the existing rule-promotion path block a regex that would match `node bin/loop.mjs`? → **ANSWERED (no):** the promotion path does **not** reject a self-matching gate regex. Proven and locked by `cli-self-footgun-guard.test.js` (promotes `\bnode\s+tools/learning-loop-mastra/bin/loop\.mjs\b`, shows the CLI command is intercepted → `escalate`). Mechanism: `meta-state-promote-rule-tool.js:114-211` has no transport-self-match guard; `gate-logic.js:961-1015` applies the regex; `evaluate-bash-gate.js:100-105` returns the escalation. **W must either add a promotion-path self-match guard (preferred) or exclude `meta_state_promote_rule` from the CLI tool set.** Not reachable through R's read-only CLI (no mutation tools exposed there). This is the single hardest W decision.
+6. **`--schema` flag:** pull-on-demand schema print (recommended) vs embedding arg sketches in hints (re-injects schema, partial undo of the win)? → **Recommendation: defer the build to W, implement as pull-on-demand** (`loop.mjs <tool> --schema` prints the zod schema). R's read args did not justify it; W's richer write args do.
+7. **Dogfood runtime:** same non-syn runtime as R (the profile class the `b96b96c3` incident exploited), or a different one to widen T2 coverage? → **Recommendation: reuse `.claude`** (R's dogfood) to extend the same evidence stream; operator confirms.
