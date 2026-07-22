@@ -28,6 +28,19 @@ describe("cli bash-gate guard (Phase 3)", () => {
     assert.strictEqual(decision.decision, "ok", `expected ok; got ${JSON.stringify(decision)}`);
   });
 
+  test("write-shape CLI command (meta_state_report) passes the bash gate as decision: 'ok'", () => {
+    // Plan 260722-1343 Phase 1 step 6 — assumption-lock for the write-shape
+    // invocation. The CLI IS the write transport for `meta_state_report`
+    // (and every CLI_WRITE_TOOLS member); the bash gate is default-allow
+    // with promoted-rule escalation, so this MUST continue to pass as
+    // `ok` today and after every future promotion. Locks against a future
+    // blocking regex rule that would silently break the write channel.
+    const WRITE_CLI = `node ${CLI_BIN_PATH} meta_state_report '{}'`;
+    const tmpRoot = mkdtempSync(join(tmpdir(), "cli-bash-gate-guard-"));
+    const decision = evaluateBashGate({ command: WRITE_CLI, root: tmpRoot });
+    assert.strictEqual(decision.decision, "ok", `expected ok; got ${JSON.stringify(decision)}`);
+  });
+
   test("write-redirect variant IS blocked (proves the gate still guards writes)", () => {
     const tmpRoot = mkdtempSync(join(tmpdir(), "cli-bash-gate-guard-"));
     const decision = evaluateBashGate({ command: WRITE_REDIRECT_CLI, root: tmpRoot });

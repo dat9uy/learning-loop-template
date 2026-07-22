@@ -1,14 +1,20 @@
 #!/usr/bin/env node
-// Stateless read-only CLI transport for the learning loop.
+// Stateless CLI transport for the learning loop.
 //
 // Wraps tools/manifest.json + handler modules and reuses
 // `pinRuntimeIdAtBoot()` + `normalizeInputSchema()` + `adaptLegacyHandler()`
 // + `withR2Gate()` so the CLI executes the SAME code path as the MCP server
-// for the 7 read-only tools (pathFields: [] → R2 passthrough).
+// for every CLI-portable tool — the 7 read-only tools plus the mutation
+// handlers in CLI_WRITE_TOOLS (pathFields: [] → R2 passthrough). When a
+// runtime sets `LOOP_RECORDS_VIA_CLI=1` in its mcp.json env, the MCP server
+// drops the same set from its surface; the CLI becomes the full record
+// transport (reads + portable mutation tools). MCP remains wired for
+// workflow / storage / allowlist / audit + the auxiliary read-ish tools.
 //
 // Usage:
 //   node bin/loop.mjs list
 //   node bin/loop.mjs <tool> '<json-args>'
+//   node bin/loop.mjs <tool> --schema    # pull the normalized input schema
 //
 // Exit codes (repo convention per validate-registry-refs.js:240-274):
 //   0 — success (result JSON written to stdout)
@@ -35,7 +41,8 @@ import { adaptLegacyHandler } from "../mastra/handler-adapter.js";
 import { withR2Gate } from "../mastra/with-r2-gate.js";
 import { validateToolManifest } from "../core/r2/path-field-detector.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
-import { CLI_READ_TOOLS } from "../core/cli-tools.js";
+import { CLI_TOOLS } from "../core/cli-tools.js";
+import { classifyCliError, UsageError } from "../core/cli-stderr.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MANIFEST_PATH = join(__dirname, "..", "tools", "manifest.json");
@@ -65,7 +72,7 @@ async function runList() {
   const { tools } = await listAllTools();
   const lines = [];
   for (const tool of tools) {
-    if (!CLI_READ_TOOLS.has(tool.name)) continue;
+    if (!CLI_TOOLS.has(tool.name)) continue;
     const desc = (tool.description ?? "").split("\n")[0];
     lines.push(`${tool.name}  ${desc}`.trimEnd());
   }
@@ -89,8 +96,8 @@ function parseSchemaArgs(schema, raw) {
 }
 
 async function runTool(toolName, jsonArgs) {
-  if (!CLI_READ_TOOLS.has(toolName)) {
-    throw new UsageError(`unknown read-only tool: ${toolName}`);
+  if (!CLI_TOOLS.has(toolName)) {
+    throw new UsageError(`unknown tool: ${toolName}`);
   }
   const raw = parseJsonArg(jsonArgs);
   const manifest = loadManifest();
@@ -109,11 +116,29 @@ async function runTool(toolName, jsonArgs) {
   return await execute(args);
 }
 
-class UsageError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "UsageError";
+// Plan 260722-1343 Phase 3: --schema prints the normalized input schema
+// for a CLI-portable tool. Pre-pin (mirrors `list`'s exemption): the
+// schema is static and reads no runtime records, so LOOP_SURFACE is not
+// required. We use zod's `toJSONSchema` (draft-7) so the output matches
+// the model-visible JSON Schema the MCP wire-format exposes — same
+// serializer as `mastra/create-loop-tool.js` and `create-loop-workflow.js`.
+import { z } from "zod";
+async function runSchema(toolName) {
+  if (!CLI_TOOLS.has(toolName)) {
+    throw new UsageError(`unknown tool: ${toolName} (--schema is only available for CLI-portable tools)`);
   }
+  const manifest = loadManifest();
+  validateToolManifest(manifest);
+  const legacy = await resolveToolByBareName(manifest, toolName);
+  if (!legacy) {
+    throw new UsageError(`tool not found in manifest: ${toolName}`);
+  }
+  const schema = normalizeInputSchema(legacy.schema);
+  // zod's toJSONSchema returns a plain object — drop the `_def`/`shape`
+  // zod-only fields. The JSON Schema form is what the agent wants for
+  // arg composition.
+  const jsonSchema = z.toJSONSchema(schema, { target: "draft-7", io: "input" });
+  process.stdout.write(JSON.stringify(jsonSchema, null, 2) + "\n");
 }
 
 async function main() {
@@ -127,6 +152,23 @@ async function main() {
     return;
   }
 
+  // `--schema <tool>` (or `<tool> --schema`) prints the input schema
+  // and exits 0. Pin-exempt for the same reason as `list`: schema is
+  // static, reads no runtime records. Detection order:
+  //   - subcommand === "--schema" + jsonArgs === "<tool>" → runSchema(jsonArgs)
+  //   - jsonArgs === "--schema" + subcommand === "<tool>" → runSchema(subcommand)
+  if (subcommand === "--schema") {
+    if (!jsonArgs) {
+      throw new UsageError(`usage: loop.mjs --schema <tool>`);
+    }
+    await runSchema(jsonArgs);
+    return;
+  }
+  if (jsonArgs === "--schema") {
+    await runSchema(subcommand);
+    return;
+  }
+
   // Pin runtime identity before any tool execution — same LOOP_SURFACE
   // contract as mastra/server.js (no default). Throws synchronously on
   // missing/invalid surface, surfacing as exit 2 in the catch below (per
@@ -134,7 +176,7 @@ async function main() {
   pinRuntimeIdAtBoot();
 
   if (!subcommand) {
-    throw new UsageError(`usage: loop.mjs <list|tool> '<json-args>'`);
+    throw new UsageError(`usage: loop.mjs <list|tool|--schema> '<json-args>'`);
   }
 
   if (jsonArgs === undefined) {
@@ -146,10 +188,16 @@ async function main() {
 }
 
 main().catch((err) => {
-  if (err instanceof UsageError || isIdentityPinError(err)) {
+  // Plan 260722-1343 Phase 2: structured stderr for write-path rejections.
+  // The classifier splits the non-usage branch into two shapes so the
+  // agent's recovery policy can tell a real rejection from a programmer/
+  // transport bug. UsageError + identity-pin stay on the existing exit-2
+  // human-readable line.
+  const classification = classifyCliError(err);
+  if (classification === null) {
     process.stderr.write(`loop.mjs: ${err.message}\n`);
     process.exit(2);
   }
-  process.stderr.write(`loop.mjs: ${err.stack || err.message}\n`);
-  process.exit(1);
+  process.stderr.write(classification.json + "\n");
+  process.exit(classification.exitCode);
 });

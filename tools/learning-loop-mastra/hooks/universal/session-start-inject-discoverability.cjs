@@ -20,7 +20,35 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { CLI_READ_TOOLS } = require("../../core/cli-tools.js");
+const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
+
+// Plan 260722-1343 Phase 3: write-tool one-line arg sketches for the
+// SessionStart banner. Each entry lists the top-level required keys only
+// — the agent can compose the JSON string from this sketch, and the full
+// shape (enums, nested objects) is pulled on demand via
+// `loop.mjs <tool> --schema`. Keep this table aligned with the actual
+// schema's required top-level keys; the cli-hint-sketch-drift test will
+// fail if a sketch names a key the schema doesn't require (cheap guard
+// against drift). The fallback (no schema access) is the harness failing
+// closed — empty sketches.
+const WRITE_TOOL_SKETCHES = {
+  meta_state_report: "{category,severity,affected_system,description}",
+  meta_state_resolve: "{id,resolution}",
+  meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern}",
+  meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",
+  meta_state_patch: "{id,entry_kind,patch}",
+  meta_state_batch: "{operations:[{op,...}]}",
+  meta_state_archive: "{id,reason,archived_by}",
+  meta_state_supersede: "{id,consolidated_into,resolution}",
+  meta_state_propose_design: "{title,description,proposed_design_for,affected_system}",
+  meta_state_ship_loop_design: "{id,shipped_in_plan}",
+  meta_state_dispatch_finding: "{id,stage,issue_number?,issue_url?,repo?}",
+  meta_state_re_verify: "{id}",
+  meta_state_refresh_file_index: "{path,reason?}",
+  runtime_state_record: "{affected_system,kind,id,source_ref,timestamp}",
+  gate_mark_preflight: "{surface}",
+  gate_override: "{rule_id,ttl_seconds,operator_note}",
+};
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
 const EMPTY_CHANGE_LOG_GAP = { gap_candidates: [], gap_protocol_prompt: "" };
@@ -38,24 +66,44 @@ function readSurfaceMcpJson(projectRoot) {
   }
 }
 
-function buildTransportBanner({ readsViaCli = false } = {}) {
+function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {}) {
   if (!readsViaCli) return "";
   const toolNames = [...CLI_READ_TOOLS].join(", ");
-  return [
+  const lines = [
     "Loop read transport: this runtime reads the loop's 7 read tools via CLI, not MCP.",
     "  Read: node tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'",
     `  Tools: ${toolNames} (loop.mjs list prints them).`,
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",
-    "  Writes still use mastra_<write> MCP tools.",
-    "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
-  ].join("\n");
+  ];
+  if (recordsViaCli) {
+    lines.push(
+      "  Writes also ride the CLI: mastra_<write> MCP tools are NOT registered either.",
+      "  Exit 0 → result JSON on stdout. Exit 1 → structured JSON on stderr (recognized rejection: {error,code,reason}; InternalError: {error:'InternalError',internal:true}). Exit 2 → usage/caller-config (human-readable).",
+    );
+    lines.push("  Write-tool arg sketches (one-liner; full shape via `loop.mjs <tool> --schema`):");
+    for (const tool of CLI_WRITE_TOOLS) {
+      const sketch = WRITE_TOOL_SKETCHES[tool];
+      if (sketch) lines.push(`    loop.mjs ${tool} '${sketch}'`);
+    }
+    lines.push("  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.");
+  } else {
+    lines.push(
+      "  Writes still use mastra_<write> MCP tools.",
+      "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
+    );
+  }
+  return lines.join("\n");
 }
 
 function buildConfiguredTransportBanner(projectRoot) {
   const mcpEnv = readSurfaceMcpJson(projectRoot);
-  return buildTransportBanner({
-    readsViaCli: /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? "")),
-  });
+  // The combined flag (LOOP_RECORDS_VIA_CLI) drops reads + writes from MCP,
+  // so it implies reads-via-cli as well. A runtime that sets only
+  // LOOP_READS_VIA_CLI=1 keeps writes on MCP. Either flag is enough to
+  // surface the banner; the banner text adapts to which flag fired.
+  const recordsViaCli = /^(1|true)$/i.test(String(mcpEnv.LOOP_RECORDS_VIA_CLI ?? ""));
+  const readsViaCli = recordsViaCli || /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? ""));
+  return buildTransportBanner({ readsViaCli, recordsViaCli });
 }
 
 /**
