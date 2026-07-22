@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Resolve findings + change-log + docs"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [1, 2, 4]

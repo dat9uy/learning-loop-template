@@ -60,6 +60,20 @@ definition (DRY).
 | Unlock `product/**` writes (30-min TTL) | `gate_mark_preflight` |
 | Run the gate on a batch of commands | `gate_batch` |
 
+## Runtime-state tracking
+
+The runtime-state sidecar (`runtime-state.jsonl`) is deduped via `version`
+field (max_by(version) per id, with newest-timestamp/last-in-file tie-break).
+Operators can pause/resume tracking per surface (e.g. vendored `vnstock`).
+
+| Intent | Tool |
+|---|---|
+| Record a runtime-state row (preflight-gated) | `runtime_state_record` |
+| Read runtime-state rows (deduped to latest per id) | `runtime_state_read` |
+| Pause runtime-state tracking for a surface (preflight-gated) | `runtime_state_pause` |
+| Resume a previously paused surface (preflight-gated) | `runtime_state_resume` |
+| One-time destructive rewrite removing a surface's existing rows (preflight + confirm-gated) | `runtime_state_prune_surface` |
+
 ## Discovery
 
 | Intent | Tool |

@@ -30,6 +30,11 @@
       "type": "string",
       "pattern": "^sha256:[a-f0-9]{64}$"
     },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Dedup bookkeeping field — assigns max(existing_version_for_id)+1 on append (0 for first record). NOT in the v2 fingerprint. Absent (legacy unversioned rows) reads as 0; `runtime_state_read` collapses to one row per id via max_by(version) with newest-timestamp/last-in-file-order tie-break."
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time"

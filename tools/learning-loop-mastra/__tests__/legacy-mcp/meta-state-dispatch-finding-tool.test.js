@@ -399,7 +399,7 @@ describe("meta_state_dispatch_finding", () => {
       // Write the dispatch ledger row directly (simulating a prior commit
       // whose ledger_ref patch failed).
       const { appendLedgerEvent } = await import("../../core/runtime-state.js");
-      appendLedgerEvent(tempDir, {
+      await appendLedgerEvent(tempDir, {
         affected_system: "meta-state-tools",
         kind: "ledger-event",
         id: `dispatch-${id}`,

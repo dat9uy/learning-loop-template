@@ -1,11 +1,12 @@
 ---
 title: "Runtime-state versioned dedup + per-surface tracking toggle"
 description: "Resolve meta-260722T0006Z — runtime-state.jsonl has two coupled maintenance gaps: (GAP 1) no versioned dedup, so re-recording the same row id appends stale duplicates that reads return up to 20 copies of; (GAP 2) no per-surface tracking toggle, so vendored surfaces (vnstock) pollute the loop's ledger with non-actionable rows. TDD-structured; the two gaps ship as separate commits in one plan."
-status: pending
+status: completed
 priority: P1
 effort: "1.5-2d"
 tags: [runtime-state, dedup, versioning, tracking-toggle, mcp-tool, tdd, meta-state]
 created: 2026-07-22
+completed: 2026-07-22
 blockedBy: []
 ---
 
