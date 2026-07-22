@@ -39,6 +39,7 @@ import { z } from "zod";
 import {
   checkObservationStaleness,
 } from "../core/inbound-state.js";
+import { evaluateInboundGate } from "../core/evaluate-inbound-gate.js";
 
 // Minimal stub observations for the inbound-gate test — `stale` rows must
 // carry `affected_system` so the gate's filter has something to walk.
@@ -297,6 +298,71 @@ describe("inbound-gate isSurfacePaused skip — clears finding's PRIMARY symptom
       // Unpaused meta-state-tools observation: sidecar's row is older than operator marker → stale
       assert.strictEqual(result.stale, true);
       assert.strictEqual(result.observation_id, "obs-unpaused");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  // The two tests above exercise `checkObservationStaleness` — the staleness
+  // path the BASH gate (evaluate-bash-gate.js) consumes. The "27 stale active
+  // observations" message the operator sees is emitted by a DIFFERENT path: the
+  // UserPromptSubmit hook → evaluateInboundGate → loadStaleActiveObservations.
+  // That path previously had no pause-skip at all; the skip now lives in
+  // loadStaleActiveObservations. These tests drive the actual emitter so the
+  // "clears the PRIMARY symptom" claim is verified on the path that produces it.
+  test("UserPromptSubmit gate (evaluateInboundGate) skips paused surfaces — the actual stale-observation emitter", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "inbound-evaluator-skip-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      // 4 stale rows (timestamps in May 2026 → stale by the 30-min threshold):
+      // 2 vnstock (mapped) + 2 meta-state-tools (unmapped-active-entry).
+      seedSidecar(tempDir, [V1, V2, M1, M2]);
+      const prompt = "I just completed the runtime-state prune";
+
+      // No pause → both surfaces surface.
+      setPausedSurfaces(tempDir, []);
+      let res = evaluateInboundGate({ prompt, root: tempDir });
+      assert.strictEqual(res.decision, "warn", "unpaused: gate warns");
+      assert.ok(res.context_message.includes("vnstock (2)"), `unpaused: names vnstock — ${res.context_message}`);
+      assert.ok(res.context_message.includes("meta-state-tools (2)"), `unpaused: names meta-state-tools — ${res.context_message}`);
+
+      // Pause vnstock only → vnstock suppressed; meta-state-tools still surfaces.
+      setPausedSurfaces(tempDir, ["vnstock"]);
+      res = evaluateInboundGate({ prompt, root: tempDir });
+      assert.strictEqual(res.decision, "warn", "vnstock-paused: meta-state-tools still warns");
+      assert.ok(!res.context_message.includes("vnstock"), `vnstock-paused: vnstock suppressed — ${res.context_message}`);
+      assert.ok(res.context_message.includes("meta-state-tools (2)"), `vnstock-paused: meta-state-tools still named — ${res.context_message}`);
+
+      // Pause both → no visible stale → gate goes to ok (PRIMARY symptom cleared).
+      setPausedSurfaces(tempDir, ["vnstock", "meta-state-tools"]);
+      res = evaluateInboundGate({ prompt, root: tempDir });
+      assert.strictEqual(res.decision, "ok", "both-paused: no stale surfaced → ok");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("UserPromptSubmit gate degrades to not-paused on a malformed tracking sidecar (corrupt sidecar must not block the gate)", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "inbound-evaluator-corrupt-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      seedSidecar(tempDir, [V1]); // 1 stale vnstock row
+      // Corrupt tracking sidecar → isSurfacePaused would throw; the gate's
+      // read-path degrade (try/catch → not paused) keeps the gate effective
+      // instead of crashing or silently suppressing. Writers fail-closed
+      // separately on the same sidecar.
+      mkdirSync(join(tempDir, ".loop"), { recursive: true });
+      writeFileSync(join(tempDir, ".loop", "runtime-tracking.json"), "{not valid json", "utf8");
+
+      const res = evaluateInboundGate({ prompt: "I just completed the runtime-state prune", root: tempDir });
+      assert.strictEqual(res.decision, "warn", "corrupt sidecar degrades to not-paused, not ok");
+      assert.ok(res.context_message.includes("vnstock"), `corrupt sidecar still surfaces vnstock — ${res.context_message}`);
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
