@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { evaluateBashGate } from "../core/evaluate-bash-gate.js";
 import { metaStatePromoteRuleTool } from "../tools/handlers/meta-state-promote-rule-tool.js";
 import { metaStateReportTool } from "../tools/handlers/meta-state-report-tool.js";
-import { matchesCliTransport, canonicalCliInvocationShapes } from "../core/cli-self-match.js";
+import { matchesCliTransport, CLI_INVOCATION_SHAPES } from "../core/cli-self-match.js";
 
 const CLI_COMMAND = "node tools/learning-loop-mastra/bin/loop.mjs meta_state_list '{}'";
 
@@ -69,10 +69,9 @@ test.sequential("a promoted regex matching the CLI invocation shape is rejected 
 });
 
 test("canonical CLI invocation shapes cover relative + absolute + bare forms", () => {
-  const shapes = canonicalCliInvocationShapes();
-  assert.ok(Array.isArray(shapes) && shapes.length >= 3, "must export at least three canonical shapes (relative, absolute, bare)");
+  assert.ok(Array.isArray(CLI_INVOCATION_SHAPES) && CLI_INVOCATION_SHAPES.length >= 3, "must export at least three canonical shapes (relative, absolute, bare)");
   // Every shape must be a valid RegExp source string.
-  for (const s of shapes) {
+  for (const s of CLI_INVOCATION_SHAPES) {
     assert.strictEqual(typeof s, "string");
     assert.ok(s.length > 0);
     new RegExp(s); // throws if invalid

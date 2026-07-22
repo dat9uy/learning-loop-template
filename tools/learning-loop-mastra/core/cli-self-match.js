@@ -49,39 +49,32 @@ function absoluteBinLiteral() {
 }
 
 /**
- * Return the canonical CLI invocation shapes as regex source strings.
- * The list is shared between the guard and the test (single source of truth).
+ * Canonical CLI invocation shapes as regex source strings.
+ * Exported so the test can iterate the same list the guard enforces
+ * (single source of truth — guard and test share the array).
  *
- * @returns {string[]} array of regex source strings; each is `new RegExp()`-safe
+ * @type {string[]} regex source strings; each is `new RegExp()`-safe
  */
-export function canonicalCliInvocationShapes() {
-  const shapes = [
-    // Relative canonical: `node tools/learning-loop-mastra/bin/loop.mjs`
-    String.raw`\bnode\s+tools/learning-loop-mastra/bin/loop\.mjs\b`,
-    // Bare forms: `bin/loop.mjs` and `loop.mjs` (PATH / rel-path wrappers)
-    String.raw`\bnode\s+.*bin/loop\.mjs\b`,
-    String.raw`\bnode\s+.*loop\.mjs\b`,
-  ];
-  const abs = absoluteBinLiteral();
-  if (abs) shapes.push(escapeForRegex(abs));
-  return shapes;
-}
+export const CLI_INVOCATION_SHAPES = [
+  // Relative canonical: `node tools/learning-loop-mastra/bin/loop.mjs`
+  String.raw`\bnode\s+tools/learning-loop-mastra/bin/loop\.mjs\b`,
+  // Bare forms: `bin/loop.mjs` and `loop.mjs` (PATH / rel-path wrappers)
+  String.raw`\bnode\s+.*bin/loop\.mjs\b`,
+  String.raw`\bnode\s+.*loop\.mjs\b`,
+];
+const _absBin = absoluteBinLiteral();
+if (_absBin) CLI_INVOCATION_SHAPES.push(escapeForRegex(_absBin));
 
 // Compile the canonical shapes once at module load. Failures are silent
 // because every shape here is a hand-curated literal — if a future edit
 // introduces a syntax error, the assertion in the test will catch it.
-function compileShapes() {
-  const sources = canonicalCliInvocationShapes();
-  return sources.map((s) => {
-    try {
-      return { source: s, re: new RegExp(s) };
-    } catch {
-      return null;
-    }
-  }).filter(Boolean);
-}
-
-const SHAPE_REGEXES = compileShapes();
+const SHAPE_REGEXES = CLI_INVOCATION_SHAPES.map((s) => {
+  try {
+    return { source: s, re: new RegExp(s) };
+  } catch {
+    return null;
+  }
+}).filter(Boolean);
 
 // The actual literal command strings we'd never want a regex to match.
 // Used for the inverted test (does the user's pattern match the literal?).

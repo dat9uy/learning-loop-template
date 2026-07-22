@@ -95,11 +95,11 @@ function parseSchemaArgs(schema, raw) {
   }
 }
 
-async function runTool(toolName, jsonArgs) {
-  if (!CLI_TOOLS.has(toolName)) {
-    throw new UsageError(`unknown tool: ${toolName}`);
-  }
-  const raw = parseJsonArg(jsonArgs);
+async function resolveToolSchema(toolName) {
+  // Shared between runTool and runSchema — both paths load + validate the
+  // manifest, resolve the tool's legacy handler by bare name, and normalize
+  // its input schema. Extracted to eliminate the duplicate 7-line block
+  // that triggered fallow's code-duplication gate (PR #75).
   const manifest = loadManifest();
   validateToolManifest(manifest);
   const legacy = await resolveToolByBareName(manifest, toolName);
@@ -107,6 +107,15 @@ async function runTool(toolName, jsonArgs) {
     throw new UsageError(`tool not found in manifest: ${toolName}`);
   }
   const schema = normalizeInputSchema(legacy.schema);
+  return { legacy, schema };
+}
+
+async function runTool(toolName, jsonArgs) {
+  if (!CLI_TOOLS.has(toolName)) {
+    throw new UsageError(`unknown tool: ${toolName}`);
+  }
+  const raw = parseJsonArg(jsonArgs);
+  const { legacy, schema } = await resolveToolSchema(toolName);
   const args = parseSchemaArgs(schema, raw);
   const execute = withR2Gate({
     id: toolName,
@@ -127,13 +136,7 @@ async function runSchema(toolName) {
   if (!CLI_TOOLS.has(toolName)) {
     throw new UsageError(`unknown tool: ${toolName} (--schema is only available for CLI-portable tools)`);
   }
-  const manifest = loadManifest();
-  validateToolManifest(manifest);
-  const legacy = await resolveToolByBareName(manifest, toolName);
-  if (!legacy) {
-    throw new UsageError(`tool not found in manifest: ${toolName}`);
-  }
-  const schema = normalizeInputSchema(legacy.schema);
+  const { schema } = await resolveToolSchema(toolName);
   // zod's toJSONSchema returns a plain object — drop the `_def`/`shape`
   // zod-only fields. The JSON Schema form is what the agent wants for
   // arg composition.
@@ -141,49 +144,73 @@ async function runSchema(toolName) {
   process.stdout.write(JSON.stringify(jsonSchema, null, 2) + "\n");
 }
 
-async function main() {
-  const [, , subcommand, jsonArgs] = process.argv;
+// Sub-dispatchers — each owns one branch of the argv tree so the
+// per-function cyclomatic stays low (PR #75: main() CRAP was 56 at
+// cyclomatic 7 because subprocess coverage doesn't attribute back).
+// `parse*` throws on invalid args (UsageError → exit 2) or returns an
+// action descriptor the main switch consumes.
 
-  // `list` is a discovery/help command that reads no runtime records, so it
-  // is exempt from the runtime-pin contract — an operator can list the
-  // surface before configuring LOOP_SURFACE.
-  if (subcommand === "list") {
-    await runList();
-    return;
-  }
+// `list` is a discovery/help command that reads no runtime records, so it
+// is exempt from the runtime-pin contract — an operator can list the
+// surface before configuring LOOP_SURFACE.
+function parseListDispatch(subcommand) {
+  if (subcommand === "list") return { kind: "list" };
+  return null;
+}
 
-  // `--schema <tool>` (or `<tool> --schema`) prints the input schema
-  // and exits 0. Pin-exempt for the same reason as `list`: schema is
-  // static, reads no runtime records. Detection order:
-  //   - subcommand === "--schema" + jsonArgs === "<tool>" → runSchema(jsonArgs)
-  //   - jsonArgs === "--schema" + subcommand === "<tool>" → runSchema(subcommand)
+// `--schema <tool>` (or `<tool> --schema`) prints the input schema and
+// exits 0. Pin-exempt for the same reason as `list`: schema is static,
+// reads no runtime records.
+function parseSchemaDispatch(subcommand, jsonArgs) {
   if (subcommand === "--schema") {
     if (!jsonArgs) {
       throw new UsageError(`usage: loop.mjs --schema <tool>`);
     }
-    await runSchema(jsonArgs);
-    return;
+    return { kind: "schema", tool: jsonArgs };
   }
   if (jsonArgs === "--schema") {
-    await runSchema(subcommand);
-    return;
+    return { kind: "schema", tool: subcommand };
   }
+  return null;
+}
 
-  // Pin runtime identity before any tool execution — same LOOP_SURFACE
-  // contract as mastra/server.js (no default). Throws synchronously on
-  // missing/invalid surface, surfacing as exit 2 in the catch below (per
-  // repo convention validate-registry-refs.js:240-274).
-  pinRuntimeIdAtBoot();
-
+// `<tool> '<json-args>'` is the standard invocation path. We validate
+// argv shape here so `main()` stays a thin switch.
+function parseToolDispatch(subcommand, jsonArgs) {
   if (!subcommand) {
     throw new UsageError(`usage: loop.mjs <list|tool|--schema> '<json-args>'`);
   }
-
   if (jsonArgs === undefined) {
     throw new UsageError(`missing JSON args; usage: loop.mjs <tool> '<json>'`);
   }
+  return { kind: "tool", tool: subcommand, jsonArgs };
+}
 
-  const result = await runTool(subcommand, jsonArgs);
+async function main() {
+  const [, , subcommand, jsonArgs] = process.argv;
+  // Plain `if` chain (not switch + ??): fallow scores cyclomatic per
+  // branching construct, and a 3-arm switch with `??` chain pushes main
+  // to cyclomatic 6 → CRAP 42 at 0% subprocess coverage. Three early-return
+  // `if`s land at cyclomatic 4 → CRAP 20 (PR #75).
+  const listAction = parseListDispatch(subcommand);
+  if (listAction) {
+    await runList();
+    return;
+  }
+  const schemaAction = parseSchemaDispatch(subcommand, jsonArgs);
+  if (schemaAction) {
+    await runSchema(schemaAction.tool);
+    return;
+  }
+  // parseToolDispatch throws UsageError on missing args, so reaching here
+  // implies a well-formed tool invocation.
+  const toolAction = parseToolDispatch(subcommand, jsonArgs);
+  // Pin runtime identity before any tool execution — same LOOP_SURFACE
+  // contract as mastra/server.js (no default). Throws synchronously on
+  // missing/invalid surface, surfacing as exit 2 in the catch below
+  // (per repo convention validate-registry-refs.js:240-274).
+  pinRuntimeIdAtBoot();
+  const result = await runTool(toolAction.tool, toolAction.jsonArgs);
   process.stdout.write(JSON.stringify(result) + "\n");
 }
 

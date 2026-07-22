@@ -69,6 +69,31 @@ function readSurfaceMcpJson(projectRoot) {
   }
 }
 
+// Footer sections for the records-via-cli vs reads-only paths. Extracted
+// from buildTransportBanner so each helper stays below fallow's CRAP
+// threshold (PR #75: buildTransportBanner was CRAP 30 at cyclomatic 5
+// because subprocess hook coverage doesn't attribute back).
+function buildRecordsViaCliLines() {
+  const lines = [
+    "  Writes also ride the CLI: mastra_<write> MCP tools are NOT registered either.",
+    "  Exit 0 → result JSON on stdout. Exit 1 → structured JSON on stderr (recognized rejection: {error,code,reason}; InternalError: {error:'InternalError',internal:true}). Exit 2 → usage/caller-config (human-readable).",
+    "  Write-tool arg sketches (one-liner; full shape via `loop.mjs <tool> --schema`):",
+  ];
+  for (const tool of CLI_WRITE_TOOLS) {
+    const sketch = WRITE_TOOL_SKETCHES[tool];
+    if (sketch) lines.push(`    loop.mjs ${tool} '${sketch}'`);
+  }
+  lines.push("  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.");
+  return lines;
+}
+
+function buildReadsOnlyFooterLines() {
+  return [
+    "  Writes still use mastra_<write> MCP tools.",
+    "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
+  ];
+}
+
 function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {}) {
   if (!readsViaCli) return "";
   const toolNames = [...CLI_READ_TOOLS].join(", ");
@@ -79,21 +104,9 @@ function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",
   ];
   if (recordsViaCli) {
-    lines.push(
-      "  Writes also ride the CLI: mastra_<write> MCP tools are NOT registered either.",
-      "  Exit 0 → result JSON on stdout. Exit 1 → structured JSON on stderr (recognized rejection: {error,code,reason}; InternalError: {error:'InternalError',internal:true}). Exit 2 → usage/caller-config (human-readable).",
-    );
-    lines.push("  Write-tool arg sketches (one-liner; full shape via `loop.mjs <tool> --schema`):");
-    for (const tool of CLI_WRITE_TOOLS) {
-      const sketch = WRITE_TOOL_SKETCHES[tool];
-      if (sketch) lines.push(`    loop.mjs ${tool} '${sketch}'`);
-    }
-    lines.push("  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.");
+    lines.push(...buildRecordsViaCliLines());
   } else {
-    lines.push(
-      "  Writes still use mastra_<write> MCP tools.",
-      "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
-    );
+    lines.push(...buildReadsOnlyFooterLines());
   }
   return lines.join("\n");
 }
