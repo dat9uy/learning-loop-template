@@ -52,6 +52,12 @@
       ]
     },
     {
+      "file": "core/cli-self-match.js",
+      "exports": [
+        "CLI_INVOCATION_SHAPES"
+      ]
+    },
+    {
       "file": "tools/lib/gate-logging.js",
       "exports": [
         "appendGateLog",

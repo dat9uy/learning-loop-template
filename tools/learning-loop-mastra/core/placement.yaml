@@ -83,7 +83,13 @@ files:
     summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (Tier 2 Phase B; RT H1 + H4).
   - path: cli-tools.js
     role: primitive
-    summary: Shared CLI read-tool set used by the CLI allowlist and opted-in MCP exclusion.
+    summary: Shared CLI read+write tool set used by the CLI allowlist and opted-in MCP exclusion (LOOP_READS_VIA_CLI / LOOP_RECORDS_VIA_CLI).
+  - path: cli-self-match.js
+    role: primitive
+    summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape (Phase 1 of plans/260722-1343).
+  - path: cli-stderr.js
+    role: facade
+    summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract (Phase 2 of plans/260722-1343). Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
   - path: schema-normalize.js
     role: primitive
     summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.

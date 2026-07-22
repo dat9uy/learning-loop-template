@@ -257,7 +257,10 @@ describe("integration: promoted rule end-to-end", () => {
         rule_id: "rule-test-recovery",
         enforcement: "gate",
         pattern_type: "regex",
-        pattern: ".*",
+        // Plan 260722-1343 Phase 1: `.*` would self-match the CLI invocation
+        // shape and is rejected by the activation guard. Use a specific,
+        // non-self-matching pattern for the recovery-flow fixture.
+        pattern: "^forbidden-test-pattern$",
       });
 
       // Verify rule is active

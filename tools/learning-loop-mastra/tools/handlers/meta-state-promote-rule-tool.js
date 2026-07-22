@@ -9,6 +9,7 @@ import {
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
+import { matchesCliTransport } from "../../core/cli-self-match.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
@@ -189,7 +190,63 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
+    // Plan 260722-1343 Phase 1: self-footgun guard. A regex rule that
+    // matches canonical CLI invocation shapes would intercept the loop's
+    // own CLI transport and brick every `node bin/loop.mjs ...` call.
+    // Only `regex` rules can intercept the bash gate (glob matches
+    // `filePath` which is null for bash; agent-checklist /
+    // determinism-checklist are `continue`'d in applyPromotedRules), so
+    // the guard is regex-only by construction. `core/cli-self-match.js`
+    // owns the shape list (single source of truth shared with the test).
+    if (pattern_type === "regex" && matchesCliTransport(pattern)) {
+      const result = {
+        promoted: false,
+        reason: "pattern_matches_cli_transport",
+        id,
+        rule_id,
+        pattern,
+        message:
+          "Pattern matches a canonical CLI invocation shape; promoting this rule would intercept the loop's own CLI transport (`node bin/loop.mjs ...`) and brick every record operation that flows through the CLI. Pick a different pattern (e.g. narrow to a specific tool call), or use `enforcement: 'agent'` for advisory rules.",
+      };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_promote_rule",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
     const now = new Date().toISOString();
+
+    // Pre-existing ReDoS gap (caught en route by plan 260722-1343 Phase 1
+    // self-footgun guard review): the activation branch did not run
+    // `isSafeRegexPattern` — it was preview-only (line ~119). A pathological
+    // pattern compiled by a promoted rule would then be executed against
+    // every bash command by `applyPromotedRules`. Mirror the preview
+    // branch's check here so the activation cannot persist an unsafe
+    // regex. Same named reason; same gate-log shape.
+    if (pattern_type === "regex") {
+      const { isSafeRegexPattern } = await import("../../core/gate-logic.js");
+      if (!isSafeRegexPattern(pattern)) {
+        const result = {
+          promoted: false,
+          reason: "pattern_rejected_by_safety_check",
+          id,
+          rule_id,
+          pattern,
+        };
+        appendGateLog(root, {
+          timestamp: now,
+          tool: "meta_state_promote_rule",
+          ...result,
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+        };
+      }
+    }
 
     // Phase 1: write a new entry_kind: "rule" entry (not a mutated finding)
     const ruleEntry = {

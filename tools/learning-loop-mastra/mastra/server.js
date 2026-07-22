@@ -18,7 +18,7 @@ import { invalidateAllowlist, loadAllowlist } from "../core/r2/allowlist-cache.j
 import { validateR2AllowlistShape } from "../core/r2/allowlist-shape.js";
 import { findProjectRoot } from "../core/gate-logic.js";
 import { resolveToolImportUrl } from "../core/manifest-loader.js";
-import { CLI_READ_TOOLS } from "../core/cli-tools.js";
+import { CLI_READ_TOOLS, CLI_TOOLS } from "../core/cli-tools.js";
 
 // Pin runtime identity before any await; see core/identity-pin.js.
 // Synchronous, idempotent, freezes the runtime id for process lifetime (R2).
@@ -42,6 +42,12 @@ const WORKFLOW_MANIFEST = JSON.parse(
 
 const PREFIX = "mastra_";
 const READS_VIA_CLI = /^(1|true)$/i.test(process.env.LOOP_READS_VIA_CLI ?? "");
+// Plan 260722-1343 (Write-capable CLI W): combined flag drops every CLI_TOOLS
+// member (reads + writes) from the MCP surface. `LOOP_READS_VIA_CLI` is
+// preserved for reads-only backward compat (R runtime). When a runtime sets
+// `LOOP_RECORDS_VIA_CLI=1`, MCP keeps only workflow / storage / allowlist /
+// audit + auxiliary read-ish tools — the record surface moves to `bin/loop.mjs`.
+const RECORDS_VIA_CLI = /^(1|true)$/i.test(process.env.LOOP_RECORDS_VIA_CLI ?? "");
 const tools = {};
 
 for (const entry of MANIFEST) {
@@ -56,6 +62,13 @@ for (const entry of MANIFEST) {
     continue;
   }
   if (READS_VIA_CLI && CLI_READ_TOOLS.has(legacy.name)) {
+    continue;
+  }
+  // Plan 260722-1343 Phase 1: combined flag drops reads + writes together.
+  // CLI_TOOLS is the union (CLI_READ_TOOLS ∪ CLI_WRITE_TOOLS). The reads-only
+  // path above stays for R's backward-compat runtimes; this branch fires when
+  // a runtime opts the FULL record surface out of MCP.
+  if (RECORDS_VIA_CLI && CLI_TOOLS.has(legacy.name)) {
     continue;
   }
   const prefixed = PREFIX + legacy.name;
