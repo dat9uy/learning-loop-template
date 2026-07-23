@@ -1,13 +1,17 @@
 ---
 phase: 4
 title: "Record portable-six re-homing deferral finding"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: [2]
 ---
 
 # Phase 4: Record portable-six re-homing deferral finding
+
+## Post-review correction (2026-07-23)
+
+The finding recorded by this phase (`meta-260723T0813Z-six-portable-workflow-tools-are-cli-capable-in-principle-but`) remains accurate — U-Q2 IS an open prerequisite. The post-merge review confirmed U-Q2 is **not fully resolved** and surfaced the underlying defect: `workflow_generate_prompt`'s `BLUEPRINTS` paths were stale (pointed at the folded `learning-loop-mcp` subtree), so the tool returned `Blueprint file not found` for every call. That defect was fixed and recorded as a **separate finding** (`meta-260723T1126Z-workflow-generate-prompt-returned-error-true-message-bluepri`, category `loop-anti-pattern`, subtype `stale-blueprint-path-after-package-fold`), which also reclassifies `workflow_generate_prompt` to `MCP_RESIDUE` `deferred-rehoming` until cross-root blueprint resolution is handled. The portable-six finding's scope (6 `run_workflow_*` tools) is unchanged; `workflow_generate_prompt` is a manifest handler, not one of the six, so it gets its own finding rather than expanding this one. See plan.md § "Post-review correction" + change-log `meta-260723T1126Z-docs-runtime-contract-md-core-cli-tools-js-tests-cli-write-t`.
 
 ## Overview
 
@@ -51,10 +55,10 @@ The finding does **not** supersede or reopen any existing record — it is a new
 
 ## Success Criteria
 
-- [ ] One finding recorded with **valid schema** (`category: mcp-tool-missing`, `severity: warning`, `subtype: portable-six-rehoming-deferred`) — the CLI exits 0, not 2.
-- [ ] Description names the 6 candidates + deferral rationale + U-Q1 unwrap contract + U-Q2 wiring note + P-Q2 ordering-enforcement prerequisite + Sec-F9 opt-out-gap prerequisite + separate-plan precondition.
-- [ ] `evidence_code_ref` points at `create-loop-workflow.js`; `source_refs` cite the `change-log.jsonl` change-log id + audit report.
-- [ ] Finding verified via `meta_state_list`; id fed back to Phase 3's `deferred-rehoming` tag; no re-homing code committed.
+- [x] One finding recorded with **valid schema** (`category: mcp-tool-missing`, `severity: warning`, `subtype: portable-six-rehoming-deferred`) — the CLI exits 0, not 2.
+- [x] Description names the 6 candidates + deferral rationale + U-Q1 unwrap contract + U-Q2 wiring note + P-Q2 ordering-enforcement prerequisite + Sec-F9 opt-out-gap prerequisite + separate-plan precondition.
+- [x] `evidence_code_ref` points at `create-loop-workflow.js`; `source_refs` cite the `change-log.jsonl` change-log id + audit report.
+- [x] Finding verified via `meta_state_list`; id fed back to Phase 3's `deferred-rehoming` tag; no re-homing code committed.
 
 ## Risk Assessment
 

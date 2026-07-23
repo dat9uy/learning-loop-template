@@ -1,13 +1,22 @@
 ---
 phase: 3
 title: "L3 drift-test enforcement — coverage + reason tags + reclassify"
-status: pending
+status: completed
 priority: P1
 effort: "1.5d"
 dependencies: [2]
 ---
 
 # Phase 3: L3 drift-test enforcement — coverage + reason tags + reclassify
+
+## Post-review correction (2026-07-23)
+
+A post-merge `/ak:code-review` revised two of this phase's reclassifications. The steps below are marked `[x]` as executed; this note captures the delta so the phase spec stays honest. See plan.md § "Post-review correction" + change-log `meta-260723T1126Z-docs-runtime-contract-md-core-cli-tools-js-tests-cli-write-t`.
+
+- **`workflow_generate_prompt` was reverted from `CLI_READ_TOOLS` back to `MCP_RESIDUE` (`deferred-rehoming`).** Its `BLUEPRINTS` paths were stale (pointed at the folded `learning-loop-mcp` subtree), so the tool returned `Blueprint file not found` for every call. Paths were fixed (`tools/learning-loop-mastra/tools/handlers/references/`), but U-Q2 cross-root resolution is not fully resolved (blueprints resolve only under the loop repo root), so re-homing to CLI is deferred. Net: the "3 helpers reclassified" is now **2 write helpers** (`workflow_notify_artifact`, `workflow_trigger`) + 5 aux-read-ish; `workflow_generate_prompt` stays MCP. Step 1's "add `workflow_generate_prompt` to `CLI_READ_TOOLS`" is superseded — it is in `MCP_RESIDUE` instead.
+- **`update_r2_allowlist` was re-tagged `server-state` → `operator-policy`.** It is operator-only R2 allowlist mutation (the doc's `operator-policy` example) AND touches a process-singleton cache; `operator-policy` takes precedence (precedence note added to `docs/runtime-contract.md`). Steps 2/46 listing `update_r2_allowlist` = `server-state` are superseded by `operator-policy`.
+- **Residue counts:** drift-test `MCP_RESIDUE` is now 11 entries (was 10); under `LOOP_RECORDS_VIA_CLI=1` the mastra_* residue is 3 (`update_r2_allowlist`, `check_runtime_agnostic`, `workflow_generate_prompt`), not 2. `CLI_READ_TOOLS` is 12 (7 + 5 aux), not 13.
+- **`notify_artifact` in-handler error message** de-garbled (removed dead `${path ? "" : ""}` ternary). New tests pin the fixes: `notify-artifact-tool.test.js` (records/** guard) + `workflow-generate-prompt-tool.test.js` (blueprint resolution regression).
 
 ## Overview
 
@@ -53,13 +62,13 @@ The 2 storage workflows (`run_workflow_storage_round_trip`, `run_workflow_storag
 
 ## Success Criteria
 
-- [ ] Drift test enumerates both manifests; an unclassified `run_workflow_*` addition fails.
-- [ ] `MCP_RESIDUE` is a `new Map([...])`; every entry tagged `server-state` | `operator-policy` | `agent-facing` | `deferred-rehoming`; untagged fails.
-- [ ] 3 helpers + 5 aux-read-ish tools in `CLI_TOOLS`; 2 storage + `update_r2_allowlist` (`server-state`) + `check_runtime_agnostic` (`agent-facing`) + 6 portable-six (`deferred-rehoming`) remain in `MCP_RESIDUE`.
-- [ ] `cli-mcp-subset-registration.test.js` + `cli-write-tool-set.test.js` updated; both green.
-- [ ] `notify_artifact` `path` arg validated against `records/**` in-handler (Q1).
-- [ ] `core/cli-tools.js` header cites the L2 criterion; `pathFields: []` framed as R2 bypass (not statelessness).
-- [ ] `pnpm test` green; `check_runtime_agnostic` clean on touched paths; reclassified handlers verified CLI-dispatchable + file-based deps.
+- [x] Drift test enumerates both manifests; an unclassified `run_workflow_*` addition fails.
+- [x] `MCP_RESIDUE` is a `new Map([...])`; every entry tagged `server-state` | `operator-policy` | `agent-facing` | `deferred-rehoming`; untagged fails.
+- [x] 3 helpers + 5 aux-read-ish tools in `CLI_TOOLS`; 2 storage + `update_r2_allowlist` (`server-state`) + `check_runtime_agnostic` (`agent-facing`) + 6 portable-six (`deferred-rehoming`) remain in `MCP_RESIDUE`.
+- [x] `cli-mcp-subset-registration.test.js` + `cli-write-tool-set.test.js` updated; both green.
+- [x] `notify_artifact` `path` arg validated against `records/**` in-handler (Q1).
+- [x] `core/cli-tools.js` header cites the L2 criterion; `pathFields: []` framed as R2 bypass (not statelessness).
+- [x] `pnpm test` green; `check_runtime_agnostic` clean on touched paths; reclassified handlers verified CLI-dispatchable + file-based deps.
 
 ## Risk Assessment
 

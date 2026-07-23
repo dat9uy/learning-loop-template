@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Scope, contracts, precondition confirmation"
-status: pending
+status: completed
 priority: P2
 effort: "2h"
 dependencies: []
@@ -41,10 +41,10 @@ Phase 1 produces a short scout note (appended to this file's Implementation Step
 
 ## Success Criteria
 
-- [ ] W T2 gate evidenced as satisfied; L1 baseline confirmed on disk.
-- [ ] 11-tool enumeration recorded with exact `name:` / `wf.id` values.
-- [ ] `run_workflow_*` name derivation confirmed (`run_<wf.id>`); L2 insertion anchor chosen; drift-test blind spot confirmed.
-- [ ] `WORKFLOW_REGISTRY.recommended_tools` grep result recorded for Phase 5.
+- [x] W T2 gate evidenced as satisfied; L1 baseline confirmed on disk.
+- [x] 11-tool enumeration recorded with exact `name:` / `wf.id` values.
+- [x] `run_workflow_*` name derivation confirmed (`run_<wf.id>`); L2 insertion anchor chosen; drift-test blind spot confirmed.
+- [x] `WORKFLOW_REGISTRY.recommended_tools` grep result recorded for Phase 5.
 
 ## Risk Assessment
 

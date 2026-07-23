@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "L2 transport-capability section in runtime-contract.md"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]
@@ -49,10 +49,10 @@ Insertion anchor (content-based, not line numbers — red-team found "Three conc
 
 ## Success Criteria
 
-- [ ] `docs/runtime-contract.md` has "Transport capability (per function)" with the layer-ownership rule + capability≠wiring + the two overrides + 3-homes cross-ref.
-- [ ] No per-runtime prescription in the section (capability only).
-- [ ] Change-log entry logged with the correct runtime pin + `applies_to.surfaces: ["meta"]`.
-- [ ] `meta-260721T0809Z` L2-basis noted (not reopened).
+- [x] `docs/runtime-contract.md` has "Transport capability (per function)" with the layer-ownership rule + capability≠wiring + the two overrides + 3-homes cross-ref.
+- [x] No per-runtime prescription in the section (capability only).
+- [x] Change-log entry logged with the correct runtime pin + `applies_to.surfaces: ["meta"]`.
+- [x] `meta-260721T0809Z` L2-basis noted (not reopened).
 
 ## Risk Assessment
 

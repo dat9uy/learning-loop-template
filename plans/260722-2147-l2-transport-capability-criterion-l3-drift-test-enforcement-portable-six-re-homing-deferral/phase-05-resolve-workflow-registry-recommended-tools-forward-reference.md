@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Resolve WORKFLOW_REGISTRY recommended_tools forward-reference"
-status: pending
+status: completed
 priority: P3
 effort: "2h"
 dependencies: [1]
@@ -47,10 +47,10 @@ Resolve audit unresolved-question U-Q3: `core/workflow-registry.js` `WORKFLOW_RE
 
 ## Success Criteria
 
-- [ ] Evidence grep recorded (broad scope: `tools/`+`core/`+`plans/`+`docs/`+`skills/`+`references/`); each of the 3 names classified dead vs pending with a one-line justification (deleted-in-260612-1700 for the 2 confirmed).
-- [ ] Dead-ref path: `recommended_tools` emptied to `[]` (fields NOT removed); `?? []` guard added in both handlers; `core/workflow-registry.test.js` updated to expect `[]`; **stale skill-doc refs filed as a finding (NOT edited — Q3)**; change-log logged; tests green. OR pending path: finding filed + forward-looking comment + change-log.
-- [ ] `notify_artifact` / `trigger` return well-formed `{ matched, recommendations }` (empty allowed); no caller requires non-empty.
-- [ ] U-Q3 marked resolved (in this plan's final summary / journal).
+- [x] Evidence grep recorded (broad scope: `tools/`+`core/`+`plans/`+`docs/`+`skills/`+`references/`); each of the 3 names classified dead vs pending with a one-line justification (deleted-in-260612-1700 for the 2 confirmed).
+- [x] Dead-ref path: `recommended_tools` emptied to `[]` (fields NOT removed); `?? []` guard added in both handlers; `core/workflow-registry.test.js` updated to expect `[]`; **stale skill-doc refs filed as a finding (NOT edited — Q3)**; change-log logged; tests green. OR pending path: finding filed + forward-looking comment + change-log.
+- [x] `notify_artifact` / `trigger` return well-formed `{ matched, recommendations }` (empty allowed); no caller requires non-empty.
+- [x] U-Q3 marked resolved (in this plan's final summary / journal).
 
 ## Risk Assessment
 
