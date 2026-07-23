@@ -14,6 +14,12 @@
 
 import { findProjectRoot, findStaleObservations } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
+// Per-surface tracking toggle: a paused surface's stale observations are
+// skipped so the gate and the writers (runtime_state_record,
+// meta_state_dispatch_finding) agree on what gets surfaced. The skip lives in
+// this gate's loader (not the shared findStaleObservations) so that pure
+// helper stays I/O-free; mirrors the writer-side pause check.
+import { isSurfacePaused } from "./runtime-tracking.js";
 
 // Suppress window: a repeat warning for the same stale signature within this
 // window collapses to the one-line "already surfaced" pointer. Exported so
@@ -146,9 +152,24 @@ function isAlreadySurfaced(priorSignature, priorTs, currentSignature, now) {
   return refNow - tsMs < SUPPRESS_WINDOW_MS;
 }
 
+// Paused-surface skip for the READ gate. A malformed tracking sidecar
+// degrades to "not paused" (try/catch) so a corrupt sidecar does not block
+// the stale scan — the writers fail-closed separately on the same sidecar
+// (mirrors inbound-state.js:checkObservationStaleness's degrade-to-not-paused).
+function isSurfacePausedRead(root, affected_system) {
+  if (!affected_system) return false;
+  try {
+    return isSurfacePaused(root, affected_system);
+  } catch {
+    return false;
+  }
+}
+
 function loadStaleActiveObservations(resolvedRoot) {
   const all = readRuntimeObservations(resolvedRoot);
-  const active = all.filter((obs) => obs.status === "active");
+  const active = all
+    .filter((obs) => obs.status === "active")
+    .filter((obs) => !isSurfacePausedRead(resolvedRoot, obs.affected_system));
   if (active.length === 0) return null;
   const stale = findStaleObservations(active, Date.now());
   return stale.length === 0 ? null : stale;
