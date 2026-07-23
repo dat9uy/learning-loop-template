@@ -27,14 +27,15 @@ export const workflowTriggerTool = {
       };
     }
 
+    const recommendedTools = def.recommended_tools ?? [];
     const result = {
       triggered: true,
       workflow: name,
-      recommended_tools: def.recommended_tools,
-      reasoning: `Workflow "${name}" maps to: ${def.recommended_tools.join(", ")}`,
+      recommended_tools: recommendedTools,
+      reasoning: `Workflow "${name}" maps to: ${recommendedTools.join(", ") || "(none — recommendations vacated per plans/260722-2147 phase 5; see meta-state registry)"}`,
     };
 
-    console.error(`gate: trigger_workflow ${name} → returns ${def.recommended_tools.join(", ")}`);
+    console.error(`gate: trigger_workflow ${name} → returns ${recommendedTools.join(", ") || "(none)"}`);
 
     appendGateLog(root, {
       timestamp: new Date().toISOString(),

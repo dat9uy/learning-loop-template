@@ -1,7 +1,7 @@
 ---
 title: "Fix stale records/observations references after Phase A migration"
 description: "Phase A migrated observation YAMLs from records/observations/ to runtime-state.jsonl, but the gate layer, MCP tools, docs, and tests still reference the empty records/observations/ directory. This plan closes that migration gap so package-manager and vendor-api constraints are evaluated against runtime-state.jsonl, while protecting runtime-state.jsonl from direct writes and preserving the records/evidence unlock path."
-status: pending
+status: completed
 priority: P1
 branch: "260614-1259-phase-b-codegen-adoption"
 tags: [meta-surface, phase-a, gate-logic, runtime-state, records]

@@ -1,3 +1,8 @@
+---
+title: "meta_state_batch wire-format array-coercion fix"
+status: completed
+---
+
 # Plan — meta_state_batch wire-format array-coercion fix
 
 **Finding:** `meta-260709T1017Z-…-meta-state-batch-…` (schema-drift / meta-state-tools, warning)

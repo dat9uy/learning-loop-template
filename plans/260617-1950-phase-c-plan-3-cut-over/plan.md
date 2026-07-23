@@ -1,7 +1,7 @@
 ---
 title: "Phase C Plan 3 — Operational Flip (C6+C7 + F4 + manifest reconcile)"
 description: "C6 cut-over (promote learning-loop-mastra to canonical, single server post-cut-over) + C7 manifest update (5 groups, 40 tools) + D-11 manifest reconciliation (4 missing tools) + F4 resolution (gate-bypass closed structurally by removing the peer) + 11 red-team fixes (SessionStart hook key, settings.local.json, 3 docs, 4 wire-format test imports, 2 spawn-test files, package.json#gate:server, F4 fingerprint line 13, parity test replacement, meta_state_refresh_tools port). Single phase, single commit, 1-2h. Predecessor: Plan 1a + Plan 1b (both shipped 2026-06-17). Closes Phase C of the productization master tracker."
-status: pending
+status: completed
 priority: P2
 branch: "260617-1950-phase-c-plan-3-cut-over"
 tags: [meta-surface, phase-c, cut-over, parity-prerequisite, single-server, red-team-fixed]

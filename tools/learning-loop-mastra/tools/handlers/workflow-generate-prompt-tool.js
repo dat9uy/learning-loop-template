@@ -4,12 +4,21 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { resolveRoot } from "#lib/resolve-root.js";
 
+// Blueprint paths are relative to the project root (resolveRoot). The
+// `learning-loop-mcp` package was folded into `learning-loop-mastra` and the
+// `references/` dir relocated under `tools/handlers/`; the previous paths
+// pointed at a directory that no longer existed, so every call returned
+// "Blueprint file not found". Resolving correctly under the loop's own repo
+// only — a non-loop runtime root would not contain these files, which is why
+// this tool stays MCP (deferred-rehoming) until cross-root resolution is
+// handled by a dedicated re-homing plan.
+const BLUEPRINTS_DIR = "tools/learning-loop-mastra/tools/handlers/references";
 const BLUEPRINTS = {
-  evidence: "tools/learning-loop-mcp/references/prompt-blueprints.md",
-  "state-gated": "tools/learning-loop-mcp/references/prompt-blueprints-state-gated.md",
-  "product-build": "tools/learning-loop-mcp/references/prompt-blueprints-product-build.md",
-  experiment: "tools/learning-loop-mcp/references/prompt-blueprints.md",
-  "runtime-validation": "tools/learning-loop-mcp/references/prompt-blueprints.md",
+  evidence: `${BLUEPRINTS_DIR}/prompt-blueprints.md`,
+  "state-gated": `${BLUEPRINTS_DIR}/prompt-blueprints-state-gated.md`,
+  "product-build": `${BLUEPRINTS_DIR}/prompt-blueprints-product-build.md`,
+  experiment: `${BLUEPRINTS_DIR}/prompt-blueprints.md`,
+  "runtime-validation": `${BLUEPRINTS_DIR}/prompt-blueprints.md`,
 };
 
 const DEFAULT_SKELETON = {

@@ -1,10 +1,16 @@
-// cli-write-tool-set.test.js — Phase 1 of plans/260722-1343-write-capable-cli-w.
+// cli-write-tool-set.test.js — Phase 1 of plans/260722-1343-write-capable-cli-w,
+// extended by Phase 3 of plans/260722-2147.
 //
 // Membership test for the CLI write tool set. `CLI_WRITE_TOOLS` is the
 // single source of truth for which mutation handlers the CLI carries; the
 // MCP exclusion set (`CLI_TOOLS = CLI_READ_TOOLS ∪ CLI_WRITE_TOOLS`)
 // drops the same names when `LOOP_RECORDS_VIA_CLI=1`. A future manifest
 // addition is handled by the drift test (cli-write-tool-set-drift.test.js).
+//
+// Phase 3 added 2 workflow helper handlers to CLI_WRITE_TOOLS
+// (`workflow_notify_artifact`, `workflow_trigger`) — stateless handlers
+// that emit gate-log / trigger-log side effects. The 5 auxiliary read-ish
+// tools moved into CLI_READ_TOOLS (see cli-mcp-subset-registration.test.js).
 //
 // `meta_state_dispatch_finding` is in the set — both `prepare` and
 // `commit` stages ride the CLI. The handler does not call `gh`; the
@@ -40,6 +46,8 @@ const EXPECTED_WRITE_TOOLS = [
   "runtime_state_prune_surface",
   "gate_mark_preflight",
   "gate_override",
+  "workflow_notify_artifact",
+  "workflow_trigger",
 ];
 
 test("CLI_WRITE_TOOLS is a Set with the exact expected write surface", () => {
@@ -67,18 +75,41 @@ test("read and write sets are disjoint", () => {
   }
 });
 
-test("auxiliary read-ish tools stay out of CLI_TOOLS (MCP-only)", () => {
-  const MCP_ONLY_AUX = [
+test("auxiliary read-ish tools now ride CLI_READ_TOOLS (Phase 3 reclassification)", () => {
+  // Inverted from pre-Phase-3 contract. These stateless handlers in
+  // tools/manifest.json were reclassified out of MCP_RESIDUE into
+  // CLI_READ_TOOLS by plans/260722-2147 Phase 3 (closes the audit gap
+  // named in plans/reports/ak-problem-solving-260722-2125).
+  const AUX_NOW_CLI = [
     "gate_check",
     "gate_check_recurrence",
     "meta_state_sweep",
     "meta_state_query_drift",
     "meta_state_relationship_validate",
   ];
-  for (const t of MCP_ONLY_AUX) {
-    assert.ok(!CLI_TOOLS.has(t), `auxiliary tool ${t} must stay on MCP`);
-    assert.ok(!CLI_WRITE_TOOLS.has(t), `auxiliary tool ${t} must stay out of CLI_WRITE_TOOLS`);
+  for (const t of AUX_NOW_CLI) {
+    assert.ok(CLI_READ_TOOLS.has(t), `auxiliary tool ${t} must be in CLI_READ_TOOLS after Phase 3 reclassification`);
+    assert.ok(CLI_TOOLS.has(t), `auxiliary tool ${t} must be in CLI_TOOLS`);
+    assert.ok(!CLI_WRITE_TOOLS.has(t), `auxiliary tool ${t} must not be a write tool`);
   }
+});
+
+test("workflow write helpers ride CLI (Phase 3 reclassification)", () => {
+  // workflow_generate_prompt is intentionally NOT here: it stays MCP
+  // (deferred-rehoming) because its prompt blueprints resolve only under the
+  // loop repo root. See cli-write-tool-set-drift.test.js MCP_RESIDUE.
+  assert.ok(
+    !CLI_READ_TOOLS.has("workflow_generate_prompt"),
+    "workflow_generate_prompt must NOT ride CLI (deferred-rehoming; blueprints are loop-root-relative)",
+  );
+  assert.ok(
+    CLI_WRITE_TOOLS.has("workflow_notify_artifact"),
+    "workflow_notify_artifact emits gate-log side effects; rides CLI_WRITE_TOOLS",
+  );
+  assert.ok(
+    CLI_WRITE_TOOLS.has("workflow_trigger"),
+    "workflow_trigger emits trigger-log side effects; rides CLI_WRITE_TOOLS",
+  );
 });
 
 test("meta_state_dispatch_finding is in CLI_WRITE_TOOLS (both prepare + commit stages)", () => {

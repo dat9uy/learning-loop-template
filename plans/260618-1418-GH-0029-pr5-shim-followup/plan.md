@@ -3,7 +3,7 @@ title: PR#5 Schema-Parity Shim Followup
 description: >-
   Refute Q3 (override bypass) via live e2e probe; fix misleading comment, add
   regression test, fold empirical finding back into docs.
-status: pending
+status: completed
 priority: P2
 branch: 260618-0029-coerce-layer-zod-native-migration
 tags:

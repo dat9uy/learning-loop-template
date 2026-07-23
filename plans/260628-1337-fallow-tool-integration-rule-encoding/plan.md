@@ -1,7 +1,7 @@
 ---
 title: "Encode fallow tool-integration findings as rule-tool-integration-same-commit-dep"
 description: "Encode the 3 anti-pattern findings from the fallow dead-code sweep followup (commit 9ed520d) as a single consult-checklist rule with a PROCESS_HINTS row + hook mirror and a core/README.md section. Close the findings with status=resolved + resolution notes pointing at the new rule. Write a change-log entry with applies_to.rules (no consolidates field — no registry precedent). File a loop-design entry capturing the meta-pattern."
-status: pending
+status: completed
 priority: P2
 branch: "260627-1304-phase-e-mechanism-a-b-plan"
 tags: [phase-e, followup, fallow, rule-promotion, meta-state]

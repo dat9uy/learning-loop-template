@@ -1,7 +1,7 @@
 ---
 title: "meta_state_patch empty-object safe emission fix"
 description: "Break the empty-patch retry loop by making `{}` schema-invalid to the model pre-invocation (parity-seam minProperties), localizing validation errors (patch per entry_kind + batch update per existing entry's kind), and fixing the empty_patch/no_content hints. Root cause: the patch union of 4 .partial().strict() branches makes `{}` the unique safe emission; runtime rejection does not steer the model. Batch update op (inline .passthrough merge) gets the runtime floor only — no contract change."
-status: pending
+status: completed
 priority: P1
 effort: "2d"
 tags: [meta-state, mcp, schema, tdd]

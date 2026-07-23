@@ -1,7 +1,7 @@
 ---
 title: "Fundamental Capability Productization"
 description: "Build backend API and frontend UI from capability-03-fundamental.py runtime probe. Productizes income statement, balance sheet, cash flow, and financial ratios endpoints following the reference capability pattern."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [fundamental, vnstock, backend, frontend, capability]

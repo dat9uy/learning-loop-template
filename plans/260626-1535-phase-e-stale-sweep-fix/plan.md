@@ -1,7 +1,7 @@
 ---
 title: "Phase E Plan 7 Fix: corrective batch + sweep-success assertion + audit + docs"
 description: "Fix the broken state from Plan 7 (260626-0720): 12 entries (10 mc=true + 2 mc=null) still stale after the 1186c33 commit. Apply corrective batch with `status: active` + `acked_at` to persist past `checkStaleness`. Add sweep-success assertion to cold-tier test. Investigate audit-log gap (direct file write between amends). Correct the change-log entry, journal, and plan.md to match actual sequence and root cause."
-status: pending
+status: completed
 priority: P2
 branch: "phase-e/plan-3-housekeeping"
 tags: [phase-e, housekeeping, registry-lifecycle, stale-sweep-fix, sp2-grounding, batch, audit-gap, test-enhancement]

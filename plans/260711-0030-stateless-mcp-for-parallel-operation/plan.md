@@ -1,7 +1,7 @@
 ---
 title: "Stateless MCP adapter for parallel operation"
 description: "Make the MCP server a stateless adapter over the file-based core (L1), add cross-process file lock on writeEntry (kills H7 race + 5 transport findings), drop the in-process idempotency cache (was masking silent-persistence-fail), add post-write visibility re-read (kills T4 + T5 + latent C16), ship per-worktree .loop-version + session-id (closes the open Multi-Session Isolation gap and enables safe parallel PR operation), and add cross-process cache invalidation + schema-version-skew detection. Bridge 5 already shipped (status: completed in plan 260613-1853) — no work re-shipped."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [mcp, stateless, parallel-operation, cross-process-lock, schema-version-skew, multi-session-isolation, h7, t4, t5, bridge-5-already-shipped]

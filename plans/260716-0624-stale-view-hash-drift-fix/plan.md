@@ -1,7 +1,7 @@
 ---
 title: "Stale-view hash-drift fix — make hasDrifted match SP2 semantics"
 date: 2026-07-16
-status: not-started
+status: completed
 mode: deep
 trigger: "meta-260716T0603Z-hasdrifted-in-core-stale-view-js-is-path-keyed-only-it-retur (open, loop-anti-pattern, schema-ceremony); PR #62 cold-tier regression 0c8f670 scoped cap to age-only as a workaround"
 blockedBy: []

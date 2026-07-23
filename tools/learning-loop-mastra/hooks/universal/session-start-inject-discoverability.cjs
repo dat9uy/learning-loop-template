@@ -54,6 +54,9 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_prune_surface: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
+  // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.
+  workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
+  workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
 };
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
@@ -101,7 +104,7 @@ function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {
   if (!readsViaCli) return "";
   const toolNames = [...CLI_READ_TOOLS].join(", ");
   const lines = [
-    "Loop read transport: this runtime reads the loop's 7 read tools via CLI, not MCP.",
+    `Loop read transport: this runtime reads the loop's ${CLI_READ_TOOLS.size} read tools via CLI, not MCP.`,
     "  Read: node tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'",
     `  Tools: ${toolNames} (loop.mjs list prints them).`,
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",

@@ -1,7 +1,7 @@
 ---
 title: "Workflow Coordination Integration"
 description: "Replace procedural workflow runner with surface-aware registry. Refactor MCP tools to return recommendations instead of spawning child processes. Add pre-commit safety net."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: [coordination, mcp, workflow, registry, pre-commit]

@@ -62,6 +62,15 @@ The many-to-many mapping, stated abstractly:
 
 The point: **the concept role is primary; the mechanism is interchangeable.** A framework agent primitive is *one way* to realize an agentic-step, not its definition. A workflow step can realize *either* a deterministic-step (pure functions) or an agentic-step (calls a model). The role decides the boundary; the class does not.
 
+## Workflow: definition vs execution
+
+The deterministic-step / agentic-step split above already carries the distinction the implementation surface calls "workflow." Naming it explicitly keeps the two from being conflated.
+
+- **Workflow definition** — a declarative ordering of steps (each a deterministic- or agentic-step) *plus a per-step success contract*. It is data, not a process: stateless, citable, operator-authored, and change-log-gated like a skill — **not a registry record kind** (the 4-kind union below is load-bearing; "workflow-definition" is a bound-artifact class, not a fifth kind), and **not agent-writable** (an agent must not rewrite step ordering to bypass a gate). The embedded success criteria are execution semantics, so "definition is fully stateless data" is a useful framing, not a strict partition — the definition declares *what counts as a step succeeding*, the shell tracks live state against it.
+- **Workflow execution** — the imperative shell that runs the steps and tracks live state against the definition. Execution state has **three homes, chosen per workflow class**: the **agent** (short deterministic sequences — visible steps the agent adapts to), the **runtime-state file** (the default durable home — keeps the core process-stateless while giving multi-step workflows gate-enforced ordering without a state machine), and the **Mastra process** (the *exception*, reserved for genuine long suspend/resume that needs process-scoped step state). Mastra is not the default; a workflow lands there only when re-deriving "where were we" from the runtime-state file per one-shot spawn is too slow or fragile.
+
+The definition/execution split is the concept-role vocabulary; which transport an executed workflow rides is the implementation-surface consequence (agent- and runtime-state-homed workflows are transport-portable; Mastra-homed ones are MCP-only). Per-tool home is an evidence-driven audit, not a pre-built schema — classify each workflow tool against this baseline, let the result decide whether any *new* concept is needed.
+
 ## The 4-kind registry union (as concept)
 
 The record is a discriminated union of four kinds: **finding** (an observed gap or anti-pattern), **change-log** (an immutable record that a system change happened), **rule** (a promoted finding that enforces an invariant), and **loop-design** (a deferred design that has not shipped). The lifecycle, status models, and transition tools for these kinds live in `docs/meta-state-lifecycle.md`; this doc only names them as concept roles in the engine.

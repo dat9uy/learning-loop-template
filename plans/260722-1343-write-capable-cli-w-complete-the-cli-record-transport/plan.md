@@ -1,7 +1,7 @@
 ---
 title: "Write-capable CLI (W) — complete the CLI record transport"
 description: "Extend bin/loop.mjs from read-only to read+write so a runtime can drop the MCP record surface entirely (reads+writes via CLI), closing the split-transport left by R (260722-1103). Adds the promotion-path self-footgun guard, write-path exit-code/stderr contract, --schema pull flag, write-hint renderer, and contract L25 activation. Closes finding meta-260721T0809Z."
-status: pending
+status: completed
 priority: P1
 effort: "3-4d"
 tags: [cli-transport, meta-state, runtime-agnostic, transport-diversification]

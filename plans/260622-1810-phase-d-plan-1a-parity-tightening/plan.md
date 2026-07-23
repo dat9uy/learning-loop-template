@@ -1,7 +1,7 @@
 ---
 title: "Phase D Plan 1a — Parity Tightening + Closeout Fingerprint Drift"
 description: "Atomic follow-up to Phase D Plan 1: deep-equal parity tests, envelope-input tests, factory id-shape validation, explicit runId generation, LibSQL schema fingerprint test, plus 3 finding resolutions (pre-closeout fingerprint-drift refresh hook, Claude Code SessionStart hint injection, TaskUpdate idempotency wrapper). Single branch, 1 PR, ~3-5h. Ships before Plan 3 so agents inherit tighter parity."
-status: pending
+status: completed
 priority: P2
 branch: "260622-1810-phase-d-plan-1a-parity-tightening"
 tags: [meta-surface, phase-d, mastra, parity, atomic-fix, tdd, fingerprint-drift, session-start-hint, taskupdate-idempotency]

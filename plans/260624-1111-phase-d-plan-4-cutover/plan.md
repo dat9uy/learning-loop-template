@@ -1,7 +1,7 @@
 ---
 title: "Phase D Plan 4 — Mastra Cutover (D1-D7 closeout + manifest reconcile + legacy cleanup + JSON rename)"
 description: "Final cutover for Phase D. Ships Post-Plan-3 functional verification (gating), reconciles the 42→44 tool surface in agent-manifest.json (D-9), reconciles §3.10 of the Mastra research report, adds a one-line Phase-D-shipped note to AGENTS.md §1+§2, flips the master tracker (D-9, D-15, E2 partial), updates cold-session discoverability for the 42-tool mastra surface, completes the legacy cleanup (C-9: move tools/learning-loop-mcp/tools/ → tools/learning-loop-mastra/tools/legacy/, migrate 5 #mcp/* cross-package imports + 2 direct path imports, then delete the #mcp/* alias), and renames the MCP server key from learning-loop-mastra → learning-loop in .mcp.json + .factory/mcp.json + .claude/settings.local.json (R4). Plan 4 closes Phase D and unblocks Phase E (Mastra Code Mode 1)."
-status: pending
+status: completed
 priority: P1
 branch: "260624-1111-phase-d-plan-4-cutover"
 tags: [meta-surface, phase-d, mastra, cutover, d-9, d-15, c-9, r4, parity, tdd, atomic-gate, kimi-for-coding, mcp-agents]
