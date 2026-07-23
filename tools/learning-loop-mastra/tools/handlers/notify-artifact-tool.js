@@ -21,7 +21,7 @@ export const workflowNotifyArtifactTool = {
     const normalized = path.replace(/^\.\//, "");
     if (!normalized.startsWith("records/")) {
       throw new Error(
-        `notify_artifact path must be under records/** (got: ${path}); R2 ownership requires records/${path ? "" : ""}prefixed paths only.`
+        `notify_artifact path must be under records/** (got: ${path}); R2 ownership requires a records/-prefixed path.`
       );
     }
 

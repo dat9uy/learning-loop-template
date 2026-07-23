@@ -46,15 +46,18 @@ const WORKFLOW_MANIFEST_PATH = join(PKG_ROOT, "mastra", "workflows-manifest.json
 //                           portable-six finding recorded in plan-260722-2147
 //                           Phase 4)
 //
-// Phase 3 reclassifies 8 tools (3 workflow helpers + 5 aux-read-ish) into
-// CLI_TOOLS. The 10 residue entries below are exactly the irreducible
-// MCP surface under LOOP_RECORDS_VIA_CLI=1.
+// Phase 3 reclassifies 8 tools (2 workflow write helpers + 5 aux-read-ish
+// + workflow_notify_artifact/trigger) into CLI_TOOLS. The 11 residue entries
+// below are exactly the irreducible MCP surface under LOOP_RECORDS_VIA_CLI=1.
 const MCP_RESIDUE = new Map([
   // server-state: storage substrate uses initStorage() singleton DB handle.
   ["run_workflow_storage_round_trip", "server-state"],
   ["run_workflow_storage_read", "server-state"],
-  // server-state: operator-only R2 allowlist mutation (singleton cache).
-  ["update_r2_allowlist", "server-state"],
+  // operator-policy: operator-only R2 allowlist mutation — agents must not
+  // invoke it transitively. It also touches a process-singleton cache, but
+  // the operator-only effect is the user-facing reason it stays MCP; see
+  // the precedence note in docs/runtime-contract.md § "Transport capability".
+  ["update_r2_allowlist", "operator-policy"],
   // agent-facing: stateless but agent-invoked via intake/scout agents.
   // Reclassifying to CLI_TOOLS would break Mastra internal-agent tool
   // surface resolution (validation Q2: keep MCP).
@@ -71,6 +74,14 @@ const MCP_RESIDUE = new Map([
   ["run_workflow_intentional_skip", "deferred-rehoming"],
   ["run_workflow_report_phase_status", "deferred-rehoming"],
   ["run_workflow_runtime_probe", "deferred-rehoming"],
+  // deferred-rehoming: workflow_generate_prompt reads prompt blueprints under
+  // the loop package's references/ dir. The blueprint paths were fixed (they
+  // pointed at the folded learning-loop-mcp subtree), so the tool now works
+  // under the loop's own repo root. Re-homing to CLI is still deferred: a
+  // non-loop runtime root (LOOP_READS_VIA_CLI=1) would not contain the
+  // blueprints, so cross-root resolution (U-Q2) must be handled by the
+  // dedicated re-homing plan before this leaves MCP.
+  ["workflow_generate_prompt", "deferred-rehoming"],
 ]);
 
 const MCP_RESIDUE_REASONS = new Set([

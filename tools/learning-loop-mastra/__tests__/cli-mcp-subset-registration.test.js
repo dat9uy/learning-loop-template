@@ -13,9 +13,12 @@ const SERVER_ENTRY = join(PKG_ROOT, "mastra", "server.js");
 const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
 const PREFIX = "mastra_";
 
-// CLI_READ_TOOLS widened by plans/260722-2147 Phase 3: 7 original + 6
-// reclassified (workflow_generate_prompt + 5 aux-read-ish). Reason
-// taxonomy per docs/runtime-contract.md § "Transport capability".
+// CLI_READ_TOOLS = 7 original record reads + 5 stateless aux-read-ish
+// handlers (plan 260722-2147 Phase 3 reclassification). workflow_generate_prompt
+// is NOT here: it stays MCP (deferred-rehoming) because its prompt blueprints
+// live under the loop package and would not resolve under a non-loop runtime
+// root (U-Q2). Reason taxonomy per docs/runtime-contract.md § "Transport
+// capability".
 const EXPECTED_READ_TOOLS = [
   "loop_describe",
   "loop_get_instruction",
@@ -24,7 +27,6 @@ const EXPECTED_READ_TOOLS = [
   "meta_state_derive_status",
   "meta_state_check_grounding",
   "runtime_state_read",
-  "workflow_generate_prompt",
   "gate_check",
   "gate_check_recurrence",
   "meta_state_sweep",
@@ -37,7 +39,7 @@ test("CLI read allowlist is the exact expected read contract", () => {
   assert.deepStrictEqual(
     [...CLI_READ_TOOLS].sort(),
     [...EXPECTED_READ_TOOLS].sort(),
-    "CLI_READ_TOOLS must equal the enumerated read tool list (7 + workflow_generate_prompt + 5 aux-read-ish)",
+    "CLI_READ_TOOLS must equal the enumerated read tool list (7 record reads + 5 aux-read-ish)",
   );
 });
 
@@ -56,7 +58,7 @@ test("CLI list surfaces the full CLI_TOOLS set (reads + writes)", () => {
   assert.deepStrictEqual(listed.sort(), expected, "list output must equal CLI_TOOLS exactly");
 });
 
-test("LOOP_READS_VIA_CLI=1 excludes only the 13 read tools (R backward compat)", { timeout: 30000 }, async () => {
+test("LOOP_READS_VIA_CLI=1 excludes only the 12 read tools (R backward compat)", { timeout: 30000 }, async () => {
   const defaultRoot = prepareTempRoot();
   const optedRoot = prepareTempRoot();
   const defaultServer = await connectMcpServer(SERVER_ENTRY, defaultRoot, {
@@ -88,7 +90,13 @@ test("LOOP_READS_VIA_CLI=1 excludes only the 13 read tools (R backward compat)",
     }
     assert.ok(
       optedNames.includes("mastra_update_r2_allowlist"),
-      "server-state allowlist mutation must remain on MCP under reads-only opt-out",
+      "operator-policy allowlist mutation must remain on MCP under reads-only opt-out",
+    );
+    // workflow_generate_prompt stays MCP (deferred-rehoming) — its blueprints
+    // resolve only under the loop repo root, so it is not CLI-read-portable.
+    assert.ok(
+      optedNames.includes("mastra_workflow_generate_prompt"),
+      "workflow_generate_prompt must remain on MCP under reads-only opt-out (deferred-rehoming)",
     );
     assert.ok(optedNames.includes("mastra_meta_state_report"), "writes must remain on MCP under reads-only opt-out");
     assert.ok(optedNames.includes("mastra_runtime_state_record"), "runtime writes must remain on MCP under reads-only opt-out");
@@ -100,12 +108,13 @@ test("LOOP_READS_VIA_CLI=1 excludes only the 13 read tools (R backward compat)",
 });
 
 test("LOOP_RECORDS_VIA_CLI=1 excludes the full CLI_TOOLS set (reads + writes)", { timeout: 30000 }, async () => {
-  // Phase 3 widened CLI_TOOLS by 8 (3 workflow helpers + 5 aux-read-ish).
-  // Default mastra_* surface stays at 36; under LOOP_RECORDS_VIA_CLI=1 the
-  // residue shrinks from 10 to 2 — update_r2_allowlist (server-state) +
-  // check_runtime_agnostic (agent-facing). Workflow residue (8 tools)
-  // lives in a separate namespace (`run_*`) and is asserted by
-  // cli-write-tool-set-drift.test.js.
+  // Phase 3 widened CLI_TOOLS by 7 (2 workflow write helpers + 5 aux-read-ish).
+  // workflow_generate_prompt stays MCP (deferred-rehoming). Default mastra_*
+  // surface stays at 36; under LOOP_RECORDS_VIA_CLI=1 the residue is 3 —
+  // update_r2_allowlist (operator-policy) + check_runtime_agnostic
+  // (agent-facing) + workflow_generate_prompt (deferred-rehoming). Workflow
+  // residue (8 tools) lives in a separate namespace (`run_*`) and is asserted
+  // by cli-write-tool-set-drift.test.js.
   const defaultRoot = prepareTempRoot();
   const optedRoot = prepareTempRoot();
   const defaultServer = await connectMcpServer(SERVER_ENTRY, defaultRoot, {
@@ -135,13 +144,14 @@ test("LOOP_RECORDS_VIA_CLI=1 excludes the full CLI_TOOLS set (reads + writes)", 
     for (const name of optedNames) {
       assert.ok(defaultNames.includes(name), `opted surface introduced unexpected tool ${name}`);
     }
-    // Irreducible residue under LOOP_RECORDS_VIA_CLI=1 — both stayed MCP
-    // for declared reasons (server-state / agent-facing). The 8
-    // workflow residue (run_<wf.id>) is asserted in
+    // Irreducible residue under LOOP_RECORDS_VIA_CLI=1 — each stays MCP for
+    // a declared reason (operator-policy / agent-facing / deferred-rehoming).
+    // The 8 workflow residue (run_<wf.id>) is asserted in
     // cli-write-tool-set-drift.test.js (separate namespace, separate guard).
     const MCP_RESIDUE = [
       "mastra_update_r2_allowlist",
       "mastra_check_runtime_agnostic",
+      "mastra_workflow_generate_prompt",
     ];
     for (const name of MCP_RESIDUE) {
       assert.ok(

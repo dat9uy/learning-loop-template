@@ -94,10 +94,13 @@ test("auxiliary read-ish tools now ride CLI_READ_TOOLS (Phase 3 reclassification
   }
 });
 
-test("workflow helpers ride CLI (Phase 3 reclassification)", () => {
+test("workflow write helpers ride CLI (Phase 3 reclassification)", () => {
+  // workflow_generate_prompt is intentionally NOT here: it stays MCP
+  // (deferred-rehoming) because its prompt blueprints resolve only under the
+  // loop repo root. See cli-write-tool-set-drift.test.js MCP_RESIDUE.
   assert.ok(
-    CLI_READ_TOOLS.has("workflow_generate_prompt"),
-    "workflow_generate_prompt is a stateless read; rides CLI_READ_TOOLS",
+    !CLI_READ_TOOLS.has("workflow_generate_prompt"),
+    "workflow_generate_prompt must NOT ride CLI (deferred-rehoming; blueprints are loop-root-relative)",
   );
   assert.ok(
     CLI_WRITE_TOOLS.has("workflow_notify_artifact"),

@@ -104,7 +104,7 @@ function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {
   if (!readsViaCli) return "";
   const toolNames = [...CLI_READ_TOOLS].join(", ");
   const lines = [
-    "Loop read transport: this runtime reads the loop's 7 read tools via CLI, not MCP.",
+    `Loop read transport: this runtime reads the loop's ${CLI_READ_TOOLS.size} read tools via CLI, not MCP.`,
     "  Read: node tools/learning-loop-mastra/bin/loop.mjs <tool> '<json-args>'",
     `  Tools: ${toolNames} (loop.mjs list prints them).`,
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",

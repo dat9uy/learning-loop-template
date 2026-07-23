@@ -44,8 +44,6 @@ export const CLI_READ_TOOLS = new Set([
   "meta_state_derive_status",
   "meta_state_check_grounding",
   "runtime_state_read",
-  // Generative read: stateless blueprint lookup (workflow_generate_prompt).
-  "workflow_generate_prompt",
   // Auxiliary read-ish tools — closed the plan-260722-2125 audit gap:
   // stateless handlers in tools/manifest.json that pre-Phase-3 were left on
   // MCP as residue. They ride the CLI under LOOP_READS_VIA_CLI=1 and
