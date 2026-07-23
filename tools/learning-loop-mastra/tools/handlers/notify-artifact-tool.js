@@ -13,9 +13,21 @@ export const workflowNotifyArtifactTool = {
   },
   handler: async ({ path, change_type }) => {
     const root = resolveRoot();
+    // Q1 (plan-260722-2147 Phase 3): the manifest declares `pathFields: []`
+    // because the CLI path hardcodes `pathFields:[]` at bin/loop.mjs:123,
+    // so the R2 gate would short-circuit. In-handler validation restores
+    // the records/** ownership check the gate cannot perform: any caller
+    // (MCP, CLI, or future transport) gets the same path guard.
+    const normalized = path.replace(/^\.\//, "");
+    if (!normalized.startsWith("records/")) {
+      throw new Error(
+        `notify_artifact path must be under records/** (got: ${path}); R2 ownership requires records/${path ? "" : ""}prefixed paths only.`
+      );
+    }
+
     const marker = readLastOperatorMessage(root);
 
-    const { matched, recommendations } = evaluateTriggers(path, change_type);
+    const { matched, recommendations } = evaluateTriggers(normalized, change_type);
 
     const logEntry = {
       timestamp: new Date().toISOString(),

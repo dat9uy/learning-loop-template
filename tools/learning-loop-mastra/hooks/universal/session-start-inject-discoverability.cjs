@@ -54,6 +54,9 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_prune_surface: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
+  // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.
+  workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
+  workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
 };
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };
