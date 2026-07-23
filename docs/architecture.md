@@ -409,34 +409,17 @@ fingerprint. Re-records already differ by `timestamp`, so fingerprints
 already differ. No row migration: existing unversioned rows default to
 `0` at read time.
 
-### Per-surface tracking toggle + prune
+### Budget tracking lifecycle + prune
 
-Operators can pause per-surface tracking for non-actionable surfaces
-(e.g. vendored `vnstock` whose ledger events crowd out the loop's own
-records). Pause writes an entry to `.loop/runtime-tracking.json` via
-`runtime_state_pause`; resume removes it via `runtime_state_resume`.
-Both writers (`runtime_state_record`, `meta_state_dispatch_finding` —
-the latter at the top of the handler so `prepare` and `commit` both
-refuse) consult `isSurfacePaused` before producing any row. The inbound
-gate's stale-observation scan short-circuits paused surfaces so the gate
-and the writers agree on what gets surfaced.
+`runtime-state.jsonl` holds two conceptually distinct row kinds (named in `docs/loop-engine.md` § Budget tracking vs ledger log): **budget tracking** (mutable external-resource state with a tracking lifecycle) and **ledger logs** (immutable audit). The mechanism in this section governs the *budget-tracking* lifecycle. Ledger logs have no tracking lifecycle — they are history, out of the budget gate's stale-scan scope by definition (concept boundary, not an exemption the gate grants).
 
-The sidecar itself is operator-controlled: direct writes to
-`.loop/runtime-tracking.json` are blocked at three layers
-(`core/r2/ownership.js` `BOOTSTRAP_DENY_PATTERNS`,
-`core/evaluate-bash-gate.js` `PATH_WRITE_PATTERNS` echo/tee redirect,
-`core/bound-artifacts.js` `BOUND_ARTIFACTS` for the Write-tool path).
-The per-surface preflight marker
-(`SURFACES/coordination/.loop-preflight-runtime-tracking`) authorizes
-pause/resume — same per-surface convention as `runtime_state_record`'s
-`.loop-preflight-runtime-state`.
+The tracking lifecycle is `initial → active → paused → stopped`. `pause` is the operator's statement that a budget rule no longer matters *for now* — the natural lifecycle step of external-budget management, not a suppression of noise. A paused surface's budget rows are not appended by either writer and are not surfaced by the inbound gate's stale-observation scan, so the gate and the writers agree on what gets surfaced. The scan ceasing is a consequence of *not tracking* the budget, not a filter applied to its rows.
 
-`runtime_state_prune_surface({surface, confirm: true})` is the
-destructive one-time op that rewrites the sidecar minus a paused
-surface's existing rows; runs under the same `withRegistryLock` so it
-cannot interleave with a concurrent append. History is NOT preserved
-for pruned rows (the operator is deleting noise); idempotent on no
-match.
+Today the lifecycle state lives in an operator-controlled sidecar, `.loop/runtime-tracking.json` (`{schema: "runtime-tracking/v1", version: 1, paused_surfaces: []}`). `runtime_state_pause` adds a surface to `paused_surfaces`; `runtime_state_resume` removes it. Both writers (`runtime_state_record`, `meta_state_dispatch_finding` — the latter at the top of the handler so `prepare` and `commit` both refuse) consult `isSurfacePaused` before producing any row. The inbound gate's stale-observation scan short-circuits paused surfaces on both the bash-gate path (`core/inbound-state.js`) and the UserPromptSubmit emitter path (`core/evaluate-inbound-gate.js` `loadStaleActiveObservations`).
+
+The sidecar itself is operator-controlled: direct writes to `.loop/runtime-tracking.json` are blocked at three layers (`core/r2/ownership.js` `BOOTSTRAP_DENY_PATTERNS`, `core/evaluate-bash-gate.js` `PATH_WRITE_PATTERNS` echo/tee redirect, `core/bound-artifacts.js` `BOUND_ARTIFACTS` for the Write-tool path). The per-surface preflight marker (`SURFACES/coordination/.loop-preflight-runtime-tracking`) authorizes pause/resume — same per-surface convention as `runtime_state_record`'s `.loop-preflight-runtime-state`.
+
+`runtime_state_prune_surface({surface, confirm: true})` is the **destructive** one-time op that rewrites the sidecar minus a paused surface's existing rows; runs under the same `withRegistryLock` so it cannot interleave with a concurrent append. History is NOT preserved for pruned rows. `prune` is reserved for genuine noise or corruption — it is **not** the right tool for "I am done tracking this budget," because it deletes ledger history that may be an audit artifact (e.g. a resolved finding's delivery trail). The honest gap: the lifecycle has no non-destructive `stop` yet (retire tracking, preserve history), and the `kind` discriminator is not yet load-bearing in the gate (the stale scan does not yet scope to budget tracking by kind). The intended direction — `stop` as a non-destructive retire, and `pause`/`stop` as in-band versioned lifecycle records read via `max_by(version)` instead of a sidecar toggle — is the open design, not shipped behavior.
 
 ## Meta-State Self-Learning Loop
 
