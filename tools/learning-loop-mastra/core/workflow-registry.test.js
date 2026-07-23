@@ -2,12 +2,18 @@ import { describe, test } from "vitest";
 import assert from "node:assert";
 import { evaluateTriggers, WORKFLOW_REGISTRY } from "./workflow-registry.js";
 
+// Phase 5 of plans/260722-2147: `recommended_tools` is vacated pending a
+// real index/capability subsystem (the previous values — index_extract,
+// index_validate, capability_generate — referenced tools deleted in plan
+// 260612-1700-meta-surface-re-debate or never shipped). The tests assert
+// the empty-recommendations contract so future re-population is a
+// deliberate registry edit, not a silent drift.
+
 describe("workflow-registry", () => {
-  test("matches evidence file changes", () => {
+  test("matches evidence file changes (recommendations are vacated)", () => {
     const result = evaluateTriggers("records/product/evidence/foo.md", "updated");
     assert.deepStrictEqual(result.matched, ["evidence-changed"]);
-    assert.ok(result.recommendations.includes("index_extract"));
-    assert.ok(result.recommendations.includes("index_validate"));
+    assert.deepStrictEqual(result.recommendations, []);
   });
 
   test("does not match observation file changes (removed)", () => {
@@ -16,17 +22,16 @@ describe("workflow-registry", () => {
     assert.deepStrictEqual(result.recommendations, []);
   });
 
-  test("matches capability file changes", () => {
+  test("matches capability file changes (recommendations are vacated)", () => {
     const result = evaluateTriggers("records/meta/capabilities/api.yaml", "updated");
     assert.deepStrictEqual(result.matched, ["capability-changed"]);
-    assert.ok(result.recommendations.includes("index_validate"));
-    assert.ok(result.recommendations.includes("capability_generate"));
+    assert.deepStrictEqual(result.recommendations, []);
   });
 
-  test("matches index file changes", () => {
+  test("matches index file changes (recommendations are vacated)", () => {
     const result = evaluateTriggers("records/product/index/decisions.yaml", "created");
     assert.deepStrictEqual(result.matched, ["index-changed"]);
-    assert.deepStrictEqual(result.recommendations, ["index_validate"]);
+    assert.deepStrictEqual(result.recommendations, []);
   });
 
   test("returns empty for unrelated paths", () => {
@@ -42,7 +47,6 @@ describe("workflow-registry", () => {
   });
 
   test("deduplicates recommendations when multiple workflows match", () => {
-    // Verify dedup logic directly:
     const result = evaluateTriggers("records/product/evidence/foo.md", "created");
     const unique = [...new Set(result.recommendations)];
     assert.strictEqual(result.recommendations.length, unique.length);
@@ -62,12 +66,21 @@ describe("workflow-registry", () => {
     assert.ok(WORKFLOW_REGISTRY["index-changed"]);
   });
 
-  test("each workflow has triggers, change_types, and recommended_tools", () => {
+  test("each workflow declares triggers, change_types, and recommended_tools (vacated to [])", () => {
     for (const [name, def] of Object.entries(WORKFLOW_REGISTRY)) {
       assert.ok(Array.isArray(def.triggers), `${name}: triggers should be array`);
       assert.ok(Array.isArray(def.change_types), `${name}: change_types should be array`);
-      assert.ok(Array.isArray(def.recommended_tools), `${name}: recommended_tools should be array`);
-      assert.ok(def.recommended_tools.length > 0, `${name}: should have at least one recommended tool`);
+      // Field is REQUIRED but may be empty. Removing the field entirely
+      // would crash the handlers' `def.recommended_tools.join(...)`.
+      assert.ok(
+        Array.isArray(def.recommended_tools),
+        `${name}: recommended_tools should be array (field may be empty, NOT missing)`,
+      );
+      assert.deepStrictEqual(
+        def.recommended_tools,
+        [],
+        `${name}: recommended_tools is currently vacated pending an index/capability subsystem; repopulate via a deliberate registry edit`,
+      );
     }
   });
 });
