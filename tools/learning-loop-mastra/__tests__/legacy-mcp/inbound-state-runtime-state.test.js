@@ -68,7 +68,7 @@ await test("legacy observation (no affected_system) uses updated_at path", () =>
 await test("vnstock observation with sidecar newer than marker → stale: false", () => {
   writeMarker(ts(10));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
@@ -80,7 +80,7 @@ await test("vnstock observation with sidecar newer than marker → stale: false"
 await test("vnstock observation with sidecar older than marker → stale: true", () => {
   writeMarker(ts(5));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
@@ -115,9 +115,9 @@ await test("vnstock observation with no sidecar file → stale: true", () => {
 await test("vnstock observation with multiple sidecar rows uses latest", () => {
   writeMarker(ts(10));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(20), value: 0, delta: 0 },
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-2", timestamp: ts(5), value: 1, delta: 1 },
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-3", timestamp: ts(15), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(20), value: 0, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-2", timestamp: ts(5), value: 1, delta: 1 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-3", timestamp: ts(15), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
@@ -131,7 +131,7 @@ await test("vnstock observation with multiple sidecar rows uses latest", () => {
 await test("mixed meta + vnstock: meta passes, vnstock sidecar is fresh → stale: false", () => {
   writeMarker(ts(10));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [
@@ -146,7 +146,7 @@ await test("mixed meta + vnstock: meta passes, vnstock sidecar is fresh → stal
 await test("mixed meta + vnstock: meta passes, vnstock sidecar stale → stale: true", () => {
   writeMarker(ts(5));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [
@@ -159,10 +159,49 @@ await test("mixed meta + vnstock: meta passes, vnstock sidecar stale → stale: 
   assert.ok(result.reason.includes("vnstock"));
 });
 
+// ── Kind+status filter: the gate's stale scan scopes to budget-state + active ──
+
+await test("ledger-event rows are out of scope (kind filter): vnstock with only ledger-event → stale: true", () => {
+  // Ledger-event rows are immutable audit; the gate's stale scan excludes
+  // them by kind (concept boundary, not an exemption). A vnstock
+  // observation with only ledger-event rows in the sidecar must report
+  // "No runtime-state entry" because budget-state rows are absent.
+  writeMarker(ts(5));
+  writeSidecar([
+    { affected_system: "vnstock", kind: "ledger-event", status: "active", id: "audit-1", timestamp: ts(10), value: 0, delta: 0 },
+  ]);
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  assert.strictEqual(result.stale, true);
+  assert.ok(result.reason.includes("No runtime-state entry"));
+});
+
+await test("paused budget-state rows are out of scope (lifecycle filter)", () => {
+  // Budget-state rows with status != active are out of the gate's stale
+  // scan by lifecycle. The pause tool writes status:paused with the
+  // canonical id (surface name); the gate's isSurfacePaused sees it and
+  // short-circuits the per-observation check. The observation must not
+  // surface as stale.
+  writeMarker(ts(5));
+  writeSidecar([
+    { affected_system: "vnstock", kind: "budget-state", status: "paused", id: "vnstock", timestamp: ts(10), value: null, delta: null },
+  ]);
+  const result = checkObservationStaleness(
+    [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
+    root
+  );
+  // The canonical paused row triggers isSurfacePaused → vnstock is
+  // skipped entirely → stale:false (no observation reaches the
+  // per-observation staleness check).
+  assert.deepStrictEqual(result, { stale: false });
+});
+
 await test("inactive observations are skipped", () => {
   writeMarker(ts(5));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(10), value: 1, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-vnstock", status: "resolved", affected_system: "vnstock", constraint: "vendor-api" }],
@@ -181,9 +220,9 @@ await test("no operator marker → stale: false for non-meta observation", () =>
   assert.deepStrictEqual(result, { stale: false });
 });
 
-// ── 18 converted ledger events: success criterion ──
+// ── 18 converted budget-state rows: success criterion ──
 
-await test("success criterion: 18 vnstock ledger events with fresh sidecar → stale: false", () => {
+await test("success criterion: 18 vnstock budget-state rows with fresh sidecar → stale: false", () => {
   writeMarker(ts(20));
 
   const sidecarRows = [];
@@ -192,7 +231,8 @@ await test("success criterion: 18 vnstock ledger events with fresh sidecar → s
     const minutesAgo = 18 - i;
     sidecarRows.push({
       affected_system: "vnstock",
-      kind: "ledger-event",
+      kind: "budget-state",
+      status: "active",
       id: `vnstock-device-slot-${i}`,
       timestamp: ts(minutesAgo),
       value: i % 2,
@@ -216,7 +256,7 @@ await test("success criterion: 18 vnstock ledger events with fresh sidecar → s
 await test("fastapi observation checks sidecar for affected_system=fastapi", () => {
   writeMarker(ts(5));
   writeSidecar([
-    { affected_system: "fastapi", kind: "ledger-event", id: "fp-1", timestamp: ts(10), value: 0, delta: 0 },
+    { affected_system: "fastapi", kind: "budget-state", status: "active", id: "fp-1", timestamp: ts(10), value: 0, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-fp", status: "active", affected_system: "fastapi", constraint: "vendor-api" }],
@@ -231,14 +271,14 @@ await test("fastapi observation checks sidecar for affected_system=fastapi", () 
 // on a single malformed line. After consolidation onto readRuntimeStateRows, malformed lines are
 // skipped (parsed to null then .filter(Boolean)) and valid rows survive.
 
-await test("malformed line + valid fresh row → not stale (Phase 1 behavior change: skip-not-wipe)", () => {
+await test("malformed line + valid fresh budget-state row → not stale (Phase 1 behavior change: skip-not-wipe)", () => {
   writeMarker(ts(10));
-  // Sidecar with one malformed line followed by one valid fresh row for vnstock.
+  // Sidecar with one malformed line followed by one valid fresh budget-state row for vnstock.
   const sidecarPath = join(root, "runtime-state.jsonl");
   writeFileSync(
     sidecarPath,
     "{ this is not valid JSON\n" +
-      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 }) +
+      JSON.stringify({ affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 }) +
       "\n",
     "utf8"
   );
@@ -266,7 +306,7 @@ await test("malformed line alone → still stale (no valid rows)", () => {
 // The accepted trade-off (per plan validation decision 1): accept silent skip. Older valid row
 // may satisfy freshness and mask corruption. No API change; just pin the observed behavior.
 
-await test("corrupted latest row + older valid row → older valid row masks corruption (silent skip accepted)", () => {
+await test("corrupted latest row + older valid budget-state row → older valid row masks corruption (silent skip accepted)", () => {
   writeMarker(ts(10));
   const sidecarPath = join(root, "runtime-state.jsonl");
   // Corrupted (malformed) line first, then older valid row.
@@ -274,7 +314,7 @@ await test("corrupted latest row + older valid row → older valid row masks cor
   writeFileSync(
     sidecarPath,
     "{ this is not valid JSON\n" +
-      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-old", timestamp: ts(5), value: 1, delta: 0 }) +
+      JSON.stringify({ affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-old", timestamp: ts(5), value: 1, delta: 0 }) +
       "\n",
     "utf8"
   );
@@ -290,13 +330,13 @@ await test("corrupted latest row + older valid row → older valid row masks cor
 // ── Phase 1 timestamp-missing (RED→GREEN for red-team F5): malformed line + valid row with no
 // timestamp changes the staleness reason string. Pin the new reason text.
 
-await test("malformed line + valid row missing timestamp → stale with 'Sidecar may be stale' reason", () => {
+await test("malformed line + valid budget-state row missing timestamp → stale with 'Sidecar may be stale' reason", () => {
   writeMarker(ts(5));
   const sidecarPath = join(root, "runtime-state.jsonl");
   writeFileSync(
     sidecarPath,
     "{ this is not valid JSON\n" +
-      JSON.stringify({ affected_system: "vnstock", kind: "ledger-event", id: "slot-no-ts", value: 1, delta: 0 }) +
+      JSON.stringify({ affected_system: "vnstock", kind: "budget-state", status: "active", id: "slot-no-ts", value: 1, delta: 0 }) +
       "\n",
     "utf8"
   );
@@ -311,20 +351,25 @@ await test("malformed line + valid row missing timestamp → stale with 'Sidecar
   );
 });
 
-await test("corrupt runtime-tracking sidecar degrades to not-paused on the read gate", () => {
-  // Writers fail closed on a malformed tracking sidecar, but the staleness
-  // read gate must not: a corrupt `.loop/runtime-tracking.json` should not
-  // throw out of checkObservationStaleness (which would break the bash gate
-  // on every command). Degrade to "not paused" and evaluate normally.
+await test("read gate degrades to not-paused on corrupt budget-tracking read", () => {
+  // readBudgetTrackingState throws on corrupt
+  // budget-state rows; writers fail closed. The staleness read gate must
+  // not throw — a corrupt in-band state must degrade to "not paused" so
+  // the bash gate continues to work on a recoverable corruption.
   mkdirSync(join(root, ".loop"), { recursive: true });
-  writeFileSync(join(root, ".loop", "runtime-tracking.json"), "{ this is not json", "utf8");
+  // Seed a row whose status is invalid for budget-state (would only be
+  // valid for ledger-event audit). readBudgetTrackingState throws;
+  // checkObservationStaleness catches and degrades.
   writeMarker(ts(10));
   writeSidecar([
-    { affected_system: "vnstock", kind: "ledger-event", id: "slot-1", timestamp: ts(5), value: 1, delta: 0 },
+    { affected_system: "vnstock", kind: "budget-state", status: "weird", id: "vnstock", timestamp: ts(5), value: 0, delta: 0 },
   ]);
   const result = checkObservationStaleness(
     [{ id: "obs-vnstock", status: "active", affected_system: "vnstock", constraint: "vendor-api" }],
     root
   );
-  assert.deepStrictEqual(result, { stale: false });
+  // No budget-state+active rows survive the filter → stale:true with
+  // "No runtime-state entry" reason.
+  assert.strictEqual(result.stale, true);
+  assert.ok(result.reason.includes("No runtime-state entry"));
 });

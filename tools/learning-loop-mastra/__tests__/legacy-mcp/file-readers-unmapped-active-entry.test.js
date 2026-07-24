@@ -27,6 +27,7 @@ describe("file-readers: unmapped-active-entry surface", () => {
   test("active entry with mapped affected_system (vnstock) → produces mapped observation", () => {
     const line = JSON.stringify({
       id: "obs-1",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: new Date().toISOString(),
@@ -45,6 +46,7 @@ describe("file-readers: unmapped-active-entry surface", () => {
   test("active entry with unmapped affected_system (runtime-state) → emits unmapped-active-entry (RED→GREEN for meta-260630T2110Z)", () => {
     const line = JSON.stringify({
       id: "obs-unmapped-1",
+      kind: "budget-state",
       status: "active",
       affected_system: "runtime-state",
       timestamp: new Date().toISOString(),
@@ -67,6 +69,7 @@ describe("file-readers: unmapped-active-entry surface", () => {
   test("non-active (terminal) entry with unmapped affected_system → not surfaced", () => {
     const line = JSON.stringify({
       id: "obs-terminal",
+      kind: "budget-state",
       status: "resolved",
       affected_system: "runtime-state",
       timestamp: new Date().toISOString(),

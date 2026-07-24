@@ -43,7 +43,7 @@ const EXPECTED_WRITE_TOOLS = [
   "runtime_state_record",
   "runtime_state_pause",
   "runtime_state_resume",
-  "runtime_state_prune_surface",
+  "runtime_state_stop",
   "gate_mark_preflight",
   "gate_override",
   "workflow_notify_artifact",

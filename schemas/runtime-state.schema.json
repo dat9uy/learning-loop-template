@@ -40,7 +40,8 @@
       "format": "date-time"
     },
     "status": {
-      "enum": ["active", "cleared", "reconciled"]
+      "enum": ["initial", "active", "paused", "stopped"],
+      "description": "Lifecycle. For kind:ledger-event rows, must be 'active' (immutable audit). For kind:budget-state rows, the canonical lifecycle is initial -> active -> paused -> stopped. The gate's stale-observation scan surfaces only budget-state rows with status:active; ledger-event rows are out of scope by kind (concept boundary, not an exemption the gate grants)."
     },
     "metadata": {
       "type": "object"

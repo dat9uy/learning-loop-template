@@ -47,7 +47,7 @@ function setupSidecar(root, rows) {
 function createPreflightMarker(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 describe("appendLedgerEvent version assignment", () => {
@@ -294,8 +294,8 @@ describe("concurrent-append race test (exercises withRegistryLock)", () => {
       // — runtime_state_record requires its per-surface preflight, which
       // includes the runtime-tracking surface (Phase 2 unified gate).
       mkdirSync(join(tempDir, ".claude", "coordination"), { recursive: true });
-      writeFileSync(join(tempDir, ".claude", "coordination", ".loop-preflight-runtime-state"), "", "utf8");
-      writeFileSync(join(tempDir, ".claude", "coordination", ".loop-preflight-runtime-tracking"), "", "utf8");
+      writeFileSync(join(tempDir, ".claude", "coordination", ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
+      writeFileSync(join(tempDir, ".claude", "coordination", ".loop-preflight-runtime-tracking"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 
       const { spawn } = await import("node:child_process");
       const cliPath = join(PROJECT_ROOT, "tools/learning-loop-mastra/bin/loop.mjs");

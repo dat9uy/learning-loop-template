@@ -1,132 +1,64 @@
 // core/runtime-tracking.js — operator-controlled per-surface tracking toggle.
 //
-// Sidecar: `<root>/.loop/runtime-tracking.json`, shape
-//   `{schema: "runtime-tracking/v1", version: 1, paused_surfaces: string[]}`.
+// The tracking lifecycle is in-band in runtime-state.jsonl
+// (`kind: budget-state`, `status: paused|stopped`, canonical id per
+// surface). The `.loop/runtime-tracking.json` sidecar is retired — no
+// tool writes it and nothing reads it.
 //
-// Read-from-disk per call (NO in-process cache — the CLI one-shot path
-// never hits a warm one, and the allowlist-cache's long-running process
-// assumption does not hold for this low-frequency read). Fail-closed on
-// malformed sidecars (the writers REFUSE to append until the operator
-// repairs the corruption), mirroring `core/r2/allowlist-cache.js:39-48`
-// — NOT the fail-open "tolerant → []" pattern.
+// `isSurfacePaused` is the only canonical reader; it queries the
+// surface's budget-state entities' latest `status` and THROWS on a
+// corrupt sidecar line or budget-state row so a stopped surface cannot
+// silently un-stop. Read-gate callers (`core/inbound-state.js`,
+// `core/evaluate-inbound-gate.js`) wrap it in try/catch so a corrupt
+// read degrades to "not paused" (the gate must fail-open). Writer
+// callers (`runtime_state_record`, `meta_state_dispatch_finding`) do
+// NOT catch — writers fail-closed at the mutation boundary.
 
-import { readFileSync, existsSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SURFACES } from "./surfaces.js";
-import { withRegistryLock } from "./registry-lock.js";
-
-const RUNTIME_TRACKING_PATH = ".loop/runtime-tracking.json";
-
-const SCHEMA = "runtime-tracking/v1";
-const VERSION = 1;
+import { readBudgetTrackingState } from "./runtime-state.js";
 
 /**
- * Load paused-surfaces from the operator-controlled sidecar. Absent
- * sidecar → `[]` (nothing paused). Malformed sidecar → throws
- * (fail-closed — writers must refuse, not silently unpause).
- *
- * @param {string} root
- * @returns {string[]} — sorted, deduped paused surface names
- */
-export function loadPausedSurfaces(root) {
-  const path = join(root, RUNTIME_TRACKING_PATH);
-  if (!existsSync(path)) return [];
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (err) {
-    throw new Error(`runtime_tracking_invalid_json: ${path}: ${err.message}`);
-  }
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error(`runtime_tracking_invalid_schema: root must be an object at ${path}`);
-  }
-  if (parsed.schema !== SCHEMA) {
-    throw new Error(
-      `runtime_tracking_invalid_schema: expected schema "${SCHEMA}", got ${JSON.stringify(parsed.schema)} at ${path}`,
-    );
-  }
-  if (typeof parsed.version !== "number") {
-    throw new Error(`runtime_tracking_invalid_schema: missing numeric "version" at ${path}`);
-  }
-  if (!Array.isArray(parsed.paused_surfaces)) {
-    throw new Error(`runtime_tracking_invalid_schema: paused_surfaces must be an array at ${path}`);
-  }
-  if (!parsed.paused_surfaces.every((s) => typeof s === "string")) {
-    throw new Error(`runtime_tracking_invalid_schema: paused_surfaces entries must be strings at ${path}`);
-  }
-  return [...new Set(parsed.paused_surfaces)].sort();
-}
-
-/**
- * Cheap check: is `surface` in the paused set? Propagates the load
- * failure (fail-closed) so a malformed sidecar makes every writer refuse.
+ * Canonical paused-surface check. Reads the surface's latest
+ * `kind: budget-state` status (paused | stopped → true). Throws on
+ * corrupt sidecar state — the writer path must fail-closed.
  *
  * @param {string} root
  * @param {string} surface
  * @returns {boolean}
  */
 export function isSurfacePaused(root, surface) {
-  return loadPausedSurfaces(root).includes(surface);
+  const status = readBudgetTrackingState(root, surface);
+  return status === "paused" || status === "stopped";
 }
 
-/**
- * Atomic temp+rename rewrite of the sidecar. Public for symmetry so
- * callers don't need to know the temp-path convention. The persisted
- * shape is sorted + deduped — defensive against hand-rolled writes that
- * produce a canonical form anyway.
- *
- * @param {string} root
- * @param {string[]} arr — full paused-surfaces set (NOT a delta)
- */
-export function setPausedSurfaces(root, arr) {
-  const target = join(root, RUNTIME_TRACKING_PATH);
-  const canonical = [...new Set(arr.filter((s) => typeof s === "string"))].sort();
-  const body = JSON.stringify(
-    { schema: SCHEMA, version: VERSION, paused_surfaces: canonical },
-    null,
-    2,
-  );
-  const tmp = `${target}.${process.pid}-${Date.now()}.tmp`;
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(tmp, body, "utf8");
-  try {
-    renameSync(tmp, target);
-  } catch (err) {
-    try { unlinkSync(tmp); } catch { /* best-effort cleanup */ }
-    throw err;
-  }
-}
+// Mirrors the 30-minute TTL in core/gate-logic.js `readPreflightMarker`.
+const MARKER_TTL_MS = 30 * 60 * 1000;
 
 /**
- * Lock-serialized read-modify-write of the paused-surfaces set. `mutate`
- * receives the current sorted set and returns the next full set (NOT a
- * delta); the result is persisted atomically and the reloaded set is
- * returned. Runs under the same cross-process lock as the runtime-state
- * writers so a pause in one process cannot lose a concurrent resume in
- * another.
- *
- * @param {string} root
- * @param {(current: string[]) => string[]} mutate
- * @returns {Promise<string[]>} — the persisted paused-surfaces set
- */
-export async function mutatePausedSurfaces(root, mutate) {
-  return await withRegistryLock(root, async () => {
-    setPausedSurfaces(root, mutate(loadPausedSurfaces(root)));
-    return loadPausedSurfaces(root);
-  });
-}
-
-/**
- * True when any surface carries the named preflight marker file
- * (`<surface>/coordination/<markerFile>`). Shared by the runtime-state
- * tools that gate on operator preflight.
+ * True when any runtime surface carries a FRESH named preflight marker
+ * (`<surface>/coordination/<markerFile>` with a `completed_at` within
+ * the 30-minute TTL, matching `readPreflightMarker` in
+ * core/gate-logic.js). Missing, unparseable, timestamp-less, and stale
+ * markers all count as absent — a lifecycle operation authorized by a
+ * marker must not inherit indefinite authorization from an old file.
  *
  * @param {string} root
  * @param {string} markerFile — e.g. ".loop-preflight-runtime-tracking"
  * @returns {boolean}
  */
 export function hasSurfacePreflightMarker(root, markerFile) {
-  return SURFACES.some((surface) =>
-    existsSync(join(root, surface, "coordination", markerFile)),
-  );
+  return SURFACES.some((surface) => {
+    const markerPath = join(root, surface, "coordination", markerFile);
+    try {
+      const marker = JSON.parse(readFileSync(markerPath, "utf8"));
+      if (!marker.completed_at) return false;
+      const ts = new Date(marker.completed_at);
+      if (isNaN(ts.getTime())) return false;
+      return Date.now() - ts.getTime() <= MARKER_TTL_MS;
+    } catch {
+      return false;
+    }
+  });
 }

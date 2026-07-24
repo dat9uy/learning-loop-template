@@ -31,6 +31,7 @@ describe("file-readers: malformed-line + null-line crash regression", () => {
   test("null line + valid active vnstock row → projection survives (RED→GREEN for Phase 1 B-widening)", () => {
     const validLine = JSON.stringify({
       id: "obs-valid",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: new Date().toISOString(),
@@ -51,6 +52,7 @@ describe("file-readers: malformed-line + null-line crash regression", () => {
   test("malformed JSON line + valid active vnstock row → projection survives (skip-not-wipe)", () => {
     const validLine = JSON.stringify({
       id: "obs-valid",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: new Date().toISOString(),
@@ -73,6 +75,7 @@ describe("file-readers: malformed-line + null-line crash regression", () => {
   test("happy path unchanged: all-valid sidecar → identical projection to pre-consolidation", () => {
     const line = JSON.stringify({
       id: "obs-happy",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: new Date().toISOString(),

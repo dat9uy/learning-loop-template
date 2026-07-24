@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { appendLedgerEvent, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
-import { isSurfacePaused, hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
+import { appendLedgerEvent, readBudgetTrackingState, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
+import { hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
 // which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
@@ -71,24 +71,80 @@ export const runtimeStateRecordTool = {
       return {
         content: [{
           type: "text",
-          text: JSON.stringify({ error: "preflight_required", message: "runtime_state_record requires an active preflight marker. Use gate_mark_preflight first." }),
+          text: JSON.stringify({ error: "preflight_required", message: "runtime_state_record requires an active preflight marker. Use gate_mark_preflight({surface:'runtime-state'}) first." }),
         }],
       };
     }
 
-    // Per-surface tracking toggle: a paused surface's writer must refuse
-    // BEFORE building the row (no fingerprint, no version assignment, no
-    // atomic-append op). The check propagates a malformed sidecar as a
-    // fail-closed error so writers refuse rather than silently unpause.
-    if (isSurfacePaused(root, affected_system)) {
+    // Per-surface tracking toggle: a paused/stopped surface's writer must
+    // refuse BEFORE building the row (no fingerprint, no version
+    // assignment, no atomic-append op). This is the mutation boundary, so
+    // a corrupt sidecar read is a fail-closed error — never a silent
+    // "not paused" (the read gates fail-open; writers must not).
+    // Best-effort vs a concurrent lifecycle write (TOCTOU: the check runs
+    // outside the append lock); acceptable at single-operator scale.
+    let surfaceStatus;
+    try {
+      surfaceStatus = readBudgetTrackingState(root, affected_system);
+    } catch (err) {
       return {
         content: [{
           type: "text",
-          text: JSON.stringify({ ok: false, paused: true, affected_system }),
+          text: JSON.stringify({
+            ok: false,
+            error: "corrupt_state",
+            affected_system,
+            message: `refusing to record: budget-tracking state is unreadable (${err.message})`,
+          }),
+        }],
+      };
+    }
+    // One budget-tracking entity per surface, under the canonical id (the
+    // surface name) — pause/resume/stop only ever write that id, so a
+    // budget-state record under any other id would fork the lifecycle.
+    // Restart: after `stop` (terminal — a stopped chain gets no further
+    // pause/resume transitions), the FIRST budget-state record under the
+    // canonical id is the sanctioned restart: a fresh `active` version on
+    // top of the preserved stopped history.
+    if (kind === "budget-state" && id !== affected_system) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            reason: "canonical_id_required",
+            affected_system,
+            message: `budget-state records must use the canonical id "${affected_system}" (one tracking entity per surface)`,
+          }),
+        }],
+      };
+    }
+    const blocked =
+      kind === "budget-state"
+        ? surfaceStatus === "paused" // stopped → allowed: that record IS the restart
+        : (surfaceStatus === "paused" || surfaceStatus === "stopped") && id === affected_system;
+    if (blocked) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            status: surfaceStatus,
+            affected_system,
+            message: surfaceStatus === "stopped"
+              ? "surface tracking is stopped; ledger events under the canonical id are blocked (a budget-state record under the canonical id restarts tracking)"
+              : "surface is paused; resume before recording",
+          }),
         }],
       };
     }
 
+    // Kind-conditional status: ledger-event rows carry status "active"
+    // (immutable audit). A fresh budget-state record also enters at
+    // "active" — the lifecycle's `initial` state is reserved for
+    // migration-seeded entities; transitions (paused/stopped) are
+    // appended exclusively by the pause/resume/stop tools.
+    // `appendLedgerEvent` double-checks via `assertKindConditionalStatus`.
     const row = {
       affected_system,
       kind,

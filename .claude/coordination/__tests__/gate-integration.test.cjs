@@ -13,7 +13,7 @@
 // behavior; we collect failures and throw at the end if any failed (the
 // vitest-equivalent of `process.exit(failed > 0 ? 1 : 0)`).
 //
-// R13 semantic preservation: every original assertion is preserved verbatim.
+// Semantic preservation: every original assertion is preserved verbatim.
 
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -75,7 +75,20 @@ function createTempProject() {
 function copyRealObservations(tmpDir) {
   const realRuntimeState = path.join(__dirname, '..', '..', '..', 'runtime-state.jsonl');
   if (fs.existsSync(realRuntimeState)) {
-    fs.copyFileSync(realRuntimeState, path.join(tmpDir, 'runtime-state.jsonl'));
+    // The gate's stale scan surfaces only
+    // kind:budget-state + status:active rows; ledger-event rows are out
+    // of scope by kind. The real sidecar (33 rows) is all ledger-event,
+    // so we re-tag the copied rows as budget-state to preserve the test
+    // intent ("real observations, stale → marker written"). The shape
+    // (id/source_ref/value/delta/timestamp/metadata) is unchanged.
+    const lines = fs.readFileSync(realRuntimeState, 'utf8').split('\n').filter(l => l.trim());
+    const retyped = lines.map((line) => {
+      try {
+        const entry = JSON.parse(line);
+        return JSON.stringify({ ...entry, kind: 'budget-state' });
+      } catch { return line; }
+    });
+    fs.writeFileSync(path.join(tmpDir, 'runtime-state.jsonl'), retyped.join('\n') + '\n');
     return ['runtime-state.jsonl'];
   }
   return [];
@@ -249,7 +262,7 @@ test('gate-integration: inbound gate with real observations', () => {
     removeBudgetFiles(tmpDir);
     const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
     const vnstockEntry = {
-      kind: 'ledger-event',
+      kind: 'budget-state',
       affected_system: 'vnstock',
       id: 'obs-vnstock',
       value: 0,

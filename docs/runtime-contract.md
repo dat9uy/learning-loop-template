@@ -56,6 +56,25 @@ The word "interface" was overloaded. These are three distinct concerns, now name
 - **Storage fan-out** — the set of runtime surface directories the loop writes to (.claude, .factory, .mastracode today). Mechanism detail: `tools/learning-loop-mastra/core/surfaces.js` `SURFACES` (L3).
 - **Feature-code runtime-agnosticism** — the checklist that proves a loop feature works the same across all surfaces (no surface-specific code in feature paths). Mechanism detail: `tools/learning-loop-mastra/core/runtime-agnostic-checklist.js` `CHECKLIST` (L3).
 
+## Runtime-state row kinds and the budget-tracking lifecycle
+
+`runtime-state.jsonl` carries two row kinds under one file, distinguished by `kind`:
+
+- **`ledger-event`** — immutable audit. Carries `status: "active"` only (no lifecycle). Out of the budget gate's stale-scan scope by kind (concept boundary, not an exemption the gate grants).
+- **`budget-state`** — mutable tracking state. Carries a lifecycle `status`: `initial → active → paused → stopped`. The gate's stale scan surfaces only `kind: budget-state` + `status: active` rows.
+
+The canonical lifecycle for a surface is one versioned entity per `affected_system`, and the canonical id is the surface name itself. The lifecycle transitions are in-band: `runtime_state_pause` / `resume` / `stop` append a `kind: budget-state` row under the canonical id with the new `status`. Versioning follows `max_by(version)`, mirroring meta-state's dedup (`core/runtime-state.js` `readRuntimeStateRowsLatest`). `runtime_state_record` rejects a `budget-state` row under any other id (`canonical_id_required`) — pause/resume/stop only ever write the canonical id, so a second id would fork the lifecycle.
+
+**`stop` is terminal for the chain.** A `stopped` entity cannot be resumed or paused, and no ledger-event appends against the stopped canonical id. Restart is a deliberate `runtime_state_record` `budget-state` row under the canonical id: a fresh `active` version on top of the preserved stopped history — not a resumed chain, and not a parallel entity. The lifecycle tools are idempotent on the same-state repeat (double-pause, resume-when-active, stop-when-stopped return the `already_*` form without appending); only cross-state transitions from `stopped` are rejected. `resume` requires a `paused` entity — a never-tracked surface (`not_tracked`) or an `initial` entity (`invalid_transition`) is rejected rather than silently creating an active row.
+
+The destructive `runtime_state_prune_surface` was removed: the "delete the ledger to clear the gate" footgun is gone structurally. The non-destructive `runtime_state_stop` is the operator's lever when a surface is genuinely done.
+
+The gate reads `readBudgetTrackingState(root, surface)` to determine the surface's lifecycle status. The reader throws on a corrupt budget-state row AND on any unparseable sidecar line (a dropped line could be a lifecycle record — fail-closed; note the blast radius is cross-surface: one malformed line blocks lifecycle writes for ALL surfaces until the line is repaired). Read-gate callers catch and degrade to "not paused" (fail-open for the read gate); writer callers return a structured `corrupt_state` error (`runtime_state_record`, `runtime_state_pause`/`resume`/`stop`) — writers fail closed.
+
+Lifecycle tools authorize via the per-surface preflight marker (`<surface>/coordination/.loop-preflight-runtime-tracking`, minted by `gate_mark_preflight({surface:'runtime-tracking'})`; `runtime_state_record` uses `.loop-preflight-runtime-state` via `gate_mark_preflight({surface:'runtime-state'})`). Both carry the same 30-minute TTL as the write-gate markers — a stale or content-less marker does not authorize.
+
+Rows written before the `kind` discriminator existed (no `kind` field) are read as `budget-state` in the gate's observation scan — read-compat so a legacy sidecar never goes silently dark. Writes remain strict: `assertKindConditionalStatus` requires an explicit kind.
+
 The contract says *what a runtime must be*; the storage fan-out says *which directories the loop mirrors*; the runtime-agnosticism checklist says *which feature code stays surface-neutral*. They are independently variable: a new runtime adds a surface (storage fan-out) and proves its features are agnostic (checklist) against the same contract.
 
 ## Current transports

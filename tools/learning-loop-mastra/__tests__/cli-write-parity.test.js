@@ -168,7 +168,7 @@ function existsSync(path) {
 function writeRuntimeStatePreflightMarker(root) {
   const dir = join(root, ".claude", "coordination");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, ".loop-preflight-runtime-state"), "");
+  writeFileSync(join(dir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }));
 }
 
 async function importHandler(toolName) {

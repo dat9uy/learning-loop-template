@@ -15,7 +15,7 @@
 // messages and throw at the end if any failed (the vitest-equivalent of
 // `process.exit(failed > 0 ? 1 : 0)`).
 //
-// R13 semantic preservation: every original assertion is preserved verbatim
+// Semantic preservation: every original assertion is preserved verbatim
 // across all 11 categories.
 
 const { spawnSync } = require('child_process');
@@ -79,7 +79,7 @@ function createTempProject() {
 function writeObservation(tmpDir, data) {
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   const entry = {
-    kind: 'ledger-event',
+    kind: 'budget-state',
     affected_system: data.affected_system || 'vnstock',
     id: data.id,
     value: 0,

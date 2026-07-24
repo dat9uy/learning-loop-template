@@ -14,14 +14,43 @@
 // callers can apply the appropriate gate upstream.
 
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
-import { writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { withRegistryLock } from "./registry-lock.js";
 
 /**
+ * Read all rows from runtime-state.jsonl with a malformed-line count.
+ * Empty/missing file -> { rows: [], malformed: 0 }. Unparseable lines are
+ * dropped from `rows` but counted in `malformed` so callers that own an
+ * invariant (e.g. `readBudgetTrackingState`) can fail-closed instead of
+ * silently skipping a line that might have been a lifecycle record.
+ */
+export function readRuntimeStateRowsDetailed(root) {
+  const path = join(root, RUNTIME_STATE_FILENAME);
+  if (!existsSync(path)) return { rows: [], malformed: 0 };
+  const raw = readFileSync(path, "utf8");
+  const rows = [];
+  let malformed = 0;
+  for (const line of raw.split("\n")) {
+    if (line.trim() === "") continue;
+    try {
+      const parsed = JSON.parse(line);
+      // A JSON `null` literal parses fine but is not a row — skip it
+      // silently (longstanding skip-not-wipe semantics), do not count it
+      // as malformed.
+      if (parsed === null) continue;
+      rows.push(parsed);
+    } catch {
+      malformed++;
+    }
+  }
+  return { rows, malformed };
+}
+
+/**
  * Read all rows from runtime-state.jsonl. Empty/missing file -> []. Malformed
- * lines are skipped (parsed to null then filtered). Shared by
+ * lines are skipped (counted by `readRuntimeStateRowsDetailed` for callers
+ * that need to know). Shared by
  * `runtime_state_record` (read-your-own-writes checks), the dispatch tool
  * (idempotency scan), and the SessionStart hook (INC-10 orphan detection).
  * DRY: previously each caller reimplemented the JSONL read.
@@ -31,33 +60,22 @@ import { withRegistryLock } from "./registry-lock.js";
  * `readRuntimeStateRowsLatest`.
  */
 export function readRuntimeStateRows(root) {
-  const path = join(root, RUNTIME_STATE_FILENAME);
-  if (!existsSync(path)) return [];
-  const raw = readFileSync(path, "utf8");
-  return raw
-    .split("\n")
-    .filter((l) => l.trim() !== "")
-    .map((l) => {
-      try { return JSON.parse(l); } catch { return null; }
-    })
-    .filter(Boolean);
+  return readRuntimeStateRowsDetailed(root).rows;
 }
 
 /**
- * Read runtime-state.jsonl and collapse to the latest row per `id`
- * (`max_by(version)`, ties broken by newest `timestamp` then last-in-file
- * order, mirroring meta-state's `created_at ?? ""` precedent at
- * core/meta-state.js:768-769). Missing/unparseable `version` defaults to 0
- * (legacy rows predate the field). Missing/unparseable timestamps sort as
- * "" (oldest) so a re-record with a real timestamp wins over a legacy
- * unversioned row lacking one.
+ * Collapse rows to the latest per `id` (`max_by(version)`, ties broken by
+ * newest `timestamp` then last-in-file order, mirroring meta-state's
+ * `created_at ?? ""` precedent at core/meta-state.js:768-769).
+ * Missing/unparseable `version` defaults to 0 (legacy rows predate the
+ * field). Missing/unparseable timestamps sort as "" (oldest) so a re-record
+ * with a real timestamp wins over a legacy unversioned row lacking one.
  *
- * Order: first-seen by id in file order (matches the inbound gate's
- * mental model — it walks observations + sidecar rows in chronological
- * order, but consumers can re-sort).
+ * Module-private; returns `{row, version, fileIdx}` entries so callers that
+ * need cross-id recency (e.g. `readBudgetTrackingState`) can sort by
+ * fileIdx. `fileIdx` is the index within the passed array.
  */
-export function readRuntimeStateRowsLatest(root) {
-  const rows = readRuntimeStateRows(root);
+function collapseLatestById(rows) {
   const byId = new Map();
   rows.forEach((row, idx) => {
     const id = row?.id;
@@ -80,7 +98,19 @@ export function readRuntimeStateRowsLatest(root) {
       }
     }
   });
-  return [...byId.values()].map((entry) => entry.row);
+  return [...byId.values()];
+}
+
+/**
+ * Read runtime-state.jsonl and collapse to the latest row per `id`
+ * (`max_by(version)` — see `collapseLatestById`).
+ *
+ * Order: first-seen by id in file order (matches the inbound gate's
+ * mental model — it walks observations + sidecar rows in chronological
+ * order, but consumers can re-sort).
+ */
+export function readRuntimeStateRowsLatest(root) {
+  return collapseLatestById(readRuntimeStateRows(root)).map((entry) => entry.row);
 }
 
 /**
@@ -99,6 +129,7 @@ export function readRuntimeStateRowsLatest(root) {
  * BEFORE calling — this helper only does the idempotency check.
  */
 export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
+  assertKindConditionalStatus(row);
   return await withRegistryLock(root, async () => {
     const rows = readRuntimeStateRows(root);
     const existing = rows.find(
@@ -117,41 +148,6 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
     const sidecarPath = join(root, RUNTIME_STATE_FILENAME);
     appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");
     return { appended: true, row: withFingerprint };
-  });
-}
-
-/**
- * Module-private helper for pruneSurfaceRows. Atomic temp+rename rewrite
- * of the sidecar with a pid-suffixed temp path so concurrent writers
- * can't collide on the temp name.
- */
-function atomicRewriteSidecar(root, rows) {
-  const path = join(root, RUNTIME_STATE_FILENAME);
-  const tempPath = `${path}.tmp-${process.pid}-${Date.now()}`;
-  const body = rows.map((r) => JSON.stringify(r)).join("\n") + (rows.length ? "\n" : "");
-  writeFileSync(tempPath, body, "utf8");
-  try {
-    renameSync(tempPath, path);
-  } catch (err) {
-    try { unlinkSync(tempPath); } catch { /* best-effort cleanup */ }
-    throw err;
-  }
-}
-
-/**
- * Rewrite the sidecar minus every row whose `affected_system` matches
- * `surface`. Atomic temp+rename; history is NOT preserved for the
- * pruned rows (this is the point — the operator is deleting noise).
- * Runs under the same cross-process lock as `appendLedgerEvent` so the
- * prune cannot interleave with a concurrent append. Returns
- * `{pruned, remaining}` so the caller can surface blast radius.
- */
-export async function pruneSurfaceRows(root, surface) {
-  return await withRegistryLock(root, async () => {
-    const all = readRuntimeStateRows(root);
-    const keep = all.filter((r) => r?.affected_system !== surface);
-    atomicRewriteSidecar(root, keep);
-    return { pruned: all.length - keep.length, remaining: keep.length };
   });
 }
 
@@ -249,6 +245,16 @@ export function verifyRow(row) {
  * schema). `version` is a dedup bookkeeping field and is NOT hashed by
  * v2 fingerprint (re-records already differ by `timestamp`).
  *
+ * Kind-conditional status rule: the JSON schema is intentionally NOT a
+ * `z.object().refine()` — a refine on this shape silently no-ops
+ * `delivery-classify.mjs:schemaValidateRow` and throws in consumer test
+ * files. The rule lives here so the invariant is enforced at the actual
+ * mutation boundary:
+ *   - kind === "ledger-event"  → status MUST be "active" (immutable audit).
+ *   - kind === "budget-state"  → status MUST be a lifecycle value
+ *     ("initial" | "active" | "paused" | "stopped"); ledger-event audit
+ *     rows are out of the gate's stale-scan scope by kind.
+ *
  * Cost: O(n) scan of the sidecar per append — acceptable at operator
  * scale (registry reports ~27 findings). An in-memory max-version cache
  * is YAGNI (and dead code on the CLI one-shot path).
@@ -258,6 +264,7 @@ export function verifyRow(row) {
  * @returns {Promise<object>} — the row with `version` + `fingerprint` set
  */
 export async function appendLedgerEvent(root, row) {
+  assertKindConditionalStatus(row);
   return await withRegistryLock(root, async () => {
     const existing = readRuntimeStateRows(root);
     const maxExisting = existing.reduce((acc, r) => {
@@ -271,4 +278,79 @@ export async function appendLedgerEvent(root, row) {
     appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");
     return withFingerprint;
   });
+}
+
+/**
+ * Kind-conditional status guard. Throws on a violation; consumed by
+ * `appendLedgerEvent` (always-on) and surfaced as a tool-level error by
+ * the runtime-state handlers.
+ */
+export function assertKindConditionalStatus(row) {
+  const kind = row?.kind;
+  const status = row?.status;
+  if (kind === "ledger-event") {
+    if (status !== "active") {
+      throw new Error(
+        `runtime_state_kind_status_mismatch: ledger-event rows must have status "active", got ${JSON.stringify(status)}`,
+      );
+    }
+    return;
+  }
+  if (kind === "budget-state") {
+    const LIFECYCLE = new Set(["initial", "active", "paused", "stopped"]);
+    if (!LIFECYCLE.has(status)) {
+      throw new Error(
+        `runtime_state_kind_status_mismatch: budget-state rows must have a lifecycle status (initial|active|paused|stopped), got ${JSON.stringify(status)}`,
+      );
+    }
+    return;
+  }
+  throw new Error(`runtime_state_kind_unknown: kind must be "ledger-event" or "budget-state", got ${JSON.stringify(kind)}`);
+}
+
+/**
+ * Canonical budget-tracking id per `affected_system`: one canonical id per
+ * surface, and the canonical id is the surface name itself (the runtime-state
+ * `affected_system` enum). Restart lives at the TOOL level: `stop` is
+ * terminal per-id, so a fresh `runtime_state_record` with a different id
+ * after `stop` starts a new entity.
+ *
+ * `readBudgetTrackingState` filters `kind === "budget-state"` BEFORE the
+ * `max_by(version)` dedup so a ledger-event sharing an id can't shadow a
+ * budget-state row. It THROWS on any unparseable line in the sidecar and
+ * on any budget-state row with an invalid status: a stopped surface must
+ * not silently un-stop because the parser skipped a malformed line. The
+ * read-gate callers (`core/inbound-state.js`, `core/evaluate-inbound-gate.js`)
+ * try/catch around the helper to degrade to "not paused" on the gate (the
+ * gate must fail-open to a corrupt read); writer callers
+ * (`runtime_state_record`, `meta_state_dispatch_finding`) must NOT swallow
+ * the throw — writers fail-closed at the mutation boundary.
+ *
+ * @param {string} root — project root containing runtime-state.jsonl
+ * @param {string} surface — runtime-state `affected_system` value
+ * @returns {string | null} — latest lifecycle status, or null if no
+ *   budget-state rows exist for the surface (a fresh surface). THROWS
+ *   on a malformed sidecar line or a corrupt budget-state row (fail-closed
+ *   for writers).
+ */
+export function readBudgetTrackingState(root, surface) {
+  const { rows, malformed } = readRuntimeStateRowsDetailed(root);
+  if (malformed > 0) {
+    throw new Error(
+      `runtime_state_budget_tracking_corrupt: ${malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
+    );
+  }
+  const budgetRows = rows.filter((r) => r && r.kind === "budget-state" && r.affected_system === surface);
+  if (budgetRows.length === 0) return null;
+  // Validate the kind-conditional status on each row BEFORE dedup so a
+  // corrupt budget-state row surfaces as an error, not a silent skip.
+  for (const row of budgetRows) {
+    if (row.status !== "initial" && row.status !== "active" && row.status !== "paused" && row.status !== "stopped") {
+      throw new Error(
+        `runtime_state_budget_tracking_corrupt: budget-state row for surface "${surface}" has invalid status ${JSON.stringify(row.status)}`,
+      );
+    }
+  }
+  const latest = collapseLatestById(budgetRows).sort((a, b) => b.fileIdx - a.fileIdx)[0];
+  return latest ? latest.row.status : null;
 }

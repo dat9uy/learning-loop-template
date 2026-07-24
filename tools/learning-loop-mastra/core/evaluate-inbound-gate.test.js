@@ -40,7 +40,7 @@ test("boundary: prompt length === 10 → not short-circuited by length check", (
   // — locks the < 10 boundary so a future change to < 11 doesn't silently regress.
   const root = makeRoot();
   writeRuntimeState(root, [
-    { id: "obs-stale", status: "active", affected_system: "vnstock", timestamp: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
+    { id: "obs-stale", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: new Date(Date.now() - 31 * 60 * 1000).toISOString() },
   ]);
   const result = evaluateInboundGate({ prompt: "I did it!!", root });
   assert.strictEqual(result.decision, "warn");
@@ -78,7 +78,7 @@ test("state-change phrase + no observations → ok", () => {
 test("state-change phrase + active observations but none stale → ok", () => {
   const root = makeRoot();
   writeRuntimeState(root, [
-    { id: "obs-1", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
+    { id: "obs-1", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
   ]);
   // The prompt matches a state-change pattern, observations exist and are fresh
   const result = evaluateInboundGate({ prompt: "I cleared the device", root });
@@ -92,7 +92,7 @@ test("state-change phrase + stale observation → warn with context_message", ()
   // Write an observation with timestamp 31 minutes ago (stale)
   const staleTime = new Date(Date.now() - 31 * 60 * 1000).toISOString();
   writeRuntimeState(root, [
-    { id: "obs-stale", status: "active", affected_system: "vnstock", timestamp: staleTime },
+    { id: "obs-stale", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: staleTime },
   ]);
   const result = evaluateInboundGate({ prompt: "I cleared the device", root });
   assert.strictEqual(result.decision, "warn");
@@ -105,7 +105,7 @@ test("state-change phrase + stale observation → warn with context_message", ()
 test("state-change phrase + observation missing updated_at → warn", () => {
   const root = makeRoot();
   writeRuntimeState(root, [
-    { id: "obs-no-ts", status: "active", affected_system: "vnstock" },
+    { id: "obs-no-ts", kind: "budget-state", status: "active", affected_system: "vnstock" },
   ]);
   const result = evaluateInboundGate({ prompt: "everything is working now", root });
   assert.strictEqual(result.decision, "warn");
