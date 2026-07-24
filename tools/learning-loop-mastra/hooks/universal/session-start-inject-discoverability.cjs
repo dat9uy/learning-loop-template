@@ -51,7 +51,7 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_record: "{affected_system,kind,id,source_ref,timestamp}",
   runtime_state_pause: "{surface}",
   runtime_state_resume: "{surface}",
-  runtime_state_prune_surface: "{surface,confirm}",
+  runtime_state_stop: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
   // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.

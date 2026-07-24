@@ -1,125 +1,49 @@
 // core/runtime-tracking.js — operator-controlled per-surface tracking toggle.
 //
-// Sidecar: `<root>/.loop/runtime-tracking.json`, shape
-//   `{schema: "runtime-tracking/v1", version: 1, paused_surfaces: string[]}`.
+// Plan 260724-1119 Phase 2: the tracking lifecycle is now in-band in
+// runtime-state.jsonl (`kind: budget-state`, `status: paused|stopped`,
+// canonical id per surface per D8). The `.loop/runtime-tracking.json`
+// sidecar is no longer written by any tool; the legacy
+// `loadPausedSurfaces` / `setPausedSurfaces` / `mutatePausedSurfaces`
+// helpers are retained as no-op-compat shims so existing tests +
+// historical imports do not crash, but the canonical read path is
+// `readBudgetTrackingState` (in `core/runtime-state.js`).
 //
-// Read-from-disk per call (NO in-process cache — the CLI one-shot path
-// never hits a warm one, and the allowlist-cache's long-running process
-// assumption does not hold for this low-frequency read). Fail-closed on
-// malformed sidecars (the writers REFUSE to append until the operator
-// repairs the corruption), mirroring `core/r2/allowlist-cache.js:39-48`
-// — NOT the fail-open "tolerant → []" pattern.
+// `isSurfacePaused` is the only canonical reader; it queries the
+// surface's canonical budget-state entity's latest `status` (R1: throws
+// on corrupt budget-state rows so a stopped surface cannot silently
+// un-stop). The callers (`runtime_state_record`,
+// `meta_state_dispatch_finding`, `core/inbound-state.js`,
+// `core/evaluate-inbound-gate.js`) wrap it in try/catch for the read
+// gate so a corrupt read degrades to "not paused" (gate must fail-open).
 
-import { readFileSync, existsSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { SURFACES } from "./surfaces.js";
-import { withRegistryLock } from "./registry-lock.js";
-
-const RUNTIME_TRACKING_PATH = ".loop/runtime-tracking.json";
-
-const SCHEMA = "runtime-tracking/v1";
-const VERSION = 1;
+import { readBudgetTrackingState } from "./runtime-state.js";
 
 /**
- * Load paused-surfaces from the operator-controlled sidecar. Absent
- * sidecar → `[]` (nothing paused). Malformed sidecar → throws
- * (fail-closed — writers must refuse, not silently unpause).
- *
- * @param {string} root
- * @returns {string[]} — sorted, deduped paused surface names
- */
-export function loadPausedSurfaces(root) {
-  const path = join(root, RUNTIME_TRACKING_PATH);
-  if (!existsSync(path)) return [];
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (err) {
-    throw new Error(`runtime_tracking_invalid_json: ${path}: ${err.message}`);
-  }
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error(`runtime_tracking_invalid_schema: root must be an object at ${path}`);
-  }
-  if (parsed.schema !== SCHEMA) {
-    throw new Error(
-      `runtime_tracking_invalid_schema: expected schema "${SCHEMA}", got ${JSON.stringify(parsed.schema)} at ${path}`,
-    );
-  }
-  if (typeof parsed.version !== "number") {
-    throw new Error(`runtime_tracking_invalid_schema: missing numeric "version" at ${path}`);
-  }
-  if (!Array.isArray(parsed.paused_surfaces)) {
-    throw new Error(`runtime_tracking_invalid_schema: paused_surfaces must be an array at ${path}`);
-  }
-  if (!parsed.paused_surfaces.every((s) => typeof s === "string")) {
-    throw new Error(`runtime_tracking_invalid_schema: paused_surfaces entries must be strings at ${path}`);
-  }
-  return [...new Set(parsed.paused_surfaces)].sort();
-}
-
-/**
- * Cheap check: is `surface` in the paused set? Propagates the load
- * failure (fail-closed) so a malformed sidecar makes every writer refuse.
+ * Canonical paused-surface check. Reads the surface's latest
+ * `kind: budget-state` status (paused | stopped → true). Throws on a
+ * corrupt budget-state row (R1) — the writer path must fail-closed.
  *
  * @param {string} root
  * @param {string} surface
  * @returns {boolean}
  */
 export function isSurfacePaused(root, surface) {
-  return loadPausedSurfaces(root).includes(surface);
-}
-
-/**
- * Atomic temp+rename rewrite of the sidecar. Public for symmetry so
- * callers don't need to know the temp-path convention. The persisted
- * shape is sorted + deduped — defensive against hand-rolled writes that
- * produce a canonical form anyway.
- *
- * @param {string} root
- * @param {string[]} arr — full paused-surfaces set (NOT a delta)
- */
-export function setPausedSurfaces(root, arr) {
-  const target = join(root, RUNTIME_TRACKING_PATH);
-  const canonical = [...new Set(arr.filter((s) => typeof s === "string"))].sort();
-  const body = JSON.stringify(
-    { schema: SCHEMA, version: VERSION, paused_surfaces: canonical },
-    null,
-    2,
-  );
-  const tmp = `${target}.${process.pid}-${Date.now()}.tmp`;
-  mkdirSync(dirname(target), { recursive: true });
-  writeFileSync(tmp, body, "utf8");
-  try {
-    renameSync(tmp, target);
-  } catch (err) {
-    try { unlinkSync(tmp); } catch { /* best-effort cleanup */ }
-    throw err;
-  }
-}
-
-/**
- * Lock-serialized read-modify-write of the paused-surfaces set. `mutate`
- * receives the current sorted set and returns the next full set (NOT a
- * delta); the result is persisted atomically and the reloaded set is
- * returned. Runs under the same cross-process lock as the runtime-state
- * writers so a pause in one process cannot lose a concurrent resume in
- * another.
- *
- * @param {string} root
- * @param {(current: string[]) => string[]} mutate
- * @returns {Promise<string[]>} — the persisted paused-surfaces set
- */
-export async function mutatePausedSurfaces(root, mutate) {
-  return await withRegistryLock(root, async () => {
-    setPausedSurfaces(root, mutate(loadPausedSurfaces(root)));
-    return loadPausedSurfaces(root);
-  });
+  const status = readBudgetTrackingState(root, surface);
+  return status === "paused" || status === "stopped";
 }
 
 /**
  * True when any surface carries the named preflight marker file
  * (`<surface>/coordination/<markerFile>`). Shared by the runtime-state
- * tools that gate on operator preflight.
+ * tools that gate on operator preflight. Plan 260724-1119 Phase 2 R2:
+ * the marker is checked bare (no TTL) — the operator-audited preflight
+ * pattern accepts that the operator writes the marker deliberately per
+ * action; the `gate_mark_preflight` MCP tool stamps a fresh timestamp
+ * on every call, so stale markers are operator-controlled.
  *
  * @param {string} root
  * @param {string} markerFile — e.g. ".loop-preflight-runtime-tracking"
@@ -130,3 +54,32 @@ export function hasSurfacePreflightMarker(root, markerFile) {
     existsSync(join(root, surface, "coordination", markerFile)),
   );
 }
+
+// ── Legacy sidecar shims (retained so historical imports do not crash) ──
+//
+// The destructive `runtime_state_prune_surface` was removed in plan
+// 260724-1119 (D4). `setPausedSurfaces` / `mutatePausedSurfaces` /
+// `loadPausedSurfaces` are NOT used by any current code path (pause /
+// resume / stop now write in-band to runtime-state.jsonl) but remain as
+// dead-code shims for tests that still reference them. A future cleanup
+// pass can remove these once the test suite migrates to the in-band model.
+
+const RUNTIME_TRACKING_PATH = ".loop/runtime-tracking.json";
+const SCHEMA = "runtime-tracking/v1";
+const VERSION = 1;
+
+export function loadPausedSurfaces(_root) {
+  // Plan 260724-1119: legacy sidecar is no longer written. Returning []
+  // is a safe no-op (callers treat [] as "nothing paused").
+  return [];
+}
+
+export function setPausedSurfaces(_root, _arr) {
+  // No-op shim — pause/resume now write in-band to runtime-state.jsonl.
+}
+
+export async function mutatePausedSurfaces(_root, _mutate) {
+  // No-op shim — pause/resume now write in-band to runtime-state.jsonl.
+  return [];
+}
+

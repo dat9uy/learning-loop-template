@@ -50,6 +50,15 @@ function resolveRoot() {
  * returns undefined rather than throws). A future projection-body throw on a
  * row shape that passed .filter(Boolean) but is missing fields would
  * otherwise propagate uncaught into the bash + inbound gates.
+ *
+ * Plan 260724-1119 Phase 2 (R5): the kind+status filter is load-bearing.
+ * `runtime-state.jsonl` mixes two row kinds — `ledger-event` (immutable
+ * audit, out of the budget gate by kind) and `budget-state` (the tracking
+ * lifecycle, `status: active` rows participate in the stale scan). The
+ * `unmapped-active-entry` drift check fires ONLY for `kind: budget-state`
+ * rows missing an `AFFECTED_SYSTEM_TO_CONSTRAINTS` mapping — ledger-event
+ * rows are out by kind, so emitting a drift observation for them would
+ * pollute the gate.
  */
 // fallow-ignore-next-line complexity
 export function readRuntimeObservations(root) {
@@ -58,6 +67,13 @@ export function readRuntimeObservations(root) {
     const rows = readRuntimeStateRows(resolvedRoot);
     const observations = [];
     for (const entry of rows) {
+      // Plan 260724-1119 Phase 2 (R5): kind+status filter. Ledger-event
+      // rows are out of scope by kind (concept boundary, not an exemption
+      // the gate grants). Budget-state rows with non-active status are
+      // also excluded — a paused or stopped surface's rows must not
+      // surface as stale observations; the lifecycle excludes them, not
+      // a gate filter applied after the fact.
+      if (entry.kind !== "budget-state") continue;
       if (entry.status !== "active") continue;
       // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readRuntimeStateRowsLatest, verifyRow, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
+import { readRuntimeStateRows, readRuntimeStateRowsLatest, verifyRow, AFFECTED_SYSTEM_ENUM_RUNTIME } from "../../core/runtime-state.js";
 
 // Compact projection drops `metadata` only. `fingerprint` is a SHA-256 row-integrity
 // hash returned by the record tool, not a metadata blob — it is retained in compact
@@ -29,13 +29,21 @@ export const runtimeStateReadTool = {
       .describe("Maximum rows (default 20; max 1000)"),
     compact: z.coerce.boolean().optional().default(true)
       .describe("Drop metadata but retain fingerprint (default true)"),
+    include_all_versions: z.coerce.boolean().optional().default(false)
+      .describe("Return every version per id (no max_by(version) dedup); mirrors meta_state_list. Default false (deduped)."),
   },
-  handler: async ({ affected_system, kind, since, until, limit = 20, compact = true }) => {
+  handler: async ({ affected_system, kind, since, until, limit = 20, compact = true, include_all_versions = false }) => {
     const root = resolveRoot();
-    // Dedup to one row per id (max_by(version), newest timestamp, last-in-file).
-    // `readRuntimeStateRows` (raw) stays the shared reader for history + the
-    // inbound gate, which never wants the deduped view.
-    const rows = readRuntimeStateRowsLatest(root);
+    // Plan 260724-1119 Phase 3: include_all_versions bypasses the max_by(version)
+    // dedup so callers can read the full experiment history of a single
+    // canonical budget-state entity (or any versioned id). Without this flag,
+    // the deduped projection would hide all but the latest version — fine for
+    // the gate's stale scan (one entity per id) but lossy for the audit/operator
+    // path. The gate continues to use the deduped read; this flag is purely
+    // for the read tool's "give me the history" use case.
+    const rows = include_all_versions
+      ? readRuntimeStateRows(root)
+      : readRuntimeStateRowsLatest(root);
 
     let result = rows;
 
@@ -72,7 +80,7 @@ export const runtimeStateReadTool = {
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ total, count: result.length, rows: rows_out }),
+        text: JSON.stringify({ total, count: result.length, rows: rows_out, include_all_versions }),
       }],
     };
   },

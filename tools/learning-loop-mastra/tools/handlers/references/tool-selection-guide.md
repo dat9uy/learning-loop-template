@@ -70,9 +70,9 @@ Operators can pause/resume tracking per surface (e.g. vendored `vnstock`).
 |---|---|
 | Record a runtime-state row (preflight-gated) | `runtime_state_record` |
 | Read runtime-state rows (deduped to latest per id) | `runtime_state_read` |
-| Pause runtime-state tracking for a surface (preflight-gated) | `runtime_state_pause` |
-| Resume a previously paused surface (preflight-gated) | `runtime_state_resume` |
-| One-time destructive rewrite removing a surface's existing rows (preflight + confirm-gated) | `runtime_state_prune_surface` |
+| Pause runtime-state tracking for a surface (preflight-gated; appends in-band `kind: budget-state, status: paused`) | `runtime_state_pause` |
+| Resume a previously paused surface (preflight-gated; appends in-band `kind: budget-state, status: active`) | `runtime_state_resume` |
+| Non-destructively stop runtime-state tracking for a surface (preflight + confirm-gated; appends in-band `kind: budget-state, status: stopped`; terminal — restart requires a new id) | `runtime_state_stop` |
 
 ## Discovery
 

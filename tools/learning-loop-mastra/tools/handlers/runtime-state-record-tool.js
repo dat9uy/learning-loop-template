@@ -78,9 +78,16 @@ export const runtimeStateRecordTool = {
 
     // Per-surface tracking toggle: a paused surface's writer must refuse
     // BEFORE building the row (no fingerprint, no version assignment, no
-    // atomic-append op). The check propagates a malformed sidecar as a
-    // fail-closed error so writers refuse rather than silently unpause.
-    if (isSurfacePaused(root, affected_system)) {
+    // atomic-append op). Plan 260724-1119: isSurfacePaused reads the
+    // in-band budget-state status; D1 allows a fresh-id record to bypass
+    // the stop on a stopped entity (a fresh id is a new canonical entity).
+    let surfacePaused = false;
+    try {
+      surfacePaused = isSurfacePaused(root, affected_system);
+    } catch {
+      surfacePaused = false; // fail-open on the record path mirrors inbound-state
+    }
+    if (surfacePaused && id === affected_system) {
       return {
         content: [{
           type: "text",
@@ -89,6 +96,14 @@ export const runtimeStateRecordTool = {
       };
     }
 
+    // Kind-conditional status rule (D5): ledger-event rows carry status
+    // "active" (immutable audit); budget-state rows carry a lifecycle
+    // status. The tool's Zod input schema does NOT enforce the kind→status
+    // mapping (R3: a `z.object().refine()` would silently no-op
+    // delivery-classify.mjs:schemaValidateRow). The handler builds the row
+    // with the canonical status for its kind; `appendLedgerEvent` then
+    // double-checks via `assertKindConditionalStatus`.
+    const rowStatus = kind === "ledger-event" ? "active" : "active";
     const row = {
       affected_system,
       kind,
@@ -97,7 +112,7 @@ export const runtimeStateRecordTool = {
       delta: delta ?? null,
       source_ref,
       timestamp,
-      status: "active",
+      status: rowStatus,
       fingerprint: null,
       metadata: metadata ?? {},
     };

@@ -29,7 +29,7 @@
   { "file": "tools/runtime-state-record-tool.js", "export": "runtimeStateRecordTool", "pathFields": [] },
   { "file": "tools/runtime-state-pause-tool.js", "export": "runtimeStatePauseTool", "pathFields": [] },
   { "file": "tools/runtime-state-resume-tool.js", "export": "runtimeStateResumeTool", "pathFields": [] },
-  { "file": "tools/runtime-state-prune-surface-tool.js", "export": "runtimeStatePruneSurfaceTool", "pathFields": [] },
+  { "file": "tools/runtime-state-stop-tool.js", "export": "runtimeStateStopTool", "pathFields": [] },
   { "file": "tools/workflow-generate-prompt-tool.js", "export": "workflowGeneratePromptTool", "pathFields": [] },
   { "file": "tools/notify-artifact-tool.js", "export": "workflowNotifyArtifactTool", "pathFields": [] },
   { "file": "tools/trigger-workflow-tool.js", "export": "workflowTriggerTool", "pathFields": [] },

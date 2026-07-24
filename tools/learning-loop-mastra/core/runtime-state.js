@@ -121,9 +121,10 @@ export async function appendOrFindDispatchLedgerEvent(root, row, ledgerId) {
 }
 
 /**
- * Module-private helper for pruneSurfaceRows. Atomic temp+rename rewrite
- * of the sidecar with a pid-suffixed temp path so concurrent writers
- * can't collide on the temp name.
+ * Module-private helper. Atomic temp+rename rewrite of the sidecar with a
+ * pid-suffixed temp path so concurrent writers can't collide on the temp
+ * name. Reserved for in-band migrations that need to rewrite the file
+ * (none ship today; the destructive `prune` was removed in plan 260724-1119).
  */
 function atomicRewriteSidecar(root, rows) {
   const path = join(root, RUNTIME_STATE_FILENAME);
@@ -136,23 +137,6 @@ function atomicRewriteSidecar(root, rows) {
     try { unlinkSync(tempPath); } catch { /* best-effort cleanup */ }
     throw err;
   }
-}
-
-/**
- * Rewrite the sidecar minus every row whose `affected_system` matches
- * `surface`. Atomic temp+rename; history is NOT preserved for the
- * pruned rows (this is the point — the operator is deleting noise).
- * Runs under the same cross-process lock as `appendLedgerEvent` so the
- * prune cannot interleave with a concurrent append. Returns
- * `{pruned, remaining}` so the caller can surface blast radius.
- */
-export async function pruneSurfaceRows(root, surface) {
-  return await withRegistryLock(root, async () => {
-    const all = readRuntimeStateRows(root);
-    const keep = all.filter((r) => r?.affected_system !== surface);
-    atomicRewriteSidecar(root, keep);
-    return { pruned: all.length - keep.length, remaining: keep.length };
-  });
 }
 
 /**
@@ -249,6 +233,16 @@ export function verifyRow(row) {
  * schema). `version` is a dedup bookkeeping field and is NOT hashed by
  * v2 fingerprint (re-records already differ by `timestamp`).
  *
+ * Kind-conditional status rule (plan 260724-1119 D5, R3): the JSON schema
+ * is intentionally NOT a `z.object().refine()` (the red-team R3 finding
+ * showed refine() silently no-ops `delivery-classify.mjs:schemaValidateRow`
+ * and throws in 2 test files). The rule lives here so the invariant is
+ * enforced at the actual mutation boundary:
+ *   - kind === "ledger-event"  → status MUST be "active" (immutable audit).
+ *   - kind === "budget-state"  → status MUST be a lifecycle value
+ *     ("initial" | "active" | "paused" | "stopped"); ledger-event audit
+ *     rows are out of the gate's stale-scan scope by kind.
+ *
  * Cost: O(n) scan of the sidecar per append — acceptable at operator
  * scale (registry reports ~27 findings). An in-memory max-version cache
  * is YAGNI (and dead code on the CLI one-shot path).
@@ -258,6 +252,7 @@ export function verifyRow(row) {
  * @returns {Promise<object>} — the row with `version` + `fingerprint` set
  */
 export async function appendLedgerEvent(root, row) {
+  assertKindConditionalStatus(row);
   return await withRegistryLock(root, async () => {
     const existing = readRuntimeStateRows(root);
     const maxExisting = existing.reduce((acc, r) => {
@@ -271,4 +266,99 @@ export async function appendLedgerEvent(root, row) {
     appendFileSync(sidecarPath, JSON.stringify(withFingerprint) + "\n", "utf8");
     return withFingerprint;
   });
+}
+
+/**
+ * Kind-conditional status guard. Throws on a violation; consumed by
+ * `appendLedgerEvent` (always-on) and surfaced as a tool-level error by
+ * the runtime-state handlers.
+ */
+export function assertKindConditionalStatus(row) {
+  const kind = row?.kind;
+  const status = row?.status;
+  if (kind === "ledger-event") {
+    if (status !== "active") {
+      throw new Error(
+        `runtime_state_kind_status_mismatch: ledger-event rows must have status "active", got ${JSON.stringify(status)}`,
+      );
+    }
+    return;
+  }
+  if (kind === "budget-state") {
+    const LIFECYCLE = new Set(["initial", "active", "paused", "stopped"]);
+    if (!LIFECYCLE.has(status)) {
+      throw new Error(
+        `runtime_state_kind_status_mismatch: budget-state rows must have a lifecycle status (initial|active|paused|stopped), got ${JSON.stringify(status)}`,
+      );
+    }
+    return;
+  }
+  throw new Error(`runtime_state_kind_unknown: kind must be "ledger-event" or "budget-state", got ${JSON.stringify(kind)}`);
+}
+
+/**
+ * Canonical budget-tracking id per `affected_system` (plan D8: one
+ * canonical id per surface). The mapping is fixed by the runtime-state
+ * `affected_system` enum (vnstock, fastapi, tanstack, product, api, web,
+ * meta-state-tools, runtime-state) — the canonical id is the surface name
+ * itself. Restart (D1: `stop` is terminal per-id; a new id starts a fresh
+ * entity) lives at the TOOL level: a `runtime_state_stop` followed by a
+ * fresh `runtime_state_record` with a different id reuses this helper's
+ * output only when no canonical entity exists.
+ *
+ * `readBudgetTrackingState` filters `kind === "budget-state"` BEFORE the
+ * `max_by(version)` dedup (R11) so a ledger-event sharing an id can't
+ * shadow a budget-state row. Corrupt/unreadable budget-state rows THROW
+ * (R1): a stopped surface must not silently un-stop because the parser
+ * skipped a malformed line. The read-gate callers (`isSurfacePaused`,
+ * `core/inbound-state.js`, `core/evaluate-inbound-gate.js`) try/catch
+ * around the helper to degrade to "not paused" on the gate (gate must
+ * fail-open to a corrupt read; writers fail-closed separately at the
+ * mutation boundary).
+ *
+ * @param {string} root — project root containing runtime-state.jsonl
+ * @param {string} surface — runtime-state `affected_system` value
+ * @returns {string | null} — latest lifecycle status, or null if no
+ *   budget-state rows exist for the surface (a fresh surface). THROWS
+ *   on a malformed budget-state row (fail-closed for writers).
+ */
+export function readBudgetTrackingState(root, surface) {
+  const rows = readRuntimeStateRows(root);
+  const budgetRows = rows.filter((r) => r && r.kind === "budget-state" && r.affected_system === surface);
+  if (budgetRows.length === 0) return null;
+  // Validate the kind-conditional status on each row BEFORE dedup so a
+  // corrupt budget-state row surfaces as an error (R1), not a silent skip.
+  for (const row of budgetRows) {
+    if (row.status !== "initial" && row.status !== "active" && row.status !== "paused" && row.status !== "stopped") {
+      throw new Error(
+        `runtime_state_budget_tracking_corrupt: budget-state row for surface "${surface}" has invalid status ${JSON.stringify(row.status)}`,
+      );
+    }
+  }
+  // max_by(version), ties broken by newest timestamp then last-in-file
+  // order (mirrors `readRuntimeStateRowsLatest`).
+  const byId = new Map();
+  budgetRows.forEach((row, idx) => {
+    const id = row.id;
+    if (typeof id !== "string" || id === "") return;
+    const v = Number.isFinite(parseInt(row.version, 10)) ? parseInt(row.version, 10) : 0;
+    const prior = byId.get(id);
+    if (prior === undefined) {
+      byId.set(id, { row, version: v, fileIdx: idx });
+      return;
+    }
+    if (v > prior.version) {
+      byId.set(id, { row, version: v, fileIdx: idx });
+      return;
+    }
+    if (v === prior.version) {
+      const priorT = String(prior.row.timestamp ?? "");
+      const nextT = String(row.timestamp ?? "");
+      if (nextT > priorT || (nextT === priorT && idx >= prior.fileIdx)) {
+        byId.set(id, { row, version: v, fileIdx: idx });
+      }
+    }
+  });
+  const latest = [...byId.values()].sort((a, b) => b.fileIdx - a.fileIdx)[0];
+  return latest ? latest.row.status : null;
 }
