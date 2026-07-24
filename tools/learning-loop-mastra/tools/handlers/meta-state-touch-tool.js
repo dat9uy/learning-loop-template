@@ -30,29 +30,12 @@ export const metaStateTouchTool = {
   handler: async ({ id, _expected_version }) => {
     const gateLogTimestamp = new Date().toISOString();
     const root = resolveRoot();
-    const entry = loadEntry(root, id);
 
-    if (!entry) {
-      return replyWithLog(root, "meta_state_touch", { touched: false, reason: "not_found", id });
+    const precheck = checkEntryPreconditions(root, id);
+    if (!precheck.ok) {
+      return replyWithLog(root, "meta_state_touch", precheck.wireResult);
     }
-
-    if (entry.entry_kind !== "finding") {
-      return replyWithLog(root, "meta_state_touch", {
-        touched: false,
-        reason: "wrong_kind",
-        id,
-        entry_kind: entry.entry_kind,
-      });
-    }
-
-    if (!isOpen(entry)) {
-      return replyWithLog(root, "meta_state_touch", {
-        touched: false,
-        reason: "wrong_status",
-        id,
-        current_status: entry.status ?? null,
-      });
-    }
+    const entry = precheck.entry;
 
     // Grounding snapshot — pure, no subprocess, file-index injected to keep
     // checkGrounding side-effect-free. Accept: grounded (hash_match:true),
@@ -66,66 +49,124 @@ export const metaStateTouchTool = {
       fileIndex: readFileIndex(root),
     });
 
-    const groundingStatus = grounding?.status ?? "unknown";
-    if (groundingStatus === "drifted" || grounding?.grounding?.code_ref_exists === false) {
-      // Distinguish a hash-mismatch drift from a missing-file drift so the
-      // caller can route to the right follow-up (refresh index vs. re-anchor).
-      const reason = grounding?.grounding?.code_ref_exists === false ? "missing" : "drifted";
-      const result = {
-        touched: false,
-        reason,
-        id,
-        grounding: {
-          status: groundingStatus,
-          hash_match: grounding?.grounding?.hash_match ?? null,
-          code_ref_exists: grounding?.grounding?.code_ref_exists ?? null,
-        },
-      };
+    if (isGroundingReject(grounding)) {
+      const wireResult = buildGroundingReject(id, grounding);
       appendGateLog(root, {
         timestamp: gateLogTimestamp,
         tool: "meta_state_touch",
-        ...result,
+        ...wireResult,
       });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return { content: [{ type: "text", text: JSON.stringify(wireResult) }] };
     }
 
     const now = new Date().toISOString();
-    const expectedVersion = _expected_version !== undefined ? _expected_version : (entry.version ?? 0);
     const updateOutcome = await applyUpdateAndCheck(
       root,
       id,
-      { last_verified_at: now, _expected_version: expectedVersion },
+      { last_verified_at: now, _expected_version: resolveExpectedVersion(entry, _expected_version) },
       "meta_state_touch",
     );
 
     if (!updateOutcome.ok) {
-      const result = {
-        touched: false,
-        reason: updateOutcome.reason,
-        id,
-        ...(updateOutcome.current_version !== undefined ? { current_version: updateOutcome.current_version } : {}),
-      };
+      const wireResult = buildUpdateFailure(id, updateOutcome);
       appendGateLog(root, {
         timestamp: gateLogTimestamp,
         tool: "meta_state_touch",
-        ...result,
+        ...wireResult,
       });
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      return { content: [{ type: "text", text: JSON.stringify(wireResult) }] };
     }
-
-    const result = {
-      touched: true,
-      id,
-      last_verified_at: now,
-      grounding: {
-        status: groundingStatus,
-        hash_match: grounding?.grounding?.hash_match ?? null,
-        code_ref_exists: grounding?.grounding?.code_ref_exists ?? null,
-      },
-    };
 
     // replyWithLog writes the canonical per-call breadcrumb carrying the
     // full result body — including the grounding snapshot — for audit.
-    return replyWithLog(root, "meta_state_touch", result);
+    return replyWithLog(root, "meta_state_touch", {
+      touched: true,
+      id,
+      last_verified_at: now,
+      grounding: summarizeGrounding(grounding),
+    });
   },
 };
+
+// Resolve the `reopens` set on the optional `entry_id`. The new finding
+// declares it via `reopens: [...]` so those ids are not orphans.
+//
+// Pre-conditions on the touched entry: it must exist, be a finding, and be
+// open. Each failure mode carries its own wire shape; we return the
+// pre-built wireResult so the handler can dispatch it verbatim.
+function checkEntryPreconditions(root, id) {
+  const entry = loadEntry(root, id);
+
+  if (!entry) {
+    return { ok: false, wireResult: { touched: false, reason: "not_found", id } };
+  }
+  if (entry.entry_kind !== "finding") {
+    return {
+      ok: false,
+      wireResult: {
+        touched: false,
+        reason: "wrong_kind",
+        id,
+        entry_kind: entry.entry_kind,
+      },
+    };
+  }
+  if (!isOpen(entry)) {
+    return {
+      ok: false,
+      wireResult: {
+        touched: false,
+        reason: "wrong_status",
+        id,
+        current_status: entry.status ?? null,
+      },
+    };
+  }
+  return { ok: true, entry };
+}
+
+// Distinguish a hash-mismatch drift from a missing-file drift so the
+// caller can route to the right follow-up (refresh index vs. re-anchor).
+// Both reject the touch; the reason differentiates the wire result.
+function isGroundingReject(grounding) {
+  const groundingStatus = grounding?.status ?? "unknown";
+  return groundingStatus === "drifted" || grounding?.grounding?.code_ref_exists === false;
+}
+
+function buildGroundingReject(id, grounding) {
+  const groundingStatus = grounding?.status ?? "unknown";
+  const reason = grounding?.grounding?.code_ref_exists === false ? "missing" : "drifted";
+  return {
+    touched: false,
+    reason,
+    id,
+    grounding: summarizeGrounding(grounding, groundingStatus),
+  };
+}
+
+function buildUpdateFailure(id, updateOutcome) {
+  return {
+    touched: false,
+    reason: updateOutcome.reason,
+    id,
+    ...(updateOutcome.current_version !== undefined ? { current_version: updateOutcome.current_version } : {}),
+  };
+}
+
+// Collapse the optional-chaining pyramid on `grounding.grounding.*` into one
+// place so call sites stay flat. The caller may override `status` to preserve
+// the exact snapshot value the handler observed (some reject paths compute
+// status before this helper runs).
+function summarizeGrounding(grounding, statusOverride) {
+  return {
+    status: statusOverride ?? grounding?.status ?? "unknown",
+    hash_match: grounding?.grounding?.hash_match ?? null,
+    code_ref_exists: grounding?.grounding?.code_ref_exists ?? null,
+  };
+}
+
+// CAS: explicit `_expected_version` if provided, otherwise the entry's
+// current version (matches meta_state_re_verify's contract).
+function resolveExpectedVersion(entry, _expected_version) {
+  return _expected_version !== undefined ? _expected_version : (entry.version ?? 0);
+}
