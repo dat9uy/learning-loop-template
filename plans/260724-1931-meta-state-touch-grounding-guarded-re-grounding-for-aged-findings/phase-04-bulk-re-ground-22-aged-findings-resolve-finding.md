@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Bulk re-ground 22 aged findings + resolve finding"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: [2, 3]
@@ -34,10 +34,10 @@ Operator runbook, not code. Recompute the aged-no-steps list at execution time (
 
 ## Success Criteria
 
-- [ ] Age-stale-no-steps count = 0 (or only drift-rejected ids, each re-filed)
-- [ ] `cold-tier-regression.test.js` green without cap bump
-- [ ] Parent finding status `resolved` with change-log citation
-- [ ] Gate log shows one `meta_state_touch` breadcrumb per touched id (audit trail)
+- [x] Age-stale-no-steps count = 0 (or only drift-rejected ids, each re-filed) — 19 touched, 2 drift-rejected re-filed as new evidence-drift findings
+- [x] `cold-tier-regression.test.js` green without cap bump
+- [x] Parent finding status `resolved` with change-log citation — `meta-260724T1913Z-aged-findings-no-verification-steps-cannot-be-re-grounded-by` resolved (v1, status:resolved) citing `meta-260724T2026Z-meta-state-touch` change-log
+- [x] Gate log shows one `meta_state_touch` breadcrumb per touched id (audit trail) — 19 touched + 2 rejected, all logged
 
 ## Risk Assessment
 

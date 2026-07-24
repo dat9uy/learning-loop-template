@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Close patch backdoor: immutabilize last_verified_at"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [2]
@@ -37,8 +37,8 @@ Once `meta_state_touch` is the guarded write path for `last_verified_at`, remove
 
 ## Success Criteria
 
-- [ ] Patch and batch reject the field; touch and re-verify still stamp it
-- [ ] Full test suite green
+- [x] Patch and batch reject the field; touch and re-verify still stamp it
+- [x] Full test suite green
 
 ## Risk Assessment
 

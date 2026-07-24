@@ -41,6 +41,7 @@
         "meta_state_propose_design",
         "meta_state_relationships",
         "meta_state_re_verify",
+        "meta_state_touch",
         "meta_state_supersede"
       ],
       "ordering": "any"

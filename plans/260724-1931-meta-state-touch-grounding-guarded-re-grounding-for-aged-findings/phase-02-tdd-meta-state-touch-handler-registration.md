@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "TDD: meta_state_touch handler + registration"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [1]
@@ -51,10 +51,10 @@ Registration surfaces (verified by tracing `meta_state_re_verify`):
 
 ## Success Criteria
 
-- [ ] Phase-1 test file green
-- [ ] All CLI/MCP drift + parity tests green
-- [ ] Docs/hints/guide updated; `field-glossary.test.js` unaffected (no new fields)
-- [ ] Narrow tests → broaden to full `pnpm test` at end of phase
+- [x] Phase-1 test file green
+- [x] All CLI/MCP drift + parity tests green
+- [x] Docs/hints/guide updated; `field-glossary.test.js` unaffected (no new fields)
+- [x] Narrow tests → broaden to full `pnpm test` at end of phase
 
 ## Risk Assessment
 

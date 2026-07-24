@@ -74,7 +74,7 @@ test("LOOP_READS_VIA_CLI=1 excludes only the 12 read tools (R backward compat)",
     const defaultMastraNames = defaultNames.filter((name) => name.startsWith(PREFIX));
     const optedMastraNames = optedNames.filter((name) => name.startsWith(PREFIX));
 
-    assert.strictEqual(defaultMastraNames.length, 36, "default MCP surface must retain all 36 mastra tools");
+    assert.strictEqual(defaultMastraNames.length, 37, "default MCP surface must retain all 37 mastra tools (36 + meta_state_touch)");
     assert.strictEqual(
       optedMastraNames.length,
       defaultMastraNames.length - EXPECTED_READ_TOOLS.length,
@@ -130,10 +130,10 @@ test("LOOP_RECORDS_VIA_CLI=1 excludes the full CLI_TOOLS set (reads + writes)", 
     const defaultMastraNames = defaultNames.filter((name) => name.startsWith(PREFIX));
     const optedMastraNames = optedNames.filter((name) => name.startsWith(PREFIX));
 
-    assert.strictEqual(defaultMastraNames.length, 36, "default MCP surface must retain all 36 mastra tools");
+    assert.strictEqual(defaultMastraNames.length, 37, "default MCP surface must retain all 37 mastra tools (36 + meta_state_touch)");
     assert.strictEqual(
       optedMastraNames.length,
-      36 - CLI_TOOLS.size,
+      37 - CLI_TOOLS.size,
       `records-via-cli opted MCP surface must remove exactly CLI_TOOLS.size (${CLI_TOOLS.size}) tools`,
     );
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Design decisions + failing test scaffold"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -61,8 +61,8 @@ Lock the tool contract and write the failing tests first (TDD). No handler code 
 
 ## Success Criteria
 
-- [ ] Test file exists, all cases fail for the right reason (missing tool), not for fixture bugs
-- [ ] Contract above reviewed against `checkGrounding` return shape (verified: check-grounding.js:98-260)
+- [x] Test file exists, all cases fail for the right reason (missing tool), not for fixture bugs
+- [x] Contract above reviewed against `checkGrounding` return shape (verified: check-grounding.js:98-260)
 
 ## Risk Assessment
 

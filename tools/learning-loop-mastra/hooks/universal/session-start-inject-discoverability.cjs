@@ -47,6 +47,7 @@ const WRITE_TOOL_SKETCHES = {
   meta_state_ship_loop_design: "{id,shipped_in_plan}",
   meta_state_dispatch_finding: "{id,stage,issue_number?,issue_url?,repo?}",
   meta_state_re_verify: "{id}",
+  meta_state_touch: "{id}",
   meta_state_refresh_file_index: "{path,reason?}",
   runtime_state_record: "{affected_system,kind,id,source_ref,timestamp}",
   runtime_state_pause: "{surface}",

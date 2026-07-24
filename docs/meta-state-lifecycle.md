@@ -17,7 +17,8 @@ The L1 doc (`docs/loop-engine.md`) names five exit roles for a finding. Each is 
 |---|---|---|
 | **promote** | `meta_state_promote_rule` | `finding` becomes the origin of a new `rule` entry; `promoted_to_rule` back-pointer set |
 | **resolve** | `meta_state_resolve` | `status` → `resolved`; `resolved_at`, `resolved_by`, `resolution` recorded |
-| **re-verify** | `meta_state_re_verify` | `open` → `open` on passing verification (stamps `last_verified_at`, no transition); used to re-ground `stale`-view findings |
+| **re-verify** | `meta_state_re_verify` | `open` → `open` on passing verification (stamps `last_verified_at`, no transition); used to re-ground `stale`-view findings with re-runnable `verification.steps` |
+| **re-ground (no steps)** | `meta_state_touch` | `open` → `open` (stamps `last_verified_at`, no transition); re-grounds an aged finding whose `verification.steps` is empty via operator attestation guarded by `checkGrounding` |
 | **supersede** | `meta_state_supersede` | `status` → `superseded`; `consolidated_into` points at the absorbing change-log |
 | **dispatch** | `meta_state_dispatch_finding` | Non-terminal routing action — ledger event + `ledger_ref` back-pointer; finding stays in its current status until resolve/promote |
 

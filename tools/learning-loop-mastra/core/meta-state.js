@@ -328,8 +328,6 @@ export const metaStateFindingEntrySchema = z.object({
     .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
   consolidated_into: z.string().optional()
     .describe("Canonical change-log id for a superseded finding; see field_glossary.id"),
-  last_verified_at: z.string().optional()
-    .describe("Timestamp of the last successful verification; see field_glossary"),
   verification: z.object({}).passthrough().optional()
     .describe("Verification reproduction object; see field_glossary.verification"),
   superseded_at: z.string().optional()
@@ -582,6 +580,10 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "entry_kind",  // identity — stopgap until the universal assertinvariant wrapper (Impl 3)
   "status",      // lifecycle identity — stopgap (rule/loop-design deactivation/ship is operator-decided)
   "operation_envelope",  // Plan 260712-0300 Phase 2 — auto-emit ONLY (meta_state_batch); replace via patch is a forge vector. Stopgap until universal wrapper (Impl 3).
+  // Freshness stamps are produced only by verification (re-verify) or
+  // grounding-guarded attestation (touch). Patching would forge freshness
+  // without evidence. Plan 260724-1931 phase 3 closes this backdoor.
+  "last_verified_at",
 ]);
 
 /**

@@ -38,6 +38,7 @@ definition (DRY).
 | Walk the registry and propose lifecycle transitions | `meta_state_sweep` |
 | Mark one entry as superseded by a change-log | `meta_state_supersede` |
 | Re-verify a stale entry by running its verification.steps | `meta_state_re_verify` |
+| Re-ground an aged finding whose verification.steps is empty (operator attestation; checks grounding snapshot) | `meta_state_touch` |
 
 ## Record CRUD
 

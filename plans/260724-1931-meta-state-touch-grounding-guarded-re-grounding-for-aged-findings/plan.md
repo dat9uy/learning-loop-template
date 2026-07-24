@@ -1,7 +1,7 @@
 ---
 title: "meta_state_touch: grounding-guarded re-grounding for aged findings"
 description: "Add a lightweight operator write tool that re-grounds age-stale findings lacking verification.steps, guarded by checkGrounding; close the unguarded meta_state_patch backdoor on last_verified_at."
-status: in-progress
+status: completed
 priority: P1
 effort: "1d"
 tags: [meta-state, tooling, staleness]
@@ -37,19 +37,16 @@ findings whose verification model is "operator attestation + evidence hash still
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Design decisions + failing test scaffold](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: TDD: meta_state_touch handler + registration](./phase-02-tdd-meta-state-touch-handler-registration.md) | Pending |
-| 3 | [Phase 3: Close patch backdoor: immutabilize last_verified_at](./phase-03-close-patch-backdoor-immutabilize-last-verified-at.md) | Pending |
-| 4 | [Phase 4: Bulk re-ground 22 aged findings + resolve finding](./phase-04-bulk-re-ground-22-aged-findings-resolve-finding.md) | Pending |
-| 2 | [Phase 2: TDD: meta_state_touch handler + registration](./phase-02-tdd-meta-state-touch-handler-registration.md) | Pending |
-| 3 | [Phase 3: Close patch backdoor: immutabilize last_verified_at](./phase-03-close-patch-backdoor-immutabilize-last-verified-at.md) | Pending |
-| 4 | [Phase 4: Bulk re-ground 22 aged findings + resolve finding](./phase-04-bulk-re-ground-22-aged-findings-resolve-finding.md) | Pending |
+| 1 | [Phase 1: Design decisions + failing test scaffold](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: TDD: meta_state_touch handler + registration](./phase-02-tdd-meta-state-touch-handler-registration.md) | Completed |
+| 3 | [Phase 3: Close patch backdoor: immutabilize last_verified_at](./phase-03-close-patch-backdoor-immutabilize-last-verified-at.md) | Completed |
+| 4 | [Phase 4: Bulk re-ground 22 aged findings + resolve finding](./phase-04-bulk-re-ground-22-aged-findings-resolve-finding.md) | Completed |
 
 ## Success Criteria
 
-- [ ] `meta_state_touch({id})` stamps `last_verified_at` on a grounded open finding (no status transition); rejects `drifted`/`missing`/`not_found`/`wrong_status` with structured reasons
-- [ ] Tool visible on MCP surface and CLI (`bin/loop.mjs meta_state_touch`), all drift/parity tests green
-- [ ] `meta_state_patch` rejects `last_verified_at` with `immutable_field`
-- [ ] Age-stale count returns below the cold-tier cap without bumping it; parent finding resolved via cascade with `source_refs` citing the change-log entry
+- [x] `meta_state_touch({id})` stamps `last_verified_at` on a grounded open finding (no status transition); rejects `drifted`/`missing`/`not_found`/`wrong_status` with structured reasons
+- [x] Tool visible on MCP surface and CLI (`bin/loop.mjs meta_state_touch`), all drift/parity tests green
+- [x] `meta_state_patch` rejects `last_verified_at` with `immutable_field`
+- [x] Age-stale count returns below the cold-tier cap without bumping it; parent finding resolved via cascade with `source_refs` citing the change-log entry
 
 <!-- slug: meta-state-touch-grounding-guarded-re-grounding-for-aged-findings -->
