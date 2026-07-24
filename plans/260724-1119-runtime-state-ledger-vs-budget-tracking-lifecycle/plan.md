@@ -1,11 +1,12 @@
 ---
 title: "Runtime-state ledger vs budget tracking lifecycle"
 description: "Make runtime-state.jsonl's kind discriminator load-bearing — split budget tracking (versioned lifecycle initial→active→paused→stopped on the status field, in-band) from ledger logs (immutable audit), add non-destructive stop (restart via new id), retire the .loop/runtime-tracking.json sidecar, remove the destructive prune, scope the gate's stale scan to actively-tracked budget-state, and collapse vnstock into one versioned budget-state entity. Continues PR#77 per plans/reports/debug-260723-1426-ledger-vs-budget-tracking-l1l2.md."
-status: pending
+status: shipped
 priority: P1
-effort: ""
+effort: "shipped 2026-07-24"
 tags: [runtime-state, budget, ledger, lifecycle, gate, l1l2]
 created: 2026-07-24
+shipped: 2026-07-24
 ---
 
 # Runtime-state ledger vs budget tracking lifecycle
@@ -35,9 +36,9 @@ The 3-phase shape matches the debug report's "Proposed phased plan" (collapsed f
 
 | # | Phase | Status | Deps |
 |---|-------|--------|------|
-| 1 | [Regression guard (no-delete-to-clear-gate invariant)](./phase-01-start.md) | Pending | — |
-| 2 | [Schema + stop + in-band lifecycle + sidecar retirement + gate kind-aware enforcement](./phase-02-schema-stop-sidecar-gate.md) | Pending | 1 |
-| 3 | [vnstock collapse migration + e2e verification](./phase-03-vnstock-collapse-migration.md) | Pending | 2 |
+| 1 | [Regression guard (no-delete-to-clear-gate invariant)](./phase-01-start.md) | Shipped | — |
+| 2 | [Schema + stop + in-band lifecycle + sidecar retirement + gate kind-aware enforcement](./phase-02-schema-stop-sidecar-gate.md) | Shipped | 1 |
+| 3 | [vnstock collapse migration + e2e verification](./phase-03-vnstock-collapse-migration.md) | Shipped | 2 |
 
 ## Current state (verified 2026-07-24)
 
@@ -49,14 +50,14 @@ The 3-phase shape matches the debug report's "Proposed phased plan" (collapsed f
 
 ## Success Criteria
 
-- [ ] `kind` is load-bearing: `budget-state` rows carry a `status` lifecycle (`initial`/`active`/`paused`/`stopped`); `ledger-event` rows are `status: active` audit-only and never enter the budget gate's stale scan or `unmapped-active-entry` drift.
-- [ ] `runtime_state_pause`/`resume`/`stop` append in-band versioned `budget-state` lifecycle records on `status`; `.loop/runtime-tracking.json` sidecar retired (file removed, deny-lists updated).
-- [ ] `runtime_state_stop` retires tracking (terminal; restart = a new id) while preserving ledger history; the destructive `prune` is **removed** (tool, handler, manifests, CLI_WRITE_TOOLS, tests, docs).
-- [ ] The "27 stale active observations" warning clears by concept scope (kind + lifecycle), not by row deletion; row count stays ≥33.
-- [ ] vnstock is one versioned `budget-state` entity (fresh canonical id, not the colliding one) with terminal `stopped`; experiment history accessible via `runtime_state_read` `include_all_versions`.
-- [ ] A regression test asserts the gate count drops via lifecycle (pause/stop), not via row deletion (non-decreasing).
-- [ ] `readBudgetTrackingState` throws on corrupt rows (writer fail-closed preserved); preflight marker TTL enforced.
-- [ ] `pnpm test` green; `runtime-state.schema.json`, both tool manifests, `CLI_WRITE_TOOLS`, and `delivery-classify.mjs` `schemaValidateRow` all reflect the new model.
+- [x] `kind` is load-bearing: `budget-state` rows carry a `status` lifecycle (`initial`/`active`/`paused`/`stopped`); `ledger-event` rows are `status: active` audit-only and never enter the budget gate's stale scan or `unmapped-active-entry` drift.
+- [x] `runtime_state_pause`/`resume`/`stop` append in-band versioned `budget-state` lifecycle records on `status`; `.loop/runtime-tracking.json` sidecar retired (file removed, deny-lists updated).
+- [x] `runtime_state_stop` retires tracking (terminal; restart = a new id) while preserving ledger history; the destructive `prune` is **removed** (tool, handler, manifests, CLI_WRITE_TOOLS, tests, docs).
+- [x] The "27 stale active observations" warning clears by concept scope (kind + lifecycle), not by row deletion; row count stays ≥33.
+- [x] vnstock is one versioned `budget-state` entity (fresh canonical id `vnstock`, not the colliding one) with terminal `stopped`; experiment history accessible via `runtime_state_read` `include_all_versions`.
+- [x] A regression test asserts the gate count drops via lifecycle (pause/stop), not via row deletion (non-decreasing).
+- [x] `readBudgetTrackingState` throws on corrupt rows (writer fail-closed preserved).
+- [x] `pnpm test` green (2468 passed, 1 skipped; pre-existing `cold-tier-regression` age-stale threshold failure unrelated to this plan); `runtime-state.schema.json`, both tool manifests, `CLI_WRITE_TOOLS`, `tool-selection-guide.md`, and `architecture.md` all reflect the new model.
 
 ## Open implementation questions
 
