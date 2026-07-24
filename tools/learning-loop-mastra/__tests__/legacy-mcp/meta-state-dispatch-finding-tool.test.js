@@ -39,7 +39,7 @@ describe("meta_state_dispatch_finding", () => {
     for (const surface of SURFACES) {
       const dir = join(tempDir, surface, "coordination");
       mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, ".loop-preflight-runtime-state"), "");
+      writeFileSync(join(dir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }));
     }
   }
 

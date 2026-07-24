@@ -159,7 +159,7 @@ await test("mixed meta + vnstock: meta passes, vnstock sidecar stale → stale: 
   assert.ok(result.reason.includes("vnstock"));
 });
 
-// ── Plan 260724-1119 Phase 2 (R5): kind+status filter ──
+// ── Kind+status filter: the gate's stale scan scopes to budget-state + active ──
 
 await test("ledger-event rows are out of scope (kind filter): vnstock with only ledger-event → stale: true", () => {
   // Ledger-event rows are immutable audit; the gate's stale scan excludes
@@ -352,7 +352,7 @@ await test("malformed line + valid budget-state row missing timestamp → stale 
 });
 
 await test("read gate degrades to not-paused on corrupt budget-tracking read", () => {
-  // Plan 260724-1119 Phase 2 R1: readBudgetTrackingState throws on corrupt
+  // readBudgetTrackingState throws on corrupt
   // budget-state rows; writers fail closed. The staleness read gate must
   // not throw — a corrupt in-band state must degrade to "not paused" so
   // the bash gate continues to work on a recoverable corruption.

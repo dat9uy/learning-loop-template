@@ -1,15 +1,15 @@
 // Phase 3 e2e: collapse 20 vnstock ledger-event rows (15 distinct ids) into
-// one versioned budget-state entity (canonical id per D8), with a terminal
-// `stopped` lifecycle. Honors validate D2 (keep the collapse, not drop,
-// honoring the operator's re-type decision) and D1 (stop = terminal).
+// one versioned budget-state entity (canonical id = surface name), with a
+// terminal `stopped` lifecycle. The collapse is kept (not dropped) to honor
+// the operator's re-type decision; stop is terminal.
 //
 // Hazards addressed:
-//   - id-collision (R9): the canonical id is "vnstock" (NOT
+//   - id-collision: the canonical id is "vnstock" (NOT
 //     "vnstock-device-slot-2026-05-08T10:17:23Z" — shared with a
-//     runtime-state ledger-event row that the kind-aware dedup would
+//     runtime-state ledger-event row that a kind-blind dedup would
 //     collapse under one id).
-//   - history hidden (FailureMode #2): `include_all_versions: true` on
-//     `runtime_state_read` returns the full version chain.
+//   - history hidden: `include_all_versions: true` on `runtime_state_read`
+//     returns the full version chain.
 
 import { describe, test, expect } from "vitest";
 import assert from "node:assert/strict";
@@ -31,13 +31,13 @@ const OLD_TIMESTAMP_MST = "2026-05-08T11:17:23Z";
 function createRuntimeTrackingPreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createRuntimeStatePreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createBothPreflights(root) {
@@ -115,9 +115,12 @@ describe("vnstock collapse e2e", () => {
       const after = evaluateInboundGate({ prompt: "I cleared the device", root: tempDir });
       assert.strictEqual(after.decision, "ok", "vnstock stopped → out by lifecycle");
 
-      // Sidecar row count grew by exactly 1 (the stopped version).
+      // Sidecar row count grew by exactly 1 (the stopped version) — the
+      // collapse is non-destructive; no ledger history is deleted.
       const allRows = readRuntimeStateRows(tempDir);
       assert.strictEqual(allRows.length, 22, "21 original + 1 stopped version");
+      const ledgerRows = allRows.filter((r) => r.kind === "ledger-event");
+      assert.strictEqual(ledgerRows.length, 21, "all pre-collapse ledger rows preserved");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
@@ -130,7 +133,6 @@ describe("vnstock collapse e2e", () => {
     const { runtimeStateStopTool } = await import("../tools/handlers/runtime-state-stop-tool.js");
     const { runtimeStateReadTool } = await import("../tools/handlers/runtime-state-read-tool.js");
     const { readRuntimeStateRows } = await import("../core/runtime-state.js");
-    void readRuntimeStateRows;
 
     const tempDir = mkdtempSync(join(tmpdir(), "vnstock-history-"));
     const originalEnv = process.env.GATE_ROOT;
@@ -168,11 +170,11 @@ describe("vnstock collapse e2e", () => {
     }
   });
 
-  test("canonical id 'vnstock' is NOT the shared id (R9 id-collision avoidance)", async () => {
+  test("canonical id 'vnstock' is NOT the shared id (id-collision avoidance)", async () => {
     // The shared id "vnstock-device-slot-2026-05-08T10:17:23Z" is taken by
     // a ledger-event row in the real sidecar; using it as the canonical
     // budget-state id would collapse under kind-blind max_by(version).
-    // D8 keeps the canonical id = surface name, which is collision-free.
+    // The canonical id = surface name is collision-free.
     const { runtimeStateStopTool } = await import("../tools/handlers/runtime-state-stop-tool.js");
     const { readRuntimeStateRows } = await import("../core/runtime-state.js");
 

@@ -11,7 +11,7 @@ describe("runtime_state_record tool", () => {
   function createPreflightMarker(root) {
     const markerDir = join(root, ".claude", "coordination");
     mkdirSync(markerDir, { recursive: true });
-    writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
+    writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
   }
 
   test("records with preflight marker succeeds", async () => {

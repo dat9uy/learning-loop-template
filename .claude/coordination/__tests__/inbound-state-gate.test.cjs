@@ -15,7 +15,7 @@
 // messages and throw at the end if any failed (the vitest-equivalent of
 // `process.exit(failed > 0 ? 1 : 0)`).
 //
-// R13 semantic preservation: every original assertion is preserved verbatim
+// Semantic preservation: every original assertion is preserved verbatim
 // across all 11 categories.
 
 const { spawnSync } = require('child_process');

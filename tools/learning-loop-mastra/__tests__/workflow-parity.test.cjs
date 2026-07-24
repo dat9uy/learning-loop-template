@@ -123,11 +123,11 @@ describe("workflow parity harness", () => {
     assert.ok(Array.isArray(result.expected_outputs));
   });
 
-  test("tools/list enumerates 36 mastra_* + 8 run_workflow_* = 44 mastra-and-workflow total (was 33/41; runtime_state_pause/resume/prune_surface added for per-surface tracking toggle + inbound-gate skip residual)", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 36 mastra_* + 8 run_workflow_* = 44 mastra-and-workflow total (was 33/41; runtime_state_pause/resume/stop added for the in-band tracking lifecycle)", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
-    assert.equal(mastra.length, 36, `must have 36 mastra_* tools (33 prior + 3 new runtime_state_pause/resume/prune_surface), got ${mastra.length}`);
+    assert.equal(mastra.length, 36, `must have 36 mastra_* tools (33 prior + 3 runtime_state_pause/resume/stop), got ${mastra.length}`);
     assert.equal(runWorkflows.length, 8, `must have 8 run_workflow_* tools (6 existing + 2 storage), got ${runWorkflows.length}`);
     assert.equal(tools.length, 47, `total must be 47 (36 mastra_* + 8 run_workflow_* + 3 ask_*), got ${tools.length}`);
 

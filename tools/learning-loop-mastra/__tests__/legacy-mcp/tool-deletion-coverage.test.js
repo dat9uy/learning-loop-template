@@ -43,8 +43,8 @@ const manifestRaw = readFileSync(manifestPath, "utf8")
 const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 35 entries (was 32; runtime_state_pause/resume/prune_surface
-// added for per-surface tracking toggle + inbound-gate skip residual clear).
+// 1. Manifest has 35 entries (was 32; runtime_state_pause/resume/stop added
+// for the in-band tracking lifecycle).
 await test("manifest has 35 entries", () => {
   assert.strictEqual(manifest.length, 35, `Expected 35, got ${manifest.length}`);
 });

@@ -13,7 +13,7 @@
 // behavior; we collect failures and throw at the end if any failed (the
 // vitest-equivalent of `process.exit(failed > 0 ? 1 : 0)`).
 //
-// R13 semantic preservation: every original assertion is preserved verbatim.
+// Semantic preservation: every original assertion is preserved verbatim.
 
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -75,7 +75,7 @@ function createTempProject() {
 function copyRealObservations(tmpDir) {
   const realRuntimeState = path.join(__dirname, '..', '..', '..', 'runtime-state.jsonl');
   if (fs.existsSync(realRuntimeState)) {
-    // Plan 260724-1119 Phase 2: the gate's stale scan surfaces only
+    // The gate's stale scan surfaces only
     // kind:budget-state + status:active rows; ledger-event rows are out
     // of scope by kind. The real sidecar (33 rows) is all ledger-event,
     // so we re-tag the copied rows as budget-state to preserve the test

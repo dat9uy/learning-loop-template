@@ -34,7 +34,7 @@ export const runtimeStateReadTool = {
   },
   handler: async ({ affected_system, kind, since, until, limit = 20, compact = true, include_all_versions = false }) => {
     const root = resolveRoot();
-    // Plan 260724-1119 Phase 3: include_all_versions bypasses the max_by(version)
+    // include_all_versions bypasses the max_by(version)
     // dedup so callers can read the full experiment history of a single
     // canonical budget-state entity (or any versioned id). Without this flag,
     // the deduped projection would hide all but the latest version — fine for

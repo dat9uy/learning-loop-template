@@ -1,10 +1,12 @@
 // tools/handlers/runtime-state-resume-tool.js — operator-controlled per-surface
-// tracking toggle (resume side). Plan 260724-1119 Phase 2: appends a versioned
-// `kind: budget-state, status: active` row under the canonical id (D8).
+// tracking toggle (resume side). Appends a versioned `kind: budget-state,
+// status: active` row under the canonical id (the surface name).
 //
-// D1: `stop` is terminal per-id; `resume` from `stopped` is rejected. The
-// operator must restart with a fresh id (`runtime_state_record` with a new
-// id) — a stopped surface cannot be silently brought back to life.
+// `stop` is terminal for the chain; `resume` from `stopped` is rejected.
+// Restart is a budget-state `runtime_state_record` under the canonical id —
+// a stopped surface cannot be silently brought back to life by resume.
+// Resume requires a `paused` entity: never-tracked surfaces and `initial`
+// entities are rejected rather than silently creating an active row.
 
 import { z } from "zod";
 import { resolveRoot } from "#lib/resolve-root.js";
@@ -20,7 +22,7 @@ const PREFLIGHT_MARKER = ".loop-preflight-runtime-tracking";
 export const runtimeStateResumeTool = {
   name: "runtime_state_resume",
   description:
-    "Resume runtime-state tracking for a previously paused surface. Appends an in-band kind:budget-state, status:active row to runtime-state.jsonl under the canonical id (D8). Rejects from stopped (terminal; restart = new id). Requires gate_mark_preflight({surface:'runtime-tracking'}).",
+    "Resume runtime-state tracking for a previously paused surface. Appends an in-band kind:budget-state, status:active row to runtime-state.jsonl under the canonical id. Only valid from paused — rejects from stopped (terminal; restart is a budget-state runtime_state_record), from never-tracked surfaces, and from initial entities. Requires gate_mark_preflight({surface:'runtime-tracking'}).",
   schema: {
     surface: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME).describe(
       "Surface to resume (must match the runtime-state affected_system enum).",
@@ -39,7 +41,22 @@ export const runtimeStateResumeTool = {
         }],
       };
     }
-    const current = readBudgetTrackingState(root, surface);
+    let current;
+    try {
+      current = readBudgetTrackingState(root, surface);
+    } catch (err) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            error: "corrupt_state",
+            surface,
+            message: `refusing to resume: budget-tracking state is unreadable (${err.message})`,
+          }),
+        }],
+      };
+    }
     if (current === "stopped") {
       return {
         content: [{
@@ -48,7 +65,7 @@ export const runtimeStateResumeTool = {
             ok: false,
             reason: "already_stopped",
             surface,
-            message: "canonical budget-state entity is stopped (terminal); restart requires a new id",
+            message: "canonical budget-state entity is stopped (terminal); restart is a budget-state record under the canonical id",
           }),
         }],
       };
@@ -61,6 +78,25 @@ export const runtimeStateResumeTool = {
             ok: true,
             already_active: true,
             surface,
+          }),
+        }],
+      };
+    }
+    // Resume only makes sense from `paused`: a never-tracked surface has
+    // nothing to resume (record starts tracking), and `initial` entities
+    // have not been paused.
+    if (current !== "paused") {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            reason: current === null ? "not_tracked" : "invalid_transition",
+            surface,
+            status: current,
+            message: current === null
+              ? "surface has no budget-state entity to resume; use runtime_state_record to start tracking"
+              : `resume requires a paused entity, got status "${current}"`,
           }),
         }],
       };

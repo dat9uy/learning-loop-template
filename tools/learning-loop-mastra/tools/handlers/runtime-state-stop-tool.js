@@ -1,12 +1,18 @@
 // tools/handlers/runtime-state-stop-tool.js — operator-controlled per-surface
-// non-destructive retire. Plan 260724-1119 Phase 2 D1: appends a versioned
-// `kind: budget-state, status: stopped` row under the canonical id. The
-// destructive `runtime_state_prune_surface` was removed (D4); `stop` is the
-// non-destructive replacement.
+// non-destructive retire. Appends a versioned `kind: budget-state, status:
+// stopped` row under the canonical id. This is the non-destructive
+// replacement for the removed destructive prune.
 //
-// Terminal: a `stopped` canonical entity cannot be resumed or paused (D1).
-// Restart = a fresh canonical id via `runtime_state_record` (the tool layer
-// owns restart semantics — `stop` itself does not create a new id).
+// Terminal: a `stopped` canonical entity cannot be resumed or paused.
+// Restart = a `runtime_state_record` budget-state row under the canonical
+// id — a fresh `active` version on top of the preserved stopped history
+// (the tool layer owns restart semantics — `stop` itself does not restart).
+//
+// Idempotent: stopping an already-stopped surface returns
+// `{ok: true, already_stopped: true}` without appending — same posture as
+// double-pause/resume-when-active, so retries and scripts are safe. (The
+// strict rejections are the cross-state transitions: pause/resume FROM
+// stopped.)
 //
 // Requires confirm:true (mirrors the destructive prune's confirm gating so
 // the operator-side cost of a terminal action is identical). Requires the
@@ -27,7 +33,7 @@ const PREFLIGHT_MARKER = ".loop-preflight-runtime-tracking";
 export const runtimeStateStopTool = {
   name: "runtime_state_stop",
   description:
-    "Non-destructively stop runtime-state tracking for a surface. Appends an in-band kind:budget-state, status:stopped row to runtime-state.jsonl under the canonical id (D8). Terminal — restart requires a new id via runtime_state_record. Requires gate_mark_preflight({surface:'runtime-tracking'}) AND confirm:true. Replaces the destructive runtime_state_prune_surface (D4).",
+    "Non-destructively stop runtime-state tracking for a surface. Appends an in-band kind:budget-state, status:stopped row to runtime-state.jsonl under the canonical id. Terminal — restart is a budget-state runtime_state_record under the canonical id. Idempotent on an already-stopped surface (returns already_stopped without appending). Requires gate_mark_preflight({surface:'runtime-tracking'}) AND confirm:true. Replaces the removed destructive runtime_state_prune_surface.",
   schema: {
     surface: z.enum(AFFECTED_SYSTEM_ENUM_RUNTIME).describe(
       "Surface to stop (must match the runtime-state affected_system enum).",
@@ -62,7 +68,22 @@ export const runtimeStateStopTool = {
         }],
       };
     }
-    const current = readBudgetTrackingState(root, surface);
+    let current;
+    try {
+      current = readBudgetTrackingState(root, surface);
+    } catch (err) {
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ok: false,
+            error: "corrupt_state",
+            surface,
+            message: `refusing to stop: budget-tracking state is unreadable (${err.message})`,
+          }),
+        }],
+      };
+    }
     if (current === "stopped") {
       return {
         content: [{

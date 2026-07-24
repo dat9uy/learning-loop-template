@@ -51,7 +51,7 @@ function resolveRoot() {
  * row shape that passed .filter(Boolean) but is missing fields would
  * otherwise propagate uncaught into the bash + inbound gates.
  *
- * Plan 260724-1119 Phase 2 (R5): the kind+status filter is load-bearing.
+ * The kind+status filter is load-bearing.
  * `runtime-state.jsonl` mixes two row kinds — `ledger-event` (immutable
  * audit, out of the budget gate by kind) and `budget-state` (the tracking
  * lifecycle, `status: active` rows participate in the stale scan). The
@@ -67,13 +67,18 @@ export function readRuntimeObservations(root) {
     const rows = readRuntimeStateRows(resolvedRoot);
     const observations = [];
     for (const entry of rows) {
-      // Plan 260724-1119 Phase 2 (R5): kind+status filter. Ledger-event
-      // rows are out of scope by kind (concept boundary, not an exemption
-      // the gate grants). Budget-state rows with non-active status are
-      // also excluded — a paused or stopped surface's rows must not
-      // surface as stale observations; the lifecycle excludes them, not
-      // a gate filter applied after the fact.
-      if (entry.kind !== "budget-state") continue;
+      // Kind+status filter. Ledger-event rows are out of scope by kind
+      // (concept boundary, not an exemption the gate grants). Budget-state
+      // rows with non-active status are also excluded — a paused or
+      // stopped surface's rows must not surface as stale observations; the
+      // lifecycle excludes them, not a gate filter applied after the fact.
+      // Read-compat: rows with no `kind` predate the discriminator, when
+      // every row was scannable tracking state — treat them as
+      // budget-state so a legacy sidecar never goes silently dark.
+      // Writes remain strict (`assertKindConditionalStatus` requires an
+      // explicit kind).
+      const kind = entry.kind ?? "budget-state";
+      if (kind !== "budget-state") continue;
       if (entry.status !== "active") continue;
       // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:

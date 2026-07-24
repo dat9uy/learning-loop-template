@@ -8,15 +8,17 @@
 // via row deletion.
 //
 // This test pins the invariant the PR#77 prune violated. It uses the public
-// tool surface (`runtime_state_pause` + the gate reader) so it survives
-// Phase 2's sidecar retirement. The row-count assertion uses `>=`, not
-// `===` — Phase 2's in-band pause appends a row, so a strict-equality
-// assertion would break when the mechanism rewires (red-team R8).
+// tool surface (`runtime_state_pause` + the gate reader). The row-count
+// assertion uses `>=`, not `===` — the in-band pause appends a row, so a
+// strict-equality assertion would break under the lifecycle mechanism.
 //
-// Live sidecar pause on the real repo is intentionally NOT run (validate
-// D6). The warning stays until the merged Phase 2 clears it in-band.
+// Live sidecar pause on the real repo is intentionally NOT run; the
+// regression guard operates on a fixture sidecar. A separate pin test
+// (bottom of file) asserts the REAL repo sidecar retains its ledger
+// history (row count ≥ the pre-collapse 33 and the collapsed vnstock
+// budget-state entity present, terminal stopped).
 
-import { describe, test, expect } from "vitest";
+import { describe, test } from "vitest";
 import assert from "node:assert/strict";
 import {
   mkdtempSync,
@@ -26,7 +28,8 @@ import {
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // Fixture timestamps: deliberately >30 minutes old so the gate's
 // staleness threshold (`STALENESS_THRESHOLD_MS` in gate-logic.js:1024)
@@ -37,13 +40,13 @@ const OLD_TIMESTAMP_META = "2026-05-08T11:17:23Z";
 function createRuntimeTrackingPreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createRuntimeStatePreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createBothPreflights(root) {
@@ -229,5 +232,28 @@ describe("regression guard: no delete-ledger-to-clear-gate", () => {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("repo sidecar pin (non-destructive collapse)", () => {
+  // Pins the real repo sidecar against the destructive-prune regression
+  // class: the vnstock collapse ADDED one budget-state row and deleted
+  // nothing. If ledger history ever shrinks below the pre-collapse count,
+  // something deleted rows to clear state — that mechanism must not return.
+  test("real runtime-state.jsonl retains ledger history + collapsed vnstock entity", async () => {
+    const { readRuntimeStateRows, readBudgetTrackingState } = await import("../core/runtime-state.js");
+    const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+    const rows = readRuntimeStateRows(repoRoot);
+    assert.ok(
+      rows.length >= 33,
+      `ledger history must not shrink below the pre-collapse 33 rows (got ${rows.length})`,
+    );
+    const vnstockEntity = rows.filter((r) => r.kind === "budget-state" && r.id === "vnstock");
+    assert.ok(vnstockEntity.length >= 1, "collapsed vnstock budget-state entity exists");
+    assert.strictEqual(
+      readBudgetTrackingState(repoRoot, "vnstock"),
+      "stopped",
+      "vnstock canonical entity is terminal stopped",
+    );
   });
 });

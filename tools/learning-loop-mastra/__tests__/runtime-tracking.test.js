@@ -1,17 +1,17 @@
 // Tests for the runtime-tracking helper: readBudgetTrackingState / isSurfacePaused.
 //
-// Plan 260724-1119 Phase 2: the tracking lifecycle moved in-band into
-// runtime-state.jsonl (kind: budget-state, status: paused | stopped | active).
-// The .loop/runtime-tracking.json sidecar was retired. The helper now reads
-// the latest kind:budget-state row per surface via readBudgetTrackingState.
+// The tracking lifecycle is in-band in runtime-state.jsonl
+// (kind: budget-state, status: paused | stopped | active). The
+// .loop/runtime-tracking.json sidecar is retired. The helper reads the
+// latest kind:budget-state row per surface via readBudgetTrackingState.
 //
 // Behavior contract:
 //   - isSurfacePaused(root, surface) returns true iff the surface's latest
 //     budget-state row is status: paused or stopped.
-//   - readBudgetTrackingState throws on a corrupt budget-state row (R1).
-//   - The legacy sidecar functions (loadPausedSurfaces / setPausedSurfaces /
-//     mutatePausedSurfaces) are no-op shims retained for historical import
-//     compatibility; they are NOT exercised in production code.
+//   - readBudgetTrackingState throws on a corrupt budget-state row AND on
+//     any unparseable sidecar line (fail-closed for writers).
+//   - hasSurfacePreflightMarker enforces the 30-minute TTL (stale or
+//     content-less markers do not authorize).
 //
 // Plus: handler-level tests for runtime_state_pause / resume / stop that
 // route through the per-surface preflight marker (same convention as
@@ -22,6 +22,7 @@ import assert from "node:assert/strict";
 import {
   mkdtempSync,
   writeFileSync,
+  appendFileSync,
   existsSync,
   readFileSync,
   mkdirSync,
@@ -40,13 +41,13 @@ const SURFACE_ENUM = ["vnstock", "fastapi", "tanstack", "product", "api", "web",
 function createRuntimeTrackingPreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-tracking"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createRuntimeStatePreflight(root) {
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
-  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
+  writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), JSON.stringify({ completed_at: new Date().toISOString() }), "utf8");
 }
 
 function createBothPreflights(root) {
@@ -56,7 +57,7 @@ function createBothPreflights(root) {
 
 function writeLifecycleRow(root, surface, status) {
   // Helper: seed the canonical budget-state row for a surface with a
-  // given status. The canonical id is the surface name itself (D8).
+  // given status. The canonical id is the surface name itself.
   const path = join(root, "runtime-state.jsonl");
   const row = {
     kind: "budget-state",
@@ -129,7 +130,7 @@ describe("isSurfacePaused reads in-band budget-state status", () => {
     assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false, "latest active wins");
   });
 
-  test("kind-blind ledger-event rows do NOT affect pause check (R11)", () => {
+  test("kind-blind ledger-event rows do NOT affect pause check", () => {
     // A ledger-event row sharing the surface's id MUST NOT shadow the
     // budget-state row. Filter kind before dedup.
     const tempDir = mkdtempSync(join(tmpdir(), "rt-kind-blind-"));
@@ -151,7 +152,7 @@ describe("isSurfacePaused reads in-band budget-state status", () => {
     assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false, "ledger-event must not satisfy pause");
   });
 
-  test("readBudgetTrackingState throws on a corrupt budget-state row (R1)", () => {
+  test("readBudgetTrackingState throws on a corrupt budget-state row", () => {
     // Corrupt budget-state rows must throw so a stopped surface cannot
     // silently un-stop on a corrupt read. The read-gate callers catch
     // and degrade to "not paused" (gate fail-open), but writers fail closed.
@@ -172,7 +173,31 @@ describe("isSurfacePaused reads in-band budget-state status", () => {
     assert.throws(
       () => readBudgetTrackingState(tempDir, "vnstock"),
       /runtime_state_budget_tracking_corrupt/,
-      "must throw on corrupt budget-state row (R1)",
+      "must throw on corrupt budget-state row",
+    );
+  });
+
+  test("readBudgetTrackingState throws on ANY unparseable sidecar line", () => {
+    // A malformed line could be a dropped stop/pause record — the reader
+    // must fail-closed rather than resolve state from the survivors.
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-malformed-"));
+    const path = join(tempDir, "runtime-state.jsonl");
+    writeFileSync(path, JSON.stringify({
+      kind: "budget-state",
+      affected_system: "vnstock",
+      id: "vnstock",
+      value: null,
+      delta: null,
+      source_ref: "local:meta-state:rule-runtime-state-budget-tracking",
+      timestamp: "2026-05-08T10:17:23Z",
+      status: "stopped",
+      fingerprint: null,
+      metadata: {},
+    }) + "\n{corrupt-line\n", "utf8");
+    assert.throws(
+      () => readBudgetTrackingState(tempDir, "vnstock"),
+      /runtime_state_budget_tracking_corrupt/,
+      "must throw on unparseable sidecar line",
     );
   });
 });
@@ -315,24 +340,24 @@ describe("runtime_state_pause / resume / stop handlers", () => {
       });
       const parsed = JSON.parse(res.content[0].text);
       assert.strictEqual(parsed.ok, false);
-      assert.strictEqual(parsed.paused, true);
+      assert.strictEqual(parsed.status, "paused");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("runtime_state_record with a fresh id on a paused surface is allowed (D1: new id = new entity)", async () => {
-    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
+  test("runtime_state_record rejects a budget-state row under a non-canonical id", async () => {
     const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
     const tempDir = mkdtempSync(join(tmpdir(), "rt-record-freshid-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
       createBothPreflights(tempDir);
-      await runtimeStatePauseTool.handler({ surface: "vnstock" });
 
-      // Fresh id (not the canonical "vnstock") is a new entity — allowed.
+      // One tracking entity per surface under the canonical id (the
+      // surface name) — pause/resume/stop only ever write that id, so a
+      // budget-state record under any other id would fork the lifecycle.
       const res = await runtimeStateRecordTool.handler({
         affected_system: "vnstock",
         kind: "budget-state",
@@ -343,7 +368,109 @@ describe("runtime_state_pause / resume / stop handlers", () => {
         timestamp: "2026-05-08T10:17:23Z",
       });
       const parsed = JSON.parse(res.content[0].text);
-      assert.strictEqual(parsed.ok, true, "fresh id is a new entity, not blocked");
+      assert.strictEqual(parsed.ok, false);
+      assert.strictEqual(parsed.reason, "canonical_id_required");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("budget-state record under the canonical id after stop is the sanctioned restart (and repeatable)", async () => {
+    const { runtimeStateStopTool } = await import("../tools/handlers/runtime-state-stop-tool.js");
+    const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-restart-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      await runtimeStateStopTool.handler({ surface: "vnstock", confirm: true });
+
+      const recordArgs = {
+        affected_system: "vnstock",
+        kind: "budget-state",
+        id: "vnstock",
+        value: 0,
+        delta: 0,
+        source_ref: "local:meta-state:rule-test",
+        timestamp: "2026-05-08T10:17:23Z",
+      };
+      // Restart: first record after stop is allowed — a fresh active
+      // version on top of the preserved stopped history.
+      const first = JSON.parse((await runtimeStateRecordTool.handler(recordArgs)).content[0].text);
+      assert.strictEqual(first.ok, true, "record under the canonical id restarts a stopped surface");
+      // The restarted entity is live: subsequent records are ordinary
+      // re-records, not rejections.
+      const second = JSON.parse((await runtimeStateRecordTool.handler(recordArgs)).content[0].text);
+      assert.strictEqual(second.ok, true, "re-record on the restarted entity is allowed");
+      const status = readBudgetTrackingState(tempDir, "vnstock");
+      assert.strictEqual(status, "active", "surface is live after restart");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("runtime_state_record fails closed when the sidecar has an unparseable line", async () => {
+    const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-corrupt-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      appendFileSync(join(tempDir, "runtime-state.jsonl"), "{not-json\n", "utf8");
+
+      const res = await runtimeStateRecordTool.handler({
+        affected_system: "vnstock",
+        kind: "ledger-event",
+        id: "vnstock-any",
+        value: 0,
+        delta: 0,
+        source_ref: "local:meta-state:rule-test",
+        timestamp: "2026-05-08T10:17:23Z",
+      });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, false);
+      assert.strictEqual(parsed.error, "corrupt_state");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("runtime_state_resume rejects a never-tracked surface (resume requires paused)", async () => {
+    const { runtimeStateResumeTool } = await import("../tools/handlers/runtime-state-resume-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-resume-null-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createBothPreflights(tempDir);
+      const res = await runtimeStateResumeTool.handler({ surface: "fastapi" });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, false);
+      assert.strictEqual(parsed.reason, "not_tracked");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("preflight marker older than the TTL does not authorize lifecycle ops", async () => {
+    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-stale-marker-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      const markerDir = join(tempDir, ".claude", "coordination");
+      mkdirSync(markerDir, { recursive: true });
+      writeFileSync(
+        join(markerDir, ".loop-preflight-runtime-tracking"),
+        JSON.stringify({ completed_at: new Date(Date.now() - 31 * 60 * 1000).toISOString() }),
+        "utf8",
+      );
+      const res = await runtimeStatePauseTool.handler({ surface: "vnstock" });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.error, "preflight_required");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
