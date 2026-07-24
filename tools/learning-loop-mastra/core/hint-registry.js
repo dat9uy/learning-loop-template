@@ -87,7 +87,7 @@ export const HINT_REGISTRY = Object.freeze([
     // longer a persisted status). The rewrite points at `meta_state_re_verify`,
     // which IS the way to re-validate a finding past the staleness window.
     suggestion:
-      "Use `meta_state_re_verify({ id, refresh: true })` to re-ground a finding past its 7-day staleness window; the loop stamps `last_verified_at` without a status transition. `stale` is a derived view, not a status — see `meta_state_query_drift`.",
+      "Use `meta_state_re_verify({ id, refresh: true })` to re-ground a finding with re-runnable verification.steps; use `meta_state_touch({ id })` to re-ground an aged finding whose steps are empty (operator attestation — guarded by checkGrounding, rejects on drift). Both stamp `last_verified_at` without a status transition. `stale` is a derived view, not a status — see `meta_state_query_drift`.",
     derived_from_rule: null,
   },
   {

@@ -46,6 +46,16 @@ test("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale pare
     // invariant does not remove the resolved fixtures when cascade 2 fires
     // updateEntry. The 'stale' state is asserted via last_verified_at, not
     // created_at age.
+    //
+    // last_verified_at is NOT passed to writeEntry because the field is
+    // removed from metaStateFindingEntrySchema (Plan 260724-1931 phase 3
+    // closes the freshness-stamp patch backdoor). writeEntry's schema is
+    // strip-mode, so passing it here would silently drop it. We persist the
+    // backdated stamp via updateEntry, whose patch schema is permissive
+    // passthrough and which appends the merged entry verbatim via
+    // trueAppendAtomicRaw — the same internal write path meta_state_touch
+    // and meta_state_re_verify use. The user-facing patch tool is still
+    // deny-listed via IMMUTABLE_PATCH_FIELDS.
     const now = Date.now();
     for (const fid of FIXTURE_IDS) {
       await writeEntry(tempRoot, {
@@ -57,8 +67,10 @@ test("e2e: cold-session 'X is related to Y' script (1-step cascade, 2 stale pare
         description: `E2E fixture for ${fid} (min 20 chars)`,
         status: "open",
         created_at: new Date(now - 60 * 60 * 1000).toISOString(),
-        last_verified_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
         version: 0,
+      });
+      await updateEntry(tempRoot, fid, {
+        last_verified_at: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
       });
     }
 

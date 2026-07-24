@@ -100,3 +100,57 @@ test("immutable_field error response still includes denied_fields (backward comp
     }
   }
 });
+
+test("last_verified_at is rejected as immutable_field (only meta_state_re_verify and meta_state_touch may stamp it)", async () => {
+  // Plan 260724-1931 phase 3: the meta_state_patch path was an unguarded
+  // forge-freshness backdoor for `last_verified_at`. Re-verify and touch
+  // are the only writers; patch must deny the field. Same shape as the
+  // resolved_at test above.
+  const tempRoot = mkdtempSync(join(tmpdir(), "meta-patch-"));
+  const core = await importCore(tempRoot);
+  const findingId = core.generateId("patch-test-touch");
+
+  await core.writeEntry(tempRoot, {
+    id: findingId,
+    entry_kind: "finding",
+    category: "gate-logic-bug",
+    severity: "warning",
+    affected_system: "gate-logic",
+    description: "A finding for last_verified_at immutable-field test.",
+    status: "open",
+    created_at: new Date().toISOString(),
+    version: 0,
+  });
+
+  const toolPath = pathToFileURL(join(projectRoot, "tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js")).href;
+  const { metaStatePatchTool } = await import(toolPath);
+
+  const originalEnv = process.env.GATE_ROOT;
+  process.env.GATE_ROOT = tempRoot;
+  try {
+    const result = await metaStatePatchTool.handler({
+      id: findingId,
+      entry_kind: "finding",
+      patch: { last_verified_at: "2026-07-24T20:00:00.000Z" },
+    });
+    const parsed = JSON.parse(result.content[0].text);
+    assert.strictEqual(parsed.patched, false);
+    assert.strictEqual(parsed.reason, "immutable_field");
+    assert.ok(Array.isArray(parsed.denied_fields));
+    assert.ok(
+      parsed.denied_fields.includes("last_verified_at"),
+      `last_verified_at must be in denied_fields; got: ${JSON.stringify(parsed.denied_fields)}`,
+    );
+    // The full deny-list should also include last_verified_at.
+    assert.ok(
+      Array.isArray(parsed.immutable_fields) && parsed.immutable_fields.includes("last_verified_at"),
+      "last_verified_at must appear in the exported immutable_fields list",
+    );
+  } finally {
+    if (originalEnv === undefined) {
+      delete process.env.GATE_ROOT;
+    } else {
+      process.env.GATE_ROOT = originalEnv;
+    }
+  }
+});

@@ -40,6 +40,7 @@ const EXPECTED_WRITE_TOOLS = [
   "meta_state_dispatch_finding",
   "meta_state_re_verify",
   "meta_state_refresh_file_index",
+  "meta_state_touch",
   "runtime_state_record",
   "runtime_state_pause",
   "runtime_state_resume",
