@@ -25,7 +25,7 @@ for (const fixture of snapshot.fixtures) {
       if (fixture.fixture_id === "constraint-with-observation") {
         writeFileSync(
           join(root, "runtime-state.jsonl"),
-          JSON.stringify({ id: "obs-1", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() }) + "\n",
+          JSON.stringify({ id: "obs-1", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() }) + "\n",
         );
       }
       if (fixture.fixture_id === "product-with-preflight") {

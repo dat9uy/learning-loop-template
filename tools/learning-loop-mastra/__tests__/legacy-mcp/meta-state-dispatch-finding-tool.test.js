@@ -453,7 +453,7 @@ describe("meta_state_dispatch_finding", () => {
         delta: null,
         source_ref: `local:meta-state:${id}`,
         timestamp: new Date().toISOString(),
-        status: "open",
+        status: "active",
         fingerprint: null,
         metadata: {
           issue_number: coords.issue_number,

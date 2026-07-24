@@ -44,6 +44,7 @@ describe("evaluate-bash-gate: constraint-match flip on malformed+valid sidecar",
     writeMarker(ts(10));
     const validLine = JSON.stringify({
       id: "obs-valid",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: ts(5),
@@ -67,6 +68,7 @@ describe("evaluate-bash-gate: constraint-match flip on malformed+valid sidecar",
     writeMarker(ts(5));
     const validLine = JSON.stringify({
       id: "obs-valid",
+      kind: "budget-state",
       status: "active",
       affected_system: "vnstock",
       timestamp: ts(10), // older than marker → stale

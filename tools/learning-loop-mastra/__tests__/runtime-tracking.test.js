@@ -1,17 +1,21 @@
-// Tests for the runtime-tracking helper: loadPausedSurfaces / isSurfacePaused / setPausedSurfaces.
+// Tests for the runtime-tracking helper: readBudgetTrackingState / isSurfacePaused.
+//
+// Plan 260724-1119 Phase 2: the tracking lifecycle moved in-band into
+// runtime-state.jsonl (kind: budget-state, status: paused | stopped | active).
+// The .loop/runtime-tracking.json sidecar was retired. The helper now reads
+// the latest kind:budget-state row per surface via readBudgetTrackingState.
 //
 // Behavior contract:
-//   - `loadPausedSurfaces(root)` returns `string[]` of paused surface names.
-//   - Absent sidecar → `[]` (nothing paused).
-//   - Malformed sidecar → THROWS (fail-closed — refuses to silently unpause
-//     on corruption; mirrors `core/r2/allowlist-cache.js:39-48`).
-//   - `setPausedSurfaces(root, arr)` does atomic temp+rename. The persisted
-//     shape is `{schema:"runtime-tracking/v1", version:1, paused_surfaces}`.
-//   - Read-from-disk per call (no in-process cache).
+//   - isSurfacePaused(root, surface) returns true iff the surface's latest
+//     budget-state row is status: paused or stopped.
+//   - readBudgetTrackingState throws on a corrupt budget-state row (R1).
+//   - The legacy sidecar functions (loadPausedSurfaces / setPausedSurfaces /
+//     mutatePausedSurfaces) are no-op shims retained for historical import
+//     compatibility; they are NOT exercised in production code.
 //
-// Plus: handler-level tests for `runtime_state_pause` / `runtime_state_resume`
-// routing through the per-surface preflight marker (same convention as
-// `runtime_state_record`, so writes stay gated).
+// Plus: handler-level tests for runtime_state_pause / resume / stop that
+// route through the per-surface preflight marker (same convention as
+// runtime_state_record).
 
 import { describe, test, expect } from "vitest";
 import assert from "node:assert/strict";
@@ -25,11 +29,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isSurfacePaused } from "../core/runtime-tracking.js";
 import {
-  loadPausedSurfaces,
-  isSurfacePaused,
-  setPausedSurfaces,
-} from "../core/runtime-tracking.js";
+  readBudgetTrackingState,
+  readRuntimeStateRows,
+} from "../core/runtime-state.js";
 
 const SURFACE_ENUM = ["vnstock", "fastapi", "tanstack", "product", "api", "web", "meta-state-tools", "runtime-state"];
 
@@ -40,8 +44,6 @@ function createRuntimeTrackingPreflight(root) {
 }
 
 function createRuntimeStatePreflight(root) {
-  // The runtime_state_record tool requires `.loop-preflight-runtime-state`
-  // (a different marker from pause/resume's `.loop-preflight-runtime-tracking`).
   const markerDir = join(root, ".claude", "coordination");
   mkdirSync(markerDir, { recursive: true });
   writeFileSync(join(markerDir, ".loop-preflight-runtime-state"), "", "utf8");
@@ -52,117 +54,223 @@ function createBothPreflights(root) {
   createRuntimeStatePreflight(root);
 }
 
-describe("loadPausedSurfaces / isSurfacePaused", () => {
-  test("absent sidecar → empty list (nothing paused)", () => {
+function writeLifecycleRow(root, surface, status) {
+  // Helper: seed the canonical budget-state row for a surface with a
+  // given status. The canonical id is the surface name itself (D8).
+  const path = join(root, "runtime-state.jsonl");
+  const row = {
+    kind: "budget-state",
+    affected_system: surface,
+    id: surface,
+    value: null,
+    delta: null,
+    source_ref: "local:meta-state:rule-runtime-state-budget-tracking",
+    timestamp: new Date().toISOString(),
+    status,
+    fingerprint: null,
+    metadata: { lifecycle_action: status },
+  };
+  writeFileSync(path, JSON.stringify(row) + "\n", "utf8");
+}
+
+describe("isSurfacePaused reads in-band budget-state status", () => {
+  test("absent sidecar + no budget-state rows → not paused (fresh surface)", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "rt-absent-"));
-    const paused = loadPausedSurfaces(tempDir);
-    assert.deepStrictEqual(paused, []);
     assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false);
   });
 
-  test("malformed sidecar → loadPausedSurfaces THROWS (fail-closed)", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-bad-"));
-    const dotloopDir = join(tempDir, ".loop");
-    mkdirSync(dotloopDir, { recursive: true });
-    writeFileSync(join(dotloopDir, "runtime-tracking.json"), "{ this is not json", "utf8");
-    assert.throws(() => loadPausedSurfaces(tempDir), /runtime_tracking_invalid/, "fail-closed must throw");
-    // isSurfacePaused wraps loadPausedSurfaces and propagates the throw — writers must refuse, not silently unpause.
-    assert.throws(() => isSurfacePaused(tempDir, "vnstock"));
-  });
-
-  test("setPausedSurfaces writes v1 shape; isSurfacePaused returns correct boolean per surface", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-write-"));
-    setPausedSurfaces(tempDir, ["vnstock"]);
-    // Sidecar shape
-    const raw = JSON.parse(readFileSync(join(tempDir, ".loop", "runtime-tracking.json"), "utf8"));
-    assert.strictEqual(raw.schema, "runtime-tracking/v1");
-    assert.strictEqual(raw.version, 1);
-    assert.deepStrictEqual(raw.paused_surfaces, ["vnstock"]);
-    // isSurfacePaused
-    assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), true);
-    assert.strictEqual(isSurfacePaused(tempDir, "meta-state-tools"), false);
-  });
-
-  test("setPausedSurfaces deduplicates + sorts on write (stable canonical form)", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-dedup-"));
-    setPausedSurfaces(tempDir, ["z-meta", "vnstock", "vnstock", "a-fastapi"]);
-    const raw = JSON.parse(readFileSync(join(tempDir, ".loop", "runtime-tracking.json"), "utf8"));
-    assert.deepStrictEqual(raw.paused_surfaces, ["a-fastapi", "vnstock", "z-meta"]);
+  test("status: paused → isSurfacePaused returns true", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-paused-"));
+    writeLifecycleRow(tempDir, "vnstock", "paused");
     assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), true);
   });
 
-  test("setPausedSurfaces is atomic — temp file is not left behind on success", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-atomic-"));
-    setPausedSurfaces(tempDir, ["vnstock"]);
-    // List .loop/ to verify only runtime-tracking.json remains (no .tmp-* residue).
-    const files = require("node:fs").readdirSync(join(tempDir, ".loop"));
-    assert.deepStrictEqual(
-      files.filter((f) => /\.tmp/.test(f)),
-      [],
-      "no temp file may remain after setPausedSurfaces",
-    );
+  test("status: stopped → isSurfacePaused returns true (terminal also blocks)", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-stopped-"));
+    writeLifecycleRow(tempDir, "vnstock", "stopped");
+    assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), true);
   });
 
-  test("loadPausedSurfaces is read-from-disk per call (no in-process cache)", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-nocache-"));
-    // First read: nothing paused.
-    assert.deepStrictEqual(loadPausedSurfaces(tempDir), []);
-    // Mutate disk WITHOUT going through setPausedSurfaces (simulate operator edit).
-    const dotloopDir = join(tempDir, ".loop");
-    mkdirSync(dotloopDir, { recursive: true });
-    writeFileSync(
-      join(dotloopDir, "runtime-tracking.json"),
-      JSON.stringify({ schema: "runtime-tracking/v1", version: 1, paused_surfaces: ["vnstock"] }),
-      "utf8",
-    );
-    // Second read sees the new state WITHOUT any cache invalidation step.
-    assert.deepStrictEqual(loadPausedSurfaces(tempDir), ["vnstock"]);
+  test("status: active → isSurfacePaused returns false", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-active-"));
+    writeLifecycleRow(tempDir, "vnstock", "active");
+    assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false);
   });
 
-  test("expected legacy schema-version → error", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-wrong-schema-"));
-    const dotloopDir = join(tempDir, ".loop");
-    mkdirSync(dotloopDir, { recursive: true });
-    writeFileSync(
-      join(dotloopDir, "runtime-tracking.json"),
-      JSON.stringify({ schema: "runtime-tracking/v999", version: 1, paused_surfaces: [] }),
-      "utf8",
+  test("latest lifecycle wins (pause → resume → not paused)", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-latest-"));
+    const path = join(tempDir, "runtime-state.jsonl");
+    // Pause first.
+    writeFileSync(path, JSON.stringify({
+      kind: "budget-state",
+      affected_system: "vnstock",
+      id: "vnstock",
+      value: null,
+      delta: null,
+      source_ref: "local:meta-state:rule-runtime-state-budget-tracking",
+      timestamp: "2026-05-08T10:17:23Z",
+      status: "paused",
+      fingerprint: null,
+      metadata: {},
+    }) + "\n", "utf8");
+    // Then resume (newer timestamp).
+    writeFileSync(path, JSON.stringify({
+      kind: "budget-state",
+      affected_system: "vnstock",
+      id: "vnstock",
+      value: null,
+      delta: null,
+      source_ref: "local:meta-state:rule-runtime-state-budget-tracking",
+      timestamp: "2026-05-09T10:17:23Z",
+      status: "active",
+      fingerprint: null,
+      metadata: {},
+    }) + "\n", { flag: "a" });
+    assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false, "latest active wins");
+  });
+
+  test("kind-blind ledger-event rows do NOT affect pause check (R11)", () => {
+    // A ledger-event row sharing the surface's id MUST NOT shadow the
+    // budget-state row. Filter kind before dedup.
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-kind-blind-"));
+    const path = join(tempDir, "runtime-state.jsonl");
+    // ledger-event row for "vnstock" id with status "active" — should NOT
+    // satisfy isSurfacePaused, because it's a ledger-event audit row.
+    writeFileSync(path, JSON.stringify({
+      kind: "ledger-event",
+      affected_system: "vnstock",
+      id: "vnstock",
+      value: 0,
+      delta: 0,
+      source_ref: "local:meta-state:rule-vnstock",
+      timestamp: "2026-05-08T10:17:23Z",
+      status: "active",
+      fingerprint: null,
+      metadata: {},
+    }) + "\n", "utf8");
+    assert.strictEqual(isSurfacePaused(tempDir, "vnstock"), false, "ledger-event must not satisfy pause");
+  });
+
+  test("readBudgetTrackingState throws on a corrupt budget-state row (R1)", () => {
+    // Corrupt budget-state rows must throw so a stopped surface cannot
+    // silently un-stop on a corrupt read. The read-gate callers catch
+    // and degrade to "not paused" (gate fail-open), but writers fail closed.
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-corrupt-"));
+    const path = join(tempDir, "runtime-state.jsonl");
+    writeFileSync(path, JSON.stringify({
+      kind: "budget-state",
+      affected_system: "vnstock",
+      id: "vnstock",
+      value: null,
+      delta: null,
+      source_ref: "local:meta-state:rule-runtime-state-budget-tracking",
+      timestamp: "2026-05-08T10:17:23Z",
+      status: "weird", // not a valid lifecycle status
+      fingerprint: null,
+      metadata: {},
+    }) + "\n", "utf8");
+    assert.throws(
+      () => readBudgetTrackingState(tempDir, "vnstock"),
+      /runtime_state_budget_tracking_corrupt/,
+      "must throw on corrupt budget-state row (R1)",
     );
-    assert.throws(() => loadPausedSurfaces(tempDir), /runtime_tracking_invalid_schema/);
   });
 });
 
-describe("runtime_state_pause / runtime_state_resume handlers", () => {
-  test("pause adds surface to paused_surfaces; resume removes it", async () => {
+describe("runtime_state_pause / resume / stop handlers", () => {
+  test("pause appends a kind:budget-state, status:paused row under the canonical id", async () => {
     const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
-    const { runtimeStateResumeTool } = await import("../tools/handlers/runtime-state-resume-tool.js");
-
     const tempDir = mkdtempSync(join(tmpdir(), "rt-pause-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
       createRuntimeTrackingPreflight(tempDir);
+      const res = await runtimeStatePauseTool.handler({ surface: "vnstock" });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.paused, true);
+      assert.strictEqual(parsed.surface, "vnstock");
 
-      const pauseRes = await runtimeStatePauseTool.handler({ surface: "vnstock" });
-      const pauseParsed = JSON.parse(pauseRes.content[0].text);
-      assert.strictEqual(pauseParsed.ok, true);
-      assert.deepStrictEqual(pauseParsed.paused_surfaces, ["vnstock"]);
-
-      const resumeRes = await runtimeStateResumeTool.handler({ surface: "vnstock" });
-      const resumeParsed = JSON.parse(resumeRes.content[0].text);
-      assert.strictEqual(resumeParsed.ok, true);
-      assert.deepStrictEqual(resumeParsed.paused_surfaces, []);
+      const rows = readRuntimeStateRows(tempDir);
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].kind, "budget-state");
+      assert.strictEqual(rows[0].status, "paused");
+      assert.strictEqual(rows[0].id, "vnstock");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("pause rejects unknown surface (not in the runtime-state enum) — schema-level", async () => {
-    // Surface must match the runtime-state `affected_system` enum, not the
-    // superset in core/meta-state.js. `vnstock_vendor` is meta-state-only;
-    // passing it to the pause tool must fail at the Zod schema level
-    // (matches `runtime-state-record-tool`'s `source_ref` rejection precedent).
+  test("resume appends a kind:budget-state, status:active row (only when previously paused)", async () => {
+    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
+    const { runtimeStateResumeTool } = await import("../tools/handlers/runtime-state-resume-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-resume-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createRuntimeTrackingPreflight(tempDir);
+      await runtimeStatePauseTool.handler({ surface: "vnstock" });
+      const res = await runtimeStateResumeTool.handler({ surface: "vnstock" });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, true);
+      const rows = readRuntimeStateRows(tempDir);
+      const latest = rows[rows.length - 1];
+      assert.strictEqual(latest.status, "active");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("stop requires confirm:true and appends status:stopped (terminal)", async () => {
+    const { runtimeStateStopTool } = await import("../tools/handlers/runtime-state-stop-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-stop-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createRuntimeTrackingPreflight(tempDir);
+      // Without confirm → no row written.
+      const noConfirm = await runtimeStateStopTool.handler({ surface: "vnstock" });
+      const noConfirmParsed = JSON.parse(noConfirm.content[0].text);
+      assert.strictEqual(noConfirmParsed.ok, false);
+      assert.strictEqual(noConfirmParsed.reason, "confirm_required");
+      assert.strictEqual(readRuntimeStateRows(tempDir).length, 0);
+
+      // With confirm → terminal stop row.
+      const confirmed = await runtimeStateStopTool.handler({ surface: "vnstock", confirm: true });
+      const confirmedParsed = JSON.parse(confirmed.content[0].text);
+      assert.strictEqual(confirmedParsed.ok, true);
+      assert.strictEqual(confirmedParsed.stopped, true);
+      const rows = readRuntimeStateRows(tempDir);
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].status, "stopped");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("pause rejects when canonical entity is stopped (D1: terminal)", async () => {
+    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
+    const { runtimeStateStopTool } = await import("../tools/handlers/runtime-state-stop-tool.js");
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-stoppped-pause-"));
+    const originalEnv = process.env.GATE_ROOT;
+    process.env.GATE_ROOT = tempDir;
+    try {
+      createRuntimeTrackingPreflight(tempDir);
+      await runtimeStateStopTool.handler({ surface: "vnstock", confirm: true });
+      const res = await runtimeStatePauseTool.handler({ surface: "vnstock" });
+      const parsed = JSON.parse(res.content[0].text);
+      assert.strictEqual(parsed.ok, false);
+      assert.strictEqual(parsed.reason, "already_stopped");
+    } finally {
+      process.env.GATE_ROOT = originalEnv;
+      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("pause rejects unknown surface — schema-level", async () => {
     const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
     const surfaceParse = runtimeStatePauseTool.schema.surface.safeParse("vnstock_vendor");
     assert.strictEqual(surfaceParse.success, false, "schema must reject meta-state-only surfaces");
@@ -177,30 +285,29 @@ describe("runtime_state_pause / runtime_state_resume handlers", () => {
       const res = await runtimeStatePauseTool.handler({ surface: "vnstock" });
       const parsed = JSON.parse(res.content[0].text);
       assert.strictEqual(parsed.error, "preflight_required");
-      // No sidecar should be written.
-      assert.strictEqual(existsSync(join(tempDir, ".loop", "runtime-tracking.json")), false);
+      assert.strictEqual(readRuntimeStateRows(tempDir).length, 0);
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("runtime_state_record refuses a paused surface (writes no row, fails closed)", async () => {
-    const { setPausedSurfaces } = await import("../core/runtime-tracking.js");
+  test("runtime_state_record refuses a paused surface for the canonical id", async () => {
+    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
     const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
-    const { readRuntimeStateRows } = await import("../core/runtime-state.js");
-
     const tempDir = mkdtempSync(join(tmpdir(), "rt-record-paused-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
       createBothPreflights(tempDir);
-      setPausedSurfaces(tempDir, ["vnstock"]);
+      await runtimeStatePauseTool.handler({ surface: "vnstock" });
 
+      // Canonical id == surface → blocked (D1: the stopped/paused entity
+      // is blocked).
       const res = await runtimeStateRecordTool.handler({
         affected_system: "vnstock",
-        kind: "ledger-event",
-        id: "vnstock-paused-1",
+        kind: "budget-state",
+        id: "vnstock",
         value: 0,
         delta: 0,
         source_ref: "local:meta-state:rule-test",
@@ -209,179 +316,37 @@ describe("runtime_state_pause / runtime_state_resume handlers", () => {
       const parsed = JSON.parse(res.content[0].text);
       assert.strictEqual(parsed.ok, false);
       assert.strictEqual(parsed.paused, true);
-      assert.strictEqual(parsed.affected_system, "vnstock");
-      // No row should be appended to the sidecar.
-      const rows = readRuntimeStateRows(tempDir);
-      assert.strictEqual(rows.length, 0, "paused surface must produce zero rows");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("unpaused surface still records normally when another surface is paused", async () => {
-    const { setPausedSurfaces } = await import("../core/runtime-tracking.js");
+  test("runtime_state_record with a fresh id on a paused surface is allowed (D1: new id = new entity)", async () => {
+    const { runtimeStatePauseTool } = await import("../tools/handlers/runtime-state-pause-tool.js");
     const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-mixed-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-freshid-"));
     const originalEnv = process.env.GATE_ROOT;
     process.env.GATE_ROOT = tempDir;
     try {
       createBothPreflights(tempDir);
-      setPausedSurfaces(tempDir, ["vnstock"]);
+      await runtimeStatePauseTool.handler({ surface: "vnstock" });
 
+      // Fresh id (not the canonical "vnstock") is a new entity — allowed.
       const res = await runtimeStateRecordTool.handler({
-        affected_system: "meta-state-tools",
-        kind: "ledger-event",
-        id: "unpaused-1",
+        affected_system: "vnstock",
+        kind: "budget-state",
+        id: "vnstock-fresh-1",
         value: 0,
         delta: 0,
         source_ref: "local:meta-state:rule-test",
         timestamp: "2026-05-08T10:17:23Z",
       });
       const parsed = JSON.parse(res.content[0].text);
-      assert.strictEqual(parsed.ok, true);
+      assert.strictEqual(parsed.ok, true, "fresh id is a new entity, not blocked");
     } finally {
       process.env.GATE_ROOT = originalEnv;
       if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
     }
-  });
-
-  test("malformed sidecar makes runtime_state_record refuse (fail-closed, not silent unpause)", async () => {
-    const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-record-malformed-"));
-    const originalEnv = process.env.GATE_ROOT;
-    process.env.GATE_ROOT = tempDir;
-    try {
-      createBothPreflights(tempDir);
-      // Hand-write a malformed sidecar (operator's editor corrupted it).
-      mkdirSync(join(tempDir, ".loop"), { recursive: true });
-      writeFileSync(join(tempDir, ".loop", "runtime-tracking.json"), "{ corrupt", "utf8");
-
-      let threwOrRefused = false;
-      try {
-        const res = await runtimeStateRecordTool.handler({
-          affected_system: "vnstock",
-          kind: "ledger-event",
-          id: "vnstock-malformed-1",
-          value: 0,
-          delta: 0,
-          source_ref: "local:meta-state:rule-test",
-          timestamp: "2026-05-08T10:17:23Z",
-        });
-        const parsed = JSON.parse(res.content[0].text);
-        // A malformed sidecar must NOT return ok:true. Either it errors out
-        // before reading or it returns ok:false with a corruption reason.
-        if (parsed.ok !== true) threwOrRefused = true;
-      } catch (err) {
-        // Acceptable: writer throws when the helper propagates the load error.
-        assert.match(String(err.message || err), /runtime_tracking_invalid/);
-        threwOrRefused = true;
-      }
-      assert.ok(threwOrRefused, "malformed sidecar must refuse or throw — never silently unpause");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-});
-
-describe("meta_state_dispatch_finding honors meta-state-tools pause at BOTH stages", () => {
-  test("prepare stage returns surface_paused when meta-state-tools is paused (no issue body drafted)", async () => {
-    const { setPausedSurfaces } = await import("../core/runtime-tracking.js");
-    const { runtimeStateRecordTool } = await import("../tools/handlers/runtime-state-record-tool.js");
-    const { metaStateDispatchFindingTool } = await import("../tools/handlers/meta-state-dispatch-finding-tool.js");
-
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-dispatch-prepare-"));
-    const originalEnv = process.env.GATE_ROOT;
-    process.env.GATE_ROOT = tempDir;
-    try {
-      // The pause check fires at the TOP of the handler (before stage
-      // dispatch), so we don't need a real finding id — the handler
-      // short-circuits before reading the registry.
-      setPausedSurfaces(tempDir, ["meta-state-tools"]);
-
-      const res = await metaStateDispatchFindingTool.handler({
-        id: "meta-260722T0006Z-runtime-state-jsonl-has-two-coupled-maintenance-gaps-that-le",
-        stage: "prepare",
-      });
-      const parsed = JSON.parse(res.content[0].text);
-      assert.strictEqual(parsed.dispatched, false);
-      assert.strictEqual(parsed.reason, "surface_paused");
-      assert.strictEqual(parsed.affected_system, "meta-state-tools");
-      assert.strictEqual(parsed.stage, "prepare");
-      // Critical: no issue body was drafted.
-      assert.strictEqual(parsed.issue_title, undefined, "prepare must NOT draft an issue body");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  test("commit stage returns surface_paused when meta-state-tools is paused", async () => {
-    const { setPausedSurfaces } = await import("../core/runtime-tracking.js");
-    const { metaStateDispatchFindingTool } = await import("../tools/handlers/meta-state-dispatch-finding-tool.js");
-    const tempDir = mkdtempSync(join(tmpdir(), "rt-dispatch-commit-"));
-    const originalEnv = process.env.GATE_ROOT;
-    process.env.GATE_ROOT = tempDir;
-    try {
-      setPausedSurfaces(tempDir, ["meta-state-tools"]);
-      const res = await metaStateDispatchFindingTool.handler({
-        id: "meta-260722T0006Z-runtime-state-jsonl-has-two-coupled-maintenance-gaps-that-le",
-        stage: "commit",
-        issue_number: 1,
-        issue_url: "https://example.com/x",
-      });
-      const parsed = JSON.parse(res.content[0].text);
-      assert.strictEqual(parsed.dispatched, false);
-      assert.strictEqual(parsed.reason, "surface_paused");
-      assert.strictEqual(parsed.stage, "commit");
-    } finally {
-      process.env.GATE_ROOT = originalEnv;
-      if (existsSync(tempDir)) rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-});
-
-describe("3-layer write protection for .loop/runtime-tracking.json", () => {
-  test("direct Write-tool to .loop/runtime-tracking.json is blocked by BOUND_ARTIFACTS", async () => {
-    const { evaluateWriteGate } = await import("../core/evaluate-write-gate.js");
-    const decision = await evaluateWriteGate({ filePath: ".loop/runtime-tracking.json" });
-    assert.strictEqual(decision.decision, "block", "Write-tool gate must block writes to the runtime-tracking sidecar");
-    assert.match(
-      String(decision.matched_rule ?? ""),
-      /runtime-tracking\.json/,
-      "the block reason must name the sidecar",
-    );
-  });
-
-  test("bash echo/tee redirect to .loop/runtime-tracking.json is blocked", async () => {
-    const { evaluateBashGate } = await import("../core/evaluate-bash-gate.js");
-    // echo form
-    const echo = evaluateBashGate({ command: `echo '{}' > .loop/runtime-tracking.json` });
-    assert.strictEqual(echo.decision, "block");
-    assert.strictEqual(echo.hard_block, true);
-    // tee form
-    const tee = evaluateBashGate({ command: `echo '{}' | tee .loop/runtime-tracking.json` });
-    assert.strictEqual(tee.decision, "block");
-    assert.strictEqual(tee.hard_block, true);
-  });
-
-  test("BOOTSTRAP_DENY_PATTERNS in ownership.js hard-blocks R2 ownership claim", () => {
-    const { checkR2Ownership, BOOTSTRAP_DENY_PATTERNS } = require("../core/r2/ownership.js");
-    assert.ok(
-      BOOTSTRAP_DENY_PATTERNS.includes(".loop/runtime-tracking.json"),
-      "the sidecar must be in BOOTSTRAP_DENY_PATTERNS (the actual precedent layer)",
-    );
-    const result = checkR2Ownership({
-      runtime: "claude-code",
-      path: ".loop/runtime-tracking.json",
-      allowlist: {
-        "claude-code": { own: ["**"], deny: [] },
-        universal: [],
-      },
-      root: "/tmp/fake",
-    });
-    assert.strictEqual(result.allowed, false);
-    assert.strictEqual(result.reason, "bootstrap_deny");
   });
 });

@@ -33,7 +33,7 @@ function writeRuntimeState(root, entries) {
 test("constraint match + active observation → ok", () => {
   const root = makeRoot();
   writeRuntimeState(root, [
-    { id: "obs-1", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
+    { id: "obs-1", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
   ]);
   const result = evaluateBashGate({ command: "pip install vnstock", root });
   assert.strictEqual(result.decision, "ok");
@@ -294,7 +294,7 @@ test("constraint block + path-write block → hard_block wins", () => {
 test("constraint ok + path-write block → path wins", () => {
   const root = makeRoot();
   writeRuntimeState(root, [
-    { id: "obs-1", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
+    { id: "obs-1", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: new Date().toISOString() },
   ]);
   const result = evaluateBashGate({
     command: "pip install vnstock && echo data > records/meta/test.json",

@@ -79,7 +79,7 @@ function createTempProject() {
 function writeObservation(tmpDir, data) {
   const runtimeStatePath = path.join(tmpDir, 'runtime-state.jsonl');
   const entry = {
-    kind: 'ledger-event',
+    kind: 'budget-state',
     affected_system: data.affected_system || 'vnstock',
     id: data.id,
     value: 0,
