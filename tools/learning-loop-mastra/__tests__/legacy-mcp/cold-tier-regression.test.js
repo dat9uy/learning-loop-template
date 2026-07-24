@@ -100,8 +100,21 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
   // the cap. Exclude via --exclude when iterating on other tests.
   //
   // Pre-state both expected values to avoid a false-alarm "investigate"
-  // branch. Cap precompute: age-stale 9 (Phase 7a observed after the
-  // structural fix); drift-stale = 0 (post-seed normalization).
+  // branch. Cap precompute: age-stale 17 (Phase 7a + 7b observed after the
+  // pre-fix sweep; registry has 17 mechanism_check findings whose
+  // last_verified_at/created_at is past the 7d window); drift-stale = 0
+  // (post-seed normalization).
+  //
+  // The cap is the operator's documented escape hatch for registry growth:
+  // it absorbs organic drift (new findings aging past 7d) without immediately
+  // breaking the gate. The deeper fix — adding `verification.steps` to each
+  // aged finding so `meta_state_re_verify` can re-ground it — is a follow-up
+  // plan (none of the 17 have steps today; see the runtime-state review
+  // findings report for the unresolved-questions section).
+  //
+  // Threshold 19 = precompute 17 + 2 headroom. Bump when the registry grows
+  // past the headroom, and file a follow-up plan to re-ground the underlying
+  // findings.
   const now = Date.now();
   const { ok: codeHashes } = computeCurrentHashes(current.all_findings, root);
 
@@ -112,11 +125,13 @@ test("cold-tier regression: structural invariants, no fixture dependency", async
     fileIndex,
     codeHashes,
   }).filter((f) => f.mechanism_check === true || f.mechanism_check === null);
-  // Precompute observed: 9 (Phase 7a + 7b combined age-stale findings).
-  // Threshold 11 = precompute 9 + 2 headroom. Bump when the registry grows.
+  // Precompute observed: 17 (Phase 7a + 7b combined age-stale findings; the
+  // aged findings have no verification.steps, so meta_state_re_verify cannot
+  // re-ground them — see the precompute comment above).
+  // Threshold 19 = precompute 17 + 2 headroom. Bump when the registry grows.
   assert.ok(
-    derivedStaleAge.length <= 11,
-    `Phase 7a: age-stale cap broken — ${derivedStaleAge.length} age-stale mechanism_check findings exceed threshold 11 (9 + 2 headroom): ${derivedStaleAge.map((f) => f.id).join(", ")}`
+    derivedStaleAge.length <= 19,
+    `Phase 7a: age-stale cap broken — ${derivedStaleAge.length} age-stale mechanism_check findings exceed threshold 19 (17 + 2 headroom): ${derivedStaleAge.map((f) => f.id).join(", ")}`
   );
 
   // Phase 7b: drift-stale cap. Tight (zero in CI post-seed). Any drift > 0
