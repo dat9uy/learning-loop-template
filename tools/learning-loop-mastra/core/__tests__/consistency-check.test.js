@@ -3,7 +3,7 @@
 // Implements the remediation from finding meta-260614T1236Z
 // (no automated registry consistency check exists). The function asserts
 // that each entry's `status` field is consistent with its audit-trail
-// fields (e.g., status=active must not carry resolved_at).
+// fields (e.g., status=open must not carry resolved_at).
 //
 // TDD: this file is created BEFORE the implementation. Tests are initially
 // RED (failing — Cannot find module) and turn GREEN after the function in
@@ -24,7 +24,7 @@ function makeEntry(overrides = {}) {
   return {
     id: "meta-260601T0000Z-test-entry",
     entry_kind: "finding",
-    status: "active",
+    status: "open",
     ...overrides,
   };
 }
@@ -41,7 +41,7 @@ describe("consistencyCheck pure function", () => {
   });
 
   // C-2: All-clean registry (no invariant breaches)
-  test("C-2: clean registry (active + no audit fields) returns 0 drift", () => {
+  test("C-2: clean registry (open + no audit fields) returns 0 drift", () => {
     const entries = [
       makeEntry({ id: "meta-260601T0000Z-clean-1" }),
       makeEntry({
@@ -56,10 +56,10 @@ describe("consistencyCheck pure function", () => {
   });
 
   // C-3: F-1 breach — active + resolved_at
-  test("C-3: F-1 breach (status=active carries resolved_at) emits 1 drift event", () => {
+  test("C-3: F-1 breach (status=open carries resolved_at) emits 1 drift event", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-f1-active-resolved-at",
-      status: "active",
+      id: "meta-260601T0000Z-f1-open-resolved-at",
+      status: "open",
       resolved_at: "2026-06-01T00:00:00.000Z",
       resolved_by: "operator",
     });
@@ -68,17 +68,17 @@ describe("consistencyCheck pure function", () => {
     const ev = result.drift_events[0];
     assert.strictEqual(ev.id, entry.id);
     assert.strictEqual(ev.entry_kind, "finding");
-    assert.strictEqual(ev.status, "active");
+    assert.strictEqual(ev.status, "open");
     assert.strictEqual(ev.invariant_id, "F-1");
     assert.deepStrictEqual(ev.forbidden_fields, ["resolved_at", "resolved_by"]);
     assert.deepStrictEqual(ev.present_fields, ["resolved_at", "resolved_by"]);
   });
 
   // C-4: F-1 with `resolution` field (one of the F-1 forbidden fields)
-  test("C-4: F-1 breach (status=active carries resolution field) emits 1 drift event", () => {
+  test("C-4: F-1 breach (status=open carries resolution field) emits 1 drift event", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-f1-active-resolution",
-      status: "active",
+      id: "meta-260601T0000Z-f1-open-resolution",
+      status: "open",
       resolution: "operator-supplied content",
     });
     const result = consistencyCheck([entry]);
@@ -142,40 +142,49 @@ describe("consistencyCheck pure function", () => {
     assert.deepStrictEqual(result.drift_events[0].missing_fields, ["consolidated_into"]);
   });
 
-  // C-9: NEW-1 breach — reported + resolved_at/resolved_by
-  test("C-9: NEW-1 breach (status=reported carries resolved_at + resolved_by) emits 1 drift event", () => {
+  // C-9: F-1 breach — open + supersede-marker fields
+  test("C-9: F-1 breach (status=open carries consolidated_into + superseded_at) emits 1 drift event", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-new1-reported-resolved",
-      status: "reported",
-      resolved_at: "2026-06-01T00:00:00.000Z",
-      resolved_by: "operator",
+      id: "meta-260601T0000Z-f1-open-supersede-fields",
+      status: "open",
+      consolidated_into: "meta-260601T0000Z-other",
+      superseded_at: "2026-06-01T00:00:00.000Z",
     });
     const result = consistencyCheck([entry]);
     assert.strictEqual(result.drift_count, 1);
-    assert.strictEqual(result.drift_events[0].invariant_id, "NEW-1");
+    assert.strictEqual(result.drift_events[0].invariant_id, "F-1");
     assert.deepStrictEqual(result.drift_events[0].forbidden_fields, [
-      "resolved_at",
-      "resolved_by",
+      "consolidated_into",
+      "superseded_at",
     ]);
   });
 
-  // C-10: NEW-1 clean — reported without resolved_*
-  test("C-10: NEW-1 satisfied (status=reported without resolved_*) emits 0 drift", () => {
+  // C-10: F-1 breach — open + archive-marker fields
+  test("C-10: F-1 breach (status=open carries archived_*) emits 1 drift event", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-new1-reported-clean",
-      status: "reported",
+      id: "meta-260601T0000Z-f1-open-archive-fields",
+      status: "open",
+      archived_at: "2026-06-01T00:00:00.000Z",
+      archived_by: "operator",
+      archived_reason: "compaction",
     });
     const result = consistencyCheck([entry]);
-    assert.strictEqual(result.drift_count, 0);
+    assert.strictEqual(result.drift_count, 1);
+    assert.strictEqual(result.drift_events[0].invariant_id, "F-1");
+    assert.deepStrictEqual(result.drift_events[0].forbidden_fields, [
+      "archived_at",
+      "archived_by",
+      "archived_reason",
+    ]);
   });
 
   // C-11: Multiple breaches on a single entry → one event per breach
-  test("C-11: single entry breaching F-1 (active + resolved_at + resolution) emits 1 event (F-1 covers both)", () => {
+  test("C-11: single entry breaching F-1 (open + resolved_at + resolution) emits 1 event (F-1 covers both)", () => {
     // F-1 is a single invariant that forbids both resolved_at AND resolution.
     // The forbidden_fields array lists both present fields.
     const entry = makeEntry({
       id: "meta-260601T0000Z-multi-f1",
-      status: "active",
+      status: "open",
       resolved_at: "2026-06-01T00:00:00.000Z",
       resolved_by: "operator",
       resolution: "operator narrative",
@@ -193,8 +202,8 @@ describe("consistencyCheck pure function", () => {
   // C-12: Deterministic sort order — by (entry_kind, id, invariant_id)
   test("C-12: drift events are sorted by (entry_kind, id, invariant_id)", () => {
     const entries = [
-      makeEntry({ id: "meta-260601T0000Z-zeta", status: "active", resolved_at: "2026-06-01T00:00:00.000Z" }),
-      makeEntry({ id: "meta-260601T0000Z-alpha", status: "active", resolved_at: "2026-06-01T00:00:00.000Z" }),
+      makeEntry({ id: "meta-260601T0000Z-zeta", status: "open", resolved_at: "2026-06-01T00:00:00.000Z" }),
+      makeEntry({ id: "meta-260601T0000Z-alpha", status: "open", resolved_at: "2026-06-01T00:00:00.000Z" }),
       makeEntry({
         id: "meta-260601T0000Z-beta",
         status: "superseded",
@@ -236,10 +245,10 @@ describe("consistencyCheck pure function", () => {
   });
 
   // C-15: isSet semantics — null and undefined treated as missing
-  test("C-15: null audit fields treated as missing (NEW-1 satisfied when resolved_at is null)", () => {
+  test("C-15: null audit fields treated as missing (F-1 satisfied when resolved_at is null)", () => {
     const entry = makeEntry({
-      id: "meta-260601T0000Z-new1-null-fields",
-      status: "reported",
+      id: "meta-260601T0000Z-f1-null-fields",
+      status: "open",
       resolved_at: null,
       resolved_by: null,
     });
@@ -248,11 +257,11 @@ describe("consistencyCheck pure function", () => {
   });
 
   // C-16: invariant registry contract — exactly 5 invariants with stable ids
-  test("C-16: META_STATE_CONSISTENCY_INVARIANTS has exactly 5 entries with ids [F-1, F-2, F-3, F-4, NEW-1]", () => {
-    assert.strictEqual(META_STATE_CONSISTENCY_INVARIANTS.length, 5);
+  test("C-16: META_STATE_CONSISTENCY_INVARIANTS has exactly 4 entries with ids [F-1, F-2, F-3, F-4]", () => {
+    assert.strictEqual(META_STATE_CONSISTENCY_INVARIANTS.length, 4);
     assert.deepStrictEqual(
       META_STATE_CONSISTENCY_INVARIANTS.map((inv) => inv.id),
-      ["F-1", "F-2", "F-3", "F-4", "NEW-1"]
+      ["F-1", "F-2", "F-3", "F-4"]
     );
   });
 });
