@@ -276,6 +276,7 @@ export const CHECKLIST = [
   {
     id: "manifest-registered",
     description: "New MCP tools are listed in tools/learning-loop-mastra/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
+    // fallow-ignore-next-line complexity
     verify(featurePath, root) {
       const tools = [];
       for (const file of walkFiles(root, featurePath)) {
