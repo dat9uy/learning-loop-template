@@ -125,6 +125,9 @@
     "core/hint-renderer.js": {
       "crap_high": {
         "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
       }
     },
     "core/identity-pin.js": {
@@ -188,6 +191,11 @@
       },
       "crap_moderate": {
         "count": 2
+      }
+    },
+    "core/read-registry-cache.js": {
+      "crap_moderate": {
+        "count": 1
       }
     },
     "core/recurrence-tracker.js": {
@@ -338,26 +346,6 @@
       "crap_high": {
         "count": 1
       },
-      "crap_moderate": {
-        "count": 1
-      }
-    },
-    "mastra/workflows/workflow-classify-prompt.js": {
-      "crap_high": {
-        "count": 1
-      }
-    },
-    "mastra/workflows/workflow-intentional-skip.js": {
-      "crap_high": {
-        "count": 1
-      }
-    },
-    "mastra/workflows/workflow-prepare-runtime-request.js": {
-      "crap_high": {
-        "count": 1
-      }
-    },
-    "mastra/workflows/workflow-runtime-probe.js": {
       "crap_moderate": {
         "count": 1
       }
@@ -554,12 +542,32 @@
         "count": 1
       }
     },
+    "tools/handlers/workflow-classify-prompt-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
     "tools/handlers/workflow-generate-prompt-tool.js": {
       "crap_critical": {
         "count": 2
       },
       "crap_high": {
         "count": 2
+      }
+    },
+    "tools/handlers/workflow-intentional-skip-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-prepare-runtime-request-tool.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "tools/handlers/workflow-runtime-probe-tool.js": {
+      "crap_moderate": {
+        "count": 1
       }
     }
   },
@@ -569,8 +577,8 @@
     "core/check-grounding.js:dead code",
     "core/derive-status.js:dead code",
     "core/recurrence-tracker.js:dead code",
-    "core/gate-logic.js:complexity",
     "core/worktree-session-id.js:dead code",
+    "core/gate-logic.js:complexity",
     "core/meta-state.js:complexity",
     "core/canonical-compare.js:untested risk",
     "core/loop-introspect.js:complexity",
