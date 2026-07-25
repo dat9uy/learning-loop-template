@@ -1,0 +1,117 @@
+{
+  "tool": "workflow_prepare_runtime_request",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "dimension": {
+        "type": "string",
+        "description": "Verification dimension (e.g., install, runtime, product)"
+      },
+      "scope": {
+        "type": "string",
+        "description": "Execution scope (e.g., sandbox, local, production)"
+      },
+      "output_level": {
+        "type": "string",
+        "description": "Expected output granularity (e.g., pass/fail, summary, full)"
+      },
+      "command_class": {
+        "type": "string",
+        "description": "Command category (e.g., setup, test, deploy)"
+      },
+      "temp_root_class": {
+        "type": "string",
+        "description": "Temp root disposition (e.g., disposable, ephemeral, persistent)"
+      },
+      "evidence_missing": {
+        "description": "Whether required evidence has not yet been collected",
+        "type": "boolean"
+      },
+      "why_local_insufficient": {
+        "description": "Explanation why local/static verification is insufficient",
+        "type": "string"
+      }
+    },
+    "required": [
+      "dimension",
+      "scope",
+      "output_level",
+      "command_class",
+      "temp_root_class"
+    ]
+  },
+  "behavior": {
+    "plain": {
+      "input": {
+        "dimension": "runtime",
+        "scope": "sandbox",
+        "output_level": "summary",
+        "command_class": "test",
+        "temp_root_class": "disposable",
+        "evidence_missing": false,
+        "why_local_insufficient": "needs real container"
+      },
+      "output": {
+        "approval_request": "=== Runtime Command Approval Request ===\nDimension: runtime\nScope: sandbox\nCommand class: test\nOutput level: summary\nTemp root: disposable\n\nWhy local/static is insufficient: needs real container\n\nPre-conditions:\n  [PASS] evidence_present: Evidence collected.\n  [PASS] observation_active: scope is not production; observation check relaxed.\n  [PASS] temp_root_safe: Temp root is safe for runtime.\n  [PASS] command_allowed: Run check_gate to validate command against allowlist.\n\nAll pre-conditions passed. Operator may approve execution.\n\nIMPORTANT: This tool does NOT approve commands. Always run check_gate before execution.",
+        "pre_conditions": [
+          {
+            "name": "evidence_present",
+            "pass": true,
+            "reason": "Evidence collected."
+          },
+          {
+            "name": "observation_active",
+            "pass": true,
+            "reason": "scope is not production; observation check relaxed."
+          },
+          {
+            "name": "temp_root_safe",
+            "pass": true,
+            "reason": "Temp root is safe for runtime."
+          },
+          {
+            "name": "command_allowed",
+            "pass": true,
+            "reason": "Run check_gate to validate command against allowlist."
+          }
+        ]
+      }
+    },
+    "contentEnvelope": {
+      "input": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"dimension\":\"runtime\",\"scope\":\"sandbox\",\"output_level\":\"summary\",\"command_class\":\"test\",\"temp_root_class\":\"disposable\",\"evidence_missing\":false,\"why_local_insufficient\":\"needs real container\"}"
+          }
+        ]
+      },
+      "output": {
+        "approval_request": "=== Runtime Command Approval Request ===\nDimension: runtime\nScope: sandbox\nCommand class: test\nOutput level: summary\nTemp root: disposable\n\nWhy local/static is insufficient: needs real container\n\nPre-conditions:\n  [PASS] evidence_present: Evidence collected.\n  [PASS] observation_active: scope is not production; observation check relaxed.\n  [PASS] temp_root_safe: Temp root is safe for runtime.\n  [PASS] command_allowed: Run check_gate to validate command against allowlist.\n\nAll pre-conditions passed. Operator may approve execution.\n\nIMPORTANT: This tool does NOT approve commands. Always run check_gate before execution.",
+        "pre_conditions": [
+          {
+            "name": "evidence_present",
+            "pass": true,
+            "reason": "Evidence collected."
+          },
+          {
+            "name": "observation_active",
+            "pass": true,
+            "reason": "scope is not production; observation check relaxed."
+          },
+          {
+            "name": "temp_root_safe",
+            "pass": true,
+            "reason": "Temp root is safe for runtime."
+          },
+          {
+            "name": "command_allowed",
+            "pass": true,
+            "reason": "Run check_gate to validate command against allowlist."
+          }
+        ]
+      }
+    }
+  }
+}

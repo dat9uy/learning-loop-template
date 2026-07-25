@@ -1,0 +1,66 @@
+{
+  "tool": "workflow_report_phase_status",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "process_steps_total": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991,
+        "description": "Total number of process steps in the phase"
+      },
+      "process_steps_complete": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991,
+        "description": "Number of process steps completed so far"
+      },
+      "experiment_result": {
+        "type": "string",
+        "enum": [
+          "success",
+          "failure",
+          "inconclusive"
+        ],
+        "description": "Result of the phase experiment"
+      },
+      "blocker_reason": {
+        "description": "Optional reason why the phase is blocked",
+        "type": "string"
+      }
+    },
+    "required": [
+      "process_steps_total",
+      "process_steps_complete",
+      "experiment_result"
+    ]
+  },
+  "behavior": {
+    "plain": {
+      "input": {
+        "process_steps_total": 3,
+        "process_steps_complete": 3,
+        "experiment_result": "success"
+      },
+      "output": {
+        "status": "Process: 3/3. Experiment: success.",
+        "lifecycle_complete": true
+      }
+    },
+    "contentEnvelope": {
+      "input": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"process_steps_total\":3,\"process_steps_complete\":3,\"experiment_result\":\"success\"}"
+          }
+        ]
+      },
+      "output": {
+        "status": "Process: 3/3. Experiment: success.",
+        "lifecycle_complete": true
+      }
+    }
+  }
+}

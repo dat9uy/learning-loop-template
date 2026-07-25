@@ -1,0 +1,84 @@
+{
+  "tool": "workflow_runtime_probe",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "stack": {
+        "type": "string",
+        "description": "Technology stack (e.g., nodejs, python, go, rust)"
+      },
+      "probe_type": {
+        "type": "string",
+        "enum": [
+          "install",
+          "build",
+          "test",
+          "runtime"
+        ],
+        "description": "Type of probe to plan"
+      },
+      "temp_dir": {
+        "description": "Optional temporary directory for the probe",
+        "type": "string"
+      }
+    },
+    "required": [
+      "stack",
+      "probe_type"
+    ]
+  },
+  "behavior": {
+    "plain": {
+      "input": {
+        "stack": "nodejs",
+        "probe_type": "test",
+        "temp_dir": "/tmp/probe"
+      },
+      "output": {
+        "probe_plan": "Stack: nodejs\nProbe type: test\nTemp dir: /tmp/probe\nCheck live gate env var before execution\nRun per-stack commands\nCompare outputs to expected",
+        "shared_env_requirements": [
+          "GATE_NAME_LIVE_GATE=open (operator sets after confirmation)",
+          "operator decision record documenting allowed_actions and blocked_actions"
+        ],
+        "per_stack_commands": [
+          "node --version (cwd: /tmp/probe)",
+          "npm install (cwd: /tmp/probe)",
+          "npm test (cwd: /tmp/probe)"
+        ],
+        "expected_outputs": [
+          "v",
+          "added",
+          "passing"
+        ]
+      }
+    },
+    "contentEnvelope": {
+      "input": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"stack\":\"nodejs\",\"probe_type\":\"test\",\"temp_dir\":\"/tmp/probe\"}"
+          }
+        ]
+      },
+      "output": {
+        "probe_plan": "Stack: nodejs\nProbe type: test\nTemp dir: /tmp/probe\nCheck live gate env var before execution\nRun per-stack commands\nCompare outputs to expected",
+        "shared_env_requirements": [
+          "GATE_NAME_LIVE_GATE=open (operator sets after confirmation)",
+          "operator decision record documenting allowed_actions and blocked_actions"
+        ],
+        "per_stack_commands": [
+          "node --version (cwd: /tmp/probe)",
+          "npm install (cwd: /tmp/probe)",
+          "npm test (cwd: /tmp/probe)"
+        ],
+        "expected_outputs": [
+          "v",
+          "added",
+          "passing"
+        ]
+      }
+    }
+  }
+}

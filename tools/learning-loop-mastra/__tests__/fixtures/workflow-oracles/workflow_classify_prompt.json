@@ -1,0 +1,47 @@
+{
+  "tool": "workflow_classify_prompt",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "description": "The user prompt text to classify"
+      }
+    },
+    "required": [
+      "prompt"
+    ]
+  },
+  "behavior": {
+    "plain": {
+      "input": {
+        "prompt": "evidence verified finding"
+      },
+      "output": {
+        "category": "evidence",
+        "confidence": 1,
+        "suggested_tools": [
+          "validate_records"
+        ]
+      }
+    },
+    "contentEnvelope": {
+      "input": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"prompt\":\"evidence verified finding\"}"
+          }
+        ]
+      },
+      "output": {
+        "category": "evidence",
+        "confidence": 1,
+        "suggested_tools": [
+          "validate_records"
+        ]
+      }
+    }
+  }
+}
