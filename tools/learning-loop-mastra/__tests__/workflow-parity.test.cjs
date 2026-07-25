@@ -1,9 +1,8 @@
 // Workflow parity harness — MCP-level integration test.
-// Spawns the mastra server, calls each workflow via run_<key>, asserts output
-// matches the legacy handler return.
-//
-// TDD order: 1 empirical probe (locks response format), then 8 parity tests,
-// then 1 tools/list enumeration test.
+// Spawns the mastra server and asserts the tools/list surface composition.
+// The 6 portable workflows were unwrapped to manifest handlers (their
+// behavior coverage lives in workflow-unwrap-parity.test.js); only the 2
+// storage workflows remain on the run_workflow_* surface.
 
 const assert = require("node:assert");
 const { mkdtempSync, mkdirSync, writeFileSync } = require("node:fs");
@@ -53,83 +52,13 @@ describe("workflow parity harness", () => {
     }
   });
 
-  test("empirical probe: run_workflow_classify_prompt returns valid result", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_classify_prompt", { prompt: "test classification" });
-    assert.ok(result, "workflow call must return a result");
-    assert.equal(typeof result.category, "string", "must have category");
-  });
-
-  test("run_workflow_classify_prompt matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_classify_prompt", { prompt: "fix the auth flow" });
-    assert.equal(typeof result.category, "string");
-    assert.equal(typeof result.confidence, "number");
-    assert.ok(Array.isArray(result.suggested_tools));
-  });
-
-  test("run_workflow_prepare_runtime_request matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_prepare_runtime_request", {
-      dimension: "runtime",
-      scope: "sandbox",
-      output_level: "summary",
-      command_class: "test",
-      temp_root_class: "disposable",
-      evidence_missing: false,
-      why_local_insufficient: "needs real container",
-    });
-    assert.equal(typeof result.approval_request, "string");
-    assert.ok(Array.isArray(result.pre_conditions));
-  });
-
-  test("run_workflow_self_improvement matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_self_improvement", {
-      improvement_type: "schema-change",
-      description: "Add validation to schema",
-      proposed_changes: ["add zod schema"],
-    });
-    assert.equal(result.experiment_candidate, "runtime-schema-validation-experiment");
-    assert.equal(result.decision_required, true);
-    assert.ok(Array.isArray(result.risks));
-  });
-
-  test("run_workflow_intentional_skip matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_intentional_skip", {
-      assertion_id: "assert-1",
-      skip_reason: "not needed for this release",
-      scope: "docs",
-    });
-    assert.equal(result.status, "narrowed");
-    assert.ok(Array.isArray(result.records_required));
-    assert.equal(typeof result.rationale, "string");
-  });
-
-  test("run_workflow_report_phase_status matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_report_phase_status", {
-      process_steps_total: 5,
-      process_steps_complete: 3,
-      experiment_result: "success",
-    });
-    assert.equal(typeof result.status, "string");
-    assert.equal(typeof result.lifecycle_complete, "boolean");
-  });
-
-  test("run_workflow_runtime_probe matches legacy output", { timeout: 10000 }, async () => {
-    const result = await handles.callTool("run_workflow_runtime_probe", {
-      stack: "nodejs",
-      probe_type: "test",
-    });
-    assert.equal(typeof result.probe_plan, "string");
-    assert.ok(Array.isArray(result.shared_env_requirements));
-    assert.ok(Array.isArray(result.per_stack_commands));
-    assert.ok(Array.isArray(result.expected_outputs));
-  });
-
-  test("tools/list enumerates 37 mastra_* + 8 run_workflow_* = 45 mastra-and-workflow total (was 33/41; +3 runtime_state_pause/resume/stop for the in-band tracking lifecycle; +1 meta_state_touch for the grounding-guarded re-grounding path)", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 43 mastra_* + 2 run_workflow_* = 45 mastra-and-workflow total (6 portable run_workflow_* unwrapped to mastra_workflow_* manifest handlers; storage stays Mastra)", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
-    assert.equal(mastra.length, 37, `must have 37 mastra_* tools (33 prior + 3 runtime_state_pause/resume/stop + 1 meta_state_touch), got ${mastra.length}`);
-    assert.equal(runWorkflows.length, 8, `must have 8 run_workflow_* tools (6 existing + 2 storage), got ${runWorkflows.length}`);
-    assert.equal(tools.length, 48, `total must be 48 (37 mastra_* + 8 run_workflow_* + 3 ask_*), got ${tools.length}`);
+    assert.equal(mastra.length, 43, `must have 43 mastra_* tools (37 prior + 6 unwrapped portable-six), got ${mastra.length}`);
+    assert.equal(runWorkflows.length, 2, `must have 2 run_workflow_* tools (storage only), got ${runWorkflows.length}`);
+    assert.equal(tools.length, 48, `total must be 48 (43 mastra_* + 2 run_workflow_* + 3 ask_*), got ${tools.length}`);
 
     for (const wf of runWorkflows) {
       assert.ok(wf.description && wf.description.length > 0, `${wf.name} must have non-empty description`);

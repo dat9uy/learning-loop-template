@@ -46,9 +46,9 @@ const WORKFLOW_MANIFEST_PATH = join(PKG_ROOT, "mastra", "workflows-manifest.json
 //                           portable-six finding recorded in plan-260722-2147
 //                           Phase 4)
 //
-// Phase 3 reclassifies 8 tools (2 workflow write helpers + 5 aux-read-ish
-// + workflow_notify_artifact/trigger) into CLI_TOOLS. The 11 residue entries
-// below are exactly the irreducible MCP surface under LOOP_RECORDS_VIA_CLI=1.
+// The 5 residue entries below are exactly the irreducible MCP surface under
+// LOOP_RECORDS_VIA_CLI=1 (the portable six were re-homed to CLI_TOOLS via the
+// Option A unwrap — plain handlers in tools/manifest.json).
 const MCP_RESIDUE = new Map([
   // server-state: storage substrate uses initStorage() singleton DB handle.
   ["run_workflow_storage_round_trip", "server-state"],
@@ -62,18 +62,6 @@ const MCP_RESIDUE = new Map([
   // Reclassifying to CLI_TOOLS would break Mastra internal-agent tool
   // surface resolution (validation Q2: keep MCP).
   ["check_runtime_agnostic", "agent-facing"],
-  // deferred-rehoming: 6 portable-six workflow tools. CLI-capable in
-  // principle but blocked on (U-Q1) unwrap contract for createLoopWorkflow
-  // schema normalization, (U-Q2) resolveRoot wiring under learning-loop-mcp
-  // subtree, (P-Q2) gate-observed step-success ordering, and (Sec-F9) the
-  // convertWorkflowsToTools opt-out branch parallel to server.js:71.
-  // Separate evidence-driven plan owns the unwrap; no re-homing code here.
-  ["run_workflow_classify_prompt", "deferred-rehoming"],
-  ["run_workflow_prepare_runtime_request", "deferred-rehoming"],
-  ["run_workflow_self_improvement", "deferred-rehoming"],
-  ["run_workflow_intentional_skip", "deferred-rehoming"],
-  ["run_workflow_report_phase_status", "deferred-rehoming"],
-  ["run_workflow_runtime_probe", "deferred-rehoming"],
   // deferred-rehoming: workflow_generate_prompt reads prompt blueprints under
   // the loop package's references/ dir. The blueprint paths were fixed (they
   // pointed at the folded learning-loop-mcp subtree), so the tool now works

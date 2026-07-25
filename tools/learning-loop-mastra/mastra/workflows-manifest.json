@@ -1,10 +1,4 @@
 [
-  { "file": "workflows/workflow-classify-prompt.js", "export": "workflowClassifyPrompt" },
-  { "file": "workflows/workflow-prepare-runtime-request.js", "export": "workflowPrepareRuntimeRequest" },
-  { "file": "workflows/workflow-self-improvement.js", "export": "workflowSelfImprovement" },
-  { "file": "workflows/workflow-intentional-skip.js", "export": "workflowIntentionalSkip" },
-  { "file": "workflows/workflow-report-phase-status.js", "export": "workflowReportPhaseStatus" },
-  { "file": "workflows/workflow-runtime-probe.js", "export": "workflowRuntimeProbe" },
   { "file": "workflows/workflow-storage-round-trip.js", "export": "workflowStorageRoundTrip" },
   { "file": "workflows/workflow-storage-read.js", "export": "workflowStorageRead" }
 ]

@@ -46,8 +46,8 @@ const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 // 1. Manifest has 36 entries (was 32; +3 runtime_state_pause/resume/stop for the
 // in-band tracking lifecycle; +1 meta_state_touch for the grounding-guarded
 // re-grounding path).
-await test("manifest has 36 entries", () => {
-  assert.strictEqual(manifest.length, 36, `Expected 36, got ${manifest.length}`);
+await test("manifest has 42 entries", () => {
+  assert.strictEqual(manifest.length, 42, `Expected 42, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest

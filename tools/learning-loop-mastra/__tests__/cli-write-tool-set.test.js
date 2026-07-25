@@ -49,6 +49,13 @@ const EXPECTED_WRITE_TOOLS = [
   "gate_override",
   "workflow_notify_artifact",
   "workflow_trigger",
+  // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
+  "workflow_classify_prompt",
+  "workflow_prepare_runtime_request",
+  "workflow_self_improvement",
+  "workflow_intentional_skip",
+  "workflow_report_phase_status",
+  "workflow_runtime_probe",
 ];
 
 test("CLI_WRITE_TOOLS is a Set with the exact expected write surface", () => {
