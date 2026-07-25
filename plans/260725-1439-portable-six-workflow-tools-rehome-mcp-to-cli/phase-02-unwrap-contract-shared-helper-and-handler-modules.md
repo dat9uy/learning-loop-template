@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Unwrap contract — shared helper + 6 handler modules (TDD)"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [1]

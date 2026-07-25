@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Gates green + resolve the finding"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [4]

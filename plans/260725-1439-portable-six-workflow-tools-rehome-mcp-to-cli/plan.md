@@ -1,7 +1,7 @@
 ---
 title: "Re-home the portable-six workflow tools from MCP to CLI"
 description: "Unwrap the 6 CLI-capable run_workflow_* tools (classify_prompt, prepare_runtime_request, self_improvement, intentional_skip, report_phase_status, runtime_probe) from the createLoopWorkflow Mastra wrapper into plain handler modules registered via tools/manifest.json, so they ride bin/loop.mjs under LOOP_RECORDS_VIA_CLI=1 and leave the MCP_RESIDUE deferred-rehoming set. Resolves the 4 prerequisites recorded in finding meta-260723T0813Z-six-portable-workflow-tools-are-cli-capable-in-principle-but: (U-Q1) unwrap contract — preserve createLoopWorkflow's schema normalization (attachParityJSONSchema + stripMcpContentEnvelope) via a shared helper baked into each unwrapped handler's schema; (U-Q2) resolveRoot — scoped out, the portable six are pure in-memory transforms with no file reads (workflow_generate_prompt's cross-root U-Q2 is a separate finding); (P-Q2) ordering — non-blocker, the six are single-step deterministic (the multi-step gate-observed contract is documented for any future re-homing); (Sec-F9) server.js opt-out — dissolved by the unwrap (the tools leave workflows-manifest.json, so convertWorkflowsToTools never sees them; the existing server.js:71 RECORDS_VIA_CLI opt-out drops them from MCP). The unwrap re-homes the six to the same plain-handler shape the 3 mastra_workflow_* helpers already use; the run_* MCP name is a mechanical artifact of the workflow registration path and reverts to mastra_workflow_* on MCP / workflow_* on CLI, with a bounded caller-update phase. Follow-on to the completed deferral plan 260722-2147 and the audit ak-problem-solving-260722-2125-workflow-tool-transport-home-audit.md."
-status: pending
+status: completed
 priority: P2
 effort: "2-3d"
 tags: [cli-transport, workflow-tools, re-homing, unwrap, drift-test, runtime-contract, tdd, meta-state]
@@ -52,11 +52,11 @@ The unwrap extends the plain-handler registration pattern the 2 CLI-ported `mast
 
 | # | Phase | Status | Deps |
 |---|-------|--------|------|
-| 1 | [Scope, design-fork decision, empirical probes](./phase-01-start.md) | Pending | — |
-| 2 | [Unwrap contract — shared helper + 6 handler modules (TDD)](./phase-02-unwrap-contract-shared-helper-and-handler-modules.md) | Pending | 1 |
-| 3 | [CLI registration + MCP opt-out + drift-test reclassification](./phase-03-cli-registration-mcp-opt-out-drift-test.md) | Pending | 2 |
-| 4 | [Caller update — run_* → mastra_workflow_* rename](./phase-04-caller-update-rename-run-to-mastra.md) | Pending | 3 |
-| 5 | [Gates green + resolve the finding](./phase-05-gates-green-resolve-finding.md) | Pending | 4 |
+| 1 | [Scope, design-fork decision, empirical probes](./phase-01-start.md) | Completed | — |
+| 2 | [Unwrap contract — shared helper + 6 handler modules (TDD)](./phase-02-unwrap-contract-shared-helper-and-handler-modules.md) | Completed | 1 |
+| 3 | [CLI registration + MCP opt-out + drift-test reclassification](./phase-03-cli-registration-mcp-opt-out-drift-test.md) | Completed | 2 |
+| 4 | [Caller update — run_* → mastra_workflow_* rename](./phase-04-caller-update-rename-run-to-mastra.md) | Completed | 3 |
+| 5 | [Gates green + resolve the finding](./phase-05-gates-green-resolve-finding.md) | Completed | 4 |
 
 Phase ordering rationale: Phase 1 proves the 4 prerequisites with probe tests and decides the central design fork (Option A unwrap vs Option B' workflow-CLI) before any production code. Phase 2 builds the unwrapped handlers with a parity test (handler == workflow oracle) as the safety net. Phase 3 switches registration (workflow → manifest) and reclassifies the drift test; it can only land after 2. Phase 4 updates the bounded caller set once the new MCP/CLI names are final. Phase 5 closes the loop on the finding once the surface is stable.
 
@@ -73,15 +73,15 @@ The finding frames Sec-F9 as "either a parallel `convertWorkflowsToTools` opt-ou
 
 ## Success Criteria
 
-- [ ] (U-Q1) A shared `wrapWorkflowInputSchema` helper (or equivalent) applies `z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema))`; all 6 unwrapped handlers use it (no per-tool duplication); a parity test asserts each handler's `z.toJSONSchema` matches the prior workflow's parity view and that envelope-wrapped input is stripped.
-- [ ] The 6 `run_workflow_*` dispatch via `bin/loop.mjs workflow_<x> '<json>'` for `.claude`; their outputs match the prior workflow outputs byte-for-byte (golden-master parity test).
-- [ ] The 6 are absent from `.claude`'s MCP surface under `LOOP_RECORDS_VIA_CLI=1` (verified by a CLI/MCP subset test); no new `convertWorkflowsToTools` opt-out branch was added (Sec-F9 dissolved by removal from `workflows-manifest.json`).
-- [ ] `cli-write-tool-set-drift.test.js` has the 6 in `CLI_TOOLS` (via `CLI_WRITE_TOOLS`), NOT in `MCP_RESIDUE`; the workflow blind-spot assertion still covers the 2 `run_workflow_storage_*`; every `MCP_RESIDUE` entry still declares a known reason tag.
-- [ ] (U-Q2) A probe asserts none of the 6 workflow files import `resolveRoot`/`readFileSync`/`findProjectRoot` (confirming U-Q2 is out of scope for the six); `workflow_generate_prompt` is untouched (its U-Q2 finding stays open).
-- [ ] (P-Q2) A probe asserts each of the 6 is single-step; `docs/runtime-contract.md` gains a one-paragraph note that multi-step deterministic workflows re-homed to the agent home require gate-observed (not agent-asserted) step-success — the contract for any future re-homing.
-- [ ] The 11-site caller set (Phase 1 step 5) updated: `agent-manifest.json`, `interface/RUNTIME_ONBOARDING.md` (example + Total), `mcp-tools-list-parity.test.js` (phantom `MIGRATED_TOOL_NAMES` dropped + specific per-tool test), `server-runid.test.js` (concrete runId assertion on `run_workflow_storage_round_trip`), `tool-deletion-coverage.test.js:118`, `mastra-code-smoke.test.cjs:87` reference `mastra_workflow_<x>`; the obsolete workflow-path tests retired; the count-assertion files (`manifest-constants.cjs`, `manifest-arithmetic.test.cjs`, `cli-mcp-subset-registration.test.js`, `tool-deletion-coverage.test.js:50`, `workflow-parity.test.cjs` counts) updated atomic with the Phase 3 registration switch.
-- [ ] `pnpm test` green across all namespaces; `check_runtime_agnostic` clean on touched paths; fallow gate triaged (if non-zero, `pnpm fallow:brief`, ignore baseline-inherited lines).
-- [ ] Finding `meta-260723T0813Z-...` resolved via `meta_state_resolve` with `{pr_ref, change_log_id, file_index_refreshed_path}`; a change-log entry (`meta_state_log_change`) records the re-homing; `meta_state_refresh_file_index` run on the refactored paths.
+- [x] (U-Q1) A shared `wrapWorkflowInputSchema` helper (or equivalent) applies `z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema))`; all 6 unwrapped handlers use it (no per-tool duplication); a parity test asserts each handler's `z.toJSONSchema` matches the prior workflow's parity view and that envelope-wrapped input is stripped.
+- [x] The 6 `run_workflow_*` dispatch via `bin/loop.mjs workflow_<x> '<json>'` for `.claude`; their outputs match the prior workflow outputs byte-for-byte (golden-master parity test).
+- [x] The 6 are absent from `.claude`'s MCP surface under `LOOP_RECORDS_VIA_CLI=1` (verified by a CLI/MCP subset test); no new `convertWorkflowsToTools` opt-out branch was added (Sec-F9 dissolved by removal from `workflows-manifest.json`).
+- [x] `cli-write-tool-set-drift.test.js` has the 6 in `CLI_TOOLS` (via `CLI_WRITE_TOOLS`), NOT in `MCP_RESIDUE`; the workflow blind-spot assertion still covers the 2 `run_workflow_storage_*`; every `MCP_RESIDUE` entry still declares a known reason tag.
+- [x] (U-Q2) A probe asserts none of the 6 workflow files import `resolveRoot`/`readFileSync`/`findProjectRoot` (confirming U-Q2 is out of scope for the six); `workflow_generate_prompt` is untouched (its U-Q2 finding stays open).
+- [x] (P-Q2) A probe asserts each of the 6 is single-step; `docs/runtime-contract.md` gains a one-paragraph note that multi-step deterministic workflows re-homed to the agent home require gate-observed (not agent-asserted) step-success — the contract for any future re-homing.
+- [x] The 11-site caller set (Phase 1 step 5) updated: `agent-manifest.json`, `interface/RUNTIME_ONBOARDING.md` (example + Total), `mcp-tools-list-parity.test.js` (phantom `MIGRATED_TOOL_NAMES` dropped + specific per-tool test), `server-runid.test.js` (concrete runId assertion on `run_workflow_storage_round_trip`), `tool-deletion-coverage.test.js:118`, `mastra-code-smoke.test.cjs:87` reference `mastra_workflow_<x>`; the obsolete workflow-path tests retired; the count-assertion files (`manifest-constants.cjs`, `manifest-arithmetic.test.cjs`, `cli-mcp-subset-registration.test.js`, `tool-deletion-coverage.test.js:50`, `workflow-parity.test.cjs` counts) updated atomic with the Phase 3 registration switch.
+- [x] `pnpm test` green across all namespaces; `check_runtime_agnostic` clean on touched paths; fallow gate triaged (if non-zero, `pnpm fallow:brief`, ignore baseline-inherited lines).
+- [x] Finding `meta-260723T0813Z-...` resolved via `meta_state_resolve` with `{pr_ref, change_log_id, file_index_refreshed_path}`; a change-log entry (`meta_state_log_change`) records the re-homing; `meta_state_refresh_file_index` run on the refactored paths.
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Caller update — run_* → mastra_workflow_* rename"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: [3]

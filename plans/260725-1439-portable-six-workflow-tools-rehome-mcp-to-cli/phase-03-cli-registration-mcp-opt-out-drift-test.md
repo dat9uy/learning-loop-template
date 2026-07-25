@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "CLI registration + MCP opt-out + drift-test reclassification"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: [2]
