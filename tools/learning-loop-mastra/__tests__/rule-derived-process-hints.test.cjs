@@ -125,6 +125,26 @@ describe("rule-derived process hints (Phase 3)", () => {
     }
   });
 
+  test("resolveHintText preserves standalone and rule-derived sentinel semantics", () => {
+    assert.strictEqual(
+      registry.resolveHintText({ text: "standalone", derived_from_rule: null }),
+      "standalone",
+    );
+    assert.strictEqual(
+      registry.resolveHintText({ text: "standalone", derived_from_rule: undefined }),
+      "standalone",
+    );
+
+    const derived = { text: "", derived_from_rule: "rule-test" };
+    assert.strictEqual(
+      registry.resolveHintText(derived, new Map([["rule-test", { hint_text: "derived text" }]])),
+      "derived text",
+    );
+    assert.strictEqual(registry.resolveHintText(derived, new Map()), null);
+    assert.strictEqual(registry.resolveHintText(derived, new Map([["rule-test", {}]])), null);
+    assert.strictEqual(registry.resolveHintText(derived), null);
+  });
+
   test("projection skips rule-derived entries whose rule is missing", () => {
     // Empty rulesById: rule-derived entries skip with warnings; standalone
     // entries still render.
