@@ -317,10 +317,6 @@ export function findHintBySlug(slug) {
  * Pure — `rulesById` is a precomputed map supplied by the caller.
  */
 export function resolveHintText(entry, rulesById) {
-  if (entry.derived_from_rule === null || entry.derived_from_rule === undefined) {
-    return entry.text;
-  }
-  const rule = rulesById?.get(entry.derived_from_rule);
-  if (!rule || !rule.hint_text) return null;
-  return rule.hint_text;
+  if (entry.derived_from_rule == null) return entry.text;
+  return rulesById?.get(entry.derived_from_rule)?.hint_text ?? null;
 }
