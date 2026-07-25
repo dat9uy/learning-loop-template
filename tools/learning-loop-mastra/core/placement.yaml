@@ -96,6 +96,9 @@ files:
   - path: schema-normalize.js
     role: primitive
     summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.
+  - path: workflow-input-schema.js
+    role: primitive
+    summary: wrapWorkflowInputSchema — the U-Q1 unwrap contract for plain handler modules re-homed out of createLoopWorkflow; bakes z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema)) into each unwrapped handler's schema so MCP-path envelope stripping survives the unwrap. Composes envelope-stripper + schema-normalize only (transport-agnostic).
   - path: registry-stats.js
     role: helper
     summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal (Plan 260716-1101 Tier 2 Phase C).
