@@ -331,3 +331,96 @@ test("activation on agent-checklist without hint_text is still rejected (gate in
     teardown();
   }
 });
+
+test("activation on agent-checklist with malformed pattern JSON is rejected with named reason", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must reject malformed pattern JSON.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-malformed-checklist-pattern",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: "[not-json",
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "pattern_invalid_agent_checklist_shape");
+    assert.ok(Array.isArray(text.problems) && text.problems.length > 0);
+
+    const entries = readRegistry(tempDir);
+    assert.ok(
+      !entries.some((e) => e.entry_kind === "rule" && e.id === "rule-test-malformed-checklist-pattern"),
+      "no rule entry may be written for a malformed pattern",
+    );
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist with wrong-shape pattern JSON is rejected", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must reject wrong-shape pattern JSON.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-wrong-shape-checklist-pattern",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1 }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "pattern_invalid_agent_checklist_shape");
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist with well-formed pattern JSON promotes", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion accepts a well-formed JSON pattern.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-well-formed-checklist-pattern",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, true, JSON.stringify(text));
+  } finally {
+    teardown();
+  }
+});

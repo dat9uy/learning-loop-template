@@ -40,7 +40,7 @@ test("createRule.isActive and isAgentChecklist", () => {
   assert.ok(active.isActive());
   assert.ok(!active.isAgentChecklist());
 
-  const consult = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: "session-123" });
+  const consult = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }) });
   assert.ok(consult.isAgentChecklist());
 });
 
@@ -79,7 +79,7 @@ test("createRule.matches regex pattern", () => {
 });
 
 test("createRule.matches agent-checklist returns false", () => {
-  const r = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: "session-123" });
+  const r = createRule({ ...FIXTURE, pattern_type: "agent-checklist", pattern: JSON.stringify({ version: 1, items: [{ id: "x", description: "y" }] }) });
   assert.ok(!r.matches("anything", null));
 });
 

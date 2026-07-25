@@ -19,7 +19,7 @@ export const metaStatePromoteRuleTool = {
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
     enforcement: z.enum(["gate", "agent"]).describe("Where the rule is enforced (canonical: gate or agent)"),
     pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language (determinism-checklist is a resolve consult-gate, not a command-path match)"),
-    pattern: z.string().describe("Pattern string (regex body, glob path, or session_id for determinism-checklist)"),
+    pattern: z.string().describe("Pattern string (regex body, glob path, or finding id for determinism-checklist; agent-checklist requires a JSON blob {version, items:[{id, description}]})"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional project scope predicate"),
     // Plan 260712-0724 follow-up (Fix B): optional tool/surface scope that
     // narrows the rule's firing surface without regex hand-curation. Parallel
@@ -111,6 +111,36 @@ export const metaStatePromoteRuleTool = {
       return {
         content: [{ type: "text", text: JSON.stringify(result) }],
       };
+    }
+
+    // Agent-checklist pattern shape gate (activation only): the pattern is a
+    // JSON blob {version, items:[{id, description}]} that consumers JSON.parse
+    // at render/eval time. The rule-entry schema refinement rejects malformed
+    // blobs at writeEntry; this named check gives the operator an actionable
+    // reason instead of a raw schema failure. Skipped in preview — preview
+    // tests sample matches without creating a rule.
+    if (!preview && pattern_type === "agent-checklist") {
+      const { agentChecklistPatternProblems } = await import("../../core/meta-state.js");
+      const problems = agentChecklistPatternProblems(pattern);
+      if (problems.length > 0) {
+        const result = {
+          promoted: false,
+          reason: "pattern_invalid_agent_checklist_shape",
+          id,
+          rule_id,
+          problems,
+          message:
+            "Agent-checklist patterns are JSON blobs of shape {version: <int>=1>, items: [{id, description}, ...]}. Re-call with a well-formed JSON pattern.",
+        };
+        appendGateLog(root, {
+          timestamp: new Date().toISOString(),
+          tool: "meta_state_promote_rule",
+          ...result,
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+        };
+      }
     }
 
     // Preview mode: test pattern without activating
