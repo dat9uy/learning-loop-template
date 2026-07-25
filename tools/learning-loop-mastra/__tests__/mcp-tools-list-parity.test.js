@@ -6,39 +6,17 @@
 // Both layers are needed because they catch different classes of regressions.
 import { describe, test, beforeAll } from "vitest";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { withMcpServer } from "./with-mcp-server.js";
 
-// Tools whose inputSchemas use the migration's preprocess + guarded-boolean
-// wrappers. These are the load-bearing assertions — if the shim or override
-// mechanism regresses, these tests will fail loudly.
-//
-// Note: "migrated" here means "uses z.preprocess(stripEnvelope, ...) or
-// z.union([z.boolean(), z.string()]).transform(strictBooleanGuard) in its
-// inputSchema". Other tools (e.g. tools using plain zod primitives) pass
-// through the shim unchanged; they're covered by the universal contract test
-// in coerce-correctness.test.js, not here.
-const MIGRATED_TOOL_NAMES = [
-  "mastra_meta_state_sweep",
-  "mastra_meta_state_archive",
-  "mastra_meta_state_resolve",
-  "mastra_meta_state_promote_rule",
-  "mastra_meta_state_check_grounding",
-  "mastra_meta_state_query_drift",
-  "mastra_meta_state_derive_status",
-  "mastra_meta_state_list",
-  // Plan 260717-1145 Phase 2: meta_state_patch uses z.preprocess(deepStripEnvelope, z.union(...))
-  // so its parity view is rebuilt by buildParitySchema; the new parityJsonSchemaHints seam
-  // injects model-visible minProperties on `patch` to steer the model away from `{}`.
-  "mastra_meta_state_patch",
-  "run_workflow_self_improvement",
-  "mastra_workflow_generate_prompt",
-  // "mastra_trigger_workflow" intentionally omitted: server logs
-  // "registered 39 of 39" with the current manifest, but the
-  // trigger-workflow module's `legacy.name` is `workflowTriggerTool` and
-  // the actual exposed name is `mastra_workflow_trigger` (different from
-  // the migration touch list which used a guessed snake_case mapping).
-  // Out of scope — re-add once trigger-workflow naming is reconciled.
-];
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// (The former MIGRATED_TOOL_NAMES list was dropped: it was declared but never
+// referenced by any assertion — a phantom. The real guarantee for the one
+// re-homed workflow tool is the per-tool parity test below, which compares
+// the live MCP parity view against the captured oracle fixture.)
 
 describe("mcp tools/list parity — JSON Schema contract for migration-touched tools", () => {
   let tools;
@@ -68,6 +46,28 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
   // mutate the registry. Replaces the old guarded-boolean pipe-collapse proof
   // (the schema-parity.js pipe-collapse branch is still exercised by the
   // universal contract test above on other tools' schemas).
+  test("mastra_workflow_self_improvement parity view matches the oracle fixture (incl. per-field stripEnvelope)", { timeout: 5000 }, () => {
+    const t = byName.get("mastra_workflow_self_improvement");
+    assert.ok(t, "mastra_workflow_self_improvement must be registered");
+    const fixture = JSON.parse(
+      readFileSync(
+        join(__dirname, "fixtures", "workflow-oracles", "workflow_self_improvement.json"),
+        "utf8",
+      ),
+    );
+    const live = { ...t.inputSchema };
+    const oracle = { ...fixture.schema };
+    // Schema-view-only difference tolerated: the manifest-handler path emits
+    // additionalProperties:false where the workflow parity view did not. The
+    // load-bearing guarantee is fields/descriptions/required (incl. the
+    // per-field stripEnvelope shape surviving the unwrap).
+    delete live.$schema;
+    delete oracle.$schema;
+    delete live.additionalProperties;
+    delete oracle.additionalProperties;
+    assert.deepStrictEqual(live, oracle);
+  });
+
   test("meta_state_sweep has no apply property (read-only, apply mode removed)", { timeout: 5000 }, () => {
     const t = byName.get("mastra_meta_state_sweep");
     assert.ok(t, "mastra_meta_state_sweep must be registered");

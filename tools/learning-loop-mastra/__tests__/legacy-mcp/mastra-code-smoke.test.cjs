@@ -84,7 +84,8 @@ test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow
   // Three patterns observed in mastracode@0.26.0:
   //   1. Primitives (30 tools): `learning-loop_mastra_<tool>` (e.g., loop_describe, meta_state_list, gate_check)
   //   2. Agent wrappers:        `learning-loop_ask_<agent>` (e.g., ask_intake_agent)
-  //   3. Workflow runners:      `learning-loop_run_workflow_<workflow>` (e.g., run_workflow_classify_prompt)
+  //   3. Workflow runners:      `learning-loop_run_workflow_<workflow>` (e.g., run_workflow_storage_round_trip)
+  //      (the 6 portable workflow tools re-homed to `learning-loop_mastra_workflow_<x>` manifest handlers)
   const expectedPrefixes = ["learning-loop_mastra_", "learning-loop_ask_", "learning-loop_run_workflow_"];
   for (const name of parsed.mcp_tool_names) {
     const ok = expectedPrefixes.some((p) => name.startsWith(p));

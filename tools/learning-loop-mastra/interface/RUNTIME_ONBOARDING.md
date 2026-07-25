@@ -112,17 +112,17 @@ Reference: `plans/reports/research-260626-2314-phase-e-plan-4-mastracode-prep-re
 
 7. **Run the validator.** `node tools/learning-loop-mastra/interface/contract.js mastra-code`. Expect `{ok: true, missing: [], notes: [...]}` (notes may include `identity-marker-not-adopted` if `MASTRA_RESOURCE_ID` is unset, and `skill-spec-no-tools-block` if the SKILL.md uses prose rather than a `tools:` block).
 
-8. **Smoke test.** `pnpm smoke:mastracode`. Exit 0; stdout JSON contains `ok: true`, `mcp_servers[0].connected === true` (learning-loop server, stdio transport), `mcp_tool_names.length === 44`, `roundtrip.ok === true` (`learning-loop_mastra_loop_describe` invoked successfully), and `wire_format_probe.exit_code === 0` (universal bash-gate parses the Mastra-Code-shaped payload).
+8. **Smoke test.** `pnpm smoke:mastracode`. Exit 0; stdout JSON contains `ok: true`, `mcp_servers[0].connected === true` (learning-loop server, stdio transport), `mcp_tool_names.length === 48`, `roundtrip.ok === true` (`learning-loop_mastra_loop_describe` invoked successfully), and `wire_format_probe.exit_code === 0` (universal bash-gate parses the Mastra-Code-shaped payload).
 
    **Tool namespacing** (MCP tools from the loop's server are auto-namespaced `<serverName>_<toolName>` by Mastra Code's McpManager, verified live at `mastracode@0.26.0`):
 
    | Pattern | Example | Count |
    |---|---|---|
-   | `learning-loop_mastra_<tool>` | `learning-loop_mastra_loop_describe` | 30 |
+   | `learning-loop_mastra_<tool>` | `learning-loop_mastra_loop_describe` | 43 |
    | `learning-loop_ask_<agent>` | `learning-loop_ask_intake_agent` | 3 |
-   | `learning-loop_run_workflow_<workflow>` | `learning-loop_run_workflow_classify_prompt` | 11 |
+   | `learning-loop_run_workflow_<workflow>` | `learning-loop_run_workflow_storage_round_trip` | 2 |
 
-   **Total:** 44 tools exposed via MCP.
+   **Total:** 48 tools exposed via MCP (full surface, no CLI opt-out). Runtimes setting `LOOP_RECORDS_VIA_CLI=1` (e.g. `.claude`) expose fewer: the 6 portable workflow tools ride the CLI as `mastra_workflow_<x>` and drop off MCP entirely.
 
 ## Troubleshooting
 

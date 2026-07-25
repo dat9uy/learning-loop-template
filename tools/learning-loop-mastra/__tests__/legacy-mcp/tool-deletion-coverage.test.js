@@ -112,10 +112,11 @@ await test("agent-manifest workflow group has 11 tools", () => {
     "workflow_candidate_to_experiment",
     "workflow_vendor_doc_assist",
   ];
-  // migratedInThisPlan are the 6 surviving run_workflow_* tools; assert they ARE
-  // registered (load-bearing — the bare-name check was a phantom no-op).
+  // migratedInThisPlan are the 6 portable-six tools, re-homed to manifest
+  // handlers (MCP name mastra_workflow_*); assert they ARE registered
+  // (load-bearing — the bare-name check was a phantom no-op).
   for (const tool of migratedInThisPlan) {
-    assert.strictEqual(agentManifest.groups.workflow.tools.includes(`run_${tool}`), true, `run_${tool} should be in workflow group`);
+    assert.strictEqual(agentManifest.groups.workflow.tools.includes(`mastra_${tool}`), true, `mastra_${tool} should be in workflow group`);
   }
   for (const tool of [...deletedInThisPlan, ...historicallyDeleted]) {
     assert.strictEqual(agentManifest.groups.workflow.tools.includes(`run_${tool}`), false, `run_${tool} should not be in workflow group`);
