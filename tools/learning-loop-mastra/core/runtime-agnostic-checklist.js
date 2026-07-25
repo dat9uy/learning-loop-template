@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { SURFACES } from "./surfaces.js";
 
 const UNIVERSAL_DIRS = [
@@ -107,9 +107,18 @@ function isToolFile(relPath) {
   return normalized.startsWith("tools/learning-loop-mastra/tools/handlers/") && normalized.endsWith("-tool.js");
 }
 
-function deriveToolName(relPath) {
-  const name = basename(relPath, "-tool.js");
-  return name.replace(/-/g, "_");
+/**
+ * Read a tool's canonical name from its handler module source: the `name`
+ * field of the top-level `export const <Name>Tool = { ... }` object. The
+ * filename stem is NOT authoritative (e.g. gate-tool.js exports gate_check,
+ * notify-artifact-tool.js exports workflow_notify_artifact), and a naive
+ * first-`name:` grep can hit schema-field names above the export, so the
+ * match is anchored on the export declaration. Returns null when no export
+ * object with a name field is found.
+ */
+function readToolNameFromSource(src) {
+  const match = /export\s+const\s+\w+\s*=\s*\{[\s\S]*?\bname:\s*"([^"]+)"/.exec(src);
+  return match ? match[1] : null;
 }
 
 function fail(found, expected, fix_suggestion) {
@@ -267,6 +276,7 @@ export const CHECKLIST = [
   {
     id: "manifest-registered",
     description: "New MCP tools are listed in tools/learning-loop-mastra/agent-manifest.json (add to a group; `runtime_agnostic`, `gate`, `workflow`, `meta_state`, or `introspection`).",
+    // fallow-ignore-next-line complexity
     verify(featurePath, root) {
       const tools = [];
       for (const file of walkFiles(root, featurePath)) {
@@ -293,8 +303,14 @@ export const CHECKLIST = [
 
       const missing = [];
       for (const file of tools) {
-        const name = deriveToolName(file);
-        if (!registered.has(name)) missing.push(name);
+        const name = readToolNameFromSource(loadText(root, file));
+        if (!name) {
+          missing.push(`${file} (no exported name field)`);
+          continue;
+        }
+        // Manifest entries carry the mastra_ MCP prefix; a few legacy entries
+        // are unprefixed, so accept either form.
+        if (!registered.has(`mastra_${name}`) && !registered.has(name)) missing.push(name);
       }
       if (missing.length) {
         return fail(
