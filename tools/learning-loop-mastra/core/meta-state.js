@@ -439,10 +439,55 @@ export const metaStateChangeEntrySchema = z.object({
 });
 
 /**
- * Rule branch schema — promoted gate/agent rules with their own lifecycle.
- * Has .shape available for tool schema reuse.
+ * Validate the canonical agent-checklist pattern shape. Agent-checklist
+ * patterns are JSON blobs `{version: <int>=1>, items: [{id, description}]}`
+ * that consumers (tests, runtimes reading `loop_describe` rules) JSON.parse
+ * at runtime. A bare z.string() lets malformed JSON in at promotion time and
+ * defers the failure to the first consumer parse — reject it at the boundary.
+ * Returns an array of human-readable problems ([] = valid).
  */
-export const metaStateRuleEntrySchema = z.object({
+export function agentChecklistPatternProblems(pattern) {
+  if (typeof pattern !== "string") return ["pattern is not a string"];
+  let parsed;
+  try {
+    parsed = JSON.parse(pattern);
+  } catch {
+    return ["pattern is not valid JSON (agent-checklist patterns are JSON blobs of shape {version, items:[{id, description}]})"];
+  }
+  const problems = [];
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return ["pattern JSON must be an object of shape {version, items:[{id, description}]}"];
+  }
+  if (!Number.isInteger(parsed.version) || parsed.version < 1) {
+    problems.push("pattern.version must be an integer >= 1");
+  }
+  if (!Array.isArray(parsed.items) || parsed.items.length === 0) {
+    problems.push("pattern.items must be a non-empty array of {id, description}");
+  } else {
+    parsed.items.forEach((item, i) => {
+      if (item === null || typeof item !== "object" || Array.isArray(item)) {
+        problems.push(`pattern.items[${i}] must be an object {id, description}`);
+        return;
+      }
+      if (typeof item.id !== "string" || item.id.length === 0) {
+        problems.push(`pattern.items[${i}].id must be a non-empty string`);
+      }
+      if (typeof item.description !== "string" || item.description.length === 0) {
+        problems.push(`pattern.items[${i}].description must be a non-empty string`);
+      }
+    });
+  }
+  return problems;
+}
+
+/**
+ * Rule branch object schema (unrefined base) — promoted gate/agent rules
+ * with their own lifecycle. Kept refinement-free so buildPatchSchemaFor can
+ * derive via .omit()/.partial() (zod 4 forbids .omit on refined objects).
+ * The exported metaStateRuleEntrySchema adds the cross-field pattern-shape
+ * refinement on top of this base.
+ */
+const metaStateRuleEntryObject = z.object({
   entry_kind: z.literal("rule").default("rule"),
   id: z.string().regex(/^rule-[a-z0-9-]+$/).describe("Stable rule id; see field_glossary.id"),
   origin: z.string().describe("Finding id that originated this rule"),
@@ -495,6 +540,22 @@ export const metaStateRuleEntrySchema = z.object({
   code_ref: z.string().optional().describe("Optional code reference with fingerprint."),
   ledger_ref: z.string().optional().describe("Optional pointer to a runtime-state.jsonl sidecar ledger."),
   created_at: z.string().optional().describe("ISO timestamp"),
+});
+
+/**
+ * Rule branch schema — the canonical rule validator. Adds the cross-field
+ * agent-checklist pattern-shape gate over metaStateRuleEntryObject:
+ * agent-checklist patterns are JSON blobs consumed via JSON.parse at
+ * render/eval time, so a malformed blob is rejected at write time rather
+ * than at the first consumer parse. Has .shape available for tool schema
+ * reuse (zod 4 superRefine preserves the ZodObject API).
+ */
+export const metaStateRuleEntrySchema = metaStateRuleEntryObject.superRefine((rule, ctx) => {
+  if (rule.pattern_type === "agent-checklist" && typeof rule.pattern === "string") {
+    for (const problem of agentChecklistPatternProblems(rule.pattern)) {
+      ctx.addIssue({ code: "custom", path: ["pattern"], message: problem });
+    }
+  }
 });
 
 /**
@@ -629,7 +690,7 @@ export function buildPatchSchemaFor(kind) {
   switch (kind) {
     case "finding":    return metaStateFindingEntrySchema.omit({ entry_kind: true }).partial().strict();
     case "change-log": return metaStateChangeEntrySchema.omit({ entry_kind: true }).partial().strict();
-    case "rule":       return metaStateRuleEntrySchema.omit({ entry_kind: true, status: true }).partial().strict();
+    case "rule":       return metaStateRuleEntryObject.omit({ entry_kind: true, status: true }).partial().strict();
     case "loop-design": return metaStateLoopDesignSchema.omit({ entry_kind: true, status: true }).partial().strict();
     default:
       throw new Error(

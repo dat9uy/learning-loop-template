@@ -62,6 +62,68 @@ test("metaStateEntrySchema union accepts rule entry via discriminator", () => {
   assert.equal(parsed.entry_kind, "rule");
 });
 
+const validChecklistPattern = JSON.stringify({
+  version: 1,
+  items: [{ id: "item-one", description: "First checklist item" }],
+});
+const checklistRule = {
+  ...validRule,
+  enforcement: "agent",
+  pattern_type: "agent-checklist",
+  pattern: validChecklistPattern,
+  hint_text: "A sufficiently long process hint for the agent-checklist rule.",
+};
+
+test("agent-checklist rule accepts canonical JSON {version, items[]} pattern", () => {
+  const result = metaStateRuleEntrySchema.safeParse(checklistRule);
+  assert.equal(result.success, true, JSON.stringify(result.error?.format()));
+});
+
+test("agent-checklist rule rejects non-JSON pattern (deferred-parse footgun)", () => {
+  const bad = { ...checklistRule, pattern: "[not-json" };
+  const result = metaStateRuleEntrySchema.safeParse(bad);
+  assert.equal(result.success, false);
+  assert.match(
+    result.error.issues.map((i) => i.message).join("; "),
+    /not valid JSON/,
+  );
+});
+
+test("agent-checklist rule rejects prose pattern", () => {
+  const bad = { ...checklistRule, pattern: "Just do the thing, step by step." };
+  assert.equal(metaStateRuleEntrySchema.safeParse(bad).success, false);
+});
+
+test("agent-checklist rule rejects JSON with wrong shape (missing items)", () => {
+  const bad = { ...checklistRule, pattern: JSON.stringify({ version: 1 }) };
+  const result = metaStateRuleEntrySchema.safeParse(bad);
+  assert.equal(result.success, false);
+  assert.match(
+    result.error.issues.map((i) => i.message).join("; "),
+    /items/,
+  );
+});
+
+test("agent-checklist rule rejects items with empty id/description", () => {
+  const bad = {
+    ...checklistRule,
+    pattern: JSON.stringify({ version: 1, items: [{ id: "", description: "x" }] }),
+  };
+  assert.equal(metaStateRuleEntrySchema.safeParse(bad).success, false);
+});
+
+test("pattern shape gate does not constrain regex/glob/determinism-checklist patterns", () => {
+  for (const [pattern_type, pattern] of [
+    ["regex", "(unbalanced"],
+    ["glob", ".factory/skills/**"],
+    ["determinism-checklist", "*"],
+  ]) {
+    const rule = { ...validRule, pattern_type, pattern };
+    const result = metaStateRuleEntrySchema.safeParse(rule);
+    assert.equal(result.success, true, `${pattern_type}: ${JSON.stringify(result.error?.format())}`);
+  }
+});
+
 test("finding status enum accepts 'resolved' and 'active' (registry compatibility)", () => {
   const finding = {
     id: "meta-260601T1353Z-test",

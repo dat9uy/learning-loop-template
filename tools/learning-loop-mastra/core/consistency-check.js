@@ -3,27 +3,31 @@
 // Implements the remediation from finding meta-260614T1236Z
 // (no automated registry consistency check exists). Detects drift
 // between an entry's `status` field and its audit-trail fields
-// (e.g., status=active must not carry resolved_at).
+// (e.g., status=open must not carry resolved_at).
 //
 // Pure function: no I/O, no subprocess, no resolveRoot call. The tool
 // layer (tools/handlers/meta-state-consistency-check-tool.js) is
 // responsible for root resolution and registry reading.
 //
-// v1 invariant set: F-1, F-2, F-3, F-4, NEW-1. See plan
-// 260626-1734-phase-e-registry-drift-fix/plan.md §Resolved Design
-// Decisions (D1, D4).
+// Invariant set: F-1, F-2, F-3, F-4. Finding statuses are keyed on the
+// post-migration enum {open, resolved, superseded, archived} (write
+// schema at core/meta-state.js) — an invariant keyed on a status the
+// write path cannot produce is a dead detector.
 
 export const META_STATE_CONSISTENCY_INVARIANTS = [
-  { id: "F-1", status: "active", kind: "finding",
-    forbid: ["resolved_at", "resolved_by", "resolution"] },
+  // F-1: an open finding must not carry terminal audit fields. The
+  // forbid list is drawn from the fields stamped by the resolve,
+  // supersede, and archive handlers in core/meta-state.js.
+  { id: "F-1", status: "open", kind: "finding",
+    forbid: ["resolved_at", "resolved_by", "resolution",
+             "consolidated_into", "superseded_at",
+             "archived_at", "archived_by", "archived_reason"] },
   { id: "F-2", status: "archived", kind: "finding",
     require: ["archived_at", "archived_by", "archived_reason"] },
   { id: "F-3", status: "resolved", kind: "finding",
     require: ["resolved_by"] },
   { id: "F-4", status: "superseded", kind: "finding",
     require: ["consolidated_into"] },
-  { id: "NEW-1", status: "reported", kind: "finding",
-    forbid: ["resolved_at", "resolved_by"] },
 ];
 
 // null and undefined both count as "not set". Anything else (including
