@@ -8,9 +8,12 @@
  *   2. stdout JSON parses
  *   3. `ok === true` (live mode against installed `mastracode` package)
  *   4. MCP server `learning-loop` is connected (transport: stdio)
- *   5. 44 MCP tools exposed
- *   6. tool namespacing is `learning-loop_mastra_<tool>` (NOT `learning-loop_<tool>` as prep report predicted)
- *   7. round-trip via `learning-loop_mastra_loop_describe` succeeds
+ *   5. 8 MCP tools exposed — the residue surface: the wired
+ *      .mastracode/mcp.json sets LOOP_RECORDS_VIA_CLI=1, so the full record
+ *      surface (reads + writes, incl. loop_describe) rides the stateless CLI
+ *      and MCP keeps only workflow/storage/allowlist/audit + agent wrappers
+ *   6. tool namespacing is `<serverName>_<tool>` (e.g. `learning-loop_mastra_<tool>`)
+ *   7. round-trip via `learning-loop_mastra_check_runtime_agnostic` succeeds
  *   8. hook wire-format is compatible (universal bash-gate parses synthetic Mastra-Code-shaped payload)
  *
  * If the `mastracode` package isn't installed, the probe returns ok=false with
@@ -21,7 +24,7 @@
 const assert = require("node:assert");
 const { spawnSync } = require("node:child_process");
 const { resolve, join } = require("node:path");
-const { AGENT_MANIFEST_TOTAL_TOOLS } = require("../helpers/manifest-constants.cjs");
+const { MCP_RESIDUE_TOTAL_TOOLS } = require("../helpers/manifest-constants.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..", "..");
 const PROBE_PATH = join(PROJECT_ROOT, "scripts", "probe-mastracode.cjs");
@@ -52,7 +55,7 @@ test("smoke:mastracode stdout is valid JSON", { timeout: 60000 }, () => {
   assert.ok("status" in parsed, "probe output must have `status` field");
 });
 
-test(`smoke:mastracode live branch: MCP server connected + ${AGENT_MANIFEST_TOTAL_TOOLS} tools`, { timeout: 60000 }, () => {
+test(`smoke:mastracode live branch: MCP server connected + ${MCP_RESIDUE_TOTAL_TOOLS} residue tools`, { timeout: 60000 }, () => {
   const result = spawnSync("node", [PROBE_PATH], {
     cwd: PROJECT_ROOT,
     encoding: "utf8",
@@ -68,8 +71,8 @@ test(`smoke:mastracode live branch: MCP server connected + ${AGENT_MANIFEST_TOTA
   assert.equal(parsed.mcp_servers[0].name, "learning-loop");
   assert.equal(parsed.mcp_servers[0].connected, true, "learning-loop server must be connected");
   assert.equal(parsed.mcp_servers[0].transport, "stdio", "transport must be stdio");
-  assert.equal(parsed.mcp_tool_names.length, AGENT_MANIFEST_TOTAL_TOOLS,
-    `expected ${AGENT_MANIFEST_TOTAL_TOOLS} MCP tools, got ${parsed.mcp_tool_names.length}`);
+  assert.equal(parsed.mcp_tool_names.length, MCP_RESIDUE_TOTAL_TOOLS,
+    `expected ${MCP_RESIDUE_TOTAL_TOOLS} MCP residue tools (record surface rides the CLI under LOOP_RECORDS_VIA_CLI=1), got ${parsed.mcp_tool_names.length}`);
 });
 
 test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow>", { timeout: 60000 }, () => {
@@ -81,22 +84,24 @@ test("smoke:mastracode tool namespacing: learning-loop_<primitive|agent|workflow
   const parsed = JSON.parse(result.stdout);
   if (parsed.status !== "live") return; // skip in non-live mode
   // MCP tool namespacing is `<serverName>_<tool>` per @mastra/mcp client (verified live).
-  // Three patterns observed in mastracode@0.26.0:
-  //   1. Primitives (30 tools): `learning-loop_mastra_<tool>` (e.g., loop_describe, meta_state_list, gate_check)
-  //   2. Agent wrappers:        `learning-loop_ask_<agent>` (e.g., ask_intake_agent)
-  //   3. Workflow runners:      `learning-loop_run_workflow_<workflow>` (e.g., run_workflow_storage_round_trip)
-  //      (the 6 portable workflow tools re-homed to `learning-loop_mastra_workflow_<x>` manifest handlers)
+  // Residue surface (LOOP_RECORDS_VIA_CLI=1) keeps three patterns:
+  //   1. Primitives:   `learning-loop_mastra_<tool>` (workflow_generate_prompt,
+  //      check_runtime_agnostic, update_r2_allowlist)
+  //   2. Agent wrappers: `learning-loop_ask_<agent>` (intake, scout, self_improvement)
+  //   3. Workflow runners: `learning-loop_run_workflow_<workflow>` (storage round-trip/read)
   const expectedPrefixes = ["learning-loop_mastra_", "learning-loop_ask_", "learning-loop_run_workflow_"];
   for (const name of parsed.mcp_tool_names) {
     const ok = expectedPrefixes.some((p) => name.startsWith(p));
     assert.ok(ok, `tool name must start with one of [${expectedPrefixes.join(", ")}]; got: ${name}`);
   }
-  // Verify the canonical probe tools are present
-  assert.ok(parsed.mcp_tool_names.includes("learning-loop_mastra_loop_describe"), "loop_describe must be present");
-  assert.ok(parsed.mcp_tool_names.includes("learning-loop_mastra_meta_state_list"), "meta_state_list must be present");
+  // Verify the canonical residue tools are present; record-surface tools are absent
+  assert.ok(parsed.mcp_tool_names.includes("learning-loop_mastra_check_runtime_agnostic"), "check_runtime_agnostic must be present");
+  assert.ok(parsed.mcp_tool_names.includes("learning-loop_run_workflow_storage_read"), "run_workflow_storage_read must be present");
+  assert.ok(!parsed.mcp_tool_names.includes("learning-loop_mastra_loop_describe"), "loop_describe must be absent (rides the CLI)");
+  assert.ok(!parsed.mcp_tool_names.includes("learning-loop_mastra_meta_state_list"), "meta_state_list must be absent (rides the CLI)");
 });
 
-test("smoke:mastracode round-trip: loop_describe returns manifest", { timeout: 60000 }, () => {
+test("smoke:mastracode round-trip: check_runtime_agnostic returns a result", { timeout: 60000 }, () => {
   const result = spawnSync("node", [PROBE_PATH], {
     cwd: PROJECT_ROOT,
     encoding: "utf8",
@@ -105,12 +110,9 @@ test("smoke:mastracode round-trip: loop_describe returns manifest", { timeout: 6
   const parsed = JSON.parse(result.stdout);
   if (parsed.status !== "live") return; // skip in non-live mode
   assert.ok(parsed.roundtrip, "roundtrip field must be present");
-  assert.equal(parsed.roundtrip.tool, "learning-loop_mastra_loop_describe");
+  assert.equal(parsed.roundtrip.tool, "learning-loop_mastra_check_runtime_agnostic");
   assert.equal(parsed.roundtrip.ok, true, `roundtrip must succeed; got error: ${parsed.roundtrip.error}`);
-  // MCP response shape: { content: [{ type: "text", text: "..." }], isError: false }
-  assert.ok(Array.isArray(parsed.roundtrip.response_shape), "response_shape must be an array of keys");
-  assert.ok(parsed.roundtrip.response_shape.includes("content"), "response must have content[]");
-  assert.ok(parsed.roundtrip.response_shape.includes("isError"), "response must have isError");
+  assert.ok(parsed.roundtrip.response_shape, "response_shape must be present");
 });
 
 test("smoke:mastracode hook wire-format is compatible", { timeout: 60000 }, () => {

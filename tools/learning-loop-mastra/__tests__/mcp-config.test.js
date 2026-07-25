@@ -9,12 +9,13 @@ const projectRoot = resolve(__dirname, "..", "..", "..");
 
 // Each runtime's mcp.json sets env.LOOP_SURFACE so the harness passes the
 // surface to the spawned server.js, where pinRuntimeIdAtBoot() reads it at boot.
-// Plan 260722-1343 Phase 4: .claude migrated from LOOP_READS_VIA_CLI=1 to
-// LOOP_RECORDS_VIA_CLI=1 (combined flag, drops full CLI_TOOLS from MCP).
+// All three runtimes set LOOP_RECORDS_VIA_CLI=1 (combined flag, drops full
+// CLI_TOOLS from MCP) so no runtime keeps a long-running ESM module cache on
+// the record surface — reads and writes ride the stateless CLI instead.
 const EXPECTED_ENV = {
   ".mcp.json": { LOOP_SURFACE: ".claude", LOOP_RECORDS_VIA_CLI: "1" },
-  ".factory/mcp.json": { LOOP_SURFACE: ".factory" },
-  ".mastracode/mcp.json": { LOOP_SURFACE: ".mastracode" },
+  ".factory/mcp.json": { LOOP_SURFACE: ".factory", LOOP_RECORDS_VIA_CLI: "1" },
+  ".mastracode/mcp.json": { LOOP_SURFACE: ".mastracode", LOOP_RECORDS_VIA_CLI: "1" },
 };
 
 for (const [file, expectedEnv] of Object.entries(EXPECTED_ENV)) {

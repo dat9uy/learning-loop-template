@@ -143,14 +143,16 @@ async function liveProbe() {
   }
 
   // Actual tool round-trip (Phase 4 smoke): invoke one MCP tool via tool.execute().
-  // loop_describe is the canonical "give me the loop's manifest" tool; if MCP integration
-  // is wired correctly, calling it via the namespaced name returns the 6-group manifest.
+  // The wired .mastracode/mcp.json sets LOOP_RECORDS_VIA_CLI=1, so the record
+  // surface (incl. loop_describe) rides the stateless CLI and MCP keeps only
+  // the residue. check_runtime_agnostic is the residue's read-only,
+  // deterministic audit tool — a safe round-trip target.
   let roundtrip = null;
-  const roundtripToolName = 'learning-loop_mastra_loop_describe';
+  const roundtripToolName = 'learning-loop_mastra_check_runtime_agnostic';
   try {
     const tool = mcpTools[roundtripToolName];
     if (tool && typeof tool.execute === 'function') {
-      const result = await tool.execute({ tier: 'warm' }, { requestContext: { get: () => undefined } });
+      const result = await tool.execute({ feature_path: 'tools/learning-loop-mastra/bin/loop.mjs' }, { requestContext: { get: () => undefined } });
       roundtrip = {
         tool: roundtripToolName,
         ok: true,
