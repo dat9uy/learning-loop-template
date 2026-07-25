@@ -1,0 +1,125 @@
+{
+  "tool": "workflow_self_improvement",
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "improvement_type": {
+        "type": "string",
+        "enum": [
+          "schema-change",
+          "workflow-gap",
+          "heuristic-tune",
+          "tool-addition"
+        ],
+        "description": "Type of improvement"
+      },
+      "description": {
+        "type": "string",
+        "description": "Human-readable description of the improvement"
+      },
+      "proposed_changes": {
+        "description": "List of proposed changes",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "improvement_type",
+      "description"
+    ]
+  },
+  "behavior": {
+    "plain": {
+      "input": {
+        "improvement_type": "heuristic-tune",
+        "description": "tune classify threshold",
+        "proposed_changes": [
+          "add zod schema",
+          "update docs"
+        ]
+      },
+      "output": {
+        "experiment_candidate": "heuristic-tune-experiment",
+        "decision_required": true,
+        "risks": [
+          "Canonical adoption requires explicit operator decision approval.",
+          "Hard-test failures must be captured as evidence before promotion."
+        ],
+        "next_steps": [
+          "draft experiment record",
+          "seek operator approval",
+          "run validation"
+        ],
+        "canonical_adoption_path": "operator-approval → baseline-record → tune → validate",
+        "description": "tune classify threshold",
+        "proposed_changes": [
+          "add zod schema",
+          "update docs"
+        ]
+      }
+    },
+    "contentEnvelope": {
+      "input": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"improvement_type\":\"heuristic-tune\",\"description\":\"tune classify threshold\",\"proposed_changes\":[\"add zod schema\",\"update docs\"]}"
+          }
+        ]
+      },
+      "output": {
+        "experiment_candidate": "heuristic-tune-experiment",
+        "decision_required": true,
+        "risks": [
+          "Canonical adoption requires explicit operator decision approval.",
+          "Hard-test failures must be captured as evidence before promotion."
+        ],
+        "next_steps": [
+          "draft experiment record",
+          "seek operator approval",
+          "run validation"
+        ],
+        "canonical_adoption_path": "operator-approval → baseline-record → tune → validate",
+        "description": "tune classify threshold",
+        "proposed_changes": [
+          "add zod schema",
+          "update docs"
+        ]
+      }
+    },
+    "itemEnvelope": {
+      "input": {
+        "improvement_type": "heuristic-tune",
+        "description": "tune classify threshold",
+        "proposed_changes": {
+          "item": [
+            "add zod schema",
+            "update docs"
+          ]
+        }
+      },
+      "output": {
+        "experiment_candidate": "heuristic-tune-experiment",
+        "decision_required": true,
+        "risks": [
+          "Canonical adoption requires explicit operator decision approval.",
+          "Hard-test failures must be captured as evidence before promotion."
+        ],
+        "next_steps": [
+          "draft experiment record",
+          "seek operator approval",
+          "run validation"
+        ],
+        "canonical_adoption_path": "operator-approval → baseline-record → tune → validate",
+        "description": "tune classify threshold",
+        "proposed_changes": [
+          "add zod schema",
+          "update docs"
+        ]
+      }
+    }
+  }
+}

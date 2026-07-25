@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createLoopWorkflow } from "../create-loop-workflow.js";
+import { wrapWorkflowInputSchema } from "../../core/workflow-input-schema.js";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 
 const CANDIDATES = {
@@ -28,43 +28,21 @@ async function proposeExperiment({ improvement_type, description, proposed_chang
   };
 }
 
-// Current handler is single-step. The factory's stateSchema + suspend/resume
-// surface is ready for cross-step accumulation when a consumer (e.g. an agent
-// calling this workflow) needs it; restructuring is one line at the call site.
-export const workflowSelfImprovement = createLoopWorkflow({
-  id: "workflow_self_improvement",
+export const workflowSelfImprovementTool = {
+  name: "workflow_self_improvement",
   description:
     "Turns a self-improvement proposal into an experiment candidate with a canonical adoption path. " +
     "Use WHEN the loop discovers a gap, heuristic failure, schema mismatch, or missing tool. " +
     "Hard-test failures become evidence; canonical adoption always requires explicit operator decision approval. " +
     "Returns experiment_candidate, decision_required, risks, next_steps, and canonical_adoption_path. " +
     "Failure mode: unknown improvement_type returns error.",
-  inputSchema: {
+  schema: wrapWorkflowInputSchema({
     improvement_type: z.enum(["schema-change", "workflow-gap", "heuristic-tune", "tool-addition"]).describe("Type of improvement"),
     description: z.string().describe("Human-readable description of the improvement"),
+    // Per-field SDK {item: X} strip, DISTINCT from wrapWorkflowInputSchema's
+    // top-level content-envelope strip — copied verbatim from the workflow so
+    // MCP callers sending {item: [...]} keep working. Do not "normalize" away.
     proposed_changes: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("List of proposed changes"),
-  },
-  steps: [
-    {
-      id: "propose-experiment",
-      description: "Lookup table for experiment candidates",
-      inputSchema: {
-        improvement_type: z.enum(["schema-change", "workflow-gap", "heuristic-tune", "tool-addition"]),
-        description: z.string(),
-        proposed_changes: z.preprocess(stripEnvelope, z.array(z.string())).optional(),
-      },
-      outputSchema: {
-        experiment_candidate: z.string(),
-        decision_required: z.boolean(),
-        risks: z.array(z.string()),
-        next_steps: z.array(z.string()),
-        canonical_adoption_path: z.string(),
-        description: z.string(),
-        proposed_changes: z.array(z.string()),
-        error: z.boolean().optional(),
-        message: z.string().optional(),
-      },
-      handler: proposeExperiment,
-    },
-  ],
-});
+  }),
+  handler: proposeExperiment,
+};

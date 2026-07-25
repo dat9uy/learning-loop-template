@@ -74,7 +74,7 @@ test("LOOP_READS_VIA_CLI=1 excludes only the 12 read tools (R backward compat)",
     const defaultMastraNames = defaultNames.filter((name) => name.startsWith(PREFIX));
     const optedMastraNames = optedNames.filter((name) => name.startsWith(PREFIX));
 
-    assert.strictEqual(defaultMastraNames.length, 37, "default MCP surface must retain all 37 mastra tools (36 + meta_state_touch)");
+    assert.strictEqual(defaultMastraNames.length, 43, "default MCP surface must retain all 43 mastra tools (36 + meta_state_touch + 6 unwrapped portable-six)");
     assert.strictEqual(
       optedMastraNames.length,
       defaultMastraNames.length - EXPECTED_READ_TOOLS.length,
@@ -108,13 +108,13 @@ test("LOOP_READS_VIA_CLI=1 excludes only the 12 read tools (R backward compat)",
 });
 
 test("LOOP_RECORDS_VIA_CLI=1 excludes the full CLI_TOOLS set (reads + writes)", { timeout: 30000 }, async () => {
-  // Phase 3 widened CLI_TOOLS by 7 (2 workflow write helpers + 5 aux-read-ish).
   // workflow_generate_prompt stays MCP (deferred-rehoming). Default mastra_*
-  // surface stays at 36; under LOOP_RECORDS_VIA_CLI=1 the residue is 3 —
-  // update_r2_allowlist (operator-policy) + check_runtime_agnostic
-  // (agent-facing) + workflow_generate_prompt (deferred-rehoming). Workflow
-  // residue (8 tools) lives in a separate namespace (`run_*`) and is asserted
-  // by cli-write-tool-set-drift.test.js.
+  // surface is 43 (37 prior + 6 portable-six unwrapped to manifest handlers);
+  // under LOOP_RECORDS_VIA_CLI=1 the residue is 3 — update_r2_allowlist
+  // (operator-policy) + check_runtime_agnostic (agent-facing) +
+  // workflow_generate_prompt (deferred-rehoming). Workflow residue (2 storage
+  // tools) lives in a separate namespace (`run_*`) and is asserted by
+  // cli-write-tool-set-drift.test.js.
   const defaultRoot = prepareTempRoot();
   const optedRoot = prepareTempRoot();
   const defaultServer = await connectMcpServer(SERVER_ENTRY, defaultRoot, {
@@ -130,10 +130,10 @@ test("LOOP_RECORDS_VIA_CLI=1 excludes the full CLI_TOOLS set (reads + writes)", 
     const defaultMastraNames = defaultNames.filter((name) => name.startsWith(PREFIX));
     const optedMastraNames = optedNames.filter((name) => name.startsWith(PREFIX));
 
-    assert.strictEqual(defaultMastraNames.length, 37, "default MCP surface must retain all 37 mastra tools (36 + meta_state_touch)");
+    assert.strictEqual(defaultMastraNames.length, 43, "default MCP surface must retain all 43 mastra tools (36 + meta_state_touch + 6 unwrapped portable-six)");
     assert.strictEqual(
       optedMastraNames.length,
-      37 - CLI_TOOLS.size,
+      43 - CLI_TOOLS.size,
       `records-via-cli opted MCP surface must remove exactly CLI_TOOLS.size (${CLI_TOOLS.size}) tools`,
     );
 

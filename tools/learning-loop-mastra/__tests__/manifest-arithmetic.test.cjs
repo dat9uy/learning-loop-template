@@ -45,8 +45,8 @@ describe("manifest arithmetic", () => {
     assert.strictEqual(tools.length, TOOLS_MANIFEST_ENTRIES);
   });
 
-  test("workflows-manifest.json has 8 entries", () => {
-    assert.strictEqual(workflows.length, 8);
+  test("workflows-manifest.json has 2 entries", () => {
+    assert.strictEqual(workflows.length, 2);
   });
 
   test("agents-manifest.json has 3 entries", () => {

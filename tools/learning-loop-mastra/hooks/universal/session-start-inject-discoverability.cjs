@@ -58,6 +58,13 @@ const WRITE_TOOL_SKETCHES = {
   // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.
   workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
   workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
+  // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
+  workflow_classify_prompt: "{prompt}",
+  workflow_prepare_runtime_request: "{dimension,scope,output_level,command_class,temp_root_class,evidence_missing?,why_local_insufficient?}",
+  workflow_self_improvement: "{improvement_type,description,proposed_changes?}",
+  workflow_intentional_skip: "{assertion_id,skip_reason,scope}",
+  workflow_report_phase_status: "{process_steps_total,process_steps_complete,experiment_result,blocker_reason?}",
+  workflow_runtime_probe: "{stack,probe_type,temp_dir?}",
 };
 
 const EMPTY_STALE_DISPATCH = { fixable_candidates: [], orphan_findings: [], dispatch_protocol_prompt: "" };

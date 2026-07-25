@@ -15,7 +15,8 @@ test("manifest tools stay within the context budget", async () => {
     const bytes = Buffer.byteLength(JSON.stringify(tools));
     // Budget tracks the manifest size with modest headroom for near-term tool
     // additions; raise deliberately, not by round number. Current wire is
-    // ~41.9 KB after the runtime-state tracking tools (+1.9 KB).
-    assert.ok(bytes <= 45_000, `manifest tool wire is ${bytes} bytes`);
+    // ~49.3 KB after the portable-six unwrap moved 6 run_workflow_* tools onto
+    // the manifest surface (+7.4 KB over the prior ~41.9 KB).
+    assert.ok(bytes <= 52_000, `manifest tool wire is ${bytes} bytes`);
   });
 });

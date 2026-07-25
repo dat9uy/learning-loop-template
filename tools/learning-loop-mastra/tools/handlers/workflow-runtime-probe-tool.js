@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createLoopWorkflow } from "../create-loop-workflow.js";
+import { wrapWorkflowInputSchema } from "../../core/workflow-input-schema.js";
 
 const KNOWN = {
   nodejs: { commands: ["node --version", "npm install", "npm test"], outputs: ["v", "added", "passing"] },
@@ -23,37 +23,18 @@ async function planProbe({ stack, probe_type, temp_dir }) {
   return { probe_plan: plan.join("\n"), shared_env_requirements: envReqs, per_stack_commands: commands, expected_outputs: meta.outputs };
 }
 
-export const workflowRuntimeProbe = createLoopWorkflow({
-  id: "workflow_runtime_probe",
+export const workflowRuntimeProbeTool = {
+  name: "workflow_runtime_probe",
   description:
     "Plans a standalone feasibility probe script for a given stack and probe type. " +
     "Use BEFORE requesting operator approval for runtime execution. " +
     "References live-gate-template approval flow rules (env-var gate, fail-closed, operator decision record). " +
     "Returns probe_plan, shared_env_requirements, per_stack_commands, and expected_outputs. " +
     "Failure mode: empty stack returns error.",
-  inputSchema: {
+  schema: wrapWorkflowInputSchema({
     stack: z.string().describe("Technology stack (e.g., nodejs, python, go, rust)"),
     probe_type: z.enum(["install", "build", "test", "runtime"]).describe("Type of probe to plan"),
     temp_dir: z.string().optional().describe("Optional temporary directory for the probe"),
-  },
-  steps: [
-    {
-      id: "plan-probe",
-      description: "Lookup table for per-stack probe plans",
-      inputSchema: {
-        stack: z.string(),
-        probe_type: z.enum(["install", "build", "test", "runtime"]),
-        temp_dir: z.string().optional(),
-      },
-      outputSchema: {
-        probe_plan: z.string(),
-        shared_env_requirements: z.array(z.string()),
-        per_stack_commands: z.array(z.string()),
-        expected_outputs: z.array(z.string()),
-        error: z.boolean().optional(),
-        message: z.string().optional(),
-      },
-      handler: planProbe,
-    },
-  ],
-});
+  }),
+  handler: planProbe,
+};

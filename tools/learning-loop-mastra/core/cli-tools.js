@@ -26,7 +26,7 @@
 // agent-facing, deferred-rehoming}. The drift test fails on any
 // unclassified manifest entry — there is no silent default.
 //
-// The drift test also covers the 8 `run_<wf.id>` workflow tools (registered
+// The drift test also covers the `run_<wf.id>` workflow tools (registered
 // via `workflows-manifest.json` at `mastra/server.js:135,187`) — same
 // reclassification rule, same reason taxonomy.
 //
@@ -82,6 +82,15 @@ export const CLI_WRITE_TOOLS = new Set([
   // gate-log append (notify_artifact) or trigger-log emit (trigger).
   "workflow_notify_artifact",
   "workflow_trigger",
+  // Portable-six: stateless pure transforms re-homed from createLoopWorkflow
+  // (Option A unwrap); grouped with the workflow helpers, NOT record-surface
+  // writes.
+  "workflow_classify_prompt",
+  "workflow_prepare_runtime_request",
+  "workflow_self_improvement",
+  "workflow_intentional_skip",
+  "workflow_report_phase_status",
+  "workflow_runtime_probe",
 ]);
 
 // Union: every tool the CLI accepts. CLI membership checks use this set.

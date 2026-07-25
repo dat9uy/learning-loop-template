@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createLoopWorkflow } from "../create-loop-workflow.js";
+import { wrapWorkflowInputSchema } from "../../core/workflow-input-schema.js";
 
 function decideStatus(skipReason, scope) {
   const reason = (skipReason || "").trim().toLowerCase();
@@ -44,37 +44,18 @@ async function decideSkip({ assertion_id, skip_reason, scope }) {
   return buildOutput(assertion_id, skip_reason, scope, status);
 }
 
-// PARITY-TEST PIN: not legacy. Moving this file breaks the parity-test suite that depends on its location. See docs/legacy-pins.md.
-export const workflowIntentionalSkip = createLoopWorkflow({
-  id: "workflow_intentional_skip",
+export const workflowIntentionalSkipTool = {
+  name: "workflow_intentional_skip",
   description:
     "Processes an intentional skip decision for an assertion. " +
     "Use WHEN the operator or agent decides to bypass a specific assertion. " +
     "Converts skipped knowledge into required loop artifacts so nothing disappears. " +
     "Returns status (blocked, narrowed, accepted), records_required, blocked_work, allowed_work, and rationale. " +
     "Failure mode: empty skip_reason returns blocked.",
-  inputSchema: {
+  schema: wrapWorkflowInputSchema({
     assertion_id: z.string().describe("Identifier of the assertion being skipped"),
     skip_reason: z.string().describe("Human-readable reason for the skip"),
     scope: z.string().describe("Scope or risk class of the assertion"),
-  },
-  steps: [
-    {
-      id: "decide-skip",
-      description: "Decision tree for skip status",
-      inputSchema: {
-        assertion_id: z.string(),
-        skip_reason: z.string(),
-        scope: z.string(),
-      },
-      outputSchema: {
-        status: z.string(),
-        records_required: z.array(z.string()),
-        blocked_work: z.array(z.string()),
-        allowed_work: z.array(z.string()),
-        rationale: z.string(),
-      },
-      handler: decideSkip,
-    },
-  ],
-});
+  }),
+  handler: decideSkip,
+};

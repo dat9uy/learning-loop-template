@@ -15,7 +15,7 @@ Both categories are listed here. Future operators should consult this file befor
 
 ### Parity-test pins
 
-- `mastra/workflows/workflow-intentional-skip.js` — exercised by the parity-test suite that validates skip-decision behavior. Moving it breaks the suite. **Do not move to `legacy/`.**
+(None currently. The former pin on `mastra/workflows/workflow-intentional-skip.js` was lifted when the 6 portable workflow tools were unwrapped to plain `tools/handlers/workflow-*-tool.js` manifest handlers; their parity coverage moved to `__tests__/workflow-unwrap-parity.test.js` against the oracle fixtures in `__tests__/fixtures/workflow-oracles/`.)
 
 ### Parity-semantic pins
 

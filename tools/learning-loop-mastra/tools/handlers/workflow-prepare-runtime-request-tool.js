@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createLoopWorkflow } from "../create-loop-workflow.js";
+import { wrapWorkflowInputSchema } from "../../core/workflow-input-schema.js";
 
 async function prepare({ dimension, scope, output_level, command_class, temp_root_class, evidence_missing, why_local_insufficient }) {
   if (!dimension || !scope) {
@@ -60,15 +60,15 @@ async function prepare({ dimension, scope, output_level, command_class, temp_roo
   return { approval_request: approvalRequest, pre_conditions: preConditions };
 }
 
-export const workflowPrepareRuntimeRequest = createLoopWorkflow({
-  id: "workflow_prepare_runtime_request",
+export const workflowPrepareRuntimeRequestTool = {
+  name: "workflow_prepare_runtime_request",
   description:
     "Generates a structured approval request text and pre-conditions checklist for runtime commands. " +
     "Use BEFORE requesting operator approval to run sandbox, container, or production commands. " +
     "Returns an approval_request string and a pre_conditions checklist. " +
     "This tool does NOT approve commands; always run check_gate before execution. " +
     "Failure mode: missing required fields return error.",
-  inputSchema: {
+  schema: wrapWorkflowInputSchema({
     dimension: z.string().describe("Verification dimension (e.g., install, runtime, product)"),
     scope: z.string().describe("Execution scope (e.g., sandbox, local, production)"),
     output_level: z.string().describe("Expected output granularity (e.g., pass/fail, summary, full)"),
@@ -79,31 +79,6 @@ export const workflowPrepareRuntimeRequest = createLoopWorkflow({
     // `${why_local_insufficient}` directly. Zod parse must allow the same.
     evidence_missing: z.boolean().optional().describe("Whether required evidence has not yet been collected"),
     why_local_insufficient: z.string().optional().describe("Explanation why local/static verification is insufficient"),
-  },
-  steps: [
-    {
-      id: "prepare",
-      description: "Build approval request and pre-conditions checklist",
-      inputSchema: {
-        dimension: z.string(),
-        scope: z.string(),
-        output_level: z.string(),
-        command_class: z.string(),
-        temp_root_class: z.string(),
-        evidence_missing: z.boolean().optional(),
-        why_local_insufficient: z.string().optional(),
-      },
-      outputSchema: {
-        approval_request: z.string(),
-        pre_conditions: z.array(z.object({
-          name: z.string(),
-          pass: z.boolean(),
-          reason: z.string(),
-        })),
-        error: z.boolean().optional(),
-        message: z.string().optional(),
-      },
-      handler: prepare,
-    },
-  ],
-});
+  }),
+  handler: prepare,
+};

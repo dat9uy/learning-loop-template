@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createLoopWorkflow } from "../create-loop-workflow.js";
+import { wrapWorkflowInputSchema } from "../../core/workflow-input-schema.js";
 
 const CATEGORIES = [
   "evidence",
@@ -60,31 +60,15 @@ async function classify({ prompt }) {
   };
 }
 
-export const workflowClassifyPrompt = createLoopWorkflow({
-  id: "workflow_classify_prompt",
+export const workflowClassifyPromptTool = {
+  name: "workflow_classify_prompt",
   description:
     "Classifies a user prompt into one of 8 categories using keyword heuristics. " +
     "Use BEFORE routing to specialized tools to determine intent. " +
     "Returns category name, confidence score, and suggested tool names. " +
     "Failure mode: empty prompt returns error.",
-  inputSchema: {
+  schema: wrapWorkflowInputSchema({
     prompt: z.string().describe("The user prompt text to classify"),
-  },
-  steps: [
-    {
-      id: "classify",
-      description: "Keyword heuristic classification",
-      inputSchema: {
-        prompt: z.string(),
-      },
-      outputSchema: {
-        category: z.string(),
-        confidence: z.number(),
-        suggested_tools: z.array(z.string()),
-        error: z.boolean().optional(),
-        message: z.string().optional(),
-      },
-      handler: classify,
-    },
-  ],
-});
+  }),
+  handler: classify,
+};
