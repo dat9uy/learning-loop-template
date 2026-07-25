@@ -20,7 +20,8 @@ Option A reverts the MCP name from `run_workflow_<x>` (a `convertWorkflowsToTool
 
 ## Architecture
 
-Pure rename + one test relocation. The grep in Phase 1 step 5 (across all 4 reference forms) is the authoritative caller list; Phase 4 walks the surviving sites. The `run_workflow_storage_*` names are UNCHANGED (they stay Mastra workflows). If validation picks O-Q4 = MIGRATE (not the default retire), Phase 4 ALSO renames the `workflow-parity.test.cjs` portable `callTool` calls (retired under the default) — add that step.
+Pure rename + one test relocation. The grep in Phase 1 step 5 (across all 4 reference forms) is the authoritative caller list; Phase 4 walks the surviving sites. <!-- Updated: Validation Session 1 - O-Q4 resolved RETIRE (migrate branch below is dead, kept for provenance); O-Q5 resolved drop+specific-test -->
+The `run_workflow_storage_*` names are UNCHANGED (they stay Mastra workflows). ~~If validation picks O-Q4 = MIGRATE~~ (O-Q4 resolved RETIRE in Validation Session 1 — the migrate branch is dead, no extra step).
 
 ## Related Code Files
 

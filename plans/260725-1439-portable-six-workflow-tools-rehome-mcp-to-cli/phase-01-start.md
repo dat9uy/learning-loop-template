@@ -47,7 +47,8 @@ No production changes. Phase 1 writes probe tests under `tools/learning-loop-mas
    - `__tests__/helpers/manifest-constants.cjs:22` (`TOOLS_MANIFEST_ENTRIES: 36`→42 — the ONE centralized edit point for 4 consumer tests; `WORKFLOW_GROUP_TOOLS: 11` stays 11 since the 6 stay in the group, renamed)
    - `__tests__/legacy-mcp/mastra-code-smoke.test.cjs:87-88` (comment + `expectedPrefixes` example names `run_workflow_classify_prompt`; test still passes — skips unless `status==="live"` — doc-staleness only)
    Confirm zero callers outside this set in active code. Historical `plans/` hits are stateful records, NOT callers (do not edit).
-6. **Design-fork decision record.** Write the decision to `plans/.../reports/phase-01-design-fork-decision.md`: Option A vs B' based on probe 4 + the audit recommendation. Default: A. Note the exact `initStorage`/`RequestContext` finding from probe 4 so the B' fallback is actionable if validation selects it.
+<!-- Updated: Validation Session 1 - O-Q1 confirmed Option A; probe 4 retained as evidence record, B' requires explicit operator override -->
+6. **Design-fork decision record.** Write the decision to `plans/.../reports/phase-01-design-fork-decision.md`: **Option A confirmed in Validation Session 1.** Probe 4 still runs and its `initStorage`/`RequestContext` finding is recorded verbatim so the B' fallback stays actionable — but B' is adopted only on an explicit operator override, not on a positive probe alone.
 
 ## Success Criteria
 

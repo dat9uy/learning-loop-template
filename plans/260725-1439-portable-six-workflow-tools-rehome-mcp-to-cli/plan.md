@@ -143,4 +143,19 @@ Applied after red-team edits. Re-read `plan.md` + all 5 phase files. Decision de
 
 ## Validation Log
 
-_Populated by `/ak:plan validate` (3–8 critical questions). Interview decisions + propagation notes appended after the interview._
+### Session 1 — 2026-07-25
+**Verification Pass:** Skipped (guard) — `## Red Team Review` present with verification evidence; zero `[UNVERIFIED]` tags remain in plan files.
+**Questions asked:** 5 (the 5 Open Questions O-Q1..O-Q5). All 5 confirmed the plan's recommendations.
+
+| # | Decision | Answer |
+|---|----------|--------|
+| O-Q1 | Design fork | **Option A — full unwrap** (B' fallback retained only if Phase-1 probe 4 is trivially positive AND operator overrides; otherwise A is final) |
+| O-Q2 | CLI set placement | **CLI_WRITE_TOOLS** with the stateless-pure-transform comment; no new `CLI_STATELESS_TOOLS` set |
+| O-Q3 | Logic location | **Move into the handler module**; workflow files deleted in Phase 3 (no shared module) |
+| O-Q4 | Workflow-path test disposition | **Retire** the obsolete cases (13 workflow-direct-parity + 6 portable workflow-parity callTool); no migration step needed in Phase 4 |
+| O-Q5 | `MIGRATED_TOOL_NAMES` phantom | **Drop list + specific `mastra_workflow_self_improvement` per-tool parity test** (Phase 4 step 4 as written) |
+
+**Propagation:** All 5 answers match the recommendations already baked into the phase files, so no phase content changed. Closed items: Phase 1 step 6 design-fork decision is now operator-confirmed as Option A (probe 4 still runs as the evidence record, but B' adoption now requires an explicit operator override, not just a positive probe); Phase 3 step 7 "(Validation may instead choose to MIGRATE…)" branch is closed — retire-only; Phase 4 step 4 O-Q5 resolved as written. Markers added to those phases.
+
+### Whole-Plan Consistency Sweep (post-validation)
+Re-read `plan.md` + all 5 phase files after the interview. Checks: no renamed APIs/fields introduced (all answers = existing plan text); O-Q1 confirmed → the Option B' prose in plan.md `## Design fork` and Phase 1 probe 4 is intentionally retained as the documented fallback + evidence record, not a contradiction; O-Q4 retire-only → Phase 4 step 1's conditional "If validation picks O-Q4 = MIGRATE" clause is now dead-branch documentation (kept for provenance, marked); O-Q2/O-Q3/O-Q5 already the phase text. Count constants (36→42, 8→2, 37→43, 48 stays) consistent across plan.md Success Criteria, Phase 1 step 5, Phase 3 steps 7/9, Phase 4 step 3. **Zero unresolved contradictions.** Plan is eligible for implementation.
