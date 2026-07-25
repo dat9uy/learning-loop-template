@@ -2,7 +2,7 @@
 
 Use these blueprints when an agent needs to trace a dependency chain from a capability record to the underlying product code, runtime probes, and index entries. These patterns enforce ground-truth reading over name-based inference.
 
-MCP tools: `capability_list_probes`, `index_search` implement these lookups mechanically.
+The lookups below are manual file reads. The MCP tools (`capability_list_probes`, `index_search`) and `pnpm list:probes` / `pnpm search:index` / `pnpm generate:capabilities` helpers that once mechanized them were deleted with the product-surface tool retirement; a successor subsystem has not landed.
 
 ---
 
@@ -59,15 +59,10 @@ STOP guards:
 | Tier 2 | Capability records (`records/<surface>/capabilities/`) | No — structural description only | Runtime-generated from product surfaces |
 | Tier 3 | Product code (`product/*/`) | No — implementation ground truth | Read directly, never inferred |
 
-### CLI Helpers
+### Lookup Mechanics
 
-| Command | Purpose |
-|---|---|
-| `pnpm list:probes --stack api` | List runtime probe files for a stack |
-| `pnpm list:probes --stack api --json` | Machine-readable probe list |
-| `pnpm search:index --capability <id>` | Find index entries referencing a capability |
-| `pnpm search:index --capability <id> --dimension runtime --status active` | Filter by dimension and status |
-| `pnpm search:index --capability <id> --json` | Machine-readable index metadata |
+There are no helper commands for this chain today — perform each step as a
+direct file read under `records/<surface>/` and `product/<stack>/capabilities/`.
 
 ---
 
@@ -78,7 +73,6 @@ Use at the start of any session where the agent will act on capability or produc
 ```text
 Before proposing changes to product code or inferring dependencies:
 
-1. Run `pnpm generate:capabilities --dry-run`. If drift is detected, stop and tell the operator.
-2. For each capability you plan to reference, run the Tier 2 Verification Lookup Pattern (7 steps above).
-3. Do not proceed on unverified assumptions. Ground every claim in a read file, not a filename pattern.
+1. For each capability you plan to reference, run the Tier 2 Verification Lookup Pattern (7 steps above).
+2. Do not proceed on unverified assumptions. Ground every claim in a read file, not a filename pattern.
 ```

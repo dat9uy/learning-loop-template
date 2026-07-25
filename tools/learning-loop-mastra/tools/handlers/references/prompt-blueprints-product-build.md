@@ -56,7 +56,7 @@ Validation:
 
 Product-build plans MUST include Phase 0: Loop Pre-Flight before implementation phases.
 Phase 0 declares surfaces, lists required decision records, and provides a pre-flight checklist.
-Reference: `tools/learning-loop-mcp/references/plan-phase-0-template.md`
+Reference: `tools/learning-loop-mastra/tools/handlers/references/plan-phase-0-template.md`
 
 Phase 0 is advisory — the gate (phase 1) enforces mechanically; the template guides the operator.
 Both work together: template prevents mistakes, gate catches them.

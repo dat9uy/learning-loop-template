@@ -1,7 +1,7 @@
 # Tool Selection Guide
 
 Use this when you know what you want to do but not which tool to call. The
-canonical reference is `tools/learning-loop-mcp/agent-manifest.json`; this guide
+canonical reference is `tools/learning-loop-mastra/agent-manifest.json`; this guide
 maps **intent** (what you're trying to do) to **tool** (the right MCP tool).
 
 The 4-question framework for picking a tool:
@@ -25,7 +25,6 @@ definition (DRY).
 |---|---|
 | Record a finding (operator-observed loop issue) | `meta_state_report` |
 | Log a system change (immutable audit log) | `meta_state_log_change` |
-| Promote a finding from `reported` to `active` | `meta_state_ack` |
 | Close a finding (with `resolution` text) | `meta_state_resolve` |
 | Re-check if a finding is still true | `meta_state_derive_status` |
 | Re-hash a cited path's code after a refactor (re-grounds all anchored findings) | `meta_state_refresh_file_index` |
@@ -40,26 +39,14 @@ definition (DRY).
 | Re-verify a stale entry by running its verification.steps | `meta_state_re_verify` |
 | Re-ground an aged finding whose verification.steps is empty (operator attestation; checks grounding snapshot) | `meta_state_touch` |
 
-## Record CRUD
-
-| Intent | Tool |
-|---|---|
-| Record a decision (plan-time choice) | `record_create_decision` |
-| Record an experiment (proves a hypothesis) | `record_create_experiment` |
-| Record a risk (potential issue) | `record_create_risk` |
-| Record an observation (operator-managed state) | `record_create_observation` |
-| Update an existing decision | `record_update_decision` |
-| Update an existing experiment | `record_update_experiment` |
-| Update an existing risk | `record_update_risk` |
-| Update an existing observation | `record_update_observation` |
-
 ## Gate
 
 | Intent | Tool |
 |---|---|
 | Check if a command/file is allowed by the gate | `gate_check` |
 | Unlock `product/**` writes (30-min TTL) | `gate_mark_preflight` |
-| Run the gate on a batch of commands | `gate_batch` |
+| Check whether a gate rule has recurred within a window | `gate_check_recurrence` |
+| Temporarily override a gate rule (TTL + operator note) | `gate_override` |
 
 ## Runtime-state tracking
 
@@ -81,28 +68,17 @@ Operators can pause/resume tracking per surface (e.g. vendored `vnstock`).
 |---|---|
 | Discover the loop's surface (tiered: hot/warm/cold) | `loop_describe` |
 | List meta-state entries by kind | `meta_state_list` |
-| List all probe files for a stack | `capability_list_probes` |
-| Search index entries by capability/dimension/status | `index_search` |
+| Look up a discoverability hint by key | `loop_get_instruction` |
 
 ## Workflow orchestration
 
 | Intent | Tool |
 |---|---|
 | Classify a user prompt into one of 8 categories | `workflow_classify_prompt` |
-| Convert vendor evidence markdown to experiment YAML | `workflow_convert_evidence` |
-| Map a candidate assertion to an experiment draft | `workflow_candidate_to_experiment` |
 | Build a structured approval request for runtime commands | `workflow_prepare_runtime_request` |
 | Generate a structured prompt for a learning-loop task | `workflow_generate_prompt` |
 | Notify that an artifact file has changed | `workflow_notify_artifact` |
 | Trigger a workflow by name | `workflow_trigger` |
-
-## Budget + capability
-
-| Intent | Tool |
-|---|---|
-| Check resource budget status for a vendor system | `budget_check` |
-| Generate capability records from product surface adapters | `capability_generate` |
-
 
 ## Anti-pattern: do NOT use these
 
