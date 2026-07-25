@@ -15,11 +15,24 @@
         "count": 2
       }
     },
+    "core/cli-stderr.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
     "core/consistency-check.js": {
       "complexity_critical": {
         "count": 1
       },
       "crap_critical": {
+        "count": 1
+      }
+    },
+    "core/constants.js": {
+      "crap_moderate": {
         "count": 1
       }
     },
@@ -88,20 +101,20 @@
       }
     },
     "core/gate-logic.js": {
+      "complexity_critical": {
+        "count": 1
+      },
       "complexity_high": {
         "count": 1
       },
-      "complexity_moderate": {
-        "count": 1
-      },
       "crap_critical": {
-        "count": 3
+        "count": 4
       },
       "crap_high": {
         "count": 5
       },
       "crap_moderate": {
-        "count": 4
+        "count": 5
       }
     },
     "core/gate-override.js": {
@@ -111,9 +124,6 @@
     },
     "core/hint-renderer.js": {
       "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
         "count": 1
       }
     },
@@ -133,6 +143,11 @@
         "count": 1
       }
     },
+    "core/loop-introspect-cache.js": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "core/loop-introspect.js": {
       "complexity_critical": {
         "count": 1
@@ -141,6 +156,14 @@
         "count": 1
       },
       "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 5
+      }
+    },
+    "core/path-containment.js": {
+      "crap_critical": {
         "count": 1
       }
     },
@@ -197,13 +220,30 @@
       }
     },
     "core/runtime-state.js": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 4
+      }
+    },
+    "core/schema-normalize.js": {
       "crap_moderate": {
         "count": 1
       }
     },
     "core/stale-view.js": {
+      "crap_critical": {
+        "count": 2
+      },
       "crap_high": {
         "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
       }
     },
     "core/surfaces.js": {
@@ -212,6 +252,11 @@
       }
     },
     "core/update-entry-helpers.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "core/workflow-registry.js": {
       "crap_moderate": {
         "count": 1
       }
@@ -257,9 +302,6 @@
     },
     "mastra/create-loop-tool.js": {
       "crap_high": {
-        "count": 1
-      },
-      "crap_moderate": {
         "count": 1
       }
     },
@@ -342,10 +384,10 @@
       }
     },
     "tools/handlers/loop-describe-tool.js": {
-      "complexity_high": {
+      "complexity_critical": {
         "count": 1
       },
-      "crap_high": {
+      "crap_critical": {
         "count": 1
       },
       "crap_moderate": {
@@ -382,6 +424,9 @@
     },
     "tools/handlers/meta-state-dispatch-finding-tool.js": {
       "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
         "count": 1
       }
     },
@@ -471,6 +516,19 @@
         "count": 1
       }
     },
+    "tools/handlers/meta-state-touch-tool.js": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "tools/handlers/runtime-state-pause-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "tools/handlers/runtime-state-read-tool.js": {
       "crap_moderate": {
         "count": 1
@@ -478,8 +536,20 @@
     },
     "tools/handlers/runtime-state-record-tool.js": {
       "crap_critical": {
+        "count": 2
+      }
+    },
+    "tools/handlers/runtime-state-resume-tool.js": {
+      "crap_high": {
         "count": 1
-      },
+      }
+    },
+    "tools/handlers/runtime-state-stop-tool.js": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "tools/handlers/trigger-workflow-tool.js": {
       "crap_moderate": {
         "count": 1
       }
@@ -496,22 +566,24 @@
   "runtime_coverage_findings": [],
   "target_keys": [
     "core/entry/index.js:dead code",
-    "core/derive-status.js:dead code",
     "core/check-grounding.js:dead code",
+    "core/derive-status.js:dead code",
     "core/recurrence-tracker.js:dead code",
-    "core/worktree-session-id.js:dead code",
     "core/gate-logic.js:complexity",
+    "core/worktree-session-id.js:dead code",
     "core/meta-state.js:complexity",
     "core/canonical-compare.js:untested risk",
     "core/loop-introspect.js:complexity",
     "tools/handlers/meta-state-re-verify-tool.js:complexity",
     "core/entry/finding.js:untested risk",
     "core/entry/rule.js:untested risk",
+    "core/inbound-state.js:complexity",
     "mastra/schema-parity.js:complexity",
     "core/entry/loop-design.js:untested risk",
     "tools/handlers/workflow-generate-prompt-tool.js:untested risk",
     "tools/handlers/meta-state-list-tool.js:complexity",
     "tools/handlers/meta-state-promote-rule-tool.js:complexity",
+    "tools/handlers/meta-state-dispatch-finding-tool.js:complexity",
     "interface/contract.js:complexity"
   ]
 }
