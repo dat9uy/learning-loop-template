@@ -49,6 +49,7 @@ describe("CHANGE_LOG_BOUND_PATHS — detection set", () => {
       ".claude/skills/**",
       ".factory/skills/**",
       ".mastracode/skills/**",
+      ".factory/hooks/**",
     ];
     for (const r of required) {
       assert.ok(
@@ -261,6 +262,10 @@ describe("isBoundPath — coverage predicate", () => {
     assert.strictEqual(isBoundPath("schemas/foo.json"), true);
     assert.strictEqual(isBoundPath("AGENTS.md"), true);
     assert.strictEqual(isBoundPath(".claude/skills/x.md"), true);
+    assert.strictEqual(isBoundPath(".factory/hooks/loop-surface-inject.cjs"), true);
+    // Not bound: runtimes without a hooks/ tree stay unbound
+    assert.strictEqual(isBoundPath(".claude/hooks/x.cjs"), false);
+    assert.strictEqual(isBoundPath(".mastracode/hooks/x.cjs"), false);
     // Not bound
     assert.strictEqual(isBoundPath("README.md"), false);
     assert.strictEqual(isBoundPath("src/foo.ts"), false);
