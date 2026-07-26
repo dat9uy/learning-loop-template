@@ -39,10 +39,10 @@ function preflightMarkerPatterns() {
 }
 
 // Runtime-state path-write patterns (shell redirect + tee to
-// runtime-state.jsonl). Split out of the shared records block in Phase 2 of
-// plans/260726-0949 so the bash gate can exempt these matches when an active
-// `.loop-preflight-runtime-state` marker is present (mirrors the write-gate
-// preflight delegation in evaluate-write-gate.js).
+// runtime-state.jsonl). Split out of the shared records block so the bash
+// gate can exempt these matches when an active
+// `.loop-preflight-runtime-state-edit` marker is present (mirrors the
+// write-gate preflight delegation in evaluate-write-gate.js).
 // fallow-ignore-next-line unused-export
 export const RUNTIME_STATE_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
@@ -52,7 +52,7 @@ export const RUNTIME_STATE_WRITE_PATTERNS = [
 // Path-write detection patterns (bash-specific).
 // Preflight-marker patterns are derived from SURFACES (all runtime surfaces).
 // runtime-state patterns are named so evaluateBashGate can exempt them when
-// the `.loop-preflight-runtime-state` marker is active.
+// the `.loop-preflight-runtime-state-edit` marker is active.
 // fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
@@ -125,19 +125,21 @@ export function evaluateBashGate({ command, root }) {
   // --- Path-write detection: ALL records/** blocked ---
   // Runtime-state path-writes get a dedicated reason + preflight-marker
   // exemption (mirrors the write-gate preflight delegation in
-  // evaluate-write-gate.js; Phase 2 of plans/260726-0949). An active
-  // `.loop-preflight-runtime-state` marker unlocks row maintenance (e.g.
-  // striking a corrupt row via `grep -v … > runtime-state.jsonl`) for 30
-  // minutes; new rows still go through runtime_state_record (append-only).
+  // evaluate-write-gate.js). An active `.loop-preflight-runtime-state-edit`
+  // marker unlocks row maintenance (e.g. striking a corrupt row via
+  // `grep -v … > runtime-state.jsonl`) for 30 minutes; new rows still go
+  // through runtime_state_record (append-only, gated on the separate
+  // `.loop-preflight-runtime-state` marker so routine appends do not keep
+  // this direct-write gate warm).
   // The two checks below are independent (NOT if/else-if): a compound
   // command matching both must still produce the records-class block even
   // when the runtime-state half is exempted by an active marker.
   if (commandWritesToRuntimeState(command)) {
-    if (!hasSurfacePreflightMarker(resolvedRoot, ".loop-preflight-runtime-state")) {
+    if (!hasSurfacePreflightMarker(resolvedRoot, ".loop-preflight-runtime-state-edit")) {
       pathResult = {
         decision: "block",
         reason:
-          "Direct shell writes to runtime-state.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
+          "Direct shell writes to runtime-state.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state-edit') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
         hard_block: true,
       };
     }

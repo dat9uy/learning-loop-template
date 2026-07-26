@@ -1,12 +1,10 @@
-// Plan 260726-0949 Phase 1: RED→GREEN regression for the runtime-state.jsonl
-// write-gate repair. The `runtime-state` rule is migrated from a dead-end
-// simple-glob block in BOUND_ARTIFACTS (the reason said "use
-// runtime_state_record" — but `runtime_state_record` is append-only, with no
-// row-strike path; `gate_override` cannot reach the rule because it requires
-// a *promoted* rule_id, and `runtime-state` was a simple-glob block, not
-// promoted) to a preflight-delegating rule mirroring `schemas` and `skills`
-// (gate_mark_preflight(surface:"runtime-state") unlocks writes to
-// runtime-state.jsonl for 30 minutes).
+// Regression for the runtime-state.jsonl write-gate. Direct writes are a
+// preflight-delegating rule mirroring `schemas` and `skills`:
+// gate_mark_preflight(surface:"runtime-state-edit") unlocks writes to
+// runtime-state.jsonl for 30 minutes. The edit marker is split from the
+// append marker (`.loop-preflight-runtime-state`, required by
+// runtime_state_record) so routine appends do not keep the direct-write gate
+// warm.
 //
 // Closes finding `meta-260720T1447Z`.
 
@@ -44,17 +42,17 @@ function writePreflightMarker(surface) {
 
 // ── Gate behavior: runtime-state.jsonl blocks without marker; reason names canonical workflow ──
 
-test("runtime-state.jsonl without preflight marker → block, surface=runtime-state, reason names gate_mark_preflight(surface:'runtime-state')", () => {
+test("runtime-state.jsonl without preflight marker → block, surface=runtime-state-edit, reason names gate_mark_preflight(surface:'runtime-state-edit')", () => {
   const result = evaluateWriteGate({ filePath: join(root, "runtime-state.jsonl"), root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(
     result.surface,
-    "runtime-state",
-    `expected surface=runtime-state; got: ${JSON.stringify(result)}`,
+    "runtime-state-edit",
+    `expected surface=runtime-state-edit; got: ${JSON.stringify(result)}`,
   );
   assert.ok(
-    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state"),
-    `reason must name gate_mark_preflight(surface:'runtime-state'); got: ${result.reason}`,
+    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state-edit"),
+    `reason must name gate_mark_preflight(surface:'runtime-state-edit'); got: ${result.reason}`,
   );
 });
 
@@ -77,10 +75,16 @@ test("runtime-state.jsonl block reason does NOT redirect to runtime_state_record
 
 // ── Gate behavior: marker unlocks the gate ──
 
-test("runtime-state.jsonl with active preflight marker → ok", () => {
-  writePreflightMarker("runtime-state");
+test("runtime-state.jsonl with active edit preflight marker → ok", () => {
+  writePreflightMarker("runtime-state-edit");
   const result = evaluateWriteGate({ filePath: join(root, "runtime-state.jsonl"), root });
   assert.strictEqual(result.decision, "ok", `expected ok; got: ${JSON.stringify(result)}`);
+});
+
+test("runtime-state.jsonl with only the APPEND marker active → still blocked (markers are decoupled)", () => {
+  writePreflightMarker("runtime-state");
+  const result = evaluateWriteGate({ filePath: join(root, "runtime-state.jsonl"), root });
+  assert.strictEqual(result.decision, "block", `append marker must not unlock direct writes; got: ${JSON.stringify(result)}`);
 });
 
 // ── BOUND_ARTIFACTS no longer carries runtime-state (it's a preflight rule now) ──
@@ -93,11 +97,18 @@ test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (Phase 1 migration to pre
   );
 });
 
-// ── Tool surface still validates "runtime-state" (Phase 2 will update the description) ──
+// ── Tool surface validates both runtime-state preflight surfaces ──
 
-test("gate_mark_preflight still accepts surface='runtime-state' (z.enum validator)", async () => {
+test("gate_mark_preflight accepts surface='runtime-state' (append marker)", async () => {
   const handlerResult = await gateMarkPreflightTool.handler({ surface: "runtime-state" });
   const parsed = JSON.parse(handlerResult.content[0].text);
   assert.strictEqual(parsed.marked, true);
   assert.strictEqual(parsed.surface, "runtime-state");
+});
+
+test("gate_mark_preflight accepts surface='runtime-state-edit' (edit marker)", async () => {
+  const handlerResult = await gateMarkPreflightTool.handler({ surface: "runtime-state-edit" });
+  const parsed = JSON.parse(handlerResult.content[0].text);
+  assert.strictEqual(parsed.marked, true);
+  assert.strictEqual(parsed.surface, "runtime-state-edit");
 });

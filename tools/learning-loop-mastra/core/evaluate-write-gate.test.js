@@ -52,7 +52,8 @@ test("runtime-state.jsonl blocks (preflight-delegating)", () => {
   assert.ok(result.reason.includes("Runtime-state"));
   assert.ok(result.reason.includes("gate_mark_preflight"));
   assert.strictEqual(result.matched_rule, "runtime-state.jsonl");
-  assert.strictEqual(result.surface, "runtime-state");
+  // Direct writes are gated on the edit marker, split from the append marker.
+  assert.strictEqual(result.surface, "runtime-state-edit");
 });
 
 test("meta-state.jsonl blocks", () => {

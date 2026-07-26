@@ -75,6 +75,8 @@ The gate reads `readBudgetTrackingState(root, surface)` to determine the surface
 
 Lifecycle tools authorize via the per-surface preflight marker (`<surface>/coordination/.loop-preflight-runtime-tracking`, minted by `gate_mark_preflight({surface:'runtime-tracking'})`; `runtime_state_record` uses `.loop-preflight-runtime-state` via `gate_mark_preflight({surface:'runtime-state'})`). Both carry the same 30-minute TTL as the write-gate markers — a stale or content-less marker does not authorize.
 
+Direct writes to `runtime-state.jsonl` (row maintenance, e.g. striking a corrupt row) are gated separately on `.loop-preflight-runtime-state-edit`, minted by `gate_mark_preflight({surface:'runtime-state-edit'})` and read by both the write gate and the bash gate. The edit marker is deliberately split from the append marker so routine `runtime_state_record` appends do not keep the direct-write gate warm.
+
 Rows written before the `kind` discriminator existed (no `kind` field) are read as `budget-state` in the gate's observation scan — read-compat so a legacy sidecar never goes silently dark. Writes remain strict: `assertKindConditionalStatus` requires an explicit kind.
 
 The contract says *what a runtime must be*; the storage fan-out says *which directories the loop mirrors*; the runtime-agnosticism checklist says *which feature code stays surface-neutral*. They are independently variable: a new runtime adds a surface (storage fan-out) and proves its features are agnostic (checklist) against the same contract.
