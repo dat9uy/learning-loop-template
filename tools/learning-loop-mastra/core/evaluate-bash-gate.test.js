@@ -102,6 +102,80 @@ test("redirect to runtime-state.jsonl → block", () => {
   assert.strictEqual(result.hard_block, true);
 });
 
+// ── runtime-state preflight exemption (Phase 2 of plans/260726-0949) ──
+
+test("redirect to runtime-state.jsonl without marker → block, reason names gate_mark_preflight(surface:'runtime-state'), NOT records reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo data > runtime-state.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.ok(
+    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state"),
+    `reason must name gate_mark_preflight(surface:'runtime-state'); got: ${result.reason}`,
+  );
+  assert.ok(
+    !result.reason.includes("Direct writes to records"),
+    `reason must not be the records reason; got: ${result.reason}`,
+  );
+});
+
+test("tee to runtime-state.jsonl without marker → block with dedicated canonical-workflow reason", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo data | tee runtime-state.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.ok(result.reason.includes("gate_mark_preflight"));
+});
+
+function writeRuntimeStatePreflightMarker(root) {
+  // Reuse the same temp-root pattern as the runtime-tracking marker tests;
+  // bash-gate's marker check scans every runtime surface coordination dir.
+  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  writeFileSync(
+    join(root, ".factory", "coordination", ".loop-preflight-runtime-state"),
+    JSON.stringify({ surface: "runtime-state", completed_at: new Date().toISOString() }),
+    "utf8",
+  );
+}
+
+test("redirect to runtime-state.jsonl WITH active marker → ok", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data > runtime-state.jsonl", root });
+  assert.strictEqual(result.decision, "ok", `expected ok with active marker; got: ${JSON.stringify(result)}`);
+});
+
+test("tee to runtime-state.jsonl WITH active marker → ok", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data | tee runtime-state.jsonl", root });
+  assert.strictEqual(result.decision, "ok");
+});
+
+test("with runtime-state marker active, records/x.md still hard-blocked (no exemption bleed)", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data > records/meta/test.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
+test("with runtime-state marker active, meta-state.jsonl still hard-blocked (no exemption bleed)", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data > meta-state.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
+test("with runtime-state marker active, .loop/runtime-tracking.json still hard-blocked (no exemption bleed)", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo data > .loop/runtime-tracking.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
 // ── promoted rules ──
 
 test("promoted regex rule matching command → escalate", () => {
