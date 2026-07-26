@@ -38,7 +38,7 @@ import { globMatch } from "./gate-logic.js";
  * tools/learning-loop-mastra/{core,tools,hooks}/**, AGENTS.md, CONTRACT.md,
  * and the three skills-mirror surfaces. `.factory/hooks/**` covers the
  * Droid-only SessionStart adapter (loop-surface-inject.cjs) — runtime-local
- * wiring that is hand-edited, unlike the byte-identical coordination shims.
+ * wiring that is hand-edited, unlike the byte-identical cross-surface shims.
  * Only .factory has a hooks/ tree; the other runtimes have none to bind.
  */
 export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
