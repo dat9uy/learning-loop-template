@@ -66,9 +66,18 @@ export const PATH_WRITE_PATTERNS = [
   /\btee\b.*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
 ];
 
-function commandWritesToRecords(command) {
+// Every gated path-write EXCEPT runtime-state.jsonl. Evaluated independently
+// of the runtime-state branch below so that a runtime-state match covered by
+// an active preflight marker cannot mask a records/**, meta-state.jsonl,
+// preflight-marker, or runtime-tracking write chained into the same command
+// (`echo ok > runtime-state.jsonl && echo evil > records/x.md`).
+const NON_RUNTIME_STATE_PATH_WRITE_PATTERNS = PATH_WRITE_PATTERNS.filter(
+  (p) => !RUNTIME_STATE_WRITE_PATTERNS.includes(p),
+);
+
+function commandWritesToGatedPath(command) {
   if (!command || typeof command !== "string") return false;
-  return PATH_WRITE_PATTERNS.some((p) => p.test(command));
+  return NON_RUNTIME_STATE_PATH_WRITE_PATTERNS.some((p) => p.test(command));
 }
 
 // True when a runtime-state path-write pattern matches the command (redirect
@@ -120,6 +129,9 @@ export function evaluateBashGate({ command, root }) {
   // `.loop-preflight-runtime-state` marker unlocks row maintenance (e.g.
   // striking a corrupt row via `grep -v … > runtime-state.jsonl`) for 30
   // minutes; new rows still go through runtime_state_record (append-only).
+  // The two checks below are independent (NOT if/else-if): a compound
+  // command matching both must still produce the records-class block even
+  // when the runtime-state half is exempted by an active marker.
   if (commandWritesToRuntimeState(command)) {
     if (!hasSurfacePreflightMarker(resolvedRoot, ".loop-preflight-runtime-state")) {
       pathResult = {
@@ -129,8 +141,8 @@ export function evaluateBashGate({ command, root }) {
         hard_block: true,
       };
     }
-    // Marker active → no pathResult. Other path-write checks below still run.
-  } else if (commandWritesToRecords(command)) {
+  }
+  if (!pathResult && commandWritesToGatedPath(command)) {
     pathResult = {
       decision: "block",
       reason: "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",

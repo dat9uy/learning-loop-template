@@ -176,6 +176,40 @@ test("with runtime-state marker active, .loop/runtime-tracking.json still hard-b
   assert.strictEqual(result.hard_block, true);
 });
 
+// ── compound commands: an exempted runtime-state write must not mask a gated write chained behind it ──
+
+test("compound: runtime-state write + records write WITH active marker → still hard-blocked", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo ok > runtime-state.jsonl && echo evil > records/meta/pwn.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+  assert.ok(result.reason.includes("records"), `expected records-class reason; got: ${result.reason}`);
+});
+
+test("compound: runtime-state write + meta-state write WITH active marker → still hard-blocked", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo ok > runtime-state.jsonl; echo evil > meta-state.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
+test("compound: runtime-state write + runtime-tracking write WITH active marker → still hard-blocked", () => {
+  const root = makeRoot();
+  writeRuntimeStatePreflightMarker(root);
+  const result = evaluateBashGate({ command: "echo ok > runtime-state.jsonl && echo evil > .loop/runtime-tracking.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
+test("compound: runtime-state write + records write WITHOUT marker → blocked (runtime-state reason wins)", () => {
+  const root = makeRoot();
+  const result = evaluateBashGate({ command: "echo ok > runtime-state.jsonl && echo evil > records/meta/pwn.json", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
+
 // ── promoted rules ──
 
 test("promoted regex rule matching command → escalate", () => {

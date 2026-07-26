@@ -30,8 +30,9 @@
 
 import { test } from "vitest";
 import assert from "node:assert";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const CONST_PATH = join(MCP_ROOT, "tools/learning-loop-mastra/core/bound-artifacts.js");
@@ -89,13 +90,17 @@ test("evaluateWriteGate handles runtime-state.jsonl via preflight delegation (Ph
   // The runtime-state rule is special-cased in evaluate-write-gate.js (not in
   // BOUND_ARTIFACTS). Smoke-test that the runtime-state glob is recognised and
   // routed to the runtime-state preflight branch — covered in detail by
-  // legacy-mcp/runtime-state-write-gate.test.js.
+  // legacy-mcp/runtime-state-write-gate.test.js. A fresh temp root guarantees
+  // no preflight marker, so the block assertion is deterministic.
   const { evaluateWriteGate } = await import("../../core/evaluate-write-gate.js");
-  const result = evaluateWriteGate({ filePath: "runtime-state.jsonl", root: process.cwd() });
-  assert.ok(
-    result.surface === "runtime-state" || result.decision === "ok",
-    `expected runtime-state preflight branch; got: ${JSON.stringify(result)}`,
-  );
+  const tempRoot = mkdtempSync(join(tmpdir(), "bound-artifacts-smoke-"));
+  try {
+    const result = evaluateWriteGate({ filePath: "runtime-state.jsonl", root: tempRoot });
+    assert.strictEqual(result.decision, "block", `expected block without marker; got: ${JSON.stringify(result)}`);
+    assert.strictEqual(result.surface, "runtime-state");
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test("each BOUND_ARTIFACTS entry has name, matchedRule, glob(s), reason", async () => {

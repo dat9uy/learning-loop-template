@@ -25,13 +25,16 @@ beforeEach(() => {
   root = join(tmpdir(), `runtime-state-gate-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(root, { recursive: true });
   mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
-  // Isolate the MCP handler from real coordination dirs.
+  // Isolate the MCP handler from real coordination dirs, and its appendGateLog
+  // call from the repo's live gate log.
   process.env.GATE_COORD_DIR = join(root, ".factory", "coordination");
+  process.env.GATE_LOG_DIR = join(root, ".factory", "coordination");
 });
 
 afterEach(() => {
   rmSync(root, { recursive: true, force: true });
   delete process.env.GATE_COORD_DIR;
+  delete process.env.GATE_LOG_DIR;
 });
 
 function writePreflightMarker(surface) {
