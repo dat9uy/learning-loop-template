@@ -15,6 +15,7 @@ import {
 } from "./gate-logic.js";
 import { readRuntimeObservations } from "./file-readers.js";
 import { checkObservationStaleness } from "./inbound-state.js";
+import { hasSurfacePreflightMarker } from "./runtime-tracking.js";
 import { SURFACES } from "./surfaces.js";
 
 // Escape regex metacharacters in a literal path segment. Surface names start
@@ -37,8 +38,21 @@ function preflightMarkerPatterns() {
   });
 }
 
+// Runtime-state path-write patterns (shell redirect + tee to
+// runtime-state.jsonl). Split out of the shared records block in Phase 2 of
+// plans/260726-0949 so the bash gate can exempt these matches when an active
+// `.loop-preflight-runtime-state` marker is present (mirrors the write-gate
+// preflight delegation in evaluate-write-gate.js).
+// fallow-ignore-next-line unused-export
+export const RUNTIME_STATE_WRITE_PATTERNS = [
+  />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
+  /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
+];
+
 // Path-write detection patterns (bash-specific).
 // Preflight-marker patterns are derived from SURFACES (all runtime surfaces).
+// runtime-state patterns are named so evaluateBashGate can exempt them when
+// the `.loop-preflight-runtime-state` marker is active.
 // fallow-ignore-next-line unused-export
 export const PATH_WRITE_PATTERNS = [
   />{1,2}\s*["']?\.?\/?records\/[^\s"';&|]+["']?/,
@@ -47,15 +61,32 @@ export const PATH_WRITE_PATTERNS = [
   ...preflightMarkerPatterns(),
   />{1,2}\s*["']?\.?\/?meta-state\.jsonl["']?/,
   /\btee\b.*["']?\.?\/?meta-state\.jsonl["']?/,
-  />{1,2}\s*["']?\.?\/?runtime-state\.jsonl["']?/,
-  /\btee\b.*["']?\.?\/?runtime-state\.jsonl["']?/,
+  ...RUNTIME_STATE_WRITE_PATTERNS,
   />{1,2}\s*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
   /\btee\b.*["']?\.?\/?\.loop\/runtime-tracking\.json["']?/,
 ];
 
-function commandWritesToRecords(command) {
+// Every gated path-write EXCEPT runtime-state.jsonl. Evaluated independently
+// of the runtime-state branch below so that a runtime-state match covered by
+// an active preflight marker cannot mask a records/**, meta-state.jsonl,
+// preflight-marker, or runtime-tracking write chained into the same command
+// (`echo ok > runtime-state.jsonl && echo evil > records/x.md`).
+const NON_RUNTIME_STATE_PATH_WRITE_PATTERNS = PATH_WRITE_PATTERNS.filter(
+  (p) => !RUNTIME_STATE_WRITE_PATTERNS.includes(p),
+);
+
+function commandWritesToGatedPath(command) {
   if (!command || typeof command !== "string") return false;
-  return PATH_WRITE_PATTERNS.some((p) => p.test(command));
+  return NON_RUNTIME_STATE_PATH_WRITE_PATTERNS.some((p) => p.test(command));
+}
+
+// True when a runtime-state path-write pattern matches the command (redirect
+// or tee to runtime-state.jsonl). Used by evaluateBashGate to gate the
+// preflight exemption on a runtime-state-specific match — so an active marker
+// does NOT bleed into records/**, meta-state.jsonl, or runtime-tracking.json.
+function commandWritesToRuntimeState(command) {
+  if (!command || typeof command !== "string") return false;
+  return RUNTIME_STATE_WRITE_PATTERNS.some((p) => p.test(command));
 }
 
 // fallow-ignore-next-line complexity
@@ -92,7 +123,26 @@ export function evaluateBashGate({ command, root }) {
   }
 
   // --- Path-write detection: ALL records/** blocked ---
-  if (commandWritesToRecords(command)) {
+  // Runtime-state path-writes get a dedicated reason + preflight-marker
+  // exemption (mirrors the write-gate preflight delegation in
+  // evaluate-write-gate.js; Phase 2 of plans/260726-0949). An active
+  // `.loop-preflight-runtime-state` marker unlocks row maintenance (e.g.
+  // striking a corrupt row via `grep -v … > runtime-state.jsonl`) for 30
+  // minutes; new rows still go through runtime_state_record (append-only).
+  // The two checks below are independent (NOT if/else-if): a compound
+  // command matching both must still produce the records-class block even
+  // when the runtime-state half is exempted by an active marker.
+  if (commandWritesToRuntimeState(command)) {
+    if (!hasSurfacePreflightMarker(resolvedRoot, ".loop-preflight-runtime-state")) {
+      pathResult = {
+        decision: "block",
+        reason:
+          "Direct shell writes to runtime-state.jsonl are gated. Use gate_mark_preflight(surface:'runtime-state') to unlock row maintenance for 30 minutes, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
+        hard_block: true,
+      };
+    }
+  }
+  if (!pathResult && commandWritesToGatedPath(command)) {
     pathResult = {
       decision: "block",
       reason: "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",
