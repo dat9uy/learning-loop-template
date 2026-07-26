@@ -1,11 +1,12 @@
 ---
 title: "Derive rule process hints, retire hint mirror"
 description: "Resolve meta-260722T0001Z: generate rule-derived process hints from active agent-checklist rules at read time, delete the hand-mirrored HINT_REGISTRY rows, and derive count assertions in tests. TDD."
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 tags: [meta-state, hint-registry, cli-surface, tdd]
 created: 2026-07-26
+completed: 2026-07-26
 ---
 
 # Derive rule process hints, retire hint mirror

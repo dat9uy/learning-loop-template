@@ -39,11 +39,22 @@ export const metaStatePromoteRuleTool = {
     // treats missing hint_text on an agent-checklist rule as skip+warn.
     hint_text: z.string().min(20).optional()
       .describe("Agent-checklist hint text (min 20 chars); required for agent-checklist."),
+    // Plan 260726-0029 phase 1: process-hint metadata so the view in
+    // hint-registry.js can derive entries from the rule itself (no hand-mirror).
+    // `hint_suggestion` is required when pattern_type === "agent-checklist" —
+    // it is interpolated raw into `${slug} — ${suggestion}` pointer lines, so
+    // a newline or oversize value would manufacture fake pointer rows.
+    hint_order: z.number().int().optional()
+      .describe("Merge key for process-hint order; lower = earlier, absent → append-by-slug"),
+    hint_suggestion: z.string().min(20).max(200).regex(/^[^\n\r]+$/).optional()
+      .describe("Curated one-line pointer text (20-200 chars, single-line); required for agent-checklist"),
+    hint_slug: z.string().regex(/^[a-z0-9-]+$/).optional()
+      .describe("Explicit slug override; only needed when the desired slug differs from rule id minus 'rule-'"),
     preview: z.union([z.boolean(), z.string()]).transform(strictBooleanGuard).optional().default(false).describe("If true, return sample matches without activating the rule"),
     sample_commands: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample commands to test against (for regex preview)"),
     sample_paths: z.preprocess(stripEnvelope, z.array(z.string())).optional().describe("Sample paths to test against (for glob preview)"),
   },
-  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, hint_text, preview, sample_commands, sample_paths }) => {
+  handler: async ({ id, rule_id, enforcement, pattern_type, pattern, scope_predicate, applies_to, hint_text, hint_order, hint_suggestion, hint_slug, preview, sample_commands, sample_paths }) => {
     const root = resolveRoot();
     const entries = readRegistry(root);
     const entry = entries.find((e) => e.id === id);
@@ -102,6 +113,31 @@ export const metaStatePromoteRuleTool = {
         rule_id,
         message:
           "Agent-checklist rules MUST carry a `hint_text` field (>=20 chars). The rule owns the SessionStart-injected prose — the registry entry references the rule by `derived_from_rule` and renders `rule.hint_text` at inject time. Re-call with `hint_text: '<your prose>'`.",
+      };
+      appendGateLog(root, {
+        timestamp: new Date().toISOString(),
+        tool: "meta_state_promote_rule",
+        ...result,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      };
+    }
+
+    // Phase 1 (plans/260726-0029): agent-checklist promotion requires
+    // hint_suggestion — the rule owns the pointer text that gets interpolated
+    // into `${slug} — ${suggestion}` rows. The view in hint-registry.js reads
+    // it unconditionally (no fallback), so a missing field is rejected at
+    // promotion time rather than degrading the rendered output. Mirrors the
+    // existing hint_text requirement above.
+    if (!preview && pattern_type === "agent-checklist" && (typeof hint_suggestion !== "string" || hint_suggestion.length < 20 || hint_suggestion.length > 200 || /[\n\r]/.test(hint_suggestion))) {
+      const result = {
+        promoted: false,
+        reason: "hint_suggestion_required_for_agent_checklist",
+        id,
+        rule_id,
+        message:
+          "Agent-checklist rules MUST carry a `hint_suggestion` field (single-line, 20-200 chars). The rule owns the pointer text that `${slug} — ${suggestion}` rows interpolate — a missing or multi-line field would either degrade the rendered output or manufacture fake pointer rows.",
       };
       appendGateLog(root, {
         timestamp: new Date().toISOString(),
@@ -278,6 +314,52 @@ export const metaStatePromoteRuleTool = {
       }
     }
 
+    // Phase 1 (plans/260726-0029): slug-collision guard. The derived slug
+    // (hint_slug ?? rule_id.replace(/^rule-/,"")) must not collide with a
+    // standalone hint-registry slug or with another active agent-checklist
+    // rule's derived slug. Last-wins overwrite would silently spoof the
+    // colliding entry — so both collision classes are rejected at the tool
+    // layer; the view layer also skip+warns defensively (Phase 2).
+    if (!preview && pattern_type === "agent-checklist") {
+      const { HINT_REGISTRY } = await import("../../core/hint-registry.js");
+      const derivedSlug = (hint_slug ?? rule_id.replace(/^rule-/, ""));
+      const standaloneSlugs = new Set(
+        HINT_REGISTRY.filter((e) => e.derived_from_rule == null).map((e) => e.slug),
+      );
+      if (standaloneSlugs.has(derivedSlug)) {
+        const result = {
+          promoted: false,
+          reason: "hint_slug_collides_with_standalone",
+          id,
+          rule_id,
+          derived_slug: derivedSlug,
+          message:
+            `Derived hint slug "${derivedSlug}" collides with a standalone registry slug. Pick a different \`hint_slug\` or rename the rule id.`,
+        };
+        appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_promote_rule", ...result });
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      }
+      const activeAgentChecklistSlugs = new Set(
+        entries
+          .filter((e) => e.entry_kind === "rule" && e.status === "active" && e.pattern_type === "agent-checklist")
+          .map((e) => e.hint_slug ?? e.id.replace(/^rule-/, ""))
+      );
+      activeAgentChecklistSlugs.delete(derivedSlug); // self-collision is fine
+      if (activeAgentChecklistSlugs.has(derivedSlug)) {
+        const result = {
+          promoted: false,
+          reason: "hint_slug_collides_with_active_rule",
+          id,
+          rule_id,
+          derived_slug: derivedSlug,
+          message:
+            `Derived hint slug "${derivedSlug}" collides with another active agent-checklist rule's slug. Pick a different \`hint_slug\` or rename the rule id.`,
+        };
+        appendGateLog(root, { timestamp: new Date().toISOString(), tool: "meta_state_promote_rule", ...result });
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      }
+    }
+
     // Phase 1: write a new entry_kind: "rule" entry (not a mutated finding)
     const ruleEntry = {
       id: rule_id,
@@ -290,6 +372,9 @@ export const metaStatePromoteRuleTool = {
       ...(pattern_type === "determinism-checklist" && { applies_to_resolution: pattern }),
       ...(applies_to && { applies_to }),
       ...(hint_text && { hint_text }),
+      ...(hint_suggestion && { hint_suggestion }),
+      ...(hint_order !== undefined && { hint_order }),
+      ...(hint_slug && { hint_slug }),
       description: `Gate-enforced rule: ${rule_id}. Pattern type=${pattern_type}; pattern=${pattern}.`,
       status: "active",
       promoted_at: now,

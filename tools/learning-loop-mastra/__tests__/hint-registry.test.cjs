@@ -13,9 +13,11 @@ const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const REGISTRY_PATH = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hint-registry.js");
 
 let registry;
+let metaState;
 
 beforeAll(async () => {
   registry = await import(pathToFileURL(REGISTRY_PATH).href);
+  metaState = await import(pathToFileURL(resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/meta-state.js")).href);
 });
 
 describe("hint registry invariants", () => {
@@ -68,10 +70,15 @@ describe("hint registry invariants", () => {
     assert.deepStrictEqual(slugs, expected, "discoverability slugs (in registry order) must match the locked set");
   });
 
-  test("process entries cover the 11 expected slugs (9 rule-derived + 2 standalone)", () => {
-    const slugs = registry.HINT_REGISTRY
-      .filter((e) => e.kind === "process")
-      .map((e) => e.slug);
+  test("process entries cover the 11 expected slugs (9 rule-derived + 2 standalone) via buildProcessView", () => {
+    // Plan 260726-0029 phase 2: 9 rule-derived rows are no longer hand-mirrored
+    // in HINT_REGISTRY. The locked 11-slug set lives in buildProcessView (the
+    // merged view of standalones + active agent-checklist rules).
+    const rules = metaState.readRegistry(PROJECT_ROOT).filter(
+      (e) => e.entry_kind === "rule" && e.status === "active",
+    );
+    const rulesById = new Map(rules.map((r) => [r.id, r]));
+    const slugs = registry.buildProcessView({ rulesById }).map((e) => e.slug);
     const expected = [
       "pnpm-test-discipline",
       "pr-body-registry-deltas",
@@ -85,7 +92,16 @@ describe("hint registry invariants", () => {
       "required-status-checks-verify-combined-status",
       "no-plan-ids-in-stable-code-artifacts",
     ];
-    assert.deepStrictEqual(slugs, expected, "process slugs (in registry order) must match the locked set");
+    assert.deepStrictEqual(slugs, expected, "process view slugs (in view order) must match the locked set");
+  });
+
+  test("HINT_REGISTRY process partition holds exactly 2 standalone rows (hand-mirror removed)", () => {
+    const proc = registry.HINT_REGISTRY.filter((e) => e.kind === "process");
+    assert.strictEqual(proc.length, 2, "HINT_REGISTRY holds 2 standalone process rows (mirror rows deleted)");
+    for (const e of proc) {
+      assert.ok(e.derived_from_rule === null, `standalone process entry ${e.slug} must have derived_from_rule === null`);
+      assert.ok(e.text && e.text.length >= 50, `standalone process entry ${e.slug} must carry substantive inline text`);
+    }
   });
 
   test("every process entry is either standalone (text) or rule-derived (derived_from_rule + no inline text)", () => {
@@ -103,14 +119,25 @@ describe("hint registry invariants", () => {
   test("canonical builders project from registry in registry order", async () => {
     const corePath = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/loop-introspect.js");
     const introspect = await import(pathToFileURL(corePath).href);
+    const metaPath = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/meta-state.js");
+    const metaState = await import(pathToFileURL(metaPath).href);
     const disc = introspect.buildDiscoverabilityHints();
-    // Pass a rulesById with hint_text filled for each rule-derived entry so
-    // the projection is hermetic — no registry I/O. This isolates the unit
-    // test from live registry state.
+    // Pass a rulesById with hint_text + hint_suggestion for each rule-derived
+    // entry so the projection is hermetic — no registry I/O. This isolates
+    // the unit test from live registry state.
+    const procSlugs = [
+      "pr-body-registry-deltas",
+      "runtime-agnostic-audit",
+      "tool-integration-same-commit-dep",
+      "fallow-gate-triage",
+      "short-slug-for-risk-records",
+      "import-chain-analysis-after-tool-deletion",
+      "assertinvariant-at-boundary",
+      "required-status-checks-verify-combined-status",
+      "no-plan-ids-in-stable-code-artifacts",
+    ];
     const rulesById = new Map(
-      registry.HINT_REGISTRY
-        .filter((e) => e.derived_from_rule)
-        .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
+      procSlugs.map((slug) => [`rule-${slug}`, { id: `rule-${slug}`, hint_text: `[mocked hint_text for ${slug}]`, pattern_type: "agent-checklist" }])
     );
     const proc = introspect.buildProcessHints({ rulesById });
 
@@ -120,11 +147,12 @@ describe("hint registry invariants", () => {
     }
     assert.strictEqual(disc.length, 16, "buildDiscoverabilityHints must return exactly 16 entries");
 
-    // Phase-3 invariant: buildProcessHints with rulesById returns 11 entries
-    // (9 rule-derived + 2 standalone). Without rulesById, it falls back to
-    // the registry read — that path is exercised in the live registry test.
-    assert.strictEqual(proc.length, 11, "buildProcessHints with rulesById must return exactly 11 entries");
-    // Standalone rows 1 + 9 must carry inline text (Phase 3 invariant).
+    // Phase-2 invariant: buildProcessHints with rulesById returns the full
+    // 11-row view (9 rule-derived + 2 standalone). Without rulesById, the
+    // view degrades to the 2 standalone rows (no derived entries to render).
+    const expectedViewLen = registry.buildProcessView({ rulesById }).length;
+    assert.strictEqual(proc.length, expectedViewLen, `buildProcessHints with rulesById must return the full view (${expectedViewLen} entries)`);
+    // Standalone rows in HINT_REGISTRY = 2 (test discipline + file-index drift).
     const standalone = registry.HINT_REGISTRY.filter((x) => x.kind === "process" && !x.derived_from_rule);
     assert.strictEqual(standalone.length, 2, "exactly 2 standalone process entries (test discipline + file-index drift)");
   });
@@ -134,8 +162,8 @@ describe("hint registry invariants", () => {
     const disc = registry.listHints({ kind: "discoverability" });
     assert.ok(Array.isArray(disc) && disc.length === 16, "listHints({kind:'discoverability'}) returns 16 entries");
     const proc = registry.listHints({ kind: "process" });
-    assert.ok(Array.isArray(proc) && proc.length === 11, "listHints({kind:'process'}) returns 11 entries");
-    assert.strictEqual(registry.listHints({ kind: undefined }).length, 27, "listHints() with no filter returns all 27");
+    assert.ok(Array.isArray(proc) && proc.length === 2, "listHints({kind:'process'}) returns 2 standalone rows (derived live in buildProcessView)");
+    assert.strictEqual(registry.listHints({ kind: undefined }).length, 18, "listHints() with no filter returns all 18 (16 disc + 2 standalone process)");
   });
 
   test("exports findHintBySlug helper", () => {

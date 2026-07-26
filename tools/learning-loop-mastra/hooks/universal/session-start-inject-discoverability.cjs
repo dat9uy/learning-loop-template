@@ -37,7 +37,7 @@ const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
 const WRITE_TOOL_SKETCHES = {
   meta_state_report: "{category,severity,affected_system,description}",
   meta_state_resolve: "{id,resolution}",
-  meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern}",
+  meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
   meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",
   meta_state_patch: "{id,entry_kind,patch}",
   meta_state_batch: "{operations:[{op,...}]}",

@@ -1,10 +1,11 @@
 ---
 phase: 2
 title: "buildProcessView + consumer migration + mirror deletion"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [1]
+completed: 2026-07-26
 ---
 
 # Phase 2: buildProcessView + consumer migration + mirror deletion

@@ -1,10 +1,11 @@
 ---
 phase: 3
 title: "Test-count derivation + E2E repro + finding resolution"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [2]
+completed: 2026-07-26
 ---
 
 # Phase 3: Test-count derivation + E2E repro + finding resolution

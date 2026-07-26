@@ -29,7 +29,7 @@
  * `.mastracode` is intentionally NOT a channel here (Validation 1: pull-only).
  */
 
-import { HINT_REGISTRY, listHints, resolveHintText } from "./hint-registry.js";
+import { HINT_REGISTRY, listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
 
 /**
  * Resolve the renderable text for a registry entry.
@@ -116,7 +116,10 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
   const warnings = [];
   const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings));
-  const process = listHints({ kind: "process" })
+  // Plan 260726-0029 phase 2: process partition iterates buildProcessView
+  // (merges standalone rows + generated rule-derived rows in deterministic
+  // order). Pure — rulesById is the caller's precomputed map.
+  const process = buildProcessView({ rulesById })
     .map((e) => resolveEntryText(e, rulesById, warnings));
 
   const disc = greedyPartition(discoverability, charBudget, warnings);
@@ -137,8 +140,15 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
  */
 function renderFactorySessionStart(entries, _charBudget, rulesById) {
   const warnings = [];
-  const all = HINT_REGISTRY
+  // Plan 260726-0029 phase 2: factory channel uses buildProcessView for the
+  // process partition so the merged (standalone + rule-derived) output
+  // byte-matches the previous hand-mirrored shape. Discoverability still
+  // comes from the static registry.
+  const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings));
+  const process = buildProcessView({ rulesById })
+    .map((e) => resolveEntryText(e, rulesById, warnings));
+  const all = [...discoverability, ...process];
   const { partitions, provenance } = greedyPartition(all, 999999, warnings);
   return { partitions, provenance, warnings };
 }
@@ -152,7 +162,9 @@ function renderSidecar(entries, _charBudget, rulesById) {
   const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
-  const process = listHints({ kind: "process" })
+  // Plan 260726-0029 phase 2: process partition uses buildProcessView
+  // (the merged standalone + rule-derived view in deterministic order).
+  const process = buildProcessView({ rulesById })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
   const payload = {
@@ -179,9 +191,17 @@ function renderSidecar(entries, _charBudget, rulesById) {
  */
 function renderMcpWarm(entries, _charBudget, rulesById) {
   const warnings = [];
-  const all = HINT_REGISTRY
+  // Plan 260726-0029 phase 2: mcp-warm uses buildProcessView for the process
+  // partition; discoverability rows are still read from the static registry.
+  // The 16 discoverability + 11 process (2 standalone + 9 derived) shape is
+  // preserved.
+  const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
+  const process = buildProcessView({ rulesById })
+    .map((e) => resolveEntryText(e, rulesById, warnings))
+    .filter((e) => e !== null);
+  const all = [...discoverability, ...process];
   const arr = all.map((e) => ({
     slug: e.slug,
     kind: e.kind,

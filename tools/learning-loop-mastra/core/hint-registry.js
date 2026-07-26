@@ -182,13 +182,20 @@ export const HINT_REGISTRY = Object.freeze([
   },
 
   // ============================================================================
-  // PROCESS (10 rows) — agent behavior under operational conditions.
-  // Rows 2-8 + 10 are rule-derived (derived_from_rule set); rows 1 + 9 stay
-  // standalone (test discipline + file-index drift).
+  // PROCESS (2 standalone rows) — agent behavior under operational conditions.
+  // The 9 rule-derived process rows are NO LONGER hand-mirrored here. They are
+  // generated from active agent-checklist rule entries at read time by
+  // `buildProcessView({ rulesById })` (plan 260726-0029 phase 2). Promoting a
+  // rule is now a single CLI call; the registry itself does not need a
+  // matching hand-edit.
+  //
+  // `order` keys the merge sort: rule-derived rows pick up `order` from
+  // `rule.hint_order`; absent → append-by-slug (deterministic degraded case).
   // ============================================================================
   {
     slug: "pnpm-test-discipline",
     kind: "process",
+    order: 10,
     text:
       "Test discipline (deterministic parse). Iterate via `pnpm test:iter` — runs `vitest run --bail=1`, suppresses raw stdout, and prints only the parsed summary from `.test-logs/vitest-results.json` (shape numTotalTests/numFailedTests/numTotalTestSuites + testResults[].assertionResults[]; status passed/failed). One file: `pnpm test:one <path>` — a single command that runs vitest and prints the parsed summary via `bash tools/scripts/vitest-failures.sh` (vitest's json reporter writes `.test-logs/vitest-results.json` on every run regardless of stdout, so no redirect is needed; exit 0 green / 1 failed / 2 missing-or-invalid). Post-edit: `pnpm exec vitest --changed`. The bash gate blocks `vitest run`/`pnpm test` piped to `tail`/`grep` — the JSON is the source of truth, not raw stdout. Do NOT redirect vitest stdout to a /tmp log and grep it (a two-command split that evades the gate). Do NOT grep raw vitest stdout, re-read passing tests, or hand-write `python -c`/`node -e` to parse the JSON. Rule 2 (same-file-read): if you read the same file >5 times in 60s with no Edit/Write/Bash, STOP — write a one-line journal to `plans/reports/` and ask the operator.",
     suggestion:
@@ -196,90 +203,15 @@ export const HINT_REGISTRY = Object.freeze([
     derived_from_rule: null,
   },
   {
-    // Phase 3: rule-derived. text is the registry-order placeholder; the
-    // renderer resolves the actual prose from `rule-pr-body-registry-deltas.hint_text`.
-    slug: "pr-body-registry-deltas",
-    kind: "process",
-    text: "",
-    suggestion:
-      "PR-body registry deltas: enumerate sweep/resolved/new/promoted/superseded/archived entries. See rule-pr-body-registry-deltas.",
-    derived_from_rule: "rule-pr-body-registry-deltas",
-  },
-  {
-    slug: "runtime-agnostic-audit",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Runtime-agnostic audit: run `check_runtime_agnostic` against the 6-item checklist before shipping a new feature; regression test at __tests__/runtime-agnostic.test.js.",
-    derived_from_rule: "rule-runtime-agnostic-features",
-  },
-  {
-    slug: "tool-integration-same-commit-dep",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Tool integration checklist: same-commit dep, fallow --save-baseline vs --save-regression-baseline, baseline storage in <root>/baselines/fallow/, 3rd-party Action SHA pin.",
-    derived_from_rule: "rule-tool-integration-same-commit-dep",
-  },
-  {
-    slug: "fallow-gate-triage",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Fallow gate triage: after `pnpm fallow:gate` non-zero, run `pnpm fallow:brief` for compact-CSV; grep severity= for actionable findings; ignore baseline-inherited lines.",
-    derived_from_rule: "rule-fallow-brief-on-gate-failure",
-  },
-  {
-    slug: "short-slug-for-risk-records",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Risk-record slugs: ≤40 chars, kebab-case; reuse `sanitizeSlug` in record-writer.js or check with `check_record_slug`.",
-    derived_from_rule: "rule-short-slug-for-risk-records",
-  },
-  {
-    slug: "import-chain-analysis-after-tool-deletion",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Tool deletion: run import-chain analysis (build reverse import map) before removing a .js file in `tools/learning-loop-mcp/`; keyword-only matches create false positives.",
-    derived_from_rule: "rule-import-chain-analysis-after-tool-deletion",
-  },
-  {
-    slug: "assertinvariant-at-boundary",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Mutation ops in `core/` that own agent-relevant invariants (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch) MUST be wrapped with `assertinvariant(operation, {...})`.",
-    derived_from_rule: "rule-assertinvariant-at-boundary",
-  },
-  {
     // Standalone (Phase 3): file-index drift is operational, not a rule.
     slug: "file-edit-drift-and-fingerprints",
     kind: "process",
+    order: 90,
     text:
       "File-edit drift and fingerprints. Fingerprints in `file-index.jsonl` are load-bearing for loop grounding; `file-index.jsonl` is an UNTRACKED regen artifact (gitignored — see `.gitignore`) rebuilt by the seed step at test/pre-commit/CI time. `pnpm test` auto-seeds via the prepended `tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs` step before `vitest run`, so a legitimate Edit/Write during a fix is absorbed at test time without operator action. For deliberate per-path drift acceptance with operator audit (a gate-log entry recording who/when/why), use `meta_state_refresh_file_index({path, reason})` instead — `seed-file-index.mjs` is a mechanical bulk re-seed that intentionally omits per-path gate-log entries (git history is its audit). If you edit files DURING a debug/test loop and hit a `file-index.jsonl` drift error before re-running the suite, run `node tools/learning-loop-mastra/tools/handlers/scripts/seed-file-index.mjs` once (or set `SKIP_PRESEED=1` for a single pre-commit bypass) before re-running tests. The cold-tier cache is keyed on both `meta-state.jsonl` AND `file-index.jsonl` SHAs — either change invalidates. `upsertFileIndexEntry` is a true no-op on an unchanged (key, hash) so re-seeding without code change keeps the cache warm. Do NOT call refresh per Edit/Write when the next `pnpm test` will do it; targeted scripts (`pnpm test:cold-session`, `pnpm test:debug`, `pnpm check:freshness`) do NOT run the seed step by default, so cold-session runs against a stale file-index can still surface drift at vitest time.",
     suggestion:
       "File-edit drift and fingerprints: `file-index.jsonl` is an UNTRACKED regen artifact (gitignored) rebuilt by the seed step; pretest seed (`pnpm test`) absorbs Edit/Write drift at test time; per-path `meta_state_refresh_file_index` for deliberate operator-audited refresh; `SKIP_PRESEED=1` escape hatch for a single pre-commit bypass. `upsertFileIndexEntry` is a true no-op on unchanged (key, hash) so re-seeding without code change keeps the cache warm. Cold-tier cache invalidates on either `meta-state.jsonl` OR `file-index.jsonl` SHA change.",
     derived_from_rule: null,
-  },
-  {
-    slug: "required-status-checks-verify-combined-status",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Required-status-check satisfaction: verify `gh pr view <n> --json mergeStateStatus` == CLEAN; GitHub matches a required context against the JOB id, not workflow `name:`. Bind context to job id via tools/scripts/setup-branch-protection.mjs.",
-    derived_from_rule: "rule-required-status-checks-verify-combined-status",
-  },
-  {
-    // Phase 3: rule-derived. text is the registry-order placeholder; the
-    // renderer resolves the actual prose from rule.hint_text.
-    slug: "no-plan-ids-in-stable-code-artifacts",
-    kind: "process",
-    text: "",
-    suggestion:
-      "Stable code artifacts: no plan IDs, phase numbers, or finding codes in code comments, test names, migrations, or commit messages — describe the invariant directly; cross-reference by concept (docs/ section), not plan ID.",
-    derived_from_rule: "rule-no-plan-ids-in-stable-code-artifacts",
   },
 ]);
 
@@ -290,6 +222,72 @@ export const HINT_REGISTRY = Object.freeze([
 export function listHints({ kind } = {}) {
   if (kind === undefined) return HINT_REGISTRY.slice();
   return HINT_REGISTRY.filter((e) => e.kind === kind);
+}
+
+/**
+ * Plan 260726-0029 phase 2: build the merged process-hint view from the
+ * standalone registry rows and the active agent-checklist rules. The view
+ * is the canonical source for ALL process-hint consumers — replaces the
+ * legacy pattern of inter-leaving hand-mirrored `HINT_REGISTRY` rows with
+ * rule-derived ones.
+ *
+ * Pure — `rulesById` is a precomputed map supplied by the caller (no I/O).
+ * Each generated entry carries the fields the projection paths expect:
+ *   - `slug` (string) — the lookup key for `loop_get_instruction`.
+ *   - `kind: "process"` — same shape as standalone rows.
+ *   - `text: ""` — resolveHintText is the shared resolution path; it reads
+ *     `rule.hint_text` from the rules map at inject time, just like the
+ *     previous `derived_from_rule` mechanism.
+ *   - `suggestion` — sourced from `rule.hint_suggestion` (required at the
+ *     promote + patch tool layer for agent-checklist rules; this view
+ *     reads it unconditionally — no fallback).
+ *   - `derived_from_rule` — points at the originating rule id.
+ *   - `order` — the merge key; lower renders earlier, undefined appends
+ *     in slug order (the worktree-degraded case, deterministic).
+ *
+ * Collision policy (red-team finding #6): a generated slug equal to a
+ * standalone slug or another generated slug is SKIPPED with a warning,
+ * never last-wins overwrites. The promote/patch tool layers (Phase 1)
+ * reject a colliding slug at write time so this branch only fires on
+ * data that pre-dates the guard (e.g. an entry pre-Phase 1 whose slug
+ * was added without the collision check).
+ */
+export function buildProcessView({ rulesById } = {}) {
+  const standalone = HINT_REGISTRY.filter((e) => e.kind === "process").map((e) => ({ ...e }));
+  const derived = [];
+  const seen = new Set(standalone.map((e) => e.slug));
+  const collisions = [];
+  for (const rule of rulesById?.values() ?? []) {
+    if (rule.pattern_type !== "agent-checklist") continue;
+    const slug = rule.hint_slug ?? rule.id.replace(/^rule-/, "");
+    if (seen.has(slug)) {
+      collisions.push(slug);
+      continue;
+    }
+    seen.add(slug);
+    derived.push({
+      slug,
+      kind: "process",
+      text: "",
+      suggestion: rule.hint_suggestion,
+      derived_from_rule: rule.id,
+      order: rule.hint_order,
+    });
+  }
+  return [...standalone, ...derived].sort(byOrderThenSlug);
+}
+
+/**
+ * Deterministic sort: order ascending (undefined → +Infinity), tie-break
+ * by slug (id-derived). NOT by `created_at` — verified absent on all
+ * live rules (Red Team finding #7). The undefined-order tail preserves
+ * the degraded-worktree case as a deterministic append-by-slug.
+ */
+function byOrderThenSlug(a, b) {
+  const ao = a.order === undefined ? Number.POSITIVE_INFINITY : a.order;
+  const bo = b.order === undefined ? Number.POSITIVE_INFINITY : b.order;
+  if (ao !== bo) return ao - bo;
+  return a.slug.localeCompare(b.slug);
 }
 
 /**

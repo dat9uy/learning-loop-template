@@ -1,10 +1,11 @@
 ---
 phase: 1
 title: "Rule schema + promote tool fields + backfill"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
+completed: 2026-07-26
 ---
 
 # Phase 1: Rule schema + promote tool fields + backfill

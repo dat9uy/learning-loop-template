@@ -44,6 +44,33 @@ function renderedMarker(entry, rulesById) {
   return text.slice(0, 80);
 }
 
+/**
+ * Plan 260726-0029 phase 2: helper that builds a mock rulesById for the
+ * 9 rule-derived process rows. The mirror rows were deleted from
+ * HINT_REGISTRY, so the previous `filter(e => e.derived_from_rule)` path
+ * now returns nothing. The 9-slug set is the locked test fixture.
+ */
+const MOCK_RULE_SLUGS = [
+  "pr-body-registry-deltas",
+  "runtime-agnostic-audit",
+  "tool-integration-same-commit-dep",
+  "fallow-gate-triage",
+  "short-slug-for-risk-records",
+  "import-chain-analysis-after-tool-deletion",
+  "assertinvariant-at-boundary",
+  "required-status-checks-verify-combined-status",
+  "no-plan-ids-in-stable-code-artifacts",
+];
+
+function mockRulesById() {
+  return new Map(
+    MOCK_RULE_SLUGS.map((slug) => [
+      `rule-${slug}`,
+      { id: `rule-${slug}`, pattern_type: "agent-checklist", hint_text: `[mocked hint_text for ${slug}]` },
+    ])
+  );
+}
+
 describe("hint renderer", () => {
   test("exports renderHints()", () => {
     assert.strictEqual(typeof renderer.renderHints, "function");
@@ -72,7 +99,7 @@ describe("hint renderer", () => {
     assert.ok(partitions[1].includes("mergeStateStatus"),
       "partition 1 must carry rule-derived hint_text (required-status-checks row)");
     assert.deepStrictEqual(warnings, [], "no skips expected with the live registry");
-    assert.strictEqual(provenance.length, 27, "provenance covers all 27 hints");
+    assert.strictEqual(provenance.length, registry.buildProcessView({ rulesById: rulesById }).length + registry.listHints({ kind: "discoverability" }).length, "provenance covers all discoverability + process hints");
     for (const p of provenance) {
       assert.ok(typeof p.slug === "string");
       assert.ok(["discoverability", "process"].includes(p.kind));
@@ -80,15 +107,18 @@ describe("hint renderer", () => {
     }
   });
 
-  test("claude-session-start without rulesById: rule-derived rows skip with warnings (degraded mode)", () => {
+  test("claude-session-start without rulesById: process view degrades to 2 standalones (degraded mode)", () => {
+    // Plan 260726-0029 phase 2: without rulesById, the buildProcessView has
+    // nothing to generate derived rows from, so the process partition contains
+    // only the 2 standalone rows. This is a CLEANER degradation than the
+    // pre-Phase-2 "skip+warn" path: no warnings, just fewer hints.
     const { partitions, provenance, warnings } = renderer.renderHints({
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
     });
-    // 9 rule-derived entries skip → 18 rendered (16 disc + 2 standalone process).
+    // 16 disc + 2 standalone process = 18 rendered.
     assert.strictEqual(provenance.length, 18, "degraded render covers standalone hints only");
-    assert.strictEqual(warnings.length, 9, "one warning per skipped rule-derived entry");
-    assert.ok(warnings.every((w) => w.includes("skipped")), "warnings name the skip");
+    assert.deepStrictEqual(warnings, [], "no warnings in degraded mode (the view simply omits unrenderable rows)");
     assert.ok(partitions[1].includes("pnpm test"), "standalone process rows still render");
   });
 
@@ -113,13 +143,25 @@ describe("hint renderer", () => {
   });
 
   test("sidecar channel preserves session-context.json shape", () => {
-    // Mock rulesById with hint_text for each rule-derived entry so the renderer
-    // can resolve them. Without this, Phase-3-derived entries would skip +
-    // warn (their inline text is empty pre-Phase-3).
+    // Plan 260726-0029 phase 2: the 9 rule-derived rows are no longer in
+    // HINT_REGISTRY, so the mock rulesById is built from the locked 9-slug
+    // set directly (not from the registry's `derived_from_rule` rows).
+    const ruleSlugs = [
+      "pr-body-registry-deltas",
+      "runtime-agnostic-audit",
+      "tool-integration-same-commit-dep",
+      "fallow-gate-triage",
+      "short-slug-for-risk-records",
+      "import-chain-analysis-after-tool-deletion",
+      "assertinvariant-at-boundary",
+      "required-status-checks-verify-combined-status",
+      "no-plan-ids-in-stable-code-artifacts",
+    ];
     const rulesById = new Map(
-      registry.HINT_REGISTRY
-        .filter((e) => e.derived_from_rule)
-        .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
+      ruleSlugs.map((slug) => [
+        `rule-${slug}`,
+        { id: `rule-${slug}`, pattern_type: "agent-checklist", hint_text: `[mocked hint_text for ${slug}]` },
+      ])
     );
 
     const { partitions } = renderer.renderHints({
@@ -146,15 +188,10 @@ describe("hint renderer", () => {
   });
 
   test("mcp-warm channel emits structured array (no cap)", () => {
-    const rulesById = new Map(
-      registry.HINT_REGISTRY
-        .filter((e) => e.derived_from_rule)
-        .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
-    );
     const { partitions } = renderer.renderHints({
       channel: "mcp-warm",
       charBudget: 999999,
-      rulesById,
+      rulesById: mockRulesById(),
     });
     assert.strictEqual(partitions.length, 1, "mcp-warm emits a single partition");
     const arr = JSON.parse(partitions[0]);
@@ -162,21 +199,18 @@ describe("hint renderer", () => {
   });
 
   test("greedy partitioning: no hint is split across partitions", () => {
-    const rulesById = new Map(
-      registry.HINT_REGISTRY
-        .filter((e) => e.derived_from_rule)
-        .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
-    );
     const { partitions } = renderer.renderHints({
       channel: "claude-session-start",
       charBudget: 4000, // tighter than 10k to stress the splitter
-      rulesById,
+      rulesById: mockRulesById(),
     });
     // Every rendered hint must appear IN ONE partition (not split).
-    // Pre-Phase-3 rule-derived rows have empty inline text; with rulesById
-    // supplied we still test the 16 discoverability + 2 standalone process rows.
+    // The 16 discoverability + 2 standalone process rows render their inline
+    // text; the 9 rule-derived rows render the mocked hint_text.
     for (const e of registry.HINT_REGISTRY) {
-      const substring = (e.text || `[mocked hint_text for ${e.slug}]`).slice(0, 80);
+      const substring = e.text
+        ? e.text.slice(0, 80)
+        : `[mocked hint_text for ${e.slug}]`;
       const found = partitions.filter((p) => p.includes(substring));
       assert.strictEqual(found.length, 1, `hint ${e.slug} must appear in exactly 1 partition (got ${found.length})`);
     }
@@ -202,18 +236,14 @@ describe("hint renderer", () => {
   });
 
   test("provenance lists every hint's slug + kind + source per rendered hint", () => {
-    const rulesById = new Map(
-      registry.HINT_REGISTRY
-        .filter((e) => e.derived_from_rule)
-        .map((e) => [e.derived_from_rule, { hint_text: `[mocked hint_text for ${e.slug}]` }])
-    );
     const { provenance } = renderer.renderHints({
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
-      rulesById,
+      rulesById: mockRulesById(),
     });
-    // 16 discoverability + 11 process = 27 source rows
-    assert.strictEqual(provenance.length, 27, "provenance must include one row per hint");
+    // 16 discoverability + 11 process = (derived from registry) source rows
+    const expectedProvenanceLen = registry.buildProcessView({ rulesById: mockRulesById() }).length + registry.listHints({ kind: "discoverability" }).length;
+    assert.strictEqual(provenance.length, expectedProvenanceLen, "provenance must include one row per hint");
     const slugs = new Set(provenance.map((p) => p.slug));
     assert.strictEqual(slugs.size, 27, "provenance slug count must equal registry size");
   });
