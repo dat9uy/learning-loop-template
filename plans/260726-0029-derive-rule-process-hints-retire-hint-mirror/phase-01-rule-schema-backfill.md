@@ -9,21 +9,23 @@ dependencies: []
 
 # Phase 1: Rule schema + promote tool fields + backfill
 
+<!-- Updated: Validation Session 1 - hint_suggestion required on patch-create too; truncateSingleLine fallback removed -->
+
 ## Overview
 
 Add `hint_order`, `hint_suggestion`, and `hint_slug` as optional fields on
-rule entries, thread them through `meta_state_promote_rule` (with
-`hint_suggestion` required for agent-checklist promotions and a slug-
-collision guard), and backfill the 9 existing agent-checklist rules so
-Phase 2 can generate the byte-identical view. TDD: failing schema/promote
-tests first.
+rule entries, thread them through `meta_state_promote_rule` AND the patch
+tool (with `hint_suggestion` required for agent-checklist promotions AND
+patch-created agent-checklist rules, plus a slug-collision guard), and
+backfill the 9 existing agent-checklist rules so Phase 2 can generate the
+byte-identical view. TDD: failing schema/promote tests first.
 
 ## Requirements
 
-- Functional: rule entries persist the three fields; promote tool accepts
-  them, requires `hint_suggestion` when `pattern_type === "agent-checklist"`,
-  and rejects promotions whose derived slug collides with a standalone
-  registry slug or an active rule's slug.
+- Functional: rule entries persist the three fields; promote AND patch
+  tools accept them, require `hint_suggestion` when
+  `pattern_type === "agent-checklist"`, and reject operations whose derived
+  slug collides with a standalone registry slug or an active rule's slug.
 - Non-functional: purely additive — no behavior change to existing reads;
   current suite stays green except the new tests.
 
@@ -43,6 +45,13 @@ tests first.
   must not equal a standalone HINT_REGISTRY slug (`pnpm-test-discipline`,
   `file-edit-drift-and-fingerprints`, or any discoverability slug) or an
   active agent-checklist rule's derived slug.
+- Patch tool (tools/handlers/meta-state-patch-tool.js): apply the same
+  `hint_suggestion` requirement when `pattern_type === "agent-checklist"`
+  on patch-create. Patch tool already validates — adding a conditional
+  required field is small. Effect: eliminates the
+  `truncateSingleLine(hint_text)` fallback + provenance warning that
+  Phase 2 would otherwise need. Single curation rule across promote +
+  patch-create.
 - CLI sketch: check `__tests__/cli-write-hint-sketch-drift.test.js` — if the
   SessionStart surface text enumerates promote args, update it in the same
   commit.
@@ -73,10 +82,12 @@ tests first.
 
 - Modify: `tools/learning-loop-mastra/core/meta-state.js` (rule schema)
 - Modify: `tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js`
+- Modify: `tools/learning-loop-mastra/tools/handlers/meta-state-patch-tool.js`
+  (extend `hint_suggestion` requirement to patch-create when agent-checklist)
 - Modify: `tools/learning-loop-mastra/bin/loop.mjs` write-sketch text if it
-  enumerates promote args (guarded by `__tests__/cli-write-hint-sketch-drift.test.js`)
-- Modify: `tools/learning-loop-mastra/__tests__/` — promote-rule test file
-  (locate via `grep -rl "promote_rule" __tests__/`)
+  enumerates promote/patch args (guarded by `__tests__/cli-write-hint-sketch-drift.test.js`)
+- Modify: `tools/learning-loop-mastra/__tests__/` — promote-rule and patch
+  test files (locate via `grep -rl "promote_rule\|meta_state_patch" __tests__/`)
 - Data: `meta-state.jsonl` at repo root (via GATE_ROOT; read by
   `loadPromotedRules`, core/gate-logic.js:720). MCP/CLI tools only — direct
   writes blocked. NOTE: the path is NOT `records/meta-state/`.
@@ -86,12 +97,14 @@ tests first.
 1. Write failing tests: rule schema accepts/round-trips all three fields;
    `hint_suggestion` rejects newlines and >200 chars; promote persists the
    fields; promote of an agent-checklist rule WITHOUT `hint_suggestion` is
-   rejected; promote with a colliding derived slug is rejected; fields
+   rejected; promote with a colliding derived slug is rejected; patch-create
+   of an agent-checklist rule WITHOUT `hint_suggestion` is rejected; fields
    omitted (gate rule) → entry unchanged from today.
 2. Run the new tests, confirm red.
-3. Add the zod fields in meta-state.js and the promote tool schema/handler
-   (requirement + collision guard).
-4. Run new tests → green; run the promote + schema suites → no regressions.
+3. Add the zod fields in meta-state.js; add the promote tool schema/handler
+   (requirement + collision guard); add the same `hint_suggestion`
+   requirement to the patch tool for agent-checklist patch-create.
+4. Run new tests → green; run the promote, patch, and schema suites → no regressions.
 5. Backfill: `LOOP_SURFACE=.claude node tools/learning-loop-mastra/bin/loop.mjs
    meta_state_batch '{...9 patch ops...}'` (requires live-session mode for
    writes per the session-mode gate).
@@ -101,9 +114,9 @@ tests first.
 
 ## Success Criteria
 
-- [ ] New schema/promote tests green (fields, sanitization, requirement,
-      collision guard).
-- [ ] Existing promote-rule and meta-state suites green (additive only).
+- [ ] New schema/promote/patch tests green (fields, sanitization,
+      requirement on promote AND patch-create, collision guard).
+- [ ] Existing promote-rule, patch, and meta-state suites green (additive only).
 - [ ] All 9 agent-checklist rules carry `hint_order` + `hint_suggestion`
       matching the mirror rows; `hint_slug` present on exactly
       `rule-runtime-agnostic-features` and `rule-fallow-brief-on-gate-failure`.

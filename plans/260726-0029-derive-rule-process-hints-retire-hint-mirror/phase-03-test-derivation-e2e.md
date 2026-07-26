@@ -85,9 +85,11 @@ tool gates on active determinism-checklist rules
    e. Cleanup with a trap/finally (archive the smoke rule) so failure in d
       cannot skip it; archived rules don't render (`loadPromotedRules`
       filters `status === "active"`, gate-logic.js:766).
-   f. Run the full `pnpm test` again → green with zero hand-edits. The
-      suite runs against the same live registry as baseline (smoke rule
-      archived), which is what makes the "zero hand-edits" claim honest.
+   f. Run the full `pnpm test` again → green with the single slug-list
+      append hand-edit (the legitimate drift signal from the validation
+      session). The suite runs against the same live registry as baseline
+      (smoke rule archived), which is what makes the "no other edits"
+      claim honest.
 4. Docs: update the smallest owning surface if it describes the old mirror
    invariant (grep first; likely docs/architecture.md § context-injection).
 5. Re-ground, then resolve:
@@ -107,7 +109,7 @@ tool gates on active determinism-checklist rules
       the 3 test files returns only keep-listed (slug/order/budget) lines.
 - [ ] E2E: full-suite baseline green → smoke rule promoted via one CLI call
       (with `hint_suggestion`) → render-path shows the hint → rule archived
-      via trap → full suite green again, zero hand-edits.
+      via trap → full suite green again, single slug-list append hand-edit.
 - [ ] Live-registry-reading vs fixture-based test files enumerated in the
       session report.
 - [ ] Smoke rule archived; registry state matches baseline plus documented

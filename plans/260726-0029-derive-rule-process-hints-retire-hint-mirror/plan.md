@@ -57,6 +57,10 @@ Verified evidence:
   `tools/scripts/hint-render.mjs:75-83`;
   universal SessionStart hooks (session-start-inject-process-hints.cjs:34,
   session-start-inject-discoverability.cjs:160 — cwd fallback).
+- **Numeric-key grep audit:** before changing the numeric-key contract in
+  `loop_get_instruction`, run explicit greps across `tools/scripts/`,
+  `tools/handlers/`, `.factory/hooks/`, and `hooks/universal/` to confirm
+  no script depends on fixed numeric positions (Phase 2 step 1).
 - `loadPromotedRules` filters `status === "active"` ONLY (gate-logic.js:757);
   no scope filtering exists. "Active rules" is the correct invariant wording.
 - No live rule carries `created_at` (verified across the root meta-state.jsonl
@@ -67,7 +71,7 @@ Verified evidence:
 
 | # | Goal | Priority |
 |---|------|----------|
-| 1 | Promoting an agent-checklist rule = 1 CLI call, full suite green, no hand-edits | P1 |
+| 1 | Promoting an agent-checklist rule = 1 CLI call + slug-list append; full suite green | P1 |
 | 2 | Delete the 9 hand-mirrored registry rows; hints derive from active rules | P1 |
 | 3 | Test files derive pure-numeric counts; keep slug/order/budget assertions hardcoded | P1 |
 | 4 | Deterministic merged ordering (explicit `hint_order`, append-by-id fallback); preserve published slugs | P1 |
@@ -89,14 +93,16 @@ Verified evidence:
 ## Design
 
 **Rule entry gains three fields** (zod schema core/meta-state.js:522 +
-promote tool schema tools/handlers/meta-state-promote-rule-tool.js):
+promote tool schema tools/handlers/meta-state-promote-rule-tool.js +
+patch tool schema tools/handlers/meta-state-patch-tool.js):
 - `hint_order: z.number().int().optional()` — merge key for process-hint order.
 - `hint_suggestion: z.string().min(20).max(200).regex(/^[^\n\r]+$/).optional()`
   — curated one-liner. Single-line + capped: it is interpolated raw into
   `${slug} — ${suggestion}` pointer lines (loop-introspect.js:134-139), so a
   newline would manufacture fake pointer rows in every session's warm surface.
-  **Required by the promote tool when `pattern_type === "agent-checklist"`**
-  (same as `hint_text`); optional on the schema for patch-created rules.
+  **Required by both the promote AND patch tools when
+  `pattern_type === "agent-checklist"`** (same requirement as `hint_text`);
+  optional on the schema for patch updates and non-agent-checklist rules.
 - `hint_slug: z.string().regex(/^[a-z0-9-]+$/).optional()` — explicit slug
   override; only needed when the desired slug ≠ rule id minus `rule-`.
 
@@ -105,16 +111,15 @@ core/hint-registry.js returns the ordered union of:
 - standalone process entries from `HINT_REGISTRY` (gain an `order` field), and
 - generated entries for every rule in `rulesById` with `pattern_type ===
   "agent-checklist"`: `{ slug: rule.hint_slug ?? rule.id.replace(/^rule-/,""),
-  kind: "process", text: "", suggestion: rule.hint_suggestion ??
-  truncateSingleLine(rule.hint_text ?? "", 200), derived_from_rule: rule.id,
-  order: rule.hint_order }`.
-  The suggestion fallback (patch-created rules lacking the field) caps at one
-  line/200 chars and emits a provenance warning — the curation floor is
-  enforced at promotion, not by the fallback.
+  kind: "process", text: "", suggestion: rule.hint_suggestion,
+  derived_from_rule: rule.id, order: rule.hint_order }`.
+  No runtime fallback: `hint_suggestion` is required at the tool layer
+  for agent-checklist rules (Phase 1), so the view can read the field
+  unconditionally. Single curation rule across promote + patch-create.
 - **Collision guard:** a generated slug equal to a standalone slug or another
   generated slug is skipped with a provenance warning (never last-wins
-  overwrite); the promote tool rejects a rule id/`hint_slug` whose derived
-  slug collides with a standalone slug or an active rule's slug.
+  overwrite); the promote/patch tools reject a rule id/`hint_slug` whose
+  derived slug collides with a standalone slug or an active rule's slug.
 
 Sort: `order` ascending (undefined → +Infinity), tie-break by slug (id-
 derived, deterministic — NOT `created_at`, which no live rule carries).
@@ -153,7 +158,10 @@ rules), plus a degraded-order test with a `hint_order`-less rules map.
 `__tests__/legacy-mcp/consult-checklist-process-hints-coverage.test.js`
 changes from "every active agent-checklist rule has a mirror row" to "every
 active agent-checklist rule appears in `buildProcessView`" + "every view row
-with `derived_from_rule` references an active rule" + "no duplicate slugs".
+with `derived_from_rule` references an active rule" + "no duplicate slugs"
++ "every active agent-checklist rule has both `hint_text` AND
+`hint_suggestion` populated" (closes the silent-drop gap where a rule with
+neither field would still 'appear' but resolveHintText drops it).
 
 **Gap B:** the 3 test files replace hardcoded counts with derived values.
 Slug lists, merged-order assertions, and partition-budget assertions stay
@@ -181,7 +189,8 @@ registry source edit, no count edits.
 
 - [ ] Repro of the finding scenario: `meta_state_promote_rule` for a new
       agent-checklist rule, then render-path verification + full `pnpm test`
-      green with zero hand-edits (E2E sequencing per Phase 3).
+      green with the single slug-list append hand-edit (E2E sequencing per
+      Phase 3).
 - [ ] SessionStart injection output (claude + factory hook paths)
       byte-identical before/after for the current 9 rules — including the 2
       divergent slugs.
@@ -251,4 +260,89 @@ one-time rebuild, correctness-safe (loop-introspect-cache.js:27-33,103-105).
   extended to factory path in both plan.md criteria and phase-02.
 - Unresolved contradictions: 0
 
+#### Validation Session 1 disposition refinement (2026-07-26)
+Red-team finding #9 was "Accept (modified): hint_suggestion required on
+promotion; fallback = capped single-line truncation + warning". Validation
+refined this further: the fallback path is removed entirely; both promote
+AND patch tools require `hint_suggestion` for agent-checklist rules. The
+view reads `rule.hint_suggestion` unconditionally (Phase 2 / Design updated).
+
 <!-- slug: derive-rule-process-hints-retire-hint-mirror -->
+
+## Validation Log
+
+### Session 1 — 2026-07-26
+**Trigger:** `/ak:plan validate plans/260726-0029-derive-rule-process-hints-retire-hint-mirror/`. Red Team Review already complete (12 findings, all accepted). Skipped Step 2.5 verification pass per guard.
+**Questions asked:** 4
+
+#### Questions & Answers
+
+1. **[Coverage]** Phase 2 coverage test inverts from "every rule has a mirror row" to "every rule appears in buildProcessView". A rule with neither `hint_text` nor `hint_suggestion` would silently drop at resolveHintText. Should the coverage test assert both fields are present?
+   - Options: Yes, add stronger assertion (Recommended) | No, keep view-presence only
+   - **Answer:** Yes, add stronger assertion (Recommended)
+   - **Rationale:** Closes the silent-drop gap before production. Aligns coverage with promotion-time requirement.
+
+2. **[Architecture]** Phase 1 keeps `hint_suggestion` optional on patch-create; view falls back to `truncateSingleLine(hint_text)` + warning. Should patch-create require it too?
+   - Options: Require on patch-create too (Recommended) | Keep optional on patch-create
+   - **Answer:** Require on patch-create too (Recommended)
+   - **Rationale:** Single curation rule across promote + patch-create. Eliminates the fallback path + provenance warning entirely.
+
+3. **[Tradeoff]** Phase 3 retains the hardcoded slug-list assertion as "legitimate drift signal" — the only remaining hand-edit on promotion. Derive it for true zero hand-edits, or keep?
+   - Options: Keep slug-list hardcoded as drift signal (Recommended) | Derive slug list — zero hand-edits
+   - **Answer:** Keep slug-list hardcoded as drift signal (Recommended)
+   - **Rationale:** Deriving loses the only signal that catches an accidentally-promoted rule from reaching production hints. One append-on-promotion hand-edit is honest maintenance.
+
+4. **[Risk]** Phase 2 makes numeric keys session-ephemeral. Plan assumes scripts call builders, not direct numeric indices. Add an explicit grep audit to Phase 2?
+   - Options: Yes, add numeric-key grep audit to Phase 2 (Recommended) | No, trust existing claim
+   - **Answer:** Yes, add numeric-key grep audit to Phase 2 (Recommended)
+   - **Rationale:** Surfaces any latent dependency on fixed positions before the ephemeral-index contract ships.
+
+#### Confirmed Decisions
+
+- **Coverage gap closure:** Coverage test asserts rule-in-view → rule has `hint_text` AND `hint_suggestion`.
+- **Patch-create parity:** `hint_suggestion` required on patch-create when `pattern_type === "agent-checklist"`. `truncateSingleLine` fallback path removed.
+- **Slug-list retention:** Hardcoded slug-list assertion stays as drift signal; promotion requires one append hand-edit.
+- **Numeric-key audit:** Phase 2 adds an explicit grep audit of numeric-key consumers across scripts/ and tools/.
+
+#### Action Items
+
+- [ ] Phase 1: change `hint_suggestion` schema to required-when-agent-checklist on patch tool (not just promote tool); remove `truncateSingleLine` fallback mention.
+- [ ] Phase 2: extend coverage test with `hint_text` + `hint_suggestion` presence assertion; add grep audit step to implementation.
+- [ ] Phase 3: keep slug-list hardcoded; no change.
+
+#### Impact on Phases
+
+- Phase 1: `hint_suggestion` requirement extended to patch-create; truncateSingleLine fallback deleted.
+- Phase 2: coverage test strengthened; numeric-key grep audit added as a TDD step.
+- Phase 3: unchanged (decisions already aligned).
+
+### Whole-Plan Consistency Sweep
+- Files reread: plan.md, phase-01-rule-schema-backfill.md,
+  phase-02-view-consumer-migration.md, phase-03-test-derivation-e2e.md
+- Decision deltas checked (this session): 4 (coverage gap closure;
+  patch-create parity; slug-list retention; numeric-key audit)
+- Reconciled stale references:
+  - plan.md Goal 1 + Success Criteria 1: "no hand-edits" → "1 CLI call +
+    slug-list append" (consistent with validation Q3 confirmation that
+    the slug-list append is the legitimate drift signal).
+  - phase-03 E2E step f + Success Criteria 2: "zero hand-edits" →
+    "single slug-list append hand-edit" (3 occurrences reconciled).
+  - plan.md Design: `truncateSingleLine(hint_text)` fallback mention
+    replaced with "No runtime fallback: `hint_suggestion` is required at
+    the tool layer" — consistent with phase-02 buildProcessView sketch
+    (no `?? truncateSingleLine` branch).
+  - plan.md Verified evidence: added numeric-key grep audit bullet
+    (Phase 2 step 1) for traceability.
+  - plan.md Design: `promote/patch tools` collision guard phrasing
+    updated to cover both tools (was: "the promote tool rejects").
+- Preserved historical references (kept as red-team record, not stale):
+  - plan.md red-team finding #9 disposition still says
+    "fallback = capped single-line truncation + warning"; the
+    "Validation Session 1 disposition refinement" note under the
+    table records that validation went further (no fallback).
+  - Whole-Plan Consistency Sweep original block (pre-validation) still
+    records the prior reconciliation.
+- Unresolved contradictions: 0
+- **Result:** Plan is internally consistent across plan.md, phase-01,
+  phase-02, phase-03. Validation decisions are uniformly applied.
+  Ready to recommend implementation.

@@ -9,13 +9,15 @@ dependencies: [1]
 
 # Phase 2: buildProcessView + consumer migration + mirror deletion
 
+<!-- Updated: Validation Session 1 - coverage test asserts hint_text+hint_suggestion presence; numeric-key grep audit added -->
+
 ## Overview
 
 Introduce the pure `buildProcessView({ rulesById })` generator in
 core/hint-registry.js, migrate all process-hint consumers (8 production
 sites), prove byte-identical SessionStart output on both the claude and
 factory hook paths, then delete the 9 hand-mirrored `HINT_REGISTRY` rows.
-TDD: view tests + byte-identity tests first.
+TDD: view tests + byte-identity tests + numeric-key audit first.
 
 ## Requirements
 
@@ -44,8 +46,7 @@ export function buildProcessView({ rulesById } = {}) {
       slug,
       kind: "process",
       text: "",                                   // resolveHintText path unchanged
-      suggestion: rule.hint_suggestion
-        ?? truncateSingleLine(rule.hint_text ?? "", 200),  // + provenance warning
+      suggestion: rule.hint_suggestion,           // required by Phase 1 tools
       derived_from_rule: rule.id,
       order: rule.hint_order,
     });
@@ -59,10 +60,11 @@ export function buildProcessView({ rulesById } = {}) {
   `hint_order` append at the end in slug order; this also defines the
   degraded worktree case (stale meta-state.jsonl without the Phase 1
   backfill): deterministic append-by-slug, self-heals on worktree refresh.
-- `truncateSingleLine`: strip newlines, cap at 200 chars; used only for
-  patch-created rules lacking `hint_suggestion` (the promote tool requires
-  the field, so the fallback is a safety net, not a curation path). Emits a
-  provenance warning so the missing curation is visible.
+- No fallback path: `hint_suggestion` is required by both the promote AND
+  patch tools when `pattern_type === "agent-checklist"` (Phase 1). The
+  prior `truncateSingleLine(hint_text)` + provenance warning fallback is
+  removed; a missing field is now a tool-time rejection, not a runtime
+  degradation.
 - Collision policy: view-level skip + warning (never last-wins overwrite);
   the promote-time rejection lives in Phase 1. The coverage test asserts
   global slug uniqueness so a collision also fails CI.
@@ -110,7 +112,23 @@ block, in the same commit as the consumer migration.
 replace "every active agent-checklist rule has a `derived_from_rule` mirror
 row" with: every active agent-checklist rule appears in `buildProcessView`;
 every view row with `derived_from_rule` references an active rule; all view
-slugs are unique.
+slugs are unique; AND every active agent-checklist rule has both
+`hint_text` AND `hint_suggestion` populated (closes the silent-drop gap
+where a rule with neither field would still 'appear' but resolveHintText
+drops it).
+
+**Numeric-key grep audit:** before changing the numeric-key contract in
+`loop_get_instruction`, run explicit greps across `tools/scripts/`,
+`tools/handlers/`, `.factory/hooks/`, and `hooks/universal/`:
+```
+grep -rnE 'loop_get_instruction.*[^a-z][0-9]{1,2}[^0-9]|\.processHints\[[0-9]+|\.buildProcessHints\(\)\[[0-9]+' tools/ .factory/ hooks/
+```
+Enumerate every hit with file:line and confirm it either (a) goes through
+a builder (numeric position is incidental) or (b) is a docs/comment
+reference. If any hit resolves a numeric index against fixed position,
+either migrate the caller to slug lookup or document the dependency as
+breaking. This step surfaces latent dependencies before the ephemeral-
+index contract ships.
 
 ## Related Code Files
 
@@ -131,34 +149,39 @@ slugs are unique.
 
 ## Implementation Steps (TDD)
 
-1. Write failing tests for `buildProcessView`: merge correctness, exact
+1. Numeric-key grep audit (see "Numeric-key grep audit" section above).
+   Enumerate every direct numeric-index consumer; document or migrate.
+2. Write failing tests for `buildProcessView`: merge correctness, exact
    reproduction of the current 11-slug order (including
    `runtime-agnostic-audit` and `fallow-gate-triage` via backfilled
-   `hint_slug`), suggestion fallback truncation + warning,
-   non-agent-checklist rules excluded, no-`hint_order` append-by-slug,
-   slug-collision skip + warning.
-2. Write the byte-identity tests (claude builders + factory block) against
+   `hint_slug`), non-agent-checklist rules excluded, no-`hint_order`
+   append-by-slug, slug-collision skip + warning.
+3. Write the byte-identity tests (claude builders + factory block) against
    pre-change snapshot output.
-3. Run → red. Implement `buildProcessView` + standalone `order` fields.
-4. Migrate loop-introspect and hint-renderer; migrate
+4. Run → red. Implement `buildProcessView` + standalone `order` fields.
+5. Migrate loop-introspect and hint-renderer; migrate
    loop-get-instruction (per-call view, string-key view lookup, ephemeral
    numeric keys + tool-description note, C2 test rewrite).
-5. Run view tests + identity tests → green.
-6. Delete the 9 mirror rows + stale comment; invert the coverage test
-   (presence + back-reference + uniqueness).
-7. Full loop test suite green.
+6. Run view tests + identity tests → green.
+7. Delete the 9 mirror rows + stale comment; invert the coverage test
+   (presence + back-reference + uniqueness + `hint_text`/`hint_suggestion`
+   presence).
+8. Full loop test suite green.
 
 ## Success Criteria
 
-- [ ] `buildProcessView` unit tests green (merge/order/fallback/exclusion/
-      collision/degraded).
+- [ ] Numeric-key grep audit complete; all direct numeric-index consumers
+      documented as builder-mediated or migrated to slug lookup.
+- [ ] `buildProcessView` unit tests green (merge/order/exclusion/collision/
+      degraded).
 - [ ] Byte-identity: claude builder output AND factory injection block
       identical before/after for the current 9 rules — including the 2
       divergent slugs.
 - [ ] 9 mirror rows deleted; `HINT_REGISTRY` = 16 discoverability + 2
       standalone process rows.
 - [ ] Coverage test asserts rule → view presence + back-reference + slug
-      uniqueness.
+      uniqueness + `hint_text`/`hint_suggestion` presence on every active
+      agent-checklist rule.
 - [ ] `loop_get_instruction` slug lookups return identical content for all
       9 current slugs; numeric-key ephemerality documented; rewritten C2
       test green.
