@@ -102,16 +102,16 @@ test("redirect to runtime-state.jsonl → block", () => {
   assert.strictEqual(result.hard_block, true);
 });
 
-// ── runtime-state preflight exemption (Phase 2 of plans/260726-0949) ──
+// ── runtime-state preflight exemption (edit marker) ──
 
-test("redirect to runtime-state.jsonl without marker → block, reason names gate_mark_preflight(surface:'runtime-state'), NOT records reason", () => {
+test("redirect to runtime-state.jsonl without marker → block, reason names gate_mark_preflight(surface:'runtime-state-edit'), NOT records reason", () => {
   const root = makeRoot();
   const result = evaluateBashGate({ command: "echo data > runtime-state.jsonl", root });
   assert.strictEqual(result.decision, "block");
   assert.strictEqual(result.hard_block, true);
   assert.ok(
-    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state"),
-    `reason must name gate_mark_preflight(surface:'runtime-state'); got: ${result.reason}`,
+    result.reason.includes("gate_mark_preflight") && result.reason.includes("runtime-state-edit"),
+    `reason must name gate_mark_preflight(surface:'runtime-state-edit'); got: ${result.reason}`,
   );
   assert.ok(
     !result.reason.includes("Direct writes to records"),
@@ -130,13 +130,28 @@ test("tee to runtime-state.jsonl without marker → block with dedicated canonic
 function writeRuntimeStatePreflightMarker(root) {
   // Reuse the same temp-root pattern as the runtime-tracking marker tests;
   // bash-gate's marker check scans every runtime surface coordination dir.
+  // Direct shell writes are gated on the edit marker, split from the append
+  // marker so routine runtime_state_record appends don't keep this gate warm.
+  mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
+  writeFileSync(
+    join(root, ".factory", "coordination", ".loop-preflight-runtime-state-edit"),
+    JSON.stringify({ surface: "runtime-state-edit", completed_at: new Date().toISOString() }),
+    "utf8",
+  );
+}
+
+test("redirect to runtime-state.jsonl with only the APPEND marker active → still blocked (markers are decoupled)", () => {
+  const root = makeRoot();
   mkdirSync(join(root, ".factory", "coordination"), { recursive: true });
   writeFileSync(
     join(root, ".factory", "coordination", ".loop-preflight-runtime-state"),
     JSON.stringify({ surface: "runtime-state", completed_at: new Date().toISOString() }),
     "utf8",
   );
-}
+  const result = evaluateBashGate({ command: "echo data > runtime-state.jsonl", root });
+  assert.strictEqual(result.decision, "block");
+  assert.strictEqual(result.hard_block, true);
+});
 
 test("redirect to runtime-state.jsonl WITH active marker → ok", () => {
   const root = makeRoot();

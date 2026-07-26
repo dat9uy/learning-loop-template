@@ -97,7 +97,8 @@ test("evaluateWriteGate handles runtime-state.jsonl via preflight delegation (Ph
   try {
     const result = evaluateWriteGate({ filePath: "runtime-state.jsonl", root: tempRoot });
     assert.strictEqual(result.decision, "block", `expected block without marker; got: ${JSON.stringify(result)}`);
-    assert.strictEqual(result.surface, "runtime-state");
+    // Direct writes are gated on the edit marker, split from the append marker.
+    assert.strictEqual(result.surface, "runtime-state-edit");
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }

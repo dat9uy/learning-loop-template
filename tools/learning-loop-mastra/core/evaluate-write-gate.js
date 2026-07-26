@@ -99,8 +99,9 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // the dedicated `.loop-preflight-schemas` marker; migrated out of
 // BOUND_ARTIFACTS in Phase 2 of plans/260720-1112 to repair the dead-end
 // block + stale `pnpm validate:records` reason), runtime-state
-// (preflight-delegating with explicit surface="runtime-state" — the
-// dedicated `.loop-preflight-runtime-state` marker; migrated out of
+// (preflight-delegating — the dedicated `.loop-preflight-runtime-state-edit`
+// marker, split from the append marker so routine runtime_state_record
+// appends do not keep the direct-write gate warm; migrated out of
 // BOUND_ARTIFACTS in Phase 1 of plans/260726-0949 to repair the dead-end
 // block whose only escape was the append-only `runtime_state_record` tool
 // — gate_override cannot reach simple-glob blocks; closes finding
@@ -204,13 +205,13 @@ export function evaluateWriteGate({ filePath, root }) {
     return evaluateSchemasPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "runtime-state") {
-    // Phase 1 of plans/260726-0949: runtime-state.jsonl migrated from a dead-end
-    // simple-glob block whose only escape was the append-only `runtime_state_record`
-    // tool — gate_override cannot reach simple-glob blocks (it requires a *promoted*
-    // rule_id). Mirrors the schemas pattern: dedicated `.loop-preflight-runtime-state`
-    // marker created via gate_mark_preflight({surface:"runtime-state"}). The marker is
-    // already used by `runtime_state_record` (runtime-state-record-tool.js:10,70); the
-    // write-gate now reads it too. Closes finding meta-260720T1447Z.
+    // runtime-state.jsonl row maintenance delegates to the dedicated
+    // `.loop-preflight-runtime-state-edit` marker created via
+    // gate_mark_preflight({surface:"runtime-state-edit"}). The edit marker is
+    // deliberately separate from the `.loop-preflight-runtime-state` marker
+    // that `runtime_state_record` requires for routine appends — otherwise
+    // normal loop operation (frequent appends) would keep the direct-write
+    // gate warm most of the time.
     return evaluateRuntimeStatePreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   return blockResult(matched, filePath);
@@ -288,34 +289,34 @@ export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {
 
 /**
  * Runtime-state preflight check — named seam for the dedicated
- * `.loop-preflight-runtime-state` marker. Returns { decision: "ok" } if any
- * surface has a non-stale `.loop-preflight-runtime-state` marker; otherwise
- * { decision: "block", reason, surface: "runtime-state", preflight_checklist }.
+ * `.loop-preflight-runtime-state-edit` marker. Returns { decision: "ok" } if
+ * any surface has a non-stale `.loop-preflight-runtime-state-edit` marker;
+ * otherwise { decision: "block", reason, surface: "runtime-state-edit",
+ * preflight_checklist }.
  *
- * Migrated from a dead-end BOUND_ARTIFACTS simple-glob block (the reason
- * pointed at the append-only `runtime_state_record` tool with no row-strike
- * path; `gate_override` requires a *promoted* rule_id, and `runtime-state`
- * was a simple-glob block, not promoted). Closes finding
- * `meta-260720T1447Z`. Phase 1 of plans/260726-0949.
+ * The edit marker is split from the append marker
+ * (`.loop-preflight-runtime-state`, required by `runtime_state_record`) so
+ * that routine appends during normal loop operation do not keep the
+ * direct-write gate warm.
  */
 // fallow-ignore-next-line unused-export
 export function evaluateRuntimeStatePreflight({ filePath, root, matchedRule }) {
   const resolvedRoot = root || findProjectRoot();
-  const marker = findPreflightMarker("runtime-state", resolvedRoot);
+  const marker = findPreflightMarker("runtime-state-edit", resolvedRoot);
   if (marker) return { decision: "ok" };
 
   return {
     decision: "block",
     reason:
-      "Runtime-state row maintenance (striking corrupt rows) is gated. Walk the preflight checklist, call gate_mark_preflight(surface:'runtime-state') to unlock for 30 minutes, edit, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
-    surface: "runtime-state",
+      "Runtime-state row maintenance (striking corrupt rows) is gated. Walk the preflight checklist, call gate_mark_preflight(surface:'runtime-state-edit') to unlock for 30 minutes, edit, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only, gated on surface:'runtime-state').",
+    surface: "runtime-state-edit",
     preflight_checklist: [
       "1. Identify the runtime-state row(s) needing maintenance (typically a corrupt or duplicated row that fingerprint validation rejects — see docs/architecture.md § runtime-state.jsonl for the schema)",
       "2. Take a backup of runtime-state.jsonl before any in-place edit (single operator, atomic move, not a Write tool rewrite)",
       "3. Confirm no constraint rules depend on the rows being struck (run pnpm test:iter and check inbound-gate observations for the affected surfaces)",
       "4. Confirm the change keeps the per-surface budget-state entity consistent (one entity per surface under the canonical id; verify with readBudgetTrackingState)",
       "5. Stage a meta_state_log_change entry describing the system change (this is the change-log half of self-maintenance)",
-      "6. Call gate_mark_preflight MCP tool with surface:\"runtime-state\" to unlock the gated write (30-minute TTL)",
+      "6. Call gate_mark_preflight MCP tool with surface:\"runtime-state-edit\" to unlock the gated write (30-minute TTL)",
     ],
     matched_rule: matchedRule ?? RUNTIME_STATE_GLOB,
   };
