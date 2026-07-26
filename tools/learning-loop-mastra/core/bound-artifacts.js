@@ -46,14 +46,6 @@ const records = {
     "Direct writes to records/ are blocked. Use MCP tools (create_decision_record, create_experiment_record, create_risk_record, record_observation, etc.) to create/update records.",
 };
 
-const runtimeState = {
-  name: "runtime-state",
-  matchedRule: "runtime-state.jsonl",
-  glob: "runtime-state.jsonl",
-  match: (relPath) => globMatch("runtime-state.jsonl", relPath),
-  reason: "Direct writes to runtime-state.jsonl are blocked. Use runtime_state_record MCP tool to create entries.",
-};
-
 const runtimeTracking = {
   name: "runtime-tracking",
   matchedRule: ".loop/runtime-tracking.json",
@@ -98,15 +90,16 @@ const buildArtifacts = {
  * The bound-artifacts ruleset. FROZEN to prevent accidental mutation;
  * order is pinned by `legacy-mcp/bound-artifacts.test.js`.
  *
- * 6 simple-glob rules (records, runtime-state, runtime-tracking, meta-state,
- * file-index, build-artifacts). The `schemas/**` rule was migrated to a
- * preflight-delegating rule in evaluate-write-gate.js (mirrors the
- * `skills` pattern) in Phase 2 of plans/260720-1112. The dead-end simple-glob
- * block + stale `pnpm validate:records` reason were both retired.
+ * 5 simple-glob rules (records, runtime-tracking, meta-state, file-index,
+ * build-artifacts). The `schemas/**` and `runtime-state.jsonl` rules were
+ * migrated to preflight-delegating rules in evaluate-write-gate.js
+ * (mirrors the `skills` pattern) in Phase 2 of plans/260720-1112 and
+ * Phase 1 of plans/260726-0949 respectively. The dead-end simple-glob
+ * blocks + stale reasons (`pnpm validate:records` for schemas, the
+ * append-only-tool-as-only-escape for runtime-state) were both retired.
  */
 export const BOUND_ARTIFACTS = Object.freeze([
   records,
-  runtimeState,
   runtimeTracking,
   metaState,
   fileIndex,

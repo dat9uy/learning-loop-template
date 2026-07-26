@@ -83,7 +83,7 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // `product/**` is a special case — it delegates to `evaluatePreflight` (matchedRule: null).
 //
 // The first 5 entries are derived from BOUND_ARTIFACTS (the shared
-// simple-glob rule constant in core/bound-artifacts.js). The remaining 6 are
+// simple-glob rule constant in core/bound-artifacts.js). The remaining 7 are
 // special-cased here: preflight-marker (delegates to findPreflightMarker via
 // PREFLIGHT_MARKER_PATHS), skills (preflight-delegating with explicit
 // surface="skills" — the dedicated `.loop-preflight-skills` marker),
@@ -98,20 +98,32 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // blocked), schemas (preflight-delegating with explicit surface="schemas" —
 // the dedicated `.loop-preflight-schemas` marker; migrated out of
 // BOUND_ARTIFACTS in Phase 2 of plans/260720-1112 to repair the dead-end
-// block + stale `pnpm validate:records` reason), and product/** (delegates
-// to evaluatePreflight).
+// block + stale `pnpm validate:records` reason), runtime-state
+// (preflight-delegating with explicit surface="runtime-state" — the
+// dedicated `.loop-preflight-runtime-state` marker; migrated out of
+// BOUND_ARTIFACTS in Phase 1 of plans/260726-0949 to repair the dead-end
+// block whose only escape was the append-only `runtime_state_record` tool
+// — gate_override cannot reach simple-glob blocks; closes finding
+// meta-260720T1447Z), and product/** (delegates to evaluatePreflight).
 // Rule order is load-bearing (first-match-wins) — see
 // legacy-mcp/bound-artifacts.test.js for the pinned-order assertion.
 // fallow-ignore-next-line complexity
 const SKILL_CANONICAL_GLOB = "tools/learning-loop-mastra/skills/**";
 const SKILL_MANIFEST_GLOB = "skills-lock.json";
 const SCHEMAS_GLOB = "schemas/**";
+const RUNTIME_STATE_GLOB = "runtime-state.jsonl";
 
 const WRITE_GATE_RULES = [
   {
     name: "schemas",
     matchedRule: SCHEMAS_GLOB,
     match: (relPath) => globMatch(SCHEMAS_GLOB, relPath),
+    reason: null,
+  },
+  {
+    name: "runtime-state",
+    matchedRule: RUNTIME_STATE_GLOB,
+    match: (relPath) => globMatch(RUNTIME_STATE_GLOB, relPath),
     reason: null,
   },
   ...BOUND_ARTIFACTS,
@@ -191,6 +203,16 @@ export function evaluateWriteGate({ filePath, root }) {
     // surface="schemas" lookup is required — same approach as skills.
     return evaluateSchemasPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
+  if (matched.name === "runtime-state") {
+    // Phase 1 of plans/260726-0949: runtime-state.jsonl migrated from a dead-end
+    // simple-glob block whose only escape was the append-only `runtime_state_record`
+    // tool — gate_override cannot reach simple-glob blocks (it requires a *promoted*
+    // rule_id). Mirrors the schemas pattern: dedicated `.loop-preflight-runtime-state`
+    // marker created via gate_mark_preflight({surface:"runtime-state"}). The marker is
+    // already used by `runtime_state_record` (runtime-state-record-tool.js:10,70); the
+    // write-gate now reads it too. Closes finding meta-260720T1447Z.
+    return evaluateRuntimeStatePreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
+  }
   return blockResult(matched, filePath);
 }
 
@@ -261,6 +283,41 @@ export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {
       "6. Call gate_mark_preflight MCP tool with surface:\"schemas\" to unlock the gated write (30-minute TTL)",
     ],
     matched_rule: matchedRule ?? SCHEMAS_GLOB,
+  };
+}
+
+/**
+ * Runtime-state preflight check — named seam for the dedicated
+ * `.loop-preflight-runtime-state` marker. Returns { decision: "ok" } if any
+ * surface has a non-stale `.loop-preflight-runtime-state` marker; otherwise
+ * { decision: "block", reason, surface: "runtime-state", preflight_checklist }.
+ *
+ * Migrated from a dead-end BOUND_ARTIFACTS simple-glob block (the reason
+ * pointed at the append-only `runtime_state_record` tool with no row-strike
+ * path; `gate_override` requires a *promoted* rule_id, and `runtime-state`
+ * was a simple-glob block, not promoted). Closes finding
+ * `meta-260720T1447Z`. Phase 1 of plans/260726-0949.
+ */
+// fallow-ignore-next-line unused-export
+export function evaluateRuntimeStatePreflight({ filePath, root, matchedRule }) {
+  const resolvedRoot = root || findProjectRoot();
+  const marker = findPreflightMarker("runtime-state", resolvedRoot);
+  if (marker) return { decision: "ok" };
+
+  return {
+    decision: "block",
+    reason:
+      "Runtime-state row maintenance (striking corrupt rows) is gated. Walk the preflight checklist, call gate_mark_preflight(surface:'runtime-state') to unlock for 30 minutes, edit, then log the change with meta_state_log_change. New rows still go through runtime_state_record (append-only).",
+    surface: "runtime-state",
+    preflight_checklist: [
+      "1. Identify the runtime-state row(s) needing maintenance (typically a corrupt or duplicated row that fingerprint validation rejects — see docs/architecture.md § runtime-state.jsonl for the schema)",
+      "2. Take a backup of runtime-state.jsonl before any in-place edit (single operator, atomic move, not a Write tool rewrite)",
+      "3. Confirm no constraint rules depend on the rows being struck (run pnpm test:iter and check inbound-gate observations for the affected surfaces)",
+      "4. Confirm the change keeps the per-surface budget-state entity consistent (one entity per surface under the canonical id; verify with readBudgetTrackingState)",
+      "5. Stage a meta_state_log_change entry describing the system change (this is the change-log half of self-maintenance)",
+      "6. Call gate_mark_preflight MCP tool with surface:\"runtime-state\" to unlock the gated write (30-minute TTL)",
+    ],
+    matched_rule: matchedRule ?? RUNTIME_STATE_GLOB,
   };
 }
 

@@ -42,12 +42,17 @@ test("records/** blocks with MCP reason", () => {
   assert.strictEqual(result.matched_rule, "records/**");
 });
 
-test("runtime-state.jsonl blocks", () => {
+test("runtime-state.jsonl blocks (preflight-delegating)", () => {
   const root = makeRoot();
   const result = evaluateWriteGate({ filePath: "runtime-state.jsonl", root });
   assert.strictEqual(result.decision, "block");
-  assert.ok(result.reason.includes("runtime-state.jsonl"));
+  // Phase 1 of plans/260726-0949: runtime-state.jsonl migrated from a
+  // simple-glob block to a preflight-delegating rule. Reason mentions the
+  // surface prefix and the canonical workflow (mirrors the schemas/** test).
+  assert.ok(result.reason.includes("Runtime-state"));
+  assert.ok(result.reason.includes("gate_mark_preflight"));
   assert.strictEqual(result.matched_rule, "runtime-state.jsonl");
+  assert.strictEqual(result.surface, "runtime-state");
 });
 
 test("meta-state.jsonl blocks", () => {

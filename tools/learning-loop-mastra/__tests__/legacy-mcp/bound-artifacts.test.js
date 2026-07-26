@@ -4,17 +4,23 @@
  * Phase 3 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.
  * Updated by Phase 2 of plans/260720-1112-runtime-state-read-path-consolidation-
  * schemas-write-gate-repair: `schemas/**` migrated out of BOUND_ARTIFACTS into a
+ * preflight-delegating rule in evaluate-write-gate.js.
+ * Updated by Phase 1 of plans/260726-0949-runtime-state-write-gate-preflight-
+ * delegation: `runtime-state.jsonl` migrated out of BOUND_ARTIFACTS into a
  * preflight-delegating rule in evaluate-write-gate.js. The constant now holds
- * 5 simple-glob rules + 1 special-cased preflight rule (the schemas rule is
- * NOT here — it lives in evaluate-write-gate.js alongside `skills`).
+ * 5 simple-glob rules + 2 special-cased preflight rules (the `schemas` and
+ * `runtime-state` rules are NOT here — they live in evaluate-write-gate.js
+ * alongside `skills`).
  *
  * Contract:
  *   - `core/bound-artifacts.js` exports BOUND_ARTIFACTS (a frozen array).
  *   - Each entry has { name, matchedRule, glob(s), reason }.
- *   - The 5 simple-glob rules exist: records, runtime-state, meta-state,
+ *   - The 5 simple-glob rules exist: records, runtime-tracking, meta-state,
  *     file-index, build-artifacts.
  *   - `schemas` is NOT in BOUND_ARTIFACTS — it is a preflight-delegating rule
  *     handled by evaluateWriteGate (mirrors `skills`).
+ *   - `runtime-state` is NOT in BOUND_ARTIFACTS — it is a preflight-delegating
+ *     rule handled by evaluateWriteGate (mirrors `schemas`).
  *   - The rule order is pinned (first-match-wins — relied on by
  *     evaluate-write-gate.js).
  *   - The constant has zero @mastra/* imports (FCIS preserved).
@@ -42,7 +48,7 @@ test("BOUND_ARTIFACTS is a frozen array covering the 5 simple-glob rules", async
   const names = mod.BOUND_ARTIFACTS.map((r) => r.name);
   for (const required of [
     "records",
-    "runtime-state",
+    "runtime-tracking",
     "meta-state",
     "file-index",
     "build-artifacts",
@@ -53,7 +59,7 @@ test("BOUND_ARTIFACTS is a frozen array covering the 5 simple-glob rules", async
 
 test("BOUND_ARTIFACTS rule order is pinned (first-match-wins)", async () => {
   const mod = await import("../../core/bound-artifacts.js");
-  const expected = ["records", "runtime-state", "runtime-tracking", "meta-state", "file-index", "build-artifacts"];
+  const expected = ["records", "runtime-tracking", "meta-state", "file-index", "build-artifacts"];
   assert.deepStrictEqual(
     mod.BOUND_ARTIFACTS.map((r) => r.name),
     expected,
@@ -67,6 +73,28 @@ test("BOUND_ARTIFACTS does NOT contain 'schemas' (Phase 2 migration to preflight
   assert.ok(
     !names.includes("schemas"),
     `BOUND_ARTIFACTS must not contain 'schemas' — it migrated to a preflight-delegating rule in evaluate-write-gate.js (Phase 2 of plans/260720-1112)`,
+  );
+});
+
+test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (Phase 1 migration to preflight rule)", async () => {
+  const mod = await import("../../core/bound-artifacts.js");
+  const names = mod.BOUND_ARTIFACTS.map((r) => r.name);
+  assert.ok(
+    !names.includes("runtime-state"),
+    `BOUND_ARTIFACTS must not contain 'runtime-state' — it migrated to a preflight-delegating rule in evaluate-write-gate.js (Phase 1 of plans/260726-0949). Closes finding meta-260720T1447Z.`,
+  );
+});
+
+test("evaluateWriteGate handles runtime-state.jsonl via preflight delegation (Phase 1)", async () => {
+  // The runtime-state rule is special-cased in evaluate-write-gate.js (not in
+  // BOUND_ARTIFACTS). Smoke-test that the runtime-state glob is recognised and
+  // routed to the runtime-state preflight branch — covered in detail by
+  // legacy-mcp/runtime-state-write-gate.test.js.
+  const { evaluateWriteGate } = await import("../../core/evaluate-write-gate.js");
+  const result = evaluateWriteGate({ filePath: "runtime-state.jsonl", root: process.cwd() });
+  assert.ok(
+    result.surface === "runtime-state" || result.decision === "ok",
+    `expected runtime-state preflight branch; got: ${JSON.stringify(result)}`,
   );
 });
 
