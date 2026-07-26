@@ -5,16 +5,15 @@ import { loadPromotedRules } from "../../core/gate-logic.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 /**
- * Plan 260726-0029 phase 2: rebuild the merged view per call (cheap; the
- * MCP server is long-lived and a first-call cache would never invalidate).
- * The view is the canonical source for process-slug AND process-numeric
- * resolution. Discoverability slugs/numbers still resolve against the
- * static registry (no rule-derived path).
+ * Rebuild the merged view per call (cheap; the MCP server is long-lived and
+ * a first-call cache would never invalidate). The view is the canonical
+ * source for process-slug AND process-numeric resolution. Discoverability
+ * slugs/numbers still resolve against the static registry (no rule-derived
+ * path).
  *
- * Code-review C2 fix (plans/260717-1826) is preserved at a different layer:
- * numeric keys resolve against the FULL view (never against the shrunk
- * buildProcessHints() output), so a skipped rule's numeric position
- * returns an explicit `unavailable` instead of wrong content.
+ * Numeric keys resolve against the FULL view — never against the shrunk
+ * buildProcessHints() output — so a skipped rule's numeric position returns
+ * an explicit `unavailable` instead of wrong content.
  */
 function resolveHint(key, view, discoverabilityEntries, rulesById) {
   const entry = findEntryForKey(key, view, discoverabilityEntries);

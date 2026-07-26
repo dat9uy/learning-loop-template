@@ -1,5 +1,5 @@
 /**
- * Plan 260726-0029 phase 2 coverage test: every active agent-checklist rule
+ * Coverage test: every active agent-checklist rule
  * must appear in `buildProcessView` (forward direction) AND every view row
  * with `derived_from_rule` must reference an active rule (inverse direction)
  * AND all view slugs must be unique AND every active agent-checklist rule

@@ -39,11 +39,11 @@ export const metaStatePromoteRuleTool = {
     // treats missing hint_text on an agent-checklist rule as skip+warn.
     hint_text: z.string().min(20).optional()
       .describe("Agent-checklist hint text (min 20 chars); required for agent-checklist."),
-    // Plan 260726-0029 phase 1: process-hint metadata so the view in
-    // hint-registry.js can derive entries from the rule itself (no hand-mirror).
-    // `hint_suggestion` is required when pattern_type === "agent-checklist" —
-    // it is interpolated raw into `${slug} — ${suggestion}` pointer lines, so
-    // a newline or oversize value would manufacture fake pointer rows.
+    // Process-hint metadata so the view in hint-registry.js can derive
+    // entries from the rule itself (no hand-mirror). `hint_suggestion` is
+    // required when pattern_type === "agent-checklist" — it is interpolated
+    // raw into `${slug} — ${suggestion}` pointer lines, so a newline or
+    // oversize value would manufacture fake pointer rows.
     hint_order: z.number().int().optional()
       .describe("Merge key for process-hint order; lower = earlier, absent → append-by-slug"),
     hint_suggestion: z.string().min(20).max(200).regex(/^[^\n\r]+$/).optional()
@@ -124,12 +124,12 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-    // Phase 1 (plans/260726-0029): agent-checklist promotion requires
-    // hint_suggestion — the rule owns the pointer text that gets interpolated
-    // into `${slug} — ${suggestion}` rows. The view in hint-registry.js reads
-    // it unconditionally (no fallback), so a missing field is rejected at
-    // promotion time rather than degrading the rendered output. Mirrors the
-    // existing hint_text requirement above.
+    // Agent-checklist promotion requires hint_suggestion — the rule owns the
+    // pointer text that gets interpolated into `${slug} — ${suggestion}`
+    // rows. The view in hint-registry.js reads it unconditionally (no
+    // fallback), so a missing field is rejected at promotion time rather
+    // than degrading the rendered output. Mirrors the existing hint_text
+    // requirement above.
     if (!preview && pattern_type === "agent-checklist" && (typeof hint_suggestion !== "string" || hint_suggestion.length < 20 || hint_suggestion.length > 200 || /[\n\r]/.test(hint_suggestion))) {
       const result = {
         promoted: false,
@@ -314,12 +314,12 @@ export const metaStatePromoteRuleTool = {
       }
     }
 
-    // Phase 1 (plans/260726-0029): slug-collision guard. The derived slug
+    // Slug-collision guard. The derived slug
     // (hint_slug ?? rule_id.replace(/^rule-/,"")) must not collide with a
     // standalone hint-registry slug or with another active agent-checklist
     // rule's derived slug. Last-wins overwrite would silently spoof the
     // colliding entry — so both collision classes are rejected at the tool
-    // layer; the view layer also skip+warns defensively (Phase 2).
+    // layer; the view layer also skips+warns defensively.
     if (!preview && pattern_type === "agent-checklist") {
       const { HINT_REGISTRY } = await import("../../core/hint-registry.js");
       const derivedSlug = (hint_slug ?? rule_id.replace(/^rule-/, ""));

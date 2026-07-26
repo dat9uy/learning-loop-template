@@ -6,6 +6,7 @@
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { mockAgentChecklistRulesById } = require("./helpers/agent-checklist-rules.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const RENDERER_PATH = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hint-renderer.js");
@@ -45,30 +46,13 @@ function renderedMarker(entry, rulesById) {
 }
 
 /**
- * Plan 260726-0029 phase 2: helper that builds a mock rulesById for the
- * 9 rule-derived process rows. The mirror rows were deleted from
- * HINT_REGISTRY, so the previous `filter(e => e.derived_from_rule)` path
- * now returns nothing. The 9-slug set is the locked test fixture.
+ * Hermetic mock rulesById for the rule-derived process rows (shared fixture —
+ * see helpers/agent-checklist-rules.cjs). The mirror rows were deleted from
+ * HINT_REGISTRY, so mocks must come from the fixture, not from filtering the
+ * registry's `derived_from_rule` rows (that set is now empty).
  */
-const MOCK_RULE_SLUGS = [
-  "pr-body-registry-deltas",
-  "runtime-agnostic-audit",
-  "tool-integration-same-commit-dep",
-  "fallow-gate-triage",
-  "short-slug-for-risk-records",
-  "import-chain-analysis-after-tool-deletion",
-  "assertinvariant-at-boundary",
-  "required-status-checks-verify-combined-status",
-  "no-plan-ids-in-stable-code-artifacts",
-];
-
 function mockRulesById() {
-  return new Map(
-    MOCK_RULE_SLUGS.map((slug) => [
-      `rule-${slug}`,
-      { id: `rule-${slug}`, pattern_type: "agent-checklist", hint_text: `[mocked hint_text for ${slug}]` },
-    ])
-  );
+  return mockAgentChecklistRulesById();
 }
 
 describe("hint renderer", () => {
@@ -108,10 +92,10 @@ describe("hint renderer", () => {
   });
 
   test("claude-session-start without rulesById: process view degrades to 2 standalones (degraded mode)", () => {
-    // Plan 260726-0029 phase 2: without rulesById, the buildProcessView has
-    // nothing to generate derived rows from, so the process partition contains
-    // only the 2 standalone rows. This is a CLEANER degradation than the
-    // pre-Phase-2 "skip+warn" path: no warnings, just fewer hints.
+    // Without rulesById the view has nothing to generate derived rows from,
+    // so the process partition contains only the 2 standalone rows — a
+    // cleaner degradation than the old skip+warn path: no warnings, just
+    // fewer hints.
     const { partitions, provenance, warnings } = renderer.renderHints({
       channel: "claude-session-start",
       charBudget: STD_CHAR_BUDGET,
@@ -143,26 +127,10 @@ describe("hint renderer", () => {
   });
 
   test("sidecar channel preserves session-context.json shape", () => {
-    // Plan 260726-0029 phase 2: the 9 rule-derived rows are no longer in
-    // HINT_REGISTRY, so the mock rulesById is built from the locked 9-slug
-    // set directly (not from the registry's `derived_from_rule` rows).
-    const ruleSlugs = [
-      "pr-body-registry-deltas",
-      "runtime-agnostic-audit",
-      "tool-integration-same-commit-dep",
-      "fallow-gate-triage",
-      "short-slug-for-risk-records",
-      "import-chain-analysis-after-tool-deletion",
-      "assertinvariant-at-boundary",
-      "required-status-checks-verify-combined-status",
-      "no-plan-ids-in-stable-code-artifacts",
-    ];
-    const rulesById = new Map(
-      ruleSlugs.map((slug) => [
-        `rule-${slug}`,
-        { id: `rule-${slug}`, pattern_type: "agent-checklist", hint_text: `[mocked hint_text for ${slug}]` },
-      ])
-    );
+    // The rule-derived rows are no longer in HINT_REGISTRY, so the mock
+    // rulesById comes from the shared fixture (real rule ids + hint_slug
+    // overrides), not from the registry's `derived_from_rule` rows.
+    const rulesById = mockRulesById();
 
     const { partitions } = renderer.renderHints({
       channel: "sidecar",
@@ -195,7 +163,9 @@ describe("hint renderer", () => {
     });
     assert.strictEqual(partitions.length, 1, "mcp-warm emits a single partition");
     const arr = JSON.parse(partitions[0]);
-    assert.ok(Array.isArray(arr) && arr.length === 27, "mcp-warm channel returns 27-hint structured array");
+    const expectedLen = registry.buildProcessView({ rulesById: mockRulesById() }).length
+      + registry.listHints({ kind: "discoverability" }).length;
+    assert.strictEqual(arr.length, expectedLen, `mcp-warm returns the full ${expectedLen}-hint structured array`);
   });
 
   test("greedy partitioning: no hint is split across partitions", () => {
@@ -241,11 +211,11 @@ describe("hint renderer", () => {
       charBudget: STD_CHAR_BUDGET,
       rulesById: mockRulesById(),
     });
-    // 16 discoverability + 11 process = (derived from registry) source rows
+    // Discoverability + process source rows, derived from the registry.
     const expectedProvenanceLen = registry.buildProcessView({ rulesById: mockRulesById() }).length + registry.listHints({ kind: "discoverability" }).length;
     assert.strictEqual(provenance.length, expectedProvenanceLen, "provenance must include one row per hint");
     const slugs = new Set(provenance.map((p) => p.slug));
-    assert.strictEqual(slugs.size, 27, "provenance slug count must equal registry size");
+    assert.strictEqual(slugs.size, expectedProvenanceLen, "provenance slugs must be unique (one per hint)");
   });
 
   test("byte-identity: claude-session-start partition 0 ≠ factory-session-start body shape, but both carry same hints", () => {

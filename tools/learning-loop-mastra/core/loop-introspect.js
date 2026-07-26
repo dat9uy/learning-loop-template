@@ -181,8 +181,8 @@ export function buildProcessHints({ rulesById } = {}) {
     // rule-derived → rule.hint_text, skipped (dropped from the array) when
     // the rule is missing/inactive/scope-filtered. Skipping is correct for
     // injection — but consumers doing POSITIONAL lookups must never index
-    // this array with view positions (Phase 2: numeric keys are
-    // session-ephemeral, slugs are the stable contract).
+    // this array with view positions — numeric keys are session-ephemeral;
+    // slugs are the stable lookup contract.
     const text = resolveHintText(entry, ruleMap);
     if (text) out.push(text);
   }

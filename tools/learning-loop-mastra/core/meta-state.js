@@ -525,11 +525,11 @@ const metaStateRuleEntryObject = z.object({
   // the hint-renderer treats a missing rule hint as a skip-with-warning.
   hint_text: z.string().min(20).optional()
     .describe("Agent-checklist process hint text; required when promoted as agent-checklist"),
-  // Plan 260726-0029 phase 1: agent-checklist rule hint metadata. All three
-  // fields are optional on the schema (gate-enforced rules don't need them,
-  // and patch updates may add/remove them incrementally); the tool layer
-  // requires `hint_suggestion` for agent-checklist promotion AND patch-create
-  // so the view in hint-registry.js can read it unconditionally.
+  // Agent-checklist rule hint metadata. All three fields are optional on the
+  // schema (gate-enforced rules don't need them, and patch updates may
+  // add/remove them incrementally); the tool layer requires `hint_suggestion`
+  // for agent-checklist promotion AND patch-create so the view in
+  // hint-registry.js can read it unconditionally.
   hint_order: z.number().int().optional()
     .describe("Merge key for process-hint order (lower = earlier); absent → append-by-slug"),
   hint_suggestion: z.string().min(20).max(200).regex(/^[^\n\r]+$/).optional()

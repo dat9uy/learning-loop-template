@@ -71,12 +71,12 @@ export const metaStatePatchTool = {
       return reject(root, { patched: false, reason: "change_log_immutable", id });
     }
 
-    // Plan 260726-0029 phase 1: patch-create parity. The buildProcessView
-    // (hint-registry.js) reads `rule.hint_suggestion` unconditionally for
-    // agent-checklist rules, so any rule that lacks it (because it was
-    // promoted before the field was added) must gain it via a single
-    // patch that supplies the field. The reject is named so a follow-up
-    // patch that includes `hint_suggestion` is the obvious next step.
+    // Patch-create parity: the buildProcessView (hint-registry.js) reads
+    // `rule.hint_suggestion` unconditionally for agent-checklist rules, so
+    // any rule that lacks it (because it was promoted before the field
+    // existed) must gain it via a single patch that supplies the field.
+    // The reject reason is named so a follow-up patch that includes
+    // `hint_suggestion` is the obvious next step.
     if (entry.entry_kind === "rule" && entry.pattern_type === "agent-checklist") {
       const hasCurrent = typeof entry.hint_suggestion === "string" && entry.hint_suggestion.length >= 20;
       const hasPatch = typeof patch.hint_suggestion === "string" && patch.hint_suggestion.length >= 20 && patch.hint_suggestion.length <= 200 && !/[\n\r]/.test(patch.hint_suggestion);

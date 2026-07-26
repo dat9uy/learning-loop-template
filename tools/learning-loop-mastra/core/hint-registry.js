@@ -183,11 +183,10 @@ export const HINT_REGISTRY = Object.freeze([
 
   // ============================================================================
   // PROCESS (2 standalone rows) — agent behavior under operational conditions.
-  // The 9 rule-derived process rows are NO LONGER hand-mirrored here. They are
-  // generated from active agent-checklist rule entries at read time by
-  // `buildProcessView({ rulesById })` (plan 260726-0029 phase 2). Promoting a
-  // rule is now a single CLI call; the registry itself does not need a
-  // matching hand-edit.
+  // Rule-derived process rows are NOT mirrored here; they are generated from
+  // active agent-checklist rule entries at read time by
+  // `buildProcessView({ rulesById })`. Promoting a rule is a single CLI call;
+  // the registry itself needs no matching hand-edit.
   //
   // `order` keys the merge sort: rule-derived rows pick up `order` from
   // `rule.hint_order`; absent → append-by-slug (deterministic degraded case).
@@ -225,11 +224,10 @@ export function listHints({ kind } = {}) {
 }
 
 /**
- * Plan 260726-0029 phase 2: build the merged process-hint view from the
- * standalone registry rows and the active agent-checklist rules. The view
- * is the canonical source for ALL process-hint consumers — replaces the
- * legacy pattern of inter-leaving hand-mirrored `HINT_REGISTRY` rows with
- * rule-derived ones.
+ * Build the merged process-hint view from the standalone registry rows and
+ * the active agent-checklist rules. The view is the canonical source for ALL
+ * process-hint consumers — replaces the legacy pattern of interleaving
+ * hand-mirrored `HINT_REGISTRY` rows with rule-derived ones.
  *
  * Pure — `rulesById` is a precomputed map supplied by the caller (no I/O).
  * Each generated entry carries the fields the projection paths expect:
@@ -245,23 +243,21 @@ export function listHints({ kind } = {}) {
  *   - `order` — the merge key; lower renders earlier, undefined appends
  *     in slug order (the worktree-degraded case, deterministic).
  *
- * Collision policy (red-team finding #6): a generated slug equal to a
- * standalone slug or another generated slug is SKIPPED with a warning,
- * never last-wins overwrites. The promote/patch tool layers (Phase 1)
- * reject a colliding slug at write time so this branch only fires on
- * data that pre-dates the guard (e.g. an entry pre-Phase 1 whose slug
- * was added without the collision check).
+ * Collision policy: a generated slug equal to a standalone slug or another
+ * generated slug is SKIPPED, never last-wins overwritten. The skip is pushed
+ * onto the optional `warnings` array so callers can surface it; without one
+ * the skip is silent. The promote/patch tool layers reject a colliding slug
+ * at write time, so this branch only fires on data that pre-dates the guard.
  */
-export function buildProcessView({ rulesById } = {}) {
+export function buildProcessView({ rulesById, warnings } = {}) {
   const standalone = HINT_REGISTRY.filter((e) => e.kind === "process").map((e) => ({ ...e }));
   const derived = [];
   const seen = new Set(standalone.map((e) => e.slug));
-  const collisions = [];
   for (const rule of rulesById?.values() ?? []) {
     if (rule.pattern_type !== "agent-checklist") continue;
     const slug = rule.hint_slug ?? rule.id.replace(/^rule-/, "");
     if (seen.has(slug)) {
-      collisions.push(slug);
+      warnings?.push(`process hint "${slug}" skipped: slug collides with a standalone slug or another rule's slug`);
       continue;
     }
     seen.add(slug);
@@ -279,8 +275,8 @@ export function buildProcessView({ rulesById } = {}) {
 
 /**
  * Deterministic sort: order ascending (undefined → +Infinity), tie-break
- * by slug (id-derived). NOT by `created_at` — verified absent on all
- * live rules (Red Team finding #7). The undefined-order tail preserves
+ * by slug (id-derived). `created_at` is deliberately NOT a tie-break input —
+ * rules are not guaranteed to carry it. The undefined-order tail preserves
  * the degraded-worktree case as a deterministic append-by-slug.
  */
 function byOrderThenSlug(a, b) {

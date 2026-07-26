@@ -69,9 +69,8 @@ describe("rule-derived process hints (Phase 3)", () => {
     assert.strictEqual(result.success, false, "hint_text under 20 chars must fail");
   });
 
-  // Plan 260726-0029 phase 1: hint_order / hint_suggestion / hint_slug
-  // round-trip through the rule schema.
-  test("rule schema accepts hint_order, hint_suggestion, hint_slug (Phase 1 fields)", () => {
+  // hint_order / hint_suggestion / hint_slug round-trip through the rule schema.
+  test("rule schema accepts hint_order, hint_suggestion, hint_slug (hint metadata fields)", () => {
     const result = ruleSchema.safeParse({
       id: "rule-test-hint-meta-ok",
       origin: "meta-test",
@@ -165,9 +164,9 @@ describe("rule-derived process hints (Phase 3)", () => {
     assert.ok(rules.length > 0, "registry must have at least one active agent-checklist rule");
     const missing = rules.filter((r) => typeof r.hint_text !== "string" || r.hint_text.length < 20);
     assert.deepStrictEqual(missing, [], `every active agent-checklist rule must carry hint_text >= 20 chars; missing: ${missing.map((r) => r.id).join(", ")}`);
-    // Plan 260726-0029 phase 1: every active agent-checklist rule also carries
-    // hint_suggestion (the buildProcessView in hint-registry.js reads it
-    // unconditionally for the process partition).
+    // Every active agent-checklist rule also carries hint_suggestion (the
+    // buildProcessView in hint-registry.js reads it unconditionally for the
+    // process partition).
     const missingSuggestion = rules.filter(
       (r) => typeof r.hint_suggestion !== "string" || r.hint_suggestion.length < 20 || r.hint_suggestion.length > 200 || /[\n\r]/.test(r.hint_suggestion),
     );
@@ -175,9 +174,9 @@ describe("rule-derived process hints (Phase 3)", () => {
   });
 
   test("every active agent-checklist rule appears in buildProcessView (no orphans, no mirror)", () => {
-    // Plan 260726-0029 phase 2: the coverage invariant is now: every active
-    // agent-checklist rule appears in buildProcessView (and has BOTH
-    // hint_text AND hint_suggestion populated so resolveHintText works).
+    // The coverage invariant: every active agent-checklist rule appears in
+    // buildProcessView (and has BOTH hint_text AND hint_suggestion populated
+    // so resolveHintText works).
     const rules = metaState.readRegistry(PROJECT_ROOT).filter(
       (e) => e.entry_kind === "rule" && e.pattern_type === "agent-checklist" && e.status === "active",
     );
@@ -264,8 +263,8 @@ describe("rule-derived process hints (Phase 3)", () => {
   });
 
   test("registry order preserved (2 standalone rows + 9 rule-derived rows in buildProcessView)", () => {
-    // Plan 260726-0029 phase 2: 9 rule-derived rows are no longer in
-    // HINT_REGISTRY. The 11-row order is now locked in buildProcessView.
+    // The rule-derived rows are no longer in HINT_REGISTRY; the 11-row order
+    // is locked in the view.
     const processEntries = registry.HINT_REGISTRY.filter((e) => e.kind === "process");
     const standalone = processEntries.filter((e) => !e.derived_from_rule);
     assert.strictEqual(standalone.length, 2, "exactly 2 standalone process rows in registry");

@@ -428,9 +428,9 @@ test("activation on agent-checklist with well-formed pattern JSON promotes", asy
   }
 });
 
-// Plan 260726-0029 phase 1: agent-checklist promotion requires hint_suggestion
-// (the buildProcessView in hint-registry.js reads it unconditionally). Mirror
-// the existing hint_text requirement.
+// Agent-checklist promotion requires hint_suggestion (the buildProcessView
+// in hint-registry.js reads it unconditionally). Mirrors the existing
+// hint_text requirement.
 test("activation on agent-checklist without hint_suggestion is rejected (mirror of hint_text gate)", async () => {
   const tempDir = setup();
   try {

@@ -8,6 +8,7 @@
 const assert = require("node:assert/strict");
 const { resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { mockAgentChecklistRulesById } = require("./helpers/agent-checklist-rules.cjs");
 
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const REGISTRY_PATH = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/hint-registry.js");
@@ -71,9 +72,10 @@ describe("hint registry invariants", () => {
   });
 
   test("process entries cover the 11 expected slugs (9 rule-derived + 2 standalone) via buildProcessView", () => {
-    // Plan 260726-0029 phase 2: 9 rule-derived rows are no longer hand-mirrored
-    // in HINT_REGISTRY. The locked 11-slug set lives in buildProcessView (the
-    // merged view of standalones + active agent-checklist rules).
+    // The rule-derived rows are no longer hand-mirrored in HINT_REGISTRY; the
+    // locked 11-slug set lives in the view (merged standalones + active
+    // agent-checklist rules). This hardcoded list is the deliberate drift
+    // signal — a promotion/deactivation must update it consciously.
     const rules = metaState.readRegistry(PROJECT_ROOT).filter(
       (e) => e.entry_kind === "rule" && e.status === "active",
     );
@@ -104,6 +106,25 @@ describe("hint registry invariants", () => {
     }
   });
 
+  test("buildProcessView skips a slug collision and reports it via the warnings channel", () => {
+    // A rule whose derived slug equals a standalone slug (or another rule's
+    // slug) must never last-wins overwrite — it is skipped, and the skip is
+    // surfaced. The promote/patch tools reject this at write time; this
+    // covers pre-guard data.
+    const colliding = new Map([
+      ["rule-collides-standalone", { id: "rule-collides-standalone", pattern_type: "agent-checklist", hint_slug: "pnpm-test-discipline", hint_text: "[mocked hint_text for colliding rule]", hint_suggestion: "[mocked suggestion for colliding rule]" }],
+      ["rule-pr-body-registry-deltas", { id: "rule-pr-body-registry-deltas", pattern_type: "agent-checklist", hint_text: "[mocked hint_text for pr-body-registry-deltas]", hint_suggestion: "[mocked suggestion for pr-body-registry-deltas]" }],
+    ]);
+    const warnings = [];
+    const view = registry.buildProcessView({ rulesById: colliding, warnings });
+    assert.ok(!view.some((e) => e.derived_from_rule === "rule-collides-standalone"),
+      "colliding rule must be skipped, not overwrite the standalone row");
+    const standalone = view.find((e) => e.slug === "pnpm-test-discipline");
+    assert.strictEqual(standalone.derived_from_rule, null, "standalone row keeps its identity");
+    assert.strictEqual(warnings.length, 1, "exactly one collision warning");
+    assert.ok(warnings[0].includes("pnpm-test-discipline"), "warning names the colliding slug");
+  });
+
   test("every process entry is either standalone (text) or rule-derived (derived_from_rule + no inline text)", () => {
     for (const e of registry.HINT_REGISTRY.filter((x) => x.kind === "process")) {
       const standalone = e.derived_from_rule === null || e.derived_from_rule === undefined;
@@ -122,23 +143,10 @@ describe("hint registry invariants", () => {
     const metaPath = resolve(PROJECT_ROOT, "tools/learning-loop-mastra/core/meta-state.js");
     const metaState = await import(pathToFileURL(metaPath).href);
     const disc = introspect.buildDiscoverabilityHints();
-    // Pass a rulesById with hint_text + hint_suggestion for each rule-derived
-    // entry so the projection is hermetic — no registry I/O. This isolates
-    // the unit test from live registry state.
-    const procSlugs = [
-      "pr-body-registry-deltas",
-      "runtime-agnostic-audit",
-      "tool-integration-same-commit-dep",
-      "fallow-gate-triage",
-      "short-slug-for-risk-records",
-      "import-chain-analysis-after-tool-deletion",
-      "assertinvariant-at-boundary",
-      "required-status-checks-verify-combined-status",
-      "no-plan-ids-in-stable-code-artifacts",
-    ];
-    const rulesById = new Map(
-      procSlugs.map((slug) => [`rule-${slug}`, { id: `rule-${slug}`, hint_text: `[mocked hint_text for ${slug}]`, pattern_type: "agent-checklist" }])
-    );
+    // Pass a hermetic rulesById (shared fixture: real rule ids + hint_slug
+    // overrides + hint_text/hint_suggestion) so the projection needs no
+    // registry I/O and stays isolated from live registry state.
+    const rulesById = mockAgentChecklistRulesById();
     const proc = introspect.buildProcessHints({ rulesById });
 
     // Discoverability: every entry's text appears in buildDiscoverabilityHints.
@@ -147,9 +155,9 @@ describe("hint registry invariants", () => {
     }
     assert.strictEqual(disc.length, 16, "buildDiscoverabilityHints must return exactly 16 entries");
 
-    // Phase-2 invariant: buildProcessHints with rulesById returns the full
-    // 11-row view (9 rule-derived + 2 standalone). Without rulesById, the
-    // view degrades to the 2 standalone rows (no derived entries to render).
+    // buildProcessHints with rulesById returns the full view (rule-derived +
+    // standalone). Without rulesById, the view degrades to the standalone
+    // rows (no derived entries to render).
     const expectedViewLen = registry.buildProcessView({ rulesById }).length;
     assert.strictEqual(proc.length, expectedViewLen, `buildProcessHints with rulesById must return the full view (${expectedViewLen} entries)`);
     // Standalone rows in HINT_REGISTRY = 2 (test discipline + file-index drift).
