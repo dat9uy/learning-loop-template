@@ -525,6 +525,17 @@ const metaStateRuleEntryObject = z.object({
   // the hint-renderer treats a missing rule hint as a skip-with-warning.
   hint_text: z.string().min(20).optional()
     .describe("Agent-checklist process hint text; required when promoted as agent-checklist"),
+  // Agent-checklist rule hint metadata. All three fields are optional on the
+  // schema (gate-enforced rules don't need them, and patch updates may
+  // add/remove them incrementally); the tool layer requires `hint_suggestion`
+  // for agent-checklist promotion AND patch-create so the view in
+  // hint-registry.js can read it unconditionally.
+  hint_order: z.number().int().optional()
+    .describe("Merge key for process-hint order (lower = earlier); absent → append-by-slug"),
+  hint_suggestion: z.string().min(20).max(200).regex(/^[^\n\r]+$/).optional()
+    .describe("Curated one-line pointer text (single-line, 20-200 chars); required for agent-checklist rules"),
+  hint_slug: z.string().regex(/^[a-z0-9-]+$/).optional()
+    .describe("Explicit slug override; only needed when desired slug differs from rule id minus 'rule-'"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
   // Plan 260712-0724 follow-up (Fix B): parallel to change-log's applies_to
   // (line 180-186). Scope-narrowing that complements scope_predicate — used

@@ -29,7 +29,7 @@
  * `.mastracode` is intentionally NOT a channel here (Validation 1: pull-only).
  */
 
-import { HINT_REGISTRY, listHints, resolveHintText } from "./hint-registry.js";
+import { HINT_REGISTRY, listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
 
 /**
  * Resolve the renderable text for a registry entry.
@@ -116,7 +116,11 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
   const warnings = [];
   const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings));
-  const process = listHints({ kind: "process" })
+  // Process partition iterates the merged view (standalone rows + generated
+  // rule-derived rows in deterministic order). Pure — rulesById is the
+  // caller's precomputed map. View-level skips (slug collisions) ride the
+  // same warnings channel as text-resolution skips.
+  const process = buildProcessView({ rulesById, warnings })
     .map((e) => resolveEntryText(e, rulesById, warnings));
 
   const disc = greedyPartition(discoverability, charBudget, warnings);
@@ -137,8 +141,14 @@ function renderClaudeSessionStart(entries, charBudget, rulesById) {
  */
 function renderFactorySessionStart(entries, _charBudget, rulesById) {
   const warnings = [];
-  const all = HINT_REGISTRY
+  // Process partition comes from the merged view so the factory output
+  // carries standalone + rule-derived rows. Discoverability still comes
+  // from the static registry.
+  const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings));
+  const process = buildProcessView({ rulesById, warnings })
+    .map((e) => resolveEntryText(e, rulesById, warnings));
+  const all = [...discoverability, ...process];
   const { partitions, provenance } = greedyPartition(all, 999999, warnings);
   return { partitions, provenance, warnings };
 }
@@ -152,7 +162,9 @@ function renderSidecar(entries, _charBudget, rulesById) {
   const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
-  const process = listHints({ kind: "process" })
+  // Process partition uses the merged view (standalone + rule-derived rows
+  // in deterministic order).
+  const process = buildProcessView({ rulesById, warnings })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
   const payload = {
@@ -179,9 +191,15 @@ function renderSidecar(entries, _charBudget, rulesById) {
  */
 function renderMcpWarm(entries, _charBudget, rulesById) {
   const warnings = [];
-  const all = HINT_REGISTRY
+  // Process partition comes from the merged view; discoverability rows are
+  // still read from the static registry.
+  const discoverability = listHints({ kind: "discoverability" })
     .map((e) => resolveEntryText(e, rulesById, warnings))
     .filter((e) => e !== null);
+  const process = buildProcessView({ rulesById, warnings })
+    .map((e) => resolveEntryText(e, rulesById, warnings))
+    .filter((e) => e !== null);
+  const all = [...discoverability, ...process];
   const arr = all.map((e) => ({
     slug: e.slug,
     kind: e.kind,

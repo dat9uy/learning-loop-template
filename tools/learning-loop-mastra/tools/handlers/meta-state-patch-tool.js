@@ -71,6 +71,25 @@ export const metaStatePatchTool = {
       return reject(root, { patched: false, reason: "change_log_immutable", id });
     }
 
+    // Patch-create parity: the buildProcessView (hint-registry.js) reads
+    // `rule.hint_suggestion` unconditionally for agent-checklist rules, so
+    // any rule that lacks it (because it was promoted before the field
+    // existed) must gain it via a single patch that supplies the field.
+    // The reject reason is named so a follow-up patch that includes
+    // `hint_suggestion` is the obvious next step.
+    if (entry.entry_kind === "rule" && entry.pattern_type === "agent-checklist") {
+      const hasCurrent = typeof entry.hint_suggestion === "string" && entry.hint_suggestion.length >= 20;
+      const hasPatch = typeof patch.hint_suggestion === "string" && patch.hint_suggestion.length >= 20 && patch.hint_suggestion.length <= 200 && !/[\n\r]/.test(patch.hint_suggestion);
+      if (!hasCurrent && !hasPatch) {
+        return reject(root, {
+          patched: false,
+          reason: "hint_suggestion_required_for_agent_checklist",
+          id,
+          message: "Agent-checklist rule patch must include a `hint_suggestion` field (single-line, 20-200 chars) when the rule has none. The buildProcessView in hint-registry.js reads it unconditionally; a missing field would make the rule drop from the process-hint view at render time.",
+        });
+      }
+    }
+
     // Script-caller passthrough: allow tool-level mechanism_check and
     // code_fingerprint for finding entries and fold them into the patch object.
     // code_fingerprint remains immutable and is rejected by the deny-list below.

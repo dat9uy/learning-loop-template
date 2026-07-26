@@ -16,7 +16,7 @@ import { resolveToolImportUrl } from "./manifest-loader.js";
 // PROCESS_HINTS consts that lived here (2026-06-12 → 2026-07-17) are deleted;
 // the builders below are thin projections over the registry — same return
 // shape, same order, no call-site changes for loop_describe consumers.
-import { listHints, resolveHintText } from "./hint-registry.js";
+import { listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -176,13 +176,13 @@ export function buildProcessHints({ rulesById } = {}) {
     for (const r of rules) ruleMap.set(r.id, r);
   }
   const out = [];
-  for (const entry of listHints({ kind: "process" })) {
+  for (const entry of buildProcessView({ rulesById: ruleMap })) {
     // Shared resolution path (resolveHintText): standalone → inline text;
     // rule-derived → rule.hint_text, skipped (dropped from the array) when
     // the rule is missing/inactive/scope-filtered. Skipping is correct for
     // injection — but consumers doing POSITIONAL lookups must never index
-    // this array with registry positions (code-review C2); loop_get_instruction
-    // resolves against the fixed registry order instead.
+    // this array with view positions — numeric keys are session-ephemeral;
+    // slugs are the stable lookup contract.
     const text = resolveHintText(entry, ruleMap);
     if (text) out.push(text);
   }
@@ -202,7 +202,7 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
     ruleMap = new Map();
     for (const r of rules) ruleMap.set(r.id, r);
   }
-  const surviving = listHints({ kind: "process" })
+  const surviving = buildProcessView({ rulesById: ruleMap })
     .filter((entry) => Boolean(resolveHintText(entry, ruleMap)));
   return Object.freeze(projectToPointers(surviving));
 }

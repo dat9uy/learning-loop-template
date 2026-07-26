@@ -352,6 +352,7 @@ test("activation on agent-checklist with malformed pattern JSON is rejected with
       pattern_type: "agent-checklist",
       pattern: "[not-json",
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "Curated one-line pointer text (between 20 and 200 chars, single line).",
     });
     const text = JSON.parse(result.content[0].text);
     assert.equal(text.promoted, false);
@@ -388,6 +389,7 @@ test("activation on agent-checklist with wrong-shape pattern JSON is rejected", 
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1 }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "Curated one-line pointer text (between 20 and 200 chars, single line).",
     });
     const text = JSON.parse(result.content[0].text);
     assert.equal(text.promoted, false);
@@ -417,9 +419,142 @@ test("activation on agent-checklist with well-formed pattern JSON promotes", asy
       pattern_type: "agent-checklist",
       pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
       hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "Curated one-line pointer text (between 20 and 200 chars, single line).",
     });
     const text = JSON.parse(result.content[0].text);
     assert.equal(text.promoted, true, JSON.stringify(text));
+  } finally {
+    teardown();
+  }
+});
+
+// Agent-checklist promotion requires hint_suggestion (the buildProcessView
+// in hint-registry.js reads it unconditionally). Mirrors the existing
+// hint_text requirement.
+test("activation on agent-checklist without hint_suggestion is rejected (mirror of hint_text gate)", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must require hint_suggestion.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-needs-hint-suggestion",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      // hint_suggestion omitted on purpose
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "hint_suggestion_required_for_agent_checklist");
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist with multi-line hint_suggestion is rejected (single-line invariant)", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must reject multi-line hint_suggestion.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-multiline-suggestion",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "First line\nSecond line would manufacture fake pointer rows.",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "hint_suggestion_required_for_agent_checklist");
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist with hint_slug that collides with a standalone registry slug is rejected", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion must reject hint_slug colliding with a standalone slug.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-collision-standalone",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "Curated one-line pointer text (between 20 and 200 chars, single line).",
+      hint_slug: "pnpm-test-discipline", // collides with standalone registry slug
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, false);
+    assert.equal(text.reason, "hint_slug_collides_with_standalone");
+  } finally {
+    teardown();
+  }
+});
+
+test("activation on agent-checklist persists hint_order / hint_suggestion / hint_slug on the rule entry", async () => {
+  const tempDir = setup();
+  try {
+    const report = await metaStateReportTool.handler({
+      category: "loop-anti-pattern",
+      subtype: "new-artifact-type",
+      severity: "warning",
+      affected_system: "gate-logic",
+      description: "Activation-mode agent-checklist promotion persists the new hint metadata fields.",
+    });
+    const reportText = JSON.parse(report.content[0].text);
+
+    process.env.LOOP_SESSION_MODE = "live";
+    const result = await metaStatePromoteRuleTool.handler({
+      id: reportText.id,
+      rule_id: "rule-test-persists-hint-meta",
+      enforcement: "agent",
+      pattern_type: "agent-checklist",
+      pattern: JSON.stringify({ version: 1, items: [{ id: "step-one", description: "Do step one" }] }),
+      hint_text: "A sufficiently long process hint for this agent-checklist rule.",
+      hint_suggestion: "Curated one-line pointer text (between 20 and 200 chars, single line).",
+      hint_order: 75,
+      hint_slug: "custom-hint-slug",
+    });
+    const text = JSON.parse(result.content[0].text);
+    assert.equal(text.promoted, true, JSON.stringify(text));
+
+    const entries = readRegistry(tempDir);
+    const ruleEntry = entries.find((e) => e.entry_kind === "rule" && e.id === "rule-test-persists-hint-meta");
+    assert.ok(ruleEntry, "rule entry should exist");
+    assert.equal(ruleEntry.hint_suggestion, "Curated one-line pointer text (between 20 and 200 chars, single line).");
+    assert.equal(ruleEntry.hint_order, 75);
+    assert.equal(ruleEntry.hint_slug, "custom-hint-slug");
   } finally {
     teardown();
   }

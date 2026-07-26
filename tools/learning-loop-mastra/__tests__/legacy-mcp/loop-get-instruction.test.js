@@ -4,6 +4,8 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { loopGetInstructionTool } from "../../tools/handlers/loop-get-instruction-tool.js";
+import { loadPromotedRules } from "../../core/gate-logic.js";
+import { buildProcessView, listHints } from "../../core/hint-registry.js";
 import { withMcpServer } from "../with-mcp-server.js";
 
 const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..", "..", "..");
@@ -61,17 +63,20 @@ describe("loop_get_instruction", () => {
 });
 
 describe("loop_get_instruction (rule-skip stability)", () => {
-  // Regression guard for the positional-misalignment defect found in review:
-  // when a rule-derived entry's rule is missing/inactive, buildProcessHints()
-  // shrinks its output array. Resolution must stay anchored to the fixed
-  // registry order — slug/numeric lookups after the skipped position must
-  // still return their OWN hint, and the skipped slug must error explicitly
-  // instead of returning the next entry's text.
+  // Regression guard for the positional-misalignment defect: when a
+  // rule-derived entry's rule cannot supply text, resolution must never
+  // return the NEXT entry's hint under the queried key. Numeric keys are
+  // session-ephemeral (they follow the current merged view), so the guard
+  // is anchored to correspondence: a numeric key must return the same hint
+  // as the slug at that view position, and a text-less rule must surface an
+  // explicit `unavailable` — never wrong content.
   //
-  // Fixture: copy the live registry minus one rule
-  // (rule-fallow-brief-on-gate-failure, process registry position 4), plus a
-  // .mcp.json so scope_predicate=project_has_learning_loop_mcp rules stay
-  // visible under the temp root.
+  // Fixture: copy the live registry with rule-fallow-brief-on-gate-failure
+  // kept but its `hint_text` stripped (a rule that exists but cannot supply
+  // text — the state that makes `unavailable` reachable), plus a .mcp.json
+  // so scope_predicate=project_has_learning_loop_mcp rules stay visible
+  // under the temp root.
+  const STRIPPED_RULE_ID = "rule-fallow-brief-on-gate-failure";
   let tempRoot;
   let prevGateRoot;
 
@@ -82,7 +87,11 @@ describe("loop_get_instruction (rule-skip stability)", () => {
       .trim()
       .split("\n")
       .map(JSON.parse)
-      .filter((e) => e.id !== "rule-fallow-brief-on-gate-failure");
+      .map((e) => {
+        if (e.id !== STRIPPED_RULE_ID) return e;
+        const { hint_text, ...rest } = e;
+        return rest;
+      });
     writeFileSync(
       join(tempRoot, "meta-state.jsonl"),
       kept.map((e) => JSON.stringify(e)).join("\n") + "\n",
@@ -115,16 +124,10 @@ describe("loop_get_instruction (rule-skip stability)", () => {
     );
   });
 
-  test("numeric lookup maps to registry position, not shifted array position", async () => {
-    // short-slug-for-risk-records = process registry position 5 → numeric 16 + 5 = 21
-    const result = await loopGetInstructionTool.handler({ key: 21 });
-    const parsed = JSON.parse(result.content[0].text);
-    assert.ok(!parsed.results[0].error, `must resolve, not error: ${parsed.results[0].error}`);
-    assert.ok(parsed.results[0].hint.includes("records/**/risks/"));
-    assert.strictEqual(parsed.results[0].index, 21);
-  });
-
-  test("slug whose rule is skipped returns an explicit unavailable error, not wrong content", async () => {
+  test("slug whose rule cannot supply text returns an explicit unavailable, not wrong content", async () => {
+    // The stripped rule still appears in the view, but resolveHintText has
+    // nothing to read — the lookup must error with `unavailable`, never
+    // return a neighboring entry's hint under this slug.
     const result = await loopGetInstructionTool.handler({ key: "fallow-gate-triage" });
     const parsed = JSON.parse(result.content[0].text);
     assert.ok(parsed.results[0].error, "must error");
@@ -132,17 +135,49 @@ describe("loop_get_instruction (rule-skip stability)", () => {
     assert.ok(!parsed.results[0].hint, "no hint payload on unavailable");
   });
 
-  test("numeric key for the skipped position returns unavailable, tail key still resolves", async () => {
-    // fallow-gate-triage = process position 4 → numeric 20; required-status-checks
-    // = process position 9 → numeric 25 (tail; previously degraded to unknown).
-    const skipped = await loopGetInstructionTool.handler({ key: 20 });
-    const skippedParsed = JSON.parse(skipped.content[0].text);
-    assert.ok(skippedParsed.results[0].error?.includes("unavailable"));
+  test("numeric keys correspond to the view: each position returns its own entry's hint or unavailable", async () => {
+    // Compute the expected view from the SAME resolution source the handler
+    // uses, then assert per-position correspondence: numeric key k must
+    // return the identical hint as the slug at view position (k - 16), the
+    // stripped rule's position must say `unavailable`, and no two positions
+    // may return the same hint text (the misalignment signature).
+    const rulesById = new Map(loadPromotedRules(tempRoot).map((r) => [r.id, r]));
+    const view = buildProcessView({ rulesById });
+    assert.ok(
+      view.some((e) => e.derived_from_rule === STRIPPED_RULE_ID),
+      "fixture sanity: the stripped rule must still appear in the view",
+    );
 
-    const tail = await loopGetInstructionTool.handler({ key: 25 });
-    const tailParsed = JSON.parse(tail.content[0].text);
-    assert.ok(!tailParsed.results[0].error, `tail key must resolve: ${tailParsed.results[0].error}`);
-    assert.ok(tailParsed.results[0].hint.includes("mergeStateStatus"));
+    const discoverabilityLen = listHints({ kind: "discoverability" }).length;
+    const seenHints = new Set();
+    let unavailableCount = 0;
+    for (let i = 0; i < view.length; i++) {
+      const key = discoverabilityLen + i;
+      const entry = view[i];
+      const numeric = JSON.parse((await loopGetInstructionTool.handler({ key })).content[0].text).results[0];
+
+      if (entry.derived_from_rule === STRIPPED_RULE_ID) {
+        unavailableCount++;
+        assert.ok(numeric.error?.includes("unavailable"),
+          `key ${key} (${entry.slug}) must say unavailable, got: ${numeric.error}`);
+        assert.ok(!numeric.hint, `key ${key} must not carry hint payload on unavailable`);
+        continue;
+      }
+
+      assert.ok(!numeric.error, `key ${key} (${entry.slug}) must resolve, got: ${numeric.error}`);
+      const bySlug = JSON.parse((await loopGetInstructionTool.handler({ key: entry.slug })).content[0].text).results[0];
+      assert.ok(!bySlug.error, `slug ${entry.slug} must resolve, got: ${bySlug.error}`);
+      assert.strictEqual(numeric.hint, bySlug.hint,
+        `numeric key ${key} must return the same hint as slug ${entry.slug} (no shift)`);
+      assert.strictEqual(numeric.suggestion, bySlug.suggestion,
+        `numeric key ${key} must return the same suggestion as slug ${entry.slug}`);
+      // Uniqueness assumes no two live rules share identical hint_text —
+      // true today; a legitimate duplication would false-fail here (drift signal).
+      assert.ok(!seenHints.has(numeric.hint),
+        `key ${key} (${entry.slug}) returned a hint already seen at another position (misalignment)`);
+      seenHints.add(numeric.hint);
+    }
+    assert.strictEqual(unavailableCount, 1, "exactly one unavailable position (the stripped rule)");
   });
 });
 
