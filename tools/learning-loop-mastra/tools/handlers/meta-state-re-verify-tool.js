@@ -8,6 +8,7 @@ import { resolveSafePath, PathContainmentError } from "../../core/path-containme
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { replyWithLog, loadEntry, appendGateLog } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
+import { isExecSession } from "#lib/exec-mode.js";
 
 const HISTORY_CAP = 50;
 
@@ -26,7 +27,7 @@ export const metaStateReVerifyTool = {
   },
   handler: async ({ id, refresh = false, _expected_version }) => {
     const gateLogTimestamp = new Date().toISOString();
-    if (process.env.META_STATE_VERIFY_EXEC !== "1" && process.env.META_STATE_VERIFY_EXEC !== "true") {
+    if (!isExecSession()) {
       const result = { re_verified: false, reason: "verify_exec_required", id };
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     }

@@ -11,6 +11,10 @@
  *
  * No grant machinery: the tools' existing *_by / *_at fields remain the
  * authorship record.
+ *
+ * Sibling: exec-mode.js. session-mode authorizes operator-tier mutations;
+ * exec-mode authorizes running registry-stored commands (meta_state_re_verify
+ * is the sole consumer). A live session does not imply exec capability.
  */
 
 export function isLiveSession() {
