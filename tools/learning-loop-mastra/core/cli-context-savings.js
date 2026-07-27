@@ -76,40 +76,49 @@ export async function resolveWireBytesForCliTools(manifest, cliTools) {
   const rows = [];
   const seen = new Set();
   for (const entry of manifest) {
-    const { file, export: exportName } = entry;
-    if (!file || !exportName) continue;
-    let mod;
-    try {
-      mod = await import(resolveToolImportUrl(file));
-    } catch (err) {
-      console.error(`cli-context-savings: dynamic import of ${file} failed: ${err?.message ?? err}`);
-      continue;
-    }
-    const legacy = mod[exportName];
-    if (!legacy || !legacy.name) continue;
-    if (!cliTools.has(legacy.name)) continue;
-    if (seen.has(legacy.name)) continue;
-    seen.add(legacy.name);
-    try {
-      // Mirror bin/loop.mjs's runSchema path: a plain shape object must be
-      // wrapped via normalizeInputSchema first, otherwise buildParitySchema
-      // (which only handles zod schemas with a `_zod` def) returns the shape
-      // as-is and z.toJSONSchema would emit object-literal syntax instead of
-      // draft-7 JSON Schema.
-      const normalized = normalizeInputSchema(legacy.schema);
-      const paritySchema = buildParitySchema(normalized);
-      const parityJson = z.toJSONSchema(paritySchema, { target: "draft-7", io: "input" });
-      const wire = JSON.stringify({
-        name: legacy.name,
-        description: legacy.description,
-        inputSchema: parityJson,
-      });
-      rows.push({ name: legacy.name, bytes: Buffer.byteLength(wire, "utf8") });
-    } catch (err) {
-      console.error(`cli-context-savings: wire-def assembly for ${legacy.name} failed: ${err?.message ?? err}`);
-    }
+    const row = await resolveOneEntry(entry, cliTools, seen);
+    if (row) rows.push(row);
   }
   return rows;
+}
+
+async function resolveOneEntry(entry, cliTools, seen) {
+  const { file, export: exportName } = entry;
+  if (!file || !exportName) return null;
+  let mod;
+  try {
+    mod = await import(resolveToolImportUrl(file));
+  } catch (err) {
+    console.error(`cli-context-savings: dynamic import of ${file} failed: ${err?.message ?? err}`);
+    return null;
+  }
+  const legacy = mod[exportName];
+  if (!legacy || !legacy.name) return null;
+  if (!cliTools.has(legacy.name) || seen.has(legacy.name)) return null;
+  seen.add(legacy.name);
+  return wireBytesForLegacy(legacy);
+}
+
+function wireBytesForLegacy(legacy) {
+  try {
+    // Mirror bin/loop.mjs's runSchema path: a plain shape object must be
+    // wrapped via normalizeInputSchema first, otherwise buildParitySchema
+    // (which only handles zod schemas with a `_zod` def) returns the shape
+    // as-is and z.toJSONSchema would emit object-literal syntax instead of
+    // draft-7 JSON Schema.
+    const normalized = normalizeInputSchema(legacy.schema);
+    const paritySchema = buildParitySchema(normalized);
+    const parityJson = z.toJSONSchema(paritySchema, { target: "draft-7", io: "input" });
+    const wire = JSON.stringify({
+      name: legacy.name,
+      description: legacy.description,
+      inputSchema: parityJson,
+    });
+    return { name: legacy.name, bytes: Buffer.byteLength(wire, "utf8") };
+  } catch (err) {
+    console.error(`cli-context-savings: wire-def assembly for ${legacy.name} failed: ${err?.message ?? err}`);
+    return null;
+  }
 }
 
 /**
