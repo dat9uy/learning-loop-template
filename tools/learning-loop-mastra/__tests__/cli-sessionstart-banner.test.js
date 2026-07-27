@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { CLI_READ_TOOLS } from "../core/cli-tools.js";
+import { BANNER_BYTES_BUDGET } from "./banner-budget.js";
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,7 +91,7 @@ test("reads-only banner stays under the records-via-cli byte budget (no schema r
   const readsOnly = buildTransportBanner({ readsViaCli: true, recordsViaCli: false });
   const recordsViaCli = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
   assert.ok(recordsViaCli.length > readsOnly.length, "records banner should be larger (carries sketches)");
-  assert.ok(recordsViaCli.length < 4096, `records banner must stay under 4 KiB; got: ${recordsViaCli.length}`);
+  assert.ok(recordsViaCli.length < BANNER_BYTES_BUDGET, `records banner must stay under the 4 KiB budget; got: ${recordsViaCli.length}`);
 });
 
 test("non-opted additionalContext stays byte-identical", () => {
