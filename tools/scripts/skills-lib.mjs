@@ -141,6 +141,18 @@ function detectExternalHash(name, repoRoot) {
 }
 
 /**
+ * Match the maturity frontmatter value in SKILL.md content.
+ * Shared by normalizeManifest (internal re-derive) and the backstop drift
+ * test so the regex cannot drift between the two call sites.
+ * @param {string} content
+ * @returns {string|null} "state-1" | "state-2" | "state-3" | null
+ */
+export function matchMaturityFrontmatter(content) {
+  const m = content.match(/^maturity:\s*(state-1|state-2|state-3)\s*$/m);
+  return m ? m[1] : null;
+}
+
+/**
  * Deep-equal for plain JSON values (object/array/scalar/null).
  * @param {*} a
  * @param {*} b
@@ -169,18 +181,20 @@ function entryEqual(a, b) {
 /**
  * Pure: take a parsed manifest + repo root, return the normalized manifest
  * (v2 extended schema restored for policy-known externals; internal entries
- * + version preserved verbatim; unknown entries copied verbatim) + a
- * `changed` flag indicating whether any field differs from the input.
+ * re-derived from their `canonicalSource`; unknown entries copied verbatim) +
+ * a `changed` flag indicating whether any field differs from the input.
  *
- * Surgical: only loop-owned fields + hash are touched on policy-known externals.
- * Internal entries and unknown externals are byte-copied (no normalization).
+ * Surgical: only loop-owned fields + hash are touched on policy-known externals;
+ * for internal entries, `hash` + `maturity` are re-derived from
+ * `canonicalSource` (self-heal against canonical edits). Unknown entries are
+ * byte-copied (no normalization).
  *
  * Errors are returned in `error` (string). On error, `changed` is false and
  * `manifest` is the input (no mutation).
  *
  * @param {object} parsed
  * @param {string} repoRoot
- * @returns {{ manifest: object, changed: boolean, error?: string, restoredExternals?: string[] }}
+ * @returns {{ manifest: object, changed: boolean, error?: string, restoredExternals?: string[], restoredInternals?: string[] }}
  */
 export function normalizeManifest(parsed, repoRoot) {
   if (
@@ -205,6 +219,7 @@ export function normalizeManifest(parsed, repoRoot) {
   // top-level field outside {version, skills} on every heal.
   const next = { ...parsed, version: 2, skills: {} };
   const restoredExternals = [];
+  const restoredInternals = [];
   let changed = parsed.version !== 2;
 
   // Process policy-known externals first (replace from policy + re-derive hash).
@@ -226,11 +241,39 @@ export function normalizeManifest(parsed, repoRoot) {
     }
   }
 
-  // Copy internal entries + unknown entries verbatim (no normalization).
+  // Process remaining entries: internal entries re-derive hash + maturity from
+  // canonicalSource; unknown externals are byte-copied (surgical replace).
   for (const [name, entry] of Object.entries(parsed.skills)) {
     if (name in next.skills) continue; // already handled (policy-external)
-    next.skills[name] = { ...entry };
+    if (entry.external === true) {
+      // Unknown external: verbatim (not in EXTERNAL_POLICY → no fingerprint source).
+      next.skills[name] = { ...entry };
+      continue;
+    }
+    // Internal: re-derive hash + maturity from canonicalSource (self-heal).
+    if (!entry.canonicalSource) {
+      // Schema requires canonicalSource on internals; defensive verbatim fallback.
+      next.skills[name] = { ...entry };
+      continue;
+    }
+    const canonAbs = join(repoRoot, entry.canonicalSource);
+    if (!existsSync(canonAbs)) {
+      return {
+        manifest: parsed,
+        changed: false,
+        error: `normalize ${name}: canonicalSource missing at ${entry.canonicalSource}`,
+      };
+    }
+    const canon = readFileSync(canonAbs, "utf8");
+    const nextHash = sha256(canon);
+    const nextMaturity = matchMaturityFrontmatter(canon) ?? entry.maturity;
+    const rederived = { ...entry, hash: nextHash, maturity: nextMaturity };
+    next.skills[name] = rederived;
+    if (!entryEqual(parsed.skills[name], rederived)) {
+      changed = true;
+      restoredInternals.push(name);
+    }
   }
 
-  return { manifest: next, changed, restoredExternals };
+  return { manifest: next, changed, restoredExternals, restoredInternals };
 }

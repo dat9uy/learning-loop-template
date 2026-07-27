@@ -282,8 +282,9 @@ function main() {
   if (norm.changed) {
     atomicWriteManifest(manifestPath, JSON.stringify(norm.manifest, null, 2));
     const restored = norm.restoredExternals ?? [];
+    const rederived = norm.restoredInternals ?? [];
     console.log(
-      `[sync-skills] normalized skills-lock.json (restored ${restored.length} external entr${restored.length === 1 ? "y" : "ies"}: ${restored.join(", ")})`,
+      `[sync-skills] normalized skills-lock.json (restored ${restored.length} external entr${restored.length === 1 ? "y" : "ies"}: ${restored.join(", ") || "—"}; re-derived ${rederived.length} internal: ${rederived.join(", ") || "—"})`,
     );
   }
   const manifest = norm.changed ? norm.manifest : parsed;

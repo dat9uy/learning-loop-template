@@ -154,6 +154,21 @@ test("sync-skills is idempotent (second run writes 0 bytes, no mtime bump)", () 
   });
 });
 
+test("sync-skills authoring path re-derives internal manifest hash and maturity", () => {
+  withFixture(["learning-loop"], {}, (root) => {
+    const canonicalContent = `# learning-loop\nmaturity: state-2\nchanged canonical bytes\n`;
+    const canonicalPath = join(root, "tools/learning-loop-mastra/skills/learning-loop/SKILL.md");
+    writeFileSync(canonicalPath, canonicalContent);
+
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 0, `sync must exit 0: ${r.err}\n${r.out}`);
+    const post = JSON.parse(readFileSync(join(root, "skills-lock.json"), "utf8"));
+    assert.strictEqual(post.skills["learning-loop"].hash, sha256hex(canonicalContent));
+    assert.strictEqual(post.skills["learning-loop"].maturity, "state-2");
+    assert.match(r.out, /re-derived 1 internal: learning-loop/);
+  });
+});
+
 test("canonical-vs-mirror parity invariant: each mirror === canonical", () => {
   for (const name of ["learning-loop", "coordination-gate"]) {
     const canonical = readCanonicalBytes(name);

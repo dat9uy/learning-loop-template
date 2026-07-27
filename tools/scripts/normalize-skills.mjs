@@ -103,8 +103,9 @@ function main() {
   }
   atomicWriteManifest(manifestPath, JSON.stringify(result.manifest, null, 2));
   const restoredNames = result.restoredExternals ?? Object.keys(EXTERNAL_POLICY).filter((n) => n in parsed.skills);
+  const rederivedNames = result.restoredInternals ?? [];
   console.log(
-    `[normalize-skills] normalized skills-lock.json (restored ${restoredNames.length} external entr${restoredNames.length === 1 ? "y" : "ies"}: ${restoredNames.join(", ")})`,
+    `[normalize-skills] normalized skills-lock.json (restored ${restoredNames.length} external entr${restoredNames.length === 1 ? "y" : "ies"}: ${restoredNames.join(", ") || "—"}; re-derived ${rederivedNames.length} internal: ${rederivedNames.join(", ") || "—"})`,
   );
 }
 
