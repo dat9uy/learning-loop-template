@@ -25,7 +25,8 @@
     "gate:self-verify": "node tools/learning-loop-mastra/scripts/gate-self-verify.mjs",
     "gate:server": "node tools/learning-loop-mastra/mastra/server.js",
     "skills:sync": "node tools/scripts/sync-skills.mjs",
-    "skills:normalize": "node tools/scripts/normalize-skills.mjs"
+    "skills:normalize": "node tools/scripts/normalize-skills.mjs",
+    "measure:context": "node tools/scripts/measure-cli-context.mjs"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

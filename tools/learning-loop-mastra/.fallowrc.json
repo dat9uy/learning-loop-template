@@ -23,6 +23,8 @@
     "interface/**/*.js",
     "__tests__/with-mcp-server.js",
     "__tests__/helpers/**/*.cjs",
+    "__tests__/banner-budget.js",
+    "core/cli-context-savings.js",
     "tools/lib/patch-hints.js"
   ],
 

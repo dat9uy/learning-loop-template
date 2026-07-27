@@ -93,6 +93,9 @@ files:
   - path: cli-stderr.js
     role: facade
     summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract (Phase 2 of plans/260722-1343). Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
+  - path: cli-context-savings.js
+    role: helper
+    summary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader. Phase 1 of plans/260726-1953.
   - path: schema-normalize.js
     role: primitive
     summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.
