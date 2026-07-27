@@ -1,7 +1,7 @@
 ---
 title: "CLI Context Savings Measurement and Ledger Dogfood"
 description: "Close meta-260722T1546Z: make the CLI transport's context savings measured, reproducible, ledger-recorded, and regression-guarded"
-status: pending
+status: complete
 priority: P1
 effort: "1.5d"
 tags: [loop-anti-pattern, context-cost, dogfood, tdd]
@@ -40,7 +40,7 @@ report: `plans/reports/predict-260726-1948-systematize-context-cost-analysis.md`
 
 ## Key Design Decisions (verified against source)
 
-- **Wire bytes, not manifest stubs**: dropped bytes = `byteLength(JSON.stringify(wireDef))` per CLI_TOOLS member where `wireDef = {name, description, inputSchema: z.toJSONSchema(legacy.schema, {target:"draft-7", io:"input"})}`. Manifest entries at `tools/manifest.json:25-66` carry only `{file, export, pathFields}` (no `name`); name resolution comes from each handler's `legacy.name` via dynamic import. The parity view at `mastra/create-loop-tool.js:24-63` (line 63 mutates `schema._zod.toJSONSchema`) must be used so the byte count matches what MCP clients see. Manifest stub bytes (~85 B × 30 tools ≈ 2.5 KB) measure the wrong quantity.
+- **Wire bytes, not manifest stubs**: dropped bytes = `byteLength(JSON.stringify(wireDef))` per CLI_TOOLS member where `wireDef = {name, description, inputSchema: z.toJSONSchema(legacy.schema, {target:"draft-7", io:"input"})}`. Manifest entries at `tools/manifest.json:25-66` carry only `{file, export, pathFields}` (no `name`); name resolution comes from each handler's `legacy.name` via dynamic import. The parity view at `mastra/create-loop-tool.js:24-63` (line 63 mutates `schema._zod.toJSONSchema`) must be used so the byte count reflects the parity schema MCP clients see. Fidelity boundary (post-review clarification): the counted `name` is `legacy.name`, NOT the MCP-surface `mastra_<name>` registered at `mastra/server.js:43,74-76`, and the parityJson excludes `legacy.parityJsonSchemaHints` (merged at `create-loop-tool.js:39-45`). Both are constant per-tool offsets (~8 B × N tools + a few bytes on the one hinted tool) that do not affect regression detection or `savings_pct`; excluding them keeps the ledger time-series comparable across formula revisions. Live MCP-wire parity is owned by `mcp-tools-list-parity.test.js`. Manifest stub bytes (~85 B × 30 tools ≈ 2.5 KB) measure the wrong quantity.
 - **JSONC parsing**: parse with the full-line-comment strip regex `.replace(/^\s*\/\/.*$/gm, "")` from `mastra/server.js:34`. Do not add a JSONC dependency. Acknowledged duplication: this adds a 3rd copy (after `server.js:34` and `bin/loop.mjs:54`).
 - **Ledger row shape** (from `runtime-state-record-tool.js:148-159`): `affected_system: "runtime-state"`, `kind: "ledger-event"`, `status: "active"` (REQUIRED — `assertKindConditionalStatus` at `runtime-state.js:288-308` rejects ledger-event rows without it; the canonical handler sets it at line 156), `source_ref` MUST match `^local:meta-state:.+` → cite the finding id. `value` = savings_bytes (number), `delta` = number | null, `metadata` = typed flat object (`dropped_def_bytes: int`, `banner_bytes: int`, `savings_pct: number (1 decimal)`, `cli_tool_count: int`) — v2 fingerprint hashes metadata canonicalized (`runtime-state.js:213-217`), so type drift breaks `verifyRow`.
 - **Ledger id**: `ctx-savings-<ISO>-<pid>` — pid suffix prevents same-millisecond collisions. `appendLedgerEvent` (`runtime-state.js:266-281`) does NOT dedupe on id+kind; that dedupe belongs to `appendOrFindDispatchLedgerEvent:131-152` (used by `meta_state_dispatch_finding`, not by `runtime_state_record`).
@@ -54,17 +54,17 @@ report: `plans/reports/predict-260726-1948-systematize-context-cost-analysis.md`
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Delta Computation Module (TDD)](./phase-01-delta-computation-module.md) | Pending |
-| 2 | [Measurement Script + Ledger Record](./phase-02-measurement-script-ledger-record.md) | Pending |
-| 3 | [Regression Guard + Finding Resolution](./phase-03-regression-guard-finding-resolution.md) | Pending |
+| 1 | [Delta Computation Module (TDD)](./phase-01-delta-computation-module.md) | Complete |
+| 2 | [Measurement Script + Ledger Record](./phase-02-measurement-script-ledger-record.md) | Complete |
+| 3 | [Regression Guard + Finding Resolution](./phase-03-regression-guard-finding-resolution.md) | Complete |
 
 ## Success Criteria
 
-- [ ] `pnpm measure:context` prints `{dropped_def_bytes, banner_bytes, savings_bytes, savings_pct}` and `--record` appends a verifiable ledger row (works from a fresh shell; script mints preflight)
-- [ ] `runtime_state_read` returns the recorded row after a `--record` run
-- [ ] New vitest guard fails when a CLI tool's wire bytes stop being counted correctly (byte-accuracy assertion) or the banner re-bloats past the shared `BANNER_BYTES_BUDGET`
-- [ ] Finding `meta-260722T1546Z` resolved with `local:meta-state:` citation to the evidence, after gate-rule enumeration clears the path
-- [ ] `pnpm test` green
+- [x] `pnpm measure:context` prints `{dropped_def_bytes, banner_bytes, savings_bytes, savings_pct}` and `--record` appends a verifiable ledger row (works from a fresh shell; script mints preflight)
+- [x] `runtime_state_read` returns the recorded row after a `--record` run
+- [x] New vitest guard fails when a CLI tool's wire bytes stop being counted correctly (byte-accuracy assertion) or the banner re-bloats past the shared `BANNER_BYTES_BUDGET`
+- [x] Finding `meta-260722T1546Z` resolved with `local:meta-state:` citation to the evidence, after gate-rule enumeration clears the path
+- [x] `pnpm test` green
 
 <!-- slug: cli-context-savings-measurement-and-ledger-dogfood -->
 
