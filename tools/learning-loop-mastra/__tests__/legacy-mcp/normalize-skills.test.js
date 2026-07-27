@@ -254,6 +254,27 @@ test("internal self-heal: drifted canonical re-derives manifest hash and maturit
   }
 });
 
+test("internal canonical without maturity frontmatter fails closed: exit 2, manifest untouched", () => {
+  // Internal entries must declare maturity in the canonical; a missing line is
+  // an invariant violation, not a "keep the stale value" signal.
+  const { root } = buildClobberedFixture({
+    driftInternal: { name: "learning-loop", content: "# learning-loop\nno maturity line\n" },
+  });
+  try {
+    const before = readFileSync(join(root, "skills-lock.json"), "utf8");
+    const r = runNormalize(root);
+    assert.strictEqual(r.code, 2, `normalize must exit 2: ${r.out}\n${r.err}`);
+    assert.match(r.err, /learning-loop.*maturity/);
+    assert.strictEqual(
+      readFileSync(join(root, "skills-lock.json"), "utf8"),
+      before,
+      "manifest must be untouched on error",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("internal entries re-derived from canonical; unchanged when canonical matches manifest", () => {
   const { root, manifest } = buildClobberedFixture();
   try {

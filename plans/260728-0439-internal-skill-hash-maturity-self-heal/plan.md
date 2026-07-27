@@ -64,4 +64,10 @@ the gap as a contract. Intentionally rescoped to "re-derived from canonical;
 unchanged when canonical matches manifest". No other test asserts internal
 preservation (mirror-parity and fan-out byte-identity tests unaffected).
 
+Fail-closed contract (applies to both CLIs, exit 2, manifest untouched): an
+internal entry whose `canonicalSource` file is missing — or whose canonical
+declares no `maturity` frontmatter — is an invariant violation and aborts the
+run, symmetric with the external fingerprint-miss path. The stale entry is
+never byte-copied through silently.
+
 <!-- slug: internal-skill-hash-maturity-self-heal -->

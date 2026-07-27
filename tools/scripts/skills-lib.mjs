@@ -187,7 +187,9 @@ function entryEqual(a, b) {
  * Surgical: only loop-owned fields + hash are touched on policy-known externals;
  * for internal entries, `hash` + `maturity` are re-derived from
  * `canonicalSource` (self-heal against canonical edits). Unknown entries are
- * byte-copied (no normalization).
+ * byte-copied (no normalization). An internal entry whose canonical file is
+ * missing or declares no maturity frontmatter is an error (fail closed), not
+ * a verbatim copy.
  *
  * Errors are returned in `error` (string). On error, `changed` is false and
  * `manifest` is the input (no mutation).
@@ -257,6 +259,10 @@ export function normalizeManifest(parsed, repoRoot) {
       continue;
     }
     const canonAbs = join(repoRoot, entry.canonicalSource);
+    // Fail closed when the canonical cannot prove the entry's current state:
+    // a missing file or a missing maturity line is an invariant violation, and
+    // byte-copying the stale manifest entry would hide it. Symmetric with the
+    // external fingerprint-miss error above; both CLIs exit non-zero.
     if (!existsSync(canonAbs)) {
       return {
         manifest: parsed,
@@ -265,8 +271,15 @@ export function normalizeManifest(parsed, repoRoot) {
       };
     }
     const canon = readFileSync(canonAbs, "utf8");
+    const nextMaturity = matchMaturityFrontmatter(canon);
+    if (!nextMaturity) {
+      return {
+        manifest: parsed,
+        changed: false,
+        error: `normalize ${name}: canonicalSource ${entry.canonicalSource} declares no maturity frontmatter (state-1|state-2|state-3)`,
+      };
+    }
     const nextHash = sha256(canon);
-    const nextMaturity = matchMaturityFrontmatter(canon) ?? entry.maturity;
     const rederived = { ...entry, hash: nextHash, maturity: nextMaturity };
     next.skills[name] = rederived;
     if (!entryEqual(parsed.skills[name], rederived)) {
