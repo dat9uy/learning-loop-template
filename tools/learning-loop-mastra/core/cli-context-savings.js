@@ -13,8 +13,19 @@
 // The wire-def formula is the parity view assembled at
 // mastra/create-loop-tool.js:24-63: buildParitySchema() collapses
 // z.preprocess / guarded-boolean-union wrappers, z.toJSONSchema(...) emits
-// draft-7 input JSON Schema, and the model-visible wire-def bytes are
+// draft-7 input JSON Schema, and the counted bytes are
 // byteLength(JSON.stringify({name, description, inputSchema: parityJson})).
+//
+// Fidelity boundary (intentional, not a bug): the counted `name` is
+// legacy.name (the handler export), NOT the MCP-surface `mastra_<name>` the
+// server registers at mastra/server.js:43,74-76, and parityJson does NOT
+// carry `legacy.parityJsonSchemaHints` (per-field draft-7 hints merged at
+// create-loop-tool.js:39-45). Both are constant per-tool offsets — ~8 B name
+// prefix × N tools, plus a few bytes on the one hinted tool (meta_state_patch)
+// — so they do not affect regression detection or savings_pct. Excluding them
+// keeps the ledger time-series comparable across formula revisions. The plan
+// (plans/260726-1953) validated name=legacy.name; live MCP-wire parity is
+// owned by mcp-tools-list-parity.test.js, not this helper.
 //
 // Pure functions only — no MCP server spawn, no ledger writes, no CLI
 // surface. The hook import boundary lives in the caller (script + test),
@@ -45,9 +56,11 @@ export function parseManifestJsonc(text) {
 
 /**
  * Resolve the wire-byte size of every CLI_TOOLS member that the manifest
- * exports. Wire bytes = byteLength(JSON.stringify(name, description, inputSchema))
- * where inputSchema is the parity view's draft-7 JSON Schema — the same bytes
- * MCP clients receive on tools/list (see mastra/create-loop-tool.js:24-63).
+ * exports. Wire bytes = byteLength(JSON.stringify({name, description, inputSchema}))
+ * where name = legacy.name and inputSchema is the parity view's draft-7 JSON
+ * Schema (see mastra/create-loop-tool.js:24-63). NOTE: this excludes the MCP
+ * `mastra_` name prefix and `parityJsonSchemaHints` — see the fidelity
+ * boundary in the file header.
  *
  * Best-effort: a handler whose dynamic import throws is logged to stderr
  * and excluded; a CLI_TOOLS member whose manifest entry is missing (e.g.
@@ -102,15 +115,21 @@ export async function resolveWireBytesForCliTools(manifest, cliTools) {
 /**
  * Reduce wire-byte rows + banner variants to the savings aggregate.
  *
+ * `cli_tool_count` is the number of rows actually counted (perTool.length),
+ * NOT the input CLI_TOOLS set size — so a handler that fails to resolve
+ * shrinks both dropped bytes and the count consistently, instead of masking
+ * the regression behind the input-set size. The script's --record path
+ * enforces `rows.length === CLI_TOOLS.size` before writing a ledger row, so a
+ * partial resolution is loud rather than silently mis-recorded.
+ *
  * @param {object} args
  * @param {Array<{name: string, bytes: number}>} args.wireBytes
- * @param {Set<string>} args.cliTools
- * @param {{readsOnly: number, recordsViaCli: number} | {readsOnly: number, recordsViaCli: number} & number} args.bannerBytes
+ * @param {{readsOnly: number, recordsViaCli: number} | number} args.bannerBytes
  *   — Either an object with both variants or a single number; the script
  *   caller computes the bytes via createRequire(hook) and passes the pair.
  * @returns {{dropped_def_bytes: number, per_tool: Array<{name, bytes}>, banner_bytes: number, savings_bytes: number, savings_pct: number, cli_tool_count: number}}
  */
-export function computeCliContextSavings({ wireBytes, cliTools, bannerBytes }) {
+export function computeCliContextSavings({ wireBytes, bannerBytes }) {
   const perTool = [...wireBytes].sort((a, b) => b.bytes - a.bytes || a.name.localeCompare(b.name));
   const dropped = perTool.reduce((sum, r) => sum + r.bytes, 0);
   const bannerMax = typeof bannerBytes === "number"
@@ -127,6 +146,41 @@ export function computeCliContextSavings({ wireBytes, cliTools, bannerBytes }) {
     banner_bytes: bannerMax,
     savings_bytes: savings,
     savings_pct: pct,
-    cli_tool_count: cliTools.size,
+    cli_tool_count: perTool.length,
   };
+}
+
+/**
+ * Select the immediately-prior ctx-savings ledger row from a
+ * `runtime_state_read` result set. Filters to `ctx-savings-` ids, sorts by
+ * `timestamp` DESC, and returns the most recent row (or null). Pure — no I/O.
+ *
+ * Extracted from measure-cli-context.mjs so the prior-row selection is
+ * unit-testable without writing to the ledger (the plan's "tests never write
+ * the ledger" rule still holds; this function only inspects an
+ * already-fetched row array).
+ *
+ * @param {Array<{id?: string, timestamp?: string, value?: number}>} rows
+ * @returns {{id: string, timestamp: string, value: number} | null}
+ */
+export function pickPriorCtxSavingsRow(rows) {
+  if (!Array.isArray(rows)) return null;
+  const ctx = rows
+    .filter((r) => r && typeof r.id === "string" && r.id.startsWith("ctx-savings-"))
+    .sort((a, b) => String(b?.timestamp ?? "").localeCompare(String(a?.timestamp ?? "")));
+  return ctx[0] ?? null;
+}
+
+/**
+ * Compute the ledger row's `delta` field: current savings_bytes minus the
+ * prior row's `value`, or null when there is no finite prior (first run, or a
+ * prior row with a non-numeric value).
+ *
+ * @param {number} currentSavingsBytes
+ * @param {{value?: number} | null} priorRow
+ * @returns {number | null}
+ */
+export function computeSavingsDelta(currentSavingsBytes, priorRow) {
+  if (!priorRow || !Number.isFinite(priorRow.value)) return null;
+  return currentSavingsBytes - priorRow.value;
 }

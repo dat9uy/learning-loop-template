@@ -31,6 +31,8 @@ import {
   parseManifestJsonc,
   resolveWireBytesForCliTools,
   computeCliContextSavings,
+  pickPriorCtxSavingsRow,
+  computeSavingsDelta,
 } from "../core/cli-context-savings.js";
 import { BANNER_BYTES_BUDGET } from "./banner-budget.js";
 
@@ -147,7 +149,6 @@ describe("computeCliContextSavings (pure)", () => {
         { name: "alpha", bytes: 1000 },
         { name: "beta", bytes: 500 },
       ],
-      cliTools: new Set(["alpha", "beta"]),
       bannerBytes: { readsOnly: 300, recordsViaCli: 750 },
     });
     assert.strictEqual(result.dropped_def_bytes, 1500);
@@ -157,12 +158,12 @@ describe("computeCliContextSavings (pure)", () => {
     assert.strictEqual(result.savings_bytes, 750);
     assert.strictEqual(result.savings_pct, 50);
     assert.strictEqual(result.cli_tool_count, 2);
+    assert.strictEqual(result.cli_tool_count, result.per_tool.length, "cli_tool_count tracks counted rows, not an external set");
   });
 
   test("empty wire bytes → savings_bytes negative, savings_pct 0 (no NaN/÷0)", () => {
     const result = computeCliContextSavings({
       wireBytes: [],
-      cliTools: new Set(),
       bannerBytes: { readsOnly: 100, recordsViaCli: 200 },
     });
     assert.strictEqual(result.dropped_def_bytes, 0);
@@ -177,7 +178,6 @@ describe("computeCliContextSavings (pure)", () => {
     // dropped = 31800, banner = 1908 → savings = 29892 → pct = 29892 / 31800 * 100 = 94.0
     const result = computeCliContextSavings({
       wireBytes: [{ name: "all", bytes: 31800 }],
-      cliTools: new Set(["all"]),
       bannerBytes: { readsOnly: 1908, recordsViaCli: 1908 },
     });
     assert.strictEqual(result.savings_bytes, 29892);
@@ -227,9 +227,9 @@ describe("real-manifest integration: wire-byte formula reproduces surface bytes"
     const bannerBytes = Math.max(BANNER_BYTES_BUDGET, 200);
     const result = computeCliContextSavings({
       wireBytes: rows,
-      cliTools: CLI_TOOLS,
       bannerBytes: { readsOnly: bannerBytes, recordsViaCli: bannerBytes },
     });
+    assert.strictEqual(result.cli_tool_count, rows.length, "cli_tool_count tracks counted rows, not an external set");
     assert.ok(result.savings_bytes > 0, `savings must be positive; got ${result.savings_bytes}`);
     const pct = result.savings_pct;
     assert.ok(pct > 0 && pct < 100, `savings_pct must be in (0,100); got ${pct}`);
@@ -264,7 +264,6 @@ describe("Phase 3 regression guards", () => {
     assert.strictEqual(rows.length, CLI_TOOLS.size);
 
     for (const row of rows) {
-      const entry = manifest.find((e) => e && e.export && e.file);
       // Resolve the legacy handler directly for the byte-accuracy check.
       let matched;
       for (const entry of manifest) {
@@ -294,7 +293,6 @@ describe("Phase 3 regression guards", () => {
         expected,
         `${row.name}: reported ${row.bytes} bytes ≠ recomputed ${expected} bytes — wire-def formula drifted`,
       );
-      void entry;
     }
   });
 
@@ -307,7 +305,6 @@ describe("Phase 3 regression guards", () => {
     const rows = await resolveWireBytesForCliTools(manifest, CLI_TOOLS);
     const result = computeCliContextSavings({
       wireBytes: rows,
-      cliTools: CLI_TOOLS,
       bannerBytes: { readsOnly: BANNER_BYTES_BUDGET, recordsViaCli: BANNER_BYTES_BUDGET },
     });
     assert.ok(
@@ -315,5 +312,79 @@ describe("Phase 3 regression guards", () => {
       `savings_pct ${result.savings_pct}% fell below the ${SAVINGS_PCT_FLOOR}% floor — banner re-bloated or tools reclassified. ` +
         `Action: shrink the banner (banner-budget test) or document the reclassification in cli-write-tool-set-drift.test.js (MCP_RESIDUE).`,
     );
+  });
+});
+
+describe("computeCliContextSavings: bannerBytes number branch", () => {
+  // The script always passes an object {readsOnly, recordsViaCli}; the number
+  // branch is a defensive fallback for callers that have a single banner
+  // measurement. Pin it so it is not dead, untested code.
+  test("a bare number bannerBytes is used directly as banner_bytes", () => {
+    const result = computeCliContextSavings({
+      wireBytes: [{ name: "alpha", bytes: 1000 }],
+      bannerBytes: 250,
+    });
+    assert.strictEqual(result.banner_bytes, 250, "number bannerBytes is used as-is");
+    assert.strictEqual(result.savings_bytes, 750);
+    assert.strictEqual(result.savings_pct, 75);
+    assert.strictEqual(result.cli_tool_count, 1);
+  });
+});
+
+describe("pickPriorCtxSavingsRow", () => {
+  test("filters to ctx-savings- ids and returns the most recent by timestamp", () => {
+    const rows = [
+      { id: "delivery-abc-1", timestamp: "2026-07-27T02:00:00.000Z", value: 1 },
+      { id: "ctx-savings-2026-07-27T01-00-00-000Z-100", timestamp: "2026-07-27T01:00:00.000Z", value: 40000 },
+      { id: "ctx-savings-2026-07-27T01-19-20-500Z-200", timestamp: "2026-07-27T01:19:20.500Z", value: 44664 },
+      { id: "ctx-savings-2026-07-27T00-30-00-000Z-300", timestamp: "2026-07-27T00:30:00.000Z", value: 38000 },
+    ];
+    const prior = pickPriorCtxSavingsRow(rows);
+    assert.strictEqual(prior?.id, "ctx-savings-2026-07-27T01-19-20-500Z-200");
+    assert.strictEqual(prior?.value, 44664);
+  });
+
+  test("non-array input → null (no throw)", () => {
+    assert.strictEqual(pickPriorCtxSavingsRow(undefined), null);
+    assert.strictEqual(pickPriorCtxSavingsRow(null), null);
+  });
+
+  test("no ctx-savings rows → null", () => {
+    const rows = [
+      { id: "delivery-abc-1", timestamp: "2026-07-27T02:00:00.000Z", value: 1 },
+      { id: "vnstock", timestamp: "2026-07-24T06:10:54.250Z", value: null },
+    ];
+    assert.strictEqual(pickPriorCtxSavingsRow(rows), null);
+  });
+
+  test("missing timestamp sorts as empty string (does not throw on malformed rows)", () => {
+    const rows = [
+      { id: "ctx-savings-b", value: 10 },
+      { id: "ctx-savings-a", timestamp: "2026-07-27T01:00:00.000Z", value: 20 },
+    ];
+    const prior = pickPriorCtxSavingsRow(rows);
+    // The row with a real timestamp sorts after the empty-timestamp row (DESC).
+    assert.strictEqual(prior?.id, "ctx-savings-a");
+  });
+});
+
+describe("computeSavingsDelta", () => {
+  test("current minus prior value", () => {
+    assert.strictEqual(computeSavingsDelta(44664, { value: 40000 }), 4664);
+  });
+
+  test("first run (no prior row) → null", () => {
+    assert.strictEqual(computeSavingsDelta(44664, null), null);
+  });
+
+  test("prior row with non-numeric value → null", () => {
+    assert.strictEqual(computeSavingsDelta(44664, { value: null }), null);
+    assert.strictEqual(computeSavingsDelta(44664, { value: NaN }), null);
+    assert.strictEqual(computeSavingsDelta(44664, { value: "n/a" }), null);
+    assert.strictEqual(computeSavingsDelta(44664, {}), null);
+  });
+
+  test("negative delta when savings shrank (regression signal)", () => {
+    assert.strictEqual(computeSavingsDelta(30000, { value: 44664 }), -14664);
   });
 });

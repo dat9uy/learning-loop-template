@@ -35,6 +35,8 @@ import {
   parseManifestJsonc,
   resolveWireBytesForCliTools,
   computeCliContextSavings,
+  pickPriorCtxSavingsRow,
+  computeSavingsDelta,
 } from "../learning-loop-mastra/core/cli-context-savings.js";
 import { CLI_TOOLS } from "../learning-loop-mastra/core/cli-tools.js";
 
@@ -81,7 +83,7 @@ async function main() {
   const banner = parseBannerBytes(requireFn);
 
   const wireBytes = await resolveWireBytesForCliTools(manifest, CLI_TOOLS);
-  const delta = computeCliContextSavings({ wireBytes, cliTools: CLI_TOOLS, bannerBytes: banner });
+  const delta = computeCliContextSavings({ wireBytes, bannerBytes: banner });
   const measuredAt = new Date().toISOString();
 
   const result = {
@@ -102,13 +104,28 @@ async function main() {
     return;
   }
 
+  // --record guard: refuse to mint a ledger row unless every CLI_TOOLS member
+  // resolved. A partial resolution would otherwise record a row whose
+  // cli_tool_count (perTool.length) and dropped_def_bytes agree with each
+  // other but understate the true surface — masking the very regression the
+  // dogfood loop is meant to surface. The preceding stderr carries the failed
+  // dynamic-import / wire-def-assembly message that explains the shortfall.
+  if (wireBytes.length !== CLI_TOOLS.size) {
+    console.error(
+      `measure-cli-context: --record aborted — only ${wireBytes.length}/${CLI_TOOLS.size} CLI_TOOLS members resolved. ` +
+        `Recording now would mint a ledger row that undercounts the surface. ` +
+        `See the preceding stderr for the failed dynamic import / wire-def assembly.`,
+    );
+    process.exit(1);
+  }
+
   // --record path: mint preflight marker, look up prior row, write new row.
   // Mint preflight FIRST so a fresh shell can record without an operator dance.
   const now = Date.now();
   mkdirSync(dirname(PREFLIGHT_PATH), { recursive: true });
   writeFileSync(PREFLIGHT_PATH, JSON.stringify({ completed_at: new Date(now).toISOString() }), "utf8");
 
-  let priorValue = null;
+  let priorRow = null;
   try {
     const readRes = spawnSync(
       process.execPath,
@@ -134,13 +151,7 @@ async function main() {
     }
     const readPayload = JSON.parse(readRes.stdout);
     const rows = Array.isArray(readPayload?.rows) ? readPayload.rows : [];
-    const ctxRows = rows
-      .filter((r) => typeof r?.id === "string" && r.id.startsWith("ctx-savings-"))
-      .sort((a, b) => String(b.timestamp ?? "").localeCompare(String(a.timestamp ?? "")));
-    const priorRow = ctxRows[0];
-    if (priorRow && Number.isFinite(priorRow.value)) {
-      priorValue = priorRow.value;
-    }
+    priorRow = pickPriorCtxSavingsRow(rows);
   } catch (err) {
     // Prior lookup failure is recoverable: log and proceed with delta=null.
     // Stopping the script here would block the dogfood loop on a transient
@@ -154,7 +165,7 @@ async function main() {
     id: `ctx-savings-${measuredAt.replace(/[:.]/g, "-")}-${process.pid}`,
     source_ref: `local:meta-state:${FINDING_ID}`,
     value: delta.savings_bytes,
-    delta: priorValue === null ? null : delta.savings_bytes - priorValue,
+    delta: computeSavingsDelta(delta.savings_bytes, priorRow),
     timestamp: measuredAt,
     status: "active",
     fingerprint: null,

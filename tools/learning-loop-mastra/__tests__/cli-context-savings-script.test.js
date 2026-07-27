@@ -6,7 +6,10 @@
 //   - required keys present (measured_at, cli_tool_count, dropped_def_bytes,
 //     banner_bytes, savings_bytes, savings_pct, per_tool)
 //   - sane numeric ranges (savings > 0 if the wire-byte formula counts)
-//   - cli_tool_count matches CLI_TOOLS.size (the union membership invariant)
+//   - cli_tool_count matches per_tool.length (counted rows); the default run
+//     additionally resolves every CLI_TOOLS member, so it also equals
+//     CLI_TOOLS.size — the same equality the --record path enforces before
+//     minting a ledger row.
 //   - banner_bytes == max(readsOnly, recordsViaCli)
 //
 // Default run leaves the registry untouched (no --record), so the test does
@@ -46,7 +49,8 @@ test("measure:context default run prints required keys with sane ranges", { time
   ]) {
     assert.ok(key in payload, `required key missing: ${key}`);
   }
-  assert.strictEqual(payload.cli_tool_count, CLI_TOOLS.size, "cli_tool_count must match CLI_TOOLS.size");
+  assert.strictEqual(payload.cli_tool_count, payload.per_tool.length, "cli_tool_count must equal per_tool.length (counted rows, not the input set)");
+  assert.strictEqual(payload.cli_tool_count, CLI_TOOLS.size, "default run must resolve every CLI_TOOLS member (the --record guard enforces the same)");
   assert.ok(payload.dropped_def_bytes > 0, `dropped_def_bytes must be > 0; got ${payload.dropped_def_bytes}`);
   assert.ok(payload.savings_bytes > 0, `savings_bytes must be > 0; got ${payload.savings_bytes}`);
   assert.ok(payload.savings_pct > 0 && payload.savings_pct < 100, `savings_pct must be in (0,100); got ${payload.savings_pct}`);
@@ -60,6 +64,10 @@ test("measure:context default run prints required keys with sane ranges", { time
   for (let i = 1; i < bytes.length; i += 1) {
     assert.ok(bytes[i - 1] >= bytes[i], `per_tool must be sorted desc by bytes; got ${JSON.stringify(bytes)}`);
   }
+  // Snapshot = the "review every byte change" guard: any per-tool byte
+  // delta flakes here and forces a human `vitest -u` review. The band test in
+  // cli-context-savings.test.js is the softer "don't flake on normal growth"
+  // guard. The two are deliberately complementary.
   expect(payload).toMatchSnapshot({
     measured_at: expect.any(String),
   });
