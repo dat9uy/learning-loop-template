@@ -70,5 +70,6 @@ test("measure:context default run prints required keys with sane ranges", { time
   // guard. The two are deliberately complementary.
   expect(payload).toMatchSnapshot({
     measured_at: expect.any(String),
+    root: expect.any(String),
   });
 });

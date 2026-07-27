@@ -170,7 +170,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "workflow_notify_artifact",
     },
   ],
-  "root": "/home/datguy/codingProjects/learning-loop-template",
+  "root": Any<String>,
   "savings_bytes": 44664,
   "savings_pct": 93.8,
 }
