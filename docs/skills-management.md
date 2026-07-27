@@ -25,6 +25,8 @@ The loop recognizes three skill kinds via `skills-lock.json`:
 
 The preflight marker unlocks writes to canonical-source paths for 30 minutes (gate rule from `core/evaluate-write-gate.js`). `pnpm skills:sync` is the fan-out materializer — it copies byte-identically to all 3 surfaces via `writeToAllSkills`. Idempotent (re-run = no diff when mirrors already match canonical).
 
+The same run also self-heals the internal manifest entries: `hash` and `maturity` are re-derived from the canonical file, so editing the canonical is the only step — never hand-edit `skills-lock.json`. Sync fails closed (exit 2, manifest untouched) when an internal canonical is missing or declares no `maturity:` frontmatter; restore the file or add the line (`state-1|state-2|state-3`) and re-run.
+
 ### B. Add or update an external skill (`npx skills`)
 
 ```
@@ -61,5 +63,7 @@ This is the same `normalizeManifest` that `pnpm skills:sync` runs internally, ex
 | F11 / F12 cross-surface byte-identity fails | A runtime surface has stale mastra content from before fan-out | `pnpm skills:sync` |
 | `[sync-skills] FAIL mastra: no-detected-copy` | `<runtime>/skills/mastra/SKILL.md` was deleted or never installed | Re-run `npx skills add mastra-ai/skills --copy` for the detected runtime, then `pnpm skills:sync` |
 | `[normalize-skills] FATAL: normalize mastra: no real-dir SKILL.md found` | All 3 surfaces' mastra trees were deleted; normalize can't derive a hash | Same as above |
+| `FATAL: normalize <name>: canonicalSource missing at ...` | Internal canonical SKILL.md was deleted | Restore the canonical file, then `pnpm skills:sync` |
+| `FATAL: normalize <name>: ... declares no maturity frontmatter` | Internal canonical lost its `maturity:` line | Add `maturity: state-1|state-2|state-3` to the canonical, then `pnpm skills:sync` |
 
 For the empirical npx clobber shape that motivated this design (the Phase 1 probe), see `plans/reports/probe-260720-npx-skills-clobber-shape.md`. For the meta-state finding this doc resolves, see the entry at `id: meta-260720T1451Z-npx-skills-cli-clobbers-skills-lock-json-on-every-npx-skills`.

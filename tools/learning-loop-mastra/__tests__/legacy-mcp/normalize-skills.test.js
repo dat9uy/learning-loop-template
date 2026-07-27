@@ -69,6 +69,7 @@ function buildClobberedFixture({
   newMastraContent = "# mastra\nNEW: npx-installed content for detection\n",
   staleContent = "# mastra\nSTALE: pre-clobber content\n",
   includeUnknownExternal = null,
+  driftInternal = null,
 } = {}) {
   const root = mkdtempSync(join(tmpdir(), "ll-normalize-"));
   // Write non-detected surfaces first.
@@ -124,6 +125,12 @@ function buildClobberedFixture({
   }
   const manifest = { version: 2, skills };
   writeFileSync(join(root, "skills-lock.json"), JSON.stringify(manifest, null, 2));
+  if (driftInternal) {
+    writeFileSync(
+      join(root, "tools/learning-loop-mastra/skills", driftInternal.name, "SKILL.md"),
+      driftInternal.content,
+    );
+  }
   return { root, newMastraContent, staleContent, detectedSurfaces, manifest };
 }
 
@@ -227,7 +234,48 @@ test("hash derivation: only 1 detected surface (the others stale) → hash match
   }
 });
 
-test("internal entries preserved byte-identical (coordination-gate + learning-loop untouched)", () => {
+test("internal self-heal: drifted canonical re-derives manifest hash and maturity", () => {
+  const canonicalContent = `# learning-loop\nmaturity: state-2\nchanged canonical bytes\n`;
+  const { root, manifest } = buildClobberedFixture({
+    driftInternal: { name: "learning-loop", content: canonicalContent },
+  });
+  try {
+    const stale = manifest.skills["learning-loop"];
+    const r = runNormalize(root);
+    assert.strictEqual(r.code, 0, `normalize must exit 0: ${r.err}\n${r.out}`);
+    const post = readManifest(root);
+    assert.notStrictEqual(post.skills["learning-loop"].hash, stale.hash, "drifted hash must not remain stale");
+    assert.strictEqual(post.skills["learning-loop"].hash, sha256hex(canonicalContent));
+    assert.notStrictEqual(post.skills["learning-loop"].maturity, stale.maturity, "drifted maturity must not remain stale");
+    assert.strictEqual(post.skills["learning-loop"].maturity, "state-2");
+    assert.match(r.out, /re-derived 1 internal: learning-loop/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("internal canonical without maturity frontmatter fails closed: exit 2, manifest untouched", () => {
+  // Internal entries must declare maturity in the canonical; a missing line is
+  // an invariant violation, not a "keep the stale value" signal.
+  const { root } = buildClobberedFixture({
+    driftInternal: { name: "learning-loop", content: "# learning-loop\nno maturity line\n" },
+  });
+  try {
+    const before = readFileSync(join(root, "skills-lock.json"), "utf8");
+    const r = runNormalize(root);
+    assert.strictEqual(r.code, 2, `normalize must exit 2: ${r.out}\n${r.err}`);
+    assert.match(r.err, /learning-loop.*maturity/);
+    assert.strictEqual(
+      readFileSync(join(root, "skills-lock.json"), "utf8"),
+      before,
+      "manifest must be untouched on error",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("internal entries re-derived from canonical; unchanged when canonical matches manifest", () => {
   const { root, manifest } = buildClobberedFixture();
   try {
     const before = manifest.skills["coordination-gate"];

@@ -64,7 +64,7 @@ function buildFixture(names, { seedMirrors = false, manifestSkills } = {}) {
   for (const name of names) {
     const canonicalDir = join(root, "tools/learning-loop-mastra/skills", name);
     mkdirSync(canonicalDir, { recursive: true });
-    writeFileSync(join(canonicalDir, "SKILL.md"), `# ${name}\n`);
+    writeFileSync(join(canonicalDir, "SKILL.md"), `# ${name}\nmaturity: state-1\n`);
     skills[name] = {
       source: "local",
       sourceType: "local",
@@ -79,7 +79,7 @@ function buildFixture(names, { seedMirrors = false, manifestSkills } = {}) {
       for (const s of SURFACES) {
         const dir = join(root, s, "skills", name);
         mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, "SKILL.md"), `# ${name}\n`);
+        writeFileSync(join(dir, "SKILL.md"), `# ${name}\nmaturity: state-1\n`);
       }
     }
   }
@@ -154,6 +154,37 @@ test("sync-skills is idempotent (second run writes 0 bytes, no mtime bump)", () 
   });
 });
 
+test("sync-skills authoring path re-derives internal manifest hash and maturity", () => {
+  withFixture(["learning-loop"], {}, (root) => {
+    const canonicalContent = `# learning-loop\nmaturity: state-2\nchanged canonical bytes\n`;
+    const canonicalPath = join(root, "tools/learning-loop-mastra/skills/learning-loop/SKILL.md");
+    writeFileSync(canonicalPath, canonicalContent);
+
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 0, `sync must exit 0: ${r.err}\n${r.out}`);
+    const post = JSON.parse(readFileSync(join(root, "skills-lock.json"), "utf8"));
+    assert.strictEqual(post.skills["learning-loop"].hash, sha256hex(canonicalContent));
+    assert.strictEqual(post.skills["learning-loop"].maturity, "state-2");
+    assert.match(r.out, /re-derived 1 internal: learning-loop/);
+  });
+});
+
+test("sync-skills fails closed when internal canonical declares no maturity frontmatter", () => {
+  withFixture(["learning-loop"], {}, (root) => {
+    const canonicalPath = join(root, "tools/learning-loop-mastra/skills/learning-loop/SKILL.md");
+    writeFileSync(canonicalPath, "# learning-loop\nno maturity line\n");
+    const before = readFileSync(join(root, "skills-lock.json"), "utf8");
+    const r = runSyncSkills(root);
+    assert.strictEqual(r.code, 2, `sync must exit 2: ${r.out}\n${r.err}`);
+    assert.match(r.err, /learning-loop.*maturity/);
+    assert.strictEqual(
+      readFileSync(join(root, "skills-lock.json"), "utf8"),
+      before,
+      "manifest must be untouched on error",
+    );
+  });
+});
+
 test("canonical-vs-mirror parity invariant: each mirror === canonical", () => {
   for (const name of ["learning-loop", "coordination-gate"]) {
     const canonical = readCanonicalBytes(name);
@@ -178,24 +209,24 @@ test("fan-out correctness: canonical edit propagates byte-identically to all mir
     let r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `seed run must exit 0: ${r.err}`);
 
-    writeFileSync(canonical, "# test-skill\n<!-- sentinel-260719 -->\n");
+    writeFileSync(canonical, "# test-skill\nmaturity: state-1\n<!-- sentinel-260719 -->\n");
     r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `sentinel run must exit 0: ${r.err}`);
     for (const surface of SURFACES) {
       assert.strictEqual(
         readFileSync(mirrorPath(root, surface, "test-skill"), "utf8"),
-        "# test-skill\n<!-- sentinel-260719 -->\n",
+        "# test-skill\nmaturity: state-1\n<!-- sentinel-260719 -->\n",
         `${surface}: mirror must gain the sentinel byte-identically`,
       );
     }
 
-    writeFileSync(canonical, "# test-skill\n");
+    writeFileSync(canonical, "# test-skill\nmaturity: state-1\n");
     r = runSyncSkills(root);
     assert.strictEqual(r.code, 0, `revert run must exit 0: ${r.err}`);
     for (const surface of SURFACES) {
       assert.strictEqual(
         readFileSync(mirrorPath(root, surface, "test-skill"), "utf8"),
-        "# test-skill\n",
+        "# test-skill\nmaturity: state-1\n",
         `${surface}: mirror must revert byte-identically`,
       );
     }
@@ -210,7 +241,7 @@ test("self-heal: deleted mirror is restored byte-identically on next sync", () =
     assert.strictEqual(r.code, 0, `heal run must exit 0: ${r.err}`);
     assert.strictEqual(
       readFileSync(mirrorPath(root, ".factory", "test-skill"), "utf8"),
-      "# test-skill\n",
+      "# test-skill\nmaturity: state-1\n",
       ".factory mirror must be restored byte-identically from canonical",
     );
   });
@@ -250,7 +281,7 @@ test("partial-fan-out failure: read-only surface → exit 1, names surface, no t
   // and there would be no failure to surface).
   withFixture(["test-skill"], { seedMirrors: true }, (root) => {
     const canonical = join(root, "tools/learning-loop-mastra/skills/test-skill/SKILL.md");
-    writeFileSync(canonical, "# test-skill\nchanged\n");
+    writeFileSync(canonical, "# test-skill\nmaturity: state-1\nchanged\n");
     // Read-only must be applied to the LEAF dir (where writeFileSync(tmp)
     // happens) — chmod on the surface root alone does not block writes into
     // an already-writable subdir.
@@ -269,14 +300,14 @@ test("partial-fan-out failure: read-only surface → exit 1, names surface, no t
     for (const surface of [".claude", ".factory"]) {
       assert.strictEqual(
         readFileSync(mirrorPath(root, surface, "test-skill"), "utf8"),
-        "# test-skill\nchanged\n",
+        "# test-skill\nmaturity: state-1\nchanged\n",
         `${surface}: writable surface must still receive the update`,
       );
     }
     // The failed surface kept its stale content (visible divergence, not silent).
     assert.strictEqual(
       readFileSync(mirrorPath(root, ".mastracode", "test-skill"), "utf8"),
-      "# test-skill\n",
+      "# test-skill\nmaturity: state-1\n",
       ".mastracode: failed surface must retain its prior content",
     );
     // No temp debris anywhere (finally-cleanup, red-team F15 behavioral check).

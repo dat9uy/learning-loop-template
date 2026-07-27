@@ -21,6 +21,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
+import { matchMaturityFrontmatter } from "../../../scripts/skills-lib.mjs";
+
 const MCP_ROOT = new URL("../../../../", import.meta.url).pathname;
 const MANIFEST_PATH = join(MCP_ROOT, "skills-lock.json");
 
@@ -36,9 +38,7 @@ function sha256OfPath(p) {
 
 function readFrontmatterMaturity(skillPath) {
   if (!existsSync(skillPath)) return null;
-  const content = readFileSync(skillPath, "utf8");
-  const m = content.match(/^maturity:\s*(state-1|state-2|state-3)\s*$/m);
-  return m ? m[1] : null;
+  return matchMaturityFrontmatter(readFileSync(skillPath, "utf8"));
 }
 
 test("skills-lock.json exists at repo root", () => {
