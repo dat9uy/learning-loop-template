@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Meta-state closure"
-status: pending
+status: completed
 priority: P1
 effort: "30m"
 dependencies: [2]
@@ -50,9 +50,9 @@ resolution cites a finding whose description matches what was fixed.
 
 ## Success Criteria
 
-- [ ] Finding description includes maturity (verify via `meta_state_list({id})`)
-- [ ] Change-log entry exists and is cited in the resolution `source_refs`
-- [ ] Finding status resolved; grounding check passes
+- [x] Finding description includes maturity (verify via `meta_state_list({id})`)
+- [x] Change-log entry exists and is cited in the resolution `source_refs`
+- [x] Finding status resolved; grounding check passes
 
 ## Risk Assessment
 

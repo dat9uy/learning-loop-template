@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Implement re-derive + CLI logs"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [1]
@@ -80,12 +80,12 @@ Edge cases (locked by tests where applicable):
 
 ## Success Criteria
 
-- [ ] All Phase 1 tests pass
-- [ ] Idempotence test (`normalize-skills.test.js:163`) green — consistent
+- [x] All Phase 1 tests pass
+- [x] Idempotence test (`normalize-skills.test.js:163`) green — consistent
       fixture → `changed:false`, no mtime bump
-- [ ] Backstop tests (`skills-manifest.test.js:90,105`) green
-- [ ] `skills-mirror-parity.test.js` green (cross-surface parity unaffected)
-- [ ] Live check: `pnpm skills:sync` on the real repo is a no-op (manifest
+- [x] Backstop tests (`skills-manifest.test.js:90,105`) green
+- [x] `skills-mirror-parity.test.js` green (cross-surface parity unaffected)
+- [x] Live check: `pnpm skills:sync` on the real repo is a no-op (manifest
       already consistent)
 
 ## Risk Assessment

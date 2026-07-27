@@ -1,9 +1,10 @@
 ---
 title: "Internal skill hash+maturity self-heal"
 description: "normalizeManifest re-derives internal hash+maturity from canonicalSource; closes meta-260725T2311Z process gap (68101d1 incident)"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
+branch: plan/internal-skill-hash-maturity-self-heal
 tags: [skills, manifest, self-heal, tdd]
 created: 2026-07-28
 ---
@@ -38,22 +39,22 @@ Source design: `plans/reports/problem-solving-260728-0422-internal-skill-hash-ma
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [TDD: failing tests](./phase-01-tdd-tests.md) | Pending |
-| 2 | [Implement re-derive + CLI logs](./phase-02-implement-re-derive-cli-logs.md) | Pending |
-| 3 | [Meta-state closure](./phase-03-meta-state-closure.md) | Pending |
+| 1 | [TDD: failing tests](./phase-01-tdd-tests.md) | Completed |
+| 2 | [Implement re-derive + CLI logs](./phase-02-implement-re-derive-cli-logs.md) | Completed |
+| 3 | [Meta-state closure](./phase-03-meta-state-closure.md) | Completed |
 
 ## Success Criteria
 
-- [ ] Mutate canonical `SKILL.md` (content + maturity) → `pnpm skills:sync` →
+- [x] Mutate canonical `SKILL.md` (content + maturity) → `pnpm skills:sync` →
       `skills-lock.json` `hash`/`maturity` equal `sha256(canonicalSource)` /
       canonical frontmatter, no manual re-derive (CLI end-to-end test)
-- [ ] Drifted-canonical unit test: `changed=true`, `restoredInternals=[name]`,
+- [x] Drifted-canonical unit test: `changed=true`, `restoredInternals=[name]`,
       re-derived fields match canonical
-- [ ] Rescoped internal-entries test proves idempotence, not preservation
-- [ ] Existing idempotence (`:163`) and backstop (`skills-manifest.test.js:90,105`)
+- [x] Rescoped internal-entries test proves idempotence, not preservation
+- [x] Existing idempotence (`:163`) and backstop (`skills-manifest.test.js:90,105`)
       tests stay green
-- [ ] `restoredInternals` in both CLI log lines
-- [ ] Change-log entry recorded; finding patched (maturity in scope) and resolved
+- [x] `restoredInternals` in both CLI log lines
+- [x] Change-log entry recorded; finding patched (maturity in scope) and resolved
       with `source_refs` citing the change-log id
 
 ## Contract Change (accepted)

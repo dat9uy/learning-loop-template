@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "TDD: failing tests"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []
@@ -61,10 +61,10 @@ to `canonicalSource`.
 
 ## Success Criteria
 
-- [ ] New unit test fails with stale `hash`/`maturity` observed in output
-- [ ] New CLI test fails (log line absent; manifest not healed)
-- [ ] Rescoped `:230` test passes against current code (consistent fixture)
-- [ ] No implementation files modified in this phase
+- [x] New unit test fails with stale `hash`/`maturity` observed in output
+- [x] New CLI test fails (log line absent; manifest not healed)
+- [x] Rescoped `:230` test passes against current code (consistent fixture)
+- [x] No implementation files modified in this phase
 
 ## Risk Assessment
 
