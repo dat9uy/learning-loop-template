@@ -253,6 +253,68 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(deriveStatus(entry2, ctx2).drift, false);
   });
 
+  // Terminal findings: recommendation must agree with the authoritative
+  // drift:false verdict — no leftover `investigate` sub-signal for a
+  // resolved/superseded code-only/code-missing finding.
+  test("terminal (resolved) + code-only → recommendation: no_action (agrees with drift:false)", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({ status: "resolved", evidence_code_ref: "src.js" });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "code-only");
+    assert.strictEqual(result.derived_status, "active-uncertain");
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
+  test("terminal (superseded) + code-only → recommendation: no_action", () => {
+    const ctx = baseContext();
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    const entry = baseEntry({ status: "superseded", evidence_code_ref: "src.js" });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
+  test("terminal (resolved) + code-missing → recommendation: no_action (not investigate)", () => {
+    const ctx = baseContext();
+    const entry = baseEntry({ status: "resolved", evidence_code_ref: "missing.js" });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "code-missing");
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
+  test("terminal (resolved) + mechanism-shipped → recommendation: no_action (leading terminal guard covers all kinds)", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      status: "resolved",
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
+  test("terminal (superseded) + mechanism-shipped → recommendation: no_action", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      status: "superseded",
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+    });
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
   test("change-log with no evidence_code_ref returns kind: no-signals (post-migration, no entry-kind fast path)", () => {
     // Post-migration: change-logs flow through the same evaluation as findings.
     // A change-log without evidence_code_ref or evidence_test naturally resolves
@@ -303,7 +365,7 @@ describe("deriveStatus pure function", () => {
       "resolved-by-mechanism", "active-no-signal", "active-uncertain",
     ]);
     assert.deepStrictEqual(META_STATE_RECOMMENDATIONS, [
-      "no_action", "resolve", "investigate", "log_drift", "re_verify",
+      "no_action", "resolve", "investigate", "re_verify",
     ]);
   });
 

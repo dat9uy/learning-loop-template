@@ -17,7 +17,7 @@ export const META_STATE_DERIVED_STATUSES = [
 ];
 
 export const META_STATE_RECOMMENDATIONS = [
-  "no_action", "resolve", "investigate", "log_drift", "re_verify",
+  "no_action", "resolve", "investigate", "re_verify",
 ];
 
 /** Terminal raw_status values: a `resolved-by-mechanism` derivation is NOT drift
@@ -143,26 +143,32 @@ function computeDerivedStatus(kind) {
 
 // fallow-ignore-next-line complexity
 function computeRecommendation(entry, derivedStatus, kind, isStaleOpts = {}) {
+  // Terminal findings (resolved / superseded): the authoritative verdict is
+  // raw_status + drift, and computeDrift returns false for terminal statuses.
+  // recommendation must agree — return no_action up front rather than a leftover
+  // sub-signal (e.g. investigate) that contradicts drift:false. This is
+  // the leading guard so it covers EVERY kind, including mechanism-shipped.
+  // Mirrors computeIsDrift's terminal guard in query-drift.js.
+  //
   // Plan 260707-0812 Phase 2: drive the "open vs. terminal" branch from
   // isOpen / TERMINAL_RAW_STATUSES — the literal status equality sites were
   // removed because the persisted enum no longer carries "reported"/"active".
   //
-  // Order matters: stale-view matches BEFORE generic open so the re_verify
-  // recommendation wins for aged/open findings (otherwise "resolve" wins
-  // for any open finding, masking the stale-view signal). The full `entry`
-  // is passed so isStaleView can read `last_verified_at`/`created_at`.
+  // Order matters: the terminal guard runs first; then stale-view matches
+  // BEFORE generic open so the re_verify recommendation wins for aged/open
+  // findings (otherwise "resolve" wins for any open finding, masking the
+  // stale-view signal). The full `entry` is passed so isStaleView can read
+  // `last_verified_at`/`created_at`.
   //
   // Plan 260716-0624 Phase 01 (Validation Q4): `isStaleOpts` threads
   // fileIndex + codeHashes through to isStaleView. When the caller does not
   // inject them, isStaleView falls back to age-only (backward compat).
+  if (!isOpen(entry)) return "no_action";
   if (kind === "mechanism-shipped" && isStaleView(entry, isStaleOpts)) {
     return "re_verify";
   }
   if (kind === "mechanism-shipped" && isOpen(entry)) {
     return "resolve";
-  }
-  if (kind === "mechanism-shipped" && TERMINAL_RAW_STATUSES.has(entry.status)) {
-    return "log_drift";
   }
   if (kind === "code-missing") return "investigate";
   // code-only means "file exists but no positive test-pass signal" — honest

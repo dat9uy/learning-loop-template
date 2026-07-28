@@ -44,7 +44,7 @@ export function queryDrift(entries, codeContext = {}) {
     if (!computeIsDrift(derivation, grounding, entry)) continue;
 
     // Compute recommendation based on join result
-    const recommendation = computeRecommendation(derivation, grounding);
+    const recommendation = computeRecommendation(derivation, grounding, entry);
 
     driftEvents.push({
       id: entry.id,
@@ -101,13 +101,20 @@ function computeIsDrift(derivation, grounding, entry) {
 /**
  * Internal helper: recommendation based on join result.
  *
- * Note: SP1's locked `recommendation` enum has 4 values (`no_action`, `resolve`,
- * `investigate`, `log_drift`). SP3 only emits `resolve` or `investigate` because
- * the lean drift event shape filters to actionable outcomes. `no_action` and
- * `log_drift` are not drift conditions (see `computeIsDrift`).
+ * Note: SP1's `recommendation` enum has 4 values (`no_action`, `resolve`,
+ * `investigate`, `re_verify`). SP3 only emits `resolve` or `investigate` because
+ * the lean drift event shape filters to actionable outcomes; `no_action` and
+ * `re_verify` are not drift conditions (see `computeIsDrift`).
  */
 // fallow-ignore-next-line complexity
-function computeRecommendation(derivation, grounding) {
+function computeRecommendation(derivation, grounding, entry) {
+  // Terminal findings never reach here in practice: computeIsDrift (above)
+  // returns false for terminal statuses so the loop `continue`s before this
+  // call. Mirror that guard anyway so the two sibling helpers stay consistent
+  // — a resolved/superseded entry is no_action, not a leftover `investigate`
+  // sub-signal that contradicts drift:false. Mirrors computeIsDrift L84.
+  if (!isOpen(entry)) return "no_action";
+
   // Case 6: SP1 says code-missing → investigate (file is gone)
   if (derivation.derivation.kind === "code-missing") {
     return "investigate";
