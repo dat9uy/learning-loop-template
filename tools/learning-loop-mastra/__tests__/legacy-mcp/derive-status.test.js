@@ -469,6 +469,30 @@ describe("deriveStatus pure function", () => {
     assert.strictEqual(result.recommendation, "re_verify");
   });
 
+  // Ordering guard: the terminal check runs BEFORE the stale-view check, so a
+  // terminal finding stays no_action even when its cited file has drifted —
+  // the same inputs that yield re_verify for an open finding (test above).
+  // Without the leading placement, drift would surface re_verify on an entry
+  // whose authoritative verdict is already drift:false.
+  test("drift-aware: terminal (resolved) + mechanism-shipped + drift → no_action (terminal guard precedes stale-view)", () => {
+    const ctx = baseContext({ test_passed: true });
+    writeFileSync(join(ctx.root, "src.js"), "// code");
+    writeFileSync(join(ctx.root, "src.test.js"), "// test");
+    const entry = baseEntry({
+      status: "resolved",
+      evidence_code_ref: "src.js",
+      evidence_test: "src.test.js",
+      created_at: new Date(ctx.now() - 1000).toISOString(), // fresh
+    });
+    // Same drifted-hash setup as the re_verify test above.
+    ctx.fileIndex = new Map([["src.js", "sha256:" + "a".repeat(64)]]);
+    ctx.codeHashes = new Map([["src.js", "sha256:" + "b".repeat(64)]]);
+    const result = deriveStatus(entry, ctx);
+    assert.strictEqual(result.derivation.kind, "mechanism-shipped");
+    assert.strictEqual(result.drift, false);
+    assert.strictEqual(result.recommendation, "no_action");
+  });
+
   test("drift-aware: mechanism-shipped + no drift (hashes match) → resolve", () => {
     const ctx = baseContext({ test_passed: true });
     writeFileSync(join(ctx.root, "src.js"), "// code");
