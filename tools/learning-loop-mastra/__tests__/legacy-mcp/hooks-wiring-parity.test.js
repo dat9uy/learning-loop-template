@@ -61,9 +61,10 @@ function loadManifest() {
  *      `node "$FACTORY_PROJECT_DIR"/.factory/...`)
  *   - remaining double-quote characters
  *   - leading interpreter name (`node `) so we compare path-to-path
- *   - any leftover leading-slash artifacts after env-token removal
- * Idempotent and whitespace-collapsing. Path-traversal safe: ref must match
- * the END of the normalized command with no separator prefix.
+ *   - exact normalized path equality (no suffix matching)
+ * Idempotent and whitespace-collapsing. Path-traversal safe: after supported
+ * env-token/interpreter syntax is removed, the normalized command and manifest
+ * ref must be identical.
  */
 function normalizeCommandPath(command) {
   let s = String(command ?? "");
@@ -78,21 +79,6 @@ function normalizeCommandPath(command) {
   // Strip leading path separators (artifacts of env-token replacement).
   s = s.replace(/^\/+/, "");
   return s;
-}
-
-function commandEndsWith(command, ref) {
-  // Anchored end-match with a non-path-separator boundary — rejects
-  // path-traversal prefixes like `evil/<ref>` where the join separator
-  // (implicit slash) precedes `<ref>`.
-  const norm = normalizeCommandPath(command);
-  if (norm === ref) return true;
-  if (norm.endsWith(ref)) {
-    // The char just before <ref> must not be a path separator.
-    const i = norm.length - ref.length - 1;
-    if (i < 0) return true;
-    return norm[i] !== "/" && norm[i] !== "\\";
-  }
-  return false;
 }
 
 function commandEquals(command, ref) {
@@ -219,7 +205,7 @@ function wiresArePresent({ runtimeHooks, key, surface, wiring, entry }) {
   if (wiring.kind === "shim") {
     // A command resolving to the declared shim ref exists with the manifest matcher.
     const matches = eventEntries.filter((h) =>
-      commandEndsWith(h.command, wiring.ref)
+      commandEquals(h.command, wiring.ref)
       && matchersEqual(h.matcher, wiring.matcher)
     );
     if (!matches.length) {
@@ -251,12 +237,13 @@ function wiresArePresent({ runtimeHooks, key, surface, wiring, entry }) {
   }
 
   if (wiring.kind === "adapter") {
-    // A command ending with the adapter ref exists under SessionStart (verified by event), with the declared matcher.
+    // A command resolving exactly to the adapter ref exists under SessionStart
+    // (verified by event), with the declared matcher.
     const matches = eventEntries.filter((h) =>
-      commandEndsWith(h.command, wiring.ref) && matchersEqual(h.matcher, wiring.matcher)
+      commandEquals(h.command, wiring.ref) && matchersEqual(h.matcher, wiring.matcher)
     );
     if (!matches.length) {
-      return { ok: false, found: `expected adapter command ending with ${wiring.ref} under ${entry.event} matcher=${JSON.stringify(wiring.matcher)} on ${surface}`, fix_suggestion: `Wire ${key} on ${surface} via the adapter at ${wiring.ref}.` };
+      return { ok: false, found: `expected adapter command ${wiring.ref} under ${entry.event} matcher=${JSON.stringify(wiring.matcher)} on ${surface}`, fix_suggestion: `Wire ${key} on ${surface} via the adapter at ${wiring.ref}.` };
     }
     return { ok: true };
   }
@@ -317,10 +304,15 @@ await test("env-token canonicalization: $FACTORY_PROJECT_DIR / $CLAUDE_PROJECT_D
     normalizeCommandPath('node .claude/coordination/hooks/bash-coordination-gate.cjs'),
     ".claude/coordination/hooks/bash-coordination-gate.cjs",
   );
-  // Anchor guard rejects path-traversal prefixes.
+  // Exact equality rejects unrelated commands and non-separator prefixes that
+  // merely end with the declared path.
   assert.ok(
-    !commandEndsWith('node tools/learning-loop-mastra/hooks/universal/bash-gate.js', ".claude/coordination/hooks/bash-coordination-gate.cjs"),
+    !commandEquals('node tools/learning-loop-mastra/hooks/universal/bash-gate.js', ".claude/coordination/hooks/bash-coordination-gate.cjs"),
     "wrong-surface ref must not match",
+  );
+  assert.ok(
+    !commandEquals('node evil.claude/coordination/hooks/bash-coordination-gate.cjs', ".claude/coordination/hooks/bash-coordination-gate.cjs"),
+    "non-separator prefix must not match the declared shim path",
   );
 });
 
