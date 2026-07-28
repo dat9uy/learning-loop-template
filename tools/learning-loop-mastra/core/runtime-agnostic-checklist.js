@@ -160,6 +160,80 @@ function buildShimMaps(root) {
 }
 
 /**
+ * Shim filename → universal hook key map. The shim filename convention
+ * (e.g. `bash-coordination-gate.cjs`) is fixed by the shim writer; the
+ * universal hook key (e.g. `bash-gate`) is the basename without extension
+ * of the file in tools/learning-loop-mastra/hooks/universal/. Both names
+ * are stable in the repo. Keep this mapping authoritative — if a shim is
+ * renamed, the corresponding universal hook entry in hooks-lock.json must
+ * follow.
+ */
+const SHIM_NAME_TO_HOOK_KEY = Object.freeze({
+  "bash-coordination-gate.cjs": "bash-gate",
+  "write-coordination-gate.cjs": "write-gate",
+  "inbound-state-gate.cjs": "inbound-gate",
+  "recurrence-check-on-start.cjs": "recurrence-check-on-start",
+});
+
+/**
+ * Load hooks-lock.json from the repo root if present. Returns null when
+ * the manifest is missing/unreadable/malformed — the shims-in-sync
+ * no-manifest fallback is "assert across ALL SHIM_DIRS" (legacy
+ * behavior), so missing manifests never fail the check.
+ */
+function loadHooksManifest(root) {
+  const path = join(root, "hooks-lock.json");
+  if (!existsSync(path)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    if (!parsed || typeof parsed !== "object" || typeof parsed.hooks !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Return the surface names that the manifest declares as `kind:"shim"` for
+ * the given hook key. Returns null if no manifest, or empty Set if the
+ * manifest exists but the hook is unknown / declares no shim surfaces.
+ */
+function shimSurfacesForHook(manifest, hookKey) {
+  if (!manifest) return null;
+  const entry = manifest?.hooks?.[hookKey];
+  if (!entry || !entry.wiring) return new Set();
+  const out = new Set();
+  for (const [surface, wiring] of Object.entries(entry.wiring)) {
+    if (wiring && wiring.kind === "shim") out.add(surface);
+  }
+  return out;
+}
+
+/**
+ * Build the set of shim filenames the manifest declares any surface to
+ * wire as kind:"shim" for. The shim name is derived from each shim
+ * wiring's `ref` basename (the manifest is authoritative), so a newly
+ * added shim-wired hook requires no map update to be enumerated.
+ * Returns null when no manifest (so the caller can skip this union —
+ * there is nothing manifest-declared to enumerate). Used to union
+ * manifest-declared shim names into the parity iteration, so a
+ * deleted/missing shim is checked instead of silently passing.
+ */
+function manifestDeclaredShimNames(manifest) {
+  if (!manifest || !manifest.hooks) return null;
+  const out = new Set();
+  for (const entry of Object.values(manifest.hooks)) {
+    if (!entry || !entry.wiring) continue;
+    for (const wiring of Object.values(entry.wiring)) {
+      if (wiring && wiring.kind === "shim" && typeof wiring.ref === "string") {
+        out.add(wiring.ref.split("/").pop());
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Runtime-agnostic checklist — shared between the regression test and the
  * check_runtime_agnostic MCP tool. Each item has an id, human description,
  * and a verify(featurePath, root) function returning { ok, expected?, found?, fix_suggestion? }.
@@ -202,23 +276,69 @@ export const CHECKLIST = [
   },
   {
     id: "shims-in-sync",
-    description: "Every runtime surface's coordination/hooks/ directory contains the same set of .cjs shims, byte-identical across all surfaces (.claude, .factory, .mastracode; mirror by hand, no helper; see SHIM_DIRS).",
+    description: "Every runtime surface wired as kind:\"shim\" in hooks-lock.json carries that hook's .cjs shim byte-identical across those surfaces; kind:\"direct\"/\"adapter\"/\"none\" surfaces are filtered out of the parity set.",
     // fallow-ignore-next-line complexity
     verify(featurePath, root) {
       // Enumerate the actual .cjs shims in each surface's hooks dir. Shim
       // filenames use a separate convention from the universal hook files
       // (e.g. bash-gate.js -> bash-coordination-gate.cjs), so they cannot be
       // derived from universal hook names — read the real directory contents.
+      //
+      // When hooks-lock.json is present, the parity set per shim is
+      // restricted to the surfaces the manifest declares as `kind:"shim"`
+      // for that shim's hook key. Missing manifest falls back to legacy
+      // parity across ALL SHIM_DIRS (existing fixture semantics).
+      // Unknown shim filename (not in SHIM_NAME_TO_HOOK_KEY) falls back to
+      // legacy parity across all containing surfaces — keeps developer
+      // experiments from being flagged when the manifest isn't updated.
       const perSurface = buildShimMaps(root);
+      const manifest = loadHooksManifest(root);
 
+      // Step 1: enumerate shim names.
+      //   - All observed .cjs filenames in any SHIM_DIRS (existing scan).
+      //   - PLUS every shim name the manifest declares kind:"shim" for, even
+      //     if missing on every surface — an observed-only iteration would
+      //     miss declared-but-missing shims and pass on an empty fixture
+      //     root (false green).
       const allNames = new Set();
       for (const s of perSurface) for (const n of s.names) allNames.add(n);
+      const declared = manifestDeclaredShimNames(manifest);
+      if (declared) for (const n of declared) allNames.add(n);
 
       const issues = [];
       for (const name of allNames) {
-        const present = perSurface.filter((s) => s.byName.has(name));
-        if (present.length < perSurface.length) {
-          for (const s of perSurface) {
+        const hookKey = SHIM_NAME_TO_HOOK_KEY[name];
+        const declaredShimSurfaces = hookKey ? shimSurfacesForHook(manifest, hookKey) : null;
+        // Parity set:
+        //   - Manifest present + known shim name → manifest's kind:"shim"
+        //     surfaces for that hook (the surfaces that MUST carry the shim,
+        //     byte-identical). If declared set is empty, no surface is
+        //     expected to carry this shim — it is dead code, skip entirely.
+        //   - No manifest OR unknown shim name → ALL SHIM_DIRS (legacy).
+        const useLegacyAll = declaredShimSurfaces == null;
+        const declaredEmpty = declaredShimSurfaces && declaredShimSurfaces.size === 0;
+        let paritySurfaceDir;
+        if (useLegacyAll) {
+          paritySurfaceDir = perSurface;
+        } else if (declaredEmpty) {
+          // Manifest says no surface wires this hook as kind:"shim" — the
+          // shim is dead code. Skip; do NOT silently fallback to all surfaces
+          // (that would flag a deleted dead-code shim as a byte-drift failure).
+          continue;
+        } else {
+          paritySurfaceDir = perSurface.filter((s) => declaredShimSurfaces.has(s.dir.split("/")[0]));
+        }
+
+        if (paritySurfaceDir.length === 0) {
+          // Defensive: manifest declared kind:"shim" surfaces that aren't in
+          // SHIM_DIRS (e.g. an unknown runtime surface). Should never happen
+          // with SURFACES-derived SHIM_DIRS but skip to avoid phantom issues.
+          continue;
+        }
+
+        const present = paritySurfaceDir.filter((s) => s.byName.has(name));
+        if (present.length < paritySurfaceDir.length) {
+          for (const s of paritySurfaceDir) {
             if (!s.byName.has(name)) issues.push(`${s.dir}/${name}`);
           }
           continue; // missing shim reported; skip content check for this name
@@ -232,8 +352,8 @@ export const CHECKLIST = [
       if (issues.length) {
         return fail(
           issues.join(", "),
-          `same set of .cjs shims, byte-identical, across all surfaces: ${SHIM_DIRS.join(", ")}`,
-          "Mirror each .cjs shim byte-identical into every runtime's coordination/hooks/ directory so all surfaces stay in sync.",
+          `same set of .cjs shims, byte-identical, across kind:"shim" surfaces per hooks-lock.json`,
+          "Mirror each .cjs shim byte-identical into every runtime's coordination/hooks/ directory the manifest declares as kind:\"shim\" for that hook.",
         );
       }
       return pass();
