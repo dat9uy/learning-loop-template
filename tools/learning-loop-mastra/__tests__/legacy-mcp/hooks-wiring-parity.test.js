@@ -18,13 +18,13 @@
  *                  merged into one per-surface list
  *   - .mastracode → .mastracode/hooks.json (flat array per Event with command + matcher object)
  *
- * Env-token canonicalization (red-team F6): .claude and .factory commands
- * may use `$FACTORY_PROJECT_DIR` / `$CLAUDE_PROJECT_DIR` prefixes. The
- * helper strips these so the comparison is anchored at the surface-relative
+ * Env-token canonicalization: .claude and .factory commands may use
+ * `$FACTORY_PROJECT_DIR` / `$CLAUDE_PROJECT_DIR` prefixes. The helper
+ * strips these so the comparison is anchored at the surface-relative
  * path with no path-separator prefix (rejects `evil/<ref>` path-traversal).
  *
- * Shim byte-identity is NOT asserted here (delegated to the runtime-agnostic
- * `shims-in-sync` checklist item, made manifest-aware in the Phase 3 work).
+ * Shim byte-identity is NOT asserted here (delegated to the manifest-aware
+ * `shims-in-sync` checklist item in core/runtime-agnostic-checklist.js).
  *
  * Sibling of skills-mirror-parity.test.js.
  */
@@ -51,7 +51,7 @@ function loadManifest() {
   return readJson(MANIFEST_PATH);
 }
 
-// ---------- env-token canonicalization (F6) ----------
+// ---------- env-token canonicalization ----------
 
 /**
  * Strip env-token path prefixes that some runtimes embed in hook commands
@@ -63,7 +63,7 @@ function loadManifest() {
  *   - leading interpreter name (`node `) so we compare path-to-path
  *   - any leftover leading-slash artifacts after env-token removal
  * Idempotent and whitespace-collapsing. Path-traversal safe: ref must match
- * the END of the normalized command with no separator prefix (F6).
+ * the END of the normalized command with no separator prefix.
  */
 function normalizeCommandPath(command) {
   let s = String(command ?? "");
@@ -194,17 +194,21 @@ function matchersEqual(a, b) {
 
 // ---------- assertion logic per wiring kind ----------
 
-function wiresArePresent({ runtimeHooks, key, surface, wiring, entry, surfaceDir }) {
+function wiresArePresent({ runtimeHooks, key, surface, wiring, entry }) {
   const eventEntries = runtimeHooks.filter((h) => h.event === entry.event);
 
   if (wiring.kind === "none") {
-    // Negative: NO command under event references this hook's universal path
-    // (universal basename) OR shim surface path.
+    // Negative: NO command on this surface may reference the hook — neither
+    // the universal path basename nor any shim basename the manifest
+    // declares elsewhere — under ANY event (an undeclared wire squatting
+    // under a different event is still drift).
     const base = entry.path.split("/").pop().replace(/\.(cjs|js)$/, "");
-    const offenders = eventEntries.filter((h) => {
-      const norm = normalizeCommandPath(h.command);
-      const tail = norm.split("/").pop();
-      return tail === `${base}.cjs` || tail === `${base}.js`;
+    const shimNames = Object.values(entry.wiring)
+      .filter((w) => w && w.kind === "shim" && typeof w.ref === "string")
+      .map((w) => w.ref.split("/").pop());
+    const offenders = runtimeHooks.filter((h) => {
+      const tail = normalizeCommandPath(h.command).split("/").pop();
+      return tail === `${base}.cjs` || tail === `${base}.js` || shimNames.includes(tail);
     });
     if (offenders.length) {
       return { ok: false, found: offenders.map((h) => h.command).join("; "), fix_suggestion: `Remove the undeclared wiring for ${key} on ${surface}; the manifest declares kind:"none".` };
@@ -213,9 +217,9 @@ function wiresArePresent({ runtimeHooks, key, surface, wiring, entry, surfaceDir
   }
 
   if (wiring.kind === "shim") {
-    // A command resolving to <surface>/coordination/hooks/<shim>.cjs exists with the manifest matcher.
+    // A command resolving to the declared shim ref exists with the manifest matcher.
     const matches = eventEntries.filter((h) =>
-      commandEndsWith(h.command, `${surface}/${wiring.ref.replace(surface + "/", "")}`)
+      commandEndsWith(h.command, wiring.ref)
       && matchersEqual(h.matcher, wiring.matcher)
     );
     if (!matches.length) {
@@ -228,7 +232,7 @@ function wiresArePresent({ runtimeHooks, key, surface, wiring, entry, surfaceDir
     // A command resolving to `node tools/learning-loop-mastra/hooks/universal/<file>` exists.
     const matchCmd = `node ${entry.path}`;
     if (Array.isArray(wiring.matcher)) {
-      // Array-matcher cardinality: one wiring per element of the array (red-team F8).
+      // Array-matcher cardinality: one wiring per element of the array.
       const expectedTools = wiring.matcher.map((m) => (m && typeof m === "object" ? m.tool_name : m));
       const presentTools = eventEntries
         .filter((h) => commandEquals(h.command, matchCmd))
@@ -299,8 +303,8 @@ await test("loadRuntimeHooks resolves all 3 runtime config shapes (shape test)",
 });
 
 await test("env-token canonicalization: $FACTORY_PROJECT_DIR / $CLAUDE_PROJECT_DIR stripped before comparison", () => {
-  // Red-team F6: prefixed env tokens in command strings MUST be stripped
-  // before comparing against the (env-token-free) manifest ref.
+  // Prefixed env tokens in command strings MUST be stripped before
+  // comparing against the (env-token-free) manifest ref.
   assert.strictEqual(
     normalizeCommandPath('node "$FACTORY_PROJECT_DIR"/.factory/coordination/hooks/bash-coordination-gate.cjs'),
     ".factory/coordination/hooks/bash-coordination-gate.cjs",
@@ -340,7 +344,7 @@ await test("every wired shim/adapter ref exists on disk", () => {
   }
 });
 
-await test("SessionStart adapter matcher (`startup`) is asserted (red-team F7)", async () => {
+await test("SessionStart adapter matcher (`startup`) is asserted", async () => {
   // .factory's SessionStart adapter carries matcher:"startup"; the parity
   // path uses matchersEqual on the runtime config's matcher to ensure the
   // matcher is actually wired (not just any event entry).
@@ -388,13 +392,3 @@ await test(".mastracode write-gate: array-matcher cardinality (3 distinct wires)
     assert.ok(coveredTools.includes(tool), `write-gate on .mastracode must wire tool:"${tool}"`);
   }
 });
-
-// ---------- mutation guard (manual proof of drift detection) ----------
-//
-// This section documents — by structure, not by execution — that the test
-// detects both drift directions (a wired hook that disappears, and an
-// undeclared hook that gets wired). The mutation checks live in the
-// phase-02 plan; they are NOT executed here because they would mutate the
-// runtime configs (forbidden by Phase 2 scope). The reverse-direction
-// assertions above (kind:"none" negative branch + the matching positive
-// branches) encode the same invariants structurally.

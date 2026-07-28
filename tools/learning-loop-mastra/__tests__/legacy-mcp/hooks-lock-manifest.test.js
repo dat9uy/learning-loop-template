@@ -42,7 +42,6 @@ function listUniversalHookFilenames() {
   return readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isFile())
     .filter((e) => /\.(cjs|js)$/.test(e.name))
-    .filter((e) => e.name !== "lib")
     .map((e) => e.name)
     .sort();
 }
@@ -104,6 +103,13 @@ for (const filename of listUniversalHookFilenames()) {
     assert.ok(entry.wiring && typeof entry.wiring === "object", `${key}.wiring must be an object`);
 
     const SURFACES = await loadSurfaces();
+    const surfaceSet = new Set(SURFACES);
+    for (const wiringKey of Object.keys(entry.wiring)) {
+      assert.ok(
+        surfaceSet.has(wiringKey),
+        `${key}.wiring must not contain unknown surface keys: "${wiringKey}" is not in SURFACES (a typo would silently pass the shims-in-sync parity filter)`,
+      );
+    }
     for (const surface of SURFACES) {
       const wiring = entry.wiring[surface];
       assert.ok(wiring, `${key}.wiring.${surface} must be defined (every surface is enumerated in the manifest)`);
@@ -114,7 +120,7 @@ for (const filename of listUniversalHookFilenames()) {
         assert.ok(wiring.ref.length > 0, `${key}.wiring.${surface}.ref must be non-empty`);
       }
 
-      if (entry.event === "PreToolUse") {
+      if (entry.event === "PreToolUse" && wiring.kind !== "none") {
         assert.ok(
           "matcher" in wiring,
           `${key}.wiring.${surface} must carry a matcher for PreToolUse (the runtime config uses it to filter tools)`,

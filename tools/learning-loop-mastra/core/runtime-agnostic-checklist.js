@@ -175,11 +175,6 @@ const SHIM_NAME_TO_HOOK_KEY = Object.freeze({
   "recurrence-check-on-start.cjs": "recurrence-check-on-start",
 });
 
-/** Inverse map: hook key → shim filename. Derived from SHIM_NAME_TO_HOOK_KEY. */
-const HOOK_KEY_TO_SHIM_NAME = Object.freeze(
-  Object.fromEntries(Object.entries(SHIM_NAME_TO_HOOK_KEY).map(([shim, key]) => [key, shim]))
-);
-
 /**
  * Load hooks-lock.json from the repo root if present. Returns null when
  * the manifest is missing/unreadable/malformed — the shims-in-sync
@@ -216,21 +211,22 @@ function shimSurfacesForHook(manifest, hookKey) {
 
 /**
  * Build the set of shim filenames the manifest declares any surface to
- * wire as kind:"shim" for. Returns null when no manifest (so the caller
- * can skip this union — there is nothing manifest-declared to enumerate).
- * Used to union manifest-declared shim names into the parity iteration,
- * so a deleted/missing shim is checked instead of silently passing.
+ * wire as kind:"shim" for. The shim name is derived from each shim
+ * wiring's `ref` basename (the manifest is authoritative), so a newly
+ * added shim-wired hook requires no map update to be enumerated.
+ * Returns null when no manifest (so the caller can skip this union —
+ * there is nothing manifest-declared to enumerate). Used to union
+ * manifest-declared shim names into the parity iteration, so a
+ * deleted/missing shim is checked instead of silently passing.
  */
 function manifestDeclaredShimNames(manifest) {
   if (!manifest || !manifest.hooks) return null;
   const out = new Set();
-  for (const [hookKey, entry] of Object.entries(manifest.hooks)) {
-    const shimName = HOOK_KEY_TO_SHIM_NAME[hookKey];
-    if (!shimName || !entry || !entry.wiring) continue;
+  for (const entry of Object.values(manifest.hooks)) {
+    if (!entry || !entry.wiring) continue;
     for (const wiring of Object.values(entry.wiring)) {
-      if (wiring && wiring.kind === "shim") {
-        out.add(shimName);
-        break; // one shim-declared surface is enough to require the shim on this hook
+      if (wiring && wiring.kind === "shim" && typeof wiring.ref === "string") {
+        out.add(wiring.ref.split("/").pop());
       }
     }
   }
@@ -288,10 +284,10 @@ export const CHECKLIST = [
       // (e.g. bash-gate.js -> bash-coordination-gate.cjs), so they cannot be
       // derived from universal hook names — read the real directory contents.
       //
-      // Phase 3 (manifest-aware): when hooks-lock.json is present, the parity
-      // set per shim is restricted to the surfaces the manifest declares as
-      // `kind:"shim"` for that shim's hook key. Missing manifest falls back
-      // to legacy parity across ALL SHIM_DIRS (existing fixture semantics).
+      // When hooks-lock.json is present, the parity set per shim is
+      // restricted to the surfaces the manifest declares as `kind:"shim"`
+      // for that shim's hook key. Missing manifest falls back to legacy
+      // parity across ALL SHIM_DIRS (existing fixture semantics).
       // Unknown shim filename (not in SHIM_NAME_TO_HOOK_KEY) falls back to
       // legacy parity across all containing surfaces — keeps developer
       // experiments from being flagged when the manifest isn't updated.
@@ -301,9 +297,9 @@ export const CHECKLIST = [
       // Step 1: enumerate shim names.
       //   - All observed .cjs filenames in any SHIM_DIRS (existing scan).
       //   - PLUS every shim name the manifest declares kind:"shim" for, even
-      //     if missing on every surface — reviewer finding: the previous
-      //     observed-only iteration missed declared-but-missing shims and
-      //     passed on an empty fixture root.
+      //     if missing on every surface — an observed-only iteration would
+      //     miss declared-but-missing shims and pass on an empty fixture
+      //     root (false green).
       const allNames = new Set();
       for (const s of perSurface) for (const n of s.names) allNames.add(n);
       const declared = manifestDeclaredShimNames(manifest);
