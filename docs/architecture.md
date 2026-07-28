@@ -173,6 +173,40 @@ The bash gate detects file writes via shell patterns and requires a matching `wr
 
 This algorithm differs from the inbound gate's 30-minute threshold. See Known Issues (F2).
 
+### Hooks Wiring Manifest
+
+The loop ships six universal hook implementations under `tools/learning-loop-mastra/hooks/universal/`. Each runtime wires these to a different extent through four coexisting wiring patterns. The canonical declaration of which hook is wired how on which runtime lives in `hooks-lock.json` at the repo root (sibling of `skills-lock.json`).
+
+**Wiring kinds:**
+
+| Kind | What it means |
+|---|---|
+| `shim` | Runtime config wires a `<surface>/coordination/hooks/*.cjs` shim that `execFileSync`'s the universal hook (used by `.claude` / `.factory` PreToolUse and UserPromptUse). |
+| `direct` | Runtime config wires `node tools/learning-loop-mastra/hooks/universal/<file>` directly (used by `.mastracode` for gate hooks). |
+| `adapter` | Runtime config wires a runtime-local adapter (`.factory/hooks/loop-surface-inject.cjs`); single-source, no byte-parity mirror. |
+| `none` | Runtime does not wire this hook (pull-only or not applicable). |
+
+**Per-runtime matrix** — see `hooks-lock.json` for the source of truth (every entry carries its wiring map inline). Examples:
+
+- `bash-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
+- `write-gate` (PreToolUse): `.claude`=shim, `.factory`=shim, `.mastracode`=direct (triple-wired for `write_file`/`string_replace_lsp`/`delete_file`)
+- `inbound-gate` (UserPromptSubmit): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
+- `recurrence-check-on-start` (SessionStart): `.claude`=shim, `.factory`=shim, `.mastracode`=direct
+- `session-start-inject-discoverability` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none
+- `session-start-inject-process-hints` (SessionStart): `.claude`=direct, `.factory`=adapter (`matcher:"startup"`), `.mastracode`=none
+
+**Why multiple patterns exist:** Claude Code and Droid's PreToolUse surfaces only match a string command; the shim provides a stable `.cjs` wrapper that the universal hook can `execFileSync`. `.mastracode`'s config is rich enough to call the universal hook directly. The SessionStart adapter exists because context-injection is runtime-specific (Droid needs a different startup shape than Claude's universal hooks emit) — see [Context-Injection Division of Labor](#context-injection-division-of-labor).
+
+**Adoption path for a new hook:**
+
+1. Implement the hook canonically in `tools/learning-loop-mastra/hooks/universal/` (ESM `.js` or CJS `.cjs`).
+2. Add a `hooks-lock.json` entry with `path`, `event`, and a per-runtime `wiring` map. Decide per surface: `shim` (Claude Code / Droid PreToolUse that needs a CJS wrapper), `direct` (runtime whose config can call the universal hook directly), `adapter` (runtime-local SessionStart content adapter), or `none`.
+3. If `shim`, mirror the `.cjs` shim byte-identical into each `kind:"shim"` surface's `coordination/hooks/` dir. The `shims-in-sync` checklist item enforces byte-identity across the manifest-declared shim surfaces only — surfaces declared `kind:"direct"`/`"adapter"`/`"none"` are filtered out.
+4. Wire each runtime's `settings.json` / `hooks.json` under the entry's `event` (matcher for `PreToolUse`).
+5. Run `pnpm test`. `hooks-lock-manifest.test.js` asserts every universal hook has a manifest entry; `hooks-wiring-parity.test.js` asserts each runtime's config matches the manifest's declared wiring (declared-wired IS wired; declared-`none` is NOT wired; canonical paths exist); `runtime-agnostic.test.js` (`shims-in-sync`) asserts shim byte-identity across the manifest-declared shim surfaces.
+
+**Trust anchor:** `hooks-lock.json` is listed in `CHANGE_LOG_BOUND_PATHS` (`tools/learning-loop-mastra/core/change-log-bound-paths.js`) so future edits to the manifest trigger a `meta_state_log_change` entry — unlogged manifest edits silently redefine "correct wiring" with no meta-state trace, which the bound-path coverage closes.
+
 ### MCP-Tool Write-Authorization Layer (R2 + Path Containment)
 
 Distinct from the bash/write gates above (which gate agent *shell commands* and tool calls), the MCP tools themselves carry a second write-authorization layer that gates every write an MCP tool performs during `execute`. This layer is the single authorization point for MCP-tool writes; the bash/write gates do not see inside tool execution.
@@ -532,6 +566,8 @@ The constraint gate (`core/gate-logic.js`) and the meta-state registry are **sep
 ## Context-Injection Division of Labor
 
 Plan `260717-1826-unify-context-injection` collapsed 5 overlapping context-injection surfaces into **one hint registry** consumed by two paths: production injection (builders) and inspection (renderer + CLI). The trust objection that justified the pre-Phase-1 LOCAL mirror ("server hint strings not trusted at render time") is dissolved by the fact that hooks already `require('../../core/loop-introspect.js')` directly, and the factory hook itself already `await import`s core/meta-state.js in its failure path. Direct core import removed the wire, the spawn, and the mirror.
+
+The SessionStart adapter that delivers the factory side of this scheme (`.factory/hooks/loop-surface-inject.cjs`, declared `kind:"adapter"` in `hooks-lock.json`) is documented under [Hooks Wiring Manifest](#hooks-wiring-manifest), together with the five other universal hooks and the four wiring patterns.
 
 - **Source of truth:** `core/hint-registry.js` — slug-keyed entries `{ slug, kind, text, suggestion, derived_from_rule }`. Rule-derived process entries carry empty inline text and resolve from `rule.hint_text` at render time via the shared `resolveHintText` path.
 - **Production injection:** `core/loop-introspect.js` builders (`buildDiscoverabilityHints` / `buildProcessHints`) project the registry into the legacy array-of-strings shape. All injection surfaces consume the builders — the hint renderer is NOT on the injection path (operator decision 2026-07-17: the builders already deliver single-source content; wiring hooks through the renderer would churn three hot paths for no behavioral gain).

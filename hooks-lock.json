@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "hooks": {
+    "recurrence-check-on-start": {
+      "path": "tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js",
+      "event": "SessionStart",
+      "wiring": {
+        ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/recurrence-check-on-start.cjs" },
+        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/recurrence-check-on-start.cjs" },
+        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/recurrence-check-on-start.js" }
+      }
+    },
+    "session-start-inject-discoverability": {
+      "path": "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs",
+      "event": "SessionStart",
+      "wiring": {
+        ".claude":     { "kind": "direct",  "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs" },
+        ".factory":    { "kind": "adapter", "ref": ".factory/hooks/loop-surface-inject.cjs", "matcher": "startup" },
+        ".mastracode": { "kind": "none" }
+      }
+    },
+    "session-start-inject-process-hints": {
+      "path": "tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs",
+      "event": "SessionStart",
+      "wiring": {
+        ".claude":     { "kind": "direct",  "ref": "node tools/learning-loop-mastra/hooks/universal/session-start-inject-process-hints.cjs" },
+        ".factory":    { "kind": "adapter", "ref": ".factory/hooks/loop-surface-inject.cjs", "matcher": "startup" },
+        ".mastracode": { "kind": "none" }
+      }
+    },
+    "bash-gate": {
+      "path": "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+      "event": "PreToolUse",
+      "wiring": {
+        ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/bash-coordination-gate.cjs",     "matcher": "Bash" },
+        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/bash-coordination-gate.cjs",  "matcher": "Execute" },
+        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", "matcher": { "tool_name": "execute_command" } }
+      }
+    },
+    "write-gate": {
+      "path": "tools/learning-loop-mastra/hooks/universal/write-gate.js",
+      "event": "PreToolUse",
+      "wiring": {
+        ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/write-coordination-gate.cjs",    "matcher": "Edit|Write" },
+        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/write-coordination-gate.cjs", "matcher": "Edit|Create|ApplyPatch" },
+        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/write-gate.js", "matcher": ["write_file", "string_replace_lsp", "delete_file"] }
+      }
+    },
+    "inbound-gate": {
+      "path": "tools/learning-loop-mastra/hooks/universal/inbound-gate.js",
+      "event": "UserPromptSubmit",
+      "wiring": {
+        ".claude":     { "kind": "shim",   "ref": ".claude/coordination/hooks/inbound-state-gate.cjs" },
+        ".factory":    { "kind": "shim",   "ref": ".factory/coordination/hooks/inbound-state-gate.cjs" },
+        ".mastracode": { "kind": "direct", "ref": "node tools/learning-loop-mastra/hooks/universal/inbound-gate.js" }
+      }
+    }
+  }
+}

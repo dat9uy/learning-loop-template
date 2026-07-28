@@ -49,6 +49,7 @@ export const CHANGE_LOG_BOUND_PATHS = Object.freeze([
   "schemas/**",
   "AGENTS.md",
   "CONTRACT.md",
+  "hooks-lock.json",
   ".claude/skills/**",
   ".factory/skills/**",
   ".mastracode/skills/**",

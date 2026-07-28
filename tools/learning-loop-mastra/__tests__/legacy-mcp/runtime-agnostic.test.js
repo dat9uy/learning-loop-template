@@ -121,17 +121,51 @@ await test("all core/ files that read or write coordination paths import from su
   );
 });
 
-await test("all shim directories have the same set of .cjs shim names", () => {
-  const filterShims = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".cjs")).sort() : []);
-  const nameSets = SHIM_DIRS.map(filterShims);
-  const reference = nameSets[0];
-  assert.ok(reference.length > 0, "expected at least one .cjs shim per surface");
-  for (let i = 0; i < SHIM_DIRS.length; i++) {
-    assert.deepStrictEqual(
-      nameSets[i],
-      reference,
-      `shim name-set mismatch for ${SHIM_DIRS[i]}: got ${nameSets[i].join(", ")}`,
-    );
+await test("all shim directories have the same set of .cjs shim names (manifest-aware)", () => {
+  // Phase 3 (red-team F1 rewrite) — formerly asserted the SAME set of shim
+  // names across ALL 3 SHIM_DIRS. The .mastracode shims became dead code when
+  // .mastracode/hooks.json was wired directly (universal), so the manifest-
+  // aware invariant is the right target: across every hook, only surfaces
+  // that declare kind:"shim" must carry that shim (and the set of declared-
+  // shim surfaces per hook must all be byte-identical — that's shims-in-sync).
+  // We rewrite the test to be a name-set parity check scoped to the manifest's
+  // shim-declared surfaces per hook.
+  const hooksLockPath = join(MCP_ROOT, "hooks-lock.json");
+  if (!existsSync(hooksLockPath)) {
+    // Legacy fallback: name-set parity across all 3 surfaces (no manifest).
+    const filterShims = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".cjs")).sort() : []);
+    const nameSets = SHIM_DIRS.map(filterShims);
+    const reference = nameSets[0];
+    for (let i = 0; i < SHIM_DIRS.length; i++) {
+      assert.deepStrictEqual(
+        nameSets[i],
+        reference,
+        `shim name-set mismatch for ${SHIM_DIRS[i]} (no-manifest fallback): got ${nameSets[i].join(", ")}`,
+      );
+    }
+    return;
+  }
+  const manifest = JSON.parse(readFileSync(hooksLockPath, "utf8"));
+  // For each hook key, the surfaces that declare kind:"shim" must all carry
+  // the corresponding shim. Use the same filename convention used in
+  // surfaces.js (the well-known shim-to-key map).
+  const SHIM_NAME_TO_KEY = {
+    "bash-coordination-gate.cjs": "bash-gate",
+    "write-coordination-gate.cjs": "write-gate",
+    "inbound-state-gate.cjs": "inbound-gate",
+    "recurrence-check-on-start.cjs": "recurrence-check-on-start",
+  };
+  for (const [shimName, key] of Object.entries(SHIM_NAME_TO_KEY)) {
+    const entry = manifest.hooks?.[key];
+    if (!entry) continue;
+    const shimSurfaces = Object.entries(entry.wiring)
+      .filter(([, w]) => w.kind === "shim")
+      .map(([s]) => s);
+    assert.ok(shimSurfaces.length > 0, `${key}: manifest must declare at least one kind:"shim" surface`);
+    for (const surface of shimSurfaces) {
+      const shimPath = join(MCP_ROOT, surface, "coordination", "hooks", shimName);
+      assert.ok(existsSync(shimPath), `${key}: shim ${shimPath} must exist on declared-shim surface ${surface}`);
+    }
   }
 });
 
@@ -151,15 +185,32 @@ await test("protocol-adapter.js exports the canonical I/O contract", () => {
   }
 });
 
-await test("shims-in-sync fails when shim contents differ across surfaces", () => {
+// Phase 3 (red-team F2) — no-manifest / unknown-shim semantics.
+// `loadHooksManifest` returns null when hooks-lock.json is absent; the
+// shims-in-sync verify falls back to legacy all-surfaces parity so the
+// existing fixture tests that don't supply a manifest keep their semantics.
+
+function writeHooksLockFixture(root, hooks) {
+  mkdirSync(join(root, "tools", "learning-loop-mastra", "hooks", "universal"), { recursive: true });
+  const manifest = { version: 1, hooks };
+  writeFileSync(join(root, "hooks-lock.json"), JSON.stringify(manifest, null, 2), "utf8");
+}
+
+await test("shims-in-sync fails when shim contents differ across surfaces (manifest-declared shim scope)", () => {
   const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-mismatch-"));
   for (const s of SURFACES) {
     mkdirSync(join(root, s, "coordination", "hooks"), { recursive: true });
   }
-  // .claude and .factory identical; .mastracode differs -> hash mismatch.
+  // Phase 3 rewrite (red-team F1) — supply a manifest fixture that declares
+  // test-hook as kind:"shim" on all 3 surfaces so the divergence is still
+  // detected under the new manifest-aware parity set. The fixture counts as
+  // an "unknown shim name" (not in shimNameToHookKey) so the helper asserts
+  // across all containing surfaces (parity-everywhere for unknown shims).
   writeFileSync(join(root, ".claude", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
   writeFileSync(join(root, ".factory", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
   writeFileSync(join(root, ".mastracode", "coordination", "hooks", "test-hook.cjs"), "// divergent shim", "utf8");
+  // No manifest fixture written → loadHooksManifest returns null → legacy
+  // all-surfaces parity applies to the unknown-named `test-hook.cjs`.
 
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
   const result = item.verify("feature/hooks", root);
@@ -168,24 +219,139 @@ await test("shims-in-sync fails when shim contents differ across surfaces", () =
   assert.ok(/differ/i.test(result.found), "failure should report hash divergence");
 });
 
-await test("shims-in-sync flags a missing .mastracode shim", () => {
-  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-missing-mastracode-"));
+await test("shims-in-sync: with manifest fixture declaring a kind:direct hook, a missing kind:direct surface shim is NOT a failure", () => {
+  // Phase 3 invert (red-team F1) — formerly asserted `.mastracode missing`
+  // failed. With manifest-aware parity, .mastracode is `kind:"direct"` for
+  // the gate hooks, so a missing `.mastracode` shim must now PASS (the
+  // surface is filtered out of the parity set for that hook). The
+  // .claude + .factory surfaces are `kind:"shim"` and DO carry the shim,
+  // byte-identical.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-missing-direct-"));
   mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
   mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
-  // .mastracode dir intentionally absent the shim.
-  writeFileSync(join(root, ".claude", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
-  writeFileSync(join(root, ".factory", "coordination", "hooks", "test-hook.cjs"), "// shim", "utf8");
+  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
+  // .claude and .factory carry the shim byte-identical; .mastracode (kind:"direct") does NOT.
+  writeFileSync(join(root, ".claude", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
+  writeFileSync(join(root, ".factory", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
+  writeHooksLockFixture(root, {
+    "bash-gate": {
+      path: "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+      event: "PreToolUse",
+      wiring: {
+        ".claude":     { kind: "shim",   ref: ".claude/coordination/hooks/bash-coordination-gate.cjs",     matcher: "Bash" },
+        ".factory":    { kind: "shim",   ref: ".factory/coordination/hooks/bash-coordination-gate.cjs",  matcher: "Execute" },
+        ".mastracode": { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+      },
+    },
+  });
 
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
   const result = item.verify("feature/hooks", root);
-  assert.strictEqual(result.ok, false, "a missing .mastracode shim should fail");
+  assert.strictEqual(result.ok, true, `manifest-aware shims-in-sync must pass when a kind:direct surface has no shim: ${result.found ?? ""}`);
+});
+
+await test("shims-in-sync: missing a declared kind:shim shim is still a failure", () => {
+  // Phase 3 addition (red-team F1, mirrored-invert) — formerly asserted
+  // `.mastracode missing` failed. That was the WRONG surface — the surface
+  // is `kind:"direct"`. The correct invariant: missing a kind:"shim" shim
+  // on a surface that the manifest declares must-carry-it is a failure.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-missing-shim-surface-"));
+  mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
+  // .claude's shim file intentionally absent — the manifest says .claude is
+  // kind:"shim" for bash-gate, so this must fail.
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  writeFileSync(join(root, ".factory", "coordination", "hooks", "bash-coordination-gate.cjs"), "// shim", "utf8");
+  writeHooksLockFixture(root, {
+    "bash-gate": {
+      path: "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+      event: "PreToolUse",
+      wiring: {
+        ".claude":     { kind: "shim",   ref: ".claude/coordination/hooks/bash-coordination-gate.cjs",     matcher: "Bash" },
+        ".factory":    { kind: "shim",   ref: ".factory/coordination/hooks/bash-coordination-gate.cjs",  matcher: "Execute" },
+        ".mastracode": { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+      },
+    },
+  });
+
+  const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
+  const result = item.verify("feature/hooks", root);
+  assert.strictEqual(result.ok, false, "missing kind:shim shim on a manifest-declared surface must fail");
   assert.ok(
-    result.found.includes(".mastracode/coordination/hooks/test-hook.cjs"),
-    "failure should name the missing mastracode shim path",
+    result.found.includes(".claude/coordination/hooks/bash-coordination-gate.cjs"),
+    `failure should name the missing kind:shim shim path: ${result.found}`,
   );
 });
 
-await test("shims-in-sync passes against the real repo (all 3 surfaces, byte-identical)", () => {
+await test("shims-in-sync: declared-but-missing-shim on ALL declared surfaces is a failure (reviewer regression)", () => {
+  // Reviewer regression — the previous implementation derived `allNames`
+  // only from observed .cjs files. When the manifest declared `bash-gate`
+  // `kind:"shim"` on .claude + .factory but both dirs were empty, the
+  // iteration never entered and verify returned `{ok:true}` — a false
+  // green. The fix unions `manifestDeclaredShimNames` into `allNames` so a
+  // declared shim is checked even when absent on every surface.
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-declared-missing-"));
+  mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
+  // No shim files written at all.
+  writeHooksLockFixture(root, {
+    "bash-gate": {
+      path: "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+      event: "PreToolUse",
+      wiring: {
+        ".claude":     { kind: "shim",   ref: ".claude/coordination/hooks/bash-coordination-gate.cjs",     matcher: "Bash" },
+        ".factory":    { kind: "shim",   ref: ".factory/coordination/hooks/bash-coordination-gate.cjs",  matcher: "Execute" },
+        ".mastracode": { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+      },
+    },
+  });
+
+  const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
+  const result = item.verify("feature/hooks", root);
+  assert.strictEqual(result.ok, false, "a manifest-declared kind:shim shim missing on all declared surfaces must fail (reviewer regression)");
+  assert.ok(
+    result.found.includes("bash-coordination-gate.cjs"),
+    `failure should name the missing declared shim: ${result.found}`,
+  );
+});
+
+await test("shims-in-sync: manifest-known hook with zero kind:shim surfaces skips the shim (does not fall back to all surfaces)", () => {
+  // Reviewer regression — formerly the empty-declared-set branch fell back
+  // to all SHIM_DIRS and would flag a deleted dead-code shim as a byte-
+  // drift failure. The fix `continue`s the iteration when the declared
+  // set is empty (the shim is dead code; no parity applies).
+  const root = mkdtempSync(join(tmpdir(), "runtime-agnostic-shim-empty-declared-"));
+  mkdirSync(join(root, ".claude", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".factory", "coordination", "hooks"), { recursive: true });
+  mkdirSync(join(root, ".mastracode", "coordination", "hooks"), { recursive: true });
+  // A dead shim file written only on .claude — the manifest says bash-gate
+  // has NO kind:"shim" surfaces at all (everyone wires direct/none). The
+  // shim is dead code; the check must skip it, not flag a "wrong surface"
+  // or "hash differ" failure.
+  writeFileSync(join(root, ".claude", "coordination", "hooks", "bash-coordination-gate.cjs"), "// orphan shim", "utf8");
+  writeHooksLockFixture(root, {
+    "bash-gate": {
+      path: "tools/learning-loop-mastra/hooks/universal/bash-gate.js",
+      event: "PreToolUse",
+      wiring: {
+        ".claude":     { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+        ".factory":    { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+        ".mastracode": { kind: "direct", ref: "node tools/learning-loop-mastra/hooks/universal/bash-gate.js", matcher: { tool_name: "execute_command" } },
+      },
+    },
+  });
+
+  const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
+  const result = item.verify("feature/hooks", root);
+  assert.strictEqual(result.ok, true, `manifest-known shim with zero declared-shim surfaces must be skipped (dead code): ${result.found ?? ""}`);
+});
+
+await test("shims-in-sync passes against the real repo (manifest-declared shim surfaces, byte-identical)", () => {
+  // Phase 3 rewrite (red-team F1) — the real-repo test now exercises the
+  // manifest-aware invariant: only the manifest's kind:"shim" surfaces per
+  // hook need to be byte-identical. .mastracode is filtered out for the
+  // gate hooks (kind:"direct") and stays in for any kind:"shim" hook.
   const item = CHECKLIST.find((i) => i.id === "shims-in-sync");
   const result = item.verify("tools/learning-loop-mastra/hooks/universal", MCP_ROOT);
   assert.ok(result.ok, `real-repo shims-in-sync should pass: ${result.found ?? ""}`);
