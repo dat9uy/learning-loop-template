@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { readLastOperatorMessage, checkObservationStaleness } from "../../core/inbound-state.js";
+// Plan 260728-2323 Phase 4: `checkObservationStaleness` is no longer called
+// from this handler (the artifact notification only needs the operator
+// marker for the state-change pointer). Drop the dead import.
+import { readLastOperatorMessage } from "../../core/inbound-state.js";
 import { evaluateTriggers } from "../../core/workflow-registry.js";
 
 export const workflowNotifyArtifactTool = {

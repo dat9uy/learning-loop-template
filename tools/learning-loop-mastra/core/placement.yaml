@@ -23,6 +23,9 @@ files:
   - path: inbound-state.js
     role: facade
     summary: Reads runtime-state.jsonl sidecar for inbound gate context.
+  - path: observation-staleness.js
+    role: facade
+    summary: Shared observation-staleness primitives (OBSERVATION_STALENESS_WINDOW_MS + reference-time model + age/marker mode-predicates, stale-on-null). Replaces the two parallel 30-min checks across the inbound + bash gates.
   - path: loop-introspect.js
     role: facade
     summary: Builds inverse indexes + query helpers over the meta-state registry.

@@ -102,6 +102,55 @@ function collapseLatestById(rows) {
 }
 
 /**
+ * Kind-before-collapse helper: filter to `kind === "budget-state"`
+ * (read-compat: rows with no `kind` predate the discriminator and are
+ * treated as budget-state — every row was scannable tracking state before
+ * the kinds split), then dedup to `max_by(version)` per id, then return the
+ * rows.
+ *
+ * Plan 260728-2323-unify-observation-staleness-mechanism Phase 2:
+ * the kind filter MUST happen BEFORE the dedup. `appendLedgerEvent`
+ * versions rows kind-agnostically by `id` (see runtime-state.js:269-275 —
+ * no kind check), and a canonical-id `ledger-event` is permitted when the
+ * surface is active (runtime-state-record-tool.js:122-126;
+ * runtime-contract.md:70). A naive collapse-all-then-filter-kind would let
+ * a higher-version ledger-event sharing the canonical id shadow the
+ * budget-state row, which the post-collapse kind filter then drops —
+ * the budget-state observation vanishes. Kind-before-collapse prevents
+ * that cross-kind id-collision (re-red-team F1 fix). Shared by
+ * `readBudgetTrackingState` (lifecycle reader, runtime-state.js:343-354)
+ * and `readRuntimeObservations` (constraint-gate reader, file-readers.js)
+ * to avoid forking the kind-before-collapse pattern.
+ *
+ * Module-private; returns an array of deduped budget-state rows in
+ * first-seen-by-id order.
+ */
+export function collapseLatestBudgetStateById(rows) {
+  const budgetRows = rows.filter(
+    (r) => r && (r.kind ?? "budget-state") === "budget-state"
+  );
+  // Split: rows with a string id get the max_by(version) dedup; rows without
+  // an id (legacy / hand-crafted) pass through unchanged. Plan 260728-2323
+  // re-red-team M1: legacy/distinct-id rows are NOT collapsed by
+  // `collapseLatestById` (which drops no-id rows) and stay per-row
+  // (conservative) — preserving the pre-Phase-2 per-row emission for legacy
+  // data shapes. The kind filter is the only load-bearing step for the
+  // cross-kind collision guard (a canonical-id ledger-event sharing an id
+  // with a budget-state is filtered out BEFORE the dedup, so it cannot
+  // shadow).
+  const withId = [];
+  const withoutId = [];
+  for (const row of budgetRows) {
+    if (typeof row.id === "string" && row.id !== "") withId.push(row);
+    else withoutId.push(row);
+  }
+  return [
+    ...collapseLatestById(withId).map((entry) => entry.row),
+    ...withoutId,
+  ];
+}
+
+/**
  * Read runtime-state.jsonl and collapse to the latest row per `id`
  * (`max_by(version)` — see `collapseLatestById`).
  *
@@ -340,17 +389,24 @@ export function readBudgetTrackingState(root, surface) {
       `runtime_state_budget_tracking_corrupt: ${malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
     );
   }
-  const budgetRows = rows.filter((r) => r && r.kind === "budget-state" && r.affected_system === surface);
-  if (budgetRows.length === 0) return null;
+  // Plan 260728-2323 Phase 2: dedup with kind-before-collapse via the shared
+  // helper. Scoping the budget-state + surface filter to this reader (vs
+  // letting the helper collapse across all surfaces) keeps the validation
+  // loop targeted at THIS surface's rows — a corrupt row on another surface
+  // does not blow up a query for `surface`.
+  const surfaceRows = rows.filter((r) => r && r.kind === "budget-state" && r.affected_system === surface);
+  if (surfaceRows.length === 0) return null;
   // Validate the kind-conditional status on each row BEFORE dedup so a
   // corrupt budget-state row surfaces as an error, not a silent skip.
-  for (const row of budgetRows) {
+  for (const row of surfaceRows) {
     if (row.status !== "initial" && row.status !== "active" && row.status !== "paused" && row.status !== "stopped") {
       throw new Error(
         `runtime_state_budget_tracking_corrupt: budget-state row for surface "${surface}" has invalid status ${JSON.stringify(row.status)}`,
       );
     }
   }
-  const latest = collapseLatestById(budgetRows).sort((a, b) => b.fileIdx - a.fileIdx)[0];
+  // collapseLatestById is idempotent on already-filtered rows; the helper's
+  // kind-filter becomes a no-op here.
+  const latest = collapseLatestById(surfaceRows).sort((a, b) => b.fileIdx - a.fileIdx)[0];
   return latest ? latest.row.status : null;
 }

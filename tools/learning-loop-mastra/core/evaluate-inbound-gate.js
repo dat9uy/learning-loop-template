@@ -12,13 +12,18 @@
  * @returns {{ decision: string, context_message?: string, observations_stale?: string[], stale_signature?: string }}
  */
 
-import { findProjectRoot, findStaleObservations } from "./gate-logic.js";
+import { findProjectRoot } from "./gate-logic.js";
+// Plan 260728-2323 Phase 3: shared unified age predicate replaces the
+// gate-local `findStaleObservations` (deleted from gate-logic.js in this
+// phase). The shared selector uses the unified `OBSERVATION_STALENESS_WINDOW_MS`
+// and is the same primitive the bash gate's marker mode uses in Phase 4.
+import { findObservationsStaleByAge } from "./observation-staleness.js";
 import { readRuntimeObservations } from "./file-readers.js";
 // Per-surface tracking toggle: a paused surface's stale observations are
 // skipped so the gate and the writers (runtime_state_record,
 // meta_state_dispatch_finding) agree on what gets surfaced. The skip lives in
-// this gate's loader (not the shared findStaleObservations) so that pure
-// helper stays I/O-free; mirrors the writer-side pause check.
+// this gate's loader (not the shared age selector) so the pure helper stays
+// I/O-free; mirrors the writer-side pause check.
 import { isSurfacePaused } from "./runtime-tracking.js";
 
 // Suppress window: a repeat warning for the same stale signature within this
@@ -171,7 +176,12 @@ function loadStaleActiveObservations(resolvedRoot) {
     .filter((obs) => obs.status === "active")
     .filter((obs) => !isSurfacePausedRead(resolvedRoot, obs.affected_system));
   if (active.length === 0) return null;
-  const stale = findStaleObservations(active, Date.now());
+  // Plan 260728-2323 Phase 3: shared age predicate from observation-staleness.
+  // Phase 2's projection dedup means the scan is now per-surface-latest
+  // (precise) instead of per-raw-row (conservative). F1 invariant
+  // structurally preserved: stale-on-null keeps defensiveness on malformed
+  // state.
+  const stale = findObservationsStaleByAge(active, Date.now());
   return stale.length === 0 ? null : stale;
 }
 
