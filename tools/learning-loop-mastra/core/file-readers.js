@@ -83,9 +83,15 @@ export function readRuntimeObservations(root) {
     for (const entry of rows) {
       // Lifecycle filter: paused / stopped / initial rows are out of scope.
       // The dedup above collapses to the LATEST row per id; that row must
-      // still be active for its observation to surface (the writer's
-      // lifecycle excludes non-active rows, not a gate filter applied
-      // after the fact).
+      // still be active for its observation to surface. Consequence (intended):
+      // a surface whose latest budget-state row is paused/stopped — e.g. after
+      // runtime_state_pause appends a higher-version paused row under the
+      // canonical id — projects NO observation, so checkObservationExists
+      // returns not-found and makeGateDecision blocks the constraint. A
+      // paused/stopped surface should not satisfy the "observation required"
+      // constraint. (The inbound gate separately skips paused surfaces
+      // upstream for staleness warnings; this is the bash-gate constraint
+      // counterpart, not a contradiction.)
       if (entry.status !== "active") continue;
       // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:

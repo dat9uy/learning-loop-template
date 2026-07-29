@@ -21,7 +21,7 @@ import {
   collapseLatestBudgetStateById,
 } from "../../core/runtime-state.js";
 import { readRuntimeObservations } from "../../core/file-readers.js";
-import { checkObservationExists } from "../../core/gate-logic.js";
+import { checkObservationExists, makeGateDecision } from "../../core/gate-logic.js";
 
 function ts(minutesAgo) {
   return new Date(Date.now() - minutesAgo * 60 * 1000).toISOString();
@@ -75,29 +75,31 @@ describe("collapseLatestBudgetStateById", () => {
   });
 
   test("mixed id + no-id: id'd rows dedup, no-id rows pass through", () => {
+    const t3 = ts(3);
     const rows = [
       { id: "vnstock", kind: "budget-state", status: "active", timestamp: ts(20), version: 0 },
       { id: "vnstock", kind: "budget-state", status: "active", timestamp: ts(5), version: 1 },
-      { kind: "budget-state", status: "active", timestamp: ts(3) }, // no id
+      { kind: "budget-state", status: "active", timestamp: t3 }, // no id
     ];
     const out = collapseLatestBudgetStateById(rows);
     // 1 deduped vnstock + 1 no-id pass-through = 2
     assert.strictEqual(out.length, 2);
     const ided = out.find((r) => r.id === "vnstock");
     assert.strictEqual(ided.version, 1);
-    assert.strictEqual(out.find((r) => !r.id).timestamp, ts(3));
+    assert.strictEqual(out.find((r) => !r.id).timestamp, t3);
   });
 
   test("multiple budget-state rows same id dedups to max_by(version)", () => {
+    const t5 = ts(5);
     const rows = [
       { id: "vnstock", kind: "budget-state", status: "active", timestamp: ts(20), version: 0 },
       { id: "vnstock", kind: "budget-state", status: "active", timestamp: ts(10), version: 1 },
-      { id: "vnstock", kind: "budget-state", status: "active", timestamp: ts(5), version: 2 },
+      { id: "vnstock", kind: "budget-state", status: "active", timestamp: t5, version: 2 },
     ];
     const out = collapseLatestBudgetStateById(rows);
     assert.strictEqual(out.length, 1);
     assert.strictEqual(out[0].version, 2);
-    assert.strictEqual(out[0].timestamp, ts(5));
+    assert.strictEqual(out[0].timestamp, t5);
   });
 
   test("multiple distinct ids each keep their own latest", () => {
@@ -199,6 +201,30 @@ describe("readRuntimeObservations: dedup projection", () => {
     const observations = readRuntimeObservations(root);
     const status = checkObservationExists("vendor-api", observations);
     assert.strictEqual(status.found, false);
+  });
+
+  test("lifecycle transition: active v0 + paused v1 (same canonical id) → no active observation → constraint gate blocks (intended)", () => {
+    // runtime_state_pause appends a kind:budget-state, status:paused row under
+    // the canonical id at a higher version. kind-before-collapse keeps only the
+    // paused row; the status=active filter then emits NO observation, so
+    // checkObservationExists returns not-found and makeGateDecision blocks.
+    // Intended (a paused surface should not satisfy the "observation required"
+    // constraint) and pinned here as the regression guard. The same flip holds
+    // for active→stopped (terminal).
+    mkdirSync(root, { recursive: true });
+    const sidecarPath = join(root, "runtime-state.jsonl");
+    const lines = [
+      { id: "vnstock", kind: "budget-state", status: "active", affected_system: "vnstock", timestamp: ts(20), version: 0, metadata: {} },
+      { id: "vnstock", kind: "budget-state", status: "paused", affected_system: "vnstock", timestamp: ts(5), version: 1, metadata: {} },
+    ].map((r) => JSON.stringify(r)).join("\n");
+    writeFileSync(sidecarPath, lines + "\n", "utf8");
+
+    const observations = readRuntimeObservations(root);
+    assert.strictEqual(observations.length, 0);
+    const status = checkObservationExists("vendor-api", observations);
+    assert.strictEqual(status.found, false);
+    const decision = makeGateDecision("vendor-api", status);
+    assert.strictEqual(decision.decision, "block");
   });
 
   test("teardown", () => {

@@ -8,10 +8,10 @@
  *
  * Stale-on-null: both predicates return `true` when `obs.updated_at` is
  * missing or unparseable. Preserves the original defensive semantics of
- * `findStaleObservations` (gate-logic.js:1032,1034) and the meta branch of
- * `checkObservationStaleness` (inbound-state.js:120-126) — both originals
- * treated unknown-update-time as stale, so the unification keeps that
- * behavior on the boundary case.
+ * `findStaleObservations` (since removed from gate-logic.js) and the meta
+ * branch of `checkObservationStaleness` (since rewritten in inbound-state.js)
+ * — both originals treated unknown-update-time as stale, so the unification
+ * keeps that behavior on the boundary case.
  */
 
 import { OBSERVATION_STALENESS_WINDOW_MS } from "./constants.js";
@@ -30,7 +30,7 @@ export function observationReferenceTimeMs(obs) {
 /**
  * Age mode — for the inbound gate's bootstrap. Stale iff `now - ref` exceeds
  * `OBSERVATION_STALENESS_WINDOW_MS`, using strict `>` (matches the original
- * `findStaleObservations` at gate-logic.js:1035). Equality on the boundary is
+ * `findStaleObservations`, since removed from gate-logic.js). Equality on the boundary is
  * "not stale". Stale-on-null: a missing / unparseable `updated_at` is stale.
  */
 export function isObservationStaleByAge(obs, now) {
@@ -53,8 +53,8 @@ export function findObservationsStaleByAge(observations, now) {
 
 /**
  * Marker mode — for the bash gate's escalation. Stale iff `markerTs > ref`,
- * using strict `>` (matches the original `checkObservationStaleness` at
- * inbound-state.js:128). Equality on the boundary is "not stale". Stale-on-null:
+ * using strict `>` (matches the original `checkObservationStaleness`, since
+ * rewritten in inbound-state.js). Equality on the boundary is "not stale". Stale-on-null:
  * a missing / unparseable `updated_at` is stale.
  */
 export function isObservationStaleByMarker(obs, markerTs) {

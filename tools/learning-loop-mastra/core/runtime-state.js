@@ -405,8 +405,12 @@ export function readBudgetTrackingState(root, surface) {
       );
     }
   }
-  // collapseLatestById is idempotent on already-filtered rows; the helper's
-  // kind-filter becomes a no-op here.
+  // Not switched to the shared collapseLatestBudgetStateById helper (Phase 2
+  // DRY goal): this lifecycle reader needs the {row, version, fileIdx} entries
+  // to sort by fileIdx for the cross-id recency tiebreak, and collapseLatestById
+  // here drops no-id legacy rows (the helper would pass them through — a
+  // lifecycle-read behavior change). collapseLatestById is idempotent on
+  // already-filtered rows; the helper's kind-filter is a no-op here.
   const latest = collapseLatestById(surfaceRows).sort((a, b) => b.fileIdx - a.fileIdx)[0];
   return latest ? latest.row.status : null;
 }

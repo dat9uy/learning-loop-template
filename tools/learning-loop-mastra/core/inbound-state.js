@@ -32,7 +32,7 @@ function isMarkerFresh(marker) {
 /**
  * Read the last operator message marker written by inbound-state-gate.cjs.
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
- * Markers older than MARKER_TTL_MS are treated as non-existent.
+ * Markers older than OBSERVATION_STALENESS_WINDOW_MS are treated as non-existent.
  *
  * Plan 260711-0030 Phase 5: scoped per-session via the session id argument
  * (defaults to getSessionId(root) for the current worktree). Backward-compat:
@@ -81,8 +81,9 @@ export function readLastOperatorMessage(root, surface, sessionId = getSessionId(
  * Phase 2's projection dedup guarantees that `obs.updated_at` IS the
  * authoritative per-surface-latest timestamp, so the marker predicate
  * (`isObservationStaleByMarker`) reads `obs.updated_at` directly — no
- * sidecar re-read. Stale-on-null (matches original gate-logic.js:1032,1034
- * + inbound-state.js:120-126) preserves F1 defensiveness on malformed
+ * sidecar re-read. Stale-on-null (matches the originals — `findStaleObservations`
+ * from gate-logic.js and this function's own pre-rewrite meta branch, both
+ * since removed) preserves F1 defensiveness on malformed
  * state. The `status !== "active"` guard and the paused-surface
  * try/catch-degrade-to-not-paused skip are preserved verbatim.
  *
