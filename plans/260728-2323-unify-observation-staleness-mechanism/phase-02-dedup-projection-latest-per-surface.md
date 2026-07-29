@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Dedup the Projection (Latest-Per-Surface)"
-status: pending
+status: completed
 priority: P1
 effort: "2.5h"
 dependencies: [1]
@@ -43,9 +43,9 @@ core/file-readers.js
 
 **Implementation (validation-chosen): extract a shared `collapseLatestBudgetStateById(rows)` helper in `runtime-state.js`** — filters `kind === "budget-state"` (read-compat: `r.kind ?? "budget-state"`) then `collapseLatestById`, then `.map(e => e.row)`. Reuse it from BOTH `readRuntimeObservations` (file-readers.js) AND `readBudgetTrackingState` (runtime-state.js:343-354, which currently does the same filter-then-collapse inline). This closes the DRY gap the plan's Open Question flagged — both readers now share one kind-before-collapse primitive instead of duplicating the pattern. Do NOT call the kind-agnostic `readRuntimeStateRowsLatest`.
 
-### Why the constraint gate is unaffected
+### Why the constraint gate is metadata-insensitive (but found/not-found flips on lifecycle transitions)
 
-`checkObservationExists` (gate-logic.js:429-439) uses `observations.find(o => o.status === "active" && (o.constraint_type === c || o.constraint === c))` — found/not-found, returns the first match. Dedup changes *which* row is matched (latest vs the oldest active row), but **not** whether a match exists: a surface has an active row iff its latest budget-state row is active (lifecycle: paused/stopped rows are excluded by the `status === "active"` filter both before and after dedup; the `find` predicate is identical). Phase 2 TDD pins current constraint decisions and asserts they hold. Open question (plan.md): confirm `makeGateDecision` is metadata-insensitive to the matched observation — resolve before landing.
+`checkObservationExists` (gate-logic.js:429-439) uses `observations.find(o => o.status === "active" && (o.constraint_type === c || o.constraint === c))` — found/not-found, returns the first match. `makeGateDecision` reads only `constraintMatch` + `observationStatus.found` — metadata-insensitive, so dedup does not change *which* row's metadata drives the decision. **However, the earlier "dedup changes which row is matched, not found/not-found" claim was imprecise:** it holds for active+active same-id rows, but NOT for lifecycle transitions. A surface whose latest budget-state row is `paused`/`stopped` (e.g. after `runtime_state_pause` appends a higher-version paused row under the canonical id) projects NO active observation (the dedup keeps only the non-active latest row, which the `status === "active"` filter drops) → `found:false` → `makeGateDecision` blocks. Pre-dedup the older active row survived → `ok`. This flip is **intended** (a paused/stopped surface should not satisfy the "observation required" constraint) and is pinned by a regression test in `collapse-latest-budget-state-by-id.test.js`. (Open Question closed.)
 
 ## Related Code Files
 
@@ -81,13 +81,13 @@ core/file-readers.js
 
 ## Success Criteria
 
-- [ ] `readRuntimeObservations` dedups **kind-before-collapse** via shared `collapseLatestBudgetStateById` (extracted in runtime-state.js, reused by `readBudgetTrackingState`); one observation per (surface × constraint), latest
-- [ ] **Cross-kind collision test green** (budget-state v0 + canonical-id ledger-event v1 → budget-state observation survives) — re-red-team F1 fix
-- [ ] Constraint-gate decisions unchanged on all existing fixtures (oracle green)
-- [ ] `makeGateDecision` metadata-insensitivity confirmed (Open Question closed clean)
-- [ ] Multi-row dedup test green (one obs, latest `updated_at`)
-- [ ] `assertinvariantSync` unmapped-active-entry + malformed-line tests green
-- [ ] Staleness-fixture failures recorded for Phase 4 (not "fixed" here)
+- [x] `readRuntimeObservations` dedups **kind-before-collapse** via shared `collapseLatestBudgetStateById` (extracted in runtime-state.js, reused by `readBudgetTrackingState`); one observation per (surface × constraint), latest
+- [x] **Cross-kind collision test green** (budget-state v0 + canonical-id ledger-event v1 → budget-state observation survives) — re-red-team F1 fix
+- [x] Constraint-gate decisions unchanged on all existing fixtures (oracle green; the active→paused/stopped block is the intended, test-pinned flip on a *new* transition no existing fixture exercised — see "Why the constraint gate" + Risk Assessment)
+- [x] `makeGateDecision` metadata-insensitivity confirmed (Open Question closed clean)
+- [x] Multi-row dedup test green (one obs, latest `updated_at`)
+- [x] `assertinvariantSync` unmapped-active-entry + malformed-line tests green
+- [x] Staleness-fixture failures recorded for Phase 4 (not "fixed" here) — resolved: Phase 4 rewrote the fixtures to the new model (green), so the deferral is closed, not left failing
 
 ## Risk Assessment
 

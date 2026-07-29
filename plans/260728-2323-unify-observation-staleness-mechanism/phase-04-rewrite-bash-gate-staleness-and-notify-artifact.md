@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Rewrite Bash-Gate Staleness + Notify-Artifact"
-status: pending
+status: completed
 priority: P1
 effort: "2.5h"
 dependencies: [2]
@@ -101,13 +101,13 @@ That branch (inbound-state.js:152-158) fired when the sidecar had no row for `ob
 
 ## Success Criteria
 
-- [ ] `checkObservationStaleByMarker` form; no `META_AFFECTED_SYSTEMS` / `getSidecar` / sidecar re-read / `reduce(latest)`
-- [ ] `MARKER_TTL_MS` removed; `isMarkerFresh` keyed on `OBSERVATION_STALENESS_WINDOW_MS`
-- [ ] Paused-surface skip preserved; surviving reason strings preserved
-- [ ] "No runtime-state entry" branch dropped (unreachable post-Phase-2); fixtures rewritten, not deleted
-- [ ] `notify-artifact-tool.js` imports only `readLastOperatorMessage`
-- [ ] `evaluate-bash-gate.js` unchanged; its tests green
-- [ ] Cross-gate consistency test shows age-write and marker-escalate agree
+- [x] `checkObservationStaleByMarker` form; no `META_AFFECTED_SYSTEMS` / `getSidecar` / sidecar re-read / `reduce(latest)`
+- [x] `MARKER_TTL_MS` removed; `isMarkerFresh` keyed on `OBSERVATION_STALENESS_WINDOW_MS`
+- [x] Paused-surface skip preserved; surviving reason strings preserved
+- [x] "No runtime-state entry" branch dropped (unreachable post-Phase-2); fixtures rewritten, not deleted
+- [x] `notify-artifact-tool.js` imports only `readLastOperatorMessage`
+- [x] `evaluate-bash-gate.js` unchanged; its tests green
+- [x] Cross-gate consistency test shows age-write and marker-escalate agree
 
 ## Risk Assessment
 

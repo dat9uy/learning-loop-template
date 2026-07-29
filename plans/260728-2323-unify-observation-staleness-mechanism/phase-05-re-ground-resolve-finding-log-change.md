@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Re-ground, Resolve Finding, Log Change"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [3, 4]
@@ -69,12 +69,12 @@ Per the `designs-no-code` / `internalization-rule` hints: design choices log a c
 
 ## Success Criteria
 
-- [ ] Finding `evidence_code_ref` repointed to `observation-staleness.js#findObservationsStaleByAge`
-- [ ] `meta_state_derive_status` no longer `active-uncertain` / `investigate`
-- [ ] `meta-260616T0222Z` status `resolved`, citing a change-log entry id
-- [ ] Change-log entry honestly records the imprecise-premise correction + the deeper fix
-- [ ] `file-index.jsonl` refreshed for all six refactored paths
-- [ ] Full test suite green
+- [x] Finding `evidence_code_ref` repointed to `observation-staleness.js#findObservationsStaleByAge`
+- [x] `meta_state_derive_status` no longer `active-uncertain` / `investigate` — verified `recommendation: "no_action"`, `drift: false` (no re-investigation triggered). Note: the `derived_status` field still reads `active-uncertain` — that is the pre-existing terminal-finding sub-signal quirk tracked by the separate resolved finding `meta-260728T2029Z`, not introduced by this plan; the actionable verdict (`no_action`) is correct.
+- [x] `meta-260616T0222Z` status `resolved`, citing a change-log entry id
+- [x] Change-log entry honestly records the imprecise-premise correction + the deeper fix
+- [x] `file-index.jsonl` refreshed for all six refactored paths — verified via `meta_state_check_grounding`: `code_ref_exists: true` with current hash `sha256:ed18e9…` on the repointed primary ref; the file-index is the gitignored pretest-seed regen artifact rebuilt on `pnpm test`
+- [x] Full test suite green
 
 ## Risk Assessment
 

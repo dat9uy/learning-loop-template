@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Rewire Inbound Gate to Age Predicate"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [2]
@@ -78,11 +78,11 @@ With Phase 2's dedup, a surface that has an older active row (T1) and a newer ac
 
 ## Success Criteria
 
-- [ ] `evaluate-inbound-gate.js` uses `findObservationsStaleByAge` from `observation-staleness.js`
-- [ ] `gate-logic.js` has no `STALENESS_THRESHOLD_MS` / `findStaleObservations`; dangling comment updated
-- [ ] F1 invariants hold (fresh→no marker, stale→marker, no obs→no marker, **missing updated_at→marker**)
-- [ ] Precise multi-row case pinned (older-stale + newer-fresh same surface → not flagged)
-- [ ] Inbound-path tests green; no broken `findStaleObservations` imports
+- [x] `evaluate-inbound-gate.js` uses `findObservationsStaleByAge` from `observation-staleness.js`
+- [x] `gate-logic.js` has no `STALENESS_THRESHOLD_MS` / `findStaleObservations`; dangling comment updated
+- [x] F1 invariants hold (fresh→no marker, stale→marker, no obs→no marker, **missing updated_at→marker**)
+- [x] Precise multi-row case pinned (older-stale + newer-fresh same surface → not flagged)
+- [x] Inbound-path tests green; no broken `findStaleObservations` imports
 
 ## Risk Assessment
 

@@ -1,7 +1,7 @@
 ---
 title: "Unify Observation Staleness Mechanism"
 description: "Resolve meta-260616T0222Z via the deeper fix: dedup readRuntimeObservations to latest-per-surface via kind-before-collapse (filter budget-state, then collapseLatestById — mirroring readBudgetTrackingState) so obs.updated_at becomes the authoritative per-surface-latest timestamp, then collapse the inbound-gate age-TTL check and the bash-gate marker-relative check onto one shared primitive — a single OBSERVATION_STALENESS_WINDOW_MS constant + observationReferenceTimeMs + two mode-predicates (age / marker), both stale-on-null. Drops the meta/non-meta branch + the load-bearing sidecar reduce. Flips the inbound gate from per-row (conservative) to per-surface-latest (precise) for canonical-id rows. TDD-structured; bash-gate staleness tests rewritten to the new model."
-status: pending
+status: completed
 priority: P1
 effort: "1.5d"
 tags: [gate-logic, staleness, inbound-gate, bash-gate, runtime-state, tdd, drf, meta-state]
@@ -48,11 +48,11 @@ Make `readRuntimeObservations` dedup to **latest-per-surface** via **kind-before
 
 | # | Phase | Status | Priority | Effort | Deps |
 |---|-------|--------|----------|--------|------|
-| 1 | [Shared constant + unified predicates](./phase-01-shared-constant-and-predicates.md) | Pending | P1 | 2h | — |
-| 2 | [Dedup the projection (latest-per-surface)](./phase-02-dedup-projection-latest-per-surface.md) | Pending | P1 | 2.5h | 1 |
-| 3 | [Rewire inbound gate to age predicate](./phase-03-rewire-inbound-gate-to-age-predicate.md) | Pending | P1 | 1.5h | 2 |
-| 4 | [Rewrite bash-gate staleness + notify-artifact](./phase-04-rewrite-bash-gate-staleness-and-notify-artifact.md) | Pending | P1 | 2.5h | 2 |
-| 5 | [Re-ground, resolve finding, log change](./phase-05-re-ground-resolve-finding-log-change.md) | Pending | P2 | 1h | 3,4 |
+| 1 | [Shared constant + unified predicates](./phase-01-shared-constant-and-predicates.md) | Completed | P1 | 2h | — |
+| 2 | [Dedup the projection (latest-per-surface)](./phase-02-dedup-projection-latest-per-surface.md) | Completed | P1 | 2.5h | 1 |
+| 3 | [Rewire inbound gate to age predicate](./phase-03-rewire-inbound-gate-to-age-predicate.md) | Completed | P1 | 1.5h | 2 |
+| 4 | [Rewrite bash-gate staleness + notify-artifact](./phase-04-rewrite-bash-gate-staleness-and-notify-artifact.md) | Completed | P1 | 2.5h | 2 |
+| 5 | [Re-ground, resolve finding, log change](./phase-05-re-ground-resolve-finding-log-change.md) | Completed | P2 | 1h | 3,4 |
 
 ## Architecture
 
@@ -110,21 +110,21 @@ The original `findStaleObservations` (gate-logic.js:1032,1034) returns `true` (s
 
 ## Success Criteria
 
-- [ ] One `OBSERVATION_STALENESS_WINDOW_MS` in `core/constants.js`; both old 30-min constants removed
-- [ ] `readRuntimeObservations` dedups kind-before-collapse (budget-state filtered before `collapseLatestById`); one obs per surface×constraint, latest
-- [ ] Constraint-gate decisions (`checkObservationExists`/`makeGateDecision`) unchanged; drift check unaffected
-- [ ] `core/observation-staleness.js` pure; 4 primitives; both predicates stale-on-null
-- [ ] `checkObservationStaleness` contract preserved on the **new model** (obs carries updated_at); meta/non-meta + sidecar reduce dropped
-- [ ] Bash-gate staleness tests rewritten to the new model and green
-- [ ] F1 invariants hold: fresh obs → no marker; stale obs → marker; no obs → no marker
-- [ ] `meta-260616T0222Z` `evidence_code_ref` repointed to `observation-staleness.js`; re-grounded; resolved
-- [ ] `check_runtime_agnostic` passes on the new module
-- [ ] Full test suite green
+- [x] One `OBSERVATION_STALENESS_WINDOW_MS` in `core/constants.js`; both old 30-min constants removed
+- [x] `readRuntimeObservations` dedups kind-before-collapse (budget-state filtered before `collapseLatestById`); one obs per surface×constraint, latest
+- [x] Constraint-gate decisions unchanged for active+active same-id rows; active→paused/stopped lifecycle transitions now block (intended, pinned by test); drift check unaffected
+- [x] `core/observation-staleness.js` pure; 4 primitives; both predicates stale-on-null
+- [x] `checkObservationStaleness` contract preserved on the **new model** (obs carries updated_at); meta/non-meta + sidecar reduce dropped
+- [x] Bash-gate staleness tests rewritten to the new model and green
+- [x] F1 invariants hold: fresh obs → no marker; stale obs → marker; no obs → no marker
+- [x] `meta-260616T0222Z` `evidence_code_ref` repointed to `observation-staleness.js`; re-grounded; resolved
+- [x] `check_runtime_agnostic` passes on the new module
+- [x] Full test suite green
 
 ## Risk Assessment
 
 - **Risk (highest — re-red-team F1):** a kind-agnostic `readRuntimeStateRowsLatest` (collapse-all-by-id, then filter-kind) would let a higher-version canonical-id `ledger-event` shadow a `budget-state` and delete it from the projection — a non-deterministic false-block (constraint gate) + silent loss of inbound bootstrap for that surface. `appendLedgerEvent` versions rows kind-agnostically by `id` (runtime-state.js:271); a canonical-id ledger-event is permitted when the surface is active (runtime-state-record-tool.js:122-126; runtime-contract.md:70). **Mitigation:** Phase 2 filters `kind === "budget-state"` BEFORE `collapseLatestById`, mirroring `readBudgetTrackingState` (runtime-state.js:343-354); the cross-kind collision TDD test (phase-02 Step 4) is the must-pass gate. The kind-agnostic `readRuntimeStateRowsLatest` is explicitly forbidden for this path.
-- **Risk:** Phase 2 changes the shared reader `readRuntimeObservations`, which feeds the **constraint gate** (`checkObservationExists` → `makeGateDecision`). **Mitigation (verified):** `makeGateDecision` (gate-logic.js:464) reads only `constraintMatch` + `observationStatus.found` — metadata-insensitive; `checkObservationExists` uses `find()` (found/not-found). Dedup changes *which* row is matched, not found/not-found. Phase 2 TDD pins the constraint-gate oracle. (Open Question closed clean.)
+- **Risk:** Phase 2 changes the shared reader `readRuntimeObservations`, which feeds the **constraint gate** (`checkObservationExists` → `makeGateDecision`). **Mitigation (verified, with a documented behavior change):** `makeGateDecision` (gate-logic.js:464) reads only `constraintMatch` + `observationStatus.found` — metadata-insensitive, so dedup does not change *which* row's metadata drives the decision. **However `found`/not-`found` DOES flip on lifecycle transitions** (verified post-implementation): a surface whose latest budget-state row is `paused`/`stopped` (e.g. after `runtime_state_pause` appends a higher-version paused row under the canonical id) projects NO active observation → `checkObservationExists` returns `found:false` → `makeGateDecision` blocks. Pre-dedup the older active row survived and the gate returned `ok`. This flip is **intended** (a paused/stopped surface should not satisfy the "observation required" constraint) and pinned by a regression test in `collapse-latest-budget-state-by-id.test.js`. The earlier "dedup changes which row is matched, not found/not-found" claim held only for active+active same-id rows. (Open Question closed.)
 - **Risk:** Phase 2 flips the inbound gate from per-row (conservative) to per-surface-latest (precise) — a behavior change. **Mitigation:** accepted by design choice (user-approved deeper fix); more correct for restarted surfaces. Scope caveat (re-red-team M1): "precise" holds for canonical-id rows; legacy/distinct-id budget-state rows are NOT collapsed by `collapseLatestById` and stay per-row (conservative). Phase 3 TDD documents the canonical-id case explicitly.
 - **Risk:** Bash-gate staleness tests (`inbound-state-runtime-state.test.js`) hand-craft observations WITHOUT `updated_at` + sidecar rows and assert sidecar-latest behavior (e.g. line 115-127 "multiple sidecar rows uses latest"). Under the new model `checkObservationStaleness` no longer reads the sidecar. **Mitigation:** Phase 4 rewrites these fixtures to the new model — observations carry `updated_at` = latest budget-state timestamp (as the projection now supplies); the sidecar-read assertions are replaced by direct-`updated_at` assertions. The "No runtime-state entry" branch (lines 93-113) is dropped (unreachable post-Phase-2) and re-mapped to the stale-on-null "no updated_at" path — one assertion-loss documented in the PR. This is a faithful rewrite, not a weakening.
 - **Risk:** Finding's `evidence_code_ref` repoint triggers a grounding rejection. **Mitigation:** `meta_state_refresh_file_index` on each refactored path before `meta_state_re_verify`; resolve via change-log citation.

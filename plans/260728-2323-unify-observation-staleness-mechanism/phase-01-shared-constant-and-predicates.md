@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Shared Constant + Unified Predicates"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -84,12 +84,12 @@ The marker predicate uses strict `>` (matches `checkObservationStaleness` line 1
 
 ## Success Criteria
 
-- [ ] `core/observation-staleness.js` exists, pure, exports the 4 primitives
-- [ ] `OBSERVATION_STALENESS_WINDOW_MS` in `core/constants.js`, env-overridable, distinct from `STALENESS_WINDOW_MS`
-- [ ] Both predicates **stale-on-null** (matching originals) — tests pin this
-- [ ] Phase 1 tests green, including env-override + `>` boundary + stale-on-null cases
-- [ ] `check_runtime_agnostic` passes on the new module
-- [ ] No caller rewired yet (additive-only); existing tests unchanged and green
+- [x] `core/observation-staleness.js` exists, pure, exports the 4 primitives
+- [x] `OBSERVATION_STALENESS_WINDOW_MS` in `core/constants.js`, env-overridable, distinct from `STALENESS_WINDOW_MS`
+- [x] Both predicates **stale-on-null** (matching originals) — tests pin this
+- [x] Phase 1 tests green, including env-override + `>` boundary + stale-on-null cases
+- [x] `check_runtime_agnostic` passes on the new module
+- [x] No caller rewired yet (additive-only); existing tests unchanged and green
 
 ## Risk Assessment
 
