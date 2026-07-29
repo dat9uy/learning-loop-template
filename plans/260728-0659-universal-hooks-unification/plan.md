@@ -1,7 +1,7 @@
 ---
 title: "Universal Hooks Unification"
 description: "Resolve meta-260726T1858Z: ship the missing half of universal-hooks unification — a combined hooks-lock.json manifest declaring which hooks each runtime SHOULD wire, a wiring-matrix parity test (skills-model), a manifest-aware shims-in-sync checklist item, dead .mastracode shim cleanup, and an adoption-path doc. TDD-structured; preserves existing runtime behavior."
-status: pending
+status: completed
 priority: P2
 effort: "1.5d"
 tags: [hooks, manifest, parity-test, runtime-agnostic, gate-logic, tdd]
