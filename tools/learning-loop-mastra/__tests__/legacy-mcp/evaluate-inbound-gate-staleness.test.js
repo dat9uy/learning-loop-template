@@ -147,9 +147,13 @@ await test("non-state-change prompt short-circuits to ok even when obs stale", (
   assert.strictEqual(decision.decision, "ok");
 });
 
-await test("paused surface → not flagged (writer pause check stays)", () => {
+await test("paused-only surface projects zero observations → no flag", () => {
+  // Documents the Phase-2 status-filter path: a single paused row produces
+  // zero observations (status !== "active"), so the staleness loop never
+  // runs and the gate returns ok. This test does NOT exercise the
+  // isSurfacePausedRead skip — the skip is the gate's defence for the
+  // legacy multi-id case covered by the next test.
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
-  // Paused budget-state row triggers isSurfacePaused → skip.
   writeSidecar([
     {
       id: "vnstock",
@@ -157,6 +161,43 @@ await test("paused surface → not flagged (writer pause check stays)", () => {
       status: "paused",
       affected_system: "vnstock",
       timestamp: ts(60),
+      version: 0,
+      metadata: {},
+    },
+  ]);
+  writeFileSync(
+    join(root, ".claude", "coordination", ".loop-preflight-runtime-tracking"),
+    JSON.stringify({ completed_at: new Date().toISOString() }),
+    "utf8"
+  );
+  const decision = evaluateInboundGate({ prompt: STATE_CHANGE_PROMPT, root });
+  assert.strictEqual(decision.decision, "ok");
+});
+
+await test("paused canonical + legacy distinct-id active → not flagged (pause skip regression pin)", () => {
+  // Phase-2 projection dedups by id; a legacy active row with id "slot-1"
+  // and a canonical paused row with id "vnstock" both survive the projection
+  // (two observations, different ids). Both share affected_system="vnstock",
+  // so isSurfacePausedRead(root, "vnstock") is the ONLY mechanism that drops
+  // them — without that skip, the legacy active observation would surface
+  // a stale-observation warning for an explicitly paused surface.
+  mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
+  writeSidecar([
+    {
+      id: "vnstock",
+      kind: "budget-state",
+      status: "paused",
+      affected_system: "vnstock",
+      timestamp: ts(60),
+      version: 1,
+      metadata: {},
+    },
+    {
+      id: "slot-1",
+      kind: "budget-state",
+      status: "active",
+      affected_system: "vnstock",
+      timestamp: ts(10),
       version: 0,
       metadata: {},
     },

@@ -149,11 +149,11 @@ await test("vnstock observation with no marker → stale: false", () => {
   assert.deepStrictEqual(result, { stale: false });
 });
 
-await test("paused budget-state surface is skipped (try/catch degrade to not-paused)", () => {
-  // Post-Phase-2: the projection emits one obs per active surface. A paused
-  // surface has no obs (status filter) — but if an obs arrives, the
-  // isSurfacePaused try/catch skip degrades to "not paused" and the obs is
-  // evaluated against the marker.
+await test("active obs with no paused sidecar → marker check evaluates (no skip)", () => {
+  // Documents the try/catch degrade-to-not-paused path: a corrupt or absent
+  // sidecar makes isSurfacePaused throw, the catch sets paused=false, the
+  // observation is evaluated against the marker. This test deliberately does
+  // NOT write a paused row — the fallback path is the behavior under test.
   mkdirSync(join(root, ".claude", "coordination"), { recursive: true });
   writeMarker(ts(5));
   const result = checkObservationStaleness(
@@ -168,8 +168,49 @@ await test("paused budget-state surface is skipped (try/catch degrade to not-pau
     ],
     root
   );
-  // Without the paused marker, falls through to marker check → stale.
   assert.strictEqual(result.stale, true);
+});
+
+await test("paused canonical sidecar drops legacy distinct-id active obs for same surface", () => {
+  // Phase-2 projection dedups by id, so a legacy active row with id "slot-1"
+  // AND a canonical paused row with id "vnstock" BOTH survive the projection
+  // (different ids → two observations). The isSurfacePaused(root, "vnstock")
+  // check on each is the ONLY thing that drops the legacy active observation,
+  // because its affected_system is "vnstock". Removing that skip would
+  // re-surface a paused surface as a stale-observation warning.
+  mkdirSync(join(root, ".factory"), { recursive: true });
+  writeFileSync(
+    join(root, "runtime-state.jsonl"),
+    [
+      JSON.stringify({
+        id: "vnstock",
+        kind: "budget-state",
+        status: "paused",
+        affected_system: "vnstock",
+        timestamp: ts(5),
+        version: 1,
+        metadata: {},
+      }),
+      JSON.stringify({
+        id: "slot-1",
+        kind: "budget-state",
+        status: "active",
+        affected_system: "vnstock",
+        timestamp: ts(10),
+        version: 0,
+        metadata: {},
+      }),
+    ].join("\n") + "\n",
+    "utf8"
+  );
+  writeMarker(ts(15));
+  // Drive through the unified path: the projection emits 2 observations
+  // (both active, different ids); the loop should skip both via
+  // isSurfacePaused and return stale:false.
+  const observations = readRuntimeObservations(root);
+  assert.strictEqual(observations.length, 2);
+  const result = checkObservationStaleness(observations, root);
+  assert.deepStrictEqual(result, { stale: false });
 });
 
 await test("inactive observations are skipped (status filter)", () => {
