@@ -90,10 +90,7 @@ The gate uses 10 regex patterns covering:
 
 #### Staleness Algorithm (Inbound)
 
-- **Threshold:** 30 minutes (`STALENESS_THRESHOLD_MS = 30 * 60 * 1000`)
-- Missing `updated_at` → stale
-- Invalid `updated_at` → stale
-- `(now - updated_at) > 30min` → stale
+**Mode:** age — an active observation is stale when `now - updated_at` exceeds the shared observation-staleness window; a missing/invalid `updated_at` is stale (stale-on-null, so malformed state never reads as fresh). Owner: `core/observation-staleness.js#isObservationStaleByAge`; window `OBSERVATION_STALENESS_WINDOW_MS` (`core/constants.js`, 30-min default, env-overridable). The scan runs over the latest `budget-state` row per surface — the projection dedups (see Outbound Staleness) — not every raw row.
 
 #### Output Format
 
@@ -161,17 +158,15 @@ A `write-path` observation unlocks writes to otherwise blocked `records/**` path
 - `constraint_type`: `write-path`
 - `constraint`: `records-evidence` (unblocks `records/evidence/**` and `records/*/evidence/**`)
 
-The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**` or `records/*/evidence/**`. The write gate checks `write-path` observations before applying hard blocks. Both gates reuse the same staleness algorithm.
+The bash gate detects file writes via shell patterns and requires a matching `write-path` observation for `records/evidence/**` or `records/*/evidence/**`. The write gate checks `write-path` observations before applying hard blocks. Both gates share one staleness primitive — one window (`OBSERVATION_STALENESS_WINDOW_MS`), one reference-time model (`obs.updated_at`), stale-on-null — used in two modes: age (inbound, writes the marker) and marker (outbound, escalates). Owner: `core/observation-staleness.js`.
 
 #### Staleness Algorithm (Outbound)
 
-- **Comparison:** marker timestamp > observation updated_at
-- No marker → not stale
-- Missing `updated_at` → stale
-- Invalid timestamps → not stale (fail-open)
-- Marker newer than observation → stale
+**Mode:** marker — an active observation is stale when the last operator-message marker is newer than its `updated_at`; a missing/invalid `updated_at` is stale (stale-on-null, matching the inbound age mode). No marker, or an invalid marker timestamp, means no state-change is pending → not stale. Owner: `core/observation-staleness.js#isObservationStaleByMarker`, called from `core/inbound-state.js#checkObservationStaleness`.
 
-This algorithm differs from the inbound gate's 30-minute threshold. See Known Issues (F2).
+The two gates differ in *mode* (age vs marker), not in window — both use `OBSERVATION_STALENESS_WINDOW_MS` and the same reference time. The marker is the cache of "an age-staleness event occurred within the last window": the inbound gate writes it only when the age scan finds stale observations, so a marker exists only when observations were genuinely stale (F1). See Known Issues (F2) for the unification.
+
+**Projection (shared by both gates):** `readRuntimeObservations` (`core/file-readers.js`) dedups to the latest `budget-state` row per surface, so `obs.updated_at` is the authoritative per-surface-latest timestamp (this is what makes the outbound marker mode safe without re-reading the sidecar). Consequence: a surface whose latest `budget-state` row is `paused`/`stopped`/`initial` projects no active observation, so the constraint gate (`checkObservationExists` → `makeGateDecision`) **blocks** — a non-tracked surface does not satisfy the "observation required" constraint. A fresh `active` row under the canonical id (resume/restart) restores it. The inbound gate separately skips paused surfaces for staleness *warnings* (`isSurfacePaused`); the constraint-gate block is the bash-gate counterpart, not a contradiction.
 
 ### Hooks Wiring Manifest
 
@@ -367,7 +362,7 @@ The inbound gate uses a **30-minute time-based threshold**. The outbound gates u
 | Obs 3hr old, marker 24hr old | Stale → warn | Fresh → no escalate |
 
 **Impact:** Inbound and outbound gates may make different staleness decisions.
-**Resolution (2026-05-17):** Resolved as side effect of F1 fix. Since markers are only written when observations are stale (by the 30-minute threshold), a marker exists only when observations are genuinely old. The outbound gate's `markerTime > obsTime` comparison then naturally agrees with the inbound gate's assessment. No separate fix needed.
+**Resolution (2026-05-17; deepened 2026-07-29):** The F1 fix made the two gates agree in practice — a marker exists only when the age scan found stale observations, so the marker comparison naturally tracks the age threshold. That agreement rested on two independent 30-minute constants that happened to match but were not enforced to match. The unification collapses both onto one shared primitive — `OBSERVATION_STALENESS_WINDOW_MS` + `observationReferenceTimeMs` + stale-on-null — with age and marker as the only difference (`core/observation-staleness.js`), and dedups the projection so both gates read the same per-surface-latest `updated_at`. The mode difference in the table above is by design and remains; the *disagreement* does not.
 
 #### F3: MCP Server Staleness Check Only on `ok` — RESOLVED
 
@@ -388,7 +383,7 @@ The marker file stores the first 200 characters of the operator's prompt in plai
 The marker file never expires. An operator's state-change message causes permanent escalation until the observation is manually updated.
 
 **Impact:** Stale marker causes escalations long after the state change is irrelevant.
-**Resolution (2026-05-17):** Added `MARKER_TTL_MS = 30 * 60 * 1000` (30 minutes) to `readLastOperatorMessage` in both `gate-utils.cjs` and `server.js`. Markers older than 30 minutes are treated as `null`, preventing perpetual escalation. TTL matches inbound gate's `STALENESS_THRESHOLD_MS` for consistency.
+**Resolution (2026-05-17):** Added a 30-minute marker TTL to `readLastOperatorMessage` so markers older than 30 minutes are treated as `null`, preventing perpetual escalation. The TTL and the inbound observation-staleness window are now one shared constant — `OBSERVATION_STALENESS_WINDOW_MS` (`core/constants.js`) — used by `core/inbound-state.js#isMarkerFresh` and the age predicate in `core/observation-staleness.js`, so the two can no longer drift.
 
 #### F11: False Positive Rate
 

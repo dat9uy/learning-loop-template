@@ -32,8 +32,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Fixture timestamps: deliberately >30 minutes old so the gate's
-// staleness threshold (`STALENESS_THRESHOLD_MS` in gate-logic.js:1024)
-// classifies them stale without depending on wall-clock arithmetic.
+// staleness threshold (`OBSERVATION_STALENESS_WINDOW_MS` in
+// core/observation-staleness.js) classifies them stale without depending on
+// wall-clock arithmetic.
 const OLD_TIMESTAMP_VNSTOCK = "2026-05-08T10:17:23Z";
 const OLD_TIMESTAMP_META = "2026-05-08T11:17:23Z";
 

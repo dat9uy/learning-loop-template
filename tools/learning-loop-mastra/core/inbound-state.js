@@ -5,34 +5,34 @@ import { readFromAllSurfaces } from "./surfaces.js";
 // session-suffixed filename; without it, falls back to the legacy name for
 // migration compatibility.
 import { getSessionId } from "./worktree-session-id.js";
-// Plan 260720-1112 Phase 1: consume the shared runtime-state read path so the
-// sidecar parse is no longer forked (B-widening of plan 260719-2201). One
-// malformed line used to wipe the entire read to [] via the local readSidecar
-// try/catch; now it's skipped (parsed → null, then .filter(Boolean)) and
-// valid rows survive.
-import { readRuntimeStateRows } from "./runtime-state.js";
 // Per-surface tracking toggle: a paused surface's stale observations are
 // skipped by the inbound gate's stale-observation scan so the gate and the
 // writers agree on what gets surfaced. Mirrors the writer-side pause check
 // added to runtime_state_record and meta_state_dispatch_finding.
 import { isSurfacePaused } from "./runtime-tracking.js";
-
-const MARKER_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const META_AFFECTED_SYSTEMS = new Set(["meta", undefined, null]);
+// Plan 260728-2323 Phase 4: shared constant + unified marker predicate. The
+// local MARKER_TTL_MS and the meta/non-meta branch are gone; both the
+// freshness guard and the per-observation check use the same primitive the
+// inbound gate uses (Phase 3).
+import { OBSERVATION_STALENESS_WINDOW_MS } from "./constants.js";
+import {
+  observationReferenceTimeMs,
+  isObservationStaleByMarker,
+} from "./observation-staleness.js";
 
 /** Apply TTL filter to a parsed marker; returns the marker if valid, else null. */
 function isMarkerFresh(marker) {
   if (!marker || !marker.timestamp) return null;
   const markerTime = new Date(marker.timestamp).getTime();
   if (isNaN(markerTime)) return null;
-  if (Date.now() - markerTime > MARKER_TTL_MS) return null;
+  if (Date.now() - markerTime > OBSERVATION_STALENESS_WINDOW_MS) return null;
   return marker;
 }
 
 /**
  * Read the last operator message marker written by inbound-state-gate.cjs.
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
- * Markers older than MARKER_TTL_MS are treated as non-existent.
+ * Markers older than OBSERVATION_STALENESS_WINDOW_MS are treated as non-existent.
  *
  * Plan 260711-0030 Phase 5: scoped per-session via the session id argument
  * (defaults to getSessionId(root) for the current worktree). Backward-compat:
@@ -76,19 +76,22 @@ export function readLastOperatorMessage(root, surface, sessionId = getSessionId(
  * Check if observations are stale relative to the last operator state-change message.
  * Returns { stale, reason, observation_id } or { stale: false }.
  *
- * Partitioning: observations with affected_system in (meta, undefined, null) use
- * the observation's own updated_at. Non-meta observations (vnstock, fastapi, etc.)
- * check the runtime-state.jsonl sidecar instead — the sidecar is the source of truth
- * for substrate-facing state.
+ * Plan 260728-2323 Phase 4: rewritten onto the unified primitives. The
+ * meta/non-meta branch and the sidecar re-read + `reduce(latest)` are gone.
+ * Phase 2's projection dedup guarantees that `obs.updated_at` IS the
+ * authoritative per-surface-latest timestamp, so the marker predicate
+ * (`isObservationStaleByMarker`) reads `obs.updated_at` directly — no
+ * sidecar re-read. Stale-on-null (matches the originals — `findStaleObservations`
+ * from gate-logic.js and this function's own pre-rewrite meta branch, both
+ * since removed) preserves F1 defensiveness on malformed
+ * state. The `status !== "active"` guard and the paused-surface
+ * try/catch-degrade-to-not-paused skip are preserved verbatim.
  *
- * The kind+status filter is load-bearing. `readRuntimeStateRows` is NOT a
- * kind filter — the caller must apply the explicit `kind === "budget-state"
- * && status === "active"` guard before the per-observation staleness check.
- * Ledger-event rows are out of scope by kind (concept boundary, not an
- * exemption the gate grants); budget-state rows with paused/stopped/initial
- * status are out by lifecycle. Rows with no `kind` predate the
- * discriminator and are treated as budget-state (read-compat — every row
- * was scannable tracking state before the kinds split).
+ * The "No runtime-state entry" branch is dropped (unreachable post-Phase-2:
+ * an observation reaching this function always originates from a sidecar
+ * row, so a sidecar-with-no-row-for-surface cannot happen via the gate's
+ * real input). A missing `updated_at` hits the stale-on-null "no updated_at"
+ * reason instead.
  */
 export function checkObservationStaleness(observations, root) {
   const marker = readLastOperatorMessage(root);
@@ -97,77 +100,34 @@ export function checkObservationStaleness(observations, root) {
   const markerTime = new Date(marker.timestamp).getTime();
   if (isNaN(markerTime)) return { stale: false };
 
-  // Lazy-read sidecar once for all non-meta observations. Filter to
-  // budget-state+active rows only — ledger-event rows are out of scope;
-  // budget-state rows with non-active lifecycle are out of scope;
-  // kind-less legacy rows count as budget-state (read-compat).
-  // `readRuntimeStateRows` does not apply this filter.
-  let sidecarCache = null;
-  function getSidecar() {
-    if (sidecarCache === null) {
-      sidecarCache = readRuntimeStateRows(root).filter(
-        (r) => r && (r.kind ?? "budget-state") === "budget-state" && r.status === "active",
-      );
-    }
-    return sidecarCache;
-  }
-
   for (const obs of observations) {
     if (obs.status !== "active") continue;
 
-    if (META_AFFECTED_SYSTEMS.has(obs.affected_system)) {
-      // Meta (or legacy) observation: use observation's own updated_at.
-      if (!obs.updated_at) {
-        return {
-          stale: true,
-          reason: `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`,
-          observation_id: obs.id || obs.constraint,
-        };
-      }
-      const obsTime = new Date(obs.updated_at).getTime();
-      if (isNaN(obsTime) || markerTime > obsTime) {
-        return {
-          stale: true,
-          reason: `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`,
-          observation_id: obs.id || obs.constraint,
-        };
-      }
-    } else {
-      // Non-meta observation (vnstock, fastapi, etc.): check runtime-state sidecar.
-      // Paused surfaces are skipped — a surface the operator explicitly paused
-      // should not surface stale-observation warnings. The skip is gated on
-      // `isSurfacePaused` (operator's explicit choice); unpausing restores the
-      // warnings. This is a READ gate: writers fail closed on a malformed
-      // tracking sidecar, but here a load failure must degrade to "not paused"
-      // — otherwise a corrupt sidecar would block every gated command.
-      let paused = false;
-      try {
-        paused = isSurfacePaused(root, obs.affected_system);
-      } catch {
-        paused = false;
-      }
-      if (paused) continue;
-      const sidecar = getSidecar();
-      const matching = sidecar.filter((r) => r.affected_system === obs.affected_system);
-      if (matching.length === 0) {
-        return {
-          stale: true,
-          reason: `No runtime-state entry for affected_system="${obs.affected_system}". Operator sent state-change at ${marker.timestamp}. Record a runtime-state entry before proceeding.`,
-          observation_id: obs.id || obs.constraint,
-        };
-      }
-      // Find the latest sidecar entry by timestamp.
-      const latest = matching.reduce((a, b) =>
-        new Date(a.timestamp).getTime() >= new Date(b.timestamp).getTime() ? a : b
-      );
-      const sidecarTime = new Date(latest.timestamp).getTime();
-      if (isNaN(sidecarTime) || markerTime > sidecarTime) {
-        return {
-          stale: true,
-          reason: `Runtime-state for "${obs.affected_system}" last updated at ${latest.timestamp}, but operator sent state-change at ${marker.timestamp}. Sidecar may be stale. Record a new runtime-state entry before proceeding.`,
-          observation_id: obs.id || obs.constraint,
-        };
-      }
+    // Paused surfaces are skipped — a surface the operator explicitly
+    // paused should not surface stale-observation warnings. The skip is
+    // gated on `isSurfacePaused` (operator's explicit choice); unpausing
+    // restores the warnings. This is a READ gate: writers fail closed on a
+    // malformed tracking sidecar, but here a load failure must degrade to
+    // "not paused" — otherwise a corrupt sidecar would block every gated
+    // command.
+    let paused = false;
+    try {
+      paused = isSurfacePaused(root, obs.affected_system);
+    } catch {
+      paused = false;
+    }
+    if (paused) continue;
+
+    if (isObservationStaleByMarker(obs, markerTime)) {
+      const ref = observationReferenceTimeMs(obs);
+      const reason = ref === null
+        ? `Observation "${obs.id || obs.constraint}" has no updated_at. Operator sent state-change at ${marker.timestamp}. Update the observation before proceeding.`
+        : `Observation "${obs.id || obs.constraint}" updated at ${obs.updated_at}, but operator sent state-change at ${marker.timestamp}. Observation may be stale. Update before proceeding.`;
+      return {
+        stale: true,
+        reason,
+        observation_id: obs.id || obs.constraint,
+      };
     }
   }
   return { stale: false };

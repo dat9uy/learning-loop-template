@@ -12,7 +12,15 @@ import { assertinvariantSync } from "./operation-invariant.js";
 // and wipe the projection to []; now it's skipped at the parse layer
 // (parsed → null, then .filter(Boolean)) and the projection only sees valid
 // row objects.
-import { readRuntimeStateRows } from "./runtime-state.js";
+//
+// Plan 260728-2323 Phase 2: the helper now dedups to max_by(version) per id
+// (kind-before-collapse), so the projection emits one observation per
+// (id × constraint) instead of one per RAW active row. `obs.updated_at` is
+// now the authoritative per-surface-latest timestamp.
+import {
+  readRuntimeStateRows,
+  collapseLatestBudgetStateById,
+} from "./runtime-state.js";
 
 const AFFECTED_SYSTEM_TO_CONSTRAINTS = {
   vnstock: ["vendor-api", "package-manager"],
@@ -64,21 +72,26 @@ function resolveRoot() {
 export function readRuntimeObservations(root) {
   const resolvedRoot = root || resolveRoot();
   try {
-    const rows = readRuntimeStateRows(resolvedRoot);
+    // Plan 260728-2323 Phase 2: kind-before-collapse dedup so the projection
+    // emits ONE observation per (id × constraint) = the latest max_by(version)
+    // budget-state row. obs.updated_at is now the authoritative
+    // per-surface-latest timestamp. The kind filter MUST happen BEFORE the
+    // dedup so a canonical-id ledger-event cannot shadow a budget-state row
+    // (see runtime-state.js#collapseLatestBudgetStateById; re-red-team F1).
+    const rows = collapseLatestBudgetStateById(readRuntimeStateRows(resolvedRoot));
     const observations = [];
     for (const entry of rows) {
-      // Kind+status filter. Ledger-event rows are out of scope by kind
-      // (concept boundary, not an exemption the gate grants). Budget-state
-      // rows with non-active status are also excluded — a paused or
-      // stopped surface's rows must not surface as stale observations; the
-      // lifecycle excludes them, not a gate filter applied after the fact.
-      // Read-compat: rows with no `kind` predate the discriminator, when
-      // every row was scannable tracking state — treat them as
-      // budget-state so a legacy sidecar never goes silently dark.
-      // Writes remain strict (`assertKindConditionalStatus` requires an
-      // explicit kind).
-      const kind = entry.kind ?? "budget-state";
-      if (kind !== "budget-state") continue;
+      // Lifecycle filter: paused / stopped / initial rows are out of scope.
+      // The dedup above collapses to the LATEST row per id; that row must
+      // still be active for its observation to surface. Consequence (intended):
+      // a surface whose latest budget-state row is paused/stopped — e.g. after
+      // runtime_state_pause appends a higher-version paused row under the
+      // canonical id — projects NO observation, so checkObservationExists
+      // returns not-found and makeGateDecision blocks the constraint. A
+      // paused/stopped surface should not satisfy the "observation required"
+      // constraint. (The inbound gate separately skips paused surfaces
+      // upstream for staleness warnings; this is the bash-gate constraint
+      // counterpart, not a contradiction.)
       if (entry.status !== "active") continue;
       // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:
