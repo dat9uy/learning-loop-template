@@ -63,7 +63,7 @@ The word "interface" was overloaded. These are three distinct concerns, now name
 `runtime-state.jsonl` carries two row kinds under one file, distinguished by `kind`:
 
 - **`ledger-event`** — immutable audit. Carries `status: "active"` only (no lifecycle). Out of the budget gate's stale-scan scope by kind (concept boundary, not an exemption the gate grants).
-- **`budget-state`** — mutable tracking state. Carries a lifecycle `status`: `initial → active → paused → stopped`. The gate's stale scan surfaces only `kind: budget-state` + `status: active` rows.
+- **`budget-state`** — mutable tracking state. Carries a lifecycle `status`: `initial → active → paused → stopped`. The gate's observation projection dedups to the latest `budget-state` row per surface (`max_by(version)`; `core/file-readers.js#readRuntimeObservations`) and surfaces only `status: active` rows — so a surface whose latest row is `paused`/`stopped`/`initial` projects no observation and the constraint gate blocks (see `docs/architecture.md` § Outbound Staleness).
 
 The canonical lifecycle for a surface is one versioned entity per `affected_system`, and the canonical id is the surface name itself. The lifecycle transitions are in-band: `runtime_state_pause` / `resume` / `stop` append a `kind: budget-state` row under the canonical id with the new `status`. Versioning follows `max_by(version)`, mirroring meta-state's dedup (`core/runtime-state.js` `readRuntimeStateRowsLatest`). `runtime_state_record` rejects a `budget-state` row under any other id (`canonical_id_required`) — pause/resume/stop only ever write the canonical id, so a second id would fork the lifecycle.
 
