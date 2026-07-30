@@ -13,7 +13,7 @@ import { matchesCliTransport } from "../../core/cli-self-match.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Requires LOOP_SESSION_MODE=live unless preview:true.",
+  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry with `origin: <finding-id>` (the structural cross-ref the write-time RI validates — id must exist), resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`. Requires LOOP_SESSION_MODE=live unless preview:true.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
