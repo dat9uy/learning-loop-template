@@ -47,7 +47,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseConsolidates } from "../core/entry/consolidates-refs.js";
+import { forwardRefs } from "../core/entry/relationship-graph.js";
 
 const META_STATE_FILENAME = "meta-state.jsonl";
 const CHANGE_LOG_FILENAME = "change-log.jsonl";
@@ -99,43 +99,17 @@ export function isTerminalSource(entry) {
   return false;
 }
 
-// Per-kind forward-ref extractors. Splitting the branch table into one small
-// function per `entry_kind` keeps each function's cyclomatic complexity low
-// (the single-chain `if/else if` version measured 18). Mirrors the interactive
-// counterpart in `tools/handlers/meta-state-relationships-tool.js`; if that
-// handler's logic drifts, this file MUST be updated in the same commit.
-const OUTBOUND_EXTRACTORS = {
-  finding(entry) {
-    const refs = [];
-    if (entry.consolidated_into) refs.push({ kind: "change-log", id: entry.consolidated_into, field: "consolidated_into" });
-    if (Array.isArray(entry.reopens)) for (const id of entry.reopens) refs.push({ kind: "finding", id, field: "reopens" });
-    if (entry.promoted_to_rule) refs.push({ kind: "rule", id: entry.promoted_to_rule, field: "promoted_to_rule" });
-    return refs;
-  },
-  "change-log"(entry) {
-    const refs = [];
-    if (entry.supersedes) refs.push({ kind: "change-log", id: entry.supersedes, field: "supersedes" });
-    for (const id of parseConsolidates(entry.consolidates)) refs.push({ kind: "finding", id, field: "consolidates" });
-    return refs;
-  },
-  rule(entry) {
-    return entry.origin ? [{ kind: "finding", id: entry.origin, field: "origin" }] : [];
-  },
-  "loop-design"(entry) {
-    const refs = [];
-    if (Array.isArray(entry.proposed_design_for)) for (const id of entry.proposed_design_for) refs.push({ kind: id.startsWith("rule-") ? "rule" : "meta", id, field: "proposed_design_for" });
-    if (Array.isArray(entry.addresses)) for (const id of entry.addresses) refs.push({ kind: "finding", id, field: "addresses" });
-    return refs;
-  },
-};
-
-// Extract forward cross-references from a single entry by dispatching to the
-// per-kind extractor. Unknown kinds (and the implicit "finding" default when
-// `entry_kind` is absent) yield no refs.
+// Forward-ref extractor — Plan 260730-0240 centralization:
+// `OUTBOUND_EXTRACTORS` (the previous per-kind standalone copy) is replaced
+// by `core/entry/relationship-graph.js#forwardRefs` — the single source of
+// truth for cross-ref fields per kind. This fixes:
+//   - rule `supersedes` + `applies_to_resolution` (previously omitted)
+//   - loop-design kind-"meta" bug (meta-… fallback now returns `finding`,
+//     not the literal string `meta`)
+// The validator stays decoupled (no `stale-view`/`gate-logic` imports) —
+// the graph is pure.
 export function outboundRefsOf(entry) {
-  const ek = entry.entry_kind ?? "finding";
-  const extract = OUTBOUND_EXTRACTORS[ek];
-  return extract ? extract(entry) : [];
+  return forwardRefs(entry);
 }
 
 // Classify one outbound ref into a bucket. Returns `{ bucket, record }`, or

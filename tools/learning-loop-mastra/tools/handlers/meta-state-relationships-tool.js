@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { readRegistry } from "../../core/meta-state.js";
 import { factoryFor } from "../../core/entry/index.js";
-import { buildInverseIndexes } from "../../core/loop-introspect.js";
+import { inverseRefs } from "../../core/entry/relationship-graph.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { findEntryOrNotFound } from "#lib/find-entry.js";
@@ -189,18 +189,27 @@ export const metaStateRelationshipsTool = {
 
 // Resolve outbound refs for the entry, including the dual-field fallback for
 // promoted_to_rule (legacy migration: if the finding doesn't have
-// promoted_to_rule declared, look up origin_inverse to find the rule that
-// originated from this finding). Returns the grouped wire shape, or null when
-// the entry has no outbound refs.
+// promoted_to_rule declared, scan the registry for rules whose `origin`
+// points at this finding via a targeted `inverseRefs` lookup). Returns the
+// grouped wire shape, or null when the entry has no outbound refs.
+//
+// Plan 260730-0240 (red-team R1): the fallback PERSISTS — legacy findings
+// without promoted_to_rule must keep resolving outbound.promoted_to_rule.
+// The per-query `buildInverseIndexes(entries)` O(N) rebuild was replaced
+// with a targeted `inverseRefs(findingId, entries)` lookup (the graph
+// scans registry entries that point at this finding — cheaper than
+// rebuilding all 6 inverse maps).
 function resolveOutboundRefs(factory, entry, id, entries) {
   const refs = factory.outboundRefs(entries);
   if (entry.entry_kind === "finding" || entry.entry_kind === undefined) {
     const hasPromoted = refs.some((r) => r.field === "promoted_to_rule");
     if (!hasPromoted) {
-      const inverse = buildInverseIndexes(entries);
-      const rulesFromOrigin = inverse.origin_inverse.get(id);
-      if (rulesFromOrigin && rulesFromOrigin.length > 0) {
-        refs.push({ kind: "rule", id: rulesFromOrigin[0], field: "promoted_to_rule" });
+      // Targeted lookup: which rules have origin === findingId?
+      const rulesFromOrigin = inverseRefs(id, entries).filter(
+        (r) => r.field === "origin"
+      );
+      if (rulesFromOrigin.length > 0) {
+        refs.push({ kind: "rule", id: rulesFromOrigin[0].id, field: "promoted_to_rule" });
       }
     }
   }

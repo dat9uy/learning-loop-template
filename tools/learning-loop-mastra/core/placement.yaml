@@ -186,12 +186,15 @@ files:
   - path: entry/finding.js
     role: helper
     summary: Factory wrapping metaStateFindingEntrySchema with relationship methods.
+  - path: entry/relationship-graph.js
+    role: helper
+    summary: Single source of truth for the meta-state relationship model — CROSS_REFS table per kind, forward/inverse resolution, buildInverseIndexes (6-map shape), write-time structural RI (id-existence), diffChangedRefs. Folds parseConsolidates + inboundFromLoopDesign leaf helpers. Pure (no fs/gate-logic/stale-view/meta-state imports).
   - path: entry/inbound-from-loop-design.js
     role: helper
-    summary: Shared per-kind inbound-ref extractor for loop-design entries. Used by finding.js and rule.js inboundRefs dispatchers (Phase 4 dedup).
+    summary: Thin re-export of `inboundFromLoopDesign` from relationship-graph.js (folded in plan 260730-0240 Phase 3; kept for rollback safety).
   - path: entry/consolidates-refs.js
     role: helper
-    summary: Shared parser for the change-log `consolidates` field (array + legacy CSV-string). Used by entry/change-log.js and scripts/validate-registry-refs.js (DRY).
+    summary: Thin re-export of `parseConsolidates` from relationship-graph.js (folded in plan 260730-0240 Phase 3; kept for rollback safety).
   - path: entry/loop-design.js
     role: helper
     summary: Factory wrapping metaStateLoopDesignSchema with relationship methods.

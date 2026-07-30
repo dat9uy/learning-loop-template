@@ -1,20 +1,16 @@
 /**
- * Parse a change-log `consolidates` field into a list of finding ids.
+ * Thin re-export of `parseConsolidates` from `relationship-graph.js`.
  *
- * Canonical form (post-migration) is `z.array(z.string())`. The legacy
- * CSV-string form is tolerated for in-flight processes that read
- * pre-migration data. Single source of truth shared by
- * `core/entry/change-log.js` (interactive entry) and
- * `scripts/validate-registry-refs.js` (post-merge CI validator) so the two
- * cannot drift.
+ * Plan 260730-0240 (red-team R10): the body is folded into
+ * `core/entry/relationship-graph.js` (the canonical single source of truth).
+ * This file is kept as a thin re-export for rollback safety — reverting an
+ * earlier factory-migration commit would otherwise break imports. A hard
+ * delete of this file would create a rollback hole; defer the actual
+ * deletion to a separate stable PR.
  *
- * @param {unknown} cl - the `consolidates` field value
- * @returns {string[]} finding ids (empty when absent or unparseable)
+ * Original parser semantics (preserved): canonical form is
+ * `z.array(z.string())`; the legacy CSV-string form is tolerated for
+ * in-flight processes that read pre-migration data.
  */
-export function parseConsolidates(cl) {
-  if (Array.isArray(cl)) return cl;
-  if (typeof cl === "string" && cl.trim()) {
-    return cl.split(",").map((s) => s.trim()).filter(Boolean);
-  }
-  return [];
-}
+
+export { parseConsolidates } from "./relationship-graph.js";

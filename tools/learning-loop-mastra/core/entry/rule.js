@@ -1,7 +1,7 @@
 import { metaStateRuleEntrySchema } from "../meta-state.js";
 import { checkResolutionEvidence, projectHasLearningLoopMcp } from "../gate-logic.js";
 import { deepFreeze } from "./deep-freeze.js";
-import { inboundFromLoopDesign } from "./inbound-from-loop-design.js";
+import { forwardRefs, inverseRefs } from "./relationship-graph.js";
 
 export function createRule(data) {
   const parsed = metaStateRuleEntrySchema.parse(data);
@@ -47,43 +47,28 @@ export function createRule(data) {
       return parsed.supersedes === other.data?.id;
     },
 
-    outboundRefs() {
-      const refs = [];
-      if (parsed.origin) {
-        refs.push({ kind: "finding", id: parsed.origin, field: "origin" });
-      }
-      if (parsed.supersedes) {
-        refs.push({ kind: "rule", id: parsed.supersedes, field: "supersedes" });
-      }
-      if (parsed.applies_to_resolution) {
-        refs.push({ kind: "finding", id: parsed.applies_to_resolution, field: "applies_to_resolution" });
-      }
-      return refs;
+    outboundRefs(entries) {
+      // Delegate to the centralized graph. Plan 260730-0240 single source of truth.
+      return forwardRefs(parsed, entries);
     },
 
     inboundRefs(root) {
-      const refs = [];
-      const seenPromotedFrom = new Set();
-
-      // Dual-field migration: rule.origin is the canonical promoted_to_rule ref.
-      // Always report this, even if the finding no longer exists in the registry
-      // (matches buildInverseIndexes behavior at loop-introspect.js:328-330).
+      // Inverse via the graph. Replaces the previous bespoke dual-field
+      // dedup loop (seenPromotedFrom Set + manual entry-kind dispatch).
+      const refs = inverseRefs(parsed.id, root);
+      // Dual-field migration ghost-ref: rule.origin is the canonical
+      // promoted_to_rule ref. Always emit it even when the finding no
+      // longer exists in root (matches the legacy behavior locked by
+      // `meta-state-relationships-snapshot.test.js`). Dedup against the
+      // graph's inverseRefs result so a finding that IS in root AND has
+      // promoted_to_rule is counted once.
       if (parsed.origin) {
-        refs.push({ kind: "finding", id: parsed.origin, field: "promoted_to_rule" });
-        seenPromotedFrom.add(parsed.origin);
-      }
-
-      for (const entry of root) {
-        const kind = entry.entry_kind ?? "finding";
-        // Direct: finding.promoted_to_rule === this rule (avoid duplicate from dual-field)
-        if (kind === "finding" && entry.promoted_to_rule === parsed.id && !seenPromotedFrom.has(entry.id)) {
-          refs.push({ kind: "finding", id: entry.id, field: "promoted_to_rule" });
-          seenPromotedFrom.add(entry.id);
+        const seen = new Set(
+          refs.filter((r) => r.field === "promoted_to_rule").map((r) => r.id)
+        );
+        if (!seen.has(parsed.origin)) {
+          refs.push({ kind: "finding", id: parsed.origin, field: "promoted_to_rule" });
         }
-        if (kind === "rule" && entry.supersedes === parsed.id) {
-          refs.push({ kind: "rule", id: entry.id, field: "supersedes" });
-        }
-        if (kind === "loop-design") refs.push(...inboundFromLoopDesign(entry, parsed));
       }
       return refs;
     },

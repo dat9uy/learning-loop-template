@@ -1,6 +1,6 @@
 import { metaStateChangeEntrySchema } from "../meta-state.js";
 import { deepFreeze } from "./deep-freeze.js";
-import { parseConsolidates } from "./consolidates-refs.js";
+import { forwardRefs, inverseRefs } from "./relationship-graph.js";
 
 export function createChangeLog(data) {
   const parsed = metaStateChangeEntrySchema.parse(data);
@@ -9,33 +9,18 @@ export function createChangeLog(data) {
     data: parsed,
     schema: metaStateChangeEntrySchema,
 
-    outboundRefs() {
-      const refs = [];
-      if (parsed.supersedes) {
-        refs.push({ kind: "change-log", id: parsed.supersedes, field: "supersedes" });
-      }
-      // Plan 260715-0801 Validation Q2: schema is z.array(z.string()).
-      // The migration script converts legacy CSV strings to one-element
-      // arrays, so the array form is canonical. Tolerate the legacy
-      // string form for in-flight processes that read pre-migration data.
-      // Parser shared with scripts/validate-registry-refs.js (DRY).
-      for (const id of parseConsolidates(parsed.consolidates)) {
-        refs.push({ kind: "finding", id, field: "consolidates" });
-      }
-      return refs;
+    outboundRefs(entries) {
+      // Delegate to the centralized graph — single source of truth for
+      // cross-ref fields per kind. Plan 260730-0240 collapses the
+      // bespoke change-log outbound extractor into the graph.
+      return forwardRefs(parsed, entries);
     },
 
     inboundRefs(root) {
-      const refs = [];
-      for (const entry of root) {
-        if (entry.entry_kind === "finding" && entry.consolidated_into === parsed.id) {
-          refs.push({ kind: "finding", id: entry.id, field: "consolidated_into" });
-        }
-        if (entry.entry_kind === "change-log" && entry.supersedes === parsed.id) {
-          refs.push({ kind: "change-log", id: entry.id, field: "supersedes" });
-        }
-      }
-      return refs;
+      // Inverse via the graph. Replaces the previous manual loop scanning
+      // for entries with `consolidated_into === parsed.id` or
+      // `supersedes === parsed.id`.
+      return inverseRefs(parsed.id, root);
     },
   });
 }
