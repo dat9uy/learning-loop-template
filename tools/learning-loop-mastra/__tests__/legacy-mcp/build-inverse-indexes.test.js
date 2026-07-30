@@ -60,11 +60,13 @@ test("buildInverseIndexes structural contract on synthetic fixture", () => {
 
   // Verify population
   assert.deepStrictEqual(inverse.origin_inverse.get("meta-finding-1"), ["rule-xxx"]);
-  // promoted_to_rule_inverse is populated from BOTH the finding.promoted_to_rule
-  // side AND the rule.origin side (dual-field unification during migration).
+  // promoted_to_rule_inverse is sourced from rule.origin (canonical); the
+  // legacy finding.promoted_to_rule field is preserved on disk but does NOT
+  // contribute to the inverse (Phase 3 centralization dedup fix — the old
+  // 2-ref artifact double-counted one relationship).
   const ptrIds = inverse.promoted_to_rule_inverse.get("rule-xxx");
   assert.ok(ptrIds.includes("meta-finding-1"), "promoted_to_rule_inverse must include meta-finding-1");
-  assert.equal(ptrIds.length, 2, "dual-field unification populates from both sides");
+  assert.equal(ptrIds.length, 1, "canonical rule.origin → 1 ref (was 2 pre-centralization)");
   assert.deepStrictEqual(inverse.addresses_inverse.get("meta-finding-1"), ["loop-design-yyy"]);
   assert.deepStrictEqual(inverse.supersedes_inverse.get("meta-change-0"), ["meta-change-1"]);
   // reopens_inverse: keys on the EXPIRED PARENT, values are REOPEN CHILDREN

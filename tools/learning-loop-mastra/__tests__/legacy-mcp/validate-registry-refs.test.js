@@ -91,6 +91,12 @@ describe("outboundRefsOf", () => {
     );
   });
   test("loop-design: proposed_design_for (rule- and meta-) + addresses", () => {
+    // Phase 3 fix: meta-… prefix fallback now returns `finding` (NOT the
+    // legacy literal "meta"). The validator delegates to graph.forwardRefs,
+    // which uses kindForId. rule-x → rule (prefix); meta-y → finding
+    // (canonical finding prefix). The legacy test pinned the buggy "meta"
+    // kind; Phase 1's characterization oracle documented the bug; Phase 3
+    // fixes it.
     assert.deepEqual(
       outboundRefsOf({
         entry_kind: "loop-design",
@@ -99,7 +105,7 @@ describe("outboundRefsOf", () => {
       }),
       [
         { kind: "rule", id: "rule-x", field: "proposed_design_for" },
-        { kind: "meta", id: "meta-y", field: "proposed_design_for" },
+        { kind: "finding", id: "meta-y", field: "proposed_design_for" },
         { kind: "finding", id: "meta-f1", field: "addresses" },
       ],
     );
