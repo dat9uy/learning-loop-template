@@ -184,6 +184,14 @@ export function inverseRefs(targetId, entries) {
  *     deduped) — fixes the dual-source 2-ref artifact. The legacy
  *     `finding.promoted_to_rule` field is preserved on disk but no longer
  *     contributes to the inverse.
+ *   - `consolidated_into_inverse` is now populated from BOTH sides: a
+ *     change-log's `consolidates` (the legacy `indexConsolidatedInto` source)
+ *     AND a finding's `consolidated_into`. The legacy implementation indexed
+ *     only the change-log side, so a finding with `consolidated_into` whose
+ *     change-log lacked a matching `consolidates` was invisible. The dual-side
+ *     population is intentionally more complete; dedup (above) keeps a
+ *     reciprocal pair counting once. No existing test asserted the one-sided
+ *     absence, so no test regresses.
  *   - Forward `reopens` resolution (the index layer's gap) is supplied by
  *     `forwardRefs` reading `entry.reopens` directly (bug #1 regression-
  *     prevention invariant).

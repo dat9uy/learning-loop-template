@@ -47,10 +47,10 @@ function makeValidRule(id) {
   return {
     id: "rule-test-write-validation",
     entry_kind: "rule",
-    // Plan 260730-0240 Phase 4: write-time structural RI rejects dangling
-    // refs; the `origin` field is required by the rule schema AND must
-    // point at an existing finding. T-2 writes the finding BEFORE the
-    // rule, so we use its id here.
+    // `origin` is required by the rule schema. Write-time structural RI is
+    // warn-only, but we point at the finding T-2 writes BEFORE this rule so
+    // the ref resolves and no advisory is emitted (a real promotion always
+    // follows the finding).
     origin: "meta-260607T1201Z-test-finding",
     enforcement: "agent",
     pattern_type: "regex",
@@ -152,19 +152,25 @@ describe("updateEntry validation", () => {
     assert.strictEqual(updated.status, "open");
   });
 
-  test("T-5: updateEntry rejects promoted_to_rule pointing at a missing rule (Plan 260730-0240 Phase 4 write-time structural RI)", async () => {
+  test("T-5: updateEntry accepts promoted_to_rule pointing at a missing rule (write-time structural RI is warn-only)", async () => {
     const root = makeTempRoot();
     const entry = makeValidFinding("meta-260607T1207Z-test-promote");
     await writeEntry(root, entry);
 
-    // Plan 260730-0240 Phase 4: write-time structural RI rejects patches
-    // that introduce a never-existent target. Returns the string code
-    // `"dangling_structural_ref"` (NOT the assertinvariant object — red-team
-    // R7). Pre-Phase-4 this test asserted the patch was accepted (a bug
-    // the RI now fixes); the patch is now correctly rejected.
+    // Write-time structural RI is WARN-ONLY: a patch that introduces a
+    // never-existent target is applied and recorded as a gate-log advisory;
+    // it is NOT rejected. updateEntry keeps its `true` return (no
+    // "dangling_structural_ref" code); the CI gate is the hard enforcer.
     const result = await updateEntry(root, entry.id, {
       promoted_to_rule: "rule-short-slug-for-risk-records",
     });
-    assert.strictEqual(result, "dangling_structural_ref");
+    assert.strictEqual(result, true, "warn-only RI applies the patch");
+    const registry = readRegistry(root);
+    const updated = registry.find((e) => e.id === entry.id);
+    assert.strictEqual(
+      updated.promoted_to_rule,
+      "rule-short-slug-for-risk-records",
+      "the patch landed despite the dangling target"
+    );
   });
 });

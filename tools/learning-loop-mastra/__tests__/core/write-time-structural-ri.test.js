@@ -3,22 +3,33 @@
  *
  * Plan: plans/260730-0240-relationship-model-centralize-defer-drop/plan.md, Phase 4.
  *
+ * Write-time structural RI is WARN-ONLY: a structural cross-ref whose target
+ * id is never-existent is appended anyway and recorded as a gate-log
+ * advisory — it is NOT rejected. The hard enforcer is the CI gate
+ * `meta-state-refs-check.yml`; write-time RI's value is immediate operator
+ * feedback + cross-PR orphan surfacing. Warn-only preserves the features
+ * that deliberately create ref orphans at write time (the `dangling_refs`
+ * derived view reopens a never-existent id; the cold-tier `orphans` array
+ * points consolidated_into at a missing change-log).
+ *
  * Asserts:
- *   - writeEntry rejects structural cross-refs whose target id is
- *     NEVER-existent (id-existence only — red-team R3/R8).
- *   - updateEntry validates ONLY changed/introduced refs and returns the
- *     string code `"dangling_structural_ref"` (NOT the assertinvariant
- *     object — red-team R7). Inherited unchanged refs are NOT re-validated.
- *   - applies_to_resolution is RI-EXEMPT (red-team R4 — `z.string()`, not
- *     an entry-id ref; a determinism-checklist pattern is valid).
- *   - `*` wildcards and empty fields are exempt.
- *   - Tombstones count as present (liveness out of scope — red-team R8).
- *   - Historical reads remain unaffected (RI is append-only — never on read).
+ *   - writeEntry ACCEPTS a never-existent structural target and logs a
+ *     structural-ri gate-log advisory naming the dangling {field, id}
+ *     (id-existence only).
+ *   - updateEntry ACCEPTS a changed/introduced ref to a never-existent id
+ *     (returns `true`, not a string code) and logs an advisory; inherited
+ *     unchanged refs are NOT re-validated.
+ *   - applies_to_resolution is RI-EXEMPT (`z.string()`, not an entry-id ref;
+ *     a determinism-checklist pattern is valid) → no advisory.
+ *   - `*` wildcards and empty fields are exempt → no advisory.
+ *   - Tombstones count as present (liveness out of scope) → no advisory.
+ *   - Existing-target refs → no advisory.
+ *   - Historical reads remain unaffected (RI never runs on the read path).
  */
 
 import { test } from "vitest";
 import assert from "node:assert";
-import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -26,6 +37,26 @@ import {
   updateEntry,
   readRegistry,
 } from "../../core/meta-state.js";
+
+// Read the structural-ri advisories appendGateLog wrote under <root>/.claude/
+// coordination/gate-log.jsonl. Returns [] when no gate log exists (the
+// positive cases: existing target / exempt / tombstone → no advisory).
+function structuralRiWarnings(root) {
+  const logPath = join(root, ".claude", "coordination", "gate-log.jsonl");
+  if (!existsSync(logPath)) return [];
+  return readFileSync(logPath, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .filter((e) => e.tool === "structural-ri");
+}
+
+// True when the gate log records a structural-ri advisory for (field, id).
+function warnedOn(root, field, id) {
+  return structuralRiWarnings(root).some((w) =>
+    Array.isArray(w.dangling) && w.dangling.some((d) => d.field === field && d.id === id)
+  );
+}
 
 function makeTempRoot() {
   const dir = mkdtempSync(join(tmpdir(), "phase-4-ri-test-"));
@@ -69,7 +100,7 @@ function makeRule(origin = "meta-f1") {
 // writeEntry RI
 // -----------------------------------------------------------------------------
 
-test("writeEntry rejects reopens pointing at a never-existent id", async () => {
+test("writeEntry accepts reopens to a never-existent id and logs a warn-only advisory", async () => {
   const root = makeTempRoot();
   // Seed a finding so the registry has something — but no `meta-stale-parent`.
   await writeEntry(root, makeFinding({ id: "meta-existing-f" }));
@@ -77,19 +108,16 @@ test("writeEntry rejects reopens pointing at a never-existent id", async () => {
     id: "meta-child",
     reopens: ["meta-never-existed"],
   });
-  await assert.rejects(
-    () => writeEntry(root, entry),
-    (err) => {
-      assert.match(err.message, /dangling_structural_ref/);
-      return true;
-    }
-  );
-  // No append should have occurred — registry only has the seeded finding.
+  // WARN-ONLY: the write succeeds (the dangling_refs feature relies on
+  // creating exactly such an orphan); the CI gate is the hard enforcer.
+  await writeEntry(root, entry);
   const entries = readRegistry(root);
-  assert.strictEqual(entries.length, 1);
+  assert.strictEqual(entries.length, 2, "append proceeds under warn-only RI");
+  assert.ok(warnedOn(root, "reopens", "meta-never-existed"),
+    "gate log must record the dangling reopens ref with its field + id");
 });
 
-test("writeEntry accepts reopens pointing at an existing id", async () => {
+test("writeEntry accepts reopens pointing at an existing id (no advisory)", async () => {
   const root = makeTempRoot();
   await writeEntry(root, makeFinding({ id: "meta-stale-parent" }));
   await writeEntry(root, makeFinding({
@@ -98,25 +126,30 @@ test("writeEntry accepts reopens pointing at an existing id", async () => {
   }));
   const entries = readRegistry(root);
   assert.strictEqual(entries.length, 2);
+  assert.strictEqual(structuralRiWarnings(root).length, 0,
+    "an existing-target ref must not emit an advisory");
 });
 
-test("writeEntry rejects consolidated_into pointing at a never-existent change-log", async () => {
+test("writeEntry accepts consolidated_into to a never-existent change-log and logs a warn-only advisory (preserves the cold-tier orphan feature)", async () => {
   const root = makeTempRoot();
   await writeEntry(root, makeFinding());
   const entry = makeFinding({
     id: "meta-f2",
     consolidated_into: "meta-missing-changelog",
   });
-  await assert.rejects(
-    () => writeEntry(root, entry),
-    /dangling_structural_ref/
-  );
+  // WARN-ONLY: the cold-tier `orphans` feature surfaces exactly such a
+  // dangling consolidated_into pointer; RI must let it be written.
+  await writeEntry(root, entry);
+  const entries = readRegistry(root);
+  assert.strictEqual(entries.length, 2, "append proceeds under warn-only RI");
+  assert.ok(warnedOn(root, "consolidated_into", "meta-missing-changelog"),
+    "gate log must record the dangling consolidated_into ref");
 });
 
-test("writeEntry RI-EXEMPTS applies_to_resolution (red-team R4)", async () => {
+test("writeEntry RI-EXEMPTS applies_to_resolution (no advisory)", async () => {
   // `applies_to_resolution` is `z.string()`, not `entryIdRefArray`. A
   // determinism-checklist pattern like `test-session-123` is valid; RI does
-  // NOT reject it.
+  // not flag it.
   const root = makeTempRoot();
   await writeEntry(root, makeFinding({ id: "meta-f1" }));
   await writeEntry(root, makeRule("meta-f1"));
@@ -125,9 +158,11 @@ test("writeEntry RI-EXEMPTS applies_to_resolution (red-team R4)", async () => {
     applies_to_resolution: "test-session-123",
   });
   assert.strictEqual(result, true, "applies_to_resolution is RI-exempt");
+  assert.strictEqual(structuralRiWarnings(root).length, 0,
+    "an RI-exempt field must not emit an advisory");
 });
 
-test("writeEntry accepts `*` wildcard for applies_to_resolution", async () => {
+test("writeEntry accepts `*` wildcard for applies_to_resolution (no advisory)", async () => {
   // The wildcard `"*"` is filtered out by `forwardRefs` before RI runs.
   const root = makeTempRoot();
   await writeEntry(root, makeFinding({ id: "meta-f1" }));
@@ -136,10 +171,11 @@ test("writeEntry accepts `*` wildcard for applies_to_resolution", async () => {
     applies_to_resolution: "*",
   });
   assert.strictEqual(result, true);
+  assert.strictEqual(structuralRiWarnings(root).length, 0);
 });
 
-test("writeEntry treats tombstones as present (liveness out of scope — red-team R8)", async () => {
-  // A ref to a deleted/archived id (still in projection) is NOT rejected
+test("writeEntry treats tombstones as present (no advisory — liveness out of scope)", async () => {
+  // A ref to a deleted/archived id (still in projection) is not flagged
   // — id-existence only. The derived `dangling_refs` view surfaces
   // liveness post-hoc. We archive via `archiveEntry` which produces a
   // tombstone (the id remains in the projected registry but with
@@ -155,29 +191,26 @@ test("writeEntry treats tombstones as present (liveness out of scope — red-tea
   const entries = readRegistry(root);
   // The projection dedupes by max-version (parent + tombstone = 1 effective
   // entry); plus the child = 2 entries. The id `meta-stale-parent` is
-  // still in the projection → RI accepts the ref.
+  // still in the projection → RI accepts the ref (no advisory).
   assert.strictEqual(entries.length, 2);
   assert.ok(entries.some((e) => e.id === "meta-child" && e.reopens?.includes("meta-stale-parent")),
     "child reopens the archived parent — RI accepted (id-existence only)");
+  assert.strictEqual(structuralRiWarnings(root).length, 0,
+    "a tombstone id counts as present — no advisory");
 });
 
 // -----------------------------------------------------------------------------
 // updateEntry changed-only RI
 // -----------------------------------------------------------------------------
 
-test("updateEntry validates ONLY changed/introduced refs (not inherited)", async () => {
+test("updateEntry validates ONLY changed/introduced refs (not inherited — no advisory)", async () => {
   // The load-bearing design decision: a description edit on a finding
-  // with a historical dangling `reopens` is NOT blocked (the inherited
-  // unchanged ref is not re-validated).
+  // with a historical `reopens` is not flagged (the inherited unchanged
+  // ref is not re-validated).
   const root = makeTempRoot();
-  // Seed: parent (stale, exists), child (has dangling reopens).
   await writeEntry(root, makeFinding({ id: "meta-stale-parent" }));
-  // The next write would now be rejected by RI — so seed the child with
-  // an empty reopens (legitimate) and then PATCH it to introduce a
-  // dangling ref via the patch — that's not allowed either, so we use
-  // a different scenario:
-  // Seed: a finding with a reopens to an existing parent. Then patch
-  // description (no ref change) → no RI triggered.
+  // Seed a finding with a reopens to an existing parent. Then patch the
+  // description (no ref change) → no advisory.
   await writeEntry(root, makeFinding({
     id: "meta-child",
     reopens: ["meta-stale-parent"],
@@ -186,21 +219,26 @@ test("updateEntry validates ONLY changed/introduced refs (not inherited)", async
     description: "Updated description — must remain at least 20 chars.",
   });
   assert.strictEqual(result, true, "inherited unchanged refs not re-validated");
+  assert.strictEqual(structuralRiWarnings(root).length, 0,
+    "a description patch must not emit an advisory");
 });
 
-test("updateEntry rejects repointing a ref to a missing id", async () => {
-  // Patch introduces a NEW ref (the `reopens` was empty, now points at a
-  // missing id) — RI rejects this.
+test("updateEntry accepts repointing a ref to a missing id and logs a warn-only advisory (changed-only)", async () => {
+  // Patch introduces a NEW ref (reopens was empty, now points at a missing
+  // id). Under warn-only RI the patch applies and a gate-log advisory is
+  // emitted; updateEntry keeps its string-code return contract (true) —
+  // no "dangling_structural_ref" code is returned.
   const root = makeTempRoot();
   await writeEntry(root, makeFinding({ id: "meta-orphan" }));
   const result = await updateEntry(root, "meta-orphan", {
     reopens: ["meta-never-existed"],
   });
-  assert.strictEqual(result, "dangling_structural_ref",
-    "returns the STRING CODE (not the assertinvariant object — red-team R7)");
+  assert.strictEqual(result, true, "warn-only RI does not reject the patch");
+  assert.ok(warnedOn(root, "reopens", "meta-never-existed"),
+    "gate log must record the repointed dangling ref");
 });
 
-test("updateEntry accepts repointing a ref to an existing id", async () => {
+test("updateEntry accepts repointing a ref to an existing id (no advisory)", async () => {
   const root = makeTempRoot();
   await writeEntry(root, makeFinding({ id: "meta-stale-parent" }));
   await writeEntry(root, makeFinding({ id: "meta-orphan" }));
@@ -208,6 +246,8 @@ test("updateEntry accepts repointing a ref to an existing id", async () => {
     reopens: ["meta-stale-parent"],
   });
   assert.strictEqual(result, true);
+  assert.strictEqual(structuralRiWarnings(root).length, 0,
+    "an existing-target repoint must not emit an advisory");
 });
 
 // -----------------------------------------------------------------------------

@@ -1,19 +1,22 @@
 /**
- * Characterization oracle for the relationship model centralization.
+ * Characterization oracle for the centralized relationship model.
  *
- * Plan: plans/260730-0240-relationship-model-centralize-defer-drop/plan.md, Phase 1.
+ * Locks the centralized (post-refactor) behavior produced by the
+ * relationship-model centralization:
+ *   - the 4 factories' `outboundRefs` / `inboundRefs` (finding/rule/change-log/loop-design),
+ *     now delegating to `core/entry/relationship-graph.js`
+ *   - `core/loop-introspect.js#buildInverseIndexes` (the 6 named maps), now a
+ *     thin re-export of the graph
+ *   - the canonical 1-ref `promoted_to_rule_inverse` (sourced from `rule.origin`
+ *     alone — the pre-centralization 2-ref artifact double-counted one relationship)
+ *   - the CI validator's `forwardRefs` (loop-design kind-"meta"→"finding" fix +
+ *     emitted rule `supersedes`/`applies_to_resolution`), now delegating to the graph
+ *   - `computeTopReferences` / `top_references` citation counts at the canonical
+ *     1-ref values
  *
- * Locks the CURRENT (pre-refactor) behavior of:
- *   - the 4 factories' `outboundRefs` / `inboundRefs` (finding/rule/change-log/loop-design)
- *   - `core/loop-introspect.js#buildInverseIndexes` (the 6 named maps)
- *   - the dual-field 2-ref `promoted_to_rule_inverse` artifact (current bug — Phase 3 fixes)
- *   - the CI validator's `OUTBOUND_EXTRACTORS` divergences (loop-design kind-"meta" bug +
- *     omitted rule edges) — pinned as CURRENT wrong behavior, NOT desired behavior
- *   - `computeTopReferences` / `top_references` citation counts at the CURRENT 2-ref values
- *
- * These assertions are the oracle Phase 3 migrations prove equivalence against (or
- * document an intended change like the 2→1 dedup). Test comments call out CURRENT
- * buggy behavior vs intended fix so the oracle intent is unambiguous.
+ * These assertions are integration-level (factories + loop-introspect + validator),
+ * complementing the unit-level `relationship-graph.test.js`. Where a test documents
+ * a deliberate change from the pre-centralization behavior, the comment says so.
  */
 
 import { test } from "vitest";
@@ -176,7 +179,7 @@ test("finding.inboundRefs: reopens inverse from `entry.reopens` (forward source-
   assert.deepStrictEqual(reopensRefs, [{ kind: "finding", id: "meta-child", field: "reopens" }]);
 });
 
-test("rule.inboundRefs: dual-field promoted_to_rule DEDUP via seenPromotedFrom (1 ref)", () => {
+test("rule.inboundRefs: dual-field promoted_to_rule dedups to 1 ref (canonical rule.origin)", () => {
   // CURRENT: rule.js dedups rule.origin vs finding.promoted_to_rule via `seenPromotedFrom` Set.
   // A dual-field finding (has promoted_to_rule AND a rule whose origin points at it)
   // yields 1 ref here (rule.js dedups).
@@ -214,7 +217,7 @@ test("buildInverseIndexes returns the 6 named Maps", () => {
   assert.ok(result.consolidated_into_inverse instanceof Map);
 });
 
-test("buildInverseIndexes: dual-field promoted_to_rule yields 2 refs (CURRENT bug — Phase 3 fixes)", () => {
+test("buildInverseIndexes: dual-field promoted_to_rule yields 1 ref (canonical rule.origin — was 2 pre-centralization)", () => {
   // CURRENT (buggy) behavior pinned: rule.origin (pushUnique) + finding.promoted_to_rule
   // (pushToIndex) both contribute → 2 refs for a single relationship.
   // Phase 3 changes this to 1 (canonical rule.origin).
@@ -258,7 +261,7 @@ test("buildInverseIndexes: consolidated_into_inverse keyed by change-log id", ()
 // Section 4: validator OUTBOUND_EXTRACTORS — pin CURRENT divergences (bugs)
 // -----------------------------------------------------------------------------
 
-test("OUTBOUND_EXTRACTORS.rule (Phase 3 fixed): emits origin + supersedes + applies_to_resolution", () => {
+test("validator forwardRefs.rule: emits origin + supersedes + applies_to_resolution", () => {
   // Phase 3 fix: the validator delegates to `graph.forwardRefs`, which emits
   // all declared cross-ref fields per kind (rule.supersedes +
   // rule.applies_to_resolution were previously omitted by the standalone
@@ -277,7 +280,7 @@ test("OUTBOUND_EXTRACTORS.rule (Phase 3 fixed): emits origin + supersedes + appl
   ]);
 });
 
-test("OUTBOUND_EXTRACTORS.loop-design (Phase 3 fixed): classifies non-rule target as kind `finding`", () => {
+test("validator forwardRefs.loop-design: classifies non-rule target as kind `finding`", () => {
   // Phase 3 fix: the validator's kindForId fallback now returns `finding`
   // for the meta-… prefix (previously returned the literal string `meta`).
   const entry = makeLoopDesign({
@@ -291,7 +294,7 @@ test("OUTBOUND_EXTRACTORS.loop-design (Phase 3 fixed): classifies non-rule targe
 // Section 5: `computeTopReferences` / `top_references` characterization (red-team R6)
 // -----------------------------------------------------------------------------
 
-test("computeTopReferences: dual-field artifact deduped — Phase 3 halves the rule-r1 citation", () => {
+test("computeTopReferences: dual-field artifact deduped — rule-r1 cited once (canonical rule.origin)", () => {
   // After Phase 3 centralization: `rule-r1` is a KEY of `promoted_to_rule_inverse`
   // with 1 ref (canonical rule.origin). meta-f1 is a KEY of `origin_inverse`
   // with 1 ref. Both are correctly cited exactly once.
