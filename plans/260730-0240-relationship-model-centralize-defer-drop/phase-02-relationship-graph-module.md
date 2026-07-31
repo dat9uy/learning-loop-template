@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Core Relationship-Graph Module"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]
@@ -116,14 +116,14 @@ The schemas (`metaStateEntrySchema` etc.) live in `meta-state.js`, which itself 
 
 ## Success Criteria
 
-- [ ] `core/entry/relationship-graph.js` exists, pure (no `fs`/`gate-logic`/`stale-view`/`meta-state.js` imports), exports `forwardRefs`/`inverseRefs`/`buildInverseIndexes`/`resolveStructuralRI`/`diffChangedRefs`/`parseConsolidates`/`inboundFromLoopDesign`/`CROSS_REFS`. Does NOT export the wire shape (stays in the tool — red-team R10)
-- [ ] `buildInverseIndexes` returns the identical 6 named maps; `promoted_to_rule_inverse` is 1 ref (canonical `rule.origin`), asserted at length 1 for a dual-field entry
-- [ ] `forwardRefs` emits `reopens` (forward) AND `buildInverseIndexes` derives `reopens_inverse` (inverse) — both from one source; `applies_to_resolution` emitted forward (for the relationships tool) but `applies_to_resolution:"*"` not emitted as an edge
-- [ ] `resolveStructuralRI` is **id-existence only** (no `expectedKind` — red-team R3); `applies_to_resolution` RI-exempt (red-team R4); `"*"` + empty fields exempt; tombstones count as present (red-team R8)
-- [ ] `diffChangedRefs` returns only introduced/repointed refs; excludes `applies_to_resolution`; array-reorder/dedup does not spuriously flag (red-team R7)
-- [ ] `kindForId` loop-design fallback returns `"finding"` (not `"meta"`)
-- [ ] `check_runtime_agnostic` passes; Phase 1 characterization + existing 39 tests still green (additive-only)
-- [ ] `consolidates-refs.js` + `inbound-from-loop-design.js` NOT deleted yet (consumers not repointed; kept as re-exports in Phase 3 — red-team R10)
+- [x] `core/entry/relationship-graph.js` exists, pure (no `fs`/`gate-logic`/`stale-view`/`meta-state.js` imports), exports `forwardRefs`/`inverseRefs`/`buildInverseIndexes`/`resolveStructuralRI`/`diffChangedRefs`/`parseConsolidates`/`inboundFromLoopDesign`/`CROSS_REFS`. Does NOT export the wire shape (stays in the tool — red-team R10)
+- [x] `buildInverseIndexes` returns the identical 6 named maps; `promoted_to_rule_inverse` is 1 ref (canonical `rule.origin`), asserted at length 1 for a dual-field entry
+- [x] `forwardRefs` emits `reopens` (forward) AND `buildInverseIndexes` derives `reopens_inverse` (inverse) — both from one source; `applies_to_resolution` emitted forward (for the relationships tool) but `applies_to_resolution:"*"` not emitted as an edge
+- [x] `resolveStructuralRI` is **id-existence only** (no `expectedKind` — red-team R3); `applies_to_resolution` RI-exempt (red-team R4); `"*"` + empty fields exempt; tombstones count as present (red-team R8)
+- [x] `diffChangedRefs` returns only introduced/repointed refs; excludes `applies_to_resolution`; array-reorder/dedup does not spuriously flag (red-team R7)
+- [x] `kindForId` loop-design fallback returns `"finding"` (not `"meta"`)
+- [x] `check_runtime_agnostic` passes; Phase 1 characterization + existing 39 tests still green (additive-only)
+- [x] `consolidates-refs.js` + `inbound-from-loop-design.js` NOT deleted yet (consumers not repointed; kept as re-exports in Phase 3 — red-team R10)
 
 ## Risk Assessment
 

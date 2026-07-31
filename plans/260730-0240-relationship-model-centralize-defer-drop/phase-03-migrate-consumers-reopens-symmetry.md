@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Migrate Consumers + Preserve reopens Symmetry"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: [2]
@@ -110,13 +110,13 @@ The relationships tool's dual-field fallback (`:195-209`) patches `outbound.prom
 
 ## Success Criteria
 
-- [ ] All 4 factories delegate `outboundRefs`/`inboundRefs` to the graph; bespoke extractors + the rule.js dual-field block dropped; non-relationship factory methods preserved
-- [ ] `loop-introspect.buildInverseIndexes` delegates to the graph; 6-map export shape preserved; `indexX`/`indexOrigin`/`indexPromotedToRule` deleted; `build-inverse-indexes.test.js:67` updated to 1 ref + the `computeTopReferences`/`top_references` characterization updated (red-team R6) + the cold-tier cache-version bumped/deploy-step added (red-team R5) — **all in the same commit** as the rewiring
-- [ ] Relationships tool: dual-field fallback PERSISTS but the per-query O(N) rebuild is replaced with a targeted `inverseRefs` lookup (red-team R1); wire shape + `computeDanglingRefs` stay in the tool (red-team R10); `outbound.reopens` + `inbound.reopened_by` both populated (bug #1 test green); the legacy-finding `promoted_to_rule` snapshot assertion (`:73-78`) stays green
-- [ ] CI validator: `OUTBOUND_EXTRACTORS` → `forwardRefs`; `loop-design` kind now `"finding"`; rule `supersedes`/`applies_to_resolution` emitted; stays decoupled (no `stale-view` import)
-- [ ] `consolidates-refs.js` + `inbound-from-loop-design.js` kept as thin re-exports (rollback-safe — red-team R10); actual file deletion deferred to a separate stable PR
-- [ ] No `reopens`/`cascade_from` public-contract change; legacy `finding.promoted_to_rule` data preserved on disk; warm + cold `loop_describe` tiers agree after deploy (cache busted)
-- [ ] Phase 1 + Phase 2 + the 39 existing relationship/introspect tests all green; the characterization divergences updated to reflect the intended fixes (2→1 dedup, kind fix, omitted edges, top_references counts)
+- [x] All 4 factories delegate `outboundRefs`/`inboundRefs` to the graph; bespoke extractors + the rule.js dual-field block dropped; non-relationship factory methods preserved
+- [x] `loop-introspect.buildInverseIndexes` delegates to the graph; 6-map export shape preserved; `indexX`/`indexOrigin`/`indexPromotedToRule` deleted; `build-inverse-indexes.test.js:67` updated to 1 ref + the `computeTopReferences`/`top_references` characterization updated (red-team R6) + the cold-tier cache-version bumped/deploy-step added (red-team R5) — **all in the same commit** as the rewiring
+- [x] Relationships tool: dual-field fallback PERSISTS but the per-query O(N) rebuild is replaced with a targeted `inverseRefs` lookup (red-team R1); wire shape + `computeDanglingRefs` stay in the tool (red-team R10); `outbound.reopens` + `inbound.reopened_by` both populated (bug #1 test green); the legacy-finding `promoted_to_rule` snapshot assertion (`:73-78`) stays green
+- [x] CI validator: `OUTBOUND_EXTRACTORS` → `forwardRefs`; `loop-design` kind now `"finding"`; rule `supersedes`/`applies_to_resolution` emitted; stays decoupled (no `stale-view` import)
+- [x] `consolidates-refs.js` + `inbound-from-loop-design.js` kept as thin re-exports (rollback-safe — red-team R10); actual file deletion deferred to a separate stable PR
+- [x] No `reopens`/`cascade_from` public-contract change; legacy `finding.promoted_to_rule` data preserved on disk; warm + cold `loop_describe` tiers agree after deploy (cache busted)
+- [x] Phase 1 + Phase 2 + the 39 existing relationship/introspect tests all green; the characterization divergences updated to reflect the intended fixes (2→1 dedup, kind fix, omitted edges, top_references counts)
 
 ## Risk Assessment
 

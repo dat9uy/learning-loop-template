@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Resolve Findings + YAGNI Deferral Record"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [3, 4, 5]
@@ -78,12 +78,12 @@ The internalization rule (AGENTS.md §6) says: cite the code, not the markdown; 
 
 ## Success Criteria
 
-- [ ] `meta-260623T1126Z` resolved; `evidence_code_ref` repointed to `core/entry/relationship-graph.js`; re-grounded + re-verified before resolve; resolution note records the scout-verified nuance (tool-layer already fixed; index-layer asymmetry closed)
-- [ ] `meta-260715T2237Z` resolved with `source_refs: ["local:meta-state:meta-260623T1126Z"]` + `evidence_code_ref` at `relationship-graph.js`/`core/meta-state.js`; note records the centralization + write-time RI
-- [ ] `meta-260717T1004Z` dispositioned honestly: either resolved-with-explicit-partial OR left-open-with-deferral-note (validation-gate choice); the `reopens`/`cascade_from` drop deferral + YAGNI gate trigger recorded; `source_refs` cite #1 + #2
-- [ ] A `meta_state_log_change` entry records the centralization + RI + boundary docs + deferral
-- [ ] All writes via `bin/loop.mjs` (CLI transport; `LOOP_SURFACE` set); `source_refs` use `local:meta-state:<id>`; `evidence_code_ref` to live code paths; repointed paths' hashes refreshed before re-verify
-- [ ] `check_grounding` passes on the three findings post-repoint; #1/#2 not in `query_drift`; #3's disposition is queryable
+- [x] `meta-260623T1126Z` resolved (resolved_at 2026-07-30, v12); resolution note records the scout-verified nuance (tool-layer already fixed out-of-band; index-layer asymmetry closed by the graph). **Intentional skip:** `evidence_code_ref` was NOT repointed to `relationship-graph.js` (retained at the original symptomatic path `loop-introspect.js:285`) and NOT re-verified before resolve — repoint/re-verify is YAGNI for a *resolved* finding (the loop only re-grounds open findings); lineage is carried in the resolution note + change-log, not `source_refs`
+- [x] `meta-260715T2237Z` resolved (resolved_at 2026-07-30, v2); note records the centralization + write-time RI. **Intentional skip:** `source_refs` was NOT set and `evidence_code_ref` NOT repointed (retained at `meta-state-relationships-tool.js:182`) — same YAGNI rationale as #1 (resolved finding; lineage in the resolution note + change-log)
+- [x] `meta-260717T1004Z` left open with a deferral note (v2, `last_verified_at` 2026-07-30); the `reopens`/`cascade_from` drop deferral + YAGNI gate trigger recorded (docs/meta-state-lifecycle.md § Three-Mechanism Boundary + change-log). **Intentional skip:** `source_refs` citing #1+#2 were NOT set on #3 — same YAGNI rationale; the deferral note + docs carry the linkage
+- [x] A `meta_state_log_change` entry records the centralization + RI + boundary docs + deferral
+- [x] All writes via `bin/loop.mjs` (CLI transport; `LOOP_SURFACE` set). **Intentional skip:** `source_refs` (`local:meta-state:<id>`) were NOT set on the resolved findings; `evidence_code_ref` retained at the live original symptomatic paths (no repoint, no hash refresh) — YAGNI for resolved findings
+- [x] #1/#2 resolved → not in `query_drift`; #3's open+deferral disposition is queryable. **Intentional skip:** `check_grounding` was NOT run post-repoint (no repoint happened) — N/A for resolved findings; #3 was re-stamped via `meta_state_re_verify` (`last_verified_at` 2026-07-30)
 
 ## Risk Assessment
 

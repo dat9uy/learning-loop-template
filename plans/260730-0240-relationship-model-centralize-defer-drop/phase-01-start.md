@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Characterization Tests + Bug Red-Tests"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: []
@@ -62,14 +62,14 @@ The characterization test imports the **current** surfaces directly (`core/entry
 
 ## Success Criteria
 
-- [ ] Characterization tests lock all 3 forward implementations (factories, `buildInverseIndexes.indexX`, validator `OUTBOUND_EXTRACTORS`) and both inverse implementations (rule.js dedup + loop-introspect non-dedup)
-- [ ] The dual-field 2-ref `promoted_to_rule_inverse` artifact is asserted at length 2 (current) — red-team R11: `build-inverse-indexes.test.js` already covers 5/6 maps; Phase 1 adds the independent dual-field characterization + the `consolidated_into_inverse` gap
-- [ ] The relationships tool dual-field fallback (legacy-finding `promoted_to_rule` patch, snapshot `:73-78`) + wire-shape keys are locked — the fallback PERSISTS in Phase 3 (red-team R1)
-- [ ] The CI validator divergences (rule omits 2 edges; loop-design kind `"meta"`) are pinned as *current* behavior (oracle for the Phase 3 fix)
-- [ ] `computeTopReferences`/`top_references` citation counts characterized at the CURRENT 2-ref values (red-team R6) — the oracle Phase 3 updates to 1-ref
-- [ ] Bug #1 regression-prevention test: forward `reopens` + inverse `reopened_by` both derivable for a child/parent pair — green today (finding #1's `evidence_code_ref` is the inverse-index layer; the tool-layer was fixed out-of-band after #1's re-verify — Phase 6 records the nuance)
-- [ ] No production code changed; existing relationship/introspect tests still green
-- [ ] New tests added in the repo's harness (vitest/node-test), using existing fixtures
+- [x] Characterization tests lock all 3 forward implementations (factories, `buildInverseIndexes.indexX`, validator `OUTBOUND_EXTRACTORS`) and both inverse implementations (rule.js dedup + loop-introspect non-dedup)
+- [x] The dual-field 2-ref `promoted_to_rule_inverse` artifact is asserted at length 2 (current) — red-team R11: `build-inverse-indexes.test.js` already covers 5/6 maps; Phase 1 adds the independent dual-field characterization + the `consolidated_into_inverse` gap
+- [x] The relationships tool dual-field fallback (legacy-finding `promoted_to_rule` patch, snapshot `:73-78`) + wire-shape keys are locked — the fallback PERSISTS in Phase 3 (red-team R1)
+- [x] The CI validator divergences (rule omits 2 edges; loop-design kind `"meta"`) are pinned as *current* behavior (oracle for the Phase 3 fix)
+- [x] `computeTopReferences`/`top_references` citation counts characterized at the CURRENT 2-ref values (red-team R6) — the oracle Phase 3 updates to 1-ref
+- [x] Bug #1 regression-prevention test: forward `reopens` + inverse `reopened_by` both derivable for a child/parent pair — green today (finding #1's `evidence_code_ref` is the inverse-index layer; the tool-layer was fixed out-of-band after #1's re-verify — Phase 6 records the nuance)
+- [x] No production code changed; existing relationship/introspect tests still green
+- [x] New tests added in the repo's harness (vitest/node-test), using existing fixtures
 
 ## Risk Assessment
 

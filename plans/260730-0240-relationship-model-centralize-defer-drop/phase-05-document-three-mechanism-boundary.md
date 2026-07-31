@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Document Three-Mechanism Boundary + Correct Stale Descriptions"
-status: pending
+status: completed
 priority: P2
 effort: "1.5h"
 dependencies: [3]
@@ -79,11 +79,11 @@ Approach C keeps `reopens`/`cascade_from` and the 2 hint slugs. The 4 live `reop
 
 ## Success Criteria
 
-- [ ] `docs/meta-state-lifecycle.md` has a "Three-Mechanism Boundary" section: file-index (findings-on-a-file, not an edge), typed lifecycle edges (the keep list), cascade (closure policy, not a relationship type); no `related_to`; `reopens`/`cascade_from` deferral recorded with the YAGNI gate
-- [ ] `docs/architecture.md` "Meta-State Self-Learning Loop" cross-references the boundary + names `core/entry/relationship-graph.js` as the single source
-- [ ] Discoverability hint (or docs note) points to `relationship-graph.js` + the write-time RI rule; follows the hint-registry shape
-- [ ] `meta_state_promote_rule` description corrected and grounded in the actual handler behavior; `meta_state_touch` misplaced comment removed
-- [ ] No `related_to` field introduced; no code behavior change; doc claims verified against source; links resolve
+- [x] `docs/meta-state-lifecycle.md` has a "Three-Mechanism Boundary" section: file-index (findings-on-a-file, not an edge), typed lifecycle edges (the keep list), cascade (closure policy, not a relationship type); no `related_to`; `reopens`/`cascade_from` deferral recorded with the YAGNI gate
+- [x] `docs/architecture.md` "Meta-State Self-Learning Loop" cross-references the boundary + names `core/entry/relationship-graph.js` as the single source
+- [x] Discoverability hint (or docs note) points to `relationship-graph.js` + the write-time RI rule; follows the hint-registry shape
+- [x] `meta_state_promote_rule` description corrected and grounded in the actual handler behavior; `meta_state_touch` misplaced comment removed
+- [x] No `related_to` field introduced; no code behavior change; doc claims verified against source; links resolve
 
 ## Risk Assessment
 

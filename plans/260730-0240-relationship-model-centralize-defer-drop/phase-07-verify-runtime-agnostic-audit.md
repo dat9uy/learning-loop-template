@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Verify + Runtime-Agnostic Audit"
-status: pending
+status: completed
 priority: P2
 effort: "1h"
 dependencies: [3, 4, 5, 6]
@@ -77,13 +77,13 @@ This plan touches 5 consumers + adds write-time enforcement at the mutation boun
 
 ## Success Criteria
 
-- [ ] `pnpm test` full suite green (Phase 1-6 suites + 39 existing + dual-field 1-ref update)
-- [ ] `check_runtime_agnostic` passes on `core/entry/relationship-graph.js`; `__tests__/runtime-agnostic.test.js` regression green
-- [ ] CLI parity: `bin/loop.mjs meta_state_relationships` outbound `reopens` + inbound `reopened_by` populated; `meta_state_relationship_validate` description-lint; identical to the shared handler
-- [ ] Grep sweep: factories delegate (no bespoke bodies); `loop-introspect` `indexX` deleted; validator `OUTBOUND_EXTRACTORS` removed; relationships-tool fallback PERSISTS (targeted `inverseRefs`, no per-query rebuild — red-team R1) + wire-shape/`computeDanglingRefs` stay in the tool (red-team R10); `relationship-graph.js` has zero `meta-state.js` imports; the two leaf helpers kept as thin re-exports (red-team R10)
-- [ ] `reopens`/`cascade_from` contract preserved: `cascade_from` still accepted at `meta-state-resolve-tool.js:23`; 2 hint slugs at `hint-registry.js:94,130`; 4 live `reopens` edges read fine; no `related_to` field added
-- [ ] Three findings queryable (#1/#2 resolved, #3 per Phase 6) + change-log active via `registry-table.sh`
-- [ ] Every plan.md Success Criteria box maps to verification evidence here
+- [x] `pnpm test` full suite green (Phase 1-6 suites + 39 existing + dual-field 1-ref update)
+- [x] `check_runtime_agnostic` passes on `core/entry/relationship-graph.js`; `__tests__/runtime-agnostic.test.js` regression green
+- [x] CLI parity: `bin/loop.mjs meta_state_relationships` outbound `reopens` + inbound `reopened_by` populated; `meta_state_relationship_validate` description-lint; identical to the shared handler
+- [x] Grep sweep: factories delegate (no bespoke bodies); `loop-introspect` `indexX` deleted; validator `OUTBOUND_EXTRACTORS` removed; relationships-tool fallback PERSISTS (targeted `inverseRefs`, no per-query rebuild — red-team R1) + wire-shape/`computeDanglingRefs` stay in the tool (red-team R10); `relationship-graph.js` has zero `meta-state.js` imports; the two leaf helpers kept as thin re-exports (red-team R10)
+- [x] `reopens`/`cascade_from` contract preserved: `cascade_from` still accepted at `meta-state-resolve-tool.js:23`; 2 hint slugs at `hint-registry.js:94,130`; 4 live `reopens` edges read fine; no `related_to` field added
+- [x] Three findings queryable (#1/#2 resolved, #3 per Phase 6) + change-log active via `registry-table.sh`
+- [x] Every plan.md Success Criteria box maps to verification evidence here
 
 ## Risk Assessment
 

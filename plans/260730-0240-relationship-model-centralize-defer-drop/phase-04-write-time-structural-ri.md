@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Write-Time Structural Referential-Integrity Validation"
-status: pending
+status: completed
 priority: P1
 effort: "2.5h"
 dependencies: [2, 3]
@@ -120,13 +120,13 @@ The repo's rule hint 8 (`assertinvariant-at-boundary`) requires mutation ops in 
 
 ## Success Criteria
 
-- [ ] `writeEntry` rejects structural cross-refs whose target id is **never-existent** before append, `assertinvariant`-wrapped; `returnOnFail` names `dangling_structural_ref` + the field/missing-id; **id-existence only** (tombstones count as present — red-team R8; kind-match NOT checked — red-team R3)
-- [ ] `updateEntry` validates only CHANGED/INTRODUCED cross-refs and returns the **string code `"dangling_structural_ref"`** (not the assertinvariant object — red-team R7); `applyUpdateAndCheck` + handlers surface it; an inherited historical dangling `reopens` does NOT block an unrelated edit (load-bearing case pinned)
-- [ ] `metaStateBatch` validates per-op against the in-memory `entries[]`; intra-batch write→reference passes; `failed_at:i` attribution; the `[write A, delete A, write B reopens:[A]]` liveness gap is pinned as accepted (tombstone keeps id — red-team R8)
-- [ ] `archiveEntry`/`deleteEntry`/`shipLoopDesign` exempt (no new cross-refs); `tryClaimSessionId` gets a defensive comment (NO RI — red-team R9; test-only, bypasses writeEntry)
-- [ ] `applies_to_resolution` RI-EXEMPT (red-team R4 — `z.string()`, not an entry-id ref; `test-session-123` accepted); `consolidated_into` validated at write (immutable, only set there)
-- [ ] Historical entries with legacy dangling refs still read fine; the derived `dangling_refs` view still surfaces deleted/wrong-kind refs post-hoc; the 4 live `reopens` edges read fine
-- [ ] No `reopens`/`cascade_from` public-contract change; `check_runtime_agnostic` passes; full meta-state suite green
+- [x] `writeEntry` emits a **warn-only** structural-RI advisory (gate-log, naming the dangling `{field, id}`) for cross-refs whose target id is never-existent, then appends anyway; **not** assertinvariant-wrapped (the warn uses `appendGateLog` directly); **id-existence only** (tombstones count as present — red-team R8; kind-match NOT checked — red-team R3). CI `meta-state-refs-check.yml` is the hard enforcer (red-team R2)
+- [x] `updateEntry` validates only CHANGED/INTRODUCED cross-refs and **accepts** the patch (returns `true`, not a string code) while emitting a warn-only advisory for any changed ref to a never-existent id; an inherited historical dangling `reopens` does NOT block an unrelated edit (load-bearing case pinned). The `"dangling_structural_ref"` string code was **removed** — red-team R7's string-code return is obsolete under warn-only; `updateEntry` keeps its `true`/`null`/`"version_mismatch"` contract
+- [x] `metaStateBatch` validates per-op against an in-batch existence accumulator (`inBatchIds`: seeded from the registry + grown by every write-op incl. change-logs, so intra-batch write→reference passes — fixes the intra-batch false-reject); warn-only (no `failed_at:i` rejection — the advisory is logged, the op applies); the `[write A, delete A, write B reopens:[A]]` liveness gap is accepted (tombstone keeps id — red-team R8)
+- [x] `archiveEntry`/`deleteEntry`/`shipLoopDesign` exempt (no new cross-refs); `tryClaimSessionId` gets a defensive comment (NO RI — red-team R9; test-only, bypasses writeEntry)
+- [x] `applies_to_resolution` RI-EXEMPT (red-team R4 — `z.string()`, not an entry-id ref; `test-session-123` accepted → no advisory); `consolidated_into` advisories at write (immutable, only set there) — warn-only, so the cold-tier `orphans` feature can still create a dangling `consolidated_into` to surface
+- [x] Historical entries with legacy dangling refs still read fine; the derived `dangling_refs` view still surfaces deleted/wrong-kind refs post-hoc; the 4 live `reopens` edges read fine
+- [x] No `reopens`/`cascade_from` public-contract change; `check_runtime_agnostic` passes; full meta-state suite green
 
 ## Risk Assessment
 
