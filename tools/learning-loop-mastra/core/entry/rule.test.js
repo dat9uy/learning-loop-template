@@ -44,6 +44,15 @@ test("createRule.isActive and isAgentChecklist", () => {
   assert.ok(consult.isAgentChecklist());
 });
 
+test("createRule accepts status:\"archived\" (Phase 1: archived in enum, no parseForRead needed)", () => {
+  // Plan 260731-1325 Phase 1: status enum now includes "archived".
+  // deleteEntry appends status:"archived" for non-change-log kinds; createRule
+  // must accept the tombstone directly without parseForRead.
+  const archived = createRule({ ...FIXTURE, status: "archived" });
+  assert.strictEqual(archived.data.status, "archived");
+  assert.ok(!archived.isActive());
+});
+
 test("createRule.outboundRefs returns correct refs", () => {
   const r = createRule(FIXTURE);
   const refs = r.outboundRefs();

@@ -2,10 +2,11 @@ import { metaStateRuleEntrySchema } from "../meta-state.js";
 import { checkResolutionEvidence, projectHasLearningLoopMcp } from "../gate-logic.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs, inverseRefs } from "./relationship-graph.js";
-import { parseForRead } from "./parse-for-read.js";
 
 export function createRule(data) {
-  const parsed = parseForRead(metaStateRuleEntrySchema, data);
+  // status:"archived" is schema-valid on the rule enum (deleteEntry
+  // appends tombstones for non-change-log kinds).
+  const parsed = metaStateRuleEntrySchema.parse(data);
   return deepFreeze({
     kind: "rule",
     data: parsed,

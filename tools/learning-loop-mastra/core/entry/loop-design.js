@@ -1,10 +1,11 @@
 import { metaStateLoopDesignSchema } from "../meta-state.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs } from "./relationship-graph.js";
-import { parseForRead } from "./parse-for-read.js";
 
 export function createLoopDesign(data) {
-  const parsed = parseForRead(metaStateLoopDesignSchema, data);
+  // status:"archived" is schema-valid on the loop-design enum (deleteEntry
+  // appends tombstones for non-change-log kinds).
+  const parsed = metaStateLoopDesignSchema.parse(data);
 
   return deepFreeze({
     kind: "loop-design",

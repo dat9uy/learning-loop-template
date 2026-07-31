@@ -46,10 +46,10 @@ The registry is a discriminated union on `entry_kind`. Each kind has its own sta
 
 | Entry Kind | Purpose | Status Model | Durability |
 |---|---|---|---|
-| `finding` | Bug reports, design gaps, observed anti-patterns | 3-status: `open \| resolved \| superseded` (+ `archived` runtime); `stale` is a derived view, not a status | No TTL (`expires_at` vestigial); operator/agent-managed; `stale`-view re-verifiable |
-| `change-log` | Immutable audit log of system changes | Always `active` | Permanent: no TTL, no auto-resolve |
-| `rule` | Promoted findings that enforce invariants | Binary `active / inactive` | Permanent: operator-managed |
-| `loop-design` | Deferred designs (not yet shipped) | Binary `active / inactive` | Permanent: operator-managed |
+| `finding` | Bug reports, design gaps, observed anti-patterns | 4-status: `open \| resolved \| superseded \| archived`; `stale` is a derived view, not a status | No TTL (`expires_at` vestigial); operator/agent-managed; `stale`-view re-verifiable |
+| `change-log` | Immutable audit log of system changes | Always `active` | Permanent: no TTL, no auto-resolve; cannot be archived |
+| `rule` | Promoted findings that enforce invariants | Binary `active / inactive` (+ `archived` tombstone from deleteEntry) | Permanent: operator-managed |
+| `loop-design` | Deferred designs (not yet shipped) | Binary `active / inactive` (+ `archived` tombstone from deleteEntry) | Permanent: operator-managed |
 
 ---
 
@@ -64,7 +64,7 @@ Findings are the only entry kind with a multi-state lifecycle. The canonical sta
 | `open` | Unresolved (canonical post-migration status; replaces legacy `reported`/`active`/`stale`) | `meta_state_report` creates `open`; `meta_state_re_verify` re-grounds (stamps `last_verified_at`, no transition) |
 | `resolved` | Closed by operator/agent with resolution note | `meta_state_resolve` (consult-gate `rule-no-orphaned-evidence` may block on drift; cascade closes `stale`-view parents) |
 | `superseded` | Consolidated into a change-log | `meta_state_supersede` |
-| `archived` (runtime-only) | Registry-size trim; not in the persisted enum | `meta_state_archive` / `meta_state_batch` op:`archive` |
+| `archived` | Schema-valid terminal status (post-Plan 260731-1325); registry-size trim. Append-only via `archiveEntry`/`deleteEntry` (write-boundary guard on the union rejects caller-supplied `status:"archived"`); restorable via `meta_state_unarchive`. | `meta_state_archive` / `meta_state_batch` op:`archive` / `meta_state_batch` op:`delete`; `meta_state_unarchive` reverses |
 
 Note: `stale` is **not** a status. It is the `isStaleView` derived view: an `open` finding past the 7-day staleness window (from `last_verified_at` or `created_at`) or with drifted evidence in `file-index.jsonl`. Surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only); re-grounded via `meta_state_re_verify`. The legacy `reported`/`active`/`auto-resolved` statuses were removed (plans 260611-1000 and 260707-0812); `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.
 
@@ -77,6 +77,7 @@ open      --[meta_state_dispatch_finding]-->     open  (non-terminal routing; le
 open      --[meta_state_re_verify pass]-->       open  (stamps last_verified_at; no transition)
 resolved  --[meta_state_archive]-->              archived
 superseded--[meta_state_archive]-->              archived
+archived  --[meta_state_unarchive]-->            <pre-archive status>  (true-append supersedes tombstone)
 stale-view parent --[meta_state_resolve(cascade_from=[child])]--> resolved  (1-step cascade)
 ```
 
@@ -86,28 +87,35 @@ The `expired` status was removed in plan 260611-1000-remove-expired-status; the 
 
 ### Terminal vs Non-Terminal
 
-**Terminal** (two sets exist; document both):
-- **Schema-enum terminal** (`core/meta-state.js:91`): `{resolved, superseded}`. The Zod enum on `status` has 3 values (`open | resolved | superseded`); `archived` is not in the enum.
-- **Predicate-effective terminal** (`core/constants.js:32`, consumed by `isOpen` at line 46): `{resolved, superseded, archived}`. An `archived` entry is treated as terminal by `isOpen` for filtering; it is not a status value but is a runtime annotation.
+**Terminal** (single set, post-Plan 260731-1325): `{resolved, superseded, archived}`. The Zod enum on `status` now includes `archived`; the schema-enum terminal set and the predicate-effective terminal set (`core/constants.js`, consumed by `isOpen`) are identical.
 
 **Non-terminal**: `open`. It has **staleness pressure** as a derived view (`isStaleView`), not a status: a stale-view `open` finding is re-verifiable via `meta_state_re_verify` and cascade-closeable to `resolved` in 1 step. There is no `auto-resolved` status (removed).
 
-`archived` is the only runtime-applied annotation; it is in the predicate terminal set but not in the schema enum.
+Note: `core/meta-state.js` has a local `TERMINAL_STATUSES = {resolved, superseded}` (without `archived`) used internally as the open-predicate helper for the write path. It is NOT the schema-enum terminal set — do not conflate the two.
 
 ---
 
 ## Archive Mechanics
 
-`archived` is a **registry-size management status**, not part of the formal finding lifecycle enum. It exists to trim the active set without deleting history.
+`archived` is a **registry-size management status**, schema-valid since Plan 260731-1325. It exists to trim the active set without deleting history. The `status: "archived"` tombstone is appended via `archiveEntry`/`deleteEntry` (which bypass the union `metaStateEntrySchema` write-guard via `trueAppendAtomicRaw`); `writeEntry` and `metaStateBatch case:"write"` reject caller-supplied `status: "archived"` to keep the lifecycle append-only-via-archive-ops.
 
 ### How Archive Works
 
-- Applied via `meta_state_archive` MCP tool or `meta_state_batch` with `op: "archive"`
-- Only `entry_kind: "finding"` can be archived; rules, change-logs, and loop-designs are rejected
-- Sets `status: "archived"` plus `archived_at`, `archived_by`, `archived_reason`
+- Applied via `meta_state_archive` MCP tool or `meta_state_batch` with `op: "archive"` (finding) / `op: "delete"` (any non-change-log kind; appended with `tombstone_kind: "delete"`)
+- `meta_state_archive` rejects non-finding kinds; `meta_state_batch` op:`delete` accepts any non-change-log kind (rules, findings, loop-designs)
+- Sets `status: "archived"` plus `archived_at`, `archived_by`, `archived_reason`, `tombstone_kind` (`"archive"` or `"delete"`)
 - Re-archiving is a no-op (`already_archived`)
 - `meta_state_list` excludes archived entries by default; pass `include_archived: true` to query them
 - Versioned-append history per id (v0 + v1 + … lines on disk) is a separate, orthogonal affordance: `meta_state_list({ id, include_all_versions: true })` bypasses the `max_by(version)` collapse; terminal-status version lines still need `include_archived: true` (see `AGENTS.md` §6.1)
+
+### Restore Mechanics
+
+`meta_state_unarchive` reverses an erroneous archive. The restore line is true-appended with `version = tombstone.version + 1`, superseding the archive tombstone (max-by-version projection picks the restored line). The tombstone stays on disk (union-safe; never removed) — the version sequence [v0 open, v1 archive tombstone, v2 restored] is the audit trail.
+
+- Reads the pre-tombstone **live** status + content via `readRegistryAllVersions` (filtering out prior tombstones, `e.status !== "archived"`, so a restored line is never itself archived)
+- Restores `archived_*` + `tombstone_kind` cleared; `status` set to the pre-archive value
+- Rejects already-active (`not_archived`), change-logs (`not_archived` — change-logs are always active, so the single `assertArchivedTombstone` wrapper covers both; no separate `change_log_immutable` branch), and delete-tombstones unconditionally (`delete_not_restorable`, no `allow_delete_restore` flag — delete is a stronger operator intent than archive; the incident was an erroneous archive, not delete)
+- The restore *action* is audited in the gate log (via `appendGateLog` with `restored_at`), NOT in the registry line. No `restored_*` fields are persisted — the version sequence is the audit trail.
 
 ### Archive Decision Rule
 
@@ -159,6 +167,7 @@ These three kinds have simpler, binary or fixed status models.
 | `meta_state_re_verify` | finding | `open` -> `open` (no transition) | Runs `verification.steps`; stamps `last_verified_at` on pass; no status transition |
 | `meta_state_sweep` | finding | read-only (derived stale-view report) | Dry-run report of the `isStaleView` set; no status writes (apply mode removed in plan 260707-0812 Phase 3) |
 | `meta_state_archive` | finding | -> `archived` | Decision rule + operator override; rejects rules, change-logs, and loop-designs |
+| `meta_state_unarchive` | finding, rule, loop-design | `archived` -> `<pre-archive status>` | True-append supersedes tombstone via `readRegistryAllVersions`; rejects already-active (`not_archived`), change-logs (`not_archived`), and delete-tombstones (`delete_not_restorable`); no `allow_delete_restore` flag |
 | `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
 | `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
 | `meta_state_propose_design` | loop-design | -> `active` | Idempotent by `addresses` + `proposed_design_for` set equality |
@@ -216,7 +225,7 @@ const staleSet = derivedStaleSet(entries, { fileIndex, codeHashes });
 
 ## Key Design Decisions
 
-1. **Why `archived` is outside the schema enum**: It allows the archive tool to operate without a schema migration. The trade-off is that archived entries bypass Zod validation on read.
+1. **Why `archived` is in the schema enum** (post-Plan 260731-1325): The pre-Plan band-aid (`core/entry/parse-for-read.js`) stripped+restored `status:"archived"` around `schema.parse` in 3 factories to keep the read-tombstone crash at bay. The band-aid was accruing callers (every factory-built read path: `meta_state_relationships`, `validateCrossRefs`, `outboundRefsAll`), and the parse-crash class was load-bearing — any new entry factory would have to remember to wrap its parse. The honest-schema enum fix promotes `archived` into the per-kind status enums (finding/rule/loop-design), lets `schema.parse` accept the reality the tombstone already writes, and deletes the band-aid by construction. The trade-off flipped: the union `metaStateEntrySchema` (the write-validation gate) now needs an explicit `superRefine` rejecting caller-supplied `status:"archived"` so the lifecycle remains append-only via `archiveEntry`/`deleteEntry` (which bypass the union via `trueAppendAtomicRaw`). The guard is write-only — reads use per-kind schemas via factories — and is the single DRY spot that closes the forge vector.
 
 2. **Why status collapsed to `{open, resolved, superseded}`** (plans 260611-1000 + 260707-0812): the old 6-state model auto-resolved findings on TTL expiry, silencing bugs without trace, and required an `ack` step (`meta_state_ack`, now removed) to promote `reported → active`. The collapse keeps three terminal/non-terminal statuses and moves freshness out of the status enum: `stale` is a **derived view** (`isStaleView` over `open` findings), surfaced read-only by `meta_state_query_drift`/`meta_state_sweep` and re-grounded by `meta_state_re_verify` (no status transition). `isOpen` tolerates legacy persisted values until the migration flips them, so the collapse is read-safe mid-migration.
 
