@@ -382,7 +382,7 @@ describe("meta-state archive write-boundary guard (Plan 260731-1325 Phase 1)", (
     });
     const result = await metaStateBatch(tempDir, [{ op: "write", entry }]);
     assert.ok(result && typeof result === "object" && "reason" in result, "rejection must include a reason field");
-    assert.ok(/archived|validation_failed/.test(String(result.reason)), `rejection must mention archived, got: ${result.reason}`);
+    assert.ok(/archived/.test(String(result.reason)), `rejection must mention archived, got: ${result.reason}`);
     assert.strictEqual(result.applied, 0, "no ops should be applied on rejection");
     const entries = readRegistry(tempDir);
     assert.strictEqual(entries.length, 0, "no line should be appended on rejection");

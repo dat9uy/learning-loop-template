@@ -4,8 +4,8 @@ import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs, inverseRefs } from "./relationship-graph.js";
 
 export function createRule(data) {
-  // Plan 260731-1325 Phase 1: status:"archived" is now schema-valid on the
-  // rule enum (deleteEntry appends tombstones for non-change-log kinds).
+  // status:"archived" is schema-valid on the rule enum (deleteEntry
+  // appends tombstones for non-change-log kinds).
   const parsed = metaStateRuleEntrySchema.parse(data);
   return deepFreeze({
     kind: "rule",

@@ -3,8 +3,8 @@ import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs } from "./relationship-graph.js";
 
 export function createLoopDesign(data) {
-  // Plan 260731-1325 Phase 1: status:"archived" is now schema-valid on the
-  // loop-design enum (deleteEntry appends tombstones for non-change-log kinds).
+  // status:"archived" is schema-valid on the loop-design enum (deleteEntry
+  // appends tombstones for non-change-log kinds).
   const parsed = metaStateLoopDesignSchema.parse(data);
 
   return deepFreeze({

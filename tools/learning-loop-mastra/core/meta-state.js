@@ -633,18 +633,18 @@ export const metaStateLoopDesignSchema = z.object({
 });
 
 /**
- * Cross-cutting union validator — for readRegistry validation, loop_describe, etc.
- * Does NOT have .shape (by zod design); use the branch schemas for .shape.
- * Includes preprocess to default affected_system to 'meta' for legacy entries.
+ * Cross-cutting union validator — the write gate for `writeEntry` and
+ * `metaStateBatch case:"write"`. Does NOT have .shape (by zod design); use
+ * the branch schemas for .shape. Includes preprocess to default
+ * affected_system to 'meta' for legacy entries.
  *
- * Plan 260731-1325 Phase 1: the union includes a write-boundary guard that
- * rejects caller-supplied `status:"archived"` on the write path. The 3 per-kind
- * status enums accept "archived" (so factory reads don't crash on tombstones),
- * but `archived` is append-only via `archiveEntry`/`deleteEntry` (and the
- * restore path in `restoreEntry`) — those ops bypass this union via
- * `trueAppendAtomicRaw`. `writeEntry` and `metaStateBatch case:"write"` route
- * through this union, so the guard closes the forge vector for forged
- * `status:"archived"` without affecting reads or legitimate archive writes.
+ * The union includes a write-boundary guard that rejects caller-supplied
+ * `status:"archived"` on the write path. The 3 per-kind status enums accept
+ * "archived" (so factory reads don't crash on tombstones), but `archived` is
+ * append-only via `archiveEntry`/`deleteEntry` (and the restore path in
+ * `restoreEntry`) — those ops bypass this union via `trueAppendAtomicRaw`.
+ * Reads must NOT route through this union: the guard would reject every
+ * archived tombstone row on disk.
  */
 export const metaStateEntrySchema = z.preprocess(
   withDefaults,
@@ -1158,13 +1158,13 @@ async function assertNotChangeLog(entries, idx, root, id) {
   return invariantResult.ok;
 }
 
-// Plan 260731-1325 Phase 2: inverted companion to `assertNotArchived` for
-// `restoreEntry`. Returns true when the entry IS an archive tombstone (the
-// restore pre-condition); false otherwise (already-active, change-log, or
-// not-found are all rejected upstream). The single wrapper covers change-logs
-// too: they are status:"active" (z.literal on the change-log branch), so
+// Inverted companion to `assertNotArchived` for `restoreEntry`. Returns true
+// when the entry IS an archive tombstone (the restore pre-condition); false
+// otherwise (already-active, change-log, or not-found are all rejected
+// upstream). The single wrapper covers change-logs too: they are
+// status:"active" (z.literal on the change-log branch), so
 // `assertArchivedTombstone` returns not_archived before any entry_kind check —
-// no separate `change_log_immutable` branch is needed (red-team H1).
+// no separate `change_log_immutable` branch is needed.
 async function assertArchivedTombstone(entries, idx, root, id) {
   const invariantResult = await assertinvariant(
     () => Promise.resolve({ ok: true }),
@@ -1449,8 +1449,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
 }
 
 /**
- * Plan 260731-1325 Phase 2: restore an archived entry to its pre-archive
- * live status + content. Mirrors `archiveEntry`/`deleteEntry` structure
+ * Restore an archived entry to its pre-archive live status + content. Mirrors `archiveEntry`/`deleteEntry` structure
  * (enqueue + withRegistryLock + trueAppendAtomicRaw + invalidateCache).
  *
  * True-appends a new line that supersedes the archive tombstone (max-by-
@@ -1461,25 +1460,25 @@ export function archiveEntry(root, id, reason, archivedBy) {
  * Rejection shape (DRY with `archiveEntry`): bucket `{restored:false,
  * reason, id}` with a `reason` discriminator:
  *   - `not_archived` — already-active OR change-log (assertArchivedTombstone
- *     returns not_archived; the single wrapper covers both — red-team H1).
+ *     returns not_archived; the single wrapper covers both — change-logs are
+ *     always status:"active").
  *     The assertinvariant wrapper writes a structured `not_archived` line
  *     to the gate log for audit; the tool return does NOT surface it.
  *   - `delete_not_restorable` — `tombstone_kind:"delete"`. Delete is a
  *     stronger operator intent than archive; unconditional reject, no
- *     `allow_delete_restore` flag (red-team M1 — YAGNI; the incident was
- *     an erroneous archive, not delete).
+ *     opt-out flag (an erroneous archive is recoverable; an erroneous
+ *     delete is a deliberate operator decision).
  *   - `not_found` — id missing from the projected registry.
  *   - `no_pre_tombstone_version` — defensive: tombstone exists but no
  *     prior LIVE line found below it (registry corruption / edge case).
  *
- * D1 (red-team, HIGH): the pre-tombstone recovery filter MUST exclude
- * prior tombstones (`e.status !== "archived"`). Without this, an
- * `archive → batch-delete → restore` cycle would pick the prior archive
- * tombstone (status:"archived"), clear its markers, and produce a
- * "restored" line that is still archived → a frankenstein tombstone.
- * The filter is load-bearing and is the only fix; no upstream hardening
- * needed (delete is rejected unconditionally downstream by
- * `delete_not_restorable`).
+ * The pre-tombstone recovery filter MUST exclude prior tombstones
+ * (`e.status !== "archived"`). Without it, an `archive → batch-delete →
+ * restore` cycle would pick the prior archive tombstone (status:"archived"),
+ * clear its markers, and produce a "restored" line that is still archived →
+ * a frankenstein tombstone. The filter is load-bearing and is the only fix;
+ * no upstream hardening needed (delete is rejected unconditionally
+ * downstream by `delete_not_restorable`).
  *
  * No persisted `restored_*` audit fields — the restored line IS the
  * pre-archive state at a new version; the version sequence is the audit
@@ -1510,13 +1509,13 @@ export function restoreEntry(root, id, reason) {
       // assertinvariant wrapper (gate-log audit); returns boolean.
       // Covers change-logs too: they are status:"active", so this returns
       // not_archived before any entry_kind check — no separate
-      // change_log_immutable branch (red-team H1).
+      // change_log_immutable branch.
       if (!(await assertArchivedTombstone(entries, idx, root, id))) {
         return { restored: false, reason: "not_archived", id };
       }
       const current = entries[idx];
       // Delete is a stronger operator intent than archive; not restorable
-      // (red-team M1, no flag).
+      // (unconditional, no opt-out flag).
       if (current.tombstone_kind === "delete") {
         return {
           restored: false,
@@ -1529,7 +1528,7 @@ export function restoreEntry(root, id, reason) {
       // the tombstone, EXCLUDING prior tombstones (status:"archived").
       // Without the status!=="archived" guard, archive→batch-delete→restore
       // would pick the prior archive tombstone and clear its markers →
-      // a "restored" line that is still archived (red-team D1).
+      // a "restored" line that is still archived (frankenstein tombstone).
       const allVersions = readRegistryAllVersions(root);
       const tombstoneVersion = current.version ?? 0;
       const preTombstoneCandidates = allVersions.filter(
@@ -1822,7 +1821,12 @@ export function metaStateBatch(root, operations, envelope) {
               }
 
               const validation = metaStateEntrySchema.safeParse(op.entry);
-              if (!validation.success) throw new Error("validation_failed");
+              if (!validation.success) {
+                const detail = validation.error.issues
+                  .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+                  .join("; ");
+                throw new Error(`validation_failed: ${detail}`);
+              }
               // Per-op structural RI (WARN-ONLY — id-existence) against the
               // in-batch existence accumulator, which includes ids written by
               // earlier ops in this batch (so a write-then-reference within

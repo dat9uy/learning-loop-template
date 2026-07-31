@@ -10,6 +10,7 @@ import {
   readRegistry,
   readRegistryAllVersions,
 } from "./meta-state.js";
+import { invalidateCache } from "./read-registry-cache.js";
 import { metaStateBatch } from "./meta-state.js";
 
 function makeTempRoot() {
@@ -156,50 +157,28 @@ describe("restoreEntry — D1 tombstone-recovery guard (red-team D1)", () => {
   });
 
   test("recovery filter excludes prior tombstones (status !== 'archived')", async () => {
-    // Seed open finding → archive (v1 archive tombstone) → batch-delete (v2 delete tombstone)
-    // → patch the delete tombstone's tombstone_kind to "archive" to expose the
-    // recovery filter — the v1 archive tombstone exists, but the filter must
-    // pick the v0 live line, not the v1 archive tombstone.
+    // Seed open finding → archive (v1 archive tombstone) → batch-delete
+    // (v2 delete tombstone) → rewrite the v2 tombstone's tombstone_kind to
+    // "archive" IN PLACE (version stays 2). The projected max is then an
+    // archive tombstone (restore pre-condition holds, delete_not_restorable
+    // does not fire), and the candidate set below the tombstone is
+    // {v0 open, v1 archive tombstone}. Without the status!=="archived"
+    // recovery filter the reduce picks v1 → restored_status would be
+    // "archived" (frankenstein tombstone); with it, restore picks v0.
     writeFinding(root, "restore-d1-guard");
     await archiveEntry(root, "restore-d1-guard", "first archive");
     await metaStateBatch(root, [{ op: "delete", id: "restore-d1-guard", reason: "delete" }]);
-    // Manually convert the v2 delete tombstone back to an archive tombstone
-    // so the entry appears as an archive tombstone (matches the invariant pre-condition)
-    // without the delete_not_restorable branch firing. We simulate the
-    // `archive → batch-delete → restore` recovery by overriding the
-    // tombstone_kind of the latest line.
-    const allVersions = readRegistryAllVersions(root).filter((e) => e.id === "restore-d1-guard");
-    const maxLine = allVersions.reduce((a, b) => ((b.version ?? 0) > (a.version ?? 0) ? b : a));
-    // The max line is a delete tombstone; that's rejected by delete_not_restorable
-    // first. To test the D1 filter in isolation, restore the v1 archive tombstone
-    // as the projected max (by writing it with a higher version).
-    const v1ArchiveTombstone = allVersions.find((e) => e.tombstone_kind === "archive");
-    assert.ok(v1ArchiveTombstone, "v1 archive tombstone must exist");
-    // Bump the v1 archive tombstone's version to be the new max so the
-    // projected view shows it as the current tombstone (no delete tombstone
-    // in the way, no delete_not_restorable branch firing).
     const fs = await import("node:fs");
     const filePath = join(root, "meta-state.jsonl");
-    const raw = fs.readFileSync(filePath, "utf8");
-    const lines = raw.split("\n").filter(Boolean);
-    const updatedLines = lines.map((ln) => {
+    const lines = fs.readFileSync(filePath, "utf8").split("\n").filter(Boolean).map((ln) => {
       const parsed = JSON.parse(ln);
       if (parsed.id === "restore-d1-guard" && parsed.tombstone_kind === "delete") {
-        return null; // drop the delete tombstone line
-      }
-      return ln;
-    }).filter(Boolean);
-    fs.writeFileSync(filePath, updatedLines.join("\n") + "\n", "utf8");
-    // Now bump the archive tombstone's version to be the max
-    const raw2 = fs.readFileSync(filePath, "utf8");
-    const lines2 = raw2.split("\n").filter(Boolean).map((ln) => {
-      const parsed = JSON.parse(ln);
-      if (parsed.id === "restore-d1-guard" && parsed.tombstone_kind === "archive") {
-        return JSON.stringify({ ...parsed, version: 99 });
+        return JSON.stringify({ ...parsed, tombstone_kind: "archive" });
       }
       return ln;
     });
-    fs.writeFileSync(filePath, lines2.join("\n") + "\n", "utf8");
+    fs.writeFileSync(filePath, lines.join("\n") + "\n", "utf8");
+    invalidateCache(root);
 
     const result = await restoreEntry(root, "restore-d1-guard", "d1 test");
     assert.equal(result.restored, true, "restore must succeed");
@@ -208,7 +187,5 @@ describe("restoreEntry — D1 tombstone-recovery guard (red-team D1)", () => {
     const restored = readRegistry(root).find((e) => e.id === "restore-d1-guard");
     assert.equal(restored.status, "open");
     assert.equal(restored.tombstone_kind, undefined);
-    // Use the maxLine variable to avoid unused warning while keeping the assertion
-    assert.ok(maxLine, "v1 archive tombstone was used to set up the test");
   });
 });
