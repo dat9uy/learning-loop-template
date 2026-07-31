@@ -24,6 +24,7 @@ const HOOK_PATH = join(
 const {
   readSurfaceMcpJson,
   buildTransportBanner,
+  buildConfiguredTransportBanner,
   buildAdditionalContext,
 } = require(HOOK_PATH);
 
@@ -81,6 +82,70 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // No full schema re-injection: the banner must not embed a JSON
   // schema's `$schema` key (it would mean a schema dump leaked in).
   assert.ok(!banner.includes('"$schema"'), `banner must not embed a JSON schema; got: ${banner.slice(0, 500)}`);
+});
+
+test("transport banner interpolates the pinned LOOP_SURFACE value so the agent need not guess", () => {
+  // Regression: the footer used to emit a generic "Set LOOP_SURFACE before
+  // invoking" prompt, forcing the agent to guess the surface and burn a
+  // rejected first call (e.g. LOOP_SURFACE=loop). When a concrete surface
+  // is threaded in, the banner must state the exact value to set.
+  const readsOnly = buildTransportBanner({ readsViaCli: true, surface: ".claude" });
+  assert.ok(
+    readsOnly.includes("Set LOOP_SURFACE=.claude before invoking"),
+    `reads-only banner must name the concrete surface; got: ${readsOnly}`,
+  );
+  assert.ok(
+    !readsOnly.includes("Set LOOP_SURFACE before invoking\n"),
+    "reads-only banner must not emit the bare generic footer when a surface is given",
+  );
+
+  const recordsViaCli = buildTransportBanner({ readsViaCli: true, recordsViaCli: true, surface: ".claude" });
+  assert.ok(
+    recordsViaCli.includes("Set LOOP_SURFACE=.claude before invoking"),
+    `records-via-cli banner must name the concrete surface; got: ${recordsViaCli}`,
+  );
+});
+
+test("transport banner fails open to the generic footer when no surface is configured", () => {
+  // No surface threaded -> the original generic prompt must be preserved so
+  // the banner never goes empty or malformed on a config without LOOP_SURFACE.
+  const banner = buildTransportBanner({ readsViaCli: true });
+  assert.ok(
+    banner.includes("Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo."),
+    `fail-open banner must keep the generic footer; got: ${banner}`,
+  );
+  assert.ok(!banner.includes("Set LOOP_SURFACE=null"), "must not stringify a null surface");
+});
+
+test("buildConfiguredTransportBanner reads the pinned surface from .mcp.json into the footer", () => {
+  const root = mkdtempSync(join(tmpdir(), "cli-session-surface-"));
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  writeFileSync(
+    join(root, ".mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        "learning-loop": {
+          env: { LOOP_SURFACE: ".claude", LOOP_RECORDS_VIA_CLI: "1" },
+        },
+      },
+    }),
+  );
+  const banner = buildConfiguredTransportBanner(root);
+  assert.ok(banner.includes("Set LOOP_SURFACE=.claude before invoking"), `banner must carry the pinned surface; got: ${banner}`);
+
+  // Fail-open: a config without LOOP_SURFACE keeps the generic footer.
+  const bareRoot = mkdtempSync(join(tmpdir(), "cli-session-bare-"));
+  mkdirSync(join(bareRoot, ".claude"), { recursive: true });
+  writeFileSync(
+    join(bareRoot, ".mcp.json"),
+    JSON.stringify({ mcpServers: { "learning-loop": { env: { LOOP_RECORDS_VIA_CLI: "1" } } } }),
+  );
+  const bareBanner = buildConfiguredTransportBanner(bareRoot);
+  assert.ok(
+    bareBanner.includes("Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo."),
+    `bare config must fall back to the generic footer; got: ${bareBanner}`,
+  );
+  assert.ok(!bareBanner.includes("Set LOOP_SURFACE=."), "must not interpolate an absent surface");
 });
 
 test("reads-only banner stays under the records-via-cli byte budget (no schema re-injection)", () => {

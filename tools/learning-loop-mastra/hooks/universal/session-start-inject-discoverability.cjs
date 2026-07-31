@@ -88,7 +88,22 @@ function readSurfaceMcpJson(projectRoot) {
 // from buildTransportBanner so each helper stays below fallow's CRAP
 // threshold (PR #75: buildTransportBanner was CRAP 30 at cyclomatic 5
 // because subprocess hook coverage doesn't attribute back).
-function buildRecordsViaCliLines() {
+//
+// `surface` is the concrete LOOP_SURFACE value pinned in the runtime's
+// .mcp.json env block (e.g. ".claude"). When present it is interpolated into
+// the footer so the agent is told the exact value to set on the CLI, instead
+// of a generic "Set LOOP_SURFACE" prompt that forces a guess (and a rejected
+// first call — e.g. LOOP_SURFACE=loop). Fail-open: an absent/empty value
+// falls back to the original prompt; the identity pin in loop.mjs remains the
+// real validator.
+function loopSurfaceFooterLine(surface) {
+  const value = typeof surface === "string" && surface.trim() ? surface.trim() : null;
+  return value
+    ? `  Set LOOP_SURFACE=${value} before invoking; set GATE_ROOT when reading a different repo.`
+    : "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.";
+}
+
+function buildRecordsViaCliLines(surface) {
   const lines = [
     "  Writes also ride the CLI: mastra_<write> MCP tools are NOT registered either.",
     "  Exit 0 → result JSON on stdout. Exit 1 → structured JSON on stderr (recognized rejection: {error,code,reason}; InternalError: {error:'InternalError',internal:true}). Exit 2 → usage/caller-config (human-readable).",
@@ -98,18 +113,18 @@ function buildRecordsViaCliLines() {
     const sketch = WRITE_TOOL_SKETCHES[tool];
     if (sketch) lines.push(`    loop.mjs ${tool} '${sketch}'`);
   }
-  lines.push("  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.");
+  lines.push(loopSurfaceFooterLine(surface));
   return lines;
 }
 
-function buildReadsOnlyFooterLines() {
+function buildReadsOnlyFooterLines(surface) {
   return [
     "  Writes still use mastra_<write> MCP tools.",
-    "  Set LOOP_SURFACE before invoking; set GATE_ROOT when reading a different repo.",
+    loopSurfaceFooterLine(surface),
   ];
 }
 
-function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {}) {
+function buildTransportBanner({ readsViaCli = false, recordsViaCli = false, surface = null } = {}) {
   if (!readsViaCli) return "";
   const toolNames = [...CLI_READ_TOOLS].join(", ");
   const lines = [
@@ -119,9 +134,9 @@ function buildTransportBanner({ readsViaCli = false, recordsViaCli = false } = {
     "  The mastra_<read> MCP tools are NOT registered for this runtime.",
   ];
   if (recordsViaCli) {
-    lines.push(...buildRecordsViaCliLines());
+    lines.push(...buildRecordsViaCliLines(surface));
   } else {
-    lines.push(...buildReadsOnlyFooterLines());
+    lines.push(...buildReadsOnlyFooterLines(surface));
   }
   return lines.join("\n");
 }
@@ -134,7 +149,13 @@ function buildConfiguredTransportBanner(projectRoot) {
   // surface the banner; the banner text adapts to which flag fired.
   const recordsViaCli = /^(1|true)$/i.test(String(mcpEnv.LOOP_RECORDS_VIA_CLI ?? ""));
   const readsViaCli = recordsViaCli || /^(1|true)$/i.test(String(mcpEnv.LOOP_READS_VIA_CLI ?? ""));
-  return buildTransportBanner({ readsViaCli, recordsViaCli });
+  // Echo the pinned surface verbatim so the agent sets the exact value on
+  // CLI invocations rather than guessing. The MCP server already validated
+  // this value at boot (pinRuntimeIdAtBoot), so a running config's value is
+  // by construction one of the allowed surfaces. loopSurfaceFooterLine
+  // treats undefined/empty as "fail open", so the raw value is passed through
+  // without an extra coalesce here.
+  return buildTransportBanner({ readsViaCli, recordsViaCli, surface: mcpEnv.LOOP_SURFACE });
 }
 
 /**
@@ -417,6 +438,7 @@ module.exports = {
   loadStaleDispatchHints,
   readSurfaceMcpJson,
   buildTransportBanner,
+  buildConfiguredTransportBanner,
   buildAdditionalContext,
   // Exported so cli-write-hint-sketch-drift.test.cjs can cross-check the
   // one-line arg sketches against each write tool's actual schema required
