@@ -88,12 +88,14 @@ export const metaStateTouchTool = {
   },
 };
 
-// Resolve the `reopens` set on the optional `entry_id`. The new finding
-// declares it via `reopens: [...]` so those ids are not orphans.
-//
 // Pre-conditions on the touched entry: it must exist, be a finding, and be
 // open. Each failure mode carries its own wire shape; we return the
 // pre-built wireResult so the handler can dispatch it verbatim.
+//
+// Note: `meta_state_touch` does NOT take a `reopens` field — it is the
+// operator-attestation path for re-grounding aged findings, not a
+// reopens-edit path. (Reopens is a write-time cross-ref, edited via
+// `meta_state_patch` / `meta_state_batch` / direct `writeEntry`.)
 function checkEntryPreconditions(root, id) {
   const entry = loadEntry(root, id);
 

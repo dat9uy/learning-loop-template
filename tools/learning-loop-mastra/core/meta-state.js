@@ -51,6 +51,41 @@ import { stripEvidenceAnchor } from "./gate-logic.js";
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
 // Pre-state-only — see core/operation-invariant.js for the architecture.
 import { assertinvariant } from "./operation-invariant.js";
+import { appendGateLog } from "#lib/gate-logging.js";
+// Structural referential-integrity (RI) at the write boundary. The graph
+// module owns the cross-ref table (per-kind fields) and the id-existence
+// check; the mutation boundaries (writeEntry/updateEntry/metaStateBatch)
+// emit a gate-log audit when a structural cross-ref points at a
+// never-existent id. RI is WARN-ONLY — it never rejects the write. The hard
+// enforcer is the CI gate `meta-state-refs-check.yml` (catches within-PR
+// orphans); write-time RI's marginal benefit is immediate operator feedback
+// + cross-PR orphan surfacing. Warn-only preserves the features that
+// deliberately create ref orphans at write time: the `dangling_refs` derived
+// view (a finding that reopens a never-existent id) and the cold-tier
+// `orphans` array (a finding whose consolidated_into points at a missing
+// change-log). Id-existence only — tombstones count as present (liveness
+// out of scope); kind-match NOT checked (a Set<string> carries no kind);
+// applies_to_resolution is RI-exempt (z.string(), not an entry-id ref).
+import {
+  forwardRefs as graphForwardRefs,
+  resolveStructuralRI as graphResolveStructuralRI,
+  diffChangedRefs as graphDiffChangedRefs,
+} from "./entry/relationship-graph.js";
+
+// Emit a WARN-ONLY structural-RI advisory to the gate log. `dangling` is the
+// graph's list of {field, id} refs whose target is never-existent. I/O
+// failures are swallowed by appendGateLog; a bad `root` throws (surfaced).
+function warnStructuralRI(root, entryId, dangling) {
+  if (!Array.isArray(dangling) || dangling.length === 0) return;
+  appendGateLog(root, {
+    timestamp: new Date().toISOString(),
+    tool: "structural-ri",
+    reason_code: "dangling_structural_ref",
+    entry_id: entryId,
+    dangling,
+    dangling_count: dangling.length,
+  });
+}
 // Plan 260716-1101 Tier 2 Phase B: true-append write helper + canonical
 // comparator. `trueAppendAtomic` replaces the read-all → full-rewrite pattern
 // with O_APPEND + fsync'd writes (H1, RT). `canonicalize` powers the no-op
@@ -1152,6 +1187,20 @@ export function writeEntry(root, entry) {
       if (!validation.success) {
         throw new InvalidEntryError(validation.error);
       }
+      // Write-time structural RI (WARN-ONLY — id-existence). Computes the
+      // dangling cross-ref targets and emits a gate-log advisory; it does
+      // NOT reject the append. The CI gate `meta-state-refs-check.yml` is the
+      // hard enforcer (catches within-PR orphans). Warn-only lets the
+      // `dangling_refs` view and the cold-tier `orphans` feature create the
+      // ref orphans they exist to surface. Tombstones count as present
+      // (liveness out of scope); kind-match is NOT checked (Set<string>,
+      // no kind); `applies_to_resolution` is RI-exempt (z.string(), not an
+      // entry-id ref); `forwardRefs` already skips the generic `"*"` wildcard.
+      // Historical entries read fine (RI is advisory; the read/projection
+      // path runs no RI).
+      const existenceSet = new Set(readRegistry(root).map((e) => e.id));
+      const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
+      warnStructuralRI(root, validation.data.id, writeRi.dangling);
       // Plan 260715-0801 Tier 1 Phase 2: write dispatch by entry_kind.
       // Change-logs true-append to change-log.jsonl (merge=union safe);
       // everything else lands in meta-state.jsonl. Runs INSIDE the
@@ -1281,6 +1330,25 @@ export function updateEntry(root, id, patch) {
       // Real change detected: append a new highest-version line.
       const newVersion = currentVersion + 1;
       const newEntry = { ...patched, version: newVersion };
+      // Update-time structural RI (WARN-ONLY — changed-only). Validates ONLY
+      // cross-ref fields the patch introduces or repoints; inherited
+      // unchanged refs (e.g. a historical `reopens`) are NOT re-validated,
+      // so a description edit on a finding with a stale `reopens` is not
+      // flagged. Emits a gate-log advisory for any changed ref whose target
+      // is never-existent; does NOT reject (CI is the hard enforcer). So
+      // `updateEntry` keeps its `true`/`null`/`"version_mismatch"`/… return
+      // contract — it no longer returns a `"dangling_structural_ref"` code.
+      // `consolidated_into` is on the immutable patch deny-list (only set at
+      // writeEntry); `applies_to_resolution` is RI-exempt.
+      const changedRefs = graphDiffChangedRefs(
+        graphForwardRefs(newEntry),
+        graphForwardRefs(existingEntry),
+      );
+      if (changedRefs.length > 0) {
+        const existenceSet = new Set(readRegistry(root).map((e) => e.id));
+        const dangling = changedRefs.filter((r) => !existenceSet.has(r.id));
+        warnStructuralRI(root, id, dangling);
+      }
       trueAppendAtomicRaw(root, getRegistryPath(root), newEntry);
       invalidateCache(root);
       return true;
@@ -1517,6 +1585,13 @@ export function metaStateBatch(root, operations, envelope) {
       const preBatchContent = existsSync(path) ? readFileSync(path, "utf8") : "";
 
       const entries = readRegistry(root);
+      // In-batch existence accumulator for write-time structural RI. Seeded
+      // from the projected registry and grown with every write-op's id (both
+      // change-logs and meta-state entries) so an intra-batch "write X then
+      // reference X" does not false-warn — change-log ids are queued for
+      // later append, not reflected into `entries[]`, so RI must consult this
+      // set instead.
+      const inBatchIds = new Set(entries.map((e) => e.id));
       // Phase B: pendingMetaStateAppends collects one new versioned line per
       // mutation op (no in-place mutation, no full rewrite). Applies happen
       // AFTER all ops validate; on failure the byte-snapshot rollback restores
@@ -1576,6 +1651,14 @@ export function metaStateBatch(root, operations, envelope) {
 
               const validation = metaStateEntrySchema.safeParse(op.entry);
               if (!validation.success) throw new Error("validation_failed");
+              // Per-op structural RI (WARN-ONLY — id-existence) against the
+              // in-batch existence accumulator, which includes ids written by
+              // earlier ops in this batch (so a write-then-reference within
+              // one batch does not false-warn). Same exemptions as writeEntry
+              // (applies_to_resolution, "*", tombstones count as present).
+              inBatchIds.add(validation.data.id);
+              const writeRi = graphResolveStructuralRI(validation.data, inBatchIds);
+              warnStructuralRI(root, validation.data.id, writeRi.dangling);
               // Plan 260715-0801 Tier 1 Phase 2: dispatch change-log writes
               // to change-log.jsonl (true-append). Queue them here; append
               // happens AFTER the table persist so a mid-batch failure
@@ -1643,6 +1726,21 @@ export function metaStateBatch(root, operations, envelope) {
               delete cleanPatch.constructor;
               delete cleanPatch.entry_kind;
               const patched = withDefaults({ ...existingEntry, ...cleanPatch });
+              // Update-time structural RI (WARN-ONLY — changed-only), mirroring
+              // the updateEntry boundary. Validates ONLY cross-ref fields the
+              // patch introduces or repoints, against the in-batch existence
+              // accumulator (in-batch reflection ensures intra-batch
+              // write→reference works). Emits an advisory; does NOT reject.
+              if (!entriesEqual(patched, existingEntry)) {
+                const changedRefs = graphDiffChangedRefs(
+                  graphForwardRefs(patched),
+                  graphForwardRefs(existingEntry),
+                );
+                if (changedRefs.length > 0) {
+                  const dangling = changedRefs.filter((r) => !inBatchIds.has(r.id));
+                  warnStructuralRI(root, patched.id, dangling);
+                }
+              }
               if (!entriesEqual(patched, existingEntry)) {
                 const newEntry = {
                   ...patched,
@@ -1907,6 +2005,14 @@ export function tryClaimSessionId(root, key, entryBuilder) {
       throw new InvalidEntryError(validation.error);
     }
 
+    // Plan 260730-0240 Phase 4 (red-team R9) DEFENSIVE NOTE: this append
+    // bypasses writeEntry (uses appendRegistryEntryAtomic directly, with
+    // `enqueue` for per-process serialization only — NOT withRegistryLock,
+    // so it's NOT cross-process safe). It is test-only (no production
+    // callers). Write-time structural RI is intentionally NOT wired here —
+    // over-investing in a test-only path with a weaker lock would mask the
+    // appending semantics. If a production handler ever calls this, route
+    // through writeEntry instead so write-time RI catches dangling refs.
     appendRegistryEntryAtomic(root, validation.data);
     return { claimed: true, id: entry.id };
   });

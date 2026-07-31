@@ -1,20 +1,10 @@
 import { metaStateLoopDesignSchema } from "../meta-state.js";
 import { deepFreeze } from "./deep-freeze.js";
+import { forwardRefs } from "./relationship-graph.js";
+import { parseForRead } from "./parse-for-read.js";
 
 export function createLoopDesign(data) {
-  const parsed = metaStateLoopDesignSchema.parse(data);
-
-  // Resolve entry kind for proposed_design_for / addresses refs.
-  // Lookup-first when entries are available (canonical); fall back to a
-  // prefix heuristic when the target entry is not in the registry (dangling
-  // ref case where registry lookup is meaningless).
-  function kindForId(id, entries) {
-    if (entries) {
-      const found = entries.find((e) => e.id === id);
-      if (found) return found.entry_kind ?? "finding";
-    }
-    return typeof id === "string" && id.startsWith("rule-") ? "rule" : "finding";
-  }
+  const parsed = parseForRead(metaStateLoopDesignSchema, data);
 
   return deepFreeze({
     kind: "loop-design",
@@ -22,18 +12,11 @@ export function createLoopDesign(data) {
     schema: metaStateLoopDesignSchema,
 
     outboundRefs(entries) {
-      const refs = [];
-      if (Array.isArray(parsed.proposed_design_for)) {
-        for (const id of parsed.proposed_design_for) {
-          refs.push({ kind: kindForId(id, entries), id, field: "proposed_design_for" });
-        }
-      }
-      if (Array.isArray(parsed.addresses)) {
-        for (const id of parsed.addresses) {
-          refs.push({ kind: kindForId(id, entries), id, field: "addresses" });
-        }
-      }
-      return refs;
+      // Delegate to the centralized graph — single source of truth for
+      // cross-ref fields per kind. Plan 260730-0240 folds the bespoke
+      // loop-design kindForId helper into the graph (also fixes the
+      // validator's kind-"meta" bug: meta-… fallback returns "finding").
+      return forwardRefs(parsed, entries);
     },
 
     inboundRefs(_root) {

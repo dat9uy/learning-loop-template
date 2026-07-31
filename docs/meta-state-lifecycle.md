@@ -224,6 +224,24 @@ const staleSet = derivedStaleSet(entries, { fileIndex, codeHashes });
 
 4. **Why rules and loop-designs are binary**: They represent operator decisions, not ephemeral observations. A rule is either active (enforced) or inactive (replaced). A design is either active (pending) or inactive (shipped).
 
+## Three-Mechanism Boundary
+
+Plan 260730-0240-relationship-model-centralize-defer-drop surfaces that the inter-entry relationship model grew across decentralized sites and conflated three distinct mechanisms. Under the shipped append-first (`meta-state.jsonl` versioned-append, `max_by(.version)`, no in-place mutation, no hard delete) + CLI-first (reads + writes ride `bin/loop.mjs`) architecture, this separation matters — a structural cross-ref written today is a *permanent versioned audit line*, so write-time referential-integrity validation is strictly more valuable, and fewer structural fields = fewer dangling-ref risks carried across versions.
+
+The boundary (findings meta-260623T1126Z, meta-260715T2237Z, meta-260717T1004Z):
+
+1. **File-index — findings-on-a-file.** Every finding with `evidence_code_ref` is grounded via `file-index.jsonl` (the canonical `meta_state_refresh_file_index` source). `meta_state_check_grounding`, `meta_state_query_drift`, and `meta_state_refresh_file_index` answer "which findings touch this file". **Not a relationship edge.** This is mechanism (1a) from finding meta-260717T1004Z.
+
+2. **Typed lifecycle edges — relationship model.** The cross-ref fields (`reopens`, `consolidated_into`, `promoted_to_rule`, `supersedes`, `consolidates`, `origin`, `addresses`, `proposed_design_for`) carry kind-pair-typed lineage. **Centralized in `core/entry/relationship-graph.js`** (single source of truth for the cross-ref table per kind, forward + inverse resolution, write-time structural RI). The wire shape (`groupOutbound` / `groupInbound` / `INBOUND_KEY_MAP` + `computeDanglingRefs`) stays in `tools/handlers/meta-state-relationships-tool.js` because it needs `stale-view` and is presentation logic. This is mechanism (1b) from finding meta-260717T1004Z.
+
+3. **Cascade — closure policy.** "Solve one → resolve other" is a **state transition** (resolve with `cascade_from: [childId, …]`), not a relationship type. The cascade is glued to the `reopens` edge via the transient input `cascade_from` (NOT persisted; consumed by `meta_state_resolve`'s cascade branch + `validateCascadeChildren`). This is mechanism (2) from finding meta-260717T1004Z.
+
+**Non-decision — no `related_to` field.** A generic `related_to: string[]` is the natural "just link them" instinct, but it's optional + semantically empty: one agent links `related_to` for "same subsystem", another for "same symptom", another for "fixes-like". The field becomes inconsistent, then unqueryable, then ignored. The typed edges (`supersedes` = "this replaces that", `addresses` = "this design fixes that finding") carry meaning, so they query. The answer to "how do I link X to Y?" is: use the typed edge that means what you mean, or `reopens` for stale-succession, or free-text in `description` for soft context.
+
+**Write-time structural RI is WARN-ONLY.** `writeEntry`/`updateEntry`/`metaStateBatch` check id-existence of structural cross-ref targets at the boundary but never reject: a dangling ref emits a gate-log advisory (`dangling_structural_ref`, naming the dangling `{field, id}`) and the append continues. Hard enforcement lives in CI (`meta-state-refs-check.yml`), which catches within-PR orphans. Write-time RI's marginal benefit is immediate operator feedback + cross-PR orphan surfacing, not correctness rejection — a hard reject regressed the full suite (16 test files) because two features deliberately create ref orphans at write time: the `dangling_refs` "missing" view (a finding whose `reopens` targets a never-existent id) and the cold-tier `orphans` array (`consolidated_into` → a missing change-log). `metaStateBatch` seeds an in-batch id accumulator so intra-batch write-then-reference does not false-warn. Do not reintroduce write-time hard rejection; the deliberate-orphan features depend on the append continuing.
+
+**`reopens` / `cascade_from` deferral.** Both are KEPT (2 hint slugs `reopens` + `reopens-script` in `core/hint-registry.js`; 4 live `reopens` edges — all terminal). The structural drop waits on the YAGNI gate defined by finding meta-260717T1004Z (a real >2 recurrence cluster). Dropping requires a sustained recurrence cluster — when that fires, revisit and drop with migration of the 4 edges. Today, the mechanism is more used than the audit predicted, but the deferred drop is the right call to avoid speculative simplification.
+
 ---
 
 ## Related Documents
@@ -232,3 +250,4 @@ const staleSet = derivedStaleSet(entries, { fileIndex, codeHashes });
 - `docs/trajectory.md` — long-term direction, Bridge 6 (self-model as product)
 - `docs/architecture.md` — gate system internals, the 3-layer mechanism that realizes this separation
 - `tools/learning-loop-mastra/core/meta-state.js` — source-of-truth schema definitions and registry operations
+- `tools/learning-loop-mastra/core/entry/relationship-graph.js` — single source of truth for the cross-ref table per kind + write-time structural RI

@@ -17,6 +17,12 @@ import { resolveToolImportUrl } from "./manifest-loader.js";
 // the builders below are thin projections over the registry — same return
 // shape, same order, no call-site changes for loop_describe consumers.
 import { listHints, buildProcessView, resolveHintText } from "./hint-registry.js";
+// Plan 260730-0240-relationship-model-centralize-defer-drop: the relationship
+// model centralization makes `buildInverseIndexes` a thin re-export of the
+// graph module's canonical implementation. The 6 named maps are preserved
+// for backward compatibility; the only intentional change is the dual-field
+// `promoted_to_rule_inverse` dedup (2→1 ref, canonical `rule.origin`).
+import { buildInverseIndexes } from "./entry/relationship-graph.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -608,119 +614,13 @@ function buildColdTierCache(root) {
  * - reopens_inverse: Map<finding.id, finding.id[]>
  * - consolidated_into_inverse: Map<change-log.id, finding.id[]>
  *
- * Pure function — O(N) over entries. No I/O.
+ * Pure function — O(N) over entries. No I/O. Re-exports the centralized
+ * `core/entry/relationship-graph.js#buildInverseIndexes` (the single source
+ * of truth for cross-ref fields per kind) under the legacy name so consumers
+ * (`loop-describe-tool`, `meta_state_list`, cold-tier cache serialization)
+ * continue to work unchanged.
  */
-export function buildInverseIndexes(entries) {
-  const state = newIndexState();
-  for (const entry of entries) {
-    indexAddresses(entry, state);
-    indexSupersedes(entry, state);
-    indexOrigin(entry, state);
-    indexPromotedToRule(entry, state);
-    indexReopens(entry, state);
-    indexConsolidatedInto(entry, state);
-  }
-  return state.export();
-}
-
-function newIndexState() {
-  return {
-    addresses_inverse: new Map(),
-    supersedes_inverse: new Map(),
-    origin_inverse: new Map(),
-    promoted_to_rule_inverse: new Map(),
-    reopens_inverse: new Map(),
-    consolidated_into_inverse: new Map(),
-    export() {
-      return {
-        addresses_inverse: this.addresses_inverse,
-        supersedes_inverse: this.supersedes_inverse,
-        origin_inverse: this.origin_inverse,
-        promoted_to_rule_inverse: this.promoted_to_rule_inverse,
-        reopens_inverse: this.reopens_inverse,
-        consolidated_into_inverse: this.consolidated_into_inverse,
-      };
-    },
-  };
-}
-
-function pushToIndex(index, key, value) {
-  if (!index.has(key)) index.set(key, []);
-  index.get(key).push(value);
-}
-
-function pushUnique(index, key, value) {
-  if (!index.has(key)) index.set(key, []);
-  const arr = index.get(key);
-  if (!arr.includes(value)) arr.push(value);
-}
-
-function indexAddresses(entry, state) {
-  // addresses: loop-design -> findings that address it
-  if (entry.entry_kind !== "loop-design" || !Array.isArray(entry.addresses)) return;
-  for (const findingId of entry.addresses) {
-    pushToIndex(state.addresses_inverse, findingId, entry.id);
-  }
-}
-
-function indexSupersedes(entry, state) {
-  // supersedes: change-log -> entries it supersedes
-  if (entry.entry_kind !== "change-log" || !entry.supersedes) return;
-  pushToIndex(state.supersedes_inverse, entry.supersedes, entry.id);
-}
-
-function indexOrigin(entry, state) {
-  // origin: finding -> rules that originated from it
-  if (entry.entry_kind !== "rule" || !entry.origin) return;
-  const findingId = entry.origin;
-  pushToIndex(state.origin_inverse, findingId, entry.id);
-  // Dual-field unification: rule.origin is the canonical promoted_to_rule ref.
-  // Populate promoted_to_rule_inverse from the rule side so inverse indexes
-  // stay complete after migration from finding.promoted_to_rule -> rule.origin.
-  // DEDUPED: rule.origin contributes once even if a finding also declares
-  // promoted_to_rule pointing at this rule (synthetic fixture for the
-  // migration period). The inverse direction (`indexPromotedToRule`) does NOT
-  // dedup, so a dual-field entry produces 2 refs — test fixture locks this.
-  pushUnique(state.promoted_to_rule_inverse, entry.id, findingId);
-}
-
-function indexPromotedToRule(entry, state) {
-  // promoted_to_rule: rule.id -> findings that promoted it
-  if (!entry.promoted_to_rule || typeof entry.promoted_to_rule !== "string") return;
-  pushToIndex(state.promoted_to_rule_inverse, entry.promoted_to_rule, entry.id);
-}
-
-function indexReopens(entry, state) {
-  // reopens: finding -> stale findings it re-surfaces (inverse direction).
-  // The legacy 'expired' status was removed in plan 260611-1000; only stale
-  // parents are cascade-closeable today.
-  if (entry.entry_kind !== "finding" || !Array.isArray(entry.reopens)) return;
-  for (const staleId of entry.reopens) {
-    pushToIndex(state.reopens_inverse, staleId, entry.id);
-  }
-}
-
-function indexConsolidatedInto(entry, state) {
-  // consolidated_into: the forward ref is on the change-log side
-  // (`change-log.consolidates`, CSV or array of finding ids). The inverse
-  // is keyed by change-log id and holds the findings it consolidates.
-  // This powers `meta_state_relationships({ id: <change-log-id>, direction: 'inbound' })`
-  // returning `inbound.consolidated_by`. (See meta-state.js JSDoc for the
-  // canonical direction description.)
-  if (entry.entry_kind !== "change-log" || entry.consolidates === undefined) return;
-  const ids = typeof entry.consolidates === "string"
-    ? entry.consolidates.split(",").map((s) => s.trim()).filter(Boolean)
-    : Array.isArray(entry.consolidates)
-      ? entry.consolidates
-      : [];
-  if (!state.consolidated_into_inverse.has(entry.id)) {
-    state.consolidated_into_inverse.set(entry.id, []);
-  }
-  const arr = state.consolidated_into_inverse.get(entry.id);
-  for (const id of ids) {
-    if (!arr.includes(id)) arr.push(id);
-  }
-}
+export { buildInverseIndexes };
 
 /**
  * Build a registry summary from all entries.

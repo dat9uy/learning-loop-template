@@ -47,7 +47,11 @@ function makeValidRule(id) {
   return {
     id: "rule-test-write-validation",
     entry_kind: "rule",
-    origin: "meta-260607T0008Z-test",
+    // `origin` is required by the rule schema. Write-time structural RI is
+    // warn-only, but we point at the finding T-2 writes BEFORE this rule so
+    // the ref resolves and no advisory is emitted (a real promotion always
+    // follows the finding).
+    origin: "meta-260607T1201Z-test-finding",
     enforcement: "agent",
     pattern_type: "regex",
     pattern: "test",
@@ -65,6 +69,8 @@ function makeValidLoopDesign(id) {
     id: "loop-design-test-write-validation",
     entry_kind: "loop-design",
     title: "Test design for write validation",
+    // `proposed_design_for` is schema-required (no `.default([])`); the
+    // rule is written BEFORE the loop-design in T-2, so we point at it.
     proposed_design_for: ["rule-test-write-validation"],
     addresses: [],
     description: "A valid loop-design for write validation test",
@@ -146,21 +152,25 @@ describe("updateEntry validation", () => {
     assert.strictEqual(updated.status, "open");
   });
 
-  test("T-5: updateEntry accepts promoted_to_rule patch", async () => {
+  test("T-5: updateEntry accepts promoted_to_rule pointing at a missing rule (write-time structural RI is warn-only)", async () => {
     const root = makeTempRoot();
     const entry = makeValidFinding("meta-260607T1207Z-test-promote");
     await writeEntry(root, entry);
 
+    // Write-time structural RI is WARN-ONLY: a patch that introduces a
+    // never-existent target is applied and recorded as a gate-log advisory;
+    // it is NOT rejected. updateEntry keeps its `true` return (no
+    // "dangling_structural_ref" code); the CI gate is the hard enforcer.
     const result = await updateEntry(root, entry.id, {
       promoted_to_rule: "rule-short-slug-for-risk-records",
     });
-    assert.strictEqual(result, true);
-
+    assert.strictEqual(result, true, "warn-only RI applies the patch");
     const registry = readRegistry(root);
     const updated = registry.find((e) => e.id === entry.id);
     assert.strictEqual(
       updated.promoted_to_rule,
-      "rule-short-slug-for-risk-records"
+      "rule-short-slug-for-risk-records",
+      "the patch landed despite the dangling target"
     );
   });
 });

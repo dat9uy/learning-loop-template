@@ -54,6 +54,14 @@
       ]
     },
     {
+      "file": "core/entry/relationship-graph.js",
+      "exports": [
+        "parseConsolidates",
+        "inboundFromLoopDesign",
+        "_internal"
+      ]
+    },
+    {
       "file": "core/cli-self-match.js",
       "exports": [
         "CLI_INVOCATION_SHAPES"

@@ -7,6 +7,16 @@ const CACHE_FILENAME = "loop-describe-cold.json";
 const REGISTRY_FILENAME = "meta-state.jsonl";
 const CHANGE_LOG_FILENAME = "change-log.jsonl";
 
+// Cache payload version. Bump when the cache's data shape or population
+// logic changes (e.g. centralization of the relationship model changes the
+// canonical promoted_to_rule_inverse from 2→1 refs). The version is embedded
+// in the cache payload; a mismatch forces a rebuild on the next read.
+// Red-team R5: a code-only deploy does NOT mutate the registry, so the SHA
+// keys hit and the cache would serve stale indexes until the next registry
+// write. Bumping this constant in the same PR as the centralization
+// guarantees the first read after deploy rebuilds.
+const CACHE_VERSION = 2;
+
 function getCachePath(root, cacheDir = DEFAULT_CACHE_DIR) {
   return join(root, cacheDir, CACHE_FILENAME);
 }
@@ -105,6 +115,9 @@ export function readColdTierCache(root, cacheDir) {
       || cached.file_index_sha256 !== currentFileIndexSha) {
     return { hit: false, reason: "sha_mismatch" };
   }
+  if (cached.cache_version !== CACHE_VERSION) {
+    return { hit: false, reason: "version_mismatch" };
+  }
   return { hit: true, payload: cached.payload, built_at: cached.built_at };
 }
 
@@ -116,6 +129,7 @@ export function writeColdTierCache(root, payload, cacheDir) {
   const dir = join(root, cacheDir || DEFAULT_CACHE_DIR);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const data = {
+    cache_version: CACHE_VERSION,
     built_at: new Date().toISOString(),
     registry_sha256: registrySha256(root),
     change_log_sha256: changeLogSha256(root),
