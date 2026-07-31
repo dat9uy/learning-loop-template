@@ -189,12 +189,9 @@ files:
   - path: entry/relationship-graph.js
     role: helper
     summary: Single source of truth for the meta-state relationship model — CROSS_REFS table per kind, forward/inverse resolution, buildInverseIndexes (6-map shape), write-time structural RI (id-existence), diffChangedRefs. Folds parseConsolidates + inboundFromLoopDesign leaf helpers. Pure (no fs/gate-logic/stale-view/meta-state imports).
-  - path: entry/inbound-from-loop-design.js
+  - path: entry/parse-for-read.js
     role: helper
-    summary: Thin re-export of `inboundFromLoopDesign` from relationship-graph.js (folded in plan 260730-0240 Phase 3; kept for rollback safety).
-  - path: entry/consolidates-refs.js
-    role: helper
-    summary: Thin re-export of `parseConsolidates` from relationship-graph.js (folded in plan 260730-0240 Phase 3; kept for rollback safety).
+    summary: Read-tolerant schema parse for entry factories — tolerates the runtime `status:"archived"` tombstone overlay (deliberately outside the write-schema status enum) so read paths that build factories from projected archived rows don't crash.
   - path: entry/loop-design.js
     role: helper
     summary: Factory wrapping metaStateLoopDesignSchema with relationship methods.

@@ -2,9 +2,10 @@ import { metaStateRuleEntrySchema } from "../meta-state.js";
 import { checkResolutionEvidence, projectHasLearningLoopMcp } from "../gate-logic.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs, inverseRefs } from "./relationship-graph.js";
+import { parseForRead } from "./parse-for-read.js";
 
 export function createRule(data) {
-  const parsed = metaStateRuleEntrySchema.parse(data);
+  const parsed = parseForRead(metaStateRuleEntrySchema, data);
   return deepFreeze({
     kind: "rule",
     data: parsed,

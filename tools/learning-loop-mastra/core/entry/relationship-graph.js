@@ -108,29 +108,33 @@ function kindForId(id, entries, hintKind) {
  * `parseConsolidates` — the post-migration canonical is `z.array(z.string())`
  * but in-flight processes may read pre-migration data.
  */
+// Normalize a cross-ref field value to a list of id strings, or `null` when
+// the field is absent/empty/wildcard and should be skipped. Handles the
+// legacy CSV-string `consolidates` form and per-id wildcard/empty filtering.
+function fieldIdValues(spec, value) {
+  if (value === undefined || value === null || value === "" || value === "*") return null;
+  if (spec.field === "consolidates" && typeof value === "string") {
+    const parsed = parseConsolidates(value);
+    return parsed.length > 0 ? parsed : null;
+  }
+  if (Array.isArray(value)) {
+    const ids = value.filter((id) => id !== undefined && id !== null && id !== "" && id !== "*");
+    return ids.length > 0 ? ids : null;
+  }
+  if (typeof value === "string") return [value];
+  return null;
+}
+
 export function forwardRefs(entry, entries) {
   const refs = [];
-  const kind = entry.entry_kind ?? "finding";
-  const table = CROSS_REFS[kind];
+  const table = CROSS_REFS[entry.entry_kind ?? "finding"];
   if (!table) return refs;
   for (const spec of table) {
-    let value = entry[spec.field];
-    if (value === undefined || value === null || value === "") continue;
-    if (value === "*") continue; // generic wildcard skip
-    if (spec.field === "consolidates" && typeof value === "string") {
-      value = parseConsolidates(value);
-      if (value.length === 0) continue;
+    const ids = fieldIdValues(spec, entry[spec.field]);
+    if (!ids) continue;
+    for (const id of ids) {
+      refs.push({ kind: kindForId(id, entries, spec.targetKind), id, field: spec.field });
     }
-    if (Array.isArray(value)) {
-      if (value.length === 0) continue;
-      for (const id of value) {
-        if (id === undefined || id === null || id === "" || id === "*") continue;
-        refs.push({ kind: kindForId(id, entries, spec.targetKind), id, field: spec.field });
-      }
-      continue;
-    }
-    if (typeof value !== "string") continue;
-    refs.push({ kind: kindForId(value, entries, spec.targetKind), id: value, field: spec.field });
   }
   return refs;
 }
@@ -196,6 +200,40 @@ export function inverseRefs(targetId, entries) {
  *     `forwardRefs` reading `entry.reopens` directly (bug #1 regression-
  *     prevention invariant).
  */
+// Ensure `map[key]` exists as a list, then append `val` if not already
+// present. Used for both `consolidated_into_inverse` population paths, which
+// dedup reciprocal pairs so a finding in both a change-log's `consolidates`
+// and its own `consolidated_into` counts once.
+function upsertList(map, key, val) {
+  if (!map.has(key)) map.set(key, []);
+  const arr = map.get(key);
+  if (!arr.includes(val)) arr.push(val);
+}
+
+// Route one forward ref into the appropriate inverse map(s). `origin` feeds
+// two maps (canonical `promoted_to_rule_inverse` dedup); `consolidates` and
+// `consolidated_into` populate `consolidated_into_inverse` from both sides;
+// the legacy `promoted_to_rule` source is skipped (canonical is `rule.origin`);
+// forwardOnly fields (`applies_to_resolution`) have no inverse map.
+function indexRef(indexes, ref, entry) {
+  if (ref.field === "promoted_to_rule") return;
+  if (ref.field === "origin") {
+    pushToIndexUnique(indexes.origin_inverse, ref.id, entry.id);
+    pushToIndexUnique(indexes.promoted_to_rule_inverse, entry.id, ref.id);
+    return;
+  }
+  if (ref.field === "consolidates") {
+    upsertList(indexes.consolidated_into_inverse, entry.id, ref.id);
+    return;
+  }
+  if (ref.field === "consolidated_into") {
+    upsertList(indexes.consolidated_into_inverse, ref.id, entry.id);
+    return;
+  }
+  const mapName = fieldToInverseMap(ref.field);
+  if (mapName) pushToIndex(indexes[mapName], ref.id, entry.id);
+}
+
 export function buildInverseIndexes(entries) {
   const indexes = newIndexState();
   // Pre-populate `consolidated_into_inverse` keys for change-logs with an
@@ -210,40 +248,7 @@ export function buildInverseIndexes(entries) {
   }
   for (const entry of entries) {
     for (const ref of forwardRefs(entry, entries)) {
-      // Skip the legacy `finding.promoted_to_rule` source — canonical
-      // promoted_to_rule_inverse is populated from `rule.origin` below.
-      if (ref.field === "promoted_to_rule") continue;
-      if (ref.field === "origin") {
-        // origin feeds BOTH origin_inverse AND promoted_to_rule_inverse
-        // (canonical — dual-source artifact fix: 2→1 dedup).
-        pushToIndexUnique(indexes.origin_inverse, ref.id, entry.id);
-        pushToIndexUnique(indexes.promoted_to_rule_inverse, entry.id, ref.id);
-        continue;
-      }
-      if (ref.field === "consolidates") {
-        // change-log → findings: inverse keyed by the change-log id
-        // (the source), values are finding ids. Tolerates legacy CSV-string
-        // form via `parseConsolidates` (already applied in `forwardRefs`).
-        if (!indexes.consolidated_into_inverse.has(entry.id)) {
-          indexes.consolidated_into_inverse.set(entry.id, []);
-        }
-        const arr = indexes.consolidated_into_inverse.get(entry.id);
-        if (!arr.includes(ref.id)) arr.push(ref.id);
-        continue;
-      }
-      if (ref.field === "consolidated_into") {
-        // finding → change-log: inverse keyed by the change-log id
-        // (the target), values are finding ids.
-        if (!indexes.consolidated_into_inverse.has(ref.id)) {
-          indexes.consolidated_into_inverse.set(ref.id, []);
-        }
-        const arr = indexes.consolidated_into_inverse.get(ref.id);
-        if (!arr.includes(entry.id)) arr.push(entry.id);
-        continue;
-      }
-      const mapName = fieldToInverseMap(ref.field);
-      if (!mapName) continue; // forwardOnly fields (applies_to_resolution) → no inverse
-      pushToIndex(indexes[mapName], ref.id, entry.id);
+      indexRef(indexes, ref, entry);
     }
   }
   return indexes;

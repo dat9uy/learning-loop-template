@@ -2,9 +2,10 @@ import { metaStateFindingEntrySchema } from "../meta-state.js";
 import { isOpen, isStaleView } from "../stale-view.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs, inverseRefs } from "./relationship-graph.js";
+import { parseForRead } from "./parse-for-read.js";
 
 export function createFinding(data) {
-  const parsed = metaStateFindingEntrySchema.parse(data);
+  const parsed = parseForRead(metaStateFindingEntrySchema, data);
   return deepFreeze({
     kind: "finding",
     data: parsed,

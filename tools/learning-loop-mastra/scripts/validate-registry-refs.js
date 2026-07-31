@@ -163,7 +163,7 @@ function classifyRef(entry, sourceKind, ref, target) {
 // above) so the per-id grouping + cross-kind decision lives in its own
 // function and computeDanglingRefs' cyclomatic/cognitive complexity stays
 // under the health threshold.
-function collectCrossKindDuplicates(entries) {
+export function collectCrossKindDuplicates(entries) {
   const blocking = [];
   const rowsById = new Map();
   for (const e of entries) {
@@ -188,6 +188,24 @@ function collectCrossKindDuplicates(entries) {
     }
   }
   return blocking;
+}
+
+// Project the versioned-append union to one row per id (max version, tie-break
+// last occurrence) so the validator evaluates LIVE state, not audit history.
+// Mirrors the registry read projection (core/meta-state.js#_readAndParseRegistry,
+// max_by(version)). A dangling ref that only exists in a superseded historical
+// version — archived/resolved/inactive in the latest — is not live corruption;
+// the latest version's terminal status makes it historical.
+function projectToLatestVersion(entries) {
+  const latest = new Map();
+  for (const e of entries) {
+    if (!e || typeof e.id !== "string") continue;
+    const prev = latest.get(e.id);
+    if (!prev || (e.version ?? 0) >= (prev.version ?? 0)) {
+      latest.set(e.id, e);
+    }
+  }
+  return [...latest.values()];
 }
 
 export function computeDanglingRefs(entries) {
@@ -222,11 +240,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.error(`validate-registry-refs: meta-state.jsonl not found at ${metaPath}`);
       process.exit(2);
     }
-    const entries = [
+    const allEntries = [
       ...readJsonl(metaPath),
       ...readJsonl(changeLogPath),
     ];
-    const { blocking, historical, informational } = computeDanglingRefs(entries);
+    // Project to one row per id (max version) so ref-corruption is evaluated
+    // on LIVE state, not audit history. Cross-kind id collisions are still
+    // checked across ALL versions — projection would mask a change-log reusing
+    // a finding's id — so collectCrossKindDuplicates runs on the unprojected
+    // union.
+    const projected = projectToLatestVersion(allEntries);
+    const dupBlocking = collectCrossKindDuplicates(allEntries);
+    const { blocking: refBlocking, historical, informational } = computeDanglingRefs(projected);
+    const blocking = [...dupBlocking, ...refBlocking];
     if (historical.length > 0) {
       console.log(`validate-registry-refs: ${historical.length} ref(s) classified historical (immutable + terminal-source missing; no BLOCK).`);
     }
@@ -234,7 +260,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.log(`validate-registry-refs: ${informational.length} ref(s) to terminal-status/stale entries (informational, no BLOCK).`);
     }
     if (blocking.length === 0) {
-      console.log(`validate-registry-refs: 0 blocking orphan(s) across ${entries.length} entries (meta-state + change-log union).`);
+      console.log(`validate-registry-refs: 0 blocking orphan(s) across ${projected.length} live entries (${allEntries.length} rows, meta-state + change-log union).`);
       process.exit(0);
     }
     console.error(`validate-registry-refs: BLOCK — ${blocking.length} real orphan(s) on main:`);

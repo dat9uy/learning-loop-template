@@ -22,7 +22,7 @@ import { listHints, buildProcessView, resolveHintText } from "./hint-registry.js
 // graph module's canonical implementation. The 6 named maps are preserved
 // for backward compatibility; the only intentional change is the dual-field
 // `promoted_to_rule_inverse` dedup (2→1 ref, canonical `rule.origin`).
-import { buildInverseIndexes as buildInverseIndexesFromGraph } from "./entry/relationship-graph.js";
+import { buildInverseIndexes } from "./entry/relationship-graph.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MCP_ROOT = dirname(__dirname);
@@ -614,15 +614,13 @@ function buildColdTierCache(root) {
  * - reopens_inverse: Map<finding.id, finding.id[]>
  * - consolidated_into_inverse: Map<change-log.id, finding.id[]>
  *
- * Pure function — O(N) over entries. No I/O. Delegates to the centralized
+ * Pure function — O(N) over entries. No I/O. Re-exports the centralized
  * `core/entry/relationship-graph.js#buildInverseIndexes` (the single source
- * of truth for cross-ref fields per kind); this wrapper preserves the
- * legacy export name so consumers (`loop-describe-tool`, `meta_state_list`,
- * cold-tier cache serialization) continue to work unchanged.
+ * of truth for cross-ref fields per kind) under the legacy name so consumers
+ * (`loop-describe-tool`, `meta_state_list`, cold-tier cache serialization)
+ * continue to work unchanged.
  */
-export function buildInverseIndexes(entries) {
-  return buildInverseIndexesFromGraph(entries);
-}
+export { buildInverseIndexes };
 
 /**
  * Build a registry summary from all entries.

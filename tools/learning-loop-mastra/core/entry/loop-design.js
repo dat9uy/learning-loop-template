@@ -1,9 +1,10 @@
 import { metaStateLoopDesignSchema } from "../meta-state.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs } from "./relationship-graph.js";
+import { parseForRead } from "./parse-for-read.js";
 
 export function createLoopDesign(data) {
-  const parsed = metaStateLoopDesignSchema.parse(data);
+  const parsed = parseForRead(metaStateLoopDesignSchema, data);
 
   return deepFreeze({
     kind: "loop-design",
