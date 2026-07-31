@@ -359,7 +359,7 @@ export const metaStateFindingEntrySchema = z.object({
   evidence_journal: z.string().optional().describe("Path to related journal file"),
   evidence_code_ref: z.string().optional().describe("Code location; see field_glossary.evidence_code_ref"),
   evidence_test: z.string().optional().describe("Test file reference"),
-  status: z.enum(["open", "resolved", "superseded"]).optional()
+  status: z.enum(["open", "resolved", "superseded", "archived"]).optional()
     .describe("Finding lifecycle; use field_glossary.status and the dedicated lifecycle tools."),
   consolidated_into: z.string().optional()
     .describe("Canonical change-log id for a superseded finding; see field_glossary.id"),
@@ -536,8 +536,8 @@ const metaStateRuleEntryObject = z.object({
   supersedes: z.string().optional()
     .describe("Prior rule id refined by this rule"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
-  status: z.enum(["active", "inactive"]).default("active")
-    .describe("Rule lifecycle; inactive rules are not enforced"),
+  status: z.enum(["active", "inactive", "archived"]).default("active")
+    .describe("Rule lifecycle; inactive rules are not enforced; archived tombstones are appended by deleteEntry"),
   promoted_at: z.string().describe("ISO timestamp"),
   promoted_by: z.string().describe("Operator id"),
   evidence_code_ref: z.string().optional()
@@ -612,8 +612,8 @@ export const metaStateLoopDesignSchema = z.object({
   entry_kind: z.literal("loop-design").default("loop-design"),
   id: z.string().describe("Design id; see field_glossary.id"),
   title: z.string().min(10).describe("Short human-readable title"),
-  status: z.enum(["active", "inactive"]).default("active")
-    .describe("Binary. Flips to inactive when the proposed work ships."),
+  status: z.enum(["active", "inactive", "archived"]).default("active")
+    .describe("Binary. Flips to inactive when the proposed work ships; archived tombstones are appended by deleteEntry"),
   proposed_design_for: entryIdRefArray()
     .describe("Forward entry-id refs for rules/schemas/tools; see field_glossary.proposed_design_for"),
   addresses: z.preprocess(deepStripEnvelope, z.array(z.string()).superRefine(entryIdRefsRefine).default([]))
@@ -636,6 +636,15 @@ export const metaStateLoopDesignSchema = z.object({
  * Cross-cutting union validator — for readRegistry validation, loop_describe, etc.
  * Does NOT have .shape (by zod design); use the branch schemas for .shape.
  * Includes preprocess to default affected_system to 'meta' for legacy entries.
+ *
+ * Plan 260731-1325 Phase 1: the union includes a write-boundary guard that
+ * rejects caller-supplied `status:"archived"` on the write path. The 3 per-kind
+ * status enums accept "archived" (so factory reads don't crash on tombstones),
+ * but `archived` is append-only via `archiveEntry`/`deleteEntry` (and the
+ * restore path in `restoreEntry`) — those ops bypass this union via
+ * `trueAppendAtomicRaw`. `writeEntry` and `metaStateBatch case:"write"` route
+ * through this union, so the guard closes the forge vector for forged
+ * `status:"archived"` without affecting reads or legitimate archive writes.
  */
 export const metaStateEntrySchema = z.preprocess(
   withDefaults,
@@ -644,7 +653,15 @@ export const metaStateEntrySchema = z.preprocess(
     metaStateChangeEntrySchema,
     metaStateRuleEntrySchema,
     metaStateLoopDesignSchema,
-  ])
+  ]).superRefine((entry, ctx) => {
+    if (entry && entry.status === "archived") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["status"],
+        message: "status:\"archived\" is a tombstone status appended only by archiveEntry/deleteEntry; use those tools rather than writeEntry or metaStateBatch case:\"write\".",
+      });
+    }
+  })
 );
 
 /**
@@ -1141,6 +1158,31 @@ async function assertNotChangeLog(entries, idx, root, id) {
   return invariantResult.ok;
 }
 
+// Plan 260731-1325 Phase 2: inverted companion to `assertNotArchived` for
+// `restoreEntry`. Returns true when the entry IS an archive tombstone (the
+// restore pre-condition); false otherwise (already-active, change-log, or
+// not-found are all rejected upstream). The single wrapper covers change-logs
+// too: they are status:"active" (z.literal on the change-log branch), so
+// `assertArchivedTombstone` returns not_archived before any entry_kind check —
+// no separate `change_log_immutable` branch is needed (red-team H1).
+async function assertArchivedTombstone(entries, idx, root, id) {
+  const invariantResult = await assertinvariant(
+    () => Promise.resolve({ ok: true }),
+    {
+      accept: {
+        context: () => entries[idx],
+        check: (e) => e.status === "archived",
+      },
+      returnOnFail: {
+        reason_code: "not_archived",
+        id,
+      },
+      root,
+    }
+  );
+  return invariantResult.ok;
+}
+
 /**
  * Atomically append a single entry to the JSONL registry.
  * Queued per-root to prevent read-modify-write races under concurrent calls
@@ -1402,6 +1444,136 @@ export function archiveEntry(root, id, reason, archivedBy) {
       trueAppendAtomicRaw(root, getRegistryPath(root), tombstone);
       invalidateCache(root);
       return { archived: true, id, archived_at: archivedAt };
+    })
+  );
+}
+
+/**
+ * Plan 260731-1325 Phase 2: restore an archived entry to its pre-archive
+ * live status + content. Mirrors `archiveEntry`/`deleteEntry` structure
+ * (enqueue + withRegistryLock + trueAppendAtomicRaw + invalidateCache).
+ *
+ * True-appends a new line that supersedes the archive tombstone (max-by-
+ * version wins, so the projection picks the restored line). The archive
+ * tombstone line stays on disk (union-safe; never removed) — the version
+ * sequence [v0 open, v1 archive tombstone, v2 restored] is the audit trail.
+ *
+ * Rejection shape (DRY with `archiveEntry`): bucket `{restored:false,
+ * reason, id}` with a `reason` discriminator:
+ *   - `not_archived` — already-active OR change-log (assertArchivedTombstone
+ *     returns not_archived; the single wrapper covers both — red-team H1).
+ *     The assertinvariant wrapper writes a structured `not_archived` line
+ *     to the gate log for audit; the tool return does NOT surface it.
+ *   - `delete_not_restorable` — `tombstone_kind:"delete"`. Delete is a
+ *     stronger operator intent than archive; unconditional reject, no
+ *     `allow_delete_restore` flag (red-team M1 — YAGNI; the incident was
+ *     an erroneous archive, not delete).
+ *   - `not_found` — id missing from the projected registry.
+ *   - `no_pre_tombstone_version` — defensive: tombstone exists but no
+ *     prior LIVE line found below it (registry corruption / edge case).
+ *
+ * D1 (red-team, HIGH): the pre-tombstone recovery filter MUST exclude
+ * prior tombstones (`e.status !== "archived"`). Without this, an
+ * `archive → batch-delete → restore` cycle would pick the prior archive
+ * tombstone (status:"archived"), clear its markers, and produce a
+ * "restored" line that is still archived → a frankenstein tombstone.
+ * The filter is load-bearing and is the only fix; no upstream hardening
+ * needed (delete is rejected unconditionally downstream by
+ * `delete_not_restorable`).
+ *
+ * No persisted `restored_*` audit fields — the restored line IS the
+ * pre-archive state at a new version; the version sequence is the audit
+ * trail, the restore *action* is gate-logged via the return's `restored_at`
+ * (Phase 3 spreads it into `appendGateLog`).
+ *
+ * Wrapped with `assertinvariant` (rule `assertinvariant-at-boundary`) for
+ * the single `not_archived` pre-condition — gate-log audit covers the
+ * already-active and change-log rejection cases via the same wrapper.
+ *
+ * @param {string} root
+ * @param {string} id
+ * @param {string} [reason] — operator-supplied restore reason (optional, audit-only)
+ * @returns {Promise<
+ *   | {restored: true, id, restored_status, restored_at, version}
+ *   | {restored: false, reason: "not_archived", id}
+ *   | {restored: false, reason: "delete_not_restorable", id, tombstone_kind: "delete"}
+ *   | {restored: false, reason: "not_found", id}
+ *   | {restored: false, reason: "no_pre_tombstone_version", id}
+ * >}
+ */
+export function restoreEntry(root, id, reason) {
+  return enqueue(root, () =>
+    withRegistryLock(root, async () => {
+      const entries = readRegistry(root);
+      const idx = entries.findIndex((e) => e.id === id);
+      if (idx === -1) return { restored: false, reason: "not_found", id };
+      // assertinvariant wrapper (gate-log audit); returns boolean.
+      // Covers change-logs too: they are status:"active", so this returns
+      // not_archived before any entry_kind check — no separate
+      // change_log_immutable branch (red-team H1).
+      if (!(await assertArchivedTombstone(entries, idx, root, id))) {
+        return { restored: false, reason: "not_archived", id };
+      }
+      const current = entries[idx];
+      // Delete is a stronger operator intent than archive; not restorable
+      // (red-team M1, no flag).
+      if (current.tombstone_kind === "delete") {
+        return {
+          restored: false,
+          reason: "delete_not_restorable",
+          id,
+          tombstone_kind: "delete",
+        };
+      }
+      // Recover pre-tombstone LIVE line: every version for this id below
+      // the tombstone, EXCLUDING prior tombstones (status:"archived").
+      // Without the status!=="archived" guard, archive→batch-delete→restore
+      // would pick the prior archive tombstone and clear its markers →
+      // a "restored" line that is still archived (red-team D1).
+      const allVersions = readRegistryAllVersions(root);
+      const tombstoneVersion = current.version ?? 0;
+      const preTombstoneCandidates = allVersions.filter(
+        (e) =>
+          e.id === id &&
+          (e.version ?? 0) < tombstoneVersion &&
+          e.status !== "archived"
+      );
+      let preTombstone = null;
+      for (const candidate of preTombstoneCandidates) {
+        if (
+          preTombstone === null ||
+          (candidate.version ?? 0) > (preTombstone.version ?? 0)
+        ) {
+          preTombstone = candidate;
+        }
+      }
+      if (!preTombstone) {
+        return { restored: false, reason: "no_pre_tombstone_version", id };
+      }
+      const restoredAt = new Date().toISOString();
+      // The restored line IS the pre-archive state at a new version —
+      // no restore-specific audit fields. archived_*/tombstone_kind
+      // deletes are defensive (preTombstone, a live line, won't carry
+      // them).
+      const restoredEntry = {
+        ...preTombstone,
+        status: preTombstone.status, // pre-archive status, NOT "open"
+        version: tombstoneVersion + 1,
+      };
+      delete restoredEntry.archived_at;
+      delete restoredEntry.archived_by;
+      delete restoredEntry.archived_reason;
+      delete restoredEntry.tombstone_kind;
+      trueAppendAtomicRaw(root, getRegistryPath(root), restoredEntry);
+      invalidateCache(root);
+      return {
+        restored: true,
+        id,
+        restored_status: preTombstone.status,
+        restored_at: restoredAt,
+        reason: reason ?? null,
+        version: tombstoneVersion + 1,
+      };
     })
   );
 }

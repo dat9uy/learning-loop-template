@@ -308,6 +308,87 @@ describe("meta-state T4 auto_resolve removal", () => {
   });
 });
 
+describe("meta-state archive write-boundary guard (Plan 260731-1325 Phase 1)", () => {
+  let tempDir;
+  const originalEnv = process.env.GATE_ROOT;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "meta-state-archive-guard-"));
+    process.env.GATE_ROOT = tempDir;
+  });
+
+  afterEach(() => {
+    process.env.GATE_ROOT = originalEnv;
+  });
+
+  test("metaStateEntrySchema rejects caller-supplied status:\"archived\" on the write path", async () => {
+    const { metaStateEntrySchema } = await import("./meta-state.js");
+    const result = metaStateEntrySchema.safeParse({
+      id: "meta-test-archive-forge-reject",
+      entry_kind: "finding",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "meta",
+      description: "Attempt to forge status:\"archived\" via writeEntry must be rejected.",
+      status: "archived",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, false, "union write-guard must reject forged status:\"archived\"");
+    const messages = result.error.issues.map((i) => i.message).join(" ");
+    assert.ok(/archived/.test(messages), "error must mention archived");
+  });
+
+  test("per-kind metaStateFindingEntrySchema accepts status:\"archived\" on the read path", async () => {
+    // Phase 1: archived is now schema-valid on the per-kind enum so
+    // factory reads (createFinding → meta_state_relationships) don't crash
+    // on archive tombstones. The guard is union-only.
+    const { metaStateFindingEntrySchema } = await import("./meta-state.js");
+    const result = metaStateFindingEntrySchema.safeParse({
+      id: "meta-test-archive-read-accept",
+      entry_kind: "finding",
+      category: "gate-logic-bug",
+      severity: "warning",
+      affected_system: "meta",
+      description: "Per-kind read schema must accept archived tombstone.",
+      status: "archived",
+      created_at: new Date().toISOString(),
+    });
+    assert.strictEqual(result.success, true, "per-kind schema must accept archived on read");
+    assert.strictEqual(result.data.status, "archived");
+  });
+
+  test("writeEntry rejects caller-supplied status:\"archived\"", async () => {
+    const { writeEntry, readRegistry } = await import("./meta-state.js");
+    const entry = makeEntry({
+      id: "meta-test-write-archive-reject",
+      description: "writeEntry must reject forged status:\"archived\".",
+      status: "archived",
+    });
+    await assert.rejects(
+      () => writeEntry(tempDir, entry),
+      /archived/,
+      "writeEntry must reject forged status:\"archived\""
+    );
+    const entries = readRegistry(tempDir);
+    assert.strictEqual(entries.length, 0, "no line should be appended on rejection");
+  });
+
+  test("metaStateBatch case:\"write\" rejects caller-supplied status:\"archived\"", async () => {
+    const { metaStateBatch, readRegistry } = await import("./meta-state.js");
+    const entry = makeEntry({
+      id: "meta-test-batch-write-archive-reject",
+      description: "metaStateBatch case:write must reject forged status:\"archived\".",
+      status: "archived",
+    });
+    const result = await metaStateBatch(tempDir, [{ op: "write", entry }]);
+    assert.ok(result && typeof result === "object" && "reason" in result, "rejection must include a reason field");
+    assert.ok(/archived|validation_failed/.test(String(result.reason)), `rejection must mention archived, got: ${result.reason}`);
+    assert.strictEqual(result.applied, 0, "no ops should be applied on rejection");
+    const entries = readRegistry(tempDir);
+    assert.strictEqual(entries.length, 0, "no line should be appended on rejection");
+  });
+});
+
 describe("meta-state change-log compaction guard", () => {
   let tempDir;
   const originalEnv = process.env.GATE_ROOT;

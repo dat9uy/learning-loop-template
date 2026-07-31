@@ -119,9 +119,10 @@ describe("cold-session discoverability", () => {
       assert.ok(joined.includes(anchor), `hints must mention "${anchor}"`);
     }
 
-    // Byte budget: total hints must be under 5KB.
+    // Byte budget: total hints must be under 6KB. Bumped from 5KB after
+    // Plan 260731-1325 added meta_state_unarchive (+~120 bytes).
     const totalBytes = hints.reduce((sum, h) => sum + Buffer.byteLength(h, "utf8"), 0);
-    assert.ok(totalBytes < 5000, `hints must be <5KB; got ${totalBytes} bytes`);
+    assert.ok(totalBytes < 6000, `hints must be <6KB; got ${totalBytes} bytes`);
 
     writeSentinel("hints");
   });

@@ -43,11 +43,11 @@ const manifestRaw = readFileSync(manifestPath, "utf8")
 const manifest = JSON.parse(manifestRaw);
 const agentManifest = JSON.parse(readFileSync(agentManifestPath, "utf8"));
 
-// 1. Manifest has 36 entries (was 32; +3 runtime_state_pause/resume/stop for the
+// 1. Manifest has 43 entries (was 32; +3 runtime_state_pause/resume/stop for the
 // in-band tracking lifecycle; +1 meta_state_touch for the grounding-guarded
-// re-grounding path).
-await test("manifest has 42 entries", () => {
-  assert.strictEqual(manifest.length, 42, `Expected 42, got ${manifest.length}`);
+// re-grounding path; +1 meta_state_unarchive from Plan 260731-1325).
+await test("manifest has 43 entries", () => {
+  assert.strictEqual(manifest.length, 43, `Expected 43, got ${manifest.length}`);
 });
 
 // 2. No deleted tool appears in manifest

@@ -57,6 +57,7 @@
   { "file": "tools/meta-state-relationships-tool.js", "export": "metaStateRelationshipsTool", "pathFields": [] },
   { "file": "tools/meta-state-batch-tool.js", "export": "metaStateBatchTool", "pathFields": [] },
   { "file": "tools/meta-state-archive-tool.js", "export": "metaStateArchiveTool", "pathFields": [] },
+  { "file": "tools/meta-state-unarchive-tool.js", "export": "metaStateUnarchiveTool", "pathFields": [] },
   { "file": "tools/meta-state-relationship-validate-tool.js", "export": "metaStateRelationshipValidateTool", "pathFields": [] },
   { "file": "tools/meta-state-re-verify-tool.js", "export": "metaStateReVerifyTool", "pathFields": [] },
   { "file": "tools/meta-state-supersede-tool.js", "export": "metaStateSupersedeTool", "pathFields": [] },

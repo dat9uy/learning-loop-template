@@ -2,10 +2,14 @@ import { metaStateFindingEntrySchema } from "../meta-state.js";
 import { isOpen, isStaleView } from "../stale-view.js";
 import { deepFreeze } from "./deep-freeze.js";
 import { forwardRefs, inverseRefs } from "./relationship-graph.js";
-import { parseForRead } from "./parse-for-read.js";
 
 export function createFinding(data) {
-  const parsed = parseForRead(metaStateFindingEntrySchema, data);
+  // Plan 260731-1325 Phase 1: status:"archived" is now schema-valid on the
+  // finding enum, so the parseForRead band-aid is no longer needed.
+  // archiveEntry/deleteEntry still write status:"archived" outside the
+  // union write-gate (via trueAppendAtomicRaw); the per-kind enum just
+  // has to accept what they write so factory-built reads don't crash.
+  const parsed = metaStateFindingEntrySchema.parse(data);
   return deepFreeze({
     kind: "finding",
     data: parsed,

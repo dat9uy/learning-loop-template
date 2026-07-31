@@ -17,9 +17,9 @@
  * constant here AND verify the comments in each consumer file remain accurate.
  */
 module.exports = {
-  AGENT_MANIFEST_TOTAL_TOOLS: 48,
+  AGENT_MANIFEST_TOTAL_TOOLS: 49,
   AGENT_MANIFEST_GROUPS: 6,
-  TOOLS_MANIFEST_ENTRIES: 42,
+  TOOLS_MANIFEST_ENTRIES: 43,
   WORKFLOW_GROUP_TOOLS: 11,
   // MCP residue when a runtime sets LOOP_RECORDS_VIA_CLI=1 (all three wired
   // runtimes do): the full record surface rides the stateless CLI, so MCP

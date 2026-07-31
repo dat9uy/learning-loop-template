@@ -31,6 +31,14 @@ test("createLoopDesign rejects invalid data", () => {
   assert.throws(() => createLoopDesign({ entry_kind: "loop-design" }), /title/);
 });
 
+test("createLoopDesign accepts status:\"archived\" (Phase 1: archived in enum, no parseForRead needed)", () => {
+  // Plan 260731-1325 Phase 1: status enum now includes "archived".
+  // deleteEntry appends status:"archived" for non-change-log kinds; createLoopDesign
+  // must accept the tombstone directly without parseForRead.
+  const archived = createLoopDesign({ ...FIXTURE, status: "archived" });
+  assert.strictEqual(archived.data.status, "archived");
+});
+
 test("createLoopDesign.outboundRefs returns correct refs", () => {
   const d = createLoopDesign(FIXTURE);
   const refs = d.outboundRefs();

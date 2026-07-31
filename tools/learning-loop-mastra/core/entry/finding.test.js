@@ -77,6 +77,14 @@ test("createFinding status helpers (isOpen / isStaleView)", () => {
   assert.ok(blocking.isBlocking());
 });
 
+test("createFinding accepts status:\"archived\" (Phase 1: archived in enum, no parseForRead needed)", () => {
+  // Plan 260731-1325 Phase 1: status enum now includes "archived".
+  // parseForRead is deleted; createFinding must accept archived directly.
+  const archived = createFinding({ ...FIXTURE, status: "archived" });
+  assert.strictEqual(archived.data.status, "archived");
+  assert.ok(!archived.isOpen());
+});
+
 test("createFinding.inboundRefs scans registry for refs to this finding", () => {
   const f = createFinding(FIXTURE);
   const ruleThatOriginates = {
