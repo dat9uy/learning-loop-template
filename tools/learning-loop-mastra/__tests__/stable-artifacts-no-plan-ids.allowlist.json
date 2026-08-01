@@ -21,16 +21,13 @@
   "tools/learning-loop-mastra/core/hint-registry.js\t* plans/260717-1826-unify-context-injection).",
   "tools/learning-loop-mastra/core/hint-registry.js\t// survives (Validation 4 of plan 260717-1826).",
   "tools/learning-loop-mastra/core/hint-renderer.js\t* registry. Phase 2 of plans/260717-1826-unify-context-injection.",
-  "tools/learning-loop-mastra/core/loop-introspect.js\t\"Rec 10 dispatch protocol (plan 260704-0301-stale-findings-dispatch-handle):\\n\" +",
   "tools/learning-loop-mastra/core/loop-introspect.js\t* Build the Rec 10 (plan 260704-0301-stale-findings-dispatch-handle Phase 3)",
   "tools/learning-loop-mastra/core/loop-introspect.js\t* Build the Rec 12 (plan 260708-1216-rec12-closed-loop, phase 3) change-log",
   "tools/learning-loop-mastra/core/loop-introspect.js\t* canonical registry (Phase 2 of plan 260717-1826-unify-context-injection).",
   "tools/learning-loop-mastra/core/loop-introspect.js\t* conditions). Phase 3 (plans/260717-1826-unify-context-injection): the",
   "tools/learning-loop-mastra/core/loop-introspect.js\t// Phase 2 (plans/260717-1826-unify-context-injection): the canonical hint",
-  "tools/learning-loop-mastra/core/loop-introspect.js\t`Rec 12 closed-loop backfill (plan 260708-1216-rec12-closed-loop):\\n` +",
   "tools/learning-loop-mastra/core/meta-state.js\t// Phase 3 (plans/260717-1826-unify-context-injection): rule-derived",
   "tools/learning-loop-mastra/core/meta-state.js\t// `stale-ref` was removed in plan 260704-0301-stale-findings-dispatch-handle",
-  "tools/learning-loop-mastra/core/meta-state.js\treason: \"Auto-emitted by meta_state_batch envelope pass-through (plan 260712-0300; loop-design-operation-envelope-on-change-log).\",",
   "tools/learning-loop-mastra/core/path-containment.js\t*     write. See plan 260701-2250-plan-5-lite-r2-lim4 phase-02 NF3.",
   "tools/learning-loop-mastra/core/placement.yaml\tsummary: Budget-aware channel-based projection of the hint registry. Phase 2 of plans/260717-1826-unify-context-injection.",
   "tools/learning-loop-mastra/core/placement.yaml\tsummary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader. Phase 1 of plans/260726-1953.",
@@ -70,6 +67,5 @@
   "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Pre-existing ReDoS gap (caught en route by plan 260722-1343 Phase 1",
   "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Session-mode gate (plan 260708-0833): refuses when LOOP_SESSION_MODE is",
   "tools/learning-loop-mastra/tools/handlers/meta-state-relationships-tool.js\t* Phase 1 (Rec 8 collapse, plan 260704-0301-stale-findings-dispatch-handle):",
-  "tools/learning-loop-mastra/tools/handlers/scripts/strip-code-fingerprint-field.mjs\t* immutability per plan 260702-1933 Phase 6). The schema field stays (@deprecated,",
-  "tools/learning-loop-mastra/tools/handlers/trigger-workflow-tool.js\treasoning: `Workflow \"${name}\" maps to: ${recommendedTools.join(\", \") || \"(none — recommendations vacated per plans/260722-2147 phase 5; see meta-state registry)\"}`,"
+  "tools/learning-loop-mastra/tools/handlers/scripts/strip-code-fingerprint-field.mjs\t* immutability per plan 260702-1933 Phase 6). The schema field stays (@deprecated,"
 ]

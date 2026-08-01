@@ -334,7 +334,7 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIn
     fixable_candidates: candidates,
     orphan_findings: orphanFindings,
     dispatch_protocol_prompt:
-      "Rec 10 dispatch protocol (plan 260704-0301-stale-findings-dispatch-handle):\n" +
+      "Rec 10 dispatch protocol:\n" +
       "1. Agent calls meta_state_dispatch_finding({id, stage:'prepare'}) → returns issue body.\n" +
       "2. Agent runs `gh issue create --repo <private-repo>` (check exit code).\n" +
       "3. Agent calls meta_state_dispatch_finding({id, stage:'commit', issue_number, issue_url, repo, delegated_to}) → writes ledger + patches ledger_ref.\n" +
@@ -425,7 +425,7 @@ function buildGapProtocolPrompt(gapCandidates) {
     ? ` ${gapCandidates.length} bound edits on this branch have no change-log; first gap: \`${firstGap}\`.`
     : ` 0 bound edits on this branch have no change-log.`;
   return (
-    `Rec 12 closed-loop backfill (plan 260708-1216-rec12-closed-loop):\n` +
+    `Rec 12 closed-loop backfill:\n` +
     gapLine + `\n` +
     `1. For each gap path, call meta_state_log_change({ change_target: '<repo-relative-path>', change_diff: {added: [...], removed: [...], changed: [...]}, reason: '<≥20 chars>', applies_to: {surfaces: ['meta']} }).\n` +
     `2. Verify the change_target is repo-relative (the detector matches repo-relative paths; #anchor/mcp→mastra/bare-schema tokens are normalized on read, but uncanonicalized caller free-text produces residual false positives — re-check the logged entry before declaring it a real gap).\n` +

@@ -2064,7 +2064,7 @@ export function metaStateBatch(root, operations, envelope) {
           change_dimension: "mechanical",
           change_target: envelope.target,
           change_diff: { added: [], removed: [], changed: [] },
-          reason: "Auto-emitted by meta_state_batch envelope pass-through (plan 260712-0300; loop-design-operation-envelope-on-change-log).",
+          reason: "Auto-emitted by meta_state_batch envelope pass-through (operation envelope on change-log).",
           operation_envelope: builtEnvelope,
           status: "active",
           created_at: new Date().toISOString(),
