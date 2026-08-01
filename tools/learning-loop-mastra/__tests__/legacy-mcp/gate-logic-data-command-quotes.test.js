@@ -127,3 +127,38 @@ describe("stripDataCommandQuotes: verb recognition edge cases", () => {
     assert.strictEqual(stripDataCommandQuotes('grep "a|b" file; docker run x'), 'grep "" file; docker run x');
   });
 });
+
+describe("stripEchoProse: full-command-pass echo-prose false positives (must NOT match)", () => {
+  test('echo "pnpm test" label piped to a real grep → ok (echo prose + real pipe)', () => {
+    // The banned token lives only in the echo label; the | grep is a real
+    // read-only pipe. The full-command pass must not bridge them. This is the
+    // observed false-escalation: an investigative command that never ran vitest.
+    const cmd = `echo "does pnpm test run a pretest/seed step" ; git log --oneline -5 | grep fix`;
+    const result = applyPromotedRules(cmd, null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}`);
+  });
+
+  test('echo "pnpm test label" | tail → ok (spanning echo prose + real pipe)', () => {
+    const result = applyPromotedRules('echo "pnpm test label" | tail -5', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}`);
+  });
+
+  test('printf "vitest run output" | grep → ok (printf is the same prose class)', () => {
+    const result = applyPromotedRules('printf "vitest run output" | grep PASS', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "ok", `expected ok, got ${result.decision}`);
+  });
+});
+
+describe("stripEchoProse: executed-body verbs still escalate (no new false negative)", () => {
+  test('bash -c "vitest run" | tail → escalate (executed body, NOT prose)', () => {
+    // bash -c runs its quoted body, so the banned token is a real violation.
+    // stripEchoProse must NOT blank bash-c quotes — only echo/printf prose.
+    const result = applyPromotedRules('bash -c "vitest run foo" | tail -30', null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate", `expected escalate, got ${result.decision}`);
+  });
+
+  test("real vitest run piped to tail still escalates (banned token unquoted)", () => {
+    const result = applyPromotedRules("pnpm exec vitest run x.test.js 2>&1 | tail -30", null, [VITEST_RULE]);
+    assert.strictEqual(result.decision, "escalate");
+  });
+});
