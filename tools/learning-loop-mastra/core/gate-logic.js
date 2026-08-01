@@ -383,20 +383,42 @@ function splitKeepingDelims(command) {
   return out;
 }
 
-// fallow-ignore-next-line unused-export -- public API consumed by gate-logic-data-command-quotes.test.js; also used internally by matchConstraintPattern
-export function stripDataCommandQuotes(command) {
+// Blank quoted args of every segment whose verb is in `verbSet`. Shared core
+// for stripDataCommandQuotes (pure-data verbs) and stripEchoProse (non-
+// executing output verbs): both blank non-executing quoted prose so rule
+// regexes do not false-positive on banned tokens that cannot run.
+function blankQuotedArgsFor(command, verbSet) {
   if (typeof command !== "string" || !command) return command;
   const parts = splitKeepingDelims(command);
   let changed = false;
   for (let i = 0; i < parts.length; i++) {
-    // Delimiter tokens are single chars ; & | — never data commands.
+    // Delimiter tokens are single chars ; & | — never blanked verbs.
     if (parts[i].length === 1 && (parts[i] === ";" || parts[i] === "&" || parts[i] === "|")) continue;
-    if (DATA_COMMANDS.has(segmentVerb(parts[i]))) {
+    if (verbSet.has(segmentVerb(parts[i]))) {
       parts[i] = blankAllQuoted(parts[i]);
       changed = true;
     }
   }
   return changed ? parts.join("") : command;
+}
+
+// fallow-ignore-next-line unused-export -- public API consumed by gate-logic-data-command-quotes.test.js; also used internally by matchConstraintPattern
+export function stripDataCommandQuotes(command) {
+  return blankQuotedArgsFor(command, DATA_COMMANDS);
+}
+
+// Non-executing output verbs: echo/printf. Their quoted args are printed prose,
+// not commands — banned tokens inside them cannot execute — so blanking creates
+// no bypass (same false-positive class stripDataCommandQuotes closes for
+// grep/jq). Applied only in the full-command pass (see applyPromotedRules) so
+// echo prose on one side of a REAL pipe cannot pair with a read-only
+// grep/tail/head on the other to false-escalate. The per-segment pass and
+// matchConstraintPattern keep the locked echo-limitation behavior (echo prose
+// still escalates within one segment). Executed-body verbs (bash -c, sh -c,
+// python -c, awk, sed) are NOT here — their quoted bodies run.
+const ECHO_PROSE_COMMANDS = new Set(["echo", "printf"]);
+function stripEchoProse(command) {
+  return blankQuotedArgsFor(command, ECHO_PROSE_COMMANDS);
 }
 
 /**
@@ -983,10 +1005,16 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
         // segment) or spans a removed delimiter (newly reachable). The data-
         // command strip is applied here too so a banned token living only in a
         // grep/jq pattern on one side of a real pipe cannot pair with the pipe
-        // to false-positive. stripDataCommandQuotes preserves ; & | (quote-
-        // aware split) so spanning patterns still match real violations.
+        // to false-positive. stripEchoProse extends the same reasoning to
+        // echo/printf: a banned token living only in an echo label on one side
+        // of a real read-only pipe (grep/tail/head) cannot pair with it to
+        // false-escalate. Executed-body verbs (bash -c, sh -c, python -c, awk,
+        // sed) are deliberately NOT stripped here — their quoted bodies run, so
+        // a banned token in `bash -c "vitest run" | tail` is a real violation.
+        // stripDataCommandQuotes/stripEchoProse preserve ; & | (quote-aware
+        // split) so spanning patterns still match real violations.
         if (!matched) {
-          const fullStripped = stripDataCommandQuotes(stripNodeEvalBody(stripMessageFlags(command)));
+          const fullStripped = stripEchoProse(stripDataCommandQuotes(stripNodeEvalBody(stripMessageFlags(command))));
           if (re.test(fullStripped)) {
             matched = true;
           }
