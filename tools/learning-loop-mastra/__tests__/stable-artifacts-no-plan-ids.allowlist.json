@@ -1,7 +1,4 @@
 [
-  "tools/learning-loop-mastra/core/bound-artifacts.js\t* (mirrors the `skills` pattern) in Phase 2 of plans/260720-1112 and",
-  "tools/learning-loop-mastra/core/bound-artifacts.js\t* Phase 1 of plans/260726-0949 respectively. The dead-end simple-glob",
-  "tools/learning-loop-mastra/core/bound-artifacts.js\t* Phase 3 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.",
   "tools/learning-loop-mastra/core/check-grounding.js\t* See plans/260602-sp1-derive-status/plan.md for the SP1 sibling.",
   "tools/learning-loop-mastra/core/cli-context-savings.js\t// (plans/260726-1953) validated name=legacy.name; live MCP-wire parity is",
   "tools/learning-loop-mastra/core/cli-context-savings.js\t// context-savings dogfood measurement (plans/260726-1953).",

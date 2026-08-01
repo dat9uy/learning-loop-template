@@ -2,7 +2,8 @@
  * Shared bound-artifacts constant — the single source of truth for the
  * simple-glob rules the write-gate matches.
  *
- * Phase 3 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.
+ * Bound-artifact registry: the trust root for which generated files the
+ * gate may touch. Order is pinned by legacy-mcp/bound-artifacts.test.js.
  *
  * Scope:
  *   - This module is data-only (glob strings + labels + reasons). It does NOT
@@ -93,9 +94,8 @@ const buildArtifacts = {
  * 5 simple-glob rules (records, runtime-tracking, meta-state, file-index,
  * build-artifacts). The `schemas/**` and `runtime-state.jsonl` rules were
  * migrated to preflight-delegating rules in evaluate-write-gate.js
- * (mirrors the `skills` pattern) in Phase 2 of plans/260720-1112 and
- * Phase 1 of plans/260726-0949 respectively. The dead-end simple-glob
- * blocks + stale reasons (`pnpm validate:records` for schemas, the
+ * (mirrors the `skills` pattern). The dead-end simple-glob blocks +
+ * stale reasons (`pnpm validate:records` for schemas, the
  * append-only-tool-as-only-escape for runtime-state) were both retired.
  */
 export const BOUND_ARTIFACTS = Object.freeze([
