@@ -13,7 +13,7 @@ import { assertinvariantSync } from "./operation-invariant.js";
 // (parsed → null, then .filter(Boolean)) and the projection only sees valid
 // row objects.
 //
-// Plan 260728-2323 Phase 2: the helper now dedups to max_by(version) per id
+// the helper now dedups to max_by(version) per id
 // (kind-before-collapse), so the projection emits one observation per
 // (id × constraint) instead of one per RAW active row. `obs.updated_at` is
 // now the authoritative per-surface-latest timestamp.
@@ -44,14 +44,14 @@ function resolveRoot() {
  * Each active entry yields one observation-shaped object per mapped constraint.
  * Fail-open: returns [] on error.
  *
- * Plan 260712-0724 (Implementation 3): active entries whose affected_system
+// active entries whose affected_system
  * is NOT in AFFECTED_SYSTEM_TO_CONSTRAINTS no longer silently drop. The
  * universal `assertinvariant` wrapper at the lookup step emits a structured
  * failure via gate-log AND pushes an observation with
  * `constraint_type: "unmapped-active-entry"` so downstream consumers see the
  * drift. Closes finding `meta-260630T2110Z`.
  *
- * Plan 260720-1112 Phase 1: parse moved to readRuntimeStateRows. The outer
+// parse moved to readRuntimeStateRows. The outer
  * try/catch is retained as defensive (verified that `assertinvariantSync`
  * cannot throw — it validates `root` upfront and returns {ok:false} on bad
  * root; the operation lambda only does property access on primitives which
@@ -72,7 +72,7 @@ function resolveRoot() {
 export function readRuntimeObservations(root) {
   const resolvedRoot = root || resolveRoot();
   try {
-    // Plan 260728-2323 Phase 2: kind-before-collapse dedup so the projection
+// kind-before-collapse dedup so the projection
     // emits ONE observation per (id × constraint) = the latest max_by(version)
     // budget-state row. obs.updated_at is now the authoritative
     // per-surface-latest timestamp. The kind filter MUST happen BEFORE the
@@ -93,7 +93,7 @@ export function readRuntimeObservations(root) {
       // upstream for staleness warnings; this is the bash-gate constraint
       // counterpart, not a contradiction.)
       if (entry.status !== "active") continue;
-      // Plan 260712-0724 (Implementation 3): universal `assertinvariantSync`
+// universal `assertinvariantSync`
       // wrapper at the affected_system→constraints lookup. Pre-condition:
       // an active entry's affected_system MUST be in
       // AFFECTED_SYSTEM_TO_CONSTRAINTS — otherwise the lookup silently

@@ -78,7 +78,7 @@ function computeIsDrift(derivation, grounding, entry) {
   // the canonical source. The TERMINAL_STATUSES set in core/meta-state.js is
   // the source of truth for which statuses count.
   //
-  // Plan 260707-0812 Phase 2: `isOpen` replaces the literal active|reported
+// `isOpen` replaces the literal active|reported
   // check — also covers `open` (the canonical new status) and tolerates legacy
   // `active`/`reported`/`stale` pre-migration.
   if (!isOpen(entry)) return false;

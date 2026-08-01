@@ -26,7 +26,7 @@ function attachParityJSONSchema(schema, parityHints) {
     target: "draft-7",
     io: "input",
   });
-  // Plan 260717-1145 Phase 2: inject model-visible JSON-schema hints (draft-7
+  // Inject model-visible JSON-schema hints (draft-7
   // constraints like minProperties) on top of the parity view. Zod v4's
   // z.object() has no .min(1) that renders as minProperties, and .refine is
   // dropped by toJSONSchema, so the steering layer must be applied here.

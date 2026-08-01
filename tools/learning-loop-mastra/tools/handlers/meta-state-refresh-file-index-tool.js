@@ -17,7 +17,7 @@ import { resolveSafePath, PathContainmentError } from "../../core/path-containme
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-// Plan 260711-0030 Phase 2: in-process 60s idempotency cache dropped (Finding 15
+// in-process 60s idempotency cache dropped (Finding 15
 // — extends the cache removal to the sibling refresh-file-index tool). The cache
 // masked silent-persistence-fail the same way as meta_state_log_change; hash
 // caching in `computeFileHashCached` (tool-layer) remains because hashing is

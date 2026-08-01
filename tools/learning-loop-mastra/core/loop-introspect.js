@@ -235,7 +235,7 @@ export function buildProcessPointers({ rulesById } = {} = {}) {
  * @param {Set<string>} [dispatchIds] — finding ids that have a `dispatch-<id>` ledger row
  * @returns {{ fixable_candidates: object[], orphan_findings: object[], dispatch_protocol_prompt: string }}
  */
-// Plan 260707-0812 Phase 2: terminal Set collapses to {resolved, superseded}
+// terminal Set collapses to {resolved, superseded}
 // (+archived runtime-applied). The 4-member version mirrored the legacy enum;
 // `auto-resolved` is gone (dead write path) and the open-set lives in
 // `isOpen`/`isStaleView` instead of literal status equality.
@@ -266,7 +266,7 @@ function top5OldestFirst(filtered, mapFn) {
 }
 
 export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIndex, codeHashes, opts = {}) {
-  // Plan 260716-0624 Phase 02 (RT: M7): thread fileIndex + codeHashes through
+// M7): thread fileIndex + codeHashes through
   // to isStaleView so the fixable-candidates filter can fire on drift, not
   // just age. Backward compat: callers that don't pass them get age-only.
   // Top-5 candidates: stale findings, non-empty evidence_code_ref,
@@ -498,7 +498,7 @@ function filterByCategories(findings, categories) {
 
 /**
  * List active findings (open or open-equivalent status) from meta-state.
- * Plan 260707-0812 Phase 2: filter is `isOpen(e)` instead of literal
+// filter is `isOpen(e)` instead of literal
  * reported|active. `open` is the canonical post-migration status; legacy
  * `active`/`reported`/`stale` are tolerated by `isOpen` pre-migration.
  */

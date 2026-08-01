@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Plan 260715-0801 Tier 1 Phase 2 step 4: one-time migration script.
+// one-time migration script.
 //
 // Splits the meta-state registry by mutability/lifecycle:
 //   - entry_kind=change-log → change-log.jsonl (true-append, merge=union)
@@ -68,7 +68,7 @@ function writeJsonlAtomic(filePath, entries) {
   renameSync(tmp, filePath);
 }
 
-// Plan 260715-0801 Validation Q2: schema is z.array(z.string()). Normalize
+// schema is z.array(z.string()). Normalize
 // the legacy single-string form to a one-element array. Tolerates already-
 // normalized arrays (no-op) and missing/undefined values.
 function normalizeConsolidates(entry) {

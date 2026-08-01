@@ -141,7 +141,7 @@ export const metaStatePatchTool = {
       });
     }
 
-    // Plan 260717-1145 Phase 3: per-branch validation. The model-visible
+// per-branch validation. The model-visible
     // patch schema is the union of all 4 per-kind shapes (permissive on
     // purpose — every field every kind accepts), so a real-but-invalid
     // field returns the opaque `z.union` "Invalid input" with path:[],
@@ -243,7 +243,7 @@ function reject(root, result) {
   return { content: [{ type: "text", text: JSON.stringify(result) }] };
 }
 
-// Plan 260717-1145 Phase 4: schema-derived empty_patch hint. The prior
+// schema-derived empty_patch hint. The prior
 // static hint only named lifecycle tools (supersede / resolve / log_change)
 // — none of which update description or evidence_code_ref, the actual goal
 // in session e10944c4. Build the field list from

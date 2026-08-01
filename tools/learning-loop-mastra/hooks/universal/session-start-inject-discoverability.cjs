@@ -22,7 +22,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
 
-// Plan 260722-1343 Phase 3: write-tool one-line arg sketches for the
+// write-tool one-line arg sketches for the
 // SessionStart banner. Each entry lists the top-level required keys (no `?`)
 // plus a curated subset of optional ones (trailing `?`); the agent composes
 // the JSON string from a sketch and pulls the full shape (enums, nested
@@ -166,7 +166,7 @@ function buildConfiguredTransportBanner(projectRoot) {
  * "fallback" on degraded loader) plus an optional `*_error` string. The
  * flag is what makes the silent-degrade failure mode visible: without it,
  * a consumer reading the sidecar cannot distinguish "no hints configured"
- * from "loaders failed and returned empty." Plan 260715-1100 fix for the
+ * from "loaders failed and returned empty." The stderr-summary fix for the
  * PROCESS_HINTS row #1 silent-degrade path observed in sessions
  * 260715-1010 and 260715-1100.
  */

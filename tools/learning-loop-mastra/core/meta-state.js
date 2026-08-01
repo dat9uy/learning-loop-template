@@ -13,7 +13,7 @@ import { readRegistryWithCache, invalidateCache } from "./read-registry-cache.js
 // implicitly (same-file symbol references), and the path constant stays a
 // private module-level binding rather than a cross-module export.
 import { withRegistryLock } from "./registry-lock.js";
-// Plan 260712-0300 Phase 1: operation_envelope field on change-log entries
+// operation_envelope field on change-log entries
 // (Implementation 2 of the assertinvariant resolution). The helper owns the
 // kind enum + content-hash construction; the schema imports the enum so there
 // is one source of truth.
@@ -23,10 +23,10 @@ import {
   CANONICAL_KIND_KEYS,
   buildEnvelope,
 } from "./operation-envelope.js";
-// Plan 260712-0300 Phase 2: single source of truth for BATCH_SIZE_LIMIT
+// single source of truth for BATCH_SIZE_LIMIT
 // (closes the 500-vs-100 default divergence between handler and core).
 import { BATCH_SIZE_LIMIT } from "./constants.js";
-// Plan 260711-0030 Phase 4: schema-version-skew detection. isSchemaBranchSupported
+// schema-version-skew detection. isSchemaBranchSupported
 // reads the per-worktree .loop-version file and rejects writes whose entry_kind
 // is not in the worktree's schema_branches list. Future per-kind field-shape
 // drift detection lands in a follow-up plan.
@@ -46,7 +46,7 @@ import { TERMINAL_HASH_REGEX } from "./check-grounding.js";
 // out of scope for this migration.
 // fallow-ignore-next-line circular-dependency
 import { stripEvidenceAnchor } from "./gate-logic.js";
-// Plan 260712-0724 (Implementation 3): universal `assertinvariant` primitive
+// universal `assertinvariant` primitive
 // applied to every mutation op that owns an invariant the agent depends on
 // (writeEntry, updateEntry, archiveEntry, deleteEntry, metaStateBatch).
 // Pre-state-only — see core/operation-invariant.js for the architecture.
@@ -86,7 +86,7 @@ function warnStructuralRI(root, entryId, dangling) {
     dangling_count: dangling.length,
   });
 }
-// Plan 260716-1101 Tier 2 Phase B: true-append write helper + canonical
+// true-append write helper + canonical
 // comparator. `trueAppendAtomic` replaces the read-all → full-rewrite pattern
 // with O_APPEND + fsync'd writes (H1, RT). `canonicalize` powers the no-op
 // short-circuit that resolves meta-260715T2311Z-gratuitous-mutations (C2, RT).
@@ -148,7 +148,7 @@ function persistRegistryAtomic(entries, root) {
  * would copy change-logs from `change-log.jsonl` into `meta-state.jsonl`,
  * and `merge=union` later would double them on the next parallel merge.
  *
- * Plan 260715-0801 Tier 1 red-team finding 2: a partial state where
+// a partial state where
  * `change-log.jsonl` exists but a persist site still passes a change-log
  * would silently corrupt the registry. This guard fails loud so the bug
  * surfaces immediately instead of at merge time.
@@ -198,7 +198,7 @@ function restorePreBatchContent(path, preBatchContent) {
 }
 
 function appendRegistryEntryAtomic(root, entry) {
-  // Plan 260716-1101 Tier 2 Phase B: true-append (no read-all → full rewrite).
+// true-append (no read-all → full rewrite).
   // The previous implementation read the whole file, pushed, and full-rewrote;
   // that's unsafe for parallel-branch merges and is replaced by O_APPEND +
   // fsync via trueAppendAtomic. New entries start at version 0; later patches
@@ -225,7 +225,7 @@ function appendRegistryEntryAtomic(root, entry) {
  * new entry. Without invalidation, a stale cached union could omit the
  * new change-log.
  *
- * Plan 260716-1101 Tier 2 Phase B: also uses `trueAppendAtomic` so the
+// also uses `trueAppendAtomic` so the
  * change-log stream benefits from explicit fsync. Process kill mid-write
  * was previously the partial-last-line crash class (RT H1); fsync closes it.
  */
@@ -238,7 +238,7 @@ function appendChangeLogEntryAtomic(root, entry) {
   invalidateCache(root);
 }
 
-// Plan 260707-0812 (lifecycle-status-stale-mechanism) collapses the finding
+// (lifecycle-status-stale-mechanism) collapses the finding
 // status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied
 // at archive time, outside the enum). `reported`/`active`/`stale`/`auto-resolved`
 // are removed from the enum — read sites use `isOpen`/`isStaleView` instead.
@@ -274,7 +274,7 @@ function withDefaults(entry) {
   return entry;
 }
 const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-// Plan 260707-0812 Phase 1: STALENESS_WINDOW_MS is sourced from core/constants.js
+// STALENESS_WINDOW_MS is sourced from core/constants.js
 // (the shared canonical owner) so core/stale-view.js and meta-state-sweep-tool.js
 // cannot drift. The env-var override `META_STATE_STALENESS_WINDOW_MS` is honored
 // by constants.js. Re-exported below for backward compat with callers that
@@ -422,7 +422,7 @@ export const metaStateChangeEntrySchema = z.object({
   }).optional().describe("Wider impact scope"),
   supersedes: z.string().optional()
     .describe("ID of a previous change-log entry this one replaces"),
-  // Plan 260715-0801 Validation Session 1 Q2: consolidates is multi-valued
+// consolidates is multi-valued
   // (the relationships tool at meta-state-relationships-tool.js:21-25 has
   // always grouped it as an array). Schema now enforces the array form;
   // the migration script converts any legacy single-string value to a
@@ -445,7 +445,7 @@ export const metaStateChangeEntrySchema = z.object({
   version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
   expires_at: z.string().optional()
     .describe("Forward-compat: optional TTL for future change-log subtypes that may expire."),
-  // Plan 260712-0300 Phase 1: optional magnitude envelope for batch mutations.
+// optional magnitude envelope for batch mutations.
   // Auto-emitted by `meta_state_batch` when callers pass an `envelope` field;
   // describes kind + target + pre/post registry snapshot + content-hash. The
   // canonical enum keys (by_status / by_kind) are constrained so post-hoc
@@ -571,7 +571,7 @@ const metaStateRuleEntryObject = z.object({
   hint_slug: z.string().regex(/^[a-z0-9-]+$/).optional()
     .describe("Explicit slug override; only needed when desired slug differs from rule id minus 'rule-'"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
-  // Plan 260712-0724 follow-up (Fix B): parallel to change-log's applies_to
+// parallel to change-log's applies_to
   // (line 180-186). Scope-narrowing that complements scope_predicate — used
   // by universal rules (e.g., rule-assertinvariant-at-boundary) to suppress
   // test-mock false positives without relying solely on regex hand-curation.
@@ -679,7 +679,7 @@ export const metaStateEntrySchema = z.preprocess(
  *   The deny-list entry below is the post-repair stopgap that closes the
  *   batch update hole until the universal assertinvariant wrapper
  *   (Implementation 3, loop-design-assertinvariant-universal-scope) replaces
- *   the deny-list with a before/after comparison guard. Plan 260712-0109.
+ *   the deny-list with a before/after comparison guard. (Before/after patch guard.)
  * - `status` (on rule + loop-design) is enforced OFF the patch path by
  *   Fix A (omits `status` from the rule + loop-design patch schemas; the
  *   finding schema does not .default() status so no injection there). The
@@ -702,10 +702,10 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "resolution",
   "entry_kind",  // identity — stopgap until the universal assertinvariant wrapper (Impl 3)
   "status",      // lifecycle identity — stopgap (rule/loop-design deactivation/ship is operator-decided)
-  "operation_envelope",  // Plan 260712-0300 Phase 2 — auto-emit ONLY (meta_state_batch); replace via patch is a forge vector. Stopgap until universal wrapper (Impl 3).
+  "operation_envelope",  // Auto-emit ONLY (meta_state_batch); replace via patch is a forge vector. Stopgap until universal wrapper (Impl 3).
   // Freshness stamps are produced only by verification (re-verify) or
   // grounding-guarded attestation (touch). Patching would forge freshness
-  // without evidence. Plan 260724-1931 phase 3 closes this backdoor.
+  // without evidence. The grounding backdoor close (per finding meta-260724T1931Z).
   "last_verified_at",
 ]);
 
@@ -758,7 +758,7 @@ export const PATCH_KINDS = ["finding", "change-log", "rule", "loop-design"];
  * Identity + lifecycle fields are OMITTED from the per-kind projection
  * BEFORE .partial().strict() so Zod's .default() on the literal/enum
  * cannot inject `entry_kind` or `status` on empty/non-kind-specific
- * patches (Plan 260712-0109, finding meta-260712T0053Z):
+ * patches (the deny-list deny-via-patch invariant; finding meta-260712T0053Z):
  * - `entry_kind` is identity; set by the tool's top-level branch-selector
  *   param (the `entry_kind` argument), never by a field patch.
  * - `status` (on rule + loop-design) is lifecycle identity; deactivation
@@ -820,7 +820,7 @@ export class InvalidEntryError extends Error {
 }
 
 /**
- * Plan 260711-0030 Phase 4: thrown when writeEntry's entry.entry_kind is not
+// thrown when writeEntry's entry.entry_kind is not
  * in the current worktree's schema_branches (declared in .loop-version).
  * Closes the parallel-operation schema-version-skew gap.
  */
@@ -1215,12 +1215,12 @@ async function assertArchivedTombstone(entries, idx, root, id) {
  * Atomically append a single entry to the JSONL registry.
  * Queued per-root to prevent read-modify-write races under concurrent calls
  * within one process, AND locked at the filesystem level (proper-lockfile) to
- * prevent read-modify-write races across processes. Plan 260711-0030 Phase 1.
+ * prevent read-modify-write races across processes. The proper-lockfile wrapper.
  */
 export function writeEntry(root, entry) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
-      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
       // pre-state-only wrapper at the writeEntry boundary. The wrapper
       // enforces general identity pre-conditions (entry has an id; entry
       // has a recognized entry_kind). The forge-vector guard for
@@ -1246,7 +1246,7 @@ export function writeEntry(root, entry) {
         throw new Error("invalid_entry: write_entry_identity_precondition_failed");
       }
 
-      // Plan 260711-0030 Phase 4: schema-version-skew gate. Reject writes whose
+// schema-version-skew gate. Reject writes whose
       // entry_kind is not in the current worktree's schema_branches BEFORE the
       // validation pass (clearer error path) and BEFORE any registry mutation.
       // Lazy .loop-version creation happens inside readLoopVersion.
@@ -1271,7 +1271,7 @@ export function writeEntry(root, entry) {
       const existenceSet = new Set(readRegistry(root).map((e) => e.id));
       const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
       warnStructuralRI(root, validation.data.id, writeRi.dangling);
-      // Plan 260715-0801 Tier 1 Phase 2: write dispatch by entry_kind.
+// write dispatch by entry_kind.
       // Change-logs true-append to change-log.jsonl (merge=union safe);
       // everything else lands in meta-state.jsonl. Runs INSIDE the
       // withRegistryLock wrapper so concurrent MCP servers cannot interleave
@@ -1287,7 +1287,7 @@ export function writeEntry(root, entry) {
 
 /**
  * Atomically update an entry by id, applying a patch object.
- * Plan 260716-1101 Tier 2 Phase B: true-append (no full rewrite). The patch
+// true-append (no full rewrite). The patch
  * is applied to a COPY of the existing entry; if the patched copy is
  * canonically equal to the existing entry (canonical-comparator short-circuit,
  * resolves meta-260715T2311Z-gratuitous-mutations), no line is appended. If a
@@ -1339,13 +1339,13 @@ export function updateEntry(root, id, patch) {
         return "validation_failed";
       }
 
-      // Plan 260712-0724 (Implementation 3): Fix B's `delete cleanPatch.entry_kind`
+// Fix B's `delete cleanPatch.entry_kind`
       // defense runs FIRST so the wrapper sees a patch that has already been
       // sanitized.
       const preStripPatch = { ...patch };
       delete preStripPatch.entry_kind;
 
-      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
       // pre-state-only wrapper on the post-Fix-B patch.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
@@ -1388,7 +1388,7 @@ export function updateEntry(root, id, patch) {
       // post-default reads.
       const patched = withDefaults({ ...existingEntry, ...cleanPatch });
 
-      // Plan 260716-1101 Tier 2 Phase B: NO-OP SHORT-CIRCUIT. Resolves
+// NO-OP SHORT-CIRCUIT. Resolves
       // meta-260715T2311Z-gratuitous-mutations (a no-op update previously
       // bumped the version and forced a full rewrite). The canonical
       // comparator is sorted-keys + set-semantics on arrays so reordering a
@@ -1433,7 +1433,7 @@ export function updateEntry(root, id, patch) {
 }
 
 /**
- * Atomically archive an entry by id. Plan 260716-1101 Tier 2 Phase B:
+ * Atomically archive an entry by id. (True-append archive, no full rewrite.)
  * true-append an archived tombstone line with `tombstone_kind: "archive"`.
  * The original line is never modified. The projection's
  * last-wins-by-max-version picks the tombstone line for the id; the
@@ -1458,7 +1458,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
       if (entries[idx].entry_kind === "change-log") {
         throw new Error("change_log_immutable: change-log entries cannot be archived");
       }
-      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
       // wrapper enforces the already-archived pre-condition.
       if (!(await assertNotArchived(entries, idx, root, id))) {
         return { archived: false, reason: "already_archived", id };
@@ -1614,7 +1614,7 @@ export function restoreEntry(root, id, reason) {
 /**
  * Atomically delete an entry by id (soft CRUD enforcement).
  *
- * Plan 260716-1101 Tier 2 Phase B: hard-delete is GONE (union-safety forbids
+// hard-delete is GONE (union-safety forbids
  * line removal — `merge=union` keeps every line from both sides; removing a
  * line on one side and not the other is a conflict, not a delete). The
  * delete operation now appends a tombstone with `tombstone_kind: "delete"`
@@ -1633,7 +1633,7 @@ export function deleteEntry(root, id, reason) {
       const entries = readRegistry(root);
       const targetEntry = entries.find((e) => e.id === id);
       if (!targetEntry) return { deleted: false, reason: "not_found", id };
-      // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
       // wrapper enforces the change-log-immutability pre-condition.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
@@ -1722,7 +1722,7 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
         return { shipped: false, reason: "invalid_status", id, current_status: entry.status };
       }
       const shippedAt = new Date().toISOString();
-      // Plan 260716-1101 Tier 2 Phase B: true-append (no full rewrite).
+// true-append (no full rewrite).
       // The shipped line becomes the new max-version per Phase A projection.
       const tombstone = {
         ...entry,
@@ -1746,19 +1746,19 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
 }
 
 const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
-// Plan 260711-0030 Phase 1: BATCH_SIZE_LIMIT reduced from 500 → 100 so that
+// BATCH_SIZE_LIMIT reduced from 500 → 100 so that
 // worst-case batch fits inside the registry-lock's `stale: 30000` window on
 // slow disks (Finding 12). Larger batches risk lock-stealing by concurrent
 // processes that observe a >30s-old lock. Operators can still override via
 // META_STATE_BATCH_LIMIT env var.
-// Plan 260712-0300 Phase 2: removed local definition in favor of importing
+// removed local definition in favor of importing
 // from core/constants.js (single source of truth; 500-vs-100 default divergence fixed).
 
 /**
  * Atomically apply a batch of meta-state operations.
  * All-or-nothing rollback on any failure. Single cache invalidation.
  *
- * Plan 260716-1101 Tier 2 Phase B: true-append per op. Each mutation op
+// true-append per op. Each mutation op
  * (`update`/`archive`/`delete`) appends a new highest-version line to
  * `meta-state.jsonl` instead of mutating-in-place + full-rewrite. The
  * no-op short-circuit (canonical comparator) drops updates that produce
@@ -1772,7 +1772,7 @@ const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
  *; if any op throws we restore `preBatchContent` byte-for-byte and return
  * failure. Applies happen AFTER all validations succeed.
  *
- * Plan 260712-0300 Phase 2: optional `envelope` argument. When present, after a
+// optional `envelope` argument. When present, after a
  * successful batch, an envelope-annotated change-log entry is auto-emitted with
  * pre_count/post_count computed from the registry before/after the batch and
  * content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
@@ -1812,7 +1812,7 @@ export function metaStateBatch(root, operations, envelope) {
       // to change-log.jsonl after all validations succeed. Queueing prevents
       // orphan change-logs on mid-batch failure.
       const pendingChangeLogAppends = [];
-      // Plan 260712-0300 Phase 2: snapshot the registry BEFORE the batch so
+// snapshot the registry BEFORE the batch so
       // the envelope's pre_count reflects actual pre-batch state.
       const preRegistrySnapshot = envelope
         ? entries.map((e) => ({ id: e.id, status: e.status, entry_kind: e.entry_kind }))
@@ -1831,7 +1831,7 @@ export function metaStateBatch(root, operations, envelope) {
         try {
           switch (op.op) {
             case "write": {
-              // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
               // wrapper at the batch write-op boundary.
               const writeInvariant = await assertinvariant(
                 () => Promise.resolve({ ok: true }),
@@ -1869,7 +1869,7 @@ export function metaStateBatch(root, operations, envelope) {
               inBatchIds.add(validation.data.id);
               const writeRi = graphResolveStructuralRI(validation.data, inBatchIds);
               warnStructuralRI(root, validation.data.id, writeRi.dangling);
-              // Plan 260715-0801 Tier 1 Phase 2: dispatch change-log writes
+// dispatch change-log writes
               // to change-log.jsonl (true-append). Queue them here; append
               // happens AFTER the table persist so a mid-batch failure
               // doesn't leave orphan change-logs behind.
@@ -2031,7 +2031,7 @@ export function metaStateBatch(root, operations, envelope) {
         }
       }
 
-      // Plan 260712-0300 Phase 2: build the envelope-annotated change-log entry
+// build the envelope-annotated change-log entry
       // AFTER all ops validate (so a mid-batch throw doesn't leak an auto-emit).
       let autoEmitId = null;
       let autoEmitEntry = null;
@@ -2099,7 +2099,7 @@ export function metaStateBatch(root, operations, envelope) {
         return { applied: 0, failed_at: null, reason: "change_log_append_failed", error: err.message };
       }
 
-      // Plan 260712-0300 Phase 2: auto-emit routes through
+// auto-emit routes through
       // appendChangeLogEntryAtomic (true-append to change-log.jsonl). Same
       // rollback discipline: a failed auto-emit truncates both table + change-log.
       if (autoEmitEntry) {
@@ -2118,7 +2118,7 @@ export function metaStateBatch(root, operations, envelope) {
 
       invalidateCache(root);
 
-      // Plan 260712-0300 Phase 2 (red-team finding 1): assertWriteVisible after
+// assertWriteVisible after
       // the writes complete.
       const allExpectedChangeLogIds = (envelope && autoEmitId ? [autoEmitId] : [])
         .concat(pendingChangeLogAppends.map((cl) => cl.id));
@@ -2147,7 +2147,7 @@ export function metaStateBatch(root, operations, envelope) {
  * Filter entries by optional criteria (category, status, affected_system, session_id).
  * All provided filters must match (AND logic).
  *
- * Plan 260707-0812 Phase 2: status filtering treats the canonical open set
+// status filtering treats the canonical open set
  * (`open`) and the legacy open-equivalent set (`active`/`reported`/`stale`)
  * as a single bucket so consumers see a consistent open set pre-migration.
  * `status:"open"` returns entries where `isOpen(e)` is true; `status:"stale"`,
@@ -2215,7 +2215,7 @@ export function tryClaimSessionId(root, key, entryBuilder) {
       throw new InvalidEntryError(validation.error);
     }
 
-    // Plan 260730-0240 Phase 4 (red-team R9) DEFENSIVE NOTE: this append
+// this append
     // bypasses writeEntry (uses appendRegistryEntryAtomic directly, with
     // `enqueue` for per-process serialization only — NOT withRegistryLock,
     // so it's NOT cross-process safe). It is test-only (no production

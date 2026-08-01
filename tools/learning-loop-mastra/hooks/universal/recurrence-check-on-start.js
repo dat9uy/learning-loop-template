@@ -17,7 +17,7 @@ async function main() {
   readFileSync(0, "utf8");
 
   const root = resolveRoot();
-  // Plan 260707-0812 Phase 2: checkAndEmit is async (routes findings through
+// checkAndEmit is async (routes findings through
   // writeEntry for schema validation). Await it so the finding is written
   // before process.exit(0) fires.
   const result = await checkAndEmit(root);

@@ -34,7 +34,7 @@ function buildPreview(allEntries, override) {
 
 const ARCHIVE_DECISION_RULE = (entry) => {
   if (entry.status === "archived") return false;
-  // Plan 260707-0812 Phase 2 (red-team H1): the decision rule keys on `isOpen`
+// the decision rule keys on `isOpen`
   // (covers open/active/reported/stale) plus age. The `!entry.acked_at` check
   // is removed — `acked_at` is gone with `meta_state_ack`, and without it
   // `undefined` would mass-archive legacy entries without `acked_at` set.

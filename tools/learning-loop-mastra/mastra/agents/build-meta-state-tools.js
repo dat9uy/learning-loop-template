@@ -12,7 +12,7 @@
  *   meta_state_propose_design, meta_state_refresh_file_index, meta_state_resolve,
  *   meta_state_promote_rule, meta_state_check_grounding.
  *
- * Plan 260707-0812 Phase 2: meta_state_ack was removed. Lifecycle engagement
+// meta_state_ack was removed. Lifecycle engagement
  * signals flow through resolve/promote/supersede/dispatch/re-verify instead.
  *
  * Excluded from all agents: meta_state_batch, meta_state_archive,

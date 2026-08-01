@@ -1,5 +1,5 @@
 /**
- * Plan 260728-2323-unify-observation-staleness-mechanism Phase 1: shared
+// shared
  * observation-staleness primitives. Pure module — no `fs`, no `Date.now()` in
  * predicates (callers inject `now` / `markerTs`). Replaces the two parallel
  * 30-min checks (inbound gate's `findStaleObservations` from gate-logic.js +

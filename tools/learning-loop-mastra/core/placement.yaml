@@ -37,13 +37,13 @@ files:
     summary: Registry CRUD + Zod schemas for the 4-kind meta-state union.
   - path: registry-lock.js
     role: facade
-    summary: Cross-process file lock (proper-lockfile wrapper) for the meta-state registry. Plan 260711-0030 Phase 1.
+    summary: Cross-process file lock (proper-lockfile wrapper) for the meta-state registry.
   - path: worktree-version.js
     role: facade
-    summary: Per-worktree .loop-version declaration + schema-version-skew detection. Plan 260711-0030 Phase 4.
+    summary: Per-worktree .loop-version declaration + schema-version-skew detection.
   - path: worktree-session-id.js
     role: facade
-    summary: Per-worktree session ID for marker file isolation (Multi-Session Isolation gap). Plan 260711-0030 Phase 5.
+    summary: Per-worktree session ID for marker file isolation (Multi-Session Isolation gap).
   - path: runtime-state.js
     role: facade
     summary: Shared runtime-state.jsonl helpers (append + fingerprint) shared by runtime_state_record and meta_state_dispatch_finding.
@@ -107,7 +107,7 @@ files:
     summary: wrapWorkflowInputSchema — the U-Q1 unwrap contract for plain handler modules re-homed out of createLoopWorkflow; bakes z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema)) into each unwrapped handler's schema so MCP-path envelope stripping survives the unwrap. Composes envelope-stripper + schema-normalize only (transport-agnostic).
   - path: registry-stats.js
     role: helper
-    summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal (Plan 260716-1101 Tier 2 Phase C).
+    summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal.
   - path: file-readers.js
     role: facade
     summary: Composes runtime-state read + observation projection + assertinvariant wrapper for the bash-gate constraint consumer.
@@ -149,10 +149,10 @@ files:
     summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede (Phase 4 extraction).
   - path: operation-envelope.js
     role: helper
-    summary: Plan 260712-0300 Phase 1 — operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
+    summary: Operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
   - path: operation-invariant.js
     role: primitive
-    summary: Plan 260712-0724 (Implementation 3) — universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
+    summary: Universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
 
   # === evaluator ===
   - path: evaluate-write-gate.js

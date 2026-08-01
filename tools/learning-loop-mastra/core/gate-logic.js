@@ -742,7 +742,7 @@ export function loadPromotedRules(root) {
   // Legacy finding entries with promoted_to_rule were removed after the
   // Phase 2 migration (all promoted rules are now standalone rule entries).
   //
-  // Plan 260716-1101 Tier 2 Phase B: dedupe to max-version per id BEFORE
+// dedupe to max-version per id BEFORE
   // filtering by status. Without this dedupe, a rule that has been
   // deactivated (status: inactive on the new max-version line) would ALSO
   // show its prior active v0 line in the filter result, falsely reporting
@@ -1019,7 +1019,7 @@ export function applyPromotedRules(command, filePath, rules, root = findProjectR
 }
 
 // ─── Staleness helpers ───
-// Plan 260728-2323 Phase 3: the inbound + bash gates share a unified
+// the inbound + bash gates share a unified
 // observation-staleness primitive now (`core/observation-staleness.js` +
 // `OBSERVATION_STALENESS_WINDOW_MS` in `core/constants.js`). The previous
 // gate-local `findStaleObservations` + `STALENESS_THRESHOLD_MS` are gone.

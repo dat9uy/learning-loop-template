@@ -22,7 +22,7 @@ export const META_STATE_RECOMMENDATIONS = [
 
 /** Terminal raw_status values: a `resolved-by-mechanism` derivation is NOT drift
  *  if the entry is already in a terminal state (the agent's claim is consistent).
- *  Plan 260707-0812 Phase 2: `stale` and `auto-resolved` are removed — `stale` is
+ *  `stale` and `auto-resolved` are removed — `stale` is
  *  a derived view, and `auto-resolved` was a dead write-path removed by the enum
  *  collapse. `superseded` is closed via a change-log. */
 const TERMINAL_RAW_STATUSES = new Set(["resolved", "superseded"]);
@@ -71,8 +71,8 @@ export function deriveStatus(entry, codeContext) {
   // bare file existence no longer yields mechanism-shipped.
   const kind = computeKind(codeRefExists, testFileExists, codeContext.test_passed ?? null, codeRef, testPath);
   const derived_status = computeDerivedStatus(kind);
-  // Plan 260716-0624 Phase 01 (Validation Q4): thread drift signals through
-  // isStaleView so the recommendation distinguishes age-stale from drift-stale.
+  // Thread drift signals through isStaleView so the recommendation distinguishes
+  // age-stale from drift-stale.
   // Backward compat: when fileIndex/codeHashes are absent, isStaleView falls
   // back to age-only (matches the pre-fix contract).
   // `now` is materialized to a number — isStaleView checks `typeof opts.now === "number"`.
@@ -150,7 +150,7 @@ function computeRecommendation(entry, derivedStatus, kind, isStaleOpts = {}) {
   // the leading guard so it covers EVERY kind, including mechanism-shipped.
   // Mirrors computeIsDrift's terminal guard in query-drift.js.
   //
-  // Plan 260707-0812 Phase 2: drive the "open vs. terminal" branch from
+  // Drive the "open vs. terminal" branch from
   // isOpen / TERMINAL_RAW_STATUSES — the literal status equality sites were
   // removed because the persisted enum no longer carries "reported"/"active".
   //
@@ -160,9 +160,9 @@ function computeRecommendation(entry, derivedStatus, kind, isStaleOpts = {}) {
   // stale-view signal). The full `entry` is passed so isStaleView can read
   // `last_verified_at`/`created_at`.
   //
-  // Plan 260716-0624 Phase 01 (Validation Q4): `isStaleOpts` threads
-  // fileIndex + codeHashes through to isStaleView. When the caller does not
-  // inject them, isStaleView falls back to age-only (backward compat).
+  // `isStaleOpts` threads fileIndex + codeHashes through to isStaleView. When
+  // the caller does not inject them, isStaleView falls back to age-only
+  // (backward compat).
   if (!isOpen(entry)) return "no_action";
   if (kind === "mechanism-shipped" && isStaleView(entry, isStaleOpts)) {
     return "re_verify";

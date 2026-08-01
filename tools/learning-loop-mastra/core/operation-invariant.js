@@ -1,4 +1,4 @@
-// Plan 260712-0724 (Implementation 3 of assertinvariant resolution).
+// (Implementation 3 of assertinvariant resolution).
 // Universal pre-state-only boundary helper for core-logic operations that own
 // an invariant the agent depends on.
 //

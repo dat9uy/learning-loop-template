@@ -29,12 +29,18 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const SCAN_ROOT = join(REPO_ROOT, "tools", "learning-loop-mastra");
 
-// Three patterns detect plan-ID lineage: bare plan paths, "Phase N of plan/plans",
-// and the "plan 999999-1234" reference form used in narrative comments.
+// Four patterns detect plan-ID lineage. All case-insensitive — the dominant
+// on-disk form is "Plan NNNNNN-NNNN" (capital P, no slash, no "of") which the
+// narrow lowercase variants miss. The expanded set catches every reference
+// form observed in the codebase scan:
+//   - bare plan paths: plans/999999-xxx, plan/999999-xxx
+//   - "Phase N of plan/plans" narrative form
+//   - "Plan NNNNNN-NNNN" capital-P narrative form (the dominant case)
+//   - lowercase "plan NNNNNN-NNNN" variant
 const PATTERNS = [
-  /\bplans?\/\d{6}-/,
-  /Phase \d+ of (plan|plans)/,
-  /plan \d{6}-\d{4}/,
+  /\bplans?\/\d{6}-/i,
+  /Phase \d+ of (plan|plans)/i,
+  /[Pp]lan \d{6}-\d{4}/,
 ];
 
 // File extensions included in the scan.

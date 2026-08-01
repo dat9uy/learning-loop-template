@@ -4,7 +4,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { isStaleView, buildDriftSignals } from "../../core/stale-view.js";
 
 const FINDING_ID_REGEX = /meta-\d{6}T\d{4}Z-[a-z0-9-]+/g;
-// Plan 260707-0812 Phase 2 (red-team H2): ORPHAN_STATUSES was a literal Set
+// ORPHAN_STATUSES was a literal Set
 // over `status:"stale"`. Post-enum-collapse, `stale` is a derived view
 // (`isStaleView`). The Set is replaced with a predicate: a referenced id is
 // an orphan when the target is stale-view and not claimed in reopens.
@@ -32,7 +32,7 @@ export const metaStateRelationshipValidateTool = {
     const root = resolveRoot();
     const entries = readRegistry(root);
 
-    // Plan 260716-0624 Phase 02: build drift signals (fileIndex + codeHashes)
+// build drift signals (fileIndex + codeHashes)
     // so the orphan predicate can fire on drift, not just age. RT: M20 — log
     // non-"missing" skipped paths as a gate-log breadcrumb.
     const signals = buildDriftSignals(entries, root, {

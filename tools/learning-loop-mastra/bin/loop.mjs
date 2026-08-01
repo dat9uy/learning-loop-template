@@ -125,7 +125,7 @@ async function runTool(toolName, jsonArgs) {
   return await execute(args);
 }
 
-// Plan 260722-1343 Phase 3: --schema prints the normalized input schema
+// --schema prints the normalized input schema
 // for a CLI-portable tool. Pre-pin (mirrors `list`'s exemption): the
 // schema is static and reads no runtime records, so LOOP_SURFACE is not
 // required. We use zod's `toJSONSchema` (draft-7) so the output matches
@@ -215,7 +215,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  // Plan 260722-1343 Phase 2: structured stderr for write-path rejections.
+// structured stderr for write-path rejections.
   // The classifier splits the non-usage branch into two shapes so the
   // agent's recovery policy can tell a real rejection from a programmer/
   // transport bug. UsageError + identity-pin stay on the existing exit-2

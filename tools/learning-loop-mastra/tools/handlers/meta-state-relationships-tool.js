@@ -63,7 +63,7 @@ function groupInbound(refs) {
  * used to produce — the information is now a derived view over the
  * relationship graph instead of a recorded finding kind.
  *
- * CROSS-TOOL DIVERGENCE (Plan 260715-1608 Phase 1, red-team F2):
+ * CROSS-TOOL DIVERGENCE (red-team F2):
  * This function does NOT have access to a source entry (it receives only
  * outbound `refs` + the entry list), so it cannot distinguish immutable +
  * terminal-source `missing` refs (`historical` in the post-merge validator).
@@ -79,7 +79,7 @@ function groupInbound(refs) {
  * has already loaded). `refs` is the outbound-ref array produced by the
  * factory — `{ kind, id, field }` per ref.
  *
- * Plan 260707-0812 Phase 2 (red-team H3):
+* 
  *   - the stale-branch uses `isStaleView(target)` (covers literal `stale` and
  *     any open entry that is stale-view by age/drift) instead of `status === "stale"`
  *   - the dead `auto-resolved` branch is dropped (the enum-collapse removed
@@ -99,7 +99,7 @@ function groupInbound(refs) {
  * are NOT dangling — those are healthy ongoing references.
  */
 function computeDanglingRefs(refs, entries, signals = {}) {
-  // Plan 260716-0624 Phase 02 (RT: M23): signals threaded through so the
+// M23): signals threaded through so the
   // stale-branch fires on drift, not just age. RT: M20 — caller (resolveDanglingRefs)
   // is responsible for gate-logging non-"missing" skipped paths.
   const entryById = new Map(entries.map((e) => [e.id, e]));
@@ -160,7 +160,7 @@ export const metaStateRelationshipsTool = {
     };
 
     if (direction === "outbound" || direction === "both") {
-      // Plan 260716-0624 Phase 02: build drift signals so the dangling-refs
+// build drift signals so the dangling-refs
       // predicate surfaces drift-stale targets, not just age-stale ones.
       const signals = buildDriftSignals(entries, root, {
         toolName: "meta_state_relationships",
@@ -192,7 +192,7 @@ export const metaStateRelationshipsTool = {
 // points at this finding via a targeted `inverseRefs` lookup). Returns the
 // grouped wire shape, or null when the entry has no outbound refs.
 //
-// Plan 260730-0240 (red-team R1): the fallback PERSISTS — legacy findings
+// the fallback PERSISTS — legacy findings
 // without promoted_to_rule must keep resolving outbound.promoted_to_rule.
 // The per-query `buildInverseIndexes(entries)` O(N) rebuild was replaced
 // with a targeted `inverseRefs(findingId, entries)` lookup (the graph

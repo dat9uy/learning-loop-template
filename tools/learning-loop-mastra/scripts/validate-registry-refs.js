@@ -26,7 +26,7 @@
  *   1 — at least one blocking orphan (offending ids printed to stderr)
  *   2 — load/parse error
  *
- * Plan 260715-1608 Phase 1: 3-bucket classification.
+// 3-bucket classification.
  *   - `blocking`     — REAL ref corruption (active/open mutable source with
  *                      a missing target; OR any duplicate id across the union).
  *                      Drives the CLI exit code.
@@ -40,7 +40,7 @@
  * `dangling_refs` retains the legacy flat reasons (missing/stale/superseded/
  * resolved) — its `computeDanglingRefs(refs, entries)` signature omits the
  * source entry, so adding `historical` would require a signature refactor
- * (YAGNI per Plan 260715-1608 Phase 1 red-team F2). The `historical` label
+ * (YAGNI per red-team F2). The `historical` label
  * lives only in this post-merge validator.
  */
 
@@ -68,7 +68,7 @@ export function readJsonl(filePath) {
 // Post-merge on main the registry is the source of truth and runtime drift is
 // handled by `meta_state_check_grounding`, not by this validator — coupling the
 // validator to the canonical stale-view predicate would re-introduce drift
-// coupling. See Plan 260715-1608 Phase 1 (red-team F3).
+// coupling. See red-team F3.
 export function isStaleViewLike(entry) {
   if (!entry || typeof entry !== "object") return false;
   if (entry.status === "resolved" || entry.status === "superseded" || entry.status === "archived") return false;
@@ -99,7 +99,7 @@ export function isTerminalSource(entry) {
   return false;
 }
 
-// Forward-ref extractor — Plan 260730-0240 centralization:
+// Forward-ref extractor — relationship-graph centralization:
 // `OUTBOUND_EXTRACTORS` (the previous per-kind standalone copy) is replaced
 // by `core/entry/relationship-graph.js#forwardRefs` — the single source of
 // truth for cross-ref fields per kind. This fixes:
@@ -144,7 +144,7 @@ function classifyRef(entry, sourceKind, ref, target) {
 // `informational` are counted but never block.
 //
 // Duplicate-id guard: block only CROSS-KIND id collisions. The masking
-// vector (Plan 260715-1608 Phase 1 red-team F8) is a line that reuses an
+// vector (red-team F8) is a line that reuses an
 // existing id but carries a DIFFERENT entry_kind — e.g. a change-log
 // reusing a finding's id — which the `entryById` last-write-wins Map in
 // computeDanglingRefs would silently resolve to one branch, masking the

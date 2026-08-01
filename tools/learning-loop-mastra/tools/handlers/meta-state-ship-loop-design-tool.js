@@ -5,7 +5,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { isLiveSession } from "#lib/session-mode.js";
 
 /**
- * Plan 260712-0724 follow-up — Fix A: meta_state_ship_loop_design.
+// meta_state_ship_loop_design.
  *
  * Closes Implementation 3 Gap #1: no MCP tool could previously flip a
  * loop-design's status from `active` to `inactive` because meta_state_patch

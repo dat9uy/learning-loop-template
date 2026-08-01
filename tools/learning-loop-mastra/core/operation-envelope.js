@@ -2,7 +2,7 @@
 /**
  * Operation envelope — magnitude + content-hash metadata for batch mutations.
  *
- * Plan 260712-0300 Phase 1 (Implementation 2 of the assertinvariant resolution).
+ * Phase 1 (Implementation 2 of the assertinvariant resolution).
  * When `meta_state_batch` is called with an `envelope`, it auto-emits a change-log
  * entry whose `operation_envelope` field captures:
  *   - kind: which of 8 batch shapes (migration / sweep / closeout / ...)
@@ -88,7 +88,7 @@ export const CANONICAL_KIND_KEYS = Object.freeze([
  * applied at runtime outside the persisted enum).
  *
  * Legacy statuses (`active`/`reported`/`stale`) were collapsed to `open` by
- * Plan 260707-0812 Phase 2; legacy registry data persists the old status
+ * Phase 2; legacy registry data persists the old status
  * until each entry is individually migrated. `buildEnvelope` calls this at
  * the boundary so its `by_status` output is canonical regardless of input
  * registry shape.

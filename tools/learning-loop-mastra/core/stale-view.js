@@ -1,7 +1,7 @@
 /**
  * Derived evidence-freshness view — replaces persisted `status: "stale"`.
  *
- * Plan 260707-0812 (lifecycle-status-stale-mechanism) Phase 1: ships the
+// ships the
  * predicate pair that phase 2's read-site rewrites use, de-risking the enum
  * collapse by establishing the new threshold before any schema change.
  *
@@ -22,7 +22,7 @@
  * low-layer primitives (e.g. `file-readers.js`) can use it without importing
  * a verification-tier module.
  *
- * Plan 260716-0624 (stale-view hash-drift fix): hash-aware `hasDrifted` matching
+// hash-aware `hasDrifted` matching
  * SP2 semantics at `core/check-grounding.js:201-208`. Drift = current bytes
  * (from caller-injected `codeHashes`) differ from the stored baseline (index
  * entry, falling back to per-record `code_fingerprint`). Both sides are
@@ -224,7 +224,7 @@ export function computeCurrentHashes(entries, root) {
  * non-`missing` skipped paths. Centralizes the 11-line pattern that was
  * previously inlined in 4 handlers.
  *
- * Plan 260716-0624 Phase 02 (RT: M20): one source of truth for the
+// M20): one source of truth for the
  * `(readFileIndex + computeCurrentHashes + skipped-logging)` trio so the
  * gate attribution (`tool`) and the timestamp stay consistent.
  *

@@ -14,7 +14,7 @@ export function createLoopDesign(data) {
 
     outboundRefs(entries) {
       // Delegate to the centralized graph — single source of truth for
-      // cross-ref fields per kind. Plan 260730-0240 folds the bespoke
+      // cross-ref fields per kind. The graph module folds the bespoke
       // loop-design kindForId helper into the graph (also fixes the
       // validator's kind-"meta" bug: meta-… fallback returns "finding").
       return forwardRefs(parsed, entries);

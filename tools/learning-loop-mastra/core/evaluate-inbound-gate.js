@@ -13,7 +13,7 @@
  */
 
 import { findProjectRoot } from "./gate-logic.js";
-// Plan 260728-2323 Phase 3: shared unified age predicate replaces the
+// shared unified age predicate replaces the
 // gate-local `findStaleObservations` (deleted from gate-logic.js in this
 // phase). The shared selector uses the unified `OBSERVATION_STALENESS_WINDOW_MS`
 // and is the same primitive the bash gate's marker mode uses in Phase 4.
@@ -176,7 +176,7 @@ function loadStaleActiveObservations(resolvedRoot) {
     .filter((obs) => obs.status === "active")
     .filter((obs) => !isSurfacePausedRead(resolvedRoot, obs.affected_system));
   if (active.length === 0) return null;
-  // Plan 260728-2323 Phase 3: shared age predicate from observation-staleness.
+// shared age predicate from observation-staleness.
   // Phase 2's projection dedup means the scan is now per-surface-latest
   // (precise) instead of per-raw-row (conservative). F1 invariant
   // structurally preserved: stale-on-null keeps defensiveness on malformed

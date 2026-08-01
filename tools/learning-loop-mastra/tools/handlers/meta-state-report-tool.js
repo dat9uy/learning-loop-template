@@ -41,7 +41,7 @@ export const metaStateReportTool = {
     const root = resolveRoot();
     const id = generateId(slugify(description));
     const now = new Date();
-    // Plan 260707-0812 Phase 2: `expires_at` is no longer computed or written.
+// `expires_at` is no longer computed or written.
     // The 24h TTL was tied to the legacy `reported` lifecycle that no longer
     // exists post-enum-collapse. The derived stale view uses
     // `STALENESS_WINDOW_MS` (7d by default), which is unrelated.
@@ -89,7 +89,7 @@ export const metaStateReportTool = {
       // this; honor it here so callers can use the canonical MCP surface.
       ...(session_id && { session_id }),
       ...(reopens && { reopens }),
-      // Plan 260707-0812 Phase 2 (red-team C2): new findings are written with
+// new findings are written with
       // `status:"open"` (the canonical post-collapse status), not "reported".
       // `expires_at` and `acked_at` writes are removed — `expires_at` is
       // unrelated to the derived stale view (M1) and becomes vestigial;
@@ -102,7 +102,7 @@ export const metaStateReportTool = {
 
     await writeEntry(root, entry);
 
-    // Plan 260712-0724 (Implementation 3): universal `assertinvariant`
+// universal `assertinvariant`
     // wrapper asserts the auto-generated id was honored by writeEntry. The
     // pre-state-only check reads the persisted entry from the registry
     // (INSIDE writeEntry's lock, atomic with the write) and asserts that
