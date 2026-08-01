@@ -12,9 +12,9 @@ export const metaStateSweepTool = {
   handler: async () => {
     const root = resolveRoot();
     const entries = readRegistry(root);
-// M20): inject codeHashes so drift-aware
-    // stale-view fires only when on-disk bytes actually differ from index
-    // baseline. Log non-"missing" skipped paths as gate-log breadcrumbs.
+    // Inject codeHashes so the drift-aware stale-view fires only when
+    // on-disk bytes actually differ from the index baseline. Log
+    // non-"missing" skipped paths as gate-log breadcrumbs.
     const { fileIndex, codeHashes } = buildDriftSignals(entries, root, {
       toolName: "meta_state_sweep",
     });

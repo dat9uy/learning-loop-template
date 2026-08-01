@@ -219,7 +219,7 @@ function buildPatchSchemaPayload(entryKind) {
 }
 
 // schema-derived no_content hint for batch update
-// ops. Mirrors Phase 4's per-kind hint on the patch tool — same source
+// ops. Mirrors the per-kind hint on the patch tool — same source
 // (buildPatchSchemaFor's shape via listMutableFieldsCsv), different delivery
 // surface (batch op vs patch tool call). The hint names the kind's mutable
 // content fields and notes the inline placement (no nested patch:{} on the op).

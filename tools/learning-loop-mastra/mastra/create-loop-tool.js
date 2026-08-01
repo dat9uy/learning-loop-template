@@ -5,10 +5,10 @@ import { buildParitySchema } from "./schema-parity.js";
 import { withR2Gate } from "./with-r2-gate.js";
 
 /**
- * Factory seam for the loop's tools. Pre-Phase 2 this wrapped inputSchema with
- * imperative coerce walkers; post-Phase 2 the schema is the source of truth
+ * Factory seam for the loop's tools. The schema is the source of truth
  * (z.coerce.* + z.preprocess envelope strippers handle wire-format quirks
- * declaratively). Legacy tools still pass a plain shape object, so the factory
+ * declaratively — the earlier imperative coerce walkers on inputSchema are
+ * gone). Legacy tools still pass a plain shape object, so the factory
  * reconstructs a ZodObject when needed.
  *
  * To keep the public JSON Schema contract unchanged, the factory overrides the
@@ -49,10 +49,8 @@ function attachParityJSONSchema(schema, parityHints) {
   // `schema._zod.toJSONSchema?.()` and uses its return value. The override IS
   // honored through Mastra's MCPServer.convertSchema → standardSchemaToJSONSchema
   // path (verified empirically by spawning the production MCP server and
-  // asserting all 39 tools return real inputSchemas — see
-  // plans/reports/researcher-A-260618-1418-GH-0029-pr5-shim-fix-strategies-report.md
-  // §1). The new e2e regression test in mcp-tools-list-parity.test.js locks
-  // this path against future regressions.
+  // asserting all tools return real inputSchemas). The e2e regression test in
+  // mcp-tools-list-parity.test.js locks this path against future regressions.
   //
   // IMPORTANT: return a clone on every call. Mastra converts tools more than
   // once (MCPServer constructor + __registerMastra), and zod's toJSONSchema

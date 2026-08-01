@@ -47,7 +47,7 @@ export const metaStateQueryDriftTool = {
     const nonTerminal = filterEntries(registry, { status: filter?.status });
 
     // fileIndex: the cached path-keyed fingerprint sidecar — the authoritative
-    // grounding baseline (Phase 3 repoint). Loaded here so queryDrift's
+    // grounding baseline. Loaded here so queryDrift's
     // checkGrounding call exercises the index path, not the stale per-record
     // fallback (red-team F5: without this, every edited file reports false drift).
     const fileIndex = readFileIndex(root);

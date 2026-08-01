@@ -99,9 +99,9 @@ function groupInbound(refs) {
  * are NOT dangling — those are healthy ongoing references.
  */
 function computeDanglingRefs(refs, entries, signals = {}) {
-// M23): signals threaded through so the
-  // stale-branch fires on drift, not just age. RT: M20 — caller (resolveDanglingRefs)
-  // is responsible for gate-logging non-"missing" skipped paths.
+  // Signals are threaded through so the stale-branch fires on drift, not
+  // just age. The caller (resolveDanglingRefs) is responsible for
+  // gate-logging non-"missing" skipped paths.
   const entryById = new Map(entries.map((e) => [e.id, e]));
   const dangling = [];
   for (const ref of refs) {

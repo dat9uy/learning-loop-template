@@ -1,5 +1,5 @@
 /**
- * Path-field detector (R3 / Plan 5-Lite Phase 1).
+ * Path-field detector (R3).
  *
  * Declares which tool args carry WRITE paths so the R2 gate can enforce
  * per-runtime ownership on their VALUES (not on the arg names). Most legacy

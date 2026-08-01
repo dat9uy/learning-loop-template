@@ -22,7 +22,7 @@
 
 /**
  * The `parseConsolidates` body was previously in
- * `core/entry/consolidates-refs.js`; folded here in Phase 3 as the central
+ * `core/entry/consolidates-refs.js`; folded here as the central
  * single source of truth. The original file is now a thin re-export (see
  * `core/entry/consolidates-refs.js`) for rollback safety (red-team R10).
  */
@@ -292,7 +292,7 @@ function newIndexState() {
 // Re-export the parseConsolidates leaf helper (folded from consolidates-refs.js).
 export { parseConsolidates };
 
-// Folded from inbound-from-loop-design.js (Phase 3 step 5).
+// Folded from inbound-from-loop-design.js.
 export function inboundFromLoopDesign(entry, parsed) {
   const refs = [];
   if (Array.isArray(entry.addresses) && entry.addresses.includes(parsed.id)) {

@@ -1,5 +1,5 @@
 /**
- * R2 ownership check (F1–F8, R1 / Plan 5-Lite Phase 1).
+ * R2 ownership check (F1–F8, R1).
  *
  * `checkR2Ownership({ runtime, path, allowlist, root })` decides whether a
  * given runtime may write to `path`. The decision cascade:
@@ -110,7 +110,7 @@ function toRelative(root, normalized) {
     return normalized.slice(root.length + sep.length);
   }
   // Outside root: return as-is so a deny pattern can still match the absolute
-  // form if needed. The R2 gate relies on path-containment (Phase 2) to throw
+  // form if needed. The R2 gate relies on path-containment to throw
   // before reaching here for escapes; this is defensive.
   return normalized;
 }

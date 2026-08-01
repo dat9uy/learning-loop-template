@@ -117,7 +117,7 @@ export const metaStateReportTool = {
             // because writeEntry's withRegistryLock has already released
             // by the time we get here. For a stronger invariant, the read
             // could move inside writeEntry; the canonical surface for
-            // writeEntry is already wrapped at the core layer (Phase 1).
+            // writeEntry is already wrapped at the core layer.
             const persisted = readRegistry(root).find((e) => e.id === id);
             return { generated_id: id, persisted_id: persisted?.id ?? null };
           },

@@ -9,7 +9,7 @@ import { stripEnvelope } from "../../core/envelope-stripper.js";
 // in-process idempotency cache dropped.
 // The previous 60s Map at this module masked silent-persistence-fail by
 // returning {logged: true, cache_hit: true} when the underlying writeEntry
-// silently dropped the entry. With Phase 1's cross-process file lock, the
+// silently dropped the entry. With the cross-process file lock, the
 // underlying write is safe; idempotency now belongs to the durable registry
 // (the freshly-generated `id` differs for each call because `created_at`
 // advances within the millisecond). Replay protection, if needed, lives in

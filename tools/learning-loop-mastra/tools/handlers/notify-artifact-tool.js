@@ -16,7 +16,7 @@ export const workflowNotifyArtifactTool = {
   },
   handler: async ({ path, change_type }) => {
     const root = resolveRoot();
-    // Q1 (plan-260722-2147 Phase 3): the manifest declares `pathFields: []`
+    // Q1: the manifest declares `pathFields: []`
     // because the CLI path hardcodes `pathFields:[]` at bin/loop.mjs:123,
     // so the R2 gate would short-circuit. In-handler validation restores
     // the records/** ownership check the gate cannot perform: any caller

@@ -1,11 +1,11 @@
 /**
- * R2 denial logger (F6 / Plan 5-Lite Phase 1, hardened Phase 3).
+ * R2 denial logger (F6).
  *
  * Appends one JSON-serialized line per denial to the cross-surface decision
  * log (`.gate-decision.log` under each surface's coordination/ dir), reusing
  * `appendToAllSurfaces` from `core/surfaces.js`.
  *
- * R6.2 hardening (Plan 5-Lite Phase 3): the `path` field is realpath-resolved
+ * R6.2 hardening: the `path` field is realpath-resolved
  * before serialization when the path exists on disk. A malicious path
  * (e.g., `foo\n{"forged":"override"}`) that resolves to a real entry becomes
  * its benign realpath; a non-existent path is logged as-is (wrapped in

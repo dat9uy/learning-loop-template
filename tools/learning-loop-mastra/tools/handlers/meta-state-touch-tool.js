@@ -14,10 +14,8 @@ import { resolveRoot } from "#lib/resolve-root.js";
 // the freshness stamp both write; it is also a meta_state_patch deny-list
 // member, so the guarded path is the only way to refresh it.
 //
-// Plans: 260724-1931-meta-state-touch-grounding-guarded-re-grounding-for-aged-findings
-//   - phase 1: contract (this header).
-//   - phase 2: handler + registration on every surface.
-//   - phase 3: immutabilize last_verified_at in the patch path.
+// Contract: this header, the handler + registration on every surface, and
+// the immutability of last_verified_at in the patch path.
 
 export const metaStateTouchTool = {
   name: "meta_state_touch",

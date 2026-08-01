@@ -133,7 +133,7 @@ export function collapseLatestBudgetStateById(rows) {
   // an id (legacy / hand-crafted) pass through unchanged. Legacy rows
   // re-red-team M1: legacy/distinct-id rows are NOT collapsed by
   // `collapseLatestById` (which drops no-id rows) and stay per-row
-  // (conservative) — preserving the pre-Phase-2 per-row emission for legacy
+  // (conservative) — preserving per-row emission for legacy
   // data shapes. The kind filter is the only load-bearing step for the
   // cross-kind collision guard (a canonical-id ledger-event sharing an id
   // with a budget-state is filtered out BEFORE the dedup, so it cannot
@@ -405,8 +405,8 @@ export function readBudgetTrackingState(root, surface) {
       );
     }
   }
-  // Not switched to the shared collapseLatestBudgetStateById helper (Phase 2
-  // DRY goal): this lifecycle reader needs the {row, version, fileIdx} entries
+  // Not switched to the shared collapseLatestBudgetStateById helper (a DRY
+  // goal): this lifecycle reader needs the {row, version, fileIdx} entries
   // to sort by fileIdx for the cross-id recency tiebreak, and collapseLatestById
   // here drops no-id legacy rows (the helper would pass them through — a
   // lifecycle-read behavior change). collapseLatestById is idempotent on

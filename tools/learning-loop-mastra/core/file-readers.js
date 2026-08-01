@@ -44,15 +44,15 @@ function resolveRoot() {
  * Each active entry yields one observation-shaped object per mapped constraint.
  * Fail-open: returns [] on error.
  *
-// active entries whose affected_system
- * is NOT in AFFECTED_SYSTEM_TO_CONSTRAINTS no longer silently drop. The
+ * Active entries whose affected_system is NOT in
+ * AFFECTED_SYSTEM_TO_CONSTRAINTS no longer silently drop. The
  * universal `assertinvariant` wrapper at the lookup step emits a structured
  * failure via gate-log AND pushes an observation with
  * `constraint_type: "unmapped-active-entry"` so downstream consumers see the
  * drift. Closes finding `meta-260630T2110Z`.
  *
-// parse moved to readRuntimeStateRows. The outer
- * try/catch is retained as defensive (verified that `assertinvariantSync`
+ * The parse moved to readRuntimeStateRows. The outer try/catch is retained as
+ * defensive (verified that `assertinvariantSync`
  * cannot throw — it validates `root` upfront and returns {ok:false} on bad
  * root; the operation lambda only does property access on primitives which
  * returns undefined rather than throws). A future projection-body throw on a

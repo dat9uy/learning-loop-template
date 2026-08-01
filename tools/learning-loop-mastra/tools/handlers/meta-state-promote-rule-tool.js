@@ -359,7 +359,7 @@ export const metaStatePromoteRuleTool = {
       }
     }
 
-    // Phase 1: write a new entry_kind: "rule" entry (not a mutated finding)
+    // Write a new entry_kind: "rule" entry (not a mutated finding)
     const ruleEntry = {
       id: rule_id,
       entry_kind: "rule",
@@ -386,7 +386,7 @@ export const metaStatePromoteRuleTool = {
     // pre-call guard valuable. Previously this code unconditionally called
     // `updateEntry(root, id, { status: "open" })`, which on an already-open
     // finding produced a gratuitous version bump + full rewrite (resolved by
-    // meta-260715T2311Z-gratuitous-mutations). With Phase B, the canonical
+    // meta-260715T2311Z-gratuitous-mutations). With true-append writes, the canonical
     // comparator short-circuits the bump when status is unchanged — but a
     // defense-in-depth pre-call guard skips the update path entirely on
     // already-open findings (lower cost, clearer operator intent).

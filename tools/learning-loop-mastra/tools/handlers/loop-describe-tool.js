@@ -240,7 +240,7 @@ export const loopDescribeTool = {
           consolidated_into_inverse: Object.fromEntries(inverseIndexes.consolidated_into_inverse),
         };
 
-        // Evidence-code-ref coverage (Phase 3 dual-field schema unification)
+        // Evidence-code-ref coverage (dual-field schema unification)
         // Structural count arrays: only ids so baseline is stable across refactors
         // that change the evidence_code_ref path but keep the same count.
         result.findings_with_evidence_code_ref = activeFindings

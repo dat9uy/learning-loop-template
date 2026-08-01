@@ -132,8 +132,8 @@ function persistRegistryAtomic(entries, root) {
  * Strip change-log entries from a union array. The `persistRegistryAtomic`
  * write path lands in `meta-state.jsonl` (the mutable table); the
  * `change-log.jsonl` stream is true-append only and must NEVER be the
- * destination of an in-place read-modify-write. Tier 2 Phase B rewrote
- * every persist site to true-append via `trueAppendAtomic`, which carries
+ * destination of an in-place read-modify-write. Every persist site was
+ * rewritten to true-append via `trueAppendAtomic`, which carries
  * its own `assertNoChangeLogLeak` guard (see core/registry-append-atomic.js).
  * The table-set projection is no longer needed at persist sites — change-log
  * writes are dispatched to `change-log.jsonl` by `appendChangeLogEntryAtomic`,
@@ -148,7 +148,7 @@ function persistRegistryAtomic(entries, root) {
  * would copy change-logs from `change-log.jsonl` into `meta-state.jsonl`,
  * and `merge=union` later would double them on the next parallel merge.
  *
-// a partial state where
+ * A partial state where
  * `change-log.jsonl` exists but a persist site still passes a change-log
  * would silently corrupt the registry. This guard fails loud so the bug
  * surfaces immediately instead of at merge time.
@@ -159,7 +159,7 @@ function persistRegistryAtomic(entries, root) {
  *
  * The active enforcement lives in core/registry-append-atomic.js#assertNoChangeLogLeak,
  * which fires inside `trueAppendAtomic` BEFORE the file write. The legacy
- * `persistRegistryAtomic` callers (compaction only — see Phase C) inherit
+ * `persistRegistryAtomic` callers (compaction only — see `compact-registry.sh`) inherit
  * the same contract via this local copy.
  */
 function assertNoChangeLogLeak(entries, root) {
@@ -179,7 +179,7 @@ function assertNoChangeLogLeak(entries, root) {
  * Restore a registry file to its pre-batch byte content. The byte-snapshot
  * rollback discipline (capture preBatchContent BEFORE the apply loop, restore
  * on any post-validation failure) is shared by every metaStateBatch failure
- * path. Tier 2 Phase B introduces this helper to DRY the three rollback sites
+ * path. This helper DRYs the three rollback sites
  * (table-append failure, change-log-append failure, auto-emit failure).
  *
  * Idempotent: calling on an already-restored file is a no-op (writeFileSync
@@ -198,11 +198,12 @@ function restorePreBatchContent(path, preBatchContent) {
 }
 
 function appendRegistryEntryAtomic(root, entry) {
-// true-append (no read-all → full rewrite).
+  // True-append (no read-all → full rewrite).
   // The previous implementation read the whole file, pushed, and full-rewrote;
   // that's unsafe for parallel-branch merges and is replaced by O_APPEND +
   // fsync via trueAppendAtomic. New entries start at version 0; later patches
-  // bump to version N+1 (last-wins-by-max-version per Phase A projection).
+  // bump to version N+1 (last-wins-by-max-version per the versioned-append
+  // projection).
   //
   // Pre-condition: caller MUST hold `withRegistryLock(root)`. writeEntry
   // acquires it via the enqueue queue.
@@ -225,7 +226,7 @@ function appendRegistryEntryAtomic(root, entry) {
  * new entry. Without invalidation, a stale cached union could omit the
  * new change-log.
  *
-// also uses `trueAppendAtomic` so the
+ * Also uses `trueAppendAtomic` so the
  * change-log stream benefits from explicit fsync. Process kill mid-write
  * was previously the partial-last-line crash class (RT H1); fsync closes it.
  */
@@ -238,7 +239,7 @@ function appendChangeLogEntryAtomic(root, entry) {
   invalidateCache(root);
 }
 
-// (lifecycle-status-stale-mechanism) collapses the finding
+// The `lifecycle-status-stale-mechanism` loop-design collapses the finding
 // status enum to `{open, resolved, superseded}` (+ `archived` runtime-applied
 // at archive time, outside the enum). `reported`/`active`/`stale`/`auto-resolved`
 // are removed from the enum — read sites use `isOpen`/`isStaleView` instead.
@@ -685,7 +686,7 @@ export const metaStateEntrySchema = z.preprocess(
  *   finding schema does not .default() status so no injection there). The
  *   deny-list entry below extends the guard to the batch path as a stopgap.
  * - `promoted_to_rule` removed from deny-list — the field is no longer written
- *   on findings after the Phase 2 migration to first-class rule entries.
+ *   on findings after the migration to first-class rule entries.
  * - `id` and `op` and `_expected_version` are stripped before the patch is
  *   applied (see metaStateBatch line ~520 and meta_state_patch line ~73), so
  *   they are safe by construction; listed here for clarity.
@@ -820,7 +821,7 @@ export class InvalidEntryError extends Error {
 }
 
 /**
-// thrown when writeEntry's entry.entry_kind is not
+ * Thrown when writeEntry's entry.entry_kind is not
  * in the current worktree's schema_branches (declared in .loop-version).
  * Closes the parallel-operation schema-version-skew gap.
  */
@@ -883,7 +884,7 @@ function readRawLines(root) {
 }
 
 function _readAndParseRegistry(root) {
-  // Tier 2 Phase A projection (last-wins-by-max-version):
+  // Versioned-append projection (last-wins-by-max-version):
   //   1. Concat both files
   //   2. Group by id
   //   3. Pick max_by(version) per id (tie-break: later created_at wins)
@@ -891,8 +892,8 @@ function _readAndParseRegistry(root) {
   //
   // Pure-JS (Array.prototype.sort is V8-stable). Tier 1 used sort-only
   // projection (identity for singleton-per-id); same output today since
-  // every id in the live registry is a singleton. Phase B write-path will
-  // produce multi-line-per-id (versioned append) where this projection
+  // every id in the live registry is a singleton. The true-append write path
+  // produces multi-line-per-id (versioned append) where this projection
   // becomes load-bearing.
   //
   // Pre-condition: every id has ≥1 non-null integer `version` (backfilled
@@ -900,11 +901,11 @@ function _readAndParseRegistry(root) {
   // before this projection goes live). Without the backfill, `max_by` would
   // mispick on all-null-version groups (returns arbitrary group member).
   const parsed = readRawLines(root);
-  // Last-wins-by-max-version dedupe (Phase A projection).
+  // Last-wins-by-max-version dedupe (versioned-append projection).
   // Tie-break on equal version: later created_at wins (matches the tie-break
   // in migrate-change-log-stream.mjs#dedupeById so script → reader is
   // consistent). For null/missing version, treat as 0 — backfill guarantees
-  // no group is all-null-version post-Phase-A.
+  // no group is all-null-version post-backfill.
   const byId = new Map();
   for (const entry of parsed) {
     const prior = byId.get(entry.id);
@@ -996,8 +997,8 @@ export function readRegistryAllVersions(root) {
 // per-root `enqueue` queue as writeEntry — no new race class.
 //
 // The per-record `code_fingerprint` field stays as a vestigial fallback (see
-// check-grounding.js); this index is the authoritative baseline. Phase 1 is
-// additive only — nothing reads the index yet.
+// check-grounding.js); this index is the authoritative baseline. The sidecar
+// is additive only — nothing reads the index yet.
 export const FILE_INDEX_FILENAME = "file-index.jsonl";
 
 /** Path to the sidecar, mirroring getRegistryPath. */
@@ -1220,7 +1221,7 @@ async function assertArchivedTombstone(entries, idx, root, id) {
 export function writeEntry(root, entry) {
   return enqueue(root, () =>
     withRegistryLock(root, async () => {
-// universal `assertinvariant`
+      // The universal `assertinvariant`
       // pre-state-only wrapper at the writeEntry boundary. The wrapper
       // enforces general identity pre-conditions (entry has an id; entry
       // has a recognized entry_kind). The forge-vector guard for
@@ -1246,7 +1247,7 @@ export function writeEntry(root, entry) {
         throw new Error("invalid_entry: write_entry_identity_precondition_failed");
       }
 
-// schema-version-skew gate. Reject writes whose
+      // Schema-version-skew gate. Reject writes whose
       // entry_kind is not in the current worktree's schema_branches BEFORE the
       // validation pass (clearer error path) and BEFORE any registry mutation.
       // Lazy .loop-version creation happens inside readLoopVersion.
@@ -1271,7 +1272,7 @@ export function writeEntry(root, entry) {
       const existenceSet = new Set(readRegistry(root).map((e) => e.id));
       const writeRi = graphResolveStructuralRI(validation.data, existenceSet);
       warnStructuralRI(root, validation.data.id, writeRi.dangling);
-// write dispatch by entry_kind.
+      // Write dispatch by entry_kind.
       // Change-logs true-append to change-log.jsonl (merge=union safe);
       // everything else lands in meta-state.jsonl. Runs INSIDE the
       // withRegistryLock wrapper so concurrent MCP servers cannot interleave
@@ -1287,14 +1288,14 @@ export function writeEntry(root, entry) {
 
 /**
  * Atomically update an entry by id, applying a patch object.
-// true-append (no full rewrite). The patch
+ * True-append (no full rewrite). The patch
  * is applied to a COPY of the existing entry; if the patched copy is
  * canonically equal to the existing entry (canonical-comparator short-circuit,
  * resolves meta-260715T2311Z-gratuitous-mutations), no line is appended. If a
  * real change is detected, a new highest-version line is appended to
  * `meta-state.jsonl` via `trueAppendAtomic`; the original line is never
  * modified. Inline compaction (terminal entries older than 7 days) is removed
- * — Phase C ships `compact-registry.sh --full` as the canonical compaction
+ * — `compact-registry.sh --full` is the canonical compaction
  * path. CAS via `_expected_version` is unchanged.
  *
  * Returns:
@@ -1314,7 +1315,7 @@ export function updateEntry(root, id, patch) {
       let existingEntry = null;
 
       // Check id exists before any mutation. readRegistry returns the
-      // max-version line per id (Phase A projection); this is the canonical
+      // max-version line per id (versioned-append projection); this is the canonical
       // "existing" entry for the short-circuit compare.
       for (const entry of entries) {
         if (entry.id === id) {
@@ -1339,14 +1340,14 @@ export function updateEntry(root, id, patch) {
         return "validation_failed";
       }
 
-// Fix B's `delete cleanPatch.entry_kind`
+      // The `delete cleanPatch.entry_kind`
       // defense runs FIRST so the wrapper sees a patch that has already been
       // sanitized.
       const preStripPatch = { ...patch };
       delete preStripPatch.entry_kind;
 
-// universal `assertinvariant`
-      // pre-state-only wrapper on the post-Fix-B patch.
+      // The universal `assertinvariant`
+      // pre-state-only wrapper on the post-strip patch.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
         {
@@ -1383,12 +1384,12 @@ export function updateEntry(root, id, patch) {
       delete cleanPatch.constructor;  // defense-in-depth
       delete cleanPatch.entry_kind;   // identity invariant — never patchable
 
-      // Phase B H9 precondition: applyDefaults before canonicalize so legacy
+      // Precondition: applyDefaults before canonicalize so legacy
       // entries lacking schema-defaulted fields canonicalize identically to
       // post-default reads.
       const patched = withDefaults({ ...existingEntry, ...cleanPatch });
 
-// NO-OP SHORT-CIRCUIT. Resolves
+      // NO-OP SHORT-CIRCUIT. Resolves
       // meta-260715T2311Z-gratuitous-mutations (a no-op update previously
       // bumped the version and forced a full rewrite). The canonical
       // comparator is sorted-keys + set-semantics on arrays so reordering a
@@ -1458,7 +1459,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
       if (entries[idx].entry_kind === "change-log") {
         throw new Error("change_log_immutable: change-log entries cannot be archived");
       }
-// universal `assertinvariant`
+      // The universal `assertinvariant`
       // wrapper enforces the already-archived pre-condition.
       if (!(await assertNotArchived(entries, idx, root, id))) {
         return { archived: false, reason: "already_archived", id };
@@ -1517,7 +1518,7 @@ export function archiveEntry(root, id, reason, archivedBy) {
  * No persisted `restored_*` audit fields — the restored line IS the
  * pre-archive state at a new version; the version sequence is the audit
  * trail, the restore *action* is gate-logged via the return's `restored_at`
- * (Phase 3 spreads it into `appendGateLog`).
+ * (the caller spreads it into `appendGateLog`).
  *
  * Wrapped with `assertinvariant` (rule `assertinvariant-at-boundary`) for
  * the single `not_archived` pre-condition — gate-log audit covers the
@@ -1614,7 +1615,7 @@ export function restoreEntry(root, id, reason) {
 /**
  * Atomically delete an entry by id (soft CRUD enforcement).
  *
-// hard-delete is GONE (union-safety forbids
+ * Hard-delete is GONE (union-safety forbids
  * line removal — `merge=union` keeps every line from both sides; removing a
  * line on one side and not the other is a conflict, not a delete). The
  * delete operation now appends a tombstone with `tombstone_kind: "delete"`
@@ -1622,7 +1623,7 @@ export function restoreEntry(root, id, reason) {
  * "operator archived"). The projection's last-wins-by-max-version picks the
  * tombstone; the list-tool layer hides it.
  *
- * Backward-compat: pre-Phase-B callers expecting `entries.splice(idx, 1)`
+ * Backward-compat: legacy callers expecting `entries.splice(idx, 1)`
  * behavior see the projection hide the tombstone. The pre-batch byte-snapshot
  * rollback discipline still works (we capture file bytes pre-batch, not
  * registry shape).
@@ -1633,7 +1634,7 @@ export function deleteEntry(root, id, reason) {
       const entries = readRegistry(root);
       const targetEntry = entries.find((e) => e.id === id);
       if (!targetEntry) return { deleted: false, reason: "not_found", id };
-// universal `assertinvariant`
+      // The universal `assertinvariant`
       // wrapper enforces the change-log-immutability pre-condition.
       const invariantResult = await assertinvariant(
         () => Promise.resolve({ ok: true }),
@@ -1722,8 +1723,9 @@ export function shipLoopDesign(root, id, plan, expectedVersion) {
         return { shipped: false, reason: "invalid_status", id, current_status: entry.status };
       }
       const shippedAt = new Date().toISOString();
-// true-append (no full rewrite).
-      // The shipped line becomes the new max-version per Phase A projection.
+      // True-append (no full rewrite).
+      // The shipped line becomes the new max-version per the versioned-append
+      // projection.
       const tombstone = {
         ...entry,
         status: "inactive",
@@ -1751,14 +1753,14 @@ const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
 // slow disks (Finding 12). Larger batches risk lock-stealing by concurrent
 // processes that observe a >30s-old lock. Operators can still override via
 // META_STATE_BATCH_LIMIT env var.
-// removed local definition in favor of importing
+// The local definition was removed in favor of importing
 // from core/constants.js (single source of truth; 500-vs-100 default divergence fixed).
 
 /**
  * Atomically apply a batch of meta-state operations.
  * All-or-nothing rollback on any failure. Single cache invalidation.
  *
-// true-append per op. Each mutation op
+ * True-append per op. Each mutation op
  * (`update`/`archive`/`delete`) appends a new highest-version line to
  * `meta-state.jsonl` instead of mutating-in-place + full-rewrite. The
  * no-op short-circuit (canonical comparator) drops updates that produce
@@ -1768,11 +1770,11 @@ const BATCH_OP_TYPES = new Set(["write", "update", "delete", "archive"]);
  * `change-log.jsonl`.
  *
  * The all-or-nothing rollback discipline is preserved: ops are validated
- * one-by-one, building `pendingMetaStateAppends` and `pendingChangeLogAppends`
- *; if any op throws we restore `preBatchContent` byte-for-byte and return
+ * one-by-one, building `pendingMetaStateAppends` and `pendingChangeLogAppends`;
+ * if any op throws we restore `preBatchContent` byte-for-byte and return
  * failure. Applies happen AFTER all validations succeed.
  *
-// optional `envelope` argument. When present, after a
+ * Optional `envelope` argument. When present, after a
  * successful batch, an envelope-annotated change-log entry is auto-emitted with
  * pre_count/post_count computed from the registry before/after the batch and
  * content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
@@ -1797,8 +1799,9 @@ export function metaStateBatch(root, operations, envelope) {
       // later append, not reflected into `entries[]`, so RI must consult this
       // set instead.
       const inBatchIds = new Set(entries.map((e) => e.id));
-      // Phase B: pendingMetaStateAppends collects one new versioned line per
-      // mutation op (no in-place mutation, no full rewrite). Applies happen
+      // The write path collects one new versioned line per
+      // mutation op into pendingMetaStateAppends (no in-place mutation, no
+      // full rewrite). Applies happen
       // AFTER all ops validate; on failure the byte-snapshot rollback restores
       // the pre-batch file.
       //
@@ -1812,7 +1815,7 @@ export function metaStateBatch(root, operations, envelope) {
       // to change-log.jsonl after all validations succeed. Queueing prevents
       // orphan change-logs on mid-batch failure.
       const pendingChangeLogAppends = [];
-// snapshot the registry BEFORE the batch so
+      // Snapshot the registry BEFORE the batch so
       // the envelope's pre_count reflects actual pre-batch state.
       const preRegistrySnapshot = envelope
         ? entries.map((e) => ({ id: e.id, status: e.status, entry_kind: e.entry_kind }))
@@ -1831,7 +1834,7 @@ export function metaStateBatch(root, operations, envelope) {
         try {
           switch (op.op) {
             case "write": {
-// universal `assertinvariant`
+              // The universal `assertinvariant`
               // wrapper at the batch write-op boundary.
               const writeInvariant = await assertinvariant(
                 () => Promise.resolve({ ok: true }),
@@ -1869,14 +1872,14 @@ export function metaStateBatch(root, operations, envelope) {
               inBatchIds.add(validation.data.id);
               const writeRi = graphResolveStructuralRI(validation.data, inBatchIds);
               warnStructuralRI(root, validation.data.id, writeRi.dangling);
-// dispatch change-log writes
+              // Dispatch change-log writes
               // to change-log.jsonl (true-append). Queue them here; append
               // happens AFTER the table persist so a mid-batch failure
               // doesn't leave orphan change-logs behind.
               if (validation.data.entry_kind === "change-log") {
                 pendingChangeLogAppends.push(validation.data);
               } else {
-                // Phase B: new entries start at version 0; the projection
+                // New entries start at version 0; the projection
                 // dedupes to max-version per id. Also reflect into entries[]
                 // so subsequent ops in the same batch see the new state.
                 const versionedEntry = { ...validation.data, version: validation.data.version ?? 0 };
@@ -1926,7 +1929,7 @@ export function metaStateBatch(root, operations, envelope) {
                 err.denied_fields = denied;
                 throw err;
               }
-              // Phase B: compute patched entry on a copy; canonical-comparator
+              // Compute patched entry on a copy; canonical-comparator
               // short-circuit drops no-op updates; otherwise queue the new
               // highest-version line for true-append AND reflect into entries[]
               // so subsequent ops in the same batch see the new state.
@@ -1965,7 +1968,7 @@ export function metaStateBatch(root, operations, envelope) {
               break;
             }
             case "delete": {
-              // Phase B (RT H3): case "delete" now routes through deleteEntry —
+              // case "delete" routes through deleteEntry —
               // appends an archived tombstone with tombstone_kind: "delete".
               // The function splice is gone; the tombstone is the audit-visible
               // record. Pre-batch byte-snapshot rollback still works (we
@@ -2031,13 +2034,13 @@ export function metaStateBatch(root, operations, envelope) {
         }
       }
 
-// build the envelope-annotated change-log entry
+      // Build the envelope-annotated change-log entry
       // AFTER all ops validate (so a mid-batch throw doesn't leak an auto-emit).
       let autoEmitId = null;
       let autoEmitEntry = null;
       if (envelope) {
         // Compute postRegistrySnapshot from in-memory entries (mutated
-        // in-place for the in-memory view). For Phase B true-append the
+        // in-place for the in-memory view). Under true-append the
         // post-state is still derivable from entries[].
         const postRegistrySnapshot = entries.map((e) => ({
           id: e.id,
@@ -2063,7 +2066,7 @@ export function metaStateBatch(root, operations, envelope) {
           change_dimension: "mechanical",
           change_target: envelope.target,
           change_diff: { added: [], removed: [], changed: [] },
-          reason: "Auto-emitted by meta_state_batch envelope pass-through (operation envelope on change-log).",
+          reason: "Auto-emitted by meta_state_batch envelope pass-through (loop-design-operation-envelope-on-change-log).",
           operation_envelope: builtEnvelope,
           status: "active",
           created_at: new Date().toISOString(),
@@ -2071,7 +2074,7 @@ export function metaStateBatch(root, operations, envelope) {
         };
       }
 
-      // Phase B: APPLY the queued appends. If any throw (e.g. fsync failure
+      // APPLY the queued appends. If any throw (e.g. fsync failure
       // mid-append), rollback to preBatchContent. Since we fsync'd each append
       // individually, the partial state is `preBatchContent + some appends`;
       // we truncate to preBatchContent on failure.
@@ -2085,7 +2088,7 @@ export function metaStateBatch(root, operations, envelope) {
         return { applied: 0, failed_at: null, reason: "append_failed", error: err.message };
       }
 
-      // Phase B: true-append change-log writes (op:"write") AFTER the table
+      // True-append change-log writes (op:"write") AFTER the table
       // appends so the failure rollback can truncate cleanly. If any change-log
       // append throws (e.g. fsync failure, ENOSPC), rollback the table to
       // preBatchContent — preserves the all-or-nothing contract.
@@ -2099,7 +2102,7 @@ export function metaStateBatch(root, operations, envelope) {
         return { applied: 0, failed_at: null, reason: "change_log_append_failed", error: err.message };
       }
 
-// auto-emit routes through
+      // Auto-emit routes through
       // appendChangeLogEntryAtomic (true-append to change-log.jsonl). Same
       // rollback discipline: a failed auto-emit truncates both table + change-log.
       if (autoEmitEntry) {
@@ -2118,7 +2121,7 @@ export function metaStateBatch(root, operations, envelope) {
 
       invalidateCache(root);
 
-// assertWriteVisible after
+      // Run assertWriteVisible after
       // the writes complete.
       const allExpectedChangeLogIds = (envelope && autoEmitId ? [autoEmitId] : [])
         .concat(pendingChangeLogAppends.map((cl) => cl.id));
@@ -2147,12 +2150,12 @@ export function metaStateBatch(root, operations, envelope) {
  * Filter entries by optional criteria (category, status, affected_system, session_id).
  * All provided filters must match (AND logic).
  *
-// status filtering treats the canonical open set
+ * Status filtering treats the canonical open set
  * (`open`) and the legacy open-equivalent set (`active`/`reported`/`stale`)
  * as a single bucket so consumers see a consistent open set pre-migration.
  * `status:"open"` returns entries where `isOpen(e)` is true; `status:"stale"`,
  * `status:"active"`, and `status:"reported"` still return legacy entries
- * pre-migration (backward compat until phase 4).
+ * pre-migration (backward compat until the status migration lands).
  */
 export function filterEntries(entries, filters) {
   return entries.filter((entry) => {
@@ -2168,7 +2171,7 @@ export function filterEntries(entries, filters) {
 function matchesStatusFilter(entry, status) {
   if (entry.status === status) return true;
   // Backward-compat: legacy `stale`/`active`/`reported` map to `open` until
-  // phase 4 migrates them. Pre-migration consumers see the consistent open set.
+  // the status migration rewrites them. Pre-migration consumers see the consistent open set.
   if (status === "open" && (entry.status === "active" || entry.status === "reported" || entry.status === "stale")) {
     return true;
   }
@@ -2215,7 +2218,7 @@ export function tryClaimSessionId(root, key, entryBuilder) {
       throw new InvalidEntryError(validation.error);
     }
 
-// this append
+    // DEFENSIVE NOTE: this append
     // bypasses writeEntry (uses appendRegistryEntryAtomic directly, with
     // `enqueue` for per-process serialization only — NOT withRegistryLock,
     // so it's NOT cross-process safe). It is test-only (no production

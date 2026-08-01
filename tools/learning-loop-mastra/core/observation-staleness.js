@@ -1,6 +1,5 @@
 /**
-// shared
- * observation-staleness primitives. Pure module — no `fs`, no `Date.now()` in
+ * Shared observation-staleness primitives. Pure module — no `fs`, no `Date.now()` in
  * predicates (callers inject `now` / `markerTs`). Replaces the two parallel
  * 30-min checks (inbound gate's `findStaleObservations` from gate-logic.js +
  * bash gate's `checkObservationStaleness` from inbound-state.js) with one

@@ -28,7 +28,7 @@ const fixLog = [];
 
 for (const entry of entries) {
   if (entry.entry_kind !== "loop-design") continue;
-  // proposed_design_for is a flat string array (wire-format wrap fix in Phase B)
+  // proposed_design_for is a flat string array (wire-format wrap fix)
   const refs = entry.proposed_design_for;
   if (!refs || refs.length === 0) continue;
 

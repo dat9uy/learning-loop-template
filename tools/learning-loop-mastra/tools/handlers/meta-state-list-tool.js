@@ -99,7 +99,7 @@ export const metaStateListTool = {
     // guard was lifted. That contradicts the collapsed status model, where
     // `stale` is a derived evidence-freshness view (see `core/stale-view.js`),
     // not a writable status. The past-TTL signal stays available via
-    // `isStaleView` for callers that want it. (Phase 4 deleted `checkExpiry`.)
+    // `isStaleView` for callers that want it. (`checkExpiry` was deleted.)
     let result = entries;
 
     // Filter pipeline order: ref_by/ref_field first (most selective),

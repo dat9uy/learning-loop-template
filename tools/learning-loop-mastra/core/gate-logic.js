@@ -252,11 +252,9 @@ export function stripMessageFlags(segment) {
  *
  * Bypass risk: `node -e "require('child_process').exec('pip install vnstock')"`
  * no longer matches the `package-manager` constraint (the command is inside the
- * blanked body). This is an accepted bypass, not a fix; the user-stated design
- * from plans/reports/brainstorm-260615-1300-bash-gate-debate-friendly-and-string-literal-fix.md#plan-2
- * chose asymmetry (only node, not python-c/bash-c). Catch-net: the
- * `gate_check_recurrence` MCP tool shipped in plan
- * 260615-1530-bash-gate-debate-stderr-override-recurrence auto-files a finding
+ * blanked body). This is an accepted bypass, not a fix; the operator-stated
+ * design chose asymmetry (only node, not python-c/bash-c). Catch-net: the
+ * `gate_check_recurrence` MCP tool auto-files a finding
  * via `meta_state_report` if `node -e "..."` matches a constraint N>=3 times in
  * M<=10min.
  *
@@ -739,10 +737,10 @@ export function loadPromotedRules(root) {
   }
 
   // Only first-class entry_kind="rule" entries are accepted.
-  // Legacy finding entries with promoted_to_rule were removed after the
-  // Phase 2 migration (all promoted rules are now standalone rule entries).
+  // Legacy finding entries with promoted_to_rule were removed; all promoted
+  // rules are now standalone rule entries.
   //
-// dedupe to max-version per id BEFORE
+  // dedupe to max-version per id BEFORE
   // filtering by status. Without this dedupe, a rule that has been
   // deactivated (status: inactive on the new max-version line) would ALSO
   // show its prior active v0 line in the filter result, falsely reporting
@@ -769,7 +767,7 @@ export function loadPromotedRules(root) {
   // invalid pattern_type) would crash applyPromotedRules. Validate
   // each entry and warn-and-skip on invalid. This closes the gap that
   // direct file appends (bypassing writeEntry's safeParse) would otherwise
-  // create — see code-reviewer-260615-2255-... finding F-3.
+  // create (review finding F-3).
   rules = rules.filter((r) => {
     const validation = metaStateRuleEntrySchema.safeParse(r);
     if (!validation.success) {
@@ -877,7 +875,7 @@ export function checkResolutionEvidence(rule, root) {
         }
         throw err;
       }
-      // Baseline resolution (Phase 3 repoint, red-team F2): the file-index
+      // Baseline resolution (red-team F2): the file-index
       // sidecar is the authoritative baseline, with the per-record field as the
       // vestigial fallback. Without repointing this gate, every edited source
       // file fails CI post-migration because the live hash no longer matches the

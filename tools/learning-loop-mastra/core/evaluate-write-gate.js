@@ -183,13 +183,13 @@ export function evaluateWriteGate({ filePath, root }) {
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-canonical") {
-    // Phase 2: canonical authoring source under tools/learning-loop-mastra/skills/.
+    // Canonical authoring source under tools/learning-loop-mastra/skills/.
     // Delegates to the SAME .loop-preflight-skills marker as the mirror rule
     // (one unlock authorises both canonical + mirror edits within the 30-min TTL).
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-manifest") {
-    // Phase 3: skills-lock.json is the trust anchor for the contract's
+    // skills-lock.json is the trust anchor for the contract's
     // external exclusion. Same preflight marker as the other skills rules.
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }

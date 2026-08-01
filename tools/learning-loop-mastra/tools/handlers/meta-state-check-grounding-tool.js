@@ -15,7 +15,7 @@ import { findEntryOrNotFound } from "#lib/find-entry.js";
  * and the size check catches "same mtime, different content" in O(1) (red-team
  * F8). Omitting `size` creates a stale-hash window where a same-mtime rewrite
  * returns the old hash and masks drift. The pure computeFileHash stays unchanged;
- * caching is a tool-layer concern (Phase 2 of the file-index migration).
+ * caching is a tool-layer concern of the file-index migration.
  */
 const hashCache = new Map();
 
@@ -67,7 +67,7 @@ export const metaStateCheckGroundingTool = {
 
     // Build codeContext. test_passed is computed only when run_tests is true
     // and the entry has an evidence_test field. fileIndex is the cached path-keyed
-    // fingerprint sidecar — the authoritative grounding baseline (Phase 3 repoint);
+    // fingerprint sidecar — the authoritative grounding baseline;
     // loaded here (not inside the pure function) to keep checkGrounding pure.
     const testPath = typeof entry.evidence_test === "string" ? entry.evidence_test : null;
     let test_passed = null;
@@ -79,7 +79,7 @@ export const metaStateCheckGroundingTool = {
     const codeContext = { root, run_tests, test_passed, fileIndex };
     const result = checkGrounding(entry, codeContext);
 
-    // Auto-populate the path-keyed fingerprint index (Phase 5 repoint). The index
+    // Auto-populate the path-keyed fingerprint index. The index
     // is the authoritative baseline; the per-record code_fingerprint is vestigial.
     // Fires when the index lacks the canonical key for this finding's cited path
     // and the check is grounded/unknown (not drifted). F3: the key is the canonical
@@ -106,12 +106,12 @@ export const metaStateCheckGroundingTool = {
         // Reflect the authoritative baseline just written to the index.
         result.grounding.code_fingerprint = hash;
       } else {
-        // F14 (post-Phase-6): the index write failed (disk full, rename threw,
+        // F14: the index write failed (disk full, rename threw,
         // or validation rejected the key). The per-record field is stripped, so
         // there is no bootstrap fallback — the finding stays grounded on
         // file-existence (hash_match: null) with no recorded baseline. Log
         // prominently so the operator can retry the index write; do NOT silently
-        // mask the failure. (Pre-Phase-6 this had a dual-path fallback writing
+        // mask the failure. (This previously had a dual-path fallback writing
         // entry.code_fingerprint; removed once the field was stripped.)
         appendGateLog(root, {
           timestamp: new Date().toISOString(),

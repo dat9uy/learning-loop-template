@@ -1,7 +1,7 @@
 /**
  * Rec 12 change-log bound-paths detection set + change_target canonicalizer.
  *
- * Plan 4: rec12-closed-loop, phase 1. The (b) detection surface for the
+ * The rec12-closed-loop detection surface for the
  * change-log gap detector — which path-prefixes SHOULD have a change-log on
  * edit + a robust canonicalizer that turns free-text `change_target` +
  * `applies_to.schemas` into a Set<repo-relative path/dir>.
@@ -84,7 +84,7 @@ const OLD_PACKAGE_NAME = "learning-loop-mcp";
 
 /**
  * True iff `path` falls under any CHANGE_LOG_BOUND_PATHS prefix. Used by
- * the gap builder (phase 3) as the first filter (a touched path must be
+ * the gap builder as the first filter (a touched path must be
  * under a Rec-12-bound prefix to be a gap candidate at all).
  */
 export function isBoundPath(path) {
@@ -183,7 +183,7 @@ function canonicalizeToken(rawToken) {
 
 /**
  * Split a compound `change_target` on ` + ` (the registry's compound
- * delimiter — Plan 3 + prior rec-12 evidence shows real entries use this
+ * delimiter — rec-12 registry evidence shows real entries use this
  * exact whitespace).
  */
 function splitCompound(target) {

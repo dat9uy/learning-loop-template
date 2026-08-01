@@ -5,7 +5,7 @@
  * runtime participation contract lives at docs/runtime-contract.md; this file
  * validates the MCP+hooks transport's conformance to it. Verifies the requirements
  * in CONTRACT.md (5 base + Req #6 `hook-declarative-config` + Req #7 `settings-no-bypass`,
- * both additive Phase E Plan 4 for declarative-hook runtimes like Mastra Code).
+ * both additive for declarative-hook runtimes like Mastra Code).
  *
  * CLI: node tools/learning-loop-mastra/interface/contract.js <runtimeId> [rootPath]
  *      node tools/learning-loop-mastra/interface/contract.js --list
@@ -22,8 +22,8 @@ import { parse as parseYaml } from "yaml";
 const RUNTIMES = {
   "claude-code": { surface: ".claude",     mcp_config: ".mcp.json",            settings: "settings.json", transport: "mcp" },
   "droid":       { surface: ".factory",    mcp_config: ".factory/mcp.json",    settings: "settings.json", transport: "mcp" },
-  // Phase E Plan 4 — Mastra Code uses declarative config (.mastracode/*.json).
-  // mcp_config: canonical Mastra-Code path (was incorrectly '.mastracode/config.json' pre-Plan-4).
+  // Mastra Code uses declarative config (.mastracode/*.json).
+  // mcp_config: canonical Mastra-Code path.
   // declarative_hooks: path to .mastracode/hooks.json (Req #6).
   // settings_path: explicit .mastracode/settings.json (Req #7).
   // db_path: .mastracode/database.json (Req #4 alternative).
@@ -66,12 +66,12 @@ const REQUIRED_HOOK_COMMANDS = [
 
 const REQUIRED_TOOL_REFS = ["loop_describe", "meta_state_list"];
 
-// Phase E Plan 4 — additive Reqs #6 (hook-declarative-config) and #7 (settings-no-bypass)
+// Additive Reqs #6 (hook-declarative-config) and #7 (settings-no-bypass)
 // for runtimes with declarative hook configs (e.g., Mastra Code).
 // Req #1 stays monomorphic (shim files only); Req #6 is parallel/alternative.
-// Plan 5-Lite Phase 3 — additive Reqs #9 (.mastracode-config-presence),
+// Additive Reqs #9 (.mastracode-config-presence),
 // #10 (mastracode-session-start-pins-loop-surface), #11 (tools-manifest-has-path-fields).
-// Req #8 is intentionally skipped (gap preserved from the plan).
+// Req #8 is intentionally skipped; the numbering gap is preserved.
 export const REQUIREMENT_IDS = [
   "hook-shim-set",
   "mcp-client-config",
@@ -107,7 +107,7 @@ function findUniversalHookPath(shimContent) {
 function checkHookShimSet(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const { surface } = runtime;
-  // Phase E Plan 4: declarative runtimes (those with `declarative_hooks`) don't use shim files.
+  // Declarative runtimes (those with `declarative_hooks`) don't use shim files.
   // Req #1 (hook-shim-set) is N/A for them; the contract uses Req #6 (hook-declarative-config)
   // instead. Report OK with `applicable:false` so the contract doesn't fail.
   if (runtime.declarative_hooks) {
@@ -214,7 +214,7 @@ function readSkillSafe(skillPath) {
 }
 
 function lookupManifestSkill(skillsObj, name) {
-  // Trust-anchor read (Phase 3 F9 hardening): own-property + object-shaped
+  // Trust-anchor read (F9 hardening): own-property + object-shaped
   // entries only. A bare `skillsObj?.[name]` walks the prototype chain — a
   // planted dir named "constructor"/"toString" would resolve to inherited
   // Object members and be treated as manifest-declared internal. A null (or
@@ -241,8 +241,8 @@ function listLoopMaintainedSkills(skillsDir, manifest) {
   //
   // Shape boundary (documented, review I2): Dirent.isDirectory() is false
   // for a symlink-to-dir, so symlink-shaped entries are excluded by shape
-  // BEFORE the manifest lookup — the same external boundary as the pre-
-  // Phase-3 isSymbolicLink() filter. F9's defense covers real-dir skills;
+  // BEFORE the manifest lookup — the same external boundary as the earlier
+  // isSymbolicLink() filter. F9's defense covers real-dir skills;
   // an unlisted symlink is out of scope by design (post-npx, no legitimate
   // symlink skills remain — mastra becomes real files via fan-out).
   //
@@ -297,7 +297,7 @@ function checkMirrorPresence(name, rootPath) {
   // surfaces (parity-test asserts byte-identity; the contract only checks
   // the binary "is the mirror present somewhere"). Single-surface
   // placements are NOT loop-maintained (the mirror convention requires
-  // ≥ 2 surfaces). Until phase 4 materializes `.mastracode/skills/`, the
+  // ≥ 2 surfaces). Until `.mastracode/skills/` materializes, the
   // .claude + .factory pair (2 surfaces) is the loop-maintained state.
   let count = 0;
   for (const surface of [".claude", ".factory", ".mastracode"]) {
@@ -327,7 +327,7 @@ function checkSkillSpec(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
   const surface = runtime.surface;
   const skillsDir = join(rootPath, surface, "skills");
-  // Phase 3: manifest-driven exclusion. Read fresh on every call (no cache).
+  // Manifest-driven exclusion. Read fresh on every call (no cache).
   const manifest = readManifestSafe(rootPath);
   const skills = listLoopMaintainedSkills(skillsDir, manifest);
 
@@ -336,7 +336,7 @@ function checkSkillSpec(runtimeId, rootPath) {
   // the fallback paths to find skills. The fallback is read-only — it
   // only narrows the surface's apparent skill set when the surface itself
   // is empty. The fallback entries are checked against the manifest the
-  // same way as primary entries (Phase 3 composition check).
+  // same way as primary entries (same composition check).
   if (skills.length === 0 && Array.isArray(runtime.skill_discovery_paths)) {
     for (const candidate of runtime.skill_discovery_paths) {
       const absolute = candidate.startsWith("/") ? candidate : join(rootPath, candidate);
@@ -363,12 +363,12 @@ function checkSkillSpec(runtimeId, rootPath) {
   for (const skill of skills) {
     const { name, skillMd, manifestUnreadable: manifestBad, notInManifest } = skill;
     if (manifestBad) {
-      // Phase 3 F8: explicit failure mode for missing/corrupt manifest.
+      // F8: explicit failure mode for missing/corrupt manifest.
       evaluated.push({ name, ok: false, reason: "manifest-unreadable", skill_path: skillMd });
       continue;
     }
     if (notInManifest) {
-      // Phase 3 F9: explicit failure mode for unlisted real-dir skill.
+      // F9: explicit failure mode for unlisted real-dir skill.
       evaluated.push({ name, ok: false, reason: "skill-not-in-manifest", skill_path: skillMd });
       continue;
     }
@@ -404,7 +404,7 @@ function checkSkillSpec(runtimeId, rootPath) {
     evaluated.push({ name, ok: true, reason: null, skill_path: skillMd, tools_referenced: toolsReferenced, has_tools_block: hasToolsBlock, maturity });
   }
   // Empty enumeration is vacuously OK (a surface may have no skills yet —
-  // mastra-code during phase 2/3 has no .mastracode/skills/ mirror; the
+  // mastra-code has no .mastracode/skills/ mirror yet; the
   // cross-runtime parity test in legacy-mcp/skills-mirror-parity.test.js
   // is the backstop for "all 3 surfaces must agree").
   const allOk = evaluated.every((s) => s.ok);
@@ -416,9 +416,9 @@ function checkSkillSpec(runtimeId, rootPath) {
   };
 }
 
-// Phase E Plan 4: RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive
+// RUNTIME_ID is canonical; MASTRA_RESOURCE_ID is the additive
 // alternative for Mastra Code. MASTRA_RESOURCE_ID is spoofable until LIM-3 caller-identity
-// ships in Plan 5 (deferral D5).
+// ships (deferred, D5).
 // Read fresh on each call so test env-var mutations are honored.
 function identityCandidates() {
   return [
@@ -517,7 +517,7 @@ function evaluateShimFileSettingsIntegration(settingsPath) {
 
 function checkSettingsIntegration(runtimeId, rootPath) {
   const runtime = RUNTIMES[runtimeId];
-  // Phase E Plan 4: Mastra Code has two settings-like files (hooks.json + settings.json);
+  // Mastra Code has two settings-like files (hooks.json + settings.json);
   // Claude Code and Droid use a single settings.json with a `hooks` block.
   // Strategy: for declarative runtimes (those with `declarative_hooks`), require all 4
   // universal-hook commands in the declarative config. For shim-file runtimes, require all
@@ -529,7 +529,7 @@ function checkSettingsIntegration(runtimeId, rootPath) {
 }
 
 /**
- * Phase E Plan 4 — Req #6 (hook-declarative-config).
+ * Req #6 (hook-declarative-config).
  * For runtimes with declarative hook configs (Mastra Code + future), assert that
  * `<surface>/hooks.json` parses AND has the 4 required event-type entries
  * (PreToolUse, UserPromptSubmit, SessionStart — PostToolUse/Stop/Notification optional)
@@ -594,7 +594,7 @@ function checkHookDeclarativeConfig(runtimeId, rootPath) {
   return evaluateDeclarativeHooks(hooksPath, parsed.data);
 }
 
-// Phase E Plan 4 — Req #7 (settings-no-bypass).
+// Req #7 (settings-no-bypass).
 // Each entry is a documented bypass for the loop's gates; enabling any is rejected.
 // `shellPassthrough:true` bypasses the bash-gate hook entirely; `disableHooks:true`
 // disables all hooks; `disableMcp:true` disables MCP server connections (the loop IS
@@ -630,7 +630,7 @@ function evaluateSettingsBypass(settingsPath) {
 }
 
 /**
- * Phase E Plan 4 — Req #7 (settings-no-bypass).
+ * Req #7 (settings-no-bypass).
  * Reject settings that bypass our gates (e.g., Mastra Code's `shellPassthrough: true`).
  * Adversarial: an operator who sets shellPassthrough: true would bypass the bash-gate hook
  * entirely (hooks don't fire when commands are passed-through). Reject loudly.
@@ -649,7 +649,7 @@ function checkSettingsNoBypass(runtimeId, rootPath) {
   return evaluateSettingsBypass(settingsPath);
 }
 
-// Plan 5-Lite Phase 3 — Req #9 (.mastracode-config-presence).
+// Req #9 (.mastracode-config-presence).
 // For mastra-code, assert .mastracode/ exists with the 4 config files.
 // Other runtimes: applicable:false.
 const MASTRACODE_REQUIRED_FILES = ["mcp.json", "hooks.json", "settings.json", "database.json"];
@@ -675,7 +675,7 @@ function checkMastracodeConfigPresence(runtimeId, rootPath) {
   };
 }
 
-// Plan 5-Lite Phase 3 — Req #10 (mastracode-session-start-pins-loop-surface).
+// Req #10 (mastracode-session-start-pins-loop-surface).
 // For mastra-code, assert .mastracode/mcp.json sets env.LOOP_SURFACE on the
 // learning-loop server entry (the operator-chosen env-field wiring approach;
 // shim wiring was replaced by this simpler, more robust mechanism).
@@ -711,7 +711,7 @@ function checkMastracodeSessionStartPinsLoopSurface(runtimeId, rootPath) {
   };
 }
 
-// Plan 5-Lite Phase 3 — Req #11 (tools-manifest-has-path-fields).
+// Req #11 (tools-manifest-has-path-fields).
 // Project-wide invariant: every entry in tools/manifest.json declares
 // pathFields: string[] (may be []). The manifest is JSONC (full-line // comments
 // only); the validator strips comments before parsing, mirroring the shim in
@@ -805,10 +805,10 @@ export function validate(runtimeId, rootPath = process.cwd()) {
     checkSkillSpec(runtimeId, resolvedRoot),
     checkIdentityMarker(runtimeId),
     checkSettingsIntegration(runtimeId, resolvedRoot),
-    // Phase E Plan 4: Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
+    // Req #6 (hook-declarative-config) + Req #7 (settings-no-bypass).
     checkHookDeclarativeConfig(runtimeId, resolvedRoot),
     checkSettingsNoBypass(runtimeId, resolvedRoot),
-    // Plan 5-Lite Phase 3: Req #9 (.mastracode-config-presence),
+    // Req #9 (.mastracode-config-presence),
     // Req #10 (mastracode-session-start-pins-loop-surface),
     // Req #11 (tools-manifest-has-path-fields — project-wide invariant).
     checkMastracodeConfigPresence(runtimeId, resolvedRoot),

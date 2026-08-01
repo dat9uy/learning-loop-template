@@ -266,7 +266,7 @@ const server = new LoopMCPServer({
   name: "learning-loop",
   version: "0.1.2",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2+3). 31 tools + 10 workflows + 3 agents across 6 groups.",
+    "Mastra-based canonical MCP server for the learning loop. 31 tools + 10 workflows + 3 agents across 6 groups.",
   tools,
   workflows,
   agents,

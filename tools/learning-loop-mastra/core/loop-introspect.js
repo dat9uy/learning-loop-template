@@ -120,7 +120,7 @@ function listAllMetaCategories() {
  * warm tier and the SessionStart hook. Back-compat projection over the
  * canonical registry (the hint-registry collapse).
  *
- * Returns a frozen array — preserved from the pre-Phase-2 contract.
+ * Returns a frozen array, preserving the established return contract.
  * Pure function — no I/O.
  */
 export function buildDiscoverabilityHints() {
@@ -266,8 +266,8 @@ function top5OldestFirst(filtered, mapFn) {
 }
 
 export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIndex, codeHashes, opts = {}) {
-// M7): thread fileIndex + codeHashes through
-  // to isStaleView so the fixable-candidates filter can fire on drift, not
+  // fileIndex + codeHashes are threaded through to isStaleView so the
+  // fixable-candidates filter can fire on drift, not
   // just age. Backward compat: callers that don't pass them get age-only.
   // Top-5 candidates: stale findings, non-empty evidence_code_ref,
   // severity !== "escalate", no ledger_ref, non-terminal.
@@ -281,7 +281,7 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIn
   const candidates = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      // Phase 2: source the fixable-candidate filter from the derived view
+      // The fixable-candidate filter is sourced from the derived view
       // (`isStaleView`) rather than literal `status === "stale"`. Tolerates
       // legacy `stale` entries pre-migration and stays correct after the
       // migration flips them to `open`.
@@ -311,9 +311,9 @@ export function buildStaleDispatchHints(entries, dispatchIds = new Set(), fileIn
   const orphanFindings = top5OldestFirst(
     entries
       .filter((e) => e.entry_kind === "finding")
-      // Phase 2: orphan-findings filter uses `isOpen` instead of literal
+      // The orphan-findings filter uses `isOpen` instead of literal
       // active|reported; this stays correct through the migration and matches
-      // the post-Phase-4 canonical set.
+      // the canonical post-migration set.
       .filter((e) => isOpen(e))
       .filter((e) => dispatchIds.has(e.id))
       .filter((e) => !e.ledger_ref),
@@ -498,7 +498,7 @@ function filterByCategories(findings, categories) {
 
 /**
  * List active findings (open or open-equivalent status) from meta-state.
-// filter is `isOpen(e)` instead of literal
+ * The filter is `isOpen(e)` instead of literal
  * reported|active. `open` is the canonical post-migration status; legacy
  * `active`/`reported`/`stale` are tolerated by `isOpen` pre-migration.
  */
@@ -543,7 +543,7 @@ export function listAllFindings(root, { categories } = {}) {
  * Only returns command-path rules (regex/glob) for discoverability surfaces.
  * determinism-checklist rules are not discoverable via command/path matching.
  *
- * Phase 4: synthesizes backward-compatible shape from both entry_kind="rule"
+ * Synthesizes a backward-compatible shape from both entry_kind="rule"
  * (first-class) and legacy finding entries with promoted_to_rule.
  */
 export function listPromotedRules(root) {

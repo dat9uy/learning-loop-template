@@ -65,7 +65,7 @@ const KNOWN_REJECTION_CODE_PREFIXES = [
   // registry lock / atomic-append
   "registry_lock_failed",
   "ledger_append_failed",
-  // promote-rule guard (Phase 1)
+  // promote-rule guard
   "pattern_matches_cli_transport",
   "pattern_rejected_by_safety_check",
 ];

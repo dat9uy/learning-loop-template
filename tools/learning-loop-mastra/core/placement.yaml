@@ -83,10 +83,10 @@ files:
     summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads.
   - path: canonical-compare.js
     role: primitive
-    summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (Tier 2 Phase B; resolves meta-260715T2311Z-gratuitous-mutations).
+    summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (resolves meta-260715T2311Z-gratuitous-mutations).
   - path: registry-append-atomic.js
     role: primitive
-    summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (Tier 2 Phase B; RT H1 + H4).
+    summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (RT H1 + H4).
   - path: cli-tools.js
     role: primitive
     summary: Shared CLI read+write tool set used by the CLI allowlist and opted-in MCP exclusion (LOOP_READS_VIA_CLI / LOOP_RECORDS_VIA_CLI).
@@ -146,7 +146,7 @@ files:
     summary: Shared core constants (STALENESS_WINDOW_MS) — single source of truth to prevent cross-module drift.
   - path: update-entry-helpers.js
     role: helper
-    summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede (Phase 4 extraction).
+    summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede.
   - path: operation-envelope.js
     role: helper
     summary: Operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
@@ -203,10 +203,10 @@ files:
     summary: Reads workflow manifest and provides lookup helpers.
   - path: bound-artifacts.js
     role: facade
-    summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js (Phase 3 of loop-skill-layer-prerequisite).
+    summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js.
   - path: change-log-bound-paths.js
     role: facade
-    summary: Rec 12 detection set (CHANGE_LOG_BOUND_PATHS) + canonicalizeChangeTarget — sibling of bound-artifacts.js for gap detection (Phase 1 of rec12-closed-loop).
+    summary: Rec 12 detection set (CHANGE_LOG_BOUND_PATHS) + canonicalizeChangeTarget — sibling of bound-artifacts.js for gap detection.
   - path: git-diff.js
     role: facade
-    summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder (Phase 2 of rec12-closed-loop).
+    summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder.

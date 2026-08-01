@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Phase A (Tier 2): one-time migration script that backfills `version: 0` on
+// One-time migration script that backfills `version: 0` on
 // every entry in meta-state.jsonl missing a non-null integer `version`.
 //
-// Script header documentation (Phase A step 5h, RT-M1):
+// Script header documentation (RT-M1):
 //   Default `version: 0` means "no patches applied yet". Per Validation
 //   Session 1 Q1, this default is consistent with `metaStateEntrySchema.default(0)`
 //   (see core/meta-state.js) and the write-path semantics at
 //   core/meta-state.js#writeEntry/updateEntry where every patch bumps version
 //   from 0 to 1+. Audited safe.
 //
-// This backfill is the precondition for the Phase A projection swap
+// This backfill is the precondition for the projection swap
 // (`_readAndParseRegistry` now picks `max_by(.version)` per id). Without it,
 // `jq max_by(.version)` on a partial-null group picks the NON-null integer
 // (which is fine) but on an ALL-null group returns an arbitrary group member
@@ -131,7 +131,7 @@ async function run() {
         command_prefix: `node backfill-versions.mjs --root=${root}`,
         rule_id: "phase-a-backfill-versions",
         decision: "write",
-        reason: `Phase A backfill: ${missingCount} entries missing version → set to 0 (raw_lines=${rawLineCount})`,
+        reason: `Version backfill: ${missingCount} entries missing version → set to 0 (raw_lines=${rawLineCount})`,
       });
 
       // Atomic write via UNIQUE tmp file (RT-H2: concurrent MCP writers use

@@ -32,7 +32,7 @@ import { resolveSafePath, PathContainmentError } from "./path-containment.js";
  * Any other value (false, "true", 1, null, undefined) yields `skipped`.
  *
  * Top-level evidence fields: reads `entry.evidence_code_ref` (nested form was
- * removed by migration in plan 260607-dual-field-schema-unification).
+ * removed by the dual-field-schema-unification migration).
  *
  * Path safety: the function does not validate path safety — callers should
  * sanitize paths. Relative paths are joined with `codeContext.root` using
@@ -185,7 +185,7 @@ export function checkGrounding(entry, codeContext) {
     }
   }
 
-  // Baseline resolution (Phase 3 repoint): the file-index sidecar is the
+  // Baseline resolution: the file-index sidecar is the
   // authoritative baseline, passed in via codeContext.fileIndex (a
   // Map<canonicalKey, hash> or undefined) so this pure function stays pure
   // (no disk read of the sidecar). The index key is the stripped relative

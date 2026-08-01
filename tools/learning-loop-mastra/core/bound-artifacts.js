@@ -14,7 +14,7 @@
  *   - Special-case rules (preflight-marker, product/**) are NOT in this
  *     constant; they delegate to `evaluatePreflight` and stay in
  *     `evaluate-write-gate.js`.
- *   - Phase 5 will extend the constant with `<surface>/skills/**` via
+ *   - Future work will extend the constant with `<surface>/skills/**` via
  *     a derived-glob shape (skills is a preflight-delegating rule, not a
  *     simple glob); when that lands this module grows accordingly.
  *

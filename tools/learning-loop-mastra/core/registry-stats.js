@@ -1,4 +1,4 @@
-// Tier 2 Phase C: registry-stats helper.
+// Registry-stats helper.
 //
 // Shared by:
 //   - `loop_describe` warm tier (no shell subprocess from MCP server —
@@ -18,8 +18,7 @@
 //                          (default 1000; overridable via env var)
 //
 // Plus a separate `findDuplicateVersionPerId(entries)` helper for the
-// same-id-concurrent-mutation CI advisory (one warning per id) — Phase C
-// Q2 (Validation Session 1). Implemented as a standalone function so the
+// same-id-concurrent-mutation CI advisory (one warning per id). Implemented as a standalone function so the
 // script can call it on a parsed array without coupling to the file
 // reader.
 
@@ -104,8 +103,7 @@ function deriveStats(entries, rawLines) {
 /**
  * Find ids that appear on more than one line in `entries`. Returns one
  * record per affected id with the line count. Used by the Q2
- * same-id-concurrent-mutation CI advisory (Phase C, Validation Session 1
- * Q2: pre-merge WARNING only).
+ * same-id-concurrent-mutation CI advisory (pre-merge WARNING only).
  *
  * Defensive: tolerates missing/null id, missing version field.
  *

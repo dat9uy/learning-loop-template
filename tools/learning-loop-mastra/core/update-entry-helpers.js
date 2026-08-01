@@ -7,12 +7,12 @@
  * outcome carrying the current registry version (so the caller can include it
  * in the tool's wire result), and any other non-`true` return is a bug.
  *
- * Phase 4: extracted from the inline duplication in
+ * Extracted from the inline duplication in
  * `meta-state-re-verify-tool.js` and `meta-state-supersede-tool.js` (15-line
  * dup `c6f32007` flagged by fallow).
  *
-// success-path returns `{ok: true, entry}` after
- * re-reading the registry. The re-read asserts the entry is visible (otherwise
+ * The success path returns `{ok: true, entry}` after re-reading the registry.
+ * The re-read asserts the entry is visible (otherwise
  * the persistence path silently dropped the write — T4/T5 silent-persistence-fail
  * class). Backward-compatible: existing callers that destructure `{ok}` still
  * work; new callers can use `entry` to observe the actual persisted shape.

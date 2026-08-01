@@ -14,9 +14,8 @@
 
 import { findProjectRoot } from "./gate-logic.js";
 // shared unified age predicate replaces the
-// gate-local `findStaleObservations` (deleted from gate-logic.js in this
-// phase). The shared selector uses the unified `OBSERVATION_STALENESS_WINDOW_MS`
-// and is the same primitive the bash gate's marker mode uses in Phase 4.
+// gate-local `findStaleObservations` (deleted from gate-logic.js). The shared selector uses the unified `OBSERVATION_STALENESS_WINDOW_MS`
+// and is the same primitive the bash gate's marker mode uses.
 import { findObservationsStaleByAge } from "./observation-staleness.js";
 import { readRuntimeObservations } from "./file-readers.js";
 // Per-surface tracking toggle: a paused surface's stale observations are
@@ -176,8 +175,8 @@ function loadStaleActiveObservations(resolvedRoot) {
     .filter((obs) => obs.status === "active")
     .filter((obs) => !isSurfacePausedRead(resolvedRoot, obs.affected_system));
   if (active.length === 0) return null;
-// shared age predicate from observation-staleness.
-  // Phase 2's projection dedup means the scan is now per-surface-latest
+  // shared age predicate from observation-staleness.
+  // The projection dedup means the scan is per-surface-latest
   // (precise) instead of per-raw-row (conservative). F1 invariant
   // structurally preserved: stale-on-null keeps defensiveness on malformed
   // state.

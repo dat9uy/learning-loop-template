@@ -151,7 +151,7 @@ function classifyRef(entry, sourceKind, ref, target) {
 // other. That is corruption and stays blocking.
 //
 // A SAME-KIND multi-row id is NOT corruption. Under the versioned-append
-// write-path (Tier 2 Phase B), every patch/refinement appends a new line
+// write-path (versioned-append), every patch/refinement appends a new line
 // with the same id + same entry_kind, and the read projection
 // (core/meta-state.js#_readAndParseRegistry) dedupes by max-version (tie-
 // break on created_at). A same-version same-kind pair is a parallel-merge

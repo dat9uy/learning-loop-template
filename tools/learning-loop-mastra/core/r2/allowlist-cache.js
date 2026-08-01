@@ -1,5 +1,5 @@
 /**
- * R2 allowlist cache (F1, NF1 / Plan 5-Lite Phase 1).
+ * R2 allowlist cache (F1, NF1).
  *
  * Loads `.loop/r2-allowlist.json` once per process per root and caches it for
  * the process lifetime. Operator edits via the `update_r2_allowlist` MCP tool

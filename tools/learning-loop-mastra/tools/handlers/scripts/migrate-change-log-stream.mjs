@@ -14,11 +14,11 @@
 // ids) and exits 0 without rewriting. Re-running on a migrated tree is a no-op.
 //
 // Pre-flight: dedupes by id FIRST (Red Team F3 — live file had 313 lines / 309
-// unique ids at planning time; Phase 01a already collapsed the 4 historical
-// dup-id groups, but the script is defensive and re-dedupes regardless).
+// unique ids at planning time; the 4 historical dup-id groups are already
+// collapsed, but the script is defensive and re-dedupes regardless).
 //
 // Pre-flight: normalizes `consolidates` from a legacy single-string (CSV)
-// value to a one-element array (Validation Session 1 Q2 + Phase 2 schema
+// value to a one-element array (Validation Session 1 Q2 + the schema
 // change to z.array(z.string())). New writes already use arrays.
 //
 // Order within each file: preserves the live file order so the
@@ -87,8 +87,8 @@ function normalizeConsolidates(entry) {
 }
 
 // Red Team F3: dedupe by id FIRST, keeping max_by(.version) with
-// created_at-desc as the tie-break (later wins). Phase 01a already collapsed
-// the 4 historical dup-id groups at planning time, but this script is
+// created_at-desc as the tie-break (later wins). The 4 historical dup-id
+// groups were already collapsed at planning time, but this script is
 // defensive and re-dedupes regardless.
 function dedupeById(entries) {
   const byId = new Map();
