@@ -68,6 +68,12 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // Recovery policy + write-tool sketches are surfaced.
   assert.ok(banner.includes("InternalError"), "banner must name the InternalError shape");
   assert.ok(banner.includes("Write-tool arg sketches"), "banner must label the sketches section");
+  // The file-backed dispatch form must be advertised so agents with
+  // gate-sensitive or shell-risky payloads know the alternate shape.
+  assert.ok(
+    banner.includes("--args-file <path>"),
+    "records-via-cli banner must advertise the --args-file form",
+  );
   // Spot-check a few write tools are present in the sketches section.
   for (const writeTool of [
     "meta_state_report",
@@ -82,6 +88,37 @@ test("transport banner with recordsViaCli adds write-tool sketches (one-liner pe
   // No full schema re-injection: the banner must not embed a JSON
   // schema's `$schema` key (it would mean a schema dump leaked in).
   assert.ok(!banner.includes('"$schema"'), `banner must not embed a JSON schema; got: ${banner.slice(0, 500)}`);
+});
+
+test("--args-file dispatch form is covered in the banner footer", () => {
+  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  assert.match(
+    banner,
+    /loop\.mjs <tool> --args-file <path>/,
+    "records-via-cli banner must show the inline JSON + file-form invocation guidance",
+  );
+});
+
+test("meta_state_report sketch inlines the required category enum values", () => {
+  const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
+  // The promotion-path enum is enforced by the record-writer schema; the
+  // banner must surface every value so an agent does not have to learn
+  // the contract via a `--schema` round-trip.
+  for (const value of [
+    "gate-logic-bug",
+    "record-repair-gap",
+    "schema-drift",
+    "mcp-tool-missing",
+    "budget-check",
+    "loop-anti-pattern",
+  ]) {
+    assert.ok(
+      banner.includes(value),
+      `meta_state_report sketch must list category value "${value}"`,
+    );
+  }
+  // The severity enum is also enforced.
+  assert.ok(banner.includes("severity:warning|escalate"), "sketch must list the severity enum");
 });
 
 test("transport banner interpolates the pinned LOOP_SURFACE value so the agent need not guess", () => {

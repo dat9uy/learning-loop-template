@@ -14,6 +14,7 @@
 // Usage:
 //   node bin/loop.mjs list
 //   node bin/loop.mjs <tool> '<json-args>'
+//   node bin/loop.mjs <tool> --args-file <path>   # read JSON args from a file
 //   node bin/loop.mjs <tool> --schema    # pull the normalized input schema
 //
 // Exit codes (repo convention per validate-registry-refs.js:240-274):
@@ -186,6 +187,62 @@ function parseToolDispatch(subcommand, jsonArgs) {
   return { kind: "tool", tool: subcommand, jsonArgs };
 }
 
+// Read the JSON payload file. Mirrors the inline path: anything other
+// than a clean UTF-8 read is a UsageError (exit 2) so the agent sees a
+// caller-side problem, not a handler error. We do not print file
+// contents to keep error messages free of payload leakage.
+function loadArgsFile(path) {
+  try {
+    const content = readFileSync(path, "utf8");
+    if (content.trim() === "") {
+      throw new UsageError(`empty args file: ${path}`);
+    }
+    return content;
+  } catch (err) {
+    if (err instanceof UsageError) throw err;
+    throw new UsageError(`cannot read args file ${path}: ${err.code ?? err.message}`);
+  }
+}
+
+// Resolve the file-backed invocation shape. Accepts:
+//   loop.mjs <tool> --args-file <path>      (canonical)
+//   loop.mjs --args-file <tool> <path>      (mirrors the inline form)
+// Rejects everything else (extra args, missing path, file in the wrong
+// slot) with a usage error so callers never see a silent dispatch.
+function resolveArgsFileAction(argv) {
+  const subcommand = argv[2];
+  const slot3 = argv[3];
+  const slot4 = argv[4];
+  if (subcommand === "--args-file") {
+    if (!slot3) {
+      throw new UsageError(`usage: loop.mjs --args-file <tool> <path>`);
+    }
+    if (!CLI_TOOLS.has(slot3)) {
+      throw new UsageError(`unknown tool for --args-file: ${slot3}`);
+    }
+    if (!slot4) {
+      throw new UsageError(`usage: loop.mjs --args-file ${slot3} <path>`);
+    }
+    if (argv.length > 5) {
+      throw new UsageError(`too many arguments for --args-file; usage: loop.mjs --args-file <tool> <path>`);
+    }
+    return { kind: "args-file", tool: slot3, path: slot4 };
+  }
+  if (slot3 === "--args-file") {
+    if (!slot4) {
+      throw new UsageError(`usage: loop.mjs ${subcommand} --args-file <path>`);
+    }
+    if (argv.length > 5) {
+      throw new UsageError(`too many arguments for --args-file; usage: loop.mjs <tool> --args-file <path>`);
+    }
+    if (!CLI_TOOLS.has(subcommand)) {
+      throw new UsageError(`unknown tool: ${subcommand}`);
+    }
+    return { kind: "args-file", tool: subcommand, path: slot4 };
+  }
+  return null;
+}
+
 async function main() {
   const [, , subcommand, jsonArgs] = process.argv;
   // Plain `if` chain (not switch + ??): fallow scores cyclomatic per
@@ -200,6 +257,16 @@ async function main() {
   const schemaAction = parseSchemaDispatch(subcommand, jsonArgs);
   if (schemaAction) {
     await runSchema(schemaAction.tool);
+    return;
+  }
+  // File-backed form. Resolved before parseToolDispatch so it takes
+  // precedence over the inline JSON branch.
+  const argsFileAction = resolveArgsFileAction(process.argv);
+  if (argsFileAction) {
+    pinRuntimeIdAtBoot();
+    const content = loadArgsFile(argsFileAction.path);
+    const result = await runTool(argsFileAction.tool, content);
+    process.stdout.write(JSON.stringify(result) + "\n");
     return;
   }
   // parseToolDispatch throws UsageError on missing args, so reaching here
