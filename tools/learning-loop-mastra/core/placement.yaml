@@ -153,6 +153,9 @@ files:
   - path: operation-invariant.js
     role: primitive
     summary: Universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
+  - path: stable-artifacts-lineage.js
+    role: primitive
+    summary: Shared plan-ID/phase-number lineage matcher (PATTERNS + durable-id masking + findLineageMatches) for the stable-artifacts rule; single source of truth consumed by the file-scan test and the commit-msg hook.
 
   # === evaluator ===
   - path: evaluate-write-gate.js

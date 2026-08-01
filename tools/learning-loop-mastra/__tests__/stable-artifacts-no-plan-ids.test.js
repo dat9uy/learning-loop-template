@@ -25,29 +25,14 @@ import { test, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findLineageMatches } from "../core/stable-artifacts-lineage.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const SCAN_ROOT = join(REPO_ROOT, "tools", "learning-loop-mastra");
 
-// Six patterns detect plan-ID / phase-number lineage. The first three cover
-// plan-ID reference forms (path, narrative, capital-P dominant case, and the
-// hyphenated "plan-NNNNNN-NNNN" variant). The last three ban bare plan/phase
-// ordinals ("Plan 4", "Plan 5-Lite", "Phase 3", "Phase-3", "Phase A") —
-// ephemeral plan lineage even without a date-stamped ID. All reference forms
-// observed in the codebase scan:
-//   - bare plan paths: plans/999999-xxx, plan/999999-xxx
-//   - "Phase N of plan/plans" narrative form (trailing \b rejects "planning")
-//   - "Plan NNNNNN-NNNN" / "plan-NNNNNN-NNNN" date-stamped IDs
-//   - bare ordinals: "Plan 4", "Phase 1..5", "pre-Phase-2", "read-only-after-Phase-3"
-//   - letter phases: "Phase A", "Tier 2 Phase B", "Phase C", "Phase D"
-const PATTERNS = [
-  /\bplans?\/\d{6}-/i,
-  /Phase \d+ of (plan|plans)\b/i,
-  /[Pp]lan[- ]\d{6}-\d{4}/,
-  /\b[Pp]lans? \d+\b/,
-  /\b[Pp]hase[- ]\d+\b/,
-  /\b[Pp]hase [A-E]\b/,
-];
+// The detection patterns + durable-id masking live in core/stable-artifacts-
+// lineage.js so this file-scan test and the commit-msg hook share one matcher
+// and cannot drift apart. See that module for the pattern rationale.
 
 // File extensions included in the scan.
 const EXTENSIONS = new Set([".js", ".cjs", ".mjs", ".yaml"]);
@@ -92,17 +77,6 @@ function walk(dir) {
   return entries;
 }
 
-// Durable registry ids are exempt by design: finding/rule/loop-design ids are
-// durable pointers, not ephemeral lineage, and a plan date-stamp can appear
-// inside an id slug (e.g. a finding whose slug records the plan that triggered
-// it). Mask whole id tokens before pattern matching so the ban targets
-// lineage REFERENCES, never the id of a registry artifact.
-const DURABLE_ID_TOKEN = /\b(?:meta|rule|loop-design)-[0-9a-zA-Z][0-9a-zA-Z-]*/g;
-
-function maskDurableIds(line) {
-  return line.replace(DURABLE_ID_TOKEN, (m) => m.split("-")[0] + "-<id>");
-}
-
 function scanCurrentMatches() {
   const matches = [];
   for (const file of walk(SCAN_ROOT)) {
@@ -111,11 +85,9 @@ function scanCurrentMatches() {
     if (isExcludedPath(relFromScanRoot)) continue;
     const ext = file.slice(file.lastIndexOf("."));
     if (!EXTENSIONS.has(ext)) continue;
-    const lines = readFileSync(file, "utf8").split("\n");
-    for (const line of lines) {
-      if (PATTERNS.some((p) => p.test(maskDurableIds(line)))) {
-        matches.push(matchKey(relFromRoot, line));
-      }
+    const content = readFileSync(file, "utf8");
+    for (const h of findLineageMatches(content)) {
+      matches.push(matchKey(relFromRoot, h.content));
     }
   }
   return matches.sort();
@@ -141,7 +113,7 @@ test("stable-artifacts-no-plan-ids: allowlist is the empty total-ban array", () 
 // good input. The test synthesizes both directions so a regression in any of
 // the patterns / masking / exclusions / matchKey logic fails the build.
 test("stable-artifacts-no-plan-ids: synthetic matcher catches known-bad input", () => {
-  const matches = (line) => PATTERNS.some((p) => p.test(maskDurableIds(line)));
+  const matches = (line) => findLineageMatches(line).length > 0;
   // True positives — must trigger the matcher.
   const bad = [
     "// Plan 260711-0030 Phase 5: marker file .last-operator-message is shared",

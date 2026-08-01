@@ -48,6 +48,7 @@
     "vitest": "^4.1.10"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm test && pnpm fallow:gate"
+    "pre-commit": "pnpm test && pnpm fallow:gate",
+    "commit-msg": "node tools/learning-loop-mastra/hooks/commit-msg-stable-artifacts.js $1"
   }
 }

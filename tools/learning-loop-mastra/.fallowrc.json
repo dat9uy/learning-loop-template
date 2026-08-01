@@ -13,7 +13,8 @@
     "storage.js",
     "scripts/**",
     "bin/loop.mjs",
-    "core/hint-renderer.js"
+    "core/hint-renderer.js",
+    "hooks/commit-msg-stable-artifacts.js"
   ],
 
   "dynamicallyLoaded": [
