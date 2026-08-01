@@ -124,7 +124,7 @@ export const metaStateBatchTool = {
 //
 // (1) and (2) intentionally pass-through to core so the existing core
 // behavior (with its deny-list precedence) is preserved; (3) and (4) are
-// the new pre-walk rejections introduced by plan 260717-1145 Phase 3.
+// the new pre-walk rejections introduced by the batch envelope pass-through.
 function preflightUpdateOp(root, ops, i, existingById) {
   const op = ops[i];
   if (!op || op.op !== "update") return null;

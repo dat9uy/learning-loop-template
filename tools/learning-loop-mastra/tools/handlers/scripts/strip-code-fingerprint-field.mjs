@@ -2,8 +2,8 @@
 /**
  * Strip `code_fingerprint` VALUES from every finding in meta-state.jsonl
  * (incl. resolved/superseded — an intentional, logged exception to audit-
- * immutability per plan 260702-1933 Phase 6). The schema field stays (@deprecated,
- * optional); the index (file-index.jsonl) is the sole authoritative baseline.
+ * immutability). The schema field stays (@deprecated, optional); the index
+ * (file-index.jsonl) is the sole authoritative baseline.
  *
  * Idempotent: a second run finds no values to strip (already absent).
  * Dry-run by default: prints the count of values that WOULD be stripped. Pass

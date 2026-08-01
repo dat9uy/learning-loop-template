@@ -6,8 +6,8 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertinvariantSync } from "./operation-invariant.js";
-// Plan 260720-1112 Phase 1: consume the shared runtime-state read path so the
-// sidecar parse is no longer forked (B-widening of plan 260719-2201). A
+// Consume the shared runtime-state read path so the sidecar parse is no
+// longer forked (B-widening of the runtime-state read extraction). A
 // "null" line (JSON.parse("null") → null) used to trip the outer try/catch
 // and wipe the projection to []; now it's skipped at the parse layer
 // (parsed → null, then .filter(Boolean)) and the projection only sees valid

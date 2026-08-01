@@ -1,8 +1,7 @@
 // core/schema-normalize.js — transport-agnostic seam for handler input schemas.
 //
-// Phase 1 of plans/260721-1933-cli-transport-phase1-read-only-slice lifts
-// `normalizeInputSchema` out of mastra/create-loop-tool.js so the Phase-2
-// read-only CLI can reuse it without importing the MCP transport's deps.
+// `normalizeInputSchema` lives here so non-Mastra consumers (the read-only
+// CLI) can reuse it without importing the MCP transport's deps.
 //
 // Boundary contract: this file imports ONLY zod. MCP-only siblings
 // (mastra/schema-parity.js, mastra/with-r2-gate.js) intentionally stay

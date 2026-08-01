@@ -1,4 +1,4 @@
-// cli-stderr.js — Phase 2 of plans/260722-1343-write-capable-cli-w.
+// cli-stderr.js — write-capable CLI stderr classifier.
 //
 // Structured stderr for the write-capable CLI. Splits the non-usage error
 // branch into two distinct shapes so the agent's recovery policy can tell

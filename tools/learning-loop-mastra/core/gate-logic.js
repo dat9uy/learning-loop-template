@@ -32,7 +32,7 @@ const CONSTRAINT_PATTERNS = Object.fromEntries(
 );
 
 // `records-evidence` was the only observation-based unlock for `records/evidence/**`.
-// It was migrated to meta-state (Phase A) and the unlock removed in plan 260614-1856.
+// It was migrated to meta-state (Phase A reframe) and the unlock removed.
 // Direct writes to `records/**` are now blocked unconditionally by write-gate.js.
 const WRITE_PATH_PATTERNS = {
   'records-index': ['records/index/**', 'records/*/index/**'],

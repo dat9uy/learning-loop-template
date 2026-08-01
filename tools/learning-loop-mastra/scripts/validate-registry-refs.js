@@ -11,8 +11,8 @@
  * ref is real (cross-PR orphans either self-healed on merge or never existed).
  * Pre-merge cross-PR detection was down-tiered — the pre-merge
  * `meta-state-pr-body-advisory.yml` only WARNS on the PR's own diff (and now
- * FAILS on a new unresolved `consolidates`/`supersedes` ref as a backstop —
- * plan 260715-1608 Phase 1). Cross-PR refs self-heal on merge.
+ * FAILS on a new unresolved `consolidates`/`supersedes` ref as a backstop).
+ * Cross-PR refs self-heal on merge.
  *
  * Pure functions (`isTerminalSource`, `isStaleViewLike`, `outboundRefsOf`,
  * `computeDanglingRefs`) are exported so the test suite can cover them in-process;

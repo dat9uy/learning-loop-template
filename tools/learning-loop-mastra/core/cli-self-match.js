@@ -1,4 +1,4 @@
-// cli-self-match.js — Phase 1 of plans/260722-1343-write-capable-cli-w.
+// cli-self-match.js — write-capable CLI invocation-shape guard.
 //
 // Single source of truth for the canonical CLI invocation shapes that a
 // regex rule MUST NOT match. The promote-rule tool's activation path uses

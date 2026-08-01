@@ -1,10 +1,10 @@
 // core/runtime-state.js — shared runtime-sidecar (runtime-state.jsonl) helpers.
 //
-// Extracted from runtime-state-record-tool.js in plan 260704-0301-stale-findings-
-// dispatch-handle Phase 2 (DRY). The original tool defined `computeFingerprint`
-// inline + wrote via appendFileSync — both extracted here so the new
-// meta_state_dispatch_finding tool (also writing ledger events) can reuse
-// the same append + fingerprint path without duplicating the crypto.
+// Extracted from runtime-state-record-tool.js to DRY the append + fingerprint
+// path. The original tool defined `computeFingerprint` inline + wrote via
+// appendFileSync — both extracted here so the new meta_state_dispatch_finding
+// tool (also writing ledger events) can reuse the same append + fingerprint
+// path without duplicating the crypto.
 //
 // IMPORTANT (P2 F6 — orthogonal-gate design): this helper does NOT enforce
 // preflight. The preflight check (`hasPreflightMarker(root)`) stays at the

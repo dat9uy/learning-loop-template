@@ -16,9 +16,8 @@ import { withR2Gate } from "./with-r2-gate.js";
  * migration wrappers (preprocess / guarded-boolean unions) while leaving parse
  * behavior strict.
  *
- * `normalizeInputSchema` lives in core/schema-normalize.js (Phase 1 of plan
- * 260721-1933) so transport-agnostic consumers (the read-only CLI) can reuse
- * it without importing @mastra/core.
+ * `normalizeInputSchema` lives in core/schema-normalize.js so transport-agnostic
+ * consumers (the read-only CLI) can reuse it without importing @mastra/core.
  */
 
 function attachParityJSONSchema(schema, parityHints) {

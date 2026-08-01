@@ -132,12 +132,11 @@ function computeDanglingRefs(refs, entries, signals = {}) {
  * Reimplemented on top of factory methods (Mechanism B). Wire shape is preserved;
  * the dual-field promoted_to_rule migration logic is retained for legacy findings.
  *
- * Phase 1 (Rec 8 collapse, plan 260704-0301-stale-findings-dispatch-handle):
- * the `dangling_refs` derived field surfaces refs whose target is stale,
- * missing, superseded, or resolved. This replaces the old `stale-ref`
- * follow-up emission that sweep used to produce — the same information is
- * now a derived query over the relationship graph instead of a recorded
- * finding kind.
+ * Rec 8 collapse: the `dangling_refs` derived field surfaces refs whose
+ * target is stale, missing, superseded, or resolved. This replaces the old
+ * `stale-ref` follow-up emission that sweep used to produce — the same
+ * information is now a derived query over the relationship graph instead
+ * of a recorded finding kind.
  */
 export const metaStateRelationshipsTool = {
   name: "meta_state_relationships",
