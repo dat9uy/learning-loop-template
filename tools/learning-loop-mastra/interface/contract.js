@@ -171,8 +171,8 @@ function resolveSkillPath(candidates, rootPath) {
   return null;
 }
 
-// Phase 2 of the loop-skill-layer prerequisite — frontmatter parser +
-// maturity hard-require.
+// Loop-skill-layer frontmatter parser + maturity hard-require (loop-maintained
+// skill envelope).
 // Local to contract.js so the contract validator has no dependency on
 // core/gate-logic.js's private `extractFrontmatter` (not exported). The
 // error-isolation + size cap (64KB; billion-laughs guard) match the
@@ -229,13 +229,13 @@ function lookupManifestSkill(skillsObj, name) {
 }
 
 function listLoopMaintainedSkills(skillsDir, manifest) {
-  // Phase 3 of central-skills management — manifest-driven
-  // exclusion. The manifest is the trust anchor for "is this skill external?"
-  // (Phase 1 schema; Phase 3 reads it). Explicit failure modes (red-team
-  // F8, F9): if the manifest fails to load/parse, the skill enumeration
-  // is poisoned — fail each enumerated entry with `manifest-unreadable`
-  // (NOT a misleading `maturity-not-declared` on an external skill). If a
-  // real-dir skill is NOT in the manifest, fail with `skill-not-in-manifest`
+  // Central-skills manifest-driven exclusion. The manifest is the trust anchor
+  // for "is this skill external?" (schema declares each entry; the reader
+  // consults it). Explicit failure modes (red-team F8, F9): if the manifest
+  // fails to load/parse, the skill enumeration is poisoned — fail each
+  // enumerated entry with `manifest-unreadable` (NOT a misleading
+  // `maturity-not-declared` on an external skill). If a real-dir skill is NOT
+  // in the manifest, fail with `skill-not-in-manifest`
   // (defense-in-depth: a planted real-dir skill the manifest doesn't know
   // about is a contract violation, not silently enumerated).
   //
@@ -307,7 +307,8 @@ function checkMirrorPresence(name, rootPath) {
 }
 
 /**
- * Phase 2 of the loop-skill-layer prerequisite — generalized Req #3 (skill-spec).
+ * Generalized Req #3 (skill-spec) — enumerates loop-maintained skills by their
+ * maturity frontmatter and validates each skill's contract.
  *
  * Enumerates every <surface>/skills/<name>/SKILL.md that declares a
  * `maturity:` frontmatter (the loop-maintained marker). The external `mastra`
@@ -316,7 +317,7 @@ function checkMirrorPresence(name, rootPath) {
  * not abort. The `loop_describe` + `meta_state_list` reference check is scoped
  * to `learning-loop` only (other skills do not document the tool surface).
  */
-// Generalized Req #3 of the loop-skill-layer prerequisite: per-skill enumeration + maturity
+// Generalized Req #3 (skill-spec): per-skill enumeration + maturity
 // hard-require + mirror check + scoped tool-ref. Complexity is inherent to the
 // per-skill validation loop; sub-steps are already extracted (extractSkillFrontmatter,
 // readSkillSafe, listLoopMaintainedSkills, checkMirrorPresence). Covered by

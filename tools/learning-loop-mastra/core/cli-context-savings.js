@@ -23,9 +23,9 @@
 // create-loop-tool.js:39-45). Both are constant per-tool offsets — ~8 B name
 // prefix × N tools, plus a few bytes on the one hinted tool (meta_state_patch)
 // — so they do not affect regression detection or savings_pct. Excluding them
-// keeps the ledger time-series comparable across formula revisions. The plan
-// The plan validated name=legacy.name; live MCP-wire parity is
-// owned by mcp-tools-list-parity.test.js, not this helper.
+// keeps the ledger time-series comparable across formula revisions. The
+// helper validated name=legacy.name; live MCP-wire parity is owned by
+// mcp-tools-list-parity.test.js, not this helper.
 //
 // Pure functions only — no MCP server spawn, no ledger writes, no CLI
 // surface. The hook import boundary lives in the caller (script + test),

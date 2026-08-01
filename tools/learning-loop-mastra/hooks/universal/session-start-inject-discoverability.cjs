@@ -56,7 +56,8 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_stop: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
-  // Phase 3: workflow helpers reclassified into CLI_WRITE_TOOLS.
+  // Workflow helpers reclassified into CLI_WRITE_TOOLS (the only writes that
+// ride the CLI besides meta_state_* / runtime_state_*).
   workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
   workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
   // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
@@ -241,7 +242,8 @@ function loadDispatchIds(root) {
 }
 
 /**
- * Rec 10 surfacing (phase 3 of the stale-findings dispatch handler).
+ * Rec 10 surfacing — stale-findings dispatch handler (stale-fixable candidates
+ * + orphan-finding reconciliation).
  * Builder over `entries` + dispatch ids. Returns empty shape on builder failure.
  *
  * Stale-view hash-drift fix: thread drift signals
@@ -287,9 +289,10 @@ function loadStaleDispatchHints(entries, dispatchIds, root) {
 }
 
 /**
- * Rec 12 closed-loop (phase 4): change-log gap detection. The gap builder
- * is pure (caller-supplied set); we read branch-touched paths via a
- * read-only git call (never throws). Returns empty shape on builder
+ * Rec 12 closed-loop — change-log gap detection (bound-artifact paths touched
+ * on this branch that no `meta_state_log_change` entry covers). The gap
+ * builder is pure (caller-supplied set); we read branch-touched paths via
+ * a read-only git call (never throws). Returns empty shape on builder
  * failure.
  */
 function loadChangeLogGapHints(root, entries) {
@@ -420,8 +423,8 @@ async function main() {
 
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
-  // (silent-degrade was the bug class fixed by the success-signal
-//  instrumentation: per-source degraded flag).
+  // (silent-degrade was the bug class fixed by per-source degraded-flag
+  // instrumentation; silent failures no longer slip through).
   const degradedSources = computeDegradedSources(core, registry);
   if (degradedSources.length > 0) {
     console.error(

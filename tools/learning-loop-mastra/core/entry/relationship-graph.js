@@ -1,7 +1,11 @@
 /**
  * Single source of truth for the meta-state relationship model.
  *
- * Phase 2: the relationship-model centralize-defer-drop consolidation.
+ * Cross-ref field table per kind + forward/inverse resolution; folded from
+ * existing narrow modules (parseConsolidates, inboundFromLoopDesign). The
+ * retrieval wire shape (groupOutbound, groupInbound, INBOUND_KEY_MAP,
+ * computeDanglingRefs) lives in the relationships tool because it needs
+ * stale-view machinery and is presentation logic.
  *
  * Owns (a) the cross-ref field table per kind, (b) forward + inverse resolution,
  * (c) write-time structural RI validation, and (d) the two leaf helpers

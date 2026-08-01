@@ -227,7 +227,7 @@ export function evaluateWriteGate({ filePath, root }) {
  * (mirror paths, canonical dir, or the manifest) so the block decision
  * reports the rule that actually matched, not always the mirror glob.
  *
- * Phase 5 of the loop-skill-layer prerequisite (skills preflight seam).
+ * Skills preflight seam — named seam for the dedicated `.loop-preflight-skills` marker.
  */
 // fallow-ignore-next-line unused-export
 export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
@@ -258,11 +258,12 @@ export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
  * `.loop-preflight-schemas` marker; otherwise { decision: "block", reason,
  * surface: "schemas", preflight_checklist }.
  *
- * Migrated from a dead-end BOUND_ARTIFACTS simple-glob block (the reason
- * referenced the non-existent `pnpm validate:records` script and the override
- * path was unreachable — `gate_override` requires a *promoted* rule_id, and
- * `schemas/**` was a simple-glob block, not promoted). Closes finding
- * `meta-260720T1104Z`. The dead-end BOUND_ARTIFACTS simple-glob block.
+ * Schemas preflight seam — named seam for the dedicated `.loop-preflight-schemas`
+ * marker. Migrated from a dead-end BOUND_ARTIFACTS simple-glob block
+ * (the reason referenced the non-existent `pnpm validate:records` script
+ * and the override path was unreachable — `gate_override` requires a
+ * *promoted* rule_id, and `schemas/**` was a simple-glob block, not
+ * promoted). Closes finding `meta-260720T1104Z`.
  */
 // fallow-ignore-next-line unused-export
 export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {

@@ -1,16 +1,16 @@
 /**
  * Regression test for `rule-no-plan-ids-in-stable-code-artifacts`.
  *
- * Scans `tools/learning-loop-mastra/**` for plan-ID/phase-number lineage in
- * stable code artifacts (comments, YAML data fields, contract-affecting string
- * literals). The allowlist sidecar records the current sweep targets — every
- * existing match is allowed (so the test passes today); any NEW match outside
- * the allowlist fails the test (so the bleed stops at the state-3 gate level).
+ * Total ban enforcement: scans `tools/learning-loop-mastra/**` for plan-ID/
+ * phase-number lineage in stable code artifacts (comments, YAML data fields,
+ * contract-affecting string literals). With the allowlist empty, ANY match
+ * fails the test — there is no "currently-known" set to absorb. Plan IDs and
+ * phase numbers are ephemeral lineage that belongs in plan docs / cook
+ * reports / git history, not in code.
  *
- * Per `rule-no-plan-ids-in-stable-code-artifacts`: plan IDs and phase numbers
- * are ephemeral lineage that belongs in plan docs / cook reports / git history,
- * not in code. The sweep rewrites every allowed match to describe the invariant
- * directly; this test then enforces a total ban when the allowlist is empty.
+ * The test runs as `pnpm test` → `simple-git-hooks` pre-commit
+ * (`package.json:50-51`), so any commit that re-introduces a plan-ID comment
+ * fails CI without operator action.
  *
  * Scope: `*.js`, `*.cjs`, `*.mjs`, `*.yaml` under `tools/learning-loop-mastra/**`,
  * excluding any path containing `__tests__/`, ending in `.test.js`, `.md`, or
@@ -62,8 +62,7 @@ function isExcludedPath(relPath) {
 }
 
 // Match key: file (relative to repo root, POSIX) + trimmed line content.
-// Anchoring by line CONTENT (not line number) survives Phase 2 edits that
-// shift nearby lines; the allowlist stays valid through the sweep.
+// Anchoring by line CONTENT (not line number) survives line shifts from edits.
 function matchKey(relPathFromRepoRoot, line) {
   const normalized = relPathFromRepoRoot.split(sep).join("/");
   return `${normalized}\t${line.trim()}`;
@@ -110,18 +109,74 @@ const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
 
 // ── Assertions ──────────────────────────────────────────────────────────────
 
-test("stable-artifacts-no-plan-ids: allowlist sidecar is a sorted array", () => {
+// Total ban invariant: the allowlist sidecar must be empty (intentional,
+// not accidental). The set-diff assertion below already enforces this — any
+// non-empty allowlist silently tolerates a known match, defeating the ban.
+// This assertion surfaces an accidentally non-empty sidecar at the test
+// boundary so an operator can't ship a "ban" with a populated allowlist.
+test("stable-artifacts-no-plan-ids: allowlist is the empty total-ban array", () => {
   expect(Array.isArray(allowlist)).toBe(true);
-  const sorted = [...allowlist].sort();
-  expect(allowlist).toEqual(sorted);
-  // Phase 3 invariant: allowlist must be empty (total ban). The set-diff
-  // semantics already enforce this (any match is "new" when allowlist is
-  // []), but the explicit assertion makes the empty state intentional and
-  // surfaces an accidental non-empty sidecar at the test boundary.
   expect(allowlist).toEqual([]);
 });
 
-test("stable-artifacts-no-plan-ids: no NEW plan-ID matches outside the allowlist", () => {
+// Real behavior-bearing coverage: the four patterns + exclusion logic must
+// catch every known bad input and reject every known good input. The test
+// synthesizes both directions so a regression in any of the patterns /
+// exclusions / matchKey logic fails the build.
+test("stable-artifacts-no-plan-ids: synthetic matcher catches known-bad input", () => {
+  // True positives — must trigger the matcher.
+  const bad = [
+    "// Plan 260711-0030 Phase 5: marker file .last-operator-message is shared",
+    "* plan 260711-0030 Phase 4: schema-version-skew detection",
+    "// Phase 3 of plans/260717-1826-unify-context-injection",
+    "// See plans/260602-sp1-derive-status/plan.md for the SP1 sibling.",
+  ];
+  for (const line of bad) {
+    expect(PATTERNS.some((p) => p.test(line))).toBe(true);
+  }
+
+  // True negatives — must NOT trigger (legitimate text without plan-ID form).
+  const good = [
+    "// Single source of truth for the meta-state relationship model.",
+    "// The rule's invariant: no plan IDs in stable code artifacts.",
+    "* Rec 10 stale-findings dispatch protocol — see meta-state registry.",
+    "// schemas/** was migrated to a preflight-delegating rule.",
+  ];
+  for (const line of good) {
+    expect(PATTERNS.some((p) => p.test(line))).toBe(false);
+  }
+});
+
+// Exclusions must keep test fixtures / docs / the sidecar itself out of the
+// scan surface — otherwise a fixture using `plans/260801-xxx/plan.md` as INPUT
+// data would re-introduce the very pattern the test exists to ban.
+test("stable-artifacts-no-plan-ids: exclusions keep test fixtures out of the scan", () => {
+  const excludedSamples = [
+    "__tests__",
+    "__tests__/foo.test.cjs",
+    "tools/learning-loop-mastra/__tests__/foo.test.js",
+    "tools/learning-loop-mastra/__tests__/core/foo.test.js",
+    "tools/learning-loop-mastra/core/foo.test.js",
+    "tools/learning-loop-mastra/core/README.md",
+    "tools/learning-loop-mastra/__tests__/stable-artifacts-no-plan-ids.allowlist.json",
+  ];
+  for (const rel of excludedSamples) {
+    expect(isExcludedPath(rel)).toBe(true);
+  }
+
+  // Non-excluded paths that SHOULD be scanned.
+  const scanned = [
+    "tools/learning-loop-mastra/core/meta-state.js",
+    "tools/learning-loop-mastra/tools/handlers/loop-describe-tool.js",
+    "tools/learning-loop-mastra/mastra/create-loop-tool.js",
+  ];
+  for (const rel of scanned) {
+    expect(isExcludedPath(rel)).toBe(false);
+  }
+});
+
+// The total-ban check: any match in the scan surface fails the test.
+test("stable-artifacts-no-plan-ids: no plan-ID matches in scan surface (total ban)", () => {
   const currentMatches = scanCurrentMatches();
   const allowlistSet = new Set(allowlist);
   const newMatches = currentMatches.filter((m) => !allowlistSet.has(m));
@@ -135,23 +190,4 @@ test("stable-artifacts-no-plan-ids: no NEW plan-ID matches outside the allowlist
     );
   }
   expect(newMatches).toEqual([]);
-});
-
-test("stable-artifacts-no-plan-ids: stale allowlist entries emit a non-failing warning", () => {
-  const currentMatches = scanCurrentMatches();
-  const currentSet = new Set(currentMatches);
-  const staleEntries = allowlist.filter((entry) => !currentSet.has(entry));
-
-  if (staleEntries.length > 0) {
-    // Stale entries are the natural state during the Phase 2 sweep: each
-    // rewritten comment/field leaves its allowlist entry stale until pruned.
-    // Logged but non-failing — operator prunes as the sweep progresses.
-    console.warn(
-      `stable-artifacts-no-plan-ids: ${staleEntries.length} stale allowlist ` +
-        `entries (rewrite them out and prune the sidecar):\n` +
-        staleEntries.map((e) => `  - ${e}`).join("\n"),
-    );
-  }
-  // Asserts the sidecar loads and is non-empty in Phase 1/2; Phase 3 sets it to [].
-  expect(allowlist.length).toBeGreaterThanOrEqual(0);
 });
