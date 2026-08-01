@@ -36,7 +36,7 @@ export const metaStateReVerifyTool = {
     if (!entry) {
       return replyWithLog(root, "meta_state_re_verify", { re_verified: false, reason: "not_found", id });
     }
-    // Plan 260707-0812 Phase 3: drop the `status: "stale"` hard-requirement.
+// drop the `status: "stale"` hard-requirement.
     // re_verify accepts any `isOpen` finding. The caller decides when to
     // trigger (typically when the derived stale view surfaces the entry).
     if (!isOpen(entry)) {
@@ -62,9 +62,9 @@ export const metaStateReVerifyTool = {
     }
     // FIFO cap
     while (history.length > HISTORY_CAP) history.shift();
-    // Plan 260707-0812 Phase 3: on pass, stamp `last_verified_at` only — the
-    // entry stays `open` (no status transition). The pre-Phase-3 behavior was
-    // to set `status: "active"`; that transition is removed because the
+    // On pass, stamp `last_verified_at` only — the
+    // entry stays `open` (no status transition). This previously set
+    // `status: "active"`; that transition is removed because the
     // status enum no longer carries `active`.
     const patch = {
       verification: { ...entry.verification, history },
@@ -78,9 +78,10 @@ export const metaStateReVerifyTool = {
       return replyWithLog(root, "meta_state_re_verify", { re_verified: false, reason: updateOutcome.reason, id, current_version: updateOutcome.current_version });
     }
 
-    // Plan 260716-0624 Phase 03 (RT: M1, M14): index refresh AFTER entry
-    // update confirmed (CAS passed). On CAS conflict, index never mutates
-    // (no orphan baseline). Gate-log breadcrumb on every refresh attempt.
+    // The file-index refresh runs AFTER the entry
+    // update is confirmed (CAS passed). On CAS conflict, the index never
+    // mutates (no orphan baseline). Gate-log breadcrumb on every refresh
+    // attempt.
     let indexRefreshed = false;
     const refreshRequested = refresh === true && allPassed;
     if (refreshRequested && typeof entry.evidence_code_ref === "string") {

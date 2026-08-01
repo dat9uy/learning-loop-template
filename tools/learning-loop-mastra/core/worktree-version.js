@@ -1,6 +1,6 @@
 // Per-worktree L2 version declaration.
 //
-// Plan 260711-0030 Phase 4. The .loop-version file at <root>/.loop-version is
+// The .loop-version file at <root>/.loop-version is
 // the schema-version-skew safeguard: writes referencing an entry_kind branch
 // not in the current worktree's metaStateEntrySchema discriminator union are
 // rejected with SchemaVersionSkewError. The file is gitignored (same pattern

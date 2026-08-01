@@ -1,5 +1,5 @@
 /**
- * Phase 1 probe: verify createMockModel is importable and functional.
+ * Probe: verify createMockModel is importable and functional.
  * Run: node tools/learning-loop-mastra/scripts/probe-create-mock-model.mjs
  * Exit 0 = all checks pass; non-zero = escalate to operator.
  */
@@ -30,4 +30,4 @@ try {
   process.exit(1);
 }
 
-console.log("\nAll Phase 1 probes passed. Ready for Phase 2.");
+console.log("\nAll createMockModel probes passed.");

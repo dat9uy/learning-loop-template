@@ -24,8 +24,8 @@ function firstSentence(description) {
  * Render both hint blocks for a describe result. The rules map comes from the
  * caller's already-loaded `promotedRules` so rule-derived hint text resolves
  * from the same root as the rest of the response — never from a second
- * `loadPromotedRules(process.cwd())` inside the builder (code-review I4,
- * plans/260717-1826).
+ * `loadPromotedRules(process.cwd())` inside the builder (code-review I4 of
+ * the hint-registry collapse).
  */
 function buildHintBlocks(promotedRules) {
   return {
@@ -113,15 +113,16 @@ export const loopDescribeTool = {
         result.loop_design_count = introspect.listLoopDesigns(root).length;
         result.substrates = introspect.listSubstrates();
 
-        // No expired-status advisory; status was removed in plan 260611-1000-remove-expired-status.
+        // No expired-status advisory; the `stale`/`expired` status values
+        // were collapsed into the derived isStaleView surface.
         const allEntries = readRegistry(root);
 
-        // Registry summary (Phase 7 of plan 260606)
+        // Registry summary — counts + coverage + drift for warm-tier consumers.
         const lineageStart = Date.now();
         const lineageMs = Date.now() - lineageStart;
         result.registry_summary = introspect.buildRegistrySummary(allEntries, readFileIndex(root));
-        // Plan 260716-1101 Tier 2 Phase C: surface compaction stats from the
-        // shared core helper (NOT a shell subprocess from the MCP server).
+        // Surface compaction stats from the shared core helper (NOT a shell
+        // subprocess from the MCP server).
         const registryStats = computeRegistryStats(root);
         result.registry_stats = registryStats;
         // Compaction action hook (H7 mitigation): when eligible, surface a
@@ -194,10 +195,10 @@ export const loopDescribeTool = {
         // cache created before the glossary existed still returns it.
         result.field_glossary = listFieldGlossary();
 
-        // Superseded lineage surface (Phase 3 of plan 260605):
-        // group all finding entries with status='superseded' and a consolidated_into
-        // pointer by their canonical change-log entry. Orphans (consolidated_into
-        // points to a non-existent change-log) are surfaced in a separate array.
+        // Superseded lineage surface: group all finding entries with
+        // status='superseded' and a consolidated_into pointer by their
+        // canonical change-log entry. Orphans (consolidated_into points to a
+        // non-existent change-log) are surfaced in a separate array.
         const changeLogMap = new Map(
           allEntries
             .filter((e) => e.entry_kind === "change-log")
@@ -228,7 +229,7 @@ export const loopDescribeTool = {
           result.orphans = orphans;
         }
 
-        // Inverse indexes (Phase 3 of plan 260606)
+        // Inverse indexes (forward + reverse map for each cross-ref kind)
         const inverseIndexes = introspect.buildInverseIndexes(allEntries);
         result.inverse_indexes = {
           addresses_inverse: Object.fromEntries(inverseIndexes.addresses_inverse),
@@ -239,7 +240,7 @@ export const loopDescribeTool = {
           consolidated_into_inverse: Object.fromEntries(inverseIndexes.consolidated_into_inverse),
         };
 
-        // Evidence-code-ref coverage (Phase 3 dual-field schema unification)
+        // Evidence-code-ref coverage (dual-field schema unification)
         // Structural count arrays: only ids so baseline is stable across refactors
         // that change the evidence_code_ref path but keep the same count.
         result.findings_with_evidence_code_ref = activeFindings
@@ -249,7 +250,7 @@ export const loopDescribeTool = {
           .filter((e) => e.entry_kind === "change-log" && typeof e.evidence_code_ref === "string" && e.evidence_code_ref.length > 0)
           .map((e) => ({ id: e.id }));
 
-        // Description mode (Phase 6 of plan 260606)
+        // Description mode (full vs 200-char summary preview)
         if (description_mode === "summary") {
           result.all_findings = result.all_findings.map((f) => introspect.summarize(f));
           result.active_findings = result.active_findings.map((f) => introspect.summarize(f));

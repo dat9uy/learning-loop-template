@@ -16,7 +16,7 @@ const { join, resolve } = require("node:path");
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 const HOOK_PATH = join(PROJECT_ROOT, ".factory/hooks/loop-surface-inject.cjs");
 
-describe("factory hook single-source (phase 1 invariant)", () => {
+describe("factory hook single-source (single-source invariant)", () => {
   // ---------------------------------------------------------------------------
   // Guard 1: source-level — no mirror arrays, no MCP spawn symbols
   // ---------------------------------------------------------------------------

@@ -6,16 +6,16 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 import { stripEnvelope } from "../../core/envelope-stripper.js";
 
-// Plan 260711-0030 Phase 2: in-process idempotency cache dropped.
+// in-process idempotency cache dropped.
 // The previous 60s Map at this module masked silent-persistence-fail by
 // returning {logged: true, cache_hit: true} when the underlying writeEntry
-// silently dropped the entry. With Phase 1's cross-process file lock, the
+// silently dropped the entry. With the cross-process file lock, the
 // underlying write is safe; idempotency now belongs to the durable registry
 // (the freshly-generated `id` differs for each call because `created_at`
 // advances within the millisecond). Replay protection, if needed, lives in
 // `meta_state_list({id: ...})`, not in a per-process Map.
 
-// Plan 260715-0801 Validation Q2: consolidates is z.array(z.string()) per the
+// consolidates is z.array(z.string()) per the
 // schema. The MCP wire-format array-guard requires every array field to be
 // wrapped with z.preprocess(stripEnvelope, ...) so the SDK's wire-format
 // coercion (which can drop arrays wrapped in {item: [...]} envelopes) doesn't
@@ -41,7 +41,7 @@ export const metaStateLogChangeTool = {
     reason: describeChangeField("reason", metaStateChangeEntrySchema.shape.reason),
     applies_to: describeChangeField("applies_to", metaStateChangeEntrySchema.shape.applies_to),
     supersedes: describeChangeField("supersedes", metaStateChangeEntrySchema.shape.supersedes),
-    // Plan 260712-0300 — operation_envelope: accepts the magnitude envelope from auto-emit.
+// accepts the magnitude envelope from auto-emit.
     consolidates: describeChangeField("consolidates", z.preprocess(stripEnvelope, z.array(z.string()).optional())),
     evidence_code_ref: describeChangeField("evidence_code_ref", metaStateChangeEntrySchema.shape.evidence_code_ref),
     evidence_journal: describeChangeField("evidence_journal", metaStateChangeEntrySchema.shape.evidence_journal),
@@ -64,7 +64,7 @@ export const metaStateLogChangeTool = {
     const id = generateId(slugify(change_target));
     const now = new Date();
 
-    // Plan 260715-0801 Validation Q2: schema is z.array(z.string()).
+// schema is z.array(z.string()).
     // Normalize a single string (or comma-separated string) into the array
     // form the schema requires. Back-compat for callers still passing a
     // single id; array form passes through unchanged.
@@ -86,7 +86,7 @@ export const metaStateLogChangeTool = {
       ...(consolidatesNormalized && { consolidates: consolidatesNormalized }),
       ...(evidence_code_ref && { evidence_code_ref }),
       ...(evidence_journal && { evidence_journal }),
-      // Plan 260712-0300: optional magnitude envelope; the MIGRATED_FIELDS
+// optional magnitude envelope; the MIGRATED_FIELDS
       // projection + .strict() gate ensures the field is only written when
       // it round-trips Zod validation (no caller-supplied garbage on writes
       // because the `meta_state_batch` envelope is auto-emit, not caller-set).
@@ -98,7 +98,7 @@ export const metaStateLogChangeTool = {
 
     await writeEntry(root, entry);
 
-    // Plan 260711-0030 Phase 3: post-write visibility re-read. Closes T4
+// post-write visibility re-read. Closes T4
     // (silent-persistence-fail class). If the entry is not visible after
     // writeEntry returns, return a structured failure rather than claiming
     // {logged: true}.

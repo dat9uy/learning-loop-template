@@ -19,7 +19,7 @@ function oneLinePrefix(prefix) {
  * does not abort the others. Fail-open: errors are swallowed and logged to
  * stderr so the failure is visible without breaking the gate's contract.
  *
- * R6 hardening (Plan 5-Lite Phase 3): the serialized line MUST NOT contain a
+ * R6 hardening: the serialized line MUST NOT contain a
  * raw `\n` or `\r` — a malicious entry could otherwise inject a forged line
  * into the JSONL log. `oneLinePrefix` strips residual newlines from
  * `command_prefix`; the assertion below is a belt-and-suspenders guard that

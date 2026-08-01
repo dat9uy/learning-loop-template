@@ -7,12 +7,12 @@
  * outcome carrying the current registry version (so the caller can include it
  * in the tool's wire result), and any other non-`true` return is a bug.
  *
- * Phase 4: extracted from the inline duplication in
+ * Extracted from the inline duplication in
  * `meta-state-re-verify-tool.js` and `meta-state-supersede-tool.js` (15-line
  * dup `c6f32007` flagged by fallow).
  *
- * Plan 260711-0030 Phase 3: success-path returns `{ok: true, entry}` after
- * re-reading the registry. The re-read asserts the entry is visible (otherwise
+ * The success path returns `{ok: true, entry}` after re-reading the registry.
+ * The re-read asserts the entry is visible (otherwise
  * the persistence path silently dropped the write — T4/T5 silent-persistence-fail
  * class). Backward-compatible: existing callers that destructure `{ok}` still
  * work; new callers can use `entry` to observe the actual persisted shape.
@@ -35,7 +35,7 @@ export async function applyUpdateAndCheck(root, id, patch, toolName) {
       `${toolName}: unexpected updateEntry result for ${id}: ${JSON.stringify(updateResult)}`
     );
   }
-  // Post-write visibility re-read (Plan 260711-0030 Phase 3). If the entry
+  // Post-write visibility re-read. If the entry
   // isn't visible, the persistence path silently dropped the write — return
   // a structured failure the caller can map to a wire result.
   const fresh = readRegistry(root).find((e) => e.id === id);
@@ -47,7 +47,7 @@ export async function applyUpdateAndCheck(root, id, patch, toolName) {
 
 /**
  * Thrown when a tool writes an entry (via writeEntry, not updateEntry) and the
- * subsequent re-read fails to find it. Plan 260711-0030 Phase 3 — closes the
+ * subsequent re-read fails to find it. Closes the
  * silent-persistence-fail class for tools that use writeEntry (e.g. log_change).
  */
 export class WriteNotVisibleError extends Error {
@@ -63,7 +63,7 @@ export class WriteNotVisibleError extends Error {
  * Re-read the registry and assert the entry is visible. Returns the entry
  * on success, throws WriteNotVisibleError on failure.
  *
- * Plan 260711-0030 Phase 3: closes T4 (log_change silent-persistence-fail).
+// closes T4 (log_change silent-persistence-fail).
  */
 export async function assertWriteVisible(root, id, toolName) {
   const { readRegistry } = await import("./meta-state.js");

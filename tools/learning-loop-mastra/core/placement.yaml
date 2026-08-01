@@ -16,10 +16,10 @@ files:
     summary: Reads/validates .gate-override markers with TTL expiry.
   - path: hint-registry.js
     role: facade
-    summary: Single source of truth for context-injection hints (slug-keyed entries). Phase 2 of plans/260717-1826-unify-context-injection.
+    summary: Single source of truth for context-injection hints (slug-keyed entries).
   - path: hint-renderer.js
     role: facade
-    summary: Budget-aware channel-based projection of the hint registry. Phase 2 of plans/260717-1826-unify-context-injection.
+    summary: Budget-aware channel-based projection of the hint registry.
   - path: inbound-state.js
     role: facade
     summary: Reads runtime-state.jsonl sidecar for inbound gate context.
@@ -37,16 +37,16 @@ files:
     summary: Registry CRUD + Zod schemas for the 4-kind meta-state union.
   - path: registry-lock.js
     role: facade
-    summary: Cross-process file lock (proper-lockfile wrapper) for the meta-state registry. Plan 260711-0030 Phase 1.
+    summary: Cross-process file lock (proper-lockfile wrapper) for the meta-state registry.
   - path: worktree-version.js
     role: facade
-    summary: Per-worktree .loop-version declaration + schema-version-skew detection. Plan 260711-0030 Phase 4.
+    summary: Per-worktree .loop-version declaration + schema-version-skew detection.
   - path: worktree-session-id.js
     role: facade
-    summary: Per-worktree session ID for marker file isolation (Multi-Session Isolation gap). Plan 260711-0030 Phase 5.
+    summary: Per-worktree session ID for marker file isolation (Multi-Session Isolation gap).
   - path: runtime-state.js
     role: facade
-    summary: Shared runtime-state.jsonl helpers (append + fingerprint). Extracted in plan 260704-0301-stale-findings-dispatch-handle Phase 2 for DRY between runtime_state_record and meta_state_dispatch_finding.
+    summary: Shared runtime-state.jsonl helpers (append + fingerprint) shared by runtime_state_record and meta_state_dispatch_finding.
   - path: runtime-tracking.js
     role: facade
     summary: Operator per-surface tracking toggle (load/isSurfacePaused/set) against the `.loop/runtime-tracking.json` sidecar. Fail-closed on malformed sidecars; read-from-disk per call (no in-process cache).
@@ -80,34 +80,34 @@ files:
     summary: Strips MCP hookSpecificOutput envelopes from raw text.
   - path: field-glossary.js
     role: primitive
-    summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads. Phase 2 of plans/260720-1955.
+    summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads.
   - path: canonical-compare.js
     role: primitive
-    summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (Tier 2 Phase B; resolves meta-260715T2311Z-gratuitous-mutations).
+    summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (resolves meta-260715T2311Z-gratuitous-mutations).
   - path: registry-append-atomic.js
     role: primitive
-    summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (Tier 2 Phase B; RT H1 + H4).
+    summary: trueAppendAtomic — O_APPEND + fsync'd writes + assertNoChangeLogLeak guard. Replaces the read-all → full-rewrite pattern (RT H1 + H4).
   - path: cli-tools.js
     role: primitive
     summary: Shared CLI read+write tool set used by the CLI allowlist and opted-in MCP exclusion (LOOP_READS_VIA_CLI / LOOP_RECORDS_VIA_CLI).
   - path: cli-self-match.js
     role: primitive
-    summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape (Phase 1 of plans/260722-1343).
+    summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape.
   - path: cli-stderr.js
     role: facade
-    summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract (Phase 2 of plans/260722-1343). Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
+    summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract. Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
   - path: cli-context-savings.js
     role: helper
-    summary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader. Phase 1 of plans/260726-1953.
+    summary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader.
   - path: schema-normalize.js
     role: primitive
-    summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.
+    summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps.
   - path: workflow-input-schema.js
     role: primitive
     summary: wrapWorkflowInputSchema — the U-Q1 unwrap contract for plain handler modules re-homed out of createLoopWorkflow; bakes z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema)) into each unwrapped handler's schema so MCP-path envelope stripping survives the unwrap. Composes envelope-stripper + schema-normalize only (transport-agnostic).
   - path: registry-stats.js
     role: helper
-    summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal (Plan 260716-1101 Tier 2 Phase C).
+    summary: computeRegistryStats + findDuplicateVersionPerId — shared helper consumed by loop_describe warm tier (no shell subprocess from MCP server) and the compaction signal.
   - path: file-readers.js
     role: facade
     summary: Composes runtime-state read + observation projection + assertinvariant wrapper for the bash-gate constraint consumer.
@@ -146,13 +146,13 @@ files:
     summary: Shared core constants (STALENESS_WINDOW_MS) — single source of truth to prevent cross-module drift.
   - path: update-entry-helpers.js
     role: helper
-    summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede (Phase 4 extraction).
+    summary: Shared applyUpdateAndCheck — wraps updateEntry + version_mismatch/throw branch. Used by meta_state_re_verify and meta_state_supersede.
   - path: operation-envelope.js
     role: helper
-    summary: Plan 260712-0300 Phase 1 — operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
+    summary: Operation envelope construction (kind enum + content-hash + pre/post counts) and validation. Auto-emitted by meta_state_batch when callers pass an envelope; replaces ad-hoc `change_diff` arrays with a structural magnitude record.
   - path: operation-invariant.js
     role: primitive
-    summary: Plan 260712-0724 (Implementation 3) — universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
+    summary: Universal pre-state-only assertinvariant boundary helper. Wraps every core-logic operation that owns an invariant the agent depends on; reduces 4 ad-hoc mechanisms + 1 deny-list to 2 layers (wrapper + kept IMMUTABLE_PATCH_FIELDS deny-list).
 
   # === evaluator ===
   - path: evaluate-write-gate.js
@@ -203,10 +203,10 @@ files:
     summary: Reads workflow manifest and provides lookup helpers.
   - path: bound-artifacts.js
     role: facade
-    summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js (Phase 3 of loop-skill-layer-prerequisite).
+    summary: FROZEN simple-glob rule constant extracted from evaluate-write-gate.js.
   - path: change-log-bound-paths.js
     role: facade
-    summary: Rec 12 detection set (CHANGE_LOG_BOUND_PATHS) + canonicalizeChangeTarget — sibling of bound-artifacts.js for gap detection (Phase 1 of rec12-closed-loop).
+    summary: Rec 12 detection set (CHANGE_LOG_BOUND_PATHS) + canonicalizeChangeTarget — sibling of bound-artifacts.js for gap detection.
   - path: git-diff.js
     role: facade
-    summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder (Phase 2 of rec12-closed-loop).
+    summary: readBranchTouchedPaths — read-only git-diff reader providing the touched-path set for the gap builder.

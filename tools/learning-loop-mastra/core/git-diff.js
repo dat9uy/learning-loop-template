@@ -1,8 +1,8 @@
 /**
  * Read-only git-diff touched-paths reader.
  *
- * Plan 4: rec12-closed-loop, phase 2. The source of the "touched bound-
- * artifact paths" set the gap builder (phase 3) joins against.
+ * The rec12-closed-loop touched-paths reader. The source of the "touched
+ * bound-artifact paths" set the gap builder joins against.
  *
  * Returns the union of:
  *   1. paths committed on the current branch (diff <merge-base>..HEAD)

@@ -44,9 +44,8 @@ export const CLI_READ_TOOLS = new Set([
   "meta_state_derive_status",
   "meta_state_check_grounding",
   "runtime_state_read",
-  // Auxiliary read-ish tools — closed the plan-260722-2125 audit gap:
-  // stateless handlers in tools/manifest.json that pre-Phase-3 were left on
-  // MCP as residue. They ride the CLI under LOOP_READS_VIA_CLI=1 and
+  // Auxiliary read-ish tools: stateless handlers in tools/manifest.json
+  // that were originally left on MCP as residue. They ride the CLI under LOOP_READS_VIA_CLI=1 and
   // LOOP_RECORDS_VIA_CLI=1 alike (CLI_READ_TOOLS widens both opt-out flags).
   "gate_check",
   "gate_check_recurrence",

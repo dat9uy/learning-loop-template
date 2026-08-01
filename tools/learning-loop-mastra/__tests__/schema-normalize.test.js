@@ -58,7 +58,7 @@ test("normalizeInputSchema: accepts zod schema with _def and parse", () => {
   assert.strictEqual(result, schema);
 });
 
-test("schema-normalize seam is Mastra-free (locks the Phase 1 boundary)", () => {
+test("schema-normalize seam is Mastra-free (locks the Mastra-free boundary)", () => {
   const src = readFileSync(SEAM_PATH, "utf8");
   assert.ok(
     !src.includes("@mastra"),

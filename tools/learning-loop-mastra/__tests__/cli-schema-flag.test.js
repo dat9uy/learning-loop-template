@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 const LOOP_BIN = join(PKG_ROOT, "bin", "loop.mjs");
 
-describe("cli --schema flag (Phase 3)", () => {
+describe("cli --schema flag", () => {
   test("--schema on a CLI_WRITE_TOOLS member → exit 0, valid JSON with top-level keys", () => {
     const proc = spawnSync("node", [LOOP_BIN, "meta_state_report", "--schema"], {
       encoding: "utf8",

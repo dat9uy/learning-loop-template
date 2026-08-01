@@ -1,7 +1,7 @@
 // Per-worktree session ID for marker file isolation.
 //
-// Plan 260711-0030 Phase 5. The marker file `.last-operator-message` is shared
-// across all sessions in the same project. Phase 5 scopes the marker per-session
+// The marker file `.last-operator-message` is shared
+// across all sessions in the same project. This module scopes the marker per-session
 // so two Claude Code sessions in different worktrees (or even the same worktree)
 // don't pollute each other's outbound gate decisions. Closes the Multi-Session
 // Isolation gap documented at docs/architecture.md §378–383.
@@ -83,7 +83,7 @@ export function getMarkerPath(root, surface, sessionId = getSessionId(root)) {
   return join(root, surface, "coordination", `.last-operator-message-${sessionId}`);
 }
 
-/** Legacy marker path (Plan 260711-0030 Phase 5 migration consideration). */
+/** Legacy marker path (session-id migration consideration). */
 export function getLegacyMarkerPath(root, surface) {
   return join(root, surface, "coordination", ".last-operator-message");
 }

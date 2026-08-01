@@ -110,7 +110,7 @@ describe("mcp tools/list parity — JSON Schema contract for migration-touched t
   // is rejected pre-invocation. Generation-only: .parse({}) still succeeds at the
   // Zod layer (the runtime empty_patch check is the safety net). Other tools
   // must be unaffected — confirms the hints seam is scoped, not global.
-  test("meta_state_patch.patch declares minProperties:1 (steering layer, plan 260717-1145)", { timeout: 5000 }, () => {
+  test("meta_state_patch.patch declares minProperties:1 (steering layer)", { timeout: 5000 }, () => {
     const t = byName.get("mastra_meta_state_patch");
     assert.ok(t, "mastra_meta_state_patch must be registered");
     const patchProp = t.inputSchema.properties?.patch;

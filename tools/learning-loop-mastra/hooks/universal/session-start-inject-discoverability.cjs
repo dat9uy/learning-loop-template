@@ -22,7 +22,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
 
-// Plan 260722-1343 Phase 3: write-tool one-line arg sketches for the
+// write-tool one-line arg sketches for the
 // SessionStart banner. Each entry lists the top-level required keys (no `?`)
 // plus a curated subset of optional ones (trailing `?`); the agent composes
 // the JSON string from a sketch and pulls the full shape (enums, nested
@@ -56,7 +56,8 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_stop: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
-  // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.
+  // Workflow helpers reclassified into CLI_WRITE_TOOLS (the only writes that
+// ride the CLI besides meta_state_* / runtime_state_*).
   workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
   workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
   // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
@@ -166,7 +167,7 @@ function buildConfiguredTransportBanner(projectRoot) {
  * "fallback" on degraded loader) plus an optional `*_error` string. The
  * flag is what makes the silent-degrade failure mode visible: without it,
  * a consumer reading the sidecar cannot distinguish "no hints configured"
- * from "loaders failed and returned empty." Plan 260715-1100 fix for the
+ * from "loaders failed and returned empty." The stderr-summary fix for the
  * PROCESS_HINTS row #1 silent-degrade path observed in sessions
  * 260715-1010 and 260715-1100.
  */
@@ -241,10 +242,11 @@ function loadDispatchIds(root) {
 }
 
 /**
- * Rec 10 surfacing (plan 260704-0301-stale-findings-dispatch-handle Phase 3).
+ * Rec 10 surfacing — stale-findings dispatch handler (stale-fixable candidates
+ * + orphan-finding reconciliation).
  * Builder over `entries` + dispatch ids. Returns empty shape on builder failure.
  *
- * Plan 260716-0624 (stale-view hash-drift fix): thread drift signals
+ * Stale-view hash-drift fix: thread drift signals
  * (`fileIndex` + `codeHashes`) into `buildStaleDispatchHints` so the
  * fixable-candidates filter fires on drift, not just age. This is the
  * session-start user-facing stale-dispatch surface — the most visible place
@@ -287,10 +289,11 @@ function loadStaleDispatchHints(entries, dispatchIds, root) {
 }
 
 /**
- * Rec 12 closed-loop (plan 260708-1216-rec12-closed-loop, phase 4):
- * change-log gap detection. The gap builder is pure (caller-supplied set);
- * we read branch-touched paths via a read-only git call (never throws).
- * Returns empty shape on builder failure.
+ * Rec 12 closed-loop — change-log gap detection (bound-artifact paths touched
+ * on this branch that no `meta_state_log_change` entry covers). The gap
+ * builder is pure (caller-supplied set); we read branch-touched paths via
+ * a read-only git call (never throws). Returns empty shape on builder
+ * failure.
  */
 function loadChangeLogGapHints(root, entries) {
   try {
@@ -420,7 +423,8 @@ async function main() {
 
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
-  // (silent-degrade was the bug class fixed in plan 260715-1100).
+  // (silent-degrade was the bug class fixed by per-source degraded-flag
+  // instrumentation; silent failures no longer slip through).
   const degradedSources = computeDegradedSources(core, registry);
   if (degradedSources.length > 0) {
     console.error(

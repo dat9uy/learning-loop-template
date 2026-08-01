@@ -44,7 +44,7 @@ await test("rule-tool-integration-same-commit-dep loads through schema and is a 
   assert.deepStrictEqual(result, { decision: "ok" });
 });
 
-await test("rule entry carries hint_text mentioning SHA pin (Phase 3 invariant)", () => {
+await test("rule entry carries hint_text mentioning SHA pin (registry invariant)", () => {
   // Phase 3 (plans/260717-1826-unify-context-injection): the rule-derived
   // process hint prose lives on the rule entry as `hint_text`. The legacy
   // PROCESS_HINTS-substring check is replaced by this invariant: the rule
@@ -67,7 +67,7 @@ await test("rule entry carries hint_text mentioning SHA pin (Phase 3 invariant)"
   );
 });
 
-await test("factory hook renders the rule id verbatim (Phase 1 single-source guard)", () => {
+await test("factory hook renders the rule id verbatim (single-source guard)", () => {
   // plans/260717-1826-unify-context-injection Phase 1: the factory hook no
   // longer carries a LOCAL_PROCESS_HINTS mirror — it imports the canonical
   // builders from core/loop-introspect.js. The drift-prevention guard here
@@ -113,7 +113,7 @@ await test("registry rule has 4th item covering 3rd-party Action SHA pin", () =>
   );
 });
 
-await test("rule hint_text mentions 3rd-party Action SHA pin (Phase 3 invariant)", () => {
+await test("rule hint_text mentions 3rd-party Action SHA pin (registry invariant)", () => {
   const entries = readRegistry(PROJECT_ROOT);
   const rule = entries.find((e) => e.id === RULE_ID);
   assert.ok(rule, `rule ${RULE_ID} must exist in registry`);

@@ -7,7 +7,7 @@ import { resolveRoot } from "#lib/resolve-root.js";
 import { loadPromotedRules, checkResolutionEvidence } from "../../core/gate-logic.js";
 import { isOpen } from "../../core/stale-view.js";
 
-// Plan 260707-0812 Phase 2: TERMINAL_STATUSES collapses to {resolved, superseded}.
+// TERMINAL_STATUSES collapses to {resolved, superseded}.
 // `archived` is runtime-applied and excluded from the short-circuit (an
 // already-archived entry is filtered upstream by the entry_kind check; this set
 // only gates the resolved/superseded branch).
@@ -118,7 +118,7 @@ export const metaStateResolveTool = {
     }
 
     // Cascade branch: when cascade_from is provided, validate children, then
-    // close the parent in 1 step. Plan 260707-0812 Phase 2 (red-team C3):
+    // close the parent in 1 step. Lifecycle-collapse invariant (red-team C3):
     // the reported-cascade block is removed — `meta_state_ack` is gone, so
     // legacy `reported` parents are isOpen and cascade-closeable like every
     // other open parent. The parent must be isOpen; terminal parents hit the
@@ -156,7 +156,7 @@ export const metaStateResolveTool = {
       resolved_by,
       ...(resolution && { resolution }),
     };
-    // Plan 260711-0030 Phase 3: closes C16 (resolve handler ignored
+// closes C16 (resolve handler ignored
     // updateEntry's null return). applyUpdateAndCheck re-reads the registry
     // and surfaces updateEntry's actual outcome — null → not_found,
     // version_mismatch → tagged failure, throw on unexpected returns.
@@ -198,7 +198,7 @@ export const metaStateResolveTool = {
  * Each child must exist, have `reopens` containing the parent id, and be
  * in `active` or `resolved` status. Superseded children are rejected.
  *
- * Plan 260611-1000 retargeted the cascade to operate on `stale` parents
+ * retargeted the cascade to operate on `stale` parents
  * (the legacy `expired` status was removed). The cascade is reachable
  * today via stale or active parents only.
  */
@@ -222,7 +222,7 @@ function validateCascadeChildren(root, parent, childIds, entries) {
       });
       continue;
     }
-    // Plan 260707-0812 Phase 2 (red-team C3): child status check uses
+// child status check uses
     // isOpen (covers open/active/reported/stale) instead of literal active
     // and `child.status !== "resolved"`. This is the resolved+any-open
     // cascade invariant — same shape, sourced from the predicate.

@@ -32,7 +32,7 @@ export const workflowTriggerTool = {
       triggered: true,
       workflow: name,
       recommended_tools: recommendedTools,
-      reasoning: `Workflow "${name}" maps to: ${recommendedTools.join(", ") || "(none — recommendations vacated per plans/260722-2147 phase 5; see meta-state registry)"}`,
+      reasoning: `Workflow "${name}" maps to: ${recommendedTools.join(", ") || "(none — recommendations vacated; see meta-state registry)"}`,
     };
 
     console.error(`gate: trigger_workflow ${name} → returns ${recommendedTools.join(", ") || "(none)"}`);

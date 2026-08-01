@@ -76,7 +76,7 @@ async function seedRegistry(root) {
   return { changeLogId, finding1Id, finding2Id, finding3Id };
 }
 
-describe("Phase 3: loop_describe cold-tier superseded_lineage", () => {
+describe("loop_describe cold-tier superseded_lineage", () => {
   // Test 1: cold tier includes consolidated entries grouped by change-log
   test("cold tier includes consolidated entries grouped by change-log", async () => {
     const root = makeTempDir("loop-describe-cold-superseded-");

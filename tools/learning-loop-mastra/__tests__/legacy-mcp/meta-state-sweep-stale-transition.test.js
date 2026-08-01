@@ -12,7 +12,7 @@ import { join } from "node:path";
 // read-only rework removed. The new tests assert the derived-stale view
 // surfaces eligible entries and that the registry is never mutated by sweep.
 
-describe("meta_state_sweep (read-only, Phase 3)", () => {
+describe("meta_state_sweep (read-only)", () => {
   const originalEnv = process.env.GATE_ROOT;
 
   test("S1: derived stale view surfaces an open entry past the staleness window", async () => {

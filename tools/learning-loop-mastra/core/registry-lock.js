@@ -1,6 +1,6 @@
 // Cross-process file lock for the meta-state registry.
 //
-// Plan 260711-0030 Phase 1. The previous per-process enqueue Map serialized
+// The previous per-process enqueue Map serialized
 // writeEntry/updateEntry/archiveEntry/deleteEntry/metaStateBatch within a
 // single Node process but left cross-process races unaddressed (H7 hypothesis:
 // 2+ MCP server instances writing meta-state.jsonl simultaneously drops entries

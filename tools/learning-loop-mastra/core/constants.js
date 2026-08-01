@@ -1,10 +1,9 @@
 /**
  * Shared core constants — single source of truth for module-level values that
  * cross module boundaries and risk circular imports.
- *
- * Plan 260707-0812 Phase 1: `STALENESS_WINDOW_MS` is extracted here from
- * `core/meta-state.js` so the new `core/stale-view.js` and the
- * (read-only-after-Phase-3) `meta-state-sweep-tool.js` cannot drift apart.
+ * `STALENESS_WINDOW_MS` is extracted here from
+ * `core/meta-state.js` so `core/stale-view.js` and the read-only
+ * `meta-state-sweep-tool.js` cannot drift apart.
  * The env-var name `META_STATE_STALENESS_WINDOW_MS` is preserved for
  * backward compatibility with existing operator overrides.
  */
@@ -13,7 +12,7 @@
 export const STALENESS_WINDOW_MS = Number(process.env.META_STATE_STALENESS_WINDOW_MS) || 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Plan 260728-2323 Phase 1: observation staleness window — used by the
+ * Observation staleness window — used by the
  * inbound gate's age scan (`observation-staleness.js#isObservationStaleByAge`)
  * and the bash gate's marker scan (`isObservationStaleByMarker`). 30 min
  * matches the prior two independent constants it unifies. Distinct from
@@ -26,7 +25,7 @@ export const OBSERVATION_STALENESS_WINDOW_MS =
   Number(process.env.META_STATE_OBSERVATION_STALENESS_WINDOW_MS) || 30 * 60 * 1000;
 
 /**
- * Plan 260712-0300 Phase 2: single source of truth for `BATCH_SIZE_LIMIT`.
+ * Single source of truth for `BATCH_SIZE_LIMIT`.
  * Previously the handler default was 500 and the core default was 100; calls
  * with 101–500 ops got a misleading `applied:0` from one layer with no
  * explanation. Centralized here so both layers read the same value.

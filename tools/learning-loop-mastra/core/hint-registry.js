@@ -1,9 +1,8 @@
 /**
  * hint-registry.js — single source of truth for context-injection hints.
  *
- * Phase 2 of plans/260717-1826-unify-context-injection: collapses the legacy
- * DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts in
- * core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
+ * Collapses the legacy DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts
+ * in core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
  * surface-inject.cjs) into one slug-keyed registry.
  *
  * Consumers: production injection projects through core/loop-introspect.js
@@ -17,7 +16,7 @@
  *     derived_from_rule?: string | null }
  *
  * - `text` is the canonical prose injected for standalone entries.
- * - `derived_from_rule` (Phase 3): when set to a rule id, the renderer
+ * - `derived_from_rule`: when set to a rule id, the renderer
  *   resolves `text` at render time from `rule.hint_text`; when the rule is
  *   missing/inactive the entry is skipped + a provenance warning is recorded.
  *   Standalone entries carry `derived_from_rule: null`.
@@ -30,7 +29,7 @@ export const HINT_REGISTRY = Object.freeze([
   // ============================================================================
   // DISCOVERABILITY (16 rows) — meta-surface contracts, tool-selection pointers.
   // Slugs preserved verbatim from HINT_KEY_MAP so loop_get_instruction back-compat
-  // survives (Validation 4 of plan 260717-1826).
+  // survives the registry collapse.
   // ============================================================================
   {
     slug: "internalization-rule",
@@ -81,8 +80,8 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "status-lifecycle",
     kind: "discoverability",
     text:
-      "Findings have 4 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log), and `archived` (schema-valid terminal status; registry-size trim, append-only via `archiveEntry`/`deleteEntry` with a write-boundary guard on the union `metaStateEntrySchema`; restorable via `meta_state_unarchive`). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed in plans 260611-1000 and 260707-0812; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
-    // Fixed in Phase 2: this suggestion previously contradicted the post-260611
+      "Findings have 4 statuses: `open` (unresolved — the canonical post-migration status), `resolved` (closed), `superseded` (consolidated into a change-log), and `archived` (schema-valid terminal status; registry-size trim, append-only via `archiveEntry`/`deleteEntry` with a write-boundary guard on the union `metaStateEntrySchema`; restorable via `meta_state_unarchive`). `stale` is no longer a status — it is a derived evidence-freshness view (`isStaleView`: an open finding past the 7-day staleness window from `last_verified_at`/`created_at`, OR with drifted evidence in `file-index.jsonl`), surfaced by `meta_state_query_drift` + `meta_state_sweep` (read-only) and re-grounded via `meta_state_re_verify` (stamps `last_verified_at`, no status transition). The legacy `expired`/`reported`/`active`/`auto-resolved` statuses were removed; `isOpen` tolerates legacy persisted values until the migration flips them. Only `stale`-view parents are cascade-closeable via `meta_state_resolve`.",
+    // Corrected: this suggestion previously contradicted the current
     // status vocabulary ("use `stale` for past-TTL findings" — `stale` is no
     // longer a persisted status). The rewrite points at `meta_state_re_verify`,
     // which IS the way to re-validate a finding past the staleness window.
@@ -103,7 +102,7 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "rule-lifecycle",
     kind: "discoverability",
     text:
-      "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` (Phase 3) or `loop_describe({ tier: 'cold' })` (Phase 4). The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
+      "For rule and loop-design lifecycle, use `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` or `loop_describe({ tier: 'cold' })`. The cold tier surfaces a `loop_designs` list with `id`, `title`, `proposed_design_for`, `addresses`, and `shipped_in_plan`.",
     suggestion:
       "Query loop-design/rule lifecycle via `meta_state_list({ entry_kind: 'rule' | 'loop-design' })` or `loop_describe({ tier: 'cold' })`.",
     derived_from_rule: null,
@@ -157,9 +156,9 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "phase-a-reframe",
     kind: "discoverability",
     text:
-      "Phase A (2026-06-12 reframe): the meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
+      "The meta-surface is the only bound surface. The 4-kind union (finding | change-log | rule | loop-design) is load-bearing: findings self-diagnose, change-logs audit, rules enforce, loop-designs defer. The product surface (decisions, experiments, risks, observations, capabilities) is unbound and archived. Substrate writes (product/**, records/**) are legacy carry-overs; all authoritative mutations go through meta_state_* MCP tools.",
     suggestion:
-      "Phase A reframe: the meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
+      "The meta-surface (finding | change-log | rule | loop-design) is the only bound surface; the product surface is unbound.",
     derived_from_rule: null,
   },
   {
@@ -175,7 +174,7 @@ export const HINT_REGISTRY = Object.freeze([
     slug: "runtime-agnostic-features",
     kind: "discoverability",
     text:
-      "Phase 4 (2026-06-15): Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js.",
+      "Every feature must be runtime-agnostic (shim-not-fork + cross-surface-iteration). Codified as rule-runtime-agnostic-features. Audit a new feature with the check_runtime_agnostic MCP tool before shipping. The 6-item checklist is regression-tested by tools/learning-loop-mastra/__tests__/legacy-mcp/runtime-agnostic.test.js.",
     suggestion:
       "Runtime-agnostic features: use shim-not-fork + cross-surface-iteration; audit with `check_runtime_agnostic` before shipping.",
     derived_from_rule: null,
@@ -202,7 +201,7 @@ export const HINT_REGISTRY = Object.freeze([
     derived_from_rule: null,
   },
   {
-    // Standalone (Phase 3): file-index drift is operational, not a rule.
+    // Standalone hint: file-index drift is operational, not a rule.
     slug: "file-edit-drift-and-fingerprints",
     kind: "process",
     order: 90,
@@ -305,8 +304,7 @@ export function findHintBySlug(slug) {
  * This is the single resolution path shared by core/hint-renderer.js,
  * the loop_get_instruction tool, and loop-introspect's buildProcessHints —
  * divergent skip semantics across consumers previously caused a positional
- * misalignment in loop_get_instruction (code-review C2 of
- * plans/260717-1826-unify-context-injection).
+ * misalignment in loop_get_instruction (the code-review C2 finding).
  *
  * Pure — `rulesById` is a precomputed map supplied by the caller.
  */

@@ -85,7 +85,7 @@ function readLines(root, filename) {
     .map((l) => JSON.parse(l));
 }
 
-describe("versioned-append write-path (Tier 2 Phase B)", () => {
+describe("versioned-append write-path", () => {
   let root;
 
   beforeAll(() => {

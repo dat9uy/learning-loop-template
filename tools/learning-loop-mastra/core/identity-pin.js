@@ -1,5 +1,5 @@
 /**
- * Process-boot identity pin (R2 / Plan 5-Lite Phase 1).
+ * Process-boot identity pin (R2).
  *
  * Replaces LIM-3's crypto role with a synchronous, closure-scoped, frozen
  * runtime id read once from `process.env.LOOP_SURFACE` at the first executable

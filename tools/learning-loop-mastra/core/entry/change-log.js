@@ -11,7 +11,7 @@ export function createChangeLog(data) {
 
     outboundRefs(entries) {
       // Delegate to the centralized graph — single source of truth for
-      // cross-ref fields per kind. Plan 260730-0240 collapses the
+      // cross-ref fields per kind. The graph module collapses the
       // bespoke change-log outbound extractor into the graph.
       return forwardRefs(parsed, entries);
     },

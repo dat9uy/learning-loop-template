@@ -1,8 +1,7 @@
 /**
  * Derived evidence-freshness view — replaces persisted `status: "stale"`.
  *
- * Plan 260707-0812 (lifecycle-status-stale-mechanism) Phase 1: ships the
- * predicate pair that phase 2's read-site rewrites use, de-risking the enum
+ * Ships the predicate pair that the read-site rewrites use, de-risking the enum
  * collapse by establishing the new threshold before any schema change.
  *
  * Why a derived view: `stale` is a property of evidence (age + hash drift),
@@ -11,7 +10,7 @@
  * `stale-ref`-style drift follow-up by construction.
  *
  * Transition tolerance: `isOpen` accepts legacy `active`/`reported`/`stale`
- * as open-equivalent. The 22-finding migration (phase 4, on main) flips the
+ * as open-equivalent. The 22-finding migration flips the
  * persisted values; this tolerance makes the code/migration order
  * non-breaking.
  *
@@ -22,8 +21,8 @@
  * low-layer primitives (e.g. `file-readers.js`) can use it without importing
  * a verification-tier module.
  *
- * Plan 260716-0624 (stale-view hash-drift fix): hash-aware `hasDrifted` matching
- * SP2 semantics at `core/check-grounding.js:201-208`. Drift = current bytes
+ * Hash-aware `hasDrifted` matching SP2 semantics at
+ * `core/check-grounding.js:201-208`. Drift = current bytes
  * (from caller-injected `codeHashes`) differ from the stored baseline (index
  * entry, falling back to per-record `code_fingerprint`). Both sides are
  * regex-validated via `TERMINAL_HASH_REGEX`. The helper `computeCurrentHashes`
@@ -44,9 +43,9 @@ export { isOpen };
  * Reference time for staleness: prefer the most recent verification stamp
  * (so a freshly-verified finding is NOT stale-view regardless of created_at),
  * fall back to created_at. Mirrors the same preference order as the prior
- * `checkStaleness` (which used `acked_at || created_at`) — phase 3's re_verify
- * drops `acked_at` and uses `last_verified_at` instead, so this function uses
- * the post-phase-3 fields.
+ * `checkStaleness` (which used `acked_at || created_at`) — `meta_state_re_verify`
+ * stamps `last_verified_at` instead of `acked_at`, so this function reads
+ * `last_verified_at`.
  */
 function referenceTimeMs(entry) {
   const ref = entry.last_verified_at || entry.created_at;
@@ -131,7 +130,7 @@ export function isStaleView(entry, opts = {}) {
 /**
  * `derivedStaleSet(entries, opts)` — pure selector returning the stale-view
  * subset. Used by `cold-tier-regression.test.js` for the cap assertion and
- * (phase 3) by `meta_state_sweep` for its read-only report.
+ * by `meta_state_sweep` for its read-only report.
  *
  * Defensive: skips null/undefined entries rather than throwing — the registry
  * reader is the source of truth and filters them, but a consumer that hands us
@@ -158,7 +157,7 @@ export function derivedStaleSet(entries, opts = {}) {
  * captured in `skipped` with `reason: "containment_violation:..."` — never
  * hashed, never appear in `ok`.
  *
- * Error handling (RT: M20):
+ * Error handling:
  *   - File missing: `skipped.push({canonical, reason: "missing"})` — no log
  *     breadcrumb (high-frequency; callers should not gate-log these).
  *   - Permission / I/O error (EACCES, EMFILE, EISDIR): `skipped.push` with
@@ -224,8 +223,8 @@ export function computeCurrentHashes(entries, root) {
  * non-`missing` skipped paths. Centralizes the 11-line pattern that was
  * previously inlined in 4 handlers.
  *
- * Plan 260716-0624 Phase 02 (RT: M20): one source of truth for the
- * `(readFileIndex + computeCurrentHashes + skipped-logging)` trio so the
+ * One source of truth for the `(readFileIndex + computeCurrentHashes +
+ * skipped-logging)` trio so the
  * gate attribution (`tool`) and the timestamp stay consistent.
  *
  * @param {Array} entries — registry entries to inspect

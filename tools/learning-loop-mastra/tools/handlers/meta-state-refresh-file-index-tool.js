@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { resolve as pathResolve } from "node:path";
 import { statSync } from "node:fs";
-// computeFileHashCached is the tool-layer hash cache (Phase 2), co-located in the
+// computeFileHashCached is the tool-layer hash cache, co-located in the
 // check-grounding tool. Shared with this refresh tool so both hash through the
 // same (absPath, mtimeMs, size) cache. Importing a sibling legacy tool is the
 // existing pattern (the legacy tools are dynamically-loaded shims); extracting a
@@ -17,7 +17,7 @@ import { resolveSafePath, PathContainmentError } from "../../core/path-containme
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
-// Plan 260711-0030 Phase 2: in-process 60s idempotency cache dropped (Finding 15
+// in-process 60s idempotency cache dropped (Finding 15
 // — extends the cache removal to the sibling refresh-file-index tool). The cache
 // masked silent-persistence-fail the same way as meta_state_log_change; hash
 // caching in `computeFileHashCached` (tool-layer) remains because hashing is
@@ -32,7 +32,7 @@ export const metaStateRefreshFileIndexTool = {
   description:
     "Refresh the path-keyed fingerprint index for a cited path. One call upserts the path's current SHA-256 into file-index.jsonl, re-grounding ALL findings anchored to this path — the O(1)-per-file-change operator. " +
     "AMPLIFIED BLAST RADIUS: a single refresh accepts drift for every mechanism_check:true finding whose evidence_code_ref canonicalizes to this path. Caller identity (session_id/agent) is recorded in the gate log; pass `reason` to document why the change is legitimate. " +
-    "Errors when the file is missing (code_missing) or the path escapes root. Returns { path, code_fingerprint, refreshed_at, status, findings_regrounded, reason? }. The response shape always sets cache_hit: false (the in-process dedupe cache was removed in Phase 2; a real file edit now always triggers an upsert). For drift detection, use meta_state_check_grounding.",
+    "Errors when the file is missing (code_missing) or the path escapes root. Returns { path, code_fingerprint, refreshed_at, status, findings_regrounded, reason? }. The response shape always sets cache_hit: false (the in-process dedupe cache was removed; a real file edit now always triggers an upsert). For drift detection, use meta_state_check_grounding.",
   schema: {
     path: z.string().min(1).describe("Cited path to refresh (the evidence_code_ref or its bare file form; :line/#anchor are stripped). Relative to root."),
     reason: z.string().optional().describe("Optional: why this refresh is legitimate (recorded in the gate log for the audit trail)."),
@@ -88,7 +88,7 @@ export const metaStateRefreshFileIndexTool = {
     // no-op (per upsertFileIndexEntry's true-no-op guard) — return status:
     // "no-op" so callers can distinguish a real refresh from a same-content
     // call. cache_hit stays false (the documented contract — the in-process
-    // dedupe cache was removed in Phase 2; cache_hit semantics belong to the
+    // dedupe cache was removed; cache_hit semantics belong to the
     // computeFileHashCached layer, not the persistence layer).
     const existingIndex = readFileIndex(root);
     const storedHash = existingIndex.get(canonicalPath);

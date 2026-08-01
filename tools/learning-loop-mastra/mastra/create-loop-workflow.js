@@ -43,10 +43,10 @@ function buildStep({ id, description, inputSchema, outputSchema, handler }) {
     outputSchema: normalizedOutput,
     execute: async (params) => {
       const data = params.inputData || params;
-      // Inline input envelope strip REMOVED in Plan 1b Phase 3 (operator override of
+      // Inline input envelope strip intentionally absent (operator override of
       // Red Team Finding 5). The factory-level preprocess at line ~110 handles MCP-path
-      // callers via schema validation. Direct `run.start({ inputData })` callers are
-      // migrated to the MCP call path in Phase 3 step 4.
+      // callers via schema validation. Direct `run.start({ inputData })` callers go
+      // through the MCP call path.
       const result = await handler(data, params);
       // Defensive envelope strip: future handlers may wrap legacy tool output in
       // the MCP content envelope. adaptLegacyHandler does the same for createTool.

@@ -19,7 +19,7 @@ import {
 } from "../../core/evaluate-inbound-gate.js";
 import { findProjectRoot } from "../../core/gate-logic.js";
 import { writeToAllSurfaces, readFromAllSurfaces } from "../../core/surfaces.js";
-// Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker filename
+// per-worktree session ID scopes the marker filename
 // so two Claude Code sessions in different worktrees don't pollute each other's
 // outbound gate decisions (closes Multi-Session Isolation gap).
 import { getSessionId } from "../../core/worktree-session-id.js";
@@ -94,7 +94,7 @@ function writeOperatorMessageMarker(root, prompt) {
       return;
     }
 
-    // Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker.
+// per-worktree session ID scopes the marker.
     // Each surface gets the session-id-suffixed filename. Cross-surface
     // pollution blocked (Finding 11).
     const sessionId = getSessionId(root);
@@ -108,7 +108,7 @@ function main() {
   try {
     runMain();
   } catch (err) {
-    // Per Plan 260720-1955 Phase 4 (H5): always exit 0; on throw, still emit the
+    // Always exit 0; on throw, still emit the
     // pointer so the agent has a degraded but valid pull path.
     try {
       console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: `${buildSteeringPointer()}\n(pointer fallback — gate error: ${err.message})` } }));

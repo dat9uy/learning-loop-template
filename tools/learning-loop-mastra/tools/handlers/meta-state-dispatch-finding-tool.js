@@ -14,9 +14,9 @@ import { isLiveSession } from "#lib/session-mode.js";
  * meta_state_dispatch_finding — two-mode tool for routing fixable findings
  * to a GitHub Issue via an external coordination repo.
  *
- * Two-surfaces split (plan 260704-0301-stale-findings-dispatch-handle, Phase 2):
- * the deterministic core (this tool) does NO GitHub side effects. The agentic
- * runtime (the agent) runs `gh issue create` between prepare and commit.
+ * Two-surfaces split: the deterministic core (this tool) does NO GitHub side
+ * effects. The agentic runtime (the agent) runs `gh issue create` between
+ * prepare and commit.
  *
  * Stages:
  *   - prepare({id}): builds the issue title/body + advisory coord-repo hint.

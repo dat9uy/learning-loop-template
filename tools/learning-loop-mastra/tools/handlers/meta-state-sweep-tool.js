@@ -7,14 +7,14 @@ import { resolveRoot } from "#lib/resolve-root.js";
 
 export const metaStateSweepTool = {
   name: "meta_state_sweep",
-  description: "Read-only reporting view: returns the derived stale-view set as a dry-run report. Plan 260707-0812 Phase 3: the previous `apply:true` mode is removed — sweep no longer writes status. Use `meta_state_resolve` / `meta_state_supersede` to close findings, or `meta_state_re_verify` to re-ground. The derived view is sourced from `isStaleView` (age + drift) so the registry cannot be mutated by sweep. CAS-safe via the version field (read-only). No operator gate.",
+  description: "Read-only reporting view: returns the derived stale-view set as a dry-run report. The previous `apply:true` mode is removed — sweep no longer writes status. Use `meta_state_resolve` / `meta_state_supersede` to close findings, or `meta_state_re_verify` to re-ground. The derived view is sourced from `isStaleView` (age + drift) so the registry cannot be mutated by sweep. CAS-safe via the version field (read-only). No operator gate.",
   schema: {},
   handler: async () => {
     const root = resolveRoot();
     const entries = readRegistry(root);
-    // Plan 260716-0624 Phase 02 (RT: M20): inject codeHashes so drift-aware
-    // stale-view fires only when on-disk bytes actually differ from index
-    // baseline. Log non-"missing" skipped paths as gate-log breadcrumbs.
+    // Inject codeHashes so the drift-aware stale-view fires only when
+    // on-disk bytes actually differ from the index baseline. Log
+    // non-"missing" skipped paths as gate-log breadcrumbs.
     const { fileIndex, codeHashes } = buildDriftSignals(entries, root, {
       toolName: "meta_state_sweep",
     });

@@ -10,7 +10,7 @@ import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
 
 // Set of statuses excluded by default from `meta_state_list` results.
-// Plan 260707-0812 Phase 2: collapses to {resolved, superseded} (the canonical
+// collapses to {resolved, superseded} (the canonical
 // terminal set); `archived` is excluded upstream by the entry_kind/status
 // filter pair, not here.
 const EXCLUDABLE_STATUSES = new Set(["resolved", "superseded"]);
@@ -99,7 +99,7 @@ export const metaStateListTool = {
     // guard was lifted. That contradicts the collapsed status model, where
     // `stale` is a derived evidence-freshness view (see `core/stale-view.js`),
     // not a writable status. The past-TTL signal stays available via
-    // `isStaleView` for callers that want it. (Phase 4 deleted `checkExpiry`.)
+    // `isStaleView` for callers that want it. (`checkExpiry` was deleted.)
     let result = entries;
 
     // Filter pipeline order: ref_by/ref_field first (most selective),
@@ -121,7 +121,7 @@ export const metaStateListTool = {
         matchingIds = new Set(refs);
       } else if (ref_field === "consolidated_into") {
         // Scan: pick change-logs whose `consolidates` array includes ref_by.
-        // Plan 260715-0801 Validation Q2: schema is z.array(z.string()); the
+// schema is z.array(z.string()); the
         // migration script normalizes any legacy single-string value to a
         // one-element array, so the array membership check is the canonical
         // post-migration path. Tolerate the legacy string form for in-flight
@@ -177,7 +177,7 @@ export const metaStateListTool = {
       result = filterEntries(result, activeFilters);
     }
 
-    // Plan 260611-1000: terminal statuses are excluded by default. If the
+// terminal statuses are excluded by default. If the
     // caller explicitly filters by a terminal status (e.g., status="resolved"),
     // honor that filter — the user is opting in to terminal entries.
     // include_archived: true is the unified "show me the audit trail" affordance;

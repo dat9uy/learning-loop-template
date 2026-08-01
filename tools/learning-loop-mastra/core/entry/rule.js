@@ -50,7 +50,7 @@ export function createRule(data) {
     },
 
     outboundRefs(entries) {
-      // Delegate to the centralized graph. Plan 260730-0240 single source of truth.
+      // Delegate to the centralized graph. Single source of truth.
       return forwardRefs(parsed, entries);
     },
 

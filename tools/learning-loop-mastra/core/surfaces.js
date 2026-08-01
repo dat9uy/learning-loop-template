@@ -47,13 +47,12 @@ export function getAllCoordinationPaths(subpath) {
  * Returns a per-surface result array (red-team fix: surface errors are no
  * longer swallowed silently — callers can detect partial-mirror failure).
  *
- * Per red-team F15 (plan 260719-1428-central-skills-management Phase 2):
- * the temp path is pid-suffixed (`${realPath}.<pid>.tmp`) so concurrent
- * `sync-skills` CLI invocations cannot collide on the same `.tmp` path;
- * the per-surface loop is sequential within a process so no intra-process
- * collision exists. A `finally` block unlinkSync's the tmp on failure
- * (rename failure or interruption) so the dir does not accumulate `.tmp`
- * debris.
+ * Per red-team F15: the temp path is pid-suffixed
+ * (`${realPath}.<pid>.tmp`) so concurrent `sync-skills` CLI invocations
+ * cannot collide on the same `.tmp` path; the per-surface loop is
+ * sequential within a process so no intra-process collision exists. A
+ * `finally` block unlinkSync's the tmp on failure (rename failure or
+ * interruption) so the dir does not accumulate `.tmp` debris.
  *
  * @param {string} root — project root directory
  * @param {string} section — section name (e.g. "coordination", "skills")
@@ -66,10 +65,10 @@ export function getAllCoordinationPaths(subpath) {
  *   default always-rewrite behavior.
  * @returns {Array<{ surface: string, action: "wrote" | "unchanged" | "failed", error?: string }>}
  */
-// Reserved as the canonical section-aware mirror fan-out per plan 260707-0114
-// acceptance. Consumed internally by writeToAllSurfaces (back-compat, has
-// external callers) and writeToAllSkills; current skill edits use gated-Edit-
-// per-mirror (red-team #6), so no external import exists yet.
+// Reserved as the canonical section-aware mirror fan-out per the loop-skill
+// acceptance review. Consumed internally by writeToAllSurfaces (back-compat,
+// has external callers) and writeToAllSkills; current skill edits use
+// gated-Edit-per-mirror (red-team #6), so no external import exists yet.
 // fallow-ignore-next-line unused-export
 export function writeToAllSurfacesSection(root, section, subpath, content, opts = {}) {
   const results = [];
@@ -123,9 +122,8 @@ export function writeToAllSurfaces(root, subpath, content) {
  * the materializer is a true no-op (0 bytes written, no mtime bump) when
  * mirrors already match canonical.
  *
- * First real consumer: tools/scripts/sync-skills.mjs (plan 260719-1428
- * central-skills-management Phase 2 — internal canonical source + fan-out
- * materializer).
+ * First real consumer: tools/scripts/sync-skills.mjs (central-skills
+ * management — internal canonical source + fan-out materializer).
  *
  * @param {string} root
  * @param {string} subpath — relative path under <surface>/skills/

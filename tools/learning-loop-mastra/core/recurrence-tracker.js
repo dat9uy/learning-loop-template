@@ -102,7 +102,7 @@ export async function checkAndEmit(root, options = {}) {
       const durationMin = Math.round(
         (new Date(group.last_ts).getTime() - new Date(group.first_ts).getTime()) / 60000,
       );
-      // Plan 260707-0812 Phase 2 (red-team C2): route through `writeEntry`
+// route through `writeEntry`
       // (which validates via metaStateFindingEntrySchema) instead of raw
       // appendFileSync (which bypassed safeParse). Status is `open`, not
       // `reported`; `expires_at` is removed (vestigial).

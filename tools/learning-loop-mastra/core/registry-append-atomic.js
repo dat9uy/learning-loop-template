@@ -1,4 +1,4 @@
-// Tier 2 Phase B: true-append write helper.
+// True-append write helper.
 //
 // Replaces the read-all → mutate → full-rewrite pattern with O_APPEND +
 // fsync'd writes. Pre-condition: caller MUST hold `withRegistryLock(root)`
@@ -18,7 +18,7 @@
 //
 // Shared between `appendRegistryEntryAtomic` (meta-state.jsonl) and
 // `appendChangeLogEntryAtomic` (change-log.jsonl). Both currently use
-// `appendFileSync` (line 163 / line 79) without fsync — Phase B migrates
+// `appendFileSync` (line 163 / line 79) without fsync — this helper migrates
 // both paths so the change-log stream also benefits from crash-safety.
 
 import { openSync, writeSync, fsyncSync, closeSync } from "node:fs";
@@ -59,11 +59,11 @@ function trueAppendAtomic(root, path, entry) {
 /**
  * Defensive assert: once `change-log.jsonl` exists, persist sites MUST pass
  * a non-change-log entry to `meta-state.jsonl`. A leak here would copy a
- * change-log entry into the mutable table, and the post-Phase-C
- * `merge=union` would duplicate the entry (same id) on parallel merge.
+ * change-log entry into the mutable table, and the union-merge contract
+ * would duplicate the entry (same id) on parallel merge.
  *
- * Mirrors `assertNoChangeLogLeak` in core/meta-state.js (Phase 1 guard).
- * Lives here (Phase B) so the true-append path has its own enforcement.
+ * Mirrors `assertNoChangeLogLeak` in core/meta-state.js.
+ * Lives here so the true-append path has its own enforcement.
  *
  * Pre-split (no change-log.jsonl in the root): no-op — change-logs in
  * meta-state.jsonl are the expected state.

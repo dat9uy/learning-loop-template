@@ -361,7 +361,7 @@ test("meta_state_patch never mutates when patch contains only immutable fields (
 // model emits a real-but-invalid field, the rejection must name the field
 // + constraint — not the opaque z.union "Invalid input" path:[] string that
 // drives the model to retreat to {}.
-test("meta_state_patch short description returns invalid_field with field_errors naming description (plan 260717-1145)", async () => {
+test("meta_state_patch short description returns invalid_field with field_errors naming description", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -398,7 +398,7 @@ test("meta_state_patch short description returns invalid_field with field_errors
   }
 });
 
-test("meta_state_patch unknown key returns invalid_field naming the offending key (plan 260717-1145)", async () => {
+test("meta_state_patch unknown key returns invalid_field naming the offending key", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -429,7 +429,7 @@ test("meta_state_patch unknown key returns invalid_field naming the offending ke
   }
 });
 
-test("meta_state_patch bad enum value returns invalid_field naming the field (plan 260717-1145)", async () => {
+test("meta_state_patch bad enum value returns invalid_field naming the field", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -459,7 +459,7 @@ test("meta_state_patch bad enum value returns invalid_field naming the field (pl
   }
 });
 
-test("meta_state_patch finding-valid/rule-invalid field via entry_kind:rule is rejected per branch (plan 260717-1145)", async () => {
+test("meta_state_patch finding-valid/rule-invalid field via entry_kind:rule is rejected per branch", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -494,7 +494,7 @@ test("meta_state_patch finding-valid/rule-invalid field via entry_kind:rule is r
 });
 
 // Sanity: a valid patch still succeeds after the validator is in place.
-test("meta_state_patch valid patch succeeds alongside new invalid_field path (plan 260717-1145)", async () => {
+test("meta_state_patch valid patch succeeds alongside new invalid_field path", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -526,7 +526,7 @@ test("meta_state_patch valid patch succeeds alongside new invalid_field path (pl
 // Phase 4 derives the hint from buildPatchSchemaFor's shape so each kind's
 // hint names its own mutable fields (no cross-kind leakage).
 
-test("empty_patch hint for finding names description + evidence_code_ref + lifecycle tools (plan 260717-1145)", async () => {
+test("empty_patch hint for finding names description + evidence_code_ref + lifecycle tools", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({
@@ -566,7 +566,7 @@ test("empty_patch hint for finding names description + evidence_code_ref + lifec
   }
 });
 
-test("empty_patch hint for rule names rule-specific fields, no finding leakage (plan 260717-1145)", async () => {
+test("empty_patch hint for rule names rule-specific fields, no finding leakage", async () => {
   const root = setup();
   try {
     const reportResult = await reportCall({

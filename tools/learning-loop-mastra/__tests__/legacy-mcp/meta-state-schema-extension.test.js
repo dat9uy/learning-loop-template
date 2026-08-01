@@ -10,7 +10,7 @@ import {
 } from "../../core/meta-state.js";
 import { invalidateCache } from "../../core/read-registry-cache.js";
 
-describe("meta-state schema extension (Phase 1)", () => {
+describe("meta-state schema extension", () => {
   let tempDir;
 
   test("legacy entry without affected_system defaults to 'meta'", () => {

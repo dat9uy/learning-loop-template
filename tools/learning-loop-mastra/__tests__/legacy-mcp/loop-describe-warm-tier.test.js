@@ -128,7 +128,7 @@ describe("loop_describe warm tier discoverability_hints", () => {
     assert.ok(Object.isFrozen(hints));
   });
 
-  test("buildProcessHints returns ≥1 entry (Phase 3: rule-derived projection)", () => {
+  test("buildProcessHints returns ≥1 entry (rule-derived projection)", () => {
     // Phase 3 (plans/260717-1826-unify-context-injection): buildProcessHints
     // is no longer a frozen const-returning function. It now reads the
     // registry, resolves rule-derived entries from rule.hint_text, and

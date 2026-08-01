@@ -2,8 +2,8 @@ import { globMatch } from "./gate-logic.js";
 
 // `recommended_tools` is vacated pending a real index/capability subsystem.
 // The previous values — index_extract, index_validate, capability_generate —
-// referenced tools that were deleted in plan 260612-1700-meta-surface-re-debate
-// (13 product-surface MCP tools deleted) or never shipped. The handlers
+// referenced tools that were deleted in the meta-surface re-debate (13
+// product-surface MCP tools deleted) or never shipped. The handlers
 // (trigger-workflow-tool.js, notify-artifact-tool.js) guard with `?? []` so
 // the field is REQUIRED on each entry (field removal would crash `def.recommended_tools.join(...)`)
 // but may be empty. Adding back future tools is a deliberate registry edit.

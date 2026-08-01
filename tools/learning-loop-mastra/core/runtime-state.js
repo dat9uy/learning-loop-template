@@ -1,10 +1,10 @@
 // core/runtime-state.js — shared runtime-sidecar (runtime-state.jsonl) helpers.
 //
-// Extracted from runtime-state-record-tool.js in plan 260704-0301-stale-findings-
-// dispatch-handle Phase 2 (DRY). The original tool defined `computeFingerprint`
-// inline + wrote via appendFileSync — both extracted here so the new
-// meta_state_dispatch_finding tool (also writing ledger events) can reuse
-// the same append + fingerprint path without duplicating the crypto.
+// Extracted from runtime-state-record-tool.js to DRY the append + fingerprint
+// path. The original tool defined `computeFingerprint` inline + wrote via
+// appendFileSync — both extracted here so the new meta_state_dispatch_finding
+// tool (also writing ledger events) can reuse the same append + fingerprint
+// path without duplicating the crypto.
 //
 // IMPORTANT (P2 F6 — orthogonal-gate design): this helper does NOT enforce
 // preflight. The preflight check (`hasPreflightMarker(root)`) stays at the
@@ -108,7 +108,7 @@ function collapseLatestById(rows) {
  * the kinds split), then dedup to `max_by(version)` per id, then return the
  * rows.
  *
- * Plan 260728-2323-unify-observation-staleness-mechanism Phase 2:
+* 
  * the kind filter MUST happen BEFORE the dedup. `appendLedgerEvent`
  * versions rows kind-agnostically by `id` (see runtime-state.js:269-275 —
  * no kind check), and a canonical-id `ledger-event` is permitted when the
@@ -130,10 +130,10 @@ export function collapseLatestBudgetStateById(rows) {
     (r) => r && (r.kind ?? "budget-state") === "budget-state"
   );
   // Split: rows with a string id get the max_by(version) dedup; rows without
-  // an id (legacy / hand-crafted) pass through unchanged. Plan 260728-2323
+  // an id (legacy / hand-crafted) pass through unchanged. Legacy rows
   // re-red-team M1: legacy/distinct-id rows are NOT collapsed by
   // `collapseLatestById` (which drops no-id rows) and stay per-row
-  // (conservative) — preserving the pre-Phase-2 per-row emission for legacy
+  // (conservative) — preserving per-row emission for legacy
   // data shapes. The kind filter is the only load-bearing step for the
   // cross-kind collision guard (a canonical-id ledger-event sharing an id
   // with a budget-state is filtered out BEFORE the dedup, so it cannot
@@ -389,7 +389,7 @@ export function readBudgetTrackingState(root, surface) {
       `runtime_state_budget_tracking_corrupt: ${malformed} unparseable line(s) in runtime-state.jsonl — refusing to resolve budget-tracking state for surface "${surface}" (a dropped line could be a lifecycle record)`,
     );
   }
-  // Plan 260728-2323 Phase 2: dedup with kind-before-collapse via the shared
+// dedup with kind-before-collapse via the shared
   // helper. Scoping the budget-state + surface filter to this reader (vs
   // letting the helper collapse across all surfaces) keeps the validation
   // loop targeted at THIS surface's rows — a corrupt row on another surface
@@ -405,8 +405,8 @@ export function readBudgetTrackingState(root, surface) {
       );
     }
   }
-  // Not switched to the shared collapseLatestBudgetStateById helper (Phase 2
-  // DRY goal): this lifecycle reader needs the {row, version, fileIdx} entries
+  // Not switched to the shared collapseLatestBudgetStateById helper (a DRY
+  // goal): this lifecycle reader needs the {row, version, fileIdx} entries
   // to sort by fileIdx for the cross-id recency tiebreak, and collapseLatestById
   // here drops no-id legacy rows (the helper would pass them through — a
   // lifecycle-read behavior change). collapseLatestById is idempotent on

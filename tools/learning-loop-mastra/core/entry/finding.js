@@ -14,7 +14,7 @@ export function createFinding(data) {
     data: parsed,
     schema: metaStateFindingEntrySchema,
 
-    // Plan 260707-0812 Phase 2: `isActive`/`isStale` renamed to
+    // `isActive`/`isStale` renamed to
     // `isOpen`/`isStaleView`. Semantics: the open predicate tolerates legacy
     // `active`/`reported`/`stale` as open; the stale-view predicate checks
     // age + drift. See core/stale-view.js for the canonical implementations.
@@ -24,7 +24,7 @@ export function createFinding(data) {
 
     outboundRefs(entries) {
       // Delegate to the centralized graph — single source of truth for
-      // cross-ref fields per kind. Plan 260730-0240 centralizes the
+      // cross-ref fields per kind. The graph module centralizes the
       // outbound/inbound implementations into core/entry/relationship-graph.js.
       return forwardRefs(parsed, entries);
     },

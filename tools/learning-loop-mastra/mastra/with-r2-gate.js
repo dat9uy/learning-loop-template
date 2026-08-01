@@ -1,11 +1,11 @@
 /**
- * R2 write-gate wrapper (F2, F5, F6 / Plan 5-Lite Phase 1).
+ * R2 write-gate wrapper (F2, F5, F6).
  *
  * Composes the gating chain for every MCP tool execute:
  *
  *   1. detectPathFields({ tool, args }) — collect declared write-path values.
  *      Empty set (pathFields: []) short-circuits to allow (passthrough).
- *   2. For each path: resolveSafePath (Phase 2 path containment) — throws first
+ *   2. For each path: resolveSafePath (path containment) — throws first
  *      on traversal / symlink / hardlink escape. For new files that do not yet
  *      exist (ENOENT), the parent directory is verified instead so legitimate
  *      new-file writes are not blocked by the gate's pre-flight.
@@ -79,7 +79,7 @@ export function withR2Gate({ id, execute, pathFields }) {
  * resolved via resolveSafePath (throws on escape). New files that do not yet
  * exist (ENOENT) fall back to verifying the parent directory is contained,
  * so the gate does not block legitimate new-file writes (the actual write
- * site re-runs resolveSafePath per Phase 2 NF3).
+ * site re-runs resolveSafePath per NF3).
  */
 function resolveForGate(root, userPath) {
   try {

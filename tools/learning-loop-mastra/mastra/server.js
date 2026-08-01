@@ -42,7 +42,7 @@ const WORKFLOW_MANIFEST = JSON.parse(
 
 const PREFIX = "mastra_";
 const READS_VIA_CLI = /^(1|true)$/i.test(process.env.LOOP_READS_VIA_CLI ?? "");
-// Plan 260722-1343 (Write-capable CLI W): combined flag drops every CLI_TOOLS
+// combined flag drops every CLI_TOOLS
 // member (reads + writes) from the MCP surface. `LOOP_READS_VIA_CLI` is
 // preserved for reads-only backward compat (R runtime). When a runtime sets
 // `LOOP_RECORDS_VIA_CLI=1`, MCP keeps only workflow / storage / allowlist /
@@ -64,7 +64,7 @@ for (const entry of MANIFEST) {
   if (READS_VIA_CLI && CLI_READ_TOOLS.has(legacy.name)) {
     continue;
   }
-  // Plan 260722-1343 Phase 1: combined flag drops reads + writes together.
+// combined flag drops reads + writes together.
   // CLI_TOOLS is the union (CLI_READ_TOOLS ∪ CLI_WRITE_TOOLS). The reads-only
   // path above stays for R's backward-compat runtimes; this branch fires when
   // a runtime opts the FULL record surface out of MCP.
@@ -78,7 +78,7 @@ for (const entry of MANIFEST) {
     inputSchema: legacy.schema,
     execute: adaptLegacyHandler(legacy),
     pathFields: entry.pathFields ?? [],
-    // Plan 260717-1145 Phase 2: model-visible JSON-schema hints (e.g.
+// model-visible JSON-schema hints (e.g.
     // minProperties on `patch` to steer the model away from the empty-{}
     // safe emission). Generation-only — never affects runtime .parse().
     parityHints: legacy.parityJsonSchemaHints ?? {},
@@ -266,7 +266,7 @@ const server = new LoopMCPServer({
   name: "learning-loop",
   version: "0.1.2",
   description:
-    "Mastra-based canonical MCP server for the learning loop (Phase D Plans 1+2+3). 31 tools + 10 workflows + 3 agents across 6 groups.",
+    "Mastra-based canonical MCP server for the learning loop. 31 tools + 10 workflows + 3 agents across 6 groups.",
   tools,
   workflows,
   agents,

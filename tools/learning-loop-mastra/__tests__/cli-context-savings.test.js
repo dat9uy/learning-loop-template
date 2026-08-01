@@ -221,7 +221,7 @@ describe("real-manifest integration: wire-byte formula reproduces surface bytes"
     );
   });
 
-  test("savings_bytes + savings_pct reflect banner budget (Phase 3 floor pre-check)", async () => {
+  test("savings_bytes + savings_pct reflect banner budget (floor pre-check)", async () => {
     const { manifest } = readLiveManifest();
     const rows = await resolveWireBytesForCliTools(manifest, CLI_TOOLS);
     const bannerBytes = Math.max(BANNER_BYTES_BUDGET, 200);
@@ -250,7 +250,7 @@ describe("real-manifest integration: wire-byte formula reproduces surface bytes"
 
 const SAVINGS_PCT_FLOOR = 50; // half of the observed ~94% win (plan Phase 3 §Architecture)
 
-describe("Phase 3 regression guards", () => {
+describe("Regression guards", () => {
   test("byte-accuracy: every CLI_TOOLS member's reported bytes match the wire-def formula", async () => {
     // Re-derive the expected byte count by hand for every CLI_TOOLS
     // member. If `resolveWireBytesForCliTools` ever drifts away from

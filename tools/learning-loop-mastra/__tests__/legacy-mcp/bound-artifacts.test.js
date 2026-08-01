@@ -68,7 +68,7 @@ test("BOUND_ARTIFACTS rule order is pinned (first-match-wins)", async () => {
   );
 });
 
-test("BOUND_ARTIFACTS does NOT contain 'schemas' (Phase 2 migration to preflight rule)", async () => {
+test("BOUND_ARTIFACTS does NOT contain 'schemas' (migration to preflight rule)", async () => {
   const mod = await import("../../core/bound-artifacts.js");
   const names = mod.BOUND_ARTIFACTS.map((r) => r.name);
   assert.ok(
@@ -77,7 +77,7 @@ test("BOUND_ARTIFACTS does NOT contain 'schemas' (Phase 2 migration to preflight
   );
 });
 
-test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (Phase 1 migration to preflight rule)", async () => {
+test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (migration to preflight rule)", async () => {
   const mod = await import("../../core/bound-artifacts.js");
   const names = mod.BOUND_ARTIFACTS.map((r) => r.name);
   assert.ok(
@@ -86,7 +86,7 @@ test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (Phase 1 migration to pre
   );
 });
 
-test("evaluateWriteGate handles runtime-state.jsonl via preflight delegation (Phase 1)", async () => {
+test("evaluateWriteGate handles runtime-state.jsonl via preflight delegation", async () => {
   // The runtime-state rule is special-cased in evaluate-write-gate.js (not in
   // BOUND_ARTIFACTS). Smoke-test that the runtime-state glob is recognised and
   // routed to the runtime-state preflight branch — covered in detail by
@@ -154,7 +154,7 @@ test("evaluate-write-gate.js no longer inlines the 5 simple-glob literals", () =
   }
 });
 
-test("evaluateWriteGate handles schemas/** via preflight delegation (Phase 2)", async () => {
+test("evaluateWriteGate handles schemas/** via preflight delegation", async () => {
   // The schemas rule is special-cased in evaluate-write-gate.js (not in
   // BOUND_ARTIFACTS). Smoke-test that the schema glob is recognised and routed
   // to the schemas preflight branch — covered in detail by

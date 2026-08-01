@@ -1,4 +1,4 @@
-// Tier 2 Phase B: canonical comparator for the no-op short-circuit.
+// Canonical comparator for the no-op short-circuit.
 //
 // Resolves meta-260715T2311Z-gratuitous-mutations: when an `updateEntry` patch
 // produces no field change, the write must be a no-op (no version bump, no

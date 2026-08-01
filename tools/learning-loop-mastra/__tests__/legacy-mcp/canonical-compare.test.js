@@ -11,7 +11,7 @@ import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { canonicalize, entriesEqual } from "../../core/canonical-compare.js";
 
-describe("canonical-compare (Tier 2 Phase B) — sorted-keys + set-semantics", () => {
+describe("canonical-compare — sorted-keys + set-semantics", () => {
   it("(1) same-set-different-order arrays compare equal", () => {
     const a = { reopens: ["X", "Y", "Z"] };
     const b = { reopens: ["Z", "Y", "X"] };

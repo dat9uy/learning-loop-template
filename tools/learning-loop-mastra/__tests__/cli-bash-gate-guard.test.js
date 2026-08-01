@@ -21,7 +21,7 @@ const CLI_BIN_PATH = "tools/learning-loop-mastra/bin/loop.mjs";
 const READ_ONLY_CLI = `node ${CLI_BIN_PATH} meta_state_list '{}'`;
 const WRITE_REDIRECT_CLI = `node ${CLI_BIN_PATH} meta_state_list '{}' > meta-state.jsonl`;
 
-describe("cli bash-gate guard (Phase 3)", () => {
+describe("cli bash-gate guard", () => {
   test("read-only CLI command passes the bash gate as decision: 'ok'", () => {
     const tmpRoot = mkdtempSync(join(tmpdir(), "cli-bash-gate-guard-"));
     const decision = evaluateBashGate({ command: READ_ONLY_CLI, root: tmpRoot });

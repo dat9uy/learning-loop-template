@@ -9,7 +9,7 @@
 //   - no observations → no marker
 //   - missing updated_at → stale (stale-on-null, F1 defensiveness)
 //   - precise multi-row case: older stale row + newer fresh row for the same
-//     surface (canonical id) → not flagged (Phase 2 dedup + Phase 3 selector)
+//     surface (canonical id) → not flagged (dedup + selector)
 
 import assert from "node:assert";
 import { test, beforeEach, afterEach } from "vitest";
@@ -100,7 +100,7 @@ await test("missing updated_at on active obs → stale (stale-on-null, F1 defens
   assert.strictEqual(decision.decision, "warn");
 });
 
-await test("precise multi-row case: older stale + newer fresh, same surface → NOT flagged (Phase 2 dedup + Phase 3 selector)", () => {
+await test("precise multi-row case: older stale + newer fresh, same surface → NOT flagged (dedup + selector)", () => {
   // Phase 2 dedup collapses to the latest max_by(version) row. Phase 3
   // selector checks only the latest's updated_at. So even though an older
   // stale row exists, the latest is fresh → not flagged. This is the

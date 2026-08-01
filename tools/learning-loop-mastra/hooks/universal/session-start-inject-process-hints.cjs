@@ -13,8 +13,7 @@
  * inline injection the agent never sees PROCESS_HINTS row #1 (the test-parsing
  * rule) unless it voluntarily calls loop_describe — the observed regression in
  * session 4760ee34 (4x `pnpm test | grep`). Injecting at SessionStart makes
- * delivery deterministic. See
- * plans/reports/debug-260715-1141-GH-260715-process-hint-not-injected-report.md.
+ * delivery deterministic.
  *
  * Fail-open: a build error emits a degraded marker instead of crashing the
  * session start. The discoverability hook's sidecar remains the audit source

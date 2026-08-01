@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { readFromAllSurfaces } from "./surfaces.js";
-// Plan 260711-0030 Phase 5: per-worktree session ID scopes the marker file.
+// per-worktree session ID scopes the marker file.
 // readLastOperatorMessage now takes a `sessionId` arg and looks for the
 // session-suffixed filename; without it, falls back to the legacy name for
 // migration compatibility.
@@ -10,10 +10,10 @@ import { getSessionId } from "./worktree-session-id.js";
 // writers agree on what gets surfaced. Mirrors the writer-side pause check
 // added to runtime_state_record and meta_state_dispatch_finding.
 import { isSurfacePaused } from "./runtime-tracking.js";
-// Plan 260728-2323 Phase 4: shared constant + unified marker predicate. The
+// shared constant + unified marker predicate. The
 // local MARKER_TTL_MS and the meta/non-meta branch are gone; both the
 // freshness guard and the per-observation check use the same primitive the
-// inbound gate uses (Phase 3).
+// inbound gate uses.
 import { OBSERVATION_STALENESS_WINDOW_MS } from "./constants.js";
 import {
   observationReferenceTimeMs,
@@ -34,7 +34,7 @@ function isMarkerFresh(marker) {
  * Returns { timestamp, prompt_snippet } or null if not found or expired.
  * Markers older than OBSERVATION_STALENESS_WINDOW_MS are treated as non-existent.
  *
- * Plan 260711-0030 Phase 5: scoped per-session via the session id argument
+ * The marker filename is scoped per-session via the session id argument
  * (defaults to getSessionId(root) for the current worktree). Backward-compat:
  * when `sessionId` is null/undefined the legacy un-suffixed filename is also
  * read so existing markers aren't orphaned.
@@ -76,9 +76,9 @@ export function readLastOperatorMessage(root, surface, sessionId = getSessionId(
  * Check if observations are stale relative to the last operator state-change message.
  * Returns { stale, reason, observation_id } or { stale: false }.
  *
- * Plan 260728-2323 Phase 4: rewritten onto the unified primitives. The
- * meta/non-meta branch and the sidecar re-read + `reduce(latest)` are gone.
- * Phase 2's projection dedup guarantees that `obs.updated_at` IS the
+ * Built on the unified primitives. The meta/non-meta branch and the sidecar
+ * re-read + `reduce(latest)` are gone.
+ * The projection dedup guarantees that `obs.updated_at` IS the
  * authoritative per-surface-latest timestamp, so the marker predicate
  * (`isObservationStaleByMarker`) reads `obs.updated_at` directly — no
  * sidecar re-read. Stale-on-null (matches the originals — `findStaleObservations`
@@ -87,7 +87,8 @@ export function readLastOperatorMessage(root, surface, sessionId = getSessionId(
  * state. The `status !== "active"` guard and the paused-surface
  * try/catch-degrade-to-not-paused skip are preserved verbatim.
  *
- * The "No runtime-state entry" branch is dropped (unreachable post-Phase-2:
+ * The "No runtime-state entry" branch is dropped (unreachable under the
+ * projection dedup:
  * an observation reaching this function always originates from a sidecar
  * row, so a sidecar-with-no-row-for-surface cannot happen via the gate's
  * real input). A missing `updated_at` hits the stale-on-null "no updated_at"

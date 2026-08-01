@@ -6,7 +6,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
   "banner_bytes_reads_only": 651,
   "banner_bytes_records_via_cli": 3021,
   "cli_tool_count": 41,
-  "dropped_def_bytes": 48453,
+  "dropped_def_bytes": 48416,
   "measured_at": Any<String>,
   "per_tool": [
     {
@@ -50,12 +50,12 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "workflow_prepare_runtime_request",
     },
     {
-      "bytes": 1320,
-      "name": "meta_state_refresh_file_index",
-    },
-    {
       "bytes": 1312,
       "name": "meta_state_propose_design",
+    },
+    {
+      "bytes": 1309,
+      "name": "meta_state_refresh_file_index",
     },
     {
       "bytes": 1284,
@@ -154,7 +154,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
       "name": "runtime_state_pause",
     },
     {
-      "bytes": 604,
+      "bytes": 578,
       "name": "meta_state_sweep",
     },
     {
@@ -175,7 +175,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
     },
   ],
   "root": Any<String>,
-  "savings_bytes": 45432,
+  "savings_bytes": 45395,
   "savings_pct": 93.8,
 }
 `;

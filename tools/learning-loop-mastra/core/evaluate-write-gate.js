@@ -88,21 +88,20 @@ const SKILL_PATHS = getAllSurfacePaths("skills", "**");
 // PREFLIGHT_MARKER_PATHS), skills (preflight-delegating with explicit
 // surface="skills" — the dedicated `.loop-preflight-skills` marker),
 // skills-canonical (preflight-delegating, matches the internal canonical
-// source dir at tools/learning-loop-mastra/skills/** — added by Phase 2 of
-// plans/260719-1428-central-skills-management; the materializer is the only
+// source dir at tools/learning-loop-mastra/skills/** — added by central-skills
+// management; the materializer is the only
 // write path to canonical SKILL.md, gated via the existing
 // `.loop-preflight-skills` marker), skills-manifest (preflight-delegating,
-// matches skills-lock.json at the repo root — added by Phase 3 of
-// plans/260719-1428-central-skills-management; the manifest is the trust
+// matches skills-lock.json at the repo root — the manifest is the trust
 // anchor for the contract's external exclusion, so direct writes are
 // blocked), schemas (preflight-delegating with explicit surface="schemas" —
 // the dedicated `.loop-preflight-schemas` marker; migrated out of
-// BOUND_ARTIFACTS in Phase 2 of plans/260720-1112 to repair the dead-end
+// BOUND_ARTIFACTS to repair the dead-end
 // block + stale `pnpm validate:records` reason), runtime-state
 // (preflight-delegating — the dedicated `.loop-preflight-runtime-state-edit`
 // marker, split from the append marker so routine runtime_state_record
 // appends do not keep the direct-write gate warm; migrated out of
-// BOUND_ARTIFACTS in Phase 1 of plans/260726-0949 to repair the dead-end
+// BOUND_ARTIFACTS to repair the dead-end
 // block whose only escape was the append-only `runtime_state_record` tool
 // — gate_override cannot reach simple-glob blocks; closes finding
 // meta-260720T1447Z), and product/** (delegates to evaluatePreflight).
@@ -184,22 +183,23 @@ export function evaluateWriteGate({ filePath, root }) {
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-canonical") {
-    // Phase 2: canonical authoring source under tools/learning-loop-mastra/skills/.
+    // Canonical authoring source under tools/learning-loop-mastra/skills/.
     // Delegates to the SAME .loop-preflight-skills marker as the mirror rule
     // (one unlock authorises both canonical + mirror edits within the 30-min TTL).
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "skills-manifest") {
-    // Phase 3: skills-lock.json is the trust anchor for the contract's
+    // skills-lock.json is the trust anchor for the contract's
     // external exclusion. Same preflight marker as the other skills rules.
     return evaluateSkillsPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
   }
   if (matched.name === "schemas") {
-    // Phase 2 of plans/260720-1112: schemas/** migrated from a dead-end simple-glob
-    // block (with a reason that referenced the non-existent `pnpm validate:records`
-    // script and no working override path) to a preflight-delegating rule mirroring
-    // the `skills` pattern. Uses the dedicated `.loop-preflight-schemas` marker
-    // created via gate_mark_preflight({surface:"schemas"}). The marker is NOT
+    // schemas/** was migrated from a dead-end simple-glob block (with a
+    // reason that referenced the non-existent `pnpm validate:records`
+    // script and no working override path) to a preflight-delegating rule
+    // mirroring the `skills` pattern. Uses the dedicated
+    // `.loop-preflight-schemas` marker created via
+    // gate_mark_preflight({surface:"schemas"}). The marker is NOT
     // surface-prefixed (schemas/** lives at the repo root), so an EXPLICIT
     // surface="schemas" lookup is required — same approach as skills.
     return evaluateSchemasPreflight({ filePath: relPath, root: resolvedRoot, matchedRule: matched.matchedRule });
@@ -227,7 +227,7 @@ export function evaluateWriteGate({ filePath, root }) {
  * (mirror paths, canonical dir, or the manifest) so the block decision
  * reports the rule that actually matched, not always the mirror glob.
  *
- * Phase 5 of plans/260707-0114-loop-skill-layer-prerequisite/plan.md.
+ * Skills preflight seam — named seam for the dedicated `.loop-preflight-skills` marker.
  */
 // fallow-ignore-next-line unused-export
 export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
@@ -258,11 +258,12 @@ export function evaluateSkillsPreflight({ filePath, root, matchedRule }) {
  * `.loop-preflight-schemas` marker; otherwise { decision: "block", reason,
  * surface: "schemas", preflight_checklist }.
  *
- * Migrated from a dead-end BOUND_ARTIFACTS simple-glob block (the reason
- * referenced the non-existent `pnpm validate:records` script and the override
- * path was unreachable — `gate_override` requires a *promoted* rule_id, and
- * `schemas/**` was a simple-glob block, not promoted). Closes finding
- * `meta-260720T1104Z`. Phase 2 of plans/260720-1112.
+ * Schemas preflight seam — named seam for the dedicated `.loop-preflight-schemas`
+ * marker. Migrated from a dead-end BOUND_ARTIFACTS simple-glob block
+ * (the reason referenced the non-existent `pnpm validate:records` script
+ * and the override path was unreachable — `gate_override` requires a
+ * *promoted* rule_id, and `schemas/**` was a simple-glob block, not
+ * promoted). Closes finding `meta-260720T1104Z`.
  */
 // fallow-ignore-next-line unused-export
 export function evaluateSchemasPreflight({ filePath, root, matchedRule }) {

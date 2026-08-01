@@ -27,7 +27,7 @@
  *     Callers MUST invoke `resolveSafePath` at the moment of use (inside the
  *     tool's execute body, immediately before fs.writeFileSync) — not only
  *     in the gate. The gate is pre-flight; the execute body is the actual
- *     write. See plan 260701-2250-plan-5-lite-r2-lim4 phase-02 NF3.
+ *     write. See the safe-write contract (sub-millisecond TOCTOU boundary).
  */
 import { realpathSync, lstatSync } from "node:fs";
 import { isAbsolute, resolve as pathResolve, sep } from "node:path";

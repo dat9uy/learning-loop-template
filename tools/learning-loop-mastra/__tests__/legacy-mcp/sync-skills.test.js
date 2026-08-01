@@ -114,7 +114,7 @@ test("canonical source dirs exist for learning-loop + coordination-gate", () => 
   }
 });
 
-test("canonical SKILL.md frontmatter is identical to .claude mirror (Phase 2 starting state)", () => {
+test("canonical SKILL.md frontmatter is identical to .claude mirror (mirror-parity starting state)", () => {
   for (const name of ["learning-loop", "coordination-gate"]) {
     const canonical = readCanonicalBytes(name);
     const mirror = readSkillBytes(".claude", name);

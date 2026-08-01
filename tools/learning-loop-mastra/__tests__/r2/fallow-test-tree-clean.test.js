@@ -24,7 +24,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // To get to repo root, traverse up 4 levels: r2 → __tests__ → learning-loop-mastra → tools → repo root
 const ROOT = join(__dirname, "..", "..", "..", "..");
 
-describe("fallow test-tree ignore guard (Phase 2 R13)", () => {
+describe("fallow test-tree ignore guard (R13)", () => {
   test(".fallowrc.json keeps the 4 test/spec ignore lines (fallow 3.3.0 lacks a vitest plugin; without these, 192 unused-file false positives)", () => {
     const fallowrc = JSON.parse(
       readFileSync(join(ROOT, "tools/learning-loop-mastra/.fallowrc.json"), "utf8"),

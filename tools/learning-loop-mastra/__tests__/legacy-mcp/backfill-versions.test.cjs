@@ -54,7 +54,7 @@ function makeFinding(overrides = {}) {
   };
 }
 
-describe("backfill-versions.mjs (Phase A backfill script)", () => {
+describe("backfill-versions.mjs (version backfill script)", () => {
   let root;
 
   beforeAll(() => {

@@ -9,16 +9,16 @@ import {
   IMMUTABLE_PATCH_FIELDS,
 } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
-// Plan 260712-0300 Phase 2: single source of truth for BATCH_SIZE_LIMIT.
+// single source of truth for BATCH_SIZE_LIMIT.
 // Both the handler and the core (meta-state.js) import from core/constants.js
 // so the 500-op cap is enforced uniformly — closes the 100-vs-500 reject window.
 import { BATCH_SIZE_LIMIT } from "../../core/constants.js";
-// Plan 260712-0300 Phase 2: import kind enum for the new optional `envelope`
+// import kind enum for the new optional `envelope`
 // field parallel to `operations` on the batch request shape.
 import { OPERATION_ENVELOPE_KINDS } from "../../core/operation-envelope.js";
 import { getFieldGlossaryEntry } from "../../core/field-glossary.js";
 
-// Plan 260717-1145 Phase 3: identity + CAS keys whose presence does NOT
+// identity + CAS keys whose presence does NOT
 // constitute an inline content field on an update op. Centralized here so
 // the no-content check and the per-kind validator stay in sync with core
 // (which strips exactly these when it processes an update op).
@@ -57,7 +57,7 @@ export const metaStateBatchTool = {
       deepStripEnvelope,
       z.array(opSchema).min(1).max(BATCH_SIZE_LIMIT)
     ).describe(`Array of operations to apply (1-${BATCH_SIZE_LIMIT} ops; default limit 500, overridable via META_STATE_BATCH_LIMIT)`),
-    // Plan 260712-0300 Phase 2: optional magnitude envelope. When present, an
+// optional magnitude envelope. When present, an
     // envelope-annotated change-log is auto-emitted AFTER the batch lands with
     // pre_count/post_count computed from the registry before/after the batch
     // and content_hash = SHA-256(kind + target + canonical op-list + entry-id-set).
@@ -81,7 +81,7 @@ export const metaStateBatchTool = {
     const unwrapped = deepStripEnvelope(operations);
     const unwrappedEnvelope = envelope ? deepStripEnvelope(envelope) : undefined;
 
-    // Plan 260717-1145 Phase 3: per-op preflight for update ops. Pre-walk
+// per-op preflight for update ops. Pre-walk
     // runs BEFORE metaStateBatch so a rejected op fails the whole batch
     // atomically (matches core's rollback shape: {applied:0, failed_at:i,
     // reason, op, ...extra}). The preflight logic lives in preflightUpdateOp
@@ -108,7 +108,7 @@ export const metaStateBatchTool = {
   },
 };
 
-// Plan 260717-1145 Phase 3: per-op preflight for update ops. Returns a
+// per-op preflight for update ops. Returns a
 // rejection-result object {reason, ...} if the op should fail-fast; null if
 // the op passes preflight and should fall through to metaStateBatch.
 //
@@ -124,7 +124,7 @@ export const metaStateBatchTool = {
 //
 // (1) and (2) intentionally pass-through to core so the existing core
 // behavior (with its deny-list precedence) is preserved; (3) and (4) are
-// the new pre-walk rejections introduced by plan 260717-1145 Phase 3.
+// the new pre-walk rejections introduced by the batch envelope pass-through.
 function preflightUpdateOp(root, ops, i, existingById) {
   const op = ops[i];
   if (!op || op.op !== "update") return null;
@@ -218,8 +218,8 @@ function buildPatchSchemaPayload(entryKind) {
   return z.toJSONSchema(buildPatchSchemaFor(entryKind), { target: "draft-7", io: "input" });
 }
 
-// Plan 260717-1145 Phase 3: schema-derived no_content hint for batch update
-// ops. Mirrors Phase 4's per-kind hint on the patch tool — same source
+// schema-derived no_content hint for batch update
+// ops. Mirrors the per-kind hint on the patch tool — same source
 // (buildPatchSchemaFor's shape via listMutableFieldsCsv), different delivery
 // surface (batch op vs patch tool call). The hint names the kind's mutable
 // content fields and notes the inline placement (no nested patch:{} on the op).

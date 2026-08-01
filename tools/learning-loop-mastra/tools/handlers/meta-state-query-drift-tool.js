@@ -19,7 +19,7 @@ export const metaStateQueryDriftTool = {
   description: "Aggregate drift events across the meta-state registry. Joins SP1's deriveStatus + SP2's checkGrounding. Read-only: the agent decides what to do with the result.",
   schema: {
     filter: z.preprocess(stripEnvelope, z.object({
-      // Plan 260707-0812 Phase 2: input enum accepts `open` (the canonical
+// input enum accepts `open` (the canonical
       // post-collapse status) and the legacy open-equivalent set; the filter
       // is mapped via isOpen in the registry reader so consumers see a
       // consistent set pre- and post-migration.
@@ -47,7 +47,7 @@ export const metaStateQueryDriftTool = {
     const nonTerminal = filterEntries(registry, { status: filter?.status });
 
     // fileIndex: the cached path-keyed fingerprint sidecar — the authoritative
-    // grounding baseline (Phase 3 repoint). Loaded here so queryDrift's
+    // grounding baseline. Loaded here so queryDrift's
     // checkGrounding call exercises the index path, not the stale per-record
     // fallback (red-team F5: without this, every edited file reports false drift).
     const fileIndex = readFileIndex(root);

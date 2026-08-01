@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-// Plan 260728-2323 Phase 4: `checkObservationStaleness` is no longer called
+// `checkObservationStaleness` is no longer called
 // from this handler (the artifact notification only needs the operator
 // marker for the state-change pointer). Drop the dead import.
 import { readLastOperatorMessage } from "../../core/inbound-state.js";
@@ -16,7 +16,7 @@ export const workflowNotifyArtifactTool = {
   },
   handler: async ({ path, change_type }) => {
     const root = resolveRoot();
-    // Q1 (plan-260722-2147 Phase 3): the manifest declares `pathFields: []`
+    // Q1: the manifest declares `pathFields: []`
     // because the CLI path hardcodes `pathFields:[]` at bin/loop.mjs:123,
     // so the R2 gate would short-circuit. In-handler validation restores
     // the records/** ownership check the gate cannot perform: any caller

@@ -5,7 +5,7 @@ import { summarize } from "../../core/loop-introspect.js";
 
 const TIER = "cold";
 
-test("Phase 6: cold-tier default returns full descriptions (no breaking change)", async () => {
+test("cold-tier default returns full descriptions (no breaking change)", async () => {
   const result = await loopDescribeTool.handler({ tier: TIER });
   const text = JSON.parse(result.content[0].text);
   assert.strictEqual(text.description_mode, "full");
@@ -22,7 +22,7 @@ test("Phase 6: cold-tier default returns full descriptions (no breaking change)"
   );
 });
 
-test("Phase 6: cold-tier summary mode truncates descriptions to 200 chars", async () => {
+test("cold-tier summary mode truncates descriptions to 200 chars", async () => {
   const result = await loopDescribeTool.handler({ tier: TIER, description_mode: "summary" });
   const text = JSON.parse(result.content[0].text);
   assert.strictEqual(text.description_mode, "summary");
@@ -43,7 +43,7 @@ test("Phase 6: cold-tier summary mode truncates descriptions to 200 chars", asyn
   );
 });
 
-test("Phase 6: summary mode reduces cold-tier size", async () => {
+test("summary mode reduces cold-tier size", async () => {
   const fullResult = await loopDescribeTool.handler({ tier: TIER, description_mode: "full" });
   const full = JSON.parse(fullResult.content[0].text);
 

@@ -12,7 +12,7 @@
 # because the write gate unconditionally blocks schemas/**. The test reads it
 # via an absolute path. When the gate is lifted, this can be moved to schemas/.
 
-# No open drift cells remain. Phase 3 closed 9 experiment cells;
-# Phase 4 closed 3 risk + 1 observation cells.
+# No open drift cells remain: all 9 experiment cells and the 3 risk + 1
+# observation cells are closed.
 []
 

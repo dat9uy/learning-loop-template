@@ -1,6 +1,6 @@
 /**
  * hint-renderer.js — budget-aware channel-based projection of the hint
- * registry. Phase 2 of plans/260717-1826-unify-context-injection.
+ * registry.
  *
  * Positioning (operator decision 2026-07-17, code-review I1): this module is
  * the INSPECTION surface, not the injection path. Production injection runs

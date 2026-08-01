@@ -1,4 +1,4 @@
-// cli-stderr.js — Phase 2 of plans/260722-1343-write-capable-cli-w.
+// cli-stderr.js — write-capable CLI stderr classifier.
 //
 // Structured stderr for the write-capable CLI. Splits the non-usage error
 // branch into two distinct shapes so the agent's recovery policy can tell
@@ -65,7 +65,7 @@ const KNOWN_REJECTION_CODE_PREFIXES = [
   // registry lock / atomic-append
   "registry_lock_failed",
   "ledger_append_failed",
-  // promote-rule guard (Phase 1)
+  // promote-rule guard
   "pattern_matches_cli_transport",
   "pattern_rejected_by_safety_check",
 ];

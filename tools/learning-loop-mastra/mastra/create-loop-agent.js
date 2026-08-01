@@ -11,8 +11,8 @@ import { Agent } from "@mastra/core/agent";
  *   2. MASTRA_AGENT_MODEL env var (global override)
  *   3. Code default "kimi-for-coding/k2p6"
  *
- * Memory: omitted by default (OM off; Phase 5 consumer). When Phase 5 enables OM,
- * adding memory: { observationalMemory: true } is a config change, not a migration.
+ * Memory: omitted by default (OM off; no consumer yet). Enabling OM later is a
+ * config change (memory: { observationalMemory: true }), not a migration.
  */
 
 const DEFAULT_AGENT_MODEL = "kimi-for-coding/k2p6";
@@ -84,6 +84,6 @@ export async function createLoopAgent({
     instructions,
     model,
     tools,
-    // memory: omitted — agent is memory-less (OM off; Phase 5 consumer)
+    // memory: omitted — agent is memory-less (OM off; no consumer yet)
   });
 }

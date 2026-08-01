@@ -1,7 +1,7 @@
 // tools/learning-loop-mastra/storage.js
 //
-// Q1.A lock (2026-06-19): Plan 2 uses createClient from @libsql/client directly
-// for the 2 storage workflows and the parity harness. The Mastra storage
+// Q1.A lock (2026-06-19): the 2 storage workflows and the parity harness use
+// createClient from @libsql/client directly. The Mastra storage
 // abstraction (LibSQLStore) is for future Mastra runtime domains (workflow
 // snapshots, threads, etc.) and is NOT used by the 2 storage workflows.
 // Both exports point to the same mastra-memory.db file but use disjoint tables.
@@ -46,7 +46,7 @@ export function getDataDir() {
   return DATA_DIR;
 }
 
-// DDL for the parity_records table used by Phase 3's 2 storage workflows
+// DDL for the parity_records table used by the 2 storage workflows
 // (and the parity harness's Test 1). Idempotent on every client.execute().
 const PARITY_DDL = `
   CREATE TABLE IF NOT EXISTS parity_records (

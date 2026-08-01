@@ -57,7 +57,7 @@ function makeChangeLog(overrides = {}) {
   };
 }
 
-describe("projection swap (Tier 2 Phase A) — last-wins-by-max-version", () => {
+describe("projection swap — last-wins-by-max-version", () => {
   let root;
 
   beforeAll(() => {
