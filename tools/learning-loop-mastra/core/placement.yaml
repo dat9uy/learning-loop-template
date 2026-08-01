@@ -16,10 +16,10 @@ files:
     summary: Reads/validates .gate-override markers with TTL expiry.
   - path: hint-registry.js
     role: facade
-    summary: Single source of truth for context-injection hints (slug-keyed entries). Phase 2 of plans/260717-1826-unify-context-injection.
+    summary: Single source of truth for context-injection hints (slug-keyed entries).
   - path: hint-renderer.js
     role: facade
-    summary: Budget-aware channel-based projection of the hint registry. Phase 2 of plans/260717-1826-unify-context-injection.
+    summary: Budget-aware channel-based projection of the hint registry.
   - path: inbound-state.js
     role: facade
     summary: Reads runtime-state.jsonl sidecar for inbound gate context.
@@ -46,7 +46,7 @@ files:
     summary: Per-worktree session ID for marker file isolation (Multi-Session Isolation gap). Plan 260711-0030 Phase 5.
   - path: runtime-state.js
     role: facade
-    summary: Shared runtime-state.jsonl helpers (append + fingerprint). Extracted in plan 260704-0301-stale-findings-dispatch-handle Phase 2 for DRY between runtime_state_record and meta_state_dispatch_finding.
+    summary: Shared runtime-state.jsonl helpers (append + fingerprint) shared by runtime_state_record and meta_state_dispatch_finding.
   - path: runtime-tracking.js
     role: facade
     summary: Operator per-surface tracking toggle (load/isSurfacePaused/set) against the `.loop/runtime-tracking.json` sidecar. Fail-closed on malformed sidecars; read-from-disk per call (no in-process cache).
@@ -80,7 +80,7 @@ files:
     summary: Strips MCP hookSpecificOutput envelopes from raw text.
   - path: field-glossary.js
     role: primitive
-    summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads. Phase 2 of plans/260720-1955.
+    summary: Single source of truth for meta-state field definitions; served via loop_describe cold tier and JIT error payloads.
   - path: canonical-compare.js
     role: primitive
     summary: Sorted-keys + set-semantics canonical comparator for the no-op short-circuit (Tier 2 Phase B; resolves meta-260715T2311Z-gratuitous-mutations).
@@ -92,16 +92,16 @@ files:
     summary: Shared CLI read+write tool set used by the CLI allowlist and opted-in MCP exclusion (LOOP_READS_VIA_CLI / LOOP_RECORDS_VIA_CLI).
   - path: cli-self-match.js
     role: primitive
-    summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape (Phase 1 of plans/260722-1343).
+    summary: canonicalCliInvocationShapes plus matchesCliTransport — the activation-branch guard for meta_state_promote_rule that rejects regex rules matching the CLI's own invocation shape.
   - path: cli-stderr.js
     role: facade
-    summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract (Phase 2 of plans/260722-1343). Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
+    summary: classifyCliError plus UsageError — splits non-usage errors into recognized-rejection JSON vs InternalError JSON for the CLI write-path stderr contract. Role is facade because it composes identity-pin, path-containment, and meta-state error classes into the stderr-classification policy.
   - path: cli-context-savings.js
     role: helper
-    summary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader. Phase 1 of plans/260726-1953.
+    summary: Pure CLI delta computation — parseManifestJsonc, resolveWireBytesForCliTools (dynamic import + parity-view wire bytes), computeCliContextSavings. Composes schema-normalize + schema-parity + manifest-loader.
   - path: schema-normalize.js
     role: primitive
-    summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps. Phase 1 of plans/260721-1933.
+    summary: Transport-agnostic normalizeInputSchema — identity-or-wrap a handler's input schema so non-Mastra consumers (the read-only CLI) can reuse it without importing the MCP transport's deps.
   - path: workflow-input-schema.js
     role: primitive
     summary: wrapWorkflowInputSchema — the U-Q1 unwrap contract for plain handler modules re-homed out of createLoopWorkflow; bakes z.preprocess(stripMcpContentEnvelope, normalizeInputSchema(schema)) into each unwrapped handler's schema so MCP-path envelope stripping survives the unwrap. Composes envelope-stripper + schema-normalize only (transport-agnostic).
