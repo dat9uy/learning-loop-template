@@ -33,10 +33,8 @@ function restoreEnv(name, value) {
 
 test.sequential("a promoted regex matching the CLI invocation shape is rejected (no rule is activated)", async () => {
   const originalRoot = process.env.GATE_ROOT;
-  const originalMode = process.env.LOOP_SESSION_MODE;
   const root = mkdtempSync(join(tmpdir(), "cli-self-footgun-"));
   process.env.GATE_ROOT = root;
-  process.env.LOOP_SESSION_MODE = "live";
 
   try {
     const report = await metaStateReportTool.handler({
@@ -64,7 +62,6 @@ test.sequential("a promoted regex matching the CLI invocation shape is rejected 
     assert.strictEqual(decision.decision, "ok", `the rejected rule must NOT intercept CLI; got ${JSON.stringify(decision)}`);
   } finally {
     restoreEnv("GATE_ROOT", originalRoot);
-    restoreEnv("LOOP_SESSION_MODE", originalMode);
   }
 });
 

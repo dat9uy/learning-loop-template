@@ -5,7 +5,7 @@
  *   1. Pass + refresh:true → index_refreshed:true, file-index baseline updated.
  *   2. Pass + refresh:false (default) → index_refreshed:false, file-index unchanged.
  *   3. Best-effort skip on file missing/EACCES → re_verified:true, index_refreshed:false, gate-log breadcrumb emitted.
- *   4. META_STATE_VERIFY_EXEC unset → early dry-return; index_refreshed absent.
+ *   4. exec env var unset no longer early-returns (exec gate removed); the tool proceeds to verification logic.
  *   5. CAS conflict → re_verified:false; index never mutates (no orphan baseline).
  */
 
@@ -21,11 +21,9 @@ import { readRegistry, writeEntry, readFileIndex } from "../../core/meta-state.j
 describe("meta_state_re_verify — opt-in refresh", () => {
   let root;
   let prevGateRoot;
-  let prevVerifyExec;
 
   beforeAll(() => {
     prevGateRoot = process.env.GATE_ROOT;
-    prevVerifyExec = process.env.META_STATE_VERIFY_EXEC;
     root = mkdtempSync(join(tmpdir(), "meta-state-re-verify-refresh-"));
     process.env.GATE_ROOT = root;
     mkdirSync(root, { recursive: true });
@@ -34,8 +32,6 @@ describe("meta_state_re_verify — opt-in refresh", () => {
   afterAll(() => {
     if (prevGateRoot === undefined) delete process.env.GATE_ROOT;
     else process.env.GATE_ROOT = prevGateRoot;
-    if (prevVerifyExec === undefined) delete process.env.META_STATE_VERIFY_EXEC;
-    else process.env.META_STATE_VERIFY_EXEC = prevVerifyExec;
     try { rmSync(root, { recursive: true, force: true }); } catch { /* ignore */ }
   });
 
@@ -55,19 +51,19 @@ describe("meta_state_re_verify — opt-in refresh", () => {
     });
   }
 
-  test("verify_exec unset → early dry-return; index_refreshed absent", async () => {
-    delete process.env.META_STATE_VERIFY_EXEC;
+  test("exec gate removed: unset exec env var no longer early-returns; tool proceeds to verification logic", async () => {
     await setupEntry("meta-test-refresh-noexec", { steps: [], history: [] });
     const r = await metaStateReVerifyTool.handler({ id: "meta-test-refresh-noexec", refresh: true });
     const parsed = JSON.parse(r.content[0].text);
+    // Exec gate removed: an unset exec env var no longer refuses; the
+    // tool proceeds and reports the empty-steps precondition instead.
     assert.strictEqual(parsed.re_verified, false);
-    assert.strictEqual(parsed.reason, "verify_exec_required");
-    // index_refreshed must NOT be present when verify_exec is unset.
+    assert.strictEqual(parsed.reason, "no_verification_steps");
+    // index_refreshed is still absent — the tool returned before the refresh path.
     assert.strictEqual(parsed.index_refreshed, undefined);
   });
 
   test("pass + refresh:true → index_refreshed:true; baseline updated", async () => {
-    process.env.META_STATE_VERIFY_EXEC = "1";
     // Create a target file inside root (including parent dir).
     const targetRel = "tools/refresh-target.js";
     mkdirSync(join(root, "tools"), { recursive: true });
@@ -93,7 +89,6 @@ describe("meta_state_re_verify — opt-in refresh", () => {
   });
 
   test("pass + refresh:false (default) → index_refreshed:false; file-index unchanged", async () => {
-    process.env.META_STATE_VERIFY_EXEC = "1";
     const targetRel = "tools/refresh-target-default.js";
     mkdirSync(join(root, "tools"), { recursive: true });
     writeFileSync(join(root, targetRel), "// default content");
@@ -111,7 +106,6 @@ describe("meta_state_re_verify — opt-in refresh", () => {
   });
 
   test("pass + refresh:true + missing file → re_verified:true, index_refreshed:false, gate-log breadcrumb", async () => {
-    process.env.META_STATE_VERIFY_EXEC = "1";
     const targetRel = "tools/refresh-missing-file.js"; // does NOT exist
     mkdirSync(join(root, "tools"), { recursive: true });
     await setupEntry("meta-test-refresh-missing", {
@@ -149,7 +143,6 @@ describe("meta_state_re_verify — opt-in refresh", () => {
   });
 
   test("CAS conflict → re_verified:false; index never mutates (no orphan baseline)", async () => {
-    process.env.META_STATE_VERIFY_EXEC = "1";
     const targetRel = "tools/refresh-cas-conflict.js";
     mkdirSync(join(root, "tools"), { recursive: true });
     writeFileSync(join(root, targetRel), "// cas conflict content");

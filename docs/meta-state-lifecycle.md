@@ -149,7 +149,7 @@ These three kinds have simpler, binary or fixed status models.
 
 - Status: `active | inactive`
 - Created by `meta_state_propose_design`
-- **Shipping:** flip `active → inactive` via **`meta_state_ship_loop_design`**, which atomically stamps `shipped_in_plan` + `shipped_at`. Idempotent (re-shipping returns `already_shipped`); gated on `LOOP_SESSION_MODE=live`.
+- **Shipping:** flip `active → inactive` via **`meta_state_ship_loop_design`**, which atomically stamps `shipped_in_plan` + `shipped_at`. Idempotent (re-shipping returns `already_shipped`).
 - **`meta_state_patch` cannot ship a design** — `status` is on the `IMMUTABLE_PATCH_FIELDS` deny-list, so patching `shipped_in_plan`/`shipped_at` leaves `status: active`. Use `meta_state_ship_loop_design`, not `meta_state_patch`.
 - `proposed_design_for` is forward references (what the design will create/modify)
 - `addresses` is backward references (what findings motivate the design)
@@ -170,7 +170,7 @@ These three kinds have simpler, binary or fixed status models.
 | `meta_state_log_change` | change-log | -> `active` | Immutable; no transitions after creation |
 | `meta_state_promote_rule` | finding -> rule | finding promoted; rule `active` | Extracts rule from finding |
 | `meta_state_propose_design` | loop-design | -> `active` | Idempotent by `addresses` + `proposed_design_for` set equality |
-| `meta_state_ship_loop_design` | loop-design | `active` -> `inactive` | Atomically stamps `shipped_in_plan` + `shipped_at`; idempotent on `already_shipped`; gated on `LOOP_SESSION_MODE=live` |
+| `meta_state_ship_loop_design` | loop-design | `active` -> `inactive` | Atomically stamps `shipped_in_plan` + `shipped_at`; idempotent on `already_shipped` |
 | `meta_state_patch` | finding, rule, loop-design, change-log | Update existing fields | CAS via `_expected_version` |
 | `meta_state_batch` | any | write / update / delete / archive | Atomic; cap 500 ops; rollback on failure; auto-emits an `operation_envelope`-annotated change-log after the ops loop (see the Change-Log section above) |
 

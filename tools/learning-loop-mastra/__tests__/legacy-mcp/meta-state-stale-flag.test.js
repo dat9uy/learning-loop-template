@@ -18,8 +18,6 @@ import { metaStateLogChangeTool } from "../../tools/handlers/meta-state-log-chan
 
 describe("stale status schema + behavior (TDD red)", () => {
   const originalEnv = process.env.GATE_ROOT;
-  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
-  const originalVerifyExec = process.env.META_STATE_VERIFY_EXEC;
 
   function setup() {
     const tempDir = mkdtempSync(join(tmpdir(), "stale-flag-"));
@@ -33,8 +31,6 @@ describe("stale status schema + behavior (TDD red)", () => {
     } else {
       process.env.GATE_ROOT = originalEnv;
     }
-    process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
-    process.env.META_STATE_VERIFY_EXEC = originalVerifyExec;
   }
 
   test("T1: schema accepts status=open and rejects legacy/unknown values", () => {
@@ -141,8 +137,6 @@ describe("stale status schema + behavior (TDD red)", () => {
 
   test("T8: meta_state_re_verify round-trip (stamps last_verified_at, finding stays open)", async () => {
     const tempDir = setup();
-    process.env.LOOP_SESSION_MODE = "live";
-    process.env.META_STATE_VERIFY_EXEC = "1";
     try {
       // Create a finding. Plan 260707-0812 Phase 3: ack is gone; report writes
       // status:"open" directly. re_verify accepts isOpen findings (no stale
@@ -188,11 +182,10 @@ describe("stale status schema + behavior (TDD red)", () => {
       assert.strictEqual(resultB.status, "open", "finding still stays open on fail");
       assert.strictEqual(resultB.history_appended, 1);
 
-      // Subtest C: gate off
-      process.env.META_STATE_VERIFY_EXEC = "0";
+      // Subtest C: exec gate removed — re_verify runs ungated and still fails on the failing step
       const resultC = JSON.parse((await metaStateReVerifyTool.handler({ id })).content[0].text);
       assert.strictEqual(resultC.re_verified, false);
-      assert.strictEqual(resultC.reason, "verify_exec_required");
+      assert.strictEqual(resultC.history_appended, 1);
     } finally {
       teardown();
     }
@@ -200,7 +193,6 @@ describe("stale status schema + behavior (TDD red)", () => {
 
   test("T9: meta_state_supersede end-to-end", async () => {
     const tempDir = setup();
-    process.env.LOOP_SESSION_MODE = "live";
     try {
       // Create a finding
       const report = await metaStateReportTool.handler({
@@ -251,19 +243,17 @@ describe("stale status schema + behavior (TDD red)", () => {
       assert.strictEqual(resultB.superseded, false);
       assert.strictEqual(resultB.reason, "consolidated_into_not_a_change_log");
 
-      // Subtest C: operator gate
-      process.env.LOOP_SESSION_MODE = "autonomous";
+      // Subtest C: session gate removed — supersede proceeds ungated
       const resultC = JSON.parse(
         (await metaStateSupersedeTool.handler({
           id: findingId,
           consolidated_into: changeLogId,
         })).content[0].text
       );
-      assert.strictEqual(resultC.superseded, false);
-      assert.strictEqual(resultC.reason, "live_session_required");
+      assert.strictEqual(resultC.superseded, true);
+      assert.strictEqual(resultC.status, "superseded");
 
       // Subtest D: CAS mismatch
-      process.env.LOOP_SESSION_MODE = "live";
       const resultD = JSON.parse(
         (await metaStateSupersedeTool.handler({
           id: findingId,

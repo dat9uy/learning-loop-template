@@ -23,8 +23,6 @@
 // timestamp.
 //
 // Tool-specific notes:
-//   - meta_state_supersede + meta_state_dispatch_finding(commit) are gated
-//     on LOOP_SESSION_MODE=live; those cases set it on all three sides.
 //   - runtime_state_record requires a `.loop-preflight-runtime-state` marker
 //     that gate_mark_preflight cannot create (its surface enum is
 //     product/skills/schemas only). The case writes that marker directly as
@@ -202,7 +200,7 @@ function resolveArgs(step, results) {
   return typeof step.args === "function" ? step.args(results) : step.args;
 }
 
-async function runDirectSeq(steps, tmpRoot, live) {
+async function runDirectSeq(steps, tmpRoot) {
   const results = [];
   for (const step of steps) {
     const args = resolveArgs(step, results);
@@ -210,12 +208,10 @@ async function runDirectSeq(steps, tmpRoot, live) {
     const origRoot = process.env.GATE_ROOT;
     const origLoopSurface = process.env.LOOP_SURFACE;
     const origStorage = process.env.MASTRA_STORAGE_DRIVER;
-    const origSessionMode = process.env.LOOP_SESSION_MODE;
     try {
       process.env.GATE_ROOT = tmpRoot;
       process.env.LOOP_SURFACE = ".claude";
       process.env.MASTRA_STORAGE_DRIVER = "memory";
-      if (live) process.env.LOOP_SESSION_MODE = "live";
       const execute = withR2Gate({
         id: step.tool,
         execute: adaptLegacyHandler(legacy),
@@ -236,14 +232,12 @@ async function runDirectSeq(steps, tmpRoot, live) {
       else process.env.LOOP_SURFACE = origLoopSurface;
       if (origStorage === undefined) delete process.env.MASTRA_STORAGE_DRIVER;
       else process.env.MASTRA_STORAGE_DRIVER = origStorage;
-      if (origSessionMode === undefined) delete process.env.LOOP_SESSION_MODE;
-      else process.env.LOOP_SESSION_MODE = origSessionMode;
     }
   }
   return results;
 }
 
-function runCliSeq(steps, tmpRoot, live) {
+function runCliSeq(steps, tmpRoot) {
   const results = [];
   for (const step of steps) {
     const args = resolveArgs(step, results);
@@ -252,7 +246,6 @@ function runCliSeq(steps, tmpRoot, live) {
       LOOP_SURFACE: ".claude",
       GATE_ROOT: tmpRoot,
       MASTRA_STORAGE_DRIVER: "memory",
-      ...(live ? { LOOP_SESSION_MODE: "live" } : {}),
     };
     const proc = spawnSync("node", [LOOP_BIN, step.tool, JSON.stringify(args)], {
       env,
@@ -269,10 +262,9 @@ function runCliSeq(steps, tmpRoot, live) {
   return results;
 }
 
-async function runMcpSeq(steps, tmpRoot, live) {
+async function runMcpSeq(steps, tmpRoot) {
   const mcp = await connectMcpServer(SERVER_ENTRY, tmpRoot, {
     LOOP_RECORDS_VIA_CLI: "0",
-    ...(live ? { LOOP_SESSION_MODE: "live" } : {}),
   });
   const results = [];
   try {
@@ -306,8 +298,7 @@ const logChange = (change_target) => ({
 // The parity matrix. Each case = a step sequence (seed writes that build
 // prerequisite state, then the target write). `setup(root)` does direct
 // test-fixture writes (e.g. the runtime-state preflight marker) that are
-// NOT part of the compared snapshot. `live` sets LOOP_SESSION_MODE=live on
-// all three sides for live-gated tools.
+// NOT part of the compared snapshot.
 const CASES = [
   {
     name: "meta_state_report",
@@ -375,7 +366,6 @@ const CASES = [
   },
   {
     name: "meta_state_supersede",
-    live: true,
     steps: [
       // consolidated_into must reference an existing change-log entry.
       { tool: "meta_state_log_change", args: () => logChange("supersede canonical change") },
@@ -392,7 +382,6 @@ const CASES = [
   },
   {
     name: "meta_state_dispatch_finding",
-    live: true,
     steps: [
       { tool: "meta_state_report", args: () => report("dispatch target finding") },
       { tool: "meta_state_dispatch_finding", args: (r) => ({ id: r[0].id, stage: "prepare" }) },
@@ -419,9 +408,9 @@ describe("cli-write parity: every CLI_WRITE_TOOLS entry (direct vs CLI vs MCP)",
       for (const root of [directRoot, cliRoot, mcpRoot]) copySchemas(null, root);
       if (c.setup) for (const root of [directRoot, cliRoot, mcpRoot]) c.setup(root);
 
-      await runDirectSeq(c.steps, directRoot, c.live);
-      runCliSeq(c.steps, cliRoot, c.live);
-      await runMcpSeq(c.steps, mcpRoot, c.live);
+      await runDirectSeq(c.steps, directRoot);
+      runCliSeq(c.steps, cliRoot);
+      await runMcpSeq(c.steps, mcpRoot);
 
       const directSnapshot = readSnapshot(directRoot);
       const cliSnapshot = readSnapshot(cliRoot);

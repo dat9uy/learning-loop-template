@@ -8,12 +8,11 @@ import {
 } from "../../core/meta-state.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isLiveSession } from "#lib/session-mode.js";
 import { matchesCliTransport } from "../../core/cli-self-match.js";
 
 export const metaStatePromoteRuleTool = {
   name: "meta_state_promote_rule",
-  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry with `origin: <finding-id>` (the structural cross-ref the write-time RI validates — id must exist), resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`. Requires LOOP_SESSION_MODE=live unless preview:true.",
+  description: "Promote a loop-anti-pattern finding to an active gate or agent rule. Writes a new entry_kind:\"rule\" entry with `origin: <finding-id>` (the structural cross-ref the write-time RI validates — id must exist), resets the finding status to `open`, and accepts agent-checklist `hint_text`/`hint_suggestion`/`hint_slug`/`hint_order`.",
   schema: {
     id: z.string().describe("Exact entry id to promote"),
     rule_id: z.string().describe("Unique rule identifier (e.g., rule-no-new-artifact-types)"),
@@ -70,20 +69,6 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-    // Session-mode gate: refuses when LOOP_SESSION_MODE is unset or any value
-    // other than strict "live". Default = autonomous.
-    if (!preview && !isLiveSession()) {
-      const result = { promoted: false, reason: "live_session_required", id };
-      appendGateLog(root, {
-        timestamp: new Date().toISOString(),
-        tool: "meta_state_promote_rule",
-        ...result,
-      });
-      return {
-        content: [{ type: "text", text: JSON.stringify(result) }],
-      };
-    }
-
     // Category guard: only loop-anti-pattern entries may be promoted
     if (entry.category !== "loop-anti-pattern") {
       const result = { promoted: false, reason: "category_must_be_loop_anti_pattern", id, current_category: entry.category };
@@ -102,8 +87,7 @@ export const metaStatePromoteRuleTool = {
     // operator knows what to pass (parallel to the empty-patch lesson in
     // core/meta-state.js). Code-review I5: skipped in preview mode —
     // preview tests pattern matches without creating a rule, so no injection
-    // prose is needed yet (parallel to the preview-aware session-mode gate
-    // above).
+    // prose is needed yet.
     if (!preview && pattern_type === "agent-checklist" && (typeof hint_text !== "string" || hint_text.length < 20)) {
       const result = {
         promoted: false,

@@ -8,7 +8,6 @@ import {
 import { isSurfacePaused } from "../../core/runtime-tracking.js";
 import { appendGateLog } from "#lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isLiveSession } from "#lib/session-mode.js";
 
 /**
  * meta_state_dispatch_finding — two-mode tool for routing fixable findings
@@ -24,7 +23,7 @@ import { isLiveSession } from "#lib/session-mode.js";
  *     a `dispatch-<id>` ledger row already exists, agent does NOT re-run gh).
  *   - commit({id, issue_number, issue_url, repo, delegated_to}): writes the
  *     `dispatch-<id>` ledger event and patches the finding's `ledger_ref`
- *     back-pointer. LOOP_SESSION_MODE=live-gated (orthogonal to preflight).
+ *     back-pointer. Orthogonal to preflight.
  *
  * Idempotency (handles H1 orphan-retry + H2 concurrent-race): both stages
  * scan runtime-state.jsonl for a row with `id === "dispatch-<finding_id>"`
@@ -184,9 +183,6 @@ async function handleCommitStage(root, finding, id, coords) {
   const { issue_number, issue_url, repo, delegated_to } = coords;
   const ledgerId = dispatchLedgerId(id);
 
-  if (!isLiveSession()) {
-    return finish(root, new Date().toISOString(), { dispatched: false, reason: "live_session_required", id, stage: "commit" });
-  }
   if (issue_number === undefined || !issue_url) {
     return finish(root, new Date().toISOString(), { dispatched: false, reason: "missing_coords", id, stage: "commit" });
   }
@@ -363,7 +359,7 @@ async function handleCommitStage(root, finding, id, coords) {
 export const metaStateDispatchFindingTool = {
   name: "meta_state_dispatch_finding",
   description:
-    "Dispatch a fixable finding via prepare (issue body) and commit (ledger row) under LOOP_SESSION_MODE=live.",
+    "Dispatch a fixable finding via prepare (issue body) and commit (ledger row).",
   schema: {
     id: z.string().describe("Finding id to dispatch"),
     stage: z.enum(["prepare", "commit"]).default("prepare")

@@ -7,10 +7,10 @@
 //   3. idempotency: re-prepare returns existing coords (no re-prepare body)
 //   4. idempotency: re-commit same coords no-op
 //   5. idempotency: commit with different coords refused
-//   6. non-operator commit refused (live_session_required)
-//   7. P2 F6 — orthogonal-gate tests:
-//      (a) with-preflight + WITHOUT LOOP_SESSION_MODE=live → refused
-//      (b) without-preflight + WITH LOOP_SESSION_MODE=live → succeeds (dispatch bypasses preflight)
+//   6. commit is ungated (session-mode gate removed) — succeeds without a live-session declaration
+//   7. P2 F6 — orthogonal-gate tests (dispatch bypasses preflight by design):
+//      (a) with-preflight commit succeeds (preflight does not gate dispatch)
+//      (b) without-preflight commit succeeds
 //   8. P2 F7 — concurrent-dispatch test (Promise.all) — CAS safety
 //   9. orphan self-heal: re-invoking commit with same coords patches missing ledger_ref
 
@@ -26,7 +26,6 @@ import { SURFACES } from "../../core/surfaces.js";
 
 describe("meta_state_dispatch_finding", () => {
   const originalEnv = process.env.GATE_ROOT;
-  const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
   function setupTempRegistry() {
     const tempDir = mkdtempSync(join(tmpdir(), "meta-dispatch-"));
@@ -64,8 +63,9 @@ describe("meta_state_dispatch_finding", () => {
   }
 
   function withOperator() {
-    process.env.LOOP_SESSION_MODE = "live";
-    return () => { delete process.env.LOOP_SESSION_MODE; };
+    // Session-mode gate removed; kept as a no-op disposer so existing call
+    // sites' try/finally structure is unchanged.
+    return () => {};
   }
 
   test("prepare: builds body + no ledger row, no ledger_ref change", async () => {
@@ -252,9 +252,8 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("non-operator commit is refused (live_session_required)", async () => {
+  test("commit is ungated — succeeds without a live-session declaration (session gate removed)", async () => {
     const tempDir = setupTempRegistry();
-    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({
@@ -262,14 +261,14 @@ describe("meta_state_dispatch_finding", () => {
         issue_number: 1, issue_url: "https://x/y/issues/1", repo: "x/y",
       });
       const body = JSON.parse(r.content[0].text);
-      assert.strictEqual(body.dispatched, false);
-      assert.strictEqual(body.reason, "live_session_required");
+      assert.strictEqual(body.dispatched, true, `commit should succeed ungated; got ${JSON.stringify(body)}`);
+      assert.strictEqual(body.issue_number, 1);
 
-      // No ledger row written.
-      assert.ok(!existsSync(join(tempDir, "runtime-state.jsonl")), "refused commit must not write ledger");
+      // Ledger row written + ledger_ref patched.
+      assert.ok(existsSync(join(tempDir, "runtime-state.jsonl")), "commit must write ledger");
       const after = readRegistry(tempDir);
       const f = after.find((e) => e.id === id);
-      assert.ok(!f.ledger_ref, "refused commit must not set ledger_ref");
+      assert.strictEqual(f.ledger_ref, `dispatch-${id}`, "commit must set ledger_ref");
     } finally {
       if (originalEnv === undefined) {
         delete process.env.GATE_ROOT;
@@ -283,10 +282,9 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("P2 F6 (a): commit with preflight + WITHOUT LOOP_SESSION_MODE=live → refused", async () => {
+  test("P2 F6 (a): with-preflight commit succeeds (preflight does not gate dispatch; session gate removed)", async () => {
     const tempDir = setupTempRegistry();
     setPreflightMarker(tempDir);
-    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({
@@ -294,8 +292,7 @@ describe("meta_state_dispatch_finding", () => {
         issue_number: 1, issue_url: "https://x/y/issues/1", repo: "x/y",
       });
       const body = JSON.parse(r.content[0].text);
-      assert.strictEqual(body.dispatched, false);
-      assert.strictEqual(body.reason, "live_session_required");
+      assert.strictEqual(body.dispatched, true, `preflight must not gate dispatch; got ${JSON.stringify(body)}`);
     } finally {
       clearPreflightMarker(tempDir);
       if (originalEnv === undefined) {
@@ -310,10 +307,10 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("P2 F6 (b): commit WITHOUT preflight + WITH LOOP_SESSION_MODE=live → succeeds", async () => {
+  test("P2 F6 (b): without-preflight commit succeeds (dispatch bypasses preflight)", async () => {
     // Orthogonal-gate design: the dispatch tool bypasses preflight by design.
-    // It checks LOOP_SESSION_MODE only. A preflight-installed non-operator agent
-    // is refused at the LOOP_SESSION_MODE check; a non-preflight operator is OK.
+    // A preflight-installed caller is not blocked by dispatch (see P2 F6 (a));
+    // a non-preflight caller is OK too.
     const tempDir = setupTempRegistry();
     clearPreflightMarker(tempDir);
     const clearOp = withOperator();
@@ -493,9 +490,8 @@ describe("meta_state_dispatch_finding", () => {
     }
   });
 
-  test("prepare is ungated (any session can run it, even without LOOP_SESSION_MODE=live)", async () => {
+  test("prepare is ungated (any session can run it)", async () => {
     const tempDir = setupTempRegistry();
-    delete process.env.LOOP_SESSION_MODE;
     try {
       const id = await seedFinding(tempDir);
       const r = await metaStateDispatchFindingTool.handler({ id, stage: "prepare" });

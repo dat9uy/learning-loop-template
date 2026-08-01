@@ -9,9 +9,8 @@
 // IMPORTANT (P2 F6 — orthogonal-gate design): this helper does NOT enforce
 // preflight. The preflight check (`hasPreflightMarker(root)`) stays at the
 // public-tool boundary of `runtime_state_record`. The dispatch tool
-// (meta_state_dispatch_finding) bypasses preflight by design and gates on
-// `LOOP_SESSION_MODE === "live"` instead. Keep the helper gating-free so
-// callers can apply the appropriate gate upstream.
+// (meta_state_dispatch_finding) bypasses preflight by design and is ungated.
+// Keep the helper gating-free so callers can apply the appropriate gate upstream.
 
 import { readFileSync, existsSync, appendFileSync } from "node:fs";
 import { join } from "node:path";

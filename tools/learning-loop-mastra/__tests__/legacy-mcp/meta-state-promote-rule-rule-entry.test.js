@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const originalEnv = process.env.GATE_ROOT;
-const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
 function setup() {
   const tempDir = mkdtempSync(join(tmpdir(), "promote-rule-"));
@@ -23,7 +22,6 @@ function teardown() {
   } else {
     process.env.GATE_ROOT = originalEnv;
   }
-  process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
 }
 
 test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)", async () => {
@@ -38,7 +36,6 @@ test("meta_state_promote_rule writes entry_kind=rule entry (not mutated finding)
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-entry-kind",
@@ -83,7 +80,6 @@ test("meta_state_promote_rule rejects 'tool' enforcement enum", async () => {
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     // The tool's schema should reject 'tool' at the zod validation layer
     // But since zod runs in the tool handler, we need to verify the behavior
     // by passing it and seeing it fail
@@ -117,7 +113,6 @@ test("meta_state_promote_rule accepts pattern_type=determinism-checklist", async
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-resolution-evidence",
@@ -154,7 +149,6 @@ test("meta_state_promote_rule accepts applies_to.tools and persists on rule entr
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const appliesTo = {
       tools: ["meta-state-write-entry", "meta-state-update-entry", "meta-state-batch"],
       surfaces: ["mcp"],
@@ -193,7 +187,6 @@ test("meta_state_patch can set applies_to on an existing rule entry (RED→GREEN
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-patch-applies-to",
@@ -242,7 +235,6 @@ test("meta_state_promote_rule keeps origin finding status as 'open' (RED→GREEN
     const beforePromote = readRegistry(tempDir).find((e) => e.id === reportText.id);
     assert.equal(beforePromote.status, "open", "origin finding must start as 'open'");
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-gap-3-status",
@@ -316,7 +308,6 @@ test("activation on agent-checklist without hint_text is still rejected (gate in
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-activation-needs-hint",
@@ -344,7 +335,6 @@ test("activation on agent-checklist with malformed pattern JSON is rejected with
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-malformed-checklist-pattern",
@@ -381,7 +371,6 @@ test("activation on agent-checklist with wrong-shape pattern JSON is rejected", 
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-wrong-shape-checklist-pattern",
@@ -411,7 +400,6 @@ test("activation on agent-checklist with well-formed pattern JSON promotes", asy
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-well-formed-checklist-pattern",
@@ -443,7 +431,6 @@ test("activation on agent-checklist without hint_suggestion is rejected (mirror 
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-needs-hint-suggestion",
@@ -473,7 +460,6 @@ test("activation on agent-checklist with multi-line hint_suggestion is rejected 
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-multiline-suggestion",
@@ -503,7 +489,6 @@ test("activation on agent-checklist with hint_slug that collides with a standalo
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-collision-standalone",
@@ -534,7 +519,6 @@ test("activation on agent-checklist persists hint_order / hint_suggestion / hint
     });
     const reportText = JSON.parse(report.content[0].text);
 
-    process.env.LOOP_SESSION_MODE = "live";
     const result = await metaStatePromoteRuleTool.handler({
       id: reportText.id,
       rule_id: "rule-test-persists-hint-meta",

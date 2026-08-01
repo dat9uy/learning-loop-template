@@ -3,11 +3,10 @@ import { readRegistry } from "../../core/meta-state.js";
 import { applyUpdateAndCheck } from "../../core/update-entry-helpers.js";
 import { replyWithLog, loadEntry } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isLiveSession } from "#lib/session-mode.js";
 
 export const metaStateSupersedeTool = {
   name: "meta_state_supersede",
-  description: "Mark a finding as superseded by a change-log entry. Atomically stamps status=superseded + superseded_at + superseded_by + consolidated_into. Closes the gap that meta_state_patch's IMMUTABLE_PATCH_FIELDS deny-list blocks. Gated on LOOP_SESSION_MODE=live. Use for backfilling findings that were incorrectly auto-resolved by the TTL sweep (e.g., a finding was TTL-killed but the underlying bug is still relevant — the consolidated_into change-log captures the lineage).",
+  description: "Mark a finding as superseded by a change-log entry. Atomically stamps status=superseded + superseded_at + superseded_by + consolidated_into. Closes the gap that meta_state_patch's IMMUTABLE_PATCH_FIELDS deny-list blocks. Use for backfilling findings that were incorrectly auto-resolved by the TTL sweep (e.g., a finding was TTL-killed but the underlying bug is still relevant — the consolidated_into change-log captures the lineage).",
   schema: {
     id: z.string().describe("Finding entry id to supersede"),
     consolidated_into: z.string().describe("Id of the change-log entry that is the canonical source"),
@@ -16,9 +15,6 @@ export const metaStateSupersedeTool = {
       .describe("Optional CAS: supersede succeeds only if current entry.version === _expected_version."),
   },
   handler: async ({ id, consolidated_into, resolution, _expected_version }) => {
-    if (!isLiveSession()) {
-      return replyWithLog(resolveRoot(), "meta_state_supersede", { superseded: false, reason: "live_session_required", id });
-    }
     const root = resolveRoot();
     const entry = loadEntry(root, id);
     if (!entry) {

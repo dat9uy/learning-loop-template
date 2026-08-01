@@ -8,13 +8,12 @@ import { resolveSafePath, PathContainmentError } from "../../core/path-containme
 import { stripEvidenceAnchor } from "../../core/gate-logic.js";
 import { replyWithLog, loadEntry, appendGateLog } from "../lib/gate-logging.js";
 import { resolveRoot } from "#lib/resolve-root.js";
-import { isExecSession } from "#lib/exec-mode.js";
 
 const HISTORY_CAP = 50;
 
 export const metaStateReVerifyTool = {
   name: "meta_state_re_verify",
-  description: "Re-verify an open meta-state entry by running its verification.steps with the allowlisted verification runner. A pass stamps last_verified_at; a failure records verification.history. Set refresh:true to update the evidence file-index baseline after a pass. Gated on META_STATE_VERIFY_EXEC=1.",
+  description: "Re-verify an open meta-state entry by running its verification.steps with the allowlisted verification runner. A pass stamps last_verified_at; a failure records verification.history. Set refresh:true to update the evidence file-index baseline after a pass.",
   schema: {
     id: z.string().describe("Entry id to re-verify"),
     // RT: M3 — opt-in refresh; default false. The consult-gate must remain
@@ -27,10 +26,6 @@ export const metaStateReVerifyTool = {
   },
   handler: async ({ id, refresh = false, _expected_version }) => {
     const gateLogTimestamp = new Date().toISOString();
-    if (!isExecSession()) {
-      const result = { re_verified: false, reason: "verify_exec_required", id };
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    }
     const root = resolveRoot();
     const entry = loadEntry(root, id);
     if (!entry) {
