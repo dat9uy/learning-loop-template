@@ -710,6 +710,35 @@ export const IMMUTABLE_PATCH_FIELDS = new Set([
   "last_verified_at",
 ]);
 
+// Emit a WARN-ONLY audit when a direct core caller of updateEntry changes an
+// IMMUTABLE_PATCH_FIELDS field. The deny-list is enforced only at the
+// arbitrary-patch layer (meta-state-patch-tool + metaStateBatch), so the
+// sanctioned lifecycle tools (resolve / touch / re-verify / supersede /
+// promote-rule) reach updateEntry directly with immutable fields and would
+// otherwise transition them with NO gate-log record. This advisory makes
+// those transitions — and any future direct-caller mutation of an immutable
+// field — visible in the gate log. It never rejects (updateEntry's return
+// contract is unchanged); the versioned append remains the state of record.
+// Mirrors warnStructuralRI: I/O failures are swallowed by appendGateLog; a
+// bad `root` throws. `entry_kind` is already stripped from `cleanPatch` by
+// updateEntry (handled by the assertinvariant wrapper), so it never appears
+// here. Only fields that actually differ from the existing entry are
+// reported, so the `immutable_field_transition` reason_code is truthful.
+function auditImmutableFieldTransition(root, entryId, cleanPatch, existingEntry) {
+  const fields = Object.keys(cleanPatch)
+    .filter((k) => IMMUTABLE_PATCH_FIELDS.has(k))
+    .filter((k) => JSON.stringify(cleanPatch[k]) !== JSON.stringify(existingEntry?.[k]));
+  if (fields.length === 0) return;
+  appendGateLog(root, {
+    timestamp: new Date().toISOString(),
+    tool: "updateEntry",
+    reason_code: "immutable_field_transition",
+    entry_id: entryId,
+    fields,
+    fields_count: fields.length,
+  });
+}
+
 /**
  * Derive the list of patchable kinds from the entry_kind enum.
  * Single source of truth — no separate hardcoded array to drift.
@@ -1391,6 +1420,12 @@ export function updateEntry(root, id, patch) {
         const dangling = changedRefs.filter((r) => !existenceSet.has(r.id));
         warnStructuralRI(root, id, dangling);
       }
+      // Audit immutable-field transitions applied via direct core calls. The
+      // deny-list is enforced only at the arbitrary-patch layer, so sanctioned
+      // lifecycle tools and any future direct caller reach this real-change
+      // path with immutable fields; record the transition in the gate log so
+      // it is never silent. Warn-only — never rejects (mirrors warnStructuralRI).
+      auditImmutableFieldTransition(root, id, cleanPatch, existingEntry);
       trueAppendAtomicRaw(root, getRegistryPath(root), newEntry);
       invalidateCache(root);
       return true;
