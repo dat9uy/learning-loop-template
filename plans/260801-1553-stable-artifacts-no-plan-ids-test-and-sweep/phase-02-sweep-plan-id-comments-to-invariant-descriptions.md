@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Sweep plan-ID lineage to invariant descriptions"
-status: pending
+status: complete
 priority: P1
 effort: "1d"
 dependencies: [1]

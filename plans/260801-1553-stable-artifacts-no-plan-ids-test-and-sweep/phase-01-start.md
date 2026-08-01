@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Add regression test + allowlist"
-status: pending
+status: complete
 priority: P1
 effort: "2-3h"
 dependencies: []

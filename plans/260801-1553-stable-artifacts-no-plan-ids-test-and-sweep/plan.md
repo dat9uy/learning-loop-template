@@ -1,7 +1,7 @@
 ---
 title: "Stable artifacts no plan IDs test and sweep"
 description: "Layer 1 of brainstorm-260801-1544: add the plan-ID regression test first (allowlist seeded at current matches), then sweep all plan-ID/phase-number lineage out of stable code artifacts into invariant descriptions, shrinking the allowlist to a total ban. Implements the accepted loop-design with test-first ordering."
-status: pending
+status: complete
 priority: P2
 effort: "1-2d"
 tags: [meta, gate-logic, stable-artifacts, test-first]

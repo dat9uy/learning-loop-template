@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Finalize allowlist and resolve finding"
-status: pending
+status: complete
 priority: P2
 effort: "1h"
 dependencies: [2]
