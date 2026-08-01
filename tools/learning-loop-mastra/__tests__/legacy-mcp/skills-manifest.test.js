@@ -154,7 +154,7 @@ test("drift negative: tampered manifest.maturity breaks the drift invariant", ()
   // logic distinguishes tampered from real.
 });
 
-test("write-gate: skills-lock.json is gated (Phase 3 trust anchor)", async () => {
+test("write-gate: skills-lock.json is gated (trust anchor)", async () => {
   // F4 — the manifest is the trust anchor for the contract's external
   // exclusion. Fixture root (not the live repo) so the assertion is strict:
   // blocked without a marker, allowed with one, narrow elsewhere.
@@ -250,7 +250,7 @@ test("F11/F12 gate: any same-id hash-bearing row activates; placeholder rows do 
   assert.strictEqual(roundTripRecordedInLines(["not json", placeholder]), false, "unparseable lines are skipped");
 });
 
-test("Phase 3 F11: .mastracode/skills/mastra present (gated on npx round-trip ledger-event)", () => {
+test("F11: .mastracode/skills/mastra present (gated on npx round-trip ledger-event)", () => {
   // F11 — closes the .mastracode gap. Skipped today; activates when the
   // npx round-trip ledger-event exists (operator decision Q4: do NOT defer
   // Phase 3; record the round-trip as a ledger-event from whichever
@@ -262,7 +262,7 @@ test("Phase 3 F11: .mastracode/skills/mastra present (gated on npx round-trip le
   assert.ok(existsSync(p), `.mastracode/skills/mastra/SKILL.md must exist post-roundtrip: ${p}`);
 });
 
-test("Phase 3 F12: mastra cross-surface byte-identity (gated on npx round-trip ledger-event)", () => {
+test("F12: mastra cross-surface byte-identity (gated on npx round-trip ledger-event)", () => {
   if (!npxRoundTripRecorded()) return;
   const surfaces = [".claude", ".factory", ".mastracode"];
   const contents = surfaces.map((s) => {
@@ -277,7 +277,7 @@ test("Phase 3 F12: mastra cross-surface byte-identity (gated on npx round-trip l
   }
 });
 
-test("Phase 3 mastra entry: sourceType=npx-skills-cli, delivery=npx-per-runtime+fanout-undetected", () => {
+test("mastra entry: sourceType=npx-skills-cli, delivery=npx-per-runtime+fanout-undetected", () => {
   const manifest = readManifest();
   const m = manifest.skills.mastra;
   assert.strictEqual(m.sourceType, "npx-skills-cli", `mastra.sourceType must be 'npx-skills-cli'; got '${m.sourceType}'`);

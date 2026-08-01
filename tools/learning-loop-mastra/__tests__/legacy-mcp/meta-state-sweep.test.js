@@ -12,7 +12,7 @@ import { join } from "node:path";
 // gate). The previous apply:true tests are gone; the remaining tests assert the
 // read-only contract, the no-mutation invariant, and the terminal-skip behavior.
 
-describe("meta_state_sweep (read-only, Phase 3)", () => {
+describe("meta_state_sweep (read-only)", () => {
   const originalEnv = process.env.GATE_ROOT;
 
   test("returns the derived stale set + dry-run flag, no registry mutation", async () => {

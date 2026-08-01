@@ -20,7 +20,7 @@ function repoRoot() {
 //   - C16 (resolve handler ignores updateEntry's null return) is closed: missing
 //     entries return failure instead of {resolved: true}.
 
-test("applyUpdateAndCheck returns the re-read entry on success (Phase 3 re-read)", async () => {
+test("applyUpdateAndCheck returns the re-read entry on success (re-read)", async () => {
   const root = mkdtempSync(join(tmpdir(), "post-write-reread-test-"));
   const originalEnv = process.env.GATE_ROOT;
   process.env.GATE_ROOT = root;

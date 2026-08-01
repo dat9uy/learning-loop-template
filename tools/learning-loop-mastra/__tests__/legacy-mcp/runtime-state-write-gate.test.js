@@ -89,7 +89,7 @@ test("runtime-state.jsonl with only the APPEND marker active → still blocked (
 
 // ── BOUND_ARTIFACTS no longer carries runtime-state (it's a preflight rule now) ──
 
-test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (Phase 1 migration to preflight rule)", () => {
+test("BOUND_ARTIFACTS does NOT contain 'runtime-state' (migration to preflight rule)", () => {
   const names = BOUND_ARTIFACTS.map((r) => r.name);
   assert.ok(
     !names.includes("runtime-state"),

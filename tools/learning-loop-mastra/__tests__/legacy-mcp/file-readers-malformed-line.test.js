@@ -28,7 +28,7 @@ describe("file-readers: malformed-line + null-line crash regression", () => {
     process.env.GATE_ROOT = tempRoot;
   });
 
-  test("null line + valid active vnstock row → projection survives (RED→GREEN for Phase 1 B-widening)", () => {
+  test("null line + valid active vnstock row → projection survives (RED→GREEN for the B-widening)", () => {
     const validLine = JSON.stringify({
       id: "obs-valid",
       kind: "budget-state",

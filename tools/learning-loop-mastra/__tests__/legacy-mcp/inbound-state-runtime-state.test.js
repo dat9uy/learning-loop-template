@@ -314,7 +314,7 @@ await test("read gate degrades to not-paused on corrupt budget-tracking read (le
   assert.deepStrictEqual(result, { stale: false });
 });
 
-await test("sidecar row timestamp projection → marker check (Phase 2 dedup proof)", () => {
+await test("sidecar row timestamp projection → marker check (dedup proof)", () => {
   // Phase 2's projection dedups multi-row surfaces to one obs with the
   // latest timestamp. The marker check uses that timestamp directly. Two
   // budget-state rows for the same canonical id (vnstock), the projection

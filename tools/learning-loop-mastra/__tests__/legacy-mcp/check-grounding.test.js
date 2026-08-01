@@ -475,7 +475,7 @@ describe("checkGrounding pure function", () => {
   // no-index finding grounds on file-existence (hash_match: null). Locks the
   // post-strip shape so a future refactor that deletes the fallback branch
   // breaks these tests (the fallback branch stays — it reads an absent field).
-  test("Phase 6: no code_fingerprint + index has the key -> grounded via the index", () => {
+  test("no code_fingerprint + index has the key -> grounded via the index", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     const realHash = computeFileHash(join(ctx.root, "src.js"));
@@ -488,7 +488,7 @@ describe("checkGrounding pure function", () => {
     assert.strictEqual(result.grounding.hash_match, true);
   });
 
-  test("Phase 6: no code_fingerprint + no index entry -> grounded on file-existence (hash_match null)", () => {
+  test("no code_fingerprint + no index entry -> grounded on file-existence (hash_match null)", () => {
     const ctx = baseContext();
     writeFileSync(join(ctx.root, "src.js"), "// code");
     // No code_fingerprint, no fileIndex — the post-strip shape for an un-indexed path.

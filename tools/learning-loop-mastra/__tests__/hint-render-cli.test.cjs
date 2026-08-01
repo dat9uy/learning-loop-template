@@ -1,5 +1,5 @@
 /**
- * Phase 4 (plans/260717-1826-unify-context-injection): CLI test for
+ * CLI test for
  * tools/scripts/hint-render.mjs — smoke coverage for every channel via
  * spawn (exit codes, non-empty stdout, provenance listing, arg-validation
  * contract). The CLI loads the real project registry, so rule-derived
@@ -14,7 +14,7 @@ const CLI_PATH = resolve(PROJECT_ROOT, "tools/scripts/hint-render.mjs");
 
 const CHANNELS = ["claude-session-start", "factory-session-start", "mcp-warm", "sidecar"];
 
-describe("hint-render.mjs CLI (Phase 4)", () => {
+describe("hint-render.mjs CLI", () => {
   test("cli binary is executable and resolves", () => {
     const result = spawnSync("node", [CLI_PATH, "--help"], { encoding: "utf8" });
     assert.strictEqual(result.status, 0, `cli --help must exit 0; stderr: ${result.stderr}`);

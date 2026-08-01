@@ -52,11 +52,11 @@ describe("workflow parity harness", () => {
     }
   });
 
-  test("tools/list enumerates 44 mastra_* + 2 run_workflow_* = 46 mastra-and-workflow total (6 portable run_workflow_* unwrapped to mastra_workflow_* manifest handlers; storage stays Mastra; +1 for meta_state_unarchive from Plan 260731-1325)", { timeout: 10000 }, async () => {
+  test("tools/list enumerates 44 mastra_* + 2 run_workflow_* = 46 mastra-and-workflow total (6 portable run_workflow_* unwrapped to mastra_workflow_* manifest handlers; storage stays Mastra; +1 for meta_state_unarchive)", { timeout: 10000 }, async () => {
     const tools = await handles.listTools();
     const mastra = tools.filter((t) => t.name.startsWith("mastra_"));
     const runWorkflows = tools.filter((t) => t.name.startsWith("run_workflow_"));
-    assert.equal(mastra.length, 44, `must have 44 mastra_* tools (37 prior + 6 unwrapped portable-six + 1 meta_state_unarchive from Plan 260731-1325), got ${mastra.length}`);
+    assert.equal(mastra.length, 44, `must have 44 mastra_* tools (37 prior + 6 unwrapped portable-six + 1 meta_state_unarchive), got ${mastra.length}`);
     assert.equal(runWorkflows.length, 2, `must have 2 run_workflow_* tools (storage only), got ${runWorkflows.length}`);
     assert.equal(tools.length, 49, `total must be 49 (44 mastra_* + 2 run_workflow_* + 3 ask_*), got ${tools.length}`);
 

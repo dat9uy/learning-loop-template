@@ -56,7 +56,7 @@ await test("agent-checklist rule schema is valid for rule-fallow-brief-on-gate-f
   assert.strictEqual(parsed.items[0].id, "fallow-gate-failure-routes-to-brief");
 });
 
-await test("rule entry carries hint_text with literal rule id (Phase 3 invariant)", () => {
+await test("rule entry carries hint_text with literal rule id (registry invariant)", () => {
   // Phase 3 (plans/260717-1826-unify-context-injection): the rule-derived
   // process hint prose lives on the rule entry as `hint_text`. The H6
   // substring check is replaced by: rule entry MUST carry hint_text and

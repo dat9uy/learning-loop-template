@@ -84,7 +84,7 @@ test("read and write sets are disjoint", () => {
   }
 });
 
-test("auxiliary read-ish tools now ride CLI_READ_TOOLS (Phase 3 reclassification)", () => {
+test("auxiliary read-ish tools now ride CLI_READ_TOOLS (reclassification)", () => {
   // Inverted from pre-Phase-3 contract. These stateless handlers in
   // tools/manifest.json were reclassified out of MCP_RESIDUE into
   // CLI_READ_TOOLS by plans/260722-2147 Phase 3 (closes the audit gap
@@ -103,7 +103,7 @@ test("auxiliary read-ish tools now ride CLI_READ_TOOLS (Phase 3 reclassification
   }
 });
 
-test("workflow write helpers ride CLI (Phase 3 reclassification)", () => {
+test("workflow write helpers ride CLI (reclassification)", () => {
   // workflow_generate_prompt is intentionally NOT here: it stays MCP
   // (deferred-rehoming) because its prompt blueprints resolve only under the
   // loop repo root. See cli-write-tool-set-drift.test.js MCP_RESIDUE.

@@ -23,7 +23,7 @@ beforeAll(async () => {
   ruleSchema = metaState.metaStateRuleEntrySchema;
 });
 
-describe("rule-derived process hints (Phase 3)", () => {
+describe("rule-derived process hints", () => {
   test("metaStateRuleEntrySchema accepts hint_text (optional)", () => {
     const ok = ruleSchema.safeParse({
       id: "rule-test-hint-text-ok",
@@ -156,7 +156,7 @@ describe("rule-derived process hints (Phase 3)", () => {
     assert.strictEqual(result.success, true, "additive change: no hint fields required on gate rules");
   });
 
-  test("every active agent-checklist rule in the live registry carries hint_text (Phase 3 invariant)", () => {
+  test("every active agent-checklist rule in the live registry carries hint_text (registry invariant)", () => {
     // Read the actual project registry to verify the backfill landed.
     const rules = metaState.readRegistry(PROJECT_ROOT).filter(
       (e) => e.entry_kind === "rule" && e.pattern_type === "agent-checklist" && e.status === "active",

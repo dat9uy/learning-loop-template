@@ -15,7 +15,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-describe("meta_state_sweep does not emit stale-ref follow-up (Phase 3 read-only)", () => {
+describe("meta_state_sweep does not emit stale-ref follow-up (read-only)", () => {
   const originalEnv = process.env.GATE_ROOT;
 
   test("read-only: surfaces derived stale-view, zero follow-ups in registry", async () => {

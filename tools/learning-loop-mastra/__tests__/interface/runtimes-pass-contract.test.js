@@ -22,7 +22,7 @@ test("validate('droid') on real repo returns ok: true", () => {
   assert.ok(result.notes.includes("identity-marker-not-adopted"));
 });
 
-test("validate('mastra-code') on real repo returns ok: true (Phase E Plan 4 shipped .mastracode/)", () => {
+test("validate('mastra-code') on real repo returns ok: true (.mastracode/ shipped)", () => {
   delete process.env.RUNTIME_ID;
   const result = validate("mastra-code", PROJECT_ROOT);
   // Phase E Plan 4 Phase 2 shipped .mastracode/{mcp,hooks,settings,database}.json;

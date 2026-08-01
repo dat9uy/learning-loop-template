@@ -11,7 +11,7 @@ import { loopDescribeTool } from "../../tools/handlers/loop-describe-tool.js";
 
 const originalEnv = process.env.GATE_ROOT;
 
-test("Phase 7: meta_state_sweep is read-only (no apply mode, no writes)", async () => {
+test("meta_state_sweep is read-only (no apply mode, no writes)", async () => {
   if (originalEnv === undefined) {
     delete process.env.GATE_ROOT;
   } else {
@@ -34,7 +34,7 @@ test("Phase 7: meta_state_sweep is read-only (no apply mode, no writes)", async 
   }
 });
 
-test("Phase 7: warm tier includes registry_summary field", async () => {
+test("warm tier includes registry_summary field", async () => {
   // The warm-tier registry_summary field shape is independent of sweep.
   if (originalEnv === undefined) {
     delete process.env.GATE_ROOT;

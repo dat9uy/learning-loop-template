@@ -53,7 +53,7 @@ function withEnv(extraEnv = {}) {
   };
 }
 
-describe("cli-write exit-code contract (Phase 2)", () => {
+describe("cli-write exit-code contract", () => {
   test("success: meta_state_report with valid args → exit 0, result JSON on stdout (unwrapped)", () => {
     const tmpRoot = makeTempRoot();
     const args = JSON.stringify({

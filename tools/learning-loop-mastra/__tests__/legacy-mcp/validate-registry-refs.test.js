@@ -164,7 +164,7 @@ describe("computeDanglingRefs", () => {
   });
 });
 
-describe("computeDanglingRefs — 3-bucket classification (Phase 1)", () => {
+describe("computeDanglingRefs — 3-bucket classification", () => {
   // Plan 260715-1608 Phase 1: refine validator to 3 buckets (blocking /
   // historical / informational). Pure function; the CLI prints counts and
   // exits 1 only when blocking > 0.

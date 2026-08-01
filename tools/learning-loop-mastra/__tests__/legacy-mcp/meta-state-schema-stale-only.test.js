@@ -5,7 +5,7 @@ import {
   TERMINAL_STATUSES,
 } from "../../core/meta-state.js";
 
-describe("meta-state schema stale-only (plan 260611-1000 phase 1)", () => {
+describe("meta-state schema stale-only", () => {
   test("finding status enum is {open, resolved, superseded}; legacy statuses rejected", () => {
     for (const status of ["open", "resolved", "superseded"]) {
       const result = metaStateFindingEntrySchema.safeParse({

@@ -47,7 +47,7 @@ const PRUNE_FILES = [
   "__tests__/debug/agent-e2e-integration.test.cjs",
 ];
 
-describe("Phase 0 hygiene gate — prune", () => {
+describe("Hygiene gate — prune", () => {
   for (const rel of PRUNE_FILES) {
     test(`prune: ${rel} deleted`, () => {
       assert.strictEqual(
@@ -59,7 +59,7 @@ describe("Phase 0 hygiene gate — prune", () => {
   }
 });
 
-describe("Phase 0 hygiene gate — fallowrc ignore retirement", () => {
+describe("Hygiene gate — fallowrc ignore retirement", () => {
   test("__tests__/legacy-mcp/** removed from .fallowrc.json", () => {
     const fallowrc = JSON.parse(readFileSync(join(LL, ".fallowrc.json"), "utf8"));
     const ignore = Array.isArray(fallowrc.ignorePatterns) ? fallowrc.ignorePatterns : [];

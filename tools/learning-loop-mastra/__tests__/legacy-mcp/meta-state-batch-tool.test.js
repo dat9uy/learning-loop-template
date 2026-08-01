@@ -531,7 +531,7 @@ describe("meta_state_batch", () => {
   // explicitly so the model learns. Inline bad fields get field_errors
   // validated against the existing entry's kind.
 
-  it("batch update op with zero content fields is rejected as no_content (plan 260717-1145)", async () => {
+  it("batch update op with zero content fields is rejected as no_content", async () => {
     const ops = [
       { op: "update", id: "batch-base-1" },
     ];
@@ -544,7 +544,7 @@ describe("meta_state_batch", () => {
       "no_content rejection must carry a hint naming the kind's mutable fields");
   });
 
-  it("batch update op with bad inline field returns invalid_field + field_errors (plan 260717-1145)", async () => {
+  it("batch update op with bad inline field returns invalid_field + field_errors", async () => {
     const ops = [
       {
         op: "update",
@@ -564,7 +564,7 @@ describe("meta_state_batch", () => {
     );
   });
 
-  it("batch update op on missing id still returns not_found (not no_content) (plan 260717-1145)", async () => {
+  it("batch update op on missing id still returns not_found (not no_content)", async () => {
     // The kind-resolution depends on the existing entry — a not-found id
     // can't be type-validated, so the existing not_found path is preserved.
     const ops = [{ op: "update", id: "definitely-does-not-exist-xyz" }];
@@ -574,7 +574,7 @@ describe("meta_state_batch", () => {
     assert.equal(parsed.reason, "not_found", `missing-id update must surface not_found, got: ${parsed.reason}`);
   });
 
-  it("batch update op with valid inline content still succeeds (no regression) (plan 260717-1145)", async () => {
+  it("batch update op with valid inline content still succeeds (no regression)", async () => {
     const ops = [
       {
         op: "update",

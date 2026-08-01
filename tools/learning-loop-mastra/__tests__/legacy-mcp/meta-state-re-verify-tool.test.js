@@ -18,7 +18,7 @@ import { metaStateReVerifyTool } from "../../tools/handlers/meta-state-re-verify
 import { metaStateReportTool } from "../../tools/handlers/meta-state-report-tool.js";
 import { readRegistry, writeEntry, readFileIndex } from "../../core/meta-state.js";
 
-describe("meta_state_re_verify — opt-in refresh (plan 260716-0624 Phase 03)", () => {
+describe("meta_state_re_verify — opt-in refresh", () => {
   let root;
   let prevGateRoot;
   let prevVerifyExec;

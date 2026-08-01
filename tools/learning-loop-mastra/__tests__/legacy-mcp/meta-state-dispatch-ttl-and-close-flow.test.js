@@ -69,7 +69,7 @@ async function seedDispatchedFinding(tempDir, opts = {}) {
   return id;
 }
 
-describe("dispatch TTL interaction (Phase 3 four TTL cases)", () => {
+describe("dispatch TTL interaction (four TTL cases)", () => {
   test("(a) dispatched open finding → sweep is read-only → ledger_ref + ledger event survive (no status mutation)", async () => {
     const tempDir = setupTempRegistry();
     process.env.LOOP_SESSION_MODE = "live";

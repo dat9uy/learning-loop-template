@@ -139,7 +139,7 @@ describe("stale status schema + behavior (TDD red)", () => {
     assert.strictEqual(good.status, "passed");
   });
 
-  test("T8: meta_state_re_verify round-trip (Phase 3: stamps last_verified_at, finding stays open)", async () => {
+  test("T8: meta_state_re_verify round-trip (stamps last_verified_at, finding stays open)", async () => {
     const tempDir = setup();
     process.env.LOOP_SESSION_MODE = "live";
     process.env.META_STATE_VERIFY_EXEC = "1";
