@@ -1,7 +1,7 @@
 // Plan 260712-0724 follow-up — Fix A: meta_state_ship_loop_design RED→GREEN tests.
 // Closes Implementation 3 Gap #1: loop-design status cannot be flipped via any
-// other MCP tool. The 4 fixtures cover success, not_a_loop_design rejection,
-// live_session_required gate, and CAS version_mismatch.
+// other MCP tool. The fixtures cover success, not_a_loop_design rejection,
+// ungated shipping (session-mode gate removed), and CAS version_mismatch.
 
 import { test } from "vitest";
 import assert from "node:assert/strict";
@@ -14,21 +14,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const originalEnv = process.env.GATE_ROOT;
-const originalLoopSessionMode = process.env.LOOP_SESSION_MODE;
 
 function setup() {
   const tempDir = mkdtempSync(join(tmpdir(), "ship-loop-design-"));
   process.env.GATE_ROOT = tempDir;
-  // Default to live for happy-path tests; specific tests flip to prompt-mode
-  // to verify the session gate.
-  process.env.LOOP_SESSION_MODE = "live";
   return tempDir;
 }
 
 function teardown() {
   if (originalEnv === undefined) delete process.env.GATE_ROOT;
   else process.env.GATE_ROOT = originalEnv;
-  process.env.LOOP_SESSION_MODE = originalLoopSessionMode;
 }
 
 async function seedLoopDesign(tempDir, id) {
@@ -102,25 +97,24 @@ test("(not_a_loop_design) rejects non-loop-design entry kinds (finding/rule/chan
   } finally { teardown(); }
 });
 
-test("(live_session_required) rejects when LOOP_SESSION_MODE is not 'live'", async () => {
+test("(ungated) ships an active loop-design without a live-session declaration (session gate removed)", async () => {
   const tempDir = setup();
   try {
-    process.env.LOOP_SESSION_MODE = "prompt";
-    await seedLoopDesign(tempDir, "loop-design-ship-prompt-rejected");
+    await seedLoopDesign(tempDir, "loop-design-ship-ungated");
 
     const shipResult = await metaStateShipLoopDesignTool.handler({
-      id: "loop-design-ship-prompt-rejected",
+      id: "loop-design-ship-ungated",
       shipped_in_plan: "test-plan",
     });
     const parsed = JSON.parse(shipResult.content[0].text);
 
-    assert.equal(parsed.shipped, false);
-    assert.equal(parsed.reason, "live_session_required");
-    assert.equal(parsed.id, "loop-design-ship-prompt-rejected");
+    assert.equal(parsed.shipped, true, "shipping is no longer session-gated");
+    assert.equal(parsed.id, "loop-design-ship-ungated");
+    assert.equal(parsed.status, "inactive");
 
-    // Registry unchanged
-    const persisted = readRegistry(tempDir).find((e) => e.id === "loop-design-ship-prompt-rejected");
-    assert.equal(persisted.status, "active", "loop-design must NOT be flipped in prompt mode");
+    // Registry flipped despite non-live mode
+    const persisted = readRegistry(tempDir).find((e) => e.id === "loop-design-ship-ungated");
+    assert.equal(persisted.status, "inactive", "loop-design must flip without a live-session declaration");
   } finally { teardown(); }
 });
 

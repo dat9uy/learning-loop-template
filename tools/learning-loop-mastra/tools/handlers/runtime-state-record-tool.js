@@ -4,7 +4,7 @@ import { appendLedgerEvent, readBudgetTrackingState, AFFECTED_SYSTEM_ENUM_RUNTIM
 import { hasSurfacePreflightMarker } from "../../core/runtime-tracking.js";
 
 // Preflight check: this tool is preflight-gated (vs. meta_state_dispatch_finding
-// which is LOOP_SESSION_MODE=live-gated). P2 F6 — orthogonal-gate design: each public
+// whose commit stage is ungated). P2 F6 — orthogonal-gate design: each public
 // tool has exactly ONE gate; the helper appendLedgerEvent enforces neither.
 // stay-at-the-tool-boundary invariant.
 const PREFLIGHT_MARKER = ".loop-preflight-runtime-state";

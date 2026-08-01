@@ -167,7 +167,6 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
 
   test("dispatches integrate end-to-end: prepare + commit → ledger_ref set → no longer in candidates", async () => {
     const tempDir = setupTempRegistry();
-    process.env.LOOP_SESSION_MODE = "live";
     try {
       const id = await (async () => {
         const r = await metaStateReportTool.handler({
@@ -203,7 +202,6 @@ describe("buildStaleDispatchHints — Rec 10 surfacing", () => {
       const afterIds = after.fixable_candidates.map((c) => c.id);
       assert.ok(!afterIds.includes(id), `entry ${id} should NOT be in fixable_candidates after dispatch`);
     } finally {
-      delete process.env.LOOP_SESSION_MODE;
       restoreGateRoot();
     }
   });
