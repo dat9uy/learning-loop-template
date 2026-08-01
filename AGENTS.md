@@ -25,7 +25,7 @@ The meta-surface is implemented across 3 layers:
   `schema-parity.js`, `schemas.js`, `workflows/`, `agents/`. May import
   core; core may NOT import the shell.
 
-  > **Path invariant (Phase E Plan 6):** shell files MUST live at
+  > **Path invariant:** shell files MUST live at
   > `tools/learning-loop-mastra/mastra/` and MUST NOT be at the top level of
   > `tools/learning-loop-mastra/`. Enforced by
   > `tools/learning-loop-mastra/__tests__/phase-e-shell-restructure/no-top-level-shell-files.test.js`.
@@ -58,11 +58,11 @@ The meta-surface is the loop's self-model. It is the **only contract** the loop 
 
 **The meta-surface lives in one place:** `meta-state.jsonl` at the project root. It is implemented across the 3 layers (see §1.1): Core owns the data model, Mastra shell owns the tool surface, Runtime interface owns the agent runtime. It is a 4-kind discriminated union:
 
-> **Read recipe (Plan 260716-1101 Tier 2 Phase C):** the raw file is no longer table-readable post-Tier-2 (one entry can span N versioned lines per id; the change-log lives in a separate `change-log.jsonl`). To inspect the registry, run `tools/scripts/registry-table.sh | tail -20` (reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, emits one-line-per-id). Never `cat meta-state.jsonl | tail -20` — the output is not deduplicated and the last 20 raw lines may show only one id. Pass `--all-versions` to see the full versioned-append history per id (multi-line for ids with multiple versions; shell-side equivalent of `meta_state_list`'s `include_all_versions` — see §6.1).
+> **Read recipe:** the raw file is no longer table-readable (one entry can span N versioned lines per id; the change-log lives in a separate `change-log.jsonl`). To inspect the registry, run `tools/scripts/registry-table.sh | tail -20` (reads the union of `meta-state.jsonl` + `change-log.jsonl`, dedupes by id, emits one-line-per-id). Never `cat meta-state.jsonl | tail -20` — the output is not deduplicated and the last 20 raw lines may show only one id. Pass `--all-versions` to see the full versioned-append history per id (multi-line for ids with multiple versions; shell-side equivalent of `meta_state_list`'s `include_all_versions` — see §2.1).
 
 | Kind | Role | Lifespan |
 |---|---|---|
-| `finding` | A loop-self-diagnostic observation. Ephemeral; 24h TTL until acked. | 24h → ack → active → resolve |
+| `finding` | A loop-self-diagnostic observation. No live TTL (`expires_at` is vestigial); `stale` is a derived view, not a status. | open → resolved \| superseded \| archived |
 | `change-log` | An immutable audit record of a system change. No TTL. | Forever |
 | `rule` | A promoted invariant the loop enforces. Two enforcement classes: `gate` (hard-block) and `agent` (consult). | Forever (until superseded) |
 | `loop-design` | A deferred design that will create or modify rules, schemas, or tools. | Active → inactive (when shipped) → archived |
@@ -75,7 +75,7 @@ For the gate system internals (inbound/outbound gate flows, MCP tool flow, stale
 
 ---
 
-## 6. Internalization Rule (source_refs and evidence_code_ref)
+## 2. Internalization Rule (source_refs and evidence_code_ref)
 
 **The loop does not internalize everything it touches.** It internalizes the *contract* (full authority), cites the *internal implementation* (recording, not replacement), and reads the *external system* (consumer, not source). This three-class framework is the operator-confirmed dependency-balance convention; see `docs/loop-engine.md` § "Three-class dependency balance" for the concept and `docs/philosophy.md` Pillar 4 for the deep treatment.
 
@@ -87,7 +87,7 @@ For the gate system internals (inbound/outbound gate flows, MCP tool flow, stale
 
 Markdown paths (`local:plans/...`, `local:docs/...`) are the **escape hatch**, not the default. They are deprecated and rejected by `record_create_decision` for new entries. The SessionStart hook surfaces this rule in its discoverability hints: `session-start-inject-discoverability.cjs` and `session-start-inject-process-hints.cjs` inject the full hint sets as system-reminders via `hookSpecificOutput.additionalContext` (each under the 10k-char cap; the sidecar `.claude/session-context.json` remains the audit artifact).
 
-### 6.1 Audit-trail recipe (versioned-append history)
+### 2.1 Audit-trail recipe (versioned-append history)
 
 Post-Tier-2, `meta-state.jsonl` is multi-record-per-id (v0 open + v1 resolved + … coexist on disk) and the default read collapses to one entry per id (`max_by(version)`). To inspect the full history:
 
@@ -95,11 +95,11 @@ Post-Tier-2, `meta-state.jsonl` is multi-record-per-id (v0 open + v1 resolved + 
 meta_state_list({ id: "<id>", include_all_versions: true, include_archived: true })
 ```
 
-`include_all_versions: true` bypasses the collapse and returns every version line, sorted by `(id, version)`; it is orthogonal to `include_archived` (a status filter), so terminal-status lines (resolved/superseded/archived) still need `include_archived: true`. Use it after `meta_state_resolve` when you need the full v1 entry, or for forensic/drift questions about what an entry looked like at version N. Do NOT use it for "show me all resolved findings" — that's `meta_state_list({ status: "resolved" })` or `include_archived: true` alone. Shell-side equivalent: `tools/scripts/registry-table.sh --all-versions`. Source: `meta-260717T0943Z` (plan `260717-1451-meta-state-list-include-all-versions`).
+`include_all_versions: true` bypasses the collapse and returns every version line, sorted by `(id, version)`; it is orthogonal to `include_archived` (a status filter), so terminal-status lines (resolved/superseded/archived) still need `include_archived: true`. Use it after `meta_state_resolve` when you need the full v1 entry, or for forensic/drift questions about what an entry looked like at version N. Do NOT use it for "show me all resolved findings" — that's `meta_state_list({ status: "resolved" })` or `include_archived: true` alone. Shell-side equivalent: `tools/scripts/registry-table.sh --all-versions`.
 
 ---
 
-## 7. Local Fallow Gate Self-Verify (`pnpm gate:self-verify`)
+## 3. Local Fallow Gate Self-Verify (`pnpm gate:self-verify`)
 
 **The contract.** local `pnpm fallow:gate` is not a reliable pre-push check for complexity findings. Fallow may report `crap: ?` and `introduced: true` on baselined functions when Istanbul coverage fails to match — a local artifact, NOT a real CI regression. Two coupled issues produce this:
 
@@ -122,35 +122,35 @@ The pre-commit hook (`simple-git-hooks.pre-commit`) still runs `pnpm test && pnp
 
 ---
 
-## 8. Git Union Merge Driver (one-time per-clone setup)
+## 4. Git Union Merge Driver (one-time per-clone setup)
 
-`.gitattributes` marks `runtime-state.jsonl`, `change-log.jsonl`, **and (since Plan 260716-1101 Tier 2 Phase C) `meta-state.jsonl`** as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
+`.gitattributes` marks `runtime-state.jsonl`, `change-log.jsonl`, and `meta-state.jsonl` as `merge=union` so parallel PRs that each append a line at EOF auto-merge instead of conflicting. The attribute only names the driver — **the driver command must be configured in each clone** (`git config` is per-clone and not committable). Run once per clone:
 
 ```bash
 git config merge.union.driver "git merge-file --union %A %O %B"
 ```
 
-**Arg order is load-bearing.** `git merge-file <current> <base> <other>` writes the union result into the first argument. The driver must write into `%A` (ours — the file git reads the result from), with `%O` (ancestor) as base and `%B` (theirs) as other: `%A %O %B`. The widely-cited `git merge-file --union %O %A %B` is **wrong** — it writes the result into `%O` and leaves `%A` unchanged, so git silently keeps only "ours" and drops the other side. That is the exact data-loss the union attribute exists to prevent. Verified by `plans/260715-0801-change-log-stream-split-tier1` Phase 4 dry-run (two branches from a shared base, each appending a change-log at the same EOF position: corrected driver keeps both lines, 0 duplicate ids; wrong driver keeps only one).
+**Arg order is load-bearing.** `git merge-file <current> <base> <other>` writes the union result into the first argument. The driver must write into `%A` (ours — the file git reads the result from), with `%O` (ancestor) as base and `%B` (theirs) as other: `%A %O %B`. The widely-cited `git merge-file --union %O %A %B` is **wrong** — it writes the result into `%O` and leaves `%A` unchanged, so git silently keeps only "ours" and drops the other side. That is the exact data-loss the union attribute exists to prevent. Verified by a two-branch dry-run (each branch appending a change-log at the same EOF position: corrected driver keeps both lines, 0 duplicate ids; wrong driver keeps only one).
 
-**One-time per-clone setup script:** `bash tools/scripts/setup-git-merge-drivers.sh`. Idempotent; detects a wrong-order existing config and refuses to silently overwrite (pass `--force` to overwrite). After running, `git config --get merge.union.driver` returns the canonical value. Plan 260715-1608 Phase 4 hardened this surface with the script + a shell test under `tools/scripts/__tests__/setup-git-merge-drivers.test.js`. Ephemeral CI runners cannot run the per-clone script, so `.github/workflows/meta-state-refs-check.yml` configures the driver via `git config merge.union.driver` in its checkout step (Plan 260715-1608 Phase 4 F13 middle-ground).
+**One-time per-clone setup script:** `bash tools/scripts/setup-git-merge-drivers.sh`. Idempotent; detects a wrong-order existing config and refuses to silently overwrite (pass `--force` to overwrite). After running, `git config --get merge.union.driver` returns the canonical value. The surface is hardened with a shell test under `tools/scripts/__tests__/setup-git-merge-drivers.test.js`. Ephemeral CI runners cannot run the per-clone script, so `.github/workflows/meta-state-refs-check.yml` configures the driver via `git config merge.union.driver` in its checkout step.
 
-Without this config, `merge=union` is a silent no-op and parallel change-log PRs hit a normal content conflict (resolvable by the manual `git merge-file --union` recipe documented in the `meta-260709T1017Z` finding history).
-
----
-
-## 10. Where This Project Is Heading
-
-The long-term direction lives in `docs/trajectory.md` — read it before reasoning about loop design. The destination: *a self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior.* The Bridges table (the gate-truth gradient from human-driven to machine-driven) is canonical in `docs/trajectory.md` §4; the engine/instance inversion and the skill-migration track are there too. See `docs/loop-engine.md` for the engine invariant that underpins the trajectory.
+Without this config, `merge=union` is a silent no-op and parallel change-log PRs hit a normal content conflict (resolvable by the manual `git merge-file --union` recipe).
 
 ---
 
-## 11. Runtime Interface Ownership (R2)
+## 5. Where This Project Is Heading
+
+The long-term direction lives in `docs/trajectory.md` — read it before reasoning about loop design. The engine invariant that underpins the trajectory is in `docs/loop-engine.md`.
+
+---
+
+## 6. Runtime Interface Ownership (R2)
 
 Runtime interface code (`.claude/coordination/hooks/`, `.factory/coordination/hooks/`, and for Mastra Code: declarative config in `.mastracode/{mcp,hooks,settings,database}.json`) is owned by the corresponding runtime agent. **Cross-runtime edits require operator approval.** Each runtime agent works on its own branch; cross-runtime edits require an operator-approved PR. The `interface/CONTRACT.md` conformance checklist is the loop's concern; the runtime's coordination directory is the runtime's concern. Enforcement: git branch protection + PR review + the R2 write-gate (LIM-3 caller identity + LIM-4 path traversal). See `docs/security/plan-5-hardening.md` for the gating chain, R2 allowlist schema, and the operator runbook for diagnosing `cross_runtime_write_denied`.
 
 ---
 
-## 12. How to Approach: Placing Procedural Knowledge
+## 7. How to Approach: Placing Procedural Knowledge
 
 When you add procedural knowledge — a triage procedure, a guardrail, a surfacing rule, a contract note — decide where it belongs on the injection × consumption two axes (see `docs/philosophy.md` § "Skills Are the Same Kind of Escape Hatch" for the model; `docs/loop-engine.md` for the invariant these axes rest on):
 

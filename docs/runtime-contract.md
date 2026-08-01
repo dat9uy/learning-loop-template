@@ -6,7 +6,7 @@ A runtime is whatever hosts an agent that consumes the loop — a CLI, an IDE ha
 
 ## The 4 capabilities
 
-> All capabilities are satisfied by transports that hold **no correctness-critical state** of their own. Correctness lives in L1 (file-based core); transports are stateless adapters over the durable record. (Plan 260711-0030 — the loop is an L2 stateless adapter over the file-based L1 core.)
+> All capabilities are satisfied by transports that hold **no correctness-critical state** of their own. Correctness lives in L1 (file-based core); transports are stateless adapters over the durable record — the loop is an L2 stateless adapter over the file-based L1 core.
 
 1. **Capability surface.** The runtime exposes the loop's deterministic-steps and agentic-steps to its agent. The agent can call the loop's tools, read the registry, and surface the loop's discoverability hints. Without this, the agent has no access to the deterministic surface.
 

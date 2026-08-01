@@ -66,4 +66,4 @@ This is the same `normalizeManifest` that `pnpm skills:sync` runs internally, ex
 | `FATAL: normalize <name>: canonicalSource missing at ...` | Internal canonical SKILL.md was deleted | Restore the canonical file, then `pnpm skills:sync` |
 | `FATAL: normalize <name>: ... declares no maturity frontmatter` | Internal canonical lost its `maturity:` line | Add `maturity: state-1|state-2|state-3` to the canonical, then `pnpm skills:sync` |
 
-For the empirical npx clobber shape that motivated this design (the Phase 1 probe), see `plans/reports/probe-260720-npx-skills-clobber-shape.md`. For the meta-state finding this doc resolves, see the entry at `id: meta-260720T1451Z-npx-skills-cli-clobbers-skills-lock-json-on-every-npx-skills`.
+For the empirical npx clobber shape that motivated this design, see the skills-clobber probe report under `plans/reports/`. For the meta-state finding this doc resolves, look up the `npx-skills-cli-clobbers-skills-lock-json` finding in the registry (`meta_state_list` by id).
