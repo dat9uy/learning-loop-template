@@ -36,17 +36,22 @@ Brainstorm report: `plans/reports/brainstorm-260801-1544-decouple-loop-artifacts
 
 ## Scope (evidence-grounded, validate-confirmed)
 
-Patterns to detect: `/\b(plans?)\/\d{6}-/`, `/Phase \d+ of (plan|plans)/`, `/plan \d{6}-\d{4}/`. Plan-ID/phase-number only — see Non-goals for why finding/loop-design/rule ids are intentionally excluded.
+Patterns to detect (widened during review-fix — see Scope expansion below): `/\bplans?\/\d{6}-/i`, `/Phase \d+ of (plan|plans)\b/i`, `/[Pp]lan[- ]\d{6}-\d{4}/`, `/\b[Pp]lans? \d+\b/`, `/\b[Pp]hase[- ]\d+\b/`, `/\b[Pp]hase [A-E]\b/`. Plan-ID/phase-number only — see Non-goals for why finding/loop-design/rule ids are intentionally excluded (the test masks durable id tokens before matching, so a date-stamp inside a `meta-...` slug is exempt).
 
 Scan surface: `tools/learning-loop-mastra/**` **excluding** `__tests__/**`, `*.test.js`, `*.md`, `*.json`. Include `*.js`, `*.cjs`, `*.mjs`, `*.yaml`. (Validate broadened this from the finding's `core/+mastra/+bin` — 21 instances live in `tools/handlers/`+`scripts/`+`hooks/universal/` and would otherwise escape prevention.)
 
-Current matches (2026-08-01): **69 sweep targets** = 57 comments + 8 `placement.yaml` `summary:` fields + 4 contract-affecting string literals. (Plus 5 test fixtures + 1 README excluded by glob.)
+Current matches (2026-08-01): **76 sweep targets** = 57 comments + 14 `placement.yaml` `summary:` fields + 5 contract-affecting string literals. (Plus 5 test fixtures + 1 README excluded by glob.)
 
-The 4 contract-affecting string literals:
+The 5 contract-affecting string literals:
 - `core/loop-introspect.js:237` — `Rec 10 dispatch protocol (plan ...)` display label
 - `core/loop-introspect.js:428` — `Rec 12 closed-loop backfill (plan ...)` display label
-- `core/meta-state.js:2067` — emitted `reason: "Auto-emitted by meta_state_batch ... (plan ...; loop-design-...)"` (validate: sweep)
+- `core/meta-state.js:2067` — emitted `reason: "Auto-emitted by meta_state_batch ... (plan ...; loop-design-...)"` (validate: sweep; the loop-design id is KEPT, only the plan ID removed)
 - `tools/handlers/trigger-workflow-tool.js:35` — emitted `reasoning` template `... vacated per plans/260722-2147 phase 5 ...`
+- `tools/handlers/meta-state-sweep-tool.js:10` — MCP tool `description` field (found during review; same contract class — text served to agents)
+
+## Scope expansion (review-fix, 2026-08-01)
+
+Code review of the sweep branch found the original 3 patterns structurally blind to forms that survived the sweep: hyphenated `plan-260722-2147` (a live ID in `notify-artifact-tool.js:19`), bare ordinals (`Plan 4`, `Plan 5-Lite`), and phase lineage without a date-stamped ID (`Phase A`/`Tier 2 Phase B`, `Phase 1..5`, `pre-Phase-2`, `read-only-after-Phase-3`) — including one emitted string (`backfill-versions.mjs:134` `reason: "Phase A backfill: ..."` → `"Version backfill: ..."`). The patterns were widened to the 6 above, adding ~165 sweep targets across the same scan surface. Same rule, full coverage of its forms. Also repaired in the same pass: ~20 comment blocks mangled by the first sweep's partial-line replacements (`//` lines inside `/** */` JSDoc blocks, orphaned `M7)`/`M20)` fragments, stripped indentation).
 
 ## Non-goals
 
@@ -54,6 +59,9 @@ The 4 contract-affecting string literals:
 - **Commit-message plan-IDs.** The pre-commit hook runs `pnpm test`, which does not inspect commit-message text. A `commit-msg` hook is not wired; separate scope.
 - **Layer 3** (`evidence_commit` historical pinning) — separate session.
 - **Change-log `change_target: plans/...`** citations — pillar-4 design, untouched (user-confirmed).
+- **Durable registry KEYS that embed phase lineage** (e.g. hint-registry slug `phase-a-reframe`, decision-log rule_id `phase-a-backfill-versions`, finding-id slugs). These are live identifier values; renaming breaks ledger continuity and consumer lookups. The sweep covers lineage REFERENCES in comments/strings, not identifier vocabulary. (Adjudicated during review-fix; the test's durable-id masking encodes this for `meta-`/`rule-`/`loop-design-` tokens.)
+- **`plans/reports/...` pointers in code comments** — removed during review-fix (report paths are plan lineage too; comments now cite the concept or the durable registry id instead).
+- **Test-file body/header comments** — the enforcement surface excludes `__tests__/**` and `*.test.js` by design (fixture data lives there; validate-confirmed). Test NAMES (`describe`/`test`/`it` labels) were nevertheless swept during review-fix (~70 labels) because the operator's global rule explicitly names "test names" — labels are stable artifacts, not fixture data. Test-body inline comments remain out of the enforcement surface.
 
 ## Success Criteria
 
