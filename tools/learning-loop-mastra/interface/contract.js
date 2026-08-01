@@ -171,7 +171,8 @@ function resolveSkillPath(candidates, rootPath) {
   return null;
 }
 
-// Phase 2 (plan 260707-0114) — frontmatter parser + maturity hard-require.
+// Phase 2 of the loop-skill-layer prerequisite — frontmatter parser +
+// maturity hard-require.
 // Local to contract.js so the contract validator has no dependency on
 // core/gate-logic.js's private `extractFrontmatter` (not exported). The
 // error-isolation + size cap (64KB; billion-laughs guard) match the
@@ -228,7 +229,7 @@ function lookupManifestSkill(skillsObj, name) {
 }
 
 function listLoopMaintainedSkills(skillsDir, manifest) {
-  // Phase 3 of plans/260719-1428-central-skills-management — manifest-driven
+  // Phase 3 of central-skills management — manifest-driven
   // exclusion. The manifest is the trust anchor for "is this skill external?"
   // (Phase 1 schema; Phase 3 reads it). Explicit failure modes (red-team
   // F8, F9): if the manifest fails to load/parse, the skill enumeration
@@ -306,7 +307,7 @@ function checkMirrorPresence(name, rootPath) {
 }
 
 /**
- * Phase 2 (plan 260707-0114) — generalized Req #3 (skill-spec).
+ * Phase 2 of the loop-skill-layer prerequisite — generalized Req #3 (skill-spec).
  *
  * Enumerates every <surface>/skills/<name>/SKILL.md that declares a
  * `maturity:` frontmatter (the loop-maintained marker). The external `mastra`
@@ -315,7 +316,7 @@ function checkMirrorPresence(name, rootPath) {
  * not abort. The `loop_describe` + `meta_state_list` reference check is scoped
  * to `learning-loop` only (other skills do not document the tool surface).
  */
-// Generalized Req #3 (plan 260707-0114): per-skill enumeration + maturity
+// Generalized Req #3 of the loop-skill-layer prerequisite: per-skill enumeration + maturity
 // hard-require + mirror check + scoped tool-ref. Complexity is inherent to the
 // per-skill validation loop; sub-steps are already extracted (extractSkillFrontmatter,
 // readSkillSafe, listLoopMaintainedSkills, checkMirrorPresence). Covered by

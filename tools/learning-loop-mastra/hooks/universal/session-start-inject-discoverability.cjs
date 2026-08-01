@@ -56,7 +56,7 @@ const WRITE_TOOL_SKETCHES = {
   runtime_state_stop: "{surface,confirm}",
   gate_mark_preflight: "{surface}",
   gate_override: "{rule_id,ttl_seconds,operator_note}",
-  // Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.
+  // Phase 3: workflow helpers reclassified into CLI_WRITE_TOOLS.
   workflow_notify_artifact: "{path,change_type}",  // path must be records/** (in-handler guard)
   workflow_trigger: "{name,context?}",             // context is the legacy-preprocess optional
   // Portable-six: stateless pure transforms unwrapped from createLoopWorkflow.
@@ -241,10 +241,10 @@ function loadDispatchIds(root) {
 }
 
 /**
- * Rec 10 surfacing (plan 260704-0301-stale-findings-dispatch-handle Phase 3).
+ * Rec 10 surfacing (phase 3 of the stale-findings dispatch handler).
  * Builder over `entries` + dispatch ids. Returns empty shape on builder failure.
  *
- * Plan 260716-0624 (stale-view hash-drift fix): thread drift signals
+ * Stale-view hash-drift fix: thread drift signals
  * (`fileIndex` + `codeHashes`) into `buildStaleDispatchHints` so the
  * fixable-candidates filter fires on drift, not just age. This is the
  * session-start user-facing stale-dispatch surface — the most visible place
@@ -287,10 +287,10 @@ function loadStaleDispatchHints(entries, dispatchIds, root) {
 }
 
 /**
- * Rec 12 closed-loop (plan 260708-1216-rec12-closed-loop, phase 4):
- * change-log gap detection. The gap builder is pure (caller-supplied set);
- * we read branch-touched paths via a read-only git call (never throws).
- * Returns empty shape on builder failure.
+ * Rec 12 closed-loop (phase 4): change-log gap detection. The gap builder
+ * is pure (caller-supplied set); we read branch-touched paths via a
+ * read-only git call (never throws). Returns empty shape on builder
+ * failure.
  */
 function loadChangeLogGapHints(root, entries) {
   try {
@@ -420,7 +420,8 @@ async function main() {
 
   // Stderr summary line — the existing success signal. Includes source flags
   // when any loader degraded so the harness surfaces the failure to the agent
-  // (silent-degrade was the bug class fixed in plan 260715-1100).
+  // (silent-degrade was the bug class fixed by the success-signal
+//  instrumentation: per-source degraded flag).
   const degradedSources = computeDegradedSources(core, registry);
   if (degradedSources.length > 0) {
     console.error(

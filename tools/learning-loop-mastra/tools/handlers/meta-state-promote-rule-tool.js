@@ -32,9 +32,8 @@ export const metaStatePromoteRuleTool = {
       statuses: z.array(z.string()).optional(),
       schemas: z.array(z.string()).optional(),
     }).optional().describe("Optional scope-narrowing block; persisted on the rule entry"),
-    // Phase 3 (plans/260717-1826-unify-context-injection): rule-derived
-    // process hints. Required when pattern_type === "agent-checklist" (the
-    // rule owns the SessionStart-injected prose). Optional otherwise —
+    // Rule-derived process hints. Required when pattern_type === "agent-checklist"
+    // (the rule owns the SessionStart-injected prose). Optional otherwise —
     // gate-enforced rules don't need injection prose. The hint-renderer
     // treats missing hint_text on an agent-checklist rule as skip+warn.
     hint_text: z.string().min(20).optional()
@@ -71,8 +70,8 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-    // Session-mode gate (plan 260708-0833): refuses when LOOP_SESSION_MODE is
-    // unset or any value other than strict "live". Default = autonomous.
+    // Session-mode gate: refuses when LOOP_SESSION_MODE is unset or any value
+    // other than strict "live". Default = autonomous.
     if (!preview && !isLiveSession()) {
       const result = { promoted: false, reason: "live_session_required", id };
       appendGateLog(root, {
@@ -98,13 +97,13 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-    // Phase 3 (plans/260717-1826-unify-context-injection): agent-checklist
-    // rules MUST carry hint_text — the rule owns the SessionStart-injected
-    // prose. Reject with an actionable reason so the operator knows what to
-    // pass (parallel to the empty-patch lesson in core/meta-state.js).
-    // Code-review I5: skipped in preview mode — preview tests pattern matches
-    // without creating a rule, so no injection prose is needed yet (parallel
-    // to the preview-aware session-mode gate above).
+    // Agent-checklist rules MUST carry hint_text — the rule owns the
+    // SessionStart-injected prose. Reject with an actionable reason so the
+    // operator knows what to pass (parallel to the empty-patch lesson in
+    // core/meta-state.js). Code-review I5: skipped in preview mode —
+    // preview tests pattern matches without creating a rule, so no injection
+    // prose is needed yet (parallel to the preview-aware session-mode gate
+    // above).
     if (!preview && pattern_type === "agent-checklist" && (typeof hint_text !== "string" || hint_text.length < 20)) {
       const result = {
         promoted: false,
@@ -286,8 +285,8 @@ export const metaStatePromoteRuleTool = {
 
     const now = new Date().toISOString();
 
-    // Pre-existing ReDoS gap (caught en route by plan 260722-1343 Phase 1
-    // self-footgun guard review): the activation branch did not run
+    // Pre-existing ReDoS gap (caught en route by the self-footgun guard
+    // review): the activation branch did not run
     // `isSafeRegexPattern` — it was preview-only (line ~119). A pathological
     // pattern compiled by a promoted rule would then be executed against
     // every bash command by `applyPromotedRules`. Mirror the preview
@@ -398,7 +397,7 @@ export const metaStatePromoteRuleTool = {
     // `updateEntry` is the load-bearing safety (it drops the no-op even if the
     // guard races). This guard is operator-intent signaling, not correctness.
     //
-    // Lifecycle migration note (plan 260611-1000): the finding status enum
+    // Lifecycle migration note: the finding status enum
     // was collapsed to {open, resolved, superseded}; legacy "active" is no
     // longer a valid finding status. A promoted finding stays "open" (the
     // issue isn't resolved — the rule now enforces). Rule entry's `origin`

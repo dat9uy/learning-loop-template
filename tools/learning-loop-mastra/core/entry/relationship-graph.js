@@ -1,7 +1,7 @@
 /**
  * Single source of truth for the meta-state relationship model.
  *
- * Plan: plans/260730-0240-relationship-model-centralize-defer-drop/plan.md, Phase 2.
+ * Phase 2: the relationship-model centralize-defer-drop consolidation.
  *
  * Owns (a) the cross-ref field table per kind, (b) forward + inverse resolution,
  * (c) write-time structural RI validation, and (d) the two leaf helpers

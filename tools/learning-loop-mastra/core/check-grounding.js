@@ -20,7 +20,7 @@ import { resolveSafePath, PathContainmentError } from "./path-containment.js";
  * Output uses `grounding` (not `derivation`) because the parent's lock uses
  * `grounding` for the nested per-check object. SP1 uses `derivation` for the
  * same concept; the names diverge by design (different tool, different shape).
- * See plans/260602-sp1-derive-status/plan.md for the SP1 sibling.
+ * See the SP1 sibling plan for derive-status.
  *
  * All entry kinds flow through the same evaluation path. The previous
  * change-log fast path (returning `status: "skipped"` for any change-log)

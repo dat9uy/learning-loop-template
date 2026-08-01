@@ -1,17 +1,1 @@
-[
-  "tools/learning-loop-mastra/core/check-grounding.js\t* See plans/260602-sp1-derive-status/plan.md for the SP1 sibling.",
-  "tools/learning-loop-mastra/core/entry/relationship-graph.js\t* Plan: plans/260730-0240-relationship-model-centralize-defer-drop/plan.md, Phase 2.",
-  "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs\t* Rec 10 surfacing (plan 260704-0301-stale-findings-dispatch-handle Phase 3).",
-  "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs\t* Rec 12 closed-loop (plan 260708-1216-rec12-closed-loop, phase 4):",
-  "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs\t// (silent-degrade was the bug class fixed in plan 260715-1100).",
-  "tools/learning-loop-mastra/hooks/universal/session-start-inject-discoverability.cjs\t// Phase 3 (plans/260722-2147): workflow helpers reclassified into CLI_WRITE_TOOLS.",
-  "tools/learning-loop-mastra/interface/contract.js\t* Phase 2 (plan 260707-0114) — generalized Req #3 (skill-spec).",
-  "tools/learning-loop-mastra/interface/contract.js\t// Generalized Req #3 (plan 260707-0114): per-skill enumeration + maturity",
-  "tools/learning-loop-mastra/interface/contract.js\t// Phase 2 (plan 260707-0114) — frontmatter parser + maturity hard-require.",
-  "tools/learning-loop-mastra/interface/contract.js\t// Phase 3 of plans/260719-1428-central-skills-management — manifest-driven",
-  "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Lifecycle migration note (plan 260611-1000): the finding status enum",
-  "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Phase 3 (plans/260717-1826-unify-context-injection): agent-checklist",
-  "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Phase 3 (plans/260717-1826-unify-context-injection): rule-derived",
-  "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Pre-existing ReDoS gap (caught en route by plan 260722-1343 Phase 1",
-  "tools/learning-loop-mastra/tools/handlers/meta-state-promote-rule-tool.js\t// Session-mode gate (plan 260708-0833): refuses when LOOP_SESSION_MODE is"
-]
+[]
