@@ -107,14 +107,14 @@ jobs:
         # (third-party Action SHA pin + crypto verify). The Action verifies the CLI
         # binary via Ed25519 + SHA-256 + sentinel (deep-dive §4). Bumping the SHA
         # is a deliberate supply-chain update — never use `@v3` here.
-        # Resolved via `git ls-remote https://github.com/fallow-rs/fallow refs/tags/v3.3.0`
-        # on 2026-07-13; revisitable via `tools/learning-loop-mastra/scripts/refresh-action-sha.sh`
+        # Resolved via `git ls-remote https://github.com/fallow-rs/fallow refs/tags/v3.10.0^{}`
+        # on 2026-08-01; revisitable via `tools/learning-loop-mastra/scripts/refresh-action-sha.sh`
         # (out of scope for this plan; tracked as F-5).
         # `sarif: false` disables the Action's built-in codeql-action/upload-sarif
         # step (which rejects fallow's multi-run SARIF via areAllRunsUnique).
         # The workflow's own jq patch + upload step ingests the SARIF instead
         # (plan 260630-0536-fallow-action-swap-with-sarif-split phase 2).
-        uses: fallow-rs/fallow@c9326d9395c0b46f4077290473060b3e950b6e8c
+        uses: fallow-rs/fallow@28810138faa8fdbc830b8d585d0c15d65c39c3fd
         with:
           root: tools/learning-loop-mastra
           command: audit
