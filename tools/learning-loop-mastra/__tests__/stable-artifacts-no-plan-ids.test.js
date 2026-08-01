@@ -108,6 +108,11 @@ test("stable-artifacts-no-plan-ids: allowlist sidecar is a sorted array", () => 
   expect(Array.isArray(allowlist)).toBe(true);
   const sorted = [...allowlist].sort();
   expect(allowlist).toEqual(sorted);
+  // Phase 3 invariant: allowlist must be empty (total ban). The set-diff
+  // semantics already enforce this (any match is "new" when allowlist is
+  // []), but the explicit assertion makes the empty state intentional and
+  // surfaces an accidental non-empty sidecar at the test boundary.
+  expect(allowlist).toEqual([]);
 });
 
 test("stable-artifacts-no-plan-ids: no NEW plan-ID matches outside the allowlist", () => {
