@@ -21,6 +21,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
+const { META_STATE_FINDING_CATEGORIES, META_STATE_FINDING_SEVERITIES } = require("../../core/constants.js");
 
 // write-tool one-line arg sketches for the
 // SessionStart banner. Each entry lists the top-level required keys (no `?`)
@@ -39,11 +40,13 @@ const { CLI_READ_TOOLS, CLI_WRITE_TOOLS } = require("../../core/cli-tools.js");
 // key breaks the test, not the agent's first write. The fallback (no
 // schema access) is the harness failing closed — empty sketches.
 const WRITE_TOOL_SKETCHES = {
-  // Required-enum annotations live after the key with a `:` separator
-  // (e.g. `category:gate-logic-bug|record-repair-gap|schema-drift|mcp-tool-missing|budget-check|loop-anti-pattern`).
-  // The drift-test parser strips the annotation before extracting the
-  // key name, so the annotation does not poison the required-keys check.
-  meta_state_report: "{category:gate-logic-bug|record-repair-gap|schema-drift|mcp-tool-missing|budget-check|loop-anti-pattern,severity:warning|escalate,affected_system,description}",
+  // Required-enum annotations live after the key with a `:` separator,
+  // built from META_STATE_FINDING_CATEGORIES / META_STATE_FINDING_SEVERITIES
+  // (core/constants.js) so a schema enum change propagates to the banner
+  // instead of leaving a hand-copied list stale. The drift-test parser
+  // strips the annotation before extracting the key name, so the
+  // annotation does not poison the required-keys check.
+  meta_state_report: `{category:${META_STATE_FINDING_CATEGORIES.join("|")},severity:${META_STATE_FINDING_SEVERITIES.join("|")},affected_system,description}`,
   meta_state_resolve: "{id,resolution}",
   meta_state_promote_rule: "{id,rule_id,enforcement,pattern_type,pattern,hint_text?,hint_suggestion?,hint_order?,hint_slug?}",
   meta_state_log_change: "{change_dimension,change_target,change_diff,reason}",

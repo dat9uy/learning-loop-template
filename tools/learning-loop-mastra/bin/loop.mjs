@@ -204,43 +204,34 @@ function loadArgsFile(path) {
   }
 }
 
-// Resolve the file-backed invocation shape. Accepts:
-//   loop.mjs <tool> --args-file <path>      (canonical)
-//   loop.mjs --args-file <tool> <path>      (mirrors the inline form)
-// Rejects everything else (extra args, missing path, file in the wrong
-// slot) with a usage error so callers never see a silent dispatch.
+// Resolve the file-backed invocation shape. Accepts exactly:
+//   loop.mjs <tool> --args-file <path>
+// Rejects everything else (extra args, missing path, unknown tool,
+// flag-shaped path) with a usage error so callers never see a silent
+// dispatch — one accepted shape keeps the contract small.
 function resolveArgsFileAction(argv) {
   const subcommand = argv[2];
   const slot3 = argv[3];
   const slot4 = argv[4];
-  if (subcommand === "--args-file") {
-    if (!slot3) {
-      throw new UsageError(`usage: loop.mjs --args-file <tool> <path>`);
-    }
-    if (!CLI_TOOLS.has(slot3)) {
-      throw new UsageError(`unknown tool for --args-file: ${slot3}`);
-    }
-    if (!slot4) {
-      throw new UsageError(`usage: loop.mjs --args-file ${slot3} <path>`);
-    }
-    if (argv.length > 5) {
-      throw new UsageError(`too many arguments for --args-file; usage: loop.mjs --args-file <tool> <path>`);
-    }
-    return { kind: "args-file", tool: slot3, path: slot4 };
+  if (slot3 !== "--args-file") {
+    return null;
   }
-  if (slot3 === "--args-file") {
-    if (!slot4) {
-      throw new UsageError(`usage: loop.mjs ${subcommand} --args-file <path>`);
-    }
-    if (argv.length > 5) {
-      throw new UsageError(`too many arguments for --args-file; usage: loop.mjs <tool> --args-file <path>`);
-    }
-    if (!CLI_TOOLS.has(subcommand)) {
-      throw new UsageError(`unknown tool: ${subcommand}`);
-    }
-    return { kind: "args-file", tool: subcommand, path: slot4 };
+  if (!slot4) {
+    throw new UsageError(`usage: loop.mjs ${subcommand} --args-file <path>`);
   }
-  return null;
+  if (argv.length > 5) {
+    throw new UsageError(`too many arguments for --args-file; usage: loop.mjs <tool> --args-file <path>`);
+  }
+  if (!CLI_TOOLS.has(subcommand)) {
+    throw new UsageError(`unknown tool: ${subcommand}`);
+  }
+  // A path that looks like a flag (e.g. `--args-file --schema`) is a
+  // caller mistake, not a file to open — reject it explicitly instead of
+  // surfacing a confusing "cannot read" for a file named like the flag.
+  if (slot4.startsWith("--")) {
+    throw new UsageError(`--args-file path must not be a flag; usage: loop.mjs <tool> --args-file <path>`);
+  }
+  return { kind: "args-file", tool: subcommand, path: slot4 };
 }
 
 async function main() {

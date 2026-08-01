@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { CLI_READ_TOOLS } from "../core/cli-tools.js";
+import { META_STATE_FINDING_CATEGORIES, META_STATE_FINDING_SEVERITIES } from "../core/constants.js";
 import { BANNER_BYTES_BUDGET } from "./banner-budget.js";
 
 const require = createRequire(import.meta.url);
@@ -101,24 +102,20 @@ test("--args-file dispatch form is covered in the banner footer", () => {
 
 test("meta_state_report sketch inlines the required category enum values", () => {
   const banner = buildTransportBanner({ readsViaCli: true, recordsViaCli: true });
-  // The promotion-path enum is enforced by the record-writer schema; the
-  // banner must surface every value so an agent does not have to learn
-  // the contract via a `--schema` round-trip.
-  for (const value of [
-    "gate-logic-bug",
-    "record-repair-gap",
-    "schema-drift",
-    "mcp-tool-missing",
-    "budget-check",
-    "loop-anti-pattern",
-  ]) {
+  // The sketch is built from the same constants the zod schema enforces
+  // (core/constants.js), so this test locks banner ≡ schema rather than a
+  // hand-copied literal list.
+  for (const value of META_STATE_FINDING_CATEGORIES) {
     assert.ok(
       banner.includes(value),
       `meta_state_report sketch must list category value "${value}"`,
     );
   }
   // The severity enum is also enforced.
-  assert.ok(banner.includes("severity:warning|escalate"), "sketch must list the severity enum");
+  assert.ok(
+    banner.includes(`severity:${META_STATE_FINDING_SEVERITIES.join("|")}`),
+    "sketch must list the severity enum",
+  );
 });
 
 test("transport banner interpolates the pinned LOOP_SURFACE value so the agent need not guess", () => {

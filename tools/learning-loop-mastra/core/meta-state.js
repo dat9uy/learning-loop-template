@@ -25,7 +25,7 @@ import {
 } from "./operation-envelope.js";
 // single source of truth for BATCH_SIZE_LIMIT
 // (closes the 500-vs-100 default divergence between handler and core).
-import { BATCH_SIZE_LIMIT } from "./constants.js";
+import { BATCH_SIZE_LIMIT, META_STATE_FINDING_CATEGORIES, META_STATE_FINDING_SEVERITIES } from "./constants.js";
 // schema-version-skew detection. isSchemaBranchSupported
 // reads the per-worktree .loop-version file and rejects writes whose entry_kind
 // is not in the worktree's schema_branches list. Future per-kind field-shape
@@ -281,16 +281,13 @@ const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 // by constants.js. Re-exported below for backward compat with callers that
 // import STALENESS_WINDOW_MS directly from this module.
 
-// Source-of-truth categories for finding entries. Export so introspection
-// layers (e.g. core/loop-introspect.js) can derive from the same source.
-// `stale-ref` was removed in the Rec 8 collapse: stale findings are no longer
-// recorded as a category — the information is surfaced as a derived view via
-// `meta_state_relationships`.
-export const META_STATE_FINDING_CATEGORIES = [
-  "gate-logic-bug", "record-repair-gap", "schema-drift",
-  "mcp-tool-missing", "budget-check",
-  "loop-anti-pattern",
-];
+// Source-of-truth categories for finding entries live in core/constants.js
+// (shared with the SessionStart banner sketch). Re-exported here so
+// introspection layers (e.g. core/loop-introspect.js) keep importing from
+// this module. `stale-ref` was removed in the Rec 8 collapse: stale findings
+// are no longer recorded as a category — the information is surfaced as a
+// derived view via `meta_state_relationships`.
+export { META_STATE_FINDING_CATEGORIES };
 
 /**
  * Entry-id reference prefixes. A value in a cross-reference array
@@ -345,12 +342,8 @@ export const metaStateFindingEntrySchema = z.object({
   id: z.string().optional().describe("Entry id; see field_glossary.id"),
   entry_kind: z.literal("finding").default("finding"),
   created_at: z.string().optional().describe("ISO timestamp"),
-  category: z.enum([
-    "gate-logic-bug", "record-repair-gap", "schema-drift",
-    "mcp-tool-missing", "budget-check",
-    "loop-anti-pattern",
-  ]).describe("Category of the finding"),
-  severity: z.enum(["warning", "escalate"]).describe("Severity level"),
+  category: z.enum(META_STATE_FINDING_CATEGORIES).describe("Category of the finding"),
+  severity: z.enum(META_STATE_FINDING_SEVERITIES).describe("Severity level"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).describe("Affected system"),
   description: z.string().min(20).describe("Human-readable summary (min 20 chars)"),
   subtype: z.string().optional()

@@ -2,9 +2,9 @@
 
 exports[`measure:context default run prints required keys with sane ranges 1`] = `
 {
-  "banner_bytes": 3021,
+  "banner_bytes": 3445,
   "banner_bytes_reads_only": 651,
-  "banner_bytes_records_via_cli": 3021,
+  "banner_bytes_records_via_cli": 3445,
   "cli_tool_count": 41,
   "dropped_def_bytes": 48233,
   "measured_at": Any<String>,
@@ -175,7 +175,7 @@ exports[`measure:context default run prints required keys with sane ranges 1`] =
     },
   ],
   "root": Any<String>,
-  "savings_bytes": 45212,
-  "savings_pct": 93.7,
+  "savings_bytes": 44788,
+  "savings_pct": 92.9,
 }
 `;

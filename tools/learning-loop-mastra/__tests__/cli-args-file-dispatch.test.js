@@ -1,6 +1,6 @@
 // cli-args-file-dispatch.test.js — exercises `loop.mjs <tool> --args-file <path>`
 // so the file-backed JSON transport shares the same parse/validate/R2/handler
-// pipeline as the inline JSON form. Locks the canonical + swapped shapes,
+// pipeline as the inline JSON form. Locks the single accepted shape,
 // caller-error behavior, and the <=exit-2 contract.
 
 import { test } from "vitest";
@@ -117,9 +117,9 @@ test("non-allowed tool name with --args-file → exit 2", { timeout: 20000 }, ()
   const dir = makeTmp();
   const file = join(dir, "args.json");
   writeFileSync(file, "{}");
-  const proc = runLoop(["--args-file", "no_such_tool_xyz", file]);
+  const proc = runLoop(["no_such_tool_xyz", "--args-file", file]);
   assert.strictEqual(proc.status, 2, `unknown tool must exit 2; got ${proc.status}; stderr=${proc.stderr}`);
-  assert.match(proc.stderr, /unknown tool for --args-file/i, `stderr must explain the unknown tool; got: ${proc.stderr}`);
+  assert.match(proc.stderr, /unknown tool/i, `stderr must explain the unknown tool; got: ${proc.stderr}`);
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -139,37 +139,11 @@ test("missing path trailing --args-file → exit 2", { timeout: 20000 }, () => {
   assert.match(proc.stderr, /--args-file <path>/, `stderr must show usage; got: ${proc.stderr}`);
 });
 
-test("`--args-file <tool> <path>` (swapped) form is supported", { timeout: 20000 }, () => {
-  const dir = makeTmp();
-  const payload = { tier: "warm" };
-  const file = join(dir, "loop-describe.json");
-  writeFileSync(file, JSON.stringify(payload));
-
-  const proc = runLoop(["--args-file", "loop_describe", file]);
-  assert.strictEqual(proc.status, 0, `swapped form must exit 0; stderr=${proc.stderr}`);
-  const inlineProc = runLoop(["loop_describe", JSON.stringify(payload)]);
-  const stripVolatile = (obj) => {
-    const { last_generated_at: _topTs, ...rest } = obj;
-    if (rest.registry_summary && typeof rest.registry_summary === "object") {
-      const { last_generated_at: _nestTs, ...nestedRest } = rest.registry_summary;
-      return { ...rest, registry_summary: nestedRest };
-    }
-    return rest;
-  };
-  assert.deepStrictEqual(
-    stripVolatile(JSON.parse(proc.stdout)),
-    stripVolatile(JSON.parse(inlineProc.stdout)),
-    "swapped form must equal inline result (excluding last_generated_at)",
-  );
-  rmSync(dir, { recursive: true, force: true });
-});
-
-test("`--schema` and `--args-file` are mutually exclusive", { timeout: 20000 }, () => {
-  // `<tool> --schema` is the canonical schema form; `<tool> --args-file <path>`
-  // is the canonical file form. Combining them is caller-error.
+test("`--args-file` with a flag-shaped path → exit 2, explicit rejection", { timeout: 20000 }, () => {
+  // `<tool> --schema` and `<tool> --args-file <path>` are separate
+  // dispatch forms. `--args-file --schema` must not be read as "open a
+  // file named --schema" — the CLI rejects flag-shaped paths outright.
   const proc = runLoop(["meta_state_list", "--args-file", "--schema"]);
-  // `--args-file` reads `--schema` as the path and fails to read it.
-  // The result is a clean exit 2 either via "cannot read" or "usage"
-  // depending on whether the file exists; both are acceptable caller errors.
-  assert.ok(proc.status === 2, `mutually exclusive flags must exit 2; got ${proc.status}; stderr=${proc.stderr}`);
+  assert.strictEqual(proc.status, 2, `flag-shaped path must exit 2; got ${proc.status}; stderr=${proc.stderr}`);
+  assert.match(proc.stderr, /must not be a flag/i, `stderr must explain the flag rejection; got: ${proc.stderr}`);
 });
