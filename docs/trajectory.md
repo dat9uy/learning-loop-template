@@ -4,7 +4,7 @@
 
 The long-term direction of the learning loop. This document states the destination, not the route. It is intentionally separate from `docs/architecture.md` (present-tense system description) and `docs/philosophy.md` (how to reason with the current loop), because aspirational content in either of those weakens their role as canaries for "what the system actually is right now."
 
-The trajectory of the meta-surface, not any substrate. The operational source of truth for the 2026-06-12 reframe is `plans/reports/consistency-260612-1300-mastra-research-report.md`.
+The trajectory of the meta-surface, not any substrate. The operational source of truth for the 2026-06-12 reframe is the consistency research report under `plans/reports/`.
 
 ---
 
@@ -102,7 +102,7 @@ The operator-capture guard (a discovered-vs-acked annotation on change-logs to s
 
 Bridges 1-4 are product-surface (content). Bridges 5+6 are meta-surface (code + self-model). The skill-migration track is a third category: **mechanics**. It is not about what the loop records (the meta-surface) or what the loop builds (the product surface, unbound); it is about *how the work gets done* in a single session. The markdown skills (`ck:*`) are session-scoped mechanics; the migration moves them to state-3 (encoded) — deterministic injection + deterministic consumption, realized by the `deterministic-step` role (one L3 realization: an MCP tool, consult-gate, or hook).
 
-**Origin of the track (2026-06-12):** the operator's §11 closeout in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` named the dependency-balance convention — plan-file authoring internalizes, code execution depends on `ck:*` skills (cited), the contract itself internalizes. The migration is the next step past that convention: convert the cited `ck:*` helpers into authoritative loop executors. Canonical phase state for the migration: `plans/reports/productization-260612-1530-master-tracker.md` **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase, not a child of any of Phases A-F).
+**Origin of the track (2026-06-12):** the operator's §11 closeout in the Phase A product-surface re-debate report under `plans/reports/` named the dependency-balance convention — plan-file authoring internalizes, code execution depends on `ck:*` skills (cited), the contract itself internalizes. The migration is the next step past that convention: convert the cited `ck:*` helpers into authoritative loop executors. Canonical phase state for the migration: the productization master tracker under `plans/reports/`, **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase, not a child of any of Phases A-F).
 
 **Migration sequence (smallest-first, lowest-risk-first):** the ordering rationale is one of the 13 escape-hatch items in `docs/loop-engine.md` (#8). The sequence:
 
@@ -129,7 +129,7 @@ When all three are true, the skill is loop-maintained (state-3 encoded). The mar
 - **Not a replacement for skills.** The skill markdown stays. The migration is additive: the MCP tool gains authoritative ownership (cite-or-else semantics), the skill keeps its role as the readable spec. If "owning" is read as "deleting," the analysis is wrong; the escape-hatch pattern is the philosophy.
 - **Not a refactor of the 4-kind union.** The skill-migration track may add a `kind: 'tool-version'` or similar to the meta-surface for MCP-tool release tracking, but it does not touch the 4-kind union. The 4 kinds stay load-bearing.
 - **Not Bridge 1-4.** The product surface they were building toward is unbound; the skill-migration track does not depend on it shipping. The track can ship before, alongside, or after the product surface binds, in any order.
-- **Not in Phase A scope.** The Phase A re-debate in `plans/reports/brainstorm-260612-1610-phase-a-product-surface-re-debate.md` §11 closes the convention; the migration itself is the master tracker's **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase). The two are not the same: §11 of the Phase A report names the *target* (the convention + the migration direction); Phase G owns the *implementation* (sequence, stop condition, pre-conditions). The split keeps the Phase A re-debate from carrying content that does not belong there.
+- **Not in Phase A scope.** The Phase A re-debate in the Phase A product-surface re-debate report under `plans/reports/` §11 closes the convention; the migration itself is the master tracker's **Phase G — Skill Migration Track** (a parallel-dimension mechanics phase). The two are not the same: §11 of the Phase A report names the *target* (the convention + the migration direction); Phase G owns the *implementation* (sequence, stop condition, pre-conditions). The split keeps the Phase A re-debate from carrying content that does not belong there.
 
 **Why this matters for trajectory, not just for the skill family:** the same gradient that moved procedural knowledge from docs to records to tools to self-driving workflow now extends one more step: from skill markdown (session-loaded markdown) to state-3 (encoded) skill artifacts (deterministic injection + deterministic consumption; loop-citable at creation). The destination sentence does not change. The gradient gets one more step.
 
@@ -153,9 +153,9 @@ What stays in `docs/` is irreducible judgment. What moves to the meta-surface is
 
 ## 6. Storage layer trajectory (meta-surface substrate)
 
-The scout closeout (plan 260608-1700) added 134+ findings, growing the meta-state registry from ~130 entries to 500+. This exposed a structural performance class: the cold tier, compact mode, and `readRegistry()` hot path all re-parse the 540KB `meta-state.jsonl` on every call. The symptom was the family of `*size-overrun*` findings. The prior cure was threshold bumps, which the resolution log itself flags as "the assertion is a sanity bound, not a performance target."
+The scout closeout added 134+ findings, growing the meta-state registry from ~130 entries to 500+. This exposed a structural performance class: the cold tier, compact mode, and `readRegistry()` hot path all re-parse the 540KB `meta-state.jsonl` on every call. The symptom was the family of `*size-overrun*` findings. The prior cure was threshold bumps, which the resolution log itself flags as "the assertion is a sanity bound, not a performance target."
 
-A brainstorm (`plans/reports/brainstorm-260608-index-extractor-overrun.md`) identified three layers needing work and proposed Approach A as the bridge to a future storage layer.
+A brainstorm identified three layers needing work and proposed Approach A as the bridge to a future storage layer.
 
 **Why this matters for trajectory, not just performance:** The gradient's destination sentence is "knowledge moves from hand-written tools into self-deriving tools, and from self-deriving tools into self-driving workflow." The current `readRegistry()` is a hand-written re-parse on every call — the antithesis of self-deriving. The fix is not "parse faster" (mtime-checked LRU) but "stop re-parsing" (materialized cold-tier cache) — and the long-term destination is "stop re-shaping a text file at all" (a real storage engine).
 
@@ -203,5 +203,5 @@ This is structurally consistent with the meta-surface (Bridge 5+6): the storage 
 - `docs/architecture.md` — present-tense system description (the canary for "what the system actually is right now")
 - `docs/philosophy.md` — how to reason with the current loop
 - `docs/meta-state-lifecycle.md` — the 4-kind union, status transitions, fingerprint lifecycle
-- `plans/reports/research-260611-2216-mastra-runtime-model-agnostic-productization.md` — the Mastra/Code research that triggered the 2026-06-12 reframe
-- `plans/reports/consistency-260612-1300-mastra-research-report.md` — the 9-finding consistency check that produced the reframe
+- the Mastra/Code runtime-model research under `plans/reports/` — the research that triggered the 2026-06-12 reframe
+- the 9-finding consistency research report under `plans/reports/` — the consistency check that produced the reframe

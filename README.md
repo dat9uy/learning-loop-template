@@ -12,16 +12,7 @@ Agents have no persistent memory across sessions. Each agent starts fresh — it
 
 The loop has one bound surface and one trajectory.
 
-**The meta-surface** is the only bound surface — a 4-kind discriminated union in `meta-state.jsonl`:
-
-| Kind | Role | Lifespan |
-|------|------|----------|
-| `finding` | A loop-self-diagnostic observation | 24h TTL → ack → active → resolve |
-| `change-log` | An immutable audit record of a system change | Forever |
-| `rule` | A promoted invariant the loop enforces (`gate` or `agent` enforcement) | Forever (until superseded) |
-| `loop-design` | A deferred design that will create or modify rules, schemas, or tools | Active → inactive → archived |
-
-The 21+ `meta_state_*` MCP tools in `tools/learning-loop-mastra/tools/` are the only authoritative interface to the meta-surface. Direct writes to `meta-state.jsonl` are blocked by both write and bash gates.
+**The meta-surface** is the only bound surface — a 4-kind discriminated union (`finding` | `change-log` | `rule` | `loop-design`) in `meta-state.jsonl`. The union definition and lifespan model live in `AGENTS.md` §1; the status transitions in `docs/meta-state-lifecycle.md`. The loop's tools (read **and** write) are the only authoritative interface to the meta-surface — all three runtimes ride the stateless CLI `tools/learning-loop-mastra/bin/loop.mjs` (the MCP server keeps only a residue). Direct writes to `meta-state.jsonl` are blocked by both write and bash gates.
 
 **The trajectory**: knowledge moves from human-readable docs into the loop, one mechanism at a time. Today's docs are tomorrow's tools. Today's escape hatches are tomorrow's MCP tools. The loop's destination is the limit of that gradient.
 
@@ -45,7 +36,7 @@ A refactor that touches no external system does not need a decision record. A ve
 Commands that touch irreversible external systems (docker, sudo, package installs, vendor APIs) are gated by a two-layer enforcement system:
 
 1. **PreToolUse hooks** — universal bash-gate, write-gate, and inbound-state-gate that intercept tool calls for both Claude Code and Droid CLI
-2. **MCP server** (`tools/learning-loop-mastra/mastra/server.js`) — meta-surface tools, constraint checks (`gate_check`, `gate_mark_preflight`), and workflow tools
+2. **Tool surface** — the loop's tools ride the stateless CLI `tools/learning-loop-mastra/bin/loop.mjs` on all runtimes; the MCP server (`tools/learning-loop-mastra/mastra/server.js`) keeps a residue. Both carry meta-surface tools and constraint checks (`gate_check`, `gate_mark_preflight`)
 
 The gate reads runtime state from `runtime-state.jsonl` and decides: `ok`, `block` (observation required), or `escalate` (budget exhausted). All gate logic lives in `tools/learning-loop-mastra/core/` — single source of truth.
 
@@ -57,13 +48,7 @@ What survives the internalization gradient is irreducible judgment — the "why"
 
 ### The internalization rule
 
-The loop does not internalize everything it touches. Three classes:
-
-| Class | Authority | What "cite" means |
-|-------|-----------|-------------------|
-| **The contract** (rule, decision boundary, consult-gate) | The loop, no exceptions | It is the cite target |
-| **Internal implementation** (refactor, scaffold, test, review) | The skill executes; the loop records | `evidence_journal` on the resulting `finding` or `change-log` |
-| **External system** (vendor API, device slot, budget) | The operator is the source; the loop is a consumer | Observations are operator-authored |
+The loop does not internalize everything it touches — it internalizes the *contract* (full authority), cites the *internal implementation* (records that it happened, does not replace it), and reads the *external system* (consumer, not source). The three-class framework and the citation path live in `AGENTS.md` §2 (and `docs/loop-engine.md` for the concept).
 
 **Cite the code, not the markdown.** A code-pointed finding with `mechanism_check: true` is durable; a markdown citation is the escape hatch.
 
@@ -105,6 +90,7 @@ The loop does not internalize everything it touches. Three classes:
 pnpm test                 # run the test suite
 pnpm test:cold-session    # cold-session discoverability test (3-day cadence)
 pnpm gate:server          # start the MCP server standalone
+node tools/learning-loop-mastra/bin/loop.mjs list   # list the loop's tool surface
 ```
 
 ---
@@ -126,6 +112,6 @@ The meta-state system is the most dangerous component to give full autonomy to, 
 
 A self-referential learning loop with verification autonomy and a self-model that the loop maintains and that influences its own behavior. The gradient moves knowledge from human-readable docs into machine-driven loop mechanics, one bridge at a time.
 
-As of 2026-06-12, the meta-surface (Bridge 5+6) is the active front. Bridges 1-4 are deferred and unbound — the product surface is re-debated from the meta-surface. See `docs/trajectory.md` for the full picture.
+The meta-surface (Bridge 5+6) is the active front. Bridges 1-4 are deferred and unbound — the product surface is re-debated from the meta-surface. See `docs/trajectory.md` for the full picture.
 
 **Skills execute; the loop records; the meta-surface is the only thing that survives.**
