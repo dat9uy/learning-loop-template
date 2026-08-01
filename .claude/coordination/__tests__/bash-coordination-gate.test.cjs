@@ -98,7 +98,7 @@ function allowed(r) {
   }
 }
 
-test('bash-coordination-gate: 20 end-to-end hook invocations assert identical gate outcomes to the script version', () => {
+test('bash-coordination-gate: end-to-end hook invocations assert identical gate outcomes to the script version', () => {
   console.log('\n--- bash-coordination-gate.cjs ---');
 
   // Test 1: Non-Bash tool → exit 0
@@ -133,12 +133,21 @@ test('bash-coordination-gate: 20 end-to-end hook invocations assert identical ga
     assert(denied(r), 'sudo → denied (constrained)');
   }
 
-  // Test 6: pip install in temp project without runtime-state → denied (constrained)
+  // Test 6a: non-vnstock install in temp project without runtime-state → allowed (package-manager only gates vnstock installs)
   {
     const tmpDir = createTempProject();
     const env = { GATE_ROOT: tmpDir };
     const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install requests' } }, env);
-    assert(denied(r), 'pip install → denied (constrained, no runtime-state)');
+    assert(allowed(r), 'pip install requests → exit 0 (non-vnstock installs are not gated)');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  // Test 6b: vnstock install in temp project without runtime-state → denied (constrained)
+  {
+    const tmpDir = createTempProject();
+    const env = { GATE_ROOT: tmpDir };
+    const r = runHook({ tool_name: 'Bash', tool_input: { command: 'pip install vnstock' } }, env);
+    assert(denied(r), 'pip install vnstock → denied (constrained, no runtime-state)');
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 

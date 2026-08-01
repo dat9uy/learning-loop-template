@@ -250,8 +250,8 @@ export function stripMessageFlags(segment) {
  * because their bodies are real commands (the existing 3 tests at
  * `__tests__/gate-logic-quoted-strings.test.js` lock this asymmetry).
  *
- * Bypass risk: `node -e "require('child_process').exec('npm install')"` no
- * longer matches the `package-manager` constraint (the command is inside the
+ * Bypass risk: `node -e "require('child_process').exec('pip install vnstock')"`
+ * no longer matches the `package-manager` constraint (the command is inside the
  * blanked body). This is an accepted bypass, not a fix; the user-stated design
  * from plans/reports/brainstorm-260615-1300-bash-gate-debate-friendly-and-string-literal-fix.md#plan-2
  * chose asymmetry (only node, not python-c/bash-c). Catch-net: the

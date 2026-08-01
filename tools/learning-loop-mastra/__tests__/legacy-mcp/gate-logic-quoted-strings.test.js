@@ -51,8 +51,8 @@ await test("matchConstraintPattern: python -c with import docker inside → dock
   assert.strictEqual(result, "docker");
 });
 
-await test("matchConstraintPattern: bash -c with npm install inside → package-manager", () => {
-  const result = matchConstraintPattern('bash -c "npm install"');
+await test("matchConstraintPattern: bash -c with pip install vnstock inside → package-manager", () => {
+  const result = matchConstraintPattern('bash -c "pip install vnstock"');
   assert.strictEqual(result, "package-manager");
 });
 
@@ -100,8 +100,8 @@ await test("matchConstraintPattern: node -e body with escaped inner quote → re
 
 // ─── -t collision: skipNext consumed by user@host, string still checked ───
 
-await test("matchConstraintPattern: ssh -t user@host with npm install inside → package-manager", () => {
-  const result = matchConstraintPattern('ssh -t user@host "npm install"');
+await test("matchConstraintPattern: ssh -t user@host with pip install vnstock inside → package-manager", () => {
+  const result = matchConstraintPattern('ssh -t user@host "pip install vnstock"');
   assert.strictEqual(result, "package-manager");
 });
 
@@ -117,14 +117,14 @@ await test("matchConstraintPattern: sudo apt update → sudo", () => {
   assert.strictEqual(result, "sudo");
 });
 
-await test("matchConstraintPattern: npm install react → package-manager", () => {
+await test("matchConstraintPattern: npm install react → null (non-vnstock installs are not gated)", () => {
   const result = matchConstraintPattern("npm install react");
-  assert.strictEqual(result, "package-manager");
+  assert.strictEqual(result, null);
 });
 
-await test("matchConstraintPattern: pnpm add react → package-manager", () => {
+await test("matchConstraintPattern: pnpm add react → null (non-vnstock installs are not gated)", () => {
   const result = matchConstraintPattern("pnpm add react");
-  assert.strictEqual(result, "package-manager");
+  assert.strictEqual(result, null);
 });
 
 await test("matchConstraintPattern: ls -la → null", () => {
@@ -135,6 +135,38 @@ await test("matchConstraintPattern: ls -la → null", () => {
 // ─── Unquoted multi-word message edge case ───
 
 await test("matchConstraintPattern: unquoted multi-word message → package-manager (expected behavior)", () => {
-  const result = matchConstraintPattern("git commit -m fix pnpm add issue");
+  const result = matchConstraintPattern("git commit -m fix pip install vnstock issue");
   assert.strictEqual(result, "package-manager");
+});
+
+// ─── vnstock-only package-manager narrowing ───
+
+await test("matchConstraintPattern: pnpm add -D fallow → null (routine devDependency bump not gated)", () => {
+  const result = matchConstraintPattern("pnpm add -D fallow@3.10.0");
+  assert.strictEqual(result, null);
+});
+
+await test("matchConstraintPattern: pip install vnstock → package-manager", () => {
+  const result = matchConstraintPattern("pip install vnstock");
+  assert.strictEqual(result, "package-manager");
+});
+
+await test("matchConstraintPattern: uv pip install vnstock → package-manager (uv verb form)", () => {
+  const result = matchConstraintPattern("uv pip install vnstock");
+  assert.strictEqual(result, "package-manager");
+});
+
+await test("matchConstraintPattern: pip install vnstock_data → package-manager (prefix match covers sponsor/data package)", () => {
+  const result = matchConstraintPattern("pip install vnstock_data");
+  assert.strictEqual(result, "package-manager");
+});
+
+await test("matchConstraintPattern: pip install vnstockfoo → package-manager (intended prefix over-match; gate errs toward constraining vnstock-prefixed packages)", () => {
+  const result = matchConstraintPattern("pip install vnstockfoo");
+  assert.strictEqual(result, "package-manager");
+});
+
+await test("matchConstraintPattern: pip install notvnstock → null (word-boundary guard)", () => {
+  const result = matchConstraintPattern("pip install notvnstock");
+  assert.strictEqual(result, null);
 });

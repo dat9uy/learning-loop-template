@@ -1,7 +1,7 @@
 {
   "docker": "\\bdocker\\b(?!-)",
   "sudo": "\\bsudo\\b",
-  "package-manager": "\\b(pip|npm|yarn|pnpm|uv)\\s+(install|add|sync|bootstrap|setup)\\b",
+  "package-manager": "\\b(pip|npm|yarn|pnpm|uv)\\s+(install|add|sync|bootstrap|setup)\\b.*\\bvnstock",
   "vendor-api": "\\bcurl\\b.*api|import\\s+vnstock(?!_data)\\b",
   "side-effect-import": "import\\s+vnstock_data\\b|.*runtime_state_record\\s*\\(",
   "message_flags": ["-m", "--message", "--title", "--description", "--body"],

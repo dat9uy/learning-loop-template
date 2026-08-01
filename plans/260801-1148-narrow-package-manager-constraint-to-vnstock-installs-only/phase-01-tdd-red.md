@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "TDD red — encode new contract in tests"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: []

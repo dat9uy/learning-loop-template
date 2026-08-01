@@ -1,7 +1,7 @@
 ---
 title: "Narrow package-manager constraint to vnstock installs only"
 description: "Tighten the bash-gate `package-manager` constraint pattern so it only fires when the install command actually contains the `vnstock` token. Routine non-vendor dep bumps (`pnpm add -D fallow`, `npm install react`, `pip install numpy`) stop being gated. vnstock vendor installs stay gated by the vnstock observation."
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 tags: [gate, constraint, package-manager, vnstock, tdd]
@@ -44,18 +44,18 @@ User decision: **vnstock should only be triggered if the install command has `vn
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: TDD red — encode new contract in tests](./phase-01-tdd-red.md) | Pending |
-| 2 | [Phase 2: TDD green — narrow the package-manager regex](./phase-02-tdd-green.md) | Pending |
-| 3 | [Phase 3: Verify, docs, loop record, unblock fallow bump](./phase-03-verify-and-record.md) | Pending |
+| 1 | [Phase 1: TDD red — encode new contract in tests](./phase-01-tdd-red.md) | Completed |
+| 2 | [Phase 2: TDD green — narrow the package-manager regex](./phase-02-tdd-green.md) | Completed |
+| 3 | [Phase 3: Verify, docs, loop record, unblock fallow bump](./phase-03-verify-and-record.md) | Completed |
 
 ## Success Criteria
 
-- [ ] `pnpm add -D fallow@3.10.0`, `npm install react`, `pip install numpy` → `matchConstraintPattern` returns `null` (no gate block).
-- [ ] `pip install vnstock`, `uv pip install vnstock`, `pip install vnstock_data`, `pnpm install vnstock` → still return `"package-manager"` (still gated by vnstock observation).
-- [ ] `pnpm fallow:gate` and `pnpm fallow:brief` stay green on fallow 3.10.0 after the bump.
-- [ ] Gate test suite (`evaluate-bash-gate`, `gate-logic-quoted-strings`, `gate-promoted-rules`, `evaluate-bash-gate-runtime-state`) passes.
-- [ ] Docs describing the `package-manager` constraint updated to reflect vnstock-only matching.
-- [ ] Loop change-log entry recorded; `meta-260801T1118Z-observation-dep-bump-fallow-…` resolved.
+- [x] `pnpm add -D fallow@3.10.0`, `npm install react`, `pip install numpy` → `matchConstraintPattern` returns `null` (no gate block).
+- [x] `pip install vnstock`, `uv pip install vnstock`, `pip install vnstock_data`, `pnpm install vnstock` → still return `"package-manager"` (still gated by vnstock observation).
+- [x] `pnpm fallow:gate` and `pnpm fallow:brief` stay green on fallow 3.10.0 after the bump.
+- [x] Gate test suite (`evaluate-bash-gate`, `gate-logic-quoted-strings`, `gate-promoted-rules`, `evaluate-bash-gate-runtime-state`) passes.
+- [x] Docs describing the `package-manager` constraint updated to reflect vnstock-only matching. (Sweep found no authoritative doc enumerating the constraint — only historical journals and `_archive-260703`, both correctly untouched. Nothing to update.)
+- [x] Loop change-log entry recorded (`meta-260801T1231Z-patterns-json-package-manager`); `meta-260801T1118Z-observation-dep-bump-fallow-…` resolved.
 
 ## Key Evidence
 

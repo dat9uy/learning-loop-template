@@ -14,9 +14,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("gate promoted rules regression", () => {
-  test("existing constraint pattern still matches", () => {
+  test("non-vnstock install no longer matches package-manager", () => {
     const result = matchConstraintPattern("pip install numpy");
-    assert.strictEqual(result, "package-manager");
+    assert.strictEqual(result, null);
   });
 
   test("makeGateDecision blocks without observation", () => {
