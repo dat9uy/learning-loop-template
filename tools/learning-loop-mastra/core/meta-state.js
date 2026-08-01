@@ -282,9 +282,9 @@ const COMPACTION_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Source-of-truth categories for finding entries. Export so introspection
 // layers (e.g. core/loop-introspect.js) can derive from the same source.
-// `stale-ref` was removed in plan 260704-0301-stale-findings-dispatch-handle
-// (Rec 8 collapse): stale findings are no longer recorded as a category — the
-// information is surfaced as a derived view via `meta_state_relationships`.
+// `stale-ref` was removed in the Rec 8 collapse: stale findings are no longer
+// recorded as a category — the information is surfaced as a derived view via
+// `meta_state_relationships`.
 export const META_STATE_FINDING_CATEGORIES = [
   "gate-logic-bug", "record-repair-gap", "schema-drift",
   "mcp-tool-missing", "budget-check",
@@ -551,9 +551,8 @@ const metaStateRuleEntryObject = z.object({
   refined_at: z.string().optional().describe("ISO timestamp of last refinement"),
   refined_by: z.string().optional().describe("Operator id of last refinement"),
   refinement_reason: z.string().optional().describe("Why the rule was last refined"),
-  // Phase 3 (plans/260717-1826-unify-context-injection): rule-derived
-  // process hint prose. Persisted on agent-checklist rule entries; the
-  // meta_state_promote_rule tool REQUIRES this on creation (actionable
+  // Rule-derived process hint prose. Persisted on agent-checklist rule
+  // entries; the meta_state_promote_rule tool REQUIRES this on creation (actionable
   // rejection), and the hint-renderer resolves `text` from `rule.hint_text`
   // at SessionStart render time. Optional on the schema because non-
   // agent-checklist rules (gate-enforced) don't need injection prose;

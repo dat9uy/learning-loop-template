@@ -1,9 +1,8 @@
 /**
  * hint-registry.js — single source of truth for context-injection hints.
  *
- * Phase 2 of plans/260717-1826-unify-context-injection: collapses the legacy
- * DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts in
- * core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
+ * Collapses the legacy DISCOVERABILITY_HINTS / PROCESS_HINTS frozen consts
+ * in core/loop-introspect.js (and the LOCAL_* mirror in .factory/hooks/loop-
  * surface-inject.cjs) into one slug-keyed registry.
  *
  * Consumers: production injection projects through core/loop-introspect.js
@@ -30,7 +29,7 @@ export const HINT_REGISTRY = Object.freeze([
   // ============================================================================
   // DISCOVERABILITY (16 rows) — meta-surface contracts, tool-selection pointers.
   // Slugs preserved verbatim from HINT_KEY_MAP so loop_get_instruction back-compat
-  // survives (Validation 4 of plan 260717-1826).
+  // survives the registry collapse.
   // ============================================================================
   {
     slug: "internalization-rule",
@@ -305,8 +304,7 @@ export function findHintBySlug(slug) {
  * This is the single resolution path shared by core/hint-renderer.js,
  * the loop_get_instruction tool, and loop-introspect's buildProcessHints —
  * divergent skip semantics across consumers previously caused a positional
- * misalignment in loop_get_instruction (code-review C2 of
- * plans/260717-1826-unify-context-injection).
+ * misalignment in loop_get_instruction (the code-review C2 finding).
  *
  * Pure — `rulesById` is a precomputed map supplied by the caller.
  */

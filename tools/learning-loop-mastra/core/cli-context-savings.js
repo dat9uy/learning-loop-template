@@ -1,5 +1,5 @@
 // core/cli-context-savings.js — pure computation for the CLI transport's
-// context-savings dogfood measurement (plans/260726-1953).
+// context-savings dogfood measurement.
 //
 // Why wire bytes, not manifest stubs: tools/manifest.json entries carry only
 // {file, export, pathFields} — no name, no description, no schema. Stub bytes
@@ -24,7 +24,7 @@
 // prefix × N tools, plus a few bytes on the one hinted tool (meta_state_patch)
 // — so they do not affect regression detection or savings_pct. Excluding them
 // keeps the ledger time-series comparable across formula revisions. The plan
-// (plans/260726-1953) validated name=legacy.name; live MCP-wire parity is
+// The plan validated name=legacy.name; live MCP-wire parity is
 // owned by mcp-tools-list-parity.test.js, not this helper.
 //
 // Pure functions only — no MCP server spawn, no ledger writes, no CLI
