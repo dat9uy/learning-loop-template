@@ -71,7 +71,7 @@ The 7 superseded findings are design-tension / lineage findings folded into a ch
 - **Keep (distinct status):** `superseded` says "this finding is closed *by consolidation*, not by fix" — a queryable distinction. A `resolved` finding with `consolidated_into` would be ambiguous (was it fixed *and* recorded, or just recorded?).
 - **Collapse (status + field):** one closed status (`resolved`) + an optional `consolidated_into` link. `supersede` becomes "resolve with a change-log consolidation." This aligns finding with rule/loop-design (one closed state), removes a status, and lets `consolidated_into` ride on `resolved`. The distinction "fixed vs recorded" moves from the status to the *presence* of `consolidated_into` + the `resolution` text.
 
-**Verdict (lean): collapse.** The two-closed-states split is the main reason finding's vocabulary diverges from rule/loop-design. `resolved` + optional `consolidated_into` (and `resolution` text that says "consolidated into change-log X") preserves the semantics while removing the status. Cost: a migration of 7 findings (`superseded`→`resolved`, carry `consolidated_into`), and `supersede` becomes a flavor of `resolve`. The `CROSS_REFS` `consolidated_into` edge is unchanged. **Open for owner decision** — this is a real semantic choice, not a bug.
+**Verdict (decided): collapse.** `superseded` → `resolved` + a citation to the change-log. The two-closed-states split is the main reason finding's vocabulary diverges from rule/loop-design; one canonical closure state (`resolved`) aligns it with rule/loop-design's `inactive`. The `consolidated_into` *field* is itself retired — it migrates to the untyped citation mechanism (§3.1). Migration: 7 findings `superseded`→`resolved`, each carrying an untyped citation `{source: finding, target: change-log, rationale: "consolidated into …"}`. `supersede` becomes a flavor of `resolve`. Semantic choice resolved; the open question is now the citation *storage* (§4 open #1), not the status.
 
 ### 2.3 accepted value — the genuine smell
 
@@ -89,7 +89,12 @@ The conflation: `open` means both (a) "a problem to fix" and (b) "a standing acc
 | **B. model as `loop-design`** | accepted trade-off is a *design decision* → `loop-design` (active), `addresses` the motivating finding/rule | **no** (`reopens` is finding-only; use `addresses`) | medium: B changes *kind* (6 versions migrate), `reopens` linkage changes primitive |
 | **C. new `accepted-limitation` kind** | dedicated kind + lifecycle + tools | n/a | heavy; YAGNI for ~6 entries |
 
-**Verdict (lean): model A (`accepted` status).** It is the smallest change that fixes the status lie, keeps `reopens` applicable (so the recurrence trigger's linkage still works), and aligns with the §2.2 collapse (finding would become `open / accepted / resolved / archived` — one canonical closure state, plus `accepted` for standing trade-offs). Model B is conceptually cleanest (an accepted trade-off *is* a design decision) but it breaks the `reopens` primitive the recurrence trigger needs and forces a kind migration. **Open for owner decision** — A vs B is a real modeling choice (status vs kind).
+**Verdict (decided 260802-0230 via `ak:predict`, verdict GO): model A (`accepted` status).** It is the smallest change that fixes the status lie and aligns with the §2.2 collapse (finding would become `open / accepted / resolved / archived` — one canonical closure state, plus `accepted` for standing trade-offs). Model B (remodel as `loop-design`) was rejected on two grounds grounded in the code:
+
+- **loop-design has no acknowledgment state.** Verified `meta-state.js:608-624`: loop-design status is *"Binary. Flips to inactive when the proposed work ships"*; `shipLoopDesign` (`meta-state.js:1690`) is the *sole* closure path, stamping `shipped_in_plan`+`shipped_at`. An accepted limitation is neither "proposed work to ship" nor "shipped" — under B it sits **perpetually `active`**, re-creating the exact status-lie A fixes (`active` then conflates "design in progress" with "accepted trade-off"). The owner's instinct ("loop-design don't give the temporary-trade-off vibe") is confirmed by the schema, not just intuition.
+- **The accepted-vs-open distinction is state-3, so it earns a status, not a kind.** `isOpen` (`constants.js:70`, `!TERMINAL_STATUSES.has(status)`) is a *deterministic branch* on the value — so is `isStaleView`'s early-return and `deriveStatus`'s `no_action` path. Per the L1 adopted this session ("Schema Constraints Are State-3 Artifacts," `docs/philosophy.md`), a distinction code branches on earns a strict field, not prose or a kind-remodel. B (and the do-nothing `-accepted` suffix) bury a branched-on distinction in kind/prose — violating the L1 just adopted.
+
+B's old downside ("breaks `reopens`") dissolved when §2.4 dropped `reopens` entirely; with relationships emergent via file-index, the recurrence linkage is neutral between A and B. B's only remaining virtue was compactness; its semantic cost (perpetual `active`; `proposed_design_for` semantically inapplicable to an acknowledgment; `active` loop-design list polluted with non-designs) is now uncompensated. The recurrence trigger's P4 stays dissolved under A (file-index co-citation, no `reopens`), unchanged.
 
 ### 2.4 reopens — right primitive, wrong framing for accepted-limitations
 
@@ -102,40 +107,94 @@ So the right primitive for "in-vivo recurrence evidence relates to an accepted l
 - **a new finding→design edge** ("informs" / "evidence-for") — a finding that provides in-vivo evidence *about* a design/accepted-limitation, without closing it.
 - **just file independently** — the recurring finding stands on its own; the operator draws the link at triage (the existing manual pattern for `reopens`).
 
-**Verdict:** `reopens` is the right primitive *for stale findings* (close-on-new-evidence) and should be kept. It is the **wrong** primitive for accepted-limitations (which should not be closed). The recurrence trigger should **not** `reopens` B. This resolves the P4 impasse: the reopens linkage was solving the wrong problem. The right linkage depends on the §2.3 decision (A: a finding→finding `informs` edge; B: a finding→loop-design `evidence-for` edge; or file-independently).
+**Verdict (revised): drop `reopens` entirely.** The earlier lean ("keep `reopens` for stale findings") is reversed. In an append-only system, resolved is **terminal / read-only** — new evidence does not re-open and cascade-close the old finding; it appends a *new* finding, and file-index co-citation relates the two (both cite the same code). `reopens` + cascade-resolve is the one operation that un-closes a record as a side-effect of opening another — the mutation smell inside the "append-only" model; dropping it makes the invariant honest. The 17 existing `reopens` edges go inert (stop writing the field); the link survives via file-index, no active migration. This also dissolves the recurrence trigger's P4: the trigger files the recurring finding with `evidence_code_ref` to the gate code; file-index connects it to B (and everything else citing that code) for free — no `reopens`, no `informs`/`evidence-for` edge, no cascade. The proposed non-closing evidence edge from the original synthesis is dropped as redundant with file-index.
 
-## 3. Proposed tighter model (synthesis)
+## 3. Proposed tighter model (synthesis, revised 260802-0218)
 
-Assuming the owner accepts the leans (§2.2 collapse, §2.3 model A), the finding lifecycle becomes:
+Two principles now drive the model, both owner-confirmed in discussion:
+
+- **Append-only terminality:** resolved is read-only. New evidence appends a new finding; it does not re-open or cascade-close an old one. Relationships between findings are *emergent* (file-index co-citation, discovered at read time), not declared at write time.
+- **Schema constraints are state-3 artifacts** (new L1, `docs/philosophy.md` § "Schema Constraints Are State-3 Artifacts"): a strict enum/field earns its keep only when deterministic code branches on the value. If the agent reads the records + rationale and interprets (agentic consumption), the distinction belongs in prose, not a validated field.
+
+The finding lifecycle becomes:
 
 ```
-finding:  open  →  accepted  (standing trade-off; not "to fix"; isOpen excludes)
-          open  →  resolved  (closed; fixed OR consolidated — distinguished by
-                               optional consolidated_into + resolution text)
+finding:  open  →  accepted   (standing trade-off; not "to fix"; isOpen excludes)
+          open  →  resolved   (terminal / read-only; fixed OR consolidated —
+                                distinguished by an optional citation + resolution text)
           any   →  archived   (tombstone)
 ```
 
 This:
-- **Removes `superseded`** (folded into `resolved` + `consolidated_into`); finding goes from 4→4 statuses but with one canonical closure state (`resolved`) + `accepted` for standing trade-offs. Aligns the "closed" concept with rule/loop-design's single `inactive`.
-- **Adds `accepted`** so accepted-limitations stop lying as `open`.
-- **Keeps `reopens`** for the stale-finding-closed-by-new-evidence case (its real job).
-- **Adds a non-closing evidence edge** for "in-vivo recurrence informs an accepted limitation" (the recurrence trigger's actual need) — direction finding→accepted-limitation, semantics "evidence-for" / "informs", does NOT close the target. (Exact field name + whether it lives on the finding or is a new `CROSS_REFS` edge is a follow-up design detail.)
+- **Removes `superseded`** (folded into `resolved` + a citation to the change-log). One canonical closure state, aligning finding with rule/loop-design's `inactive`.
+- **Adds `accepted`** so accepted-limitations stop lying as `open` (model A from §2.3).
+- **Drops `reopens` and `cascade_from`** (resolved is terminal; new evidence → new finding; file-index relates them). 17 existing `reopens` edges go inert; link survives via file-index.
+- **Drops the proposed `informs`/`evidence-for` edge** — redundant with file-index. The recurrence trigger files a finding with `evidence_code_ref`; file-index connects it to B and co-citing records. No new relationship primitive.
 - **Leaves rule↔finding as-is** (already tight; optionally finish retiring `promoted_to_rule`).
 
-The status vocabularies still differ in *words* (finding `open/accepted/resolved` vs rule/loop-design `active/inactive`). A second, optional tightening pass could unify the words (e.g. one canonical set `{live, closed, tombstone}` with kind-specific aliases), but that is cosmetic and lower-value than the §2.2/§2.3 fixes. Flagged as a non-goal for now.
+### 3.1 Record↔record citations — one untyped mechanism
+
+The owner accepted that *curated* record↔record citations should exist (low-volume, high-intent: you cite a record you're holding, not one you scanned for), but rejected the current bespoke fields (`consolidated_into`, `origin`, `supersedes`) as three special cases of one thing — the "growing special cases" smell. They collapse into **one untyped citation**:
+
+```
+{ source: <record-id>, target: <record-id>, rationale: "…", recorded_at, recorded_by }
+```
+
+Direction via `source`/`target`; the verb (`resolves-to` / `derived-from` / `refines`) lives in the `rationale` as prose, not a validated enum. **Untyped is decided** by the state-3 L1: no runtime branch consumes the verb (closure logic doesn't branch on `consolidated_into`; rule enforcement ignores `origin`; lineage traversal follows `target` regardless of type), so the distinction is agentic-consumed → prose, not a strict field. `rationale` is *required* (it is the semantic carrier once the type is gone).
+
+Agent-management cost is not a scan: curated citations use an id already in context (you cite what you're holding — that's why it's curated); emergent relationships use file-index server-side. Discovery of an unknown target id is a targeted indexed query (`ref_by` / `query_drift` / `id:[...]` / `session_id`), never `meta_state_list` (reserved for batch audit). The citation mechanism inherits the existing targeted-query surface; it does not add a scan.
+
+The relationship layers are now symmetric and both external to the records:
+- **Derived / emergent** → file-index (rebuilt from `evidence_code_ref` co-citation). Covers finding↔finding, finding↔code.
+- **Asserted / curated** → untyped citation. Covers record↔record cross-kind + same-kind lineage.
+
+Records carry **content + status only** — never relationship fields. Storage is decided in §3.3.
+
+### 3.2 Reading resolved findings
+
+Resolved findings stay in the registry (append-only audit demands it — a decision cannot be deleted), but the *primary access path* shifts from "list resolved findings" to "file-index neighborhood at this line, time-ordered" — the resolved ones appear in context as that line's decision history. You stop querying "resolved" as a class; you query "this code" and get its full finding lineage, closed ones included.
+
+The status vocabularies still differ in *words* (finding `open/accepted/resolved` vs rule/loop-design `active/inactive`). A cosmetic unification pass is flagged as a non-goal (see Unresolved questions — cosmetic vocabulary).
+
+### 3.3 Storage decision — separate append-only citation layer (decided 260802-0226)
+
+A 5-persona pre-analysis (`ak:predict`) settled open #1: **separate append-only citation layer** — a new `citation` kind in its own file, mirroring `change-log.jsonl` — not an on-record `cites` field. Verdict CAUTION (both viable; no STOP). Grounding from scouting the code:
+
+- **Kind-per-file is production-native.** Verified: `meta-state.jsonl` holds finding/loop-design/rule (290 entries); `change-log.jsonl` holds all 282 change-log entries. A `citations.jsonl` is the same pattern. Cross-file citation ids need no new namespacing — change-log ids already share the `meta-` prefix and `kindForId` resolves them.
+- **Zero derive-time join cost.** Verified: `deriveStatus` reads only `evidence_code_ref`/`evidence_test`/`status`/file-index; `isOpen` reads only `status` (`TERMINAL_STATUSES = {resolved, superseded, archived}`); `isStaleView` uses file-index + age. None reads `consolidated_into`/`origin`/`supersedes`. Moving relationships out costs these paths nothing — the earlier "join cost" fear is dead.
+- **Inverse queries get faster, not slower.** Today `inverseRefs`/`buildInverseIndexes` scan all entries O(N) to build the 6 named inverse maps. A citation log with a target index is O(edges) — the same derived-index pattern, simpler source. Immaterial at 338 entries; a future-scale tiebreaker, **not** a decision driver.
+- **Removes real entanglement.** `consolidated_into` is on the immutable patch deny-list (supersede-only) — a relationship coupled to a lifecycle tool. `diffChangedRefs` exists *because* editing a finding with a stale `reopens` must not re-validate it — version-chain muddiness from relationships riding on record versions. The separate layer removes both: findings are never patched to record a link.
+
+**Write-gating design (must hold in the follow-up plan):**
+- **No free `meta_state_cite` tool.** The existing lifecycle tools (`resolve`/`supersede`/`promote`) emit citation-log rows internally. This keeps the write surface *narrower* than today's mixed gating (deny-listed `consolidated_into` vs freely-writable `reopens`) and dissolves the security concern (an agent can't assert a bogus `resolves-to` to make a finding look "resolved-by-decision-X").
+- **Target-existence RI on every emission** (reuse `resolveStructuralRI`).
+
+**Migration phasing (seed for the follow-up plan):**
+1. Land citation storage + re-source `buildInverseIndexes`/`orphans`/`dangling_refs` from it.
+2. Migrate field-writers tool-by-tool: `consolidated_into`→citation (7 findings), `origin`→citation (rules), `supersedes`→citation (change-logs/rules). Each flip independently testable.
+3. Drop `reopens`/`cascade_from` writers (17 existing edges go inert; link survives via file-index).
+
+**Cost note:** the cost is a one-time migration, not a runtime cost — runtime/agent-management is nil for both options (ids in context + targeted queries; no scan). The on-record `cites` field was the smaller refactor but kept the version-chain entanglement; the separate layer is the coherence fit for the append-only thesis held throughout this investigation.
 
 ## 4. What this unblocks / defers
 
-- **Unblocks:** the recurrence trigger's P4 (reopens) — re-scoped. It no longer `reopens` B; it files the recurring finding with a non-closing evidence edge to the accepted-limitation (or files independently). P1–P3+P5 (window, redaction, grace window, regression) revive unchanged from the cancelled plan.
-- **Defers to a follow-up plan:** the actual lifecycle migration — add `accepted` status, collapse `superseded`→`resolved`+`consolidated_into` (7 findings), migrate the 4+2 accepted-limitation findings to `accepted`, add the non-closing evidence edge to `CROSS_REFS`, update `isOpen`/`isStaleView`/`derive-status`/the lifecycle tools, and finish retiring `promoted_to_rule`. That is a registry-wide lifecycle refactor with its own migration + tests; it should be its own plan, not folded into the recurrence trigger.
+- **Unblocks:** the recurrence trigger's P4 — **dissolved, not re-scoped.** It needs no relationship primitive at all: file the recurring finding with `evidence_code_ref` to the gate code; file-index connects it to B and co-citing records. P1–P3+P5 (window, redaction, grace window, regression) revive unchanged from the cancelled plan.
+- **Defers to a follow-up plan:** the lifecycle migration — add `accepted` status; collapse `superseded`→`resolved`+citation (7 findings); migrate the 4+2 accepted-limitation findings to `accepted`; replace `consolidated_into`/`origin`/`supersedes` with the untyped citation mechanism (and migrate their existing edges); drop `reopens`/`cascade_from` writers (existing 17 edges go inert); update `isOpen`/`TERMINAL_STATUSES` to add `accepted`; re-source `buildInverseIndexes`/`orphans`/`dangling_refs` from the citation log; rewrite the lifecycle tools (`resolve`/`supersede`/`promote`) to emit citations instead of setting fields (`deriveStatus`/`isStaleView` need no change — verified, they do not read relationship fields); finish retiring `promoted_to_rule`. Registry-wide lifecycle refactor with its own migration + tests; its own plan, not folded into the recurrence trigger.
 
 ## Unresolved questions (owner decisions)
 
-1. **`superseded` — collapse into `resolved` + `consolidated_into` (lean), or keep as a distinct closure status?** §2.2. A semantic choice, not a bug.
-2. **Accepted-limitation model — `accepted` finding status (lean, model A) or remodel as `loop-design` (model B)?** §2.3. Model A keeps `reopens`-adjacent primitives; model B is conceptually cleanest but breaks them.
-3. **The recurrence-trigger's evidence edge — a new non-closing finding→accepted-limitation edge ("informs"/"evidence-for"), or file-independently and let the operator draw the link?** §2.4. Depends on #2.
-4. **Cosmetic vocabulary unification** (open/accepted/resolved vs active/inactive) — worth a second pass, or leave the words kind-specific? Low value; flagged as a likely non-goal.
-5. **`promoted_to_rule` retirement** — finish dropping the legacy inverse (confirm zero live writers), or leave as read-only derived? §2.1.
+**Resolved in discussion (260802-0218):**
+- `superseded` → collapse into `resolved` + citation (§2.2). Decided.
+- `reopens` / `cascade_from` → drop entirely; resolved is terminal/read-only; new evidence appends a new finding; file-index relates them (§2.4). Decided — reverses the earlier "keep `reopens`" lean.
+- The recurrence trigger's evidence edge → dropped; file-index replaces it; P4 dissolves (§2.4, §3). Decided.
+- Citation typing → **untyped** (verb in prose `rationale`), per the state-3 L1: no runtime branch consumes the verb (§3.1). Decided.
+- New L1 documented: `docs/philosophy.md` § "Schema Constraints Are State-3 Artifacts."
+- Citation storage → **separate append-only citation layer** (new `citation` kind/file, mirroring `change-log.jsonl`); no free `meta_state_cite` (lifecycle tools emit); target-existence RI; phased migration (§3.3). Decided 260802-0226 via `ak:predict` (verdict CAUTION).
+- Accepted-limitation model → **model A (`accepted` finding status)**; model B (remodel as `loop-design`) rejected — loop-design has no acknowledgment state (sole closure is `ship`→`inactive`), and the accepted-vs-open distinction is state-3 (branched on by `isOpen`/`isStaleView`/`deriveStatus`), so it earns a status, not a kind (§2.3). Decided 260802-0230 via `ak:predict` (verdict GO).
+
+**Still open:**
+1. **`promoted_to_rule` retirement** — finish dropping the legacy inverse (confirm zero live writers), or leave as read-only derived? §2.1. Low priority.
+2. **Cosmetic vocabulary unification** (open/accepted/resolved vs active/inactive) — worth a second pass, or leave the words kind-specific? Low value; flagged as a likely non-goal.
 
 ## Scouting resolutions (260802-0152)
 
