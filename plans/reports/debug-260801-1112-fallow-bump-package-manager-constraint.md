@@ -1,6 +1,16 @@
 # Report: fallow 3.10.0 bump blocked by package-manager gate — constraint mapping analysis
 
-**Date:** 2026-08-01 · **Status:** blocked at gate, work paused by user · **Branch:** main (clean)
+**Date:** 2026-08-01 · **Status:** resolved — completed after PR#100 narrowed the constraint · **Branch:** main (clean)
+
+## 0. Resolution (2026-08-01, post-PR#100)
+
+PR#100 narrowed the `package-manager` pattern to `\b(pip|npm|yarn|pnpm|uv)\s+(install|add|sync|bootstrap|setup)\b.*\bvnstock`, so routine dep bumps no longer trip the gate. Continuation results:
+
+1. **Step 1 (bump):** `package.json` already pinned `fallow: 3.10.0` (bumped in the PR#100 branch); `pnpm add -D fallow@3.10.0` ran clean through the gate ("Already up to date"). Verified pnpm-installed and mise-installed binaries both report 3.10.0. `pnpm fallow:gate` / `fallow:brief` exit 0 on the clean tree.
+2. **Step 2 (measurement):** temporary fixture `tmp-byte-measure-fixture.js` (6 high-complexity near-identical functions) produced **13 findings** vs origin/main (6 complexity critical, 6 duplication, 1 unused-file). Measured: compact stdout **1568 B** vs JSON **18278 B** (~91% reduction), human gate panel 1861 B + 3100 B stderr. Gate exits 1 with findings; brief exits 0. Fixture removed; gate green again. Full table in `plans/260714-1200-fallow-brief-discovery/reports/byte-size-measurements.md` Scenario C.
+3. **Finding resolved:** `meta-260714T1248Z-…` resolved with the measured numbers (earlier 947/9963/642 B claims superseded). The leftover observation record `meta-260801T1118Z-…` was already resolved during the PR#100 session.
+
+Unresolved-question follow-up from §5: Q1 was answered by PR#100 (operator escape no longer needed for routine bumps; vnstock stays the only observation-based unlock). Q2/Q3 remain open as gate-design questions, non-blocking.
 
 ## 1. What we planned to do
 

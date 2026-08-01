@@ -1,7 +1,7 @@
 # Byte-size measurements — `pnpm fallow:brief` vs `pnpm fallow:gate`
 
-**Measured:** 2026-07-14 (Phase 1 step 7)
-**Tool:** `fallow 3.3.0` (verified signature; binary at `~/.local/share/mise/installs/npm-fallow/3.3.0/`)
+**Measured:** 2026-07-14 (Phase 1 step 7); Scenario C re-measured 2026-08-01
+**Tool:** `fallow 3.3.0` for Scenarios A/B; `fallow 3.10.0` for Scenario C
 **Root:** `tools/learning-loop-mastra`
 **Method:** stdout/stderr stream separation. Fallow writes human-readable output to **stderr** and machine formats (JSON, compact) to **stdout**.
 
@@ -29,20 +29,33 @@ Same scope (7 changed files are still the only ones vs origin/main), but baselin
 | JSON stdout | 4945 |
 | Compact stdout | 58 |
 
-### Scenario C — synthetic ≥5-finding scenario (referenced)
+### Scenario C — synthesized ≥5-finding scenario (measured 2026-08-01, fallow 3.10.0)
 
 The original task-1 byte claims (947 / 9963 / 642 B; "93 % reduction") were measured on a
-synthesized-failure scenario that does not reproduce on this codebase today — the
-current tree has **0** fallow findings vs `origin/main` under any threshold tried
-(`--max-crap 1`, full audit, dropped `--gate`). The measurements in scenario A/B
-are the live evidence; the qualitative ratio (compact ≈ 1 line per finding,
-human ≈ ≥40 lines per finding including baseline-comparison noise) is what the
-PROCESS_HINTS row text relies on, not absolute byte counts.
+synthesized-failure scenario that did not reproduce on fallow 3.3.0. It was reproduced on
+2026-08-01 with fallow **3.10.0** (both pnpm-installed and mise-installed binaries) by adding
+a temporary fixture `tmp-byte-measure-fixture.js` (6 deliberately high-complexity near-identical
+functions) under `tools/learning-loop-mastra`, then removing it after measurement.
 
-When the codebase does carry N findings, each `complexity` finding produces one
-`complexity:<path>:<line>:<symbol>:cyclomatic=N,severity=<level>,crap=N,...` line
-on stdout (compact) versus ≥8 lines of decorated human prose on stderr (heading,
-box-drawing glyphs, severity badge, location, recommendation, blank line).
+Fixture produced **13 findings** vs `origin/main`: 6 `high-complexity` (severity=critical,
+cyclomatic=14, crap=210 each), 6 `code-duplication` (1 clone group, 6 instances), 1 `unused-file`.
+
+| Stream | `fallow:gate` (human) | `--format json` | `fallow:brief` (compact) |
+|--------|----------------------|-----------------|--------------------------|
+| stdout | 1861 B (decorated panel: unused-code section, clone group, metrics line) | 18278 B (findings + audit metadata) | 1568 B (14 lines: one per finding + vital-signs) |
+| stderr | 3100 B (baseline warnings, section progress summaries) | 1347 B | 2114 B (baseline warnings + review-brief drill-down) |
+| **total** | **4961 B** | **19625 B** | **3682 B** |
+
+Notes:
+
+- On the machine-actionable stdout channel, compact is **1568 B vs 18278 B JSON (~91% reduction)**
+  and is one line per finding — close to the original qualitative claim, now with live evidence.
+- Gate human output splits across both streams on 3.10.0 (panel on stdout, progress on stderr);
+  the 3.3.0-era "human goes entirely to stderr" observation no longer holds exactly.
+- The baseline-mismatch warnings (~600 B) still appear on stderr in every mode, invariant to
+  finding count.
+- Exit codes: `fallow:gate` exits **1** with findings (gate trips), `fallow:brief` exits **0**
+  (report-only) — brief is the drill-down companion, not a gate replacement.
 
 ## Observations
 
