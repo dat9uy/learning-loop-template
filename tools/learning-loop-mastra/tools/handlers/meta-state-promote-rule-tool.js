@@ -21,7 +21,7 @@ export const metaStatePromoteRuleTool = {
     pattern_type: z.enum(["regex", "glob", "determinism-checklist", "agent-checklist"]).describe("Pattern language (determinism-checklist is a resolve consult-gate, not a command-path match)"),
     pattern: z.string().describe("Pattern string (regex body, glob path, or finding id for determinism-checklist; agent-checklist requires a JSON blob {version, items:[{id, description}]})"),
     scope_predicate: z.enum(["none", "project_has_learning_loop_mcp"]).optional().default("none").describe("Optional project scope predicate"),
-// optional tool/surface scope that
+    // optional tool/surface scope that
     // narrows the rule's firing surface without regex hand-curation. Parallel
     // to change-log's applies_to. Used by universal rules (e.g.,
     // rule-assertinvariant-at-boundary) to scope to 12 core-logic tools.
@@ -255,7 +255,7 @@ export const metaStatePromoteRuleTool = {
       };
     }
 
-// self-footgun guard. A regex rule that
+    // self-footgun guard. A regex rule that
     // matches canonical CLI invocation shapes would intercept the loop's
     // own CLI transport and brick every `node bin/loop.mjs ...` call.
     // Only `regex` rules can intercept the bash gate (glob matches
@@ -382,7 +382,7 @@ export const metaStatePromoteRuleTool = {
 
     await writeEntry(root, ruleEntry);
 
-// the no-op short-circuit makes this
+    // the no-op short-circuit makes this
     // pre-call guard valuable. Previously this code unconditionally called
     // `updateEntry(root, id, { status: "open" })`, which on an already-open
     // finding produced a gratuitous version bump + full rewrite (resolved by

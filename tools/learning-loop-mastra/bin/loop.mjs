@@ -215,7 +215,7 @@ async function main() {
 }
 
 main().catch((err) => {
-// structured stderr for write-path rejections.
+  // structured stderr for write-path rejections.
   // The classifier splits the non-usage branch into two shapes so the
   // agent's recovery policy can tell a real rejection from a programmer/
   // transport bug. UsageError + identity-pin stay on the existing exit-2

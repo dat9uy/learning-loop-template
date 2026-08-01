@@ -168,6 +168,8 @@ test("stable-artifacts-no-plan-ids: synthetic matcher catches known-bad input", 
     "* Rec 10 stale-findings dispatch protocol — see meta-state registry.",
     "// schemas/** was migrated to a preflight-delegating rule.",
     "// the rollout planning document lists its milestones",
+    // Hyphenated `Plan-N` prose must NOT match — patterns require a space before the bare ordinal.
+    "// the Plan-5 rollout was reverted before it reached the next gate",
     "// the versioned-append projection dedupes by max version per id",
     // Durable registry ids are exempt even when a slug embeds a date-stamp.
     "// see meta-260714T1630Z-after-the-mcp-server-restart-triggered-by-plan-260714-1358-r",

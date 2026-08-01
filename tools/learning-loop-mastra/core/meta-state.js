@@ -423,7 +423,7 @@ export const metaStateChangeEntrySchema = z.object({
   }).optional().describe("Wider impact scope"),
   supersedes: z.string().optional()
     .describe("ID of a previous change-log entry this one replaces"),
-// consolidates is multi-valued
+  // consolidates is multi-valued
   // (the relationships tool at meta-state-relationships-tool.js:21-25 has
   // always grouped it as an array). Schema now enforces the array form;
   // the migration script converts any legacy single-string value to a
@@ -446,7 +446,7 @@ export const metaStateChangeEntrySchema = z.object({
   version: z.number().default(0).describe("CAS version (not used by change-log entries but consistent shape)"),
   expires_at: z.string().optional()
     .describe("Forward-compat: optional TTL for future change-log subtypes that may expire."),
-// optional magnitude envelope for batch mutations.
+  // optional magnitude envelope for batch mutations.
   // Auto-emitted by `meta_state_batch` when callers pass an `envelope` field;
   // describes kind + target + pre/post registry snapshot + content-hash. The
   // canonical enum keys (by_status / by_kind) are constrained so post-hoc
@@ -572,7 +572,7 @@ const metaStateRuleEntryObject = z.object({
   hint_slug: z.string().regex(/^[a-z0-9-]+$/).optional()
     .describe("Explicit slug override; only needed when desired slug differs from rule id minus 'rule-'"),
   affected_system: z.enum(AFFECTED_SYSTEM_ENUM).optional().describe("Which system this rule affects"),
-// parallel to change-log's applies_to
+  // parallel to change-log's applies_to
   // (line 180-186). Scope-narrowing that complements scope_predicate — used
   // by universal rules (e.g., rule-assertinvariant-at-boundary) to suppress
   // test-mock false positives without relying solely on regex hand-curation.

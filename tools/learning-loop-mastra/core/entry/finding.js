@@ -14,7 +14,7 @@ export function createFinding(data) {
     data: parsed,
     schema: metaStateFindingEntrySchema,
 
-// `isActive`/`isStale` renamed to
+    // `isActive`/`isStale` renamed to
     // `isOpen`/`isStaleView`. Semantics: the open predicate tolerates legacy
     // `active`/`reported`/`stale` as open; the stale-view predicate checks
     // age + drift. See core/stale-view.js for the canonical implementations.
